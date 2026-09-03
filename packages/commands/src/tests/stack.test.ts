@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { sha256 } from '@vn/util';
 import { toCatalog } from '../catalog.js';
+import { EMPTY_DIGEST, digestOf } from '../digest.js';
 import {
   defineCommand,
   defineFor,
@@ -189,6 +190,17 @@ describe('CommandStack.exec', () => {
     const digest = `<sha256:${sha256(text).slice(0, 12)}+5007>`;
     expect(persisted[0]?.props).toEqual({ path: 'wiki/ada.md', text: digest });
     expect(persisted[0]?.invocation).toBe(`demo.save(path='wiki/ada.md' text='${digest}')`);
+  });
+
+  /**
+   * A digest carries the byte length, so an empty bulk value is recognisable in a record where a
+   * secret is not. `EMPTY_DIGEST` is that value written down, and has to stay what `digestOf`
+   * would produce — the tour layer reads it to tell a blank field from a typed one.
+   */
+  it('records a bulk prop with nothing in it as the empty digest', async () => {
+    expect(await digestOf('')).toBe(EMPTY_DIGEST);
+    expect(await digestOf([])).toBe(EMPTY_DIGEST);
+    expect(await digestOf('a')).not.toBe(EMPTY_DIGEST);
   });
 
   /**

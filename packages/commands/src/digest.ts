@@ -32,6 +32,13 @@ export async function digestOf(value: PropValue): Promise<string> {
   return `<sha256:${hex(new Uint8Array(hash)).slice(0, 12)}+${bytes.length}>`;
 }
 
+/**
+ * What {@link digestOf} records for a value with no bytes in it — an empty string, an empty list.
+ * Named so a reader of a record can recognise one by comparison rather than by parsing the
+ * sentinel; `stack.test.ts` pins it against what `digestOf` actually produces.
+ */
+export const EMPTY_DIGEST = '<sha256:e3b0c44298fc+0>';
+
 /** What a `secret` prop is recorded as, whatever it held. */
 export const REDACTED = '<secret>';
 

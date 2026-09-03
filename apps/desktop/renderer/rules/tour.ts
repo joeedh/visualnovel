@@ -9,7 +9,7 @@
  * The steps themselves are `shared/tours.ts`, because main's `tour.*` commands name the curated
  * ones. Everything here is pure and node-testable; reaching the screen is `pathux/tour.ts`.
  */
-import { UNRESOLVED, type Verdict } from '@vn/commands';
+import { EMPTY_DIGEST, UNRESOLVED, type Verdict } from '@vn/commands';
 import type { PropValue } from '../../src/shared/ipc.js';
 import type { Step, Tour } from '../../src/shared/tours.js';
 import {
@@ -252,12 +252,29 @@ function keysOf(live: LiveAnchors, editor: AnchorHome, verdicts: readonly Verdic
  * A gesture names no invocation of its own — which command a drop commits is the verdict's answer,
  * over state only the screen has — so `awaits` is what it is compared against.
  *
+ * An `input` step is the one place a value is required rather than ignored. The step exists to
+ * have the author supply one, and `art.setNotes` accepts an empty note as a legitimate value, so
+ * committing the field blank would otherwise advance the step over a no-op.
+ *
  * Anything else means the author went their own way, which is not an error. The caller re-plans.
  */
 export function satisfies(step: Step, ran: Action, awaits?: Action): boolean {
   if (step.kind === 'gesture') return awaits !== undefined && subsumed(awaits, ran, '');
   const wanted = actionOf(step);
-  return wanted !== undefined && subsumed(wanted, ran, step.kind === 'input' ? step.supplies : '');
+  if (wanted === undefined) return false;
+  if (step.kind === 'input' && !supplied(ran.props[step.supplies])) return false;
+  return subsumed(wanted, ran, step.kind === 'input' ? step.supplies : '');
+}
+
+/**
+ * Whether the author supplied a value. What arrives is the recorded props rather than the real
+ * ones, so a bulk prop is a digest: `EMPTY_DIGEST` is what one with no bytes in it records as. A
+ * `secret` records as `<secret>` whatever it held, which stays past telling.
+ */
+function supplied(value: PropValue | undefined): boolean {
+  if (value === undefined) return false;
+  if (typeof value === 'string') return value !== '' && value !== EMPTY_DIGEST;
+  return Array.isArray(value) ? value.length > 0 : true;
 }
 
 /** Whether `ran` carries every prop `wanted` names, ignoring the one the author was to type. */

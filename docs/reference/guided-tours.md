@@ -358,8 +358,19 @@ now also sets the search box to the command it moved to, so the list agrees with
 The tour subscribes to `onExec` in `bridge.ts` and advances when a successful command matches the
 current step, whichever control ran it: a button, the palette, or a hotkey. Matching uses
 subsumption (`satisfies`), so an `input` step matches regardless of the value the author typed for
-its `supplies` prop. A gesture step has no fixed invocation, because which command a drop runs
-depends on the target, so it waits for the `invoke` from the verdict it was displayed with.
+its `supplies` prop, provided there is one: an `input` step exists to have the author supply a
+value, and `art.setNotes` accepts an empty note as a legitimate value (it removes the note), so
+committing the field blank would otherwise advance the step over a no-op.
+
+What `satisfies` compares against is the recorded props rather than the real ones, so a bulk prop
+arrives digested. A digest carries the value's byte length, so a bulk prop with nothing in it is
+recognisable: `EMPTY_DIGEST` in `@vn/commands` is what one records as, and the rule reads it as a
+blank field. A `prop.secret` records as `<secret>` whatever it held, so an empty one is past
+telling — a limitation of the rule rather than a case it decides, and one nothing reaches today,
+since `project.setKey` refuses an empty key before a record is written.
+
+A gesture step has no fixed invocation, because which command a drop runs depends on the
+target, so it waits for the `invoke` from the verdict it was displayed with.
 
 Any other command is ignored. The author may do things in another order, and the step is simply
 re-resolved against the new screen state.

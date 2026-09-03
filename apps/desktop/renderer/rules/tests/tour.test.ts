@@ -1,4 +1,4 @@
-import { UNRESOLVED, type Verdict } from '@vn/commands';
+import { EMPTY_DIGEST, UNRESOLVED, type Verdict } from '@vn/commands';
 import { advance, finished, guide, satisfies, start, stepOf } from '../tour.js';
 import { commandKey, itemKey, type Anchor, type AnchorMap, type LiveAnchors } from '../anchors.js';
 import type { Step, Tour } from '../../../src/shared/tours.js';
@@ -305,6 +305,37 @@ describe('satisfies', () => {
     expect(
       satisfies(typed, { ...ran, props: { target: 'location:cafe/day', notes: 'colder' } }),
     ).toBe(false);
+  });
+
+  /** `art.setNotes` takes an empty note as a legitimate value: it removes the note. */
+  it('waits for the value an input step asked for, rather than counting a blank field', () => {
+    const typed: Step = {
+      kind: 'input',
+      id: 'art.setNotes',
+      props: { target: 'location:cafe/night' },
+      supplies: 'notes',
+      say: 'Say what you want changed.',
+    };
+    const ran = { id: 'art.setNotes', props: { target: 'location:cafe/night', notes: '' } };
+    expect(satisfies(typed, ran)).toBe(false);
+    expect(satisfies(typed, { ...ran, props: { target: 'location:cafe/night' } })).toBe(false);
+    expect(satisfies(typed, { ...ran, props: { ...ran.props, notes: 'colder' } })).toBe(true);
+  });
+
+  /** What reaches here is the recorded props, so a bulk prop arrives digested either way. */
+  it('reads the empty digest of a bulk prop as a blank field', () => {
+    const written: Step = {
+      kind: 'input',
+      id: 'doc.write',
+      props: { path: 'wiki/ada.md' },
+      supplies: 'text',
+      say: 'Write the entry.',
+    };
+    const ran = { id: 'doc.write', props: { path: 'wiki/ada.md', text: EMPTY_DIGEST } };
+    expect(satisfies(written, ran)).toBe(false);
+    expect(
+      satisfies(written, { ...ran, props: { ...ran.props, text: '<sha256:2cf24dba5fb0+5>' } }),
+    ).toBe(true);
   });
 
   it('never advances on a select step, which runs nothing', () => {
