@@ -17,7 +17,7 @@ import { api } from '../api.js';
 import { ANCHOR_MAP, SWEPT } from '../rules/anchormap.js';
 import { askedAs, checkFor } from '../rules/precheck.js';
 import { guide, satisfies, start, stepOf, type Guidance, type TourState } from '../rules/tour.js';
-import type { Action, Anchor, AnchorHome, LiveAnchors } from '../rules/anchors.js';
+import type { Action, Anchor, AnchorHome } from '../rules/anchors.js';
 import { anchorSnapshot } from './anchors.js';
 import { exec, onExec, onWrote, say } from './bridge.js';
 import { verdictsFor } from './gestures.js';
@@ -157,7 +157,9 @@ function askAbout(anchor: Anchor): void {
  */
 function shownNow(): Guidance | undefined {
   if (!running) return undefined;
-  const shown = guide(ANCHOR_MAP, live(), running, verdictsFor, refusedFor);
+  const panes = openPanes();
+  const judge = (id: string, carried: string) => verdictsFor(id, carried, panes);
+  const shown = guide(ANCHOR_MAP, anchorSnapshot(panes), running, judge, refusedFor);
   awaiting = shown.show === 'ring' ? shown.awaits : undefined;
   const at = shown.show === 'ring' || shown.show === 'blocked' ? shown.where : undefined;
   if (at && 'anchor' in at) askAbout(at.anchor);
@@ -211,11 +213,6 @@ function showingNow(): Showing | undefined {
 
 /** The refusal standing against this anchor, for `guide` to read without awaiting anything. */
 const refusedFor = (key: string): string | undefined => asked.get(key)?.reason;
-
-/** What is drawn, filtered to the panes the mesh currently shows. */
-function live(): LiveAnchors {
-  return anchorSnapshot(openPanes());
-}
 
 /**
  * Advance when the step's own invocation runs, whatever ran it. Another command means the author

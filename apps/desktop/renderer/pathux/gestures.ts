@@ -29,7 +29,9 @@ const states = new Map<string, Source>();
  *
  * The editor is named because two panes can draw a card for the same scene, and only the one
  * running the gesture is somewhere a drag can start. A pane that has closed leaves its entry
- * behind, and the anchor lookup then finds nothing in that editor, which says the same thing.
+ * behind — path.ux detaches an area on a tab switch without redrawing it when the tab returns, so
+ * the entry cannot be dropped — and {@link verdictsFor} passes over it because the editor is not
+ * in the open set.
  */
 export function gestureState(namespace: string, editor: AnchorHome, read: () => unknown): void {
   states.set(namespace, { editor, read });
@@ -39,13 +41,18 @@ export function gestureState(namespace: string, editor: AnchorHome, read: () => 
  * Every target of a gesture, judged, and the editor whose cards the author would drag between.
  * Undefined where the interaction is unknown or no open surface left the state it is judged
  * against, which a tour reports rather than treating as a refusal.
+ *
+ * A closed pane's state is the second of those. Its verdicts describe a screen the author is not
+ * looking at, and a tour reads the refusal in them before it resolves anything, so it would report
+ * a closed pane's answer as the step's.
  */
 export function verdictsFor(
   id: string,
   carried: string,
+  open: readonly AnchorHome[],
 ): { editor: AnchorHome; verdicts: readonly Verdict[] } | undefined {
   const interaction = interactions.get(id);
   const source = states.get(id.split('.')[0] ?? '');
-  if (!interaction || !source) return undefined;
+  if (!interaction || !source || !open.includes(source.editor)) return undefined;
   return { editor: source.editor, verdicts: interaction.targets(source.read(), carried) };
 }

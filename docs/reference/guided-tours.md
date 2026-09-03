@@ -279,6 +279,11 @@ registers a state reader in `renderer/pathux/gestures.ts` under its interaction 
 can show the same scene (the document tree and the branch editor), and the drag has to start on
 the one that runs the gesture.
 
+A registration outlives its pane, for the same reason an anchor does, so `verdictsFor` takes the
+open set and answers nothing for a namespace whose editor is not in it. The step then reads as
+having nothing on screen that runs the gesture, which is what a closed pane is. Without the check
+its verdicts are read first and its refusal reported as the step's own answer.
+
 ### What a step displays
 
 `guide(map, live, state, judge, refused)` in `renderer/rules/tour.ts` computes what the overlay
