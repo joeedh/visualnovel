@@ -155,6 +155,10 @@ node scripts/sweep-anchors.mjs          # second shell, VN_CDP_PORT set to that 
 defaults to 9222, so set `VN_CDP_PORT` in the second shell if the launcher printed a different
 port.
 
+The sweep formats what it writes, since `pnpm lint` checks `anchors.json` like any other file. A
+run that changes nothing but the `sweptAt` and `gitSha` lines is worth reverting rather than
+committing: the coverage is what the file is for.
+
 ### Resolution
 
 `resolveAnchor(map, live, action)` finds the anchor for a wanted invocation in a snapshot. It is a

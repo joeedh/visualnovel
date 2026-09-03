@@ -57,7 +57,21 @@ if (port)
     `vndesktop: CDP on 127.0.0.1:${port} — VN_CDP_PORT=${port} node scripts/vn-cdp.mjs\n`,
   );
 
-const electron = spawn('pnpm', ['exec', 'electron', '.', ...process.argv.slice(2)], {
+/**
+ * The app runs with `apps/desktop` as its working directory, so a relative `--project` would
+ * resolve against that rather than against the shell the developer typed it in.
+ */
+function absoluteProject(args) {
+  const at = args.indexOf('--project');
+  if (at < 0 || args[at + 1] === undefined) return args;
+  const fixed = [...args];
+  fixed[at + 1] = resolve(process.cwd(), args[at + 1]);
+  return fixed;
+}
+
+const forwarded = absoluteProject(process.argv.slice(2));
+
+const electron = spawn('pnpm', ['exec', 'electron', '.', ...forwarded], {
   cwd: desktop,
   stdio: 'inherit',
   shell: process.platform === 'win32',

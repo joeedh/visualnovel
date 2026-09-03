@@ -193,6 +193,14 @@ await fs.writeFile(
   ) + '\n',
 );
 
+// `pnpm lint` checks this file's formatting like any other, and `JSON.stringify` breaks every
+// array across lines where prettier would keep a short one inline.
+execFileSync('pnpm', ['exec', 'prettier', '--write', OUT], {
+  cwd: root,
+  stdio: 'ignore',
+  shell: process.platform === 'win32',
+});
+
 process.stdout.write(
   `anchors.json: ${anchored.length} of ${commands.length} commands have a UI anchor; ` +
     `the rest are palette-only. Measured against ${under.project || '(no project)'}\n`,
