@@ -2619,6 +2619,12 @@ export class WorkspaceSession {
       holder !== undefined && holder !== asset.hash && manifest.some((a) => a.hash === holder)
         ? holder
         : undefined;
+    // Only a concept bound to a location promotes to a plate, and only that strip asks for a
+    // variant, so nothing else pays for the lookup.
+    const conceptOf = asset.kind === 'concept' ? asset.satisfies[0]?.locationId : undefined;
+    const locationVariants = conceptOf
+      ? (project.model.locations.get(conceptOf)?.variants ?? []).map((v) => v.id)
+      : undefined;
     return {
       hash: asset.hash,
       ext: asset.ext,
@@ -2636,6 +2642,7 @@ export class WorkspaceSession {
       ...(suspended ? { suspended: suspended.reason } : {}),
       ...(slot ? { slot: slotKey(slot) } : {}),
       ...(from ? { drawnFor: slotKey(from) } : {}),
+      ...(locationVariants ? { locationVariants } : {}),
       ...(newer ? { newerTake: newer } : {}),
       ...(failure ? { failure } : {}),
       prereqs,

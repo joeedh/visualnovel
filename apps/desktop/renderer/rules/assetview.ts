@@ -122,6 +122,12 @@ export type PromoteAction =
       label: string;
       /** The place the plate is for, which is what the strip says above its field. */
       locationId: string;
+      /**
+       * The variant ids that place already has. Offered beside the field rather than in place of
+       * it: promoting to a name the sheet does not carry yet is the other half of what the control
+       * does. Empty when the location has no variants, and then no picker is drawn.
+       */
+      variants: string[];
     }
   | { ok: false; reason: string; id: string };
 
@@ -159,6 +165,7 @@ export function promoteAction(info: AssetInfo): PromoteAction {
     props: { hash: info.hash },
     label: 'Promote',
     locationId,
+    variants: info.locationVariants ?? [],
   };
 }
 

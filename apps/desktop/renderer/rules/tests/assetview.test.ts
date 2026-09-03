@@ -88,7 +88,14 @@ describe('promoteAction', () => {
       props: { hash: 'a1b2c3d4' },
       label: 'Promote',
       locationId: 'cafe',
+      variants: [],
     });
+  });
+
+  // The strip offers these beside its field; a name the sheet does not carry yet is still typed.
+  it('carries the variants that location already has', () => {
+    const offer = promoteAction(concept({ locationVariants: ['day', 'night'] }));
+    expect(offer.ok && offer.variants).toEqual(['day', 'night']);
   });
 
   // A character's look is the gate's business. Only character.md and approved.png actually

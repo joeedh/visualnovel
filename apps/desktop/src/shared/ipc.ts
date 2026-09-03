@@ -653,6 +653,14 @@ export interface AssetInfo {
    */
   drawnFor?: string;
   /**
+   * The variant ids the location already has, in authored order, for a concept bound to one.
+   * `art.promote` takes a name the sheet does not carry yet as readily as one it does, so this is
+   * what exists rather than what is allowed — the promote strip offers it beside a field that
+   * stays typeable. Empty means the location has no variants yet; absent means the asset is not a
+   * concept of a location.
+   */
+  locationVariants?: string[];
+  /**
    * The asset filling that slot now, when it is not this one. Present for an earlier take and for
    * a render something later replaced; absent while these are the bytes in the slot, and absent
    * when the slot's task has produced nothing yet. The pane follows it, so a run that finishes

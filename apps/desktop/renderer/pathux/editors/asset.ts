@@ -1282,6 +1282,8 @@ export class AssetEditor extends VnEditor {
     const strip = el('div', 'as-promote');
     strip.appendChild(el('span', 'as-promote-what', `Promote to a plate for ${offer.locationId}:`));
 
+    let picker: HTMLSelectElement | undefined;
+
     const input = document.createElement('input');
     input.className = 'as-promote-id';
     input.setAttribute('aria-label', 'The variant id this becomes the plate for');
@@ -1289,13 +1291,23 @@ export class AssetEditor extends VnEditor {
     input.placeholder = 'variant id, e.g. dawn';
     input.value = this.variant;
     this.drawing.record(input, offer, { on: 'variant', supplies: PROMOTE_SUPPLIES });
-    input.addEventListener('input', () => (this.variant = input.value));
+    input.addEventListener('input', () => {
+      this.variant = input.value;
+      // Typing the name of a variant that exists is the same choice the picker makes, so the two
+      // must not end up disagreeing about which one is selected.
+      if (picker) picker.value = offer.variants.includes(input.value) ? input.value : '';
+    });
     // The screen keymap is a bubble-phase window listener, so the field stops its own keys.
     input.addEventListener('keydown', (event) => {
       event.stopPropagation();
       if (event.key === 'Enter') void this.promote(offer);
     });
     strip.appendChild(input);
+
+    if (offer.variants.length > 0) {
+      picker = this.variantPicker(offer, input);
+      strip.appendChild(picker);
+    }
 
     const go = this.drawing.act(
       el('button', 'as-promote-go', 'Promote'),
@@ -1314,6 +1326,34 @@ export class AssetEditor extends VnEditor {
       ),
     );
     return strip;
+  }
+
+  /**
+   * The variants the location already has, beside the promote field rather than in place of it.
+   * Promoting to a name the sheet does not carry yet is the other half of what the strip does, so
+   * choosing fills the field and the field stays typeable — the same shape a `directory` prop's
+   * Browse… button has in the command form.
+   */
+  private variantPicker(
+    offer: PromoteAction & { ok: true },
+    input: HTMLInputElement,
+  ): HTMLSelectElement {
+    const select = document.createElement('select');
+    select.className = 'as-promote-pick';
+    select.setAttribute('aria-label', `The variants ${offer.locationId} already has`);
+    select.title =
+      `Fill the field with a variant ${offer.locationId} already has. Its plate becomes this ` +
+      'picture; leave the field as it is to write a variant the sheet does not carry yet.';
+    select.appendChild(option('', 'or one it has…'));
+    for (const variant of offer.variants) select.appendChild(option(variant, variant));
+    select.value = offer.variants.includes(this.variant) ? this.variant : '';
+    select.addEventListener('change', () => {
+      if (select.value === '') return;
+      this.variant = select.value;
+      input.value = select.value;
+      input.focus();
+    });
+    return select;
   }
 
   /**
@@ -1513,6 +1553,13 @@ export class AssetEditor extends VnEditor {
     // The seed is in the task hash, so what the pane says about this asset has moved under it.
     void this.load(this.shown);
   }
+}
+
+function option(value: string, label: string): HTMLOptionElement {
+  const node = document.createElement('option');
+  node.value = value;
+  node.textContent = label;
+  return node;
 }
 
 function el(tag: string, className: string, text?: string): HTMLElement {

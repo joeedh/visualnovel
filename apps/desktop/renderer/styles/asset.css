@@ -149,6 +149,24 @@
   border-color: var(--sodium);
 }
 
+/* Narrow, because it fills the field beside it rather than being the answer itself. */
+.as-promote-pick {
+  flex: 0 1 auto;
+  max-width: 150px;
+  padding: 4px 6px;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: var(--ink-sunken);
+  color: var(--mist);
+  font-family: var(--sans);
+  font-size: 12px;
+  outline: none;
+}
+
+.as-promote-pick:focus {
+  border-color: var(--sodium);
+}
+
 /* The slot address, not prose: it is an identity the author can read back into a command. */
 .as-replace-what {
   color: var(--mist);
