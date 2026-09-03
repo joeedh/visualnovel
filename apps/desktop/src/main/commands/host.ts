@@ -1,6 +1,7 @@
 import type { WorkspaceSession } from '../session.js';
 import type { SessionAccess } from '../sessionstate.js';
 import type { UiEffect } from '../../shared/ipc.js';
+import type { Known } from '../../shared/tourcheck.js';
 import type { WindowId } from '../windows.js';
 
 /** Presentation of a file chooser. Everything is optional; the defaults are the document upload. */
@@ -99,6 +100,12 @@ export interface CommandHost {
    * reaches — otherwise `view.applyLayout` rearranges window 3 and writes window 0's template key.
    */
   focusedWindow(): number;
+  /**
+   * The catalog, for a command validating machine-written input against it. Reached through the
+   * host for the reason `check` is: `commands/index.ts` imports each command module, so a command
+   * building the registry itself would close a cycle `import/no-cycle` rejects.
+   */
+  known: Known;
   /**
    * Ask another command's precondition — the stack's own `check`, reached through the host
    * because a command cannot import the stack that runs it.

@@ -4,6 +4,8 @@
  * A tour is machine-written text, so it is checked at the boundary the way `coerceProps` checks a
  * loose CDP value: a step naming a command the app does not have, or a prop it does not take, is a
  * hallucination and is refused here rather than sending the author to a form that cannot run.
+ * Both entrances ask: `show_me`, where the agent writes one, and `tour.start`, where CDP or the
+ * palette's `custom` field pastes one in.
  *
  * What is *not* checked here is whether a step would be accepted right now. `stack.check` answers
  * that at the step, over the props the author has by then — a tour's later steps are routinely

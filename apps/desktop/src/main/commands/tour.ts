@@ -9,6 +9,7 @@
  * None of them writes anything: a tour tells the author what to press and never presses it.
  */
 import { defineFor, prop } from '@vn/commands';
+import { checkTour, readTour } from '../../shared/tourcheck.js';
 import { TOURS, tourById } from '../../shared/tours.js';
 import type { CommandHost } from './host.js';
 
@@ -38,6 +39,14 @@ export const tourStart = define({
   run({ tour, custom }, ctx) {
     if (!tour && !custom)
       throw new Error('name a curated tour, or pass steps for one of your own.');
+    // A custom tour is machine-written text, and main holds the catalog it is judged against.
+    // Unchecked, a step naming a command that does not exist opens a palette on nothing.
+    if (custom) {
+      const read = readTour(custom);
+      if (!read.ok) throw new Error(`that tour could not be read — ${read.reason}.`);
+      const problems = checkTour(read.tour, ctx.host.known);
+      if (problems.length > 0) throw new Error(`that tour will not run:\n${problems.join('\n')}`);
+    }
     ctx.host.ui(
       { type: 'tour', action: 'start', tour, ...(custom ? { steps: custom } : {}) },
       ctx.origin,

@@ -200,7 +200,11 @@ function sameValue(a: PropValue | undefined, b: PropValue): boolean {
  */
 export function resolveAnchor(map: AnchorMap, live: LiveAnchors, step: Action): Resolution {
   const offscreen = new Set(live.offscreen ?? []);
-  const candidates = live.anchors.filter((anchor) => anchor.id === step.id);
+  // An item anchor has no `id`, so a step with none of its own would otherwise match every one of
+  // them, subsume over no props, and ring an arbitrary tree row.
+  const candidates = live.anchors.filter(
+    (anchor) => anchor.id !== undefined && anchor.id === step.id,
+  );
 
   let mismatch: { anchor: Anchor; needs: Action; holds: string[] } | undefined;
   for (const anchor of candidates) {

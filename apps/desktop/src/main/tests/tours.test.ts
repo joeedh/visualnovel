@@ -5,10 +5,12 @@
  * naming a command that was renamed, or a prop that was dropped, would send the author to a palette
  * form that refuses — and it would do so silently, because a tour is only read when it is run.
  */
-import { coerceProps } from '@vn/commands';
+import { coerceProps, type CommandContext } from '@vn/commands';
 import { createDesktopInteractions } from '../../shared/interactions.js';
-import { TOURS } from '../../shared/tours.js';
+import { TOURS, type Tour } from '../../shared/tours.js';
 import { createDesktopRegistry } from '../commands/index.js';
+import { tourStart } from '../commands/tour.js';
+import type { CommandHost } from '../commands/host.js';
 
 const registry = createDesktopRegistry();
 const interactions = createDesktopInteractions();
@@ -79,5 +81,44 @@ describe('the curated tours', () => {
         ]);
       }
     }
+  });
+});
+
+/** `tour.start` is the second entrance a machine-written tour comes in by. */
+describe('tour.start', () => {
+  const ctx = (): CommandContext<CommandHost> =>
+    ({
+      host: {
+        known: {
+          command: (id: string) => registry.get(id)?.props,
+          interaction: (id: string) => interactions.get(id) !== undefined,
+          coerce: coerceProps,
+        },
+        ui: () => {},
+      },
+    }) as unknown as CommandContext<CommandHost>;
+
+  it('starts a custom tour whose steps the catalog accepts', async () => {
+    const first = TOURS[0] as Tour;
+    await expect(
+      tourStart.run({ tour: '', custom: JSON.stringify(first) }, ctx()),
+    ).resolves.toEqual({ message: 'Walking through your steps.' });
+  });
+
+  /**
+   * `show_me` has always checked what the agent writes. `tour.start` took the same JSON from CDP
+   * and from the palette's `custom` field unchecked, and a bad id reached a palette filtered to
+   * nothing with no form and nothing saying why.
+   */
+  it('refuses a custom tour naming a command the app does not have', () => {
+    const bad = {
+      id: 'x',
+      title: 'X',
+      what: 'Do a thing.',
+      steps: [{ kind: 'command', id: 'story.invent', say: 'Press it.' }],
+    };
+    expect(() => tourStart.run({ tour: '', custom: JSON.stringify(bad) }, ctx())).toThrow(
+      'story.invent',
+    );
   });
 });

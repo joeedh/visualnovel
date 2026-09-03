@@ -92,9 +92,10 @@ export function applyTour(effect: TourEffect): void {
 /**
  * Read a tour written for the moment, as JSON.
  *
- * Only the shape is decided here. Whether a step's command exists is `checkTour`'s answer, asked
- * of `show_me` where an agent-written tour enters, and whether a step would be accepted is
- * `stack.check`'s, asked when the step comes up and over the props the author has by then.
+ * Only the shape is decided here, because the effect crossed IPC to get here. Whether a step's
+ * command exists is `checkTour`'s answer, asked in main at both entrances, and whether a step would
+ * be accepted is `stack.check`'s, asked when the step comes up and over the props the author has
+ * by then.
  */
 function parse(steps: string): Tour | undefined {
   const read = readTour(steps);

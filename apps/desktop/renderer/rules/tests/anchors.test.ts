@@ -202,6 +202,16 @@ describe('resolveAnchor', () => {
     expect(resolveAnchor({ editorsFor: {} }, live([]), step)).toEqual({ state: 'unanchored' });
   });
 
+  /** A step read from JSON that is not an object at all has no `id`, and neither has a row. */
+  it('never matches an item anchor against a step with no id of its own', () => {
+    const row = anchor({ key: itemKey('asset', 'a1b2'), props: {} });
+    delete (row as { id?: string }).id;
+    const nameless = { id: undefined as unknown as string, props: {} };
+    expect(resolveAnchor({ editorsFor: {} }, live([row]), nameless)).toEqual({
+      state: 'unanchored',
+    });
+  });
+
   it('never matches an item anchor against a command step', () => {
     const row = anchor({ key: itemKey('asset', 'a1b2'), props: {} });
     delete (row as { id?: string }).id;

@@ -28,12 +28,13 @@ import { ProjectPaths } from '@vn/store';
 import { openGit, type Git } from '@vn/git';
 import { appendJsonl } from '@vn/util';
 import { Workspace } from '@vn/authoring';
-import { CommandStack, Committer, seqRanges } from '@vn/commands';
+import { CommandStack, Committer, coerceProps, seqRanges } from '@vn/commands';
 import { UndoJournal } from '@vn/commands/snapshot';
 import { DEFAULT_BUDGET, type BudgetChoice } from '@vn/types';
 import { BUDGET_KEY } from './commands/agent.js';
 import { createDesktopRegistry, type CommandHost } from './commands/index.js';
 import { catalogOf } from './commands/catalog-entry.js';
+import { desktopInteractions } from './commands/interaction.js';
 import { fileCache, forgetFiles, snapshotStore } from './filecache.js';
 import { liveDocs } from './livedocs.js';
 import { installNotifications, notifications, notify } from './notifications.js';
@@ -732,6 +733,11 @@ function getStack(): CommandStack<CommandHost> {
             : {}),
         });
         return result.canceled ? undefined : result.filePath;
+      },
+      known: {
+        command: (id) => registry.get(id)?.props,
+        interaction: (id) => desktopInteractions.get(id) !== undefined,
+        coerce: coerceProps,
       },
       // Lazily through `getStack`, not the local `stack`: the host is built while the stack
       // is still being constructed, so capturing it here would capture `undefined`.

@@ -175,6 +175,10 @@ pure function in `renderer/rules/anchors.ts` with node unit tests. It returns on
 | `absent`        | An editor the map lists is open, but it is not drawing the control now.                     | Fall back to the palette.                        |
 | `unanchored`    | The map lists no editor for this command.                                                   | Fall back to the palette.                        |
 
+Only an anchor carrying a command id is a candidate. An `item:` anchor has none, so a step whose
+own id is missing — a malformed one, read from JSON that was not an object — matches nothing rather
+than matching every row on screen.
+
 `absent` and `unanchored` are kept distinct for the same reason `Interaction.targets`
 distinguishes an empty target list from `UNRESOLVED`: `absent` describes the current screen,
 `unanchored` describes the map, and a caller diagnosing a stale map needs to know which.
@@ -387,6 +391,11 @@ Before a tour is displayed, `checkTour` in `shared/tourcheck.ts` rejects a step 
 command that does not exist, a prop the command does not declare, a `supplies` prop that is not
 one of the command's props, or an undeclared interaction id. Prop values are validated with
 `coerceProps`, the same function that validates CDP input.
+
+A tour written for the moment reaches the app two ways, and both are checked in main, which is
+where the catalog is. `show_me` is the agent's; `tour.start`'s `custom` field is CDP's and the
+palette's. The check is what stands between a hallucinated command id and a palette filtered to
+nothing, with no form and nothing saying why.
 
 `checkTour` deliberately does not call `stack.check`. `stack.check` says whether a command can run
 now, and the later steps of a tour are usually refused until the earlier ones complete (approve
