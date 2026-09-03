@@ -154,15 +154,21 @@ function asks(shown: Guidance): string[] {
 
 /**
  * What a guidance points at, where it points at something drawn. A refusal is carried into the
- * caption, so a greyed control the tour rings says why it is greyed in the same breath.
+ * caption, so a greyed control the tour rings says why it is greyed in the same breath. A `pick`
+ * carries its second sentence the same way, since the row it rings is not the step's own control.
  */
 function aimOf(shown: Guidance): Aim | undefined {
-  if (shown.show !== 'ring' && shown.show !== 'blocked') return undefined;
+  if (shown.show !== 'ring' && shown.show !== 'blocked' && shown.show !== 'pick') return undefined;
   const where = shown.where;
   if (!where || !('anchor' in where)) return undefined;
-  // The refusal goes on its own line. A command's own sentence often contains a dash of its own,
-  // and joining the two with another one runs them together.
-  const say = shown.show === 'blocked' ? `${shown.say}\n${shown.reason}` : shown.say;
+  // Whatever the answer adds goes on its own line. A command's own sentence often contains a dash
+  // of its own, and joining the two with another one runs them together.
+  const say =
+    shown.show === 'blocked'
+      ? `${shown.say}\n${shown.reason}`
+      : shown.show === 'pick'
+        ? `${shown.say}\n${shown.first}`
+        : shown.say;
   const also = shown.show === 'ring' ? (shown.also ?? []) : [];
   return { anchor: where.anchor, say, also, offscreen: where.state === 'offscreen' };
 }

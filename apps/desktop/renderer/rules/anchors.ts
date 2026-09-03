@@ -96,7 +96,7 @@ export type Resolution =
   | { state: 'input'; anchor: Anchor; supplies: string[] }
   | { state: 'disabled'; anchor: Anchor; reason: string }
   | { state: 'offscreen'; anchor: Anchor }
-  | { state: 'wrong-subject'; anchor: Anchor; needs: Action }
+  | { state: 'wrong-subject'; anchor: Anchor; needs: Action; holds: string[] }
   | { state: 'pane-closed'; editor: EditorId }
   | { state: 'absent' }
   | { state: 'unanchored' };
@@ -117,6 +117,9 @@ export interface AnchorMap {
   editorsFor: Readonly<Record<string, readonly AnchorHome[]>>;
 }
 
+/** What a greyed control is reported as when its own rule left no sentence behind. */
+export const UNAVAILABLE = 'This is not available here.';
+
 export const commandKey = (id: string): string => `cmd:${id}`;
 
 /**
@@ -130,7 +133,16 @@ export const itemKey = (kind: string, key: string): string => `item:${kind}/${ke
 export type Subsumption =
   | { state: 'ready' }
   | { state: 'input'; supplies: string[] }
-  | { state: 'wrong-subject'; needs: Action };
+  | {
+      state: 'wrong-subject';
+      needs: Action;
+      /**
+       * Which of `needs` the anchor records a different value for. The rest are props this
+       * control does not take at all, which is an incomplete anchor rather than a subject the
+       * author could select.
+       */
+      holds: string[];
+    };
 
 /**
  * Whether this anchor would run the step, given that an anchor's props are partial by design.
@@ -142,15 +154,22 @@ export type Subsumption =
  * neither is incomplete, which is a bug worth reporting rather than hiding. An anchor with
  * `supplies` that the step names none of is still ready — the human is being shown where to
  * start. A `form` anchor supplies whatever is asked of it, because its form holds every prop.
+ *
+ * The two ways a prop reaches `needs` are kept apart in `holds`, because only a prop the anchor
+ * records a value for names a subject that is on screen somewhere else.
  */
 export function subsumes(anchor: Anchor, step: Action): Subsumption {
   const supplies = anchor.supplies ?? [];
   const needs: Record<string, PropValue> = {};
+  const holds: string[] = [];
   const asked: string[] = [];
 
   for (const [name, value] of Object.entries(step.props)) {
     if (name in anchor.props) {
-      if (!sameValue(anchor.props[name], value)) needs[name] = value;
+      if (!sameValue(anchor.props[name], value)) {
+        needs[name] = value;
+        holds.push(name);
+      }
     } else if (supplies.includes(name) || anchor.form) {
       asked.push(name);
     } else {
@@ -159,7 +178,7 @@ export function subsumes(anchor: Anchor, step: Action): Subsumption {
   }
 
   if (Object.keys(needs).length > 0)
-    return { state: 'wrong-subject', needs: { id: step.id, props: needs } };
+    return { state: 'wrong-subject', needs: { id: step.id, props: needs }, holds };
   if (asked.length > 0) return { state: 'input', supplies: asked };
   return { state: 'ready' };
 }
@@ -183,25 +202,25 @@ export function resolveAnchor(map: AnchorMap, live: LiveAnchors, step: Action): 
   const offscreen = new Set(live.offscreen ?? []);
   const candidates = live.anchors.filter((anchor) => anchor.id === step.id);
 
-  let mismatch: { anchor: Anchor; needs: Action } | undefined;
+  let mismatch: { anchor: Anchor; needs: Action; holds: string[] } | undefined;
   for (const anchor of candidates) {
     const fit = subsumes(anchor, step);
     if (fit.state === 'wrong-subject') {
-      mismatch ??= { anchor, needs: fit.needs };
+      mismatch ??= { anchor, needs: fit.needs, holds: fit.holds };
       continue;
     }
     // Scrolling comes before every other answer an on-screen anchor would give: the overlay
     // brings it into view and asks again, and only then is there something to ring or grey.
     if (offscreen.has(anchor.key)) return { state: 'offscreen', anchor };
     if (!anchor.enabled) {
-      return { state: 'disabled', anchor, reason: anchor.reason ?? 'This is not available here.' };
+      return { state: 'disabled', anchor, reason: anchor.reason ?? UNAVAILABLE };
     }
     return fit.state === 'input'
       ? { state: 'input', anchor, supplies: fit.supplies }
       : { state: 'ready', anchor };
   }
 
-  if (mismatch) return { state: 'wrong-subject', anchor: mismatch.anchor, needs: mismatch.needs };
+  if (mismatch) return { state: 'wrong-subject', ...mismatch };
 
   const editors = map.editorsFor[step.id] ?? [];
   if (editors.length === 0) return { state: 'unanchored' };
@@ -225,6 +244,47 @@ export function resolveItem(live: LiveAnchors, kind: string, key: string): Resol
     return { state: 'disabled', anchor, reason: anchor.reason ?? 'This cannot be selected.' };
   }
   return { state: 'ready', anchor };
+}
+
+/**
+ * Where the subject a step names is selected, for a step whose control acts on something else.
+ *
+ * Only the held props are searched, and only their string values: a prop the anchor does not
+ * record is free text or a flag rather than a subject, and a conflict on a number or a boolean
+ * names nothing on screen.
+ *
+ * A subject is written two ways, so both are looked for. A bare id — an asset hash, a `sceneId` —
+ * is what an item anchor's click publishes. A composite rung id such as `character:aiko` is a kind
+ * and a key, which is the shape of an item key. Empty values are skipped, since a click that
+ * clears a field publishes `''` and every such anchor would otherwise match every other.
+ *
+ * `from` is the editor that gave the mismatch, preferred so the pane the author is already looking
+ * at is the one that retargets. The selection is shared, so any pane's row would do.
+ */
+export function resolveSubject(
+  live: LiveAnchors,
+  needs: Action,
+  holds: readonly string[],
+  from?: AnchorHome,
+): Resolution {
+  const values = new Set<string>();
+  const keys = new Set<string>();
+  for (const name of holds) {
+    const value = needs.props[name];
+    if (typeof value !== 'string' || value === '') continue;
+    values.add(value);
+    const cut = value.indexOf(':');
+    if (cut > 0) keys.add(itemKey(value.slice(0, cut), value.slice(cut + 1)));
+  }
+  if (values.size === 0) return { state: 'absent' };
+  const selects = (anchor: Anchor): boolean =>
+    keys.has(anchor.key) || Object.values(anchor.publishes ?? {}).some((id) => values.has(id));
+  const found =
+    live.anchors.find((anchor) => anchor.editor === from && selects(anchor)) ??
+    live.anchors.find(selects);
+  if (!found) return { state: 'absent' };
+  if ((live.offscreen ?? []).includes(found.key)) return { state: 'offscreen', anchor: found };
+  return { state: 'ready', anchor: found };
 }
 
 /**

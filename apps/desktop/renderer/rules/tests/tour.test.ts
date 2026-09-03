@@ -116,6 +116,91 @@ describe('guide', () => {
   });
 });
 
+describe('a step whose control is on another subject', () => {
+  const step: Step = {
+    kind: 'command',
+    id: 'asset.regenerate',
+    props: { hash: 'ffff' },
+    say: 'Redraw it.',
+  };
+  const state = start(tour([step]));
+  const elsewhere = anchor({ props: { hash: 'a1b2' } });
+  const row = (): Anchor => ({
+    key: itemKey('asset', 'ffff'),
+    props: {},
+    enabled: true,
+    publishes: { assetHash: 'ffff' },
+    editor: 'documents' as EditorId,
+    via: { kind: 'dom', node },
+  });
+  const seen = (anchors: Anchor[]): LiveAnchors =>
+    live(anchors, { open: ['asset', 'documents'] as EditorId[] });
+
+  it('rings the row that selects the subject rather than the button on the wrong one', () => {
+    expect(guide(map, seen([elsewhere, row()]), state)).toMatchObject({
+      show: 'pick',
+      say: 'Redraw it.',
+      where: { state: 'ready', anchor: row() },
+    });
+  });
+
+  it('says which subject is missing when nothing on screen selects it', () => {
+    expect(guide(map, seen([elsewhere]), state)).toEqual({
+      show: 'blocked',
+      say: 'Redraw it.',
+      reason: 'Nothing on screen selects ffff, which is what this step acts on.',
+    });
+  });
+
+  it('rings the control as before when the step names a prop the control does not take', () => {
+    const extra: Step = { ...step, props: { hash: 'a1b2', mock: true } };
+    expect(guide(map, seen([anchor()]), start(tour([extra])))).toMatchObject({ show: 'ring' });
+  });
+
+  /** `record` stores no props for a refused offer, so a greyed control lands here with none. */
+  it('answers with the control’s own refusal where it is greyed and names no subject', () => {
+    const greyed = anchor({ props: {}, enabled: false, reason: 'Nothing is shown here.' });
+    expect(guide(map, seen([greyed]), state)).toEqual({
+      show: 'blocked',
+      say: 'Redraw it.',
+      reason: 'Nothing is shown here.',
+      where: {
+        state: 'wrong-subject',
+        anchor: greyed,
+        needs: { id: 'asset.regenerate', props: { hash: 'ffff' } },
+        holds: [],
+      },
+    });
+  });
+
+  /**
+   * The case a search over every unmatched value gets wrong: `speaker` is free text the anchor
+   * does not record, and it names the character row, which is not what the step acts on.
+   */
+  it('does not ring a row named by a prop the anchor never held', () => {
+    const line: Step = {
+      kind: 'command',
+      id: 'story.setLine',
+      props: { sceneId: 'greet', lineId: 'l3', speaker: 'aiko', text: 'Hello.' },
+      say: 'Set the line.',
+    };
+    const box = anchor({
+      key: commandKey('story.setLine'),
+      id: 'story.setLine',
+      props: { sceneId: 'greet' },
+    });
+    const character: Anchor = {
+      key: itemKey('character', 'aiko'),
+      props: {},
+      enabled: true,
+      publishes: { characterId: 'aiko' },
+      editor: 'documents' as EditorId,
+      via: { kind: 'dom', node },
+    };
+    expect(guide(map, seen([box, character]), start(tour([line])))).toMatchObject({ show: 'ring' });
+  });
+});
+
 describe('a gesture step', () => {
   const drag: Step = {
     kind: 'gesture',

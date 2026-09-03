@@ -13,9 +13,11 @@ import { UNRESOLVED, type Verdict } from '@vn/commands';
 import type { PropValue } from '../../src/shared/ipc.js';
 import type { Step, Tour } from '../../src/shared/tours.js';
 import {
+  UNAVAILABLE,
   resolveAnchor,
   resolveItem,
   resolveNamed,
+  resolveSubject,
   type Action,
   type AnchorHome,
   type AnchorMap,
@@ -53,7 +55,11 @@ export function actionOf(step: Step): Action | undefined {
  * palette is standing in — the guaranteed floor, since `CommandForm` shows the live `stack.check`
  * verdict above the run button. `open` names a pane the author has to bring up first, and `blocked`
  * carries the app's own refusal rather than one written here, along with the control that refused
- * where there is one, since a greyed control saying why is the whole answer.
+ * where there is one, since a greyed control saying why is the whole answer. `pick` points at a row
+ * that selects the step's subject, for a step whose control would act on a different one.
+ *
+ * Named `pick` rather than `select` because a `select` step resolves to `ring`, and one word on
+ * both sides of the table would read as the same thing.
  */
 export type Guidance =
   | {
@@ -65,10 +71,31 @@ export type Guidance =
       /** What running the step would invoke, where only the live state can say. */
       awaits?: Action;
     }
+  | { show: 'pick'; say: string; where: Resolution; first: string }
   | { show: 'route'; say: string; action: Action }
   | { show: 'open'; say: string; editor: string }
   | { show: 'blocked'; say: string; reason: string; where?: Resolution }
   | { show: 'done' };
+
+/** Said beside the row a `pick` answer rings, under the step's own instruction. */
+const PICK_FIRST =
+  'Click this first. The button acts on what is selected, and it is on something else.';
+
+type WrongSubject = Extract<Resolution, { state: 'wrong-subject' }>;
+
+/** The values of the held props, which are how the step names its subject. */
+function subjectNames(where: WrongSubject): string[] {
+  const names: string[] = [];
+  for (const name of where.holds) {
+    const value = where.needs.props[name];
+    if (typeof value === 'string' && value !== '') names.push(value);
+  }
+  return names;
+}
+
+/** Said where the step's subject is named but nothing on screen selects it. */
+const missing = (names: readonly string[]): string =>
+  `Nothing on screen selects ${names.join(', ')}, which is what this step acts on.`;
 
 /**
  * What to show for the step the tour is on, over a snapshot of what is drawn.
@@ -112,8 +139,28 @@ export function guide(
       if (reason !== undefined) return { show: 'blocked', say: step.say, reason, where };
       return { show: 'ring', say: step.say, where };
     }
-    case 'wrong-subject':
-      return { show: 'ring', say: step.say, where };
+    case 'wrong-subject': {
+      const names = subjectNames(where);
+      // Nothing here names a subject: the step names props this control does not take, or the
+      // conflict is on a flag or a number. There is nothing to select, so the answer is the
+      // control's own — which is a refusal where it is greyed.
+      if (names.length === 0) {
+        if (!where.anchor.enabled) {
+          return {
+            show: 'blocked',
+            say: step.say,
+            reason: where.anchor.reason ?? UNAVAILABLE,
+            where,
+          };
+        }
+        return { show: 'ring', say: step.say, where };
+      }
+      const subject = resolveSubject(live, where.needs, where.holds, where.anchor.editor);
+      if (subject.state === 'absent') {
+        return { show: 'blocked', say: step.say, reason: missing(names) };
+      }
+      return { show: 'pick', say: step.say, where: subject, first: PICK_FIRST };
+    }
     case 'disabled':
       return { show: 'blocked', say: step.say, reason: where.reason, where };
     case 'pane-closed':

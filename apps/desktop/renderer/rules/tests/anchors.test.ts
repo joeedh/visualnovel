@@ -5,6 +5,7 @@ import {
   mapOf,
   resolveAnchor,
   resolveItem,
+  resolveSubject,
   subsumes,
   type Anchor,
   type AnchorMap,
@@ -52,6 +53,7 @@ describe('subsumes', () => {
     expect(subsumes(anchor(), { id: 'asset.regenerate', props: { hash: 'ffff' } })).toEqual({
       state: 'wrong-subject',
       needs: { id: 'asset.regenerate', props: { hash: 'ffff' } },
+      holds: ['hash'],
     });
   });
 
@@ -81,6 +83,7 @@ describe('subsumes', () => {
     expect(subsumes(box, { id: 'art.setNotes', props: { target: 'x', notes: 'dusk' } })).toEqual({
       state: 'wrong-subject',
       needs: { id: 'art.setNotes', props: { notes: 'dusk' } },
+      holds: [],
     });
   });
 
@@ -129,6 +132,7 @@ describe('a form anchor', () => {
     expect(subsumes(scoped, { id: 'gate.approve', props: { characterId: 'haruki' } })).toEqual({
       state: 'wrong-subject',
       needs: { id: 'gate.approve', props: { characterId: 'haruki' } },
+      holds: ['characterId'],
     });
   });
 });
@@ -162,6 +166,7 @@ describe('resolveAnchor', () => {
       state: 'wrong-subject',
       anchor: elsewhere,
       needs: { id: 'asset.regenerate', props: { hash: 'a1b2' } },
+      holds: ['hash'],
     });
   });
 
@@ -220,6 +225,65 @@ describe('resolveItem', () => {
 
   it('is absent when nothing on screen names that subject', () => {
     expect(resolveItem(live([row]), 'asset', 'ffff')).toEqual({ state: 'absent' });
+  });
+});
+
+describe('resolveSubject', () => {
+  const row = (over: Partial<Anchor>): Anchor => ({
+    key: itemKey('asset', 'ffff'),
+    props: {},
+    enabled: true,
+    publishes: { assetHash: 'ffff' },
+    editor: 'documents' as EditorId,
+    via: { kind: 'dom', node },
+    ...over,
+  });
+
+  const needs = { id: 'asset.regenerate', props: { hash: 'ffff' } };
+
+  it('finds the row whose click publishes the id the step names', () => {
+    const found = resolveSubject(live([row({})]), needs, ['hash']);
+    expect(found).toEqual({ state: 'ready', anchor: row({}) });
+  });
+
+  it('finds a rung by its item key, since a rung id is a kind and a key', () => {
+    const character = row({ key: itemKey('character', 'aiko'), publishes: {} });
+    const wanted = { id: 'art.setNotes', props: { target: 'character:aiko' } };
+    expect(resolveSubject(live([character]), wanted, ['target'])).toEqual({
+      state: 'ready',
+      anchor: character,
+    });
+  });
+
+  it('prefers a row in the pane that gave the mismatch', () => {
+    const tree = row({});
+    const here = row({ key: itemKey('asset', 'ffff'), editor: 'asset' as EditorId });
+    const found = resolveSubject(live([tree, here]), needs, ['hash'], 'asset' as EditorId);
+    expect(found).toEqual({ state: 'ready', anchor: here });
+  });
+
+  it('asks for a scroll before pointing at a row that is off screen', () => {
+    const away = row({});
+    expect(resolveSubject(live([away], { offscreen: [away.key] }), needs, ['hash'])).toEqual({
+      state: 'offscreen',
+      anchor: away,
+    });
+  });
+
+  it('ignores a held prop whose value is empty, which a click that clears a field publishes', () => {
+    const cleared = row({ publishes: { assetHash: '' } });
+    const blank = { id: 'asset.regenerate', props: { hash: '' } };
+    expect(resolveSubject(live([cleared]), blank, ['hash'])).toEqual({ state: 'absent' });
+  });
+
+  it('ignores a conflict on anything that is not a string', () => {
+    const flagged = { id: 'pipeline.run', props: { mock: true } };
+    expect(resolveSubject(live([row({})]), flagged, ['mock'])).toEqual({ state: 'absent' });
+  });
+
+  it('is absent when nothing on screen selects the subject', () => {
+    const other = row({ key: itemKey('asset', 'a1b2'), publishes: { assetHash: 'a1b2' } });
+    expect(resolveSubject(live([other]), needs, ['hash'])).toEqual({ state: 'absent' });
   });
 });
 

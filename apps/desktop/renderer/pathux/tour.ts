@@ -234,6 +234,7 @@ function explain(): void {
     return say(`${shown.say} No pane drew it when the map was swept, ${swept}.`);
   }
   if (shown.show === 'open') return say(`${shown.say} Open the ${shown.editor} pane first.`);
+  if (shown.show === 'pick') return say(`${shown.say} ${shown.first}`);
   if (shown.show === 'blocked') return say(`${shown.say} — ${shown.reason}`, true);
   say(shown.say);
 }

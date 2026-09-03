@@ -170,7 +170,7 @@ pure function in `renderer/rules/anchors.ts` with node unit tests. It returns on
 | `input`         | An anchor matches, and the step's remaining props are ones the widget `supplies`.           | Highlight it and say what to type.               |
 | `disabled`      | The matching anchor is disabled.                                                            | Highlight it and show the recorded reason.       |
 | `offscreen`     | The matching anchor is scrolled out of the window.                                          | Scroll it into view and resolve again.           |
-| `wrong-subject` | Anchors exist for the command id, but their props conflict with the step's.                 | Ask the author to select the right subject first. |
+| `wrong-subject` | Anchors exist for the command id, but their props conflict with the step's.                 | Ring the row that selects the right subject.     |
 | `pane-closed`   | The map lists editors for this command, and none of them is open.                          | Say which pane to open.                          |
 | `absent`        | An editor the map lists is open, but it is not drawing the control now.                     | Fall back to the palette.                        |
 | `unanchored`    | The map lists no editor for this command.                                                   | Fall back to the palette.                        |
@@ -190,6 +190,27 @@ known at draw time, and the prop the author is about to type cannot be recorded,
 
 The `form` case is what makes the palette a valid resolution for any step rather than a last
 resort.
+
+A `wrong-subject` result also carries `holds`: which of the conflicting props the anchor itself
+records a different value for. The rest are props the anchor neither records nor supplies — free
+text, a flag, a step naming a prop this control does not take — and they name nothing the author
+could select. Keeping the two apart is what makes the search below sound.
+
+`resolveSubject` is that search. It looks at the held props' string values, and finds an anchor
+that selects one of them two ways: an item anchor whose click `publishes` that value (an asset
+hash, a `sceneId`), or one whose item key is that value read as a kind and a key
+(`character:aiko` → `item:character/aiko`). The pane that gave the mismatch is preferred, so the
+one the author is already looking at is the one that retargets. Empty values are skipped, since a
+click that clears a field publishes `''`.
+
+Two cases do not resolve, and both are answered rather than papered over:
+
+- A rung below the entity — `character:aiko/gala`, `shot:greet/s2` — has no document-tree node and
+  no `publishes` record, so the step is `blocked` naming the subject. That is the right outcome:
+  the alternative is the author's art note written onto whichever rung the pane was showing.
+- Where the held props name nothing, the answer is the control's own: the ring as before, or the
+  control's refusal where it is greyed. A refused offer is recorded with no props at all, so a
+  greyed control with an empty record lands here.
 
 ### Cross-checks
 
@@ -260,6 +281,9 @@ the one that runs the gesture.
 shows for the current step:
 
 - `ring`: highlight an anchor, with the instruction as a caption.
+- `pick`: highlight the row that selects the step's subject, because the control the step names is
+  on a different one. The caption carries the instruction and a second line saying to click this
+  first. Not called `select`, which is already a step kind and resolves to `ring`.
 - `route`: no control is drawn for this command; open the palette instead.
 - `open`: a pane must be opened first; names it.
 - `blocked`: the step cannot run now. Carries the reason, from the command's rule or from
@@ -381,7 +405,7 @@ the agent in either host.
 
 | Path                          | Contents                                                                                        |
 | ----------------------------- | ----------------------------------------------------------------------------------------------- |
-| `renderer/rules/anchors.ts`   | Anchor and resolution types; `subsumes`, `resolveAnchor`, `resolveItem`, `resolveNamed`, `mapOf` |
+| `renderer/rules/anchors.ts`   | Anchor and resolution types; `subsumes`, `resolveAnchor`, `resolveItem`, `resolveSubject`, `resolveNamed`, `mapOf` |
 | `renderer/rules/ring.ts`      | Ring geometry: `ringRect`, `union`, `outset`, `RING_PAD`                                        |
 | `renderer/rules/tour.ts`      | `TourState`, `guide`, `satisfies`; pure, no DOM                                                 |
 | `renderer/rules/anchormap.ts` | `ANCHOR_MAP`, loaded from `anchors.json`                                                        |
