@@ -14,6 +14,7 @@ import { shell } from './bridge.js';
 import { CommandForm, type Choices } from './commandform.js';
 import { paragraph } from './paragraph.js';
 import { INSET, onPopupClosed, popupLeft, stylePopup } from './popup.js';
+import { projectChoices, readVocabulary } from './vocabulary.js';
 
 /** What `Screen.popup` hands back: a container that also knows how to dismiss itself. */
 type Popup = Container & { end(): void };
@@ -45,46 +46,48 @@ class Dialog {
 
     this.body = this.popup.col();
 
-    void api.invoke('command:catalog').then((catalog) => {
-      const entry = catalog.commands.find((c) => c.id === id);
-      if (!entry) {
-        this.body.label(`No command called ${id}.`);
-        this.body.flushUpdate();
-        return;
-      }
+    void Promise.all([api.invoke('command:catalog'), readVocabulary()]).then(
+      ([catalog, project]) => {
+        const entry = catalog.commands.find((c) => c.id === id);
+        if (!entry) {
+          this.body.label(`No command called ${id}.`);
+          this.body.flushUpdate();
+          return;
+        }
 
-      const heading = this.body.label(entry.title);
-      heading.description = entry.id;
-      const what = paragraph(this.body, entry.description, PROSE);
-      what.description = entry.description;
-      // The note says why this dialog is on screen when something other than the author opened it.
-      // It sits under the command's own description, which reads the same however the command was
-      // reached
-      if (note) {
-        const why = paragraph(this.body, note, PROSE);
-        why.description = note;
-      }
+        const heading = this.body.label(entry.title);
+        heading.description = entry.id;
+        const what = paragraph(this.body, entry.description, PROSE);
+        what.description = entry.description;
+        // The note says why this dialog is on screen when something other than the author opened it.
+        // It sits under the command's own description, which reads the same however the command was
+        // reached
+        if (note) {
+          const why = paragraph(this.body, note, PROSE);
+          why.description = note;
+        }
 
-      this.form = new CommandForm(
-        this.body.col(),
-        entry,
-        {
-          onRan: () => this.close(),
-          runLabel: entry.title,
-          buttons: (row) => {
-            const cancel = row.button('Cancel', () => this.close());
-            cancel.description = 'Close this without running anything';
+        this.form = new CommandForm(
+          this.body.col(),
+          entry,
+          {
+            onRan: () => this.close(),
+            runLabel: entry.title,
+            buttons: (row) => {
+              const cancel = row.button('Cancel', () => this.close());
+              cancel.description = 'Close this without running anything';
+            },
+            choices: projectChoices(entry, project, choices),
+            width: PROSE,
           },
-          choices,
-          width: PROSE,
-        },
-        overrides,
-      );
-      this.form.render();
-      void this.form.recheck();
-      this.body.flushUpdate();
-      this.form.focusFirst();
-    });
+          overrides,
+        );
+        this.form.render();
+        void this.form.recheck();
+        this.body.flushUpdate();
+        this.form.focusFirst();
+      },
+    );
 
     this.popup.flushUpdate();
   }

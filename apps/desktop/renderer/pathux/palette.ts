@@ -14,10 +14,12 @@ import { UIBase, type Container, type TextBox } from 'pathux';
 import { api } from '../api.js';
 import { filterCommands } from '../rules/catalog.js';
 import type { CatalogEntry, PropValue } from '../../src/shared/ipc.js';
+import type { ProjectVocabulary } from '../rules/vocabulary.js';
 import { shell } from './bridge.js';
 import { CommandForm } from './commandform.js';
 import { paragraph } from './paragraph.js';
 import { INSET, onPopupClosed, popupLeft, stylePopup } from './popup.js';
+import { projectChoices, readVocabulary } from './vocabulary.js';
 
 /** What `Screen.popup` hands back: a container that also knows how to dismiss itself. */
 type Popup = Container & { end(): void };
@@ -37,6 +39,8 @@ class Palette {
   private form: CommandForm | undefined;
 
   private commands: CatalogEntry[] = [];
+  /** The project's own ids, read once when the palette opened. See `vocabulary.ts`. */
+  private project: ProjectVocabulary | undefined;
   private query = '';
   /** The command to open on, held until the catalog lands. Re-armed by {@link retarget}. */
   private wanted: { id: string; overrides?: Record<string, PropValue> } | undefined;
@@ -77,11 +81,14 @@ class Palette {
     this.detailCol = col.col();
 
     if (preselect) this.wanted = { id: preselect, ...(overrides ? { overrides } : {}) };
-    void api.invoke('command:catalog').then((catalog) => {
-      this.commands = catalog.commands;
-      this.renderList();
-      this.openWanted();
-    });
+    void Promise.all([api.invoke('command:catalog'), readVocabulary()]).then(
+      ([catalog, project]) => {
+        this.commands = catalog.commands;
+        this.project = project;
+        this.renderList();
+        this.openWanted();
+      },
+    );
 
     this.popup.flushUpdate();
     box.focus();
@@ -150,7 +157,7 @@ class Palette {
     this.form = new CommandForm(
       this.detailCol.col(),
       entry,
-      { onRan: () => this.close(), width: PROSE },
+      { onRan: () => this.close(), width: PROSE, choices: projectChoices(entry, this.project) },
       overrides,
     );
     this.form.render();

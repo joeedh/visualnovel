@@ -7,20 +7,25 @@
  * `directory` draws, when `confirm` needs a second click, or whether an `undeclared` check is a
  * yes. `coerceProps` in main stays the authority on the values themselves.
  */
-import type { Button, Container, MenuTemplateEntry, TextBox } from 'pathux';
+import { EnumProperty, ThumbnailCache, pickAssetPopup } from 'pathux';
+import type { Button, Container, DropBox, TextBox } from 'pathux';
 import { api } from '../api.js';
-import { blankProps, bulkSize, fieldText, fieldValue } from '../rules/catalog.js';
-import type { CatalogEntry, CatalogProp, CommandCheck, PropValue } from '../../src/shared/ipc.js';
-import { exec, report } from './bridge.js';
+import { blankProps, bulkSize, fieldText, fieldValue, type ChoiceRow } from '../rules/catalog.js';
+import { picksAnAsset } from '../rules/vocabulary.js';
+import { galleryItem } from './assetthumb.js';
+import type {
+  AssetListing,
+  CatalogEntry,
+  CatalogProp,
+  CommandCheck,
+  PropValue,
+} from '../../src/shared/ipc.js';
+import { exec, report, say } from './bridge.js';
 import { paragraph } from './paragraph.js';
 import { writingBox } from './writingbox.js';
 
-/** One option a host offers for a `string` prop this time it is opened. */
-export interface ChoiceRow {
-  value: string;
-  label: string;
-  tooltip?: string;
-}
+/** Beyond this many rows a dropdown is faster to type at than to scroll. */
+const SEARCHABLE_AT = 12;
 
 /**
  * Per-open option lists, keyed by prop name. They are a function of the current values, because one
@@ -65,6 +70,11 @@ export class CommandForm {
    * bill. The button says so and declines until the first one answers.
    */
   private running = false;
+  /**
+   * Decoded thumbnails for the asset gallery, the form's own so reopening it in the same form
+   * redraws from what it already decoded and closing the form releases the bitmaps with it.
+   */
+  private readonly thumbs = new ThumbnailCache();
 
   constructor(
     private readonly col: Container,
@@ -109,6 +119,7 @@ export class CommandForm {
   /** Stop answering. A surface that has gone away must not be redrawn by a late check. */
   detach(): void {
     this.live = false;
+    this.thumbs.clear();
   }
 
   async recheck(): Promise<void> {
@@ -212,25 +223,14 @@ export class CommandForm {
     }
 
     if (prop.kind === 'enum') {
-      const chosen = String(value ?? '');
-      // `▾` because a path.ux menu button is drawn as a plain button: without it the field reads
-      // as a label saying what the value already is, and nothing says it can be changed.
-      const menu = row.menu(
-        chosen ? `${chosen} ▾` : 'choose… ▾',
-        (prop.values ?? []).map(
-          (option): MenuTemplateEntry => ({
-            name: option === chosen ? `${option} ✓` : option,
-            callback: () => {
-              this.values[prop.name] = option;
-              this.render();
-              void this.recheck();
-            },
-            tooltip: `Set ${prop.name} to ${option}`,
-            id: option,
-          }),
-        ),
+      const options = (prop.values ?? []).map(
+        (option): ChoiceRow => ({
+          value: option,
+          label: option === '' ? 'leave empty' : option,
+          tooltip: `Set ${prop.name} to ${option}`,
+        }),
       );
-      menu.description = prop.hint ?? prop.description;
+      this.chooser(row, prop, options, String(value ?? ''));
       return undefined;
     }
 
@@ -247,32 +247,82 @@ export class CommandForm {
       browse.description = 'Choose this folder in a file dialog';
     }
 
+    // Same shape for an asset: a hash is not something anyone types from memory, but `ref` also
+    // takes a slot address and a hash can be pasted, so the gallery fills the field rather than
+    // replacing it.
+    if (picksAnAsset(prop)) {
+      const pick = row.button('Pick…', () => void this.pickAsset(prop.name, box));
+      pick.description = 'Choose the picture from every asset in this project';
+    }
+
     return box;
   }
 
   /**
-   * A prop the host offered a list for. The button shows the chosen row's label, because an id is
-   * what the command takes rather than what an author recognises, and each row carries its own
-   * tooltip, so the advice about a choice is readable before the choice is made.
+   * A prop with a list behind it, drawn as a dropdown. The button shows the chosen row's label,
+   * because an id is what the command takes rather than what an author recognises, and each row
+   * carries its own tooltip, so the advice about a choice is readable before the choice is made.
+   *
+   * A value that is not in the list gets a row of its own saying so. Dropping it would show the
+   * first option instead, which is a value the author never chose, and `EnumProperty` refuses a
+   * value it has no key for. An unfilled required field is that same case and reads as the
+   * invitation it is.
    */
   private chooser(row: Container, prop: CatalogProp, rows: ChoiceRow[], value: string): void {
-    const chosen = rows.find((option) => option.value === value);
-    const menu = row.menu(
-      chosen?.label ?? value,
-      rows.map(
-        (option): MenuTemplateEntry => ({
-          name: option.label,
-          callback: () => {
-            this.values[prop.name] = option.value;
-            // A dependent list is recomputed by drawing the form again.
-            this.render();
-            void this.recheck();
-          },
-          tooltip: option.tooltip,
-        }),
-      ),
-    );
+    const options = rows.some((option) => option.value === value)
+      ? rows
+      : [...rows, unlisted(value, prop)];
+
+    const keys: Record<string, string> = {};
+    const labels: Record<string, string> = {};
+    const tooltips: Record<string, string> = {};
+    for (const option of options) {
+      keys[option.value] = option.value;
+      labels[option.value] = option.label;
+      tooltips[option.value] = option.tooltip ?? option.label;
+    }
+
+    const menu: DropBox = row.listenum(undefined, {
+      enumDef: new EnumProperty(value, keys).addUINames(labels).addDescriptions(tooltips),
+      defaultval: value,
+      callback: (picked) => {
+        this.values[prop.name] = String(picked);
+        // A dependent list is recomputed by drawing the form again.
+        this.render();
+        void this.recheck();
+      },
+    });
+    // A list long enough to scroll is quicker to type at, and the menu's own search box is the
+    // only part of it a keyboard reaches.
+    menu.searchMenuMode = options.length > SEARCHABLE_AT;
     menu.description = prop.hint ?? prop.description;
+  }
+
+  /**
+   * Fill an asset prop from the gallery. The manifest is read when the popup opens rather than
+   * followed, since the choice is over what is there at that moment.
+   *
+   * The popup is a second popup over the one the form is drawn in. It owns the press that
+   * dismisses it and answers Escape itself, so neither gesture takes the form down with it.
+   */
+  private async pickAsset(name: string, box: TextBox): Promise<void> {
+    const outcome = await exec('asset.list', {});
+    if (!outcome.ok) return report(outcome);
+
+    const assets = outcome.data as AssetListing[] | undefined;
+    if (!assets?.length) return say('This project has no assets yet.', true);
+
+    const rect = box.getClientRects()[0];
+    const picked = await pickAssetPopup(this.col, {
+      items: assets.map(galleryItem),
+      cache: this.thumbs,
+      ...(rect ? { at: { x: rect.left, y: rect.bottom } } : {}),
+    });
+    if (!picked || !this.live) return;
+
+    this.values[name] = picked.id;
+    box.text = picked.id;
+    void this.recheck();
   }
 
   /** Free text of more than a line, in the shared writing surface. */
@@ -329,4 +379,10 @@ export class CommandForm {
       void this.recheck();
     }
   }
+}
+
+/** The row a chooser adds for a value none of its options carry. */
+function unlisted(value: string, prop: CatalogProp): ChoiceRow {
+  if (value === '') return { value, label: 'choose…', tooltip: prop.hint ?? prop.description };
+  return { value, label: `${value} — this project has no such thing`, tooltip: prop.description };
 }

@@ -724,9 +724,9 @@ with the command. No search box, no list of eighty-odd other commands to scroll 
 `renderer/pathux/commandform.ts`, so every rule below holds in either.
 
 - **The form is generated from `props`.** Each `CatalogProp` becomes a checkbox (`boolean`), a
-  `<select>` (`enum`, options from `values`) or a text/number input; lists edit as comma-separated
-  text. `blankProps` seeds it from each prop's `default`, so what is submitted matches what
-  `coerceProps` would accept. A command with no props runs straight from its row.
+  path.ux dropdown (`enum`, options from `values`) or a text/number input; lists edit as
+  comma-separated text. `blankProps` seeds it from each prop's `default`, so what is submitted
+  matches what `coerceProps` would accept. A command with no props runs straight from its row.
 - **A `directory` prop gets a Browse… button, and stays typeable.** The button `exec`s
   `workspace.chooseDirectory` — a non-mutating command with no props that answers with the chosen
   absolute path, or with `Cancelled.` — and writes what came back into the field. The chooser is a
@@ -738,13 +738,33 @@ with the command. No search box, no list of eighty-odd other commands to scroll 
   `contentEditable` rich-text editor with a formatting toolbar and `innerHTML` for a value, which
   stores markup where a command expects a string. It stops its own keydown, like every other text
   surface in the app, and the report preview draws the same one.
-- **A host may offer a `string` prop's options *this time it is opened*.** `FormOptions.choices` is
-  a function of the current values answering with rows per prop name, so what it offers may depend
-  on what is already filled in — the efforts a model supports are a function of the model chosen in
-  the same form. It is not `enum`: `values` is baked into the build-time catalog, and a list of
-  *this project's* conversations is not part of a command's vocabulary. Each row carries its own
+- **A `string` prop whose values the project already holds gets a dropdown.** `FormOptions.choices`
+  is a function of the current values answering with rows per prop name, so what it offers may
+  depend on what is already filled in — the efforts a model supports are a function of the model
+  chosen in the same form. It is not `enum`: `values` is baked into the build-time catalog, and a
+  list of *this project's* scenes is not part of a command's vocabulary. Each row carries its own
   tooltip, so what a choice costs is readable before it is made rather than only in the verdict
   afterwards.
+
+  Every form gets one of these lists without asking. `renderer/rules/vocabulary.ts` maps prop names
+  to what they name — `scene` and `goto` to the project's scenes, `character` and `characterId` to
+  its cast, `thread` (and `id`, on the three thread commands alone) to its conversations, `model`
+  and `effort` to what the API takes — and `renderer/pathux/vocabulary.ts` reads the snapshot behind
+  it when the palette or a dialog opens. A caller's own `choices` is merged over the top and wins.
+
+  A prop is only listed when every value the command accepts is in the list: `into` on
+  `story.splitScene` names a scene that does not exist yet, so it stays a field. Wider than the
+  accepted set is allowed — `character` offers the whole cast where `story.setOutfit` takes one of
+  the shot's subjects — because the form already draws the command's own refusal for the rest. A list of more
+  than twelve rows opens in the dropdown's `searchMenuMode`. A value none of the rows carry gets a
+  row of its own saying so, since showing the first option instead would report a value the author
+  never chose, and an empty list draws no row at all — that is how the effort of a model with no
+  reasoning setting disappears rather than inviting an unsupported value.
+- **A prop that holds an asset gets the gallery beside it.** `hash` and `ref` draw a Pick… button
+  that opens path.ux's `pickAssetPopup` over the form, on a snapshot of `asset.list`
+  ([`asset-picker.md`](asset-picker.md)). The field stays typeable, like `directory`'s: `ref` also
+  takes a slot address, and a hash can be pasted. The popup is a second popup over the form's own,
+  and it owns both the press that dismisses it and Escape, so neither closes the form under it.
 - **A toggle does not rebuild the form.** A `boolean` is a `check-x` carrying its own state, so
   flipping it rechecks and redraws nothing else — a form rebuilt under a widget costs that widget
   the focus it just took.
@@ -773,8 +793,9 @@ with the command. No search box, no list of eighty-odd other commands to scroll 
   lands, the shell re-reads the workspace index and remounts the room, exactly as it does for
   undo: those are writes a room did not make itself.
 
-The pure half — filtering, blank values, field coercion — is `renderer/rules/catalog.ts` with a
-`tests/` sibling; `commandform.ts`, `palette.ts` and `dialog.ts` stay thin rendering.
+The pure half — filtering, blank values, field coercion — is `renderer/rules/catalog.ts`, and which
+prop takes which list is `renderer/rules/vocabulary.ts`, both with `tests/` siblings;
+`commandform.ts`, `palette.ts` and `dialog.ts` stay thin rendering.
 
 ### From a right-click
 

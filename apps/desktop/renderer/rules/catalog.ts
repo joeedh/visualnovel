@@ -6,6 +6,16 @@
 import type { CatalogEntry, CatalogProp, PropValue } from '../../src/shared/ipc';
 
 /**
+ * One option a form offers for a prop the command declared as a plain string. `value` is what the
+ * command receives; `label` is what the author reads, since an id is rarely either.
+ */
+export interface ChoiceRow {
+  value: string;
+  label: string;
+  tooltip?: string;
+}
+
+/**
  * Substring match over `id` and `title`, every whitespace-separated term required. Matching is
  * deliberately not fuzzy, so a mistyped term returns nothing rather than the wrong command.
  */

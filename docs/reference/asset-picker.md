@@ -15,7 +15,10 @@
 ## What it is
 
 **Attach…** on any prompt clause in the asset editor opens a searchable grid of every asset in
-the project and attaches the one the author picks as a reference image for that clause.
+the project and attaches the one the author picks as a reference image for that clause. The
+command form draws the same grid behind **Pick…** on a `hash` or `ref` prop, so a command reached
+from the palette does not ask for a hash to be typed
+([`command-system.md`](command-system.md#from-the-palette-or-from-a-commands-own-dialog)).
 
 The grid itself is not this repo's. It is path.ux's `AssetGallery` / `pickAssetPopup`, which
 knows nothing about assets, manifests or `vnasset://` — a host describes each entry and supplies
@@ -69,7 +72,8 @@ bitmaps with it.
 
 ## Opening it
 
-`pickRef` in `apps/desktop/renderer/pathux/editors/asset.ts` opens the popup and awaits it.
+`pickRef` in `apps/desktop/renderer/pathux/editors/asset.ts` opens the popup and awaits it, and
+`CommandForm.pickAsset` does the same from a command form.
 
 The Attach button is a raw DOM node in an `appendSurface` root, not a path.ux widget, so it
 cannot be the popup's owner: the editor is, and the button contributes only the corner to open
@@ -115,4 +119,6 @@ Three limits are deliberate rather than unfinished.
 | `apps/desktop/renderer/pathux/assetthumb.ts` | `assetThumbUrl`, `loadAssetThumb`, `galleryItem` |
 | `apps/desktop/renderer/rules/promptview.ts` | the `attach` clause act and `REF_SUPPLIES` |
 | `apps/desktop/renderer/pathux/editors/asset.ts` | `pickRef`, and the pane's `ThumbnailCache` |
+| `apps/desktop/renderer/pathux/commandform.ts` | `pickAsset`, and the form's own `ThumbnailCache` |
+| `apps/desktop/renderer/rules/vocabulary.ts` | `picksAnAsset` — which props get the button |
 | `vendor/path.ux/scripts/gallery/` | the widget, its cache, and `pickAssetPopup` |

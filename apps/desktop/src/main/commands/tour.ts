@@ -15,6 +15,8 @@ import type { CommandHost } from './host.js';
 const define = defineFor<CommandHost>();
 
 const CURATED = TOURS.map((tour) => tour.id);
+/** The curated ids, and the empty one that means `custom` carries the tour instead. */
+const TOUR_VALUES = ['', ...CURATED];
 
 export const tourStart = define({
   id: 'tour.start',
@@ -28,15 +30,14 @@ export const tourStart = define({
     'Starts a guided tour: each step rings the control to press and waits for the author to press it.',
   mutating: false,
   props: {
-    tour: prop.string(`which curated tour to run — one of ${CURATED.join(', ')}`, { default: '' }),
+    tour: prop.oneOf(TOUR_VALUES, 'which curated tour to run; empty runs the one in `custom`', {
+      default: '',
+    }),
     custom: prop.string('a tour written for the moment, as JSON', { default: '' }),
   },
   run({ tour, custom }, ctx) {
     if (!tour && !custom)
       throw new Error('name a curated tour, or pass steps for one of your own.');
-    if (tour && !tourById(tour)) {
-      throw new Error(`no tour called "${tour}". The ones that ship are: ${CURATED.join(', ')}.`);
-    }
     ctx.host.ui(
       { type: 'tour', action: 'start', tour, ...(custom ? { steps: custom } : {}) },
       ctx.origin,

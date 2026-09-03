@@ -2,7 +2,8 @@ import { CHAT_CSS, ChatStage, el, turnRow } from '../chatsurface.js';
 import { VnEditor, registerEditor } from '../editor.js';
 import { redrawing, type AnchorPass } from '../anchors.js';
 import { check, exec, report } from '../bridge.js';
-import { effortRows, modelRows } from '../report.js';
+import { effortRows, modelRows } from '../../rules/vocabulary.js';
+import type { ChoiceRow } from '../../rules/catalog.js';
 import { openReportPreview } from '../reportpreview.js';
 import {
   reportConvo,
@@ -14,7 +15,6 @@ import {
 } from '../reportconvo.js';
 import { grantAction, grantBox } from '../../rules/reportconvo.js';
 import type { FiledReport, ReportConvo } from '../../rules/reportconvo.js';
-import type { ChoiceRow } from '../commandform.js';
 import type { CommandCheck } from '../../../src/shared/ipc.js';
 
 /**

@@ -1,13 +1,7 @@
 /**
- * The vocabulary the report's setup card offers, and the preview a finished report opens.
- *
- * The model and effort menus are built per open rather than declared on the command: an enum's
- * values are baked into the catalog at module load, while the efforts depend on the model chosen
- * in the same card and each model's advice depends on whether the source box is ticked.
+ * The preview a finished report opens. The setup card's own model and effort menus are built from
+ * `rules/vocabulary.ts`, which the command palette reads for the same two props.
  */
-import { TEXT_MODELS, effortChoicesFor, effortLabel } from '@vn/types';
-import { adviseModel } from '../../src/shared/advice.js';
-import type { ChoiceRow } from './commandform.js';
 import { onExec } from './bridge.js';
 import { openReportPreview, type ReportDraft } from './reportpreview.js';
 
@@ -27,29 +21,4 @@ export function installReportPreview(): void {
     const draft = outcome.data as ReportDraft | undefined;
     if (draft?.body) openReportPreview(draft);
   });
-}
-
-/**
- * Every model, each carrying its advice as the row's own tooltip, so what a choice will cost is
- * readable before it is made rather than only afterwards in the verdict strip. The advice sharpens
- * when the source box is ticked, which is why the flag reaches this far.
- */
-export function modelRows(withSource: boolean): ChoiceRow[] {
-  return TEXT_MODELS.map((id) => {
-    const advice = adviseModel(id, withSource);
-    return {
-      value: id,
-      label: id,
-      tooltip: advice.text || `Read the conversation with ${id}.`,
-    };
-  });
-}
-
-/** Only what this model takes. Empty means it has no reasoning setting, and no menu is drawn. */
-export function effortRows(modelId: string): ChoiceRow[] {
-  return effortChoicesFor(modelId).map((choice) => ({
-    value: choice,
-    label: effortLabel(choice),
-    tooltip: `Ask ${modelId} to think ${effortLabel(choice)} about what went wrong.`,
-  }));
 }
