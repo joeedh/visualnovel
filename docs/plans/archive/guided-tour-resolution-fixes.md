@@ -436,9 +436,19 @@ with the redacted-prop limitation named.
 ## As shipped
 
 All five stages landed, one commit each, in the plan's order. `pnpm check`, `pnpm test` (3725
-tests, 252 suites) and `pnpm lint` are green. Stages 2 and 4 changed nothing under
-`renderer/pathux/editors/**`, so `anchors.json` was not re-swept. Stage 2 was verified by reading;
-the CDP run against a live app was not done.
+tests, 252 suites) and `pnpm lint` are green. Nothing under `renderer/pathux/editors/**` changed, so
+`anchors.json` was not re-swept.
+
+Stage 2's CDP run was done against `pnpm vndesktop --mock` on a copy of `templates/basic`, reading
+`window.__vnTour()`, the overlay's caption, and `screen._popups` as the palette's own answer:
+
+- `tour.cancel` over a routed step (`bible.search`, which no pane anchors) takes the palette down:
+  `_popups` goes 1 → 0. Reverting the one `closePalette` line and rebuilding reproduces the bug —
+  the palette stays up with no tour behind it, and is still up while the next tour rings.
+- A tour started over a running one reports the new tour at step 0 with its own ring and its own
+  caption, and a routed palette from the tour it replaced is gone.
+- The `asked` clear has no observable of its own from outside the module, and was verified by
+  reading.
 
 ### Deviations
 
