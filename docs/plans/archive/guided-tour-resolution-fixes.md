@@ -1,11 +1,11 @@
 # Guided tour resolution fixes
 
-_Status: **planned** (2026-09-03). Five independent fixes to the tour layer, written from a bug
-review of `src/shared/tours.ts`, `src/shared/tourcheck.ts`,
+_Status: **shipped** (2026-09-03, see [As shipped](#as-shipped)). Five independent fixes to the
+tour layer, written from a bug review of `src/shared/tours.ts`, `src/shared/tourcheck.ts`,
 `renderer/rules/{tour,anchors,precheck}.ts`, `renderer/pathux/{tour,overlay,gestures}.ts`,
 `src/main/commands/tour.ts` and `src/main/showme.ts`, then rewritten against a pressure test whose
 findings are recorded in [Review](#review).
-[`../reference/guided-tours.md`](../reference/guided-tours.md) is the authority on the layer itself;
+[`../reference/guided-tours.md`](../../reference/guided-tours.md) is the authority on the layer itself;
 this file is the authority on what gets changed and in what order._
 
 <!-- toc -->
@@ -18,6 +18,8 @@ this file is the authority on what gets changed and in what order._
 - [Stage 4 — gesture verdicts come only from open panes](#stage-4--gesture-verdicts-come-only-from-open-panes)
 - [Stage 5 — an `input` step waits for a value](#stage-5--an-input-step-waits-for-a-value)
 - [What it costs to undo](#what-it-costs-to-undo)
+- [As shipped](#as-shipped)
+  * [Deviations](#deviations)
 - [Review](#review)
 
 <!-- tocstop -->
@@ -253,7 +255,7 @@ Both modules are pure and node-testable.
 ### Docs
 
 The `wrong-subject` row of the resolution table in
-[`../reference/guided-tours.md`](../reference/guided-tours.md) states what the code now does and that
+[`../reference/guided-tours.md`](../../reference/guided-tours.md) states what the code now does and that
 a rung below the entity has nothing to point at; the `Guidance` list gains `pick`; the `subsumes`
 bullets record the `holds` split.
 
@@ -414,7 +416,7 @@ call sites at all. It is a limitation of the rule rather than a case the rule ha
 **Verify.** `renderer/rules/tests/tour.test.ts`.
 
 **Docs.** The Advancing section of
-[`../reference/guided-tours.md`](../reference/guided-tours.md) says an `input` step "matches
+[`../reference/guided-tours.md`](../../reference/guided-tours.md) says an `input` step "matches
 regardless of the value the author typed"; it becomes regardless of the value, provided there is one,
 with the redacted-prop limitation named.
 
@@ -431,10 +433,40 @@ with the redacted-prop limitation named.
   record changes — the anchor-recording surface is untouched, which is what keeps this a leaf change
   rather than a contract across five editors.
 
+## As shipped
+
+All five stages landed, one commit each, in the plan's order. `pnpm check`, `pnpm test` (3725
+tests, 252 suites) and `pnpm lint` are green. Stages 2 and 4 changed nothing under
+`renderer/pathux/editors/**`, so `anchors.json` was not re-swept. Stage 2 was verified by reading;
+the CDP run against a live app was not done.
+
+### Deviations
+
+- **Stage 1's `holds`-empty branch also covers a conflict on no string value.** The stage's code
+  sketch tested `where.holds.length === 0`, but review finding 7 asked for the no-string-value path
+  to keep today's ring as well, and `resolveSubject` answers `absent` for both. `guide` therefore
+  branches on the held props' string values (`subjectNames`), which is one test covering both, and
+  `missing` is never called with an empty list.
+- **`UNAVAILABLE` is exported from `anchors.ts`.** The stage named the constant without saying
+  where it lives. `resolveAnchor` had the sentence inline and `guide` now needs the same one, so it
+  is declared once and read by both.
+- **Stage 5's helper is `supplied`, not `typed`.** `subsumed`'s third parameter is already called
+  `typed`, and a module function of that name would be shadowed inside it.
+- **Stage 5 covers digested props after all, and the plan's reason for exempting them was wrong.**
+  There is no `prop.digest`; it is `{ digest: true }` on `prop.string`, and there are six call
+  sites, not none. More usefully, `digestOf` embeds the value's byte length, so an empty bulk value
+  records as one fixed string — `@vn/commands` now names it `EMPTY_DIGEST`, pinned in
+  `stack.test.ts` against what `digestOf` produces, and `supplied` reads it as a blank field. Only
+  `prop.secret` remains past telling, since `<secret>` carries nothing; nothing reaches that today,
+  because `project.setKey` refuses an empty key before a record is written.
+- **A deferred idea came out of the same conversation and is filed in `todos.md`:** a tour keeping
+  a record of what the author actually did while it ran, for the agent to read when they ask what
+  went wrong and write a new tour from. Not in scope here.
+
 ## Review
 
 Pressure-tested by a fresh-context agent on 2026-09-03, per
-[`../reference/conventions.md`](../reference/conventions.md#plans). Eleven findings; the disposition
+[`../reference/conventions.md`](../../reference/conventions.md#plans). Eleven findings; the disposition
 of each:
 
 1. **The value-only subject match is unsound** — `subsumes` puts every unmatched prop into `needs`,
