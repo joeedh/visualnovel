@@ -1,10 +1,11 @@
-import { Graph, SocketClasses, buildGraphFromDSL } from 'pathux-graph';
+import { Graph, GroupNode, SocketClasses, buildGraphFromDSL } from 'pathux-graph';
 import type {
   DSLDiagnostic,
   GraphDSL,
   GraphDSLLink,
   GraphDSLNode,
   GraphId,
+  GroupDef,
   Node,
   NodeTypeConstructor,
 } from 'pathux-graph';
@@ -33,7 +34,8 @@ const PLACE_GAP = 40;
  * The description an agent reads and writes. It carries topology and authored values
  * and no layout at all, so re-authoring a graph never moves what the author arranged.
  * A prop equal to its type's default is left out, which keeps the description short
- * without changing what it builds.
+ * without changing what it builds. A group instance is one entry naming its definition;
+ * what is inside the group, and any override on it, is the group's own business.
  */
 export function graphToDSL(graph: Graph): GraphDSL {
   const nodes: GraphDSLNode[] = [];
@@ -41,10 +43,14 @@ export function graphToDSL(graph: Graph): GraphDSL {
 
   for (const node of graph.nodes) {
     const entry: GraphDSLNode = { id: node.id, type: node.def.typeName };
-    const props = authoredProps(node);
 
-    if (Object.keys(props).length > 0) {
-      entry.props = props;
+    if (node instanceof GroupNode) {
+      entry.group = node.ref;
+    } else {
+      const props = authoredProps(node);
+      if (Object.keys(props).length > 0) {
+        entry.props = props;
+      }
     }
     nodes.push(entry);
 
@@ -68,24 +74,43 @@ export function graphToDSL(graph: Graph): GraphDSL {
  * survives keeps its position, size and label, and keeps its id, which is what leaves its
  * run journal addressable. Nodes the description adds are placed by {@link placeNewNodes}.
  *
+ * A group instance builds against a definition: the ones the live graph's instances had
+ * already resolved, and `groups`, the library the caller loaded, which is what lets the
+ * description add an instance of a definition the graph did not hold before. An instance
+ * kept under its id and ref keeps its overrides. An id holding a `/` is refused, because
+ * that is how a node inside a group is addressed and an id must never read as one.
+ *
  * The description is a parsed JSON value or the JSON text of one. Replacing the whole
  * graph is the only edit this path offers; a partial change is what the commands are for.
  */
-export function applyGraphDSL(graph: Graph, input: unknown): GraphDSLApply {
+export function applyGraphDSL(
+  graph: Graph,
+  input: unknown,
+  groups?: ReadonlyMap<string, GroupDef>,
+): GraphDSLApply {
   const read = readDescription(input);
-  if (read.diagnostic !== undefined) {
+  const early = read.diagnostic ?? keyLikeId(read.value);
+  if (early !== undefined) {
     return {
       graph,
-      diagnostics: [read.diagnostic],
+      diagnostics: [early],
       kept: graph.nodes.map((n) => n.id),
       added: [],
       removed: [],
     };
   }
 
+  const known = new Map<string, GroupDef>(groups ?? []);
+  for (const node of graph.nodes) {
+    if (node instanceof GroupNode && node.definition !== undefined && !known.has(node.ref)) {
+      known.set(node.ref, node.definition);
+    }
+  }
+
   const built = buildGraphFromDSL(read.value, {
-    nodeTypes: genNodeTypes(),
+    nodeTypes: new Map([...genNodeTypes(), ['GroupNode', GroupNode as NodeTypeConstructor]]),
     socketTypes: SocketClasses,
+    groups: known,
   });
 
   const before = new Map<GraphId, Node>();
@@ -112,6 +137,9 @@ export function applyGraphDSL(graph: Graph, input: unknown): GraphDSLApply {
     node.size[0] = old.size[0];
     node.size[1] = old.size[1];
     node.label = old.label;
+    if (old instanceof GroupNode && node instanceof GroupNode && old.ref === node.ref) {
+      carryOverrides(old, node);
+    }
 
     kept.push(node.id);
     placed.push(node);
@@ -149,6 +177,51 @@ export function placeNewNodes(placed: readonly Node[], fresh: readonly Node[]): 
     node.pos[0] = originX + Math.floor(i / PLACE_ROWS) * (width + PLACE_GAP);
     node.pos[1] = originY + (i % PLACE_ROWS) * (height + PLACE_GAP);
   });
+}
+
+/**
+ * Moves a kept instance's overrides onto its rebuilt copy: the inner values its subgraph
+ * holds, which reconciling against the definition transplants, and the boundary defaults
+ * set on its own sockets. The description never carries a boundary default, since
+ * `graphToDSL` leaves an instance's values to the instance, so the old node's are the
+ * only ones there are.
+ */
+function carryOverrides(old: GroupNode, node: GroupNode): void {
+  if (node.definition !== undefined) {
+    node.subgraph = old.subgraph;
+    old.subgraph.groupOwner = node;
+    node.syncToDefinition();
+  }
+
+  for (const [key, sock] of Object.entries(old.inputs)) {
+    const from = sock.defaultProp;
+    const to = node.inputs[key]?.defaultProp;
+    if (from?.wasSet !== true || to === undefined || from.constructor !== to.constructor) {
+      continue;
+    }
+    to.setValue(from.getValue());
+    to.wasSet = true;
+  }
+}
+
+/** The diagnostic for a node id written like a node key, or undefined when none is. */
+function keyLikeId(value: unknown): DSLDiagnostic | undefined {
+  if (typeof value !== 'object' || value === null) return undefined;
+  const nodes = (value as { nodes?: unknown }).nodes;
+  if (!Array.isArray(nodes)) return undefined;
+
+  for (const [i, entry] of nodes.entries()) {
+    const id = (entry as { id?: unknown } | null)?.id;
+    if (typeof id === 'string' && id.includes('/')) {
+      const path = `nodes[${i}]`;
+      return {
+        code: 'bad-node-id',
+        message: `${path}: id '${id}' holds a '/', which is how a node inside a group is addressed`,
+        path,
+      };
+    }
+  }
+  return undefined;
 }
 
 const probes = new Map<string, Node>();

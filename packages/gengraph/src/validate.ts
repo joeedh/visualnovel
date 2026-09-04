@@ -1,6 +1,8 @@
 import { parseSlot } from '@vn/artgen/slotaddr';
+import { definitionOfSubgraph } from 'pathux-graph';
 import type { Graph, GraphId, Node } from 'pathux-graph';
 
+import { flattenNodes, nodeKey } from './nodekey.js';
 import { genNodeSpec } from './registry.js';
 
 export type GenDiagnosticCode =
@@ -10,11 +12,13 @@ export type GenDiagnosticCode =
   | 'link-type-mismatch'
   | 'slot-unparsed'
   | 'slot-is-asset'
+  | 'output-in-group'
   | 'unresolved-group';
 
 export interface GenDiagnostic {
   code: GenDiagnosticCode;
   message: string;
+  /** The node's key, so a diagnostic against a node inside a group names the instance too. */
   nodeId: GraphId;
 }
 
@@ -28,15 +32,19 @@ const STRUCTURAL_TYPES = new Set(['GroupNode', 'GroupInputNode', 'GroupOutputNod
 /**
  * Checks a loaded graph against the registry: node types, props and sockets that the
  * type declares, links whose ends can coerce, and the slot an output node names. A
- * graph naming no slot is legal, because an author builds one before binding it.
+ * graph naming no slot is legal, because an author builds one before binding it. The
+ * nodes inside each group instance are checked as part of the graph, and an output node
+ * found inside a group is diagnosed, because a slot is bound at the root. A definition's
+ * own subgraph is checked the same way, with its proxies left alone.
  */
 export function validateGenGraph(graph: Graph): GenDiagnostic[] {
   const out: GenDiagnostic[] = [];
   const report = (code: GenDiagnosticCode, node: Node, message: string): void => {
-    out.push({ code, message, nodeId: node.id });
+    out.push({ code, message, nodeId: nodeKey(node) });
   };
+  const isDefinition = definitionOfSubgraph(graph) !== undefined;
 
-  for (const node of graph.nodes) {
+  for (const node of flattenNodes(graph)) {
     const typeName = node.def.typeName;
     if (STRUCTURAL_TYPES.has(typeName)) continue;
     const spec = genNodeSpec(typeName);
@@ -53,6 +61,13 @@ export function validateGenGraph(graph: Graph): GenDiagnostic[] {
         if (!(key in declared)) {
           report('unknown-prop', node, `node type '${typeName}' declares no prop '${key}'`);
         }
+      }
+      if (spec.slotProp !== undefined && (isDefinition || node.graph !== graph)) {
+        report(
+          'output-in-group',
+          node,
+          `node type '${typeName}' fills a slot for the whole graph, which only a node at the root can do`,
+        );
       }
       checkSlot(node, spec.slotProp, report);
     }

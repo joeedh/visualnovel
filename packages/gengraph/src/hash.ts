@@ -1,7 +1,7 @@
 import { hashParts } from '@vn/util';
-import { NO_ID } from 'pathux-graph';
 import type { Graph, GraphId, Node } from 'pathux-graph';
 
+import { flattenNodes, nodeKey } from './nodekey.js';
 import { genNodeSpec } from './registry.js';
 
 /**
@@ -25,11 +25,14 @@ export function nodeHash(node: Node, inputs: Readonly<Record<string, unknown>>):
 }
 
 /**
- * Every node's hash, keyed by node id and computed in topological order. A connected
- * input contributes the hash of the node feeding it together with the socket it came
- * from; an unconnected input contributes its own default value, which is where a host's
- * seeded prompt reaches the hash. Nodes inside a cycle are absent from the result, because
- * a hash there would have to contain itself.
+ * Every node's hash, keyed by node key and computed in topological order over the
+ * flattened graph, so a node inside an instance is hashed as part of its root. A connected
+ * input contributes the hash of the node feeding it together with the socket it came from;
+ * an unconnected input contributes its own default value, which is where a host's seeded
+ * prompt reaches the hash; an input reaching an instance's boundary default through the
+ * group's proxy contributes that default, so two instances differing only there hash apart.
+ * Nodes inside a cycle are absent from the result, because a hash there would have to
+ * contain itself.
  */
 export function graphHashes(graph: Graph): Map<GraphId, string> {
   return walk(graph, false);
@@ -46,6 +49,7 @@ export function authoredHashes(graph: Graph): Map<GraphId, string> {
 
 function walk(graph: Graph, authoredOnly: boolean): Map<GraphId, string> {
   const hashes = new Map<GraphId, string>();
+  const members = new Set(flattenNodes(graph));
 
   for (const node of graph.sort().order) {
     const inputs: Record<string, unknown> = {};
@@ -59,13 +63,20 @@ function walk(graph: Graph, authoredOnly: boolean): Map<GraphId, string> {
         continue;
       }
 
+      const linked = sources.filter((src) => members.has(src.owningNode as Node));
+      if (linked.length === 0) {
+        // The instance's own socket standing in for an unmade link; its default is what runs.
+        inputs[key] = sources[0]!.defaultProp?.getValue() ?? null;
+        continue;
+      }
+
       // Sorted, so that reconnecting the same set of edges in another order is not an edit.
-      inputs[key] = sources
-        .map((src) => `${hashes.get(src.owningNode?.id ?? NO_ID) ?? ''}:${src.name}`)
+      inputs[key] = linked
+        .map((src) => `${hashes.get(nodeKey(src.owningNode as Node)) ?? ''}:${src.name}`)
         .sort();
     }
 
-    hashes.set(node.id, nodeHash(node, inputs));
+    hashes.set(nodeKey(node), nodeHash(node, inputs));
   }
 
   return hashes;

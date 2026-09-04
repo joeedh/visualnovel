@@ -53,8 +53,16 @@ import {
 } from '@vn/scriptedit/write';
 import { loadConfig } from '@vn/config';
 import { decideGenEdit, graphToDSL, validateGenGraph } from '@vn/gengraph';
-import type { GenDiagnostic, GenPropValue } from '@vn/gengraph';
-import { graphSlugs, pluginWriteRefusal, readGraphDoc, writeGraphDoc } from '@vn/gengraph/state';
+import type { GenDiagnostic, GenPropValue, GroupDef } from '@vn/gengraph';
+import {
+  bindGroupLibrary,
+  graphSlugs,
+  groupRefs,
+  pluginWriteRefusal,
+  readGraphDoc,
+  readGroupDef,
+  writeGraphDoc,
+} from '@vn/gengraph/state';
 import {
   SAID_WINDOW,
   approvalCard,
@@ -2531,7 +2539,7 @@ const diagLine = (d: GenDiagnostic): string =>
 const readAssetGraphTool: Tool<{ slug?: string }> = {
   name: 'read_asset_graph',
   description:
-    'Read one generation graph — the node network a picture is drawn by — as the same description `edit_asset_graph` takes back: every node with its type and the values written on it, and every link between them. Where the nodes sit on the canvas is left out on purpose, so writing a graph back never moves what the author arranged there. Anything wrong with the graph is listed after it: a node type no plugin provides, a link whose two ends disagree, a slot string that does not parse. Called with no name it lists the graphs this project holds, which is how you find one to read.',
+    'Read one generation graph — the node network a picture is drawn by — as the same description `edit_asset_graph` takes back: every node with its type and the values written on it, and every link between them. A node of type `GroupNode` is an instance of a group definition, named by its `group` field; what is inside the group is not described here. Where the nodes sit on the canvas is left out on purpose, so writing a graph back never moves what the author arranged there. Anything wrong with the graph is listed after it: a node type no plugin provides, a link whose two ends disagree, a slot string that does not parse. Called with no name it lists the graphs this project holds, which is how you find one to read.',
   mutating: false,
   args: z.object({
     slug: z.string().optional().describe('which graph, by the name its file carries'),
@@ -2560,12 +2568,17 @@ const readAssetGraphTool: Tool<{ slug?: string }> = {
 
 const editAssetGraphTool: Tool<{
   slug: string;
-  nodes: { id: string | number; type: string; props?: Record<string, GenPropValue> }[];
+  nodes: {
+    id: string | number;
+    type: string;
+    props?: Record<string, GenPropValue>;
+    group?: string;
+  }[];
   links: (string | number)[][];
 }> = {
   name: 'edit_asset_graph',
   description:
-    'Rewrite one generation graph from a whole description — the form `read_asset_graph` gives back. Read it first: what you pass is the graph in full, so a node you leave out is removed. A node kept under the id it already had keeps its position on the canvas and keeps the record of what it has already run, so re-describing a graph does not by itself spend anything. A description that will not build is refused with every problem in it listed, and the file on disk is left exactly as it was. It writes the document and draws nothing; `run_asset_graph` is what spends.',
+    'Rewrite one generation graph from a whole description — the form `read_asset_graph` gives back. Read it first: what you pass is the graph in full, so a node you leave out is removed. A node kept under the id it already had keeps its position on the canvas and keeps the record of what it has already run, so re-describing a graph does not by itself spend anything. A `GroupNode` entry is an instance of a group definition the project already holds, named by `group`; keep one under its id and it keeps the values set on it, and name a definition to add an instance of it. What is inside a group is edited in the desktop app rather than here. A description that will not build is refused with every problem in it listed, and the file on disk is left exactly as it was. It writes the document and draws nothing; `run_asset_graph` is what spends.',
   mutating: true,
   args: z.object({
     slug: z.string().describe('which graph, by the name its file carries'),
@@ -2580,6 +2593,10 @@ const editAssetGraphTool: Tool<{
             .record(z.union([z.string(), z.number(), z.boolean()]))
             .optional()
             .describe('the authored values on it, by the names its type declares'),
+          group: z
+            .string()
+            .optional()
+            .describe('on a `GroupNode` only: the group definition this node is an instance of'),
         }),
       )
       .describe('every node the graph should hold once this is applied'),
@@ -2592,8 +2609,15 @@ const editAssetGraphTool: Tool<{
     const read = await readGraphDoc(root, a.slug);
     if (!read.ok) return fail(read.reason);
 
+    // The whole library, so the description can instance a definition this graph did not hold.
+    const groups = new Map<string, GroupDef>();
+    for (const ref of await groupRefs(root)) {
+      const def = await readGroupDef(root, ref);
+      if (def !== undefined) groups.set(ref, def);
+    }
+
     const description = { nodes: a.nodes, links: a.links };
-    const decided = decideGenEdit(read.graph, { op: 'apply', description });
+    const decided = decideGenEdit(read.graph, { op: 'apply', description, groups });
     if (!decided.ok) {
       const listed: string[] = decided.details ?? [];
       const bullets = listed.map((d) => `  • ${d}`).join('\n');
@@ -2604,6 +2628,9 @@ const editAssetGraphTool: Tool<{
     }
 
     const applied = decided.apply();
+    // Resolved before the write, so the file never holds an instance waiting on its definition.
+    bindGroupLibrary(root, applied.graph);
+    await applied.graph.resolveGroups();
     const path = await writeGraphDoc(root, a.slug, applied.graph);
     // Reported rather than refused, the way an opened graph reports the same problems: a graph
     // is authored a piece at a time, and a half-built one is a normal thing to save.

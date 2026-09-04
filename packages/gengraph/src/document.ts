@@ -15,7 +15,10 @@ import type { Graph, GraphId, GroupDef, GroupNode } from 'pathux-graph';
 import { readGraphFile, readGroupFile, writeGraphFile, writeGroupFile } from './graphfile.js';
 import { graphDocFile, graphGroupFile, graphLibDir, graphsDir } from './paths.js';
 import { registerGenNodes } from './nodes/index.js';
+import { isGraphSlug } from './slug.js';
 import { validateGenGraph, type GenDiagnostic } from './validate.js';
+
+export { isGraphSlug } from './slug.js';
 
 /** A graph's file name without its extension, which is also how its journal is keyed. */
 export type GraphSlug = string;
@@ -24,14 +27,14 @@ export type GraphRead =
   | { ok: true; graph: Graph; path: string; diagnostics: GenDiagnostic[] }
   | { ok: false; reason: string };
 
-/** True for a name that can be a graph's file name, which is what makes it addressable. */
-export function isGraphSlug(slug: string): boolean {
-  return /^[a-z0-9][a-z0-9-]*$/i.test(slug);
-}
+export type GroupRead =
+  | { ok: true; def: GroupDef; path: string; diagnostics: GenDiagnostic[] }
+  | { ok: false; reason: string };
 
 /**
  * A node id as it was typed, read back as the number or the string the graph keys its nodes by.
- * An id naming no node is passed through, so whoever asked for it refuses it in their own words.
+ * A node key, which carries a `/`, passes through as the string it is, and so does an id naming
+ * no node, so whoever asked for it refuses it in their own words.
  */
 export function nodeIdOf(graph: Graph, said: string): GraphId {
   const trimmed = said.trim();
@@ -128,7 +131,10 @@ export function bindGroupLibrary(root: string, graph: Graph): void {
   };
 }
 
-/** One group definition, or undefined when no file answers to that name or the file is bad. */
+/**
+ * One group definition, or undefined when no file answers to that name or the file is bad. The
+ * library is bound on its subgraph, so a definition that instances another resolves from here.
+ */
 export async function readGroupDef(root: string, ref: string): Promise<GroupDef | undefined> {
   if (!isGraphSlug(ref)) return undefined;
   registerGenNodes();
@@ -137,10 +143,84 @@ export async function readGroupDef(root: string, ref: string): Promise<GroupDef 
   if (!(await exists(file))) return undefined;
 
   try {
-    return readGroupFile(JSON.parse(await readText(file))).def;
+    const def = readGroupFile(JSON.parse(await readText(file))).def;
+    if (def !== undefined) bindGroupLibrary(root, def.subgraph);
+    return def;
   } catch {
     return undefined;
   }
+}
+
+/** The workspace-relative path a group definition lives at. */
+export function groupPath(root: string, ref: string): string {
+  return workspacePath(root, graphGroupFile(new ProjectPaths(root), ref));
+}
+
+/** The definitions on disk, by ref, sorted. */
+export async function groupRefs(root: string): Promise<string[]> {
+  try {
+    return (await readdir(graphLibDir(new ProjectPaths(root))))
+      .filter((name) => name.endsWith('.json'))
+      .map((name) => name.slice(0, -'.json'.length))
+      .sort();
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * A ref no definition holds yet, `group-1` upward. Case is ignored in the comparison, because
+ * the filesystem underneath may ignore it too.
+ */
+export async function nextGroupRef(root: string): Promise<string> {
+  const taken = new Set((await groupRefs(root)).map((ref) => ref.toLowerCase()));
+  for (let n = 1; ; n++) {
+    const ref = `group-${n}`;
+    if (!taken.has(ref)) return ref;
+  }
+}
+
+/**
+ * One group definition the way `readGraphDoc` reads a graph: opened, its own instances
+ * resolved, and validated as a subgraph, so an output node inside it is reported. A file that
+ * cannot be read is a reason rather than a definition.
+ */
+export async function readGroupDoc(root: string, ref: string): Promise<GroupRead> {
+  if (!isGraphSlug(ref)) return { ok: false, reason: `'${ref}' is not a group name` };
+  registerGenNodes();
+
+  const path = groupPath(root, ref);
+  const file = graphGroupFile(new ProjectPaths(root), ref);
+  if (!(await exists(file))) {
+    return { ok: false, reason: `there is no ${ref} group in this project` };
+  }
+
+  let json: unknown;
+  try {
+    json = JSON.parse(await readText(file));
+  } catch (err) {
+    return { ok: false, reason: `${path} is not JSON: ${(err as Error).message}` };
+  }
+
+  const read = readGroupFile(json);
+  if (read.def === undefined) {
+    const said = read.diagnostics.map((d) => d.message).join('; ');
+    return { ok: false, reason: `${path} cannot be read: ${said}` };
+  }
+
+  const def = read.def;
+  bindGroupLibrary(root, def.subgraph);
+  const groups = await def.subgraph.resolveGroups();
+
+  return {
+    ok: true,
+    def,
+    path,
+    diagnostics: [
+      ...groupDiagnostics(def.subgraph, groups.failed),
+      ...validateGenGraph(def.subgraph),
+    ],
+  };
 }
 
 /** Write one group definition. Returns the workspace-relative path, which `written` reports. */

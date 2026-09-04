@@ -3,6 +3,7 @@ import type { Graph, GraphId, Node } from 'pathux-graph';
 import { authoredHashes, graphHashes } from './hash.js';
 import { journalRecord } from './journal.js';
 import type { GenUsage, GraphJournal, GraphJournalRecord } from './journal.js';
+import { flattenNodes, linkedSources, nodeKey, resolveNodeKey } from './nodekey.js';
 import { genNodeRuntime, genNodeSpec } from './registry.js';
 import type { GenInputs, GenOutputs, GenProps } from './registry.js';
 import type { GenServices } from './services.js';
@@ -24,7 +25,7 @@ export interface GenRunContext {
 }
 
 export interface GenExecuteOptions {
-  /** The nodes to evaluate. Everything upstream of one is evaluated with it. */
+  /** The nodes to evaluate, by node key. Everything upstream of one is evaluated with it. */
   targets: readonly GraphId[];
   /**
    * Values the host supplies on input sockets, keyed by node type name and then by socket
@@ -36,10 +37,12 @@ export interface GenExecuteOptions {
 }
 
 export interface GenNodeFailure {
+  /** The node's key, which is what its journal record carries. */
   nodeId: GraphId;
   error: string;
 }
 
+/** What a run did, every list by node key. */
 export interface GenRunResult {
   /** Nodes whose runtime ran this time. */
   ran: GraphId[];
@@ -56,7 +59,8 @@ export interface GenRunResult {
  * Evaluates the targets and their ancestors in topological order, resuming every node
  * whose last record already matches its hash. A node on a branch no target descends from
  * never runs, which is what keeps a scratch branch from spending money. A failure is
- * recorded and stops that node's downstream; branches beside it still run.
+ * recorded and stops that node's downstream; branches beside it still run. A group
+ * instance is run as its inner nodes, each journaled under its key.
  */
 export async function executeGenGraph(
   graph: Graph,
@@ -67,8 +71,9 @@ export async function executeGenGraph(
 
   const hashes = graphHashes(graph);
   const authored = authoredHashes(graph);
-  const wanted = ancestorsOf(graph, options.targets);
-  const order = graph.sort().order.filter((node) => wanted.has(node.id));
+  const members = new Set(flattenNodes(graph));
+  const wanted = ancestorsOf(graph, members, options.targets);
+  const order = graph.sort().order.filter((node) => wanted.has(node));
 
   if (order.length !== wanted.size) {
     throw new Error('the run targets a node inside a cycle, which has no order to run in');
@@ -83,10 +88,11 @@ export async function executeGenGraph(
   };
 
   const hashOf = (node: Node): { nodeHash: string; authoredHash: string } => {
-    const nodeHash = hashes.get(node.id);
-    const authoredHash = authored.get(node.id);
+    const key = nodeKey(node);
+    const nodeHash = hashes.get(key);
+    const authoredHash = authored.get(key);
     if (nodeHash === undefined || authoredHash === undefined) {
-      throw new Error(`node ${String(node.id)} has no hash, so it cannot be run`);
+      throw new Error(`node ${String(key)} has no hash, so it cannot be run`);
     }
     return { nodeHash, authoredHash };
   };
@@ -106,21 +112,23 @@ export async function executeGenGraph(
     failures: [],
     outputs: new Map(),
   };
-  const blocked = new Set<GraphId>();
+  const blocked = new Set<Node>();
   // A node's hash covers what feeds it rather than what that produced, so an upstream node
   // that ran again may have answered differently at the same hash. Everything below it runs.
-  const reran = new Set<GraphId>();
+  const reran = new Set<Node>();
 
   for (const node of order) {
-    if (feedsFrom(node, blocked)) {
-      blocked.add(node.id);
-      result.blocked.push(node.id);
+    const key = nodeKey(node);
+
+    if (feedsFrom(node, members, blocked)) {
+      blocked.add(node);
+      result.blocked.push(key);
       continue;
     }
 
     const hash = hashOf(node);
-    const prior = latest.get(node.id);
-    const stale = feedsFrom(node, reran);
+    const prior = latest.get(key);
+    const stale = feedsFrom(node, members, reran);
 
     if (
       !stale &&
@@ -129,8 +137,8 @@ export async function executeGenGraph(
       prior.output !== undefined
     ) {
       applyOutputs(node, prior.output);
-      result.outputs.set(node.id, prior.output);
-      result.skipped.push(node.id);
+      result.outputs.set(key, prior.output);
+      result.skipped.push(key);
       continue;
     }
 
@@ -140,7 +148,7 @@ export async function executeGenGraph(
       continue;
     }
 
-    await write(journalRecord({ nodeId: node.id, ...hash, status: 'running', at: stamp() }));
+    await write(journalRecord({ nodeId: key, ...hash, status: 'running', at: stamp() }));
 
     let outputs: GenOutputs;
     try {
@@ -151,14 +159,14 @@ export async function executeGenGraph(
     }
 
     applyOutputs(node, outputs);
-    result.outputs.set(node.id, outputs);
-    result.ran.push(node.id);
-    reran.add(node.id);
+    result.outputs.set(key, outputs);
+    result.ran.push(key);
+    reran.add(node);
 
     const usage = ctx.usage?.(node);
     await write(
       journalRecord({
-        nodeId: node.id,
+        nodeId: key,
         ...hash,
         status: 'done',
         output: outputs,
@@ -175,9 +183,10 @@ export async function executeGenGraph(
     hash: { nodeHash: string; authoredHash: string },
     error: string,
   ): Promise<void> {
-    await write(journalRecord({ nodeId: node.id, ...hash, status: 'failed', error, at: stamp() }));
-    blocked.add(node.id);
-    result.failures.push({ nodeId: node.id, error });
+    const key = nodeKey(node);
+    await write(journalRecord({ nodeId: key, ...hash, status: 'failed', error, at: stamp() }));
+    blocked.add(node);
+    result.failures.push({ nodeId: key, error });
   }
 }
 
@@ -185,7 +194,7 @@ export async function executeGenGraph(
  * Records that every paid ancestor of the targets has to run again, which is what a
  * deliberate re-render asks for. Without it a bound slot whose nodes are all clean would
  * resume straight to the cached picture. Deterministic prep still resumes, because only a
- * node its type marks `spends` is invalidated. Returns the nodes it invalidated.
+ * node its type marks `spends` is invalidated. Returns the keys of the nodes it invalidated.
  */
 export async function invalidateGenGraph(
   graph: Graph,
@@ -194,14 +203,16 @@ export async function invalidateGenGraph(
 ): Promise<GraphId[]> {
   const hashes = graphHashes(graph);
   const authored = authoredHashes(graph);
-  const wanted = ancestorsOf(graph, targets);
+  const members = new Set(flattenNodes(graph));
+  const wanted = ancestorsOf(graph, members, targets);
   const at = (ctx.now?.() ?? new Date()).toISOString();
   const invalidated: GraphId[] = [];
 
-  for (const node of graph.nodes) {
-    const nodeHash = hashes.get(node.id);
-    const authoredHash = authored.get(node.id);
-    if (!wanted.has(node.id) || nodeHash === undefined || authoredHash === undefined) {
+  for (const node of members) {
+    const key = nodeKey(node);
+    const nodeHash = hashes.get(key);
+    const authoredHash = authored.get(key);
+    if (!wanted.has(node) || nodeHash === undefined || authoredHash === undefined) {
       continue;
     }
     if (genNodeSpec(node.def.typeName)?.spends !== true) {
@@ -209,9 +220,9 @@ export async function invalidateGenGraph(
     }
 
     await ctx.record(
-      journalRecord({ nodeId: node.id, nodeHash, authoredHash, status: 'invalidated', at }),
+      journalRecord({ nodeId: key, nodeHash, authoredHash, status: 'invalidated', at }),
     );
-    invalidated.push(node.id);
+    invalidated.push(key);
   }
 
   return invalidated;
@@ -229,7 +240,7 @@ function seedInputs(graph: Graph, seeds: GenExecuteOptions['seeds']): void {
     return;
   }
 
-  for (const node of graph.nodes) {
+  for (const node of flattenNodes(graph)) {
     const seeded = seeds[node.def.typeName];
     if (seeded === undefined) {
       continue;
@@ -250,18 +261,31 @@ function seedInputs(graph: Graph, seeds: GenExecuteOptions['seeds']): void {
   }
 }
 
-/** The targets together with every node reachable by walking their inputs upstream. */
-function ancestorsOf(graph: Graph, targets: readonly GraphId[]): Set<GraphId> {
-  const wanted = new Set<GraphId>();
+/**
+ * The targets together with every node reachable by walking their inputs upstream. A target
+ * is named by key and must be a node that runs, so an instance itself is refused: it is run as
+ * its inner nodes, which are targeted by their own keys.
+ */
+function ancestorsOf(
+  graph: Graph,
+  members: ReadonlySet<Node>,
+  targets: readonly GraphId[],
+): Set<Node> {
+  const wanted = new Set<Node>();
   const stack: Node[] = [];
 
-  for (const id of targets) {
-    const node = graph.nodeIdMap.get(id);
+  for (const key of targets) {
+    const node = resolveNodeKey(graph, key);
     if (node === undefined) {
-      throw new Error(`the run targets node ${String(id)}, which this graph does not hold`);
+      throw new Error(`the run targets node ${String(key)}, which this graph does not hold`);
     }
-    if (!wanted.has(id)) {
-      wanted.add(id);
+    if (!members.has(node)) {
+      throw new Error(
+        `the run targets node ${String(key)}, which is a group rather than a node that runs`,
+      );
+    }
+    if (!wanted.has(node)) {
+      wanted.add(node);
       stack.push(node);
     }
   }
@@ -269,10 +293,9 @@ function ancestorsOf(graph: Graph, targets: readonly GraphId[]): Set<GraphId> {
   while (stack.length > 0) {
     const node = stack.pop()!;
 
-    for (const id of sourceIds(node)) {
-      const source = graph.nodeIdMap.get(id);
-      if (source !== undefined && !wanted.has(id)) {
-        wanted.add(id);
+    for (const source of sourceNodes(node, members)) {
+      if (!wanted.has(source)) {
+        wanted.add(source);
         stack.push(source);
       }
     }
@@ -281,24 +304,21 @@ function ancestorsOf(graph: Graph, targets: readonly GraphId[]): Set<GraphId> {
   return wanted;
 }
 
-/** The ids of the nodes feeding this one's inputs, with group proxies already resolved. */
-function sourceIds(node: Node): GraphId[] {
-  const ids: GraphId[] = [];
+/** The nodes feeding this one's inputs, with group proxies resolved and boundary defaults left out. */
+function sourceNodes(node: Node, members: ReadonlySet<Node>): Node[] {
+  const out: Node[] = [];
 
   for (const sock of Object.values(node.inputs)) {
-    for (const src of sock.resolvedEdges()) {
-      const owner = src.owningNode;
-      if (owner !== undefined) {
-        ids.push(owner.id);
-      }
+    for (const src of linkedSources(sock, members)) {
+      out.push(src.owningNode as Node);
     }
   }
 
-  return ids;
+  return out;
 }
 
-function feedsFrom(node: Node, ids: ReadonlySet<GraphId>): boolean {
-  return sourceIds(node).some((id) => ids.has(id));
+function feedsFrom(node: Node, members: ReadonlySet<Node>, nodes: ReadonlySet<Node>): boolean {
+  return sourceNodes(node, members).some((source) => nodes.has(source));
 }
 
 function readInputs(node: Node): GenInputs {

@@ -1,6 +1,6 @@
 # Group nodes in the Gen Graph editor
 
-Status: **planned**. The Gen Graph pane gains groups: an author selects nodes and presses
+Status: **in progress** (D1 done 2026-09-04; D2–D4 open). The Gen Graph pane gains groups: an author selects nodes and presses
 Ctrl+G or picks Edit ▸ Create Group, and the selection becomes a definition file under
 `vngen/work/graphs/lib/` with an instance standing in its place; entering the instance edits
 that file, and every graph that instances it follows. The editor gestures, the ops, the
@@ -238,6 +238,30 @@ refused; the tool schema keeps `group`; `createGroup` over an output node refuse
 sentence; a structural edit on an instance subgraph refuses with path.ux's sentence;
 duplicating an instance keeps its ref; `nextGroupRef` skips existing files regardless of
 case.
+
+**Status: done, 2026-09-04.** Landed as written, with these deviations:
+
+- `createGroup.ref` is required rather than optional. `decideGenEdit` is pure and cannot
+  read the library, so the caller (the D2 command) picks the name with `nextGroupRef` and
+  passes it; the decision only checks it is a group name.
+- `addGroup` takes `{ref, def?, pos?}` rather than `{ref, x, y}`: the definition comes in
+  from the command, which loaded it, and the position is optional.
+- `GenEdit` gained `apply {description, groups?}` so the agent's whole-graph rewrite
+  reaches the definitions it names; `applyGraphDSL` takes the same map. The tool loads the
+  whole library, applies, then binds and resolves before writing.
+- The exposure and boundary kinds are decided against the graph passed in, which must be a
+  definition's subgraph (`definitionOfSubgraph`); a root graph refuses with
+  `this graph is not a group definition, so it has no boundary or forwarded rows to edit`.
+- `document.ts` gained `groupPath`, `groupRefs`, `nextGroupRef` and `readGroupDoc`;
+  `writeGroupDef` was already atomic. `isGraphSlug` moved to `slug.ts` (re-exported).
+  `state.ts` needed no change, since it re-exports `document.ts`.
+- `validate.ts` reports an output node inside a definition or an instance as
+  `output-in-group`.
+- The renderer's `commandFor` throws for the new kinds until D2 wires them.
+- Path.ux gained `DSLRegistries.groups` (the DSL builder binds an instance to its
+  definition, or reports `unknown-group`) and two boundary-default fixes: an unlinked
+  instance output no longer resolves to its own inner producer, and a boundary default is
+  read through the proxy chain without recursing into the inner consumer.
 
 ### Stage D2 — the commands
 

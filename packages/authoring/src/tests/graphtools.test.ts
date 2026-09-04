@@ -8,8 +8,17 @@ import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openGit } from '@vn/git';
-import { GenImage, GenOutput, GenTemplate, Graph, registerGenNodes } from '@vn/gengraph';
-import { graphPath, writeGraphDoc } from '@vn/gengraph/state';
+import {
+  GenImage,
+  GenOutput,
+  GenTemplate,
+  Graph,
+  GroupDef,
+  GroupNode,
+  TextSocket,
+  registerGenNodes,
+} from '@vn/gengraph';
+import { graphPath, readGraphDoc, writeGraphDoc, writeGroupDef } from '@vn/gengraph/state';
 
 import {
   createRegistry,
@@ -272,6 +281,81 @@ describe('run_asset_graph', () => {
       expect(missing.ok).toBe(false);
       expect(missing.output).toContain('there is no nope graph');
       expect(forced).toEqual([true]);
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+describe('edit_asset_graph with groups', () => {
+  /** A definition whose one inner node adds ", in ink wash" to what feeds the group's input. */
+  function inkWashDef(): GroupDef {
+    const def = new GroupDef();
+    const inner = new GenTemplate();
+    def.subgraph.add(inner);
+    def.subgraph.connect(def.declareInput('text', new TextSocket('in')), inner.inputs.varA);
+    def.subgraph.connect(inner.outputs.text, def.declareOutput('text', new TextSocket('out')));
+    inner.props.template?.setValue('{varA}, in ink wash');
+    return def;
+  }
+
+  it('keeps the group field, instances the library definition, and reads it back', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      await writeGroupDef(dir, 'inkwash', inkWashDef());
+      const read = await run('read_asset_graph', { slug: 'portrait' }, ctx);
+      const { dsl } = read.data as {
+        dsl: { nodes: { id: number; type: string }[]; links: unknown[][] };
+      };
+      const [text, image] = dsl.nodes;
+
+      const edited = await run(
+        'edit_asset_graph',
+        {
+          slug: 'portrait',
+          nodes: [...dsl.nodes, { id: 'wash', type: 'GroupNode', group: 'inkwash' }],
+          links: [
+            [text!.id, 'text', 'wash', 'text'],
+            [image!.id, 'image', dsl.nodes[2]!.id, 'image'],
+            ['wash', 'text', image!.id, 'prompt'],
+          ],
+        },
+        ctx,
+      );
+      expect(edited.ok).toBe(true);
+      expect(edited.output).toBe('Replaces the graph: keeps 3 nodes, adds 1, removes 0.');
+
+      const back = await readGraphDoc(dir, 'portrait');
+      expect(back.ok && back.diagnostics).toEqual([]);
+      if (!back.ok) return;
+      const instance = back.graph.nodeIdMap.get('wash') as GroupNode;
+      expect(instance.definition).toBeDefined();
+      expect(instance.inputs.text?.edges).toHaveLength(1);
+
+      const again = await run('read_asset_graph', { slug: 'portrait' }, ctx);
+      const described = (again.data as { dsl: { nodes: { id: unknown; group?: string }[] } }).dsl;
+      expect(described.nodes.find((n) => n.id === 'wash')?.group).toBe('inkwash');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('refuses an instance of a definition the project does not hold, and writes nothing', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const before = await fs.readFile(join(dir, graphPath(dir, 'portrait')), 'utf8');
+      const edited = await run(
+        'edit_asset_graph',
+        {
+          slug: 'portrait',
+          nodes: [{ id: 'wash', type: 'GroupNode', group: 'nowhere' }],
+          links: [],
+        },
+        ctx,
+      );
+      expect(edited.ok).toBe(false);
+      expect(edited.output).toContain("names group 'nowhere', which is not known");
+      expect(await fs.readFile(join(dir, graphPath(dir, 'portrait')), 'utf8')).toBe(before);
     } finally {
       await cleanup();
     }

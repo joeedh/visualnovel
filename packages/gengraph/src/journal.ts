@@ -36,6 +36,10 @@ export interface GenUsage {
  */
 export interface GraphJournalRecord {
   v: number;
+  /**
+   * The node's key: its id for a root node, and the `<instance>/<id>` chain for a node
+   * inside a group, so two inner nodes sharing an id never share a record.
+   */
   nodeId: GraphId;
   nodeHash: string;
   /**

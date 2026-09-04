@@ -3,22 +3,58 @@
  * A host asks `decideGenEdit` what an edit would do, shows or returns the refusal, and calls
  * the decision's `apply` only once it means to write. The desktop commands and the authoring
  * agent's graph tool both go through here, so a refusal reads the same in both.
+ *
+ * A node is named by its key, so an edit reaches a node inside a group instance. Only a value
+ * edit is allowed there: the instance's subgraph refuses structural edits with path.ux's own
+ * sentence, and those belong to the definition, whose subgraph is a plain graph this decides
+ * against like any other. The boundary and forwarded-row edits apply only to a definition's
+ * subgraph, which is how they find the definition they edit.
  */
 import { parseSlot } from '@vn/artgen/slotaddr';
-import { nodePropKeys, nodePropTarget, Node as GraphNode } from 'pathux-graph';
-import type { Graph, GraphId, Node, NodeSocketBase, NodeTypeConstructor } from 'pathux-graph';
+import {
+  GroupInputNode,
+  GroupNode,
+  GroupOutputNode,
+  Node as GraphNode,
+  addBoundary,
+  cloneNode,
+  createGroup,
+  definitionOfSubgraph,
+  exposeEntry,
+  getSocketClass,
+  groupPlan,
+  isRefusal,
+  nodePropTarget,
+  removeBoundary,
+  removeEntry,
+  reorderEntry,
+  repointEntry,
+  ungroup,
+} from 'pathux-graph';
+import type {
+  ExposedEntry,
+  Graph,
+  GraphId,
+  GroupDef,
+  Node,
+  NodePropName,
+  NodeSocketBase,
+  SocketDir,
+} from 'pathux-graph';
 import { PropTypes } from 'pathux-toolprop';
 import type { ToolProperty } from 'pathux-toolprop';
 
 import { applyGraphDSL, placeNewNodes } from './dsl.js';
+import { resolveNodeKey } from './nodekey.js';
 import { genNodeSpec, genNodeTypes } from './registry.js';
+import { isGraphSlug } from './slug.js';
 
 /** A value an authored prop can hold. Anything richer is edited through the whole-DSL path. */
 export type GenPropValue = string | number | boolean;
 
 export type GenEdit =
   | { op: 'addNode'; type: string; pos?: readonly [number, number] }
-  /** Copies a node's authored values onto a fresh node of the same type, with a fresh id. */
+  /** Copies a node, ref and overrides included, onto a fresh node with a fresh id. */
   | { op: 'duplicateNode'; node: GraphId; pos?: readonly [number, number] }
   | { op: 'removeNode'; node: GraphId }
   | { op: 'link'; from: GraphId; fromSocket: string; to: GraphId; toSocket: string }
@@ -28,7 +64,29 @@ export type GenEdit =
   | { op: 'setActiveOutput'; node: GraphId }
   /** Where nodes now sit. One drag moves every node it caught, so a move takes a list. */
   | { op: 'moveNodes'; moves: readonly GenNodeMove[] }
-  | { op: 'apply'; description: unknown };
+  /** Moves the named nodes into a new definition under `ref` and puts an instance in their place. */
+  | { op: 'createGroup'; nodes: readonly GraphId[]; ref: string }
+  /** Inlines a copy of an instance's subgraph, overrides included, where the instance stood. */
+  | { op: 'ungroup'; node: GraphId }
+  /** Adds an instance of `ref`. With `def` given it is bound at once; otherwise the caller resolves it. */
+  | { op: 'addGroup'; ref: string; def?: GroupDef; pos?: readonly [number, number] }
+  /** Adds a forwarded row to the definition this graph is the subgraph of. `key` is a `NodePropName`. */
+  | {
+      op: 'expose';
+      kind: 'prop' | 'nodeUI';
+      node: GraphId;
+      key?: string;
+      label?: string;
+      at?: number;
+    }
+  | { op: 'unexpose'; index: number }
+  | { op: 'reorderExposed'; from: number; to: number }
+  | { op: 'repointExposed'; index: number; node: GraphId; key?: string }
+  /** Declares a boundary socket of a registered socket type on the definition. */
+  | { op: 'addBoundary'; dir: SocketDir; key: string; type: string }
+  | { op: 'removeBoundary'; dir: SocketDir; key: string }
+  /** Replaces the graph from a description; `groups` is the library its instances build against. */
+  | { op: 'apply'; description: unknown; groups?: ReadonlyMap<string, GroupDef> };
 
 /** One node's new position in graph space. */
 export interface GenNodeMove {
@@ -43,6 +101,8 @@ export interface GenApplied {
   graph: Graph;
   /** The node the edit created, which a host reports and selects. */
   node?: GraphId;
+  /** The definitions the edit created, which the host writes beside the graph. */
+  definitions?: { ref: string; def: GroupDef }[];
 }
 
 export interface GenEditDecision {
@@ -91,12 +151,33 @@ export function decideGenEdit(graph: Graph, edit: GenEdit): GenEditResult {
       return decideSetActive(graph, edit);
     case 'moveNodes':
       return decideMove(graph, edit);
+    case 'createGroup':
+      return decideCreateGroup(graph, edit);
+    case 'ungroup':
+      return decideUngroup(graph, edit);
+    case 'addGroup':
+      return decideAddGroup(graph, edit);
+    case 'expose':
+      return decideExpose(graph, edit);
+    case 'unexpose':
+      return decideUnexpose(graph, edit);
+    case 'reorderExposed':
+      return decideReorder(graph, edit);
+    case 'repointExposed':
+      return decideRepoint(graph, edit);
+    case 'addBoundary':
+      return decideAddBoundary(graph, edit);
+    case 'removeBoundary':
+      return decideRemoveBoundary(graph, edit);
     case 'apply':
       return decideApply(graph, edit);
   }
 }
 
 function decideAdd(graph: Graph, edit: GenEdit & { op: 'addNode' }): GenEditResult {
+  const refused = graph.structuralEditsRefused();
+  if (refused !== undefined) return refuse(refused);
+
   const cls = genNodeTypes().get(edit.type);
   if (cls === undefined) {
     return refuse(
@@ -111,12 +192,7 @@ function decideAdd(graph: Graph, edit: GenEdit & { op: 'addNode' }): GenEditResu
     note: `Adds a ${uiName} node.`,
     apply: () => {
       const node = new cls();
-      if (edit.pos === undefined) {
-        placeNewNodes(graph.nodes, [node]);
-      } else {
-        node.pos[0] = edit.pos[0];
-        node.pos[1] = edit.pos[1];
-      }
+      place(graph, node, edit.pos);
       graph.add(node);
       return { graph, node: node.id };
     },
@@ -125,49 +201,42 @@ function decideAdd(graph: Graph, edit: GenEdit & { op: 'addNode' }): GenEditResu
 
 /**
  * Copies a node with a freshly allocated id, so the copy starts with no run journal of its own —
- * its hash has never matched a record, and it runs the first time the graph does. Only the
- * source's explicitly authored values travel; links do not, the same as path.ux's own duplicate.
+ * its hash has never matched a record, and it runs the first time the graph does. Links do not
+ * travel, the same as path.ux's own duplicate; an instance's ref and overrides do.
  */
 function decideDuplicate(graph: Graph, edit: GenEdit & { op: 'duplicateNode' }): GenEditResult {
-  const source = graph.nodeIdMap.get(edit.node);
-  if (source === undefined) {
-    return refuse(missing(edit.node));
-  }
+  const source = resolveNodeKey(graph, edit.node);
+  if (source === undefined) return refuse(missing(edit.node));
+  const refused = structuralRefusal(graph, source);
+  if (refused !== undefined) return refuse(refused);
 
   return {
     ok: true,
     note: `Adds a copy of the ${nameOf(source)} node.`,
     apply: () => {
-      const node = new (source.constructor as NodeTypeConstructor)();
-      copyAuthoredValues(source, node);
-      if (edit.pos === undefined) {
-        placeNewNodes(graph.nodes, [node]);
-      } else {
-        node.pos[0] = edit.pos[0];
-        node.pos[1] = edit.pos[1];
-      }
+      const node = cloneNode(source);
+      place(graph, node, edit.pos);
       graph.add(node);
       return { graph, node: node.id };
     },
   };
 }
 
-/** Carries every value `source` has explicitly set onto a freshly built node of the same type. */
-function copyAuthoredValues(source: Node, node: Node): void {
-  for (const key of nodePropKeys(source)) {
-    const from = nodePropTarget(source, key);
-    if (from?.wasSet !== true) {
-      continue;
-    }
-    nodePropTarget(node, key)?.setValue(from.getValue());
+/** Puts a new node where the edit asks, or clear of everything already placed. */
+function place(graph: Graph, node: Node, pos: readonly [number, number] | undefined): void {
+  if (pos === undefined) {
+    placeNewNodes(graph.nodes, [node]);
+  } else {
+    node.pos[0] = pos[0];
+    node.pos[1] = pos[1];
   }
 }
 
 function decideRemove(graph: Graph, edit: GenEdit & { op: 'removeNode' }): GenEditResult {
-  const node = graph.nodeIdMap.get(edit.node);
-  if (node === undefined) {
-    return refuse(missing(edit.node));
-  }
+  const node = resolveNodeKey(graph, edit.node);
+  if (node === undefined) return refuse(missing(edit.node));
+  const refused = structuralRefusal(graph, node);
+  if (refused !== undefined) return refuse(refused);
 
   const links = linkCount(node);
   const carried = links === 0 ? '' : ` and the ${plural(links, 'link')} it carries`;
@@ -182,10 +251,12 @@ function decideRemove(graph: Graph, edit: GenEdit & { op: 'removeNode' }): GenEd
 }
 
 function decideLink(graph: Graph, edit: GenEdit & { op: 'link' }): GenEditResult {
-  const from = graph.nodeIdMap.get(edit.from);
-  const to = graph.nodeIdMap.get(edit.to);
+  const from = resolveNodeKey(graph, edit.from);
+  const to = resolveNodeKey(graph, edit.to);
   if (from === undefined) return refuse(missing(edit.from));
   if (to === undefined) return refuse(missing(edit.to));
+  const refused = structuralRefusal(graph, from) ?? structuralRefusal(graph, to);
+  if (refused !== undefined) return refuse(refused);
 
   const src = from.outputs[edit.fromSocket];
   if (src === undefined) {
@@ -219,8 +290,10 @@ function decideLink(graph: Graph, edit: GenEdit & { op: 'link' }): GenEditResult
 }
 
 function decideUnlink(graph: Graph, edit: GenEdit & { op: 'unlink' }): GenEditResult {
-  const to = graph.nodeIdMap.get(edit.to);
+  const to = resolveNodeKey(graph, edit.to);
   if (to === undefined) return refuse(missing(edit.to));
+  const refused = structuralRefusal(graph, to);
+  if (refused !== undefined) return refuse(refused);
 
   const dst = to.inputs[edit.toSocket];
   if (dst === undefined) {
@@ -242,7 +315,7 @@ function decideUnlink(graph: Graph, edit: GenEdit & { op: 'unlink' }): GenEditRe
     };
   }
 
-  const from = graph.nodeIdMap.get(edit.from);
+  const from = resolveNodeKey(graph, edit.from);
   if (from === undefined) return refuse(missing(edit.from));
 
   const src = edit.fromSocket === undefined ? undefined : from.outputs[edit.fromSocket];
@@ -272,7 +345,7 @@ function resolveNodeProp(node: Node, key: string): ToolProperty | undefined {
 }
 
 function decideSetProp(graph: Graph, edit: GenEdit & { op: 'setProp' }): GenEditResult {
-  const node = graph.nodeIdMap.get(edit.node);
+  const node = resolveNodeKey(graph, edit.node);
   if (node === undefined) return refuse(missing(edit.node));
 
   const prop = resolveNodeProp(node, edit.key);
@@ -320,8 +393,13 @@ export function slotRefusal(said: string): string | undefined {
 }
 
 function decideSetActive(graph: Graph, edit: GenEdit & { op: 'setActiveOutput' }): GenEditResult {
-  const node = graph.nodeIdMap.get(edit.node);
+  const node = resolveNodeKey(graph, edit.node);
   if (node === undefined) return refuse(missing(edit.node));
+  if (node.graph !== graph) {
+    return refuse(
+      `the ${nameOf(node)} node sits inside a group, and an active output belongs to the graph itself`,
+    );
+  }
 
   const key = genNodeSpec(node.def.typeName)?.slotProp;
   const active = node.props.active;
@@ -358,6 +436,7 @@ function claims(node: Node, slot: string): boolean {
 /**
  * Decides a drag. Every node named must exist and land on a finite position, because the whole
  * drag is written as one edit and a graph half-moved reads as a layout the author never made.
+ * A node inside an instance cannot be moved: its layout is the definition's.
  */
 function decideMove(graph: Graph, edit: GenEdit & { op: 'moveNodes' }): GenEditResult {
   if (edit.moves.length === 0) return refuse('this move names no node');
@@ -366,9 +445,14 @@ function decideMove(graph: Graph, edit: GenEdit & { op: 'moveNodes' }): GenEditR
   const moved: { node: Node; x: number; y: number }[] = [];
 
   for (const move of edit.moves) {
-    const node = graph.nodeIdMap.get(move.node);
+    const node = resolveNodeKey(graph, move.node);
     if (node === undefined) {
       problems.push(missing(move.node));
+      continue;
+    }
+    const refused = structuralRefusal(graph, node);
+    if (refused !== undefined) {
+      problems.push(refused);
       continue;
     }
     if (!Number.isFinite(move.x) || !Number.isFinite(move.y)) {
@@ -396,8 +480,265 @@ function decideMove(graph: Graph, edit: GenEdit & { op: 'moveNodes' }): GenEditR
   };
 }
 
+/**
+ * Decides a grouping. The output node stays at the root, because it is the graph's binding to
+ * its slot rather than a step in drawing the picture; everything else the cut allows may go.
+ */
+function decideCreateGroup(graph: Graph, edit: GenEdit & { op: 'createGroup' }): GenEditResult {
+  if (!isGraphSlug(edit.ref)) return refuse(badRef(edit.ref));
+
+  const plan = groupPlan(graph, edit.nodes);
+  if (isRefusal(plan)) return refuse(plan.refusal);
+
+  const output = plan.nodes.find((n) => genNodeSpec(n.def.typeName)?.slotProp !== undefined);
+  if (output !== undefined) {
+    return refuse(
+      `the ${nameOf(output)} node fills a slot for the whole graph, so it stays at the root rather than inside a group`,
+    );
+  }
+
+  const what =
+    plan.nodes.length === 1
+      ? `the ${nameOf(plan.nodes[0]!)} node`
+      : plural(plan.nodes.length, 'node');
+  return {
+    ok: true,
+    note: `Groups ${what} into '${edit.ref}'.`,
+    apply: () => {
+      const created = createGroup(graph, edit.nodes, edit.ref);
+      return { graph, node: created.node.id, definitions: [{ ref: edit.ref, def: created.def }] };
+    },
+  };
+}
+
+function decideUngroup(graph: Graph, edit: GenEdit & { op: 'ungroup' }): GenEditResult {
+  const node = resolveNodeKey(graph, edit.node);
+  if (node === undefined) return refuse(missing(edit.node));
+  if (!(node instanceof GroupNode)) return refuse(`the ${nameOf(node)} node is not a group`);
+  const refused = structuralRefusal(graph, node);
+  if (refused !== undefined) return refuse(refused);
+  if (node.definition === undefined) {
+    return refuse(`group '${node.ref}' has not loaded, so there is nothing to inline`);
+  }
+
+  const inner = node.subgraph.nodes.filter((n) => !isProxy(n)).length;
+  return {
+    ok: true,
+    note: `Inlines the ${plural(inner, 'node')} of group '${node.ref}' where the instance stands.`,
+    apply: () => {
+      const done = ungroup(graph, node);
+      if (isRefusal(done)) throw new Error(done.refusal);
+      return { graph };
+    },
+  };
+}
+
+function decideAddGroup(graph: Graph, edit: GenEdit & { op: 'addGroup' }): GenEditResult {
+  const refused = graph.structuralEditsRefused();
+  if (refused !== undefined) return refuse(refused);
+  if (!isGraphSlug(edit.ref)) return refuse(badRef(edit.ref));
+
+  const host = definitionOfSubgraph(graph);
+  if (host !== undefined && edit.def !== undefined && GroupNode.chainContains(edit.def, host)) {
+    return refuse('a group cannot contain itself, directly or through another group');
+  }
+
+  return {
+    ok: true,
+    note: `Adds an instance of group '${edit.ref}'.`,
+    apply: () => {
+      const node = new GroupNode();
+      node.ref = edit.ref;
+      place(graph, node, edit.pos);
+      graph.add(node);
+      if (edit.def !== undefined) {
+        node.setDefinition(edit.ref, edit.def);
+        node.syncToDefinition();
+      }
+      return { graph, node: node.id };
+    },
+  };
+}
+
+/** The definition this graph is the subgraph of, or the sentence refusing a definition edit. */
+function definitionOf(graph: Graph): GroupDef | string {
+  return (
+    definitionOfSubgraph(graph) ??
+    'this graph is not a group definition, so it has no boundary or forwarded rows to edit'
+  );
+}
+
+/** Checks what a forwarded row would point at, answering the refusal when it points at nothing. */
+function targetRefusal(
+  def: GroupDef,
+  kind: 'prop' | 'nodeUI',
+  nodeId: GraphId,
+  key: string | undefined,
+): { node: Node } | string {
+  const node = def.subgraph.nodeIdMap.get(nodeId);
+  if (node === undefined) return `the group holds no node ${String(nodeId)}`;
+  if (isProxy(node)) return "the group's own input and output nodes have nothing to expose";
+  if (
+    kind === 'prop' &&
+    nodePropTarget(node, (key ?? '') as unknown as NodePropName) === undefined
+  ) {
+    return `the ${nameOf(node)} node has no property '${key ?? ''}'`;
+  }
+  return { node };
+}
+
+function decideExpose(graph: Graph, edit: GenEdit & { op: 'expose' }): GenEditResult {
+  const def = definitionOf(graph);
+  if (typeof def === 'string') return refuse(def);
+
+  const target = targetRefusal(def, edit.kind, edit.node, edit.key);
+  if (typeof target === 'string') return refuse(target);
+  const key = edit.kind === 'prop' ? (edit.key ?? '') : '';
+  if (
+    def.exposed.some(
+      (e) => e.kind === edit.kind && e.nodeId === edit.node && String(e.propKey) === key,
+    )
+  ) {
+    return refuse('that is already exposed');
+  }
+  if (edit.at !== undefined && (edit.at < 0 || edit.at > def.exposed.length)) {
+    return refuse(`there is no row ${edit.at} to insert at`);
+  }
+
+  const what =
+    edit.kind === 'prop'
+      ? `'${key}' of the ${nameOf(target.node)} node`
+      : `the ${nameOf(target.node)} node's controls`;
+  return {
+    ok: true,
+    note: `Exposes ${what} on every instance of the group.`,
+    apply: () => {
+      const req = {
+        kind: edit.kind,
+        nodeId: edit.node,
+        ...(edit.key === undefined ? {} : { propKey: edit.key }),
+        ...(edit.label === undefined ? {} : { label: edit.label }),
+      };
+      const done = exposeEntry(def, req, edit.at);
+      if (isRefusal(done)) throw new Error(done.refusal);
+      return { graph };
+    },
+  };
+}
+
+function decideUnexpose(graph: Graph, edit: GenEdit & { op: 'unexpose' }): GenEditResult {
+  const def = definitionOf(graph);
+  if (typeof def === 'string') return refuse(def);
+  const entry = def.exposed[edit.index];
+  if (entry === undefined) return refuse(noRow(edit.index));
+
+  return {
+    ok: true,
+    note: `Stops forwarding ${rowName(def, entry)} to the group's instances.`,
+    apply: () => {
+      const done = removeEntry(def, edit.index);
+      if (isRefusal(done)) throw new Error(done.refusal);
+      return { graph };
+    },
+  };
+}
+
+function decideReorder(graph: Graph, edit: GenEdit & { op: 'reorderExposed' }): GenEditResult {
+  const def = definitionOf(graph);
+  if (typeof def === 'string') return refuse(def);
+  const entry = def.exposed[edit.from];
+  if (entry === undefined) return refuse(noRow(edit.from));
+  if (edit.to < 0 || edit.to >= def.exposed.length) return refuse(noRow(edit.to));
+
+  return {
+    ok: true,
+    note: `Moves ${rowName(def, entry)} to row ${edit.to + 1} of the group's controls.`,
+    apply: () => {
+      const done = reorderEntry(def, edit.from, edit.to);
+      if (done !== undefined) throw new Error(done.refusal);
+      return { graph };
+    },
+  };
+}
+
+function decideRepoint(graph: Graph, edit: GenEdit & { op: 'repointExposed' }): GenEditResult {
+  const def = definitionOf(graph);
+  if (typeof def === 'string') return refuse(def);
+  const entry = def.exposed[edit.index];
+  if (entry === undefined) return refuse(noRow(edit.index));
+
+  const target = targetRefusal(def, entry.kind, edit.node, edit.key);
+  if (typeof target === 'string') return refuse(target);
+
+  const at =
+    entry.kind === 'prop'
+      ? `'${edit.key ?? ''}' of the ${nameOf(target.node)} node`
+      : `the ${nameOf(target.node)} node`;
+  return {
+    ok: true,
+    note: `Points ${rowName(def, entry)} at ${at}.`,
+    apply: () => {
+      const done = repointEntry(def, edit.index, edit.node, edit.key);
+      if (isRefusal(done)) throw new Error(done.refusal);
+      return { graph };
+    },
+  };
+}
+
+function decideAddBoundary(graph: Graph, edit: GenEdit & { op: 'addBoundary' }): GenEditResult {
+  const def = definitionOf(graph);
+  if (typeof def === 'string') return refuse(def);
+  if (edit.key === '') return refuse('a boundary socket needs a name');
+  if (getSocketClass(edit.type) === undefined) {
+    return refuse(`there is no socket type '${edit.type}' registered here`);
+  }
+  const side = edit.dir === 'in' ? def.inputs : def.outputs;
+  if (edit.key in side) {
+    return refuse(`the group already has an ${sideName(edit.dir)} named '${edit.key}'`);
+  }
+
+  return {
+    ok: true,
+    note: `Adds a '${edit.type}' ${sideName(edit.dir)} named '${edit.key}' to the group.`,
+    apply: () => {
+      const done = addBoundary(def, edit.dir, edit.key, edit.type);
+      if (isRefusal(done)) throw new Error(done.refusal);
+      return { graph };
+    },
+  };
+}
+
+function decideRemoveBoundary(
+  graph: Graph,
+  edit: GenEdit & { op: 'removeBoundary' },
+): GenEditResult {
+  const def = definitionOf(graph);
+  if (typeof def === 'string') return refuse(def);
+  const side = edit.dir === 'in' ? def.inputs : def.outputs;
+  if (!(edit.key in side)) {
+    return refuse(`the group has no ${sideName(edit.dir)} named '${edit.key}'`);
+  }
+
+  const proxy =
+    edit.dir === 'in' ? def.inputNode().outputs[edit.key] : def.outputNode().inputs[edit.key];
+  const links = proxy?.edges.length ?? 0;
+  const severed = links === 0 ? '' : ` and severs the ${plural(links, 'link')} into it`;
+  return {
+    ok: true,
+    note: `Removes the group's ${sideName(edit.dir)} '${edit.key}'${severed}; every instance loses the socket.`,
+    apply: () => {
+      const done = removeBoundary(def, edit.dir, edit.key);
+      if (isRefusal(done)) throw new Error(done.refusal);
+      return { graph };
+    },
+  };
+}
+
 function decideApply(graph: Graph, edit: GenEdit & { op: 'apply' }): GenEditResult {
-  const result = applyGraphDSL(graph, edit.description);
+  const refused = graph.structuralEditsRefused();
+  if (refused !== undefined) return refuse(refused);
+
+  const result = applyGraphDSL(graph, edit.description, edit.groups);
   const first = result.diagnostics[0];
   if (first !== undefined) {
     const rest = result.diagnostics.length - 1;
@@ -434,7 +775,7 @@ export function readGenPropValue(
   key: string,
   text: string,
 ): GenPropRead {
-  const target = graph.nodeIdMap.get(node);
+  const target = resolveNodeKey(graph, node);
   if (target === undefined) return { ok: false, reason: missing(node) };
 
   const prop = resolveNodeProp(target, key);
@@ -503,6 +844,15 @@ function reachesUpstream(from: Node, target: Node): boolean {
   return false;
 }
 
+/** path.ux's refusal where the node's own graph takes value edits only, else undefined. */
+function structuralRefusal(graph: Graph, node: Node): string | undefined {
+  return (node.graph ?? graph).structuralEditsRefused();
+}
+
+function isProxy(node: Node): boolean {
+  return node instanceof GroupInputNode || node instanceof GroupOutputNode;
+}
+
 function linkCount(node: Node): number {
   const sockets: NodeSocketBase[] = [...Object.values(node.inputs), ...Object.values(node.outputs)];
   return sockets.reduce((total, sock) => total + sock.edges.length, 0);
@@ -511,6 +861,26 @@ function linkCount(node: Node): number {
 function nameOf(node: Node): string {
   const named = typeof node.def.uiName === 'function' ? node.def.uiName(node) : node.def.uiName;
   return node.label ?? named ?? node.def.typeName;
+}
+
+/** A forwarded row as the note names it: its label, else what it points at. */
+function rowName(def: GroupDef, entry: ExposedEntry): string {
+  if (entry.label !== undefined && entry.label !== '') return `the '${entry.label}' row`;
+  const node = def.subgraph.nodeIdMap.get(entry.nodeId);
+  const owner = node === undefined ? `node ${String(entry.nodeId)}` : `the ${nameOf(node)} node`;
+  return entry.kind === 'prop' ? `'${String(entry.propKey)}' of ${owner}` : `${owner}'s controls`;
+}
+
+function sideName(dir: SocketDir): string {
+  return dir === 'in' ? 'input' : 'output';
+}
+
+function badRef(ref: string): string {
+  return `'${ref}' is not a group name; use letters, digits and dashes`;
+}
+
+function noRow(index: number): string {
+  return `the group has no forwarded row ${index}`;
 }
 
 function missing(id: GraphId): string {

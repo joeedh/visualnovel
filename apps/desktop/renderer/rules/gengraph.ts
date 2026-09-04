@@ -227,5 +227,9 @@ export function commandFor(slug: string, edit: GenEdit): GenCommand {
         id: 'gengraph.apply',
         props: { slug, description: JSON.stringify(edit.description) },
       };
+    default:
+      // The group edits gain their commands with the pane that sends them; nothing here
+      // produces one yet.
+      throw new Error(`'${edit.op}' has no command yet`);
   }
 }

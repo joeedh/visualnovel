@@ -13,6 +13,8 @@
 export * from 'pathux-graph';
 
 export * from './registry.js';
+export * from './nodekey.js';
+export * from './slug.js';
 export * from './services.js';
 export * from './graphfile.js';
 export * from './migrate.js';
