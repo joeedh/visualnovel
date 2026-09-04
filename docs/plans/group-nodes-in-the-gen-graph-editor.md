@@ -1,6 +1,6 @@
 # Group nodes in the Gen Graph editor
 
-Status: **in progress** (D1 and D2 done 2026-09-04; D3–D4 open). The Gen Graph pane gains groups: an author selects nodes and presses
+Status: **in progress** (D1–D3 done 2026-09-04; D4 open). The Gen Graph pane gains groups: an author selects nodes and presses
 Ctrl+G or picks Edit ▸ Create Group, and the selection becomes a definition file under
 `vngen/work/graphs/lib/` with an instance standing in its place; entering the instance edits
 that file, and every graph that instances it follows. The editor gestures, the ops, the
@@ -335,6 +335,43 @@ definition file this pane did not write reloads; one this pane wrote does not; a
   predicate, so D3 has one call to make.
 - `anchors.json` was re-swept against `examples/mySampleRepo` because the coverage test pins
   the command list; the ten new commands are palette-only until D3 draws their controls.
+
+**D3 status: done, 2026-09-04.** Landed as written, with these deviations:
+
+- `renderer/rules/gengraph.ts` addresses an edit with an `EditTarget` — `slug`, the `group`
+  a definition level is inside, and the instance-id `prefix` a node key carries — read off
+  the view's descent by `targetFor`. A definition level has an empty prefix, since the
+  definition's ids are its own; inside an instance the prefix is the instance chain.
+- `GenEdit.createGroup.ref` became optional in `@vn/gengraph`, so the pane can judge a
+  grouping against its own copy without a ref; `apply` throws without one, and only main,
+  which allocates the ref, applies it. A ref the gesture carried is sent as `name`.
+- A forwarded row on a group instance's frame binds an inner node of the instance's own
+  copy, so the pane also listens to those, under the key `<instance>/<id>`; the resulting
+  `setProp` names that key, which is the override decision 3 describes. The same key form is
+  what `decideGenEdit` resolves against the level's graph, so `weigh` needs no second path.
+- `DocSync` per path, as decision 8 said, with one pane-wide gate: while any write is
+  outstanding every echo is passed over, and an undo's version-less echo is noted as stale so
+  the settling write re-reads. A reload also marks each sync caught up to the latest version
+  reported, so a foreign write seen once does not reload on every later settle.
+- The saved level is one struct field, `descentJson`, holding the slug it was saved in as
+  well as the descent, and it is applied only to a read of that slug; the pane hosts the bare
+  view, so `saveData`/`loadData` was not needed.
+- The group designer sits beside the canvas inside the pane rather than in a dock panel,
+  because the pane's surface is a plain element and path.ux's panel manager is `NodeEditor`'s.
+- The Group and Ungroup buttons re-record their anchors whenever the selection or the level
+  changes, so the tour's record and the disabled tooltip both carry the refusal current for
+  the selection. The Edit menu's four entries reach the active pane through `paneToUse` and a
+  type-only import of the editor, so header and pane stay uncoupled at runtime.
+- Verified live over CDP against `examples/test4`'s `probe` graph: grouping the template
+  node wrote `lib/group-1.json` and the graph and the ack reloaded the pane with the
+  instance selected; entering the definition showed the designer, the crumbs and the
+  definition's own watches; exposing `template` sent `gengraph.expose(group='group-1' …)` and
+  applied without a reload; leaving showed the instance's forwarded row, and writing it sent
+  `gengraph.setProp(… node='4/3' …)`, which landed in the instance's subgraph; ungroup inlined
+  the node, and undo put the instance back through the version-less echo. The tests the plan
+  named for the pane's reload behaviour are those observations; the version rules behind them
+  are unit-tested in `rules/tests/gengraph.test.ts`.
+- The anchors sweep is left to D4, with the docs, since D4 re-runs it anyway.
 
 ### Stage D4 — docs and the tour sweep
 

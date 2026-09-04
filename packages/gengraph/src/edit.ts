@@ -64,8 +64,12 @@ export type GenEdit =
   | { op: 'setActiveOutput'; node: GraphId }
   /** Where nodes now sit. One drag moves every node it caught, so a move takes a list. */
   | { op: 'moveNodes'; moves: readonly GenNodeMove[] }
-  /** Moves the named nodes into a new definition under `ref` and puts an instance in their place. */
-  | { op: 'createGroup'; nodes: readonly GraphId[]; ref: string }
+  /**
+   * Moves the named nodes into a new definition under `ref` and puts an instance in their place.
+   * Without `ref` the edit can be judged but not applied: a host that allocates refs elsewhere
+   * judges it before sending, and only the allocating side applies it.
+   */
+  | { op: 'createGroup'; nodes: readonly GraphId[]; ref?: string }
   /** Inlines a copy of an instance's subgraph, overrides included, where the instance stood. */
   | { op: 'ungroup'; node: GraphId }
   /** Adds an instance of `ref`. With `def` given it is bound at once; otherwise the caller resolves it. */
@@ -485,7 +489,8 @@ function decideMove(graph: Graph, edit: GenEdit & { op: 'moveNodes' }): GenEditR
  * its slot rather than a step in drawing the picture; everything else the cut allows may go.
  */
 function decideCreateGroup(graph: Graph, edit: GenEdit & { op: 'createGroup' }): GenEditResult {
-  if (!isGraphSlug(edit.ref)) return refuse(badRef(edit.ref));
+  const ref = edit.ref;
+  if (ref !== undefined && !isGraphSlug(ref)) return refuse(badRef(ref));
 
   const plan = groupPlan(graph, edit.nodes);
   if (isRefusal(plan)) return refuse(plan.refusal);
@@ -503,10 +508,11 @@ function decideCreateGroup(graph: Graph, edit: GenEdit & { op: 'createGroup' }):
       : plural(plan.nodes.length, 'node');
   return {
     ok: true,
-    note: `Groups ${what} into '${edit.ref}'.`,
+    note: ref === undefined ? `Groups ${what}.` : `Groups ${what} into '${ref}'.`,
     apply: () => {
-      const created = createGroup(graph, edit.nodes, edit.ref);
-      return { graph, node: created.node.id, definitions: [{ ref: edit.ref, def: created.def }] };
+      if (ref === undefined) throw new Error('a group is created under a ref, and none was given');
+      const created = createGroup(graph, edit.nodes, ref);
+      return { graph, node: created.node.id, definitions: [{ ref, def: created.def }] };
     },
   };
 }

@@ -149,9 +149,14 @@ const VnTheme = {
     'box-shadow': POPUP_SHADOW,
   },
 
+  // A group instance carries the warm accent, because a group is the author's own structure;
+  // the boundary nodes inside a definition are chrome, and read as such.
   nodeframe: {
     DefaultText: small,
     HeaderBG: alpha(TOKENS.inkSunken, 0.95),
+    GroupAccent: TOKENS.sodium,
+    GroupHeaderBG: alpha(TOKENS.sodium, 0.22),
+    ProxyHeaderBG: alpha(TOKENS.mist, 0.14),
     SelectOutline: TOKENS.signal,
     SocketText: font(11, TOKENS.mist),
     SocketHitExpand: 5,
@@ -162,11 +167,19 @@ const VnTheme = {
     'border-radius': TOKENS.radiusChrome,
   },
 
-  // The pan area behind the frames, sunken because the frames sit above it.
+  // The pan area behind the frames, sunken because the frames sit above it. The breadcrumb strip
+  // above it colours the level: a definition in the warm accent, since editing one is the
+  // author's act on every instance, and an instance in the dim ink of something read more than
+  // written.
   nodegraphview: {
     BoxSelectBG: alpha(TOKENS.signal, 0.12),
     BoxSelectBorder: TOKENS.signal,
+    CrumbBG: TOKENS.inkRaised,
+    CrumbFont: font(11, TOKENS.mist),
+    CrumbActiveFont: font(11, TOKENS.paper),
     ErrorColor: TOKENS.vermilion,
+    LevelDefinitionColor: TOKENS.sodium,
+    LevelInstanceColor: TOKENS.mistDim,
     'background-color': TOKENS.inkSunken,
   },
 

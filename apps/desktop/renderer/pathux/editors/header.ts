@@ -1,4 +1,12 @@
-import { AreaFlags, Menu, createMenu, type Container, type Label, type MenuTemplate } from 'pathux';
+import {
+  AreaFlags,
+  Menu,
+  createMenu,
+  type Container,
+  type Label,
+  type MenuTemplate,
+  type ScreenArea,
+} from 'pathux';
 import { TEXT_MODELS } from '@vn/types';
 import { isLive } from '../../api.js';
 import {
@@ -45,8 +53,15 @@ import { openNotifications } from '../chrome/notifications.js';
 import { rectOf } from '../chrome/popup.js';
 import { openPalette } from '../chrome/palette.js';
 import { seedReport } from '../agent/reportconvo.js';
-import { paneToUse } from '../panes/panes.js';
+import { NO_PANE, paneToUse } from '../panes/panes.js';
 import { panesOf } from '../panes/view.js';
+import type { GenGraphEditor } from './nodes.js';
+
+/** What the Edit menu's group entries ask of a Gen Graph pane. Type-only, so no import cycle. */
+type GroupActions = Pick<
+  GenGraphEditor,
+  'groupSelected' | 'ungroupSelected' | 'enterGroup' | 'exitGroup'
+>;
 
 /** The bar's fixed height. It is locked at both ends, so this is also its minimum. */
 export const HEADER_HEIGHT = 34;
@@ -667,12 +682,14 @@ export class VnHeaderEditor extends VnEditor {
   }
 
   /**
-   * Undo, redo, and the pass that finishes the art.
+   * Undo, redo, the group entries, and the pass that finishes the art.
    *
    * Undo and redo are also on the app menu and on two buttons in this same bar — three ways to
    * reach one act, deliberately: an author looking for undo looks under Edit, and a menu called
-   * Edit without it would read as broken. Only `pipeline.approveAndRun` is unique to this menu,
-   * because it is the one act that changes the project wholesale rather than a piece of it.
+   * Edit without it would read as broken. The group entries act on the Gen Graph pane that is the
+   * active one, the same pane its own keys would reach. Only `pipeline.approveAndRun` is unique to
+   * this menu, because it is the one act that changes the project wholesale rather than a piece
+   * of it.
    */
   private editMenu(): MenuTemplate {
     return [
@@ -689,6 +706,32 @@ export class VnHeaderEditor extends VnEditor {
         tooltip: 'Reapply the act that was just undone',
       },
       Menu.SEP,
+      {
+        name: 'Create Group',
+        callback: () => this.withGenGraph((pane) => pane.groupSelected()),
+        hotkey: 'Ctrl+G',
+        tooltip:
+          'Move the selected nodes of the active Gen Graph pane into a new group, and leave an ' +
+          'instance of it in their place',
+      },
+      {
+        name: 'Ungroup',
+        callback: () => this.withGenGraph((pane) => pane.ungroupSelected()),
+        hotkey: 'Ctrl+Alt+G',
+        tooltip: 'Put a copy of each selected group’s nodes where the instance stands',
+      },
+      {
+        name: 'Edit Group',
+        callback: () => this.withGenGraph((pane) => pane.enterGroup()),
+        hotkey: 'Tab',
+        tooltip: 'Open the selected group’s definition, which every instance of it follows',
+      },
+      {
+        name: 'Exit Group',
+        callback: () => this.withGenGraph((pane) => pane.exitGroup()),
+        tooltip: 'Go back up one level, to the graph the open group sits in',
+      },
+      Menu.SEP,
       // This opens a dialog rather than firing directly, because the command is `confirm`. The
       // dialog says how many pictures it is about to approve and how many tasks it is about to
       // run, which an author wants to read before an unattended pass spends real model calls.
@@ -700,6 +743,22 @@ export class VnHeaderEditor extends VnEditor {
           'is left to approve or generate. Spends real model calls.',
       },
     ];
+  }
+
+  /**
+   * Hands the active Gen Graph pane to a group entry, or says which pane the entries act on. The
+   * active pane is `paneToUse`'s: the one the pointer last entered, else the biggest.
+   */
+  private withGenGraph(act: (pane: GroupActions) => void): void {
+    const screen = (this.ctx as VnContext).state.screen;
+    const panes = screen ? panesOf(screen) : [];
+    const index = paneToUse(panes);
+    const area = index === NO_PANE ? undefined : (screen!.sareas as ScreenArea[])[index]?.area;
+    if (panes[index]?.editor !== 'gengraph' || area === undefined) {
+      say('The group entries act on a Gen Graph pane. Point at one first.', true);
+      return;
+    }
+    act(area as unknown as GroupActions);
   }
 
   /**

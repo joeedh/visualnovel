@@ -55,3 +55,18 @@
   min-height: 0;
   display: flex;
 }
+
+/* The group designer, beside the canvas at a definition level: the definition's sockets and the
+   rows it forwards. Its widgets are path.ux's own and style themselves. */
+.gg-designer {
+  flex: 0 0 260px;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px 8px;
+  border-left: 1px solid var(--ink-line);
+  background: var(--ink-raised);
+}
+
+.gg-designer[hidden] {
+  display: none;
+}

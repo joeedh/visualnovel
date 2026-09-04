@@ -1,7 +1,10 @@
 /**
  * What the Gen Graph pane turns a gesture into: the edit `decideGenEdit` judges, and the
- * `gengraph.*` command that carries it. Six of path.ux's gesture kinds have no command here and
- * are refused by name, so a gesture the application cannot write never reads as accepted.
+ * `gengraph.*` command that carries it. One of path.ux's gesture kinds has no command here and is
+ * refused by name, so a gesture the application cannot write never reads as accepted. An edit is
+ * addressed by the level the view is on: a definition level names its `group`, and a node inside
+ * an instance is named by the key main resolves, `<instance>/<id>`.
+ *
  * `DocSync` and `shouldReload` are the other half of the pane's rules: they track the document
  * versions its writes produce, so an echo of its own write does not make it re-read the file.
  *
@@ -9,8 +12,17 @@
  * node-only jest project runs it. `pathux` is imported type-only because jest resolves
  * `pathux-graph` and `pathux-toolprop` and not the widget barrel.
  */
-import { activeOutputs, genNodeSpec, type GenEdit, type Graph } from '@vn/gengraph';
-import type { GraphEdit } from 'pathux';
+import {
+  GroupNode,
+  activeOutputs,
+  genNodeSpec,
+  type GenEdit,
+  type Graph,
+  type GraphId,
+} from '@vn/gengraph';
+import type { DescentEntry, GraphEdit } from 'pathux';
+
+import { graphDocPath, graphGroupPath } from '../../src/shared/writes.js';
 
 /** One `gengraph.*` invocation, in the shape `exec` takes. */
 export interface GenCommand {
@@ -21,18 +33,77 @@ export interface GenCommand {
 export type GenEditFor = { ok: true; edit: GenEdit } | { ok: false; reason: string };
 
 /**
- * Why each gesture path.ux offers has no command here. Group exposure is refused because a
- * generation graph is one flat graph, and retyping is refused because a node's identity is what
+ * Where an edit made at one level of the view is written.
+ *
+ * `group` is the definition the level is inside, or empty for the graph itself. `prefix` is the
+ * instance ids between that document's own graph and the level on screen, so a node on screen is
+ * named to main as `prefix.join('/') + '/' + id`; it is empty at the root and at a definition
+ * level, where the ids are the document's own.
+ */
+export interface EditTarget {
+  slug: string;
+  group: string;
+  prefix: string[];
+}
+
+/**
+ * Why the one gesture path.ux offers with no command here has none: a node's identity is what
  * its journal is keyed by, and swapping the type in place would leave the journal describing a
  * node that no longer exists.
  */
 const UNSUPPORTED: Record<string, string> = {
   replaceNode: "changing a node's type is not offered here; remove it and add the type you want",
-  exposeEntry: 'a generation graph is one flat graph, so it has no group properties to expose',
-  reorderEntry: 'a generation graph is one flat graph, so it has no group properties to reorder',
-  repointEntry: 'a generation graph is one flat graph, so it has no group properties to repoint',
-  removeEntry: 'a generation graph is one flat graph, so it has no group properties to remove',
 };
+
+/**
+ * The target an edit at the end of `descent` writes to. Each step is looked up in the graph the
+ * previous one reached, the way the view walks its own level; a step that no longer resolves
+ * answers nothing, and the view is on no level either.
+ */
+export function targetFor(
+  slug: string,
+  root: Graph,
+  descent: readonly DescentEntry[],
+): EditTarget | undefined {
+  let graph = root;
+  let group = '';
+  let prefix: string[] = [];
+
+  for (const step of descent) {
+    const node = graph.nodeIdMap.get(step.nodeId);
+    if (!(node instanceof GroupNode)) return undefined;
+    if (step.into === 'definition') {
+      if (node.definition === undefined) return undefined;
+      group = node.ref;
+      prefix = [];
+      graph = node.definition.subgraph;
+    } else {
+      prefix = [...prefix, String(node.id)];
+      graph = node.subgraph;
+    }
+  }
+
+  return { slug, group, prefix };
+}
+
+/** How main is told which node an edit means: the level's own id, under its instance prefix. */
+export function keyOf(target: EditTarget, id: GraphId): string {
+  return [...target.prefix, String(id)].join('/');
+}
+
+/** The document a target's edits write, which is what its sync is keyed by. */
+export function docPathFor(target: EditTarget): string {
+  return target.group === '' ? graphDocPath(target.slug) : graphGroupPath(target.group);
+}
+
+/**
+ * The edits the pane cannot apply to its own copy: main allocates a group's ref, and an
+ * instance is unresolved until a definition is loaded. Each is sent first and shown when the
+ * acknowledgement reloads the graph.
+ */
+export function reloadsOnAck(op: GenEdit['op']): boolean {
+  return op === 'createGroup' || op === 'ungroup' || op === 'addGroup';
+}
 
 /**
  * The slots more than one active output claims. `bindSlots` leaves such a slot bound to no graph,
@@ -75,7 +146,7 @@ export function noActiveOutput(graph: Graph): boolean {
   return outputs.length > 0 && activeOutputs(graph).length === 0;
 }
 
-/** What a pane knows about the versions of the one document it is showing. */
+/** What a pane knows about the versions of one document it is showing or writing. */
 export interface DocSync {
   /** Writes this pane has sent and not yet had answered. */
   inflight: number;
@@ -85,12 +156,13 @@ export interface DocSync {
   latest: number;
   /**
    * Set when a write refused, which is the one case where the pane holds an edit the file never
-   * took: it applies an edit to its own copy before sending it.
+   * took: it applies an edit to its own copy before sending it. Set too for an edit the pane
+   * cannot apply itself, so the acknowledgement is what puts it on screen.
    */
   stale: boolean;
 }
 
-/** A pane that has shown nothing and written nothing. */
+/** A document the pane has shown nothing of and written nothing to. */
 export function newDocSync(): DocSync {
   return { inflight: 0, mine: 0, latest: 0, stale: false };
 }
@@ -114,7 +186,7 @@ export function shouldReload(sync: DocSync, incoming: number | undefined): boole
   return incoming > sync.mine;
 }
 
-/** Translates a UI gesture into a graph edit, refusing edit kinds this pane cannot write. */
+/** Translates a UI gesture into a graph edit, refusing the edit kind this pane cannot write. */
 export function genEditFor(edit: GraphEdit): GenEditFor {
   switch (edit.kind) {
     case 'moveNode':
@@ -129,6 +201,13 @@ export function genEditFor(edit: GraphEdit): GenEditFor {
         },
       };
     case 'addNode':
+      // A group instance is added by naming its definition; the type alone says nothing.
+      if (edit.nodeType === 'GroupNode') {
+        return {
+          ok: true,
+          edit: { op: 'addGroup', ref: edit.ref ?? '', pos: [edit.x, edit.y] },
+        };
+      }
       return { ok: true, edit: { op: 'addNode', type: edit.nodeType, pos: [edit.x, edit.y] } };
     case 'duplicateNode':
       return {
@@ -159,6 +238,50 @@ export function genEditFor(edit: GraphEdit): GenEditFor {
           fromSocket: edit.srcSocket,
         },
       };
+    case 'createGroup':
+      return {
+        ok: true,
+        edit: {
+          op: 'createGroup',
+          nodes: edit.nodeIds,
+          ...(edit.ref === undefined || edit.ref === '' ? {} : { ref: edit.ref }),
+        },
+      };
+    case 'ungroup':
+      return { ok: true, edit: { op: 'ungroup', node: edit.nodeId } };
+    case 'exposeEntry':
+      return {
+        ok: true,
+        edit: {
+          op: 'expose',
+          kind: edit.entry.kind,
+          node: edit.entry.nodeId,
+          ...(edit.entry.propKey === undefined ? {} : { key: edit.entry.propKey }),
+          ...(edit.entry.label === undefined ? {} : { label: edit.entry.label }),
+          ...(edit.at === undefined ? {} : { at: edit.at }),
+        },
+      };
+    case 'reorderEntry':
+      return { ok: true, edit: { op: 'reorderExposed', from: edit.from, to: edit.to } };
+    case 'repointEntry':
+      return {
+        ok: true,
+        edit: {
+          op: 'repointExposed',
+          index: edit.index,
+          node: edit.nodeId,
+          key: edit.propKey as unknown as string,
+        },
+      };
+    case 'removeEntry':
+      return { ok: true, edit: { op: 'unexpose', index: edit.index } };
+    case 'addBoundary':
+      return {
+        ok: true,
+        edit: { op: 'addBoundary', dir: edit.dir, key: edit.key, type: edit.socketType },
+      };
+    case 'removeBoundary':
+      return { ok: true, edit: { op: 'removeBoundary', dir: edit.dir, key: edit.key } };
     default:
       return { ok: false, reason: UNSUPPORTED[edit.kind] ?? `'${edit.kind}' is not offered here` };
   }
@@ -170,8 +293,15 @@ const at = (move: { x: number; y: number }): { x: number; y: number } => ({ x: m
  * The command one edit is written through. Three props carry something richer than a string
  * because `@vn/commands` has no JSON or list prop kind: a move list and a whole-graph description
  * are JSON text, and a property value is text the node's own property reads.
+ *
+ * A graph edit carries `group` only at a definition level, since the command's default is the
+ * graph itself; a definition edit carries it always, because it has no other subject.
  */
-export function commandFor(slug: string, edit: GenEdit): GenCommand {
+export function commandFor(target: EditTarget, edit: GenEdit): GenCommand {
+  const { slug, group } = target;
+  const inGroup: Record<string, string> = group === '' ? {} : { group };
+  const key = (id: GraphId): string => keyOf(target, id);
+
   switch (edit.op) {
     case 'moveNodes':
       return {
@@ -179,29 +309,34 @@ export function commandFor(slug: string, edit: GenEdit): GenCommand {
         props: {
           slug,
           moves: JSON.stringify(
-            edit.moves.map((move) => ({ node: String(move.node), x: move.x, y: move.y })),
+            edit.moves.map((move) => ({ node: key(move.node), x: move.x, y: move.y })),
           ),
+          ...inGroup,
         },
       };
     case 'addNode': {
       const [x, y] = edit.pos ?? [0, 0];
-      return { id: 'gengraph.addNode', props: { slug, type: edit.type, x, y } };
+      return { id: 'gengraph.addNode', props: { slug, type: edit.type, x, y, ...inGroup } };
     }
     case 'duplicateNode': {
       const [x, y] = edit.pos ?? [0, 0];
-      return { id: 'gengraph.duplicateNode', props: { slug, node: String(edit.node), x, y } };
+      return {
+        id: 'gengraph.duplicateNode',
+        props: { slug, node: key(edit.node), x, y, ...inGroup },
+      };
     }
     case 'removeNode':
-      return { id: 'gengraph.removeNode', props: { slug, node: String(edit.node) } };
+      return { id: 'gengraph.removeNode', props: { slug, node: key(edit.node), ...inGroup } };
     case 'link':
       return {
         id: 'gengraph.link',
         props: {
           slug,
-          from: String(edit.from),
+          from: key(edit.from),
           fromSocket: edit.fromSocket,
-          to: String(edit.to),
+          to: key(edit.to),
           toSocket: edit.toSocket,
+          ...inGroup,
         },
       };
     case 'unlink':
@@ -209,16 +344,17 @@ export function commandFor(slug: string, edit: GenEdit): GenCommand {
         id: 'gengraph.unlink',
         props: {
           slug,
-          to: String(edit.to),
+          to: key(edit.to),
           toSocket: edit.toSocket,
-          from: edit.from === undefined ? '' : String(edit.from),
+          from: edit.from === undefined ? '' : key(edit.from),
           fromSocket: edit.fromSocket ?? '',
+          ...inGroup,
         },
       };
     case 'setProp':
       return {
         id: 'gengraph.setProp',
-        props: { slug, node: String(edit.node), key: edit.key, value: String(edit.value) },
+        props: { slug, node: key(edit.node), key: edit.key, value: String(edit.value), ...inGroup },
       };
     case 'setActiveOutput':
       return { id: 'gengraph.setActiveOutput', props: { slug, node: String(edit.node) } };
@@ -227,9 +363,37 @@ export function commandFor(slug: string, edit: GenEdit): GenCommand {
         id: 'gengraph.apply',
         props: { slug, description: JSON.stringify(edit.description) },
       };
-    default:
-      // The group edits gain their commands with the pane that sends them; nothing here
-      // produces one yet.
-      throw new Error(`'${edit.op}' has no command yet`);
+    case 'createGroup':
+      return {
+        id: 'gengraph.createGroup',
+        props: { slug, nodes: edit.nodes.map(key).join(','), name: edit.ref ?? '', ...inGroup },
+      };
+    case 'ungroup':
+      return { id: 'gengraph.ungroup', props: { slug, node: key(edit.node), ...inGroup } };
+    case 'addGroup': {
+      const [x, y] = edit.pos ?? [0, 0];
+      return { id: 'gengraph.addGroup', props: { slug, ref: edit.ref, x, y, ...inGroup } };
+    }
+    case 'expose':
+      return {
+        id: 'gengraph.expose',
+        props: { group, node: key(edit.node), key: edit.key ?? '', label: edit.label ?? '' },
+      };
+    case 'unexpose':
+      return { id: 'gengraph.unexpose', props: { group, index: edit.index } };
+    case 'reorderExposed':
+      return { id: 'gengraph.reorderExposed', props: { group, from: edit.from, to: edit.to } };
+    case 'repointExposed':
+      return {
+        id: 'gengraph.repointExposed',
+        props: { group, index: edit.index, node: key(edit.node), key: edit.key ?? '' },
+      };
+    case 'addBoundary':
+      return {
+        id: 'gengraph.addBoundary',
+        props: { group, dir: edit.dir, key: edit.key, type: edit.type },
+      };
+    case 'removeBoundary':
+      return { id: 'gengraph.removeBoundary', props: { group, dir: edit.dir, key: edit.key } };
   }
 }
