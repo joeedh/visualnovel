@@ -1,6 +1,6 @@
 {
-  "sweptAt": "2026-09-04T13:50:46.161Z",
-  "gitSha": "1935ceed3432f460e16372211c7f6ab220cc5d15",
+  "sweptAt": "2026-09-04T14:26:45.397Z",
+  "gitSha": "fe05f9e8424fd4b21f402c96b23565b41efffccd",
   "under": {
     "project": "The Transfer Student",
     "selected": {
@@ -204,9 +204,11 @@
     "gate.approve",
     "gengraph.create",
     "gengraph.createForSlot",
+    "gengraph.createGroup",
     "gengraph.delete",
     "gengraph.estimate",
     "gengraph.run",
+    "gengraph.ungroup",
     "pipeline.run",
     "project.setArtStyle",
     "project.setKey",
@@ -598,6 +600,18 @@
       "form": true
     },
     {
+      "id": "gengraph.createGroup",
+      "editor": "gengraph",
+      "key": "cmd:gengraph.createGroup",
+      "refused": "Select the nodes to group first."
+    },
+    {
+      "id": "gengraph.ungroup",
+      "editor": "gengraph",
+      "key": "cmd:gengraph.ungroup",
+      "refused": "Select a group instance to ungroup."
+    },
+    {
       "id": "doc.write",
       "editor": "skills",
       "key": "cmd:doc.write",
@@ -977,14 +991,14 @@
     {
       "id": "project.setKey",
       "editor": "onboarding",
-      "key": "cmd:project.setKey#gemini",
+      "key": "cmd:project.setKey#anthropic",
       "supplies": ["key"],
       "refused": "Paste a key first"
     },
     {
       "id": "project.setKey",
       "editor": "onboarding",
-      "key": "cmd:project.setKey#anthropic",
+      "key": "cmd:project.setKey#gemini",
       "supplies": ["key"],
       "refused": "Paste a key first"
     },

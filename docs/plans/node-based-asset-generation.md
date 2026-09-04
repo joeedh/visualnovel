@@ -149,7 +149,10 @@ Each stage cites these by number. The full argument for each is in the research 
 3. **Plugins install by explicit confirmation and run trusted**, against a capability-only
    `services` API. A sandbox is a later harness change, not a v1 requirement.
 4. **Groups ship in v1**, from path.ux stage 5, loaded through the app's
-   `groupLoader`/`groupSaver` from `work/graphs/lib/<name>.json`.
+   `groupLoader`/`groupSaver` from `work/graphs/lib/<name>.json`. Carried out by
+   [`archive/group-nodes-in-the-gen-graph-editor.md`](archive/group-nodes-in-the-gen-graph-editor.md),
+   which replaced the saver with the `gengraph.*` commands' `group` prop: a definition is written
+   only by a command, and the renderer's loader reads it over `gengraph:group`.
 5. **A graph may carry several Output nodes**, each with a slot-key prop. Same-target
    outputs resolve Blender-style to an app-tracked active flag — document state written by
    a command. Editor-side selection mechanics wait for the pane.

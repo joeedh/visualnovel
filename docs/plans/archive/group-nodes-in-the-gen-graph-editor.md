@@ -1,16 +1,16 @@
 # Group nodes in the Gen Graph editor
 
-Status: **in progress** (D1–D3 done 2026-09-04; D4 open). The Gen Graph pane gains groups: an author selects nodes and presses
-Ctrl+G or picks Edit ▸ Create Group, and the selection becomes a definition file under
-`vngen/work/graphs/lib/` with an instance standing in its place; entering the instance edits
-that file, and every graph that instances it follows. The editor gestures, the ops, the
-level stack and the designer panel are path.ux's and are planned in
-[`../../vendor/path.ux/documentation/plans/group-node-authoring.md`](../../vendor/path.ux/documentation/plans/group-node-authoring.md)
+Status: **done** (D1–D4, 2026-09-04). The Gen Graph pane gains groups: an author selects
+nodes and presses Ctrl+G or picks Edit ▸ Create Group, and the selection becomes a definition
+file under `vngen/work/graphs/lib/` with an instance standing in its place; entering the
+instance edits that file, and every graph that instances it follows. The editor gestures, the
+ops, the level stack and the designer panel are path.ux's and are planned in
+[`../../../vendor/path.ux/documentation/plans/group-node-authoring.md`](../../../vendor/path.ux/documentation/plans/group-node-authoring.md)
 (the path.ux plan). This plan is the desktop half: what `@vn/gengraph` must know about a
 node inside a group, the `gengraph.*` commands the view's edits become, and the pane, menu
 and IPC that host it. It carries out decision 4 of
-[`node-based-asset-generation.md`](node-based-asset-generation.md), which shipped the file
-layout and the resolve pass but no way to make a group.
+[`../node-based-asset-generation.md`](../node-based-asset-generation.md), which shipped the
+file layout and the resolve pass but no way to make a group.
 
 <!-- toc -->
 
@@ -380,15 +380,28 @@ definition file this pane did not write reloads; one this pane wrote does not; a
   is `DocSync`, not the `onExec` skip it still describes), `desktop-app-shell.md` (the Edit
   menu), `pipeline-contracts.md` (the journal is keyed by node key), `desktopAppState.md`
   (a new graphs section covering `lib/`), `packages.md` (`@vn/gengraph/state`'s contents),
-  `api-map.md` (`nodekey.ts`), [`index.md`](index.md), and
+  `api-map.md` (`nodekey.ts`), [`../index.md`](../index.md), and
   `node-based-asset-generation.md`'s decision-4 row pointing here. The command tables are
   generated in D2.
 - The `anchors.json` sweep re-run per
-  [`../reference/guided-tours.md`](../reference/guided-tours.md), since the pane gains
+  [`../../reference/guided-tours.md`](../../reference/guided-tours.md), since the pane gains
   controls that record.
 - Verified live over CDP against `examples/test4`: create a group from two nodes, enter it,
   expose a prop, leave, see the instance's row, run the graph, read the journal keys.
 - On completion the index row flips and the file moves to `archive/`.
+
+**D4 status: done, 2026-09-04.** Landed as written, with these notes:
+
+- `api-map.md` does not exist under `docs/reference/`, although `CLAUDE.md` points at it, so
+  `nodekey.ts` is described in `packages.md`'s `@vn/gengraph` row instead. `vnauthor.md` gained
+  the sentence about `group: <ref>` in the DSL, which the D4 list did not name.
+- The run check against `examples/test4`'s `probe` graph, holding the group D3 made, journaled
+  the inner template as `nodeId: "4/3"` with the instance's override as its output. The image
+  node after it failed with `Gemini returned no image (gemini-2.5-flash-image)` under `--mock`,
+  the same failure the example's older journals hold from before this plan; noted, not
+  chased here.
+- The anchors sweep was re-run against `examples/mySampleRepo`, which adds the Group and
+  Ungroup buttons and their refusals to `anchors.json`.
 
 ## Verification
 

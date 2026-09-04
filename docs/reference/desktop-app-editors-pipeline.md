@@ -163,16 +163,45 @@ left it. Diagnostics from the read and from the file itself are shown in a strip
 
 - **Every mutating gesture becomes a `gengraph.*` command.** `renderer/rules/gengraph.ts` is the
   pure half: it reads one of path.ux's gesture kinds as a `GenEdit` and names the command that
-  writes it, and it refuses by name the six kinds this application has no command for. The
-  delegate's `check` runs `decideGenEdit` locally rather than `stack.check` over IPC, because
-  path.ux's check is synchronous and runs once per frame per pointer move while `command:check` is
-  an async round trip. Both sides run the same decision function, so the mid-gesture verdict
-  matches the verdict on commit. A refused gesture says its refusal, except a refused drag, which
-  path.ux already shows by fading the frame it would not move.
-  - A drag is applied to the graph on screen as well as sent, because the view resyncs its frames
-    from `node.pos` the moment `perform` returns. Every other gesture waits for the reload `exec`
-    triggers, so the pane always draws what the file holds. A property write is the exception,
-    described below.
+  writes it, and it refuses by name the one kind this application has no command for — retyping a
+  node in place, since a node's identity is what its journal is keyed by. The delegate's `check`
+  runs `decideGenEdit` locally rather than `stack.check` over IPC, because path.ux's check is
+  synchronous and runs once per frame per pointer move while `command:check` is an async round
+  trip. Both sides run the same decision function, so the mid-gesture verdict matches the verdict
+  on commit. A refused gesture says its refusal, except a refused drag, which path.ux already
+  shows by fading the frame it would not move.
+  - An edit is applied to the pane's own copy of the graph before it is sent, so the author sees
+    it at once and the pane never re-reads the file for its own write. Three edits are the
+    exception — `createGroup`, `ungroup` and `addGroup` — because main allocates a group's ref
+    and an instance is unresolved until its definition is loaded; those are sent first and shown
+    when the acknowledgement reloads the graph, with the node the ack named selected.
+- **The pane hosts path.ux's levels, and main never learns which one it is on.** The view shows
+  the root graph, a group's definition, or the inside of one instance, with a breadcrumb strip
+  saying which. An edit is addressed by an `EditTarget` that `targetFor` reads off the view's
+  descent: the definition file a definition level writes to (the `group` prop every editing
+  command takes), and the instance-id prefix a node inside an instance is keyed by, so a node on
+  screen is named to main as `<instance>/<id>` and resolved by `resolveNodeKey`. A definition's
+  ids are its own, so a definition level has an empty prefix.
+  - Ctrl+G groups the selection and Ctrl+Alt+G inlines the selected instances; Tab enters the one
+    selected group's definition or leaves the level; a double-click on an instance's title enters
+    it too. The keymap is built from `view.hotkeys()`, so it cannot drift from path.ux's example
+    app, and the header's Group and Ungroup buttons go through `act()` with the refusal for the
+    current selection as the disabled tooltip. The Edit menu's four group entries reach the same
+    methods on the active pane
+    ([`desktop-app-shell.md`](desktop-app-shell.md#the-shell)).
+  - At a definition level a designer sits beside the canvas: the definition's boundary sockets
+    and the rows it forwards, each edit of which is a `gengraph.expose`, `unexpose`,
+    `reorderExposed`, `repointExposed`, `addBoundary` or `removeBoundary` with `group` set.
+    Inside an instance, structural edits are refused by `decideGenEdit`'s own sentence and a
+    value edit is an override, written as `gengraph.setProp` on the keyed node.
+  - Definitions resolve in the renderer through a `groupLoader` over the `gengraph:group`
+    channel, and the pane awaits `resolveGroups()` after every parse so the view has definitions
+    to enter and forwarded rows to draw. The loader first waits for the pane's own outstanding
+    writes, because the view's save-and-resolve pass fires while a definition edit is still
+    unacknowledged, and a load then would hand back the old file. The renderer never sets
+    `groupSaver`: every write is a command.
+  - The level survives a restart as one struct field, `descentJson`, holding the descent and the
+    slug it was saved in; it is applied only to a read of that slug, and dropped otherwise.
 - **Delete and duplicate open a checkpoint**
   (`command-system.md#checkpoints-group-several-commands-into-one-undo-point`), so a multi-node
   selection lands as one undo point instead of one per node: the delegate's
@@ -190,7 +219,10 @@ left it. Diagnostics from the read and from the file itself are shown in a strip
   own row; connecting the socket removes it.
   - Every bound write is heard through a `change` listener per property, judged by
     `decideGenEdit`, and sent as the command that writes it. A refused write is put back through
-    the same API rather than prevented, because `change` is a notification and cannot veto.
+    the same API rather than prevented, because `change` is a notification and cannot veto. The
+    listeners are the level's: a group instance's frame draws the rows its definition forwards,
+    which bind an inner node of the instance's own copy, so those are listened to under the
+    instance's key and a write to one is the override described above.
   - `active` on an output binds as a checkbox: ticking sends `gengraph.setActiveOutput`, which
     stands the rivals claiming its slot down, and unticking sends a plain
     `gengraph.setProp active=false`. A graph whose outputs are all inactive is a legal state, and
@@ -200,12 +232,18 @@ left it. Diagnostics from the read and from the file itself are shown in a strip
     so each row is labelled and tooltipped from the declaration. `readGraphFile` restamps all
     three after a read: nstructjs serializes a property whole, so a file written before those
     fields existed loads carrying empty ones.
-- **A pane does not reload on its own property write.** A successful mutating command invalidates
-  every listener, which would rebuild the graph under the widget being typed into. The pane arms a
-  one-shot skip from an `onExec` watcher, which runs immediately before the invalidation the same
-  `exec` raises, and matches the outcome to what it sent by the four props a `gengraph.setProp`
-  carries — so a second pane open on the same graph still reloads. Only `setProp` is skipped,
-  because it is the only edit whose local and written results come from the same `decideGenEdit`.
+- **A pane does not reload on its own write, and recognises everyone else's by version.** A
+  write's echo (`documents:wrote`) names the paths it touched and the version each now carries,
+  and `exec`'s answer names the versions this pane's own write produced. `DocSync` in
+  `rules/gengraph.ts` keeps both per document path — the graph's own file, and the definition file
+  of every group the graph instances, known after `resolveGroups` — and `shouldReload` says
+  whether an echo is news: not while any write of this pane's is outstanding (its copy is ahead of
+  whatever main can report, and the write that settles the last of them asks again), yes after a
+  refusal (the pane holds an edit the file never took), yes for an echo that names no version (an
+  undo restores files no command declared), and otherwise only for a version past the pane's own.
+  A definition edited from anywhere else reloads every pane whose graph instances it through the
+  same echo, since `touchesGraph` takes the instanced refs. A second pane open on the same graph
+  therefore reloads on the first pane's writes, because those versions are not its own.
 - **An edit here redraws what the graph draws.** A gesture that changes the authored graph spends
   nothing when it is made, and the next `pipeline.run` puts the bound slot's task back to `pending`
   and draws it again — so a picture can change without the author naming it, and the run's

@@ -265,7 +265,10 @@ the same arrangement `edit_scene` has with `story.*`.
   every node with its type and authored values plus every link, and leaves out where the nodes sit
   on the canvas, so writing one back never moves what the author arranged. `edit_asset_graph` takes
   that same description back: a node kept under the id it had keeps its position and keeps its
-  journal record, and a node left out is removed.
+  journal record, and a node left out is removed. A group instance reads as `type: "GroupNode"`
+  with `group: <ref>` naming its definition under `work/graphs/lib/`, and writes back the same
+  way, so a rewrite keeps the instances a graph held; the definitions themselves are edited by
+  hand in the Gen Graph pane, not through this tool.
 - **A description that will not build is refused with every problem in it.** The file is left
   exactly as it was, and the model gets the whole list rather than the first line, so one round
   trip repairs a description it wrote. A graph that builds but is still incomplete is written and

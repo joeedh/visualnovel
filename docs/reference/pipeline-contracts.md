@@ -401,6 +401,21 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
     before anything is redrawn.
   - Plan: [`../plans/node-based-asset-generation.md`](../plans/node-based-asset-generation.md)
     (Stage 2; the plan overall is in progress).
+- **A node inside a group is identified by its key, never by its id alone.**
+  - Every graph's id counter starts at zero, so a node inside a group instance shares its id
+    with some root node as the normal case. `nodeKey` (`@vn/gengraph`'s `nodekey.ts`) names a
+    node by its id chain from the root — `3/7` for node 7 inside instance 3 — and the hashes, the
+    journal, the executor's target set and the cost walk are all keyed by it; a root node's key is
+    its id, so a graph with no groups reads exactly as before.
+  - Every `node` prop on a `gengraph.*` command resolves through `resolveNodeKey`, which is what
+    lets the pane write an instance's override as `gengraph.setProp` on `<instance>/<id>` and the
+    agent's whole-graph rewrite keep an instance under `group: <ref>`.
+  - An edit inside an instance is a value override: a structural edit there is refused by
+    `decideGenEdit` with the sentence `structuralEditsRefused` gives, and belongs to the group's
+    definition, which every `gengraph.*` editing command reaches with its `group` prop and
+    writes as `vngen/work/graphs/lib/<ref>.json`. The renderer only ever reads that file.
+  - Plan:
+    [`../plans/archive/group-nodes-in-the-gen-graph-editor.md`](../plans/archive/group-nodes-in-the-gen-graph-editor.md).
 - **Renaming a node type's socket or prop takes a migration in the same commit.**
   - path.ux reconciles a loaded node against its definition by key, so a file written before a
     rename loads with the old key kept as an orphaned socket, the link into it reaching nothing

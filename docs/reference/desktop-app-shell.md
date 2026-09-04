@@ -363,10 +363,15 @@ are the bridge's.
   a dialog titled with the command, with Cancel beside the button, and **no search box and no
   list** — the author picked it off a menu, so offering to find it again is noise. Both are screen
   popups, so both are inside the mesh; neither is an OS window.
-- **The Edit menu is Undo, Redo, and the one act that is a whole art pass.** It sits between View
-  and Help and holds Undo (`Ctrl+Z`) and Redo (`Ctrl+Shift+Z`) — the two acts an author looks for
-  under a menu with that name, and the same pair the header's arrows run — plus **Approve &
-  Generate All…**, which opens `pipeline.approveAndRun`'s dialog. That command approves every
+- **The Edit menu is Undo, Redo, the group entries, and the one act that is a whole art pass.**
+  It sits between View and Help and holds Undo (`Ctrl+Z`) and Redo (`Ctrl+Shift+Z`) — the two
+  acts an author looks for under a menu with that name, and the same pair the header's arrows run
+  — then **Create Group** (`Ctrl+G`), **Ungroup** (`Ctrl+Alt+G`), **Edit Group** (`Tab`) and
+  **Exit Group**, which act on the Gen Graph pane that is the active one in `paneToUse`'s sense
+  (the pane the pointer last entered, else the biggest) and say so when that pane is not a Gen
+  Graph; the keys themselves belong to the pane's keymap, and the menu only names them
+  ([`desktop-app-editors-pipeline.md#gen-graph`](desktop-app-editors-pipeline.md#gen-graph)) —
+  plus **Approve & Generate All…**, which opens `pipeline.approveAndRun`'s dialog. That command approves every
   picture waiting, runs the pipeline, and repeats until neither half moves: each round unlocks the
   next rung of the slot graph, so an approved portrait clears the gate and an approved sheet lets
   its plates plan. It is a menu entry rather than a button because it spends real model calls and
