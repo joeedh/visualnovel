@@ -33,18 +33,18 @@ import {
   sourceLabel,
   type OutfitRow,
 } from '../../rules/timeline/wardrobe.js';
-import { redrawing } from '../anchors.js';
-import { exec, onInvalidate } from '../bridge.js';
-import { gestureState } from '../gestures.js';
-import { MENU_SEP } from '../contextmenu.js';
-import type { VnContext } from '../context.js';
-import { openCommandDialog } from '../dialog.js';
-import { VnEditor, registerEditor } from '../editor.js';
-import { assetNode, openNode } from '../open.js';
-import type { VnScreen } from '../screen.js';
-import { shotAssetEntry } from '../script.js';
-import { coverState } from '../timeline.js';
-import { showContextMenu } from '../showmenu.js';
+import { redrawing } from '../tour/anchors.js';
+import { exec, onInvalidate } from '../app/bridge.js';
+import { gestureState } from '../interactions/gestures.js';
+import { MENU_SEP } from '../chrome/contextmenu.js';
+import type { VnContext } from '../app/context.js';
+import { openCommandDialog } from '../chrome/dialog.js';
+import { VnEditor, registerEditor } from '../app/editor.js';
+import { assetNode, openNode } from '../panes/open.js';
+import type { VnScreen } from '../app/screen.js';
+import { shotAssetEntry } from '../interactions/script.js';
+import { coverState } from '../interactions/timeline.js';
+import { showContextMenu } from '../chrome/showmenu.js';
 import {
   aimCreate,
   aimDrag,
@@ -56,8 +56,8 @@ import {
   type Create,
   type Drag,
   type Reorder,
-} from '../timeline.js';
-import { countClick, NO_CLICK, type ClickLatch } from '../treeview.js';
+} from '../interactions/timeline.js';
+import { countClick, NO_CLICK, type ClickLatch } from '../doctree/treeview.js';
 import STRIP_CSS from '../../styles/timeline.css?inline';
 import type { Invocation } from '@vn/commands';
 import type {

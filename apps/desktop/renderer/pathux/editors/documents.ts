@@ -1,8 +1,8 @@
 import type { Container } from 'pathux';
 import { api } from '../../api.js';
-import { ASSETSTRIP_CSS, renderAssetStrip } from '../assetstrip.js';
-import { exec, onInvalidate } from '../bridge.js';
-import type { VnContext } from '../context.js';
+import { ASSETSTRIP_CSS, renderAssetStrip } from '../assets/assetstrip.js';
+import { exec, onInvalidate } from '../app/bridge.js';
+import type { VnContext } from '../app/context.js';
 import {
   assetGroups,
   backlinkSubject,
@@ -19,17 +19,17 @@ import {
   selectionForNode,
   toggleExpanded,
   type DocRow,
-} from '../doctree.js';
-import { VnEditor, registerEditor } from '../editor.js';
-import { VN_ICONS } from '../icons.js';
-import { redrawing } from '../anchors.js';
+} from '../doctree/doctree.js';
+import { VnEditor, registerEditor } from '../app/editor.js';
+import { VN_ICONS } from '../app/icons.js';
+import { redrawing } from '../tour/anchors.js';
 import { CREATE_SUPPLIES, RENAME_SUPPLIES } from '../../rules/doctreebar.js';
-import { assetNode, openNode } from '../open.js';
-import { layoutChanged } from '../persist.js';
-import type { VnScreen } from '../screen.js';
-import { menuIsOpen, showContextMenu } from '../showmenu.js';
-import type { Selection } from '../selection.js';
-import { TREEVIEW_CSS, armDismissLatch, renderTree, rowElementFor } from '../treeview.js';
+import { assetNode, openNode } from '../panes/open.js';
+import { layoutChanged } from '../app/persist.js';
+import type { VnScreen } from '../app/screen.js';
+import { menuIsOpen, showContextMenu } from '../chrome/showmenu.js';
+import type { Selection } from '../doctree/selection.js';
+import { TREEVIEW_CSS, armDismissLatch, renderTree, rowElementFor } from '../doctree/treeview.js';
 import DOCUMENTS_CSS from '../../styles/documents.css?inline';
 import type { DocNode, DocTree } from '../../../src/shared/ipc.js';
 

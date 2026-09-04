@@ -19,7 +19,7 @@ import {
   runAction,
   stopAction,
 } from '../../rules/headerbar.js';
-import { redrawing, type AnchorPass } from '../anchors.js';
+import { redrawing, type AnchorPass } from '../tour/anchors.js';
 import { serializeLayoutFile, type LayoutSummary } from '../../../src/shared/layouts.js';
 import {
   check,
@@ -33,20 +33,20 @@ import {
   setMode,
   setModel,
   toggleMode,
-} from '../bridge.js';
-import { pickPaneToClose } from '../closepane.js';
-import type { VnContext } from '../context.js';
-import { currentLayoutFile, fetchLayouts } from '../layouts.js';
-import { VnEditor, registerEditor } from '../editor.js';
-import { openCommandDialog } from '../dialog.js';
-import { openDiagnostics } from '../diagnostics.js';
-import { openApprovals } from '../approvals.js';
-import { openNotifications } from '../notifications.js';
-import { rectOf } from '../popup.js';
-import { openPalette } from '../palette.js';
-import { seedReport } from '../reportconvo.js';
-import { paneToUse } from '../panes.js';
-import { panesOf } from '../view.js';
+} from '../app/bridge.js';
+import { pickPaneToClose } from '../panes/closepane.js';
+import type { VnContext } from '../app/context.js';
+import { currentLayoutFile, fetchLayouts } from '../panes/layouts.js';
+import { VnEditor, registerEditor } from '../app/editor.js';
+import { openCommandDialog } from '../chrome/dialog.js';
+import { openDiagnostics } from '../chrome/diagnostics.js';
+import { openApprovals } from '../chrome/approvals.js';
+import { openNotifications } from '../chrome/notifications.js';
+import { rectOf } from '../chrome/popup.js';
+import { openPalette } from '../chrome/palette.js';
+import { seedReport } from '../agent/reportconvo.js';
+import { paneToUse } from '../panes/panes.js';
+import { panesOf } from '../panes/view.js';
 
 /** The bar's fixed height. It is locked at both ends, so this is also its minimum. */
 export const HEADER_HEIGHT = 34;

@@ -184,7 +184,7 @@ left it. Diagnostics from the read and from the file itself are shown in a strip
 - **Node properties are bound through a data API scoped to this pane.** `defineGraphApi` builds a
   `DataAPI` rooted on one member — the graph on screen — and the editor installs it through
   `ctx.override({api})` at `init`, one per instance, because two panes may be open on different
-  slugs and one member cannot answer for both. The app-wide API in `renderer/pathux/api.ts` is
+  slugs and one member cannot answer for both. The app-wide API in `renderer/pathux/app/api.ts` is
   unchanged and still defines nothing for graphs. With the view pointed at `graph`, path.ux's
   `NodeFrame` builds the prop rows itself, and an unconnected input's editor sits on the socket's
   own row; connecting the socket removes it.

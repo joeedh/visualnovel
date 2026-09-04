@@ -1,10 +1,10 @@
-import { CHAT_CSS, ChatStage, el, turnRow } from '../chatsurface.js';
-import { VnEditor, registerEditor } from '../editor.js';
-import { redrawing, type AnchorPass } from '../anchors.js';
-import { check, exec, report } from '../bridge.js';
+import { CHAT_CSS, ChatStage, el, turnRow } from '../agent/chatsurface.js';
+import { VnEditor, registerEditor } from '../app/editor.js';
+import { redrawing, type AnchorPass } from '../tour/anchors.js';
+import { check, exec, report } from '../app/bridge.js';
 import { effortRows, modelRows } from '../../rules/vocabulary.js';
 import type { ChoiceRow } from '../../rules/catalog.js';
-import { openReportPreview } from '../reportpreview.js';
+import { openReportPreview } from '../agent/reportpreview.js';
 import {
   reportConvo,
   reportRevision,
@@ -12,7 +12,7 @@ import {
   setSetup,
   startReport,
   threadRow,
-} from '../reportconvo.js';
+} from '../agent/reportconvo.js';
 import { grantAction, grantBox } from '../../rules/reportconvo.js';
 import type { FiledReport, ReportConvo } from '../../rules/reportconvo.js';
 import type { CommandCheck } from '../../../src/shared/ipc.js';

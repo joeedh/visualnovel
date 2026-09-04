@@ -13,9 +13,17 @@ import {
   revision,
   setAskForm,
   takeSeed,
-} from '../agent.js';
+} from '../agent/agent.js';
 import { api } from '../../api.js';
-import { exec, onInvalidate, report, setBudget, setEffort, setMode, setModel } from '../bridge.js';
+import {
+  exec,
+  onInvalidate,
+  report,
+  setBudget,
+  setEffort,
+  setMode,
+  setModel,
+} from '../app/bridge.js';
 import {
   AskCards,
   CHAT_CSS,
@@ -25,9 +33,9 @@ import {
   el,
   turnRow,
   type AskHost,
-} from '../chatsurface.js';
-import { VnEditor, registerEditor } from '../editor.js';
-import { openPalette } from '../palette.js';
+} from '../agent/chatsurface.js';
+import { VnEditor, registerEditor } from '../app/editor.js';
+import { openPalette } from '../chrome/palette.js';
 import {
   contextDetail,
   threadDetail,
@@ -36,7 +44,7 @@ import {
   uncachedTokens,
   type ThreadHeader,
 } from '../../../src/shared/convo.js';
-import { redrawing, type AnchorPass } from '../anchors.js';
+import { redrawing, type AnchorPass } from '../tour/anchors.js';
 import { modeAction, MODEL_SUPPLIES } from '../../rules/headerbar.js';
 import {
   THREAD_SUPPLIES,

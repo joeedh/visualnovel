@@ -26,7 +26,7 @@ this by name). Seven rules cause the most mistakes:
 - The sixteen editors are named in one place (`apps/desktop/src/shared/editors.ts`), and
   `registerEditor(cls, 'vn.Name')` is the only way to register one, because a hand-written
   name string breaks under minification. That list also carries each editor's `claims`
-  predicate, ranked in `renderer/pathux/route.ts`, and a `pins` field for the one selection
+  predicate, ranked in `renderer/pathux/panes/route.ts`, and a `pins` field for the one selection
   an editor can be pinned to. `pins` is declared once, and `registerEditor` splices in the
   struct fields that persist it.
 - `offered: false` makes an editor registered but not listed: reachable by `view.open`, the
@@ -48,7 +48,7 @@ this by name). Seven rules cause the most mistakes:
   rendering. The jest desktop project is node-only, so surfaces are verified live over CDP.
 - A mid-gesture verdict must match the verdict that would apply on commit, layout changes
   on commit, and an editor with an open text row stops its own keydown events.
-- `renderer/pathux/api.ts` is rooted on `ShellState` and defines nothing for documents. One
+- `renderer/pathux/app/api.ts` is rooted on `ShellState` and defines nothing for documents. One
   editor overrides it: Gen Graph roots a second `DataAPI` on the graph it has open, through
   `ctx.override({api})` per instance, so path.ux builds the node rows. A bound write is still
   judged and sent as a command, so `@vn/commands` remains the write path.
@@ -499,7 +499,7 @@ the pipeline queue). Full write-up:
   name; that went with the undo refactor, so it now opens the side git left there. See
   [`repos-and-commits.md`](repos-and-commits.md).
 - **Undo comes back to the screen, not just the file.** Undo restores the template files, and no
-  `view.*` command ran, so nothing pushes an effect. `renderer/pathux/layouts.ts` notices by
+  `view.*` command ran, so nothing pushes an effect. `renderer/pathux/panes/layouts.ts` notices by
   **fingerprint**: it records what was applied and re-applies when main reports different bytes
   under the same slug. It seeds without applying at boot, so a border dragged last session survives.
 

@@ -1,6 +1,6 @@
 import type { DesktopApi } from '../src/shared/ipc';
 import type { AnchorRecord } from './rules/anchors';
-import type { AnchorDump } from './pathux/anchors';
+import type { AnchorDump } from './pathux/tour/anchors';
 import type { Debugger2D } from '@vn/debug2d';
 
 declare global {

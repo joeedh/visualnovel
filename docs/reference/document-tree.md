@@ -170,7 +170,7 @@ Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
   cap dropped are siblings of the rows above it, so opening one continues the list rather than
   nesting a copy of the branch inside itself.
 - **The search box filters the tree in hand rather than asking for another one.** `filterTree`
-  (`renderer/pathux/doctree.ts`, pure) keeps the nodes whose labels contain what was typed, matched
+  (`renderer/pathux/doctree/doctree.ts`, pure) keeps the nodes whose labels contain what was typed, matched
   without case, plus the branches over them. A node that matches keeps its whole subtree and is not
   opened, so a scene found by name is still a scene to drill into; a node kept only for what is
   under it is pruned to the matches and opened, since a filter whose answers are behind twisties has
@@ -238,9 +238,9 @@ and how it is still checked without one open.
 ## Right-click menus
 
 Right-clicking a row opens a menu of **commands**, gated by `stack.check` before it is drawn. The
-entries are a pure table, `menuFor(node)` in `renderer/pathux/doctree.ts`, so what a kind offers is
-testable without a DOM; resolving a verdict into a drawn item is `renderer/pathux/contextmenu.ts`,
-and opening the path.ux menu is `renderer/pathux/showmenu.ts`. The full write-up, including why an
+entries are a pure table, `menuFor(node)` in `renderer/pathux/doctree/doctree.ts`, so what a kind offers is
+testable without a DOM; resolving a verdict into a drawn item is `renderer/pathux/chrome/contextmenu.ts`,
+and opening the path.ux menu is `renderer/pathux/chrome/showmenu.ts`. The full write-up, including why an
 entry is an invocation rather than a callback, is in
 [`command-system.md`](command-system.md#from-a-right-click) and
 [`../plans/archive/INDEX.md#document-tree-context-menus`](../plans/archive/INDEX.md#document-tree-context-menus).

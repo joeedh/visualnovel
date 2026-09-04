@@ -1,13 +1,13 @@
 import type { Button, Container } from 'pathux';
 import { api } from '../../api.js';
-import { ASSETSTRIP_CSS, renderAssetStrip } from '../assetstrip.js';
-import { onInvalidate, onWrote } from '../bridge.js';
-import { DocBuffer, WRITE_SUPPLIES } from '../docbuffer.js';
-import { redrawing } from '../anchors.js';
-import { assetGroups } from '../doctree.js';
-import { VnEditor, registerEditor } from '../editor.js';
-import { assetNode, openNode } from '../open.js';
-import type { VnScreen } from '../screen.js';
+import { ASSETSTRIP_CSS, renderAssetStrip } from '../assets/assetstrip.js';
+import { onInvalidate, onWrote } from '../app/bridge.js';
+import { DocBuffer, WRITE_SUPPLIES } from '../doctree/docbuffer.js';
+import { redrawing } from '../tour/anchors.js';
+import { assetGroups } from '../doctree/doctree.js';
+import { VnEditor, registerEditor } from '../app/editor.js';
+import { assetNode, openNode } from '../panes/open.js';
+import type { VnScreen } from '../app/screen.js';
 import WIKI_CSS from '../../styles/wiki.css?inline';
 import type { DocTree } from '../../../src/shared/ipc.js';
 

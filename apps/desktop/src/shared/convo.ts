@@ -3,7 +3,7 @@
  * for a decision, and whether a turn is in flight.
  *
  * The reduction is a pure function of `(Convo, event)`; the live subscription lives in
- * `renderer/pathux/agent.ts`. This module is shared rather than renderer-only because main writes
+ * `renderer/pathux/agent/agent.ts`. This module is shared rather than renderer-only because main writes
  * the same transcript to `vngen/state/threads/<id>.jsonl` as it emits, and one reducer keeps the
  * file and the screen from drifting apart.
  *

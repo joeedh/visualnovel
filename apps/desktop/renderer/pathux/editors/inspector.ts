@@ -11,9 +11,9 @@ import {
   type TriageSummary,
 } from '../../rules/attempts.js';
 import { subjectOf } from '../../rules/taskGraph.js';
-import { card, centered, dot, mono, note, row, stamp, statusColour } from '../dom.js';
-import { VnEditor, registerEditor } from '../editor.js';
-import { TOKENS, alpha } from '../tokens.js';
+import { card, centered, dot, mono, note, row, stamp, statusColour } from '../widgets/dom.js';
+import { VnEditor, registerEditor } from '../app/editor.js';
+import { TOKENS, alpha } from '../app/tokens.js';
 import type { PipelineStatus, Task, TaskAttempt } from '../../../src/shared/ipc.js';
 
 const VERDICT: Record<AttemptOutcome, string> = {

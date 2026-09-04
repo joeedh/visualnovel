@@ -1,14 +1,14 @@
 import { ThumbnailCache, pickAssetPopup, type Container } from 'pathux';
 import { UNRESOLVED, type Verdict } from '@vn/commands';
-import { redrawing } from '../anchors.js';
-import { exec, notify, onInvalidate, report, say } from '../bridge.js';
-import type { VnContext } from '../context.js';
-import { menuFor } from '../doctree.js';
-import { assetNode } from '../open.js';
-import { galleryItem } from '../assetthumb.js';
-import { openCommandDialog } from '../dialog.js';
-import { showContextMenu } from '../showmenu.js';
-import { TOKENS } from '../tokens.js';
+import { redrawing } from '../tour/anchors.js';
+import { exec, notify, onInvalidate, report, say } from '../app/bridge.js';
+import type { VnContext } from '../app/context.js';
+import { menuFor } from '../doctree/doctree.js';
+import { assetNode } from '../panes/open.js';
+import { galleryItem } from '../assets/assetthumb.js';
+import { openCommandDialog } from '../chrome/dialog.js';
+import { showContextMenu } from '../chrome/showmenu.js';
+import { TOKENS } from '../app/tokens.js';
 import {
   NOTES_SUPPLIES,
   PROMOTE_SUPPLIES,
@@ -56,7 +56,7 @@ import {
 import type { Action, Offer } from '../../rules/anchors.js';
 import { promptReorder, type PromptDragState } from '../../../src/shared/interactions.js';
 import { TOP_CHUNK } from '../../../src/shared/promptops.js';
-import { VnEditor, registerEditor } from '../editor.js';
+import { VnEditor, registerEditor } from '../app/editor.js';
 import ASSET_CSS from '../../styles/asset.css?inline';
 import type {
   AssetFailure,

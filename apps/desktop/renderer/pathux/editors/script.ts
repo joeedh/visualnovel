@@ -28,19 +28,19 @@ import {
   type Pending,
   type RowBox,
 } from '../../rules/script.js';
-import { ASSETSTRIP_CSS, renderAssetStrip } from '../assetstrip.js';
-import { shotGroups } from '../doctree.js';
-import { VnEditor, registerEditor } from '../editor.js';
-import { openCommandDialog } from '../dialog.js';
-import { redrawing, type AnchorPass } from '../anchors.js';
-import { gestureState } from '../gestures.js';
+import { ASSETSTRIP_CSS, renderAssetStrip } from '../assets/assetstrip.js';
+import { shotGroups } from '../doctree/doctree.js';
+import { VnEditor, registerEditor } from '../app/editor.js';
+import { openCommandDialog } from '../chrome/dialog.js';
+import { redrawing, type AnchorPass } from '../tour/anchors.js';
+import { gestureState } from '../interactions/gestures.js';
 import { moveStateOf } from '../../rules/script.js';
-import { assetNode, openNode } from '../open.js';
-import type { VnScreen } from '../screen.js';
-import { aim, dropOf, grabLine, lineMenu, noticeOf, type Drag } from '../script.js';
-import { menuIsOpen, showContextMenu } from '../showmenu.js';
-import type { VnContext } from '../context.js';
-import { exec, onInvalidate, onWrote, refreshWorkspace } from '../bridge.js';
+import { assetNode, openNode } from '../panes/open.js';
+import type { VnScreen } from '../app/screen.js';
+import { aim, dropOf, grabLine, lineMenu, noticeOf, type Drag } from '../interactions/script.js';
+import { menuIsOpen, showContextMenu } from '../chrome/showmenu.js';
+import type { VnContext } from '../app/context.js';
+import { exec, onInvalidate, onWrote, refreshWorkspace } from '../app/bridge.js';
 import { touchesScene } from '../../../src/shared/writes.js';
 import SCRIPT_CSS from '../../styles/script.css?inline';
 import type { Invocation } from '@vn/commands';

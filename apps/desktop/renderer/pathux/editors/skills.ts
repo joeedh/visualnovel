@@ -1,21 +1,21 @@
 import type { Button, Container } from 'pathux';
 import { api } from '../../api.js';
 import { NEW_SKILL_PROMPT, underSkills } from '../../rules/skills.js';
-import { onInvalidate, onWrote } from '../bridge.js';
-import { openCommandDialog } from '../dialog.js';
-import { DocBuffer, WRITE_SUPPLIES } from '../docbuffer.js';
-import { redrawing } from '../anchors.js';
+import { onInvalidate, onWrote } from '../app/bridge.js';
+import { openCommandDialog } from '../chrome/dialog.js';
+import { DocBuffer, WRITE_SUPPLIES } from '../doctree/docbuffer.js';
+import { redrawing } from '../tour/anchors.js';
 import {
   defaultExpanded,
   flattenTree,
   nodeIsSelected,
   rowTitle,
   toggleExpanded,
-} from '../doctree.js';
-import { VnEditor, registerEditor } from '../editor.js';
-import { TREEVIEW_CSS, armDismissLatch, renderTree } from '../treeview.js';
-import type { Selection } from '../selection.js';
-import { menuIsOpen } from '../showmenu.js';
+} from '../doctree/doctree.js';
+import { VnEditor, registerEditor } from '../app/editor.js';
+import { TREEVIEW_CSS, armDismissLatch, renderTree } from '../doctree/treeview.js';
+import type { Selection } from '../doctree/selection.js';
+import { menuIsOpen } from '../chrome/showmenu.js';
 import SKILLS_CSS from '../../styles/skills.css?inline';
 import type { DocNode } from '../../../src/shared/ipc.js';
 

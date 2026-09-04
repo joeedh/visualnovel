@@ -1,7 +1,7 @@
 import type { Container } from 'pathux';
-import { check, exec, onInvalidate, report } from '../bridge.js';
-import { VnEditor, registerEditor } from '../editor.js';
-import { redrawing, type AnchorPass } from '../anchors.js';
+import { check, exec, onInvalidate, report } from '../app/bridge.js';
+import { VnEditor, registerEditor } from '../app/editor.js';
+import { redrawing, type AnchorPass } from '../tour/anchors.js';
 import type { Offer } from '../../rules/anchors.js';
 import { KEY_SUPPLIES } from '../../rules/keysetup.js';
 import ONBOARDING_CSS from '../../styles/onboarding.css?inline';

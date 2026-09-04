@@ -708,7 +708,7 @@ old hand-annotated `ipcMain.handle` calls could and did.
 
 ### From the palette, or from a command's own dialog
 
-The Ctrl+Shift+P palette (`renderer/pathux/palette.ts`) is a **view of the catalog**, not a
+The Ctrl+Shift+P palette (`renderer/pathux/chrome/palette.ts`) is a **view of the catalog**, not a
 hand-kept list:
 it fetches `command:catalog` once — the live registry, never `dist/commands.json` — and lists what
 matches the query. A newly registered command therefore appears in the palette with no palette edit
@@ -721,7 +721,7 @@ bar, a right-click that needs an argument — calls `openCommandDialog(id, props
 command **alone**: its title, what it does, its fields, its verdict, Cancel, and a button labelled
 with the command. No search box, no list of eighty-odd other commands to scroll past. Both are
 `Screen.popup`s inside the path.ux mesh rather than OS windows, and both host the same
-`renderer/pathux/commandform.ts`, so every rule below holds in either.
+`renderer/pathux/commands/commandform.ts`, so every rule below holds in either.
 
 - **The form is generated from `props`.** Each `CatalogProp` becomes a checkbox (`boolean`), a
   path.ux dropdown (`enum`, options from `values`) or a text/number input; lists edit as
@@ -733,7 +733,7 @@ with the command. No search box, no list of eighty-odd other commands to scroll 
   convenience beside the field, not a gate in front of it, and it is a command rather than an IPC
   channel so CDP and the agent reach the same act. This is what lets `workspace.create` collect a
   folder, a title and a checkbox in one form rather than asking for a path to be typed.
-- **A `multiline` prop gets a plain `<textarea>`, and it is shared.** `renderer/pathux/writingbox.ts`
+- **A `multiline` prop gets a plain `<textarea>`, and it is shared.** `renderer/pathux/widgets/writingbox.ts`
   is the one writing surface, deliberately **not** path.ux's `textarea()` — that is a
   `contentEditable` rich-text editor with a formatting toolbar and `innerHTML` for a value, which
   stores markup where a command expects a string. It stops its own keydown, like every other text
@@ -749,7 +749,7 @@ with the command. No search box, no list of eighty-odd other commands to scroll 
   Every form gets one of these lists without asking. `renderer/rules/vocabulary.ts` maps prop names
   to what they name — `scene` and `goto` to the project's scenes, `character` and `characterId` to
   its cast, `thread` (and `id`, on the three thread commands alone) to its conversations, `model`
-  and `effort` to what the API takes — and `renderer/pathux/vocabulary.ts` reads the snapshot behind
+  and `effort` to what the API takes — and `renderer/pathux/commands/vocabulary.ts` reads the snapshot behind
   it when the palette or a dialog opens. A caller's own `choices` is merged over the top and wins.
 
   A prop is only listed when every value the command accepts is in the list: `into` on
@@ -823,9 +823,9 @@ call `exec` and hope are exactly how a surface starts offering what the command 
   incomplete by design, so the refusal it would earn is about the blank the author is on their way
   to filling in.
 
-Which entries a node offers is a pure table in `renderer/pathux/doctree.ts`; the verdict-to-item
-resolution is `renderer/pathux/contextmenu.ts`, pure and node-testable because it imports no
-`pathux`; `renderer/pathux/showmenu.ts` is the half that opens the menu, verified live over CDP
+Which entries a node offers is a pure table in `renderer/pathux/doctree/doctree.ts`; the verdict-to-item
+resolution is `renderer/pathux/chrome/contextmenu.ts`, pure and node-testable because it imports no
+`pathux`; `renderer/pathux/chrome/showmenu.ts` is the half that opens the menu, verified live over CDP
 like every other surface. The tables are in
 [`document-tree.md`](document-tree.md#right-click-menus).
 

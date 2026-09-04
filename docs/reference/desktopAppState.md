@@ -123,11 +123,11 @@ Pos[]  // e.g. [{ sceneId: "arrival", frameIndex: 0 }, { sceneId: "greet", frame
   - Layout reports through `VnScreen.onLayoutChange` (split, join, border drag, window resize)
   - Selection reports through `DataPathWatcher`s on `ui.{sceneId, shotId, characterId, docPath, assetHash, taskHash}` (same push the widgets get)
   - Every persisted field needs its own watcher (e.g., clicking an asset moves only that field)
-- Selection fields announce their own write (`ShellState.onSelect` → `api.notifyChange` in `renderer/pathux/shell.ts`); without this hook, path.ux watchers don't fire from editor assignments
+- Selection fields announce their own write (`ShellState.onSelect` → `api.notifyChange` in `renderer/pathux/app/shell.ts`); without this hook, path.ux watchers don't fire from editor assignments
   - The six selection fields are accessors over one private record, so unchanged values report nothing
 - Watchers are `immediate` (not default `raf`) — hidden/minimized windows run no animation frames, so raf-coalesced watchers stay dirty until shown; `schedule` has a 400 ms debounce
-- `view.*` effects schedule saves themselves (`applyView` in `renderer/pathux/view.ts`); pane editor swaps don't fire `onLayoutChange`, so without this the old pane comes back on restart
-- Restored ids are checked once after first paint (`settleSelection` in `renderer/pathux/shell.ts`):
+- `view.*` effects schedule saves themselves (`applyView` in `renderer/pathux/panes/view.ts`); pane editor swaps don't fire `onLayoutChange`, so without this the old pane comes back on restart
+- Restored ids are checked once after first paint (`settleSelection` in `renderer/pathux/app/shell.ts`):
   - `assetHash` repaired through one `asset.info`: fails if manifest no longer holds it, cleared; carries `newerTake` for replaced take, selection follows
   - `sceneId` and `characterId` cleared if workspace index does not list them; `shotId` goes with its scene
   - `docPath` **not** pruned (doc tree caps a branch and has file-tree mode; absence is not evidence it's gone)
@@ -146,7 +146,7 @@ Pos[]  // e.g. [{ sceneId: "arrival", frameIndex: 0 }, { sceneId: "greet", frame
 - **Lost when:** file deleted, or project cloned elsewhere (git does not carry it)
 
 **Code:** `src/main/sessionstate.ts`, `src/main/sessionstore.ts`, `src/shared/sessionkeys.ts`,
-`renderer/pathux/persist.ts`, `renderer/rules/uistate.ts`
+`renderer/pathux/app/persist.ts`, `renderer/rules/uistate.ts`
 
 ---
 
@@ -156,7 +156,7 @@ Pos[]  // e.g. [{ sceneId: "arrival", frameIndex: 0 }, { sceneId: "greet", frame
 
 **Storage:** Renderer memory in two modules, plus per-editor state.
 
-**`ShellState` (`renderer/pathux/state.ts`)** — root of the path.ux DataAPI, the only widget-bindable source. Document state never lands here; `@vn/commands` is the write path, so widgets dispatch commands instead.
+**`ShellState` (`renderer/pathux/app/state.ts`)** — root of the path.ux DataAPI, the only widget-bindable source. Document state never lands here; `@vn/commands` is the write path, so widgets dispatch commands instead.
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -171,7 +171,7 @@ Pos[]  // e.g. [{ sceneId: "arrival", frameIndex: 0 }, { sceneId: "greet", frame
 | `unread` | `number` | Bell shows unread, unarchived notifications matching active filter. Written by `pathux/notifications.ts`, never counted in header (badge and list cannot disagree) |
 | `canUndo` / `canRedo` / `undoLabel` / `redoLabel` | `boolean` / `string` | Pushed on `command:ui` `undo` effect |
 
-**The conversation (`renderer/pathux/agent.ts` + `src/shared/convo.ts`):**
+**The conversation (`renderer/pathux/agent/agent.ts` + `src/shared/convo.ts`):**
 - Subscribed at boot whether or not convo pane is open; agent streams regardless, pane opened later shows what was already said
 - Structure: `{ feed, line, plan, busy, seq }`, every `agent:event` folds through pure `received`/`asked`/`answered`/`proposed`/`decided` functions
 - Pane notices changes by comparing revision counter; `update()` runs every frame

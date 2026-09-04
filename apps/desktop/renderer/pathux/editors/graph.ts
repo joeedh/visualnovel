@@ -14,13 +14,18 @@ import {
   type TaskGraphModel,
   type TaskNodeView,
 } from '../../rules/taskGraph.js';
-import { card, dot, mono, note, row, stamp, statusColour, subject } from '../dom.js';
-import { VnEditor, registerEditor } from '../editor.js';
+import { card, dot, mono, note, row, stamp, statusColour, subject } from '../widgets/dom.js';
+import { VnEditor, registerEditor } from '../app/editor.js';
 import { GraphCanvas, type EdgeStyle } from '../graph/canvas.js';
-import { isSelected, selectionForTask, taskPublishes, type Selection } from '../selection.js';
-import { openCommandDialog } from '../dialog.js';
-import { pickOracle, redrawing, type AnchorPass } from '../anchors.js';
-import { TOKENS, alpha } from '../tokens.js';
+import {
+  isSelected,
+  selectionForTask,
+  taskPublishes,
+  type Selection,
+} from '../doctree/selection.js';
+import { openCommandDialog } from '../chrome/dialog.js';
+import { pickOracle, redrawing, type AnchorPass } from '../tour/anchors.js';
+import { TOKENS, alpha } from '../app/tokens.js';
 import type { EdgeRoute } from '../../graph/edges.js';
 import type { Pick as GraphPick } from '../../graph/hit.js';
 import type { LaidOutNode } from '../../graph/types.js';

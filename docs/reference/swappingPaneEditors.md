@@ -19,14 +19,14 @@
 
 <!-- tocstop -->
 
-`apps/desktop/renderer/pathux/panes.ts` decides which pane a `view.*` command means. It takes
+`apps/desktop/renderer/pathux/panes/panes.ts` decides which pane a `view.*` command means. It takes
 no path.ux types and touches no DOM — every function is arithmetic over a `Pane[]` array — so
 the choice a command makes can be tested in node, without a screen or a running app.
 
 ## Where this fits
 
 `view.*` runs in main, which has no mesh and cannot answer "which pane is that". Main answers
-optimistically and `apps/desktop/renderer/pathux/view.ts` applies the effect in the renderer,
+optimistically and `apps/desktop/renderer/pathux/panes/view.ts` applies the effect in the renderer,
 using `panes.ts` to pick a pane and returning a correction sentence when the mesh disagrees —
 "No pane is showing Script." The full command shape is in
 [`command-system.md`](command-system.md); the mesh-level behavior of `view.*` is described in

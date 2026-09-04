@@ -30,7 +30,7 @@ import {
   type Viewport,
   type ZoomLimits,
 } from '../../graph/viewport.js';
-import { TOKENS, alpha } from '../tokens.js';
+import { TOKENS, alpha } from '../app/tokens.js';
 import type { EdgeRoute } from '../../graph/edges.js';
 import type { GraphLayout } from '../../graph/layout.js';
 import type { LaidOutNode, Point, Size } from '../../graph/types.js';

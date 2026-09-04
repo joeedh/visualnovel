@@ -4,7 +4,7 @@
  * on (`docs/plans/archive/INDEX.md#diagnosing-an-api-error-from-the-request-that-caused-it` § Testing).
  *
  * **Half harness, half instructions**, because the path cannot be driven entirely from outside.
- * `renderer/pathux/report.ts` says why: `window.vn.exec` invokes main directly, so a turn sent
+ * `renderer/pathux/agent/report.ts` says why: `window.vn.exec` invokes main directly, so a turn sent
  * over CDP never reaches the renderer's `ask()` — and the dialog opening by itself is a *renderer*
  * behaviour. So the script scaffolds, launches and asserts; the author types the turn, takes the
  * offer, and presses the buttons.

@@ -26,7 +26,7 @@ bypassed.
 ## The rule: go through `view.*`, never through `panes.ts`
 
 `panes.ts` decides which pane a given choice is routed to. It operates at a high level; it does not
-know about `ScreenArea`, `switch_editor`, or `splitArea`. `apps/desktop/renderer/pathux/view.ts`
+know about `ScreenArea`, `switch_editor`, or `splitArea`. `apps/desktop/renderer/pathux/panes/view.ts`
 is the only file that turns a `panes.ts` answer into a mesh change, and it does three things a
 caller cannot safely do by hand:
 

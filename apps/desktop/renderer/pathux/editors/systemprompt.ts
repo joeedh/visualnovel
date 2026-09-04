@@ -1,8 +1,8 @@
 import type { Container } from 'pathux';
 import { api } from '../../api.js';
-import { onInvalidate } from '../bridge.js';
+import { onInvalidate } from '../app/bridge.js';
 import { joined, scaleOf } from '../../rules/systemprompt.js';
-import { VnEditor, registerEditor } from '../editor.js';
+import { VnEditor, registerEditor } from '../app/editor.js';
 import SYSTEM_PROMPT_CSS from '../../styles/systemprompt.css?inline';
 import type { AgentSystem } from '../../../src/shared/ipc.js';
 

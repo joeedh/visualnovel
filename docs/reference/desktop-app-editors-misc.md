@@ -309,7 +309,7 @@ the analyst may read, what it redacts and where the report is archived are in
   agent's channel would write the debug agent's turns into the thread being analysed, corrupting the
   evidence for the next report of the same thread. A pane that mounts mid-conversation catches up by
   asking `report.state` and reducing the rows it returns through the same reducer
-  (`renderer/pathux/reportconvo.ts`) that reduces live events.
+  (`renderer/pathux/agent/reportconvo.ts`) that reduces live events.
 - **A report turn is busy work; an idle conversation is not.** Each turn is wrapped in
   `while('an agent report', …)` rather than the conversation, so the in-flight set is empty between
   turns and an authoring turn started while the pane sits open is still stoppable. The header's

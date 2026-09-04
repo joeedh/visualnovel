@@ -9,7 +9,7 @@
  * (along with @vn/debug2d) from the production bundle.
  */
 import { createDebugger, domSource, type DomDocument } from '@vn/debug2d';
-import { elementsAt } from '../pathux/hittest.js';
+import { elementsAt } from '../pathux/interactions/hittest.js';
 
 let teardown: (() => void) | undefined;
 

@@ -1,9 +1,9 @@
 import { HotKey, KeyMap, type Container } from 'pathux';
 import { api } from '../../api.js';
 import type { Playable, PlayableScene } from '../../../src/shared/ipc.js';
-import { notify, onInvalidate } from '../bridge.js';
-import { centered } from '../dom.js';
-import { VnEditor, registerEditor } from '../editor.js';
+import { notify, onInvalidate } from '../app/bridge.js';
+import { centered } from '../widgets/dom.js';
+import { VnEditor, registerEditor } from '../app/editor.js';
 import {
   advance,
   assetUrl,
@@ -18,7 +18,7 @@ import {
   type Frame,
   type Pos,
 } from '../play/playback.js';
-import { TOKENS, alpha } from '../tokens.js';
+import { TOKENS, alpha } from '../app/tokens.js';
 
 /**
  * The playthrough editor: the React `Runner` with its rules lifted out to `play/playback.ts`

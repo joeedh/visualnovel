@@ -1,15 +1,20 @@
 import type { Check, Container } from 'pathux';
 import { api } from '../../api.js';
-import { exec, onBusy, onInvalidate } from '../bridge.js';
+import { exec, onBusy, onInvalidate } from '../app/bridge.js';
 import { subjectOf } from '../../rules/taskGraph.js';
 import { emptyBecause, showing, type ListFilter } from '../../rules/tasklist.js';
-import { card, dot, mono, note, row, stamp, statusColour, subject } from '../dom.js';
-import { VnEditor, registerEditor } from '../editor.js';
-import { openCommandDialog } from '../dialog.js';
-import { layoutChanged } from '../persist.js';
-import { selectionForTask, taskIsSelected, taskPublishes, type Selection } from '../selection.js';
-import { redrawing, type AnchorPass } from '../anchors.js';
-import { TOKENS, alpha } from '../tokens.js';
+import { card, dot, mono, note, row, stamp, statusColour, subject } from '../widgets/dom.js';
+import { VnEditor, registerEditor } from '../app/editor.js';
+import { openCommandDialog } from '../chrome/dialog.js';
+import { layoutChanged } from '../app/persist.js';
+import {
+  selectionForTask,
+  taskIsSelected,
+  taskPublishes,
+  type Selection,
+} from '../doctree/selection.js';
+import { redrawing, type AnchorPass } from '../tour/anchors.js';
+import { TOKENS, alpha } from '../app/tokens.js';
 import type { PipelineStatus, Task } from '../../../src/shared/ipc.js';
 
 /**

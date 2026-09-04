@@ -1,7 +1,7 @@
 import type { Button, Container } from 'pathux';
-import { exec, onInvalidate, report } from '../bridge.js';
-import { VnEditor, registerEditor } from '../editor.js';
-import { redrawing } from '../anchors.js';
+import { exec, onInvalidate, report } from '../app/bridge.js';
+import { VnEditor, registerEditor } from '../app/editor.js';
+import { redrawing } from '../tour/anchors.js';
 import { STYLE_SUPPLIES, applyStyleAction } from '../../rules/projectbar.js';
 import PROJECT_CSS from '../../styles/project.css?inline';
 import type { ProjectView } from '../../../src/shared/ipc.js';

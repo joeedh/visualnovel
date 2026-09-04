@@ -41,7 +41,7 @@ The picker takes a snapshot of the manifest when it opens, in one command round 
   `label`, `accepted`, and `slot` when the asset fills one. `asset.info` remains the detailed
   read for a single asset; a picker that needed everything about every asset would pay for it on
   every open.
-- `galleryItem` (`apps/desktop/renderer/pathux/assetthumb.ts`) projects one row into the widget's
+- `galleryItem` (`apps/desktop/renderer/pathux/assets/assetthumb.ts`) projects one row into the widget's
   item shape. The search box matches the label, the hash, and the tags — which are the kind, the
   slot, and the literal `accepted` — so typing `portrait`, a slot address, or `accepted` narrows
   the grid.
@@ -51,7 +51,7 @@ the popup opens, and the popup is short-lived.
 
 ## Decoding a thumbnail
 
-`loadAssetThumb` (`apps/desktop/renderer/pathux/assetthumb.ts`) is the `GalleryItem.image` thunk,
+`loadAssetThumb` (`apps/desktop/renderer/pathux/assets/assetthumb.ts`) is the `GalleryItem.image` thunk,
 so a decode happens only when a cell is bound to that item — a few dozen of them, not the whole
 manifest.
 
@@ -116,9 +116,9 @@ Three limits are deliberate rather than unfinished.
 | `apps/desktop/src/main/commands/asset.ts` | `asset.list` |
 | `apps/desktop/src/main/session.ts` | `assetLibrary`, over `labelAssets` |
 | `apps/desktop/src/shared/ipc.ts` | `AssetListing` |
-| `apps/desktop/renderer/pathux/assetthumb.ts` | `assetThumbUrl`, `loadAssetThumb`, `galleryItem` |
+| `apps/desktop/renderer/pathux/assets/assetthumb.ts` | `assetThumbUrl`, `loadAssetThumb`, `galleryItem` |
 | `apps/desktop/renderer/rules/promptview.ts` | the `attach` clause act and `REF_SUPPLIES` |
 | `apps/desktop/renderer/pathux/editors/asset.ts` | `pickRef`, and the pane's `ThumbnailCache` |
-| `apps/desktop/renderer/pathux/commandform.ts` | `pickAsset`, and the form's own `ThumbnailCache` |
+| `apps/desktop/renderer/pathux/commands/commandform.ts` | `pickAsset`, and the form's own `ThumbnailCache` |
 | `apps/desktop/renderer/rules/vocabulary.ts` | `picksAnAsset` — which props get the button |
 | `vendor/path.ux/scripts/gallery/` | the widget, its cache, and `pickAssetPopup` |

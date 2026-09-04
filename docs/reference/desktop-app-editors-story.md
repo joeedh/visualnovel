@@ -204,7 +204,7 @@ the same events** to write the transcript — see the threads bullet below.
   under them. Everything the author has filled in lives in an `AskForm` (`renderer/rules/askform.ts`,
   pure and unit-tested): the page they are on, what is ticked per page, what is typed per page.
   **The form belongs to the question, not to a pane.** It is module state in
-  `renderer/pathux/agent.ts` (`askFormFor`, `askFormNow`, `setAskForm`), started when the request
+  `renderer/pathux/agent/agent.ts` (`askFormFor`, `askFormNow`, `setAskForm`), started when the request
   arrives and cleared when the answers go back, so two convo panes fill in one form and a pane
   re-created by a layout change keeps what was answered before it. A pane holding its own copy
   sends the picks that pane happened to see, and the other pane's picks are lost. **Every handler

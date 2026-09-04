@@ -1,6 +1,6 @@
 import type { Button, Container } from 'pathux';
 import { api } from '../../api.js';
-import { seed } from '../agent.js';
+import { seed } from '../agent/agent.js';
 import { handleAnchor, routeEdges, type EdgeRoute } from '../../graph/edges.js';
 import { edgeAt, nodeAt, type Pick as GraphPick } from '../../graph/hit.js';
 import { layoutGraph, type GraphLayout } from '../../graph/layout.js';
@@ -29,16 +29,16 @@ import {
   newChoiceEdge,
   noticeOf,
   type Drag,
-} from '../branch.js';
-import { pickOracle, redrawing } from '../anchors.js';
-import { gestureState } from '../gestures.js';
-import { exec, refreshWorkspace } from '../bridge.js';
-import { VnEditor, registerEditor } from '../editor.js';
+} from '../interactions/branch.js';
+import { pickOracle, redrawing } from '../tour/anchors.js';
+import { gestureState } from '../interactions/gestures.js';
+import { exec, refreshWorkspace } from '../app/bridge.js';
+import { VnEditor, registerEditor } from '../app/editor.js';
 import { GraphCanvas, type EdgeStyle } from '../graph/canvas.js';
-import { menuIsOpen, showContextMenu } from '../showmenu.js';
-import { TOKENS } from '../tokens.js';
+import { menuIsOpen, showContextMenu } from '../chrome/showmenu.js';
+import { TOKENS } from '../app/tokens.js';
 import BRANCH_CSS from '../../styles/branch.css?inline';
-import type { VnContext } from '../context.js';
+import type { VnContext } from '../app/context.js';
 import type { Invocation } from '@vn/commands';
 import type { LaidOutNode, Point } from '../../graph/types.js';
 import type { StoryEdge, StoryGraph, StoryScene } from '../../../src/shared/ipc.js';

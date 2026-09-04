@@ -38,7 +38,7 @@ tour built on it.
 ## Design rule
 
 An anchor is registered from the same object that installs the control's click handler. `act()`
-in `renderer/pathux/anchors.ts` takes one `Offer` (the command id and props the control runs),
+in `renderer/pathux/tour/anchors.ts` takes one `Offer` (the command id and props the control runs),
 sets `node.onclick` from it, and records the anchor from it. A separate annotation, such as a
 `data-command` attribute, would be a description of the handler and could drift from it when the
 control was rewired. Sharing one object makes drift impossible.
@@ -274,7 +274,7 @@ Each step has a `say` instruction and one of four kinds:
 A `gesture` step is evaluated with the same `Interaction.targets` a real drop calls, without arming
 anything or moving the pointer. The tour highlights the element to pick up and outlines each target
 that would accept it. `Interaction.targets` needs the surface's current state, so each editor
-registers a state reader in `renderer/pathux/gestures.ts` under its interaction namespace, with
+registers a state reader in `renderer/pathux/interactions/gestures.ts` under its interaction namespace, with
 `gestureState(namespace, editor, read)`. The editor is part of the registration because two panes
 can show the same scene (the document tree and the branch editor), and the drag has to start on
 the one that runs the gesture.
@@ -306,7 +306,7 @@ alongside the snapshot and turns a `ring` into a `blocked` when the stack has an
 lookup is a plain function of a cache the caller owns: `stack.check` is asynchronous and lives in
 main, while `guide` stays pure over what is drawn.
 
-`renderer/pathux/tour.ts` fills that cache. For the anchor a step points at it calls
+`renderer/pathux/tour/tour.ts` fills that cache. For the anchor a step points at it calls
 `checkFor(anchor, props)` (`renderer/rules/precheck.ts`) to build the invocation to ask about, then
 `command:check`, and stores the refusal under the anchor key. The answer lands a beat later and the
 overlay's next re-resolve reads it. An entry is re-asked whenever an anchor's recorded props change.
@@ -441,11 +441,11 @@ the agent in either host.
 | `renderer/rules/tour.ts`      | `TourState`, `guide`, `satisfies`; pure, no DOM                                                 |
 | `renderer/rules/anchormap.ts` | `ANCHOR_MAP`, loaded from `anchors.json`                                                        |
 | `renderer/rules/precheck.ts`  | `checkFor`, `askedAs`: which invocation a ringed anchor is checked with                        |
-| `renderer/pathux/anchors.ts`  | The registry: `redrawing`, `act`, `landsOn`, `strayAnchors`                                     |
-| `renderer/pathux/hittest.ts`  | `elementsAt`, `reaches`, `hitFor`: hit testing through shadow roots                             |
-| `renderer/pathux/overlay.ts`  | The ring layer and its two timers                                                               |
-| `renderer/pathux/tour.ts`     | The running tour; `window.__vnTour`                                                             |
-| `renderer/pathux/gestures.ts` | Per-editor gesture state readers                                                                |
+| `renderer/pathux/tour/anchors.ts`  | The registry: `redrawing`, `act`, `landsOn`, `strayAnchors`                                     |
+| `renderer/pathux/interactions/hittest.ts`  | `elementsAt`, `reaches`, `hitFor`: hit testing through shadow roots                             |
+| `renderer/pathux/tour/overlay.ts`  | The ring layer and its two timers                                                               |
+| `renderer/pathux/tour/tour.ts`     | The running tour; `window.__vnTour`                                                             |
+| `renderer/pathux/interactions/gestures.ts` | Per-editor gesture state readers                                                                |
 | `src/shared/tours.ts`         | `Step`, `Tour`, and the curated tours                                                           |
 | `src/shared/tourcheck.ts`     | `readTour`, `checkTour`                                                                         |
 | `src/main/commands/tour.ts`   | The `tour.*` commands                                                                           |

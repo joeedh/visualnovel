@@ -9,4 +9,4 @@ if (import.meta.env.DEV) {
 // `styles/index.css` is loaded at document level rather than adopted by the shell: custom
 // properties are the one thing that crosses a shadow boundary, so `tokens.css` is what the
 // editors' `var(--…)` reads resolve against.
-void import('./pathux/shell').then((m) => m.startShell());
+void import('./pathux/app/shell').then((m) => m.startShell());
