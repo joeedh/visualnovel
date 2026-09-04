@@ -80,7 +80,9 @@ import {
   priceEstimate,
   pricesAreStale,
   registerGenRuntimes,
+  instancedRefs,
   writeGraphFile,
+  writeGroupFile,
   type GenPricedEstimate,
   type Graph as GenGraph,
   type GraphId,
@@ -318,6 +320,7 @@ import type {
   DocTree,
   GateCandidate,
   GraphDocRead,
+  GroupDocRead,
   KeyScope,
   KeyStatusView,
   PipelineRunResult,
@@ -331,7 +334,15 @@ import type {
 } from '../shared/ipc.js';
 import { parseKeyGuide, type GuideUrlField, type KeyGuide } from '../shared/apikeys.js';
 import { reorderApprovals, type ApprovalQueue } from './approvals.js';
-import { graphPath, graphSlugs, nodeIdOf, readGraph, type GraphSlug } from './graphs.js';
+import {
+  graphPath,
+  graphSlugs,
+  groupPath,
+  nodeIdOf,
+  readGraph,
+  readGroupDoc,
+  type GraphSlug,
+} from './graphs.js';
 import { readResource } from './resources.js';
 import { notify } from './notifications.js';
 import {
@@ -850,15 +861,35 @@ interface FileStamp {
   size: number;
 }
 
-/** One graph's last answer, and what its file looked like when that answer was built. */
-interface HeldGraphDoc extends FileStamp {
-  read: GraphDocRead;
+/**
+ * One document's last answer, and what every file it was built from looked like at the time: its
+ * own, and the definition file of each group it resolved. A file that was absent is held as
+ * undefined, so its arrival reads as a change too.
+ */
+interface HeldDoc<R> {
+  read: R;
+  stamps: Map<string, FileStamp | undefined>;
 }
 
 /** The stamp for `file`, or undefined when there is nothing there to stamp. */
 async function statOf(file: string): Promise<FileStamp | undefined> {
   const found = await stat(file).catch(() => null);
   return found ? { mtimeMs: found.mtimeMs, size: found.size } : undefined;
+}
+
+async function stampsOf(files: readonly string[]): Promise<Map<string, FileStamp | undefined>> {
+  const out = new Map<string, FileStamp | undefined>();
+  for (const file of files) out.set(file, await statOf(file));
+  return out;
+}
+
+/** True while every file a held answer was built from still looks the way it did. */
+async function unmoved(held: HeldDoc<unknown>): Promise<boolean> {
+  for (const [file, was] of held.stamps) {
+    const now = await statOf(file);
+    if (was?.mtimeMs !== now?.mtimeMs || was?.size !== now?.size) return false;
+  }
+  return true;
 }
 
 /** The output node a run targets when none is named, which is the first one still active. */
@@ -1008,9 +1039,11 @@ export class WorkspaceSession {
   /**
    * The last answer `graphDoc` built for each slug, held so a pane re-reading after its own write
    * does not pay for a parse of bytes it has already seen. Dropped by `forgetGraphDocs`, and
-   * checked against a stat on every serve.
+   * checked against a stat of every file it came from on every serve.
    */
-  private readonly heldGraphs = new Map<GraphSlug, HeldGraphDoc>();
+  private readonly heldGraphs = new Map<GraphSlug, HeldDoc<GraphDocRead>>();
+  /** The same for `groupDoc`, by ref. */
+  private readonly heldGroups = new Map<string, HeldDoc<GroupDocRead>>();
 
   constructor(
     readonly dir: string,
@@ -5621,19 +5654,16 @@ export class WorkspaceSession {
    * back to the file's own layout rather than to the DSL, because the DSL carries no node
    * positions and the pane has to draw the graph where the author left it.
    *
-   * Answered from the held parse when a stat says the file has not moved. Building one costs a
-   * read, a JSON parse, an nstructjs deserialize, a walk of the group library off disk, a
-   * validation pass and a re-serialize, and a pane re-reads after every write — so the reads that
-   * change nothing are the ones worth not paying for. The stat is what keeps a writer this
-   * process never saw, such as the CLI or a `git checkout`, from being served a stale parse.
+   * Answered from the held parse when a stat says neither the file nor any definition it resolved
+   * has moved. Building one costs a read, a JSON parse, an nstructjs deserialize, a walk of the
+   * group library off disk, a validation pass and a re-serialize, and a pane re-reads after every
+   * write — so the reads that change nothing are the ones worth not paying for. The stats are what
+   * keep a writer this process never saw, such as the CLI or a `git checkout` touching `lib/`,
+   * from being served a stale parse.
    */
   async graphDoc(slug: GraphSlug): Promise<GraphDocRead> {
-    const file = join(this.dir, graphPath(this.dir, slug));
-    const stat = await statOf(file);
     const held = this.heldGraphs.get(slug);
-    if (held && stat && held.mtimeMs === stat.mtimeMs && held.size === stat.size) {
-      return held.read;
-    }
+    if (held && (await unmoved(held))) return held.read;
 
     const read = await readGraph(this.dir, slug);
     const answer: GraphDocRead = read.ok
@@ -5645,26 +5675,52 @@ export class WorkspaceSession {
         }
       : { ok: false, reason: read.reason };
 
-    // Stat after the read, so bytes that landed during it are described by the record rather than
-    // hidden by it. A file that has gone leaves nothing held, since there is nothing to check
-    // a later answer against.
-    const after = await statOf(file);
-    if (after) this.heldGraphs.set(slug, { read: answer, ...after });
-    else this.heldGraphs.delete(slug);
+    // Stamped after the read, so bytes that landed during it are described by the record rather
+    // than hidden by it
+    const files = [join(this.dir, graphPath(this.dir, slug))];
+    if (read.ok) files.push(...this.groupFiles(instancedRefs(read.graph)));
+    this.heldGraphs.set(slug, { read: answer, stamps: await stampsOf(files) });
     return answer;
   }
 
   /**
-   * Drop every held graph parse when a write names anything under the graph directory.
+   * One group definition from `lib/`, for the pane's `groupLoader`. Held and stamped the way a
+   * graph is, against its own file and those of the definitions it instances in turn.
+   */
+  async groupDoc(ref: string): Promise<GroupDocRead> {
+    const held = this.heldGroups.get(ref);
+    if (held && (await unmoved(held))) return held.read;
+
+    const read = await readGroupDoc(this.dir, ref);
+    const answer: GroupDocRead = read.ok
+      ? {
+          ok: true,
+          path: read.path,
+          file: writeGroupFile(read.def),
+          diagnostics: read.diagnostics,
+        }
+      : { ok: false, reason: read.reason };
+
+    const files = this.groupFiles([ref, ...(read.ok ? instancedRefs(read.def.subgraph) : [])]);
+    this.heldGroups.set(ref, { read: answer, stamps: await stampsOf(files) });
+    return answer;
+  }
+
+  private groupFiles(refs: readonly string[]): string[] {
+    return refs.map((ref) => join(this.dir, groupPath(this.dir, ref)));
+  }
+
+  /**
+   * Drop every held parse when a write names anything under the graph directory.
    *
-   * All of them rather than the one file written, because a graph resolves group definitions out
-   * of `vngen/work/graphs/lib/` and a stat of the graph's own file cannot notice one of those
-   * changing. The set is a handful of entries, so re-reading them all is cheaper than being wrong.
+   * All of them rather than the one file written: the stamps would catch it on the next serve,
+   * but the set is a handful of entries, and dropping them all is cheaper than being wrong.
    */
   forgetGraphDocs(written: readonly string[]): void {
     const dir = `${GRAPH_DOCS_DIR}/`;
     if (written.some((path) => path.split(sep).join('/').startsWith(dir))) {
       this.heldGraphs.clear();
+      this.heldGroups.clear();
     }
   }
 

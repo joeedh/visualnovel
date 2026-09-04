@@ -151,6 +151,19 @@ export async function readGroupDef(root: string, ref: string): Promise<GroupDef 
   }
 }
 
+/**
+ * The whole library by ref, for a description that may instance a definition the graph did not
+ * hold before. A file that will not read is left out, the way `readGroupDef` leaves it out.
+ */
+export async function readGroupLibrary(root: string): Promise<Map<string, GroupDef>> {
+  const groups = new Map<string, GroupDef>();
+  for (const ref of await groupRefs(root)) {
+    const def = await readGroupDef(root, ref);
+    if (def !== undefined) groups.set(ref, def);
+  }
+  return groups;
+}
+
 /** The workspace-relative path a group definition lives at. */
 export function groupPath(root: string, ref: string): string {
   return workspacePath(root, graphGroupFile(new ProjectPaths(root), ref));

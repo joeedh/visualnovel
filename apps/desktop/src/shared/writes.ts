@@ -50,10 +50,28 @@ export function graphDocPath(slug: string): string {
   return `${GRAPH_DOCS_DIR}/${slug}.json`;
 }
 
-/** Did any of `written` name the file a generation graph lives in? `work/graphs/<slug>.json`. */
-export function touchesGraph(written: readonly string[], slug: string): boolean {
+/**
+ * Where one group definition lives. A pane keys the sync for a definition-level edit by this,
+ * beside `graphDocPath` for the same reason that one lives here.
+ */
+export function graphGroupPath(ref: string): string {
+  return `${GRAPH_DOCS_DIR}/lib/${ref}.json`;
+}
+
+/**
+ * Did any of `written` name the file a generation graph lives in, or the definition file of a
+ * group the graph instances? `refs` is what the pane learned after resolving the graph's groups.
+ */
+export function touchesGraph(
+  written: readonly string[],
+  slug: string,
+  refs: readonly string[] = [],
+): boolean {
   if (!slug) return false;
-  return touches(written, graphDocPath(slug));
+  return (
+    touches(written, graphDocPath(slug)) ||
+    refs.some((ref) => touches(written, graphGroupPath(ref)))
+  );
 }
 
 /**

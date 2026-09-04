@@ -413,6 +413,7 @@ const fallback: DesktopApi = {
       // A preview has no project, so there is no graph document to answer with. The refusal
       // reads the way a missing graph reads in a real project, which is what the pane draws.
       case 'gengraph:doc':
+      case 'gengraph:group':
         return Promise.resolve({ ok: false, reason: '(preview) no project open' });
       // The catalog is a projection of the live registry, which a browser preview has no
       // access to; an empty one keeps the palette rendering rather than throwing.

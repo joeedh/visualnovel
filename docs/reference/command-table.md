@@ -2,8 +2,8 @@
 
 # Registered commands
 
-160 commands, in 22 namespaces. 85 are `mutating`;
-98 declare a precondition; 53 are undoable; 19 ask
+170 commands, in 22 namespaces. 94 are `mutating`;
+107 declare a precondition; 62 are undoable; 19 ask
 for confirmation.
 
 ✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
@@ -54,21 +54,31 @@ for confirmation.
 | `doc.write` ✍ ↺ ✓ | `path`, `text` (digest), `seenHash` (default `''`) | Overwrite a document. A file changed underneath the edit is refused by content. `scenes/**` is refused outright. |
 | `gate.approve` ✍ ✓ | `characterId`, `hash` | Flips `character.md`; writes the approved PNG + manifest. |
 | `gate.candidates` | `characterId` | Pending portrait candidates for one character. |
-| `gengraph.addNode` ✍ ↺ ✓ | `slug`, `type`, `x` (default `0`), `y` (default `0`) | Place one node of a registered type. A type no plugin provides is refused by name rather than written and reported on the next load. |
+| `gengraph.addBoundary` ✍ ↺ ✓ | `group`, `dir`, `key`, `type` | — |
+| `gengraph.addGroup` ✍ ↺ ✓ | `slug`, `ref`, `x` (default `0`), `y` (default `0`), `group` (default `''`) | Place one instance of a definition under `lib/`, bound at once so the file never holds an unresolved instance. What the Add Group menu runs. |
+| `gengraph.addNode` ✍ ↺ ✓ | `slug`, `type`, `x` (default `0`), `y` (default `0`), `group` (default `''`) | Place one node of a registered type. A type no plugin provides is refused by name rather than written and reported on the next load. |
 | `gengraph.apply` ✍ ↺ ✓ | `slug`, `description` (digest) | Rewrite a whole graph from a JSON description in path.ux's graph DSL, diffed by node id so a node the description leaves alone keeps its position and its journal. The description is a string prop because `@vn/commands` has no JSON kind. |
 | `gengraph.create` ✍ ↺ ✓ | `name` | Start an empty graph at `vngen/work/graphs/<slug>.json`. The slug comes from the name once, at creation, so a graph is renamed the way a scene is — not at all. |
 | `gengraph.createForSlot` ✍ ↺ ✓ | `slot`, `name` (default `''`), `open` (default `true`) | Start a graph that draws one slot, wired the way the pipeline draws it: the derived prompt and the task references feed an image node, and its picture fills the slot. An empty `name` is derived from the slot address, and takes the next free `<base>-2` where a graph of that name exists. A slot another graph already draws is refused, because two active outputs claiming one slot leave it bound to neither. `open` shows the new graph in the Gen Graph editor, focusing a pane already open on one rather than making a second. This is what _Create a graph for this slot_ dispatches, on a slot row and on a picture a slot claims alike. |
+| `gengraph.createGroup` ✍ ↺ ✓ | `slug`, `nodes`, `name` (default `''`), `group` (default `''`) | Move the selected nodes into a new definition file under `lib/` and leave an instance in their place; every link that crossed the selection is rewired through the instance. Writes both files. What Ctrl+G and Edit ▸ Create Group run. |
 | `gengraph.delete` ✍ ⚠ ↺ ✓ | `slug` | Remove a graph's document. Its journal and blobs under `vngen/state/graphs/` stay, being the record of runs that happened. |
-| `gengraph.duplicateNode` ✍ ↺ ✓ | `slug`, `node`, `x` (default `0`), `y` (default `0`) | — |
+| `gengraph.duplicateNode` ✍ ↺ ✓ | `slug`, `node`, `x` (default `0`), `y` (default `0`), `group` (default `''`) | — |
 | `gengraph.estimate` | `slug` | What one run would cost, per paid node and in total, from the shipped price table. Writes nothing. |
-| `gengraph.link` ✍ ↺ ✓ | `slug`, `from`, `fromSocket`, `to`, `toSocket` | Feed one node's input from another node's output. A pair whose types cannot coerce is refused, and so is a link that would close a cycle. |
+| `gengraph.expose` ✍ ↺ ✓ | `group`, `node`, `key` (default `''`), `label` (default `''`) | Add a forwarded row to a definition: one inner node's property, or the node's whole panel when no key is named. Every instance shows it. What the designer's Expose runs. |
+| `gengraph.link` ✍ ↺ ✓ | `slug`, `from`, `fromSocket`, `to`, `toSocket`, `group` (default `''`) | Feed one node's input from another node's output. A pair whose types cannot coerce is refused, and so is a link that would close a cycle. |
 | `gengraph.list` | — | Every generation graph the project holds, with the sentence an unreadable one earns instead of opening. |
-| `gengraph.moveNodes` ✍ ↺ ✓ | `slug`, `moves` (digest) | — |
-| `gengraph.removeNode` ✍ ↺ ✓ | `slug`, `node` | Delete one node and every link touching it. |
+| `gengraph.listGroups` | — | Every group definition the project holds, with the sentence an unreadable one earns instead of opening. What Add Group offers. |
+| `gengraph.moveNodes` ✍ ↺ ✓ | `slug`, `moves` (digest), `group` (default `''`) | — |
+| `gengraph.removeBoundary` ✍ ↺ ✓ | `group`, `dir`, `key` | — |
+| `gengraph.removeNode` ✍ ↺ ✓ | `slug`, `node`, `group` (default `''`) | Delete one node and every link touching it. |
+| `gengraph.reorderExposed` ✍ ↺ ✓ | `group`, `from`, `to` | — |
+| `gengraph.repointExposed` ✍ ↺ ✓ | `group`, `index`, `node`, `key` (default `''`) | — |
 | `gengraph.run` ✍ ⚠ ✓ | `slug`, `node` (default `''`), `force` (default `false`) | Execute the graph through the same executor and journal the scheduler uses, targeting the active Output or the named one. Confirmed, quoting the estimate. Not undoable: what it writes is a journal record and a blob under `vngen/state`. `force` re-runs every paid node feeding the target rather than resuming from the journal. |
 | `gengraph.setActiveOutput` ✍ ↺ ✓ | `slug`, `node` | Choose which Output node a run targets and which slot binding counts. An Output filling no slot is refused, because a task's slot is what names the graph that draws it. |
-| `gengraph.setProp` ✍ ↺ ✓ | `slug`, `node`, `key`, `value` | Write one node property. The value is typed as text and the node's own property decides how to read it, so a number field refuses prose. |
-| `gengraph.unlink` ✍ ↺ ✓ | `slug`, `to`, `toSocket`, `from` (default `''`), `fromSocket` (default `''`) | Sever what feeds an input. Naming a source severs that one edge; naming none severs every edge into the socket. |
+| `gengraph.setProp` ✍ ↺ ✓ | `slug`, `node`, `key`, `value`, `group` (default `''`) | Write one node property. The value is typed as text and the node's own property decides how to read it, so a number field refuses prose. Addressed by node key into a group instance, the write is an override on that instance. |
+| `gengraph.unexpose` ✍ ↺ ✓ | `group`, `index` | — |
+| `gengraph.ungroup` ✍ ↺ ✓ | `slug`, `node`, `group` (default `''`) | Inline a copy of the instance's subgraph, overrides included, where the instance stood. The definition under `lib/` is left for its other instances. What Edit ▸ Ungroup runs. |
+| `gengraph.unlink` ✍ ↺ ✓ | `slug`, `to`, `toSocket`, `from` (default `''`), `fromSocket` (default `''`), `group` (default `''`) | Sever what feeds an input. Naming a source severs that one edge; naming none severs every edge into the socket. |
 | `interaction.list` | — | The gestures the app offers — see below. |
 | `interaction.targets` | `interaction` (`branch.connect`\|`branch.splice`\|`branch.unwire`\|`prompt.reorder`\|`script.moveLine`\|`timeline.cover`\|`timeline.create`\|`timeline.reorder`), `carried`, `scene` (default `''`), `asset` (default `''`) | Every target of a gesture, accepted or refused with why. `scene` and `asset` build the state the named gesture is judged against. |
 | `notify.clear` | `ids` | — |

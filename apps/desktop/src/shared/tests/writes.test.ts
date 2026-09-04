@@ -1,5 +1,6 @@
 import {
   graphDocPath,
+  graphGroupPath,
   normalizePath,
   touches,
   touchesGraph,
@@ -60,6 +61,20 @@ describe('touchesGraph', () => {
     expect(touchesGraph(['vngen/work/graphs/backdrop.json'], 'portrait')).toBe(false);
     expect(touchesGraph(['characters/aiko/character.md'], 'portrait')).toBe(false);
     expect(touchesGraph(['vngen/work/graphs/portrait.json'], '')).toBe(false);
+  });
+
+  it('counts the definition file of a group the graph instances, and no other', () => {
+    expect(touchesGraph(['vngen/work/graphs/lib/inkwash.json'], 'portrait', ['inkwash'])).toBe(
+      true,
+    );
+    expect(touchesGraph(['vngen/work/graphs/lib/inkwash.json'], 'portrait', ['other'])).toBe(false);
+    expect(touchesGraph(['vngen/work/graphs/lib/inkwash.json'], 'portrait')).toBe(false);
+  });
+});
+
+describe('graphGroupPath', () => {
+  it('is the lib/ file beside the graphs', () => {
+    expect(graphGroupPath('inkwash')).toBe('vngen/work/graphs/lib/inkwash.json');
   });
 });
 

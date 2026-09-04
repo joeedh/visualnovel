@@ -886,6 +886,12 @@ export type GraphDocRead =
   | { ok: false; reason: string };
 
 /**
+ * One group definition as the renderer receives it, in the same shape a graph travels in. The
+ * renderer reads it back with `readGroupFile`, and the pane's `groupLoader` is what asks.
+ */
+export type GroupDocRead = GraphDocRead;
+
+/**
  * Channels invoked by the renderer and answered by main (request → response).
  * Keep the key as the literal channel string; the value types the (args) → result.
  */
@@ -947,6 +953,11 @@ export interface InvokeChannels {
    * command, so the pane re-reads this after each one rather than patching what it holds.
    */
   'gengraph:doc': (slug: string) => GraphDocRead;
+  /**
+   * One group definition from `vngen/work/graphs/lib/`, which a graph holding an instance of it
+   * resolves through. A read; every edit to a definition is a `gengraph.*` command with `group`.
+   */
+  'gengraph:group': (ref: string) => GroupDocRead;
   /** The live registry projection — never the generated file, so the two can't diverge. */
   'command:catalog': () => CommandCatalog;
   'command:exec': (request: CommandExecRequest) => ExecOutcome;

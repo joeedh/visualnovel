@@ -53,14 +53,13 @@ import {
 } from '@vn/scriptedit/write';
 import { loadConfig } from '@vn/config';
 import { decideGenEdit, graphToDSL, validateGenGraph } from '@vn/gengraph';
-import type { GenDiagnostic, GenPropValue, GroupDef } from '@vn/gengraph';
+import type { GenDiagnostic, GenPropValue } from '@vn/gengraph';
 import {
   bindGroupLibrary,
   graphSlugs,
-  groupRefs,
   pluginWriteRefusal,
   readGraphDoc,
-  readGroupDef,
+  readGroupLibrary,
   writeGraphDoc,
 } from '@vn/gengraph/state';
 import {
@@ -2610,11 +2609,7 @@ const editAssetGraphTool: Tool<{
     if (!read.ok) return fail(read.reason);
 
     // The whole library, so the description can instance a definition this graph did not hold.
-    const groups = new Map<string, GroupDef>();
-    for (const ref of await groupRefs(root)) {
-      const def = await readGroupDef(root, ref);
-      if (def !== undefined) groups.set(ref, def);
-    }
+    const groups = await readGroupLibrary(root);
 
     const description = { nodes: a.nodes, links: a.links };
     const decided = decideGenEdit(read.graph, { op: 'apply', description, groups });

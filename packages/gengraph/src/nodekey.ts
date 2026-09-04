@@ -51,6 +51,23 @@ export function flattenNodes(graph: Graph): Node[] {
 }
 
 /**
+ * The refs of every definition this graph reaches: its own instances and, through their
+ * subgraphs, the definitions those instance in turn. Each ref once, in the order first met.
+ */
+export function instancedRefs(graph: Graph): string[] {
+  const out: string[] = [];
+  const walk = (scope: Graph): void => {
+    for (const node of scope.nodes) {
+      if (!(node instanceof GroupNode)) continue;
+      if (!out.includes(node.ref)) out.push(node.ref);
+      walk(node.subgraph);
+    }
+  };
+  walk(graph);
+  return out;
+}
+
+/**
  * The sources feeding an input whose owners are among `members`. A source outside them is a
  * boundary default reached through a proxy: an instance's own socket standing in for a link
  * that was never made, which contributes a value rather than an upstream node.

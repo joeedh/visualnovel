@@ -3,7 +3,14 @@
  * writing themselves live in `@vn/gengraph/state`, because the authoring agent loads the same
  * files; what is added here is the summary the document tree lists them by.
  */
-import { graphPath, graphSlugs, readGraphDoc } from '@vn/gengraph/state';
+import {
+  graphPath,
+  graphSlugs,
+  groupPath,
+  groupRefs,
+  readGraphDoc,
+  readGroupDoc,
+} from '@vn/gengraph/state';
 import type { GraphSlug } from '@vn/gengraph/state';
 
 export {
@@ -11,14 +18,19 @@ export {
   deleteGraphDoc as deleteGraph,
   graphPath,
   graphSlugs,
+  groupPath,
+  groupRefs,
   isGraphSlug,
+  nextGroupRef,
   nodeIdOf,
   readGraphDoc as readGraph,
   readGroupDef,
+  readGroupDoc,
+  readGroupLibrary,
   writeGraphDoc as writeGraph,
   writeGroupDef,
 } from '@vn/gengraph/state';
-export type { GraphRead, GraphSlug } from '@vn/gengraph/state';
+export type { GraphRead, GraphSlug, GroupRead } from '@vn/gengraph/state';
 
 /** One graph as the document tree lists it, without the graph itself being loaded. */
 export interface GraphSummary {
@@ -38,6 +50,29 @@ export async function listGraphs(root: string): Promise<GraphSummary[]> {
     out.push({
       slug,
       path: graphPath(root, slug),
+      ...(read.ok ? {} : { problem: read.reason }),
+    });
+  }
+
+  return out;
+}
+
+/** One group definition as a list names it: its ref, its file, and what is wrong with it. */
+export interface GroupSummary {
+  ref: string;
+  path: string;
+  problem?: string;
+}
+
+/** Every group definition under `lib/`, with an unreadable one carrying its problem. */
+export async function listGroups(root: string): Promise<GroupSummary[]> {
+  const out: GroupSummary[] = [];
+
+  for (const ref of await groupRefs(root)) {
+    const read = await readGroupDoc(root, ref);
+    out.push({
+      ref,
+      path: groupPath(root, ref),
       ...(read.ok ? {} : { problem: read.reason }),
     });
   }

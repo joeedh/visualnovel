@@ -1,6 +1,6 @@
 # Group nodes in the Gen Graph editor
 
-Status: **in progress** (D1 done 2026-09-04; D2–D4 open). The Gen Graph pane gains groups: an author selects nodes and presses
+Status: **in progress** (D1 and D2 done 2026-09-04; D3–D4 open). The Gen Graph pane gains groups: an author selects nodes and presses
 Ctrl+G or picks Edit ▸ Create Group, and the selection becomes a definition file under
 `vngen/work/graphs/lib/` with an instance standing in its place; entering the instance edits
 that file, and every graph that instances it follows. The editor gestures, the ops, the
@@ -314,6 +314,27 @@ name; an edit at a definition level carries `group`; a `documents:wrote` naming 
 definition file this pane did not write reloads; one this pane wrote does not; a
 `createGroup` ack reloads; a bound prop change on an inner node at a definition level sends
 `setProp` with `group`, and at an instance level sends it with a key.
+
+**D2 status: done, 2026-09-04.** Landed as written, with these deviations:
+
+- `gengraph.addGroup` names the definition it instances with `ref`, not `group`, so `group`
+  keeps one meaning across every command: the definition being edited. `addGroup` therefore
+  also takes `group`, which places an instance inside another definition; the self-containment
+  check runs in the command by ref, because two reads of one file are two objects and
+  path.ux's identity check cannot see through that.
+- `gengraph.createGroup` takes `group` too, so a nested group can be made inside a
+  definition. `nodes` is one comma-separated string, since `@vn/commands` has no list kind.
+- `setActiveOutput` and `apply` do not declare `group`; the registry refuses the unknown prop,
+  which is the refusal decision 2 asked for. `apply` loads the whole library through
+  `readGroupLibrary` so a description can instance a definition the graph never held.
+- `gengraph.expose` takes no `at`; a row is added at the end and `reorderExposed` moves it.
+- The held parses in `session.ts` stamp every file they came from, the definition files
+  included, and `groupDoc` is held the same way; `forgetGraphDocs` still drops both maps on any
+  write under the graph directory.
+- `touchesGraph` gained a third argument, the refs a graph instances, rather than a second
+  predicate, so D3 has one call to make.
+- `anchors.json` was re-swept against `examples/mySampleRepo` because the coverage test pins
+  the command list; the ten new commands are palette-only until D3 draws their controls.
 
 ### Stage D4 — docs and the tour sweep
 
