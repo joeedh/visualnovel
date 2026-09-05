@@ -17,9 +17,9 @@ import { character, location, model, scene } from '@vn/testkit';
 import { planTasks } from '../index.js';
 
 const config = projectConfig.parse({
-  title: 'Test',
+  title    : 'Test',
   art_style: 'watercolor',
-  models: { vision: ['gemini', 'claude'] },
+  models   : { vision: ['gemini', 'claude'] },
 });
 
 /** A café with two variants, and Aiko in a second outfit — so plates, sheets and refs all fan out. */
@@ -54,7 +54,7 @@ async function planToExhaustion(m: ProjectModel): Promise<TaskGraph> {
 
 function slots(m: ProjectModel, graph: TaskGraph): SlotGraph {
   return buildSlotGraph({
-    model: m,
+    model : m,
     assets: [],
     config,
     graph,

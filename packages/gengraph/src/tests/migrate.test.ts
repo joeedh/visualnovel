@@ -19,17 +19,17 @@ function node(id: string, over: Record<string, unknown> = {}): Record<string, un
     _structName: 'graph.TestRenamed',
     id,
     typeVersion: 1,
-    props: [{ apiname: 'name', data: '' }],
-    inputs: [{ name: 'src' }],
-    outputs: [{ name: 'out' }],
+    props      : [{ apiname: 'name', data: '' }],
+    inputs     : [{ name: 'src' }],
+    outputs    : [{ name: 'out' }],
     ...over,
   };
 }
 
 const file = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
   VERSION: 1,
-  nodes: [node('0'), node('1')],
-  links: [{ srcNode: '0', srcKey: 'out', dstNode: '1', dstKey: 'src' }],
+  nodes  : [node('0'), node('1')],
+  links  : [{ srcNode: '0', srcKey: 'out', dstNode: '1', dstKey: 'src' }],
   ...over,
 });
 
@@ -136,9 +136,9 @@ describe('the text a rename leaves pointing at the old name', () => {
 describe('a group definition', () => {
   const groupFile = (): Record<string, unknown> => ({
     subgraph: file(),
-    inputs: [],
-    outputs: [],
-    exposed: [{ kind: 'prop', nodeId: '0', propKey: 'name' }],
+    inputs  : [],
+    outputs : [],
+    exposed : [{ kind: 'prop', nodeId: '0', propKey: 'name' }],
   });
 
   it('moves the forwarded rows onto the prop keys its nodes took', () => {

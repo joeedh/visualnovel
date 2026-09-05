@@ -19,10 +19,10 @@ function loaderFor(filename) {
 module.exports = {
   process(source, filename) {
     const result = transformSync(source, {
-      loader: loaderFor(filename),
-      format: 'cjs',
-      target: 'node20',
-      sourcemap: 'inline',
+      loader    : loaderFor(filename),
+      format    : 'cjs',
+      target    : 'node20',
+      sourcemap : 'inline',
       sourcefile: filename,
     });
     return { code: result.code, map: result.map };

@@ -112,8 +112,8 @@ export function grabCard(state: BranchState, scene: string, at: Point): Press {
     from: at,
     at,
     verdicts: byTarget(branchSplice.targets(state, scene)),
-    over: null,
-    verdict: null,
+    over    : null,
+    verdict : null,
   };
 }
 
@@ -124,8 +124,8 @@ export function grabHandle(state: BranchState, scene: string, at: Point): Connec
     scene,
     at,
     verdicts: byTarget(branchConnect.targets(state, scene)),
-    over: null,
-    verdict: null,
+    over    : null,
+    verdict : null,
   };
 }
 
@@ -136,9 +136,9 @@ export function grabArrow(state: BranchState, edge: string, at: Point): Unwire {
     edge,
     at,
     verdicts: byTarget(branchUnwire.targets(state, edge)),
-    armed: false,
-    over: null,
-    verdict: null,
+    armed   : false,
+    over    : null,
+    verdict : null,
   };
 }
 

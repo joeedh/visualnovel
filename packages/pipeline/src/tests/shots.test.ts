@@ -76,16 +76,16 @@ describe('persisted shot decompositions', () => {
     try {
       const handwritten = {
         version: 1,
-        scene: 'arrival',
+        scene  : 'arrival',
         shots: [
           {
-            id: 'arrival__handwritten',
-            sceneId: 'arrival',
-            framing: 'establishing',
-            location: 'day',
-            subjects: [],
+            id         : 'arrival__handwritten',
+            sceneId    : 'arrival',
+            framing    : 'establishing',
+            location   : 'day',
+            subjects   : [],
             coversLines: [],
-            shotData: { image: 'not-a-real-hash', status: 'accepted' },
+            shotData   : { image: 'not-a-real-hash', status: 'accepted' },
           },
         ],
       };

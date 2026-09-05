@@ -19,30 +19,30 @@ describe('explainPickFrame', () => {
       { id: 'bg', bounds: { x: 0, y: 0, w: 800, h: 600 }, owner: owner('div.app') },
       { id: 'rail', bounds: { x: 0, y: 0, w: 120, h: 600 }, owner: owner('div.rail') },
       {
-        id: 'panel',
+        id    : 'panel',
         bounds: { x: 0, y: 0, w: 800, h: 600 },
-        owner: owner('div.panel'),
-        clip: [{ rect: { x: 0, y: 0, w: 120, h: 600 }, by: 'rail' }],
+        owner : owner('div.panel'),
+        clip  : [{ rect: { x: 0, y: 0, w: 120, h: 600 }, by: 'rail' }],
       },
       {
-        id: 'modal',
-        bounds: { x: 300, y: 200, w: 300, h: 200 },
-        owner: owner('div.modal'),
-        style: { alpha: 1, zIndex: 999 },
+        id      : 'modal',
+        bounds  : { x: 300, y: 200, w: 300, h: 200 },
+        owner   : owner('div.modal'),
+        style   : { alpha: 1, zIndex: 999 },
         zContext: { by: 'stage', byLabel: 'div.stage', reason: 'transform' },
       },
       {
-        id: 'tooltip',
+        id    : 'tooltip',
         bounds: { x: 380, y: 280, w: 100, h: 60 },
-        owner: owner('div.tooltip'),
-        style: { alpha: 0 },
+        owner : owner('div.tooltip'),
+        style : { alpha: 0 },
       },
       { id: 'button', bounds: { x: 350, y: 250, w: 120, h: 80 }, owner: owner('button.approve') },
       {
-        id: 'scrim',
+        id    : 'scrim',
         bounds: { x: 0, y: 0, w: 800, h: 600 },
-        owner: owner('div.scrim'),
-        pick: { mode: 'none' },
+        owner : owner('div.scrim'),
+        pick  : { mode: 'none' },
       },
     ]);
 
@@ -131,8 +131,8 @@ describe('explainPickFrame', () => {
       spaces: createSpaceRegistry({
         css: { parent: 'device', label: 'devicePixelRatio', matrix: IDENTITY },
       }),
-      caps: { dom: DOM_CAPS },
-      fidelity: 'sampled',
+      caps     : { dom: DOM_CAPS },
+      fidelity : 'sampled',
     });
 
     expect(explainPickFrame(frame, { x: 400, y: 300 })).toBe(

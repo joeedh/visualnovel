@@ -1,16 +1,16 @@
 {
-  "name": "testkit-shout",
-  "version": "1.0.0",
-  "apiVersion": 1,
+  "name"       : "testkit-shout",
+  "version"    : "1.0.0",
+  "apiVersion" : 1,
   "description": "A fixture plugin: one node type that rewrites its text through a model.",
-  "nodeTypes": ["TestkitShout"],
-  "services": ["text"],
-  "keys": ["TESTKIT_API_KEY"],
-  "entry": "index.ts",
-  "priceAgent": true,
+  "nodeTypes"  : ["TestkitShout"],
+  "services"   : ["text"],
+  "keys"       : ["TESTKIT_API_KEY"],
+  "entry"      : "index.ts",
+  "priceAgent" : true,
   "prices": {
     "pricesAsOf": "2026-01-01",
-    "source": "made up, for a fixture",
+    "source"    : "made up, for a fixture",
     "models": {
       "testkit-shouter": { "mtok-in": 1, "mtok-out": 2 }
     }

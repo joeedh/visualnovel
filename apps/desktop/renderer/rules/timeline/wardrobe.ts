@@ -40,15 +40,15 @@ export function outfitRows(data: SceneCoverage | null, selected: string | null):
   for (const c of data.cast) if (c.marked) marks[c.id] = c.marked;
 
   const rows: OutfitRow[] = data.cast.map((c) => ({
-    level: 'scene',
-    scene: data.sceneId,
+    level    : 'scene',
+    scene    : data.sceneId,
     character: c.id,
-    outfits: c.outfits,
-    value: c.marked ?? INHERIT,
+    outfits  : c.outfits,
+    value    : c.marked ?? INHERIT,
     // A scene row's value is the marker and its fallback is the character sheet; the shot level
     // sits below the scene level, so a scene marker never inherits from it
     effective: c.marked ? { id: c.marked, origin: 'scene' } : sheet(c),
-    inherits: sheet(c),
+    inherits : sheet(c),
   }));
 
   const shot = selected ? data.shots.find((s) => s.id === selected) : undefined;
@@ -62,16 +62,16 @@ export function outfitRows(data: SceneCoverage | null, selected: string | null):
     rows.push({
       level: 'shot',
       scene: data.sceneId,
-      shot: shot.id,
+      shot : shot.id,
       character,
-      outfits: c.outfits,
-      value: override ?? INHERIT,
+      outfits  : c.outfits,
+      value    : override ?? INHERIT,
       effective: outfitFor(
         { characterId: character, ...(override ? { outfit: override } : {}) },
         { outfits: marks },
         c,
       ),
-      inherits: outfitFor({ characterId: character }, { outfits: marks }, c),
+      inherits : outfitFor({ characterId: character }, { outfits: marks }, c),
     });
   }
   return rows;
@@ -95,11 +95,11 @@ export function outfitInvocation(
 ): { id: string; props: Record<string, string> } {
   return row.level === 'scene'
     ? {
-        id: 'story.setSceneOutfit',
+        id   : 'story.setSceneOutfit',
         props: { scene: row.scene, character: row.character, outfit },
       }
     : {
-        id: 'story.setOutfit',
+        id   : 'story.setOutfit',
         props: { scene: row.scene, shot: row.shot ?? '', character: row.character, outfit },
       };
 }

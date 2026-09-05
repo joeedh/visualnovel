@@ -12,21 +12,21 @@ import type { Evidence } from '../transcript.js';
 
 const report: Report = {
   analysis: {
-    summary: 'The agent rewrote a scene it was only asked to read',
-    whatHappened: 'The author asked for a summary. The agent edited the file instead.',
-    whatWentWrong: ['It treated a question as an instruction'],
-    rootCause: 'A read request and an edit request are not distinguished in the prompt.',
+    summary        : 'The agent rewrote a scene it was only asked to read',
+    whatHappened   : 'The author asked for a summary. The agent edited the file instead.',
+    whatWentWrong  : ['It treated a question as an instruction'],
+    rootCause      : 'A read request and an edit request are not distinguished in the prompt.',
     recommendations: [
       {
         behaviour: 'Never write in plan mode',
-        where: 'loop.ts',
+        where    : 'loop.ts',
         rationale: 'Trust is not undoable',
       },
     ],
-    confidence: 'medium',
-    evidence: ['author: just tell me what happens in it'],
+    confidence     : 'medium',
+    evidence       : ['author: just tell me what happens in it'],
   },
-  model: 'claude-sonnet-5',
+  model     : 'claude-sonnet-5',
   readSource: true,
 };
 
@@ -34,18 +34,18 @@ const report: Report = {
 function evidence(turns: number): Evidence {
   return {
     thread: {
-      id: 't1',
-      title: 'Scene 1 rewrite',
+      id       : 't1',
+      title    : 'Scene 1 rewrite',
       startedAt: '2026-01-01T14:00:00.000Z',
       items: Array.from({ length: turns }, (_, i) => ({
-        id: i + 1,
+        id  : i + 1,
         role: 'user' as const,
         text: `turn ${i + 1}: ${'the author said something at length. '.repeat(6)}`,
-        at: '2026-01-01T14:00:00.000Z',
+        at  : '2026-01-01T14:00:00.000Z',
       })),
     },
-    acts: [],
-    thin: false,
+    acts   : [],
+    thin   : false,
     context: {},
   };
 }

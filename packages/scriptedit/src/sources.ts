@@ -39,8 +39,8 @@ export function sourcesOf(inputs: LoadedInputs): SceneSource[] {
     // branch patchers work on its text — but carries no scene, so no prose edit can touch it.
     const read = sceneFromDoc(chunk.doc, chunk.id);
     return {
-      id: chunk.id,
-      file: chunk.file,
+      id    : chunk.id,
+      file  : chunk.file,
       prefix: splitFrontMatter(chunk.text).prefix,
       script: chunk.doc.body,
       ...(read.ok ? { scene: read.value.scene } : {}),

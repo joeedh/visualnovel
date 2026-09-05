@@ -13,13 +13,13 @@ import { fragmentsFromSnapshot } from './stacking.js';
 import { snapshotDom, type DocumentLike, type ElementLike } from './snapshot.js';
 
 export const DOM_CAPS: SourceCaps = {
-  exactZ: false,
-  paths: false,
+  exactZ          : false,
+  paths           : false,
   perFragmentStyle: true,
-  overdraw: false,
-  stacks: false,
-  continuous: false,
-  hitOracle: true,
+  overdraw        : false,
+  stacks          : false,
+  continuous      : false,
+  hitOracle       : true,
 };
 
 export type DomDocument = DocumentLike & {
@@ -39,7 +39,7 @@ export function domSource(doc: DomDocument): FrameSource {
   }
 
   return {
-    id: 'dom',
+    id  : 'dom',
     caps: DOM_CAPS,
     spaceTransform,
     capture(opts?: CaptureOpts): Frame {
@@ -59,12 +59,12 @@ export function domSource(doc: DomDocument): FrameSource {
 
       return assembleFrame({
         index: frameIndex++,
-        t: Date.now(),
+        t    : Date.now(),
         fragments,
         spaces: createSpaceRegistry({
           css: { parent: 'device', label: 'devicePixelRatio', matrix: () => scaleMat(dpr()) },
         }),
-        caps: { dom: DOM_CAPS },
+        caps    : { dom: DOM_CAPS },
         fidelity: 'sampled',
         oracle,
       });

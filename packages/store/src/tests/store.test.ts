@@ -22,14 +22,14 @@ describe('AssetStore — content addressing', () => {
     const store = await AssetStore.open(paths);
 
     const ref1 = await store.write(bytes('IMG'), 'png', {
-      kind: 'portrait',
+      kind      : 'portrait',
       sourceTask: 't1',
-      modelId: 'm',
+      modelId   : 'm',
     });
     const ref2 = await store.write(bytes('IMG'), 'png', {
-      kind: 'portrait',
+      kind      : 'portrait',
       sourceTask: 't2',
-      modelId: 'm',
+      modelId   : 'm',
     });
     expect(ref1.hash).toBe(ref2.hash);
     expect(store.manifest()).toHaveLength(1);
@@ -45,12 +45,12 @@ describe('AssetStore — content addressing', () => {
     const paths = new ProjectPaths(await tempRoot());
     const store = await AssetStore.open(paths);
     const ref = await store.write(bytes('X'), 'png', {
-      kind: 'shot_image',
+      kind      : 'shot_image',
       sourceTask: 'task',
-      modelId: 'gemini',
-      prompt: 'a prompt',
-      refs: ['ref1'],
-      satisfies: { shotId: 's1' },
+      modelId   : 'gemini',
+      prompt    : 'a prompt',
+      refs      : ['ref1'],
+      satisfies : { shotId: 's1' },
     });
     await store.accept(ref.hash);
     const asset = store.manifest()[0]!;

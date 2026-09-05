@@ -16,41 +16,41 @@ import type { StoryEdge, StoryGraph, StoryScene } from '../../../../src/shared/i
 
 const scene = (id: string): StoryScene => ({
   id,
-  location: 'roof',
+  location  : 'roof',
   characters: [],
-  lines: 3,
-  reachable: true,
+  lines     : 3,
+  reachable : true,
 });
 
 /** `a → b`, and `b` forks to `c` and `d`. So `a` has a linear continuation and `b` has choices. */
 const EDGES: StoryEdge[] = [
   { id: 'a#next', from: 'a', to: 'b', kind: 'next', dangling: false, inert: false },
   {
-    id: 'b#choice:0',
-    from: 'b',
-    to: 'c',
-    kind: 'choice',
-    label: 'Left',
-    index: 0,
+    id      : 'b#choice:0',
+    from    : 'b',
+    to      : 'c',
+    kind    : 'choice',
+    label   : 'Left',
+    index   : 0,
     dangling: false,
-    inert: false,
+    inert   : false,
   },
   {
-    id: 'b#choice:1',
-    from: 'b',
-    to: 'd',
-    kind: 'choice',
-    label: 'Right',
-    index: 1,
+    id      : 'b#choice:1',
+    from    : 'b',
+    to      : 'd',
+    kind    : 'choice',
+    label   : 'Right',
+    index   : 1,
     dangling: false,
-    inert: false,
+    inert   : false,
   },
 ];
 
 const story: StoryGraph = {
-  start: 'a',
-  scenes: ['a', 'b', 'c', 'd'].map(scene),
-  edges: EDGES,
+  start      : 'a',
+  scenes     : ['a', 'b', 'c', 'd'].map(scene),
+  edges      : EDGES,
   diagnostics: [],
 };
 
@@ -95,7 +95,7 @@ describe('wiring one scene to another', () => {
     const drag = aim(grabHandle(state, 'c', at(0, 0)), { ...nowhere, node: 'd' });
     expect(drag.over).toBe('d');
     expect(accepted(drag).invoke).toEqual({
-      id: 'story.setNext',
+      id   : 'story.setNext',
       props: { scene: 'c', goto: 'd' },
     });
   });
@@ -135,7 +135,7 @@ describe('a press becomes a splice', () => {
     expect(drag.kind).toBe('splice');
     expect(drag.over).toBe('a#next');
     expect(accepted(drag).invoke).toEqual({
-      id: 'story.spliceScene',
+      id   : 'story.spliceScene',
       props: { scene: 'c', from: 'a' },
     });
   });

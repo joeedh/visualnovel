@@ -24,8 +24,8 @@ describe('needsCheck', () => {
     // The entry names no asset, so a check would have no id to ask a command about.
     expect(
       needsCheck({
-        label: 'Open shot asset',
-        id: 'view.open',
+        label  : 'Open shot asset',
+        id     : 'view.open',
         refused: 'No shot covers a:L1 yet.',
       }),
     ).toBe(false);
@@ -43,10 +43,10 @@ describe('entriesWithVerdicts', () => {
 
   it('carries an accepted entry through unmarked, with its sentence', () => {
     expect(entriesWithVerdicts(entries, answered)[0]).toMatchObject({
-      label: 'Regenerate',
-      enabled: true,
+      label    : 'Regenerate',
+      enabled  : true,
       separator: false,
-      message: 'Regenerate these bytes',
+      message  : 'Regenerate these bytes',
     });
   });
 

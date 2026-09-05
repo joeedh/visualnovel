@@ -99,7 +99,7 @@ export async function seedReport(seed: ReportSeed = {}): Promise<void> {
   set({
     ...state,
     threads,
-    note: seed.note ?? '',
+    note : seed.note ?? '',
     setup: {
       thread: seeded ?? threads[0]?.id ?? '',
       model,

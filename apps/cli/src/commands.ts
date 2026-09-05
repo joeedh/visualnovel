@@ -239,7 +239,7 @@ async function printGraphStatus(project: LoadedProject): Promise<void> {
 
   const report = reportGraphs(docs, {
     maxRefineAttempts: project.config.max_refine_attempts,
-    tables: await hostPriceTables(),
+    tables           : await hostPriceTables(),
   });
   ok(`Generation graphs: ${docs.length} (${report.bound.size} slot(s) bound)`);
   for (const slot of report.conflicts) {
@@ -286,9 +286,9 @@ export async function cmdStatus(args: Args): Promise<number> {
   // Suspension is derived, so this is a walk over the manifest rather than a stored count. The
   // desktop app's `asset.suspended` lists them; this prints a count and where to look
   const suspended = suspendedAssets({
-    model: project.model,
-    assets: project.store.manifest(),
-    shots: await loadSceneShots(project.paths, project.model),
+    model  : project.model,
+    assets : project.store.manifest(),
+    shots  : await loadSceneShots(project.paths, project.model),
     angleOf: (task) => {
       const node = task ? project.graph.get(task) : undefined;
       return node && 'angle' in node.inputs ? node.inputs.angle : undefined;
@@ -339,9 +339,9 @@ async function loadGraphs(
 
   const deps = await build();
   const { runtime, conflicts } = graphRuntime(project.paths, docs, {
-    model: project.model,
-    store: project.store,
-    providers: deps.providers,
+    model       : project.model,
+    store       : project.store,
+    providers   : deps.providers,
     imageBackend: deps.imageBackend,
     ...(deps.keys === undefined ? {} : { keys: deps.keys }),
   });
@@ -361,14 +361,14 @@ async function printGraphCost(project: LoadedProject, docs: readonly GraphDoc[])
 
   const report = reportGraphs(docs, {
     maxRefineAttempts: project.config.max_refine_attempts,
-    tables: await hostPriceTables(),
+    tables           : await hostPriceTables(),
   });
   const slots = unrenderedBoundSlots(report, {
-    model: project.model,
+    model : project.model,
     config: project.config,
     assets: project.store.manifest(),
-    shots: await loadSceneShots(project.paths, project.model),
-    graph: project.graph,
+    shots : await loadSceneShots(project.paths, project.model),
+    graph : project.graph,
   });
   const cost = priceSlots(report, slots);
 
@@ -449,7 +449,7 @@ export async function cmdCost(args: Args, logger: Logger): Promise<number> {
   const summary = await runPipeline({
     ...project,
     providers: deps.providers,
-    dryRun: true,
+    dryRun   : true,
     logger,
     ...(graphs.runtime === undefined ? {} : { graphs: graphs.runtime }),
   });
@@ -561,7 +561,7 @@ export interface ApproveIO {
 function terminalIO(): ApproveIO & { close(): void } {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   return {
-    ask: (q) => new Promise((res) => rl.question(q, (a) => res(a))),
+    ask  : (q) => new Promise((res) => rl.question(q, (a) => res(a))),
     write: (l) => void process.stdout.write(l.endsWith('\n') ? l : l + '\n'),
     close: () => rl.close(),
   };

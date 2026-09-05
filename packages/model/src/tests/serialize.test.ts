@@ -106,10 +106,10 @@ describe('art notes', () => {
     expect(a.value.outfits).toEqual([
       { id: 'uniform', characterId: 'ren', description: 'grey blazer' },
       {
-        id: 'gala',
+        id         : 'gala',
         characterId: 'ren',
         description: 'floor-length navy dress',
-        artNotes: 'satin sheen, rim light',
+        artNotes   : 'satin sheen, rim light',
       },
     ]);
     // The short form stays short: only the outfit carrying direction grows an object.
@@ -117,7 +117,7 @@ describe('art notes', () => {
     expect(outfits['uniform']).toBe('grey blazer');
     expect(outfits['gala']).toEqual({
       description: 'floor-length navy dress',
-      art_notes: 'satin sheen, rim light',
+      art_notes  : 'satin sheen, rim light',
     });
     const b = characterFromDoc(characterToDoc(a.value));
     if (!b.ok) throw new Error('expected ok');
@@ -135,9 +135,9 @@ describe('art notes', () => {
     expect(locationToDoc(a.value).data['variants']).toEqual([
       'day',
       {
-        id: 'night',
+        id         : 'night',
         description: 'after close, chairs up',
-        art_notes: 'sodium streetlight',
+        art_notes  : 'sodium streetlight',
       },
     ]);
     const b = locationFromDoc(locationToDoc(a.value));
@@ -170,9 +170,9 @@ describe('art notes', () => {
     });
     if (!res.ok) throw new Error('expected ok');
     expect(res.value.value.variants[1]).toEqual({
-      id: 'sunset',
+      id         : 'sunset',
       description: '',
-      artNotes: 'long shadows',
+      artNotes   : 'long shadows',
     });
   });
 });
@@ -192,10 +192,10 @@ describe('image seeds', () => {
     if (!a.ok) throw new Error('expected ok');
     expect(a.value.seed).toBe(7);
     expect(a.value.outfits[1]).toEqual({
-      id: 'gala',
+      id         : 'gala',
       characterId: 'ren',
       description: 'floor-length navy dress',
-      seed: 0,
+      seed       : 0,
     });
     // A seed of 0 is authored direction, so the entry stays long rather than collapsing to a string.
     const outfits = characterToDoc(a.value).data['outfits'] as Record<string, unknown>;
@@ -245,14 +245,14 @@ describe('prompt overrides', () => {
     const a = characterFromDoc(overridden);
     if (!a.ok) throw new Error('expected ok');
     expect(a.value.promptOverride).toEqual({
-      mode: 'chunks',
-      mute: ['palette'],
+      mode   : 'chunks',
+      mute   : ['palette'],
       replace: { subject: { text: 'A portrait of Ren, three-quarter.' } },
     });
     // An edit with no `of` is written back as the bare string it was authored as.
     expect(characterToDoc(a.value).data['prompt_override']).toEqual({
-      mode: 'chunks',
-      mute: ['palette'],
+      mode   : 'chunks',
+      mute   : ['palette'],
       replace: { subject: 'A portrait of Ren, three-quarter.' },
     });
     const b = characterFromDoc(characterToDoc(a.value));
@@ -264,13 +264,13 @@ describe('prompt overrides', () => {
     const a = characterFromDoc(overridden);
     if (!a.ok) throw new Error('expected ok');
     expect(a.value.outfits[1]?.promptOverride).toEqual({
-      mode: 'custom',
+      mode  : 'custom',
       custom: 'Ren in a navy gown.',
     });
     const outfits = characterToDoc(a.value).data['outfits'] as Record<string, unknown>;
     expect(outfits['uniform']).toBe('grey blazer');
     expect(outfits['gala']).toEqual({
-      description: 'floor-length navy dress',
+      description    : 'floor-length navy dress',
       prompt_override: { mode: 'custom', custom: 'Ren in a navy gown.' },
     });
   });
@@ -284,9 +284,9 @@ describe('prompt overrides', () => {
     expect(locationToDoc(a.value).data['variants']).toEqual([
       'day',
       {
-        id: 'night',
+        id             : 'night',
         prompt_override: {
-          mode: 'chunks',
+          mode  : 'chunks',
           append: { mood: { text: 'Rain on the glass.', of: 'abc123' } },
         },
       },
@@ -404,17 +404,17 @@ describe('applyLocationEdit', () => {
 describe('sceneToFountain', () => {
   it('emits Fountain whose graph fields survive a re-parse', () => {
     const fountain = sceneToFountain({
-      id: 's12',
-      location: 'rooftop',
+      id        : 's12',
+      location  : 'rooftop',
       characters: [],
-      synopsis: 'Ren hesitates at the door.',
-      lines: [],
+      synopsis  : 'Ren hesitates at the door.',
+      lines     : [],
       choices: [
         { label: 'Knock', goto: 's13' },
         { label: 'Leave', goto: 's14' },
       ],
-      next: undefined,
-      shots: [],
+      next      : undefined,
+      shots     : [],
     });
     const { scenes } = splitScenes(parseFountain(fountain));
     expect(scenes).toHaveLength(1);
@@ -430,13 +430,13 @@ describe('sceneToFountain', () => {
 
   it('emits a linear next marker', () => {
     const fountain = sceneToFountain({
-      id: 'a',
-      location: 'hall',
+      id        : 'a',
+      location  : 'hall',
       characters: [],
-      lines: [],
-      choices: [],
-      next: 'b',
-      shots: [],
+      lines     : [],
+      choices   : [],
+      next      : 'b',
+      shots     : [],
     });
     const { scenes } = splitScenes(parseFountain(fountain));
     expect(scenes[0]!.next).toBe('b');

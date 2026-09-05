@@ -49,12 +49,12 @@ export async function loadInputs(paths: ProjectPaths): Promise<LoadedInputs> {
       sceneDocs.length > 0
         ? {
             severity: 'warning',
-            code: 'stray_screenplay',
+            code    : 'stray_screenplay',
             message: `${legacyScreenplay} is left over from before the import and is not read; scenes/ is authoritative — delete it or rename it to <name>.fountain.imported`,
           }
         : {
             severity: 'error',
-            code: 'legacy_screenplay',
+            code    : 'legacy_screenplay',
             message: `${legacyScreenplay} is the retired one-file form and is no longer read; run \`vngen import\` to convert it into scenes/<id>.md chunks`,
           },
     );

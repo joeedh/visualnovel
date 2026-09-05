@@ -72,10 +72,10 @@ function absoluteProject(args) {
 const forwarded = absoluteProject(process.argv.slice(2));
 
 const electron = spawn('pnpm', ['exec', 'electron', '.', ...forwarded], {
-  cwd: desktop,
+  cwd  : desktop,
   stdio: 'inherit',
   shell: process.platform === 'win32',
-  env: { ...process.env, VN_CDP_PORT: port },
+  env  : { ...process.env, VN_CDP_PORT: port },
 });
 
 electron.on('error', (err) => {

@@ -20,8 +20,8 @@ import type { Git } from '@vn/git';
 /** Just the slice of Git the stack touches, so tests need no repo on disk. */
 function fakeGit(over: Partial<Record<'isRepo' | 'head' | 'isDirty', unknown>> = {}): Git {
   return {
-    isRepo: () => Promise.resolve(true),
-    head: () => Promise.resolve('a7c9ff4'),
+    isRepo : () => Promise.resolve(true),
+    head   : () => Promise.resolve('a7c9ff4'),
     isDirty: () => Promise.resolve(false),
     ...over,
   } as unknown as Git;
@@ -34,16 +34,16 @@ interface Host {
 const define = defineFor<Host>();
 
 const greet = define({
-  id: 'demo.greet',
-  title: 'Greet',
+  id         : 'demo.greet',
+  title      : 'Greet',
   description: 'Say hello.',
-  mutating: true,
-  props: { who: prop.string('who to greet') },
+  mutating   : true,
+  props      : { who: prop.string('who to greet') },
   run(props, ctx) {
     ctx.host.seen.push(props.who);
     return Promise.resolve({
       message: `hello ${props.who}`,
-      data: { who: props.who },
+      data   : { who: props.who },
       written: ['a.md'],
     });
   },
@@ -51,10 +51,10 @@ const greet = define({
 
 /** A whole document as a prop: the command wants the text, the history must not keep it. */
 const save = define({
-  id: 'demo.save',
-  title: 'Save',
+  id         : 'demo.save',
+  title      : 'Save',
   description: 'Writes a document.',
-  mutating: true,
+  mutating   : true,
   props: { path: prop.string('where'), text: prop.string('the whole file', { digest: true }) },
   run(props, ctx) {
     ctx.host.seen.push(props.text);
@@ -64,11 +64,11 @@ const save = define({
 
 /** A credential as a prop: the command wants the key, nothing written down may contain it. */
 const setKey = define({
-  id: 'demo.setKey',
-  title: 'Set key',
+  id         : 'demo.setKey',
+  title      : 'Set key',
   description: 'Stores an API key.',
-  mutating: true,
-  props: { provider: prop.string('vendor'), key: prop.secret('the API key') },
+  mutating   : true,
+  props      : { provider: prop.string('vendor'), key: prop.secret('the API key') },
   run(props, ctx) {
     ctx.host.seen.push(props.key);
     return Promise.resolve({ message: `stored ${props.provider}` });
@@ -76,23 +76,23 @@ const setKey = define({
 });
 
 const explode = define({
-  id: 'demo.explode',
-  title: 'Explode',
+  id         : 'demo.explode',
+  title      : 'Explode',
   description: 'Always throws.',
-  mutating: false,
-  props: {},
+  mutating   : false,
+  props      : {},
   run() {
     return Promise.reject(new Error('boom'));
   },
 });
 
 const guarded = define({
-  id: 'demo.guarded',
-  title: 'Guarded',
+  id         : 'demo.guarded',
+  title      : 'Guarded',
   description: 'Needs confirmation.',
-  mutating: true,
-  confirm: true,
-  props: {},
+  mutating   : true,
+  confirm    : true,
+  props      : {},
   run(_p, ctx) {
     ctx.host.seen.push('guarded');
     return Promise.resolve({ message: 'ran' });
@@ -101,11 +101,11 @@ const guarded = define({
 
 /** This command declares a precondition but does not gate on it: `check` refuses while `run` proceeds anyway. */
 const checked = define({
-  id: 'demo.checked',
-  title: 'Checked',
+  id         : 'demo.checked',
+  title      : 'Checked',
   description: 'Declares a precondition.',
-  mutating: true,
-  props: { who: prop.string('who to greet'), count: prop.number('n', { default: 1 }) },
+  mutating   : true,
+  props      : { who: prop.string('who to greet'), count: prop.number('n', { default: 1 }) },
   check(props) {
     return Promise.resolve(
       props.who === 'nobody'
@@ -120,11 +120,11 @@ const checked = define({
 });
 
 const brokenCheck = define({
-  id: 'demo.brokenCheck',
-  title: 'Broken check',
+  id         : 'demo.brokenCheck',
+  title      : 'Broken check',
   description: 'Its precondition throws.',
-  mutating: true,
-  props: {},
+  mutating   : true,
+  props      : {},
   check() {
     return Promise.reject(new Error('the model is not loaded'));
   },
@@ -139,7 +139,7 @@ function setup(over: Partial<CommandContext<Host>> = {}) {
   const logs: string[] = [];
   const context: CommandContext<Host> = {
     root: '/ws',
-    git: fakeGit(),
+    git : fakeGit(),
     host,
     log: (level, message) => logs.push(`${level}: ${message}`),
     ...over,
@@ -148,7 +148,7 @@ function setup(over: Partial<CommandContext<Host>> = {}) {
     registry,
     context,
     onRecord: (r) => void persisted.push(r),
-    now: () => '2026-07-25T00:00:00.000Z',
+    now     : () => '2026-07-25T00:00:00.000Z',
   });
   return { stack, host, persisted, logs, registry };
 }
@@ -162,16 +162,16 @@ describe('CommandStack.exec', () => {
     expect(host.seen).toEqual(['aiko']);
     expect(persisted).toHaveLength(1);
     expect(persisted[0]).toMatchObject({
-      seq: 1,
-      id: 'demo.greet',
+      seq       : 1,
+      id        : 'demo.greet',
       invocation: "demo.greet(who='aiko')",
-      source: 'ui',
-      mutating: true,
-      gitHead: 'a7c9ff4',
-      gitDirty: false,
-      status: 'ok',
-      message: 'hello aiko',
-      written: ['a.md'],
+      source    : 'ui',
+      mutating  : true,
+      gitHead   : 'a7c9ff4',
+      gitDirty  : false,
+      status    : 'ok',
+      message   : 'hello aiko',
+      written   : ['a.md'],
     });
   });
 
@@ -238,7 +238,7 @@ describe('CommandStack.exec', () => {
   it('rejects an unknown command without recording it', async () => {
     const { stack } = setup();
     expect(await stack.exec('demo.nope', {}, 'ui')).toEqual({
-      ok: false,
+      ok   : false,
       error: 'unknown command "demo.nope"',
     });
     expect(stack.history()).toEqual([]);
@@ -272,9 +272,9 @@ describe('CommandStack.exec', () => {
       registry,
       context: {
         root: '/ws',
-        git: fakeGit(),
+        git : fakeGit(),
         host: { seen: [] },
-        log: (l, m) => logs.push(`${l}: ${m}`),
+        log : (l, m) => logs.push(`${l}: ${m}`),
       },
       onRecord: () => Promise.reject(new Error('disk full')),
     });
@@ -323,7 +323,7 @@ describe('CommandStack.check', () => {
   it('reports the command’s own accept, with what it found', async () => {
     const { stack } = setup();
     expect(await stack.check('demo.checked', { who: 'aiko' })).toEqual({
-      state: 'accept',
+      state  : 'accept',
       // The default landed, so the check saw exactly what `run` would.
       message: 'would greet aiko 1 time(s)',
     });
@@ -332,7 +332,7 @@ describe('CommandStack.check', () => {
   it('reports a refusal with the rule’s own sentence', async () => {
     const { stack } = setup();
     expect(await stack.check('demo.checked', { who: 'nobody' })).toEqual({
-      state: 'refuse',
+      state  : 'refuse',
       message: 'there is no one to greet',
     });
   });
@@ -344,7 +344,7 @@ describe('CommandStack.check', () => {
   it('reports a command with no check as undeclared, never as an accept', async () => {
     const { stack } = setup();
     expect(await stack.check('demo.greet', { who: 'aiko' })).toEqual({
-      state: 'undeclared',
+      state  : 'undeclared',
       message: '"demo.greet" declares no precondition',
     });
   });
@@ -353,7 +353,7 @@ describe('CommandStack.check', () => {
     const { stack } = setup();
     expect(await stack.check('demo.checked', { nope: 1 })).toMatchObject({ state: 'refuse' });
     expect(await stack.check('demo.nope', {})).toEqual({
-      state: 'refuse',
+      state  : 'refuse',
       message: 'unknown command "demo.nope"',
     });
   });
@@ -361,7 +361,7 @@ describe('CommandStack.check', () => {
   it('says a check failed to answer rather than passing the crash off as a refusal', async () => {
     const { stack } = setup();
     expect(await stack.check('demo.brokenCheck', {})).toEqual({
-      state: 'refuse',
+      state  : 'refuse',
       message: 'check for "demo.brokenCheck" failed: the model is not loaded',
     });
   });
@@ -484,12 +484,12 @@ function undoSetup() {
   const registry = new CommandRegistry<Host>();
   registry.registerAll([
     define({
-      id: 'demo.edit',
-      title: 'Edit',
+      id         : 'demo.edit',
+      title      : 'Edit',
       description: 'Set the workspace to a value.',
-      mutating: true,
-      undoable: true,
-      props: { to: prop.string('the new value') },
+      mutating   : true,
+      undoable   : true,
+      props      : { to: prop.string('the new value') },
       run(props) {
         world.value = props.to;
         return Promise.resolve({ message: `set ${props.to}` });
@@ -497,33 +497,33 @@ function undoSetup() {
     }),
     // Mutating but not opted in — undo must name it rather than reach past it.
     define({
-      id: 'demo.generate',
-      title: 'Generate',
+      id         : 'demo.generate',
+      title      : 'Generate',
       description: 'Writes generated output only.',
-      mutating: true,
-      props: {},
-      run: () => Promise.resolve({ message: 'generated' }),
+      mutating   : true,
+      props      : {},
+      run        : () => Promise.resolve({ message: 'generated' }),
     }),
     // Opted in and half-runs: the workspace may have moved, but there is no post-state.
     define({
-      id: 'demo.editFails',
-      title: 'Edit (fails)',
+      id         : 'demo.editFails',
+      title      : 'Edit (fails)',
       description: 'Mutates, then throws.',
-      mutating: true,
-      undoable: true,
-      props: {},
+      mutating   : true,
+      undoable   : true,
+      props      : {},
       run() {
         world.value = 'half-written';
         return Promise.reject(new Error('boom'));
       },
     }),
     define({
-      id: 'demo.look',
-      title: 'Look',
+      id         : 'demo.look',
+      title      : 'Look',
       description: 'Reads and writes nothing.',
-      mutating: false,
-      props: {},
-      run: () => Promise.resolve({ message: 'looked' }),
+      mutating   : false,
+      props      : {},
+      run        : () => Promise.resolve({ message: 'looked' }),
     }),
     greet,
     explode,
@@ -533,7 +533,7 @@ function undoSetup() {
     registry,
     context: { root: '/ws', git: fakeGit(), host: { seen: [] }, log: () => {} },
     journal: journal as unknown as UndoJournal,
-    now: () => '2026-07-25T00:00:00.000Z',
+    now    : () => '2026-07-25T00:00:00.000Z',
   });
   return { stack, world, journal };
 }
@@ -556,13 +556,13 @@ describe('undo/redo', () => {
     const registry = new CommandRegistry<Host>();
     registry.register(
       define({
-        id: 'demo.claims',
-        title: 'Claims',
+        id         : 'demo.claims',
+        title      : 'Claims',
         description: 'Says undoable but writes nothing.',
-        mutating: false,
-        undoable: true,
-        props: {},
-        run: () => Promise.resolve({ message: 'read' }),
+        mutating   : false,
+        undoable   : true,
+        props      : {},
+        run        : () => Promise.resolve({ message: 'read' }),
       }),
     );
     const journal = new FakeJournal(world);
@@ -618,10 +618,10 @@ describe('undo/redo', () => {
     expect(await stack.undo()).toMatchObject({ ok: true });
     expect(world.value).toBe('w0');
     expect(stack.history()[1]).toMatchObject({
-      id: 'stack.undo',
-      stack: 'undo',
+      id      : 'stack.undo',
+      stack   : 'undo',
       mutating: true,
-      message: "Undid demo.edit(to='w1').",
+      message : "Undid demo.edit(to='w1').",
     });
     // The undo entry itself must not become the next candidate.
     expect(stack.undoCandidate()).toBeNull();
@@ -668,7 +668,7 @@ describe('undo/redo', () => {
 
     const outcome = await stack.undo();
     expect(outcome).toMatchObject({
-      ok: false,
+      ok   : false,
       error: '"demo.generate" was not recorded as undoable',
     });
     expect(world.value).toBe('w1');
@@ -742,8 +742,8 @@ describe('undo/redo', () => {
   it('reports nothing to undo on a fresh stack', async () => {
     const { stack } = undoSetup();
     expect(stack.undoState()).toEqual({
-      canUndo: false,
-      canRedo: false,
+      canUndo  : false,
+      canRedo  : false,
       undoLabel: null,
       redoLabel: null,
     });
@@ -766,13 +766,13 @@ describe('undo/redo', () => {
     const registry = new CommandRegistry<Host>();
     registry.register(
       define({
-        id: 'demo.edit',
-        title: 'Edit',
+        id         : 'demo.edit',
+        title      : 'Edit',
         description: 'Set the workspace.',
-        mutating: true,
-        undoable: true,
-        props: {},
-        run: () => Promise.resolve({ message: 'edited' }),
+        mutating   : true,
+        undoable   : true,
+        props      : {},
+        run        : () => Promise.resolve({ message: 'edited' }),
       }),
     );
     const logs: string[] = [];
@@ -782,9 +782,9 @@ describe('undo/redo', () => {
       registry,
       context: {
         root: '/ws',
-        git: fakeGit(),
+        git : fakeGit(),
         host: { seen: [] },
-        log: (l, m) => logs.push(`${l}: ${m}`),
+        log : (l, m) => logs.push(`${l}: ${m}`),
       },
       journal: broken as unknown as UndoJournal,
     });
@@ -802,33 +802,33 @@ function checkpointSetup() {
   const registry = new CommandRegistry<Host>();
   registry.registerAll([
     define({
-      id: 'demo.edit',
-      title: 'Edit',
+      id         : 'demo.edit',
+      title      : 'Edit',
       description: 'Set the workspace to a value.',
-      mutating: true,
-      props: { to: prop.string('the new value') },
+      mutating   : true,
+      props      : { to: prop.string('the new value') },
       run(props) {
         world.value = props.to;
         return Promise.resolve({ message: `set ${props.to}`, written: ['graphs/scene.json'] });
       },
     }),
     define({
-      id: 'demo.editFails',
-      title: 'Edit (fails)',
+      id         : 'demo.editFails',
+      title      : 'Edit (fails)',
       description: 'Mutates, then throws.',
-      mutating: true,
-      props: { to: prop.string('the new value') },
+      mutating   : true,
+      props      : { to: prop.string('the new value') },
       run(props) {
         world.value = props.to;
         return Promise.reject(new Error('boom'));
       },
     }),
     define({
-      id: 'demo.outside',
-      title: 'Outside',
+      id         : 'demo.outside',
+      title      : 'Outside',
       description: 'Reports a write outside the checkpoint scope.',
-      mutating: true,
-      props: {},
+      mutating   : true,
+      props      : {},
       run: () => Promise.resolve({ message: 'wrote elsewhere', written: ['elsewhere/file.md'] }),
     }),
   ]);
@@ -840,11 +840,11 @@ function checkpointSetup() {
     registry,
     context: {
       root: '/ws',
-      git: fakeGit(),
+      git : fakeGit(),
       host: { seen: [] },
-      log: (l, m) => logs.push(`${l}: ${m}`),
+      log : (l, m) => logs.push(`${l}: ${m}`),
     },
-    journal: journal as unknown as UndoJournal,
+    journal : journal as unknown as UndoJournal,
     onRecord: (r) => void persisted.push(r),
     timer,
     now: () => '2026-07-25T00:00:00.000Z',
@@ -865,7 +865,7 @@ describe('checkpoints', () => {
     });
     const closed = await stack.endCheckpoint(handle);
     expect(closed).toMatchObject({
-      ok: true,
+      ok    : true,
       record: { id: 'stack.checkpoint', label: 'Delete nodes' },
     });
 
@@ -896,7 +896,7 @@ describe('checkpoints', () => {
 
     expect(await failing).toMatchObject({ ok: false, error: 'boom' });
     expect(await queuedAfter).toMatchObject({
-      ok: false,
+      ok   : false,
       error: `no open checkpoint ${handle.seq}`,
     });
 
@@ -931,7 +931,7 @@ describe('checkpoints', () => {
     expect(next.seq).not.toBe(handle.seq);
     // The stale handle refuses rather than reaching the new checkpoint.
     expect(await stack.endCheckpoint(handle)).toMatchObject({
-      ok: false,
+      ok   : false,
       error: `no open checkpoint ${handle.seq}`,
     });
   });
@@ -939,13 +939,13 @@ describe('checkpoints', () => {
   it('refuses a stale or absent checkpoint handle immediately', async () => {
     const { stack } = checkpointSetup();
     expect(await stack.exec('demo.edit', { to: 'w1' }, 'ui', undefined, { seq: 999 })).toEqual({
-      ok: false,
+      ok   : false,
       error: 'no open checkpoint 999',
     });
 
     const handle = await stack.beginCheckpoint('Batch', 'A batch', 'graphs');
     expect(await stack.exec('demo.edit', { to: 'w1' }, 'ui', undefined, { seq: 999 })).toEqual({
-      ok: false,
+      ok   : false,
       error: 'no open checkpoint 999',
     });
     await stack.endCheckpoint(handle);
@@ -1015,22 +1015,22 @@ describe('checkpoints, against a real UndoJournal', () => {
     const registry = new CommandRegistry<Host>();
     registry.registerAll([
       define({
-        id: 'demo.writeGraph',
-        title: 'Write graph',
+        id         : 'demo.writeGraph',
+        title      : 'Write graph',
         description: 'Overwrite the scoped graph file.',
-        mutating: true,
-        props: { text: prop.string('file contents') },
+        mutating   : true,
+        props      : { text: prop.string('file contents') },
         async run(props) {
           await fs.writeFile(join(dir, 'graphs', 'a.json'), props.text);
           return { message: `wrote ${props.text}`, written: ['graphs/a.json'] };
         },
       }),
       define({
-        id: 'demo.writeGraphFails',
-        title: 'Write graph (fails)',
+        id         : 'demo.writeGraphFails',
+        title      : 'Write graph (fails)',
         description: 'Overwrite the scoped graph file, then throw.',
-        mutating: true,
-        props: { text: prop.string('file contents') },
+        mutating   : true,
+        props      : { text: prop.string('file contents') },
         async run(props) {
           await fs.writeFile(join(dir, 'graphs', 'a.json'), props.text);
           throw new Error('boom');
@@ -1060,7 +1060,7 @@ describe('checkpoints, against a real UndoJournal', () => {
 
       const closed = await stack.endCheckpoint(handle);
       expect(closed).toMatchObject({
-        ok: true,
+        ok    : true,
         record: { id: 'stack.checkpoint', undoScope: 'graphs', undo: { changed: true } },
       });
       expect(await fs.readFile(join(dir, 'graphs', 'a.json'), 'utf8')).toBe('{"nodes":[1]}\n');
@@ -1158,9 +1158,9 @@ describe('toCatalog', () => {
     const entry = catalog.commands.find((c) => c.id === 'demo.greet')!;
     expect(entry.usage).toBe("demo.greet(who='')");
     expect(entry).toMatchObject({
-      mutating: true,
-      confirm: false,
-      undoable: false,
+      mutating : true,
+      confirm  : false,
+      undoable : false,
       checkable: false,
     });
     // The flag says a precondition exists to ask, not that asking would accept.
@@ -1169,9 +1169,9 @@ describe('toCatalog', () => {
       { name: 'who', kind: 'string', description: 'who to greet', required: true },
     ]);
     expect(entry.schema).toEqual({
-      type: 'object',
-      properties: { who: { type: 'string', description: 'who to greet' } },
-      required: ['who'],
+      type                : 'object',
+      properties          : { who: { type: 'string', description: 'who to greet' } },
+      required            : ['who'],
       additionalProperties: false,
     });
   });
@@ -1180,16 +1180,16 @@ describe('toCatalog', () => {
     const registry = new CommandRegistry();
     registry.register(
       defineCommand({
-        id: 'demo.opts',
-        title: 'Opts',
+        id         : 'demo.opts',
+        title      : 'Opts',
         description: 'Every kind.',
-        mutating: false,
+        mutating   : false,
         props: {
-          mode: prop.oneOf(['plan', 'execute'] as const, 'mode'),
+          mode : prop.oneOf(['plan', 'execute'] as const, 'mode'),
           count: prop.number('n', { default: 2, min: 0, max: 9 }),
           paths: prop.stringList('files', { default: [] }),
         },
-        run: () => Promise.resolve({ message: '' }),
+        run        : () => Promise.resolve({ message: '' }),
       }),
     );
     const entry = toCatalog(registry, 'x').commands[0]!;
@@ -1198,7 +1198,7 @@ describe('toCatalog', () => {
     expect(entry.schema.properties.mode).toMatchObject({ enum: ['plan', 'execute'] });
     expect(entry.schema.properties.count).toMatchObject({ minimum: 0, maximum: 9, default: 2 });
     expect(entry.schema.properties.paths).toMatchObject({
-      type: 'array',
+      type : 'array',
       items: { type: 'string' },
     });
   });

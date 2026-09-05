@@ -30,16 +30,16 @@ export function writingBox(row: Container, opts: WritingBoxOptions): HTMLTextAre
   box.title = opts.title;
   box.setAttribute('aria-label', opts.label);
   Object.assign(box.style, {
-    boxSizing: 'border-box',
-    width: '100%',
-    minHeight: opts.minHeight ?? '72px',
-    resize: 'vertical',
-    padding: '6px 8px',
-    border: `1px solid ${TOKENS.inkLine}`,
+    boxSizing   : 'border-box',
+    width       : '100%',
+    minHeight   : opts.minHeight ?? '72px',
+    resize      : 'vertical',
+    padding     : '6px 8px',
+    border      : `1px solid ${TOKENS.inkLine}`,
     borderRadius: `${TOKENS.radiusChrome}px`,
-    background: TOKENS.inkSunken,
-    color: TOKENS.paper,
-    font: `13px ${TOKENS.sans}`,
+    background  : TOKENS.inkSunken,
+    color       : TOKENS.paper,
+    font        : `13px ${TOKENS.sans}`,
   });
   box.addEventListener('input', () => opts.onInput(box.value));
   // The screen keymap is a bubble-phase window listener, so the box stops its own keys.

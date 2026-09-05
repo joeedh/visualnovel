@@ -16,7 +16,7 @@ describe('lineOf', () => {
 describe('commitOf', () => {
   it('asks for the retype the author typed', () => {
     expect(commitOf(line, 'Um… hi.')).toEqual({
-      id: 'story.setLineText',
+      id   : 'story.setLineText',
       props: { line: 's:L2', text: 'Um… hi.' },
     });
   });
@@ -35,7 +35,7 @@ describe('commitOf', () => {
    */
   it('sends an emptied line rather than deciding it locally', () => {
     expect(commitOf(line, '   ')).toEqual({
-      id: 'story.setLineText',
+      id   : 'story.setLineText',
       props: { line: 's:L2', text: '' },
     });
   });

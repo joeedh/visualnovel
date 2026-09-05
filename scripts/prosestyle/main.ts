@@ -69,8 +69,8 @@ async function pool<T, R>(items: T[], limit: number, run: (item: T) => Promise<R
 async function judge(call: CallFn, model: string, rule: string, text: string): Promise<boolean> {
   const answer = await call({
     model,
-    system: JUDGE_SYSTEM,
-    user: judgePrompt(rule, text),
+    system   : JUDGE_SYSTEM,
+    user     : judgePrompt(rule, text),
     maxTokens: 200,
   });
   return spanSupported(answer, text);
@@ -91,7 +91,7 @@ async function gradeViolation(
       id: fixture.id,
       rule,
       verdict: asserted ? 'survived' : 'fixed',
-      how: 'assert',
+      how    : 'assert',
       revision,
     };
   }
@@ -131,9 +131,9 @@ export async function checkFacts(opts: {
 }): Promise<FactFinding[]> {
   return pool(opts.changes, CONCURRENCY, async (change) => {
     const answer = await opts.call({
-      model: opts.model,
-      system: FACTCHECK_SYSTEM,
-      user: factcheckPrompt(change.original, change.revised),
+      model    : opts.model,
+      system   : FACTCHECK_SYSTEM,
+      user     : factcheckPrompt(change.original, change.revised),
       maxTokens: 200,
     });
     return { at: change.at, ...readAnswer(answer, change.revised) };
@@ -225,9 +225,9 @@ export async function auditJudge(opts: {
   const judged = violations.filter((f) => stillViolates(f.rule as string, f.body) === undefined);
 
   const found = await pool(judged, CONCURRENCY, async (f) => ({
-    id: f.id,
+    id  : f.id,
     rule: f.rule as string,
-    hit: await judge(opts.call, opts.model, f.rule as string, f.body),
+    hit : await judge(opts.call, opts.model, f.rule as string, f.body),
   }));
 
   // Every judged rule is asked of every conforming block, since a conforming block breaks none.
@@ -240,10 +240,10 @@ export async function auditJudge(opts: {
   }));
 
   return {
-    sensitivity: judged.length ? found.filter((r) => r.hit).length / judged.length : 0,
+    sensitivity  : judged.length ? found.filter((r) => r.hit).length / judged.length : 0,
     falsePositive: pairs.length ? wrong.filter((r) => r.hit).length / pairs.length : 0,
-    missed: found.filter((r) => !r.hit).map(({ id, rule }) => ({ id, rule })),
-    flagged: wrong.filter((r) => r.hit).map(({ id, rule }) => ({ id, rule })),
+    missed       : found.filter((r) => !r.hit).map(({ id, rule }) => ({ id, rule })),
+    flagged      : wrong.filter((r) => r.hit).map(({ id, rule }) => ({ id, rule })),
   };
 }
 
@@ -276,13 +276,13 @@ export async function runFixtures(opts: RunOptions): Promise<RunReport> {
   const system = await buildSystem(opts.rulesPath);
   const sets = opts.sets ?? ['violation', 'conformance', 'context'];
   const report: RunReport = {
-    violation: [],
-    conformance: [],
-    context: [],
-    recall: 0,
+    violation   : [],
+    conformance : [],
+    context     : [],
+    recall      : 0,
     assertRecall: 0,
-    assertCount: 0,
-    churn: 0,
+    assertCount : 0,
+    churn       : 0,
   };
 
   if (sets.includes('violation')) {
@@ -305,9 +305,9 @@ export async function runFixtures(opts: RunOptions): Promise<RunReport> {
     report.conformance = await pool(fixtures, CONCURRENCY, async (f) => {
       const revision = await revise(opts.call, opts.models.revise, system, f.body);
       return {
-        id: f.id,
+        id     : f.id,
         verdict: revision === f.body ? ('unchanged' as const) : ('churned' as const),
-        how: 'compare' as const,
+        how    : 'compare' as const,
         revision,
       };
     });
@@ -318,9 +318,9 @@ export async function runFixtures(opts: RunOptions): Promise<RunReport> {
   if (sets.includes('context')) {
     const fixtures = await loadFixtures(join(opts.fixtureDir, 'context.txt'));
     report.context = await pool(fixtures, CONCURRENCY, async (f) => ({
-      id: f.id,
-      verdict: 'revised' as const,
-      how: 'compare' as const,
+      id      : f.id,
+      verdict : 'revised' as const,
+      how     : 'compare' as const,
       revision: await revise(opts.call, opts.models.revise, system, f.body),
     }));
   }

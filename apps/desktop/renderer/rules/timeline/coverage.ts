@@ -81,9 +81,9 @@ export function previewOf(
   const proposed = new Set(next);
   return {
     shotId,
-    lane: span.lane,
+    lane    : span.lane,
     segments: runsOf(shotId, next),
-    claimed: next.filter((i) => !now.has(i)),
+    claimed : next.filter((i) => !now.has(i)),
     released: [...now].filter((i) => !proposed.has(i)).sort((a, b) => a - b),
   };
 }

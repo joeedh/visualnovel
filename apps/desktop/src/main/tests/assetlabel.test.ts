@@ -3,18 +3,18 @@ import { assetLabel, labelAssets, labelContext, type AssetLabelContext } from '.
 
 const model = {
   characters: new Map([['aiko', { id: 'aiko', name: 'Aiko' }]]),
-  locations: new Map([['cafe', { id: 'cafe', name: 'Café Mori' }]]),
+  locations : new Map([['cafe', { id: 'cafe', name: 'Café Mori' }]]),
 } as unknown as ProjectModel;
 
 const asset = (over: Partial<Asset> = {}): Asset => ({
-  hash: 'a'.repeat(64),
-  ext: 'png',
-  kind: 'portrait',
+  hash      : 'a'.repeat(64),
+  ext       : 'png',
+  kind      : 'portrait',
   sourceTask: 't1',
-  refs: [],
-  modelId: 'm',
-  satisfies: [{ characterId: 'aiko' }],
-  accepted: false,
+  refs      : [],
+  modelId   : 'm',
+  satisfies : [{ characterId: 'aiko' }],
+  accepted  : false,
   ...over,
 });
 
@@ -27,7 +27,7 @@ describe('assetLabel', () => {
 
   it('names a model sheet by character, outfit and the angle only the task knows', () => {
     const sheet = asset({
-      kind: 'model_sheet',
+      kind     : 'model_sheet',
       satisfies: [{ characterId: 'aiko', outfit: 'uniform' }],
     });
     expect(assetLabel(sheet, ctx)).toBe('Aiko — uniform / front');
@@ -35,7 +35,7 @@ describe('assetLabel', () => {
 
   it('names a location plate by location and variant', () => {
     const plate = asset({
-      kind: 'location_ref',
+      kind     : 'location_ref',
       satisfies: [{ locationId: 'cafe', variant: 'night' }],
     });
     expect(assetLabel(plate, ctx)).toBe('Café Mori — night');
@@ -48,9 +48,9 @@ describe('assetLabel', () => {
 
   it('names a concept by its subject and the sentence it was asked for', () => {
     const concept = asset({
-      kind: 'concept',
+      kind     : 'concept',
       satisfies: [{ locationId: 'cafe' }],
-      title: 'aerial shot of the roof',
+      title    : 'aerial shot of the roof',
     });
     expect(assetLabel(concept, ctx)).toBe('Café Mori — aerial shot of the roof');
   });
@@ -91,7 +91,7 @@ describe('labelContext', () => {
     const task = { hash: 't1', kind: 'model_sheet', inputs: { angle: 'three_quarter' } } as AnyTask;
     const graph = { get: (h: string) => (h === 't1' ? task : undefined) };
     const sheet = asset({
-      kind: 'model_sheet',
+      kind     : 'model_sheet',
       satisfies: [{ characterId: 'aiko', outfit: 'gala' }],
     });
     expect(assetLabel(sheet, labelContext(model, graph))).toBe('Aiko — gala / three_quarter');

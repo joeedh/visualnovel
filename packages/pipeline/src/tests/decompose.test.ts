@@ -9,47 +9,47 @@ import { decomposeScene } from '../p5.js';
 
 const character = (id: string): Character => ({
   id,
-  name: id,
-  description: `${id} description`,
-  traits: [],
-  palette: [],
-  status: 'approved',
-  defaultOutfit: 'uniform',
-  outfits: [{ id: 'uniform', characterId: id, description: 'school uniform' }],
+  name            : id,
+  description     : `${id} description`,
+  traits          : [],
+  palette         : [],
+  status          : 'approved',
+  defaultOutfit   : 'uniform',
+  outfits         : [{ id: 'uniform', characterId: id, description: 'school uniform' }],
   approvedPortrait: 'aaa',
 });
 
 const SCENE: Scene = {
-  id: 'epilogue',
-  location: 'classroom',
+  id        : 'epilogue',
+  location  : 'classroom',
   characters: [],
   lines: [
     { id: 'epilogue:L1', kind: 'narration', text: 'Morning light finds the empty classroom.' },
     { id: 'epilogue:L2', kind: 'narration', text: 'Aiko pauses at the door, then smiles.' },
   ],
-  choices: [],
-  shots: [],
+  choices   : [],
+  shots     : [],
 };
 
 const MODEL: ProjectModel = {
-  title: 'T',
-  characters: new Map([['aiko', character('aiko')]]),
+  title      : 'T',
+  characters : new Map([['aiko', character('aiko')]]),
   locations: new Map([
     [
       'classroom',
       {
-        id: 'classroom',
-        name: 'Classroom 2-B',
+        id         : 'classroom',
+        name       : 'Classroom 2-B',
         description: 'A classroom',
-        palette: [],
-        variants: [{ id: 'day', description: 'daylight' }],
-        mined: false,
+        palette    : [],
+        variants   : [{ id: 'day', description: 'daylight' }],
+        mined      : false,
       },
     ],
   ]),
-  scenes: new Map([['epilogue', SCENE]]),
-  reachable: new Set(['epilogue']),
-  entry: 'epilogue',
+  scenes     : new Map([['epilogue', SCENE]]),
+  reachable  : new Set(['epilogue']),
+  entry      : 'epilogue',
   diagnostics: [],
 };
 
@@ -57,22 +57,22 @@ const MODEL: ProjectModel = {
 function providersReturning(shots: unknown[]): Providers {
   const raw = JSON.stringify({ shots });
   return {
-    image: {} as Providers['image'],
+    image    : {} as Providers['image'],
     reviewers: [],
     text: {
       structured: <T>(_prompt: string, parse: (raw: string) => T): Promise<T> =>
         Promise.resolve(parse(raw)),
-      complete: () => Promise.reject(new Error('decomposition does not use complete()')),
+      complete  : () => Promise.reject(new Error('decomposition does not use complete()')),
     },
   };
 }
 
 const shot = (subjects: unknown[]): Record<string, unknown> => ({
-  id: 'S1',
-  framing: 'medium',
+  id      : 'S1',
+  framing : 'medium',
   location: 'day',
   subjects,
-  camera: 'framed in the doorway',
+  camera     : 'framed in the doorway',
   coversLines: ['epilogue:L2'],
 });
 
@@ -119,9 +119,9 @@ describe('decomposeScene subjects', () => {
         shot([
           {
             characterId: 'Aiko',
-            outfit: 'uniform',
-            pose: 'pausing at the doorway',
-            expression: 'gentle smile',
+            outfit     : 'uniform',
+            pose       : 'pausing at the doorway',
+            expression : 'gentle smile',
           },
         ]),
       ]),
@@ -130,8 +130,8 @@ describe('decomposeScene subjects', () => {
     // the `[[outfit:]]` marker the author writes later.
     expect(shots[0]!.subjects[0]).toEqual({
       characterId: 'aiko',
-      pose: 'pausing at the doorway',
-      expression: 'gentle smile',
+      pose       : 'pausing at the doorway',
+      expression : 'gentle smile',
     });
   });
 });

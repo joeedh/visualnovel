@@ -130,14 +130,14 @@ export function parseKeyGuide(markdown: string): KeyGuide {
     seenVendor = true;
     const facts = parseFacts(fence.kind === 'code' ? fence.text : '');
     vendors.push({
-      vendor: facts['vendor'] ?? headingSlug(part.title),
-      name: facts['name'] ?? part.title,
-      console: facts['console'] ?? '',
-      docs: facts['docs'] ?? '',
-      billing: facts['billing'] ?? '',
-      env: facts['env'] ?? '',
+      vendor  : facts['vendor'] ?? headingSlug(part.title),
+      name    : facts['name'] ?? part.title,
+      console : facts['console'] ?? '',
+      docs    : facts['docs'] ?? '',
+      billing : facts['billing'] ?? '',
+      env     : facts['env'] ?? '',
       freeTier: facts['freeTier'] === 'true',
-      body: blocks.filter((block) => block !== fence),
+      body    : blocks.filter((block) => block !== fence),
     });
   }
 
@@ -299,7 +299,7 @@ export function linkReport(
   if (!verdict.ok) return { state: 'broken', detail: verdict.detail };
   if (linkVerdict(canaryFor(url), canary).ok) {
     return {
-      state: 'unverified',
+      state : 'unverified',
       detail:
         `${verdict.detail}, but so does a path that cannot exist — the host answers ` +
         `everything, so this proves only that it is up`,

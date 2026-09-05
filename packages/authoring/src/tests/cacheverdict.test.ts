@@ -21,7 +21,7 @@ function scripted(
   return {
     modelId: 'mock-native',
     ...claims,
-    message: () => Promise.reject(new Error('the native path does not call message()')),
+    message         : () => Promise.reject(new Error('the native path does not call message()')),
     chatConversation: () => {
       const usage = receipts[call++];
       return Promise.resolve({ raw: [], toolCalls: [], text: 'ok', ...(usage ? { usage } : {}) });

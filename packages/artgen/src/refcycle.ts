@@ -30,10 +30,10 @@ export function slotOf(asset: Asset, angle?: string): RefBinding | undefined {
     case 'outfit_sheet':
       return b.characterId && b.outfit
         ? {
-            kind: 'sheet',
+            kind       : 'sheet',
             characterId: b.characterId,
-            outfit: b.outfit,
-            angle: angle ?? SHEET_FRONT,
+            outfit     : b.outfit,
+            angle      : angle ?? SHEET_FRONT,
           }
         : undefined;
     case 'location_ref':
@@ -87,10 +87,10 @@ function derivedRefs(b: RefBinding, ctx: RungContext): RefBinding[] {
         // Only a subject out of its default carries a sheet — the portrait shows the default.
         if (character && outfit.id !== character.defaultOutfit)
           out.push({
-            kind: 'sheet',
+            kind       : 'sheet',
             characterId: subject.characterId,
-            outfit: outfit.id,
-            angle: SHEET_FRONT,
+            outfit     : outfit.id,
+            angle      : SHEET_FRONT,
           });
       }
       return out;

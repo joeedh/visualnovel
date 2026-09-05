@@ -137,14 +137,14 @@ export class AssetRoot {
     this.index.set(hash, {
       hash,
       ext,
-      kind: meta.kind,
+      kind      : meta.kind,
       sourceTask: meta.sourceTask,
-      prompt: meta.prompt,
-      refs: meta.refs ?? [],
-      modelId: meta.modelId,
+      prompt    : meta.prompt,
+      refs      : meta.refs ?? [],
+      modelId   : meta.modelId,
       // One byte-stream can serve several things; the second writer must not erase the first.
-      satisfies: mergeBindings(existing?.satisfies, meta.satisfies),
-      accepted: meta.accepted ?? existing?.accepted ?? false,
+      satisfies : mergeBindings(existing?.satisfies, meta.satisfies),
+      accepted  : meta.accepted ?? existing?.accepted ?? false,
       // An existing title survives a write that carries none, so promoting a concept does not
       // erase the name it was given
       ...((meta.title ?? existing?.title) ? { title: meta.title ?? existing?.title } : {}),
@@ -214,7 +214,7 @@ export class AssetRoot {
   private async writeManifest(): Promise<void> {
     const file: ManifestFile = {
       version: 1,
-      assets: [...this.index.values()].sort((a, b) => a.hash.localeCompare(b.hash)),
+      assets : [...this.index.values()].sort((a, b) => a.hash.localeCompare(b.hash)),
     };
     await ensureDir(dirname(this.manifestFile));
     await writeFileAtomic(this.manifestFile, JSON.stringify(file, null, 2) + '\n');

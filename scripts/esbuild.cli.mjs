@@ -19,12 +19,12 @@ const alias = { ...shared, '@vn/cli': resolve(root, 'apps/cli/src/index.ts') };
 /** @type {import('esbuild').BuildOptions} */
 const options = {
   entryPoints: [resolve(root, 'apps/cli/src/cli.ts')],
-  outfile: resolve(root, 'apps/cli/dist/cli.js'),
-  bundle: true,
-  platform: 'node',
-  format: 'esm',
-  target: 'node20',
-  sourcemap: true,
+  outfile    : resolve(root, 'apps/cli/dist/cli.js'),
+  bundle     : true,
+  platform   : 'node',
+  format     : 'esm',
+  target     : 'node20',
+  sourcemap  : true,
   alias,
   external: EXTERNAL,
   banner: {

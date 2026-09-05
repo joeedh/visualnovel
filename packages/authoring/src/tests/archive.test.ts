@@ -147,8 +147,8 @@ describe('archiving an upload', () => {
     try {
       const batch = await archiveUpload(ctx.workspace, [join(inbox, 'ghost.md')], AT);
       expect(batch).toEqual({
-        dir: '',
-        files: [],
+        dir    : '',
+        files  : [],
         skipped: [
           { source: join(inbox, 'ghost.md'), reason: `no such file: ${join(inbox, 'ghost.md')}` },
         ],
@@ -222,8 +222,8 @@ describe('what the agent can see of the archive', () => {
 
 describe('the suggestions', () => {
   const batch = (names: string[], readable = true): UploadBatch => ({
-    dir: 'archive/x',
-    files: names.map((n) => ({ source: n, stored: `archive/x/${n}`, bytes: 1, readable })),
+    dir    : 'archive/x',
+    files  : names.map((n) => ({ source: n, stored: `archive/x/${n}`, bytes: 1, readable })),
     skipped: [],
   });
 

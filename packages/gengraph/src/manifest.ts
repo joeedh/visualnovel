@@ -26,41 +26,40 @@ const ENTRY = /^[A-Za-z0-9_][A-Za-z0-9_./-]*\.ts$/;
 // No `name`: a fragment is named after the plugin that declared it, by `pluginPriceTable`.
 const priceTable = z.object({
   pricesAsOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  source: z.string().optional(),
-  models: genPriceModels,
+  source    : z.string().optional(),
+  models    : genPriceModels,
 });
 
 const manifest = z.object({
-  name: z.string().regex(NAME),
-  version: z.string().min(1),
+  name       : z.string().regex(NAME),
+  version    : z.string().min(1),
   /** The value of {@link GEN_PLUGIN_API_VERSION} the plugin's sources were written against. */
-  apiVersion: z.number().int().positive(),
+  apiVersion : z.number().int().positive(),
   /** One line, shown beside the name wherever a plugin is listed. */
   description: z.string().min(1),
   /** Every node type the plugin declares. Registering any other one is refused. */
-  nodeTypes: z.array(z.string().min(1)).min(1),
+  nodeTypes  : z.array(z.string().min(1)).min(1),
   /** The capabilities its runtimes call, which the install confirmation names. */
-  services: z.array(z.enum(GEN_SERVICE_NAMES)).default([]),
+  services   : z.array(z.enum(GEN_SERVICE_NAMES)).default([]),
   /** The key ids it resolves through `resolveKeys`, which the confirmation names too. */
-  keys: z.array(z.string().min(1)).default([]),
+  keys       : z.array(z.string().min(1)).default([]),
   /** The module its `activate` function is the default export of. */
-  entry: z.string().regex(ENTRY).default('index.ts'),
+  entry      : z.string().regex(ENTRY).default('index.ts'),
   /** Prices for the models it calls, in the shape of a price table, consulted last. */
-  prices: priceTable.optional(),
+  prices     : priceTable.optional(),
   /**
    * True when the plugin answers a price refresh by asking a model what its vendor charges.
    * The refresh runs on the author's own key and only when they ask for one, so the install
    * confirmation names the capability.
    */
-  priceAgent: z.boolean().default(false),
+  priceAgent : z.boolean().default(false),
 });
 
 /** A parsed manifest. Its `prices` fragment has the shape of a {@link GenPriceTable}. */
 export type GenPluginManifest = z.infer<typeof manifest>;
 
 export type GenManifestResult =
-  | { ok: true; manifest: GenPluginManifest }
-  | { ok: false; reason: string };
+  { ok: true; manifest: GenPluginManifest } | { ok: false; reason: string };
 
 /**
  * Reads a manifest, refusing by name rather than throwing. An entry that climbs out of the
@@ -73,7 +72,7 @@ export function parseGenPluginManifest(raw: unknown): GenManifestResult {
     const issue = parsed.error.issues[0];
     const at = issue?.path.join('.') ?? '';
     return {
-      ok: false,
+      ok    : false,
       reason: `plugin.json is not a manifest: ${at} ${issue?.message ?? ''}`.trim(),
     };
   }
@@ -84,7 +83,7 @@ export function parseGenPluginManifest(raw: unknown): GenManifestResult {
 
   if (parsed.data.apiVersion !== GEN_PLUGIN_API_VERSION) {
     return {
-      ok: false,
+      ok    : false,
       reason:
         `${parsed.data.name} was written against plugin API ${parsed.data.apiVersion}, ` +
         `and this version of the app offers ${GEN_PLUGIN_API_VERSION}`,

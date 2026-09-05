@@ -125,12 +125,7 @@ export function stopsWhat(busy: string): string {
 
 /** Anything the desktop session store can persist — plain JSON, nothing else. */
 export type SessionValue =
-  | string
-  | number
-  | boolean
-  | null
-  | SessionValue[]
-  | { [k: string]: SessionValue };
+  string | number | boolean | null | SessionValue[] | { [k: string]: SessionValue };
 
 /**
  * A UI change a command asks the renderer to apply. `view.*` commands run in main like any

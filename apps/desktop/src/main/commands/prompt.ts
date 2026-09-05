@@ -25,15 +25,15 @@ function verdict(result: { ok: boolean; message: string }): CheckResult {
 }
 
 export const promptInfo = define({
-  id: 'prompt.info',
-  title: 'Show a prompt',
+  id         : 'prompt.info',
+  title      : 'Show a prompt',
   description:
     'The prompt one asset would be generated from: the clauses the builders derived, what the ' +
     'author has done to them, and the one string that gets sent. The same projection the Asset ' +
     'editor draws, so an agent and the pane never disagree about what a picture was asked for.',
   notes:
     'The prompt one asset would be generated from: the clauses the builders derived, what the author has done to them, and the one string that gets sent. The same projection the Asset editor draws, so an agent and the pane never disagree about what a picture was asked for.',
-  mutating: false,
+  mutating   : false,
   props: {
     hash: prop.string('the asset to describe'),
   },
@@ -46,14 +46,14 @@ export const promptInfo = define({
         `${view.mode} prompt, ${n} clause${n === 1 ? '' : 's'}` +
         (view.held ? ', held (the chunks have moved under it)' : '') +
         (view.missing.length ? `, not found: ${view.missing.join(', ')}` : ''),
-      data: view,
+      data   : view,
     };
   },
 });
 
 export const promptSetChunk = define({
-  id: 'prompt.setChunk',
-  title: 'Edit one prompt clause',
+  id         : 'prompt.setChunk',
+  title      : 'Edit one prompt clause',
   description:
     'Do one thing to one clause of a derived prompt: `replace` its words, `append` to them, ' +
     '`mute` it so it is not sent, or `clear` whatever was done to it. The clause keys are what ' +
@@ -61,15 +61,15 @@ export const promptSetChunk = define({
     'can say when the project has moved underneath it. It re-renders what this rung reaches.',
   notes:
     'One thing to one clause. The keys are what `prompt.info` lists. An edit records the derived text it was written against, so the pane can say when the project moved underneath it. It **re-renders** what that rung reaches.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    hash: prop.string('the asset whose prompt to edit'),
+    hash : prop.string('the asset whose prompt to edit'),
     chunk: prop.string('the clause key, e.g. `subject` or `palette`'),
     // A clause is one sentence, so it is not digested — the history line records it verbatim.
     // Digesting is for a whole document (`prompt.setCustom`)
-    op: prop.oneOf(['replace', 'append', 'mute', 'clear'] as const, 'what to do to the clause'),
-    text: prop.string('the words, for `replace` and `append`', { default: '' }),
+    op   : prop.oneOf(['replace', 'append', 'mute', 'clear'] as const, 'what to do to the clause'),
+    text : prop.string('the words, for `replace` and `append`', { default: '' }),
   },
   async check({ hash, chunk, op, text }, ctx) {
     return verdict(await ctx.host.session.previewPromptChunk(hash, chunk, op as ChunkOp, text));
@@ -82,8 +82,8 @@ export const promptSetChunk = define({
 });
 
 export const promptMoveChunk = define({
-  id: 'prompt.moveChunk',
-  title: 'Reorder a prompt clause',
+  id         : 'prompt.moveChunk',
+  title      : 'Reorder a prompt clause',
   description:
     'Move one clause of a derived prompt after another one; an empty `after` moves it to the ' +
     'top. Order matters to an image model — what comes first is what it weights — so this is an ' +
@@ -91,10 +91,10 @@ export const promptMoveChunk = define({
     'the builders derived.',
   notes:
     'Reorder one clause; empty `after` means the top. Order is weight to an image model, so this is an authorial act. `prompt.clear(part=order)` restores the derived order.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    hash: prop.string('the asset whose prompt to reorder'),
+    hash : prop.string('the asset whose prompt to reorder'),
     chunk: prop.string('the clause to move'),
     after: prop.string('the clause it lands after; empty means first', { default: '' }),
   },
@@ -109,16 +109,16 @@ export const promptMoveChunk = define({
 });
 
 export const promptSetCustom = define({
-  id: 'prompt.setCustom',
-  title: 'Write a prompt by hand',
+  id         : 'prompt.setCustom',
+  title      : 'Write a prompt by hand',
   description:
     'Replace the whole derived prompt with one written by hand. The clauses stay underneath — ' +
     'they are what `prompt.condense` reconciles against, and what the pane checks the custom ' +
     'text for — but they are no longer what gets sent. `prompt.clear(part=custom)` goes back.',
   notes:
     'Replace the whole prompt with one written by hand. The clauses stay underneath — they are what `prompt.condense` reconciles against and what `prompt.check` measures.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
     hash: prop.string('the asset whose prompt to replace'),
     // A whole prompt is bulk content, so this field is digested. That makes it required: the
@@ -136,8 +136,8 @@ export const promptSetCustom = define({
 });
 
 export const promptCondense = define({
-  id: 'prompt.condense',
-  title: 'Condense a prompt',
+  id         : 'prompt.condense',
+  title      : 'Condense a prompt',
   description:
     'Ask the text model to rewrite the clauses as one fluent prompt, and store the result. It ' +
     'is then **held**: if the clauses move under it, the condensed text is still what gets ' +
@@ -145,10 +145,10 @@ export const promptCondense = define({
     '`force` reconciles against a hand-written prompt instead of refusing over it.',
   notes:
     'Ask the text model to rewrite the clauses as one fluent prompt and store it. It is then **held**: clauses moving under it do not re-render the picture. `force` reconciles against a hand-written prompt rather than refusing over it.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    hash: prop.string('the asset whose prompt to condense'),
+    hash : prop.string('the asset whose prompt to condense'),
     force: prop.boolean('reconcile an existing custom prompt instead of refusing', {
       default: false,
     }),
@@ -164,16 +164,16 @@ export const promptCondense = define({
 });
 
 export const promptClear = define({
-  id: 'prompt.clear',
-  title: 'Clear a prompt override',
+  id         : 'prompt.clear',
+  title      : 'Clear a prompt override',
   description:
     'Discard part of what has been done to a derived prompt: `chunks` (every mute, replacement ' +
     'and appendix), `order`, `custom`, `agent`, or `all` of it. What is left is what the ' +
     'builders derive, byte for byte — which is what makes an untouched project cost nothing.',
   notes:
     'Discard part of what was done to a prompt. What is left is what the builders derive, byte for byte.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
     hash: prop.string('the asset whose override to clear'),
     part: prop.oneOf(['all', 'chunks', 'order', 'custom', 'agent'] as const, 'what to discard', {
@@ -191,8 +191,8 @@ export const promptClear = define({
 });
 
 export const promptAddRef = define({
-  id: 'prompt.addRef',
-  title: 'Attach a reference image',
+  id         : 'prompt.addRef',
+  title      : 'Attach a reference image',
   description:
     'Attach a reference image to one clause — evidence for that clause, so muting it drops the ' +
     'reference too. Name an asset hash, or the slot it should follow: portrait:<character>, ' +
@@ -201,12 +201,12 @@ export const promptAddRef = define({
     'never move. References are inside the task hash, so this re-renders the picture.',
   notes:
     'Attach a reference image to one clause — evidence for that clause, so muting it drops the reference too. `ref` is an asset hash (a prefix will do) or a **slot address**: `portrait:<character>`, `sheet:<character>/<outfit>/<angle>`, `plate:<location>/<variant>`, `shot:<scene>/<shot>`. A slot pins what fills it today and remembers where it came from; a bare hash pins itself and can never move. Refuses a reference that would close a cycle, naming the whole path.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    hash: prop.string('the asset whose prompt to attach to'),
+    hash : prop.string('the asset whose prompt to attach to'),
     chunk: prop.string('the clause the reference is evidence for'),
-    ref: prop.string('an asset hash, or a slot address'),
+    ref  : prop.string('an asset hash, or a slot address'),
   },
   async check({ hash, chunk, ref }, ctx) {
     return verdict(await ctx.host.session.previewAddRef(hash, chunk, ref));
@@ -219,19 +219,19 @@ export const promptAddRef = define({
 });
 
 export const promptDropRef = define({
-  id: 'prompt.dropRef',
-  title: 'Remove a reference image',
+  id         : 'prompt.dropRef',
+  title      : 'Remove a reference image',
   description:
     'Take a reference image off a clause. The bytes stay in the store — this only stops them ' +
     'being sent — and the task is re-keyed, so the picture renders again without it.',
   notes:
     'Take a reference off a clause. The bytes stay in the store — this only stops them being sent.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    hash: prop.string('the asset whose prompt to edit'),
+    hash : prop.string('the asset whose prompt to edit'),
     chunk: prop.string('the clause the reference is attached to'),
-    ref: prop.string('the pinned hash to remove, or a prefix of it'),
+    ref  : prop.string('the pinned hash to remove, or a prefix of it'),
   },
   async check({ hash, chunk, ref }, ctx) {
     return verdict(await ctx.host.session.previewDropRef(hash, chunk, ref));
@@ -244,8 +244,8 @@ export const promptDropRef = define({
 });
 
 export const promptRepin = define({
-  id: 'prompt.repin',
-  title: 'Repin a reference image',
+  id         : 'prompt.repin',
+  title      : 'Repin a reference image',
   description:
     'Point a linked reference at whatever its slot holds now. A reference pins a hash — that is ' +
     'what the task hashes over — so an approval upstream never moves it on its own; it suspends ' +
@@ -254,12 +254,12 @@ export const promptRepin = define({
     "bytes by recording them as the newly-keyed task's output.",
   notes:
     "Point a linked reference at whatever its slot holds now, which is how a suspension is cleared. `regenerate=false` is **re-approve**: it keeps the existing bytes by recording them as the newly-keyed task's output, so nothing re-renders.",
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    hash: prop.string('the asset whose reference to repin'),
-    chunk: prop.string('the clause the reference is attached to'),
-    ref: prop.string('the pinned hash to move, or a prefix of it'),
+    hash      : prop.string('the asset whose reference to repin'),
+    chunk     : prop.string('the clause the reference is attached to'),
+    ref       : prop.string('the pinned hash to move, or a prefix of it'),
     regenerate: prop.boolean('re-render, rather than keeping the existing bytes', {
       default: true,
     }),
@@ -275,15 +275,15 @@ export const promptRepin = define({
 });
 
 export const promptCheck = define({
-  id: 'prompt.check',
-  title: 'Check a prompt says everything',
+  id         : 'prompt.check',
+  title      : 'Check a prompt says everything',
   description:
     'Which clauses a hand-written or condensed prompt no longer appears to say. A word-overlap ' +
     'heuristic and nothing more — it answers "not found", never "it was dropped" — so it is a ' +
     'prompt to go and look, not a verdict. In chunks mode nothing can be missing.',
   notes:
     'Which clauses a hand-written or condensed prompt no longer appears to say. A word-overlap heuristic — "not found", never "dropped" — so it is a prompt to go and look. In chunks mode nothing can be missing.',
-  mutating: false,
+  mutating   : false,
   props: {
     hash: prop.string('the asset whose prompt to check'),
   },

@@ -7,35 +7,35 @@ import { condensePrompt, contentWords, coverage, missingChunks, renderPrompt } f
 
 const chunks: PromptChunk[] = [
   {
-    key: 'style',
+    key     : 'style',
     category: 'style',
-    text: 'Watercolour illustration.',
-    origin: { kind: 'builder' },
+    text    : 'Watercolour illustration.',
+    origin  : { kind: 'builder' },
   },
   {
-    key: 'subject',
+    key     : 'subject',
     category: 'subject',
-    text: 'Character portrait of AIKO.',
-    origin: { kind: 'builder' },
+    text    : 'Character portrait of AIKO.',
+    origin  : { kind: 'builder' },
   },
   {
-    key: 'palette',
+    key     : 'palette',
     category: 'palette',
-    text: 'Palette: #112233.',
-    origin: { kind: 'character', id: 'aiko', field: 'palette' },
+    text    : 'Palette: #112233.',
+    origin  : { kind: 'character', id: 'aiko', field: 'palette' },
   },
   {
-    key: 'scaffolding',
+    key     : 'scaffolding',
     category: 'scaffolding',
-    text: 'Neutral pose, plain background.',
-    origin: { kind: 'builder' },
+    text    : 'Neutral pose, plain background.',
+    origin  : { kind: 'builder' },
   },
 ];
 
 /** A `TextLLM` that answers with whatever is handed to it — or throws, which is the fallback path. */
 function llm(answer: string | Error, seen: string[] = []): TextLLM {
   return {
-    complete: () => Promise.resolve(''),
+    complete  : () => Promise.resolve(''),
     structured: <T>(prompt: string, parse: (raw: string) => T) => {
       seen.push(prompt);
       if (answer instanceof Error) return Promise.reject(answer);

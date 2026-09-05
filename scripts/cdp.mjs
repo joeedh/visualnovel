@@ -84,7 +84,7 @@ export function send(socket, method, params = {}) {
 export async function evaluate(socket, expression) {
   const { result, exceptionDetails } = await send(socket, 'Runtime.evaluate', {
     expression,
-    awaitPromise: true,
+    awaitPromise : true,
     returnByValue: true,
   });
   if (exceptionDetails) throw new Error(exceptionDetails.text);

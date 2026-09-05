@@ -176,7 +176,7 @@ export class TestProject {
     readonly dir: string,
     readonly git?: Git,
     private readonly assets: { mode: 'placeholder' | 'cached'; cacheDir: string } = {
-      mode: 'placeholder',
+      mode    : 'placeholder',
       cacheDir: FIXTURE_ASSET_DIR,
     },
   ) {
@@ -207,7 +207,7 @@ export class TestProject {
       opts.providers ??
       createMockProviders({
         reviewResponses: opts.reviewResponses,
-        refLoader: async (ref) => ({ bytes: await store.read(ref), ext: ref.ext }),
+        refLoader      : async (ref) => ({ bytes: await store.read(ref), ext: ref.ext }),
         imageBackend,
       });
     return runPipeline({
@@ -216,7 +216,7 @@ export class TestProject {
       store,
       providers,
       config,
-      paths: this.paths,
+      paths : this.paths,
       dryRun: opts.dryRun,
       logger: opts.logger,
       ...(opts.graphs === undefined
@@ -246,9 +246,9 @@ export class TestProject {
     for (const [slug, graph] of Object.entries(graphs)) {
       loaded.push({
         graph,
-        journal: await readGraphJournal(this.paths, slug),
+        journal : await readGraphJournal(this.paths, slug),
         services: createGenServices({ ...deps, blobs: graphBlobStore(this.paths, slug) }),
-        record: (record) => appendGraphJournal(this.paths, slug, record),
+        record  : (record) => appendGraphJournal(this.paths, slug, record),
       });
     }
 
@@ -348,7 +348,7 @@ export async function makeProject(opts: MakeProjectOptions = {}): Promise<TestPr
   const characters = (opts.characters ?? inferred.characters).map((c) => toSpec<CharacterSpec>(c));
   const locations = (opts.locations ?? inferred.locations).map((l) => toSpec<LocationSpec>(l));
   const config = {
-    title: opts.title ?? DEFAULT_TITLE,
+    title    : opts.title ?? DEFAULT_TITLE,
     art_style: DEFAULT_ART_STYLE,
     // Chunks have no document order, so the entry scene has to be named. The screenplay form
     // leaves `start:` out on purpose — an unimported project has not written it down yet, and
@@ -376,7 +376,7 @@ export async function makeProject(opts: MakeProjectOptions = {}): Promise<TestPr
   }
 
   return new TestProject(dir, opts.git ? await initRepo(dir) : undefined, {
-    mode: opts.assets ?? 'placeholder',
+    mode    : opts.assets ?? 'placeholder',
     cacheDir: opts.assetCacheDir ?? FIXTURE_ASSET_DIR,
   });
 }

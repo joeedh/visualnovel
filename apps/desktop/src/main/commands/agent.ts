@@ -17,11 +17,11 @@ import type { CommandHost } from './host.js';
 const define = defineFor<CommandHost>();
 
 export const agentRun = define({
-  id: 'agent.run',
-  title: 'Run agent turn',
+  id         : 'agent.run',
+  title      : 'Run agent turn',
   description: 'Send one turn to the authoring agent and return its result.',
-  notes: 'One agent turn. Mutating: a turn in execute mode writes.',
-  mutating: true,
+  notes      : 'One agent turn. Mutating: a turn in execute mode writes.',
+  mutating   : true,
   props: {
     input: prop.string('what to ask the agent'),
     // Filled by the composer from the selection. Optional because the palette and CDP have no
@@ -42,12 +42,12 @@ export const agentRun = define({
 });
 
 export const agentStop = define({
-  id: 'agent.stop',
-  title: 'Stop agent turn',
+  id         : 'agent.stop',
+  title      : 'Stop agent turn',
   description: 'End the turn in progress after the step it is on. What it already did is kept.',
   // The interrupted turn accounts for whatever it wrote, and already holds the undo point
-  mutating: false,
-  props: {},
+  mutating   : false,
+  props      : {},
   check(_props, ctx) {
     // Asks whether an agent turn is in flight rather than whether it is what `busy()` names: a
     // report turn running alongside it would otherwise make this refuse the turn it can stop
@@ -64,11 +64,11 @@ export const agentStop = define({
 });
 
 export const agentSetMode = define({
-  id: 'agent.setMode',
-  title: 'Set agent mode',
+  id         : 'agent.setMode',
+  title      : 'Set agent mode',
   description: 'Switch the agent between read-only plan mode and execute mode.',
-  mutating: false,
-  props: { mode: prop.oneOf(['plan', 'execute'] as const, 'the mode to switch to') },
+  mutating   : false,
+  props      : { mode: prop.oneOf(['plan', 'execute'] as const, 'the mode to switch to') },
   async run({ mode }, ctx) {
     const current = await ctx.host.session.setMode(mode);
     return { message: `Agent is in ${current} mode.`, data: current };
@@ -76,27 +76,27 @@ export const agentSetMode = define({
 });
 
 export const agentSetModel = define({
-  id: 'agent.setModel',
-  title: 'Set agent model',
+  id         : 'agent.setModel',
+  title      : 'Set agent model',
   description: 'Hot-swap the text model, preserving conversation state.',
-  notes: 'Hot-swaps the text model, preserving conversation state.',
-  mutating: false,
-  props: { modelId: prop.string('the model id to bind') },
+  notes      : 'Hot-swaps the text model, preserving conversation state.',
+  mutating   : false,
+  props      : { modelId: prop.string('the model id to bind') },
   async run({ modelId }, ctx) {
     return { message: `Agent model is now ${await ctx.host.session.setModel(modelId)}.` };
   },
 });
 
 export const agentSetEffort = define({
-  id: 'agent.setEffort',
-  title: 'Set agent effort',
+  id         : 'agent.setEffort',
+  title      : 'Set agent effort',
   description: 'Set how hard the model thinks, or `none` to switch thinking off.',
   notes:
     'How hard the model thinks; `none` switches thinking off. Every choice is accepted — the menu is what filters by model, and one the model will not take is stepped down at the wire (`resolveEffort`). A model with no such knob keeps the setting and ignores it (`supportsEffort`).',
-  mutating: false,
+  mutating   : false,
   // Every choice is accepted, not just the ones the current model offers. The menu does the
   // filtering, and a level the model will not take is stepped down at the wire rather than refused
-  props: { effort: prop.oneOf(EFFORT_CHOICES, 'the reasoning to bind') },
+  props      : { effort: prop.oneOf(EFFORT_CHOICES, 'the reasoning to bind') },
   async run({ effort }, ctx) {
     const bound = await ctx.host.session.setEffort(effort as EffortChoice);
     return { message: `Agent effort is now ${effortLabel(bound)}.` };
@@ -107,13 +107,13 @@ export const agentSetEffort = define({
 export const BUDGET_KEY = 'agent.budget';
 
 export const agentSetBudget = define({
-  id: 'agent.setBudget',
-  title: 'Set agent turn budget',
+  id         : 'agent.setBudget',
+  title      : 'Set agent turn budget',
   description:
     'How many non-cached tokens one turn may spend before the agent is asked to wrap up. Cache ' +
     'reads do not count. `unlimited` removes the ceiling.',
-  mutating: false,
-  props: { budget: prop.oneOf(BUDGET_CHOICES, 'the ceiling to bind') },
+  mutating   : false,
+  props      : { budget: prop.oneOf(BUDGET_CHOICES, 'the ceiling to bind') },
   async run({ budget }, ctx) {
     const bound = await ctx.host.session.setBudget(budget as BudgetChoice);
     // Kept in the install's session file rather than the project's, because the ceiling is a
@@ -124,13 +124,13 @@ export const agentSetBudget = define({
 });
 
 export const agentClear = define({
-  id: 'agent.clear',
-  title: 'Clear agent context',
+  id         : 'agent.clear',
+  title      : 'Clear agent context',
   description: 'Reset the conversation, returning the agent to plan mode. The thread is saved.',
   notes:
     'Resets the conversation, back to plan mode. The thread it was in stays on disk and stays listed.',
-  mutating: false,
-  props: {},
+  mutating   : false,
+  props      : {},
   async run(_props, ctx) {
     await ctx.host.session.clearAgent();
     return { message: 'Agent context cleared.' };
@@ -143,13 +143,13 @@ export const agentClear = define({
  * `agent.compact` are the two marked `mutating`, and only because each writes a file.
  */
 export const agentThreads = define({
-  id: 'agent.threads',
-  title: 'List conversations',
+  id         : 'agent.threads',
+  title      : 'List conversations',
   description: 'Every saved conversation in this project, newest first.',
   notes:
     'Every saved conversation, newest first, plus which one is open. Header lines only — no transcripts.',
-  mutating: false,
-  props: {},
+  mutating   : false,
+  props      : {},
   async run(_props, ctx) {
     const { threads, active } = await ctx.host.session.threads();
     const count = threads.length === 1 ? '1 conversation' : `${threads.length} conversations`;
@@ -158,12 +158,12 @@ export const agentThreads = define({
 });
 
 export const agentNewThread = define({
-  id: 'agent.newThread',
-  title: 'New conversation',
+  id         : 'agent.newThread',
+  title      : 'New conversation',
   description: 'Save the current conversation and start a fresh one.',
-  notes: 'End the open conversation and start again. The next turn opens a new thread file.',
-  mutating: false,
-  props: {},
+  notes      : 'End the open conversation and start again. The next turn opens a new thread file.',
+  mutating   : false,
+  props      : {},
   async run(_props, ctx) {
     await ctx.host.session.clearAgent();
     return { message: 'Started a new conversation.' };
@@ -171,15 +171,15 @@ export const agentNewThread = define({
 });
 
 export const agentOpenThread = define({
-  id: 'agent.openThread',
-  title: 'Open conversation',
+  id         : 'agent.openThread',
+  title      : 'Open conversation',
   description:
     'Replay a saved conversation on screen. Read-only: the agent is not shown it until ' +
     'Continue hands it back.',
   notes:
     'Replay a saved conversation on screen. **Read-only**: the model is not shown it, and the next turn starts a new thread unless Continue is pressed first. Returns the whole record as `data`.',
-  mutating: false,
-  props: { id: prop.string('the conversation to reopen') },
+  mutating   : false,
+  props      : { id: prop.string('the conversation to reopen') },
   async run({ id }, ctx) {
     const record = await ctx.host.session.openThreadForReading(id);
     return { message: `Reopened “${record.title}” for reading.`, data: record };
@@ -192,13 +192,13 @@ export const agentOpenThread = define({
  * cannot be handed to the model bound now, and the check is where that sentence comes from.
  */
 export const agentResumeThread = define({
-  id: 'agent.resumeThread',
-  title: 'Continue conversation',
+  id         : 'agent.resumeThread',
+  title      : 'Continue conversation',
   description: 'Continue a saved conversation. The agent is shown everything already in it.',
   notes:
     'Continue a saved conversation: the agent is handed the messages from its native log and the session binds to that thread, so later turns append to the same two files. Not mutating — it changes what the agent holds, not the project. Checked because a conversation recorded through another vendor or another protocol cannot be handed to the model bound now; the check answers that sentence, along with a log merged from two clones, one written by a newer version of the app, and a thread that kept only its transcript.',
-  mutating: false,
-  props: { id: prop.string('the conversation to continue') },
+  mutating   : false,
+  props      : { id: prop.string('the conversation to continue') },
   check: async ({ id }, ctx) => {
     const free = idle(ctx.host);
     if (!free.ok) return free;
@@ -232,17 +232,17 @@ async function wouldRename(
 }
 
 export const agentRenameThread = define({
-  id: 'agent.renameThread',
-  title: 'Rename conversation',
+  id         : 'agent.renameThread',
+  title      : 'Rename conversation',
   description: 'Retitle a saved conversation; an empty id renames the one that is open.',
   notes:
     'Retitle a saved conversation; an empty `id` renames the open one. Appended as a superseding `title` record — the log stays append-only, and the last one read wins.',
-  mutating: true,
+  mutating   : true,
   props: {
-    id: prop.string('the conversation to rename, or empty for the open one', { default: '' }),
+    id   : prop.string('the conversation to rename, or empty for the open one', { default: '' }),
     title: prop.string('the new name'),
   },
-  check: ({ id, title }, ctx) => wouldRename(id, title, ctx.host.session),
+  check      : ({ id, title }, ctx) => wouldRename(id, title, ctx.host.session),
   async run({ id, title }, ctx) {
     const header = await ctx.host.session.renameThread(id, title);
     return { message: `Renamed to “${header.title}”.`, data: header };
@@ -255,15 +255,15 @@ export const agentRenameThread = define({
  * both of the thread's logs, and it costs a model call, which is what the check reports.
  */
 export const agentCompact = define({
-  id: 'agent.compact',
-  title: 'Compact conversation',
+  id         : 'agent.compact',
+  title      : 'Compact conversation',
   description:
     'Summarize this conversation so the agent carries a summary instead of every turn. Nothing ' +
     'is deleted — the transcript on screen is unchanged.',
   notes:
     "Summarize the open conversation so the agent carries a summary instead of every turn. Appends one line to each of the thread's logs and rewrites neither, so the transcript on screen is unchanged. Checked because it costs a model call, and refused while a turn is running, with no finished turn to summarize, with the last turn stopped part way through a tool call, and when nothing has been said since the last compaction.",
-  mutating: true,
-  props: {},
+  mutating   : true,
+  props      : {},
   check: async (_props, ctx) => {
     const free = idle(ctx.host);
     if (!free.ok) return free;
@@ -324,16 +324,16 @@ async function wouldEditLine(
 }
 
 export const agentEditLine = define({
-  id: 'agent.editLine',
-  title: 'Edit with the agent',
+  id         : 'agent.editLine',
+  title      : 'Edit with the agent',
   description:
     'Open the conversation on one line of a scene, with the composer already naming it — the ' +
     'scene, the line’s number in it, its id and its words. Nothing is sent: the opener is text in ' +
     'a field, and what to ask for is the author’s to write.',
-  mutating: false,
+  mutating   : false,
   props: {
     scene: prop.string('the scene the line is in'),
-    line: prop.string('the line id, which the script column’s gutter tooltip names'),
+    line : prop.string('the line id, which the script column’s gutter tooltip names'),
   },
   check: ({ scene, line }, ctx) =>
     wouldEditLine(scene, line, ctx.host).then((v) =>
@@ -363,14 +363,14 @@ async function wouldFixAsset(
 }
 
 export const agentFixAsset = define({
-  id: 'agent.fixAsset',
-  title: 'Fix with the agent',
+  id         : 'agent.fixAsset',
+  title      : 'Fix with the agent',
   description:
     'Open the conversation on a picture the pipeline gave up on, with the composer holding what ' +
     'the failure said and a request to work out why. Nothing is sent, and nothing is regenerated ' +
     '— the agent proposes a change to the prompt or the art notes, and a run is what redraws it.',
-  mutating: false,
-  props: { hash: prop.string('the asset that failed') },
+  mutating   : false,
+  props      : { hash: prop.string('the asset that failed') },
   check: ({ hash }, ctx) =>
     wouldFixAsset(hash, ctx.host).then((v) =>
       v.ok ? { ok: true as const, note: 'Opens a conversation about this failure.' } : v,

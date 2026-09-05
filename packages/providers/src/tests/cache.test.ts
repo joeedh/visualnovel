@@ -19,8 +19,8 @@ class CountingBackend implements ImageBackend {
   private next(tag: string): Promise<ImageResult> {
     this.calls += 1;
     return Promise.resolve({
-      bytes: new TextEncoder().encode(`${tag}#${this.calls}`),
-      ext: 'png',
+      bytes  : new TextEncoder().encode(`${tag}#${this.calls}`),
+      ext    : 'png',
       modelId: this.modelId,
     });
   }
@@ -73,10 +73,10 @@ describe('AssetCache', () => {
         key,
         { bytes: new TextEncoder().encode('REAL ART'), ext: 'png', modelId: 'test-image-1' },
         {
-          op: 'generate',
-          prompt: 'a plate',
-          refs: [REF('ref')],
-          params: PARAMS,
+          op     : 'generate',
+          prompt : 'a plate',
+          refs   : [REF('ref')],
+          params : PARAMS,
           fixture: 'linear',
         },
       );

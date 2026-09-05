@@ -62,13 +62,13 @@ function searchHistory(reader: HistoryReader): Tool<{
   limit?: number;
 }> {
   return {
-    name: 'search_history',
+    name       : 'search_history',
     description:
       'Search this conversation for a string or regex, including the turns a compaction ' +
       'summarized away. Returns one line per hit: the message number, who said it, and the text ' +
       'around the match. Read a whole message with read_history. Other conversations are not ' +
       'searched.',
-    mutating: false,
+    mutating   : false,
     args: z.object({
       query: z.string().min(1),
       regex: z.boolean().optional(),
@@ -123,12 +123,12 @@ function searchHistory(reader: HistoryReader): Tool<{
 
 function readHistory(reader: HistoryReader): Tool<{ n: number }> {
   return {
-    name: 'read_history',
+    name       : 'read_history',
     description:
       'Read one message of this conversation in full, by the number search_history reported. ' +
       'Works on a turn a compaction replaced with a summary.',
-    mutating: false,
-    args: z.object({ n: z.number().int().describe('the number from search_history') }),
+    mutating   : false,
+    args       : z.object({ n: z.number().int().describe('the number from search_history') }),
     async run(a) {
       const messages = await reader.messages();
       const found = messages.find((message) => message.n === a.n);

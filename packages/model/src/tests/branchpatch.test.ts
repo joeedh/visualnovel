@@ -204,9 +204,9 @@ describe('applySceneMarkerEdit', () => {
     expect(diagnostics).toEqual([
       {
         severity: 'error',
-        code: 'branch_patch_scene',
-        message: "no scene 'nowhere' in the screenplay",
-        where: 'nowhere',
+        code    : 'branch_patch_scene',
+        message : "no scene 'nowhere' in the screenplay",
+        where   : 'nowhere',
       },
     ]);
   });
@@ -396,9 +396,9 @@ describe('applySceneMarkerEdit — a scene chunk body', () => {
     expect(diagnostics).toEqual([
       {
         severity: 'error',
-        code: 'branch_patch_scene',
-        message: "no scene 'greet' in chunk 'arrival'",
-        where: 'greet',
+        code    : 'branch_patch_scene',
+        message : "no scene 'greet' in chunk 'arrival'",
+        where   : 'greet',
       },
     ]);
   });
@@ -440,7 +440,7 @@ function sweepOf(ids: string[]): SceneMarkerEdit[] {
           { label: 'One', goto: a },
           { label: 'Two', goto: b },
         ],
-        next: null,
+        next   : null,
       },
       { sceneId, choices: [{ label: 'Only', goto: b }], next: a },
     );
@@ -469,7 +469,7 @@ function expectLands(source: string, edit: SceneMarkerEdit, opts: { sceneId?: st
     const was = before.find((p) => p.id === s.id);
     expect({ choices: s.choices, next: s.next }).toEqual({
       choices: was?.choices,
-      next: was?.next,
+      next   : was?.next,
     });
   }
 }

@@ -14,27 +14,27 @@ const node = {
 };
 
 const anchor = (over: Partial<Anchor> = {}): Anchor => ({
-  key: commandKey('gate.approve'),
-  id: 'gate.approve',
-  props: { characterId: 'aiko' },
+  key    : commandKey('gate.approve'),
+  id     : 'gate.approve',
+  props  : { characterId: 'aiko' },
   enabled: true,
-  editor: 'taskgraph' as EditorId,
-  via: { kind: 'dom', node },
+  editor : 'taskgraph' as EditorId,
+  via    : { kind: 'dom', node },
   ...over,
 });
 
 const spec = (name: string, over: Partial<CatalogProp> = {}): CatalogProp => ({
   name,
-  kind: 'string',
+  kind       : 'string',
   description: name,
-  required: true,
+  required   : true,
   ...over,
 });
 
 describe('checkFor', () => {
   it('fills a required string the widget has not answered yet', () => {
     expect(checkFor(anchor(), [spec('characterId'), spec('hash')])).toEqual({
-      id: 'gate.approve',
+      id   : 'gate.approve',
       props: { characterId: 'aiko', hash: '' },
     });
   });
@@ -43,7 +43,7 @@ describe('checkFor', () => {
     const drawn = anchor({ props: { characterId: 'aiko', hash: 'a1b2' } });
     expect(checkFor(drawn, [spec('characterId'), spec('hash')])?.props).toEqual({
       characterId: 'aiko',
-      hash: 'a1b2',
+      hash       : 'a1b2',
     });
   });
 
@@ -54,7 +54,7 @@ describe('checkFor', () => {
 
   it('blanks a list with a list, never with an empty string', () => {
     expect(checkFor(anchor(), [spec('characterId'), spec('tags', { kind: 'string[]' })])).toEqual({
-      id: 'gate.approve',
+      id   : 'gate.approve',
       props: { characterId: 'aiko', tags: [] },
     });
   });

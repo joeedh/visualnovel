@@ -13,7 +13,7 @@ const scenes = (...list: Stub[]): SceneMap =>
 /** arrival forks; greet and rooftop both continue linearly to dinner. */
 const FORK = scenes(
   {
-    id: 'arrival',
+    id     : 'arrival',
     choices: [
       { label: 'Introduce yourself', goto: 'greet' },
       { label: 'Look at the view', goto: 'rooftop' },
@@ -28,7 +28,7 @@ describe('setChoice', () => {
   it('appends a choice when no index is given', () => {
     const op = setChoice(FORK, { scene: 'arrival', goto: 'dinner', label: 'Slip away' });
     expect(op).toMatchObject({
-      ok: true,
+      ok   : true,
       edits: [
         {
           sceneId: 'arrival',
@@ -45,7 +45,7 @@ describe('setChoice', () => {
   it('replaces the choice at an index, leaving the others alone', () => {
     const op = setChoice(FORK, {
       scene: 'arrival',
-      goto: 'dinner',
+      goto : 'dinner',
       label: 'Head inside',
       index: 0,
     });
@@ -63,11 +63,11 @@ describe('setChoice', () => {
 
   it('refuses an unknown scene and an out-of-range index', () => {
     expect(setChoice(FORK, { scene: 'ghost', goto: 'greet', label: 'x' })).toEqual({
-      ok: false,
+      ok   : false,
       error: 'No scene "ghost".',
     });
     expect(setChoice(FORK, { scene: 'arrival', goto: 'greet', label: 'x', index: 7 })).toEqual({
-      ok: false,
+      ok   : false,
       error: 'arrival has no choice at index 7.',
     });
   });
@@ -93,7 +93,7 @@ describe('removeChoice', () => {
 
   it('refuses an index that is not there', () => {
     expect(removeChoice(FORK, { scene: 'greet', index: 0 })).toEqual({
-      ok: false,
+      ok   : false,
       error: 'greet has no choice at index 0.',
     });
   });
@@ -102,7 +102,7 @@ describe('removeChoice', () => {
 describe('setNext', () => {
   it('sets a linear continuation', () => {
     expect(setNext(FORK, { scene: 'dinner', goto: 'arrival' })).toMatchObject({
-      ok: true,
+      ok   : true,
       edits: [{ sceneId: 'dinner', next: 'arrival' }],
     });
   });
@@ -110,18 +110,18 @@ describe('setNext', () => {
   // `null` is the patcher's "remove the marker"; `undefined` would mean "leave it alone".
   it('clears with an explicit null when goto is omitted or blank', () => {
     expect(setNext(FORK, { scene: 'greet' })).toMatchObject({
-      ok: true,
+      ok   : true,
       edits: [{ sceneId: 'greet', next: null }],
     });
     expect(setNext(FORK, { scene: 'greet', goto: '  ' })).toMatchObject({
-      ok: true,
+      ok   : true,
       edits: [{ sceneId: 'greet', next: null }],
     });
   });
 
   it('refuses to clear a next that is not there', () => {
     expect(setNext(FORK, { scene: 'dinner' })).toEqual({
-      ok: false,
+      ok   : false,
       error: 'dinner has no next scene to clear.',
     });
   });
@@ -130,7 +130,7 @@ describe('setNext', () => {
 describe('spliceScene', () => {
   const WITH_SPARE = scenes(
     {
-      id: 'arrival',
+      id     : 'arrival',
       choices: [
         { label: 'Introduce yourself', goto: 'greet' },
         { label: 'Look at the view', goto: 'rooftop' },
@@ -146,7 +146,7 @@ describe('spliceScene', () => {
   it('rewires a choice edge and continues from the new scene, in one patch', () => {
     const op = spliceScene(WITH_SPARE, { scene: 'hallway', from: 'arrival', edge: 0 });
     expect(op).toMatchObject({
-      ok: true,
+      ok   : true,
       edits: [
         {
           sceneId: 'arrival',
@@ -164,7 +164,7 @@ describe('spliceScene', () => {
   it('splices into a next edge when no choice index is given', () => {
     const op = spliceScene(WITH_SPARE, { scene: 'hallway', from: 'greet' });
     expect(op).toMatchObject({
-      ok: true,
+      ok   : true,
       edits: [
         { sceneId: 'greet', next: 'hallway' },
         { sceneId: 'hallway', next: 'dinner' },
@@ -207,33 +207,33 @@ describe('spliceScene', () => {
 
   it('refuses the degenerate drops — onto its own edge, or onto the target it already is', () => {
     expect(spliceScene(WITH_SPARE, { scene: 'greet', from: 'greet' })).toEqual({
-      ok: false,
+      ok   : false,
       error: 'greet cannot be spliced into its own edge.',
     });
     expect(spliceScene(WITH_SPARE, { scene: 'dinner', from: 'greet' })).toEqual({
-      ok: false,
+      ok   : false,
       error: 'dinner is already the target of that edge.',
     });
   });
 
   it('refuses an edge that is not there', () => {
     expect(spliceScene(WITH_SPARE, { scene: 'hallway', from: 'dinner' })).toEqual({
-      ok: false,
+      ok   : false,
       error: 'dinner has no next scene to splice into.',
     });
     expect(spliceScene(WITH_SPARE, { scene: 'hallway', from: 'arrival', edge: 5 })).toEqual({
-      ok: false,
+      ok   : false,
       error: 'arrival has no choice at index 5.',
     });
   });
 
   it('refuses unknown scenes on either end', () => {
     expect(spliceScene(WITH_SPARE, { scene: 'ghost', from: 'greet' })).toEqual({
-      ok: false,
+      ok   : false,
       error: 'No scene "ghost".',
     });
     expect(spliceScene(WITH_SPARE, { scene: 'hallway', from: 'ghost' })).toEqual({
-      ok: false,
+      ok   : false,
       error: 'No scene "ghost".',
     });
   });

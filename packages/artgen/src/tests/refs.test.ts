@@ -17,9 +17,9 @@ function asset(
     ext: 'png',
     kind,
     sourceTask: `task-${hash}`,
-    refs: [],
-    modelId: 'm',
-    accepted: false,
+    refs      : [],
+    modelId   : 'm',
+    accepted  : false,
     satisfies,
     ...over,
   };

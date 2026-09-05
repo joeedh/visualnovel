@@ -4,12 +4,12 @@ import { NATIVE_VERSION, type OpenedThread } from '../../../src/shared/threads.j
 
 const state = (over: Partial<Convo> = {}): Convo =>
   ({
-    feed: [],
-    line: '',
-    plan: null,
-    question: null,
-    confirm: null,
-    busy: false,
+    feed       : [],
+    line       : '',
+    plan       : null,
+    question   : null,
+    confirm    : null,
+    busy       : false,
     suggestions: [],
     compactions: [],
     ...over,
@@ -18,12 +18,12 @@ const state = (over: Partial<Convo> = {}): Convo =>
 const said = (id: number): Convo['feed'][number] => ({ id, role: 'user', text: 'hello' });
 
 const header: ResumeHeader = {
-  v: NATIVE_VERSION,
-  thread: 't1',
-  at: '2026-08-22T14:00:28.041Z',
-  backend: 'native',
-  vendor: 'anthropic',
-  model: 'claude-opus-5',
+  v       : NATIVE_VERSION,
+  thread  : 't1',
+  at      : '2026-08-22T14:00:28.041Z',
+  backend : 'native',
+  vendor  : 'anthropic',
+  model   : 'claude-opus-5',
   sections: [],
 };
 
@@ -56,8 +56,8 @@ describe('compactAction', () => {
 describe('resumeAction', () => {
   it('continues a thread the bound model recorded', () => {
     expect(resumeAction(thread(), 'claude-opus-5')).toMatchObject({
-      ok: true,
-      id: 'agent.resumeThread',
+      ok   : true,
+      id   : 'agent.resumeThread',
       props: { id: 't1' },
     });
   });

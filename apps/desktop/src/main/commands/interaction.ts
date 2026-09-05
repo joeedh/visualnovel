@@ -20,14 +20,14 @@ const define = defineFor<CommandHost>();
 export const desktopInteractions = createDesktopInteractions();
 
 export const interactionList = define({
-  id: 'interaction.list',
-  title: 'List interactions',
+  id         : 'interaction.list',
+  title      : 'List interactions',
   description:
     'The direct-manipulation gestures the app offers: what each one carries, what it accepts, ' +
     'and the commands it can commit.',
-  notes: 'The gestures the app offers — see below.',
-  mutating: false,
-  props: {},
+  notes      : 'The gestures the app offers — see below.',
+  mutating   : false,
+  props      : {},
   async run() {
     const entries = toInteractionCatalog(desktopInteractions);
     return { message: `${entries.length} interaction(s).`, data: entries };
@@ -35,14 +35,14 @@ export const interactionList = define({
 });
 
 export const interactionTargets = define({
-  id: 'interaction.targets',
-  title: 'Judge an interaction’s targets',
+  id         : 'interaction.targets',
+  title      : 'Judge an interaction’s targets',
   description:
     'Every target of a gesture, each marked accept or refuse with the reason the command ' +
     'itself would give. Reads the live story graph; changes nothing.',
   notes:
     'Every target of a gesture, accepted or refused with why. `scene` and `asset` build the state the named gesture is judged against.',
-  mutating: false,
+  mutating   : false,
   props: {
     interaction: prop.oneOf(INTERACTION_IDS, 'which gesture to judge'),
     carried: prop.string(
@@ -51,7 +51,7 @@ export const interactionTargets = define({
         'a line id for script.moveLine, or a chunk key for prompt.reorder',
     ),
     scene: prop.string('which scene, for a gesture judged against one scene', { default: '' }),
-    asset: prop.string('which asset, for prompt.reorder', { default: '' }),
+    asset      : prop.string('which asset, for prompt.reorder', { default: '' }),
   },
   async run({ interaction, carried, scene, asset }, ctx) {
     const gesture = desktopInteractions.get(interaction);
@@ -64,7 +64,7 @@ export const interactionTargets = define({
     const summary = `${accepted} of ${verdicts.length} target(s) would accept ${carried}.`;
     return {
       message: verdicts.length > 0 ? `${summary}\n${formatVerdicts(verdicts)}` : summary,
-      data: verdicts,
+      data   : verdicts,
     };
   },
 });

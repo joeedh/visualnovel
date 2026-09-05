@@ -44,8 +44,8 @@ describe('NativeAgentBackend', () => {
   it('throws if the chat backend cannot hold a conversation', () => {
     // `chatWithTools` alone is not enough, because it is single-shot and caches nothing.
     const plain: ChatBackend = {
-      modelId: 'plain',
-      message: () => Promise.resolve(''),
+      modelId      : 'plain',
+      message      : () => Promise.resolve(''),
       chatWithTools: () => Promise.resolve({ toolCalls: [] }),
     };
     expect(() => new NativeAgentBackend(plain)).toThrow(/native tool-calling/);
@@ -53,7 +53,7 @@ describe('NativeAgentBackend', () => {
 
   it('returns every tool call the model asked for, and advertises deferral', async () => {
     const chat = convoChat({
-      text: 'reading',
+      text     : 'reading',
       toolCalls: [
         { id: 't1', name: 'read_file', args: { path: 'a' } },
         { id: 't2', name: 'read_file', args: { path: 'b' } },
@@ -85,11 +85,11 @@ describe('NativeAgentBackend', () => {
       .strict();
     const spec: ToolSpec[] = [
       {
-        name: 'write_storyboard',
+        name       : 'write_storyboard',
         description: 'Persist a storyboard.',
-        mutating: true,
-        parameters: describeToolParams(shape),
-        schema: jsonSchemaOf(shape)!,
+        mutating   : true,
+        parameters : describeToolParams(shape),
+        schema     : jsonSchemaOf(shape)!,
       },
     ];
     const chat = convoChat({ text: 'done', toolCalls: [] });
@@ -100,9 +100,9 @@ describe('NativeAgentBackend', () => {
     const sent = chat.calls[0]!.tools[0]!;
     const params = sent.parameters as Record<string, Record<string, Record<string, unknown>>>;
     expect(params.properties!.shots!.items).toMatchObject({
-      type: 'object',
+      type      : 'object',
       properties: { id: { type: 'string' }, pose: { type: 'string' } },
-      required: ['id'],
+      required  : ['id'],
     });
     // A `.strict()` shape must not become the vendor's refusal — zod refuses the stray key in the
     // loop, where the model can read the refusal and correct it.
@@ -277,8 +277,8 @@ describe('the receipt', () => {
   function usageChat(answers: string[]): ChatBackend {
     let i = 0;
     return {
-      modelId: 'mock-usage',
-      message: () => Promise.reject(new Error('the usage path should be preferred')),
+      modelId         : 'mock-usage',
+      message         : () => Promise.reject(new Error('the usage path should be preferred')),
       messageWithUsage: () => {
         const text = answers[Math.min(i++, answers.length - 1)]!;
         return Promise.resolve({ text, usage: { input: 10, output: 3 } });
@@ -318,9 +318,9 @@ describe('the receipt', () => {
 
   it('carries the cache split through the native path', async () => {
     const chat = convoChat({
-      text: 'all done',
+      text     : 'all done',
       toolCalls: [],
-      usage: { input: 120, output: 40, cacheRead: 100, cacheWrite: 0 },
+      usage    : { input: 120, output: 40, cacheRead: 100, cacheWrite: 0 },
     });
     const turn = await new NativeAgentBackend(chat).next('sys', MESSAGES, TOOLS);
     expect(turn.usage).toEqual({ input: 120, output: 40, cacheRead: 100, cacheWrite: 0 });

@@ -11,13 +11,13 @@ const LINES: CoverageLine[] = [
 
 const shot = (id: string, coversLines: string[]): CoverageShot => ({
   id,
-  framing: 'medium',
+  framing : 'medium',
   subjects: [],
   location: 'day',
-  outfits: {},
+  outfits : {},
   coversLines,
   status: 'accepted',
-  drift: 'current',
+  drift : 'current',
 });
 
 /** `deterministicShots`' own shape: the plate takes the narration, each medium one speaker. */

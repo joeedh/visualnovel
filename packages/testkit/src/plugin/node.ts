@@ -19,26 +19,26 @@ export function shoutSpec(api: GenPluginApi): GenNodeSpec {
   class TestkitShout extends api.Node {
     static override graphDef() {
       return {
-        typeName: TYPE_NAME,
-        uiName: 'Shout',
+        typeName   : TYPE_NAME,
+        uiName     : 'Shout',
         description: 'Rewrites the text feeding it, louder.',
-        inputs: { text: new api.TextSocket('in') },
-        outputs: { text: new api.TextSocket('out') },
-        props: { model: new api.StringProperty('testkit-shouter') },
+        inputs     : { text: new api.TextSocket('in') },
+        outputs    : { text: new api.TextSocket('out') },
+        props      : { model: new api.StringProperty('testkit-shouter') },
         typeVersion: 1,
       };
     }
   }
 
   return {
-    cls: TestkitShout,
-    spends: true,
+    cls     : TestkitShout,
+    spends  : true,
     estimate: (props) => [
       {
         service: 'text',
-        model: String(props['model']),
-        unit: 'mtok-in',
-        count: api.mtok(NOMINAL_TOKENS),
+        model  : String(props['model']),
+        unit   : 'mtok-in',
+        count  : api.mtok(NOMINAL_TOKENS),
       },
     ],
   };

@@ -56,11 +56,11 @@ export interface UploadBatch {
  */
 const NO_CONVERTER: Record<string, string> = {
   '.docx': 'Word document',
-  '.doc': 'Word document',
-  '.odt': 'OpenDocument text',
-  '.rtf': 'rich text',
-  '.pdf': 'PDF',
-  '.zip': 'zip archive',
+  '.doc' : 'Word document',
+  '.odt' : 'OpenDocument text',
+  '.rtf' : 'rich text',
+  '.pdf' : 'PDF',
+  '.zip' : 'zip archive',
   '.epub': 'EPUB book',
 };
 
@@ -120,7 +120,7 @@ export async function archiveUpload(
     archived.push({
       source: file.source,
       stored: workspacePath(root, abs),
-      bytes: file.bytes.length,
+      bytes : file.bytes.length,
       ...verdict(file.name, file.bytes),
     });
   }
@@ -247,7 +247,7 @@ export async function listArchive(workspace: Workspace): Promise<ArchivedBatch[]
       const key = workspacePath(root, dir);
       const stat = await fs.stat(abs);
       (batches.get(key) ?? batches.set(key, []).get(key)!).push({
-        path: workspacePath(root, abs),
+        path : workspacePath(root, abs),
         bytes: stat.size,
       });
     }

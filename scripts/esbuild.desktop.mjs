@@ -21,10 +21,10 @@ const watch = process.argv.includes('--watch');
 
 /** Shared options; only entry/outfile differ between main and preload. */
 const common = {
-  bundle: true,
-  platform: 'node',
-  format: 'cjs',
-  target: 'node20',
+  bundle   : true,
+  platform : 'node',
+  format   : 'cjs',
+  target   : 'node20',
   sourcemap: true,
   alias,
   external: EXTERNAL,
@@ -34,11 +34,11 @@ const common = {
 const targets = [
   {
     entryPoints: [resolve(root, 'apps/desktop/src/main/index.ts')],
-    outfile: resolve(root, 'apps/desktop/dist/main/index.cjs'),
+    outfile    : resolve(root, 'apps/desktop/dist/main/index.cjs'),
   },
   {
     entryPoints: [resolve(root, 'apps/desktop/src/preload/index.ts')],
-    outfile: resolve(root, 'apps/desktop/dist/preload/index.cjs'),
+    outfile    : resolve(root, 'apps/desktop/dist/preload/index.cjs'),
   },
 ];
 

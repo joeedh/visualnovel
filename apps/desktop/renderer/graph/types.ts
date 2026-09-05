@@ -50,9 +50,9 @@ export interface LaidOutNode extends GraphNode, Rect {
 }
 
 export const rectOf = (n: LaidOutNode): Rect => ({
-  x: n.x,
-  y: n.y,
-  width: n.width,
+  x     : n.x,
+  y     : n.y,
+  width : n.width,
   height: n.height,
 });
 

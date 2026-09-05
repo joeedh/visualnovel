@@ -6,16 +6,16 @@ import {
 } from '../notifications.js';
 
 const line = (over: Partial<Notification> = {}): Record<string, unknown> => ({
-  v: NOTIFICATION_VERSION,
-  r: 0,
-  h: 0,
-  id: '20260816-120000-abcd-0000',
-  at: '2026-08-16T12:00:00.000Z',
-  session: '20260816-120000-abcd',
+  v       : NOTIFICATION_VERSION,
+  r       : 0,
+  h       : 0,
+  id      : '20260816-120000-abcd-0000',
+  at      : '2026-08-16T12:00:00.000Z',
+  session : '20260816-120000-abcd',
   category: 'asset',
-  level: 'info',
-  source: 'pipeline',
-  message: 'Rendered plate cafe/night',
+  level   : 'info',
+  source  : 'pipeline',
+  message : 'Rendered plate cafe/night',
   ...over,
 });
 

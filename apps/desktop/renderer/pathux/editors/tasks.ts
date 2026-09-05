@@ -57,9 +57,9 @@ export class TaskListEditor extends VnEditor {
 
   static override define() {
     return {
-      tagname: 'vn-tasks-editor-x',
+      tagname : 'vn-tasks-editor-x',
       areaname: 'tasklist',
-      icon: -1,
+      icon    : -1,
     };
   }
 
@@ -72,13 +72,13 @@ export class TaskListEditor extends VnEditor {
 
     this.list = document.createElement('div');
     Object.assign(this.list.style, {
-      position: 'relative',
-      overflowY: 'auto',
-      background: TOKENS.inkSunken,
-      padding: '8px',
-      display: 'flex',
+      position     : 'relative',
+      overflowY    : 'auto',
+      background   : TOKENS.inkSunken,
+      padding      : '8px',
+      display      : 'flex',
       flexDirection: 'column',
-      gap: '6px',
+      gap          : '6px',
     });
     this.appendSurface(this.list);
 
@@ -126,10 +126,10 @@ export class TaskListEditor extends VnEditor {
   /** What the bar's controls are set to, in the shape the pure rules take. */
   private filter(): ListFilter {
     return {
-      cleared: this.cleared,
-      onlyDone: this.onlyDone,
+      cleared    : this.cleared,
+      onlyDone   : this.onlyDone,
       onlyRunning: this.onlyRunning,
-      onlyFailed: this.onlyFailed,
+      onlyFailed : this.onlyFailed,
     };
   }
 
@@ -140,12 +140,12 @@ export class TaskListEditor extends VnEditor {
   private selection(): Selection {
     const ui = this.ui;
     return {
-      sceneId: ui.sceneId,
-      shotId: ui.shotId,
+      sceneId    : ui.sceneId,
+      shotId     : ui.shotId,
       characterId: ui.characterId,
-      docPath: ui.docPath,
-      assetHash: ui.assetHash,
-      graphSlug: ui.graphSlug,
+      docPath    : ui.docPath,
+      assetHash  : ui.assetHash,
+      graphSlug  : ui.graphSlug,
     };
   }
 
@@ -284,11 +284,11 @@ export class TaskListEditor extends VnEditor {
     const bar = card();
     Object.assign(bar.style, {
       flexDirection: 'row',
-      alignItems: 'center',
-      gap: '10px',
-      border: `1px dashed ${alpha(TOKENS.sodium, 0.55)}`,
-      background: TOKENS.ink,
-      flex: 'none',
+      alignItems   : 'center',
+      gap          : '10px',
+      border       : `1px dashed ${alpha(TOKENS.sodium, 0.55)}`,
+      background   : TOKENS.ink,
+      flex         : 'none',
     });
 
     bar.appendChild(stamp('⟂ GATE', TOKENS.sodium));
@@ -298,15 +298,15 @@ export class TaskListEditor extends VnEditor {
     cta.textContent = 'RESOLVE →';
     cta.title = `Approve ${character}'s portrait, which is what the rest of the run is waiting on`;
     Object.assign(cta.style, {
-      marginLeft: 'auto',
-      cursor: 'pointer',
-      padding: '3px 9px',
-      color: TOKENS.paper,
-      background: TOKENS.inkRaised,
-      border: `1px solid ${TOKENS.inkLine}`,
+      marginLeft  : 'auto',
+      cursor      : 'pointer',
+      padding     : '3px 9px',
+      color       : TOKENS.paper,
+      background  : TOKENS.inkRaised,
+      border      : `1px solid ${TOKENS.inkLine}`,
       borderRadius: `${TOKENS.radiusChrome}px`,
-      fontFamily: TOKENS.mono,
-      fontSize: '11px',
+      fontFamily  : TOKENS.mono,
+      fontSize    : '11px',
     });
     cta.addEventListener('click', () => {
       this.ui.characterId = character;

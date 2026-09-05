@@ -62,8 +62,8 @@ describe('prompt hash baseline', () => {
       const rel = `vngen/work/shots/${sceneId}.json`;
       const file = JSON.parse(await p.read(rel));
       file.shots[0].promptOverride = {
-        mode: 'chunks',
-        mute: ['camera'],
+        mode   : 'chunks',
+        mute   : ['camera'],
         replace: { subject: 'Seen from behind.' },
       };
       await p.write(rel, JSON.stringify(file, null, 2) + '\n');

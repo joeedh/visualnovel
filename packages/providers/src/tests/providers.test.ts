@@ -17,8 +17,8 @@ import {
 
 const spec: ShotSpec = {
   description: 'Aiko smiles',
-  characters: ['aiko'],
-  location: 'classroom_day',
+  characters : ['aiko'],
+  location   : 'classroom_day',
 };
 const loadRef = mapRefLoader();
 

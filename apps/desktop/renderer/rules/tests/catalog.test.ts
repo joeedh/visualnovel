@@ -10,9 +10,9 @@ import {
 } from '../catalog';
 
 const prop = (over: Partial<CatalogProp> & { name: string }): CatalogProp => ({
-  kind: 'string',
+  kind       : 'string',
   description: '',
-  required: false,
+  required   : false,
   ...over,
 });
 
@@ -20,12 +20,12 @@ const entry = (id: string, title: string, props: CatalogProp[] = []): CatalogEnt
   id,
   title,
   description: '',
-  mutating: false,
-  confirm: false,
-  undoable: false,
-  checkable: false,
+  mutating   : false,
+  confirm    : false,
+  undoable   : false,
+  checkable  : false,
   props,
-  usage: `${id}()`,
+  usage : `${id}()`,
   schema: { type: 'object', properties: {}, required: [], additionalProperties: false },
 });
 

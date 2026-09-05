@@ -140,7 +140,7 @@ describe('edit_asset_graph', () => {
       const edited = await run(
         'edit_asset_graph',
         {
-          slug: 'portrait',
+          slug : 'portrait',
           nodes: [...dsl.nodes, refs],
           links: [...dsl.links, ['refs', 'refs', image.id, 'refs']],
         },
@@ -164,7 +164,7 @@ describe('edit_asset_graph', () => {
       const edited = await run(
         'edit_asset_graph',
         {
-          slug: 'portrait',
+          slug : 'portrait',
           nodes: [
             { id: 1, type: 'GenNoSuchThing' },
             { id: 2, type: 'GenAlsoMissing' },
@@ -312,7 +312,7 @@ describe('edit_asset_graph with groups', () => {
       const edited = await run(
         'edit_asset_graph',
         {
-          slug: 'portrait',
+          slug : 'portrait',
           nodes: [...dsl.nodes, { id: 'wash', type: 'GroupNode', group: 'inkwash' }],
           links: [
             [text!.id, 'text', 'wash', 'text'],
@@ -347,7 +347,7 @@ describe('edit_asset_graph with groups', () => {
       const edited = await run(
         'edit_asset_graph',
         {
-          slug: 'portrait',
+          slug : 'portrait',
           nodes: [{ id: 'wash', type: 'GroupNode', group: 'nowhere' }],
           links: [],
         },

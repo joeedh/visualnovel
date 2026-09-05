@@ -7,12 +7,12 @@ const WARDROBES: WardrobeMap = new Map([
 ]);
 
 const sceneOf = (outfits?: Record<string, string>): Scene => ({
-  id: 'club',
-  location: 'club_room',
+  id        : 'club',
+  location  : 'club_room',
   characters: ['aiko', 'ren'],
-  lines: [],
-  choices: [],
-  shots: [],
+  lines     : [],
+  choices   : [],
+  shots     : [],
   ...(outfits ? { outfits } : {}),
 });
 
@@ -20,13 +20,13 @@ const scenes = (scene: Scene) => new Map([[scene.id, scene]]);
 
 const shots = (subjects: { characterId: string; outfit?: string }[]): Shot[] => [
   {
-    id: 'club__beat1',
-    sceneId: 'club',
-    framing: 'medium',
+    id      : 'club__beat1',
+    sceneId : 'club',
+    framing : 'medium',
     location: 'club_room_day',
     subjects,
     coversLines: ['club:L1'],
-    status: 'generated',
+    status     : 'generated',
   },
 ];
 
@@ -34,11 +34,11 @@ describe('wardrobesOf', () => {
   it('reads the sheet in authored order and keeps the default reachable', () => {
     const character = (id: string, defaultOutfit: string, outfits: string[]): Character => ({
       id,
-      name: id,
+      name       : id,
       description: '',
-      traits: [],
-      palette: [],
-      status: 'draft',
+      traits     : [],
+      palette    : [],
+      status     : 'draft',
       defaultOutfit,
       outfits: outfits.map((o) => ({ id: o, characterId: id, description: '' })),
     });
@@ -58,9 +58,9 @@ describe('wardrobesOf', () => {
 describe('setSceneOutfit', () => {
   it('writes the whole marker set, carrying the ones it is not changing', () => {
     const op = setSceneOutfit(scenes(sceneOf({ ren: 'uniform' })), WARDROBES, {
-      scene: 'club',
+      scene    : 'club',
       character: 'aiko',
-      outfit: 'track',
+      outfit   : 'track',
     });
     if (!op.ok) throw new Error(op.error);
     expect(op.edits).toEqual([{ sceneId: 'club', outfits: { ren: 'uniform', aiko: 'track' } }]);
@@ -69,9 +69,9 @@ describe('setSceneOutfit', () => {
 
   it('clears one marker and names the default it falls back to', () => {
     const op = setSceneOutfit(scenes(sceneOf({ aiko: 'track', ren: 'uniform' })), WARDROBES, {
-      scene: 'club',
+      scene    : 'club',
       character: 'aiko',
-      outfit: '',
+      outfit   : '',
     });
     if (!op.ok) throw new Error(op.error);
     expect(op.edits).toEqual([{ sceneId: 'club', outfits: { ren: 'uniform' } }]);
@@ -80,24 +80,24 @@ describe('setSceneOutfit', () => {
 
   it('refuses an outfit the character has not authored, listing the ones they have', () => {
     const op = setSceneOutfit(scenes(sceneOf()), WARDROBES, {
-      scene: 'club',
+      scene    : 'club',
       character: 'ren',
-      outfit: 'track',
+      outfit   : 'track',
     });
     expect(op).toEqual({ ok: false, error: '"ren" has no outfit "track" — they have "uniform".' });
   });
 
   it('refuses a scene and a character it does not have', () => {
     const noScene = setSceneOutfit(scenes(sceneOf()), WARDROBES, {
-      scene: 'gate',
+      scene    : 'gate',
       character: 'aiko',
-      outfit: 'track',
+      outfit   : 'track',
     });
     expect(noScene).toMatchObject({ ok: false, error: 'No scene "gate".' });
     const noCharacter = setSceneOutfit(scenes(sceneOf()), WARDROBES, {
-      scene: 'club',
+      scene    : 'club',
       character: 'kaito',
-      outfit: 'track',
+      outfit   : 'track',
     });
     expect(noCharacter).toMatchObject({ ok: false, error: 'No character "kaito".' });
   });
@@ -106,15 +106,15 @@ describe('setSceneOutfit', () => {
   // entry already in force instead of offering it and then refusing the click
   it('marks a change that would change nothing as a noop, in both directions', () => {
     const same = setSceneOutfit(scenes(sceneOf({ aiko: 'track' })), WARDROBES, {
-      scene: 'club',
+      scene    : 'club',
       character: 'aiko',
-      outfit: 'track',
+      outfit   : 'track',
     });
     expect(same).toMatchObject({ ok: false, noop: true });
     const alreadyClear = setSceneOutfit(scenes(sceneOf()), WARDROBES, {
-      scene: 'club',
+      scene    : 'club',
       character: 'aiko',
-      outfit: '',
+      outfit   : '',
     });
     expect(alreadyClear).toMatchObject({ ok: false, noop: true });
   });
@@ -142,9 +142,9 @@ describe('setShotOutfit', () => {
       scene,
       WARDROBES,
       {
-        shot: 'club__beat1',
+        shot     : 'club__beat1',
         character: 'aiko',
-        outfit: '',
+        outfit   : '',
       },
     );
     if (!op.ok) throw new Error(op.error);
@@ -161,9 +161,9 @@ describe('setShotOutfit', () => {
       sceneOf(),
       WARDROBES,
       {
-        shot: 'club__beat1',
+        shot     : 'club__beat1',
         character: 'aiko',
-        outfit: '',
+        outfit   : '',
       },
     );
     if (!op.ok) throw new Error(op.error);
@@ -173,15 +173,15 @@ describe('setShotOutfit', () => {
 
   it('refuses a shot it does not have and a subject the shot does not have', () => {
     const missing = setShotOutfit(shots([{ characterId: 'aiko' }]), sceneOf(), WARDROBES, {
-      shot: 'club__beat9',
+      shot     : 'club__beat9',
       character: 'aiko',
-      outfit: 'track',
+      outfit   : 'track',
     });
     expect(missing).toMatchObject({ ok: false, error: 'No shot "club__beat9" in club.' });
     const offscreen = setShotOutfit(shots([{ characterId: 'aiko' }]), sceneOf(), WARDROBES, {
-      shot: 'club__beat1',
+      shot     : 'club__beat1',
       character: 'ren',
-      outfit: 'uniform',
+      outfit   : 'uniform',
     });
     expect(offscreen).toMatchObject({ ok: false, error: 'Shot club__beat1 has no subject "ren".' });
   });
@@ -194,9 +194,9 @@ describe('setShotOutfit', () => {
       sceneOf(),
       WARDROBES,
       {
-        shot: 'club__beat1',
+        shot     : 'club__beat1',
         character: 'aiko',
-        outfit: 'uniform',
+        outfit   : 'uniform',
       },
     );
     expect(op).toMatchObject({ ok: false, noop: true });

@@ -98,8 +98,8 @@ export async function withStructuredRetry<T>(
   opts: { attempts?: number } = {},
 ): Promise<T> {
   return retry((attempt) => call(attempt).then((raw) => parseStructured(raw, schema)), {
-    attempts: opts.attempts ?? 3,
-    baseMs: 50,
+    attempts   : opts.attempts ?? 3,
+    baseMs     : 50,
     shouldRetry: (err) => !(err instanceof ProviderError),
   });
 }

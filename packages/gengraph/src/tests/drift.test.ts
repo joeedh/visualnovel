@@ -32,8 +32,8 @@ function ranClean(graph: Graph): GraphJournal {
         nodeId,
         nodeHash,
         authoredHash: authored.get(nodeId)!,
-        status: 'done',
-        at: '2026-08-25T10:00:00.000Z',
+        status      : 'done',
+        at          : '2026-08-25T10:00:00.000Z',
       }),
     ),
   );
@@ -98,10 +98,10 @@ describe('drift', () => {
     const { graph, source, output } = pair();
     const line = JSON.stringify(
       journalRecord({
-        nodeId: output.id,
+        nodeId  : output.id,
         nodeHash: graphHashes(graph).get(output.id)!,
-        status: 'done',
-        at: '2026-08-25T10:00:00.000Z',
+        status  : 'done',
+        at      : '2026-08-25T10:00:00.000Z',
       }),
     );
 

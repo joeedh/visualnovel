@@ -6,7 +6,7 @@ const rect = (left: number, top: number, width: number, height: number): AnchorR
   top,
   width,
   height,
-  right: left + width,
+  right : left + width,
   bottom: top + height,
 });
 

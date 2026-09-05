@@ -29,9 +29,9 @@ export interface ProjectVocabulary {
 }
 
 export const NO_VOCABULARY: ProjectVocabulary = {
-  scenes: [],
+  scenes    : [],
   characters: [],
-  threads: [],
+  threads   : [],
   boundModel: '',
 };
 
@@ -40,13 +40,13 @@ type Kind = 'scene' | 'character' | 'thread' | 'model' | 'effort';
 
 /** Prop names that name the same thing in every command that declares them. */
 const BY_NAME: Record<string, Kind> = {
-  scene: 'scene',
-  goto: 'scene',
-  character: 'character',
+  scene      : 'scene',
+  goto       : 'scene',
+  character  : 'character',
   characterId: 'character',
-  thread: 'thread',
-  model: 'model',
-  effort: 'effort',
+  thread     : 'thread',
+  model      : 'model',
+  effort     : 'effort',
 };
 
 /**
@@ -54,7 +54,7 @@ const BY_NAME: Record<string, Kind> = {
  * three thread commands and a notification to `notify.hide`, so it is never mapped by name.
  */
 const BY_COMMAND: Record<string, Record<string, Kind>> = {
-  'agent.openThread': { id: 'thread' },
+  'agent.openThread'  : { id: 'thread' },
   'agent.renameThread': { id: 'thread' },
   'agent.resumeThread': { id: 'thread' },
 };
@@ -139,16 +139,16 @@ function sceneRow(scene: WorkspaceIndex['scenes'][number]): ChoiceRow {
   const cast = scene.characters.length > 0 ? scene.characters.join(', ') : 'nobody';
   const reach = scene.reachable ? '' : ', which nothing leads to';
   return {
-    value: scene.id,
-    label: scene.id,
+    value  : scene.id,
+    label  : scene.id,
     tooltip: `Set in ${scene.location}, with ${cast}${reach}.`,
   };
 }
 
 function characterRow(character: WorkspaceIndex['characters'][number]): ChoiceRow {
   return {
-    value: character.id,
-    label: character.name || character.id,
+    value  : character.id,
+    label  : character.name || character.id,
     tooltip: `${character.id} — ${character.status}`,
   };
 }
@@ -166,8 +166,8 @@ export function modelRows(withSource: boolean): ChoiceRow[] {
   return TEXT_MODELS.map((id) => {
     const advice = adviseModel(id, withSource);
     return {
-      value: id,
-      label: id,
+      value  : id,
+      label  : id,
       tooltip: advice.text || `Read the conversation with ${id}.`,
     };
   });
@@ -176,8 +176,8 @@ export function modelRows(withSource: boolean): ChoiceRow[] {
 /** Only what this model takes. Empty means it has no reasoning setting, and no menu is drawn. */
 export function effortRows(modelId: string): ChoiceRow[] {
   return effortChoicesFor(modelId).map((choice) => ({
-    value: choice,
-    label: effortLabel(choice),
+    value  : choice,
+    label  : effortLabel(choice),
     tooltip: `Ask ${modelId} to think ${effortLabel(choice)} about what went wrong.`,
   }));
 }

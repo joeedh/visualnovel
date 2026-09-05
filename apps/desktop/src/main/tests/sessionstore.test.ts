@@ -43,7 +43,7 @@ describe('SessionStore', () => {
 
     const c = await SessionStore.open(dir);
     expect(c.snapshot()).toEqual({
-      'panel.studio.rail.width': 300,
+      'panel.studio.rail.width'    : 300,
       'panel.floor.inspector.width': 400,
     });
   });

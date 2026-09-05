@@ -36,8 +36,7 @@ export type PromptEdit =
 
 /** The next override, or why there is not one. `undefined` means "store nothing at this rung". */
 export type PromptEditResult =
-  | { ok: false; reason: string }
-  | { ok: true; note: string; override?: PromptOverride };
+  { ok: false; reason: string } | { ok: true; note: string; override?: PromptOverride };
 
 /** Drop a key from a map, or drop the map when that was its last key. */
 function without(
@@ -88,7 +87,7 @@ export function applyPromptEdit(
     case 'chunk': {
       if (!known.has(edit.chunk)) {
         return {
-          ok: false,
+          ok    : false,
           reason: `No chunk ${said(edit.chunk)} in this prompt. It has: ${[...known].join(', ')}.`,
         };
       }
@@ -103,9 +102,9 @@ export function applyPromptEdit(
         return settled(
           {
             ...base,
-            mute: [...muted],
+            mute   : [...muted],
             replace: without(base.replace, edit.chunk),
-            append: without(base.append, edit.chunk),
+            append : without(base.append, edit.chunk),
           },
           `Restored the derived words of ${said(edit.chunk)}.`,
         );
@@ -121,7 +120,7 @@ export function applyPromptEdit(
 
       if (!stamped.text) {
         return {
-          ok: false,
+          ok    : false,
           reason: `${edit.how === 'replace' ? 'Replacing' : 'Appending to'} a chunk needs text; prompt.setChunk(op=clear) restores the derived words.`,
         };
       }
@@ -140,9 +139,9 @@ export function applyPromptEdit(
       const moved = moveChunk(
         {
           chunks: effectiveChunks(chunks, base).map((c) => ({
-            key: c.key,
+            key  : c.key,
             muted: c.muted,
-            text: c.text,
+            text : c.text,
           })),
           ...(base.order ? { order: base.order } : {}),
           mode: base.mode,
@@ -157,7 +156,7 @@ export function applyPromptEdit(
       const text = edit.text.trim();
       if (!text) {
         return {
-          ok: false,
+          ok    : false,
           reason: 'A custom prompt needs text; prompt.clear(part=custom) goes back to the chunks.',
         };
       }
@@ -173,10 +172,10 @@ export function applyPromptEdit(
       return settled(
         {
           ...base,
-          mode: 'agent',
+          mode : 'agent',
           agent: {
             text: edit.text,
-            of: chunkFingerprint(chunks, base),
+            of  : chunkFingerprint(chunks, base),
             ...(edit.modelId ? { modelId: edit.modelId } : {}),
             ...(edit.at ? { at: edit.at } : {}),
           },
@@ -188,7 +187,7 @@ export function applyPromptEdit(
     case 'addRef': {
       if (!known.has(edit.chunk)) {
         return {
-          ok: false,
+          ok    : false,
           reason: `No chunk ${said(edit.chunk)} in this prompt. It has: ${[...known].join(', ')}.`,
         };
       }
@@ -197,7 +196,7 @@ export function applyPromptEdit(
       // chunk would be a second slot in the list rather than a duplicate that costs nothing.
       if (refs.some((r) => r.pin === edit.ref.pin)) {
         return {
-          ok: false,
+          ok    : false,
           reason: `${edit.ref.pin.slice(0, 8)} is already a reference on ${said(edit.chunk)}.`,
         };
       }
@@ -215,7 +214,7 @@ export function applyPromptEdit(
       const at = refs.findIndex((r) => r.pin === edit.ref || r.pin.startsWith(edit.ref));
       if (at < 0) {
         return {
-          ok: false,
+          ok    : false,
           reason: `No reference "${edit.ref}" on ${said(edit.chunk)}. It has: ${refs
             .map((r) => r.pin.slice(0, 8))
             .join(', ')}.`,
@@ -236,7 +235,7 @@ export function applyPromptEdit(
       const at = refs.findIndex((r) => r.pin === edit.ref || r.pin.startsWith(edit.ref));
       if (at < 0) {
         return {
-          ok: false,
+          ok    : false,
           reason: `No reference "${edit.ref}" on ${said(edit.chunk)}. It has: ${refs
             .map((r) => r.pin.slice(0, 8))
             .join(', ')}.`,
@@ -245,7 +244,7 @@ export function applyPromptEdit(
       const ref = refs[at]!;
       if (!ref.from) {
         return {
-          ok: false,
+          ok    : false,
           reason: `${ref.pin.slice(0, 8)} is an unlinked reference — it names no slot, so it can never move and there is nothing to repin.`,
         };
       }

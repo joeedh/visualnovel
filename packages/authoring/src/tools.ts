@@ -328,7 +328,7 @@ function jsonTypeOf(t: ZodType): Record<string, unknown> {
   if (t instanceof z.ZodBoolean) return { type: 'boolean', ...note };
   if (t instanceof z.ZodRecord)
     return {
-      type: 'object',
+      type                : 'object',
       additionalProperties: jsonTypeOf(t._def.valueType as ZodType),
       ...note,
     };
@@ -355,9 +355,9 @@ export function jsonSchemaOf(schema: ZodType): Record<string, unknown> | undefin
 // ── File & content ──────────────────────────────────────────────────────────
 
 const readFileTool: Tool<{ path: string; offset?: number; limit?: number }> = {
-  name: 'read_file',
+  name       : 'read_file',
   description: 'Read a workspace file, optionally a line range.',
-  mutating: false,
+  mutating   : false,
   args: z.object({ path: z.string(), offset: z.number().optional(), limit: z.number().optional() }),
   async run(a, ctx) {
     // The same read `doc.read` performs: bounded, text-only, and refused outside the workspace.
@@ -378,10 +378,10 @@ const readFileTool: Tool<{ path: string; offset?: number; limit?: number }> = {
 };
 
 const listWorkspaceTool: Tool<Record<string, never>> = {
-  name: 'list_workspace',
+  name       : 'list_workspace',
   description: 'List the characters, locations, and scenes that exist (a cheap index).',
-  mutating: false,
-  args: z.object({}).strict(),
+  mutating   : false,
+  args       : z.object({}).strict(),
   async run(_a, ctx) {
     const index = await ctx.workspace.index();
     return ok(formatIndex(index), { data: index });
@@ -413,13 +413,13 @@ async function collectInputFiles(root: string): Promise<string[]> {
 }
 
 const searchTool: Tool<{ query: string; regex?: boolean }> = {
-  name: 'search',
+  name       : 'search',
   description:
     'Search the authored inputs for a string or regex; returns file:line matches. Its scope is ' +
     `${SEARCH_SCOPE} — the story bible (wiki/) and archive/ are searched by search_bible and ` +
     'list_archive instead.',
-  mutating: false,
-  args: z.object({ query: z.string().min(1), regex: z.boolean().optional() }),
+  mutating   : false,
+  args       : z.object({ query: z.string().min(1), regex: z.boolean().optional() }),
   async run(a, ctx) {
     let re: RegExp;
     try {
@@ -451,12 +451,12 @@ const searchTool: Tool<{ query: string; regex?: boolean }> = {
 };
 
 const listArchiveTool: Tool<Record<string, never>> = {
-  name: 'list_archive',
+  name       : 'list_archive',
   description:
     'List documents the author uploaded to archive/. They are not in search or the bible — ' +
     'read one with read_file once you know its path.',
-  mutating: false,
-  args: z.object({}).strict(),
+  mutating   : false,
+  args       : z.object({}).strict(),
   async run(_a, ctx) {
     const batches = await listArchive(ctx.workspace);
     if (batches.length === 0) return ok('The archive is empty.', { data: [] });
@@ -468,11 +468,11 @@ const listArchiveTool: Tool<Record<string, never>> = {
 };
 
 const searchBibleTool: Tool<{ query: string; limit?: number }> = {
-  name: 'search_bible',
+  name       : 'search_bible',
   description:
     'Search the story bible (wiki/) for relevant passages; returns ranked file:line excerpts. ' +
     'The paths it reports are workspace-relative, so a hit can be handed straight to read_file.',
-  mutating: false,
+  mutating   : false,
   args: z.object({
     query: z.string().min(1).describe('what you want to know, in words'),
     limit: z.number().optional().describe('most excerpts to return, default 8'),
@@ -494,10 +494,10 @@ const searchBibleTool: Tool<{ query: string; limit?: number }> = {
 // ── Domain / validation ─────────────────────────────────────────────────────
 
 const validateInputsTool: Tool<Record<string, never>> = {
-  name: 'validate_inputs',
+  name       : 'validate_inputs',
   description: 'Validate schema conformance and cross-file invariants; report diagnostics.',
-  mutating: false,
-  args: z.object({}).strict(),
+  mutating   : false,
+  args       : z.object({}).strict(),
   async run(_a, ctx) {
     const { model } = await ctx.workspace.load();
     const result = ok(formatDiagnostics(model.diagnostics), { data: model.diagnostics });
@@ -507,19 +507,19 @@ const validateInputsTool: Tool<Record<string, never>> = {
 };
 
 const parseFountainTool: Tool<Record<string, never>> = {
-  name: 'parse_fountain',
+  name       : 'parse_fountain',
   description: 'Parse the screenplay into scenes with their ids, choices, and linear next.',
-  mutating: false,
-  args: z.object({}).strict(),
+  mutating   : false,
+  args       : z.object({}).strict(),
   async run(_a, ctx) {
     const { model } = await ctx.workspace.load();
     const scenes = [...model.scenes.values()].map((s) => ({
-      id: s.id,
-      location: s.location,
+      id        : s.id,
+      location  : s.location,
       characters: s.characters,
-      choices: s.choices,
-      next: s.next,
-      synopsis: s.synopsis,
+      choices   : s.choices,
+      next      : s.next,
+      synopsis  : s.synopsis,
     }));
     const body = scenes
       .map(
@@ -534,10 +534,10 @@ const parseFountainTool: Tool<Record<string, never>> = {
 };
 
 const storyGraphTool: Tool<Record<string, never>> = {
-  name: 'story_graph',
+  name       : 'story_graph',
   description: 'Build the branch graph; report unreachable scenes and dangling targets.',
-  mutating: false,
-  args: z.object({}).strict(),
+  mutating   : false,
+  args       : z.object({}).strict(),
   async run(_a, ctx) {
     const { model } = await ctx.workspace.load();
     const reachable = computeReachable(model.scenes, model.entry);
@@ -561,10 +561,10 @@ const storyGraphTool: Tool<Record<string, never>> = {
 };
 
 const extractEntitiesTool: Tool<Record<string, never>> = {
-  name: 'extract_entities',
+  name       : 'extract_entities',
   description: 'Compare characters/locations referenced in the screenplay vs. defined.',
-  mutating: false,
-  args: z.object({}).strict(),
+  mutating   : false,
+  args       : z.object({}).strict(),
   async run(_a, ctx) {
     const { model } = await ctx.workspace.load();
     const definedChars = new Set(model.characters.keys());
@@ -580,10 +580,10 @@ const extractEntitiesTool: Tool<Record<string, never>> = {
     const unusedChars = [...definedChars].filter((c) => !referencedChars.has(c));
     const unusedLocs = [...userLocations].filter((l) => !referencedLocs.has(l));
     const data = {
-      definedCharacters: [...definedChars],
+      definedCharacters   : [...definedChars],
       referencedCharacters: [...referencedChars],
-      unusedCharacters: unusedChars,
-      unusedLocations: unusedLocs,
+      unusedCharacters    : unusedChars,
+      unusedLocations     : unusedLocs,
     };
     const body = [
       `Characters defined: ${data.definedCharacters.join(', ') || 'none'}`,
@@ -598,13 +598,13 @@ const extractEntitiesTool: Tool<Record<string, never>> = {
 // ── Editing (execute mode) ──────────────────────────────────────────────────
 
 const characterEditShape = z.object({
-  id: z.string().min(1).describe('id of the character to edit'),
-  name: z.string().optional(),
+  id           : z.string().min(1).describe('id of the character to edit'),
+  name         : z.string().optional(),
   description: z
     .string()
     .optional()
     .describe('full prose body — the canonical description fed to the pipeline; replaces it whole'),
-  status: z.enum(['draft', 'candidates', 'approved', 'locked']).optional(),
+  status       : z.enum(['draft', 'candidates', 'approved', 'locked']).optional(),
   defaultOutfit: z
     .string()
     .optional()
@@ -620,8 +620,8 @@ const characterEditShape = z.object({
     .describe(
       'the whole wardrobe, outfit id → description (or {description, art_notes} for one that needs its own art direction); replaces the map, so send the ones being kept too',
     ),
-  traits: z.array(z.string()).optional(),
-  palette: z.array(z.string()).optional().describe('hex colors, e.g. #1a2a44'),
+  traits       : z.array(z.string()).optional(),
+  palette      : z.array(z.string()).optional().describe('hex colors, e.g. #1a2a44'),
   artNotes: z
     .string()
     .optional()
@@ -631,11 +631,11 @@ const characterEditShape = z.object({
 });
 
 const editCharacterTool: Tool<z.infer<typeof characterEditShape>> = {
-  name: 'edit_character',
+  name       : 'edit_character',
   description:
     "Apply a validated edit to an existing character.md and write it back. `artNotes` (and an outfit's `art_notes`) is how an author tweaks the look of generated art: it goes into the prompt, so changing it re-renders the portrait and model sheets it reaches on the next run. Say so before proposing one.",
-  mutating: true,
-  args: characterEditShape,
+  mutating   : true,
+  args       : characterEditShape,
   async run(a, ctx) {
     const found = await ctx.workspace.characterDoc(a.id);
     if (!found) return fail(`no such character: ${a.id}`);
@@ -645,29 +645,29 @@ const editCharacterTool: Tool<z.infer<typeof characterEditShape>> = {
     await writeFileAtomic(found.file, docToMarkdown(res.value.doc));
     return ok(`Updated character ${a.id}.`, {
       written: [rel(ctx.workspace.root, found.file)],
-      data: res.value.value,
+      data   : res.value.value,
     });
   },
 };
 
 const locationEditShape = z.object({
-  id: z.string().min(1).describe('id of the location to edit'),
-  name: z.string().optional(),
+  id         : z.string().min(1).describe('id of the location to edit'),
+  name       : z.string().optional(),
   description: z
     .string()
     .optional()
     .describe('full prose body — the canonical description fed to the pipeline; replaces it whole'),
-  mood: z.string().optional(),
-  lighting: z.string().optional(),
-  palette: z.array(z.string()).optional().describe('hex colors, e.g. #1a2a44'),
+  mood       : z.string().optional(),
+  lighting   : z.string().optional(),
+  palette    : z.array(z.string()).optional().describe('hex colors, e.g. #1a2a44'),
   variants: z
     .array(
       z.union([
         z.string(),
         z.object({
-          id: z.string().min(1),
+          id         : z.string().min(1),
           description: z.string().optional(),
-          art_notes: z.string().optional(),
+          art_notes  : z.string().optional(),
         }),
       ]),
     )
@@ -684,11 +684,11 @@ const locationEditShape = z.object({
 });
 
 const editLocationTool: Tool<z.infer<typeof locationEditShape>> = {
-  name: 'edit_location',
+  name       : 'edit_location',
   description:
     "Apply a validated edit to an existing location.md and write it back. `artNotes` (and a variant's `art_notes`) is how an author tweaks the look of generated art: it goes into the prompt, so changing it re-renders the plates it reaches on the next run. Say so before proposing one.",
-  mutating: true,
-  args: locationEditShape,
+  mutating   : true,
+  args       : locationEditShape,
   async run(a, ctx) {
     const found = await ctx.workspace.locationDoc(a.id);
     if (!found) return fail(`no such location: ${a.id}`);
@@ -698,7 +698,7 @@ const editLocationTool: Tool<z.infer<typeof locationEditShape>> = {
     await writeFileAtomic(found.file, docToMarkdown(res.value.doc));
     return ok(`Updated location ${a.id}.`, {
       written: [rel(ctx.workspace.root, found.file)],
-      data: res.value.value,
+      data   : res.value.value,
     });
   },
 };
@@ -735,14 +735,14 @@ const givenFields = <T extends object>(rest: T): [string, unknown][] =>
   Object.entries(rest).filter(([, v]) => v !== undefined);
 
 const createCharacterTool: Tool<z.infer<typeof characterCreateShape>> = {
-  name: 'create_character',
+  name       : 'create_character',
   description:
     'Scaffold a new characters/<id>/character.md. Takes every field edit_character takes, so a ' +
     'character known in full is written in one call rather than created and then edited. Given ' +
     'nothing but a name it writes a template of placeholders for the author to fill in; the ' +
     'result says which of the two it wrote.',
-  mutating: true,
-  args: characterCreateShape,
+  mutating   : true,
+  args       : characterCreateShape,
   async run(a, ctx) {
     const { name, description, ...rest } = a;
     const given = givenFields(rest);
@@ -775,13 +775,13 @@ const createCharacterTool: Tool<z.infer<typeof characterCreateShape>> = {
 };
 
 const createLocationTool: Tool<z.infer<typeof locationCreateShape>> = {
-  name: 'create_location',
+  name       : 'create_location',
   description:
     'Scaffold a new locations/<id>.md. Takes every field edit_location takes, so a location known ' +
     'in full is written in one call rather than created and then edited. Given nothing but a name ' +
     'it is an empty sheet for the author to fill in; the result says which of the two it wrote.',
-  mutating: true,
-  args: locationCreateShape,
+  mutating   : true,
+  args       : locationCreateShape,
   async run(a, ctx) {
     const { name, description, ...rest } = a;
     const given = givenFields(rest);
@@ -845,7 +845,7 @@ const LINE_KINDS = [
 ] as const;
 
 const sceneEditShape = z.object({
-  op: z.enum(SCENE_OPS).describe('which act; the arguments each one needs are listed below'),
+  op      : z.enum(SCENE_OPS).describe('which act; the arguments each one needs are listed below'),
   scene: z
     .string()
     .optional()
@@ -853,18 +853,18 @@ const sceneEditShape = z.object({
       'insertLine, moveShot, newShot, deleteShot, newScene, setHeading, deleteScene, ' +
         'splitScene, mergeScene',
     ),
-  line: z.string().optional().describe('a line id like arrival:L3 — the four line edits'),
+  line    : z.string().optional().describe('a line id like arrival:L3 — the four line edits'),
   shot: z
     .string()
     .optional()
     .describe('moveShot: the shot id to move, e.g. arrival__beat1; deleteShot: the one to remove'),
-  text: z.string().optional().describe('setLineText, insertLine'),
+  text    : z.string().optional().describe('setLineText, insertLine'),
   lines: z
     .array(
       z.object({
-        kind: z.enum(LINE_KINDS).optional().describe('defaults to dialogue'),
+        kind   : z.enum(LINE_KINDS).optional().describe('defaults to dialogue'),
         speaker: z.string().optional().describe('the character cue; omit for narration'),
-        text: z.string().min(1),
+        text   : z.string().min(1),
       }),
     )
     .optional()
@@ -895,7 +895,7 @@ const sceneEditShape = z.object({
       'insertLine, moveLine: the line to sit after; moveShot: the shot to sit after; ' +
         'omit for the top of the scene',
     ),
-  kind: z.enum(LINE_KINDS).optional().describe('insertLine; defaults to dialogue'),
+  kind    : z.enum(LINE_KINDS).optional().describe('insertLine; defaults to dialogue'),
   speaker: z
     .string()
     .optional()
@@ -907,7 +907,7 @@ const sceneEditShape = z.object({
       'newScene, setHeading: e.g. INT. CLASSROOM - EVENING. setHeading moves the scene, so its ' +
         'rendered shots are drawn again and its prose is left describing the old place',
     ),
-  at: z.string().optional().describe('splitScene: the line id that starts the second half'),
+  at      : z.string().optional().describe('splitScene: the line id that starts the second half'),
   into: z.string().optional().describe('splitScene: the new scene id; mergeScene: the absorber'),
 });
 
@@ -921,20 +921,20 @@ type SceneEditArgs = z.infer<typeof sceneEditShape>;
  */
 const SCENE_OP_ARGS: Record<SceneOp, readonly (keyof SceneEditArgs)[]> = {
   setLineText: ['line', 'text'],
-  insertLine: ['scene', 'text'],
+  insertLine : ['scene', 'text'],
   insertLines: ['scene', 'lines'],
-  deleteLine: ['line'],
+  deleteLine : ['line'],
   deleteLines: ['lineIds'],
-  moveLine: ['line'],
-  moveShot: ['scene', 'shot'],
-  newShot: ['scene', 'lineIds'],
-  deleteShot: ['scene', 'shot'],
-  setSpeaker: ['line'],
-  newScene: ['scene', 'heading'],
-  setHeading: ['scene', 'heading'],
+  moveLine   : ['line'],
+  moveShot   : ['scene', 'shot'],
+  newShot    : ['scene', 'lineIds'],
+  deleteShot : ['scene', 'shot'],
+  setSpeaker : ['line'],
+  newScene   : ['scene', 'heading'],
+  setHeading : ['scene', 'heading'],
   deleteScene: ['scene'],
-  splitScene: ['scene', 'at', 'into'],
-  mergeScene: ['scene', 'into'],
+  splitScene : ['scene', 'at', 'into'],
+  mergeScene : ['scene', 'into'],
 };
 
 /**
@@ -963,9 +963,9 @@ async function sceneDecider(
           scene,
           after,
           lines: (a.lines ?? []).map((l) => ({
-            kind: l.kind ?? 'dialogue',
+            kind   : l.kind ?? 'dialogue',
             speaker: l.speaker ?? '',
-            text: l.text,
+            text   : l.text,
           })),
         });
     case 'deleteLine':
@@ -1002,7 +1002,7 @@ async function sceneDecider(
  * and strand storyboards, and nothing downstream would notice.
  */
 const editSceneTool: Tool<SceneEditArgs> = {
-  name: 'edit_scene',
+  name       : 'edit_scene',
   description:
     'Edit scene prose: retype, insert, delete, move or re-attribute a line; create, delete, ' +
     'split or merge a scene; reorder a shot, which moves the lines it covers. The only way to ' +
@@ -1018,8 +1018,8 @@ const editSceneTool: Tool<SceneEditArgs> = {
     'newScene leaves the scene unreachable on purpose: follow it with edit_branches to link it in. ' +
     'Drafting a run of prose is insertLines and clearing one is deleteLines, one call for the ' +
     'whole run — do not call insertLine or deleteLine forty times.',
-  mutating: true,
-  args: sceneEditShape,
+  mutating   : true,
+  args       : sceneEditShape,
   async run(a, ctx) {
     const missing = SCENE_OP_ARGS[a.op].filter((name) => a[name] === undefined);
     if (missing.length > 0) return fail(`${a.op} needs: ${missing.join(', ')}`);
@@ -1039,7 +1039,7 @@ const editSceneTool: Tool<SceneEditArgs> = {
       const shotsFile = `vngen/work/shots/${a.scene}.json`;
       return ok(op.message, {
         written: [shotsFile],
-        data: { paths: [shotsFile], shot: op.shot.id, created: op.created },
+        data   : { paths: [shotsFile], shot: op.shot.id, created: op.created },
       });
     }
     if (a.op === 'deleteShot') {
@@ -1068,7 +1068,7 @@ const BRANCH_OPS = ['setChoice', 'removeChoice', 'setNext', 'spliceScene'] as co
 type BranchOpName = (typeof BRANCH_OPS)[number];
 
 const branchEditShape = z.object({
-  op: z.enum(BRANCH_OPS).describe('which rewire; the arguments each one needs are listed below'),
+  op   : z.enum(BRANCH_OPS).describe('which rewire; the arguments each one needs are listed below'),
   scene: z
     .string()
     .min(1)
@@ -1083,7 +1083,7 @@ const branchEditShape = z.object({
     .int()
     .optional()
     .describe('setChoice: which choice to replace, omit to append. removeChoice: which to drop'),
-  from: z.string().optional().describe('spliceScene: the scene whose outgoing edge is being cut'),
+  from : z.string().optional().describe('spliceScene: the scene whose outgoing edge is being cut'),
   edge: z
     .number()
     .int()
@@ -1095,10 +1095,10 @@ type BranchEditArgs = z.infer<typeof branchEditShape>;
 
 /** As with {@link SCENE_OP_ARGS}, only absence is checked; the rules judge everything else. */
 const BRANCH_OP_ARGS: Record<BranchOpName, readonly (keyof BranchEditArgs)[]> = {
-  setChoice: ['goto', 'label'],
+  setChoice   : ['goto', 'label'],
   removeChoice: ['index'],
-  setNext: [],
-  spliceScene: ['from'],
+  setNext     : [],
+  spliceScene : ['from'],
 };
 
 const branchDecider =
@@ -1109,7 +1109,7 @@ const branchDecider =
       case 'setChoice':
         return setChoice(scenes, {
           scene,
-          goto: a.goto ?? '',
+          goto : a.goto ?? '',
           label: a.label ?? '',
           ...(a.index === undefined ? {} : { index: a.index }),
         });
@@ -1138,15 +1138,15 @@ const branchDecider =
  * `newScene` would make the other three look optional.
  */
 const editBranchesTool: Tool<BranchEditArgs> = {
-  name: 'edit_branches',
+  name       : 'edit_branches',
   description:
     'Wire the story graph: add or replace a choice, drop one, set or clear a scene’s linear ' +
     'continuation, or splice a scene into an existing edge so A→B becomes A→C→B. This is how a ' +
     'scene created by edit_scene is linked in — until something points at it, the story never ' +
     'reaches it. A goto may name a scene that does not exist yet; that is a dangling edge the ' +
     'editor reports, not an error.',
-  mutating: true,
-  args: branchEditShape,
+  mutating   : true,
+  args       : branchEditShape,
   async run(a, ctx) {
     const missing = BRANCH_OP_ARGS[a.op].filter((name) => a[name] === undefined);
     if (missing.length > 0) return fail(`${a.op} needs: ${missing.join(', ')}`);
@@ -1166,7 +1166,7 @@ const editBranchesTool: Tool<BranchEditArgs> = {
 };
 
 const outfitShape = z.object({
-  scene: z.string().min(1).describe('the scene the change applies to'),
+  scene    : z.string().min(1).describe('the scene the change applies to'),
   character: z.string().min(1).describe('who is being dressed'),
   outfit: z
     .string()
@@ -1188,13 +1188,13 @@ const outfitShape = z.object({
  * `story.setSceneOutfit` would give in the app.
  */
 const setOutfitTool: Tool<z.infer<typeof outfitShape>> = {
-  name: 'set_outfit',
+  name       : 'set_outfit',
   description:
     'Say what a character wears: for a whole scene (a [[outfit:]] marker) or for one shot of it ' +
     '(a subject override, which re-renders that frame). Pass outfit="" to clear either and let ' +
     'the level below answer. The wardrobe itself is authored on the character sheet.',
-  mutating: true,
-  args: outfitShape,
+  mutating   : true,
+  args       : outfitShape,
   async run(a, ctx) {
     if (a.shot !== undefined) {
       const op = await ctx.workspace.shotOutfit(a.scene, a.shot, a.character, a.outfit);
@@ -1218,8 +1218,8 @@ const setOutfitTool: Tool<z.infer<typeof outfitShape>> = {
 };
 
 const variantShape = z.object({
-  scene: z.string().min(1).describe('the scene the shot belongs to'),
-  shot: z.string().min(1).describe('the shot id, e.g. arrival__beat1'),
+  scene  : z.string().min(1).describe('the scene the shot belongs to'),
+  shot   : z.string().min(1).describe('the shot id, e.g. arrival__beat1'),
   variant: z.string().min(1).describe('a variant id of the scene’s location, e.g. night'),
 });
 
@@ -1231,13 +1231,13 @@ const variantShape = z.object({
  * The rule is `@vn/scriptedit`'s, so a refusal is verbatim the one `story.setVariant` gives.
  */
 const setVariantTool: Tool<z.infer<typeof variantShape>> = {
-  name: 'set_variant',
+  name       : 'set_variant',
   description:
     'Change which variant of its scene’s location one shot is drawn in — the @night read_shots ' +
     'shows. That variant is the plate the frame is drawn against, so the shot re-hashes and the ' +
     'next run draws it again. The variants themselves are authored on the location.',
-  mutating: true,
-  args: variantShape,
+  mutating   : true,
+  args       : variantShape,
   async run(a, ctx) {
     const op = await ctx.workspace.shotVariant(a.scene, a.shot, a.variant);
     if (!op.ok) return fail(op.error);
@@ -1279,8 +1279,8 @@ function formatStoryboard(scene: Scene, shots: readonly Shot[]): string {
  */
 function storyboardArgsOf(shots: readonly Shot[]): unknown[] {
   return shots.map((s) => ({
-    id: s.id,
-    framing: s.framing,
+    id      : s.id,
+    framing : s.framing,
     location: s.location,
     subjects: s.subjects.map((x) => ({
       characterId: x.characterId,
@@ -1293,7 +1293,7 @@ function storyboardArgsOf(shots: readonly Shot[]): unknown[] {
 }
 
 const readShotsTool: Tool<{ scene: string }> = {
-  name: 'read_shots',
+  name       : 'read_shots',
   description:
     'Read a scene’s storyboard: each shot’s framing, cast and the line ids it covers, plus the ' +
     'lines nothing covers. The @night after the framing is the variant of the scene’s location ' +
@@ -1302,7 +1302,7 @@ const readShotsTool: Tool<{ scene: string }> = {
     'write_storyboard. A scene with ' +
     'no storyboard says so, and names both doors: propose then write one, or place the first ' +
     'shot by hand.',
-  mutating: false,
+  mutating   : false,
   args: z.object({ scene: z.string().min(1).describe('the scene whose storyboard to read') }),
   async run(a, ctx) {
     const { model } = await ctx.workspace.load();
@@ -1330,7 +1330,7 @@ const readShotsTool: Tool<{ scene: string }> = {
 
 const coverageShape = z.object({
   scene: z.string().min(1).describe('the scene the shot belongs to'),
-  shot: z.string().min(1).describe('the shot whose coverage is being restated'),
+  shot : z.string().min(1).describe('the shot whose coverage is being restated'),
   lines: z
     .array(z.string())
     .describe(
@@ -1340,15 +1340,15 @@ const coverageShape = z.object({
 });
 
 const setCoverageTool: Tool<z.infer<typeof coverageShape>> = {
-  name: 'set_coverage',
+  name       : 'set_coverage',
   description:
     'Restate which line ids one shot is on screen for — the whole set, not a delta. Free: ' +
     'coverage is not in a shot’s task hash, so nothing re-renders. Claiming a line takes it from ' +
     'whichever shot had it, and a claim that would leave a neighbour empty is refused — delete ' +
     'the neighbour first if that is what you mean. A released line is a gap the runner shows as ' +
     'the previous image held too long. Read what covers what with read_shots first.',
-  mutating: true,
-  args: coverageShape,
+  mutating   : true,
+  args       : coverageShape,
   async run(a, ctx) {
     const op = await ctx.workspace.shotCoverage(a.scene, a.shot, a.lines);
     if (!op.ok) return fail(op.error);
@@ -1359,7 +1359,7 @@ const setCoverageTool: Tool<z.infer<typeof coverageShape>> = {
 };
 
 const proposeStoryboardTool: Tool<{ scene: string }> = {
-  name: 'propose_storyboard',
+  name       : 'propose_storyboard',
   description:
     'Ask the decomposer for a storyboard proposal for one scene and read it back into the ' +
     'conversation — shots, coverage, and where the answer came from (the model, or the ' +
@@ -1367,8 +1367,8 @@ const proposeStoryboardTool: Tool<{ scene: string }> = {
     'structured text call. Persisting is write_storyboard, restating the shots the author ' +
     'approved — in this same conversation, because a reopened thread is read-only, so an ' +
     'unpersisted proposal dies with its conversation and a re-proposal is a new roll of the dice.',
-  mutating: false,
-  args: z.object({ scene: z.string().min(1).describe('the scene to storyboard') }),
+  mutating   : false,
+  args       : z.object({ scene: z.string().min(1).describe('the scene to storyboard') }),
   async run(a, ctx) {
     if (!ctx.text) {
       return fail('no text model is wired into this session, so there is nothing to propose with.');
@@ -1408,7 +1408,7 @@ const proposeStoryboardTool: Tool<{ scene: string }> = {
 const storyboardShotShape = z
   .object({
     id: z.string().min(1).describe('the shot id from the proposal, e.g. arrival__establishing'),
-    framing: z.enum(['wide', 'medium', 'close', 'establishing']),
+    framing    : z.enum(['wide', 'medium', 'close', 'establishing']),
     location: z
       .string()
       .min(1)
@@ -1420,12 +1420,12 @@ const storyboardShotShape = z
       .array(
         z.object({
           characterId: z.string().min(1),
-          pose: z.string().optional(),
-          expression: z.string().optional(),
+          pose       : z.string().optional(),
+          expression : z.string().optional(),
         }),
       )
       .describe('who is in frame; wardrobe is deliberately not here — outfits are set_outfit’s'),
-    camera: z.string().optional(),
+    camera     : z.string().optional(),
     coversLines: z.array(z.string()).describe('the line ids this shot is on screen for'),
   })
   .strict();
@@ -1466,7 +1466,7 @@ function coercedVariants(
 }
 
 const writeStoryboardTool: Tool<z.infer<typeof writeStoryboardShape>> = {
-  name: 'write_storyboard',
+  name       : 'write_storyboard',
   description:
     'Persist a whole storyboard for a scene that has none — the mutating half of ' +
     'propose_storyboard. Takes the full shot list as arguments on purpose: the decomposer is ' +
@@ -1476,8 +1476,8 @@ const writeStoryboardTool: Tool<z.infer<typeof writeStoryboardShape>> = {
     'validation the batch decomposer does: unknown characters and invented line ids are dropped, ' +
     'and a list that binds none of the scene’s lines is refused rather than repaired into the ' +
     'baseline.',
-  mutating: true,
-  args: writeStoryboardShape,
+  mutating   : true,
+  args       : writeStoryboardShape,
   async run(a, ctx) {
     const { model } = await ctx.workspace.load();
     const scene = model.scenes.get(a.scene);
@@ -1530,14 +1530,14 @@ function ownedElsewhere(path: string): string | null {
 }
 
 const writeFileTool: Tool<{ path: string; content: string }> = {
-  name: 'write_file',
+  name       : 'write_file',
   description:
     'Create or overwrite a workspace file, whole. Execute mode only. To change part of a file ' +
     'that already exists, use edit_file — an overwrite of a file this conversation has not read ' +
     'is refused. Never for scenes/ (edit_scene), characters/ or locations/ (their own tools). ' +
     `Wrap what you write at ${WRAP_COLUMNS} columns; the receipt says so when a line runs past it.`,
-  mutating: true,
-  args: z.object({ path: z.string(), content: z.string() }),
+  mutating   : true,
+  args       : z.object({ path: z.string(), content: z.string() }),
   async run(a, ctx) {
     // Before the workspace check, because the plugins root is outside every workspace and
     // `resolveInWorkspace` would otherwise refuse the path as out of bounds without saying why.
@@ -1637,16 +1637,16 @@ const editFileTool: Tool<{
   path: string;
   edits: { old: string; new: string; all?: boolean }[];
 }> = {
-  name: 'edit_file',
+  name       : 'edit_file',
   description:
     'Replace exact strings in a workspace file, leaving the rest untouched — the way to change ' +
     'part of a long document without restating it. Each `old` must appear exactly once unless ' +
     '`all` is set. Read the file first: an edit to a file you have not read, or that changed ' +
     'since you read it, is refused. Not for scenes/ (edit_scene), characters/ or locations/ ' +
     '(their own tools).',
-  mutating: true,
+  mutating   : true,
   args: z.object({
-    path: z.string(),
+    path : z.string(),
     edits: z
       .array(z.object({ old: z.string(), new: z.string(), all: z.boolean().optional() }))
       .min(1),
@@ -1727,12 +1727,12 @@ const editFileTool: Tool<{
 };
 
 const regenerateContextTool: Tool<Record<string, never>> = {
-  name: 'regenerate_context',
+  name       : 'regenerate_context',
   description:
     'Rebuild AICONTEXT.generated.md — the project map: the cast, the locations, the story graph, ' +
     "and the story bible's table of contents. Facts only; it never copies what a file says.",
-  mutating: true,
-  args: z.object({}).strict(),
+  mutating   : true,
+  args       : z.object({}).strict(),
   async run(_a, ctx) {
     const { file, counts } = await ctx.workspace.writeGeneratedContext();
     const summary =
@@ -1740,18 +1740,18 @@ const regenerateContextTool: Tool<Record<string, never>> = {
       `${counts.scenes} scene(s), ${counts.bible} bible note(s)`;
     return ok(`Regenerated the project map from ${summary}.`, {
       written: [rel(ctx.workspace.root, file)],
-      data: counts,
+      data   : counts,
     });
   },
 };
 
 const updateContextTool: Tool<{ rule: string }> = {
-  name: 'update_context',
+  name       : 'update_context',
   description:
     'Persist a durable instruction into AICONTEXT.md. Returns the file as it now stands, so ' +
     'what you wrote is visible without reading it back.',
-  mutating: true,
-  args: z.object({ rule: z.string().min(1) }),
+  mutating   : true,
+  args       : z.object({ rule: z.string().min(1) }),
   async run(a, ctx) {
     const file = await updateContext(ctx.workspace.root, a.rule);
     // Return the whole file rather than a receipt: the rule lands in a file the agent did not
@@ -1759,7 +1759,7 @@ const updateContextTool: Tool<{ rule: string }> = {
     const text = await readText(file);
     return ok(`Recorded rule in AICONTEXT.md, which now reads:\n\n${text}`, {
       written: [rel(ctx.workspace.root, file)],
-      data: text,
+      data   : text,
     });
   },
 };
@@ -1767,10 +1767,10 @@ const updateContextTool: Tool<{ rule: string }> = {
 // ── Git ─────────────────────────────────────────────────────────────────────
 
 const gitStatusTool: Tool<Record<string, never>> = {
-  name: 'git_status',
+  name       : 'git_status',
   description: 'Show the working-tree status.',
-  mutating: false,
-  args: z.object({}).strict(),
+  mutating   : false,
+  args       : z.object({}).strict(),
   async run(_a, ctx) {
     if (!(await ctx.git.isRepo())) return ok('Not a git repository.');
     const s = await ctx.git.status();
@@ -1780,10 +1780,10 @@ const gitStatusTool: Tool<Record<string, never>> = {
 };
 
 const gitLogTool: Tool<{ limit?: number }> = {
-  name: 'git_log',
+  name       : 'git_log',
   description: 'Show recent commit history.',
-  mutating: false,
-  args: z.object({ limit: z.number().optional() }),
+  mutating   : false,
+  args       : z.object({ limit: z.number().optional() }),
   async run(a, ctx) {
     if (!(await ctx.git.isRepo())) return ok('Not a git repository.');
     const log = await ctx.git.log(a.limit ?? 20);
@@ -1793,20 +1793,20 @@ const gitLogTool: Tool<{ limit?: number }> = {
 };
 
 const gitShowTool: Tool<{ ref: string }> = {
-  name: 'git_show',
+  name       : 'git_show',
   description: 'Show a commit (metadata + patch).',
-  mutating: false,
-  args: z.object({ ref: z.string().min(1) }),
+  mutating   : false,
+  args       : z.object({ ref: z.string().min(1) }),
   async run(a, ctx) {
     return ok(await ctx.git.show(a.ref));
   },
 };
 
 const gitDiffTool: Tool<{ ref?: string; staged?: boolean }> = {
-  name: 'git_diff',
+  name       : 'git_diff',
   description: 'Show a unified diff of the working tree (or against a ref).',
-  mutating: false,
-  args: z.object({ ref: z.string().optional(), staged: z.boolean().optional() }),
+  mutating   : false,
+  args       : z.object({ ref: z.string().optional(), staged: z.boolean().optional() }),
   async run(a, ctx) {
     const diff = await ctx.git.diff({ ref: a.ref, staged: a.staged });
     return ok(diff || '(no changes)', { data: diff });
@@ -1814,11 +1814,11 @@ const gitDiffTool: Tool<{ ref?: string; staged?: boolean }> = {
 };
 
 const gitCommitTool: Tool<{ message: string; paths?: string[] }> = {
-  name: 'git_commit',
+  name       : 'git_commit',
   description:
     'Stage and commit the approved change set with a message. Send the message alone: what you ' +
     'wrote this plan is already tracked, and a remembered list of paths can only be shorter.',
-  mutating: true,
+  mutating   : true,
   args: z.object({
     message: z.string().min(1),
     paths: z
@@ -1836,11 +1836,11 @@ const gitCommitTool: Tool<{ message: string; paths?: string[] }> = {
 };
 
 const gitRevertTool: Tool<{ ref: string }> = {
-  name: 'git_revert',
+  name       : 'git_revert',
   description: 'Revert a commit (new commit undoing it). Always confirmed.',
-  mutating: true,
-  confirm: true,
-  args: z.object({ ref: z.string().min(1) }),
+  mutating   : true,
+  confirm    : true,
+  args       : z.object({ ref: z.string().min(1) }),
   async run(a, ctx) {
     await ctx.git.revert(a.ref);
     return ok(`Reverted ${a.ref}.`);
@@ -1848,11 +1848,11 @@ const gitRevertTool: Tool<{ ref: string }> = {
 };
 
 const gitRestoreTool: Tool<{ path: string; ref?: string }> = {
-  name: 'git_restore',
+  name       : 'git_restore',
   description: 'Restore a file to an earlier commit. Always confirmed.',
-  mutating: true,
-  confirm: true,
-  args: z.object({ path: z.string().min(1), ref: z.string().optional() }),
+  mutating   : true,
+  confirm    : true,
+  args       : z.object({ path: z.string().min(1), ref: z.string().optional() }),
   async run(a, ctx) {
     await ctx.git.restore(a.path, a.ref ?? 'HEAD');
     return ok(`Restored ${a.path} to ${a.ref ?? 'HEAD'}.`);
@@ -1862,10 +1862,10 @@ const gitRestoreTool: Tool<{ path: string; ref?: string }> = {
 // ── Skills ────────────────────────────────────────────────────────────────────
 
 const discoverSkillsTool: Tool<Record<string, never>> = {
-  name: 'discover_skills',
+  name       : 'discover_skills',
   description: 'List available authoring skills (reusable playbooks) and when to use them.',
-  mutating: false,
-  args: z.object({}).strict(),
+  mutating   : false,
+  args       : z.object({}).strict(),
   async run(_a, ctx) {
     const skills = await discoverSkills(skillRoots(ctx.workspace.root, ctx.skillDirs));
     if (skills.length === 0) return ok('No skills found under .aiagent/skills.', { data: [] });
@@ -1882,8 +1882,8 @@ const discoverSkillsTool: Tool<Record<string, never>> = {
       .join('\n');
     return ok(body, {
       data: skills.map((s) => ({
-        id: s.id,
-        name: s.name,
+        id    : s.id,
+        name  : s.name,
         script: !!s.script,
         issues: s.issues,
       })),
@@ -1915,19 +1915,19 @@ const createSkillTool: Tool<{
   body: string;
   id?: string;
 }> = {
-  name: 'create_skill',
+  name       : 'create_skill',
   description:
     'Write a new skill — a reusable playbook at .aiagent/skills/<id>/SKILL.md that ' +
     'discover_skills offers back later. Use it when the author asks for a repeatable procedure. ' +
     'Prose only: there is deliberately no script argument, because a skill that runs a script ' +
     'has to be added by a person.',
-  mutating: true,
+  mutating   : true,
   args: z
     .object({
       name: z.string().min(1).describe('what the skill is called; the id is derived from it'),
       description: z.string().min(1).describe('one sentence — this is what a later you decides by'),
-      whenToUse: z.string().optional().describe('the situation that should call for this skill'),
-      body: z.string().min(1).describe('the procedure, as steps to follow'),
+      whenToUse  : z.string().optional().describe('the situation that should call for this skill'),
+      body       : z.string().min(1).describe('the procedure, as steps to follow'),
       id: z.string().optional().describe('override the derived id (lowercase, hyphenated)'),
     })
     .strict(),
@@ -1941,15 +1941,15 @@ const createSkillTool: Tool<{
     }
     const res = await writeSkill(ctx.workspace.root, {
       id,
-      name: a.name,
+      name       : a.name,
       description: a.description,
-      whenToUse: a.whenToUse,
-      body: a.body,
+      whenToUse  : a.whenToUse,
+      body       : a.body,
     });
     if (!res.ok) return fail(res.reason);
     return ok(`Created skill ${res.id}.`, {
       written: [rel(ctx.workspace.root, res.file)],
-      data: { id: res.id },
+      data   : { id: res.id },
     });
   },
 };
@@ -1961,19 +1961,19 @@ const editSkillTool: Tool<{
   whenToUse?: string;
   body?: string;
 }> = {
-  name: 'edit_skill',
+  name       : 'edit_skill',
   description:
     'Change one or more fields of an existing skill. Omitted fields are left alone, and ' +
     'front-matter this tool does not model — a `script:` a person added, say — is carried ' +
     'forward. YAML *comments* are not: the file is re-emitted in canonical key order.',
-  mutating: true,
+  mutating   : true,
   args: z
     .object({
-      id: z.string().min(1),
-      name: z.string().optional(),
+      id         : z.string().min(1),
+      name       : z.string().optional(),
       description: z.string().optional(),
-      whenToUse: z.string().optional(),
-      body: z.string().optional(),
+      whenToUse  : z.string().optional(),
+      body       : z.string().optional(),
     })
     .strict(),
   async run(a, ctx) {
@@ -1991,11 +1991,11 @@ const editSkillTool: Tool<{
     const res = await writeSkill(
       ctx.workspace.root,
       {
-        id: skill.id,
-        name: a.name ?? skill.name,
+        id         : skill.id,
+        name       : a.name ?? skill.name,
         description: a.description ?? skill.description,
-        whenToUse: a.whenToUse ?? skill.whenToUse,
-        body: a.body ?? skill.body,
+        whenToUse  : a.whenToUse ?? skill.whenToUse,
+        body       : a.body ?? skill.body,
       },
       { overwrite: true, preserve: skill.raw },
     );
@@ -2005,35 +2005,35 @@ const editSkillTool: Tool<{
     // description until something else wrote.
     return ok(`Updated skill ${res.id}.`, {
       written: [rel(ctx.workspace.root, res.file)],
-      data: { id: res.id },
+      data   : { id: res.id },
     });
   },
 };
 
 const runSkillTool: Tool<{ name: string }> = {
-  name: 'run_skill',
+  name       : 'run_skill',
   description:
     'Run a skill by id/name. Prose skills return guidance; script-bearing skills run only ' +
     'after explicit confirmation.',
-  mutating: true,
-  args: z.object({ name: z.string().min(1) }),
+  mutating   : true,
+  args       : z.object({ name: z.string().min(1) }),
   async run(a, ctx) {
     const skills = await discoverSkills(skillRoots(ctx.workspace.root, ctx.skillDirs));
     const skill = skills.find((s) => s.id === a.name || s.name === a.name);
     if (!skill) return fail(`no such skill: ${a.name}`);
     const result = await runSkill(skill, {
       workspaceRoot: ctx.workspace.root,
-      confirm: ctx.confirm,
+      confirm      : ctx.confirm,
     });
     return { ok: result.ok, output: result.output };
   },
 };
 
 const gitInitTool: Tool<Record<string, never>> = {
-  name: 'git_init',
+  name       : 'git_init',
   description: 'Initialize a git repository in the workspace.',
-  mutating: true,
-  args: z.object({}).strict(),
+  mutating   : true,
+  args       : z.object({}).strict(),
   async run(_a, ctx) {
     if (await ctx.git.isRepo()) return ok('Already a git repository.');
     await ctx.git.init();
@@ -2042,11 +2042,11 @@ const gitInitTool: Tool<Record<string, never>> = {
 };
 
 const generateImageTool: Tool<{ sentence: string; subject?: string }> = {
-  name: 'generate_image',
+  name       : 'generate_image',
   description:
     'Draw a concept image from a sentence, e.g. "an aerial shot of the high school". It is bound to the location or character it names — say which, or let the sentence decide — and appears under Concepts in the project. A concept is a sketch and nothing more: the pipeline never plans it, no scene renders it, and `vngen export` ignores it; promoting one to a real location plate is a separate, human decision. It costs one image generation, so ask before drawing several.',
-  mutating: true,
-  confirm: true,
+  mutating   : true,
+  confirm    : true,
   args: z.object({
     sentence: z.string().min(1).describe('what to draw, in plain words'),
     subject: z
@@ -2087,11 +2087,11 @@ const generateImageTool: Tool<{ sentence: string; subject?: string }> = {
 };
 
 const listImagesTool: Tool<Record<string, never>> = {
-  name: 'list_images',
+  name       : 'list_images',
   description:
     'List the concept sketches this project holds: hash, name, what each is bound to, and the prompt it was drawn from. Read-only. Use it before `edit_image` — a concept is named by its hash, and this is where one comes from.',
-  mutating: false,
-  args: z.object({}).strict(),
+  mutating   : false,
+  args       : z.object({}).strict(),
   async run(_a, ctx) {
     if (!ctx.art) return fail('image generation is not available in this session.');
     const concepts = await ctx.art.list();
@@ -2114,18 +2114,18 @@ const listImagesTool: Tool<Record<string, never>> = {
 };
 
 const editImageTool: Tool<{ hash: string; prompt?: string; title?: string }> = {
-  name: 'edit_image',
+  name       : 'edit_image',
   description:
     'Draw a concept sketch again, from an edited prompt. A concept is the one asset whose prompt is authored rather than derived from the project, so it is the one prompt you may rewrite — pass the whole prompt, starting from the one `list_images` reports, so the style preamble and the framing line survive. The result is a NEW sketch beside the original; nothing is overwritten and nothing downstream sees either. Omitting the prompt re-rolls the recorded one, which is pointless when `image_params.seed` is fixed. It costs one image generation, so confirm with the author before drawing.',
-  mutating: true,
-  confirm: true,
+  mutating   : true,
+  confirm    : true,
   args: z.object({
-    hash: z.string().min(4).describe('the concept to redraw; a hash prefix from list_images'),
+    hash  : z.string().min(4).describe('the concept to redraw; a hash prefix from list_images'),
     prompt: z
       .string()
       .optional()
       .describe('the whole prompt to draw from; omitted re-rolls the recorded one'),
-    title: z.string().optional().describe('a new name for it; omitted keeps the one it has'),
+    title : z.string().optional().describe('a new name for it; omitted keeps the one it has'),
   }),
   async run(a, ctx) {
     if (!ctx.art) {
@@ -2160,7 +2160,7 @@ const editImageTool: Tool<{ hash: string; prompt?: string; title?: string }> = {
         : ` ${res.from.slice(0, 12)} is still there.`;
       return ok(`Redrew ${res.from.slice(0, 12)} as ${file}.${same}`, {
         written: [file, rel(ctx.workspace.root, ctx.workspace.paths.baseManifest)],
-        data: { hash: res.ref.hash, from: res.from, file, prompt: res.prompt },
+        data   : { hash: res.ref.hash, from: res.from, file, prompt: res.prompt },
       });
     } catch (e) {
       return fail(e instanceof Error ? e.message : String(e));
@@ -2195,13 +2195,13 @@ function findAsset(
   const matches = assets.filter((a) => a.hash === hash || a.hash.startsWith(hash));
   if (matches.length === 0) {
     return {
-      ok: false,
+      ok   : false,
       error: `no asset starts with "${said}" — run list_assets to see what there is.`,
     };
   }
   if (matches.length > 1) {
     return {
-      ok: false,
+      ok   : false,
       error: `"${said}" names ${matches.length} assets (${matches.map((m) => m.hash.slice(0, 12)).join(', ')}); say more of the hash.`,
     };
   }
@@ -2226,10 +2226,10 @@ async function shotsFor(
 }
 
 const listAssetsTool: Tool<{ subject: string }> = {
-  name: 'list_assets',
+  name       : 'list_assets',
   description:
     "List the pictures the pipeline has rendered for one subject — character:<id>, location:<id> or scene:<id> — with each one's hash, what it is, its kind, and whether it is accepted. Read-only, and the way to name an asset before `art_notes`, `view_image` or `regenerate_asset`. Concept sketches are listed by `list_images` instead, and a picture the pipeline has not drawn yet has no hash and does not appear here.",
-  mutating: false,
+  mutating   : false,
   args: z.object({
     subject: z.string().min(1).describe('character:<id>, location:<id> or scene:<id>'),
   }),
@@ -2257,9 +2257,9 @@ const listAssetsTool: Tool<{ subject: string }> = {
     );
     return ok(`${assets.length} asset(s) for ${a.subject}:\n${rows.join('\n')}`, {
       data: assets.map((asset) => ({
-        hash: asset.hash,
-        kind: asset.kind,
-        label: assetSlotLabel(asset),
+        hash    : asset.hash,
+        kind    : asset.kind,
+        label   : assetSlotLabel(asset),
         accepted: asset.accepted,
       })),
     });
@@ -2267,10 +2267,10 @@ const listAssetsTool: Tool<{ subject: string }> = {
 };
 
 const artNotesTool: Tool<{ hash: string }> = {
-  name: 'art_notes',
+  name       : 'art_notes',
   description:
     'Show the art-notes rungs that reach one asset and what each says today. Art notes are the one authored field that says how a generated picture should *look*, and they go into the prompt — so a portrait answers with its character rung, a sheet with the character and the outfit, a plate with the location and the variant, and a shot frame with its own rung alone. Read-only: this is the context a proposal needs before `set_art_notes`.',
-  mutating: false,
+  mutating   : false,
   args: z.object({ hash: z.string().min(4).describe('an asset hash or prefix from list_assets') }),
   async run(a, ctx) {
     const store = await AssetStore.open(ctx.workspace.paths);
@@ -2292,14 +2292,14 @@ const artNotesTool: Tool<{ hash: string }> = {
 };
 
 const setArtNotesTool: Tool<{ target: string; notes?: string; mode?: NotesMode }> = {
-  name: 'set_art_notes',
+  name       : 'set_art_notes',
   description:
     'Write the art notes at one rung: character:<id>, character:<id>/<outfit>, location:<id>, location:<id>/<variant>, or shot:<sceneId>/<shotId>. Free text, appended to the prompt the project derives — so this is how a picture is changed, and it re-keys every task that rung reaches, meaning those pictures are re-drawn on the next run. `append` (the default) adds a line to what is there, `replace` overwrites it, `clear` removes it. An outfit, a variant or a shot that does not exist is refused rather than created.',
-  mutating: true,
+  mutating   : true,
   args: z.object({
     target: z.string().min(1).describe('the rung, e.g. location:cafe/night'),
-    notes: z.string().optional().describe('the text; ignored by mode="clear"'),
-    mode: z.enum(['append', 'replace', 'clear']).optional().describe('default "append"'),
+    notes : z.string().optional().describe('the text; ignored by mode="clear"'),
+    mode  : z.enum(['append', 'replace', 'clear']).optional().describe('default "append"'),
   }),
   async run(a, ctx) {
     // A project whose `project.yaml` will not load still has sheets to write into; neither the
@@ -2322,12 +2322,12 @@ const setArtNotesTool: Tool<{ target: string; notes?: string; mode?: NotesMode }
 };
 
 const viewImageTool: Tool<{ hash: string; question?: string }> = {
-  name: 'view_image',
+  name       : 'view_image',
   description:
     'Look at one rendered picture and read a description of it back. Costs a vision call, so ask when the answer changes what you would propose — after a regeneration, or before writing an art note about a picture you have not seen. Takes a hash from `list_assets` or `list_images` and an optional question ("does this read as brutalist yet?"). An asset whose task has not run has no bytes to look at, and this says so rather than describing an older picture.',
-  mutating: false,
+  mutating   : false,
   args: z.object({
-    hash: z.string().min(4).describe('an asset hash or prefix'),
+    hash    : z.string().min(4).describe('an asset hash or prefix'),
     question: z.string().optional().describe('what to ask about it; omitted asks the widest one'),
   }),
   async run(a, ctx) {
@@ -2348,14 +2348,14 @@ const viewImageTool: Tool<{ hash: string; question?: string }> = {
 };
 
 const regenerateAssetTool: Tool<{ hash: string; run?: boolean }> = {
-  name: 'regenerate_asset',
+  name       : 'regenerate_asset',
   description:
     'Draw one planned picture again: put its task back to pending, and with run=true run the pipeline so it is drawn now. Use it after `set_art_notes`, because a note only reaches a picture that is drawn again. It spends a real image generation and always asks the author first. A concept and an upload are refused by name — nothing planned them, so there is no task to re-run — and with a fixed image seed the same prompt gives back the same picture, so change a note before spending the call.',
-  mutating: true,
-  confirm: true,
+  mutating   : true,
+  confirm    : true,
   args: z.object({
     hash: z.string().min(4).describe('an asset hash or prefix from list_assets'),
-    run: z.boolean().optional().describe('run the pipeline now; omitted only queues the task'),
+    run : z.boolean().optional().describe('run the pipeline now; omitted only queues the task'),
   }),
   async run(a, ctx) {
     if (!ctx.pipeline) {
@@ -2371,7 +2371,7 @@ const regenerateAssetTool: Tool<{ hash: string; run?: boolean }> = {
     if (!a.run) {
       return ok(`${queued.message} Nothing is drawn until the pipeline runs.`, {
         written: queued.written,
-        data: queued,
+        data   : queued,
       });
     }
     const result = await ctx.pipeline.run();
@@ -2379,17 +2379,17 @@ const regenerateAssetTool: Tool<{ hash: string; run?: boolean }> = {
     const gate = result.blockedOnGate ? ' The run is held at the character-approval gate.' : '';
     return ok(`${queued.message} Ran ${result.ran} task(s)${failed}.${gate}`, {
       written: queued.written,
-      data: { ...queued, ...result },
+      data   : { ...queued, ...result },
     });
   },
 };
 
 const approveAssetsTool: Tool<Record<string, never>> = {
-  name: 'approve_assets',
+  name       : 'approve_assets',
   description:
     "Approve the pictures the author asked you to approve. Takes no arguments on purpose: what gets approved is decided by re-reading what the author themselves typed, not by anything you pass in, so there is nothing here to aim. Call it when they ask for artwork to be approved or accepted \u2014 'approve the location art', \"accept Aiko's sheet\", 'approve all of it' \u2014 and not otherwise; asking to see a picture or to draw one is not this. A second model reads their recent messages and picks from the list of what is approvable, and the author sees that list and confirms it before anything is written. It refuses, by name, when they did not ask.",
-  mutating: true,
-  args: z.object({}),
+  mutating   : true,
+  args       : z.object({}),
   async run(_a, ctx) {
     if (!ctx.approval) {
       return fail(
@@ -2446,20 +2446,20 @@ const approveAssetsTool: Tool<Record<string, never>> = {
     const part = (what: string, rows: string[]): string =>
       rows.length ? `${what} ${rows.length}:\n${rows.map((r) => `  \u2022 ${r}`).join('\n')}` : '';
     return {
-      ok: done.length > 0,
-      output: [part('Approved', done), part('Refused', refused)].filter(Boolean).join('\n\n'),
+      ok     : done.length > 0,
+      output : [part('Approved', done), part('Refused', refused)].filter(Boolean).join('\n\n'),
       written: ['vngen/build/manifest.json'],
-      data: { approved: done.length, refused: refused.length },
+      data   : { approved: done.length, refused: refused.length },
     };
   },
 };
 
 const unapproveAssetsTool: Tool<Record<string, never>> = {
-  name: 'unapprove_assets',
+  name       : 'unapprove_assets',
   description:
     "Take approval back off the pictures the author asked you to un-approve. Takes no arguments for the same reason `approve_assets` does not: what is un-approved is decided by re-reading what the author themselves typed. Call it when they ask for approved artwork to be un-approved, un-accepted or rejected — 'un-approve the plate', \"put Aiko's portrait back\", 'none of these are right' is not enough — and not otherwise; disliking a picture or asking for a redraw is not this. A second model reads their recent messages and picks from the list of what is approved, and the author sees that list and confirms it before anything is written. The bytes are never touched, so the same take can be approved again.",
-  mutating: true,
-  args: z.object({}),
+  mutating   : true,
+  args       : z.object({}),
   async run(_a, ctx) {
     if (!ctx.approval) {
       return fail(
@@ -2508,10 +2508,10 @@ const unapproveAssetsTool: Tool<Record<string, never>> = {
     const part = (what: string, rows: string[]): string =>
       rows.length ? `${what} ${rows.length}:\n${rows.map((r) => `  • ${r}`).join('\n')}` : '';
     return {
-      ok: done.length > 0,
-      output: [part('Un-approved', done), part('Refused', refused)].filter(Boolean).join('\n\n'),
+      ok     : done.length > 0,
+      output : [part('Un-approved', done), part('Refused', refused)].filter(Boolean).join('\n\n'),
       written: ['vngen/build/manifest.json'],
-      data: { unapproved: done.length, refused: refused.length },
+      data   : { unapproved: done.length, refused: refused.length },
     };
   },
 };
@@ -2536,10 +2536,10 @@ const diagLine = (d: GenDiagnostic): string =>
   `  • node ${String(d.nodeId)} [${d.code}]: ${d.message}`;
 
 const readAssetGraphTool: Tool<{ slug?: string }> = {
-  name: 'read_asset_graph',
+  name       : 'read_asset_graph',
   description:
     'Read one generation graph — the node network a picture is drawn by — as the same description `edit_asset_graph` takes back: every node with its type and the values written on it, and every link between them. A node of type `GroupNode` is an instance of a group definition, named by its `group` field; what is inside the group is not described here. Where the nodes sit on the canvas is left out on purpose, so writing a graph back never moves what the author arranged there. Anything wrong with the graph is listed after it: a node type no plugin provides, a link whose two ends disagree, a slot string that does not parse. Called with no name it lists the graphs this project holds, which is how you find one to read.',
-  mutating: false,
+  mutating   : false,
   args: z.object({
     slug: z.string().optional().describe('which graph, by the name its file carries'),
   }),
@@ -2575,19 +2575,19 @@ const editAssetGraphTool: Tool<{
   }[];
   links: (string | number)[][];
 }> = {
-  name: 'edit_asset_graph',
+  name       : 'edit_asset_graph',
   description:
     'Rewrite one generation graph from a whole description — the form `read_asset_graph` gives back. Read it first: what you pass is the graph in full, so a node you leave out is removed. A node kept under the id it already had keeps its position on the canvas and keeps the record of what it has already run, so re-describing a graph does not by itself spend anything. A `GroupNode` entry is an instance of a group definition the project already holds, named by `group`; keep one under its id and it keeps the values set on it, and name a definition to add an instance of it. What is inside a group is edited in the desktop app rather than here. A description that will not build is refused with every problem in it listed, and the file on disk is left exactly as it was. It writes the document and draws nothing; `run_asset_graph` is what spends.',
-  mutating: true,
+  mutating   : true,
   args: z.object({
-    slug: z.string().describe('which graph, by the name its file carries'),
+    slug : z.string().describe('which graph, by the name its file carries'),
     nodes: z
       .array(
         z.object({
           id: z
             .union([z.string(), z.number()])
             .describe('the id it keeps; reuse the one read_asset_graph gave to keep its record'),
-          type: z.string().describe('the node type, such as `GenImage`'),
+          type : z.string().describe('the node type, such as `GenImage`'),
           props: z
             .record(z.union([z.string(), z.number(), z.boolean()]))
             .optional()
@@ -2637,12 +2637,12 @@ const editAssetGraphTool: Tool<{
 };
 
 const runAssetGraphTool: Tool<{ slug: string; force?: boolean }> = {
-  name: 'run_asset_graph',
+  name       : 'run_asset_graph',
   description:
     'Run one generation graph now, up to the output node it is set to terminate on. It spends real image generations, so the author is quoted what the run is expected to cost and confirms it before anything happens. Every node whose inputs still match what it last ran resumes from that record instead of running again, which is why re-running an unchanged graph costs nothing; `force` runs the paid nodes over regardless. Nothing enters the asset store here — a graph fills a slot only where a planned task names it.',
-  mutating: true,
+  mutating   : true,
   args: z.object({
-    slug: z.string().describe('which graph, by the name its file carries'),
+    slug : z.string().describe('which graph, by the name its file carries'),
     force: z
       .boolean()
       .optional()

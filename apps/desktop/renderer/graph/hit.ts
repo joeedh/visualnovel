@@ -25,9 +25,9 @@ export type Pick =
   | { type: 'background' };
 
 const inflate = (r: Rect, by: number): Rect => ({
-  x: r.x - by,
-  y: r.y - by,
-  width: r.width + by * 2,
+  x     : r.x - by,
+  y     : r.y - by,
+  width : r.width + by * 2,
   height: r.height + by * 2,
 });
 

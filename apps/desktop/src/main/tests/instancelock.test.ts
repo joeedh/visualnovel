@@ -104,7 +104,7 @@ function scriptedIo(script: { taken: boolean; live: boolean }): LockIo & { unlin
       script.live
         ? Promise.resolve({
             destroy: () => {},
-            end: (_d: string, cb: () => void) => cb(),
+            end    : (_d: string, cb: () => void) => cb(),
           } as unknown as Socket)
         : Promise.reject(new Error('ECONNREFUSED')),
     unlink: (address: string) => {

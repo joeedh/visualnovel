@@ -100,10 +100,10 @@ export function graphRuntime(
   registerGenRuntimes();
 
   const loaded: LoadedGraph[] = docs.map((doc) => ({
-    graph: doc.graph,
-    journal: doc.journal,
+    graph   : doc.graph,
+    journal : doc.journal,
     services: createGenServices({ ...deps, blobs: graphBlobStore(paths, doc.slug) }),
-    record: (record: GraphJournalRecord) => appendGraphJournal(paths, doc.slug, record),
+    record  : (record: GraphJournalRecord) => appendGraphJournal(paths, doc.slug, record),
   }));
 
   return indexGraphs(loaded);
@@ -199,9 +199,9 @@ export function reportGraphs(
     );
     for (const drift of graphDrift(doc.graph, doc.journal)) {
       drifted.push({
-        slug: doc.slug,
+        slug  : doc.slug,
         nodeId: drift.nodeId,
-        slot: slotOfNode.get(drift.nodeId) ?? '',
+        slot  : slotOfNode.get(drift.nodeId) ?? '',
       });
     }
   }
@@ -242,11 +242,11 @@ export interface ProjectSlotInputs {
  */
 export function unrenderedBoundSlots(report: GraphsReport, inputs: ProjectSlotInputs): string[] {
   const slots = buildSlotGraph({
-    model: inputs.model,
-    config: inputs.config,
-    assets: inputs.assets,
-    shots: inputs.shots,
-    graph: inputs.graph,
+    model  : inputs.model,
+    config : inputs.config,
+    assets : inputs.assets,
+    shots  : inputs.shots,
+    graph  : inputs.graph,
     angleOf: (sourceTask) => {
       const task = sourceTask === undefined ? undefined : inputs.graph.get(sourceTask);
       return task && 'angle' in task.inputs ? task.inputs.angle : undefined;

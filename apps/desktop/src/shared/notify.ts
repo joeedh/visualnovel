@@ -15,15 +15,15 @@ import { EDITOR_IDS, type EditorId } from './editors.js';
  * command can still report itself while this table has not caught up.
  */
 const BY_NAMESPACE: Record<string, NotificationCategory> = {
-  asset: 'asset',
-  art: 'asset',
-  concept: 'asset',
-  pipeline: 'pipeline',
-  gate: 'pipeline',
-  agent: 'agent',
-  story: 'document',
-  doc: 'document',
-  upload: 'document',
+  asset    : 'asset',
+  art      : 'asset',
+  concept  : 'asset',
+  pipeline : 'pipeline',
+  gate     : 'pipeline',
+  agent    : 'agent',
+  story    : 'document',
+  doc      : 'document',
+  upload   : 'document',
   workspace: 'workspace',
 };
 

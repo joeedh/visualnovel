@@ -167,13 +167,13 @@ export function composePrompt(chunks: readonly PromptChunk[], o?: PromptOverride
       text: o.agent.text,
       mode,
       chunks: effective,
-      held: o.agent.of !== chunkFingerprint(chunks, o),
+      held  : o.agent.of !== chunkFingerprint(chunks, o),
     };
   }
   return {
-    text: renderPrompt(enabledChunks(effective)),
-    mode: 'chunks',
+    text  : renderPrompt(enabledChunks(effective)),
+    mode  : 'chunks',
     chunks: effective,
-    held: false,
+    held  : false,
   };
 }

@@ -10,30 +10,30 @@ const redactor = buildRedactor({
 
 /** The body these tests read shapes out of: two messages, a tool result, and a picture. */
 const BODY = {
-  model: 'claude-x',
+  model     : 'claude-x',
   max_tokens: 4096,
-  system: [{ type: 'text', text: 'You are an author.', cache_control: { type: 'ephemeral' } }],
+  system    : [{ type: 'text', text: 'You are an author.', cache_control: { type: 'ephemeral' } }],
   messages: [
     { role: 'user', content: 'Ember Vale walks west.' },
     {
-      role: 'assistant',
+      role   : 'assistant',
       content: [
         { type: 'text', text: 'thinking about it' },
         { type: 'tool_use', id: 'tu_1', name: 'read_file', input: { path: 'a.fountain' } },
       ],
     },
     {
-      role: 'user',
+      role   : 'user',
       content: [
         { type: 'tool_result', tool_use_id: 'tu_9', content: 'the file' },
         {
-          type: 'image',
+          type  : 'image',
           source: { type: 'base64', media_type: 'image/png', data: 'A'.repeat(40) },
         },
       ],
     },
   ],
-  tools: [{ name: 'read_file' }, { name: 'write_file' }],
+  tools     : [{ name: 'read_file' }, { name: 'write_file' }],
 };
 
 function snapshot(
@@ -42,16 +42,16 @@ function snapshot(
   keepBody = true,
 ): CaptureSnapshot {
   const header: CapturedHeader = {
-    seq: 1,
-    label: 'convo',
-    at: '2026-08-19T00:00:00.000Z',
-    bytes: 900,
+    seq    : 1,
+    label  : 'convo',
+    at     : '2026-08-19T00:00:00.000Z',
+    bytes  : 900,
     dropped: false,
     ...over,
   };
   return {
     headers: () => [header],
-    body: (seq) => (keepBody && seq === header.seq ? JSON.stringify(body) : undefined),
+    body   : (seq) => (keepBody && seq === header.seq ? JSON.stringify(body) : undefined),
   };
 }
 

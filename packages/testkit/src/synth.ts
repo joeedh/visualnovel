@@ -92,8 +92,8 @@ export function synthScript(opts: SynthOptions = {}): string {
  */
 export function synthProject(opts: SynthOptions = {}): Promise<TestProject> {
   return makeProject({
-    title: opts.title ?? `Synth ${opts.scenes ?? 12}`,
+    title : opts.title ?? `Synth ${opts.scenes ?? 12}`,
     script: synthScript(opts),
-    git: opts.git,
+    git   : opts.git,
   });
 }

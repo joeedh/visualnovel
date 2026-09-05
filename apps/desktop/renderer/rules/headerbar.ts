@@ -20,8 +20,8 @@ export const LAYOUT_SUPPLIES = ['name'];
 export function runAction(busy: string, live: boolean): Offer {
   if (busy !== '') {
     return {
-      ok: false,
-      id: 'pipeline.run',
+      ok    : false,
+      id    : 'pipeline.run',
       reason: `Cannot start: ${busy} is already in progress.`,
     };
   }
@@ -38,8 +38,8 @@ export function stopAction(controls: BusyControls | undefined): Offer {
 export function modeAction(mode: string): Offer {
   const next = mode === 'plan' ? 'execute' : 'plan';
   return {
-    ok: true,
-    id: 'agent.setMode',
+    ok   : true,
+    id   : 'agent.setMode',
     props: { mode: next },
     label: mode === 'plan' ? 'PLAN' : 'EXECUTE',
   };

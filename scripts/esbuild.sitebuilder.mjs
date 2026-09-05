@@ -21,13 +21,13 @@ import { alias, REPO_ROOT as root } from './aliases.mjs';
 
 export const sitebuilderOptions = {
   entryPoints: [resolve(root, 'packages/export/src/site-cli.ts')],
-  outfile: resolve(root, 'apps/desktop/dist/main/vn-site.mjs'),
-  bundle: true,
-  platform: 'node',
-  format: 'esm',
-  target: 'node20',
-  sourcemap: false,
-  minify: false,
+  outfile    : resolve(root, 'apps/desktop/dist/main/vn-site.mjs'),
+  bundle     : true,
+  platform   : 'node',
+  format     : 'esm',
+  target     : 'node20',
+  sourcemap  : false,
+  minify     : false,
   alias,
   banner: {
     js:

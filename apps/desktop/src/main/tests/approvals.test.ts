@@ -3,10 +3,10 @@ import { reorderApprovals, sameApprovals } from '../approvals.js';
 
 const item = (hash: string): Approvable => ({
   hash,
-  kind: 'portrait',
+  kind : 'portrait',
   label: hash.toUpperCase(),
-  slot: `portrait:${hash}`,
-  door: 'accept',
+  slot : `portrait:${hash}`,
+  door : 'accept',
 });
 
 describe('reorderApprovals', () => {

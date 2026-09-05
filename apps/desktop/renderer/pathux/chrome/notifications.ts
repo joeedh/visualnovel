@@ -240,10 +240,10 @@ class NotificationList {
 
     const more = row.menu('⋯', [
       {
-        name: 'Delete all notifications permanently…',
+        name    : 'Delete all notifications permanently…',
         callback: () => openCommandDialog('notify.deleteAll'),
-        tooltip: 'Erase the whole log from disk. This cannot be undone.',
-        id: 'deleteAll',
+        tooltip : 'Erase the whole log from disk. This cannot be undone.',
+        id      : 'deleteAll',
       },
     ]);
     more.description = 'The acts that are not one click.';

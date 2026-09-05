@@ -154,9 +154,9 @@ export class ScriptEditor extends VnEditor {
 
   static override define() {
     return {
-      tagname: 'vn-script-editor-x',
+      tagname : 'vn-script-editor-x',
       areaname: 'script',
-      icon: -1,
+      icon    : -1,
     };
   }
 
@@ -294,7 +294,7 @@ export class ScriptEditor extends VnEditor {
       // The cue picker offers the project's cast and nothing else, so the column cannot mint a
       // cue no character answers to.
       this.cast = (await api.invoke('workspace:index')).characters.map((c) => ({
-        id: c.id,
+        id  : c.id,
         name: c.name,
       }));
       const known = this.story.scenes.some((s) => s.id === this.ui.sceneId);
@@ -441,8 +441,8 @@ export class ScriptEditor extends VnEditor {
     this.anchors.act(
       heading,
       {
-        ok: true,
-        id: 'story.setHeading',
+        ok   : true,
+        id   : 'story.setHeading',
         props: { scene: shown.sceneId, heading: shown.heading },
       },
       (action) => openCommandDialog(action.id, action.props as Record<string, string>),
@@ -575,8 +575,8 @@ export class ScriptEditor extends VnEditor {
       split.title = 'Start a second scene at this line, and name it before anything is written';
       split.addEventListener('click', () =>
         this.propose({
-          act: 'split',
-          at: line.id,
+          act : 'split',
+          at  : line.id,
           into: proposeSceneId(
             scene.sceneId,
             (this.story?.scenes ?? []).map((s) => s.id),

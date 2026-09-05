@@ -122,7 +122,7 @@ export class UndoJournal {
     const expected = point[side];
     if (this.store.tree(expected) === undefined) {
       return {
-        ok: false,
+        ok   : false,
         error: `that command's snapshot is no longer held — undo reaches back ${this.keep} commands`,
       };
     }
@@ -130,7 +130,7 @@ export class UndoJournal {
     if (tree === null) return { ok: false, error: `${this.root} is no longer a directory` };
     if (tree !== expected) {
       return {
-        ok: false,
+        ok   : false,
         error:
           'the workspace has changed since that command ran — undoing would discard those ' +
           'changes. Commit or revert them first.',
@@ -148,7 +148,7 @@ export class UndoJournal {
     const expected = point[side];
     if (this.store.tree(expected) === undefined) {
       return {
-        ok: false,
+        ok   : false,
         error: `that command's snapshot is no longer held — undo reaches back ${this.keep} commands`,
       };
     }
@@ -157,7 +157,7 @@ export class UndoJournal {
       return { ok: false, error: `${join(this.root, subpath)} is no longer a directory` };
     if (tree !== expected) {
       return {
-        ok: false,
+        ok   : false,
         error:
           'the workspace has changed since that command ran — undoing would discard those ' +
           'changes. Commit or revert them first.',

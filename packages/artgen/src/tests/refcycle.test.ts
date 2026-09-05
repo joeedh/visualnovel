@@ -51,13 +51,13 @@ function ctxOf(loc: Location, shots?: Shot[]): { model: ProjectModel; shots: Map
 describe('refsOfSlot', () => {
   it('derives a sheet from its portrait and a frame from its plate and cast', () => {
     const shot: Shot = {
-      id: 'arrival__a',
-      sceneId: 'arrival',
-      framing: 'medium',
-      location: 'night',
-      subjects: [{ characterId: 'aiko', outfit: 'gala' }],
+      id         : 'arrival__a',
+      sceneId    : 'arrival',
+      framing    : 'medium',
+      location   : 'night',
+      subjects   : [{ characterId: 'aiko', outfit: 'gala' }],
       coversLines: [],
-      status: 'pending',
+      status     : 'pending',
     };
     const ctx = ctxOf(cafe({}), [shot]);
     expect(
@@ -164,27 +164,27 @@ describe('parseSlot', () => {
 describe('slotOf', () => {
   const asset = (kind: Asset['kind'], satisfies: Asset['satisfies']): Asset => ({
     hash: 'h',
-    ext: 'png',
+    ext : 'png',
     kind,
     sourceTask: 't',
-    refs: [],
+    refs      : [],
     satisfies,
     accepted: false,
-    modelId: 'm',
+    modelId : 'm',
   });
 
   it('answers the slot an asset fills', () => {
     expect(slotOf(asset('location_ref', [{ locationId: 'cafe', variant: 'night' }]))).toEqual({
-      kind: 'plate',
+      kind      : 'plate',
       locationId: 'cafe',
-      variant: 'night',
+      variant   : 'night',
     });
     expect(slotOf(asset('model_sheet', [{ characterId: 'aiko', outfit: 'gala' }]), 'side')).toEqual(
       {
-        kind: 'sheet',
+        kind       : 'sheet',
         characterId: 'aiko',
-        outfit: 'gala',
-        angle: 'side',
+        outfit     : 'gala',
+        angle      : 'side',
       },
     );
   });

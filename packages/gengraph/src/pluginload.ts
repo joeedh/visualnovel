@@ -80,18 +80,18 @@ export function esbuildPluginBundler(esbuild: GenEsbuild): GenPluginBundler {
   return async (entryFile) => {
     const built = await esbuild.build({
       entryPoints: [entryFile],
-      bundle: true,
-      write: false,
+      bundle     : true,
+      write      : false,
       // CommonJS, because the two hosts that load a plugin are both CommonJS: the desktop
       // app's main bundle, and jest, whose runtime cannot import an ES module at all.
-      format: 'cjs',
-      platform: 'node',
-      target: 'node20',
+      format     : 'cjs',
+      platform   : 'node',
+      target     : 'node20',
       // A node type is looked up by the name its class declares, and a minified class name
       // would not be the name the graph file was written with.
-      keepNames: true,
-      external: [PLUGIN_API_SPECIFIER],
-      logLevel: 'silent',
+      keepNames  : true,
+      external   : [PLUGIN_API_SPECIFIER],
+      logLevel   : 'silent',
     });
     const out = built.outputFiles?.[0];
     if (out === undefined) throw new Error('esbuild produced no output');
@@ -100,8 +100,7 @@ export function esbuildPluginBundler(esbuild: GenEsbuild): GenPluginBundler {
 }
 
 export type GenPluginLoad =
-  | { ok: true; manifest: GenPluginManifest; confirmation: string }
-  | { ok: false; reason: string };
+  { ok: true; manifest: GenPluginManifest; confirmation: string } | { ok: false; reason: string };
 
 /**
  * Reads and validates a plugin directory without running any of its code. This is what the
@@ -122,7 +121,7 @@ export async function readGenPlugin(dir: string): Promise<GenPluginLoad> {
   const entry = join(dir, parsed.manifest.entry);
   if (!(await exists(entry))) {
     return {
-      ok: false,
+      ok    : false,
       reason: `${parsed.manifest.name} names entry "${parsed.manifest.entry}", which is not there`,
     };
   }
@@ -152,7 +151,7 @@ export async function installGenPlugin(
   await rm(dir, { recursive: true, force: true });
   await cp(source, dir, {
     recursive: true,
-    filter: (from) => resolve(from) !== resolve(pluginBuildDir(source)),
+    filter   : (from) => resolve(from) !== resolve(pluginBuildDir(source)),
   });
   return { ok: true, manifest: read.manifest, dir };
 }
@@ -250,7 +249,7 @@ export async function buildGenPlugin(
 
   if (code.includes(PLUGIN_API_SPECIFIER)) {
     return {
-      ok: false,
+      ok    : false,
       reason: `${manifest.name} imports ${PLUGIN_API_SPECIFIER} at run time, and it may only import it for types`,
     };
   }
@@ -289,7 +288,7 @@ export async function activateGenPlugin(
 
   if (typeof module.default !== 'function') {
     return {
-      ok: false,
+      ok    : false,
       reason: `${read.manifest.name}'s entry has no default-exported activate function`,
     };
   }

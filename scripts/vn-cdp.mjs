@@ -47,10 +47,10 @@ if (!arg || (arg === '--raw' && !extra)) {
 
 const BRIDGE = {
   '--catalog': 'window.vn.catalog()',
-  '--undo': 'window.vn.undo()',
-  '--redo': 'window.vn.redo()',
+  '--undo'   : 'window.vn.undo()',
+  '--redo'   : 'window.vn.redo()',
   '--history': `window.vn.history(${extra ? Number(extra) : ''})`,
-  '--raw': extra,
+  '--raw'    : extra,
 };
 const expression = BRIDGE[arg] ?? `window.vn.exec(${JSON.stringify(arg)})`;
 

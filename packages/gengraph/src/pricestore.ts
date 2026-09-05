@@ -17,8 +17,8 @@ import type { GenServices } from './services.js';
 
 const userTable = z.object({
   pricesAsOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  source: z.string().optional(),
-  models: genPriceModels,
+  source    : z.string().optional(),
+  models    : genPriceModels,
 });
 
 /** Where the author's table is kept, beside their keys and the plugins they installed. */
@@ -53,8 +53,7 @@ export async function writeUserPrices(table: GenPriceTable, opts: UserDirEnv = {
 }
 
 export type GenPriceRefresh =
-  | { ok: true; table: GenPriceTable; models: string[] }
-  | { ok: false; reason: string };
+  { ok: true; table: GenPriceTable; models: string[] } | { ok: false; reason: string };
 
 /**
  * Runs one plugin's price agent and folds what it answers into the author's table. The models
@@ -87,9 +86,9 @@ export async function refreshUserPrices(
   const before = await readUserPrices(opts);
   const models: GenPriceModels = { ...before?.models, ...parsed.models };
   const table: GenPriceTable = {
-    name: USER_PRICES_NAME,
+    name      : USER_PRICES_NAME,
     pricesAsOf: now.toISOString().slice(0, 10),
-    source: 'looked up by a plugin on your own key',
+    source    : 'looked up by a plugin on your own key',
     models,
   };
   await writeUserPrices(table, opts);

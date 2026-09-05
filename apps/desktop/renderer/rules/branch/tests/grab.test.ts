@@ -27,7 +27,7 @@ describe('grabAt', () => {
   it('takes the handle from either side of the card edge it sits on', () => {
     for (const dy of [-8, 0, 8]) {
       expect(grabAt(layout.nodes, routes, { x: handle.x, y: handle.y + dy }, 15, NONE)).toEqual({
-        kind: 'connect',
+        kind : 'connect',
         scene: 'a',
       });
     }
@@ -62,7 +62,7 @@ describe('grabAt', () => {
     const between = { x: handle.x, y: (handle.y + head.y) / 2 };
     const radius = Math.abs(head.y - handle.y);
     expect(grabAt(layout.nodes, routes, between, radius, NONE)).toEqual({
-      kind: 'connect',
+      kind : 'connect',
       scene: 'a',
     });
   });

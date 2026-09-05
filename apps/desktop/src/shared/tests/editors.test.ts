@@ -114,7 +114,7 @@ describe('the offered subset', () => {
     const others = EDITOR_IDS.filter((id) => !UNOFFERED.some((hidden) => hidden === id));
     expect(editorNameProblems(others)).toEqual({
       unregistered: [...UNOFFERED],
-      unnamed: [],
+      unnamed     : [],
     });
   });
 
@@ -148,7 +148,7 @@ describe('editorNameProblems', () => {
   it('reports an editor registered under a name the list has not got', () => {
     expect(editorNameProblems([...EDITOR_IDS, 'sidebar'])).toEqual({
       unregistered: [],
-      unnamed: ['sidebar'],
+      unnamed     : ['sidebar'],
     });
   });
 
@@ -156,7 +156,7 @@ describe('editorNameProblems', () => {
     const registered = [...EDITOR_IDS.filter((id) => id !== 'play'), 'zed', 'aardvark'];
     expect(editorNameProblems(registered)).toEqual({
       unregistered: ['play'],
-      unnamed: ['aardvark', 'zed'],
+      unnamed     : ['aardvark', 'zed'],
     });
   });
 });

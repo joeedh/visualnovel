@@ -118,7 +118,7 @@ export class AnchorPass {
       ...(offer.ok ? {} : { reason: offer.reason }),
       ...(opts.publishes ? { publishes: opts.publishes } : {}),
       editor: this.pass.editor,
-      via: { kind: 'dom', node },
+      via   : { kind: 'dom', node },
     });
     return node;
   }
@@ -129,12 +129,12 @@ export class AnchorPass {
    */
   item(node: AnchorNode, kind: string, key: string, publishes: Record<string, string>): void {
     this.pass.anchors.push({
-      key: itemKey(kind, key),
-      props: {},
+      key    : itemKey(kind, key),
+      props  : {},
       enabled: true,
       publishes,
       editor: this.pass.editor,
-      via: { kind: 'dom', node },
+      via   : { kind: 'dom', node },
     });
   }
 
@@ -151,12 +151,12 @@ export class AnchorPass {
     publishes: Record<string, string>,
   ): void {
     this.pass.anchors.push({
-      key: itemKey(kind, key),
-      props: {},
+      key    : itemKey(kind, key),
+      props  : {},
       enabled: true,
       publishes,
       editor: this.pass.editor,
-      via: { kind: 'pick', nodeId, node: box },
+      via   : { kind: 'pick', nodeId, node: box },
     });
   }
 
@@ -175,7 +175,7 @@ export class AnchorPass {
       enabled: offer.ok,
       ...(offer.ok ? {} : { reason: offer.reason }),
       editor: this.pass.editor,
-      via: { kind: 'pick', nodeId, ...(rect ? { rect } : {}) },
+      via   : { kind: 'pick', nodeId, ...(rect ? { rect } : {}) },
     });
   }
 }
@@ -281,7 +281,7 @@ export function dumpAnchors(): AnchorDump[] {
       enabled: anchor.enabled,
       ...(anchor.reason === undefined ? {} : { reason: anchor.reason }),
       editor: anchor.editor,
-      via: anchor.via.kind,
+      via   : anchor.via.kind,
       ...(anchor.via.kind === 'pick' ? { nodeId: anchor.via.nodeId } : {}),
       ...(rect ? { rect: plain(rect) } : {}),
     };
@@ -290,11 +290,11 @@ export function dumpAnchors(): AnchorDump[] {
 
 /** A `DOMRect` does not survive `JSON.stringify`, so the sweep is handed a plain object. */
 const plain = (rect: AnchorRect): AnchorRect => ({
-  left: rect.left,
-  top: rect.top,
-  right: rect.right,
+  left  : rect.left,
+  top   : rect.top,
+  right : rect.right,
   bottom: rect.bottom,
-  width: rect.width,
+  width : rect.width,
   height: rect.height,
 });
 
@@ -351,8 +351,8 @@ export function strayAnchors(): string[] {
 export function installAnchors(): void {
   window.__vnAnchors = {
     generation: () => generation,
-    dump: dumpAnchors,
-    tree: menuAnchors,
-    strays: strayAnchors,
+    dump      : dumpAnchors,
+    tree      : menuAnchors,
+    strays    : strayAnchors,
   };
 }

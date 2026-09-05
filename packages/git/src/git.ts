@@ -25,7 +25,7 @@ function run(cwd: string, args: string[], indexFile?: string): Promise<RunResult
       {
         cwd,
         windowsHide: true,
-        maxBuffer: 64 * 1024 * 1024,
+        maxBuffer  : 64 * 1024 * 1024,
         ...(indexFile ? { env: { ...process.env, GIT_INDEX_FILE: indexFile } } : {}),
       },
       (err, stdout, stderr) => {
@@ -221,11 +221,11 @@ export class Git {
       .map((l) => {
         const [hash, shortHash, author, date, subject] = l.split(FIELD_SEP);
         return {
-          hash: hash ?? '',
+          hash     : hash ?? '',
           shortHash: shortHash ?? '',
-          author: author ?? '',
-          date: date ?? '',
-          subject: subject ?? '',
+          author   : author ?? '',
+          date     : date ?? '',
+          subject  : subject ?? '',
         };
       });
   }

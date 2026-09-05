@@ -11,12 +11,12 @@ import { writeGraph, writeGroupDef } from '../graphs.js';
 import { WorkspaceSession, type SessionDeps } from '../session.js';
 
 const deps: SessionDeps = {
-  emitEvent: () => {},
-  emitReport: () => {},
-  requestPlan: () => Promise.resolve({ approved: false }),
-  requestAnswer: () => Promise.resolve([]),
+  emitEvent     : () => {},
+  emitReport    : () => {},
+  requestPlan   : () => Promise.resolve({ approved: false }),
+  requestAnswer : () => Promise.resolve([]),
   requestConfirm: () => Promise.resolve(false),
-  pushBusy: () => {},
+  pushBusy      : () => {},
 };
 
 let root: string;
@@ -94,7 +94,7 @@ describe('graphDoc', () => {
     expect(templateOf(second)).toContain('in ink wash');
 
     expect(await session.groupDoc('missing')).toEqual({
-      ok: false,
+      ok    : false,
       reason: 'there is no missing group in this project',
     });
   });

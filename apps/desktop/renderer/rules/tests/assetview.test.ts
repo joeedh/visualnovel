@@ -17,40 +17,40 @@ import {
 import type { AssetFailure, AssetInfo } from '../../../src/shared/ipc.js';
 
 const info = (over: Partial<AssetInfo> = {}): AssetInfo => ({
-  hash: 'a1b2c3d4',
-  ext: 'png',
-  kind: 'location_ref',
-  label: 'Café Mori — night',
-  base: true,
-  accepted: false,
+  hash      : 'a1b2c3d4',
+  ext       : 'png',
+  kind      : 'location_ref',
+  label     : 'Café Mori — night',
+  base      : true,
+  accepted  : false,
   sourceTask: 't1',
-  stale: false,
-  prereqs: [],
-  rungs: [],
+  stale     : false,
+  prereqs   : [],
+  rungs     : [],
   ...over,
 });
 
 const portrait = (over: Partial<AssetInfo> = {}): AssetInfo =>
   info({
-    kind: 'portrait',
+    kind : 'portrait',
     label: 'Aiko',
     rungs: [{ target: 'character:aiko', label: 'Aiko' }],
     ...over,
   });
 
 const failed = (over: Partial<AssetFailure> = {}): AssetFailure => ({
-  task: 't1',
-  status: 'failed',
-  error: 'the image model returned 503',
-  attempts: 2,
+  task       : 't1',
+  status     : 'failed',
+  error      : 'the image model returned 503',
+  attempts   : 2,
   maxAttempts: 2,
-  later: false,
+  later      : false,
   ...over,
 });
 
 const concept = (over: Partial<AssetInfo> = {}): AssetInfo =>
   info({
-    kind: 'concept',
+    kind : 'concept',
     label: 'Café Mori — an aerial shot at dawn',
     rungs: [{ target: 'location:cafe', label: 'Café Mori' }],
     ...over,
@@ -83,12 +83,12 @@ describe('locationOf', () => {
 describe('promoteAction', () => {
   it('offers the location a concept sketches', () => {
     expect(promoteAction(concept())).toEqual({
-      ok: true,
-      id: 'art.promote',
-      props: { hash: 'a1b2c3d4' },
-      label: 'Promote',
+      ok        : true,
+      id        : 'art.promote',
+      props     : { hash: 'a1b2c3d4' },
+      label     : 'Promote',
       locationId: 'cafe',
-      variants: [],
+      variants  : [],
     });
   });
 
@@ -103,21 +103,21 @@ describe('promoteAction', () => {
   it('refuses a character concept, and a plate that is already what it is', () => {
     const person = promoteAction(concept({ rungs: [{ target: 'character:aiko', label: 'Aiko' }] }));
     expect(person).toEqual({
-      ok: false,
-      id: 'art.promote',
+      ok    : false,
+      id    : 'art.promote',
       reason: expect.stringContaining('approval gate'),
     });
     expect(promoteAction(info())).toEqual({
-      ok: false,
-      id: 'art.promote',
+      ok    : false,
+      id    : 'art.promote',
       reason: expect.stringContaining('only a concept'),
     });
   });
 
   it('refuses a concept bound to nothing, rather than picking a sheet', () => {
     expect(promoteAction(concept({ rungs: [] }))).toEqual({
-      ok: false,
-      id: 'art.promote',
+      ok    : false,
+      id    : 'art.promote',
       reason: expect.stringContaining('no location'),
     });
   });
@@ -126,11 +126,11 @@ describe('promoteAction', () => {
 describe('replaceAction', () => {
   it('offers the slot the asset itself fills', () => {
     expect(replaceAction(info({ slot: 'plate:cafe/night' }))).toEqual({
-      ok: true,
-      id: 'asset.replace',
+      ok   : true,
+      id   : 'asset.replace',
       props: { hash: 'a1b2c3d4' },
       label: 'Replace with a file…',
-      slot: 'plate:cafe/night',
+      slot : 'plate:cafe/night',
     });
   });
 
@@ -138,16 +138,16 @@ describe('replaceAction', () => {
   // main leaves the field off for all three, so the strip is absent for all three.
   it('is absent for anything that is not the picture in a slot', () => {
     expect(replaceAction(concept())).toEqual({
-      ok: false,
-      id: 'asset.replace',
+      ok    : false,
+      id    : 'asset.replace',
       reason: expect.stringContaining('fills no slot'),
     });
   });
 
   it('refuses a portrait, whose look is the gate’s to bless', () => {
     expect(replaceAction(portrait({ slot: 'portrait:aiko' }))).toEqual({
-      ok: false,
-      id: 'asset.replace',
+      ok    : false,
+      id    : 'asset.replace',
       reason: expect.stringContaining('gate.approve'),
     });
   });
@@ -156,8 +156,8 @@ describe('replaceAction', () => {
 describe('approveAction', () => {
   it('sends a portrait to the gate, which is the command that also writes character.md', () => {
     expect(approveAction(portrait())).toEqual({
-      ok: true,
-      id: 'gate.approve',
+      ok   : true,
+      id   : 'gate.approve',
       props: { characterId: 'aiko', hash: 'a1b2c3d4' },
       label: 'Approve',
     });
@@ -165,8 +165,8 @@ describe('approveAction', () => {
 
   it('accepts anything else generically, across both roots', () => {
     expect(approveAction(info())).toEqual({
-      ok: true,
-      id: 'asset.accept',
+      ok   : true,
+      id   : 'asset.accept',
       props: { hash: 'a1b2c3d4' },
       label: 'Accept',
     });
@@ -178,8 +178,8 @@ describe('approveAction', () => {
     const both = [portrait({ accepted: true }), info({ accepted: true })];
     for (const one of both) {
       expect(approveAction(one)).toEqual({
-        ok: true,
-        id: 'asset.unapprove',
+        ok   : true,
+        id   : 'asset.unapprove',
         props: { hash: 'a1b2c3d4' },
         label: 'Un-approve',
       });
@@ -198,8 +198,8 @@ describe('approveAction', () => {
   // appear to do nothing at all
   it('puts an older take back in its slot rather than only flagging it', () => {
     expect(approveAction(info({ newerTake: 'e5f6a7b8' }))).toEqual({
-      ok: true,
-      id: 'asset.restore',
+      ok   : true,
+      id   : 'asset.restore',
       props: { hash: 'a1b2c3d4' },
       label: 'Accept',
     });
@@ -213,8 +213,8 @@ describe('approveAction', () => {
   it('refuses an older take whose upstream is unapproved, like any other', () => {
     const waiting = 'Approve what this was drawn from first: cafe — night plate is not approved.';
     expect(approveAction(info({ newerTake: 'e5f6a7b8', unapproved: waiting }))).toEqual({
-      ok: false,
-      id: 'asset.accept',
+      ok    : false,
+      id    : 'asset.accept',
       reason: waiting,
     });
   });
@@ -223,8 +223,8 @@ describe('approveAction', () => {
   // concept — so the button says so instead of offering a state with no meaning.
   it('refuses a concept, which promotion is for', () => {
     expect(approveAction(concept())).toEqual({
-      ok: false,
-      id: 'asset.accept',
+      ok    : false,
+      id    : 'asset.accept',
       reason: expect.stringContaining('Promote it to a plate'),
     });
   });
@@ -232,8 +232,8 @@ describe('approveAction', () => {
   // A concept has no downstream and an upload has no upstream, so both are refused
   it('refuses an upload, which nothing generated', () => {
     expect(approveAction(info({ kind: 'reference', label: 'moodboard.png' }))).toEqual({
-      ok: false,
-      id: 'asset.accept',
+      ok    : false,
+      id    : 'asset.accept',
       reason: expect.stringContaining('pointed at'),
     });
   });
@@ -244,23 +244,23 @@ describe('approveAction', () => {
     const waiting =
       'Approve what this was drawn from first: cafe — night plate is not approved yet.';
     expect(approveAction(info({ unapproved: waiting }))).toEqual({
-      ok: false,
-      id: 'asset.accept',
+      ok    : false,
+      id    : 'asset.accept',
       reason: waiting,
     });
     // The unapproved check runs ahead of the portrait split, so the gate button greys out too, and
     // the refusal names the gate rather than the generic accept
     expect(approveAction(portrait({ unapproved: waiting }))).toEqual({
-      ok: false,
-      id: 'gate.approve',
+      ok    : false,
+      id    : 'gate.approve',
       reason: waiting,
     });
   });
 
   it('refuses a portrait whose character the project has lost, rather than guessing one', () => {
     expect(approveAction(portrait({ rungs: [] }))).toEqual({
-      ok: false,
-      id: 'gate.approve',
+      ok    : false,
+      id    : 'gate.approve',
       reason: 'This portrait names no character — approve it from the gate.',
     });
   });
@@ -273,31 +273,31 @@ describe('promptEditable', () => {
     expect(
       promptEditable(concept({ prompt: 'Subject: Café Mori. from above', title: 'aerial' })),
     ).toEqual({
-      ok: true,
-      id: 'art.redraw',
-      props: { hash: 'a1b2c3d4' },
-      label: 'Redraw',
+      ok    : true,
+      id    : 'art.redraw',
+      props : { hash: 'a1b2c3d4' },
+      label : 'Redraw',
       prompt: 'Subject: Café Mori. from above',
-      title: 'aerial',
+      title : 'aerial',
     });
   });
 
   it('starts empty for a concept the manifest recorded nothing for', () => {
     expect(promptEditable(concept())).toEqual({
-      ok: true,
-      id: 'art.redraw',
-      props: { hash: 'a1b2c3d4' },
-      label: 'Redraw',
+      ok    : true,
+      id    : 'art.redraw',
+      props : { hash: 'a1b2c3d4' },
+      label : 'Redraw',
       prompt: '',
-      title: '',
+      title : '',
     });
   });
 
   it('refuses every derived kind, naming the clauses as the way those move', () => {
     const plate = promptEditable(info());
     expect(plate).toEqual({
-      ok: false,
-      id: 'art.redraw',
+      ok    : false,
+      id    : 'art.redraw',
       reason: expect.stringContaining('a clause at a time'),
     });
     expect(plate.ok === false && plate.reason).toContain('location_ref');
@@ -309,7 +309,7 @@ describe('watchSlot', () => {
   it('follows the slot forward when a run fills it again', () => {
     expect(watchSlot(info(), info({ newerTake: 'b2' }), true)).toEqual({
       holding: true,
-      follow: 'b2',
+      follow : 'b2',
     });
     expect(watchSlot(info(), info(), true)).toEqual({ holding: true, follow: '' });
   });
@@ -318,7 +318,7 @@ describe('watchSlot', () => {
     expect(watchSlot(undefined, info(), false).holding).toBe(true);
     expect(watchSlot(info({ hash: 'e5f6' }), info({ newerTake: 'b2' }), true)).toEqual({
       holding: false,
-      follow: '',
+      follow : '',
     });
   });
 
@@ -407,9 +407,9 @@ describe('failureNote', () => {
     const note = failureNote(
       info({
         failure: failed({
-          status: 'needs_human',
+          status  : 'needs_human',
           attempts: 0,
-          error: 'shot still has blocking defects after 4 attempts',
+          error   : 'shot still has blocking defects after 4 attempts',
         }),
       }),
     );
@@ -433,7 +433,7 @@ describe('failureNote', () => {
 describe('promptShown', () => {
   it('prefers today’s derivation, which is what a regenerate would send', () => {
     expect(promptShown(info({ prompt: 'old', derived: 'new' }))).toEqual({
-      text: 'new',
+      text   : 'new',
       derived: true,
     });
   });
@@ -472,18 +472,18 @@ describe('taskAction', () => {
   // so the hash is published and only then is the pane opened.
   it('publishes the task before it opens the pane that reads one', () => {
     expect(taskAction('t1')).toEqual({
-      ok: true,
-      id: 'view.open',
-      props: { editor: 'inspector', where: 'elsewhere' },
-      label: 'Task',
+      ok     : true,
+      id     : 'view.open',
+      props  : { editor: 'inspector', where: 'elsewhere' },
+      label  : 'Task',
       publish: { taskHash: 't1' },
     });
   });
 
   it('refuses an asset the manifest records no task for', () => {
     expect(taskAction(undefined)).toEqual({
-      ok: false,
-      id: 'view.open',
+      ok    : false,
+      id    : 'view.open',
       reason: 'The manifest records no task for this asset.',
     });
     expect(taskAction('')).toMatchObject({ ok: false });

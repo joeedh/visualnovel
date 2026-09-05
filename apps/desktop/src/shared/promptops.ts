@@ -27,8 +27,7 @@ export interface PromptOrderState {
 }
 
 export type MoveChunkOp =
-  | { ok: true; order: string[]; message: string }
-  | { ok: false; error: string; noop: boolean };
+  { ok: true; order: string[]; message: string } | { ok: false; error: string; noop: boolean };
 
 /** The insertion point above the first chunk — `prompt.moveChunk`'s empty `after`. */
 export const TOP_CHUNK = 'top';

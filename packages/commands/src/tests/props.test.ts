@@ -1,10 +1,10 @@
 import { coerceProps, prop } from '../props.js';
 
 const specs = {
-  name: prop.string('the name'),
+  name : prop.string('the name'),
   count: prop.number('how many', { default: 1, min: 0, max: 10 }),
-  mock: prop.boolean('dry run', { default: false }),
-  mode: prop.oneOf(['plan', 'execute'] as const, 'agent mode'),
+  mock : prop.boolean('dry run', { default: false }),
+  mode : prop.oneOf(['plan', 'execute'] as const, 'agent mode'),
   paths: prop.stringList('files', { default: [] }),
 };
 
@@ -15,7 +15,7 @@ function coerce(raw: Record<string, unknown>) {
 describe('coerceProps', () => {
   it('applies defaults for omitted optional props', () => {
     expect(coerce({ name: 'a', mode: 'plan' })).toEqual({
-      ok: true,
+      ok   : true,
       value: { name: 'a', mode: 'plan', count: 1, mock: false, paths: [] },
     });
   });
@@ -43,14 +43,14 @@ describe('coerceProps', () => {
   it('rejects a value outside an enum', () => {
     const result = coerce({ name: 'a', mode: 'sideways' });
     expect(result).toMatchObject({
-      ok: false,
+      ok    : false,
       errors: ['property "mode" must be one of plan | execute'],
     });
   });
 
   it('enforces numeric bounds', () => {
     expect(coerce({ name: 'a', mode: 'plan', count: 99 })).toMatchObject({
-      ok: false,
+      ok    : false,
       errors: ['property "count" must be <= 10'],
     });
   });
@@ -67,7 +67,7 @@ describe('prop builders', () => {
     // `false` is a real default, not an absent one.
     expect(prop.boolean('x', { default: false })).toMatchObject({
       required: false,
-      default: false,
+      default : false,
     });
   });
 
@@ -75,7 +75,7 @@ describe('prop builders', () => {
     const dirSpecs = { path: prop.directory('where') };
     expect(prop.directory('where').kind).toBe('directory');
     expect(coerceProps(dirSpecs, { path: 'C:/dev/x' })).toEqual({
-      ok: true,
+      ok   : true,
       value: { path: 'C:/dev/x' },
     });
     expect(coerceProps(dirSpecs, { path: 7 })).toEqual({ ok: true, value: { path: '7' } });

@@ -4,12 +4,12 @@ import { renderSite } from '../site.js';
 /** A playable built by hand. The renderer reads the exporter's output, not the model. */
 function playable(partial: Partial<Playable> = {}): Playable {
   return {
-    version: 1,
-    title: 'Test Story',
-    start: 'one',
+    version        : 1,
+    title          : 'Test Story',
+    start          : 'one',
     portraitOverlay: false,
-    characters: {},
-    scenes: {},
+    characters     : {},
+    scenes         : {},
     ...partial,
   };
 }
@@ -80,8 +80,8 @@ describe('renderSite', () => {
     const build = renderSite(
       playable({
         scenes: {
-          one: { beats: [], choices: [{ label: 'Say hello', goto: 'two' }] },
-          two: { beats: [], choices: [], next: 'three' },
+          one  : { beats: [], choices: [{ label: 'Say hello', goto: 'two' }] },
+          two  : { beats: [], choices: [], next: 'three' },
           three: { beats: [], choices: [] },
         },
       }),
@@ -94,7 +94,7 @@ describe('renderSite', () => {
   it('escapes authored text', () => {
     const build = renderSite(
       playable({
-        title: 'Ink & <Bone>',
+        title : 'Ink & <Bone>',
         scenes: { one: { beats: [{ type: 'narrate', text: '<script>x</script>' }], choices: [] } },
       }),
     );
@@ -125,11 +125,11 @@ describe('renderSite', () => {
   it('lists scenes in reading order, with unreachable ones last', () => {
     const build = renderSite(
       playable({
-        start: 'one',
+        start : 'one',
         scenes: {
           orphan: { beats: [], choices: [] },
-          one: { beats: [], choices: [], next: 'two' },
-          two: { beats: [], choices: [] },
+          one   : { beats: [], choices: [], next: 'two' },
+          two   : { beats: [], choices: [] },
         },
       }),
     );

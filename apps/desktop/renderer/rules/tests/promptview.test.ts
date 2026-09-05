@@ -25,21 +25,21 @@ import {
 } from '../promptview.js';
 
 const chunk = (over: Partial<PromptChunkInfo> = {}): PromptChunkInfo => ({
-  key: 'palette',
+  key     : 'palette',
   category: 'palette',
-  origin: { kind: 'builder' },
-  text: 'Palette: #112233.',
-  derived: 'Palette: #112233.',
-  muted: false,
+  origin  : { kind: 'builder' },
+  text    : 'Palette: #112233.',
+  derived : 'Palette: #112233.',
+  muted   : false,
   ...over,
 });
 
 const view = (over: Partial<PromptView> = {}): PromptView => ({
-  hash: 'abc123',
-  mode: 'chunks',
-  text: 'Watercolour. Aiko.',
-  chunks: [chunk()],
-  held: false,
+  hash   : 'abc123',
+  mode   : 'chunks',
+  text   : 'Watercolour. Aiko.',
+  chunks : [chunk()],
+  held   : false,
   missing: [],
   ...over,
 });
@@ -126,9 +126,9 @@ describe('originAction', () => {
   it('names a character sheet by its conventional path and publishes the selection', () => {
     const action = originAction({ kind: 'outfit', id: 'aiko', outfit: 'gala' });
     expect(action).toMatchObject({
-      ok: true,
-      kind: 'open',
-      editor: 'wiki',
+      ok     : true,
+      kind   : 'open',
+      editor : 'wiki',
       subject: 'characters/aiko/character.md',
       publish: { characterId: 'aiko' },
     });
@@ -139,9 +139,9 @@ describe('originAction', () => {
   it('sends a shot to the timeline by publishing both halves of the selection', () => {
     const action = originAction({ kind: 'shot', sceneId: 's1', shotId: 's1__a', field: 'camera' });
     expect(action).toMatchObject({
-      ok: true,
-      kind: 'open',
-      editor: 'timeline',
+      ok     : true,
+      kind   : 'open',
+      editor : 'timeline',
       subject: '',
       publish: { sceneId: 's1', shotId: 's1__a' },
     });
@@ -149,20 +149,20 @@ describe('originAction', () => {
 
   it('stays in this pane for the two rungs this pane already edits', () => {
     expect(originAction({ kind: 'art-notes', target: 'character:aiko/gala' })).toMatchObject({
-      ok: true,
+      ok  : true,
       kind: 'scroll',
-      to: 'character:aiko/gala',
+      to  : 'character:aiko/gala',
     });
     expect(originAction({ kind: 'request' })).toMatchObject({
-      ok: true,
+      ok  : true,
       kind: 'scroll',
-      to: 'request',
+      to  : 'request',
     });
   });
 
   it('offers no button for a sentence the builders wrote', () => {
     expect(originAction({ kind: 'builder' })).toEqual({
-      ok: false,
+      ok    : false,
       reason: 'The builders wrote this sentence — there is no document behind it.',
     });
   });
@@ -188,8 +188,8 @@ describe('modeStrip', () => {
     expect(strip.map((s) => s.id)).toEqual(['chunks', 'custom', 'agent']);
     expect(strip[0]!.active).toBe(true);
     expect(strip[0]!.action).toEqual({
-      ok: false,
-      id: 'prompt.clear',
+      ok    : false,
+      id    : 'prompt.clear',
       reason: 'This prompt is already in chunks mode.',
     });
   });
@@ -198,8 +198,8 @@ describe('modeStrip', () => {
   it('reaches chunks mode by clearing whichever whole-prompt text is in force', () => {
     const fromCustom = modeStrip(view({ mode: 'custom', custom: 'Just Aiko.' }))[0]!;
     expect(fromCustom.action).toEqual({
-      ok: true,
-      id: 'prompt.clear',
+      ok   : true,
+      id   : 'prompt.clear',
       props: { hash: 'abc123', part: 'custom' },
     });
     const fromAgent = modeStrip(view({ mode: 'agent' }))[0]!;
@@ -208,8 +208,8 @@ describe('modeStrip', () => {
 
   it('prefills a custom prompt with the composed text whole', () => {
     expect(modeStrip(view())[1]!.action).toEqual({
-      ok: true,
-      id: 'prompt.setCustom',
+      ok   : true,
+      id   : 'prompt.setCustom',
       props: { hash: 'abc123', text: 'Watercolour. Aiko.' },
     });
   });
@@ -226,8 +226,8 @@ describe('modeStrip', () => {
 describe('condenseAction', () => {
   it('condenses the chunks as they stand', () => {
     expect(condenseAction(view())).toMatchObject({
-      ok: true,
-      id: 'prompt.condense',
+      ok   : true,
+      id   : 'prompt.condense',
       props: { hash: 'abc123' },
       label: 'Condense…',
     });
@@ -242,20 +242,20 @@ describe('condenseAction', () => {
 
   it('offers to redo a held prompt in the button itself', () => {
     expect(condenseAction(view({ mode: 'agent', held: true }))).toMatchObject({
-      ok: true,
+      ok   : true,
       label: 'Recondense',
     });
   });
 
   it('refuses when there is nothing derived under the prompt', () => {
     expect(condenseAction(view({ frozen: 'Authored, not derived.' }))).toEqual({
-      ok: false,
-      id: 'prompt.condense',
+      ok    : false,
+      id    : 'prompt.condense',
       reason: 'Authored, not derived.',
     });
     expect(condenseAction(view({ chunks: [] }))).toEqual({
-      ok: false,
-      id: 'prompt.condense',
+      ok    : false,
+      id    : 'prompt.condense',
       reason: 'There are no chunks to condense.',
     });
   });
@@ -299,8 +299,8 @@ describe('chunkActs', () => {
     for (const act of acts)
       expect(act.offer.id).toBe(act.key === 'attach' ? 'prompt.addRef' : 'prompt.setChunk');
     expect(acts[0]!.offer).toEqual({
-      ok: true,
-      id: 'prompt.setChunk',
+      ok   : true,
+      id   : 'prompt.setChunk',
       props: { hash: 'abc123', chunk: 'palette', op: 'mute', text: '' },
     });
   });
@@ -311,8 +311,8 @@ describe('chunkActs', () => {
     const acts = chunkActs(view(), chunk());
     expect(acts[1]!.opens).toBe('replace');
     expect(acts[1]!.offer).toEqual({
-      ok: true,
-      id: 'prompt.setChunk',
+      ok   : true,
+      id   : 'prompt.setChunk',
       props: { hash: 'abc123', chunk: 'palette', op: 'replace' },
     });
     expect(CHUNK_SUPPLIES).toEqual(['text']);
@@ -324,8 +324,8 @@ describe('chunkActs', () => {
     const attach = chunkActs(view(), chunk())[3]!;
     expect(attach.picks).toBe(true);
     expect(attach.offer).toEqual({
-      ok: true,
-      id: 'prompt.addRef',
+      ok   : true,
+      id   : 'prompt.addRef',
       props: { hash: 'abc123', chunk: 'palette' },
     });
     expect(REF_SUPPLIES).toEqual(['ref']);
@@ -334,8 +334,8 @@ describe('chunkActs', () => {
   it('refuses muting what is already muted, and resetting what nothing was done to', () => {
     const [mute] = chunkActs(view(), chunk({ muted: true }));
     expect(mute!.offer).toEqual({
-      ok: false,
-      id: 'prompt.setChunk',
+      ok    : false,
+      id    : 'prompt.setChunk',
       reason: 'Already muted.',
     });
     const acts = chunkActs(view(), chunk());
@@ -345,8 +345,8 @@ describe('chunkActs', () => {
   it('offers Reset once anything has been done to the clause', () => {
     const edited = chunkActs(view(), chunk({ edit: 'replace', authored: 'Aiko, in green.' }));
     expect(edited[4]!.offer).toEqual({
-      ok: true,
-      id: 'prompt.setChunk',
+      ok   : true,
+      id   : 'prompt.setChunk',
       props: { hash: 'abc123', chunk: 'palette', op: 'clear', text: '' },
     });
   });
@@ -355,30 +355,30 @@ describe('chunkActs', () => {
 describe('the rest of the prompt pane’s invocations', () => {
   it('detaches one reference by its pin', () => {
     expect(dropRefAction(view(), chunk(), 'pin1')).toEqual({
-      ok: true,
-      id: 'prompt.dropRef',
+      ok   : true,
+      id   : 'prompt.dropRef',
       props: { hash: 'abc123', chunk: 'palette', ref: 'pin1' },
     });
   });
 
   it('leaves the custom prompt’s text to the box, and refuses on a frozen prompt', () => {
     expect(customAction(view())).toEqual({
-      ok: true,
-      id: 'prompt.setCustom',
+      ok   : true,
+      id   : 'prompt.setCustom',
       props: { hash: 'abc123' },
       label: 'Save',
     });
     expect(customAction(view({ frozen: 'Authored.' }))).toEqual({
-      ok: false,
-      id: 'prompt.setCustom',
+      ok    : false,
+      id    : 'prompt.setCustom',
       reason: 'Authored.',
     });
   });
 
   it('checks the prompt in force', () => {
     expect(checkAction(view())).toEqual({
-      ok: true,
-      id: 'prompt.check',
+      ok   : true,
+      id   : 'prompt.check',
       props: { hash: 'abc123' },
       label: 'Check',
     });

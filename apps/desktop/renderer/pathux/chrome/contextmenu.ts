@@ -87,20 +87,20 @@ export function entriesWithVerdicts(
     if (entry.refused !== undefined) {
       return {
         entry,
-        label: `${REFUSED}${entry.label}`,
+        label    : `${REFUSED}${entry.label}`,
         separator: false,
-        enabled: false,
-        message: entry.refused,
+        enabled  : false,
+        message  : entry.refused,
       };
     }
     const check = verdicts[index];
     const refused = check?.state === 'refuse';
     return {
       entry,
-      label: refused ? `${REFUSED}${entry.label}` : entry.label,
+      label    : refused ? `${REFUSED}${entry.label}` : entry.label,
       separator: false,
-      enabled: !refused,
-      message: check && check.state !== 'undeclared' && check.message ? check.message : says,
+      enabled  : !refused,
+      message  : check && check.state !== 'undeclared' && check.message ? check.message : says,
     };
   });
 }

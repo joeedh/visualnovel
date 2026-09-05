@@ -36,7 +36,7 @@ describe('parseMarkdown', () => {
   it('reads a heading, a paragraph and a numbered list', () => {
     const blocks = parseMarkdown('## Gemini\n\nSign in first.\n\n1. Open it.\n2. Copy the key.\n');
     expect(blocks[0]).toEqual({
-      kind: 'heading',
+      kind : 'heading',
       level: 2,
       spans: [{ kind: 'text', text: 'Gemini' }],
     });

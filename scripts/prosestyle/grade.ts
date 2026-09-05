@@ -8,13 +8,13 @@
 
 const PATTERNS: Record<string, RegExp> = {
   // "…the named window when it still exists, else the focused window…"
-  'clause-a-else-b': /,\s+else\s/i,
+  'clause-a-else-b'             : /,\s+else\s/i,
   // "cannot be relied on not to"
-  'double-negative': /\b(cannot|can ?not|never)\b[^.!?]{0,60}\bnot\b/i,
+  'double-negative'             : /\b(cannot|can ?not|never)\b[^.!?]{0,60}\bnot\b/i,
   // "the next pointerdown anywhere"
   'non-assertive-under-definite': /\bthe\b[^.!?,;]{0,40}\b(any|anywhere|anytime|ever)\b/i,
   // "The prompt an asset is generated from, as commands"
-  'head-noun-as': /,\s+(as|in the form of)\s+[^.!?]{0,40}[.!?]?\s*$/i,
+  'head-noun-as'                : /,\s+(as|in the form of)\s+[^.!?]{0,40}[.!?]?\s*$/i,
   // Bold or italic opening after a word has already appeared on the line. One marker or two,
   // since a single asterisk is italic. A list marker is skipped before the test, so the bolded
   // lead-in that labels a bullet does not count as emphasis.
@@ -60,16 +60,16 @@ const RULE_TEXT: Record<string, string> = {
   'fragment-opener':
     'an opening that names a placeholder and defers the real content behind a colon or dash, ' +
     'leaving the first clause without a predicate',
-  'double-negative': 'a negation of a negation in place of a positive claim',
+  'double-negative'             : 'a negation of a negation in place of a positive claim',
   'dangling-pronoun':
     'a pronoun or definite phrase with no antecedent anywhere in the passage shown, such as ' +
     '"the second case", "the other two", or "the same applies" where the passage never says ' +
     'which case, which two, or what applies',
-  'clause-a-else-b': 'an "A, else B" construction in place of separate sentences',
+  'clause-a-else-b'             : 'an "A, else B" construction in place of separate sentences',
   'adverb-hung': 'an adverb hung off the end of a noun phrase, such as "the handler above"',
   'non-assertive-under-definite':
     'a non-assertive word ("any", "anywhere", "ever") inside a definite description',
-  'rhetorical-emphasis': 'bold or italic markup used for emphasis inside a sentence',
+  'rhetorical-emphasis'         : 'bold or italic markup used for emphasis inside a sentence',
   'head-noun-as':
     'a head noun that is not what the thing is, retracted through a trailing ", as X" ' +
     'or ", in the form of X"',

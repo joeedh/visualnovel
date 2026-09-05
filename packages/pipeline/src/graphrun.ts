@@ -109,10 +109,10 @@ function bindingOf(
     case 'outfit_sheet':
       return said.characterId && said.outfit && said.angle
         ? {
-            kind: 'sheet',
+            kind       : 'sheet',
             characterId: said.characterId,
-            outfit: said.outfit,
-            angle: said.angle,
+            outfit     : said.outfit,
+            angle      : said.angle,
           }
         : undefined;
     case 'shot_image': {
@@ -240,7 +240,7 @@ export async function runBoundGraph(
   const lastDone = new Map(binding.journal.lastDone);
   const ctx: GenRunContext = {
     services: binding.services,
-    journal: { latest, lastDone, skipped: binding.journal.skipped },
+    journal : { latest, lastDone, skipped: binding.journal.skipped },
     record: async (record) => {
       latest.set(record.nodeId, record);
       if (record.status === 'done') {
@@ -255,8 +255,8 @@ export async function runBoundGraph(
     targets: [binding.target],
     seeds: {
       [DERIVED_PROMPT]: { prompt: options.prompt },
-      [TASK_REFS]: { assets: JSON.stringify(options.refs) },
-      [REFINE_PROMPT]: { text: options.critique ?? '' },
+      [TASK_REFS]     : { assets: JSON.stringify(options.refs) },
+      [REFINE_PROMPT] : { text: options.critique ?? '' },
     },
     ...(options.force === true ? { force: true } : {}),
   });
@@ -324,8 +324,8 @@ export async function storeGraphImage(
   const bytes = await readDrawn(binding.services, draw.image);
   return deps.store.write(bytes, draw.image.ext, {
     ...meta,
-    prompt: draw.prompt.length > 0 ? draw.prompt : fallback.prompt,
-    refs: fallback.refs.map((r) => r.hash),
+    prompt : draw.prompt.length > 0 ? draw.prompt : fallback.prompt,
+    refs   : fallback.refs.map((r) => r.hash),
     modelId: draw.modelId,
   });
 }

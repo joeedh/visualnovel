@@ -273,10 +273,10 @@ export function taskGraphOf(status: PipelineStatus, story: StoryGraph | null): T
 }
 
 const zeroCounts = (): Record<TaskStatus, number> => ({
-  pending: 0,
-  running: 0,
-  done: 0,
-  failed: 0,
+  pending    : 0,
+  running    : 0,
+  done       : 0,
+  failed     : 0,
   needs_human: 0,
 });
 
@@ -345,13 +345,13 @@ export function clusteredGraphOf(model: TaskGraphModel): TaskGraphModel {
     let cluster = clusters.get(key);
     if (!cluster) {
       cluster = {
-        kind: 'cluster',
-        id: key,
-        group: groupOf(key),
-        label: clusterLabel(key, view),
-        counts: zeroCounts(),
+        kind     : 'cluster',
+        id       : key,
+        group    : groupOf(key),
+        label    : clusterLabel(key, view),
+        counts   : zeroCounts(),
         unplanned: 0,
-        members: 0,
+        members  : 0,
       };
       clusters.set(key, cluster);
     }

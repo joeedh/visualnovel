@@ -75,7 +75,7 @@ function entryOf(
     if (scenes.size > 0) {
       diagnostics.push({
         severity: 'error',
-        code: 'missing_start',
+        code    : 'missing_start',
         message: `project.yaml has no start:, and scenes/ has no order to take an entry scene from; add start: <scene id>`,
       });
     }
@@ -84,9 +84,9 @@ function entryOf(
   if (!scenes.has(inputs.start)) {
     diagnostics.push({
       severity: 'error',
-      code: 'unknown_start',
-      message: `project.yaml start: names unknown scene "${inputs.start}"`,
-      where: inputs.start,
+      code    : 'unknown_start',
+      message : `project.yaml start: names unknown scene "${inputs.start}"`,
+      where   : inputs.start,
     });
     return undefined;
   }
@@ -115,11 +115,11 @@ function mergeMinedLocations(
     } else {
       locations.set(id, {
         id,
-        name: nameById.get(id) ?? id,
+        name       : nameById.get(id) ?? id,
         description: '',
-        palette: [],
-        variants: [...variants].map((v) => ({ id: v, description: '' })),
-        mined: true,
+        palette    : [],
+        variants   : [...variants].map((v) => ({ id: v, description: '' })),
+        mined      : true,
       });
     }
   }
@@ -142,9 +142,9 @@ function idAgrees(
   if (declared === doc.id) return true;
   diagnostics.push({
     severity: 'error',
-    code: 'entity_id_mismatch',
+    code    : 'entity_id_mismatch',
     message: `${doc.file} declares ${kind} id "${declared}" but its name says "${doc.id}"; the two must agree`,
-    where: doc.id,
+    where   : doc.id,
   });
   return false;
 }
@@ -179,11 +179,11 @@ function retiredReferenceImages(id: string, data: Record<string, unknown>): Diag
   if (!Array.isArray(paths) || paths.length === 0) return undefined;
   return {
     severity: 'warning',
-    code: 'retired_reference_images',
+    code    : 'retired_reference_images',
     message:
       `character "${id}" sets reference_images (${paths.join(', ')}), which nothing has ever ` +
       `read; upload the files with \`asset.upload\` and attach them to a prompt clause instead`,
-    where: id,
+    where   : id,
   };
 }
 
@@ -202,9 +202,9 @@ function resolveCast(
     } else {
       diagnostics.push({
         severity: 'warning',
-        code: 'unknown_character',
-        message: `scene "${scene.id}" references unknown character cue "${cue}"`,
-        where: scene.id,
+        code    : 'unknown_character',
+        message : `scene "${scene.id}" references unknown character cue "${cue}"`,
+        where   : scene.id,
       });
     }
   }
@@ -226,9 +226,9 @@ function validateSceneOutfits(scene: Scene, characters: Map<string, Character>):
     if (!character) {
       diagnostics.push({
         severity: 'warning',
-        code: 'unknown_outfit_character',
+        code    : 'unknown_outfit_character',
         message: `[[outfit: ${characterId}=${outfit}]] in scene "${scene.id}" names no character; ignored`,
-        where: scene.id,
+        where   : scene.id,
       });
       continue;
     }
@@ -236,9 +236,9 @@ function validateSceneOutfits(scene: Scene, characters: Map<string, Character>):
       const has = character.outfits.map((o) => `"${o.id}"`).join(', ');
       diagnostics.push({
         severity: 'warning',
-        code: 'unknown_outfit',
+        code    : 'unknown_outfit',
         message: `scene "${scene.id}" puts "${characterId}" in "${outfit}", which they do not have (they have ${has}); ignored`,
-        where: scene.id,
+        where   : scene.id,
       });
       continue;
     }
@@ -269,9 +269,9 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
     if (characters.has(res.value.id)) {
       diagnostics.push({
         severity: 'error',
-        code: 'duplicate_character',
-        message: `duplicate character id "${res.value.id}"`,
-        where: res.value.id,
+        code    : 'duplicate_character',
+        message : `duplicate character id "${res.value.id}"`,
+        where   : res.value.id,
       });
     }
     const c = res.value;
@@ -280,11 +280,11 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
     if (c.outfits.length > 1 && !c.outfits.some((o) => o.description && o.id === c.defaultOutfit)) {
       diagnostics.push({
         severity: 'warning',
-        code: 'undescribed_default_outfit',
+        code    : 'undescribed_default_outfit',
         message:
           `character "${c.id}" wears "${c.defaultOutfit}" by default, which its outfits map ` +
           `does not describe (it describes ${c.outfits.map((o) => `"${o.id}"`).join(', ')})`,
-        where: c.id,
+        where   : c.id,
       });
     }
     characters.set(c.id, c);
@@ -311,9 +311,9 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
     if (scenes.has(scene.id)) {
       diagnostics.push({
         severity: 'error',
-        code: 'duplicate_scene',
-        message: `duplicate scene id "${scene.id}"`,
-        where: scene.id,
+        code    : 'duplicate_scene',
+        message : `duplicate scene id "${scene.id}"`,
+        where   : scene.id,
       });
     }
     const cast = resolveCast(scene, characters, byName);
@@ -337,26 +337,26 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
       if (!scenes.has(next)) {
         diagnostics.push({
           severity: 'error',
-          code: 'dangling_goto',
-          message: `scene "${scene.id}" points to unknown scene "${next}"`,
-          where: scene.id,
+          code    : 'dangling_goto',
+          message : `scene "${scene.id}" points to unknown scene "${next}"`,
+          where   : scene.id,
         });
       }
     }
     if (!locations.has(scene.location)) {
       diagnostics.push({
         severity: 'error',
-        code: 'unknown_location',
-        message: `scene "${scene.id}" references unknown location "${scene.location}"`,
-        where: scene.id,
+        code    : 'unknown_location',
+        message : `scene "${scene.id}" references unknown location "${scene.location}"`,
+        where   : scene.id,
       });
     }
     if (!reachable.has(scene.id)) {
       diagnostics.push({
         severity: 'warning',
-        code: 'unreachable_scene',
-        message: `scene "${scene.id}" is unreachable from the entry scene`,
-        where: scene.id,
+        code    : 'unreachable_scene',
+        message : `scene "${scene.id}" is unreachable from the entry scene`,
+        where   : scene.id,
       });
     }
   }
@@ -375,12 +375,12 @@ export function modelFromInputs(
   opts: { title: string; start?: string },
 ): ProjectModel {
   return buildModel({
-    title: opts.title,
-    start: opts.start,
+    title        : opts.title,
+    start        : opts.start,
     characterDocs: inputs.characterDocs,
-    locationDocs: inputs.locationDocs,
-    sceneDocs: inputs.sceneDocs,
-    diagnostics: inputs.diagnostics,
+    locationDocs : inputs.locationDocs,
+    sceneDocs    : inputs.sceneDocs,
+    diagnostics  : inputs.diagnostics,
   });
 }
 

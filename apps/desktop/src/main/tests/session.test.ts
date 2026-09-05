@@ -34,12 +34,12 @@ import { setChoice, setNext, spliceScene } from '@vn/scriptedit';
 
 // The three permission doors answer as an abandoned window would: no plan, no answers, no consent
 const deps: SessionDeps = {
-  emitEvent: () => {},
-  emitReport: () => {},
-  requestPlan: () => Promise.resolve({ approved: false }),
-  requestAnswer: () => Promise.resolve([]),
+  emitEvent     : () => {},
+  emitReport    : () => {},
+  requestPlan   : () => Promise.resolve({ approved: false }),
+  requestAnswer : () => Promise.resolve([]),
   requestConfirm: () => Promise.resolve(false),
-  pushBusy: () => {},
+  pushBusy      : () => {},
 };
 
 const sessionFor = (p: TestProject) => new WorkspaceSession(p.dir, true, deps);
@@ -159,11 +159,11 @@ describe('WorkspaceSession — branch editing', () => {
       'observe#next',
     ]);
     expect(graph.edges[0]).toMatchObject({
-      from: 'arrival',
-      to: 'greet',
-      kind: 'choice',
-      label: 'Speak up',
-      index: 0,
+      from    : 'arrival',
+      to      : 'greet',
+      kind    : 'choice',
+      label   : 'Speak up',
+      index   : 0,
       dangling: false,
     });
     expect(graph.scenes.every((s) => s.reachable)).toBe(true);
@@ -388,7 +388,7 @@ describe('WorkspaceSession — scenes authored as chunks', () => {
 
     const edges = result.graph?.edges ?? [];
     expect(edges.find((e) => e.id === 'arrival#choice:0')).toMatchObject({
-      to: 'rooftop',
+      to   : 'rooftop',
       label: 'Speak up',
     });
     expect(edges.find((e) => e.id === 'rooftop#next')).toMatchObject({ to: 'greet' });
@@ -493,11 +493,11 @@ describe('WorkspaceSession — prose editing', () => {
     const before = (await session.sceneCoverage('rooftop')).lines.map((l) => l.id);
     const result = await session.editScene((s) =>
       insertLine(s, {
-        scene: 'rooftop',
-        after: 'rooftop:L1',
-        kind: 'dialogue',
+        scene  : 'rooftop',
+        after  : 'rooftop:L1',
+        kind   : 'dialogue',
         speaker: 'HARUKI',
-        text: 'You came.',
+        text   : 'You came.',
       }),
     );
 
@@ -570,7 +570,7 @@ describe('WorkspaceSession — prose editing', () => {
     );
 
     expect(result).toMatchObject({
-      ok: true,
+      ok     : true,
       written: ['scenes/arrival.md'],
       removed: [ROOFTOP],
     });
@@ -610,11 +610,11 @@ describe('WorkspaceSession — prose editing', () => {
     const shots: Shot[] = Object.entries(coverage).map(([id, coversLines]) => ({
       id: `${sceneId}__${id}`,
       sceneId,
-      framing: 'medium',
+      framing : 'medium',
       location: 'rooftop/sunset',
       subjects: [],
       coversLines,
-      image: `image-of-${id}`,
+      image : `image-of-${id}`,
       status: 'accepted',
     }));
     await writeShots(p.paths, sceneId, shots);
@@ -703,8 +703,8 @@ describe('WorkspaceSession — outfits', () => {
 
   beforeEach(async () => {
     p = await makeProject({
-      title: 'Outfits',
-      script: SCRIPTS.linear,
+      title     : 'Outfits',
+      script    : SCRIPTS.linear,
       characters: [
         { id: 'aiko', outfits: { uniform: 'navy blazer', track: 'club tracksuit' } },
         { id: 'ren', outfits: { uniform: 'grey blazer' } },
@@ -713,13 +713,13 @@ describe('WorkspaceSession — outfits', () => {
     session = sessionFor(p);
     await writeShots(p.paths, 'arrival', [
       {
-        id: 'arrival__beat1',
-        sceneId: 'arrival',
-        framing: 'medium',
-        location: 'classroom/day',
-        subjects: [{ characterId: 'aiko' }],
+        id         : 'arrival__beat1',
+        sceneId    : 'arrival',
+        framing    : 'medium',
+        location   : 'classroom/day',
+        subjects   : [{ characterId: 'aiko' }],
         coversLines: ['arrival:L2'],
-        status: 'pending',
+        status     : 'pending',
       },
     ]);
   });
@@ -742,7 +742,7 @@ describe('WorkspaceSession — outfits', () => {
     // A noop rather than a plain refusal, so the control offering it is dropped rather than
     // disabled
     expect(await session.previewSceneOutfit('arrival', 'aiko', 'track')).toMatchObject({
-      ok: false,
+      ok  : false,
       noop: true,
     });
   });
@@ -788,8 +788,8 @@ describe('WorkspaceSession — outfits', () => {
   it('carries the wardrobe and the overrides in the coverage the strip is built from', async () => {
     const before = await session.sceneCoverage('arrival');
     expect(before.cast).toContainEqual({
-      id: 'aiko',
-      outfits: ['uniform', 'track'],
+      id           : 'aiko',
+      outfits      : ['uniform', 'track'],
       defaultOutfit: 'uniform',
     });
     expect(before.shots[0]!.outfits).toEqual({});
@@ -833,12 +833,12 @@ describe('WorkspaceSession — outfits', () => {
     expect(off).toMatchObject({ ok: true, written: ['vngen/work/shots/arrival.json'] });
     expect((await readShots(p.paths, 'arrival'))?.shots[0]).toMatchObject({
       castOptional: true,
-      subjects: [{ characterId: 'aiko' }],
+      subjects    : [{ characterId: 'aiko' }],
     });
     expect(off.coverage?.shots[0]!.castOptional).toBe(true);
 
     expect(await session.previewShotCast('arrival', 'arrival__beat1', false)).toMatchObject({
-      ok: false,
+      ok  : false,
       noop: true,
     });
 
@@ -930,7 +930,7 @@ describe('WorkspaceSession — Fountain in and out', () => {
     // With the chunks removed there is no screenplay either, which refuses from the other side
     await fs.rm(join(p.dir, 'scenes'), { recursive: true });
     expect(await session.previewImport()).toMatchObject({
-      ok: false,
+      ok     : false,
       message: 'There is no screenplay/*.fountain to import.',
     });
   });
@@ -961,11 +961,11 @@ describe('WorkspaceSession — the story bible', () => {
 
   beforeAll(async () => {
     p = await makeProject({
-      title: 'Bible',
+      title : 'Bible',
       script: SCRIPTS.linear,
       files: {
         'wiki/history/canal.md': '# The canal\n\nThe school was raised over a filled canal.\n',
-        'wiki/cast/notes.md': '# Notes\n\nAiko has never seen the canal drained.\n',
+        'wiki/cast/notes.md'   : '# Notes\n\nAiko has never seen the canal drained.\n',
       },
     });
     session = sessionFor(p);
@@ -1004,9 +1004,9 @@ describe('WorkspaceSession — documents', () => {
 
   beforeEach(async () => {
     p = await makeProject({
-      title: 'Docs',
+      title : 'Docs',
       script: SCRIPTS.linear,
-      files: { 'wiki/history.md': '# History\n\nThe canal was filled in 1911.\n' },
+      files : { 'wiki/history.md': '# History\n\nThe canal was filled in 1911.\n' },
     });
     session = sessionFor(p);
   });
@@ -1075,7 +1075,7 @@ describe('WorkspaceSession — documents', () => {
   it('scaffolds each kind in its conventional home, deriving the id from the name', async () => {
     const character = await session.createDoc('character', 'Ada Lovelace');
     expect(character.ok && character).toMatchObject({
-      id: 'ada_lovelace',
+      id  : 'ada_lovelace',
       path: 'characters/ada_lovelace/character.md',
     });
     expect((await session.createDoc('location', 'The Roof')).ok && true).toBe(true);
@@ -1090,7 +1090,7 @@ describe('WorkspaceSession — documents', () => {
   it('scaffolds a skill as a SKILL.md in a directory of its own', async () => {
     const made = await session.createDoc('skill', 'Continuity Pass');
     expect(made.ok && made).toMatchObject({
-      id: 'continuity-pass',
+      id  : 'continuity-pass',
       path: '.aiagent/skills/continuity-pass/SKILL.md',
     });
     // The same bytes `create_skill` writes, so a reader cannot tell which path made the file
@@ -1175,7 +1175,7 @@ describe('WorkspaceSession — project settings', () => {
     await session.setProjectArtStyle('ink wash, muted');
     expect(await session.previewArtStyle('ink wash, muted')).toMatchObject({ ok: false });
     expect(await session.setProjectArtStyle('ink wash, muted')).toMatchObject({
-      ok: false,
+      ok     : false,
       written: [],
     });
   });
@@ -1326,7 +1326,7 @@ describe('WorkspaceSession — over a generated project', () => {
       ok: true,
     });
     expect(await session.setArtNotes('location:classroom/day', notes)).toMatchObject({
-      ok: true,
+      ok     : true,
       written: ['locations/classroom.md'],
     });
     expect(await p.read('locations/classroom.md')).toContain(`art_notes: ${notes}`);
@@ -1374,7 +1374,7 @@ describe('WorkspaceSession — over a generated project', () => {
   it('writes a seed on the same rung, and offers the config seed as what it inherits', async () => {
     expect(await session.previewArtSeed('location:classroom/day', 12)).toMatchObject({ ok: true });
     expect(await session.setArtSeed('location:classroom/day', 12)).toMatchObject({
-      ok: true,
+      ok     : true,
       written: ['locations/classroom.md'],
     });
     expect(await p.read('locations/classroom.md')).toContain('seed: 12');
@@ -1392,7 +1392,7 @@ describe('WorkspaceSession — over a generated project', () => {
       ok: false,
     });
     expect(await session.setArtSeed('character:nobody', 1)).toMatchObject({
-      ok: false,
+      ok     : false,
       written: [],
     });
   });
@@ -1403,7 +1403,7 @@ describe('WorkspaceSession — over a generated project', () => {
     });
     expect(await session.previewArtNotes('a location', 'x')).toMatchObject({ ok: false });
     expect(await session.setArtNotes('character:nobody', 'x')).toMatchObject({
-      ok: false,
+      ok     : false,
       written: [],
     });
   });
@@ -1513,7 +1513,7 @@ describe('WorkspaceSession — replacing a picture with a file', () => {
     const drawn = await session.drawConcept('the classroom at dusk', '');
     expect((await session.assetInfo(drawn.hash!))!.slot).toBeUndefined();
     expect(await session.previewReplace(drawn.hash!)).toMatchObject({
-      ok: false,
+      ok     : false,
       message: expect.stringContaining('fills no slot'),
     });
   });
@@ -1522,7 +1522,7 @@ describe('WorkspaceSession — replacing a picture with a file', () => {
     const before = await plate();
     const slot = (await session.assetInfo(before))!.slot!;
     expect(await session.previewReplace(before)).toMatchObject({
-      ok: true,
+      ok     : true,
       message: expect.stringContaining('supersed'),
     });
 
@@ -1530,7 +1530,7 @@ describe('WorkspaceSession — replacing a picture with a file', () => {
     await fs.writeFile(file, new Uint8Array([...realPng(), 11, 12, 13]));
     const done = await session.replaceAsset(before, file);
     expect(done).toMatchObject({
-      ok: true,
+      ok     : true,
       written: expect.arrayContaining(['vngen/state/tasks.jsonl']),
     });
 
@@ -1570,12 +1570,12 @@ describe('WorkspaceSession — replacing a picture with a file', () => {
       .find((r) => r.hash === shown.sourceTask)!;
     await append({ ...was, status: 'failed', error, attempts: [{ attempt: 1, refs: [], error }] });
     expect((await session.assetInfo(node.hash!))!.failure).toMatchObject({
-      task: shown.sourceTask,
+      task  : shown.sourceTask,
       status: 'failed',
       error,
-      attempts: 1,
+      attempts   : 1,
       maxAttempts: 2,
-      later: false,
+      later      : false,
     });
 
     // An art-notes edit re-keys the slot, so what the pane reports next is a task these bytes never
@@ -1587,13 +1587,13 @@ describe('WorkspaceSession — replacing a picture with a file', () => {
     const next = (await session.status()).slots.find((s) => s.key === node.key)!.taskHash!;
     expect(next).not.toBe(shown.sourceTask);
     await append({
-      hash: next,
-      kind: 'location_ref',
-      deps: [],
-      inputs: {},
-      status: 'needs_human',
+      hash    : next,
+      kind    : 'location_ref',
+      deps    : [],
+      inputs  : {},
+      status  : 'needs_human',
       attempts: [],
-      error: 'the render kept coming back with the wrong window',
+      error   : 'the render kept coming back with the wrong window',
     });
     const shownNow = (await session.assetInfo(node.hash!))!;
     expect(shownNow.failure).toMatchObject({ task: next, status: 'needs_human', later: true });
@@ -1603,17 +1603,17 @@ describe('WorkspaceSession — replacing a picture with a file', () => {
     // a task that spent its budget. Regenerating asks for that task rather than this asset's.
     expect(shownNow.stale).toBe(true);
     expect(await session.previewRegenerate(node.hash!)).toMatchObject({
-      ok: true,
+      ok     : true,
       message: expect.stringContaining('gave up'),
     });
     expect(await session.regenerateAsset(node.hash!)).toMatchObject({
-      ok: true,
+      ok     : true,
       message: expect.stringContaining(next.slice(0, 8)),
     });
     // Queued rather than terminal, so the re-render stops being what the pane reports. What it
     // falls back to is the task these bytes came from, which this fixture left `failed` above.
     expect((await session.assetInfo(node.hash!))!.failure).toMatchObject({
-      task: shown.sourceTask,
+      task : shown.sourceTask,
       later: false,
     });
   });
@@ -1656,7 +1656,7 @@ describe('WorkspaceSession — restoring an older take', () => {
 
   it('refuses to put back a take that is already the picture in its slot', async () => {
     expect(await session.previewRestore(await plate())).toMatchObject({
-      ok: false,
+      ok     : false,
       message: expect.stringContaining('already the'),
     });
   });
@@ -1672,7 +1672,7 @@ describe('WorkspaceSession — restoring an older take', () => {
     const drawnFrom = (await session.assetInfo(first.hash!))!.prompt;
 
     expect(await session.previewRestore(first.hash!)).toMatchObject({
-      ok: true,
+      ok     : true,
       message: expect.stringContaining('again'),
     });
     expect(await session.restoreAsset(first.hash!)).toMatchObject({ ok: true });
@@ -1746,11 +1746,11 @@ describe('WorkspaceSession — the agent asks the author', () => {
     ).recoverApi.bind(session);
 
     const stopped = await recover({
-      message: '400 messages.1.content.0: unexpected `tool_use_id`',
+      message  : '400 messages.1.content.0: unexpected `tool_use_id`',
       transient: false,
-      kind: 'request',
-      attempt: 1,
-      waitMs: 0,
+      kind     : 'request',
+      attempt  : 1,
+      waitMs   : 0,
     });
     expect(choices).toContain('Stop, and look into what went wrong');
     // The turn ends because a diagnosis reads the request that failed, and a retry would put a
@@ -1774,11 +1774,11 @@ describe('WorkspaceSession — the agent asks the author', () => {
 
     for (const kind of ['transient', 'auth', 'unknown'] as const) {
       await recover({
-        message: 'nope',
+        message  : 'nope',
         transient: kind === 'transient',
         kind,
         attempt: 1,
-        waitMs: 0,
+        waitMs : 0,
       });
       expect(choices).not.toContain('Stop, and look into what went wrong');
     }

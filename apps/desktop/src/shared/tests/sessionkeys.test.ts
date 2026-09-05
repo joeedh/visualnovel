@@ -80,13 +80,13 @@ describe('scopedWindowKeys', () => {
   it('takes one workspace out of the install file, unscoped', () => {
     const snapshot = {
       [`pathux.${scope}.window.0.layout`]: 'mine',
-      [`pathux.${scope}.windows`]: 'list',
+      [`pathux.${scope}.windows`]        : 'list',
       [`pathux.${other}.window.0.layout`]: 'theirs',
-      'agent.budget': 'medium',
+      'agent.budget'                   : 'medium',
     };
     expect(scopedWindowKeys(snapshot, scope)).toEqual({
       'pathux.window.0.layout': 'mine',
-      'pathux.windows': 'list',
+      'pathux.windows'        : 'list',
     });
   });
 

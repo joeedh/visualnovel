@@ -26,14 +26,14 @@ export type Verdict = (typeof VERDICTS)[number];
 
 export const VendorReviewSchema = z.object({
   /** The `KEY_VENDORS` id, echoed back so a reply cannot be silently attached to the wrong one. */
-  vendor: z.string(),
-  verdict: z.enum(VERDICTS),
+  vendor  : z.string(),
+  verdict : z.enum(VERDICTS),
   /** One sentence a person can act on without opening the vendor's page. */
-  summary: z.string(),
+  summary : z.string(),
   /** What our file says, quoted, where it drifted. */
-  ours: z.string().optional(),
+  ours    : z.string().optional(),
   /** What the vendor's page says instead, quoted. */
-  theirs: z.string().optional(),
+  theirs  : z.string().optional(),
   /** The replacement wording, ready to paste. Empty unless `drifted`. */
   proposal: z.string().optional(),
 });
@@ -55,12 +55,12 @@ export function unreadable(vendor: string, why: string): VendorReview {
 const INVISIBLE = /<(script|style|noscript|template|svg)\b[^>]*>[\s\S]*?<\/\1>/gi;
 
 const ENTITIES: Record<string, string> = {
-  amp: '&',
-  lt: '<',
-  gt: '>',
-  quot: '"',
-  apos: "'",
-  nbsp: ' ',
+  amp  : '&',
+  lt   : '<',
+  gt   : '>',
+  quot : '"',
+  apos : "'",
+  nbsp : ' ',
   '#39': "'",
 };
 
@@ -205,8 +205,8 @@ export function hasDrift(reviews: readonly VendorReview[]): boolean {
 }
 
 const HEADLINE: Record<Verdict, string> = {
-  agree: 'still matches',
-  drifted: 'has drifted',
+  agree            : 'still matches',
+  drifted          : 'has drifted',
   'could-not-check': 'could not be checked',
 };
 

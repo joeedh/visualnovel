@@ -19,9 +19,9 @@ import {
 } from '../index.js';
 
 const config = projectConfig.parse({
-  title: 'Test',
+  title    : 'Test',
   art_style: 'watercolor',
-  models: { vision: ['gemini', 'claude'] },
+  models   : { vision: ['gemini', 'claude'] },
 });
 
 function asset(
@@ -35,21 +35,21 @@ function asset(
     ext: 'png',
     kind,
     sourceTask: `task-${hash}`,
-    refs: [],
-    modelId: 'm',
+    refs      : [],
+    modelId   : 'm',
     accepted,
     satisfies,
   };
 }
 
 const SHOT: Shot = {
-  id: 'arrival__a',
-  sceneId: 'arrival',
-  framing: 'medium',
-  location: 'day',
-  subjects: [{ characterId: 'aiko' }],
+  id         : 'arrival__a',
+  sceneId    : 'arrival',
+  framing    : 'medium',
+  location   : 'day',
+  subjects   : [{ characterId: 'aiko' }],
   coversLines: [],
-  status: 'pending',
+  status     : 'pending',
 };
 
 /**
@@ -68,7 +68,7 @@ function ctx(over: Partial<SlotGraphContext> = {}): SlotGraphContext {
     [cafe],
   );
   return {
-    model: m,
+    model : m,
     assets: [],
     config,
     shots: new Map([['arrival', [SHOT]]]),

@@ -78,15 +78,15 @@ export function mockServices(options: MockOptions = {}): MockServices {
   const slotAssets = new Map<string, AssetRef>();
 
   const mock: MockServices = {
-    images: [],
-    texts: [],
+    images : [],
+    texts  : [],
     fetches: [],
     assetBytes,
     slotAssets,
     reply: options.reply ?? 'a rewritten line',
     drawn: {
-      bytes: bytes('drawn picture'),
-      ext: 'png',
+      bytes  : bytes('drawn picture'),
+      ext    : 'png',
       modelId: 'mock-image',
       ...options.drawn,
     },
@@ -120,7 +120,7 @@ export function mockServices(options: MockOptions = {}): MockServices {
 
     blobs: {
       stored,
-      read: (hash: string) => Promise.resolve(stored.get(hash)),
+      read : (hash: string) => Promise.resolve(stored.get(hash)),
       write: (data: Uint8Array, ext: string): Promise<GenBlobRef> => {
         const hash = sha256(data);
         stored.set(hash, data);
@@ -143,12 +143,12 @@ export function mockServices(options: MockOptions = {}): MockServices {
       const reply = options.answer(call);
       const body = reply.body ?? '';
       return Promise.resolve({
-        status: reply.status ?? 200,
+        status : reply.status ?? 200,
         headers: {},
-        bytes: typeof body === 'string' ? bytes(body) : body,
+        bytes  : typeof body === 'string' ? bytes(body) : body,
       });
     },
-    key: (name: string) => Promise.resolve(options.keys?.[name]),
+    key  : (name: string) => Promise.resolve(options.keys?.[name]),
   };
 
   return mock;

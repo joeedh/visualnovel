@@ -34,9 +34,9 @@ const SEARCHED: Block[] = [
   { type: 'thinking', thinking: 'which tool approves art?', signature: 'sig' },
   { type: 'server_tool_use', id: SRV, name: 'tool_search_tool_bm25', input: { query: 'approve' } },
   {
-    type: 'tool_search_tool_result',
+    type       : 'tool_search_tool_result',
     tool_use_id: SRV,
-    content: [{ type: 'tool_reference', name: 'approve_assets' }],
+    content    : [{ type: 'tool_reference', name: 'approve_assets' }],
   },
   { type: 'tool_use', id: 'toolu_1', name: 'approve_assets', input: {} },
 ];
@@ -98,12 +98,12 @@ describe('the cached prefix', () => {
     const turns: ChatTurn[] = [
       { role: 'user', content: 'go' },
       {
-        role: 'assistant',
+        role   : 'assistant',
         content: [
           { type: 'text', text: 'ok' },
           { type: 'thinking', thinking: '…', signature: 'sig' },
         ],
-        cache: true,
+        cache  : true,
       },
     ];
     const body = buildConvoRequest(WITH_SYSTEM, { system: 's', turns }, []);
@@ -195,7 +195,7 @@ describe('the transcript', () => {
     // Down-rendered and then merged into the user turn it follows: one message, both blocks.
     expect(messages(body)).toEqual([
       {
-        role: 'user',
+        role   : 'user',
         content: [
           { type: 'text', text: 'go' },
           { type: 'text', text: 'MODE: execute' },

@@ -12,22 +12,22 @@ import { buildPlayable, loadSceneShots } from '../playable.js';
 /** A minimal in-memory {@link AssetStore}: only `manifest()` matters to the exporter. */
 function fakeStore(assets: Asset[] = []): AssetStore {
   return {
-    has: (h) => assets.some((a) => a.hash === h),
-    write: () => Promise.reject(new Error('not implemented')),
-    read: () => Promise.reject(new Error('not implemented')),
-    pathOf: (r) => r.hash,
+    has     : (h) => assets.some((a) => a.hash === h),
+    write   : () => Promise.reject(new Error('not implemented')),
+    read    : () => Promise.reject(new Error('not implemented')),
+    pathOf  : (r) => r.hash,
     manifest: () => assets,
-    accept: () => Promise.resolve(),
+    accept  : () => Promise.resolve(),
   };
 }
 
 const asset = (partial: Partial<Asset> & Pick<Asset, 'hash' | 'kind'>): Asset => ({
-  ext: 'png',
+  ext       : 'png',
   sourceTask: 'task',
-  refs: [],
-  modelId: 'mock',
-  satisfies: [],
-  accepted: true,
+  refs      : [],
+  modelId   : 'mock',
+  satisfies : [],
+  accepted  : true,
   ...partial,
 });
 
@@ -40,10 +40,10 @@ const charDoc = (id: string, name: string) => {
 // dialogue, a choice fork, a linear next, and a two-character scene.
 function sampleModel(): ProjectModel {
   return buildModel({
-    title: 'The Transfer Student',
+    title        : 'The Transfer Student',
     characterDocs: [charDoc('aiko', 'Aiko'), charDoc('haruki', 'Haruki')],
-    locationDocs: [],
-    script: parseFountain(SCRIPTS.branching),
+    locationDocs : [],
+    script       : parseFountain(SCRIPTS.branching),
   });
 }
 
@@ -103,8 +103,8 @@ describe('buildPlayable', () => {
   it('resolves shot images and portraits from the manifest when present', () => {
     const store = fakeStore([
       asset({
-        hash: 'bg1',
-        kind: 'shot_image',
+        hash     : 'bg1',
+        kind     : 'shot_image',
         satisfies: [{ sceneId: 'arrival', shotId: 'arrival__establishing' }],
       }),
       asset({ hash: 'por1', kind: 'portrait', satisfies: [{ characterId: 'aiko' }] }),
@@ -149,21 +149,21 @@ describe('persisted decompositions', () => {
   /** A decomposition the deterministic baseline would never produce — LLM-shaped ids. */
   const llmShots = (): Shot[] => [
     {
-      id: 'arrival__llm-1',
-      sceneId: 'arrival',
-      framing: 'wide',
-      location: 'evening',
-      subjects: [],
+      id         : 'arrival__llm-1',
+      sceneId    : 'arrival',
+      framing    : 'wide',
+      location   : 'evening',
+      subjects   : [],
       coversLines: lines,
-      status: 'accepted',
+      status     : 'accepted',
     },
   ];
 
   it('uses the persisted shots instead of reconstructing the baseline', () => {
     const store = fakeStore([
       asset({
-        hash: 'llm1',
-        kind: 'shot_image',
+        hash     : 'llm1',
+        kind     : 'shot_image',
         satisfies: [{ sceneId: 'arrival', shotId: 'arrival__llm-1' }],
       }),
     ]);

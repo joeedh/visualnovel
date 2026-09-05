@@ -14,11 +14,11 @@ import {
 
 function play(): Playable {
   return {
-    version: 1,
-    title: 'Demo',
-    start: 'a',
+    version        : 1,
+    title          : 'Demo',
+    start          : 'a',
     portraitOverlay: false,
-    characters: { aiko: { name: 'Aiko' } },
+    characters     : { aiko: { name: 'Aiko' } },
     scenes: {
       a: {
         beats: [
@@ -29,10 +29,10 @@ function play(): Playable {
           { type: 'narrate', text: 'Silence.' },
         ],
         choices: [],
-        next: 'b',
+        next   : 'b',
       },
       b: {
-        beats: [{ type: 'say', who: 'aiko', text: 'Again.' }],
+        beats  : [{ type: 'say', who: 'aiko', text: 'Again.' }],
         choices: [
           { label: 'left', goto: 'a' },
           { label: 'right', goto: 'c' },

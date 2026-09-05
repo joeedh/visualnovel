@@ -201,23 +201,23 @@ export class Workspace {
     await bible.refresh();
 
     const characters: CharacterEntry[] = [...model.characters.values()].map((c) => ({
-      id: c.id,
-      name: c.name,
+      id    : c.id,
+      name  : c.name,
       status: c.status,
       ...(characterFiles.has(c.id) ? { file: characterFiles.get(c.id)! } : {}),
     }));
     const locations: LocationEntry[] = [...model.locations.values()].map((l) => ({
-      id: l.id,
-      name: l.name,
+      id   : l.id,
+      name : l.name,
       mined: l.mined,
       ...(locationFiles.has(l.id) ? { file: locationFiles.get(l.id)! } : {}),
     }));
     const scenes: SceneEntry[] = [...model.scenes.values()].map((s) => ({
-      id: s.id,
-      location: s.location,
+      id        : s.id,
+      location  : s.location,
       characters: s.characters,
-      choices: s.choices.length,
-      reachable: model.reachable.has(s.id),
+      choices   : s.choices.length,
+      reachable : model.reachable.has(s.id),
       ...(chunkFiles.has(s.id) ? { file: chunkFiles.get(s.id)! } : {}),
     }));
 
@@ -228,10 +228,10 @@ export class Workspace {
       characters,
       locations,
       scenes,
-      entry: model.entry,
-      bibleFiles: bible.files().length,
-      baseAssets: await baseAssetsOf(this.paths),
-      repos: await this.repos(),
+      entry      : model.entry,
+      bibleFiles : bible.files().length,
+      baseAssets : await baseAssetsOf(this.paths),
+      repos      : await this.repos(),
       diagnostics: model.diagnostics,
     };
   }
@@ -277,7 +277,7 @@ export class Workspace {
   async sceneEditInput(): Promise<SceneEditInput> {
     const { model, inputs } = await this.load();
     return {
-      paths: this.paths,
+      paths  : this.paths,
       sources: sourcesOf(inputs),
       ...(model.entry === undefined ? {} : { entry: model.entry }),
     };
@@ -299,7 +299,7 @@ export class Workspace {
     const loaded = await readShots(this.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
     if (!loaded) {
       return () => ({
-        ok: false,
+        ok   : false,
         error: `Scene "${sceneId}" has no decomposition yet — run the pipeline past the gate.`,
       });
     }
@@ -332,7 +332,7 @@ export class Workspace {
     const { model, inputs } = await this.load();
     const wardrobes = wardrobesOf(model.characters);
     return {
-      op: setSceneOutfit(model.scenes, wardrobes, { scene: sceneId, character, outfit }),
+      op     : setSceneOutfit(model.scenes, wardrobes, { scene: sceneId, character, outfit }),
       sources: sourcesOf(inputs),
     };
   }
@@ -354,7 +354,7 @@ export class Workspace {
     const loaded = await readShots(this.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
     if (!loaded) {
       return {
-        ok: false,
+        ok   : false,
         error: `Scene "${sceneId}" has no decomposition yet — run the pipeline past the gate.`,
       };
     }
@@ -374,7 +374,7 @@ export class Workspace {
     const loaded = await readShots(this.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
     if (!loaded) {
       return {
-        ok: false,
+        ok   : false,
         error: `Scene "${sceneId}" has no decomposition yet — run the pipeline past the gate.`,
       };
     }
@@ -403,7 +403,7 @@ export class Workspace {
       ...(framing ? { framing } : {}),
       subjects,
       variants: location?.variants.map((v) => v.id) ?? [],
-      cast: [...model.characters.keys()],
+      cast    : [...model.characters.keys()],
     });
   }
 
@@ -434,7 +434,7 @@ export class Workspace {
     const loaded = await readShots(this.paths, sceneId, new Set(lineOrder));
     if (!loaded) {
       return {
-        ok: false,
+        ok   : false,
         error: `Scene "${sceneId}" has no shots yet — decompose it or place one by hand first.`,
       };
     }

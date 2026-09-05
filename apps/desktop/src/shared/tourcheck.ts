@@ -41,7 +41,7 @@ export function readTour(text: string): { ok: true; tour: Tour } | { ok: false; 
   }
   if (typeof tour.what !== 'string' || tour.what === '') {
     return {
-      ok: false,
+      ok    : false,
       reason: 'it needs a `what`: one sentence on what the author will have done',
     };
   }

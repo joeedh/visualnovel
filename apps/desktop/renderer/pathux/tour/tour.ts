@@ -62,7 +62,7 @@ export function installTour(): void {
     const ring = ringing();
     return {
       tour: state.tour.id,
-      at: state.at,
+      at  : state.at,
       step: stepOf(state)?.say ?? '',
       ...(ring === undefined ? {} : { ring }),
     };

@@ -194,9 +194,9 @@ export function genEditFor(edit: GraphEdit): GenEditFor {
     case 'moveNodes':
     case 'arrange':
       return {
-        ok: true,
+        ok  : true,
         edit: {
-          op: 'moveNodes',
+          op   : 'moveNodes',
           moves: edit.moves.map((move) => ({ node: move.nodeId, ...at(move) })),
         },
       };
@@ -204,45 +204,45 @@ export function genEditFor(edit: GraphEdit): GenEditFor {
       // A group instance is added by naming its definition; the type alone says nothing.
       if (edit.nodeType === 'GroupNode') {
         return {
-          ok: true,
+          ok  : true,
           edit: { op: 'addGroup', ref: edit.ref ?? '', pos: [edit.x, edit.y] },
         };
       }
       return { ok: true, edit: { op: 'addNode', type: edit.nodeType, pos: [edit.x, edit.y] } };
     case 'duplicateNode':
       return {
-        ok: true,
+        ok  : true,
         edit: { op: 'duplicateNode', node: edit.nodeId, pos: [edit.x, edit.y] },
       };
     case 'deleteNode':
       return { ok: true, edit: { op: 'removeNode', node: edit.nodeId } };
     case 'connect':
       return {
-        ok: true,
+        ok  : true,
         edit: {
-          op: 'link',
-          from: edit.srcNode,
+          op        : 'link',
+          from      : edit.srcNode,
           fromSocket: edit.srcSocket,
-          to: edit.dstNode,
-          toSocket: edit.dstSocket,
+          to        : edit.dstNode,
+          toSocket  : edit.dstSocket,
         },
       };
     case 'disconnect':
       return {
-        ok: true,
+        ok  : true,
         edit: {
-          op: 'unlink',
-          to: edit.dstNode,
-          toSocket: edit.dstSocket,
-          from: edit.srcNode,
+          op        : 'unlink',
+          to        : edit.dstNode,
+          toSocket  : edit.dstSocket,
+          from      : edit.srcNode,
           fromSocket: edit.srcSocket,
         },
       };
     case 'createGroup':
       return {
-        ok: true,
+        ok  : true,
         edit: {
-          op: 'createGroup',
+          op   : 'createGroup',
           nodes: edit.nodeIds,
           ...(edit.ref === undefined || edit.ref === '' ? {} : { ref: edit.ref }),
         },
@@ -251,9 +251,9 @@ export function genEditFor(edit: GraphEdit): GenEditFor {
       return { ok: true, edit: { op: 'ungroup', node: edit.nodeId } };
     case 'exposeEntry':
       return {
-        ok: true,
+        ok  : true,
         edit: {
-          op: 'expose',
+          op  : 'expose',
           kind: edit.entry.kind,
           node: edit.entry.nodeId,
           ...(edit.entry.propKey === undefined ? {} : { key: edit.entry.propKey }),
@@ -265,19 +265,19 @@ export function genEditFor(edit: GraphEdit): GenEditFor {
       return { ok: true, edit: { op: 'reorderExposed', from: edit.from, to: edit.to } };
     case 'repointEntry':
       return {
-        ok: true,
+        ok  : true,
         edit: {
-          op: 'repointExposed',
+          op   : 'repointExposed',
           index: edit.index,
-          node: edit.nodeId,
-          key: edit.propKey as unknown as string,
+          node : edit.nodeId,
+          key  : edit.propKey as unknown as string,
         },
       };
     case 'removeEntry':
       return { ok: true, edit: { op: 'unexpose', index: edit.index } };
     case 'addBoundary':
       return {
-        ok: true,
+        ok  : true,
         edit: { op: 'addBoundary', dir: edit.dir, key: edit.key, type: edit.socketType },
       };
     case 'removeBoundary':
@@ -305,7 +305,7 @@ export function commandFor(target: EditTarget, edit: GenEdit): GenCommand {
   switch (edit.op) {
     case 'moveNodes':
       return {
-        id: 'gengraph.moveNodes',
+        id   : 'gengraph.moveNodes',
         props: {
           slug,
           moves: JSON.stringify(
@@ -321,7 +321,7 @@ export function commandFor(target: EditTarget, edit: GenEdit): GenCommand {
     case 'duplicateNode': {
       const [x, y] = edit.pos ?? [0, 0];
       return {
-        id: 'gengraph.duplicateNode',
+        id   : 'gengraph.duplicateNode',
         props: { slug, node: key(edit.node), x, y, ...inGroup },
       };
     }
@@ -329,43 +329,43 @@ export function commandFor(target: EditTarget, edit: GenEdit): GenCommand {
       return { id: 'gengraph.removeNode', props: { slug, node: key(edit.node), ...inGroup } };
     case 'link':
       return {
-        id: 'gengraph.link',
+        id   : 'gengraph.link',
         props: {
           slug,
-          from: key(edit.from),
+          from      : key(edit.from),
           fromSocket: edit.fromSocket,
-          to: key(edit.to),
-          toSocket: edit.toSocket,
+          to        : key(edit.to),
+          toSocket  : edit.toSocket,
           ...inGroup,
         },
       };
     case 'unlink':
       return {
-        id: 'gengraph.unlink',
+        id   : 'gengraph.unlink',
         props: {
           slug,
-          to: key(edit.to),
-          toSocket: edit.toSocket,
-          from: edit.from === undefined ? '' : key(edit.from),
+          to        : key(edit.to),
+          toSocket  : edit.toSocket,
+          from      : edit.from === undefined ? '' : key(edit.from),
           fromSocket: edit.fromSocket ?? '',
           ...inGroup,
         },
       };
     case 'setProp':
       return {
-        id: 'gengraph.setProp',
+        id   : 'gengraph.setProp',
         props: { slug, node: key(edit.node), key: edit.key, value: String(edit.value), ...inGroup },
       };
     case 'setActiveOutput':
       return { id: 'gengraph.setActiveOutput', props: { slug, node: String(edit.node) } };
     case 'apply':
       return {
-        id: 'gengraph.apply',
+        id   : 'gengraph.apply',
         props: { slug, description: JSON.stringify(edit.description) },
       };
     case 'createGroup':
       return {
-        id: 'gengraph.createGroup',
+        id   : 'gengraph.createGroup',
         props: { slug, nodes: edit.nodes.map(key).join(','), name: edit.ref ?? '', ...inGroup },
       };
     case 'ungroup':
@@ -376,7 +376,7 @@ export function commandFor(target: EditTarget, edit: GenEdit): GenCommand {
     }
     case 'expose':
       return {
-        id: 'gengraph.expose',
+        id   : 'gengraph.expose',
         props: { group, node: key(edit.node), key: edit.key ?? '', label: edit.label ?? '' },
       };
     case 'unexpose':
@@ -385,12 +385,12 @@ export function commandFor(target: EditTarget, edit: GenEdit): GenCommand {
       return { id: 'gengraph.reorderExposed', props: { group, from: edit.from, to: edit.to } };
     case 'repointExposed':
       return {
-        id: 'gengraph.repointExposed',
+        id   : 'gengraph.repointExposed',
         props: { group, index: edit.index, node: key(edit.node), key: edit.key ?? '' },
       };
     case 'addBoundary':
       return {
-        id: 'gengraph.addBoundary',
+        id   : 'gengraph.addBoundary',
         props: { group, dir: edit.dir, key: edit.key, type: edit.type },
       };
     case 'removeBoundary':

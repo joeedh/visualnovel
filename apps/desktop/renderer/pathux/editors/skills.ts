@@ -65,9 +65,9 @@ export class SkillsEditor extends VnEditor {
 
   static override define() {
     return {
-      tagname: 'vn-skills-editor-x',
+      tagname : 'vn-skills-editor-x',
       areaname: 'skills',
-      icon: -1,
+      icon    : -1,
     };
   }
 
@@ -263,7 +263,7 @@ export class SkillsEditor extends VnEditor {
         this.expanded = toggleExpanded(this.expanded, id);
         this.paintTree();
       },
-      onClick: (row) => this.pick(row.node),
+      onClick : (row) => this.pick(row.node),
     });
   }
 
@@ -288,12 +288,12 @@ export class SkillsEditor extends VnEditor {
   private selection(): Selection {
     const ui = this.ui;
     return {
-      sceneId: ui.sceneId,
-      shotId: ui.shotId,
+      sceneId    : ui.sceneId,
+      shotId     : ui.shotId,
       characterId: ui.characterId,
-      docPath: ui.docPath,
-      assetHash: ui.assetHash,
-      graphSlug: ui.graphSlug,
+      docPath    : ui.docPath,
+      assetHash  : ui.assetHash,
+      graphSlug  : ui.graphSlug,
     };
   }
 }

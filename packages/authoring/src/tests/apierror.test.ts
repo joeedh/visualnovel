@@ -15,11 +15,11 @@ import type { ApiFailure } from '../index.js';
 const OTHERS = ['gemini-2.5-pro', 'gpt-5'];
 
 const failure = (over: Partial<ApiFailure> = {}): ApiFailure => ({
-  message: '429 rate limited',
+  message  : '429 rate limited',
   transient: true,
-  kind: 'transient',
-  attempt: 1,
-  waitMs: 1_000,
+  kind     : 'transient',
+  attempt  : 1,
+  waitMs   : 1_000,
   ...over,
 });
 
@@ -54,7 +54,7 @@ describe('reading the answer back', () => {
 
   it('takes the retry row, and the word on its own', () => {
     expect(read(`Retry automatically, up to ${API_RETRIES} times`)).toEqual({
-      do: 'retry',
+      do   : 'retry',
       times: API_RETRIES,
     });
     expect(read('retry')).toEqual({ do: 'retry', times: API_RETRIES });

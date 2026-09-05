@@ -48,10 +48,10 @@ function subject(text: string, fallback: string, max = SUBJECT_MAX): string {
 
 function trailersOf(record: CommandRecord): Record<string, string> {
   const trailers: Record<string, string> = {
-    'Vn-Command': record.id,
-    'Vn-Seq': String(record.seq),
+    'Vn-Command'   : record.id,
+    'Vn-Seq'       : String(record.seq),
     'Vn-Invocation': record.invocation,
-    'Vn-Source': record.source,
+    'Vn-Source'    : record.source,
   };
   // An undo is a new commit restoring an earlier tree rather than a reset, so the trailer
   // records which act it reverses; the reverted commit itself stays in the log
@@ -76,7 +76,7 @@ function distinct(values: string[]): string[] {
 export function seqRanges(seqs: number[]): string {
   const sorted = [...seqs].sort((a, b) => a - b);
   const parts: string[] = [];
-  for (let i = 0; i < sorted.length; ) {
+  for (let i = 0; i < sorted.length;) {
     let end = i;
     while (end + 1 < sorted.length && sorted[end + 1] === sorted[end]! + 1) end++;
     parts.push(end > i ? `${sorted[i]}-${sorted[end]}` : String(sorted[i]));
@@ -93,10 +93,10 @@ export function seqRanges(seqs: number[]): string {
  */
 function trailersOfBatch(records: CommandRecord[]): Record<string, string> {
   return {
-    'Vn-Batch': `${records.length} seqs ${seqRanges(records.map((r) => r.seq))}`,
-    'Vn-Seq': String(records[records.length - 1]!.seq),
+    'Vn-Batch'  : `${records.length} seqs ${seqRanges(records.map((r) => r.seq))}`,
+    'Vn-Seq'    : String(records[records.length - 1]!.seq),
     'Vn-Command': distinct(records.map((r) => r.id)).join(', '),
-    'Vn-Source': distinct(records.map((r) => r.source)).join(', '),
+    'Vn-Source' : distinct(records.map((r) => r.source)).join(', '),
   };
 }
 

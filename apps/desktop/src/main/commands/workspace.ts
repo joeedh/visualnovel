@@ -49,7 +49,7 @@ async function wouldOpen(
     return { ok: false, reason: `${root} is already open in another window.` };
   }
   return {
-    ok: true,
+    ok  : true,
     note: found.project
       ? `Opens ${found.title ?? root}.`
       : `Creates a new project at ${root}: writes project.yaml and initializes a git repo.`,
@@ -81,14 +81,14 @@ async function wouldCreate(
   if (found.exists && !found.directory) return { ok: false, reason: `${root} is a file.` };
   if (!found.empty) {
     return {
-      ok: false,
+      ok    : false,
       reason: `${root} already contains files — open it with workspace.open instead.`,
     };
   }
 
   const note = `Creates a new project at ${root}: a starter scene, a story bible page, project.yaml and a git repo.`;
   return {
-    ok: true,
+    ok  : true,
     note: found.insideRepo
       ? `${note} ${found.insideRepo} already owns this path, so the new project will be a repository nested inside it.`
       : note,
@@ -96,8 +96,8 @@ async function wouldCreate(
 }
 
 export const workspaceCreate = define({
-  id: 'workspace.create',
-  title: 'New project',
+  id         : 'workspace.create',
+  title      : 'New project',
   description:
     'Create a project in a new or empty directory — a starter scene, a story bible page, ' +
     'project.yaml and a git repository — then open it. With `newFolder`, the project goes in a ' +
@@ -106,17 +106,17 @@ export const workspaceCreate = define({
     'conversation and undo history with it.',
   notes:
     'Create a project in a new or empty directory — a starter scene, a story bible page, `project.yaml`, a git repo — then open it. `newFolder` puts it in a `slug(title)` folder inside `path`. Refuses a directory with files in it; warns when it sits inside another repo.',
-  mutating: true,
+  mutating   : true,
   props: {
-    path: prop.directory('the folder the project goes in'),
-    title: prop.string('the project title', { default: '' }),
+    path     : prop.directory('the folder the project goes in'),
+    title    : prop.string('the project title', { default: '' }),
     // Off by default because `workspace.create(path='/x/y')` has always meant "the project goes
     // at /x/y", and every existing caller says it that way. The New Project… menu entry checks it.
     newFolder: prop.boolean('create a folder named after the title inside `path`', {
       default: false,
     }),
   },
-  check: (props, ctx) => wouldCreate(props, ctx.host.session.busy()),
+  check      : (props, ctx) => wouldCreate(props, ctx.host.session.busy()),
   async run(props, ctx) {
     const verdict = await wouldCreate(props, ctx.host.session.busy());
     if (!verdict.ok) throw new Error(verdict.reason);
@@ -129,8 +129,8 @@ export const workspaceCreate = define({
 });
 
 export const workspaceOpen = define({
-  id: 'workspace.open',
-  title: 'Open a project',
+  id         : 'workspace.open',
+  title      : 'Open a project',
   description:
     'Open a project directory, making it one if it is not yet: writes a minimal project.yaml, ' +
     'initializes a git repository and commits whatever is already there. Closes the current ' +
@@ -138,7 +138,7 @@ export const workspaceOpen = define({
     'app instance already has open, and focuses that instance instead.',
   notes:
     'Open another project, making it one if it is not yet (`project.yaml` + `git init` + a first commit). Closes the current one — see [`desktop-app-state.md`](desktop-app-state.md#which-project-is-open).',
-  mutating: true,
+  mutating   : true,
   props: {
     path: prop.string('the project directory to open'),
   },
@@ -153,14 +153,14 @@ export const workspaceOpen = define({
 });
 
 export const workspacePick = define({
-  id: 'workspace.pick',
-  title: 'Open a project…',
+  id         : 'workspace.pick',
+  title      : 'Open a project…',
   description:
     'Choose a project directory in a file dialog, then open it — `workspace.open` with the ' +
     'picker in front. Cancelling changes nothing.',
   notes: '`workspace.open` with the native directory chooser in front. Cancelling changes nothing.',
-  mutating: true,
-  props: {},
+  mutating   : true,
+  props      : {},
   async check(_props, ctx) {
     const busy = ctx.host.session.busy();
     return busy
@@ -182,15 +182,15 @@ export const workspacePick = define({
 });
 
 export const workspaceChooseDirectory = define({
-  id: 'workspace.chooseDirectory',
-  title: 'Choose a folder…',
+  id         : 'workspace.chooseDirectory',
+  title      : 'Choose a folder…',
   description:
     'Open the folder chooser and answer with what was chosen, without doing anything to it — ' +
     'what fills in a directory field. Cancelling answers with nothing.',
   notes:
     'Open the folder chooser and answer with what was chosen, touching nothing — what fills in a `directory` field.',
-  mutating: false,
-  props: {},
+  mutating   : false,
+  props      : {},
   async run(_props, ctx) {
     const picked = await ctx.host.pickDirectory(
       { title: 'Choose a folder', buttonLabel: 'Choose folder' },
@@ -203,32 +203,32 @@ export const workspaceChooseDirectory = define({
 });
 
 export const workspaceRecent = define({
-  id: 'workspace.recent',
-  title: 'Recent projects',
+  id         : 'workspace.recent',
+  title      : 'Recent projects',
   description:
     'The project that is open and the ones opened before it, most recent first. Remembered per ' +
     'install rather than per project — it has to be readable before any project is open.',
-  notes: 'The open project and the ones opened before it, most recent first.',
-  mutating: false,
-  props: {},
+  notes      : 'The open project and the ones opened before it, most recent first.',
+  mutating   : false,
+  props      : {},
   run(_props, ctx) {
     // Pruned here rather than at the menu because main can stat the paths, which keeps the
     // remembered slots spent on projects that still exist
     const recent = liveWorkspaces(ctx.host.state, existsSync);
     return Promise.resolve({
       message: `${recent.length} remembered project(s); ${ctx.root} is open.`,
-      data: { current: ctx.root, recent },
+      data   : { current: ctx.root, recent },
     });
   },
 });
 
 export const workspaceIndex = define({
-  id: 'workspace.index',
-  title: 'Workspace index',
+  id         : 'workspace.index',
+  title      : 'Workspace index',
   description: 'The project index: characters, locations, screenplay files, diagnostics.',
-  notes: 'Characters, locations, screenplay files, diagnostics.',
-  mutating: false,
-  props: {},
+  notes      : 'Characters, locations, screenplay files, diagnostics.',
+  mutating   : false,
+  props      : {},
   async run(_props, ctx) {
     const index = await ctx.host.session.index();
     return { message: `Indexed ${ctx.root}.`, data: index };
@@ -236,34 +236,34 @@ export const workspaceIndex = define({
 });
 
 export const workspaceDoctree = define({
-  id: 'workspace.doctree',
-  title: 'Document tree',
+  id         : 'workspace.doctree',
+  title      : 'Document tree',
   description:
     'The sidebar tree — story, scenes and their shots, characters, locations, the wiki, assets ' +
     'by kind — plus what each entity is attached to (its sheet, its art, its scenes and shots).',
   notes:
     'The sidebar tree (story → scenes → shots, characters, locations, wiki, assets by kind) plus per-entity backlinks — see [`document-tree.md`](document-tree.md).',
-  mutating: false,
-  props: {},
+  mutating   : false,
+  props      : {},
   async run(_props, ctx) {
     const tree = await ctx.host.session.docTree();
     const entities = Object.keys(tree.backlinks).length;
     return {
       message: `${tree.roots.length} branch(es), ${entities} linked entity(ies).`,
-      data: tree,
+      data   : tree,
     };
   },
 });
 
 export const workspaceFiletree = define({
-  id: 'workspace.filetree',
-  title: 'File tree',
+  id         : 'workspace.filetree',
+  title      : 'File tree',
   description:
     'Every file in the workspace as a tree, `.git` and `node_modules` excluded. The document ' +
     "tree's other mode: what is on disk rather than what the model made of it.",
-  notes: 'Every file in the workspace as a tree, `.git` and `node_modules` excluded.',
-  mutating: false,
-  props: {},
+  notes      : 'Every file in the workspace as a tree, `.git` and `node_modules` excluded.',
+  mutating   : false,
+  props      : {},
   async run(_props, ctx) {
     const roots = await ctx.host.session.fileTree();
     return { message: `${roots.length} entr(ies) at the workspace root.`, data: roots };
@@ -271,13 +271,13 @@ export const workspaceFiletree = define({
 });
 
 export const workspaceSkilltree = define({
-  id: 'workspace.skilltree',
-  title: 'Skill files',
+  id         : 'workspace.skilltree',
+  title      : 'Skill files',
   description:
     'Every file under .aiagent/skills as a tree — what is inside the playbooks, which the ' +
     'document tree leaves out because it carries identity rather than content.',
-  mutating: false,
-  props: {},
+  mutating   : false,
+  props      : {},
   async run(_props, ctx) {
     const roots = await ctx.host.session.skillTree();
     return { message: `${roots.length} skill(s) on disk.`, data: roots };
@@ -285,13 +285,13 @@ export const workspaceSkilltree = define({
 });
 
 export const workspaceSkills = define({
-  id: 'workspace.skills',
-  title: 'Skills',
+  id         : 'workspace.skills',
+  title      : 'Skills',
   description:
     "The project's playbooks as skills rather than as files — id, name and description, which " +
     'is what a list of them to choose from needs.',
-  mutating: false,
-  props: {},
+  mutating   : false,
+  props      : {},
   async run(_props, ctx) {
     const skills = await ctx.host.session.skillEntries();
     return { message: `${skills.length} skill(s).`, data: skills };
@@ -299,20 +299,20 @@ export const workspaceSkills = define({
 });
 
 export const workspaceReindex = define({
-  id: 'workspace.reindex',
-  title: 'Regenerate the project map',
+  id         : 'workspace.reindex',
+  title      : 'Regenerate the project map',
   description:
     "Rebuild AICONTEXT.generated.md: the cast, the locations, the story graph, and the bible's " +
     'table of contents — the map the authoring agent reads. Facts only, never file contents.',
   notes:
     "Rebuild `AICONTEXT.generated.md`: the cast, the locations, the story graph, and the bible's table of contents. Refuses over a file it did not write.",
-  mutating: true,
-  props: {},
+  mutating   : true,
+  props      : {},
   async check(_props, ctx) {
     const state = await ctx.host.session.generatedContext();
     if (state.exists && !state.generated) {
       return {
-        ok: false,
+        ok    : false,
         reason: `${GENERATED_CONTEXT_FILE} was not written by workspace.reindex — move or delete it first.`,
       };
     }
@@ -328,16 +328,16 @@ export const workspaceReindex = define({
 });
 
 export const workspaceImport = define({
-  id: 'workspace.import',
-  title: 'Import the screenplay',
+  id         : 'workspace.import',
+  title      : 'Import the screenplay',
   description:
     'Convert a screenplay/*.fountain project into one scenes/<id>.md chunk per scene — the ' +
     '`vngen import` equivalent. Refuses over existing chunks; the original is moved aside, ' +
     'not deleted.',
   notes:
     'Convert `screenplay/*.fountain` into `scenes/<id>.md` chunks (`vngen import`). Refuses over existing chunks; the original is moved aside.',
-  mutating: true,
-  props: {},
+  mutating   : true,
+  props      : {},
   async check(_props, ctx) {
     const preview = await ctx.host.session.previewImport();
     return preview.ok

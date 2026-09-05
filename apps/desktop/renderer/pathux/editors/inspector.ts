@@ -19,21 +19,21 @@ import type { PipelineStatus, Task, TaskAttempt } from '../../../src/shared/ipc.
 const VERDICT: Record<AttemptOutcome, string> = {
   accepted: '✓ accepted',
   rejected: '✕ rejected',
-  failed: '⚠ failed',
-  pending: '· in flight',
+  failed  : '⚠ failed',
+  pending : '· in flight',
 };
 
 const OUTCOME_COLOUR: Record<AttemptOutcome, string> = {
   accepted: TOKENS.jade,
   rejected: TOKENS.mistDim,
-  failed: TOKENS.vermilion,
-  pending: TOKENS.signal,
+  failed  : TOKENS.vermilion,
+  pending : TOKENS.signal,
 };
 
 const SEVERITY_COLOUR: Record<string, string> = {
   blocking: TOKENS.vermilion,
-  major: TOKENS.sodium,
-  minor: TOKENS.mistDim,
+  major   : TOKENS.sodium,
+  minor   : TOKENS.mistDim,
 };
 
 /**
@@ -57,9 +57,9 @@ export class InspectorEditor extends VnEditor {
 
   static override define() {
     return {
-      tagname: 'vn-inspector-editor-x',
+      tagname : 'vn-inspector-editor-x',
       areaname: 'inspector',
-      icon: -1,
+      icon    : -1,
     };
   }
 
@@ -70,13 +70,13 @@ export class InspectorEditor extends VnEditor {
 
     this.body = document.createElement('div');
     Object.assign(this.body.style, {
-      position: 'relative',
-      overflowY: 'auto',
-      background: TOKENS.inkSunken,
-      padding: '10px',
-      display: 'flex',
+      position     : 'relative',
+      overflowY    : 'auto',
+      background   : TOKENS.inkSunken,
+      padding      : '10px',
+      display      : 'flex',
       flexDirection: 'column',
-      gap: '8px',
+      gap          : '8px',
     });
     this.appendSurface(this.body);
 
@@ -208,8 +208,8 @@ export class InspectorEditor extends VnEditor {
   private triage(triage: TriageSummary): HTMLElement {
     const box = card();
     Object.assign(box.style, {
-      flex: 'none',
-      border: `1px solid ${alpha(TOKENS.vermilion, 0.45)}`,
+      flex      : 'none',
+      border    : `1px solid ${alpha(TOKENS.vermilion, 0.45)}`,
       background: alpha(TOKENS.vermilion, 0.06),
     });
     box.appendChild(mono(triage.headline, TOKENS.paper, 11.5));
@@ -227,14 +227,14 @@ export class InspectorEditor extends VnEditor {
     const delta = correctionDelta(prev, next);
     const line = document.createElement('div');
     Object.assign(line.style, {
-      flex: 'none',
-      margin: '0px 0px 0px 14px',
-      padding: '4px 0px 4px 12px',
+      flex      : 'none',
+      margin    : '0px 0px 0px 14px',
+      padding   : '4px 0px 4px 12px',
       borderLeft: `1px dashed ${delta ? alpha(TOKENS.sodium, 0.5) : TOKENS.inkLine}`,
-      color: delta ? TOKENS.paper : TOKENS.mistDim,
+      color     : delta ? TOKENS.paper : TOKENS.mistDim,
       fontFamily: TOKENS.prose,
-      fontSize: '13px',
-      fontStyle: delta ? 'normal' : 'italic',
+      fontSize  : '13px',
+      fontStyle : delta ? 'normal' : 'italic',
       lineHeight: '1.45',
     });
     line.textContent = delta
@@ -276,9 +276,9 @@ export class InspectorEditor extends VnEditor {
       img.alt = `attempt ${attempt.attempt ?? index + 1} output`;
       img.draggable = false;
       Object.assign(img.style, {
-        width: '100%',
+        width       : '100%',
         borderRadius: `${TOKENS.radiusChrome}px`,
-        border: `1px solid ${TOKENS.inkLine}`,
+        border      : `1px solid ${TOKENS.inkLine}`,
       });
       box.appendChild(img);
     }
@@ -311,10 +311,10 @@ export class InspectorEditor extends VnEditor {
     const desc = document.createElement('p');
     desc.textContent = defect.description;
     Object.assign(desc.style, {
-      margin: '0px',
-      color: TOKENS.mist,
+      margin    : '0px',
+      color     : TOKENS.mist,
       fontFamily: TOKENS.prose,
-      fontSize: '12.5px',
+      fontSize  : '12.5px',
       lineHeight: '1.4',
     });
     box.appendChild(desc);

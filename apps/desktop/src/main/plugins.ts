@@ -65,9 +65,9 @@ export async function activatePlugins(): Promise<GenPluginManifest[]> {
   for (const reason of refused) {
     void notify({
       category: 'error',
-      level: 'warn',
-      source: 'main',
-      message: `A generation plugin did not load: ${reason}`,
+      level   : 'warn',
+      source  : 'main',
+      message : `A generation plugin did not load: ${reason}`,
     });
   }
   return loaded;

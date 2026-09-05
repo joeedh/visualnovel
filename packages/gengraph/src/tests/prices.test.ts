@@ -10,22 +10,22 @@ import type { GenCostLine, GenPriceTable } from '../index.js';
 
 const IMAGES: GenCostLine = {
   service: 'image',
-  model: 'gemini-2.5-flash-image',
-  unit: 'image',
-  count: 10,
+  model  : 'gemini-2.5-flash-image',
+  unit   : 'image',
+  count  : 10,
 };
 
 const UNKNOWN: GenCostLine = {
   service: 'text',
-  model: 'no-such-model',
-  unit: 'mtok-in',
-  count: 1,
+  model  : 'no-such-model',
+  unit   : 'mtok-in',
+  count  : 1,
 };
 
 const USER_TABLE: GenPriceTable = {
-  name: 'yours',
+  name      : 'yours',
   pricesAsOf: '2026-08-01',
-  models: { 'gemini-2.5-flash-image': { image: 0.02 }, 'no-such-model': { 'mtok-in': 7 } },
+  models    : { 'gemini-2.5-flash-image': { image: 0.02 }, 'no-such-model': { 'mtok-in': 7 } },
 };
 
 describe('the shipped price table', () => {

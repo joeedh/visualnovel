@@ -41,9 +41,9 @@ describe('per-chunk operations', () => {
 
   it('appends after replacing, on the same chunk', () => {
     const text = compose({
-      mode: 'chunks',
+      mode   : 'chunks',
       replace: { subject: { text: 'A dog.' } },
-      append: { subject: { text: 'Sitting.' } },
+      append : { subject: { text: 'Sitting.' } },
     });
     expect(text).toBe('Art style: watercolor. A dog. Sitting. No text.');
   });
@@ -60,19 +60,19 @@ describe('per-chunk operations', () => {
 
   it('marks an edit stale only when it records what it was written against', () => {
     const fresh = effectiveChunks(BASE, {
-      mode: 'chunks',
+      mode   : 'chunks',
       replace: { subject: { text: 'A dog.', of: sha256('A cat.') } },
     });
     expect(fresh.find((c) => c.key === 'subject')!.editStale).toBe(false);
 
     const moved = effectiveChunks(BASE, {
-      mode: 'chunks',
+      mode   : 'chunks',
       replace: { subject: { text: 'A dog.', of: sha256('A bird.') } },
     });
     expect(moved.find((c) => c.key === 'subject')!.editStale).toBe(true);
 
     const unknown = effectiveChunks(BASE, {
-      mode: 'chunks',
+      mode   : 'chunks',
       replace: { subject: { text: 'A dog.' } },
     });
     expect(unknown.find((c) => c.key === 'subject')!.editStale).toBeUndefined();
@@ -129,16 +129,16 @@ describe('whole-prompt modes', () => {
 
   it('prefers custom over an agent condensation that is also stored', () => {
     const out = composePrompt(BASE, {
-      mode: 'custom',
+      mode  : 'custom',
       custom: 'Mine.',
-      agent: { text: 'Theirs.', of: chunkFingerprint(BASE) },
+      agent : { text: 'Theirs.', of: chunkFingerprint(BASE) },
     });
     expect(out.text).toBe('Mine.');
   });
 
   it('sends a current agent prompt and does not hold it', () => {
     const out = composePrompt(BASE, {
-      mode: 'agent',
+      mode : 'agent',
       agent: { text: 'Watercolor cat, no text.', of: chunkFingerprint(BASE) },
     });
     expect(out.text).toBe('Watercolor cat, no text.');
@@ -147,7 +147,7 @@ describe('whole-prompt modes', () => {
 
   it('holds a stale agent prompt: the text does not move, only the flag', () => {
     const o: PromptOverride = {
-      mode: 'agent',
+      mode : 'agent',
       agent: { text: 'Watercolor cat, no text.', of: sha256('something else') },
     };
     const out = composePrompt(BASE, o);

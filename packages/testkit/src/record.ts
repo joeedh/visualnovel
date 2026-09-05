@@ -78,12 +78,12 @@ async function runFixture(
   // nothing must not read as a clean one.
   const collector: Logger = {
     debug: () => undefined,
-    info: () => undefined,
-    warn: () => undefined,
+    info : () => undefined,
+    warn : () => undefined,
     error: (msg, fields) => {
       if (msg !== 'task.end') return;
       failed.push({
-        kind: String(fields?.['kind']),
+        kind : String(fields?.['kind']),
         error: String(fields?.['error'] ?? 'unknown'),
       });
     },
@@ -105,7 +105,7 @@ async function runFixture(
     const before = failed.length;
     const second = await project.run({
       providers: providersFor(project, images),
-      logger: collector,
+      logger   : collector,
     });
     tally(2, second, before);
   }
@@ -133,13 +133,13 @@ function summarize(
   const entries = cache.entries();
   return {
     fixture,
-    reused: log.filter((r) => r.hit).length,
-    missed: log.filter((r) => !r.hit).length,
-    added: log.filter((r) => r.recorded).length,
-    orphaned: entries.filter((e) => !asked.has(e.key)),
+    reused      : log.filter((r) => r.hit).length,
+    missed      : log.filter((r) => !r.hit).length,
+    added       : log.filter((r) => r.recorded).length,
+    orphaned    : entries.filter((e) => !asked.has(e.key)),
     missingFiles: [],
-    entries: entries.length,
-    totalBytes: entries.reduce((n, e) => n + e.bytes, 0),
+    entries     : entries.length,
+    totalBytes  : entries.reduce((n, e) => n + e.bytes, 0),
     failed,
   };
 }
@@ -164,7 +164,7 @@ export async function recordCorpus(opts: CorpusOptions = {}): Promise<CorpusRepo
       // than inherited. This function spends real money, and it must not succeed on a
       // developer's machine by picking up their own key from an enclosing directory.
       secretsDirs: await secretDirsFor(process.cwd(), { includeUser: false }),
-      require: ['gemini'],
+      require    : ['gemini'],
     });
     backend = new CachedImageBackend(cache, createGeminiImage(keys.gemini, config.models.image), {
       record: true,

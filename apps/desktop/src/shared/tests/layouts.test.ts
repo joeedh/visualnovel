@@ -39,9 +39,9 @@ describe('recipeProblem', () => {
 
   it('refuses a split that falls outside the area it divides', () => {
     const at = (value: number): LayoutRecipe => ({
-      split: 'columns',
-      at: value,
-      first: { pane: ['script'] },
+      split : 'columns',
+      at    : value,
+      first : { pane: ['script'] },
       second: { pane: ['convo'] },
     });
     expect(recipeProblem(at(0))).toMatch(/inside the area/);
@@ -58,9 +58,9 @@ describe('recipeProblem', () => {
     expect(recipeProblem({ pane: [] })).toMatch(/at least one editor/);
     expect(
       recipeProblem({
-        split: 'diagonal',
-        at: 0.5,
-        first: { pane: ['script'] },
+        split : 'diagonal',
+        at    : 0.5,
+        first : { pane: ['script'] },
         second: { pane: ['convo'] },
       }),
     ).toMatch(/columns or rows/);
@@ -69,13 +69,13 @@ describe('recipeProblem', () => {
   it('reaches into a nested branch', () => {
     expect(
       recipeProblem({
-        split: 'columns',
-        at: 0.5,
-        first: { pane: ['script'] },
+        split : 'columns',
+        at    : 0.5,
+        first : { pane: ['script'] },
         second: {
-          split: 'rows',
-          at: 0.5,
-          first: { pane: ['convo'] },
+          split : 'rows',
+          at    : 0.5,
+          first : { pane: ['convo'] },
           second: { pane: ['nosuch'] },
         },
       }),
@@ -155,7 +155,7 @@ describe('parseLayoutFile', () => {
 
   it('refuses text that is not JSON, and an object that is not a template', () => {
     expect(parseLayoutFile('not json')).toEqual({
-      ok: false,
+      ok     : false,
       problem: expect.stringContaining('not valid JSON'),
     });
     expect(parseLayoutFile('[]')).toEqual({ ok: false, problem: 'it is not a layout template' });
@@ -164,20 +164,20 @@ describe('parseLayoutFile', () => {
   it('refuses a format it does not know, by name', () => {
     const text = JSON.stringify({ ...good, vnstudio: 'layout/2' });
     expect(parseLayoutFile(text)).toEqual({
-      ok: false,
+      ok     : false,
       problem: `it is in the layout/2 format, not ${LAYOUT_FORMAT}`,
     });
   });
 
   it('refuses a file holding both arrangements, and one holding neither', () => {
     expect(parseLayoutFile(JSON.stringify({ ...good, screen: {} }))).toEqual({
-      ok: false,
+      ok     : false,
       problem: expect.stringContaining('both a recipe and a saved screen'),
     });
     const neither = { ...good } as Record<string, unknown>;
     delete neither.recipe;
     expect(parseLayoutFile(JSON.stringify(neither))).toEqual({
-      ok: false,
+      ok     : false,
       problem: 'it holds neither a recipe nor a saved screen',
     });
   });
@@ -185,7 +185,7 @@ describe('parseLayoutFile', () => {
   it('refuses a template naming an editor this build has not got', () => {
     const stale = { ...good, editors: ['documents', 'holodeck'] };
     expect(parseLayoutFile(JSON.stringify(stale))).toEqual({
-      ok: false,
+      ok     : false,
       problem: 'it uses the holodeck editor(s), which this build has not got',
     });
   });
@@ -200,7 +200,7 @@ describe('parseLayoutFile', () => {
     ].join('\n');
     expect(isConflicted(text)).toBe(true);
     expect(parseLayoutFile(text)).toEqual({
-      ok: false,
+      ok     : false,
       problem: expect.stringContaining('pick a side'),
     });
   });

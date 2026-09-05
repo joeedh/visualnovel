@@ -39,8 +39,7 @@ export interface PositionedShot {
  * from its list instead of offering a drop the author would learn nothing from.
  */
 export type ShotMove =
-  | { ok: true; message: string; order: string[] }
-  | { ok: false; error: string; noop?: boolean };
+  { ok: true; message: string; order: string[] } | { ok: false; error: string; noop?: boolean };
 
 /** Where a shot sits in a scene: its covered rows, as row indices the scene actually has. */
 interface Extent {
@@ -139,8 +138,8 @@ export function planShotMove(
 
   if (next.every((id, i) => id === order[i])) {
     return {
-      ok: false,
-      noop: true,
+      ok   : false,
+      noop : true,
       error: anchor
         ? `${moved.id} already sits after ${args.after}.`
         : `${moved.id} is already first.`,
@@ -149,8 +148,8 @@ export function planShotMove(
 
   const where = anchor ? `after ${args.after}` : `to the top of ${scene.id}`;
   return {
-    ok: true,
-    order: next,
+    ok     : true,
+    order  : next,
     message:
       `Moved ${moved.id} ${where}, taking its ${block.length} line(s) with it. No shot's ` +
       `coverage or covered prose changed, so nothing drifts and nothing re-renders.`,
@@ -181,13 +180,13 @@ export function moveShot(
     const lines = plan.order.map((id) => byId.get(id)!);
     const writes: Scene[] = [{ ...scene, lines, nextLineId: nextIdOf(scene) }];
     return {
-      ok: true,
+      ok     : true,
       message: plan.message,
       writes,
-      removes: [],
-      retired: [],
-      moved: [],
-      retyped: [],
+      removes  : [],
+      retired  : [],
+      moved    : [],
+      retyped  : [],
       relocated: [],
     };
   };

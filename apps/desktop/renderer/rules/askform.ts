@@ -25,9 +25,9 @@ export interface AskForm {
 export function startForm(questions: readonly AskQuestion[]): AskForm {
   return {
     questions,
-    at: 0,
+    at    : 0,
     picked: questions.map(() => []),
-    typed: questions.map(() => ''),
+    typed : questions.map(() => ''),
   };
 }
 

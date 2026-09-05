@@ -55,9 +55,9 @@ export class PlayEditor extends VnEditor {
 
   static override define() {
     return {
-      tagname: 'vn-play-editor-x',
+      tagname : 'vn-play-editor-x',
       areaname: 'play',
-      icon: -1,
+      icon    : -1,
     };
   }
 
@@ -68,12 +68,12 @@ export class PlayEditor extends VnEditor {
 
     this.stage = document.createElement('div');
     Object.assign(this.stage.style, {
-      position: 'relative',
-      overflow: 'hidden',
+      position  : 'relative',
+      overflow  : 'hidden',
       background: TOKENS.inkSunken,
-      cursor: 'pointer',
+      cursor    : 'pointer',
       fontFamily: TOKENS.sans,
-      color: TOKENS.paper,
+      color     : TOKENS.paper,
     });
     this.stage.title = 'Click anywhere to advance to the next line';
     this.stage.addEventListener('click', () => this.stepForward());
@@ -338,10 +338,10 @@ export class PlayEditor extends VnEditor {
   private scenery(frame: Frame | undefined): HTMLElement {
     const wrap = document.createElement('div');
     Object.assign(wrap.style, {
-      position: 'absolute',
-      inset: '0',
-      display: 'flex',
-      alignItems: 'center',
+      position      : 'absolute',
+      inset         : '0',
+      display       : 'flex',
+      alignItems    : 'center',
       justifyContent: 'center',
     });
 
@@ -371,9 +371,9 @@ export class PlayEditor extends VnEditor {
       img.src = portraitUrl;
       img.draggable = false;
       Object.assign(img.style, {
-        position: 'absolute',
-        bottom: '0',
-        left: '4%',
+        position : 'absolute',
+        bottom   : '0',
+        left     : '4%',
         maxHeight: '78%',
         objectFit: 'contain',
       });
@@ -386,25 +386,25 @@ export class PlayEditor extends VnEditor {
   private dialogue(frame: Frame): HTMLElement {
     const box = document.createElement('div');
     Object.assign(box.style, {
-      position: 'absolute',
-      left: '0',
-      right: '0',
-      bottom: '0',
-      padding: '14px 18px 10px',
+      position  : 'absolute',
+      left      : '0',
+      right     : '0',
+      bottom    : '0',
+      padding   : '14px 18px 10px',
       background: alpha(TOKENS.ink, 0.86),
-      borderTop: `1px solid ${TOKENS.inkLine}`,
+      borderTop : `1px solid ${TOKENS.inkLine}`,
     });
 
     if (frame.speaker) {
       const who = document.createElement('div');
       who.textContent = this.play?.characters[frame.speaker]?.name ?? frame.speaker;
       Object.assign(who.style, {
-        color: TOKENS.sodium,
-        fontFamily: TOKENS.disp,
-        fontSize: '13px',
+        color        : TOKENS.sodium,
+        fontFamily   : TOKENS.disp,
+        fontSize     : '13px',
         letterSpacing: '0.06em',
         textTransform: 'uppercase',
-        marginBottom: '4px',
+        marginBottom : '4px',
       });
       box.appendChild(who);
     }
@@ -413,21 +413,21 @@ export class PlayEditor extends VnEditor {
     line.textContent = frame.text;
     Object.assign(line.style, {
       fontFamily: TOKENS.prose,
-      fontSize: '18px',
+      fontSize  : '18px',
       lineHeight: '1.5',
-      color: frame.speaker ? TOKENS.paper : TOKENS.mist,
-      fontStyle: frame.speaker ? 'normal' : 'italic',
+      color     : frame.speaker ? TOKENS.paper : TOKENS.mist,
+      fontStyle : frame.speaker ? 'normal' : 'italic',
     });
     box.appendChild(line);
 
     const hint = document.createElement('div');
     hint.textContent = 'click or press space ▸';
     Object.assign(hint.style, {
-      marginTop: '6px',
-      textAlign: 'right',
-      color: TOKENS.mistDim,
+      marginTop : '6px',
+      textAlign : 'right',
+      color     : TOKENS.mistDim,
       fontFamily: TOKENS.mono,
-      fontSize: '11px',
+      fontSize  : '11px',
     });
     box.appendChild(hint);
 
@@ -438,14 +438,14 @@ export class PlayEditor extends VnEditor {
   private sceneEnd(scene: PlayableScene): HTMLElement {
     const panel = document.createElement('div');
     Object.assign(panel.style, {
-      position: 'absolute',
-      inset: '0',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
+      position      : 'absolute',
+      inset         : '0',
+      display       : 'flex',
+      flexDirection : 'column',
+      alignItems    : 'center',
       justifyContent: 'center',
-      gap: '10px',
-      background: alpha(TOKENS.ink, 0.72),
+      gap           : '10px',
+      background    : alpha(TOKENS.ink, 0.72),
     });
 
     if (scene.choices.length) {
@@ -455,11 +455,11 @@ export class PlayEditor extends VnEditor {
       const prompt = document.createElement('div');
       prompt.textContent = 'What do you do?';
       Object.assign(prompt.style, {
-        color: TOKENS.mist,
-        fontFamily: TOKENS.disp,
+        color        : TOKENS.mist,
+        fontFamily   : TOKENS.disp,
         letterSpacing: '0.08em',
         textTransform: 'uppercase',
-        fontSize: '12px',
+        fontSize     : '12px',
       });
       panel.appendChild(prompt);
 
@@ -488,10 +488,10 @@ export class PlayEditor extends VnEditor {
     const end = document.createElement('div');
     end.textContent = 'The End';
     Object.assign(end.style, {
-      fontFamily: TOKENS.disp,
-      fontSize: '28px',
+      fontFamily   : TOKENS.disp,
+      fontSize     : '28px',
       letterSpacing: '0.14em',
-      color: TOKENS.sodium,
+      color        : TOKENS.sodium,
     });
     panel.appendChild(end);
     return panel;
@@ -502,15 +502,15 @@ export class PlayEditor extends VnEditor {
     btn.textContent = label;
     btn.title = tip;
     Object.assign(btn.style, {
-      padding: '8px 18px',
-      minWidth: '180px',
-      cursor: 'pointer',
-      color: TOKENS.paper,
-      background: TOKENS.inkRaised,
-      border: `1px solid ${TOKENS.inkLine}`,
+      padding     : '8px 18px',
+      minWidth    : '180px',
+      cursor      : 'pointer',
+      color       : TOKENS.paper,
+      background  : TOKENS.inkRaised,
+      border      : `1px solid ${TOKENS.inkLine}`,
       borderRadius: `${TOKENS.radiusChrome}px`,
-      fontFamily: TOKENS.sans,
-      fontSize: '14px',
+      fontFamily  : TOKENS.sans,
+      fontSize    : '14px',
     });
     btn.addEventListener('click', (e) => {
       e.stopPropagation();

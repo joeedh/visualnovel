@@ -86,7 +86,7 @@ describe('replacing a name', () => {
 
   it('runs out of letters gracefully', () => {
     const many = Array.from({ length: 27 }, (_, n) => ({
-      id: `person${String(n).padStart(2, '0')}`,
+      id  : `person${String(n).padStart(2, '0')}`,
       kind: 'character' as const,
     }));
     const out = buildRedactor({ entities: many }).apply(many.map((e) => e.id).join(' '));
@@ -138,9 +138,9 @@ describe('replacing a path', () => {
 
 describe('applying twice changes nothing', () => {
   const sources = {
-    projectRoot: 'C:\\dev\\proj',
-    homeDir: 'C:\\Users\\joeed',
-    username: 'joeed',
+    projectRoot : 'C:\\dev\\proj',
+    homeDir     : 'C:\\Users\\joeed',
+    username    : 'joeed',
     projectTitle: 'The Long Autumn',
   };
   const text =
@@ -193,9 +193,9 @@ describe('leaks', () => {
 
 describe('sourcesFrom', () => {
   const model = {
-    title: 'The Long Autumn',
+    title     : 'The Long Autumn',
     characters: new Map([['titus', { id: 'titus', name: 'Titus Vale' } as Character]]),
-    locations: new Map([['cafe-mori', { id: 'cafe-mori', name: 'Café Mori' } as Location]]),
+    locations : new Map([['cafe-mori', { id: 'cafe-mori', name: 'Café Mori' } as Location]]),
     scenes: new Map([
       ['s1', {}],
       ['s2', {}],

@@ -85,8 +85,8 @@ for (const chunk of raw.split(RS).slice(1)) {
       : path;
     if (!keep(renamed)) continue;
     files.push({
-      path: renamed,
-      added: added === '-' ? 0 : Number(added),
+      path   : renamed,
+      added  : added === '-' ? 0 : Number(added),
       deleted: deleted === '-' ? 0 : Number(deleted),
     });
   }
@@ -140,27 +140,27 @@ const coChange = [...pairs.entries()]
 console.log(
   JSON.stringify(
     {
-      range: opts.range ?? `since ${opts.since}`,
-      paths: opts.paths,
-      commits: commits.length,
+      range       : opts.range ?? `since ${opts.since}`,
+      paths       : opts.paths,
+      commits     : commits.length,
       filesTouched: byFile.size,
-      hotFiles: [...byFile.values()].sort(desc('commits')).slice(0, opts.top),
+      hotFiles    : [...byFile.values()].sort(desc('commits')).slice(0, opts.top),
       hotDirs: [...byDir.values()]
         .map((d) => ({
-          dir: d.dir,
+          dir    : d.dir,
           commits: d.commits,
-          files: d.files.size,
-          added: d.added,
+          files  : d.files.size,
+          added  : d.added,
           deleted: d.deleted,
         }))
         .sort((a, b) => b.commits - a.commits)
         .slice(0, opts.top),
       coChange,
       subjects: commits.map((c) => ({
-        sha: c.sha,
-        date: c.date,
+        sha    : c.sha,
+        date   : c.date,
         subject: c.subject,
-        files: c.files.length,
+        files  : c.files.length,
       })),
     },
     null,

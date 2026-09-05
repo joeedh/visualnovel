@@ -27,8 +27,7 @@ export interface RouteRequest {
  * document behind it) for which publishing the selection was the whole act.
  */
 export type Route =
-  | { action: 'select' }
-  | { action: 'open'; editor: EditorId; where: OpenWhere; subject: string };
+  { action: 'select' } | { action: 'open'; editor: EditorId; where: OpenWhere; subject: string };
 
 /**
  * Which selection field an editor's subject comes from. A path, a hash and a graph name are not
@@ -36,11 +35,11 @@ export type Route =
  * so an editor with no entry here has no subject, and the field it does not name is left alone.
  */
 export const SUBJECT_OF: Partial<Record<EditorId, 'docPath' | 'assetHash' | 'graphSlug'>> = {
-  wiki: 'docPath',
-  skills: 'docPath',
+  wiki     : 'docPath',
+  skills   : 'docPath',
   documents: 'docPath',
-  asset: 'assetHash',
-  gengraph: 'graphSlug',
+  asset    : 'assetHash',
+  gengraph : 'graphSlug',
 };
 
 interface Claimant {
@@ -74,11 +73,11 @@ export function routeFor(req: RouteRequest): Route {
   claimants.sort(better);
   const winner = claimants[0] as Claimant;
   return {
-    action: 'open',
+    action : 'open',
     // A visible claimant is focused rather than opened twice, which `open(where='here')` already
     // does. A claimant that is not visible opens in a pane other than the one that asked
-    where: winner.visible ? 'here' : 'elsewhere',
-    editor: winner.editor,
+    where  : winner.visible ? 'here' : 'elsewhere',
+    editor : winner.editor,
     subject: subjectFor(winner.editor, req.node),
   };
 }

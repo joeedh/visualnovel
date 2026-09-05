@@ -27,12 +27,12 @@ const opening = 'Workspace loaded.';
 const ranTool = (tool: string): AgentEvent => ({
   type: 'tool',
   tool,
-  args: {},
+  args  : {},
   result: { ok: true, output: 'done' },
 });
 
 const plan: PlanRequest = {
-  id: 3,
+  id  : 3,
   plan: { summary: 'Give Aiko a jacket', steps: ['edit characters/aiko'], files: [] },
 };
 
@@ -45,9 +45,9 @@ describe('what an event does to the conversation', () => {
 
   test('a tool line says what it acted on, not just which tool it was', () => {
     const convo = received(emptyConvo(opening), {
-      type: 'tool',
-      tool: 'read_file',
-      args: { path: 'wiki/hollow-court.md' },
+      type  : 'tool',
+      tool  : 'read_file',
+      args  : { path: 'wiki/hollow-court.md' },
       result: { ok: true, output: '…' },
     });
     expect(convo.feed[0]!.text).toBe('read_file wiki/hollow-court.md');
@@ -55,23 +55,23 @@ describe('what an event does to the conversation', () => {
 
   test('a tool line keeps what it was called with and what came back', () => {
     const convo = received(emptyConvo(opening), {
-      type: 'tool',
-      tool: 'read_file',
-      args: { path: 'characters/aiko.md' },
+      type  : 'tool',
+      tool  : 'read_file',
+      args  : { path: 'characters/aiko.md' },
       result: { ok: false, output: 'no such file' },
     });
     expect(convo.feed[0]!.detail).toEqual({
-      args: '{"path":"characters/aiko.md"}',
-      ok: false,
+      args  : '{"path":"characters/aiko.md"}',
+      ok    : false,
       output: 'no such file',
     });
   });
 
   test('a tool called with nothing says nothing, rather than saying “undefined”', () => {
     const convo = received(emptyConvo(opening), {
-      type: 'tool',
-      tool: 'list_files',
-      args: undefined,
+      type  : 'tool',
+      tool  : 'list_files',
+      args  : undefined,
       result: { ok: true, output: '3 files' },
     });
     expect(convo.feed[0]!.detail?.args).toBe('');
@@ -85,12 +85,12 @@ describe('what an event does to the conversation', () => {
 
   test('a blocked tool reads as one sentence, with the reason', () => {
     const convo = received(emptyConvo(opening), {
-      type: 'blocked',
-      tool: 'write_file',
+      type  : 'blocked',
+      tool  : 'write_file',
       reason: 'plan mode is read-only',
     });
     expect(convo.feed[0]).toEqual({
-      id: 1,
+      id  : 1,
       role: 'blocked',
       text: 'write_file blocked — plan mode is read-only',
     });
@@ -98,9 +98,9 @@ describe('what an event does to the conversation', () => {
 
   test('a blocked tool names its target too, where it had one', () => {
     const convo = received(emptyConvo(opening), {
-      type: 'blocked',
-      tool: 'write_file',
-      args: { path: 'wiki/notes.md', content: 'x' },
+      type  : 'blocked',
+      tool  : 'write_file',
+      args  : { path: 'wiki/notes.md', content: 'x' },
       reason: 'plan mode is read-only',
     });
     expect(convo.feed[0]!.text).toBe('write_file wiki/notes.md blocked — plan mode is read-only');
@@ -147,8 +147,8 @@ describe('what a step cost', () => {
 describe('what the cache did', () => {
   type Usage = Extract<AgentEvent, { type: 'usage' }>;
   const cached = (usage: Partial<Usage>): AgentEvent => ({
-    type: 'usage',
-    input: 1000,
+    type  : 'usage',
+    input : 1000,
     output: 100,
     ...usage,
   });
@@ -163,9 +163,9 @@ describe('what the cache did', () => {
     convo = received(convo, cached({ cacheRead: 800, cacheEstimated: true }));
     convo = received(convo, cached({ cacheRead: 800, cacheEstimated: true }));
     expect(convo.tokens).toEqual({
-      input: 3000,
-      output: 300,
-      cacheRead: 1600,
+      input         : 3000,
+      output        : 300,
+      cacheRead     : 1600,
       cacheEstimated: true,
     });
   });
@@ -203,9 +203,9 @@ describe('the tokens tooltip', () => {
   // The share is of what was sent alone, because a prefix cache does not move what comes back
   test('hedges a matched split, and does not invent a write it was never told about', () => {
     const said = tokensDetail({
-      input: 1200,
-      output: 300,
-      cacheRead: 900,
+      input         : 1200,
+      output        : 300,
+      cacheRead     : 900,
       cacheEstimated: true,
     });
     expect(said).toContain('Roughly 900 of what it sent (75%)');
@@ -228,9 +228,9 @@ describe('the tokens tooltip', () => {
 describe('what the turn in flight has spent', () => {
   test('excludes what the cache served, unlike the conversation total', () => {
     const convo = received(emptyConvo(opening), {
-      type: 'usage',
-      input: 100_000,
-      output: 1_000,
+      type     : 'usage',
+      input    : 100_000,
+      output   : 1_000,
       cacheRead: 99_000,
     });
     expect(convo.tokens.input).toBe(100_000);
@@ -239,8 +239,8 @@ describe('what the turn in flight has spent', () => {
 
   test('starts again when a turn is sent, not when one comes back', () => {
     let convo = received(asked(emptyConvo(opening), 'one'), {
-      type: 'usage',
-      input: 500,
+      type  : 'usage',
+      input : 500,
       output: 100,
     });
     expect(convo.turnSpend).toBe(600);
@@ -331,7 +331,7 @@ describe('a question the agent asked', () => {
   // "The second one" is unreadable without the list it picked from.
   test('the options go down with the question', () => {
     const withChoices: AskRequest = {
-      id: 7,
+      id       : 7,
       questions: [{ question: asking, choices: ['Mori', 'the station'], multi: true }],
     };
     const [item] = queried(emptyConvo(opening), withChoices).feed;
@@ -344,7 +344,7 @@ describe('a question the agent asked', () => {
   // is directly beneath the thing it answers rather than three lines below it.
   test('a form of several is one line of questions and one of numbered answers', () => {
     const form: AskRequest = {
-      id: 8,
+      id       : 8,
       questions: [{ question: 'Which café?' }, { question: 'What time?' }],
     };
     const convo = answeredQuestion(queried(emptyConvo(opening), form), ['Mori', '']);
@@ -357,8 +357,8 @@ describe('a question the agent asked', () => {
 
 describe('an always-confirm tool', () => {
   const confirm: ConfirmRequest = {
-    id: 2,
-    tool: 'generate_image',
+    id    : 2,
+    tool  : 'generate_image',
     detail: 'Draw a concept sketch: “an aerial shot”. Costs one image generation.',
   };
 
@@ -476,8 +476,8 @@ describe('what the Compact button says it would do', () => {
 
   test('says a large conversation is worth compacting', () => {
     const convo = received(emptyConvo(opening), {
-      type: 'usage',
-      input: COMPACT_HINT_TOKENS,
+      type  : 'usage',
+      input : COMPACT_HINT_TOKENS,
       output: 900,
     });
     expect(contextDetail(convo)).toContain('worth compacting');

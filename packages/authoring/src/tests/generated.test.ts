@@ -7,64 +7,64 @@ import {
 
 function map(over: Partial<ProjectMap> = {}): ProjectMap {
   return {
-    title: 'Cafe Story',
-    entry: 'arrival',
+    title     : 'Cafe Story',
+    entry     : 'arrival',
     characters: [
       {
-        id: 'aiko',
-        name: 'Aiko',
-        status: 'draft',
-        file: 'characters/aiko/character.md',
+        id           : 'aiko',
+        name         : 'Aiko',
+        status       : 'draft',
+        file         : 'characters/aiko/character.md',
         defaultOutfit: 'uniform',
-        outfits: ['uniform', 'track'],
+        outfits      : ['uniform', 'track'],
       },
     ],
     locations: [
       {
-        id: 'classroom',
-        name: 'Classroom 2-B',
-        mined: false,
-        file: 'locations/classroom.md',
+        id      : 'classroom',
+        name    : 'Classroom 2-B',
+        mined   : false,
+        file    : 'locations/classroom.md',
         variants: ['day', 'afternoon'],
       },
       { id: 'rooftop', name: 'Rooftop', mined: true, variants: ['night'] },
     ],
     scenes: [
       {
-        id: 'arrival',
-        location: 'classroom',
+        id        : 'arrival',
+        location  : 'classroom',
         characters: ['aiko'],
         edges: [
           { label: 'Greet', goto: 'greet' },
           { label: 'Observe', goto: 'observe' },
         ],
-        reachable: true,
-        file: 'scenes/arrival.md',
+        reachable : true,
+        file      : 'scenes/arrival.md',
       },
       {
-        id: 'greet',
-        location: 'classroom',
+        id        : 'greet',
+        location  : 'classroom',
         characters: ['aiko'],
-        edges: [{ goto: 'ending' }],
-        reachable: true,
-        file: 'scenes/greet.md',
+        edges     : [{ goto: 'ending' }],
+        reachable : true,
+        file      : 'scenes/greet.md',
       },
       {
-        id: 'orphan',
-        location: 'rooftop',
+        id        : 'orphan',
+        location  : 'rooftop',
         characters: [],
-        edges: [],
-        reachable: false,
-        file: 'scenes/orphan.md',
+        edges     : [],
+        reachable : false,
+        file      : 'scenes/orphan.md',
       },
     ],
     bible: [
       {
-        file: 'history/the-war.md',
-        title: 'The War',
-        tags: ['history'],
+        file    : 'history/the-war.md',
+        title   : 'The War',
+        tags    : ['history'],
         headings: ['Causes', 'Casualties'],
-        bytes: 4200,
+        bytes   : 4200,
       },
     ],
     ...over,
@@ -116,11 +116,11 @@ describe('renderGeneratedContext', () => {
 
   it('spends the budget in section order and says what it dropped', () => {
     const bible = Array.from({ length: 40 }, (_, i) => ({
-      file: `notes/n${i}.md`,
-      title: `Note ${i}`,
-      tags: [],
+      file    : `notes/n${i}.md`,
+      title   : `Note ${i}`,
+      tags    : [],
       headings: [],
-      bytes: 10,
+      bytes   : 10,
     }));
     const text = renderGeneratedContext(map({ bible }), { budget: 1200 });
     expect(text.length).toBeLessThan(1400); // the heading and the counted line are unbudgeted

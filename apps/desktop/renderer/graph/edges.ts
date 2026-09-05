@@ -76,12 +76,12 @@ function curveFor(
     const a = right(from);
     const out = bulge;
     return {
-      back: true,
+      back : true,
       cubic: {
         a,
         c1: { x: a.x + out, y: a.y - from.height * 0.6 },
         c2: { x: a.x + out, y: a.y + from.height * 0.6 },
-        b: { x: a.x, y: a.y + 1 },
+        b : { x: a.x, y: a.y + 1 },
       },
     };
   }
@@ -92,7 +92,7 @@ function curveFor(
     const b = top(to);
     const lift = Math.max(24, (b.y - a.y) / 2);
     return {
-      back: false,
+      back : false,
       cubic: { a, c1: { x: a.x, y: a.y + lift }, c2: { x: b.x, y: b.y - lift }, b },
     };
   }
@@ -101,7 +101,7 @@ function curveFor(
   const b = right(to);
   const out = bulge + Math.abs(a.y - b.y) * 0.15;
   return {
-    back: true,
+    back : true,
     cubic: { a, c1: { x: a.x + out, y: a.y }, c2: { x: b.x + out, y: b.y }, b },
   };
 }
@@ -125,9 +125,9 @@ export function routeEdges(
     for (let i = 0; i <= samples; i++) points.push(cubicAt(cubic, i / samples));
 
     routes.push({
-      id: edge.id,
+      id  : edge.id,
       from: edge.from,
-      to: edge.to,
+      to  : edge.to,
       ...(edge.kind !== undefined ? { kind: edge.kind } : {}),
       ...(edge.label !== undefined ? { label: edge.label } : {}),
       path: pathOf(cubic),

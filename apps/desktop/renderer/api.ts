@@ -20,47 +20,47 @@ import type {
 export const isLive = Boolean(window.api);
 
 const MOCK_INDEX: WorkspaceIndex = {
-  root: '~/stories/sample',
-  title: 'sample',
-  screenplay: 'screenplay/rooftop.fountain',
-  entry: 'rooftop_intro',
+  root       : '~/stories/sample',
+  title      : 'sample',
+  screenplay : 'screenplay/rooftop.fountain',
+  entry      : 'rooftop_intro',
   characters: [
     { id: 'aiko', name: 'Aiko', status: 'approved', file: 'characters/aiko/character.md' },
     { id: 'haruki', name: 'Haruki', status: 'candidates', file: 'characters/haruki/character.md' },
   ],
-  locations: [{ id: 'rooftop', name: 'Rooftop', mined: true, file: 'locations/rooftop.md' }],
+  locations  : [{ id: 'rooftop', name: 'Rooftop', mined: true, file: 'locations/rooftop.md' }],
   scenes: [
     {
-      id: 'rooftop_intro',
-      location: 'rooftop',
+      id        : 'rooftop_intro',
+      location  : 'rooftop',
       characters: ['aiko', 'haruki'],
-      choices: 2,
-      reachable: true,
+      choices   : 2,
+      reachable : true,
     },
     {
-      id: 'aiko_confession',
-      location: 'rooftop',
+      id        : 'aiko_confession',
+      location  : 'rooftop',
       characters: ['aiko'],
-      choices: 1,
-      reachable: true,
+      choices   : 1,
+      reachable : true,
     },
     {
-      id: 'haruki_route',
-      location: 'rooftop',
+      id        : 'haruki_route',
+      location  : 'rooftop',
       characters: ['haruki'],
-      choices: 0,
-      reachable: false,
+      choices   : 0,
+      reachable : false,
     },
   ],
-  bibleFiles: 0,
-  baseAssets: { state: 'ready', root: '~/stories/sample/assets', count: 6 },
-  repos: [{ role: 'project', root: '~/stories/sample', owned: true }],
+  bibleFiles : 0,
+  baseAssets : { state: 'ready', root: '~/stories/sample/assets', count: 6 },
+  repos      : [{ role: 'project', root: '~/stories/sample', owned: true }],
   diagnostics: [
     { severity: 'warning', code: 'gate.pending', message: 'Haruki has no approved portrait' },
     {
       severity: 'error',
-      code: 'graph.reachable',
-      message: 'Scene haruki_route unreachable from entry',
+      code    : 'graph.reachable',
+      message : 'Scene haruki_route unreachable from entry',
     },
   ],
 };
@@ -75,10 +75,10 @@ const MOCK_TASKS = [
 ] as unknown as Task[];
 
 const MOCK_STATUS: PipelineStatus = {
-  tasks: MOCK_TASKS,
-  gatePending: ['haruki'],
+  tasks        : MOCK_TASKS,
+  gatePending  : ['haruki'],
   blockedOnGate: true,
-  slots: [],
+  slots        : [],
 };
 
 const MOCK_CANDIDATES = [
@@ -89,12 +89,12 @@ const MOCK_CANDIDATES = [
 
 /** A tiny playable so the PLAY room renders in a plain-browser design preview. */
 const MOCK_PLAYABLE: Playable = {
-  version: 1,
-  title: 'sample',
-  start: 'rooftop_intro',
+  version        : 1,
+  title          : 'sample',
+  start          : 'rooftop_intro',
   portraitOverlay: false,
   characters: {
-    aiko: { name: 'Aiko' },
+    aiko  : { name: 'Aiko' },
     haruki: { name: 'Haruki' },
   },
   scenes: {
@@ -123,50 +123,50 @@ const MOCK_PLAYABLE: Playable = {
 
 /** The same story as a branch graph, so the editor has something to draw in the preview. */
 const MOCK_GRAPH: StoryGraph = {
-  start: 'rooftop_intro',
+  start      : 'rooftop_intro',
   scenes: [
     {
-      id: 'rooftop_intro',
-      location: 'rooftop',
-      synopsis: 'Aiko finds Haruki already on the roof.',
+      id        : 'rooftop_intro',
+      location  : 'rooftop',
+      synopsis  : 'Aiko finds Haruki already on the roof.',
       characters: ['aiko', 'haruki'],
-      lines: 4,
-      reachable: true,
+      lines     : 4,
+      reachable : true,
     },
     {
-      id: 'aiko_confession',
-      location: 'rooftop',
-      synopsis: 'She stays, and says the quiet part.',
+      id        : 'aiko_confession',
+      location  : 'rooftop',
+      synopsis  : 'She stays, and says the quiet part.',
       characters: ['aiko'],
-      lines: 3,
-      reachable: true,
+      lines     : 3,
+      reachable : true,
     },
     {
-      id: 'hallway',
-      location: 'hallway',
-      synopsis: 'A scene nothing points at yet.',
+      id        : 'hallway',
+      location  : 'hallway',
+      synopsis  : 'A scene nothing points at yet.',
       characters: [],
-      lines: 1,
-      reachable: false,
+      lines     : 1,
+      reachable : false,
     },
   ],
   edges: [
     {
-      id: 'rooftop_intro#choice:0',
-      from: 'rooftop_intro',
-      to: 'aiko_confession',
-      kind: 'choice',
-      label: 'Step up beside him',
-      index: 0,
+      id      : 'rooftop_intro#choice:0',
+      from    : 'rooftop_intro',
+      to      : 'aiko_confession',
+      kind    : 'choice',
+      label   : 'Step up beside him',
+      index   : 0,
       dangling: false,
     },
     {
-      id: 'rooftop_intro#choice:1',
-      from: 'rooftop_intro',
-      to: 'rooftop_intro',
-      kind: 'choice',
-      label: 'Head back inside',
-      index: 1,
+      id      : 'rooftop_intro#choice:1',
+      from    : 'rooftop_intro',
+      to      : 'rooftop_intro',
+      kind    : 'choice',
+      label   : 'Head back inside',
+      index   : 1,
       dangling: false,
     },
   ],
@@ -182,100 +182,100 @@ const MOCK_GRAPH: StoryGraph = {
 const MOCK_DOCTREE: DocTree = {
   roots: [
     {
-      id: 'branch:story',
-      kind: 'branch',
-      label: 'Story',
+      id      : 'branch:story',
+      kind    : 'branch',
+      label   : 'Story',
       children: [
         {
-          id: 'scene:rooftop_intro',
-          kind: 'scene',
-          label: 'rooftop_intro',
-          path: 'scenes/rooftop_intro.md',
+          id      : 'scene:rooftop_intro',
+          kind    : 'scene',
+          label   : 'rooftop_intro',
+          path    : 'scenes/rooftop_intro.md',
           children: [
             {
-              id: 'shot:rooftop_intro/rooftop_intro__s1',
-              kind: 'shot',
+              id   : 'shot:rooftop_intro/rooftop_intro__s1',
+              kind : 'shot',
               label: 'rooftop_intro__s1',
               badge: 'wide',
             },
           ],
         },
         {
-          id: 'scene:aiko_confession',
-          kind: 'scene',
+          id   : 'scene:aiko_confession',
+          kind : 'scene',
           label: 'aiko_confession',
-          path: 'scenes/aiko_confession.md',
+          path : 'scenes/aiko_confession.md',
         },
         {
-          id: 'scene:haruki_route',
-          kind: 'scene',
+          id   : 'scene:haruki_route',
+          kind : 'scene',
           label: 'haruki_route',
-          path: 'scenes/haruki_route.md',
+          path : 'scenes/haruki_route.md',
           badge: 'unreachable',
         },
       ],
     },
     {
-      id: 'branch:characters',
-      kind: 'branch',
-      label: 'Characters',
+      id      : 'branch:characters',
+      kind    : 'branch',
+      label   : 'Characters',
       children: [
         {
-          id: 'character:aiko',
-          kind: 'character',
+          id   : 'character:aiko',
+          kind : 'character',
           label: 'Aiko',
-          path: 'characters/aiko/character.md',
+          path : 'characters/aiko/character.md',
           badge: 'approved',
         },
         {
-          id: 'character:haruki',
-          kind: 'character',
+          id   : 'character:haruki',
+          kind : 'character',
           label: 'Haruki',
-          path: 'characters/haruki/character.md',
+          path : 'characters/haruki/character.md',
           badge: 'candidates',
         },
       ],
     },
     {
-      id: 'branch:locations',
-      kind: 'branch',
-      label: 'Locations',
+      id      : 'branch:locations',
+      kind    : 'branch',
+      label   : 'Locations',
       children: [
         {
-          id: 'location:rooftop',
-          kind: 'location',
+          id   : 'location:rooftop',
+          kind : 'location',
           label: 'Rooftop',
-          path: 'locations/rooftop.md',
+          path : 'locations/rooftop.md',
         },
       ],
     },
     {
-      id: 'branch:wiki',
-      kind: 'branch',
-      label: 'Wiki',
+      id      : 'branch:wiki',
+      kind    : 'branch',
+      label   : 'Wiki',
       children: [
         { id: 'wiki:history.md', kind: 'wiki', label: 'History', path: 'wiki/history.md' },
       ],
     },
     {
-      id: 'branch:skills',
-      kind: 'branch',
-      label: 'Skills',
+      id      : 'branch:skills',
+      kind    : 'branch',
+      label   : 'Skills',
       children: [
         {
-          id: 'skill:continuity-pass',
-          kind: 'skill',
+          id   : 'skill:continuity-pass',
+          kind : 'skill',
           label: 'Continuity pass',
-          path: '.aiagent/skills/continuity-pass/SKILL.md',
-          note: 'Re-read a scene against the bible and list what contradicts it.',
+          path : '.aiagent/skills/continuity-pass/SKILL.md',
+          note : 'Re-read a scene against the bible and list what contradicts it.',
         },
         {
-          id: 'skill:lint-fountain',
-          kind: 'skill',
+          id   : 'skill:lint-fountain',
+          kind : 'skill',
           label: 'Lint the screenplay',
-          path: '.aiagent/skills/lint-fountain/SKILL.md',
+          path : '.aiagent/skills/lint-fountain/SKILL.md',
           badge: 'script',
-          note: 'Run the Fountain checker over every scene and summarise what it says.',
+          note : 'Run the Fountain checker over every scene and summarise what it says.',
         },
       ],
     },
@@ -287,30 +287,30 @@ const MOCK_DOCTREE: DocTree = {
 /** The same workspace as files on disk, for the sidebar's other mode. */
 const MOCK_FILETREE: DocNode[] = [
   {
-    id: 'dir:characters',
-    kind: 'dir',
-    label: 'characters',
-    path: 'characters',
+    id      : 'dir:characters',
+    kind    : 'dir',
+    label   : 'characters',
+    path    : 'characters',
     children: [
       {
-        id: 'file:characters/aiko/character.md',
-        kind: 'file',
+        id   : 'file:characters/aiko/character.md',
+        kind : 'file',
         label: 'character.md',
-        path: 'characters/aiko/character.md',
+        path : 'characters/aiko/character.md',
       },
     ],
   },
   {
-    id: 'dir:scenes',
-    kind: 'dir',
-    label: 'scenes',
-    path: 'scenes',
+    id      : 'dir:scenes',
+    kind    : 'dir',
+    label   : 'scenes',
+    path    : 'scenes',
     children: [
       {
-        id: 'file:scenes/rooftop_intro.md',
-        kind: 'file',
+        id   : 'file:scenes/rooftop_intro.md',
+        kind : 'file',
         label: 'rooftop_intro.md',
-        path: 'scenes/rooftop_intro.md',
+        path : 'scenes/rooftop_intro.md',
       },
     ],
   },
@@ -324,36 +324,36 @@ const MOCK_FILETREE: DocNode[] = [
  */
 const MOCK_SKILLTREE: DocNode[] = [
   {
-    id: 'dir:.aiagent/skills/continuity-pass',
-    kind: 'dir',
-    label: 'continuity-pass',
-    path: '.aiagent/skills/continuity-pass',
+    id      : 'dir:.aiagent/skills/continuity-pass',
+    kind    : 'dir',
+    label   : 'continuity-pass',
+    path    : '.aiagent/skills/continuity-pass',
     children: [
       {
-        id: 'file:.aiagent/skills/continuity-pass/SKILL.md',
-        kind: 'file',
+        id   : 'file:.aiagent/skills/continuity-pass/SKILL.md',
+        kind : 'file',
         label: 'SKILL.md',
-        path: '.aiagent/skills/continuity-pass/SKILL.md',
+        path : '.aiagent/skills/continuity-pass/SKILL.md',
       },
     ],
   },
   {
-    id: 'dir:.aiagent/skills/lint-fountain',
-    kind: 'dir',
-    label: 'lint-fountain',
-    path: '.aiagent/skills/lint-fountain',
+    id      : 'dir:.aiagent/skills/lint-fountain',
+    kind    : 'dir',
+    label   : 'lint-fountain',
+    path    : '.aiagent/skills/lint-fountain',
     children: [
       {
-        id: 'file:.aiagent/skills/lint-fountain/SKILL.md',
-        kind: 'file',
+        id   : 'file:.aiagent/skills/lint-fountain/SKILL.md',
+        kind : 'file',
         label: 'SKILL.md',
-        path: '.aiagent/skills/lint-fountain/SKILL.md',
+        path : '.aiagent/skills/lint-fountain/SKILL.md',
       },
       {
-        id: 'file:.aiagent/skills/lint-fountain/run.mjs',
-        kind: 'file',
+        id   : 'file:.aiagent/skills/lint-fountain/run.mjs',
+        kind : 'file',
         label: 'run.mjs',
-        path: '.aiagent/skills/lint-fountain/run.mjs',
+        path : '.aiagent/skills/lint-fountain/run.mjs',
       },
     ],
   },
@@ -395,8 +395,8 @@ const fallback: DesktopApi = {
       case 'agent:system':
         return Promise.resolve({
           sections: [{ name: 'BUILT-IN', text: '(preview) no project open' }],
-          files: [],
-          modelId: '',
+          files   : [],
+          modelId : '',
         });
       case 'agent:setMode':
         return Promise.resolve('plan');
@@ -445,7 +445,7 @@ const fallback: DesktopApi = {
         return Promise.resolve(undefined);
     }
   }) as DesktopApi['invoke'],
-  on: () => () => {},
+  on     : () => () => {},
   session: {
     initial: previewSession,
     set: (key, value) => {

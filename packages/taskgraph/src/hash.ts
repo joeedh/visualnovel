@@ -22,7 +22,7 @@ export function makeTask<K extends TaskKind>(
     kind,
     deps: [...new Set(deps)].sort(),
     inputs,
-    status: 'pending',
+    status  : 'pending',
     attempts: [],
   };
 }

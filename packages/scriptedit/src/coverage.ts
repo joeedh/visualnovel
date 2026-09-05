@@ -189,9 +189,9 @@ export function spansFor<L extends CoverLine, S extends CoverShot>(
     spans.push({
       shot,
       segments: runsOf(shot.id, covered),
-      first: covered[0]!,
-      last: covered[covered.length - 1]!,
-      lane: 0,
+      first   : covered[0]!,
+      last    : covered[covered.length - 1]!,
+      lane    : 0,
     });
   }
 
@@ -203,7 +203,7 @@ export function spansFor<L extends CoverLine, S extends CoverShot>(
     spans,
     orphans,
     lanes,
-    gaps: rows.filter((r) => r.shots.length === 0).map((r) => r.index),
+    gaps    : rows.filter((r) => r.shots.length === 0).map((r) => r.index),
     overlaps: rows.filter((r) => r.shots.length > 1).map((r) => r.index),
   };
 }

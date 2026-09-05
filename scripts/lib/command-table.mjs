@@ -61,12 +61,12 @@ function table(entries) {
 export function buildCommandTables(entries) {
   const namespaces = [...new Set(entries.map((e) => e.namespace))];
   const counts = {
-    total: entries.length,
+    total     : entries.length,
     namespaces: namespaces.length,
-    mutating: entries.filter((e) => e.mutating).length,
-    checkable: entries.filter((e) => e.checkable).length,
-    undoable: entries.filter((e) => e.undoable).length,
-    confirm: entries.filter((e) => e.confirm).length,
+    mutating  : entries.filter((e) => e.mutating).length,
+    checkable : entries.filter((e) => e.checkable).length,
+    undoable  : entries.filter((e) => e.undoable).length,
+    confirm   : entries.filter((e) => e.confirm).length,
   };
 
   const flatFile = `${HEADER}

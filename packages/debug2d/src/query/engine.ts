@@ -126,12 +126,12 @@ export function createDebugger(opts: DebuggerOpts): Debugger2D {
     const fidelities = new Set(parts.map((p) => p.fidelity));
     return assembleFrame({
       index: captureIndex++,
-      t: parts.length ? Math.max(...parts.map((p) => p.t)) : 0,
+      t    : parts.length ? Math.max(...parts.map((p) => p.t)) : 0,
       fragments,
-      spaces: buildRegistry(),
-      caps: Object.fromEntries(opts.sources.map((s) => [s.id, s.caps])),
+      spaces  : buildRegistry(),
+      caps    : Object.fromEntries(opts.sources.map((s) => [s.id, s.caps])),
       fidelity: fidelities.size === 1 ? [...fidelities][0]! : parts.length ? 'mixed' : 'sampled',
-      oracle: parts.find((p) => p.oracle)?.oracle,
+      oracle  : parts.find((p) => p.oracle)?.oracle,
     });
   }
 
@@ -169,11 +169,11 @@ export function createDebugger(opts: DebuggerOpts): Debugger2D {
       });
     },
 
-    byOwner: (id) => filtered(`byOwner('${id}')`, (f) => f.owner.id === id),
-    byTag: (tag) => filtered(`byTag('${tag}')`, (f) => f.tags.includes(tag)),
+    byOwner : (id) => filtered(`byOwner('${id}')`, (f) => f.owner.id === id),
+    byTag   : (tag) => filtered(`byTag('${tag}')`, (f) => f.tags.includes(tag)),
     bySource: (id) => filtered(`bySource('${id}')`, (f) => f.source === id),
-    where: (pred) => filtered('where(…)', pred),
-    owners: () => filtered('owners()', () => true).owners(),
+    where   : (pred) => filtered('where(…)', pred),
+    owners  : () => filtered('owners()', () => true).owners(),
 
     explainPick(x, y, pOpts = {}) {
       const frame = capture({ oracleAt: { x, y } });

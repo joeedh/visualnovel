@@ -185,14 +185,14 @@ function grepTool(
   budget: Budget,
 ): Tool<{ pattern: string; where?: Where; glob?: string }> {
   return {
-    name: 'grep',
+    name       : 'grep',
     description:
       'Search the shipped source, its documentation, or the project files for a regular ' +
       'expression. Returns file:line matches.',
-    mutating: false,
+    mutating   : false,
     args: z.object({
       pattern: z.string().min(1).describe('a JavaScript regular expression, case-insensitive'),
-      where: WHERE,
+      where  : WHERE,
       glob: z
         .string()
         .optional()
@@ -255,13 +255,13 @@ function grepTool(
 
 function readTool(roots: Roots, budget: Budget): Tool<{ path: string; where?: Where }> {
   return {
-    name: 'read_file',
+    name       : 'read_file',
     description:
       'Read one text file from the shipped source or from the project. Paths are relative to ' +
       'whichever root you name.',
-    mutating: false,
+    mutating   : false,
     args: z.object({
-      path: z.string().min(1).describe('relative to the root, forward slashes'),
+      path : z.string().min(1).describe('relative to the root, forward slashes'),
       where: WHERE,
     }),
     async run(a) {
@@ -295,19 +295,19 @@ function readTool(roots: Roots, budget: Budget): Tool<{ path: string; where?: Wh
  */
 export const API_DOCS: Record<string, Record<string, string>> = {
   anthropic: {
-    messages: 'https://docs.claude.com/en/api/messages',
-    'tool-use': 'https://docs.claude.com/en/docs/agents-and-tools/tool-use/overview',
+    messages           : 'https://docs.claude.com/en/api/messages',
+    'tool-use'         : 'https://docs.claude.com/en/docs/agents-and-tools/tool-use/overview',
     'structured-output': 'https://docs.claude.com/en/docs/build-with-claude/structured-outputs',
     'extended-thinking': 'https://docs.claude.com/en/docs/build-with-claude/extended-thinking',
-    models: 'https://docs.claude.com/en/docs/about-claude/models/overview',
-    errors: 'https://docs.claude.com/en/api/errors',
+    models             : 'https://docs.claude.com/en/docs/about-claude/models/overview',
+    errors             : 'https://docs.claude.com/en/api/errors',
   },
   gemini: {
-    'text-generation': 'https://ai.google.dev/gemini-api/docs/text-generation',
-    'function-calling': 'https://ai.google.dev/gemini-api/docs/function-calling',
+    'text-generation'  : 'https://ai.google.dev/gemini-api/docs/text-generation',
+    'function-calling' : 'https://ai.google.dev/gemini-api/docs/function-calling',
     'structured-output': 'https://ai.google.dev/gemini-api/docs/structured-output',
-    models: 'https://ai.google.dev/gemini-api/docs/models',
-    errors: 'https://ai.google.dev/gemini-api/docs/troubleshooting',
+    models             : 'https://ai.google.dev/gemini-api/docs/models',
+    errors             : 'https://ai.google.dev/gemini-api/docs/troubleshooting',
   },
 };
 
@@ -344,14 +344,14 @@ function docsTool(
   const day = () => opts.today ?? new Date().toISOString().slice(0, 10);
 
   return {
-    name: 'fetch_api_docs',
+    name       : 'fetch_api_docs',
     description:
       `Read a page of a model provider's API documentation. Takes a provider and a topic from ` +
       `a fixed list, never a URL. Available: ${docIndex()}.`,
-    mutating: false,
+    mutating   : false,
     args: z.object({
       provider: z.string().min(1).describe('anthropic or gemini'),
-      topic: z.string().min(1).describe('one of the topics listed for that provider'),
+      topic   : z.string().min(1).describe('one of the topics listed for that provider'),
     }),
     async run(a) {
       const topics = API_DOCS[a.provider.toLowerCase()];
@@ -377,9 +377,9 @@ function docsTool(
       let body: string;
       try {
         const res = await doFetch(url, {
-          method: 'GET',
+          method  : 'GET',
           redirect: 'follow',
-          signal: AbortSignal.timeout(10_000),
+          signal  : AbortSignal.timeout(10_000),
         });
         if (!res.ok) return fail(`${url} answered ${res.status}.`);
         body = await res.text();
@@ -410,7 +410,7 @@ function docsTool(
 export function createSourceTools(opts: SourceToolOptions): Map<string, Tool> {
   const budget = opts.budget ?? new Budget();
   const roots: Roots = {
-    source: resolve(opts.sourceRoot),
+    source : resolve(opts.sourceRoot),
     project: resolve(opts.projectRoot),
   };
   const tools: Tool[] = [

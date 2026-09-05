@@ -11,9 +11,9 @@ import { iconmanager, setIconMap } from 'pathux';
 
 /** Ids allocated for this app's icons. Each stays `-1` until its image decodes. */
 export const VN_ICONS: { filter: number; collapse: number; pin: number } = {
-  filter: -1,
+  filter  : -1,
   collapse: -1,
-  pin: -1,
+  pin     : -1,
 };
 
 /** A funnel, drawn to the sheet's 32px tile. Inline so nothing is fetched at runtime. */

@@ -21,8 +21,7 @@ import type { SceneMarkerEdit } from '@vn/model';
 export type SceneMap = ReadonlyMap<string, Pick<Scene, 'id' | 'choices' | 'next'>>;
 
 export type BranchOp =
-  | { ok: true; edits: SceneMarkerEdit[]; message: string }
-  | { ok: false; error: string };
+  { ok: true; edits: SceneMarkerEdit[]; message: string } | { ok: false; error: string };
 
 const refuse = (error: string): BranchOp => ({ ok: false, error });
 
@@ -49,8 +48,8 @@ export function setChoice(
   if (index === undefined) {
     choices.push(choice);
     return {
-      ok: true,
-      edits: [{ sceneId: scene.id, choices }],
+      ok     : true,
+      edits  : [{ sceneId: scene.id, choices }],
       message: `${scene.id} → ${args.goto} ("${args.label}").`,
     };
   }
@@ -59,8 +58,8 @@ export function setChoice(
   }
   choices[index] = choice;
   return {
-    ok: true,
-    edits: [{ sceneId: scene.id, choices }],
+    ok     : true,
+    edits  : [{ sceneId: scene.id, choices }],
     message: `${scene.id} choice ${index} → ${args.goto} ("${args.label}").`,
   };
 }
@@ -74,8 +73,8 @@ export function removeChoice(scenes: SceneMap, args: { scene: string; index: num
   if (!removed) return refuse(`${scene.id} has no choice at index ${args.index}.`);
   choices.splice(args.index, 1);
   return {
-    ok: true,
-    edits: [{ sceneId: scene.id, choices }],
+    ok     : true,
+    edits  : [{ sceneId: scene.id, choices }],
     message: `Removed ${scene.id} → ${removed.goto} ("${removed.label}").`,
   };
 }
@@ -89,14 +88,14 @@ export function setNext(scenes: SceneMap, args: { scene: string; goto?: string }
   if (!goto) {
     if (scene.next === undefined) return refuse(`${scene.id} has no next scene to clear.`);
     return {
-      ok: true,
-      edits: [{ sceneId: scene.id, next: null }],
+      ok     : true,
+      edits  : [{ sceneId: scene.id, next: null }],
       message: `Cleared ${scene.id} → ${scene.next}.`,
     };
   }
   return {
-    ok: true,
-    edits: [{ sceneId: scene.id, next: goto }],
+    ok     : true,
+    edits  : [{ sceneId: scene.id, next: goto }],
     message: `${scene.id} continues to ${goto}.`,
   };
 }

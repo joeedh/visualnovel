@@ -10,7 +10,6 @@ vendor/**
 pnpm-lock.yaml
 coverage/**
 keys/**
-Readme.MD
 
 # The author's running list. Hand-written shorthand, deliberately not markdown checkboxes —
 # reformatting it loses the shape it is kept in. See CLAUDE.md's Plans conventions.

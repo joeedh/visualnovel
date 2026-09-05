@@ -42,11 +42,11 @@ export interface CostPreview {
 }
 
 const ZERO_BY_KIND = (): Record<TaskKind, number> => ({
-  location_ref: 0,
-  portrait: 0,
-  model_sheet: 0,
-  outfit_sheet: 0,
-  shot_image: 0,
+  location_ref : 0,
+  portrait     : 0,
+  model_sheet  : 0,
+  outfit_sheet : 0,
+  shot_image   : 0,
   vision_review: 0,
   prompt_refine: 0,
 });

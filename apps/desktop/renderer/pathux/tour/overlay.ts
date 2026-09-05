@@ -222,13 +222,13 @@ function draw(rect: AnchorRect, enabled: boolean): void {
   const [box, text] = build();
   const colour = enabled ? TOKENS.sodium : TOKENS.mistDim;
   Object.assign(box.style, {
-    display: 'block',
-    left: `${rect.left}px`,
-    top: `${rect.top}px`,
-    width: `${rect.width}px`,
-    height: `${rect.height}px`,
+    display    : 'block',
+    left       : `${rect.left}px`,
+    top        : `${rect.top}px`,
+    width      : `${rect.width}px`,
+    height     : `${rect.height}px`,
     borderColor: colour,
-    boxShadow: `0 0 0 3px ${alpha(colour, 0.25)}`,
+    boxShadow  : `0 0 0 3px ${alpha(colour, 0.25)}`,
   });
   text.textContent = says;
   // Below the ring where there is room for it, and above it otherwise, so a control near the
@@ -237,9 +237,9 @@ function draw(rect: AnchorRect, enabled: boolean): void {
   const room = below + 40 < window.innerHeight;
   Object.assign(text.style, {
     display: says ? 'block' : 'none',
-    left: `${Math.max(8, Math.min(rect.left, window.innerWidth - 320))}px`,
-    top: room ? `${below}px` : '',
-    bottom: room ? '' : `${window.innerHeight - rect.top + 8}px`,
+    left   : `${Math.max(8, Math.min(rect.left, window.innerWidth - 320))}px`,
+    top    : room ? `${below}px` : '',
+    bottom : room ? '' : `${window.innerHeight - rect.top + 8}px`,
   });
 }
 
@@ -259,10 +259,10 @@ function mark(): void {
     const at = outset(rect, RING_PAD);
     Object.assign(box.style, {
       display: 'block',
-      left: `${at.left}px`,
-      top: `${at.top}px`,
-      width: `${at.width}px`,
-      height: `${at.height}px`,
+      left   : `${at.left}px`,
+      top    : `${at.top}px`,
+      width  : `${at.width}px`,
+      height : `${at.height}px`,
     });
   }
 }
@@ -272,10 +272,10 @@ function newMark(): HTMLElement {
   build();
   const box = document.createElement('div');
   Object.assign(box.style, {
-    position: 'fixed',
-    display: 'none',
-    boxSizing: 'border-box',
-    border: `1px dashed ${TOKENS.signal}`,
+    position    : 'fixed',
+    display     : 'none',
+    boxSizing   : 'border-box',
+    border      : `1px dashed ${TOKENS.signal}`,
     borderRadius: `${TOKENS.radiusChrome}px`,
   });
   layer?.appendChild(box);
@@ -295,61 +295,61 @@ function build(): [HTMLElement, HTMLElement, HTMLElement, HTMLElement] {
   if (layer && ring && caption && banner && bannerText) return [ring, caption, banner, bannerText];
   layer = document.createElement('div');
   Object.assign(layer.style, {
-    position: 'fixed',
-    inset: '0',
+    position     : 'fixed',
+    inset        : '0',
     pointerEvents: 'none',
-    zIndex: `${LAYER_Z}`,
+    zIndex       : `${LAYER_Z}`,
   });
 
   ring = document.createElement('div');
   Object.assign(ring.style, {
-    position: 'fixed',
-    display: 'none',
-    boxSizing: 'border-box',
-    border: `2px solid ${TOKENS.sodium}`,
+    position    : 'fixed',
+    display     : 'none',
+    boxSizing   : 'border-box',
+    border      : `2px solid ${TOKENS.sodium}`,
     borderRadius: `${TOKENS.radiusChrome}px`,
-    animation: 'vn-tour-pulse 1.6s ease-in-out infinite',
+    animation   : 'vn-tour-pulse 1.6s ease-in-out infinite',
   });
 
   caption = document.createElement('div');
   Object.assign(caption.style, {
-    position: 'fixed',
-    display: 'none',
-    maxWidth: '300px',
-    padding: '7px 10px',
+    position    : 'fixed',
+    display     : 'none',
+    maxWidth    : '300px',
+    padding     : '7px 10px',
     borderRadius: `${TOKENS.radiusChrome}px`,
-    border: `1px solid ${TOKENS.inkLine}`,
-    background: TOKENS.inkRaised,
-    color: TOKENS.paper,
-    fontFamily: TOKENS.sans,
-    fontSize: '12px',
-    lineHeight: '1.4',
-    whiteSpace: 'pre-line',
+    border      : `1px solid ${TOKENS.inkLine}`,
+    background  : TOKENS.inkRaised,
+    color       : TOKENS.paper,
+    fontFamily  : TOKENS.sans,
+    fontSize    : '12px',
+    lineHeight  : '1.4',
+    whiteSpace  : 'pre-line',
   });
 
   banner = document.createElement('div');
   Object.assign(banner.style, {
-    position: 'fixed',
-    display: 'none',
-    left: '50%',
-    bottom: '16px',
-    transform: 'translateX(-50%)',
-    alignItems: 'flex-start',
-    gap: '10px',
-    maxWidth: '460px',
-    padding: '8px 10px',
-    borderRadius: `${TOKENS.radiusChrome}px`,
-    border: `1px solid ${alpha(TOKENS.sodium, 0.55)}`,
-    background: TOKENS.inkRaised,
+    position     : 'fixed',
+    display      : 'none',
+    left         : '50%',
+    bottom       : '16px',
+    transform    : 'translateX(-50%)',
+    alignItems   : 'flex-start',
+    gap          : '10px',
+    maxWidth     : '460px',
+    padding      : '8px 10px',
+    borderRadius : `${TOKENS.radiusChrome}px`,
+    border       : `1px solid ${alpha(TOKENS.sodium, 0.55)}`,
+    background   : TOKENS.inkRaised,
     // Restores what the layer switches off, so the cancel button below can be clicked.
     pointerEvents: 'auto',
   });
 
   bannerText = document.createElement('div');
   Object.assign(bannerText.style, {
-    color: TOKENS.paper,
+    color     : TOKENS.paper,
     fontFamily: TOKENS.sans,
-    fontSize: '12px',
+    fontSize  : '12px',
     lineHeight: '1.4',
     whiteSpace: 'pre-line',
   });
@@ -358,15 +358,15 @@ function build(): [HTMLElement, HTMLElement, HTMLElement, HTMLElement] {
   stop.textContent = '✕';
   stop.title = 'Stop the tour. Nothing it walked you through is undone.';
   Object.assign(stop.style, {
-    flex: 'none',
-    cursor: 'pointer',
-    padding: '2px 7px',
-    color: TOKENS.paper,
-    background: 'transparent',
-    border: `1px solid ${TOKENS.inkLine}`,
+    flex        : 'none',
+    cursor      : 'pointer',
+    padding     : '2px 7px',
+    color       : TOKENS.paper,
+    background  : 'transparent',
+    border      : `1px solid ${TOKENS.inkLine}`,
     borderRadius: `${TOKENS.radiusChrome}px`,
-    fontFamily: TOKENS.mono,
-    fontSize: '11px',
+    fontFamily  : TOKENS.mono,
+    fontSize    : '11px',
   });
   stop.addEventListener('click', () => stopTour?.());
   banner.append(bannerText, stop);

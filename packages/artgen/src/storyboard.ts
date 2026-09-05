@@ -55,15 +55,15 @@ export function deterministicShots(scene: Scene, model: ProjectModel): Shot[] {
     .map((l) => l.id);
   const shots: Shot[] = [
     {
-      id: shotId(scene.id, 'establishing'),
-      sceneId: scene.id,
-      framing: 'establishing',
-      location: variant,
+      id         : shotId(scene.id, 'establishing'),
+      sceneId    : scene.id,
+      framing    : 'establishing',
+      location   : variant,
       // A decomposer does not choose clothes, so no outfit is set. Absent means inherit, so a
       // later scene marker or a change of default reaches this shot instead of being shadowed.
-      subjects: scene.characters.map((characterId) => ({ characterId })),
+      subjects   : scene.characters.map((characterId) => ({ characterId })),
       coversLines: establishingLines,
-      status: 'pending',
+      status     : 'pending',
     },
   ];
   scene.characters.forEach((characterId, i) => {
@@ -71,9 +71,9 @@ export function deterministicShots(scene: Scene, model: ProjectModel): Shot[] {
       .filter((l) => l.kind === 'dialogue' && l.speaker === characterId)
       .map((l) => l.id);
     shots.push({
-      id: shotId(scene.id, `beat${i + 1}`),
-      sceneId: scene.id,
-      framing: 'medium',
+      id      : shotId(scene.id, `beat${i + 1}`),
+      sceneId : scene.id,
+      framing : 'medium',
       location: variant,
       subjects: [{ characterId }],
       coversLines,
@@ -180,10 +180,10 @@ export function realizeDecomposition(
   // Only accept line ids the scene actually has, so the LLM cannot invent bindings.
   const realLineIds = new Set(scene.lines.map((l) => l.id));
   const shots: Shot[] = raw.shots.map((s) => ({
-    id: s.id.startsWith(`${scene.id}__`) ? s.id : shotId(scene.id, s.id),
-    sceneId: scene.id,
-    framing: s.framing,
-    location: variants.includes(s.location) ? s.location : (variants[0] ?? 'day'),
+    id         : s.id.startsWith(`${scene.id}__`) ? s.id : shotId(scene.id, s.id),
+    sceneId    : scene.id,
+    framing    : s.framing,
+    location   : variants.includes(s.location) ? s.location : (variants[0] ?? 'day'),
     // `outfit` is dropped even if the model volunteers one: clothes are the author's, and a
     // baked value here would shadow the scene marker the author writes later.
     subjects: s.subjects.flatMap((sub) => {
@@ -191,9 +191,9 @@ export function realizeDecomposition(
       if (!characterId) return [];
       return [{ characterId, pose: sub.pose, expression: sub.expression }];
     }),
-    camera: s.camera,
+    camera     : s.camera,
     coversLines: s.coversLines.filter((id) => realLineIds.has(id)),
-    status: 'pending' as const,
+    status     : 'pending' as const,
   }));
   return withCoverage(shots, scene, model);
 }

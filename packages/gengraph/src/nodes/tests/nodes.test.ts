@@ -66,15 +66,15 @@ function run(
 }
 
 const AIKO: Character = {
-  id: 'aiko',
-  name: 'Aiko',
-  description: 'A tall archivist in a grey coat.',
-  traits: ['reserved'],
-  palette: ['#334455', '#ddccbb'],
-  status: 'approved',
+  id           : 'aiko',
+  name         : 'Aiko',
+  description  : 'A tall archivist in a grey coat.',
+  traits       : ['reserved'],
+  palette      : ['#334455', '#ddccbb'],
+  status       : 'approved',
   defaultOutfit: 'default',
-  outfits: [{ id: 'default', characterId: 'aiko', description: 'grey coat' }],
-  artNotes: 'ink-wash linework',
+  outfits      : [{ id: 'default', characterId: 'aiko', description: 'grey coat' }],
+  artNotes     : 'ink-wash linework',
 };
 
 describe('the seeded input nodes', () => {
@@ -86,9 +86,9 @@ describe('the seeded input nodes', () => {
 
   it('reproduces byte for byte what the runner composes for a slot', () => {
     const config = projectConfig.parse({
-      title: 'Test',
+      title    : 'Test',
       art_style: 'watercolor',
-      models: { vision: ['gemini', 'claude'] },
+      models   : { vision: ['gemini', 'claude'] },
     });
     const composed = renderPrompt(buildPortraitChunks(AIKO, config));
 

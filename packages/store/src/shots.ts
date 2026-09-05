@@ -64,9 +64,9 @@ export async function readShots(
     throw new ValidationError(
       `malformed shots file for scene "${sceneId}"`,
       parsed.error.issues.map((i) => ({
-        code: 'shots_file',
+        code   : 'shots_file',
         message: i.message,
-        where: `${file}:${i.path.join('.')}`,
+        where  : `${file}:${i.path.join('.')}`,
       })),
     );
   }
@@ -76,18 +76,18 @@ export async function readShots(
     const kept = knownLineIds ? s.coversLines.filter((id) => knownLineIds.has(id)) : s.coversLines;
     if (kept.length !== s.coversLines.length) {
       dropped.push({
-        shotId: s.id,
+        shotId : s.id,
         lineIds: s.coversLines.filter((id) => !kept.includes(id)),
       });
     }
     const shot: Shot = {
-      id: s.id,
-      sceneId: s.sceneId,
-      framing: s.framing,
-      location: s.location,
-      subjects: s.subjects,
+      id         : s.id,
+      sceneId    : s.sceneId,
+      framing    : s.framing,
+      location   : s.location,
+      subjects   : s.subjects,
       coversLines: kept,
-      status: s.shotData?.status ?? 'pending',
+      status     : s.shotData?.status ?? 'pending',
     };
     if (s.castOptional !== undefined) shot.castOptional = s.castOptional;
     if (s.camera !== undefined) shot.camera = s.camera;
@@ -109,13 +109,13 @@ export async function readShots(
 function serialize(sceneId: string, shots: readonly Shot[], nextShot?: number): string {
   const file = {
     version: 1,
-    scene: sceneId,
+    scene  : sceneId,
     // Only present once a hand-made shot has spent an id, so decomposed files stay byte-stable.
     ...(nextShot !== undefined ? { nextShot } : {}),
     shots: shots.map((s) => ({
-      id: s.id,
-      sceneId: s.sceneId,
-      framing: s.framing,
+      id      : s.id,
+      sceneId : s.sceneId,
+      framing : s.framing,
       location: s.location,
       subjects: s.subjects,
       // Only when set, so a file that never turned enforcement off stays byte-stable.

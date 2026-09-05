@@ -16,8 +16,8 @@ import { captureRequest } from './capture.js';
 import { callWithRetry } from './transient.js';
 
 const MIME: Record<string, string> = {
-  png: 'image/png',
-  jpg: 'image/jpeg',
+  png : 'image/png',
+  jpg : 'image/jpeg',
   jpeg: 'image/jpeg',
   webp: 'image/webp',
 };
@@ -75,7 +75,7 @@ function imagePart(img: ImageInput): any {
   return {
     inlineData: {
       mimeType: MIME[img.ext.toLowerCase()] ?? 'image/png',
-      data: Buffer.from(img.bytes).toString('base64'),
+      data    : Buffer.from(img.bytes).toString('base64'),
     },
   };
 }
@@ -109,7 +109,7 @@ function usageOf(res: any): TokenUsage | undefined {
   if (!u) return undefined;
   const cacheRead = u.cachedContentTokenCount ?? undefined;
   return {
-    input: u.promptTokenCount ?? 0,
+    input : u.promptTokenCount ?? 0,
     output: (u.candidatesTokenCount ?? 0) + (u.thoughtsTokenCount ?? 0),
     ...(cacheRead === undefined ? {} : { cacheRead, cacheEstimated: true }),
   };
@@ -129,9 +129,9 @@ export function createGeminiChat(
     // The captured body is this one rather than the request's own strings: a positional error
     // indexes into what went over the wire, and `parts` is where the images and prompt end up
     const body = {
-      model: modelId,
+      model   : modelId,
       contents: [{ role: 'user', parts }],
-      config: req.system ? { systemInstruction: req.system } : undefined,
+      config  : req.system ? { systemInstruction: req.system } : undefined,
     };
     const capture = await captureRequest('gemini', body, { record });
     try {
@@ -154,22 +154,22 @@ export function createGeminiChat(
     cacheReporting: 'estimated',
     // The text path drops the usage `messageWithUsage` returns, so there is one request builder
     // and one retry policy
-    message: async (req: ChatRequest) => (await messageWithUsage(req)).text,
+    message       : async (req: ChatRequest) => (await messageWithUsage(req)).text,
     messageWithUsage,
     async chatWithTools(req: ChatRequest, tools: ToolSchema[]): Promise<ChatToolReply> {
       const ai = await client();
       const parts: any[] = [...(req.images ?? []).map(imagePart), { text: req.prompt }];
       const body = {
-        model: modelId,
+        model   : modelId,
         contents: [{ role: 'user', parts }],
         config: {
           ...(req.system ? { systemInstruction: req.system } : {}),
           tools: [
             {
               functionDeclarations: tools.map((t) => ({
-                name: t.name,
+                name       : t.name,
                 description: t.description,
-                parameters: t.parameters,
+                parameters : t.parameters,
               })),
             },
           ],
@@ -214,7 +214,7 @@ export function createGeminiImage(
     const ai = await client();
     return callWithRetry(`Gemini image request failed (${modelId})`, async () => {
       const res = await ai.models.generateContent({
-        model: modelId,
+        model   : modelId,
         contents: [{ role: 'user', parts }],
         config: {
           responseModalities: ['IMAGE'],
@@ -227,6 +227,6 @@ export function createGeminiImage(
   return {
     modelId,
     generate: (prompt, refs, params) => run(refs, prompt, params),
-    edit: (base, prompt, refs, params) => run([base, ...refs], prompt, params),
+    edit    : (base, prompt, refs, params) => run([base, ...refs], prompt, params),
   };
 }

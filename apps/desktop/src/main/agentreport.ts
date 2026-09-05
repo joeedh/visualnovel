@@ -237,12 +237,12 @@ async function sourceAccess(req: AnalysisRequest, budget: Budget): Promise<Sourc
   return {
     registry: createSourceTools({
       budget,
-      sourceRoot: root,
+      sourceRoot : root,
       projectRoot: req.dir,
       ...(req.userData ? { cacheDir: join(req.userData, 'apidocs') } : {}),
       today: new Date().toISOString().slice(0, 10),
     }),
-    ctx: { workspace: new Workspace(req.dir), git: openGit(req.dir) },
+    ctx     : { workspace: new Workspace(req.dir), git: openGit(req.dir) },
   };
 }
 

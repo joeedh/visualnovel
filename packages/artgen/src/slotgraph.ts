@@ -103,8 +103,8 @@ export function slotTaskHash(r: ResolvedSlot): string {
 function shotUpstream(scene: Scene, shot: Shot, ctx: SlotResolveContext): Decided<AssetRef[]> {
   const params = imageParams(ctx.config);
   const missing = (what: string): Decided<AssetRef[]> => ({
-    ok: false,
-    code: 'UPSTREAM_MISSING',
+    ok    : false,
+    code  : 'UPSTREAM_MISSING',
     reason: `${what} has not been rendered, and a frame's identity is built on it — run the pipeline far enough to produce it.`,
   });
   const output = (hash: string): AssetRef | undefined => {
@@ -115,8 +115,8 @@ function shotUpstream(scene: Scene, shot: Shot, ctx: SlotResolveContext): Decide
   const location = ctx.model.locations.get(scene.location);
   if (!location) {
     return {
-      ok: false,
-      code: 'NO_SUCH_SLOT',
+      ok    : false,
+      code  : 'NO_SUCH_SLOT',
       reason: `Scene ${scene.id} is set in "${scene.location}", which is not a location this project has.`,
     };
   }
@@ -158,8 +158,8 @@ function shotUpstream(scene: Scene, shot: Shot, ctx: SlotResolveContext): Decide
 export function resolveSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<ResolvedSlot> {
   const params = imageParams(ctx.config);
   const gone = (what: string): Decided<ResolvedSlot> => ({
-    ok: false,
-    code: 'NO_SUCH_SLOT',
+    ok    : false,
+    code  : 'NO_SUCH_SLOT',
     reason: `${what} — nothing in this project plans that picture.`,
   });
 
@@ -168,7 +168,7 @@ export function resolveSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<
       const character = ctx.model.characters.get(slot.characterId);
       if (!character) return gone(`There is no character "${slot.characterId}"`);
       return {
-        ok: true,
+        ok  : true,
         plan: { kind: 'portrait', inputs: portraitInputs(character, ctx.config, params) },
       };
     }
@@ -178,9 +178,9 @@ export function resolveSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<
       if (!location.variants.some((v) => v.id === slot.variant))
         return gone(`${location.id} has no "${slot.variant}" variant`);
       return {
-        ok: true,
+        ok  : true,
         plan: {
-          kind: 'location_ref',
+          kind  : 'location_ref',
           inputs: locationInputs(location, slot.variant, ctx.config, params),
         },
       };
@@ -190,8 +190,8 @@ export function resolveSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<
       if (!character) return gone(`There is no character "${slot.characterId}"`);
       if (!character.approvedPortrait) {
         return {
-          ok: false,
-          code: 'NOT_APPROVED',
+          ok    : false,
+          code  : 'NOT_APPROVED',
           reason: `${character.id}'s look has not been approved, and a sheet is drawn from the approved portrait — approve one with gate.approve first.`,
         };
       }
@@ -200,9 +200,9 @@ export function resolveSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<
       if (!(MODEL_SHEET_ANGLES as readonly string[]).includes(slot.angle))
         return gone(`"${slot.angle}" is not one of the ${MODEL_SHEET_ANGLES.join(', ')} angles`);
       return {
-        ok: true,
+        ok  : true,
         plan: {
-          kind: 'model_sheet',
+          kind  : 'model_sheet',
           inputs: modelSheetInputs(
             character,
             slot.outfit,
@@ -222,17 +222,17 @@ export function resolveSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<
       const upstream = shotUpstream(scene, shot, ctx);
       if (!upstream.ok) return upstream;
       return {
-        ok: true,
+        ok  : true,
         plan: {
-          kind: 'shot_image',
+          kind  : 'shot_image',
           inputs: shotInputs(shot, scene, ctx.model, ctx.config, params, upstream.plan),
         },
       };
     }
     case 'asset':
       return {
-        ok: false,
-        code: 'NOT_A_SLOT',
+        ok    : false,
+        code  : 'NOT_A_SLOT',
         reason:
           'An upload and a concept are their own identity — there is no task under them to be the output of.',
       };
@@ -342,7 +342,7 @@ export function buildSlotGraph(ctx: SlotGraphContext): SlotGraph {
       label: slotLabel(binding),
       // Left unfiltered by enumerated keys, because an edge to an authored `asset:<hash>` pin is
       // real; a consumer treats a key `nodes` has no entry for as an opaque upstream
-      refs: refsOfSlot(binding, ctx).map(slotKey),
+      refs : refsOfSlot(binding, ctx).map(slotKey),
       ...(task ? { taskHash: task } : {}),
       ...(status ? { status } : {}),
       ...(decided.ok ? {} : { blocked: decided.reason }),

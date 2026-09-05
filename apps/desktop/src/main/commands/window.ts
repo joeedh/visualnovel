@@ -14,15 +14,15 @@ import type { CommandHost } from './host.js';
 const define = defineFor<CommandHost>();
 
 export const windowNew = define({
-  id: 'window.new',
-  title: 'New window',
+  id         : 'window.new',
+  title      : 'New window',
   description:
     'Open another window onto the same project, so panes can be spread across monitors. It is ' +
     'a second view, not a second app: one process, one undo history, one set of files. Name an ' +
     'editor to have the new window open showing it rather than the arrangement it last had.',
   notes:
     'Open another window onto the same project. A second *view*, not a second app: one process, one `WorkspaceSession`, one undo history. Both props are optional; naming an editor opens showing it.',
-  mutating: false,
+  mutating   : false,
   props: {
     editor: prop.oneOf(
       ['', ...EDITOR_IDS] as const,
@@ -38,7 +38,7 @@ export const windowNew = define({
   },
   async run({ editor, subject }, ctx) {
     const id = await ctx.host.newWindow({
-      editor: editor || undefined,
+      editor : editor || undefined,
       subject: subject || undefined,
     });
     const showing = editor ? ` showing ${editorTitle(editor as EditorId)}` : '';
@@ -47,16 +47,16 @@ export const windowNew = define({
 });
 
 export const windowClose = define({
-  id: 'window.close',
-  title: 'Close window',
+  id         : 'window.close',
+  title      : 'Close window',
   description:
     'Close this window. Its panes and its selection are remembered against its index, so the ' +
     'next window to take that index opens where this one left off. Closing the last window ' +
     'quits, which is the one case worth knowing before pressing it.',
   notes:
     'Close the asking window. Its note says how many stay open, or that this is the last one and closing it quits.',
-  mutating: false,
-  props: {},
+  mutating   : false,
+  props      : {},
   check(_props, ctx) {
     return Promise.resolve(
       ctx.host.windowCount() <= 1
@@ -74,17 +74,17 @@ export const windowClose = define({
 });
 
 export const windowQuit = define({
-  id: 'window.quit',
-  title: 'Quit vnstudio',
+  id         : 'window.quit',
+  title      : 'Quit vnstudio',
   description:
     'Close every window and quit. Work already saved stays saved — this is not a discard — but ' +
     'a window still holding an unsaved edit asks before it goes.',
-  mutating: false,
-  props: {},
+  mutating   : false,
+  props      : {},
   check(_props, ctx) {
     const open = ctx.host.windowCount();
     return Promise.resolve({
-      ok: true as const,
+      ok  : true as const,
       note: open > 1 ? `closes all ${open} windows` : 'closes the window and quits',
     });
   },

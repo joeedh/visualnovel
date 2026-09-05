@@ -58,7 +58,7 @@ export type NotificationSource = (typeof NOTIFICATION_SOURCES)[number];
  * skips anything it cannot use.
  */
 export const NotificationLinkSchema = z.object({
-  editor: z.string().min(1).optional(),
+  editor : z.string().min(1).optional(),
   subject: z.string().optional(),
   command: z.string().min(1).optional(),
 });
@@ -68,21 +68,21 @@ export type NotificationLink = z.infer<typeof NotificationLinkSchema>;
 export const NOTIFICATION_VERSION = 1;
 
 export const NotificationSchema = z.object({
-  v: z.number().int().positive(),
+  v       : z.number().int().positive(),
   /** Read. 0 or 1 — a number, not a boolean, because it is patched as one ASCII digit. */
-  r: z.union([z.literal(0), z.literal(1)]),
+  r       : z.union([z.literal(0), z.literal(1)]),
   /** Hidden ("archived"). Same contract as `r`. */
-  h: z.union([z.literal(0), z.literal(1)]),
-  id: z.string().min(1),
+  h       : z.union([z.literal(0), z.literal(1)]),
+  id      : z.string().min(1),
   /** ISO-8601. Sorts lexically, which is what the reader relies on. */
-  at: z.string().min(1),
+  at      : z.string().min(1),
   /** One app launch, so debugging tooling can tell two runs apart in a merged log. */
-  session: z.string().min(1),
+  session : z.string().min(1),
   category: z.enum(NOTIFICATION_CATEGORIES),
-  level: z.enum(NOTIFICATION_LEVELS),
-  source: z.enum(NOTIFICATION_SOURCES),
-  message: z.string(),
-  link: NotificationLinkSchema.optional(),
+  level   : z.enum(NOTIFICATION_LEVELS),
+  source  : z.enum(NOTIFICATION_SOURCES),
+  message : z.string(),
+  link    : NotificationLinkSchema.optional(),
 });
 
 export type Notification = z.infer<typeof NotificationSchema>;

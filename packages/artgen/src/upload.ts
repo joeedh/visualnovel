@@ -88,8 +88,8 @@ export function uploadOf(
   const ext = imageExt(req.bytes);
   if (!ext) {
     return {
-      ok: false,
-      code: 'NOT_AN_IMAGE',
+      ok    : false,
+      code  : 'NOT_AN_IMAGE',
       reason: `${name} is not a PNG, JPEG, GIF or WebP — an image model can only be shown an image.`,
     };
   }
@@ -97,8 +97,8 @@ export function uploadOf(
   // about it at the file picker rather than as a provider error mid-run.
   if (isPlaceholderImage(req.bytes)) {
     return {
-      ok: false,
-      code: 'MOCK_PLACEHOLDER',
+      ok    : false,
+      code  : 'MOCK_PLACEHOLDER',
       reason: `${name} is a placeholder from a mock run. A real image backend refuses those as references, so it cannot be used as one.`,
     };
   }
@@ -106,13 +106,13 @@ export function uploadOf(
   const hash = sha256(req.bytes);
   const known = store.has(hash);
   return {
-    ok: true,
+    ok  : true,
     plan: {
       ext,
       // An upload has no task node, so this is the hash of the request instead — the same shape
       // a concept uses, so `sourceTask` still says what made the asset
       sourceTask: hashParts('upload', { file: name, bytes: hash }),
-      title: (req.title ?? '').trim() || fileTitle(req.file),
+      title     : (req.title ?? '').trim() || fileTitle(req.file),
       known,
       note: known
         ? `${name} is already in the store as ${hash.slice(0, 8)}; the upload records it again under the same bytes.`
@@ -140,7 +140,7 @@ export async function uploadReference(
   const ref = await deps.store.write(bytes, ext, {
     kind: 'reference',
     sourceTask,
-    refs: [],
+    refs   : [],
     // No model drew it, and the field is required
     modelId: 'upload',
     title,

@@ -204,9 +204,9 @@ describe('openWorkspace', () => {
     await writeFile(join(dir, 'project.yaml'), '# hand written\ntitle: The Transfer Student\n');
 
     expect(await openWorkspace(dir)).toEqual({
-      root: dir,
+      root   : dir,
       created: false,
-      title: 'The Transfer Student',
+      title  : 'The Transfer Student',
     });
     expect(await readFile(join(dir, 'project.yaml'), 'utf8')).toBe(
       '# hand written\ntitle: The Transfer Student\n',
@@ -293,24 +293,24 @@ describe('inspectCreate', () => {
     await writeFile(file, 'hello');
 
     expect(await inspectCreate(missing)).toMatchObject({
-      exists: false,
+      exists   : false,
       directory: false,
-      empty: true,
+      empty    : true,
     });
     expect(await inspectCreate(empty)).toMatchObject({
-      exists: true,
+      exists   : true,
       directory: true,
-      empty: true,
+      empty    : true,
     });
     expect(await inspectCreate(full)).toMatchObject({
-      exists: true,
+      exists   : true,
       directory: true,
-      empty: false,
+      empty    : false,
     });
     expect(await inspectCreate(file)).toMatchObject({
-      exists: true,
+      exists   : true,
       directory: false,
-      empty: false,
+      empty    : false,
     });
 
     // Read-only, including the walk up for `insideRepo`.
@@ -346,9 +346,9 @@ describe('createWorkspace', () => {
     const dir = join(root, 'my-story');
 
     expect(await createWorkspace(dir, 'My Story')).toEqual({
-      root: dir,
+      root   : dir,
       created: true,
-      title: 'My Story',
+      title  : 'My Story',
     });
     expect((await readdir(dir)).sort()).toEqual([
       '.git',
@@ -596,10 +596,10 @@ describe('inspectWorkspace', () => {
 
     expect(await inspectWorkspace(empty)).toEqual({ root: empty, directory: true, project: false });
     expect(await inspectWorkspace(project)).toEqual({
-      root: project,
+      root     : project,
       directory: true,
-      project: true,
-      title: 'Mine',
+      project  : true,
+      title    : 'Mine',
     });
     expect((await inspectWorkspace(broken)).problem).toContain('project.yaml');
     expect(await inspectWorkspace(join(root, 'nope'))).toMatchObject({ directory: false });

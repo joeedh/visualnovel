@@ -86,7 +86,7 @@ export class ResultSet {
     for (const f of this.frame.fragments) parentOf.set(f.owner.id, f.owner.parent);
     const inSubtree = (start: string): boolean => {
       const seen = new Set<string>();
-      for (let id: string | undefined = start; id !== undefined && !seen.has(id); ) {
+      for (let id: string | undefined = start; id !== undefined && !seen.has(id);) {
         if (roots.has(id)) return true;
         seen.add(id);
         id = parentOf.get(id);
@@ -113,13 +113,13 @@ export class ResultSet {
   /** Plain data — owner, source, bounds, tags, z. JSON-safe, crosses CDP. */
   table(): TableRow[] {
     return this.fragments.map((f) => ({
-      id: f.id,
-      owner: f.owner.id,
+      id    : f.id,
+      owner : f.owner.id,
       source: f.source,
-      kind: f.kind,
+      kind  : f.kind,
       bounds: fmtRect(f.bounds),
-      tags: f.tags,
-      z: f.z,
+      tags  : f.tags,
+      z     : f.z,
     }));
   }
 

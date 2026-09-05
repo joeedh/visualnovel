@@ -62,14 +62,14 @@ function install(name = 'testkit-shout', over: Record<string, unknown> = {}): st
 
 describe('which table prices a line', () => {
   const yours: GenPriceTable = {
-    name: USER_PRICES_NAME,
+    name      : USER_PRICES_NAME,
     pricesAsOf: '2026-08-01',
-    models: { 'mock-image': { image: 0.5 } },
+    models    : { 'mock-image': { image: 0.5 } },
   };
   const theirs: GenPriceTable = {
-    name: 'acme',
+    name      : 'acme',
     pricesAsOf: '2026-07-01',
-    models: { 'mock-image': { image: 9 }, 'acme-draw': { image: 2 } },
+    models    : { 'mock-image': { image: 9 }, 'acme-draw': { image: 2 } },
   };
 
   it('reads the author’s table first and the shipped one before a plugin’s', () => {
@@ -104,19 +104,19 @@ describe('the author’s own table', () => {
 
     await writeUserPrices(
       {
-        name: USER_PRICES_NAME,
+        name      : USER_PRICES_NAME,
         pricesAsOf: '2026-08-25',
-        source: 'typed in by hand',
-        models: { 'acme-draw': { image: 1 } },
+        source    : 'typed in by hand',
+        models    : { 'acme-draw': { image: 1 } },
       },
       env(),
     );
 
     expect(await readUserPrices(env())).toEqual({
-      name: USER_PRICES_NAME,
+      name      : USER_PRICES_NAME,
       pricesAsOf: '2026-08-25',
-      source: 'typed in by hand',
-      models: { 'acme-draw': { image: 1 } },
+      source    : 'typed in by hand',
+      models    : { 'acme-draw': { image: 1 } },
     });
   });
 
@@ -130,7 +130,7 @@ describe('refreshing prices from a plugin', () => {
   it('refuses a plugin that registered no price agent', async () => {
     const refresh = await refreshUserPrices('nobody', mockServices(), NOW, env());
     expect(refresh).toEqual({
-      ok: false,
+      ok    : false,
       reason: 'nobody has no price agent, or it is not loaded',
     });
   });
@@ -150,9 +150,9 @@ describe('refreshing prices from a plugin', () => {
     expect(refresh).toMatchObject({ ok: true, models: ['testkit-shouter'] });
     expect(services.texts).toHaveLength(1);
     expect(await readUserPrices(env())).toEqual({
-      name: USER_PRICES_NAME,
+      name      : USER_PRICES_NAME,
       pricesAsOf: '2026-08-25',
-      source: 'looked up by a plugin on your own key',
+      source    : 'looked up by a plugin on your own key',
       models: { 'acme-draw': { image: 1 }, 'testkit-shouter': { 'mtok-in': 1.5, 'mtok-out': 3 } },
     });
   }, 60_000);

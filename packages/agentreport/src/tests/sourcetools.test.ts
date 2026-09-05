@@ -148,7 +148,7 @@ describe('read_file', () => {
   it('reads the project, but never its credentials', async () => {
     const registry = tools(fx);
     const scene = await call(registry, 'read_file', {
-      path: 'scenes/one.fountain',
+      path : 'scenes/one.fountain',
       where: 'project',
     });
     expect(scene.ok).toBe(true);
@@ -203,7 +203,7 @@ describe('fetch_api_docs', () => {
   it('refuses a provider that is not on the list, and says what is', async () => {
     const res = await call(tools(fx), 'fetch_api_docs', {
       provider: 'evil.com',
-      topic: 'messages',
+      topic   : 'messages',
     });
     expect(res.ok).toBe(false);
     expect(res.output).toContain('anthropic');
@@ -213,7 +213,7 @@ describe('fetch_api_docs', () => {
   it('refuses a topic that provider has no page for', async () => {
     const res = await call(tools(fx), 'fetch_api_docs', {
       provider: 'anthropic',
-      topic: 'billing',
+      topic   : 'billing',
     });
     expect(res.ok).toBe(false);
     expect(res.output).toContain('Topics:');
@@ -223,7 +223,7 @@ describe('fetch_api_docs', () => {
     const { calls, impl } = fetching();
     const res = await call(tools(fx, { fetchImpl: impl }), 'fetch_api_docs', {
       provider: 'Anthropic',
-      topic: 'Messages',
+      topic   : 'Messages',
     });
     expect(res.ok).toBe(true);
     expect(calls).toEqual(['https://docs.claude.com/en/api/messages']);
@@ -234,13 +234,13 @@ describe('fetch_api_docs', () => {
   it('reports a page that answered badly instead of inventing one', async () => {
     const impl = (async () =>
       ({
-        ok: false,
+        ok    : false,
         status: 503,
-        text: async () => '',
+        text  : async () => '',
       }) as Response) as unknown as typeof globalThis.fetch;
     const res = await call(tools(fx, { fetchImpl: impl }), 'fetch_api_docs', {
       provider: 'gemini',
-      topic: 'models',
+      topic   : 'models',
     });
     expect(res.ok).toBe(false);
     expect(res.output).toContain('503');

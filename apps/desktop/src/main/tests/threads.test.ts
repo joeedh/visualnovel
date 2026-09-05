@@ -104,7 +104,7 @@ describe('threads', () => {
     await bindThread(paths, id, { model: 'claude-opus-5', effort: 'xhigh' });
 
     expect(await readThread(paths, id)).toMatchObject({
-      model: 'claude-opus-5',
+      model : 'claude-opus-5',
       effort: 'xhigh',
     });
     // The listing reads the same binding, parsing only the header-shaped lines
@@ -235,9 +235,9 @@ describe('threads', () => {
     await appendItem(paths, id, item(1, 'user', 'first'));
     await appendCompaction(paths, id, {
       afterId: 1,
-      covers: 4,
-      text: 'one',
-      model: 'claude-opus-5',
+      covers : 4,
+      text   : 'one',
+      model  : 'claude-opus-5',
     });
     await appendItem(paths, id, item(2, 'user', 'second'));
     await appendCompaction(paths, id, { afterId: 2, covers: 9, text: 'two' });
@@ -281,14 +281,14 @@ describe('receipts in a thread', () => {
     const usage: ThreadUsage[] = [
       { step: 1, input: 1000, output: 20, cacheRead: 0, cacheWrite: 900, verdict: 'cold', at: 'a' },
       {
-        step: 2,
-        input: 1000,
-        output: 20,
-        cacheRead: 900,
-        cacheWrite: 80,
+        step          : 2,
+        input         : 1000,
+        output        : 20,
+        cacheRead     : 900,
+        cacheWrite    : 80,
         cacheEstimated: true,
-        verdict: 'hit',
-        at: 'b',
+        verdict       : 'hit',
+        at            : 'b',
       },
     ];
     for (const receipt of usage) await appendUsage(paths, id, receipt);
@@ -345,14 +345,14 @@ describe('the native log', () => {
   });
 
   const header = (thread: string): NativeLine => ({
-    v: NATIVE_VERSION,
+    v   : NATIVE_VERSION,
     type: 'resume',
     thread,
-    at: '2026-08-22T14:00:28.041Z',
-    backend: 'native',
-    vendor: 'anthropic',
-    model: 'claude-opus-5',
-    effort: 'low',
+    at      : '2026-08-22T14:00:28.041Z',
+    backend : 'native',
+    vendor  : 'anthropic',
+    model   : 'claude-opus-5',
+    effort  : 'low',
     sections: [
       { name: 'BUILT-IN', text: 'the contract' },
       { name: 'PROJECT MAP (GENERATED_CONTEXT.md)', text: 'the cast' },
@@ -362,8 +362,8 @@ describe('the native log', () => {
   const msg = (n: number, over: Partial<Extract<NativeLine, { type: 'msg' }>>): NativeLine => ({
     type: 'msg',
     n,
-    at: '2026-08-22T14:00:29.000Z',
-    role: 'user',
+    at     : '2026-08-22T14:00:29.000Z',
+    role   : 'user',
     content: '',
     ...over,
   });
@@ -388,9 +388,9 @@ describe('the native log', () => {
 
     const log = await readNative(paths, id);
     expect(log!.header).toMatchObject({
-      v: NATIVE_VERSION,
+      v      : NATIVE_VERSION,
       backend: 'native',
-      vendor: 'anthropic',
+      vendor : 'anthropic',
     });
     expect(log!.messages).toEqual([
       { n: 0, role: 'user', content: 'Draft the second scene.' },
@@ -405,9 +405,9 @@ describe('the native log', () => {
     const id = '20260822-140028';
     await appendNative(paths, id, header(id));
     await appendNative(paths, id, {
-      type: 'sections',
-      n: 4,
-      at: '2026-08-22T14:01:00.000Z',
+      type : 'sections',
+      n    : 4,
+      at   : '2026-08-22T14:01:00.000Z',
       set: [
         { name: 'PROJECT MAP (GENERATED_CONTEXT.md)', text: 'the cast, rewritten' },
         { name: 'PROJECT CONTEXT (AICONTEXT.md)', text: 'be terse' },
@@ -426,10 +426,10 @@ describe('the native log', () => {
     const id = '20260822-140028';
     await appendNative(paths, id, header(id));
     await appendNative(paths, id, {
-      type: 'sections',
-      n: 4,
-      at: '2026-08-22T14:01:00.000Z',
-      set: [],
+      type : 'sections',
+      n    : 4,
+      at   : '2026-08-22T14:01:00.000Z',
+      set  : [],
       unset: ['PROJECT MAP (GENERATED_CONTEXT.md)'],
     });
 
@@ -443,26 +443,26 @@ describe('the native log', () => {
     await appendNative(paths, id, header(id));
     for (const n of [0, 1, 2]) await appendNative(paths, id, msg(n, { content: `line ${n}` }));
     await appendNative(paths, id, {
-      type: 'compact',
-      at: '2026-08-22T14:03:11.204Z',
-      covers: { from: 0, to: 1 },
-      role: 'context',
+      type   : 'compact',
+      at     : '2026-08-22T14:03:11.204Z',
+      covers : { from: 0, to: 1 },
+      role   : 'context',
       content: 'first summary',
     });
     await appendNative(paths, id, {
-      type: 'compact',
-      at: '2026-08-22T14:09:11.204Z',
-      covers: { from: 0, to: 2 },
-      role: 'context',
+      type   : 'compact',
+      at     : '2026-08-22T14:09:11.204Z',
+      covers : { from: 0, to: 2 },
+      role   : 'context',
       content: 'second summary',
-      model: 'claude-opus-5',
-      usage: { input: 41208, output: 1104 },
+      model  : 'claude-opus-5',
+      usage  : { input: 41208, output: 1104 },
     });
 
     const log = await readNative(paths, id);
     expect(log!.compaction).toMatchObject({
       content: 'second summary',
-      covers: { from: 0, to: 2 },
+      covers : { from: 0, to: 2 },
     });
     // What a compaction covers stays in the file — it is what a history search reads.
     expect(log!.messages).toHaveLength(3);
@@ -475,10 +475,10 @@ describe('the native log', () => {
     await appendNative(paths, id, header(id));
     for (const n of [0, 1]) await appendNative(paths, id, msg(n, { content: `line ${n}` }));
     await appendNative(paths, id, {
-      type: 'compact',
-      at: '2026-08-22T14:03:11.204Z',
-      covers: { from: 0, to: 1 },
-      role: 'context',
+      type   : 'compact',
+      at     : '2026-08-22T14:03:11.204Z',
+      covers : { from: 0, to: 1 },
+      role   : 'context',
       content: 'the summary',
     });
     await appendNative(paths, id, msg(2, { content: 'said afterwards' }));

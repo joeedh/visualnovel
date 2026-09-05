@@ -90,7 +90,7 @@ export function workspaceArtGen(workspace: Workspace, opts: { mock?: boolean } =
     const store = await AssetStore.open(workspace.paths);
     const loadRef = async (ref: { hash: string; ext: string }) => ({
       bytes: await store.read(ref),
-      ext: ref.ext,
+      ext  : ref.ext,
     });
     return { config, model, store, loadRef };
   }
@@ -109,7 +109,7 @@ export function workspaceArtGen(workspace: Workspace, opts: { mock?: boolean } =
           config,
           keys: await resolveKeys(config, {
             secretsDirs: await secretDirsFor(workspace.root),
-            require: ['gemini'],
+            require    : ['gemini'],
           }),
           loadRef,
         });
@@ -134,7 +134,7 @@ export function workspaceArtGen(workspace: Workspace, opts: { mock?: boolean } =
     }
     const keys = await resolveKeys(config, {
       secretsDirs: await secretDirsFor(workspace.root),
-      require: [chatVendorFor(modelId)],
+      require    : [chatVendorFor(modelId)],
     });
     return chatBackendFor(modelId, keys).backend;
   }
@@ -208,12 +208,12 @@ export function workspaceTextLLM(workspace: Workspace, opts: { mock?: boolean } 
     const config = await loadConfig(workspace.root);
     const keys = await resolveKeys(config, {
       secretsDirs: await secretDirsFor(workspace.root),
-      require: [chatVendorFor(config.models.text)],
+      require    : [chatVendorFor(config.models.text)],
     });
     return new ChatTextLLM(chatBackendFor(config.models.text, keys).backend);
   }
   return {
-    complete: async (prompt, system) => (await textOf()).complete(prompt, system),
+    complete  : async (prompt, system) => (await textOf()).complete(prompt, system),
     structured: async (prompt, parse, system) => (await textOf()).structured(prompt, parse, system),
   };
 }

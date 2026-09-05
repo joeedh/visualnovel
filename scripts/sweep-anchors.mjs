@@ -70,10 +70,10 @@ async function subjects() {
   walk(tree.roots ?? tree);
   const key = (kind) => (first[kind] ? first[kind].id.slice(first[kind].id.indexOf(':') + 1) : '');
   return {
-    asset: key('asset'),
-    wiki: first['character']?.path ?? first['location']?.path ?? '',
-    skills: first['skill']?.path ?? '',
-    gengraph: key('graph'),
+    asset    : key('asset'),
+    wiki     : first['character']?.path ?? first['location']?.path ?? '',
+    skills   : first['skill']?.path ?? '',
+    gengraph : key('graph'),
     taskgraph: key('slot'),
   };
 }
@@ -159,8 +159,8 @@ for (const editor of editors) {
     if (anchor.enabled === (verdict.state === 'accept')) continue;
     disagreements.push({
       editor,
-      key: anchor.key,
-      pane: anchor.enabled ? 'offers it' : `refuses it — ${anchor.reason ?? ''}`,
+      key  : anchor.key,
+      pane : anchor.enabled ? 'offers it' : `refuses it — ${anchor.reason ?? ''}`,
       stack: verdict.state === 'accept' ? 'accepts it' : `refuses it — ${verdict.message ?? ''}`,
     });
   }
@@ -196,7 +196,7 @@ await fs.writeFile(
 // `pnpm lint` checks this file's formatting like any other, and `JSON.stringify` breaks every
 // array across lines where prettier would keep a short one inline.
 execFileSync('pnpm', ['exec', 'prettier', '--write', OUT], {
-  cwd: root,
+  cwd  : root,
   stdio: 'ignore',
   shell: process.platform === 'win32',
 });

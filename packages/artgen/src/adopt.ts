@@ -43,8 +43,7 @@ export interface AdoptContext {
 }
 
 export type Adoption<K extends TaskKind> =
-  | { ok: false; code: string; reason: string }
-  | { ok: true; record: Task<K>; note: string };
+  { ok: false; code: string; reason: string } | { ok: true; record: Task<K>; note: string };
 
 /**
  * Whether an adoption would land, and the record it would write. A read — {@link adopt} asks this
@@ -63,8 +62,8 @@ export function adoptionOf<K extends TaskKind>(
   const short = req.output.hash.slice(0, 8);
   if (!ctx.has(req.output.hash)) {
     return {
-      ok: false,
-      code: 'UNKNOWN_ASSET',
+      ok    : false,
+      code  : 'UNKNOWN_ASSET',
       reason: `No asset "${req.output.hash}" in the store.`,
     };
   }
@@ -77,20 +76,20 @@ export function adoptionOf<K extends TaskKind>(
     existing.output !== req.output.hash
   ) {
     return {
-      ok: false,
-      code: 'ALREADY_RENDERED',
+      ok    : false,
+      code  : 'ALREADY_RENDERED',
       reason: `That task is already done with ${existing.output.slice(0, 8)}, and nothing about it has changed — adopting ${short} would replace a real render. Regenerate instead.`,
     };
   }
   const prompt = req.prompt ?? ('prompt' in req.inputs ? String(req.inputs.prompt) : undefined);
   const refs = 'refs' in req.inputs ? req.inputs.refs.map((r) => r.hash) : [];
   return {
-    ok: true,
+    ok    : true,
     note: `Would record ${short} as the output of ${req.kind} ${task.hash.slice(0, 8)}, so the next run adopts it instead of rendering one.`,
     record: {
       ...task,
-      status: 'done',
-      output: req.output.hash,
+      status  : 'done',
+      output  : req.output.hash,
       attempts: [
         { attempt: 1, ...(prompt === undefined ? {} : { prompt }), refs, output: req.output.hash },
       ],

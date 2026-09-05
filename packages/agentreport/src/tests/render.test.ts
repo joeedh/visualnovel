@@ -3,14 +3,14 @@ import type { Report } from '../report.js';
 import type { Evidence } from '../transcript.js';
 
 const analysis = {
-  summary: 'The agent rewrote a scene it was only asked to read',
-  whatHappened: 'The author asked for a summary. The agent edited the file instead.',
-  whatWentWrong: ['It treated a question as an instruction', 'It did not propose a plan first'],
-  rootCause: 'A read request and an edit request are not distinguished in the prompt.',
+  summary        : 'The agent rewrote a scene it was only asked to read',
+  whatHappened   : 'The author asked for a summary. The agent edited the file instead.',
+  whatWentWrong  : ['It treated a question as an instruction', 'It did not propose a plan first'],
+  rootCause      : 'A read request and an edit request are not distinguished in the prompt.',
   recommendations: [
     {
       behaviour: 'Never write in plan mode',
-      where: 'loop.ts',
+      where    : 'loop.ts',
       rationale: 'Edits are undoable but trust is not',
     },
     {
@@ -18,30 +18,30 @@ const analysis = {
       rationale: 'One question costs less than one bad edit',
     },
   ],
-  confidence: 'medium' as const,
-  evidence: ['author: just tell me what happens in it'],
+  confidence     : 'medium' as const,
+  evidence       : ['author: just tell me what happens in it'],
 };
 
 const report: Report = { analysis, model: 'claude-sonnet-5', readSource: true };
 
 const evidence = (over: Partial<Evidence> = {}): Evidence => ({
   thread: {
-    id: 't1',
-    title: 'Scene 1 rewrite',
+    id       : 't1',
+    title    : 'Scene 1 rewrite',
     startedAt: '2026-01-01T14:00:00.000Z',
-    commit: 'abc1234',
-    model: 'claude-haiku-4-5',
+    commit   : 'abc1234',
+    model    : 'claude-haiku-4-5',
     items: [
       {
-        id: 1,
+        id  : 1,
         role: 'user',
         text: 'just tell me what happens in it',
-        at: '2026-01-01T14:00:00.000Z',
+        at  : '2026-01-01T14:00:00.000Z',
       },
     ],
   },
-  acts: [],
-  thin: false,
+  acts   : [],
+  thin   : false,
   context: { appVersion: '1.2.3', effort: 'low' },
   ...over,
 });

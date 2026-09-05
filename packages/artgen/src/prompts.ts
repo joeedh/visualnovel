@@ -31,8 +31,8 @@ export const SHEET_FRONT = MODEL_SHEET_ANGLES[0];
 export function imageParams(config: ProjectConfig): ImageParams {
   return {
     modelId: config.models.image,
-    aspect: config.image_params.aspect,
-    seed: config.image_params.seed,
+    aspect : config.image_params.aspect,
+    seed   : config.image_params.seed,
   };
 }
 
@@ -101,7 +101,7 @@ export function buildPortraitChunks(character: Character, config: ProjectConfig)
       field: 'palette',
     }),
     chunk('art-notes', 'art-notes', artClause(character.artNotes), {
-      kind: 'art-notes',
+      kind  : 'art-notes',
       target: `character:${id}`,
     }),
     chunk(
@@ -156,10 +156,10 @@ export function portraitInputs(
 ): TaskInputs['portrait'] {
   return {
     characterId: character.id,
-    prompt: buildPortraitPrompt(character, config),
-    refs: portraitRefs(character, config),
+    prompt     : buildPortraitPrompt(character, config),
+    refs       : portraitRefs(character, config),
     // A portrait is the character rung and nothing narrower — it wears no outfit of its own.
-    params: seedFor(params, character.seed),
+    params     : seedFor(params, character.seed),
   };
 }
 
@@ -254,7 +254,7 @@ export function locationInputs(
     locationId: location.id,
     variant,
     prompt: buildLocationPrompt(location, variant, config),
-    refs: locationRefs(location, variant, config),
+    refs  : locationRefs(location, variant, config),
     params: seedFor(params, location.seed, location.variants.find((v) => v.id === variant)?.seed),
   };
 }
@@ -371,7 +371,7 @@ export function modelSheetInputs(
     outfit,
     angle,
     prompt: buildModelSheetPrompt(character, outfit, angle, config),
-    refs: [portrait, ...modelSheetRefs(character, outfit, angle, config)],
+    refs  : [portrait, ...modelSheetRefs(character, outfit, angle, config)],
     // The angle is not a rung, so one outfit seed covers all three sheets, as the outfit's art
     // notes do
     params: seedFor(params, character.seed, character.outfits.find((o) => o.id === outfit)?.seed),
@@ -418,7 +418,7 @@ export function buildShotChunks(
     // through the sheets and plates it references, which were generated with them, so repeating
     // them here would state them twice
     chunk('art-notes', 'art-notes', artClause(shot.artNotes), {
-      kind: 'art-notes',
+      kind  : 'art-notes',
       target: `shot:${shot.sceneId}/${shot.id}`,
     }),
     chunk('scaffolding', 'scaffolding', 'Render as a single illustrated frame, no UI text.', {
@@ -466,7 +466,7 @@ export function shotInputs(
   return {
     shotId: shot.id,
     prompt: buildShotPrompt(shot, scene, model, config),
-    refs: [...upstream, ...shotRefs(shot, scene, model, config)],
+    refs  : [...upstream, ...shotRefs(shot, scene, model, config)],
     // A frame is its own rung: the cast it draws is carried in as references, not as a seed.
     params: seedFor(params, shot.seed),
   };
@@ -537,10 +537,10 @@ export function shotSpec(
   const lead = shot.subjects[0];
   return {
     description: shotDescription(shot, scene),
-    characters: shot.castOptional ? [] : shot.subjects.map((s) => s.characterId),
-    outfit: lead && outfitFor(lead, scene, model?.characters.get(lead.characterId)).id,
-    location: shot.location,
-    expression: shot.subjects[0]?.expression,
-    framing: shot.framing,
+    characters : shot.castOptional ? [] : shot.subjects.map((s) => s.characterId),
+    outfit     : lead && outfitFor(lead, scene, model?.characters.get(lead.characterId)).id,
+    location   : shot.location,
+    expression : shot.subjects[0]?.expression,
+    framing    : shot.framing,
   };
 }

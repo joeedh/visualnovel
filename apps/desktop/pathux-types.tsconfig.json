@@ -1,21 +1,21 @@
 {
-  "$schema": "https://json.schemastore.org/tsconfig",
+  "$schema"        : "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ES2022",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "esModuleInterop": true,
-    "allowJs": true,
-    "checkJs": false,
-    "skipLibCheck": true,
-    "declaration": true,
-    "declarationMap": true,
+    "target"             : "ES2022",
+    "module"             : "ES2022",
+    "moduleResolution"   : "bundler",
+    "strict"             : true,
+    "esModuleInterop"    : true,
+    "allowJs"            : true,
+    "checkJs"            : false,
+    "skipLibCheck"       : true,
+    "declaration"        : true,
+    "declarationMap"     : true,
     "emitDeclarationOnly": true,
-    "rootDir": "../../vendor/path.ux/scripts",
-    "declarationDir": "dist/pathux-types",
-    "lib": ["ESNext", "DOM", "DOM.Iterable", "ESNext.Disposable"],
-    "types": [],
+    "rootDir"            : "../../vendor/path.ux/scripts",
+    "declarationDir"     : "dist/pathux-types",
+    "lib"                : ["ESNext", "DOM", "DOM.Iterable", "ESNext.Disposable"],
+    "types"              : [],
     "paths": {
       // path.ux imports nstructjs, and its own install puts the published package in
       // `vendor/path.ux/node_modules`. This declaration build reads the submodule instead, so
@@ -23,5 +23,5 @@
       "nstructjs": ["../../vendor/nstructjs/build/structjs.d.ts"]
     }
   },
-  "files": ["../../vendor/path.ux/scripts/pathux.ts"]
+  "files"          : ["../../vendor/path.ux/scripts/pathux.ts"]
 }

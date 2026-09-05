@@ -10,8 +10,8 @@ describe('runAction', () => {
 
   it('refuses while other work is in flight, and still names the command', () => {
     expect(runAction(BUSY_RUN, true)).toEqual({
-      ok: false,
-      id: 'pipeline.run',
+      ok    : false,
+      id    : 'pipeline.run',
       reason: `Cannot start: ${BUSY_RUN} is already in progress.`,
     });
   });
@@ -25,8 +25,8 @@ describe('stopAction', () => {
 
   it('refuses when nothing it stops is running', () => {
     expect(stopAction(undefined)).toEqual({
-      ok: false,
-      id: 'pipeline.stop',
+      ok    : false,
+      id    : 'pipeline.stop',
       reason: 'Nothing is running.',
     });
   });
@@ -35,8 +35,8 @@ describe('stopAction', () => {
 describe('modeAction', () => {
   it('names the mode it would move to, and labels the one it is in', () => {
     expect(modeAction('plan')).toEqual({
-      ok: true,
-      id: 'agent.setMode',
+      ok   : true,
+      id   : 'agent.setMode',
       props: { mode: 'execute' },
       label: 'PLAN',
     });

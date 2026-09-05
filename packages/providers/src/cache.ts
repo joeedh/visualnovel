@@ -105,13 +105,13 @@ export class AssetCache {
     }
     const entry: AssetCacheEntry = {
       key,
-      op: meta.op,
-      ext: result.ext,
-      modelId: result.modelId,
-      prompt: meta.prompt,
-      refs: meta.refs.map((r) => sha256(r.bytes)),
-      params: { ...meta.params },
-      bytes: result.bytes.length,
+      op        : meta.op,
+      ext       : result.ext,
+      modelId   : result.modelId,
+      prompt    : meta.prompt,
+      refs      : meta.refs.map((r) => sha256(r.bytes)),
+      params    : { ...meta.params },
+      bytes     : result.bytes.length,
       recordedAt: new Date().toISOString(),
       ...(meta.fixture ? { fixture: meta.fixture } : {}),
     };

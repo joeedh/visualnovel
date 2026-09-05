@@ -71,14 +71,14 @@ class Dialog {
           this.body.col(),
           entry,
           {
-            onRan: () => this.close(),
+            onRan   : () => this.close(),
             runLabel: entry.title,
             buttons: (row) => {
               const cancel = row.button('Cancel', () => this.close());
               cancel.description = 'Close this without running anything';
             },
-            choices: projectChoices(entry, project, choices),
-            width: PROSE,
+            choices : projectChoices(entry, project, choices),
+            width   : PROSE,
           },
           overrides,
         );

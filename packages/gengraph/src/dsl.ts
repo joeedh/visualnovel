@@ -94,9 +94,9 @@ export function applyGraphDSL(
     return {
       graph,
       diagnostics: [early],
-      kept: graph.nodes.map((n) => n.id),
-      added: [],
-      removed: [],
+      kept       : graph.nodes.map((n) => n.id),
+      added      : [],
+      removed    : [],
     };
   }
 
@@ -108,9 +108,9 @@ export function applyGraphDSL(
   }
 
   const built = buildGraphFromDSL(read.value, {
-    nodeTypes: new Map([...genNodeTypes(), ['GroupNode', GroupNode as NodeTypeConstructor]]),
+    nodeTypes  : new Map([...genNodeTypes(), ['GroupNode', GroupNode as NodeTypeConstructor]]),
     socketTypes: SocketClasses,
-    groups: known,
+    groups     : known,
   });
 
   const before = new Map<GraphId, Node>();
@@ -215,7 +215,7 @@ function keyLikeId(value: unknown): DSLDiagnostic | undefined {
     if (typeof id === 'string' && id.includes('/')) {
       const path = `nodes[${i}]`;
       return {
-        code: 'bad-node-id',
+        code   : 'bad-node-id',
         message: `${path}: id '${id}' holds a '/', which is how a node inside a group is addressed`,
         path,
       };

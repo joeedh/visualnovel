@@ -2,7 +2,7 @@ import type { Shot } from '@vn/types';
 import { deleteShot, derivedNextShot, newShot } from '../shotcreate.js';
 
 const SCENE = {
-  id: 's',
+  id             : 's',
   lines: [
     { id: 's:L1' },
     { id: 's:L2', speaker: 'aiko' },
@@ -14,8 +14,8 @@ const SCENE = {
 
 const shot = (id: string, coversLines: string[], extra: Partial<Shot> = {}): Shot => ({
   id,
-  sceneId: 's',
-  framing: 'medium',
+  sceneId : 's',
+  framing : 'medium',
   location: 'day',
   subjects: [],
   coversLines,
@@ -69,7 +69,7 @@ describe('newShot', () => {
 
   it('refuses to make an orphan: at least one line, from birth', () => {
     expect(newShot(SCENE, null, { lines: [] })).toMatchObject({
-      ok: false,
+      ok   : false,
       error: expect.stringContaining('at least one line'),
     });
   });
@@ -151,7 +151,7 @@ describe('newShot', () => {
 describe('deleteShot', () => {
   it('releases the shot’s lines as gaps, never to a neighbour', () => {
     const board = {
-      shots: [shot('s__shot1', ['s:L1', 's:L3']), shot('s__shot2', ['s:L2'])],
+      shots   : [shot('s__shot1', ['s:L1', 's:L3']), shot('s__shot2', ['s:L2'])],
       nextShot: 3,
     };
     const op = deleteShot(board, { shot: 's__shot1' });

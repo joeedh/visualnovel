@@ -52,44 +52,44 @@ class Native implements ChatBackend {
     if (this.turn++ > 0)
       return { raw: [{ type: 'text', text: 'filed' }], toolCalls: [], text: 'filed' };
     return {
-      raw: [{ type: 'tool_use', id: 'call_1', name: 'submit_report', input: this.report }],
+      raw      : [{ type: 'tool_use', id: 'call_1', name: 'submit_report', input: this.report }],
       toolCalls: [{ id: 'call_1', name: 'submit_report', args: this.report }],
     };
   }
 }
 
 const findings = {
-  summary: 'The agent rewrote Titus Vale instead of reading about him',
-  whatHappened: 'It edited C:\\dev\\proj\\scenes\\s1.md without being asked.',
-  whatWentWrong: ['It wrote in plan mode'],
-  rootCause: 'A question read as an instruction.',
+  summary        : 'The agent rewrote Titus Vale instead of reading about him',
+  whatHappened   : 'It edited C:\\dev\\proj\\scenes\\s1.md without being asked.',
+  whatWentWrong  : ['It wrote in plan mode'],
+  rootCause      : 'A question read as an instruction.',
   recommendations: [{ behaviour: 'Ask first', rationale: 'Cheaper than an undo' }],
-  confidence: 'medium',
-  evidence: ['Titus Vale was renamed'],
+  confidence     : 'medium',
+  evidence       : ['Titus Vale was renamed'],
 };
 
 const evidence: Evidence = {
   thread: {
-    id: 't1',
-    title: 'About Titus Vale',
+    id       : 't1',
+    title    : 'About Titus Vale',
     startedAt: '2026-01-01T14:00:00.000Z',
     items: [
       {
-        id: 1,
+        id  : 1,
         role: 'user',
         text: 'what happens to Titus Vale in scenes/s1.md?',
-        at: '2026-01-01T14:00:00.000Z',
+        at  : '2026-01-01T14:00:00.000Z',
       },
     ],
   },
-  acts: [],
-  thin: false,
+  acts   : [],
+  thin   : false,
   context: {},
 };
 
 const redactor = () =>
   buildRedactor({
-    entities: [{ id: 'titus', name: 'Titus Vale', kind: 'character' }],
+    entities   : [{ id: 'titus', name: 'Titus Vale', kind: 'character' }],
     projectRoot: 'C:\\dev\\proj',
   });
 
@@ -124,7 +124,7 @@ describe('without the source', () => {
       evidence,
       backend,
       redactor: redactor(),
-      wanted: 'I only wanted a summary of Titus Vale',
+      wanted  : 'I only wanted a summary of Titus Vale',
     });
     expect(backend.prompts[0]).toContain('What the author says they wanted');
     expect(backend.prompts[0]).not.toContain('Titus Vale');
@@ -135,7 +135,7 @@ describe('without the source', () => {
     await analyze({
       evidence,
       backend,
-      redactor: redactor(),
+      redactor     : redactor(),
       reportedTools: [
         { name: 'edit_scene', description: 'change a scene' },
         { name: 'house_style', description: 'the house style\nsecond line' },
@@ -155,7 +155,7 @@ describe('without the source', () => {
       evidence,
       backend,
       redactor: redactor(),
-      wanted: 'It kept rewriting Titus Vale',
+      wanted  : 'It kept rewriting Titus Vale',
     });
     expect(said.authorStatement).toBe('It kept rewriting Character A');
 
@@ -173,10 +173,10 @@ describe('without the source', () => {
 describe('with the source', () => {
   const grepped: string[] = [];
   const grep: Tool<{ pattern: string }> = {
-    name: 'grep',
+    name       : 'grep',
     description: 'search the source',
-    mutating: false,
-    args: z.object({ pattern: z.string() }),
+    mutating   : false,
+    args       : z.object({ pattern: z.string() }),
     async run(a) {
       grepped.push(a.pattern);
       return { ok: true, output: 'loop.ts:240 mutating tool blocked in plan mode' };
@@ -184,7 +184,7 @@ describe('with the source', () => {
   };
   const source = () => ({
     registry: new Map<string, Tool>([['grep', grep as Tool]]),
-    ctx: {} as ToolContext,
+    ctx     : {} as ToolContext,
   });
 
   beforeEach(() => {
@@ -265,8 +265,8 @@ describe('with the source', () => {
     const report = await analyze({
       evidence,
       backend,
-      redactor: redactor(),
-      source: source(),
+      redactor     : redactor(),
+      source       : source(),
       maxIterations: 3,
     });
     expect(grepped).toHaveLength(3);
@@ -281,10 +281,10 @@ describe('with the source', () => {
 describe('with the requests but not the source', () => {
   const listed: number[] = [];
   const list: Tool<Record<string, never>> = {
-    name: 'list_requests',
+    name       : 'list_requests',
     description: 'list what was sent',
-    mutating: false,
-    args: z.object({}),
+    mutating   : false,
+    args       : z.object({}),
     async run() {
       listed.push(1);
       return { ok: true, output: '#1  convo  900 B  FAILED: messages.1.content.0' };
@@ -302,8 +302,8 @@ describe('with the requests but not the source', () => {
       evidence,
       backend,
       redactor: redactor(),
-      detail: detail(),
-      ctx: {} as ToolContext,
+      detail  : detail(),
+      ctx     : {} as ToolContext,
     });
     expect(listed).toHaveLength(1);
     expect(report.readSource).toBe(false);
@@ -324,17 +324,17 @@ describe('with the requests but not the source', () => {
 
     await analyze({
       evidence,
-      backend: new Watched([JSON.stringify({ tool: 'submit_report', args: findings })]),
+      backend : new Watched([JSON.stringify({ tool: 'submit_report', args: findings })]),
       redactor: redactor(),
-      detail: detail(),
-      ctx: {} as ToolContext,
+      detail  : detail(),
+      ctx     : {} as ToolContext,
     });
     expect(systems[0]).toContain('Never quote its content');
 
     systems.length = 0;
     await analyze({
       evidence,
-      backend: new Watched([JSON.stringify(findings)]),
+      backend : new Watched([JSON.stringify(findings)]),
       redactor: redactor(),
     });
     expect(systems[0]).not.toContain('Never quote its content');
@@ -352,17 +352,17 @@ describe('on a backend that supports conversations', () => {
       [
         'grep',
         {
-          name: 'grep',
+          name       : 'grep',
           description: 'search the source',
-          mutating: false,
-          args: z.object({ pattern: z.string() }),
+          mutating   : false,
+          args       : z.object({ pattern: z.string() }),
           async run() {
             return { ok: true, output: 'nothing' };
           },
         } as Tool,
       ],
     ]),
-    ctx: {} as ToolContext,
+    ctx     : {} as ToolContext,
   });
 
   it('takes the native path and files the report through it', async () => {
@@ -401,17 +401,17 @@ describe('on a backend that supports conversations', () => {
         [
           'list_requests',
           {
-            name: 'list_requests',
+            name       : 'list_requests',
             description: 'list what was sent',
-            mutating: false,
-            args: z.object({}),
+            mutating   : false,
+            args       : z.object({}),
             async run() {
               return { ok: true, output: '#1' };
             },
           } as Tool,
         ],
       ]),
-      ctx: {} as ToolContext,
+      ctx     : {} as ToolContext,
     });
     expect(backend.requests.length).toBeGreaterThan(0);
     expect(report.readSource).toBe(false);

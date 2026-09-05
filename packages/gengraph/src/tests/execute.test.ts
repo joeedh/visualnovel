@@ -37,7 +37,7 @@ function context(into: GraphJournalRecord[]): GenRunContext {
       into.push(record);
       return Promise.resolve();
     },
-    now: () => new Date('2026-01-01T00:00:00.000Z'),
+    now   : () => new Date('2026-01-01T00:00:00.000Z'),
   };
 }
 
@@ -82,7 +82,7 @@ describe('running a graph', () => {
 
     const result = await executeGenGraph(graph, context(records), {
       targets: [output.id],
-      seeds: SEEDS,
+      seeds  : SEEDS,
     });
 
     expect(result.ran).toEqual([prompt.id, image.id, output.id]);
@@ -111,7 +111,7 @@ describe('running a graph', () => {
 
     const result = await executeGenGraph(graph, context([]), {
       targets: [output.id],
-      seeds: SEEDS,
+      seeds  : SEEDS,
     });
     const image = result.outputs.get(output.id)?.image as { store: string; hash: string };
 
@@ -134,7 +134,7 @@ describe('running a graph', () => {
 
     const result = await executeGenGraph(graph, context([]), {
       targets: [output.id],
-      seeds: SEEDS,
+      seeds  : SEEDS,
     });
 
     expect(result.ran).not.toContain(scratch.id);
@@ -150,7 +150,7 @@ describe('resuming a run', () => {
     await executeGenGraph(graph, context(records), { targets: [output.id], seeds: SEEDS });
     const second = await executeGenGraph(graph, context(records), {
       targets: [output.id],
-      seeds: SEEDS,
+      seeds  : SEEDS,
     });
 
     expect(second.ran).toEqual([]);
@@ -166,7 +166,7 @@ describe('resuming a run', () => {
     setProp(image, 'aspect', '3:2');
     const second = await executeGenGraph(graph, context(records), {
       targets: [output.id],
-      seeds: SEEDS,
+      seeds  : SEEDS,
     });
 
     expect(second.skipped).toEqual([prompt.id]);
@@ -181,7 +181,7 @@ describe('resuming a run', () => {
     await executeGenGraph(graph, context(records), { targets: [output.id], seeds: SEEDS });
     const second = await executeGenGraph(graph, context(records), {
       targets: [output.id],
-      seeds: { GenDerivedPrompt: { prompt: 'a lantern at dawn' } },
+      seeds  : { GenDerivedPrompt: { prompt: 'a lantern at dawn' } },
     });
 
     expect(second.ran).toHaveLength(3);
@@ -196,7 +196,7 @@ describe('resuming a run', () => {
     const first = records.filter((r) => r.status === 'done' && r.nodeId === output.id);
     const second = await executeGenGraph(graph, context(records), {
       targets: [output.id],
-      seeds: SEEDS,
+      seeds  : SEEDS,
     });
 
     expect(second.outputs.get(output.id)).toEqual(first[0]?.output);
@@ -212,8 +212,8 @@ describe('a deliberate re-render', () => {
     const before = records.length;
     const second = await executeGenGraph(graph, context(records), {
       targets: [output.id],
-      seeds: SEEDS,
-      force: true,
+      seeds  : SEEDS,
+      force  : true,
     });
 
     expect(records.slice(before, before + 1).map((r) => [r.nodeId, r.status])).toEqual([
@@ -230,13 +230,13 @@ describe('a deliberate re-render', () => {
 
     const first = await executeGenGraph(graph, context(records), {
       targets: [output.id],
-      seeds: SEEDS,
+      seeds  : SEEDS,
     });
     mock.drawn = { ...mock.drawn, bytes: bytes('a second take') };
     const second = await executeGenGraph(graph, context(records), {
       targets: [output.id],
-      seeds: SEEDS,
-      force: true,
+      seeds  : SEEDS,
+      force  : true,
     });
     const image = second.outputs.get(output.id)?.image as { hash: string };
 
@@ -251,8 +251,8 @@ describe('a deliberate re-render', () => {
     await executeGenGraph(graph, context(records), { targets: [output.id], seeds: SEEDS });
     await executeGenGraph(graph, context(records), {
       targets: [output.id],
-      seeds: SEEDS,
-      force: true,
+      seeds  : SEEDS,
+      force  : true,
     });
     const journal = replayJournal(records.map((r) => JSON.stringify(r)).join('\n'));
 
@@ -320,7 +320,7 @@ describe('seeding', () => {
     await expect(
       executeGenGraph(graph, context([]), {
         targets: [output.id],
-        seeds: { GenDerivedPrompt: { nope: '' } },
+        seeds  : { GenDerivedPrompt: { nope: '' } },
       }),
     ).rejects.toThrow("takes no seeded input 'nope'");
   });
@@ -340,7 +340,7 @@ describe('seeding', () => {
 
     await executeGenGraph(graph, context([]), {
       targets: [output.id],
-      seeds: { GenTaskRefs: { assets: JSON.stringify([asset]) } },
+      seeds  : { GenTaskRefs: { assets: JSON.stringify([asset]) } },
     });
 
     expect(mock.images[0]?.refs.map((r) => r.bytes)).toEqual([bytes('a sheet')]);
@@ -366,7 +366,7 @@ describe('seeding', () => {
 
     await executeGenGraph(graph, context([]), {
       targets: [output.id],
-      seeds: { GenTaskRefs: { assets: JSON.stringify([seeded]) } },
+      seeds  : { GenTaskRefs: { assets: JSON.stringify([seeded]) } },
     });
 
     expect(mock.images[0]?.refs.map((r) => r.bytes)).toEqual([bytes('the wired sheet')]);

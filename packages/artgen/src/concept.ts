@@ -99,15 +99,15 @@ export async function generateConcept(
   const refs = subjectRefs(deps, subject);
   const result = await deps.image.generate(prompt, refs, params);
   const ref = await deps.store.write(result.bytes, result.ext, {
-    kind: 'concept',
+    kind      : 'concept',
     // A concept has no node in the task graph, so this records the hash of the request that
     // produced it and provenance still answers "what made this" in its usual field
     sourceTask: hashParts('concept', { prompt, params, refs: refs.map((r) => r.hash) }),
     prompt,
-    refs: refs.map((r) => r.hash),
-    modelId: result.modelId,
+    refs     : refs.map((r) => r.hash),
+    modelId  : result.modelId,
     satisfies: subjectBinding(subject),
-    title: conceptTitle(sentence),
+    title    : conceptTitle(sentence),
   });
   return {
     ref,
@@ -171,16 +171,16 @@ export function redrawOf(
     return { ok: false, code: 'UNKNOWN_ASSET', reason: `No asset "${req.hash}" in the store.` };
   if (asset.kind !== 'concept') {
     return {
-      ok: false,
-      code: 'NOT_A_CONCEPT',
+      ok    : false,
+      code  : 'NOT_A_CONCEPT',
       reason: `Asset ${short} is a ${asset.kind}: its prompt is derived from the project on every planning pass, so there is nothing to edit. Re-render it with asset.regenerate, or change what it says with art.setNotes.`,
     };
   }
   const prompt = (req.prompt ?? '').trim() || (asset.prompt ?? '');
   if (!prompt) {
     return {
-      ok: false,
-      code: 'CONCEPT_EMPTY',
+      ok    : false,
+      code  : 'CONCEPT_EMPTY',
       reason: `Asset ${short} records no prompt, so a redraw needs one written out.`,
     };
   }
@@ -188,7 +188,7 @@ export function redrawOf(
   const title = (req.title ?? '').trim() || asset.title;
   const byHash = new Map(manifest.map((a) => [a.hash, a]));
   return {
-    ok: true,
+    ok  : true,
     plan: {
       prompt,
       ...(title ? { title } : {}),
@@ -225,10 +225,10 @@ export async function redrawConcept(deps: ArtGenDeps, req: RedrawRequest): Promi
 
   const result = await deps.image.generate(prompt, refs, params);
   const ref = await deps.store.write(result.bytes, result.ext, {
-    kind: 'concept',
+    kind      : 'concept',
     sourceTask: hashParts('concept', { prompt, params, refs: refs.map((r) => r.hash) }),
     prompt,
-    refs: refs.map((r) => r.hash),
+    refs   : refs.map((r) => r.hash),
     modelId: result.modelId,
     satisfies,
     ...(title ? { title } : {}),
@@ -236,8 +236,8 @@ export async function redrawConcept(deps: ArtGenDeps, req: RedrawRequest): Promi
   return {
     ref,
     prompt,
-    file: deps.store.pathOf(ref),
-    from: req.hash,
+    file     : deps.store.pathOf(ref),
+    from     : req.hash,
     unchanged: ref.hash === req.hash,
   };
 }

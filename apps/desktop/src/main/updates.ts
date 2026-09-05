@@ -36,9 +36,9 @@ export const CHECK_TIMEOUT_MS = 8000;
  * ignore would make this build fail on a field GitHub added rather than on one it removed.
  */
 export const LatestReleaseSchema = z.object({
-  tag_name: z.string(),
+  tag_name  : z.string(),
   prerelease: z.boolean().optional(),
-  draft: z.boolean().optional(),
+  draft     : z.boolean().optional(),
 });
 
 export type LatestRelease = z.infer<typeof LatestReleaseSchema>;
@@ -189,20 +189,20 @@ export function announcementFor(check: UpdateCheck, quiet: boolean): Notificatio
   if (check.state === 'available') {
     return {
       category: 'command',
-      level: 'info',
-      source: 'main',
-      message: `${check.message} Open the releases page to read what changed and download it.`,
-      link: { command: LINK_COMMANDS.releases },
+      level   : 'info',
+      source  : 'main',
+      message : `${check.message} Open the releases page to read what changed and download it.`,
+      link    : { command: LINK_COMMANDS.releases },
     };
   }
   if (quiet) return undefined;
   if (check.state === 'unreachable' || check.state === 'unreadable') {
     return {
       category: 'command',
-      level: 'warn',
-      source: 'main',
-      message: check.message,
-      link: { command: LINK_COMMANDS.releases },
+      level   : 'warn',
+      source  : 'main',
+      message : check.message,
+      link    : { command: LINK_COMMANDS.releases },
     };
   }
   return undefined;

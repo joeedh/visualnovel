@@ -22,11 +22,11 @@ async function find(id: string) {
 }
 
 export const notifyList = define({
-  id: 'notify.list',
-  title: 'List notifications',
+  id         : 'notify.list',
+  title      : 'List notifications',
   description: 'Every notification this project has recorded, oldest first — archived ones too.',
-  mutating: false,
-  props: {},
+  mutating   : false,
+  props      : {},
   async run() {
     const notes = await notifications().list();
     const unread = notes.filter((n) => !n.r && !n.h).length;
@@ -35,11 +35,11 @@ export const notifyList = define({
 });
 
 export const notifyMarkRead = define({
-  id: 'notify.markRead',
-  title: 'Mark a notification read',
+  id         : 'notify.markRead',
+  title      : 'Mark a notification read',
   description: 'Clear one notification’s unread mark. It stays in the list.',
-  mutating: false,
-  props: { id: prop.string('the notification’s id') },
+  mutating   : false,
+  props      : { id: prop.string('the notification’s id') },
   async run({ id }) {
     if (!(await notifications().setFlags(id, { read: true })))
       throw new Error(`No notification ${id}.`);
@@ -48,13 +48,13 @@ export const notifyMarkRead = define({
 });
 
 export const notifyHide = define({
-  id: 'notify.hide',
-  title: 'Archive a notification',
+  id         : 'notify.hide',
+  title      : 'Archive a notification',
   description:
     'Hide one notification from the list. It is still recorded, and “show deleted” brings it ' +
     'back — only `notify.deleteAll` actually removes anything.',
-  mutating: false,
-  props: { id: prop.string('the notification’s id') },
+  mutating   : false,
+  props      : { id: prop.string('the notification’s id') },
   async run({ id }) {
     if (!(await notifications().setFlags(id, { hidden: true })))
       throw new Error(`No notification ${id}.`);
@@ -63,11 +63,11 @@ export const notifyHide = define({
 });
 
 export const notifyUnhide = define({
-  id: 'notify.unhide',
-  title: 'Unarchive a notification',
+  id         : 'notify.unhide',
+  title      : 'Unarchive a notification',
   description: 'Put an archived notification back in the list — what the row’s Undo button runs.',
-  mutating: false,
-  props: { id: prop.string('the notification’s id') },
+  mutating   : false,
+  props      : { id: prop.string('the notification’s id') },
   async run({ id }) {
     if (!(await notifications().setFlags(id, { hidden: false })))
       throw new Error(`No notification ${id}.`);
@@ -81,11 +81,11 @@ export const notifyUnhide = define({
  * main would let a Clear hide something that was filtered off screen.
  */
 export const notifyClear = define({
-  id: 'notify.clear',
-  title: 'Clear notifications',
+  id         : 'notify.clear',
+  title      : 'Clear notifications',
   description: 'Archive the notifications named — the ones the list is showing.',
-  mutating: false,
-  props: { ids: prop.stringList('the notifications to archive') },
+  mutating   : false,
+  props      : { ids: prop.stringList('the notifications to archive') },
   async run({ ids }) {
     const hidden = await notifications().hideAll(ids);
     return {
@@ -95,22 +95,22 @@ export const notifyClear = define({
 });
 
 export const notifyDeleteAll = define({
-  id: 'notify.deleteAll',
-  title: 'Delete all notifications permanently',
+  id         : 'notify.deleteAll',
+  title      : 'Delete all notifications permanently',
   description:
     'Empty the notification log. Unlike archiving this cannot be undone — the file is truncated ' +
     'and the record of what the app did is gone.',
   // Truncates a file the repo tracks, so the committer should record it. This is the only mutator
   // in this file, and the only one with a precondition worth asking about
-  mutating: true,
-  confirm: true,
-  props: {},
+  mutating   : true,
+  confirm    : true,
+  props      : {},
   async check() {
     const count = (await notifications().list()).length;
     return count === 0
       ? { ok: false as const, reason: 'There are no notifications to delete.' }
       : {
-          ok: true as const,
+          ok  : true as const,
           note:
             count === 1
               ? 'Deletes 1 notification, for good.'
@@ -135,13 +135,13 @@ export const notifyDeleteAll = define({
  * other people's clones.
  */
 export const notifyFollow = define({
-  id: 'notify.follow',
-  title: 'Open what a notification is about',
+  id         : 'notify.follow',
+  title      : 'Open what a notification is about',
   description:
     'Mark one notification read and follow where it points — the editor it links to, or the act ' +
     'it names — if it points anywhere.',
-  mutating: false,
-  props: { id: prop.string('the notification’s id') },
+  mutating   : false,
+  props      : { id: prop.string('the notification’s id') },
   async run({ id }, ctx) {
     const note = await find(id);
     if (!note) throw new Error(`No notification ${id}.`);
@@ -166,10 +166,10 @@ export const notifyFollow = define({
     if (!target) return { message: 'Marked read.' };
     ctx.host.ui(
       {
-        type: 'view',
-        action: 'open',
-        editor: target.editor,
-        where: 'elsewhere',
+        type   : 'view',
+        action : 'open',
+        editor : target.editor,
+        where  : 'elsewhere',
         subject: target.subject ?? '',
       },
       ctx.origin,

@@ -23,7 +23,7 @@ function flakyImages(failures: number, message: string): ImageBackend {
   let calls = 0;
   const fail = (): boolean => calls++ < failures;
   return {
-    modelId: 'flaky-image',
+    modelId : 'flaky-image',
     generate: (prompt, refs, params) =>
       fail() ? Promise.reject(new Error(message)) : stub.generate(prompt, refs, params),
     edit: (base, prompt, refs, params) =>

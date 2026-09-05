@@ -13,8 +13,8 @@ export type GenPriceModels = Record<string, Partial<Record<GenCostUnit, number>>
  */
 export const genPriceModels = z.record(
   z.object({
-    image: z.number().nonnegative().optional(),
-    'mtok-in': z.number().nonnegative().optional(),
+    image     : z.number().nonnegative().optional(),
+    'mtok-in' : z.number().nonnegative().optional(),
     'mtok-out': z.number().nonnegative().optional(),
   }),
 );

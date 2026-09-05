@@ -189,12 +189,12 @@ export function callWithRetry<T>(what: string, fn: () => Promise<T>): Promise<T>
       }
     },
     {
-      attempts: ATTEMPTS,
-      baseMs: BASE_MS,
+      attempts   : ATTEMPTS,
+      baseMs     : BASE_MS,
       shouldRetry: (err) => err instanceof RetryableProviderError,
       // Every vendor asks for the same policy: honour `retry-after` where one was sent, and back
       // off exponentially where none was. `delayFor` covers the first case and `baseMs` the second
-      delayFor: (err) => (err instanceof RetryableProviderError ? err.retryAfterMs : undefined),
+      delayFor   : (err) => (err instanceof RetryableProviderError ? err.retryAfterMs : undefined),
     },
   );
 }

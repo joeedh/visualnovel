@@ -73,9 +73,9 @@ export const APPROVAL_ORDER_KEY = 'pathux.approvalOrder';
  * open to a default screen, and nothing needs them after the first save writes the current key.
  */
 export const LEGACY_KEYS = {
-  layout: 'pathux.layout',
+  layout   : 'pathux.layout',
   selection: 'pathux.selection',
-  template: 'pathux.template',
+  template : 'pathux.template',
 } as const;
 
 const LEGACY_KEY_SET = new Set<string>(Object.values(LEGACY_KEYS));
@@ -128,6 +128,6 @@ export function windowIdentity(search: string): WindowIdentity {
   const index = Number(params.get('window'));
   return {
     window: Number.isInteger(index) && index >= 0 ? index : 0,
-    scope: params.get('ws') ?? '',
+    scope : params.get('ws') ?? '',
   };
 }

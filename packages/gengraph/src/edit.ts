@@ -192,8 +192,8 @@ function decideAdd(graph: Graph, edit: GenEdit & { op: 'addNode' }): GenEditResu
   const declared = cls.graphDef().uiName;
   const uiName = typeof declared === 'string' ? declared : edit.type;
   return {
-    ok: true,
-    note: `Adds a ${uiName} node.`,
+    ok   : true,
+    note : `Adds a ${uiName} node.`,
     apply: () => {
       const node = new cls();
       place(graph, node, edit.pos);
@@ -215,8 +215,8 @@ function decideDuplicate(graph: Graph, edit: GenEdit & { op: 'duplicateNode' }):
   if (refused !== undefined) return refuse(refused);
 
   return {
-    ok: true,
-    note: `Adds a copy of the ${nameOf(source)} node.`,
+    ok   : true,
+    note : `Adds a copy of the ${nameOf(source)} node.`,
     apply: () => {
       const node = cloneNode(source);
       place(graph, node, edit.pos);
@@ -245,8 +245,8 @@ function decideRemove(graph: Graph, edit: GenEdit & { op: 'removeNode' }): GenEd
   const links = linkCount(node);
   const carried = links === 0 ? '' : ` and the ${plural(links, 'link')} it carries`;
   return {
-    ok: true,
-    note: `Removes the ${nameOf(node)} node${carried}.`,
+    ok   : true,
+    note : `Removes the ${nameOf(node)} node${carried}.`,
     apply: () => {
       graph.remove(node);
       return { graph };
@@ -310,7 +310,7 @@ function decideUnlink(graph: Graph, edit: GenEdit & { op: 'unlink' }): GenEditRe
     }
     const edges = [...dst.edges];
     return {
-      ok: true,
+      ok   : true,
       note: `Severs the ${plural(edges.length, 'link')} into '${edit.toSocket}' on the ${nameOf(to)} node.`,
       apply: () => {
         for (const src of edges) graph.disconnect(src, dst);
@@ -331,8 +331,8 @@ function decideUnlink(graph: Graph, edit: GenEdit & { op: 'unlink' }): GenEditRe
   }
 
   return {
-    ok: true,
-    note: `Severs the link from the ${nameOf(from)} node into '${edit.toSocket}'.`,
+    ok   : true,
+    note : `Severs the link from the ${nameOf(from)} node into '${edit.toSocket}'.`,
     apply: () => {
       graph.disconnect(named, dst);
       return { graph };
@@ -370,8 +370,8 @@ function decideSetProp(graph: Graph, edit: GenEdit & { op: 'setProp' }): GenEdit
   }
 
   return {
-    ok: true,
-    note: `Sets '${edit.key}' on the ${nameOf(node)} node to ${JSON.stringify(edit.value)}.`,
+    ok   : true,
+    note : `Sets '${edit.key}' on the ${nameOf(node)} node to ${JSON.stringify(edit.value)}.`,
     apply: () => {
       prop.setValue(edit.value);
       return { graph };
@@ -420,8 +420,8 @@ function decideSetActive(graph: Graph, edit: GenEdit & { op: 'setActiveOutput' }
   const named = slot === '' ? 'the slot it names' : `'${slot}'`;
 
   return {
-    ok: true,
-    note: `Makes this the output run for ${named}${stood}.`,
+    ok   : true,
+    note : `Makes this the output run for ${named}${stood}.`,
     apply: () => {
       active.setValue(true);
       for (const other of rivals) other.props.active?.setValue(false);
@@ -472,8 +472,8 @@ function decideMove(graph: Graph, edit: GenEdit & { op: 'moveNodes' }): GenEditR
   const what =
     moved.length === 1 ? `the ${nameOf(moved[0]!.node)} node` : plural(moved.length, 'node');
   return {
-    ok: true,
-    note: `Moves ${what}.`,
+    ok   : true,
+    note : `Moves ${what}.`,
     apply: () => {
       for (const { node, x, y } of moved) {
         node.pos[0] = x;
@@ -507,8 +507,8 @@ function decideCreateGroup(graph: Graph, edit: GenEdit & { op: 'createGroup' }):
       ? `the ${nameOf(plan.nodes[0]!)} node`
       : plural(plan.nodes.length, 'node');
   return {
-    ok: true,
-    note: ref === undefined ? `Groups ${what}.` : `Groups ${what} into '${ref}'.`,
+    ok   : true,
+    note : ref === undefined ? `Groups ${what}.` : `Groups ${what} into '${ref}'.`,
     apply: () => {
       if (ref === undefined) throw new Error('a group is created under a ref, and none was given');
       const created = createGroup(graph, edit.nodes, ref);
@@ -529,8 +529,8 @@ function decideUngroup(graph: Graph, edit: GenEdit & { op: 'ungroup' }): GenEdit
 
   const inner = node.subgraph.nodes.filter((n) => !isProxy(n)).length;
   return {
-    ok: true,
-    note: `Inlines the ${plural(inner, 'node')} of group '${node.ref}' where the instance stands.`,
+    ok   : true,
+    note : `Inlines the ${plural(inner, 'node')} of group '${node.ref}' where the instance stands.`,
     apply: () => {
       const done = ungroup(graph, node);
       if (isRefusal(done)) throw new Error(done.refusal);
@@ -550,8 +550,8 @@ function decideAddGroup(graph: Graph, edit: GenEdit & { op: 'addGroup' }): GenEd
   }
 
   return {
-    ok: true,
-    note: `Adds an instance of group '${edit.ref}'.`,
+    ok   : true,
+    note : `Adds an instance of group '${edit.ref}'.`,
     apply: () => {
       const node = new GroupNode();
       node.ref = edit.ref;
@@ -616,11 +616,11 @@ function decideExpose(graph: Graph, edit: GenEdit & { op: 'expose' }): GenEditRe
       ? `'${key}' of the ${nameOf(target.node)} node`
       : `the ${nameOf(target.node)} node's controls`;
   return {
-    ok: true,
-    note: `Exposes ${what} on every instance of the group.`,
+    ok   : true,
+    note : `Exposes ${what} on every instance of the group.`,
     apply: () => {
       const req = {
-        kind: edit.kind,
+        kind  : edit.kind,
         nodeId: edit.node,
         ...(edit.key === undefined ? {} : { propKey: edit.key }),
         ...(edit.label === undefined ? {} : { label: edit.label }),
@@ -639,8 +639,8 @@ function decideUnexpose(graph: Graph, edit: GenEdit & { op: 'unexpose' }): GenEd
   if (entry === undefined) return refuse(noRow(edit.index));
 
   return {
-    ok: true,
-    note: `Stops forwarding ${rowName(def, entry)} to the group's instances.`,
+    ok   : true,
+    note : `Stops forwarding ${rowName(def, entry)} to the group's instances.`,
     apply: () => {
       const done = removeEntry(def, edit.index);
       if (isRefusal(done)) throw new Error(done.refusal);
@@ -657,8 +657,8 @@ function decideReorder(graph: Graph, edit: GenEdit & { op: 'reorderExposed' }): 
   if (edit.to < 0 || edit.to >= def.exposed.length) return refuse(noRow(edit.to));
 
   return {
-    ok: true,
-    note: `Moves ${rowName(def, entry)} to row ${edit.to + 1} of the group's controls.`,
+    ok   : true,
+    note : `Moves ${rowName(def, entry)} to row ${edit.to + 1} of the group's controls.`,
     apply: () => {
       const done = reorderEntry(def, edit.from, edit.to);
       if (done !== undefined) throw new Error(done.refusal);
@@ -681,8 +681,8 @@ function decideRepoint(graph: Graph, edit: GenEdit & { op: 'repointExposed' }): 
       ? `'${edit.key ?? ''}' of the ${nameOf(target.node)} node`
       : `the ${nameOf(target.node)} node`;
   return {
-    ok: true,
-    note: `Points ${rowName(def, entry)} at ${at}.`,
+    ok   : true,
+    note : `Points ${rowName(def, entry)} at ${at}.`,
     apply: () => {
       const done = repointEntry(def, edit.index, edit.node, edit.key);
       if (isRefusal(done)) throw new Error(done.refusal);
@@ -704,8 +704,8 @@ function decideAddBoundary(graph: Graph, edit: GenEdit & { op: 'addBoundary' }):
   }
 
   return {
-    ok: true,
-    note: `Adds a '${edit.type}' ${sideName(edit.dir)} named '${edit.key}' to the group.`,
+    ok   : true,
+    note : `Adds a '${edit.type}' ${sideName(edit.dir)} named '${edit.key}' to the group.`,
     apply: () => {
       const done = addBoundary(def, edit.dir, edit.key, edit.type);
       if (isRefusal(done)) throw new Error(done.refusal);
@@ -730,7 +730,7 @@ function decideRemoveBoundary(
   const links = proxy?.edges.length ?? 0;
   const severed = links === 0 ? '' : ` and severs the ${plural(links, 'link')} into it`;
   return {
-    ok: true,
+    ok   : true,
     note: `Removes the group's ${sideName(edit.dir)} '${edit.key}'${severed}; every instance loses the socket.`,
     apply: () => {
       const done = removeBoundary(def, edit.dir, edit.key);
@@ -762,8 +762,8 @@ function decideApply(graph: Graph, edit: GenEdit & { op: 'apply' }): GenEditResu
   ].join(', ');
 
   return {
-    ok: true,
-    note: `Replaces the graph: ${counts}.`,
+    ok   : true,
+    note : `Replaces the graph: ${counts}.`,
     apply: () => ({ graph: result.graph }),
   };
 }
@@ -787,7 +787,7 @@ export function readGenPropValue(
   const prop = resolveNodeProp(target, key);
   if (prop === undefined) {
     return {
-      ok: false,
+      ok    : false,
       reason: `node type '${target.def.typeName}' declares no prop or editable input '${key}'`,
     };
   }

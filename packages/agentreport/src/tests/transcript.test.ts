@@ -19,28 +19,28 @@ const line = (id: number, role: FeedItem['role'], text: string, minute: number):
 });
 
 const thread = (items: FeedItem[], over: Partial<ThreadRecord> = {}): ThreadRecord => ({
-  id: '20260815-140000',
-  title: 'give aiko a track outfit',
+  id       : '20260815-140000',
+  title    : 'give aiko a track outfit',
   startedAt: at(0),
-  model: 'claude-opus-5',
-  commit: 'a1b2c3d',
+  model    : 'claude-opus-5',
+  commit   : 'a1b2c3d',
   items,
   ...over,
 });
 
 const act = (seq: number, minute: number, over: Partial<CommandRecord> = {}): CommandRecord => ({
   seq,
-  id: 'story.editScene',
-  props: {},
+  id        : 'story.editScene',
+  props     : {},
   invocation: `story.editScene(id='s1')`,
-  source: 'agent',
-  mutating: true,
-  gitHead: 'a1b2c3d',
-  gitDirty: false,
-  startedAt: at(minute),
+  source    : 'agent',
+  mutating  : true,
+  gitHead   : 'a1b2c3d',
+  gitDirty  : false,
+  startedAt : at(minute),
   finishedAt: at(minute),
-  status: 'ok',
-  message: 'Rewrote 3 lines.',
+  status    : 'ok',
+  message   : 'Rewrote 3 lines.',
   ...over,
 });
 
@@ -196,9 +196,9 @@ describe('redactEvidence', () => {
 describe('the cache section', () => {
   const receipt = (step: number, over: Partial<ThreadUsage> = {}): ThreadUsage => ({
     step,
-    input: 1000,
+    input : 1000,
     output: 20,
-    at: at(step),
+    at    : at(step),
     ...over,
   });
 

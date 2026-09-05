@@ -151,8 +151,8 @@ async function resolve(
   // gate's act, and it releases scenes
   if (plan.kind === 'portrait') {
     return {
-      ok: false,
-      code: 'GATED_SLOT',
+      ok    : false,
+      code  : 'GATED_SLOT',
       reason: `A portrait is not adopted: approving one writes ${plan.inputs.characterId}'s sheet and releases every scene they are in. Use gate.approve.`,
     };
   }
@@ -187,8 +187,8 @@ export async function adoptionForSlot(
     return { ok: false, code: 'UNKNOWN_ASSET', reason: `No asset "${req.hash}" in the store.` };
   if (isPlaceholderImage(bytes)) {
     return {
-      ok: false,
-      code: 'MOCK_PLACEHOLDER',
+      ok    : false,
+      code  : 'MOCK_PLACEHOLDER',
       reason: `Asset ${short} is a placeholder from a mock run, and mock art never becomes real output.`,
     };
   }
@@ -203,13 +203,13 @@ export async function adoptionForSlot(
   const held = node?.status === 'done' && node.output !== req.hash ? node.output : undefined;
   if (held && !req.replace) {
     return {
-      ok: false,
-      code: 'ALREADY_RENDERED',
+      ok    : false,
+      code  : 'ALREADY_RENDERED',
       reason: `The ${label} is already the render ${held.slice(0, 8)}, and nothing about it has changed — adopting ${short} would replace real work. Adopt with replace to supersede it; the old bytes stay in the store.`,
     };
   }
   return {
-    ok: true,
+    ok  : true,
     plan: {
       kind: resolved.plan.slot.kind,
       taskHash,
@@ -267,17 +267,17 @@ export async function adoptSlot(
 
   const bytes = await deps.store.read({ hash: asset.hash, ext: asset.ext });
   const ref = await deps.store.write(bytes, asset.ext, {
-    kind: resolved.plan.slot.kind,
+    kind      : resolved.plan.slot.kind,
     sourceTask: decided.plan.taskHash,
     prompt:
       req.keepPrompt && asset.prompt !== undefined
         ? asset.prompt
         : resolved.plan.slot.inputs.prompt,
-    refs: resolved.plan.slot.inputs.refs.map((r) => r.hash),
-    modelId: asset.modelId,
+    refs      : resolved.plan.slot.inputs.refs.map((r) => r.hash),
+    modelId   : asset.modelId,
     // `mergeBindings` keeps what the bytes already served, so the tree still shows where an adopted
     // picture came from — the same thing promotion has always done.
-    satisfies: bindingOf(req.slot),
+    satisfies : bindingOf(req.slot),
   });
 
   // A stamp is taken for a shot slot and no other, so this is that branch.

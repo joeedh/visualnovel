@@ -25,9 +25,9 @@ import {
 } from '../index.js';
 
 const config = projectConfig.parse({
-  title: 'Test',
+  title    : 'Test',
   art_style: 'watercolor',
-  models: { vision: ['gemini', 'claude'] },
+  models   : { vision: ['gemini', 'claude'] },
 });
 
 /** Exactly what every builder used to end with, before chunks existed. */
@@ -36,14 +36,14 @@ function legacy(clauses: string[]): string {
 }
 
 const shot: Shot = {
-  id: 's1__a',
-  sceneId: 's1',
-  framing: 'medium',
-  location: 'day',
-  subjects: [{ characterId: 'aiko' }],
-  camera: 'low angle',
+  id         : 's1__a',
+  sceneId    : 's1',
+  framing    : 'medium',
+  location   : 'day',
+  subjects   : [{ characterId: 'aiko' }],
+  camera     : 'low angle',
   coversLines: [],
-  status: 'pending',
+  status     : 'pending',
 };
 
 describe('chunked builders', () => {
@@ -157,7 +157,7 @@ describe('the override a builder resolves for itself', () => {
     const m = model([c], [sc], [location('cafe')]);
     const s: Shot = {
       ...shot,
-      camera: 'low angle',
+      camera        : 'low angle',
       promptOverride: { mode: 'chunks', mute: ['camera'] },
     };
     expect(buildShotPrompt(s, sc, m, config)).not.toContain('Camera:');

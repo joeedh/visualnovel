@@ -81,7 +81,7 @@ export function connect(scenes: SceneMap, from: string, to: string): Decision {
   if (scene && scene.choices.length === 0 && scene.next === undefined) {
     return decide(setNext(scenes, { scene: from, goto: to }), 'story.setNext', {
       scene: from,
-      goto: to,
+      goto : to,
     });
   }
   return decide(
@@ -106,7 +106,7 @@ export function unwire(scenes: SceneMap, edge: StoryEdge): Decision {
   if (edge.kind === 'next') {
     return decide(setNext(scenes, { scene: edge.from }), 'story.setNext', {
       scene: edge.from,
-      goto: '',
+      goto : '',
     });
   }
   const index = edge.index ?? 0;
@@ -182,7 +182,7 @@ export interface BranchState {
 
 export const branchState = (story: StoryGraph): BranchState => ({
   scenes: scenesOf(story),
-  edges: story.edges,
+  edges : story.edges,
 });
 
 // ---------------------------------------------------------------------------
@@ -190,30 +190,30 @@ export const branchState = (story: StoryGraph): BranchState => ({
 // ---------------------------------------------------------------------------
 
 export const branchConnect = defineInteraction<BranchState>({
-  id: 'branch.connect',
-  title: 'Wire a scene to another',
+  id         : 'branch.connect',
+  title      : 'Wire a scene to another',
   description:
     "Drag a card's ⌄ handle onto another scene. A scene with nothing leaving it gains a linear " +
     'continuation; one that already leads somewhere gains a choice.',
-  grab: "a scene card's ⌄ connect handle",
-  carries: 'the scene the wire leaves',
-  accepts: 'any scene card, including one already wired to',
-  commands: ['story.setNext', 'story.setChoice'],
+  grab       : "a scene card's ⌄ connect handle",
+  carries    : 'the scene the wire leaves',
+  accepts    : 'any scene card, including one already wired to',
+  commands   : ['story.setNext', 'story.setChoice'],
   cancellable: true,
   targets: (state, from) =>
     [...state.scenes.keys()].map((to) => verdict(connect(state.scenes, from, to), to)),
 });
 
 export const branchSplice = defineInteraction<BranchState>({
-  id: 'branch.splice',
-  title: 'Splice a scene into an edge',
+  id         : 'branch.splice',
+  title      : 'Splice a scene into an edge',
   description:
     'Drop a scene card on a wire: A→B becomes A→C→B, as one patch. Refused when C already ' +
     'forks (its next would never be followed) or is already an endpoint of that edge.',
-  grab: 'a scene card',
-  carries: 'the scene to splice in',
-  accepts: 'any wire',
-  commands: ['story.spliceScene'],
+  grab       : 'a scene card',
+  carries    : 'the scene to splice in',
+  accepts    : 'any wire',
+  commands   : ['story.spliceScene'],
   cancellable: true,
   targets: (state, scene) =>
     state.edges.map((edge) => verdict(splice(state.scenes, scene, edge), edge.id)),
@@ -225,15 +225,15 @@ export const branchSplice = defineInteraction<BranchState>({
  * caller needs the verdict on whether that edge can be removed at all.
  */
 export const branchUnwire = defineInteraction<BranchState>({
-  id: 'branch.unwire',
-  title: 'Unwire an edge',
+  id         : 'branch.unwire',
+  title      : 'Unwire an edge',
   description:
     "Pull a wire's arrowhead off its target scene. A choice is removed; a linear continuation " +
     'is cleared.',
-  grab: "a wire's arrowhead",
-  carries: 'the edge being pulled',
-  accepts: 'empty canvas — anywhere off the scene it points at',
-  commands: ['story.removeChoice', 'story.setNext'],
+  grab       : "a wire's arrowhead",
+  carries    : 'the edge being pulled',
+  accepts    : 'empty canvas — anywhere off the scene it points at',
+  commands   : ['story.removeChoice', 'story.setNext'],
   cancellable: true,
   targets: (state, edgeId) => {
     const edge = state.edges.find((e) => e.id === edgeId);
@@ -273,16 +273,16 @@ const parseHandle = (carried: string): { shotId: string; edge: Edge } | null => 
  * "No target" and "a target that refuses" are different answers.
  */
 export const timelineCover = defineInteraction<CoverState>({
-  id: 'timeline.cover',
-  title: 'Drag a shot’s coverage',
+  id         : 'timeline.cover',
+  title      : 'Drag a shot’s coverage',
   description:
     "Drag a bracket's start or end handle onto a line of the scene. Extending claims every line " +
     'it sweeps, taking each off whatever shot held it; retracting releases them as gaps. Refused ' +
     'when it would leave another shot covering nothing.',
-  grab: "a shot bracket's start or end handle",
-  carries: 'the handle — `<shotId>#start` or `<shotId>#end`',
-  accepts: 'any line of the scene',
-  commands: ['story.setCoverage'],
+  grab       : "a shot bracket's start or end handle",
+  carries    : 'the handle — `<shotId>#start` or `<shotId>#end`',
+  accepts    : 'any line of the scene',
+  commands   : ['story.setCoverage'],
   cancellable: true,
   targets: (state, carried) => {
     const handle = parseHandle(carried);
@@ -318,9 +318,9 @@ export const timelineCover = defineInteraction<CoverState>({
           ? {
               target: row.line.id,
               accept: true,
-              note: op.message,
+              note  : op.message,
               invoke: {
-                id: 'story.setCoverage',
+                id   : 'story.setCoverage',
                 props: { scene: state.sceneId, shot: handle.shotId, lines: lines.join(',') },
               },
             }
@@ -341,16 +341,16 @@ export const timelineCover = defineInteraction<CoverState>({
  * it onto any target returns a refusal rather than a gesture that quietly does something else.
  */
 export const timelineReorder = defineInteraction<CoverState>({
-  id: 'timeline.reorder',
-  title: 'Reorder a shot',
+  id         : 'timeline.reorder',
+  title      : 'Reorder a shot',
   description:
     'Drag a shot bracket onto another one to put it after that shot, taking the lines it covers ' +
     'with it. Coverage does not change and no covered prose changes, so nothing drifts and ' +
     'nothing re-renders.',
-  grab: 'a shot bracket, anywhere but its start and end handles',
-  carries: 'the shot being moved',
-  accepts: 'another shot of the same scene, or `top`',
-  commands: ['story.moveShot'],
+  grab       : 'a shot bracket, anywhere but its start and end handles',
+  carries    : 'the shot being moved',
+  accepts    : 'another shot of the same scene, or `top`',
+  commands   : ['story.moveShot'],
   cancellable: true,
   targets: (state, carried) => {
     if (!state.shots.some((s) => s.id === carried)) {
@@ -372,9 +372,9 @@ export const timelineReorder = defineInteraction<CoverState>({
           ? {
               target,
               accept: true,
-              note: move.message,
+              note  : move.message,
               invoke: {
-                id: 'story.moveShot',
+                id   : 'story.moveShot',
                 props: { scene: state.sceneId, shot: carried, after },
               },
             }
@@ -398,17 +398,17 @@ export const timelineReorder = defineInteraction<CoverState>({
  * shot, so unlike the other timeline gestures no target is filtered as a no-op.
  */
 export const timelineCreate = defineInteraction<CoverState>({
-  id: 'timeline.create',
-  title: 'New shot from swept lines',
+  id         : 'timeline.create',
+  title      : 'New shot from swept lines',
   description:
     'Drag along the gutter beside the script to make a shot covering the swept lines. A new ' +
     'shot id is a new task, so this is a new frame to render; claimed lines are taken off ' +
     'whatever shot held them. On a scene with no storyboard, the first hand-made shot creates ' +
     'it — which ends decomposition for that scene.',
-  grab: "a line's gutter cell, left of the prose",
-  carries: 'the line the drag started on',
-  accepts: 'any line of the scene — the new shot covers everything between the two',
-  commands: ['story.newShot'],
+  grab       : "a line's gutter cell, left of the prose",
+  carries    : 'the line the drag started on',
+  accepts    : 'any line of the scene — the new shot covers everything between the two',
+  commands   : ['story.newShot'],
   cancellable: true,
   targets: (state, carried) => {
     const anchor = state.lines.findIndex((l) => l.id === carried);
@@ -440,9 +440,9 @@ export const timelineCreate = defineInteraction<CoverState>({
           ? {
               target,
               accept: true,
-              note: op.message,
+              note  : op.message,
               invoke: {
-                id: 'story.newShot',
+                id   : 'story.newShot',
                 props: { scene: state.sceneId, lines: lines.join(',') },
               },
             }
@@ -468,16 +468,16 @@ export const timelineCreate = defineInteraction<CoverState>({
  * because coverage cannot cross a scene boundary, so the whole gesture is unresolved.
  */
 export const scriptMoveLine = defineInteraction<ScriptState>({
-  id: 'script.moveLine',
-  title: 'Move a line within its scene',
+  id         : 'script.moveLine',
+  title      : 'Move a line within its scene',
   description:
     'Drag a line to another position in the same scene. Line ids do not change, so no shot ' +
     'detaches — but a shot was made to depict its covered lines in order, so rendered art ' +
     'covering the moved line drifts.',
-  grab: "a line's drag handle in the script column",
-  carries: 'the line being moved',
-  accepts: 'an insertion point in the same scene — `top`, or any other line to sit after',
-  commands: ['story.moveLine'],
+  grab       : "a line's drag handle in the script column",
+  carries    : 'the line being moved',
+  accepts    : 'an insertion point in the same scene — `top`, or any other line to sit after',
+  commands   : ['story.moveLine'],
   cancellable: true,
   targets: (state, carried) => {
     const scene = state.scenes.get(sceneIdOf(carried));
@@ -508,7 +508,7 @@ export const scriptMoveLine = defineInteraction<ScriptState>({
       verdicts.push({
         target,
         accept: true,
-        note: op.message,
+        note  : op.message,
         invoke: { id: 'story.moveLine', props },
       });
     }
@@ -540,16 +540,16 @@ export interface PromptDragState extends PromptOrderState {
  * author reads it while the pointer is still down rather than after the prompt is already held.
  */
 export const promptReorder = defineInteraction<PromptDragState>({
-  id: 'prompt.reorder',
-  title: 'Reorder a prompt chunk',
+  id         : 'prompt.reorder',
+  title      : 'Reorder a prompt chunk',
   description:
     'Drag a chunk card onto another one to say its sentence after that chunk. The prompt is one ' +
     'string, so this moves what the image model reads first — and it moves the task hash, so the ' +
     'asset re-renders.',
-  grab: "a chunk card's drag rail in the asset pane",
-  carries: 'the chunk being moved, by key',
-  accepts: 'another chunk of the same prompt, or `top`',
-  commands: ['prompt.moveChunk'],
+  grab       : "a chunk card's drag rail in the asset pane",
+  carries    : 'the chunk being moved, by key',
+  accepts    : 'another chunk of the same prompt, or `top`',
+  commands   : ['prompt.moveChunk'],
   cancellable: true,
   targets: (state, carried) => {
     if (state.mode === 'custom') {
@@ -579,9 +579,9 @@ export const promptReorder = defineInteraction<PromptDragState>({
           ? {
               target,
               accept: true,
-              note: move.message,
+              note  : move.message,
               invoke: {
-                id: 'prompt.moveChunk',
+                id   : 'prompt.moveChunk',
                 props: { hash: state.hash, chunk: carried, after },
               },
             }

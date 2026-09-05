@@ -177,7 +177,7 @@ describe('resolveKeys', () => {
     await writeFile(join(secrets, 'claude.txt'), 'file-claude\n');
     const keys = await resolveKeys(config, {
       secretsDirs: [secrets],
-      require: ['gemini', 'anthropic'],
+      require    : ['gemini', 'anthropic'],
     });
     expect(keys.gemini).toBe('file-gemini');
     expect(keys.anthropic).toBe('file-claude');
@@ -196,7 +196,7 @@ describe('resolveKeys', () => {
     await writeFile(join(rootKeys, 'claude.txt'), 'root-claude\n');
     const keys = await resolveKeys(config, {
       secretsDirs: [projectKeys, rootKeys],
-      require: ['gemini', 'anthropic'],
+      require    : ['gemini', 'anthropic'],
     });
     expect(keys.gemini).toBe('project-gemini');
     expect(keys.anthropic).toBe('root-claude');

@@ -29,18 +29,18 @@ async function tempProject() {
 
 function record(over: Partial<CommandRecord> = {}): CommandRecord {
   return {
-    seq: 7,
-    id: 'story.moveLine',
-    props: { line: 'L4' },
+    seq       : 7,
+    id        : 'story.moveLine',
+    props     : { line: 'L4' },
     invocation: "story.moveLine(line='L4')",
-    source: 'ui',
-    mutating: true,
-    gitHead: null,
-    gitDirty: true,
-    startedAt: '2026-07-25T00:00:00.000Z',
+    source    : 'ui',
+    mutating  : true,
+    gitHead   : null,
+    gitDirty  : true,
+    startedAt : '2026-07-25T00:00:00.000Z',
     finishedAt: '2026-07-25T00:00:00.000Z',
-    status: 'ok',
-    message: 'Moved L4 into scene two.',
+    status    : 'ok',
+    message   : 'Moved L4 into scene two.',
     ...over,
   };
 }
@@ -198,10 +198,10 @@ describe('Committer.commitBatch', () => {
     try {
       const records = Array.from({ length: 30 }, (_, i) =>
         record({
-          seq: 41 + i,
-          id: i % 2 === 0 ? 'gengraph.setProp' : 'gengraph.moveNodes',
+          seq       : 41 + i,
+          id        : i % 2 === 0 ? 'gengraph.setProp' : 'gengraph.moveNodes',
           invocation: `gengraph.setProp(value=${i})`,
-          message: `Set aspect to 16:${i}`,
+          message   : `Set aspect to 16:${i}`,
         }),
       );
 
@@ -281,11 +281,11 @@ async function stackSetup(opts: { committer: boolean }) {
   const registry = new CommandRegistry<Host>();
   registry.registerAll([
     define({
-      id: 'demo.edit',
-      title: 'Edit',
+      id         : 'demo.edit',
+      title      : 'Edit',
       description: 'Write a document.',
-      mutating: true,
-      props: { to: prop.string('the new text') },
+      mutating   : true,
+      props      : { to: prop.string('the new text') },
       async run(props, ctx) {
         ctx.host.writes++;
         await fs.writeFile(join(dir, 'doc.md'), `${props.to}\n`);
@@ -293,24 +293,24 @@ async function stackSetup(opts: { committer: boolean }) {
       },
     }),
     define({
-      id: 'demo.agent',
-      title: 'Agent',
-      description: 'Writes and commits on its own.',
-      mutating: true,
+      id           : 'demo.agent',
+      title        : 'Agent',
+      description  : 'Writes and commits on its own.',
+      mutating     : true,
       commitsItself: true,
-      props: {},
+      props        : {},
       async run() {
         await fs.writeFile(join(dir, 'doc.md'), 'by the agent\n');
         return { message: 'ran a plan' };
       },
     }),
     define({
-      id: 'demo.look',
-      title: 'Look',
+      id         : 'demo.look',
+      title      : 'Look',
       description: 'Reads and writes nothing.',
-      mutating: false,
-      props: {},
-      run: () => Promise.resolve({ message: 'looked' }),
+      mutating   : false,
+      props      : {},
+      run        : () => Promise.resolve({ message: 'looked' }),
     }),
   ]);
   const stack = new CommandStack<Host>({
@@ -434,25 +434,25 @@ async function batchSetup(
   const registry = new CommandRegistry<Host>();
   registry.registerAll([
     define({
-      id: 'demo.defer',
-      title: 'Defer',
-      description: 'Write a document, leaving the commit to a later act.',
-      mutating: true,
-      undoable: true,
+      id          : 'demo.defer',
+      title       : 'Defer',
+      description : 'Write a document, leaving the commit to a later act.',
+      mutating    : true,
+      undoable    : true,
       defersCommit: true,
-      props: { file: prop.string('the document to write') },
+      props       : { file: prop.string('the document to write') },
       async run(props) {
         await write(props.file);
         return { message: `wrote ${props.file}` };
       },
     }),
     define({
-      id: 'demo.slow',
-      title: 'Slow',
-      description: 'Write a document, then wait to be released.',
-      mutating: true,
+      id          : 'demo.slow',
+      title       : 'Slow',
+      description : 'Write a document, then wait to be released.',
+      mutating    : true,
       defersCommit: true,
-      props: { file: prop.string('the document to write') },
+      props       : { file: prop.string('the document to write') },
       async run(props) {
         await write(props.file);
         gate.arrive();
@@ -461,24 +461,24 @@ async function batchSetup(
       },
     }),
     define({
-      id: 'demo.write',
-      title: 'Write',
+      id         : 'demo.write',
+      title      : 'Write',
       description: 'Write a document and commit it.',
-      mutating: true,
-      undoable: true,
-      props: { file: prop.string('the document to write') },
+      mutating   : true,
+      undoable   : true,
+      props      : { file: prop.string('the document to write') },
       async run(props) {
         await write(props.file);
         return { message: `wrote ${props.file}` };
       },
     }),
     define({
-      id: 'demo.look',
-      title: 'Look',
+      id         : 'demo.look',
+      title      : 'Look',
       description: 'Reads and writes nothing.',
-      mutating: false,
-      props: {},
-      run: () => Promise.resolve({ message: 'looked' }),
+      mutating   : false,
+      props      : {},
+      run        : () => Promise.resolve({ message: 'looked' }),
     }),
   ]);
   const repos = opts.repos ?? ((only: Git) => [only]);
@@ -679,11 +679,11 @@ describe('the idle flush', () => {
     try {
       registry.register(
         define({
-          id: 'demo.switch',
-          title: 'Switch',
+          id         : 'demo.switch',
+          title      : 'Switch',
           description: 'Drop the stack from inside a command, the way a workspace switch does.',
-          mutating: true,
-          props: {},
+          mutating   : true,
+          props      : {},
           async run() {
             // The desktop reaches `dispose` this way and no other. Through the chain it would
             // queue behind the command calling it and never return.

@@ -37,12 +37,12 @@ const scenes: SceneMap = new Map([
 ]);
 
 const edge = (over: Partial<StoryEdge>): StoryEdge => ({
-  id: 'e',
-  from: 'greet',
-  to: 'rooftop',
-  kind: 'choice',
-  index: 0,
-  label: 'Say hello',
+  id      : 'e',
+  from    : 'greet',
+  to      : 'rooftop',
+  kind    : 'choice',
+  index   : 0,
+  label   : 'Say hello',
   dangling: false,
   ...over,
 });
@@ -51,11 +51,11 @@ describe('connect', () => {
   it('continues a scene that has nothing leaving it', () => {
     const decision = connect(scenes, 'ending', 'greet');
     expect(decision).toEqual({
-      ok: true,
+      ok    : true,
       intent: {
-        id: 'story.setNext',
+        id   : 'story.setNext',
         props: { scene: 'ending', goto: 'greet' },
-        note: 'ending continues to greet.',
+        note : 'ending continues to greet.',
       },
     });
   });
@@ -65,7 +65,7 @@ describe('connect', () => {
     expect(decision.ok && decision.intent.id).toBe('story.setChoice');
     expect(decision.ok && decision.intent.props).toEqual({
       scene: 'greet',
-      goto: 'ending',
+      goto : 'ending',
       label: NEW_CHOICE,
     });
   });
@@ -77,7 +77,7 @@ describe('connect', () => {
 
   it('refuses a scene that is not in the graph', () => {
     expect(connect(scenes, 'nowhere', 'greet')).toEqual({
-      ok: false,
+      ok    : false,
       reason: 'No scene "nowhere".',
     });
   });
@@ -87,11 +87,11 @@ describe('splice', () => {
   it('rewires a choice through the dropped scene', () => {
     const decision = splice(scenes, 'ending', edge({ index: 0 }));
     expect(decision).toEqual({
-      ok: true,
+      ok    : true,
       intent: {
-        id: 'story.spliceScene',
+        id   : 'story.spliceScene',
         props: { scene: 'ending', from: 'greet', edge: 0 },
-        note: 'Spliced ending into greet → rooftop.',
+        note : 'Spliced ending into greet → rooftop.',
       },
     });
   });
@@ -117,11 +117,11 @@ describe('splice', () => {
 describe('unwire', () => {
   it('removes the choice the edge came from', () => {
     expect(unwire(scenes, edge({ index: 0 }))).toEqual({
-      ok: true,
+      ok    : true,
       intent: {
-        id: 'story.removeChoice',
+        id   : 'story.removeChoice',
         props: { scene: 'greet', index: 0 },
-        note: 'Removed greet → rooftop ("Say hello").',
+        note : 'Removed greet → rooftop ("Say hello").',
       },
     });
   });
@@ -143,7 +143,7 @@ describe('relabel', () => {
     const decision = relabel(scenes, edge({ index: 0 }), 'Greet her');
     expect(decision.ok && decision.intent.props).toEqual({
       scene: 'greet',
-      goto: 'rooftop',
+      goto : 'rooftop',
       label: 'Greet her',
       index: 0,
     });
@@ -162,10 +162,10 @@ describe('relabel', () => {
  */
 describe('the branch interactions', () => {
   const nextEdge: StoryEdge = {
-    id: 'rooftop#next',
-    from: 'rooftop',
-    to: 'ending',
-    kind: 'next',
+    id      : 'rooftop#next',
+    from    : 'rooftop',
+    to      : 'ending',
+    kind    : 'next',
     dangling: false,
   };
   const state: BranchState = {
@@ -186,7 +186,7 @@ describe('the branch interactions', () => {
   it('carries the command the drop would run, ready to execute', () => {
     const [greet] = branchConnect.targets(state, 'ending');
     expect(greet?.accept && greet.invoke).toEqual({
-      id: 'story.setNext',
+      id   : 'story.setNext',
       props: { scene: 'ending', goto: 'greet' },
     });
   });
@@ -215,7 +215,7 @@ describe('the branch interactions', () => {
       {
         target: CANVAS,
         accept: true,
-        note: 'Removed greet → rooftop ("Say hello").',
+        note  : 'Removed greet → rooftop ("Say hello").',
         invoke: { id: 'story.removeChoice', props: { scene: 'greet', index: 0 } },
       },
     ]);
@@ -230,19 +230,19 @@ describe('the branch interactions', () => {
 describe('timeline.cover', () => {
   const shot = (id: string, coversLines: string[]): CoverageShot => ({
     id,
-    framing: 'medium',
+    framing : 'medium',
     subjects: [],
     location: 'night',
-    outfits: {},
+    outfits : {},
     coversLines,
     status: 'accepted',
-    drift: 'current',
+    drift : 'current',
   });
 
   const cover: CoverState = {
     sceneId: 'arrival',
     lines: ['L1', 'L2', 'L3', 'L4'].map((n) => ({
-      id: `arrival:${n}`,
+      id  : `arrival:${n}`,
       kind: 'narration' as const,
       text: n,
     })),
@@ -265,7 +265,7 @@ describe('timeline.cover', () => {
     const [l2] = timelineCover.targets(cover, handleId('arrival__establishing', 'start'));
     expect(l2?.target).toBe('arrival:L2');
     expect(l2?.accept && l2.invoke).toEqual({
-      id: 'story.setCoverage',
+      id   : 'story.setCoverage',
       props: { scene: 'arrival', shot: 'arrival__establishing', lines: 'arrival:L4' },
     });
   });
@@ -292,17 +292,17 @@ describe('timeline.cover', () => {
 describe('timeline.create', () => {
   const shot = (id: string, coversLines: string[]): CoverageShot => ({
     id,
-    framing: 'medium',
+    framing : 'medium',
     subjects: [],
     location: 'night',
-    outfits: {},
+    outfits : {},
     coversLines,
     status: 'accepted',
-    drift: 'current',
+    drift : 'current',
   });
 
   const lines = ['L1', 'L2', 'L3'].map((n) => ({
-    id: `arrival:${n}`,
+    id  : `arrival:${n}`,
     kind: 'narration' as const,
     text: n,
   }));
@@ -310,7 +310,7 @@ describe('timeline.create', () => {
   const decomposed: CoverState = {
     sceneId: 'arrival',
     lines,
-    shots: [shot('arrival__establishing', ['arrival:L1', 'arrival:L2', 'arrival:L3'])],
+    shots   : [shot('arrival__establishing', ['arrival:L1', 'arrival:L2', 'arrival:L3'])],
     nextShot: 5,
   };
 
@@ -322,7 +322,7 @@ describe('timeline.create', () => {
   it('mints the id off the persisted mark and carries the newShot the drop would run', () => {
     const [, l2] = timelineCreate.targets(decomposed, 'arrival:L2');
     expect(l2?.accept && l2.invoke).toEqual({
-      id: 'story.newShot',
+      id   : 'story.newShot',
       props: { scene: 'arrival', lines: 'arrival:L2' },
     });
     expect(l2?.accept && l2.note).toContain('arrival__shot5');
@@ -355,18 +355,18 @@ describe('timeline.create', () => {
 describe('timeline.reorder', () => {
   const shot = (id: string, coversLines: string[]): CoverageShot => ({
     id,
-    framing: 'medium',
+    framing : 'medium',
     subjects: [],
     location: 'night',
-    outfits: {},
+    outfits : {},
     coversLines,
     status: 'accepted',
-    drift: 'current',
+    drift : 'current',
   });
 
   const lines = (n: number): CoverState['lines'] =>
     Array.from({ length: n }, (_, i) => ({
-      id: `arrival:L${i + 1}`,
+      id  : `arrival:L${i + 1}`,
       kind: 'narration' as const,
       text: `L${i + 1}`,
     }));
@@ -374,7 +374,7 @@ describe('timeline.reorder', () => {
   /** Three shots over three contiguous pairs — the shape a reorder is defined on. */
   const tidy: CoverState = {
     sceneId: 'arrival',
-    lines: lines(6),
+    lines  : lines(6),
     shots: [
       shot('arrival__establishing', ['arrival:L1', 'arrival:L2']),
       shot('arrival__aiko', ['arrival:L3', 'arrival:L4']),
@@ -393,7 +393,7 @@ describe('timeline.reorder', () => {
   it('carries the moveShot the drop would run, with top as an empty after', () => {
     const [top] = timelineReorder.targets(tidy, 'arrival__ren');
     expect(top?.accept && top.invoke).toEqual({
-      id: 'story.moveShot',
+      id   : 'story.moveShot',
       props: { scene: 'arrival', shot: 'arrival__ren', after: '' },
     });
     expect(top?.accept && top.note).toContain('nothing re-renders');
@@ -402,7 +402,7 @@ describe('timeline.reorder', () => {
   it('refuses every target for an interleaved shot, naming what draws inside it', () => {
     const woven: CoverState = {
       sceneId: 'arrival',
-      lines: lines(4),
+      lines  : lines(4),
       shots: [
         shot('arrival__establishing', ['arrival:L1', 'arrival:L3']),
         shot('arrival__aiko', ['arrival:L2']),
@@ -424,8 +424,8 @@ describe('timeline.reorder', () => {
 
 describe('prompt.reorder', () => {
   const state = (over: Partial<PromptDragState> = {}): PromptDragState => ({
-    hash: 'abc123',
-    mode: 'chunks',
+    hash  : 'abc123',
+    mode  : 'chunks',
     chunks: [{ key: 'style' }, { key: 'subject' }, { key: 'palette' }],
     ...over,
   });
@@ -440,7 +440,7 @@ describe('prompt.reorder', () => {
   it('carries the moveChunk the drop would run, with top as an empty after', () => {
     const [top] = promptReorder.targets(state(), 'palette');
     expect(top?.accept && top.invoke).toEqual({
-      id: 'prompt.moveChunk',
+      id   : 'prompt.moveChunk',
       props: { hash: 'abc123', chunk: 'palette', after: '' },
     });
     expect(top?.accept && top.note).toBe('palette now sits first.');
@@ -511,7 +511,7 @@ The train stopped.
   it('carries the moveLine the drop would run, with top as an empty after', () => {
     const [top] = scriptMoveLine.targets(script, 'arrival:L3');
     expect(top?.accept && top.invoke).toEqual({
-      id: 'story.moveLine',
+      id   : 'story.moveLine',
       props: { line: 'arrival:L3', after: '' },
     });
     expect(top?.accept && top.note).toBe('Moved arrival:L3 to the top in arrival.');

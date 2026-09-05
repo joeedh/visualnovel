@@ -1,2153 +1,2153 @@
 {
-  "v": 1,
+  "v"    : 1,
   "files": {
     "apps/authoring/src/agent.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "324cb3157125022cfded16494b39a24fdb348eb5"
+      "blob"     : "324cb3157125022cfded16494b39a24fdb348eb5"
     },
     "apps/authoring/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "97dc889d5d1eda72d66c6cca3f06aced38b45ea2"
+      "blob"     : "97dc889d5d1eda72d66c6cca3f06aced38b45ea2"
     },
     "apps/authoring/src/render.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "e1efd3183dde5b585a456cafde68adc7b6708db6"
+      "blob"     : "e1efd3183dde5b585a456cafde68adc7b6708db6"
     },
     "apps/authoring/src/repl.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "76365bddc01f417b6f22d10c78bbd836cc607df9"
+      "blob"     : "76365bddc01f417b6f22d10c78bbd836cc607df9"
     },
     "apps/authoring/src/tests/repl.test.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "5b6d38aa88df43d8162caf2b0f6fd6b9c6287b31"
+      "blob"     : "5b6d38aa88df43d8162caf2b0f6fd6b9c6287b31"
     },
     "apps/authoring/src/vnauthor.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "9fa169a7dd42af1ad092009e59c71be960fdf1ab"
+      "blob"     : "9fa169a7dd42af1ad092009e59c71be960fdf1ab"
     },
     "apps/cli/src/cli.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "9fa169a7dd42af1ad092009e59c71be960fdf1ab"
+      "blob"     : "9fa169a7dd42af1ad092009e59c71be960fdf1ab"
     },
     "apps/cli/src/commands.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "73963447886dd2e2cf6386ec1283d2b7379ec152"
+      "blob"     : "73963447886dd2e2cf6386ec1283d2b7379ec152"
     },
     "apps/cli/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "da52eb1b762bf4d11c8c9c365a9dc56bd4645d7b"
+      "blob"     : "da52eb1b762bf4d11c8c9c365a9dc56bd4645d7b"
     },
     "apps/cli/src/project.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "f319e4232be327eebda5c8b0bb6c9bfbecdb7c60"
+      "blob"     : "f319e4232be327eebda5c8b0bb6c9bfbecdb7c60"
     },
     "apps/cli/src/tests/commands.test.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "4c58bc6bca317d6414517f3ea4b8f042a4ee0cfa"
+      "blob"     : "4c58bc6bca317d6414517f3ea4b8f042a4ee0cfa"
     },
     "apps/desktop/renderer/api.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "58ba08c1bddf09305d9b050e0bdc77d015fe21c4"
+      "blob"     : "58ba08c1bddf09305d9b050e0bdc77d015fe21c4"
     },
     "apps/desktop/renderer/debug/install.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "544b2b60526027e7a9533bf4695d1a51d3d4636f"
+      "blob"     : "544b2b60526027e7a9533bf4695d1a51d3d4636f"
     },
     "apps/desktop/renderer/global.d.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "30367e005c075ba9afb8dfa38f801b69455768fb"
+      "blob"     : "30367e005c075ba9afb8dfa38f801b69455768fb"
     },
     "apps/desktop/renderer/graph/edges.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "1dcb646e5167d6c48aa612da0d34a2e0144ffb9d"
+      "blob"     : "1dcb646e5167d6c48aa612da0d34a2e0144ffb9d"
     },
     "apps/desktop/renderer/graph/hit.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "f71080857db084c65df9e14a5255eaf079360baa"
+      "blob"     : "f71080857db084c65df9e14a5255eaf079360baa"
     },
     "apps/desktop/renderer/graph/layout.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "51c5da968f1d931cfa413c08e1e750badb9b7480"
+      "blob"     : "51c5da968f1d931cfa413c08e1e750badb9b7480"
     },
     "apps/desktop/renderer/graph/tests/edges.test.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "1d2aadd1c3b533d86c0cf8eaa58acbb52a46e7bd"
+      "blob"     : "1d2aadd1c3b533d86c0cf8eaa58acbb52a46e7bd"
     },
     "apps/desktop/renderer/graph/tests/hit.test.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "3bb0344922c92814efab3ab0cca7528f9f2a9936"
+      "blob"     : "3bb0344922c92814efab3ab0cca7528f9f2a9936"
     },
     "apps/desktop/renderer/graph/tests/layout.test.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "cef76eebfa18ab1388e0f3462720a286aef362e0"
+      "blob"     : "cef76eebfa18ab1388e0f3462720a286aef362e0"
     },
     "apps/desktop/renderer/graph/tests/viewport.test.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "b83d1ca44106d0bc404051a973ba8dfd11ece4be"
+      "blob"     : "b83d1ca44106d0bc404051a973ba8dfd11ece4be"
     },
     "apps/desktop/renderer/graph/types.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "9c4a90ff4c84a187a51f8587267adb82dcb129b8"
+      "blob"     : "9c4a90ff4c84a187a51f8587267adb82dcb129b8"
     },
     "apps/desktop/renderer/graph/viewport.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "d0e21faf500c34f083fde92710ab582683ba8638"
+      "blob"     : "d0e21faf500c34f083fde92710ab582683ba8638"
     },
     "apps/desktop/renderer/main.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "3a8434c4d92311c6af9fb49e48e1a41fe559f295"
+      "blob"     : "3a8434c4d92311c6af9fb49e48e1a41fe559f295"
     },
     "apps/desktop/renderer/pathux/agent.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "14ec5e4355ad372a7d163c0c037e3ff3ca7f9739"
+      "blob"     : "14ec5e4355ad372a7d163c0c037e3ff3ca7f9739"
     },
     "apps/desktop/renderer/pathux/api.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "52007e2c8fcc49b06342bd526d37c96e37e580d1"
+      "blob"     : "52007e2c8fcc49b06342bd526d37c96e37e580d1"
     },
     "apps/desktop/renderer/pathux/assetstrip.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "b055225e07db1e1b171eb2d288d44e1609f6d140"
+      "blob"     : "b055225e07db1e1b171eb2d288d44e1609f6d140"
     },
     "apps/desktop/renderer/pathux/branch.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "86543f877618244effe1487ebb467d0e4d426cc6"
+      "blob"     : "86543f877618244effe1487ebb467d0e4d426cc6"
     },
     "apps/desktop/renderer/pathux/bridge.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "7b89da07e27929abd2fd2463b881e8bae2ff3d4b"
+      "blob"     : "7b89da07e27929abd2fd2463b881e8bae2ff3d4b"
     },
     "apps/desktop/renderer/pathux/closepane.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "03b516a01dd1e8d849148aa39f42095c0e50480c"
+      "blob"     : "03b516a01dd1e8d849148aa39f42095c0e50480c"
     },
     "apps/desktop/renderer/pathux/commandform.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "94f63d99a4131dee71248db8b81346e7a75e333f"
+      "blob"     : "94f63d99a4131dee71248db8b81346e7a75e333f"
     },
     "apps/desktop/renderer/pathux/context.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "381b4eb761aa36130ce38330f6b71ceafc8fa5bb"
+      "blob"     : "381b4eb761aa36130ce38330f6b71ceafc8fa5bb"
     },
     "apps/desktop/renderer/pathux/contextmenu.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "a701ea3a4bcd7fdaacd50e595010300993a7a32e"
+      "blob"     : "a701ea3a4bcd7fdaacd50e595010300993a7a32e"
     },
     "apps/desktop/renderer/pathux/diagnostics.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "9b8dbb6413ff0420abfb1740dd4311f16289b783"
+      "blob"     : "9b8dbb6413ff0420abfb1740dd4311f16289b783"
     },
     "apps/desktop/renderer/pathux/dialog.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "f14a30529502b755d4748563be18aba79356d358"
+      "blob"     : "f14a30529502b755d4748563be18aba79356d358"
     },
     "apps/desktop/renderer/pathux/docbuffer.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "f2a5779ca85342acda6e885445d642e9b33bceae"
+      "blob"     : "f2a5779ca85342acda6e885445d642e9b33bceae"
     },
     "apps/desktop/renderer/pathux/doctree.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "67a945be8f9a60f6cda49b6bb5ae9860df480e79"
+      "blob"     : "67a945be8f9a60f6cda49b6bb5ae9860df480e79"
     },
     "apps/desktop/renderer/pathux/dom.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "ef55d6e603c13827ea40e26e0c088f05a7c38f68"
+      "blob"     : "ef55d6e603c13827ea40e26e0c088f05a7c38f68"
     },
     "apps/desktop/renderer/pathux/editor.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "a3a796a23fc30c59907a37554c0520d9cb90dde2"
+      "blob"     : "a3a796a23fc30c59907a37554c0520d9cb90dde2"
     },
     "apps/desktop/renderer/pathux/editors/asset.ts": {
       "auditedAt": "2026-08-20T19:36:18.083Z",
-      "blob": "24c18e8898d670f1c890d79bc0c5124d2f71679a"
+      "blob"     : "24c18e8898d670f1c890d79bc0c5124d2f71679a"
     },
     "apps/desktop/renderer/pathux/editors/branch.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "c0a3aaa2fa2ed36189ce895a2a81215776e3e675"
+      "blob"     : "c0a3aaa2fa2ed36189ce895a2a81215776e3e675"
     },
     "apps/desktop/renderer/pathux/editors/convo.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "0b6fb0c44231ba12a38443ee87d78ca3191b2de9"
+      "blob"     : "0b6fb0c44231ba12a38443ee87d78ca3191b2de9"
     },
     "apps/desktop/renderer/pathux/editors/documents.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "d0468ea25644a45fd64b9930da0c81793005b2dc"
+      "blob"     : "d0468ea25644a45fd64b9930da0c81793005b2dc"
     },
     "apps/desktop/renderer/pathux/editors/graph.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "d4c090d9283a4eb0a755ca6e821e30effdc7d441"
+      "blob"     : "d4c090d9283a4eb0a755ca6e821e30effdc7d441"
     },
     "apps/desktop/renderer/pathux/editors/header.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "487413baa3af7e0cc11e54b382a16aaf52a98736"
+      "blob"     : "487413baa3af7e0cc11e54b382a16aaf52a98736"
     },
     "apps/desktop/renderer/pathux/editors/inspector.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "8e3383a99ae15ae2302eda5fef1aac07557e4937"
+      "blob"     : "8e3383a99ae15ae2302eda5fef1aac07557e4937"
     },
     "apps/desktop/renderer/pathux/editors/onboarding.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "4f2355d0a7f87093f9f8ce49976a94a84282e615"
+      "blob"     : "4f2355d0a7f87093f9f8ce49976a94a84282e615"
     },
     "apps/desktop/renderer/pathux/editors/play.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "c246b99b55bdbe1b9b2a051af8e43d65f4ee997e"
+      "blob"     : "c246b99b55bdbe1b9b2a051af8e43d65f4ee997e"
     },
     "apps/desktop/renderer/pathux/editors/project.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "f4c7e10945e769d9f9f5ffce10ab79692217bfab"
+      "blob"     : "f4c7e10945e769d9f9f5ffce10ab79692217bfab"
     },
     "apps/desktop/renderer/pathux/editors/script.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "d2e8b15868f8cc01b79722d0d3ac875d7a9e86e6"
+      "blob"     : "d2e8b15868f8cc01b79722d0d3ac875d7a9e86e6"
     },
     "apps/desktop/renderer/pathux/editors/skills.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "00b0e7ede79a265a2017a29458e9df31d2f50df7"
+      "blob"     : "00b0e7ede79a265a2017a29458e9df31d2f50df7"
     },
     "apps/desktop/renderer/pathux/editors/systemprompt.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "32a8e772dc37f48282e06bbf41ab1163d8df5bb6"
+      "blob"     : "32a8e772dc37f48282e06bbf41ab1163d8df5bb6"
     },
     "apps/desktop/renderer/pathux/editors/tasks.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "fd277f5176f9a66714a5385c718df20ef9a51334"
+      "blob"     : "fd277f5176f9a66714a5385c718df20ef9a51334"
     },
     "apps/desktop/renderer/pathux/editors/timeline.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "3517dd9614551b7da0459320afe0b6fb1e9663ba"
+      "blob"     : "3517dd9614551b7da0459320afe0b6fb1e9663ba"
     },
     "apps/desktop/renderer/pathux/editors/wiki.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "737a479361fc2bcb569fca26b8637c0be20cbf29"
+      "blob"     : "737a479361fc2bcb569fca26b8637c0be20cbf29"
     },
     "apps/desktop/renderer/pathux/flash.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "16e01dda65bf5807c6d7474c90c346b83f4dfb73"
+      "blob"     : "16e01dda65bf5807c6d7474c90c346b83f4dfb73"
     },
     "apps/desktop/renderer/pathux/graph/canvas.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "bd70628cb2a8893009b29b142baf97a63050a501"
+      "blob"     : "bd70628cb2a8893009b29b142baf97a63050a501"
     },
     "apps/desktop/renderer/pathux/icons.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "1446a8b80061690443d6adf2400c5071b6d78993"
+      "blob"     : "1446a8b80061690443d6adf2400c5071b6d78993"
     },
     "apps/desktop/renderer/pathux/keymap.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "489a7bd90351caa841f53ad376e0123150b509ad"
+      "blob"     : "489a7bd90351caa841f53ad376e0123150b509ad"
     },
     "apps/desktop/renderer/pathux/layouts.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "151cb9acf93834e9e2178067c252e8b78e9ce3a4"
+      "blob"     : "151cb9acf93834e9e2178067c252e8b78e9ce3a4"
     },
     "apps/desktop/renderer/pathux/notifications.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "28f790f37983e3f374363d7069bd11770105a24e"
+      "blob"     : "28f790f37983e3f374363d7069bd11770105a24e"
     },
     "apps/desktop/renderer/pathux/open.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "9d564908c6384fb87d2dbf6aa1286827be2c59f0"
+      "blob"     : "9d564908c6384fb87d2dbf6aa1286827be2c59f0"
     },
     "apps/desktop/renderer/pathux/palette.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "c500956e4fa8dd155562e09fedb63d8786f4ced0"
+      "blob"     : "c500956e4fa8dd155562e09fedb63d8786f4ced0"
     },
     "apps/desktop/renderer/pathux/panes.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "847d04ce2e5340bddd32bc73ad32b666a980bae8"
+      "blob"     : "847d04ce2e5340bddd32bc73ad32b666a980bae8"
     },
     "apps/desktop/renderer/pathux/paragraph.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "dc1a1fbec641c72dc8bf17d670f14da203973ba3"
+      "blob"     : "dc1a1fbec641c72dc8bf17d670f14da203973ba3"
     },
     "apps/desktop/renderer/pathux/persist.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "e2c368cfe1fe1ab1bd0684b20f5fcd51ec4bc360"
+      "blob"     : "e2c368cfe1fe1ab1bd0684b20f5fcd51ec4bc360"
     },
     "apps/desktop/renderer/pathux/pin.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "a79a42bec62aee6c32d1937c32cdeead4eafce01"
+      "blob"     : "a79a42bec62aee6c32d1937c32cdeead4eafce01"
     },
     "apps/desktop/renderer/pathux/play/playback.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "3c097fe90cdd8aad15cc50ef4f34c8151e1fa85e"
+      "blob"     : "3c097fe90cdd8aad15cc50ef4f34c8151e1fa85e"
     },
     "apps/desktop/renderer/pathux/play/tests/playback.test.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "c1c314752ea07101046f5a478dc69075facd896b"
+      "blob"     : "c1c314752ea07101046f5a478dc69075facd896b"
     },
     "apps/desktop/renderer/pathux/popup.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "69ddd665781464a2463fdc0f5a197a12e2e912d1"
+      "blob"     : "69ddd665781464a2463fdc0f5a197a12e2e912d1"
     },
     "apps/desktop/renderer/pathux/report.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "21ff3e3095197d4bef4a36615c1bf600138dc842"
+      "blob"     : "21ff3e3095197d4bef4a36615c1bf600138dc842"
     },
     "apps/desktop/renderer/pathux/reportpreview.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "729a8f7b2dd09b04b31e0fff78bfc0490af8545a"
+      "blob"     : "729a8f7b2dd09b04b31e0fff78bfc0490af8545a"
     },
     "apps/desktop/renderer/pathux/route.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "40f099ef58bf983f70264d53c7469b9e2ac1530a"
+      "blob"     : "40f099ef58bf983f70264d53c7469b9e2ac1530a"
     },
     "apps/desktop/renderer/pathux/screen.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "b95ef709dc22e3a7ba31b641bd4eabdefcf5c611"
+      "blob"     : "b95ef709dc22e3a7ba31b641bd4eabdefcf5c611"
     },
     "apps/desktop/renderer/pathux/script.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "85112360f3d34c9e8244d9e7e6e5d442ce566cd0"
+      "blob"     : "85112360f3d34c9e8244d9e7e6e5d442ce566cd0"
     },
     "apps/desktop/renderer/pathux/selection.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "f115cd7e8f7365d3d842492cc06b73111d957d69"
+      "blob"     : "f115cd7e8f7365d3d842492cc06b73111d957d69"
     },
     "apps/desktop/renderer/pathux/shell.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "4d232ad5029419202cfad498024ecd66e7e64d7f"
+      "blob"     : "4d232ad5029419202cfad498024ecd66e7e64d7f"
     },
     "apps/desktop/renderer/pathux/showmenu.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "7e179fe1c2fc3f8a5c25ba7ff2202c63852204d2"
+      "blob"     : "7e179fe1c2fc3f8a5c25ba7ff2202c63852204d2"
     },
     "apps/desktop/renderer/pathux/state.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "94489a9270cf2cd992d6454975cff52e3442c1c8"
+      "blob"     : "94489a9270cf2cd992d6454975cff52e3442c1c8"
     },
     "apps/desktop/renderer/pathux/structfields.ts": {
       "auditedAt": "2026-08-20T19:36:19.591Z",
-      "blob": "8655ab2fd3cc0f3b25fb21f94c26a6e6df23b1e9"
+      "blob"     : "8655ab2fd3cc0f3b25fb21f94c26a6e6df23b1e9"
     },
     "apps/desktop/renderer/pathux/tests/branch.test.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "905bacba11a3f9530a292bf2756cb8cb9ab4a0b4"
+      "blob"     : "905bacba11a3f9530a292bf2756cb8cb9ab4a0b4"
     },
     "apps/desktop/renderer/pathux/tests/contextmenu.test.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "8e2165c39b07e84d6bb222778c9ebeb798ee3a4d"
+      "blob"     : "8e2165c39b07e84d6bb222778c9ebeb798ee3a4d"
     },
     "apps/desktop/renderer/pathux/tests/docbuffer.test.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "b0cfb6d6c80766bbacab611d1c3f2d3e4d2b668e"
+      "blob"     : "b0cfb6d6c80766bbacab611d1c3f2d3e4d2b668e"
     },
     "apps/desktop/renderer/pathux/tests/doctree.test.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "041e1c26ed419c4d99f31282c4631a14863f3ab7"
+      "blob"     : "041e1c26ed419c4d99f31282c4631a14863f3ab7"
     },
     "apps/desktop/renderer/pathux/tests/panes.test.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "cc1a67239b55ff32098cc6706eedebcdb6ba0493"
+      "blob"     : "cc1a67239b55ff32098cc6706eedebcdb6ba0493"
     },
     "apps/desktop/renderer/pathux/tests/pin.test.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "ad99a9d8bb7672e679ece040e3111ca4930cbb4d"
+      "blob"     : "ad99a9d8bb7672e679ece040e3111ca4930cbb4d"
     },
     "apps/desktop/renderer/pathux/tests/route.test.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "9b76b255ba80980a3c26632c18bb5eac3909c0f4"
+      "blob"     : "9b76b255ba80980a3c26632c18bb5eac3909c0f4"
     },
     "apps/desktop/renderer/pathux/tests/script.test.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "538d635059dae295b2653674f48489bfc8e9c18f"
+      "blob"     : "538d635059dae295b2653674f48489bfc8e9c18f"
     },
     "apps/desktop/renderer/pathux/tests/selection.test.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "677466b0788b428023042c297ebbc088f38e8a99"
+      "blob"     : "677466b0788b428023042c297ebbc088f38e8a99"
     },
     "apps/desktop/renderer/pathux/tests/structfields.test.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "986b8bf7d40f16fe1616fd17e2c871f2326b8b64"
+      "blob"     : "986b8bf7d40f16fe1616fd17e2c871f2326b8b64"
     },
     "apps/desktop/renderer/pathux/tests/timeline.test.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "db37bf7c2158d4529e5a4d87b6306e1ad8a7ada0"
+      "blob"     : "db37bf7c2158d4529e5a4d87b6306e1ad8a7ada0"
     },
     "apps/desktop/renderer/pathux/tests/treeview.test.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "5a45c33f0ab07d022cf1958bb7bec043611e30fe"
+      "blob"     : "5a45c33f0ab07d022cf1958bb7bec043611e30fe"
     },
     "apps/desktop/renderer/pathux/theme.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "edc59b046c7c339ebc39ff28aeb8bca7a109a549"
+      "blob"     : "edc59b046c7c339ebc39ff28aeb8bca7a109a549"
     },
     "apps/desktop/renderer/pathux/timeline.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "c799a55a37af1e942cb22702d01a6f8a22137da5"
+      "blob"     : "c799a55a37af1e942cb22702d01a6f8a22137da5"
     },
     "apps/desktop/renderer/pathux/tokens.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "a030c35ca21c065105b588f6136e5a8de5f75dd8"
+      "blob"     : "a030c35ca21c065105b588f6136e5a8de5f75dd8"
     },
     "apps/desktop/renderer/pathux/treeview.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "1acca88924722fa8423940981088eaba15ca5035"
+      "blob"     : "1acca88924722fa8423940981088eaba15ca5035"
     },
     "apps/desktop/renderer/pathux/view.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "6f1111ab3d44f9cb39be5be8e52c628fa699f3a0"
+      "blob"     : "6f1111ab3d44f9cb39be5be8e52c628fa699f3a0"
     },
     "apps/desktop/renderer/pathux/writingbox.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "b7d045bf7115399e57a2cf998920aa94151b2359"
+      "blob"     : "b7d045bf7115399e57a2cf998920aa94151b2359"
     },
     "apps/desktop/renderer/rules/askform.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "ba0587a5c9e2be9d06e0fa5cc3a3f657b00965f0"
+      "blob"     : "ba0587a5c9e2be9d06e0fa5cc3a3f657b00965f0"
     },
     "apps/desktop/renderer/rules/assetview.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "d40b3917289c24aa890b74546e4544c6d3f766bd"
+      "blob"     : "d40b3917289c24aa890b74546e4544c6d3f766bd"
     },
     "apps/desktop/renderer/rules/attempts.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "ba5a39c875ea7a3d64e599eef3d7d6bc11a3a4d5"
+      "blob"     : "ba5a39c875ea7a3d64e599eef3d7d6bc11a3a4d5"
     },
     "apps/desktop/renderer/rules/branch/compose.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "5796a032833426df17696aa18deff68ff428e90d"
+      "blob"     : "5796a032833426df17696aa18deff68ff428e90d"
     },
     "apps/desktop/renderer/rules/branch/grab.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "3a3ad0c565350df61fe466241b4e905acf365941"
+      "blob"     : "3a3ad0c565350df61fe466241b4e905acf365941"
     },
     "apps/desktop/renderer/rules/branch/graph.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "6c8ab37b4c22c911eb22683e35ed9f8768cb14c0"
+      "blob"     : "6c8ab37b4c22c911eb22683e35ed9f8768cb14c0"
     },
     "apps/desktop/renderer/rules/branch/tests/compose.test.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "cb82c69c8612a138df87c12890ec8bbfd0147e3c"
+      "blob"     : "cb82c69c8612a138df87c12890ec8bbfd0147e3c"
     },
     "apps/desktop/renderer/rules/branch/tests/grab.test.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "0a7bde4a5c32e36da7e4b632094f89633c80537e"
+      "blob"     : "0a7bde4a5c32e36da7e4b632094f89633c80537e"
     },
     "apps/desktop/renderer/rules/branch/tests/graph.test.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "bd3152fa99ad7f7b6c092c14bd7ef2e00774881d"
+      "blob"     : "bd3152fa99ad7f7b6c092c14bd7ef2e00774881d"
     },
     "apps/desktop/renderer/rules/branch/tests/tween.test.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "fe85eea2c98dbaa7226a05f2772294e7ee46c498"
+      "blob"     : "fe85eea2c98dbaa7226a05f2772294e7ee46c498"
     },
     "apps/desktop/renderer/rules/branch/tween.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "f02aea4e96b324c67b065a7d2917dca40b9a6a64"
+      "blob"     : "f02aea4e96b324c67b065a7d2917dca40b9a6a64"
     },
     "apps/desktop/renderer/rules/catalog.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "7e4ced1b2353957339802d29798d0f4d237cc032"
+      "blob"     : "7e4ced1b2353957339802d29798d0f4d237cc032"
     },
     "apps/desktop/renderer/rules/diagnostics.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "2cc7972a354017c2f6c8aa1795fd5b0d7dcc51fb"
+      "blob"     : "2cc7972a354017c2f6c8aa1795fd5b0d7dcc51fb"
     },
     "apps/desktop/renderer/rules/promptview.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "4d4c6e16009d966790d1dd45c7a7c301d5e46903"
+      "blob"     : "4d4c6e16009d966790d1dd45c7a7c301d5e46903"
     },
     "apps/desktop/renderer/rules/script.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "ca2413daeeb23da20957db58117c4ec570af4761"
+      "blob"     : "ca2413daeeb23da20957db58117c4ec570af4761"
     },
     "apps/desktop/renderer/rules/skills.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "3c15b2986dff38eff9fc047177cefed867b2c4f2"
+      "blob"     : "3c15b2986dff38eff9fc047177cefed867b2c4f2"
     },
     "apps/desktop/renderer/rules/systemprompt.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "f9f9b4544e6053a436a3dcdb2859c0454d1d4896"
+      "blob"     : "f9f9b4544e6053a436a3dcdb2859c0454d1d4896"
     },
     "apps/desktop/renderer/rules/taskGraph.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "4f43c76eb8fb2934ce2320f68fddbfb99205d15a"
+      "blob"     : "4f43c76eb8fb2934ce2320f68fddbfb99205d15a"
     },
     "apps/desktop/renderer/rules/tasklist.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "f957afc48cea07d25cd82fc5a986e363ff614e7c"
+      "blob"     : "f957afc48cea07d25cd82fc5a986e363ff614e7c"
     },
     "apps/desktop/renderer/rules/tests/askform.test.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "442d3a975def2d1e9b8cf473d69ce453ee711998"
+      "blob"     : "442d3a975def2d1e9b8cf473d69ce453ee711998"
     },
     "apps/desktop/renderer/rules/tests/assetview.test.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "ce92939430518bf4c21f017d0c534bd319cbfe16"
+      "blob"     : "ce92939430518bf4c21f017d0c534bd319cbfe16"
     },
     "apps/desktop/renderer/rules/tests/attempts.test.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "b8e9b59cbd544c587e6147d5538a26fb5ee8a11e"
+      "blob"     : "b8e9b59cbd544c587e6147d5538a26fb5ee8a11e"
     },
     "apps/desktop/renderer/rules/tests/catalog.test.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "feff3d832d3f59e0450280911d3ee87ee7c21a06"
+      "blob"     : "feff3d832d3f59e0450280911d3ee87ee7c21a06"
     },
     "apps/desktop/renderer/rules/tests/diagnostics.test.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "226d80ff9b8ff539ee069d313a354c3f426d8e6e"
+      "blob"     : "226d80ff9b8ff539ee069d313a354c3f426d8e6e"
     },
     "apps/desktop/renderer/rules/tests/promptview.test.ts": {
       "auditedAt": "2026-08-20T19:36:21.165Z",
-      "blob": "92b55cd32cadeb6846e7733191bd5666aff96b9a"
+      "blob"     : "92b55cd32cadeb6846e7733191bd5666aff96b9a"
     },
     "apps/desktop/renderer/rules/tests/script.test.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "0072c5495e8902d21e8cd558abe246b5233912a9"
+      "blob"     : "0072c5495e8902d21e8cd558abe246b5233912a9"
     },
     "apps/desktop/renderer/rules/tests/skills.test.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "7622dd41c7d3b417748ee6285a11b9e814b2bc21"
+      "blob"     : "7622dd41c7d3b417748ee6285a11b9e814b2bc21"
     },
     "apps/desktop/renderer/rules/tests/systemprompt.test.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "418461bbdbea30027c2bcec75646f757fcb60270"
+      "blob"     : "418461bbdbea30027c2bcec75646f757fcb60270"
     },
     "apps/desktop/renderer/rules/tests/taskGraph.test.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "e22cabeac208f5ed92998b4dabf6dff2a0bcde11"
+      "blob"     : "e22cabeac208f5ed92998b4dabf6dff2a0bcde11"
     },
     "apps/desktop/renderer/rules/tests/tasklist.test.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "d8a53a4098f7b9125cff4ec2294e6d7cf9b44616"
+      "blob"     : "d8a53a4098f7b9125cff4ec2294e6d7cf9b44616"
     },
     "apps/desktop/renderer/rules/timeline/busy.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "42ee5b2d064bbb26345c101a1924fc830bcadfe0"
+      "blob"     : "42ee5b2d064bbb26345c101a1924fc830bcadfe0"
     },
     "apps/desktop/renderer/rules/timeline/coverage.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "964de95dbeb14c7e32043138f6f778f3e210b2bb"
+      "blob"     : "964de95dbeb14c7e32043138f6f778f3e210b2bb"
     },
     "apps/desktop/renderer/rules/timeline/drift.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "46ced7ebecbcc628178bb3a7f92697a7495f88ac"
+      "blob"     : "46ced7ebecbcc628178bb3a7f92697a7495f88ac"
     },
     "apps/desktop/renderer/rules/timeline/editing.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "14984745b3c0bcdcdd7c36abf7ec5299a018d0e1"
+      "blob"     : "14984745b3c0bcdcdd7c36abf7ec5299a018d0e1"
     },
     "apps/desktop/renderer/rules/timeline/tests/busy.test.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "3385be55c983b494a9e622ae9d6f0030657fd603"
+      "blob"     : "3385be55c983b494a9e622ae9d6f0030657fd603"
     },
     "apps/desktop/renderer/rules/timeline/tests/coverage.test.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "b45dc41426b0d46a3c56e37581ee8cb8319860fe"
+      "blob"     : "b45dc41426b0d46a3c56e37581ee8cb8319860fe"
     },
     "apps/desktop/renderer/rules/timeline/tests/drift.test.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "c6ec3dec19efb9c663e881e651e297f27ce41083"
+      "blob"     : "c6ec3dec19efb9c663e881e651e297f27ce41083"
     },
     "apps/desktop/renderer/rules/timeline/tests/editing.test.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "8d43ca16e671528729d8a48de53e4091d7f9ce80"
+      "blob"     : "8d43ca16e671528729d8a48de53e4091d7f9ce80"
     },
     "apps/desktop/renderer/rules/timeline/tests/wardrobe.test.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "6c57bcaae26364f70abff2fd96bf08360a4fc99a"
+      "blob"     : "6c57bcaae26364f70abff2fd96bf08360a4fc99a"
     },
     "apps/desktop/renderer/rules/timeline/wardrobe.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "42d6d2bc3ede6aa418007c7bf0e8ae28b7e5720b"
+      "blob"     : "42d6d2bc3ede6aa418007c7bf0e8ae28b7e5720b"
     },
     "apps/desktop/renderer/vite-env.d.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "11f02fe2a0061d6e6e1f271b21da95423b448b32"
+      "blob"     : "11f02fe2a0061d6e6e1f271b21da95423b448b32"
     },
     "apps/desktop/src/main/agentreport.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "9e5d61a37561a99496fdf70722f6192a8e12893d"
+      "blob"     : "9e5d61a37561a99496fdf70722f6192a8e12893d"
     },
     "apps/desktop/src/main/assetlabel.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "0a6d79d1c39fd1c344e0acc8383f815d41c6c96e"
+      "blob"     : "0a6d79d1c39fd1c344e0acc8383f815d41c6c96e"
     },
     "apps/desktop/src/main/assetprompt.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "45d427ef1d637d74ce7a4b6b8a27bed1adc1fbe1"
+      "blob"     : "45d427ef1d637d74ce7a4b6b8a27bed1adc1fbe1"
     },
     "apps/desktop/src/main/commandlog.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "413378efa41c1a4c2b1f5d7177dfce40b6a2096c"
+      "blob"     : "413378efa41c1a4c2b1f5d7177dfce40b6a2096c"
     },
     "apps/desktop/src/main/commands/agent.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "33ab7a4b3f9c6ce9bf5e16348f4008fcac43cbfb"
+      "blob"     : "33ab7a4b3f9c6ce9bf5e16348f4008fcac43cbfb"
     },
     "apps/desktop/src/main/commands/app.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "9e7232e987d0efb423397bb6ec7acc3050e8de68"
+      "blob"     : "9e7232e987d0efb423397bb6ec7acc3050e8de68"
     },
     "apps/desktop/src/main/commands/art.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "dc53ddac807dc73022377224ccd0d0e336f81a3d"
+      "blob"     : "dc53ddac807dc73022377224ccd0d0e336f81a3d"
     },
     "apps/desktop/src/main/commands/asset.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "9c09b4f4b9c13db11ff6c6c3c43f4509b83da107"
+      "blob"     : "9c09b4f4b9c13db11ff6c6c3c43f4509b83da107"
     },
     "apps/desktop/src/main/commands/bible.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "658273a3c85ea638d0711542f9f4f4a28ad58cd4"
+      "blob"     : "658273a3c85ea638d0711542f9f4f4a28ad58cd4"
     },
     "apps/desktop/src/main/commands/catalog-entry.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "5aa0fc896ffb72a7728362b6b19fe5e80da55932"
+      "blob"     : "5aa0fc896ffb72a7728362b6b19fe5e80da55932"
     },
     "apps/desktop/src/main/commands/command.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "ecd2ea95b702f0c99948f5e00208e7414db5cae0"
+      "blob"     : "ecd2ea95b702f0c99948f5e00208e7414db5cae0"
     },
     "apps/desktop/src/main/commands/doc.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "130c410585bcf1b475469ed3199296165e714afc"
+      "blob"     : "130c410585bcf1b475469ed3199296165e714afc"
     },
     "apps/desktop/src/main/commands/gate.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "e34809aebfd4b8f5b66bad772a3b4b8ea916cc10"
+      "blob"     : "e34809aebfd4b8f5b66bad772a3b4b8ea916cc10"
     },
     "apps/desktop/src/main/commands/host.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "90d1eb4d4f69df3302850978c5712b58116d3061"
+      "blob"     : "90d1eb4d4f69df3302850978c5712b58116d3061"
     },
     "apps/desktop/src/main/commands/index.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "6267b1c1fac73e20d328ba83159a43e9d33e469f"
+      "blob"     : "6267b1c1fac73e20d328ba83159a43e9d33e469f"
     },
     "apps/desktop/src/main/commands/interaction.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "7485676cc5b3e4be1afd801116cb4a8eff55ac41"
+      "blob"     : "7485676cc5b3e4be1afd801116cb4a8eff55ac41"
     },
     "apps/desktop/src/main/commands/notify.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "eb4f82af9dc4edd1c3907014c3f89e00ef42ce6e"
+      "blob"     : "eb4f82af9dc4edd1c3907014c3f89e00ef42ce6e"
     },
     "apps/desktop/src/main/commands/pipeline.ts": {
       "auditedAt": "2026-08-22T16:45:30.857Z",
-      "blob": "0c07307a765f5cca9de6110bc322095990686b44"
+      "blob"     : "0c07307a765f5cca9de6110bc322095990686b44"
     },
     "apps/desktop/src/main/commands/project.ts": {
       "auditedAt": "2026-08-22T16:38:16.563Z",
-      "blob": "d684742896f9e05c09360e8b6ee6fb237c44a962"
+      "blob"     : "d684742896f9e05c09360e8b6ee6fb237c44a962"
     },
     "apps/desktop/src/main/commands/prompt.ts": {
       "auditedAt": "2026-08-22T16:51:25.494Z",
-      "blob": "e7cee644ef0717025058b199c06f4d2652d9f45c"
+      "blob"     : "e7cee644ef0717025058b199c06f4d2652d9f45c"
     },
     "apps/desktop/src/main/commands/report.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "3631ac480e6cc8c4e826f9d2a9fc9d4e7cab6090"
+      "blob"     : "3631ac480e6cc8c4e826f9d2a9fc9d4e7cab6090"
     },
     "apps/desktop/src/main/commands/story.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "d96fc81376d9fb31697b565b22a3e9608a4ce478"
+      "blob"     : "d96fc81376d9fb31697b565b22a3e9608a4ce478"
     },
     "apps/desktop/src/main/commands/tests/approveandrun.test.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "e2ef65651f4f92d0610b142413bc1fe1fad5e961"
+      "blob"     : "e2ef65651f4f92d0610b142413bc1fe1fad5e961"
     },
     "apps/desktop/src/main/commands/tests/autorun.test.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
-      "blob": "f9b75328be43cdc9618964e5a451bb1ab4a7bb14"
+      "blob"     : "f9b75328be43cdc9618964e5a451bb1ab4a7bb14"
     },
     "apps/desktop/src/main/commands/tests/commands.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "5dbd25674cdf8d15f7feece873922160f3ca88f4"
+      "blob"     : "5dbd25674cdf8d15f7feece873922160f3ca88f4"
     },
     "apps/desktop/src/main/commands/tests/gate.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "a8381f8b7c5f57da79d6371b10c143983906c351"
+      "blob"     : "a8381f8b7c5f57da79d6371b10c143983906c351"
     },
     "apps/desktop/src/main/commands/upload.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "15ee0269a40d243c7adb5dee398785ac1c1e0e03"
+      "blob"     : "15ee0269a40d243c7adb5dee398785ac1c1e0e03"
     },
     "apps/desktop/src/main/commands/view.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "13cc6639576eed6d226ea909f6ccf7bad9aea5fe"
+      "blob"     : "13cc6639576eed6d226ea909f6ccf7bad9aea5fe"
     },
     "apps/desktop/src/main/commands/window.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "e26038c5398264f3db235c29fdbe433028bc54f9"
+      "blob"     : "e26038c5398264f3db235c29fdbe433028bc54f9"
     },
     "apps/desktop/src/main/commands/workspace.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "cb0e1a326fceb1b0cebf89715eb1e943bd60dae3"
+      "blob"     : "cb0e1a326fceb1b0cebf89715eb1e943bd60dae3"
     },
     "apps/desktop/src/main/doctor.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "b412548eead2beda2d69966ce86a6523b651e5be"
+      "blob"     : "b412548eead2beda2d69966ce86a6523b651e5be"
     },
     "apps/desktop/src/main/doctree.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "b625cc8054f23d0cc28ed5c562b43873e9f2e6b7"
+      "blob"     : "b625cc8054f23d0cc28ed5c562b43873e9f2e6b7"
     },
     "apps/desktop/src/main/index.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "8a8cf724b0bdee2cb09c8777836f812e98d6103a"
+      "blob"     : "8a8cf724b0bdee2cb09c8777836f812e98d6103a"
     },
     "apps/desktop/src/main/instancelock.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "d17296a89866286e0b207921ecdf5f293afabc56"
+      "blob"     : "d17296a89866286e0b207921ecdf5f293afabc56"
     },
     "apps/desktop/src/main/keyaudit.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "fb9aee2e79ed07d2d0c79e3eff1922c18e6f1170"
+      "blob"     : "fb9aee2e79ed07d2d0c79e3eff1922c18e6f1170"
     },
     "apps/desktop/src/main/layouts.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "b0c67928b433b288a93b985e8c1971c95e192f55"
+      "blob"     : "b0c67928b433b288a93b985e8c1971c95e192f55"
     },
     "apps/desktop/src/main/notifications.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "b58e65cd1f849b13bffe8c52ddb795ad206f153f"
+      "blob"     : "b58e65cd1f849b13bffe8c52ddb795ad206f153f"
     },
     "apps/desktop/src/main/pages.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "dfac292630165709b89309ec8c0451fc8ff19eb0"
+      "blob"     : "dfac292630165709b89309ec8c0451fc8ff19eb0"
     },
     "apps/desktop/src/main/promptedit.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "4b35549c7f6dc1ba9c708c65a48378f70470434e"
+      "blob"     : "4b35549c7f6dc1ba9c708c65a48378f70470434e"
     },
     "apps/desktop/src/main/rename.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "c979775ccdf6b892025195ef6298ed942520b2af"
+      "blob"     : "c979775ccdf6b892025195ef6298ed942520b2af"
     },
     "apps/desktop/src/main/resources.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "937e05ade3ce77c497f2ef887f4f3b48d45c70a4"
+      "blob"     : "937e05ade3ce77c497f2ef887f4f3b48d45c70a4"
     },
     "apps/desktop/src/main/reviews.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "e380def44147443e715a33b7ce9412bc5774ad0d"
+      "blob"     : "e380def44147443e715a33b7ce9412bc5774ad0d"
     },
     "apps/desktop/src/main/session.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "9cd76001558b1eafa0365c8f5c18a32223c50be7"
+      "blob"     : "9cd76001558b1eafa0365c8f5c18a32223c50be7"
     },
     "apps/desktop/src/main/sessionstore.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "65f3ba30776f23fa02d4771da3b04b756948dc65"
+      "blob"     : "65f3ba30776f23fa02d4771da3b04b756948dc65"
     },
     "apps/desktop/src/main/smoke.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "c06443ace8abcab9bcdd49e105d92ca0b3f07dad"
+      "blob"     : "c06443ace8abcab9bcdd49e105d92ca0b3f07dad"
     },
     "apps/desktop/src/main/storygraph.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "d917d8868914da070e5285335c2608efc8aede95"
+      "blob"     : "d917d8868914da070e5285335c2608efc8aede95"
     },
     "apps/desktop/src/main/tests/assetlabel.test.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "21fd4e47778f524571e9b604e17107e5dc6a11d5"
+      "blob"     : "21fd4e47778f524571e9b604e17107e5dc6a11d5"
     },
     "apps/desktop/src/main/tests/commandlog.test.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "4f578e687634e1e45b50d35a3051eb85aa03d795"
+      "blob"     : "4f578e687634e1e45b50d35a3051eb85aa03d795"
     },
     "apps/desktop/src/main/tests/doctor.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "981bbfc2810ddf251321b3c44a738fa634a416de"
+      "blob"     : "981bbfc2810ddf251321b3c44a738fa634a416de"
     },
     "apps/desktop/src/main/tests/doctree.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "f5cb10f6ce1abcf9b505d1b68e9713e028706a34"
+      "blob"     : "f5cb10f6ce1abcf9b505d1b68e9713e028706a34"
     },
     "apps/desktop/src/main/tests/instancelock.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "0129621a24c36b1bbd0b92a59b1fd66c810c0344"
+      "blob"     : "0129621a24c36b1bbd0b92a59b1fd66c810c0344"
     },
     "apps/desktop/src/main/tests/keyaudit.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "321158c722a7fd122d5e02ffdcbc6a90d441f499"
+      "blob"     : "321158c722a7fd122d5e02ffdcbc6a90d441f499"
     },
     "apps/desktop/src/main/tests/keys.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "b752103377249af28ba18a4d0f070686a1f0ce5c"
+      "blob"     : "b752103377249af28ba18a4d0f070686a1f0ce5c"
     },
     "apps/desktop/src/main/tests/layouts.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "7cb100e8ef41241fb36d2bb21fcaca0cac75d4e7"
+      "blob"     : "7cb100e8ef41241fb36d2bb21fcaca0cac75d4e7"
     },
     "apps/desktop/src/main/tests/notifications.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "d932f0a4dd18ac04ed2ea5d3ae64c48571490399"
+      "blob"     : "d932f0a4dd18ac04ed2ea5d3ae64c48571490399"
     },
     "apps/desktop/src/main/tests/pages.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "01b9f714f840adaac8260a18cb427f71955b1803"
+      "blob"     : "01b9f714f840adaac8260a18cb427f71955b1803"
     },
     "apps/desktop/src/main/tests/promptedit.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "f7087666fbfa99de44c8c55e291424664816d0e4"
+      "blob"     : "f7087666fbfa99de44c8c55e291424664816d0e4"
     },
     "apps/desktop/src/main/tests/rename.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "cab8d56e96e1898919e66f18c189ca2312e2d105"
+      "blob"     : "cab8d56e96e1898919e66f18c189ca2312e2d105"
     },
     "apps/desktop/src/main/tests/reviews.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "1d248414ee11c1a0a8a26452680ae57087782de8"
+      "blob"     : "1d248414ee11c1a0a8a26452680ae57087782de8"
     },
     "apps/desktop/src/main/tests/sample.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "499e58e00106b79b54681c23cdb0366510c55fd5"
+      "blob"     : "499e58e00106b79b54681c23cdb0366510c55fd5"
     },
     "apps/desktop/src/main/tests/session.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "8360faf61eb06d1a57afa6726b10e26c8098a6ce"
+      "blob"     : "8360faf61eb06d1a57afa6726b10e26c8098a6ce"
     },
     "apps/desktop/src/main/tests/sessionstore.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "b0198fb58401ba0e280ae9e890e67b6e0cd187b2"
+      "blob"     : "b0198fb58401ba0e280ae9e890e67b6e0cd187b2"
     },
     "apps/desktop/src/main/tests/smoke.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "ae5f2846e760baf83e6a45f14f2aec6ef6f127e0"
+      "blob"     : "ae5f2846e760baf83e6a45f14f2aec6ef6f127e0"
     },
     "apps/desktop/src/main/tests/threads.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "fc7321f00feac42252e0f2085539726003f9a844"
+      "blob"     : "fc7321f00feac42252e0f2085539726003f9a844"
     },
     "apps/desktop/src/main/tests/toolconfirm.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "badac6f99f5a091d79094f0013373c766be8ca4b"
+      "blob"     : "badac6f99f5a091d79094f0013373c766be8ca4b"
     },
     "apps/desktop/src/main/tests/updates.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob": "8702be2cbe4056948e482053938807ff07316801"
+      "blob"     : "8702be2cbe4056948e482053938807ff07316801"
     },
     "apps/desktop/src/main/tests/windows.test.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "7f5e4e8e6fa9f90005989502a78df34d4192c3ac"
+      "blob"     : "7f5e4e8e6fa9f90005989502a78df34d4192c3ac"
     },
     "apps/desktop/src/main/tests/workspace.test.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "535e994b08680c5f46cb25bd8c81b267500e4022"
+      "blob"     : "535e994b08680c5f46cb25bd8c81b267500e4022"
     },
     "apps/desktop/src/main/threads.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "918209bda32530d5ffe1bd6049bf1b81252f0446"
+      "blob"     : "918209bda32530d5ffe1bd6049bf1b81252f0446"
     },
     "apps/desktop/src/main/toolconfirm.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "e5ab73db022173cca35f3ee5c03068f01bc536da"
+      "blob"     : "e5ab73db022173cca35f3ee5c03068f01bc536da"
     },
     "apps/desktop/src/main/updates.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "a944cbcac27b09beda29134320b1be81b3def79d"
+      "blob"     : "a944cbcac27b09beda29134320b1be81b3def79d"
     },
     "apps/desktop/src/main/version.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "e52c6efa95bfab06f6a1a9f75912c872ec98fa37"
+      "blob"     : "e52c6efa95bfab06f6a1a9f75912c872ec98fa37"
     },
     "apps/desktop/src/main/windows.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "7e9d1effad8f69692148b4c2aafac78303c0ae17"
+      "blob"     : "7e9d1effad8f69692148b4c2aafac78303c0ae17"
     },
     "apps/desktop/src/main/workspace.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "1ea1633c0f1843538e37424977f456624b58d0a2"
+      "blob"     : "1ea1633c0f1843538e37424977f456624b58d0a2"
     },
     "apps/desktop/src/preload/index.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "02263ea5519eeac2311a944451ae7e1a4a3fa6a7"
+      "blob"     : "02263ea5519eeac2311a944451ae7e1a4a3fa6a7"
     },
     "apps/desktop/src/shared/advice.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "b8b96169faf0acf906b248f867e6f358a525405b"
+      "blob"     : "b8b96169faf0acf906b248f867e6f358a525405b"
     },
     "apps/desktop/src/shared/apikeys.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "cdded70d6a11b9892d42288866dcd6c62abfd669"
+      "blob"     : "cdded70d6a11b9892d42288866dcd6c62abfd669"
     },
     "apps/desktop/src/shared/convo.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "2fb044205dd722925c669dc02e9578a76e8dfd7e"
+      "blob"     : "2fb044205dd722925c669dc02e9578a76e8dfd7e"
     },
     "apps/desktop/src/shared/diagnostics.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "6c9d141390b09db1f67cac69e598e6a00c5ebed5"
+      "blob"     : "6c9d141390b09db1f67cac69e598e6a00c5ebed5"
     },
     "apps/desktop/src/shared/editors.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "c3b590797a90aab544b00c7e6764731d080ea821"
+      "blob"     : "c3b590797a90aab544b00c7e6764731d080ea821"
     },
     "apps/desktop/src/shared/interactions.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "2fc5fa9d88f0e4827f1135a81aaba0581d50de67"
+      "blob"     : "2fc5fa9d88f0e4827f1135a81aaba0581d50de67"
     },
     "apps/desktop/src/shared/ipc.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "7b0f2983ba21999285ba8df42bc0f57e285b4d54"
+      "blob"     : "7b0f2983ba21999285ba8df42bc0f57e285b4d54"
     },
     "apps/desktop/src/shared/layouts.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "2b53f30ab855f0d0a196710ee94fb132c677e5af"
+      "blob"     : "2b53f30ab855f0d0a196710ee94fb132c677e5af"
     },
     "apps/desktop/src/shared/lineedit.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "00658a8842e60955a15bb63c8afb7664a4d831a3"
+      "blob"     : "00658a8842e60955a15bb63c8afb7664a4d831a3"
     },
     "apps/desktop/src/shared/markdown.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "4b06df622260361b1dd110968369e5b4a6469582"
+      "blob"     : "4b06df622260361b1dd110968369e5b4a6469582"
     },
     "apps/desktop/src/shared/notify.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "85416180d11736fc2031afe0f8c462277cbda551"
+      "blob"     : "85416180d11736fc2031afe0f8c462277cbda551"
     },
     "apps/desktop/src/shared/prompt.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "a3bfa0710677f94bb4a65d6022663649c1471cbd"
+      "blob"     : "a3bfa0710677f94bb4a65d6022663649c1471cbd"
     },
     "apps/desktop/src/shared/promptops.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "b1b5b4e9ce3dac48a2f00ad3be751130c994657b"
+      "blob"     : "b1b5b4e9ce3dac48a2f00ad3be751130c994657b"
     },
     "apps/desktop/src/shared/sessionkeys.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "d798000707d31d37107e87eac5cb0ded6dd3407f"
+      "blob"     : "d798000707d31d37107e87eac5cb0ded6dd3407f"
     },
     "apps/desktop/src/shared/tests/advice.test.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "99141437ce2f739739d1cbc58f3e959a5491e5f2"
+      "blob"     : "99141437ce2f739739d1cbc58f3e959a5491e5f2"
     },
     "apps/desktop/src/shared/tests/apikeys.test.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "3379da8951f5ddb235d643e3bd61afe1259a32ba"
+      "blob"     : "3379da8951f5ddb235d643e3bd61afe1259a32ba"
     },
     "apps/desktop/src/shared/tests/convo.test.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "0739eaeb0eb3d8ee084262df8e576c617be030aa"
+      "blob"     : "0739eaeb0eb3d8ee084262df8e576c617be030aa"
     },
     "apps/desktop/src/shared/tests/diagnostics.test.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "4a57babb2892f79fe5f1fa4b474d6b777e9f3245"
+      "blob"     : "4a57babb2892f79fe5f1fa4b474d6b777e9f3245"
     },
     "apps/desktop/src/shared/tests/editors.test.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "9e90fd4c7d7a35034e6d311d966a0ef09ffc93cd"
+      "blob"     : "9e90fd4c7d7a35034e6d311d966a0ef09ffc93cd"
     },
     "apps/desktop/src/shared/tests/interactions.test.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "f3384eb7fb197fccd510b0930d4091834b339012"
+      "blob"     : "f3384eb7fb197fccd510b0930d4091834b339012"
     },
     "apps/desktop/src/shared/tests/layouts.test.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "ed911e2238c1f15dbdf09873865fc9a6f1ab1deb"
+      "blob"     : "ed911e2238c1f15dbdf09873865fc9a6f1ab1deb"
     },
     "apps/desktop/src/shared/tests/lineedit.test.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "11813a96c7dc81da6e1a45349785582eb4d5ecfd"
+      "blob"     : "11813a96c7dc81da6e1a45349785582eb4d5ecfd"
     },
     "apps/desktop/src/shared/tests/markdown.test.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "540df8e4be91929bc944f92cdbf1b2455d4600c0"
+      "blob"     : "540df8e4be91929bc944f92cdbf1b2455d4600c0"
     },
     "apps/desktop/src/shared/tests/notify.test.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "d1dad5187760ad42094f68e75320aa45cddcf985"
+      "blob"     : "d1dad5187760ad42094f68e75320aa45cddcf985"
     },
     "apps/desktop/src/shared/tests/promptops.test.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "104dbbe274b3fb28dec6dae0e034d1348bcb6338"
+      "blob"     : "104dbbe274b3fb28dec6dae0e034d1348bcb6338"
     },
     "apps/desktop/src/shared/tests/sessionkeys.test.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "252bb8fc7211556031326e0c8be76eb7b0f832cb"
+      "blob"     : "252bb8fc7211556031326e0c8be76eb7b0f832cb"
     },
     "apps/desktop/src/shared/tests/writes.test.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "14bf89cef4662552c9b40529db63b0e1804b93f7"
+      "blob"     : "14bf89cef4662552c9b40529db63b0e1804b93f7"
     },
     "apps/desktop/src/shared/writes.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "f2e6d327d3c68194ade6c455f420af9ba101e53c"
+      "blob"     : "f2e6d327d3c68194ade6c455f420af9ba101e53c"
     },
     "apps/desktop/vite.config.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "171fa7f1e21b6a4b60444301ba623b474b9e0d5d"
+      "blob"     : "171fa7f1e21b6a4b60444301ba623b474b9e0d5d"
     },
     "packages/agentreport/src/analyze.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "db47f19442bbb02be1d7963ca72af430d617f4d8"
+      "blob"     : "db47f19442bbb02be1d7963ca72af430d617f4d8"
     },
     "packages/agentreport/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "1295d34d819beb5437f8ee30ed18c7848c27622b"
+      "blob"     : "1295d34d819beb5437f8ee30ed18c7848c27622b"
     },
     "packages/agentreport/src/issue.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "d37b3c16cb28b1f183ee6f7720352e518ee549ba"
+      "blob"     : "d37b3c16cb28b1f183ee6f7720352e518ee549ba"
     },
     "packages/agentreport/src/redact.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "663c87f1567a0093e31c1b27bde74c4cbc21bf19"
+      "blob"     : "663c87f1567a0093e31c1b27bde74c4cbc21bf19"
     },
     "packages/agentreport/src/render.ts": {
       "auditedAt": "2026-08-20T19:36:25.771Z",
-      "blob": "5e912bc0ec132fa637af4df8bc6215f099e60acd"
+      "blob"     : "5e912bc0ec132fa637af4df8bc6215f099e60acd"
     },
     "packages/agentreport/src/report.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "ca7e2bb0abf36aa95273c3c42759ffa080570d24"
+      "blob"     : "ca7e2bb0abf36aa95273c3c42759ffa080570d24"
     },
     "packages/agentreport/src/requesttools.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "581ca3743a79a8a31626f14e8bb405c85b2a38d5"
+      "blob"     : "581ca3743a79a8a31626f14e8bb405c85b2a38d5"
     },
     "packages/agentreport/src/sourcemap.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "2e84dbea745ad65edd8cb0b10b66c566da71507d"
+      "blob"     : "2e84dbea745ad65edd8cb0b10b66c566da71507d"
     },
     "packages/agentreport/src/sourcetools.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "3bd0059081cb967240b3078c9c852dd6f2ca4da1"
+      "blob"     : "3bd0059081cb967240b3078c9c852dd6f2ca4da1"
     },
     "packages/agentreport/src/tests/analyze.test.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "0af27f65061fe51d2c023a8b713a4513779008d9"
+      "blob"     : "0af27f65061fe51d2c023a8b713a4513779008d9"
     },
     "packages/agentreport/src/tests/issue.test.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "236ef1a58af2b6a734bbdd6691f0d0dace860eb6"
+      "blob"     : "236ef1a58af2b6a734bbdd6691f0d0dace860eb6"
     },
     "packages/agentreport/src/tests/redact.test.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "7a4e3bc8a7b991388d445f0d990c388eeb8b7f0c"
+      "blob"     : "7a4e3bc8a7b991388d445f0d990c388eeb8b7f0c"
     },
     "packages/agentreport/src/tests/render.test.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "336b614ea7e49b11e950aef82589dbdb425507d8"
+      "blob"     : "336b614ea7e49b11e950aef82589dbdb425507d8"
     },
     "packages/agentreport/src/tests/requesttools.test.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "cd53045f310072f81429edca7605a710baac2c26"
+      "blob"     : "cd53045f310072f81429edca7605a710baac2c26"
     },
     "packages/agentreport/src/tests/sourcemap.test.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "d0efb8931c56d2e453d08e49950923f3a099ab96"
+      "blob"     : "d0efb8931c56d2e453d08e49950923f3a099ab96"
     },
     "packages/agentreport/src/tests/sourcetools.test.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "dadb32017317ea9ee031dd171a540d23f632caee"
+      "blob"     : "dadb32017317ea9ee031dd171a540d23f632caee"
     },
     "packages/agentreport/src/tests/transcript.test.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "6eab0797d974f65b247c0b2d225995df653af8f9"
+      "blob"     : "6eab0797d974f65b247c0b2d225995df653af8f9"
     },
     "packages/agentreport/src/transcript.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "461ee6b60be6e0f0eb24d4f3c682c37fa2d3fb6d"
+      "blob"     : "461ee6b60be6e0f0eb24d4f3c682c37fa2d3fb6d"
     },
     "packages/artgen/src/adopt.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "3dcaa221c7dcbe0b288737ec4f27f4af78a6f014"
+      "blob"     : "3dcaa221c7dcbe0b288737ec4f27f4af78a6f014"
     },
     "packages/artgen/src/adoptslot.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "c1600d2960a35e79338d5e49a79780e630426357"
+      "blob"     : "c1600d2960a35e79338d5e49a79780e630426357"
     },
     "packages/artgen/src/artnotes.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "a7c9d2f831806a3b335f39fd354cf1f168e93476"
+      "blob"     : "a7c9d2f831806a3b335f39fd354cf1f168e93476"
     },
     "packages/artgen/src/base.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "5c05b85d5763fc056b1bbad2ea145edbb9bd6a65"
+      "blob"     : "5c05b85d5763fc056b1bbad2ea145edbb9bd6a65"
     },
     "packages/artgen/src/chunks.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "e5ba9e7f7f56dd919f334312d96066fc7defc35b"
+      "blob"     : "e5ba9e7f7f56dd919f334312d96066fc7defc35b"
     },
     "packages/artgen/src/concept.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "7fbe38efc48a365ccabe19b918860bf4610cdbec"
+      "blob"     : "7fbe38efc48a365ccabe19b918860bf4610cdbec"
     },
     "packages/artgen/src/condense.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "0daf666d6a44d2c2b76dd50061a79757a2759d4f"
+      "blob"     : "0daf666d6a44d2c2b76dd50061a79757a2759d4f"
     },
     "packages/artgen/src/coverage.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "8d43760f4fdf8f648e77ac8e8d9fa827da64ed7a"
+      "blob"     : "8d43760f4fdf8f648e77ac8e8d9fa827da64ed7a"
     },
     "packages/artgen/src/describe.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "5d2fdf5817279504cecaef61435d0d38e6a83207"
+      "blob"     : "5d2fdf5817279504cecaef61435d0d38e6a83207"
     },
     "packages/artgen/src/drift.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "cf2c485b00114da7f8f8509ac24b57855d89ca68"
+      "blob"     : "cf2c485b00114da7f8f8509ac24b57855d89ca68"
     },
     "packages/artgen/src/gate.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "cb9ab4f8b4680216fda1680b1de202fcf4d6f6fb"
+      "blob"     : "cb9ab4f8b4680216fda1680b1de202fcf4d6f6fb"
     },
     "packages/artgen/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "a4fa61730af85ef71c3ce1d6d069a52712fe8dd1"
+      "blob"     : "a4fa61730af85ef71c3ce1d6d069a52712fe8dd1"
     },
     "packages/artgen/src/prereq.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "cbcb76a3eb6d7823d920eb4798735c79134a5a20"
+      "blob"     : "cbcb76a3eb6d7823d920eb4798735c79134a5a20"
     },
     "packages/artgen/src/promote.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "eb8c75ef08eb97908024451ff52c85eb98260aa4"
+      "blob"     : "eb8c75ef08eb97908024451ff52c85eb98260aa4"
     },
     "packages/artgen/src/prompts.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "b8bcd0a22f6b4c34e5773554fcefe65639e7b389"
+      "blob"     : "b8bcd0a22f6b4c34e5773554fcefe65639e7b389"
     },
     "packages/artgen/src/refcycle.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "ef2519d33c471b518706748a9d9d8c328f83d6fb"
+      "blob"     : "ef2519d33c471b518706748a9d9d8c328f83d6fb"
     },
     "packages/artgen/src/refs.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "1423fd514220991f59e2659fde259dd2ef824bf1"
+      "blob"     : "1423fd514220991f59e2659fde259dd2ef824bf1"
     },
     "packages/artgen/src/resolve.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "dfbb8ff3fdf37c3414ddd8633e354a2656e7b1a6"
+      "blob"     : "dfbb8ff3fdf37c3414ddd8633e354a2656e7b1a6"
     },
     "packages/artgen/src/setnotes.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "2c9a88675072769d2db8a467da1171275742d2c4"
+      "blob"     : "2c9a88675072769d2db8a467da1171275742d2c4"
     },
     "packages/artgen/src/slotgraph.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "f1429de1c78a1e402f26e440dab90483b9c35eff"
+      "blob"     : "f1429de1c78a1e402f26e440dab90483b9c35eff"
     },
     "packages/artgen/src/storyboard.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "d84555032e2e5d97870fa778c4e2b82bd6762bb3"
+      "blob"     : "d84555032e2e5d97870fa778c4e2b82bd6762bb3"
     },
     "packages/artgen/src/subject.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "f971165dc661df334702cc34914ccd66181dfef8"
+      "blob"     : "f971165dc661df334702cc34914ccd66181dfef8"
     },
     "packages/artgen/src/suspend.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "7a04b77e446edf117d5cc06561fd4aa58fc07cc8"
+      "blob"     : "7a04b77e446edf117d5cc06561fd4aa58fc07cc8"
     },
     "packages/artgen/src/tests/adopt.test.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "c45a0356bc2887ab8425fcc846357c5a69d704ea"
+      "blob"     : "c45a0356bc2887ab8425fcc846357c5a69d704ea"
     },
     "packages/artgen/src/tests/adoptslot.test.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "d66782478376d549586df82adbbf5bec6ca54f54"
+      "blob"     : "d66782478376d549586df82adbbf5bec6ca54f54"
     },
     "packages/artgen/src/tests/artnotes.test.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "832a16f664236611cd4ea99f5cb1c46233169cf5"
+      "blob"     : "832a16f664236611cd4ea99f5cb1c46233169cf5"
     },
     "packages/artgen/src/tests/chunks.test.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "0e44eeea08537671bd92589ab5a4f76e9f330da5"
+      "blob"     : "0e44eeea08537671bd92589ab5a4f76e9f330da5"
     },
     "packages/artgen/src/tests/concept.test.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "96a7593b99d7b3a23b75aab21e74841e344ae3d2"
+      "blob"     : "96a7593b99d7b3a23b75aab21e74841e344ae3d2"
     },
     "packages/artgen/src/tests/condense.test.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "38454a535fc70b04ad639104b4da96d6774d5b7b"
+      "blob"     : "38454a535fc70b04ad639104b4da96d6774d5b7b"
     },
     "packages/artgen/src/tests/describe.test.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob": "add1ea62b08ee22ce99daea14acc9e7bbbd014af"
+      "blob"     : "add1ea62b08ee22ce99daea14acc9e7bbbd014af"
     },
     "packages/artgen/src/tests/prereq.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "b6e2561d547cd12cddfb7b6be7c2a231dc8c2d2c"
+      "blob"     : "b6e2561d547cd12cddfb7b6be7c2a231dc8c2d2c"
     },
     "packages/artgen/src/tests/promote.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "1762b8566e3217f935bbf99dd8b576d073b5f389"
+      "blob"     : "1762b8566e3217f935bbf99dd8b576d073b5f389"
     },
     "packages/artgen/src/tests/prompts.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "cb0797058edddf96f6fea3859822b74776426f35"
+      "blob"     : "cb0797058edddf96f6fea3859822b74776426f35"
     },
     "packages/artgen/src/tests/refcycle.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "239802effac9cf7597a827ed40c7760e50295197"
+      "blob"     : "239802effac9cf7597a827ed40c7760e50295197"
     },
     "packages/artgen/src/tests/refs.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "fe52fe05ccd1be965e9ebabd577065951cfec45b"
+      "blob"     : "fe52fe05ccd1be965e9ebabd577065951cfec45b"
     },
     "packages/artgen/src/tests/resolve.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "d15d1cdb75b0714ea5efdb46f35cac8711291f4d"
+      "blob"     : "d15d1cdb75b0714ea5efdb46f35cac8711291f4d"
     },
     "packages/artgen/src/tests/seed.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "07ed694efcc16ad3b75f3cd2efaed1d55b613222"
+      "blob"     : "07ed694efcc16ad3b75f3cd2efaed1d55b613222"
     },
     "packages/artgen/src/tests/setnotes.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "a49a22d928add81981446a4f848fdef21d8791ae"
+      "blob"     : "a49a22d928add81981446a4f848fdef21d8791ae"
     },
     "packages/artgen/src/tests/slotgraph.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "640dfa279bc79e2f2a8e254cf79b8101d938491f"
+      "blob"     : "640dfa279bc79e2f2a8e254cf79b8101d938491f"
     },
     "packages/artgen/src/tests/storyboard.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "4ff2923cc86e464f8f0190da0da55548d028c858"
+      "blob"     : "4ff2923cc86e464f8f0190da0da55548d028c858"
     },
     "packages/artgen/src/tests/suspend.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "dae8eb46b28d60238eee31c64cb97dd8355444ad"
+      "blob"     : "dae8eb46b28d60238eee31c64cb97dd8355444ad"
     },
     "packages/artgen/src/tests/upload.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "003543f00c9315a4942730d13118d3194bbf8320"
+      "blob"     : "003543f00c9315a4942730d13118d3194bbf8320"
     },
     "packages/artgen/src/upload.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "d6ad59a522265fc5e60e989ffc9bf4159cbccc62"
+      "blob"     : "d6ad59a522265fc5e60e989ffc9bf4159cbccc62"
     },
     "packages/artgen/src/upstream.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "fd18fe1e7cef72277d7843aef2c2b107bff41953"
+      "blob"     : "fd18fe1e7cef72277d7843aef2c2b107bff41953"
     },
     "packages/authoring/src/apierror.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "8a1839b80e7d47323a8f8611187cbbfc8a82203a"
+      "blob"     : "8a1839b80e7d47323a8f8611187cbbfc8a82203a"
     },
     "packages/authoring/src/approve.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "832365a8b3ba2f12b27a8cdf429ae014e2a91318"
+      "blob"     : "832365a8b3ba2f12b27a8cdf429ae014e2a91318"
     },
     "packages/authoring/src/archive.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "e66a986e7329a17e1249700fd22ed755329e154c"
+      "blob"     : "e66a986e7329a17e1249700fd22ed755329e154c"
     },
     "packages/authoring/src/art.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "97715dde361019660773f7c831afbcc1a027efee"
+      "blob"     : "97715dde361019660773f7c831afbcc1a027efee"
     },
     "packages/authoring/src/backend.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "73589ee9d80ef056befba91a957bd1b57b226416"
+      "blob"     : "73589ee9d80ef056befba91a957bd1b57b226416"
     },
     "packages/authoring/src/context.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "871dab64af03a902ed67817d47a7b427e768cd06"
+      "blob"     : "871dab64af03a902ed67817d47a7b427e768cd06"
     },
     "packages/authoring/src/generated.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "829499bef824b9bf44941b0d377fef71f49c0339"
+      "blob"     : "829499bef824b9bf44941b0d377fef71f49c0339"
     },
     "packages/authoring/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "b023f1fc39f5741e97220ef3cae749581372148c"
+      "blob"     : "b023f1fc39f5741e97220ef3cae749581372148c"
     },
     "packages/authoring/src/loop.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "ae7097a6893f7330a107a792e168818c50c97080"
+      "blob"     : "ae7097a6893f7330a107a792e168818c50c97080"
     },
     "packages/authoring/src/skills.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "a4d166bc4547cb4a4af9d9f77ae2cd2a2f0b5d56"
+      "blob"     : "a4d166bc4547cb4a4af9d9f77ae2cd2a2f0b5d56"
     },
     "packages/authoring/src/tests/apierror.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "2c1b863491eaebc7ef4d6484cab074f80bb53ccd"
+      "blob"     : "2c1b863491eaebc7ef4d6484cab074f80bb53ccd"
     },
     "packages/authoring/src/tests/approve.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "1f892edd6f0ed186ae5e76148e2ac8774a6e757d"
+      "blob"     : "1f892edd6f0ed186ae5e76148e2ac8774a6e757d"
     },
     "packages/authoring/src/tests/archive.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "1a4208f5bbd4f6d45f795eb2f76d31959682bf8e"
+      "blob"     : "1a4208f5bbd4f6d45f795eb2f76d31959682bf8e"
     },
     "packages/authoring/src/tests/backend.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "003a2a6d973fb919abffce6632e411d8ea3a5f15"
+      "blob"     : "003a2a6d973fb919abffce6632e411d8ea3a5f15"
     },
     "packages/authoring/src/tests/context.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "8d164d5c1e1b239933ac751796954e7577e37a6f"
+      "blob"     : "8d164d5c1e1b239933ac751796954e7577e37a6f"
     },
     "packages/authoring/src/tests/generated.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "429d12b24eeb55d14f0cb03b53047be8f71cfc82"
+      "blob"     : "429d12b24eeb55d14f0cb03b53047be8f71cfc82"
     },
     "packages/authoring/src/tests/loop.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "e54b2537f4e4d7c1a279035a17426ae7e995698c"
+      "blob"     : "e54b2537f4e4d7c1a279035a17426ae7e995698c"
     },
     "packages/authoring/src/tests/repos.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "acf84a51f2842f1ea46d04b8aff364d401c91e97"
+      "blob"     : "acf84a51f2842f1ea46d04b8aff364d401c91e97"
     },
     "packages/authoring/src/tests/skills.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "f365d538e9c9b6c1da7759e2c5b69cd311dd6913"
+      "blob"     : "f365d538e9c9b6c1da7759e2c5b69cd311dd6913"
     },
     "packages/authoring/src/tests/tools.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "2e05c87d2239994a07b7b87ed21ca748aa188c09"
+      "blob"     : "2e05c87d2239994a07b7b87ed21ca748aa188c09"
     },
     "packages/authoring/src/tests/wrap.test.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "5e1547ffd75347d521a36eab4f67b9dc4cdaf046"
+      "blob"     : "5e1547ffd75347d521a36eab4f67b9dc4cdaf046"
     },
     "packages/authoring/src/tools.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "b67ed5e432ec71dcbac359c6ef81549f6a86e431"
+      "blob"     : "b67ed5e432ec71dcbac359c6ef81549f6a86e431"
     },
     "packages/authoring/src/workspace.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "d21d7ad0fd51195559afa887c394f07cee17624f"
+      "blob"     : "d21d7ad0fd51195559afa887c394f07cee17624f"
     },
     "packages/authoring/src/wrap.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "161ed15eb76ac6a6affbaced3d6b4b1d9818c409"
+      "blob"     : "161ed15eb76ac6a6affbaced3d6b4b1d9818c409"
     },
     "packages/bible/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "15710fd22bc20111584be7839e5c8b8189f14a50"
+      "blob"     : "15710fd22bc20111584be7839e5c8b8189f14a50"
     },
     "packages/bible/src/indexer.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "3e4be7d7c75ee05af6c38e3a51228e0c58c2cad4"
+      "blob"     : "3e4be7d7c75ee05af6c38e3a51228e0c58c2cad4"
     },
     "packages/bible/src/query.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "c6a6125c76a6278de1e5c5eba57175d1a60bfd19"
+      "blob"     : "c6a6125c76a6278de1e5c5eba57175d1a60bfd19"
     },
     "packages/bible/src/tests/bible.test.ts": {
       "auditedAt": "2026-08-20T19:36:28.864Z",
-      "blob": "828f2aec36795005d2cda01a6313816c864e24c1"
+      "blob"     : "828f2aec36795005d2cda01a6313816c864e24c1"
     },
     "packages/bible/src/types.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "7159f7dd7e557bcf5a4b95ba0bf5c73a36449390"
+      "blob"     : "7159f7dd7e557bcf5a4b95ba0bf5c73a36449390"
     },
     "packages/commands/src/catalog.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "0d1d89c283585831c1c6ebb0d20c34a7ab64a310"
+      "blob"     : "0d1d89c283585831c1c6ebb0d20c34a7ab64a310"
     },
     "packages/commands/src/command.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "991b369fc10d23f58614d14d350ff68f21754548"
+      "blob"     : "991b369fc10d23f58614d14d350ff68f21754548"
     },
     "packages/commands/src/commit.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "37d3e0ef984126453bb819364894c03e09191be4"
+      "blob"     : "37d3e0ef984126453bb819364894c03e09191be4"
     },
     "packages/commands/src/digest.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "cf0e508e3972394f681bf123e4036f68c15e1efc"
+      "blob"     : "cf0e508e3972394f681bf123e4036f68c15e1efc"
     },
     "packages/commands/src/dsl.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "dc8d9d7304edb91daf86a4b19639e58bd19497d6"
+      "blob"     : "dc8d9d7304edb91daf86a4b19639e58bd19497d6"
     },
     "packages/commands/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "fefa07da8681a392b6a73f92056e6fa6716db1c7"
+      "blob"     : "fefa07da8681a392b6a73f92056e6fa6716db1c7"
     },
     "packages/commands/src/interaction.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "541cd6a939aece874ea1c0c974387adbe6952a63"
+      "blob"     : "541cd6a939aece874ea1c0c974387adbe6952a63"
     },
     "packages/commands/src/props.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "0ddb3233b277e7de4b0bd07c980bd06ad15b6446"
+      "blob"     : "0ddb3233b277e7de4b0bd07c980bd06ad15b6446"
     },
     "packages/commands/src/registry.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "2ea94d799fc602456d5ef8cd2b64568f4a115667"
+      "blob"     : "2ea94d799fc602456d5ef8cd2b64568f4a115667"
     },
     "packages/commands/src/stack.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "e13b7f681179e8502fb84e4ad20d6ed2c4946de6"
+      "blob"     : "e13b7f681179e8502fb84e4ad20d6ed2c4946de6"
     },
     "packages/commands/src/tests/commit.test.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "39a802b3b7d6df078697101f197ac9b526832b34"
+      "blob"     : "39a802b3b7d6df078697101f197ac9b526832b34"
     },
     "packages/commands/src/tests/dsl.test.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "a8389e88bbf88c1057e6bad26bad1d03631ab218"
+      "blob"     : "a8389e88bbf88c1057e6bad26bad1d03631ab218"
     },
     "packages/commands/src/tests/interaction.test.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "f00bdf2862daa60df181042c1f85023ccf33adc4"
+      "blob"     : "f00bdf2862daa60df181042c1f85023ccf33adc4"
     },
     "packages/commands/src/tests/origin.test.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "bb876c11961210bc2207241daf9fc36ddd7e1552"
+      "blob"     : "bb876c11961210bc2207241daf9fc36ddd7e1552"
     },
     "packages/commands/src/tests/props.test.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "3c7161a2bb19f817722318c29d381d6532775ad6"
+      "blob"     : "3c7161a2bb19f817722318c29d381d6532775ad6"
     },
     "packages/commands/src/tests/stack.test.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "4a6700df346e6a95c1a7bb0ae03a4d21596262ea"
+      "blob"     : "4a6700df346e6a95c1a7bb0ae03a4d21596262ea"
     },
     "packages/commands/src/tests/undo.test.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "d20c5e2e163ec35ff88c88d483d2dbaca51d0961"
+      "blob"     : "d20c5e2e163ec35ff88c88d483d2dbaca51d0961"
     },
     "packages/commands/src/undo.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "30593a7822c45f831d4f3519a27fd89bea6b2d51"
+      "blob"     : "30593a7822c45f831d4f3519a27fd89bea6b2d51"
     },
     "packages/config/src/config.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "bc98ca24066acbdfd82027e4fd42e435b91def41"
+      "blob"     : "bc98ca24066acbdfd82027e4fd42e435b91def41"
     },
     "packages/config/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "abc39bb95bba0079c2a925880332fbffb9f8b0ab"
+      "blob"     : "abc39bb95bba0079c2a925880332fbffb9f8b0ab"
     },
     "packages/config/src/keys.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "3f5a19cb931000b5b12af7b91b8464f50552979e"
+      "blob"     : "3f5a19cb931000b5b12af7b91b8464f50552979e"
     },
     "packages/config/src/tests/config.test.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "603197ef8bf245bae61764e72773d72ad241ab73"
+      "blob"     : "603197ef8bf245bae61764e72773d72ad241ab73"
     },
     "packages/debug2d/src/dom/attribution.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "47bea1ccbeaa7cfa2a132c6de1840cb9dba7f05b"
+      "blob"     : "47bea1ccbeaa7cfa2a132c6de1840cb9dba7f05b"
     },
     "packages/debug2d/src/dom/pick.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "a537236c7beae91a160305c4919910d92b9b4cfa"
+      "blob"     : "a537236c7beae91a160305c4919910d92b9b4cfa"
     },
     "packages/debug2d/src/dom/snapshot.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "bece7a76a3edcf698c4e5d0ffeacf0f1ae72c9f5"
+      "blob"     : "bece7a76a3edcf698c4e5d0ffeacf0f1ae72c9f5"
     },
     "packages/debug2d/src/dom/source.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "abc10e84906d61911d4efa3168921a430a33c4e9"
+      "blob"     : "abc10e84906d61911d4efa3168921a430a33c4e9"
     },
     "packages/debug2d/src/dom/stacking.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "26c91a80f5e51dc3a5d739ed48bab1c1f834476b"
+      "blob"     : "26c91a80f5e51dc3a5d739ed48bab1c1f834476b"
     },
     "packages/debug2d/src/dom/tests/attribution.test.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "b0fd00172e5dca210613a9a4a0541ab919695dee"
+      "blob"     : "b0fd00172e5dca210613a9a4a0541ab919695dee"
     },
     "packages/debug2d/src/dom/tests/stacking.test.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "303f6f5f9a404c06c210b06d216fea66194a2fd6"
+      "blob"     : "303f6f5f9a404c06c210b06d216fea66194a2fd6"
     },
     "packages/debug2d/src/explain/explainPick.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "476525fefd9cae86be2945270abf81e4b5c4ea7b"
+      "blob"     : "476525fefd9cae86be2945270abf81e4b5c4ea7b"
     },
     "packages/debug2d/src/explain/format.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "06a7c946a314fbf82518369e19834d249fc31902"
+      "blob"     : "06a7c946a314fbf82518369e19834d249fc31902"
     },
     "packages/debug2d/src/explain/tests/explainPick.test.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "00fa81c39a4f94e28d50a9e5e963ab788a40dd85"
+      "blob"     : "00fa81c39a4f94e28d50a9e5e963ab788a40dd85"
     },
     "packages/debug2d/src/explain/tests/format.test.ts": {
       "auditedAt": "2026-08-20T19:36:37.284Z",
-      "blob": "0e84449f18f0a515e5191aeb5aba71e10a0d8f3f"
+      "blob"     : "0e84449f18f0a515e5191aeb5aba71e10a0d8f3f"
     },
     "packages/debug2d/src/frame.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "2be5fe5289102f65e0a471fe01026ec512bb4f5c"
+      "blob"     : "2be5fe5289102f65e0a471fe01026ec512bb4f5c"
     },
     "packages/debug2d/src/geom.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "434b1c1b34a403cc773d3a3299ea96010f81c61c"
+      "blob"     : "434b1c1b34a403cc773d3a3299ea96010f81c61c"
     },
     "packages/debug2d/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:37.284Z",
-      "blob": "0151a3db1a565c25c25369fbf502c306bb75c612"
+      "blob"     : "0151a3db1a565c25c25369fbf502c306bb75c612"
     },
     "packages/debug2d/src/query/engine.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "7595fbb560d26f9fc8235481ac5cea6167153b58"
+      "blob"     : "7595fbb560d26f9fc8235481ac5cea6167153b58"
     },
     "packages/debug2d/src/query/hit.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "3764ef755b708670698438cbcbcf90ebfafdb51a"
+      "blob"     : "3764ef755b708670698438cbcbcf90ebfafdb51a"
     },
     "packages/debug2d/src/query/resultset.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "e04e35ad8b64e4239da0bfdd565bab986bbd46dc"
+      "blob"     : "e04e35ad8b64e4239da0bfdd565bab986bbd46dc"
     },
     "packages/debug2d/src/query/tests/engine.test.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "891d23183b92f2bc726f9b180457651b7232c3bd"
+      "blob"     : "891d23183b92f2bc726f9b180457651b7232c3bd"
     },
     "packages/debug2d/src/spaces.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "eb2245c1f01690241adab663c82e413ed9257064"
+      "blob"     : "eb2245c1f01690241adab663c82e413ed9257064"
     },
     "packages/debug2d/src/tests/spaces.test.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "88c4adbba0c9b927595cb11dca57ba9645b511c0"
+      "blob"     : "88c4adbba0c9b927595cb11dca57ba9645b511c0"
     },
     "packages/debug2d/src/types.ts": {
       "auditedAt": "2026-08-20T19:36:30.429Z",
-      "blob": "88af53be772ac544416153e76d7b0e83760e0b01"
+      "blob"     : "88af53be772ac544416153e76d7b0e83760e0b01"
     },
     "packages/export/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:37.284Z",
-      "blob": "26cf238f6af8c8cbea385213badcdfb1506261d0"
+      "blob"     : "26cf238f6af8c8cbea385213badcdfb1506261d0"
     },
     "packages/export/src/playable.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "c810e16e5f46e0db368d2b817b5f88ea9d1fd57f"
+      "blob"     : "c810e16e5f46e0db368d2b817b5f88ea9d1fd57f"
     },
     "packages/export/src/site-cli.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "5ccc285f7a84bed9db345196814d2623e9472232"
+      "blob"     : "5ccc285f7a84bed9db345196814d2623e9472232"
     },
     "packages/export/src/site.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "286ad0d2b0a0c3d9f631433658a81dcd0ed81ca2"
+      "blob"     : "286ad0d2b0a0c3d9f631433658a81dcd0ed81ca2"
     },
     "packages/export/src/tests/playable.test.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "5faccdd3b963e432290f38b5a4529f8a23e90c26"
+      "blob"     : "5faccdd3b963e432290f38b5a4529f8a23e90c26"
     },
     "packages/export/src/tests/site.test.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "46a78875fea6bf364a30395d83a3d6b7167dbd40"
+      "blob"     : "46a78875fea6bf364a30395d83a3d6b7167dbd40"
     },
     "packages/git/src/errors.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "69435b6f659fc748681cfb5b72d45c2b49cfd9e0"
+      "blob"     : "69435b6f659fc748681cfb5b72d45c2b49cfd9e0"
     },
     "packages/git/src/git.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "497dc64727e34ac53b5f6e34c11d0e8ca081110f"
+      "blob"     : "497dc64727e34ac53b5f6e34c11d0e8ca081110f"
     },
     "packages/git/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:37.284Z",
-      "blob": "31afdeca339d31f39592563351f4f348ba023bd6"
+      "blob"     : "31afdeca339d31f39592563351f4f348ba023bd6"
     },
     "packages/git/src/repos.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "475540479f2df4c3b120a1d9b54a71bb039db809"
+      "blob"     : "475540479f2df4c3b120a1d9b54a71bb039db809"
     },
     "packages/git/src/tests/git.test.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "685384b04d00c0db01d7d1d15315419d07dd7232"
+      "blob"     : "685384b04d00c0db01d7d1d15315419d07dd7232"
     },
     "packages/git/src/tests/repos.test.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "b23aea159907b07dc11bf5851b262a07c33ba6e7"
+      "blob"     : "b23aea159907b07dc11bf5851b262a07c33ba6e7"
     },
     "packages/model/src/branchpatch.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "6607a05409f4c5f14b16bfc87df300bd37525176"
+      "blob"     : "6607a05409f4c5f14b16bfc87df300bd37525176"
     },
     "packages/model/src/build.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "f736356d32842db75d7c94819eadd747ad204c69"
+      "blob"     : "f736356d32842db75d7c94819eadd747ad204c69"
     },
     "packages/model/src/canonical.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "79261b5e1d415e94577e265e7e57dda860b104b3"
+      "blob"     : "79261b5e1d415e94577e265e7e57dda860b104b3"
     },
     "packages/model/src/entities.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "2ab9fcdd354777a326d00683d158b113732fba2e"
+      "blob"     : "2ab9fcdd354777a326d00683d158b113732fba2e"
     },
     "packages/model/src/graph.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "2fada52f9cf1a05ac3cf027c583cc305e72940b1"
+      "blob"     : "2fada52f9cf1a05ac3cf027c583cc305e72940b1"
     },
     "packages/model/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:37.284Z",
-      "blob": "2ad12d93f9acf98a0971dbcbe53ad50854b6c4bf"
+      "blob"     : "2ad12d93f9acf98a0971dbcbe53ad50854b6c4bf"
     },
     "packages/model/src/lineids.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "0600e0c5a965ce507214148482c7f494732792a0"
+      "blob"     : "0600e0c5a965ce507214148482c7f494732792a0"
     },
     "packages/model/src/outfits.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "5a48544763fba2e8c823b99577d08c7da31f30e1"
+      "blob"     : "5a48544763fba2e8c823b99577d08c7da31f30e1"
     },
     "packages/model/src/scenes.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "6dbd65f78759defeaf6f9044c3b6cfdb2540b7ef"
+      "blob"     : "6dbd65f78759defeaf6f9044c3b6cfdb2540b7ef"
     },
     "packages/model/src/screenplay.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "ccc230e696071e2e7a4fb92e7702e8006e1fc663"
+      "blob"     : "ccc230e696071e2e7a4fb92e7702e8006e1fc663"
     },
     "packages/model/src/serialize.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "c7b33d8fbb365f25bde04399ad34f2bac3f63f5b"
+      "blob"     : "c7b33d8fbb365f25bde04399ad34f2bac3f63f5b"
     },
     "packages/model/src/slug.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "fe409c0eac007b6ff2708f7389283856d17302ed"
+      "blob"     : "fe409c0eac007b6ff2708f7389283856d17302ed"
     },
     "packages/model/src/tests/branchpatch.test.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "1ab2f2d82d77c850778d7d6d8dc860846b0cdbc5"
+      "blob"     : "1ab2f2d82d77c850778d7d6d8dc860846b0cdbc5"
     },
     "packages/model/src/tests/lineids.test.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "d065957541065d458a4659f14c38510808fa0239"
+      "blob"     : "d065957541065d458a4659f14c38510808fa0239"
     },
     "packages/model/src/tests/model.test.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "135a30ce03c411c589b1ffc36cf9dcdd3752ce4d"
+      "blob"     : "135a30ce03c411c589b1ffc36cf9dcdd3752ce4d"
     },
     "packages/model/src/tests/outfits.test.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "57bdd6596d78296dfd429348f86acfdd82dba48a"
+      "blob"     : "57bdd6596d78296dfd429348f86acfdd82dba48a"
     },
     "packages/model/src/tests/roundtrip.test.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "f28e5ef99185c6aeed941dd553f3c12bdecec129"
+      "blob"     : "f28e5ef99185c6aeed941dd553f3c12bdecec129"
     },
     "packages/model/src/tests/screenplay.test.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "fe31fee956678457acfca22614d66f2f33d8c93a"
+      "blob"     : "fe31fee956678457acfca22614d66f2f33d8c93a"
     },
     "packages/model/src/tests/serialize.test.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "71e63fbafa55002c01be868f6a6c60e2165fa1e6"
+      "blob"     : "71e63fbafa55002c01be868f6a6c60e2165fa1e6"
     },
     "packages/model/src/tests/straynotes.test.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "523ced2dce3cbc12019353f50c3753a72de7c280"
+      "blob"     : "523ced2dce3cbc12019353f50c3753a72de7c280"
     },
     "packages/model/src/tests/used.test.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "106ec1c6951cde61bbb95062dc8f0b6d7d87faac"
+      "blob"     : "106ec1c6951cde61bbb95062dc8f0b6d7d87faac"
     },
     "packages/model/src/used.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "53fe72c71b7506d65e8c91947bd1c047bc33387f"
+      "blob"     : "53fe72c71b7506d65e8c91947bd1c047bc33387f"
     },
     "packages/parse/src/branch.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "52c7c1521cdb30ba64fdc98428f0bd2d3beb08a7"
+      "blob"     : "52c7c1521cdb30ba64fdc98428f0bd2d3beb08a7"
     },
     "packages/parse/src/fountain.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "cc008a518e6a2bcab8238630bc2caaf5075a95e7"
+      "blob"     : "cc008a518e6a2bcab8238630bc2caaf5075a95e7"
     },
     "packages/parse/src/frontmatter.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "ccbd63dbc3786ac30e55bf83d9ef4267bd3a1954"
+      "blob"     : "ccbd63dbc3786ac30e55bf83d9ef4267bd3a1954"
     },
     "packages/parse/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:37.284Z",
-      "blob": "62991f0156da4f76451a7d49164eb28f8c8d9a44"
+      "blob"     : "62991f0156da4f76451a7d49164eb28f8c8d9a44"
     },
     "packages/parse/src/inputs.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "5196f7215f13f16028f5cb2624fd041ed00275ef"
+      "blob"     : "5196f7215f13f16028f5cb2624fd041ed00275ef"
     },
     "packages/parse/src/tests/parse.test.ts": {
       "auditedAt": "2026-08-20T19:36:37.284Z",
-      "blob": "743ea2c6034b1036902776000ee11f43ffd6bbfe"
+      "blob"     : "743ea2c6034b1036902776000ee11f43ffd6bbfe"
     },
     "packages/pipeline/src/decompose.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "e7e899f8db957f6ef7df5c5825b411b9d643faa4"
+      "blob"     : "e7e899f8db957f6ef7df5c5825b411b9d643faa4"
     },
     "packages/pipeline/src/drift.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "a70534d7ef4ae99add2ff1188147f06e7032171c"
+      "blob"     : "a70534d7ef4ae99add2ff1188147f06e7032171c"
     },
     "packages/pipeline/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "a88a62a70d1dde30f1c2c1654d1cfa70e0eb3c28"
+      "blob"     : "a88a62a70d1dde30f1c2c1654d1cfa70e0eb3c28"
     },
     "packages/pipeline/src/p1.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "e95b09819e695e7a4230bebc68d7b650c26b5d54"
+      "blob"     : "e95b09819e695e7a4230bebc68d7b650c26b5d54"
     },
     "packages/pipeline/src/p5.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob": "2c3f318cbcd3f058227866f4a217accd38e4a6ec"
+      "blob"     : "2c3f318cbcd3f058227866f4a217accd38e4a6ec"
     },
     "packages/pipeline/src/p6.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "f3c672a38c5fe706c746d3372db4a7fe8e02dc59"
+      "blob"     : "f3c672a38c5fe706c746d3372db4a7fe8e02dc59"
     },
     "packages/pipeline/src/pipeline.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "cfa8e942b9985a14b5b996856071cecadcea41a8"
+      "blob"     : "cfa8e942b9985a14b5b996856071cecadcea41a8"
     },
     "packages/pipeline/src/planner.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "853b0ddbeb8051f9da8c53f8a477f049e21b2aab"
+      "blob"     : "853b0ddbeb8051f9da8c53f8a477f049e21b2aab"
     },
     "packages/pipeline/src/prompts.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "973a144e683451863d0506c8d089ac5da5c98beb"
+      "blob"     : "973a144e683451863d0506c8d089ac5da5c98beb"
     },
     "packages/pipeline/src/runners.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "80a875b6e0382b9068b7abf5f21c8fdcf1f4e26f"
+      "blob"     : "80a875b6e0382b9068b7abf5f21c8fdcf1f4e26f"
     },
     "packages/pipeline/src/tests/decompose.test.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "21e10f69bed0e498fef63a2b59b56ab544f596a9"
+      "blob"     : "21e10f69bed0e498fef63a2b59b56ab544f596a9"
     },
     "packages/pipeline/src/tests/decomposeall.test.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "d756e645c126d720cf7ceba31a327955c83d1255"
+      "blob"     : "d756e645c126d720cf7ceba31a327955c83d1255"
     },
     "packages/pipeline/src/tests/drift.test.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "7635e4413980e1b2cef3c39297046ad06ff81973"
+      "blob"     : "7635e4413980e1b2cef3c39297046ad06ff81973"
     },
     "packages/pipeline/src/tests/pipeline.test.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "8b3baac6996fad191e2a8e2ec96f3e3822bb4e57"
+      "blob"     : "8b3baac6996fad191e2a8e2ec96f3e3822bb4e57"
     },
     "packages/pipeline/src/tests/prompthash.test.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "1959fd7bf81f7d930778ff31c94c88346790ede2"
+      "blob"     : "1959fd7bf81f7d930778ff31c94c88346790ede2"
     },
     "packages/pipeline/src/tests/shots.test.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "ddaee1a3c2156cae864532c0bdf1ba4751c430e2"
+      "blob"     : "ddaee1a3c2156cae864532c0bdf1ba4751c430e2"
     },
     "packages/pipeline/src/tests/slotagreement.test.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "8396aea6855e24f5fa0a8ac6ab7bdbdc2ea184b4"
+      "blob"     : "8396aea6855e24f5fa0a8ac6ab7bdbdc2ea184b4"
     },
     "packages/providers/src/backend.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "2150bf96ce2cf1bfb07616a61d55cd47e86880f8"
+      "blob"     : "2150bf96ce2cf1bfb07616a61d55cd47e86880f8"
     },
     "packages/providers/src/backends/anthropic.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "e1dd449fc3c46c1af0a3b3294cb1328b0a51f64c"
+      "blob"     : "e1dd449fc3c46c1af0a3b3294cb1328b0a51f64c"
     },
     "packages/providers/src/backends/capture.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "7ed72e5891b7e199ae7f900c9a526a45bdf758c7"
+      "blob"     : "7ed72e5891b7e199ae7f900c9a526a45bdf758c7"
     },
     "packages/providers/src/backends/convo-request.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "559d56ad4cd320fa3be5da5b0d37c27481cb17cc"
+      "blob"     : "559d56ad4cd320fa3be5da5b0d37c27481cb17cc"
     },
     "packages/providers/src/backends/gemini.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "c36caad6ad3d009c0f166c6735b17c420e56f584"
+      "blob"     : "c36caad6ad3d009c0f166c6735b17c420e56f584"
     },
     "packages/providers/src/backends/tests/capture.test.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "668c815315fc8fbba1751f010921473da11b5237"
+      "blob"     : "668c815315fc8fbba1751f010921473da11b5237"
     },
     "packages/providers/src/backends/tests/convo-request.test.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "7a0029244e7dffd702e7e80b9b4aaa394eec2669"
+      "blob"     : "7a0029244e7dffd702e7e80b9b4aaa394eec2669"
     },
     "packages/providers/src/backends/transient.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "659718b64936a9f6044b576684b4d2b25cfa9442"
+      "blob"     : "659718b64936a9f6044b576684b4d2b25cfa9442"
     },
     "packages/providers/src/cache.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "91a3d89af5b0a9f20c7e68e5d20ccf29a4b2f6c8"
+      "blob"     : "91a3d89af5b0a9f20c7e68e5d20ccf29a4b2f6c8"
     },
     "packages/providers/src/factory.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "1fb3bbd99d628e3606e0e7a4224d23cff4cd5cfc"
+      "blob"     : "1fb3bbd99d628e3606e0e7a4224d23cff4cd5cfc"
     },
     "packages/providers/src/image.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "c55f4c221494f3f816773cc3ef59c1d20c046e1e"
+      "blob"     : "c55f4c221494f3f816773cc3ef59c1d20c046e1e"
     },
     "packages/providers/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "a5a4b3db2eb132e6875c9571c9729805ed2e606b"
+      "blob"     : "a5a4b3db2eb132e6875c9571c9729805ed2e606b"
     },
     "packages/providers/src/mock.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "ec015ad2de995258ccfdbf52beb6fd69172587d2"
+      "blob"     : "ec015ad2de995258ccfdbf52beb6fd69172587d2"
     },
     "packages/providers/src/placeholder.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "5f492b897de24085034d9e457359aa62cae48503"
+      "blob"     : "5f492b897de24085034d9e457359aa62cae48503"
     },
     "packages/providers/src/review.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "48ec1bb78a2a25bc9b64f1ff6c5f95440a6d1e51"
+      "blob"     : "48ec1bb78a2a25bc9b64f1ff6c5f95440a6d1e51"
     },
     "packages/providers/src/structured.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "b0d5e9f331db5ad13ecec112d1e9a3f56c21d08d"
+      "blob"     : "b0d5e9f331db5ad13ecec112d1e9a3f56c21d08d"
     },
     "packages/providers/src/tests/cache.test.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "d2bd0a41b023435fcccdb92d4003ef750c390173"
+      "blob"     : "d2bd0a41b023435fcccdb92d4003ef750c390173"
     },
     "packages/providers/src/tests/gemini-usage.test.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "15d614160f48591863a4bf80645627b45195be16"
+      "blob"     : "15d614160f48591863a4bf80645627b45195be16"
     },
     "packages/providers/src/tests/placeholder.test.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "1125a6c2977bbedaa8f68d837d0e82ccf3ff8b87"
+      "blob"     : "1125a6c2977bbedaa8f68d837d0e82ccf3ff8b87"
     },
     "packages/providers/src/tests/providers.test.ts": {
       "auditedAt": "2026-08-20T19:36:37.284Z",
-      "blob": "aaa94ae51b2c32201050cb77bdf0bc0e6654e6dd"
+      "blob"     : "aaa94ae51b2c32201050cb77bdf0bc0e6654e6dd"
     },
     "packages/providers/src/tests/structured.test.ts": {
       "auditedAt": "2026-08-20T19:36:37.284Z",
-      "blob": "97437867025cec23df97b72d12b71417a165ff29"
+      "blob"     : "97437867025cec23df97b72d12b71417a165ff29"
     },
     "packages/providers/src/tests/transient.test.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "e6a5d383b852ca58aef9a0a368c4415fcae26158"
+      "blob"     : "e6a5d383b852ca58aef9a0a368c4415fcae26158"
     },
     "packages/providers/src/text.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "2d273e536d49a3fe62430609f8657747e94c7dae"
+      "blob"     : "2d273e536d49a3fe62430609f8657747e94c7dae"
     },
     "packages/scheduler/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:37.284Z",
-      "blob": "be77a01a2f2f3fe40d2aa33d2ff4418ae6a5be23"
+      "blob"     : "be77a01a2f2f3fe40d2aa33d2ff4418ae6a5be23"
     },
     "packages/scheduler/src/scheduler.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "3bd49a2fd46d40492c471b7f3b6ca85322f66262"
+      "blob"     : "3bd49a2fd46d40492c471b7f3b6ca85322f66262"
     },
     "packages/scheduler/src/tests/scheduler.test.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "41d72739caa0e86438907d8480c5ad02ac8853e4"
+      "blob"     : "41d72739caa0e86438907d8480c5ad02ac8853e4"
     },
     "packages/scriptedit/src/apply.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "fe1db1e1b148c8b17b52cba5fbf8dae13d6ce106"
+      "blob"     : "fe1db1e1b148c8b17b52cba5fbf8dae13d6ce106"
     },
     "packages/scriptedit/src/branchops.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "cb3e730954688582085ca673e5d3859adefd7fb8"
+      "blob"     : "cb3e730954688582085ca673e5d3859adefd7fb8"
     },
     "packages/scriptedit/src/coverage.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "f8574671a8929e22049f47344e52d0f804598fe9"
+      "blob"     : "f8574671a8929e22049f47344e52d0f804598fe9"
     },
     "packages/scriptedit/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "190a19cb4db8c3cd6a4afa98b24305c83782e2ce"
+      "blob"     : "190a19cb4db8c3cd6a4afa98b24305c83782e2ce"
     },
     "packages/scriptedit/src/lineops.ts": {
       "auditedAt": "2026-08-20T19:36:33.536Z",
-      "blob": "8dd33605d5828785ff148f5de7582319ea97e047"
+      "blob"     : "8dd33605d5828785ff148f5de7582319ea97e047"
     },
     "packages/scriptedit/src/markers.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "0f10eb2d03b071f909c82990c6e7771d94c8e19e"
+      "blob"     : "0f10eb2d03b071f909c82990c6e7771d94c8e19e"
     },
     "packages/scriptedit/src/outfits.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "174706d7d1a3e680f83a502cbe791d87b4db5436"
+      "blob"     : "174706d7d1a3e680f83a502cbe791d87b4db5436"
     },
     "packages/scriptedit/src/shotcreate.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "b31573d219afa47b9eb16c10986656e6631dd148"
+      "blob"     : "b31573d219afa47b9eb16c10986656e6631dd148"
     },
     "packages/scriptedit/src/shotfallout.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "fb857cf1f0512780d1144e64d4118055e7b341d9"
+      "blob"     : "fb857cf1f0512780d1144e64d4118055e7b341d9"
     },
     "packages/scriptedit/src/shotorder.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "2ed9cd0c0c00b130cb475758c53681517f9d0123"
+      "blob"     : "2ed9cd0c0c00b130cb475758c53681517f9d0123"
     },
     "packages/scriptedit/src/sources.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "e505dcd5440eb53665a57bab8baa004517d44d5c"
+      "blob"     : "e505dcd5440eb53665a57bab8baa004517d44d5c"
     },
     "packages/scriptedit/src/tests/apply.test.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "ac16474e0d4ce62a5b2ccfce56c599b143ebddff"
+      "blob"     : "ac16474e0d4ce62a5b2ccfce56c599b143ebddff"
     },
     "packages/scriptedit/src/tests/branchops.test.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "4e57f8e95c909484a9a26ac033520eb03821187c"
+      "blob"     : "4e57f8e95c909484a9a26ac033520eb03821187c"
     },
     "packages/scriptedit/src/tests/coverage.test.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "001d5e981835b33b2342010a6142e8a93d900943"
+      "blob"     : "001d5e981835b33b2342010a6142e8a93d900943"
     },
     "packages/scriptedit/src/tests/lineops.test.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "d8f38ab8d249075b7c39f7945da362c2d6f92014"
+      "blob"     : "d8f38ab8d249075b7c39f7945da362c2d6f92014"
     },
     "packages/scriptedit/src/tests/markers.test.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "dc7b73ef4813847b4669e69b659ded7c17d66242"
+      "blob"     : "dc7b73ef4813847b4669e69b659ded7c17d66242"
     },
     "packages/scriptedit/src/tests/outfits.test.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "9a115d4fc2cc9c6c42d5666f4e26e1c33fc966c5"
+      "blob"     : "9a115d4fc2cc9c6c42d5666f4e26e1c33fc966c5"
     },
     "packages/scriptedit/src/tests/shotcreate.test.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "e7134916a310bc2086b34286ed1499cc01fe4d31"
+      "blob"     : "e7134916a310bc2086b34286ed1499cc01fe4d31"
     },
     "packages/scriptedit/src/tests/shotfallout.test.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "2cc67e0bf457fee08a935792df56c09db7d93d59"
+      "blob"     : "2cc67e0bf457fee08a935792df56c09db7d93d59"
     },
     "packages/scriptedit/src/tests/shotorder.test.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "2a1c27f5d831786f787aacde4219559e722f4a22"
+      "blob"     : "2a1c27f5d831786f787aacde4219559e722f4a22"
     },
     "packages/scriptedit/src/write.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "a6d3a1043ff4a2fa1207b06f33587a1913575987"
+      "blob"     : "a6d3a1043ff4a2fa1207b06f33587a1913575987"
     },
     "packages/store/src/assetstore.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "ea4a550d946e9c63dfeb8567c252e19b4f130013"
+      "blob"     : "ea4a550d946e9c63dfeb8567c252e19b4f130013"
     },
     "packages/store/src/docfile.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "dd16226229e4eeec83eb93634f7a93e70390ee47"
+      "blob"     : "dd16226229e4eeec83eb93634f7a93e70390ee47"
     },
     "packages/store/src/entities.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "8ae751ccc4dc5934f0729c4ac9b630a5575f15e7"
+      "blob"     : "8ae751ccc4dc5934f0729c4ac9b630a5575f15e7"
     },
     "packages/store/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:37.284Z",
-      "blob": "d80d18d3f3a73c759573394beec8006494f3bf4b"
+      "blob"     : "d80d18d3f3a73c759573394beec8006494f3bf4b"
     },
     "packages/store/src/paths.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "cf45537104ba76ba85b78a3ed58fcbb85da81cb8"
+      "blob"     : "cf45537104ba76ba85b78a3ed58fcbb85da81cb8"
     },
     "packages/store/src/scenes.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "40686b0fe5218f5b12bfe1b223666b99e7c9dbbf"
+      "blob"     : "40686b0fe5218f5b12bfe1b223666b99e7c9dbbf"
     },
     "packages/store/src/shots.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "148febbcce111b1d5600c3f5c540bd537fea6171"
+      "blob"     : "148febbcce111b1d5600c3f5c540bd537fea6171"
     },
     "packages/store/src/tests/assetroots.test.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "c72b974cd29dbb3e9c4e888f73b30ed889f25204"
+      "blob"     : "c72b974cd29dbb3e9c4e888f73b30ed889f25204"
     },
     "packages/store/src/tests/docfile.test.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "5aab45734364bd51bee3615ccd9c18e1ff8025ff"
+      "blob"     : "5aab45734364bd51bee3615ccd9c18e1ff8025ff"
     },
     "packages/store/src/tests/entities.test.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "15caead50036f68336f639a9f73bec89ffc639e1"
+      "blob"     : "15caead50036f68336f639a9f73bec89ffc639e1"
     },
     "packages/store/src/tests/scenes.test.ts": {
       "auditedAt": "2026-08-20T19:36:37.284Z",
-      "blob": "a33740e738b2c74bf67131fb239557bca8511844"
+      "blob"     : "a33740e738b2c74bf67131fb239557bca8511844"
     },
     "packages/store/src/tests/shots.test.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "6474ff8a12618837856fad043a7a7ab644d20ff3"
+      "blob"     : "6474ff8a12618837856fad043a7a7ab644d20ff3"
     },
     "packages/store/src/tests/store.test.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "d76506626b750125202a6687a827a0c50a99d673"
+      "blob"     : "d76506626b750125202a6687a827a0c50a99d673"
     },
     "packages/store/src/tree.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "e4081853a29beae7d1cf591e7a42aaecadc79e80"
+      "blob"     : "e4081853a29beae7d1cf591e7a42aaecadc79e80"
     },
     "packages/store/src/worktree.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "78bc1dcccad29e0984dba2c5834f6c3c45bad6de"
+      "blob"     : "78bc1dcccad29e0984dba2c5834f6c3c45bad6de"
     },
     "packages/taskgraph/src/graph.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "104a2cf317377b13473b54539fafedca31e48dd5"
+      "blob"     : "104a2cf317377b13473b54539fafedca31e48dd5"
     },
     "packages/taskgraph/src/hash.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "efd8ac36721f46022d5a4e1a34c4442705618fac"
+      "blob"     : "efd8ac36721f46022d5a4e1a34c4442705618fac"
     },
     "packages/taskgraph/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:37.284Z",
-      "blob": "315cffea5a08ae0e08f59c79fbcfde95d4daceee"
+      "blob"     : "315cffea5a08ae0e08f59c79fbcfde95d4daceee"
     },
     "packages/taskgraph/src/log.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "03ef0017a7880cb1b6661c0b7d397fbdf3ae1292"
+      "blob"     : "03ef0017a7880cb1b6661c0b7d397fbdf3ae1292"
     },
     "packages/taskgraph/src/tests/resume.test.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "dc64824b7b8069ee5e831b4308e6710b7b4eb397"
+      "blob"     : "dc64824b7b8069ee5e831b4308e6710b7b4eb397"
     },
     "packages/taskgraph/src/tests/taskgraph.test.ts": {
       "auditedAt": "2026-08-20T19:36:37.284Z",
-      "blob": "8a95ba5797a8f7b683bb24227cb832b1e516e652"
+      "blob"     : "8a95ba5797a8f7b683bb24227cb832b1e516e652"
     },
     "packages/testkit/src/assets.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "854c4f1d2017afc28fa85b854486fb68fc268dfd"
+      "blob"     : "854c4f1d2017afc28fa85b854486fb68fc268dfd"
     },
     "packages/testkit/src/factories.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "b2b7fe5d58e77487e009faea2aebdfebdc3a5ea4"
+      "blob"     : "b2b7fe5d58e77487e009faea2aebdfebdc3a5ea4"
     },
     "packages/testkit/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "3483cd79ba9e3b4fa47b8154a23ea12cc61aa10b"
+      "blob"     : "3483cd79ba9e3b4fa47b8154a23ea12cc61aa10b"
     },
     "packages/testkit/src/inputs.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "ff7f3f38ce58fcc7974100ec973cfc107d152242"
+      "blob"     : "ff7f3f38ce58fcc7974100ec973cfc107d152242"
     },
     "packages/testkit/src/project.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "5dc62e917c96a4d974802247e4d27f71ef5a7f8b"
+      "blob"     : "5dc62e917c96a4d974802247e4d27f71ef5a7f8b"
     },
     "packages/testkit/src/record.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "8af36bc4a8ca9efc0d2c33e792a7ba4e7b52e710"
+      "blob"     : "8af36bc4a8ca9efc0d2c33e792a7ba4e7b52e710"
     },
     "packages/testkit/src/scripts.ts": {
       "auditedAt": "2026-08-20T19:36:34.992Z",
-      "blob": "e1e2798c583aab1805a28181767c97c5040e1f55"
+      "blob"     : "e1e2798c583aab1805a28181767c97c5040e1f55"
     },
     "packages/testkit/src/synth.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "0d366060ba3d410bd8703388625e48e65f78aca6"
+      "blob"     : "0d366060ba3d410bd8703388625e48e65f78aca6"
     },
     "packages/testkit/src/tests/assets.test.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "8d7eebc1ae77da275d29be9be09126ce1f4bbfdd"
+      "blob"     : "8d7eebc1ae77da275d29be9be09126ce1f4bbfdd"
     },
     "packages/testkit/src/tests/project.test.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "26f42abc41a1056f0c6aab90b2e7712cd3f8a11e"
+      "blob"     : "26f42abc41a1056f0c6aab90b2e7712cd3f8a11e"
     },
     "packages/testkit/src/tests/record.test.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "fe9cdc252e43d4fd15575862668a721fc8eccc50"
+      "blob"     : "fe9cdc252e43d4fd15575862668a721fc8eccc50"
     },
     "packages/testkit/src/tests/synth.test.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "3a9a8179a6f27d6e91ffc80eb59d3bafe969a4c5"
+      "blob"     : "3a9a8179a6f27d6e91ffc80eb59d3bafe969a4c5"
     },
     "packages/types/src/budget.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "60964e420b68d3dedb1d61a1a22c8389421df21e"
+      "blob"     : "60964e420b68d3dedb1d61a1a22c8389421df21e"
     },
     "packages/types/src/entities.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "0c0f3941b5d8e9dcbe24e48395bee8b6bda89da1"
+      "blob"     : "0c0f3941b5d8e9dcbe24e48395bee8b6bda89da1"
     },
     "packages/types/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:37.284Z",
-      "blob": "a73ae1b7e3ad3e6670b7d6483b24a8ba7bab2dbf"
+      "blob"     : "a73ae1b7e3ad3e6670b7d6483b24a8ba7bab2dbf"
     },
     "packages/types/src/model.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "aeec0a230fb11c14bd135bcabe62a8cd94719f24"
+      "blob"     : "aeec0a230fb11c14bd135bcabe62a8cd94719f24"
     },
     "packages/types/src/notifications.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "30638e247e20de5470829eca6b7a62475e7c54e9"
+      "blob"     : "30638e247e20de5470829eca6b7a62475e7c54e9"
     },
     "packages/types/src/playable.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "cd8fe1086c39be4106c03e07f925b53c669d5f99"
+      "blob"     : "cd8fe1086c39be4106c03e07f925b53c669d5f99"
     },
     "packages/types/src/prompt.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "04e744e102c088a4b2cef66839484ae4b3b20cb6"
+      "blob"     : "04e744e102c088a4b2cef66839484ae4b3b20cb6"
     },
     "packages/types/src/providers.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "92f17110e51b5ba6fcf8af70e529698017af0824"
+      "blob"     : "92f17110e51b5ba6fcf8af70e529698017af0824"
     },
     "packages/types/src/schemas.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "8bd6834bc14dc893e072cf6b7682f22b9bac63c8"
+      "blob"     : "8bd6834bc14dc893e072cf6b7682f22b9bac63c8"
     },
     "packages/types/src/tasks.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "82ea9314fc534c0c6bb7fbf9de64491e0b4abc69"
+      "blob"     : "82ea9314fc534c0c6bb7fbf9de64491e0b4abc69"
     },
     "packages/types/src/tests/notifications.test.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "1f29f1427bae7883ba21fca21159ef146f28e30b"
+      "blob"     : "1f29f1427bae7883ba21fca21159ef146f28e30b"
     },
     "packages/types/src/tests/schemas.test.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "ef3a644a1210cbf0a292e89fb2e0ea82559121fd"
+      "blob"     : "ef3a644a1210cbf0a292e89fb2e0ea82559121fd"
     },
     "packages/types/src/tests/textmodels.test.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "d354993c233f410042bc5f1c5343e002f2e662a8"
+      "blob"     : "d354993c233f410042bc5f1c5343e002f2e662a8"
     },
     "packages/types/src/textmodels.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "a430c69e23ca6611f7dcd69730fca62480a762f1"
+      "blob"     : "a430c69e23ca6611f7dcd69730fca62480a762f1"
     },
     "packages/util/src/errors.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "93419d470f55ee23203ddbdf42f64f20f8b16c5d"
+      "blob"     : "93419d470f55ee23203ddbdf42f64f20f8b16c5d"
     },
     "packages/util/src/fs.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "4b4bdff913419e152833bcb1deb1ccbcb872d49d"
+      "blob"     : "4b4bdff913419e152833bcb1deb1ccbcb872d49d"
     },
     "packages/util/src/hash.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "7cf6344cbf18e476578b44d3c7cf82159d869f1a"
+      "blob"     : "7cf6344cbf18e476578b44d3c7cf82159d869f1a"
     },
     "packages/util/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:37.284Z",
-      "blob": "5ff6c520abb4ae27b86d26a2c6622ed1c71c8e26"
+      "blob"     : "5ff6c520abb4ae27b86d26a2c6622ed1c71c8e26"
     },
     "packages/util/src/logger.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "7b4abc309a9b68d2955c21bd4c6e726f9ae67a8c"
+      "blob"     : "7b4abc309a9b68d2955c21bd4c6e726f9ae67a8c"
     },
     "packages/util/src/pool.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "e3f30f94b800284a939f25ab95e55e432ab4c6b8"
+      "blob"     : "e3f30f94b800284a939f25ab95e55e432ab4c6b8"
     },
     "packages/util/src/tests/fs.test.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "bde546986f3ed999a2196f3c32896ea5a994653e"
+      "blob"     : "bde546986f3ed999a2196f3c32896ea5a994653e"
     },
     "packages/util/src/tests/hash.test.ts": {
       "auditedAt": "2026-08-20T19:36:37.284Z",
-      "blob": "06640fba8de2e341ef7ec7ec46080eba3fb9f57e"
+      "blob"     : "06640fba8de2e341ef7ec7ec46080eba3fb9f57e"
     },
     "packages/util/src/tests/pool.test.ts": {
       "auditedAt": "2026-08-20T19:36:36.556Z",
-      "blob": "db8f416c04ed3afea86237720fd7fdeae58004b3"
+      "blob"     : "db8f416c04ed3afea86237720fd7fdeae58004b3"
     }
   }
 }

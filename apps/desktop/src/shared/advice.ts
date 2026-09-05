@@ -98,7 +98,7 @@ export function adviseModel(modelId: string, withSource: boolean): Advice {
   if (NO_KNOB.test(id)) {
     return {
       level: 'note',
-      text: `${name} will do this, though it has no reasoning setting to turn up for it.`,
+      text : `${name} will do this, though it has no reasoning setting to turn up for it.`,
     };
   }
 
@@ -120,7 +120,7 @@ export function adviseEffort(modelId: string, effort: EffortChoice): Advice {
     case 'low':
       return {
         level: 'note',
-        text: 'A diagnosis wants some thinking — medium is the sweet spot for this.',
+        text : 'A diagnosis wants some thinking — medium is the sweet spot for this.',
       };
     case 'xhigh':
     case 'max':

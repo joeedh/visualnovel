@@ -188,14 +188,14 @@ describe('a refine pass through a bound graph', () => {
     const p = await makeProject({ script: SCRIPTS.linear, config: { max_refine_attempts: 2 } });
     try {
       const shot: Shot = {
-        id: 's1',
-        sceneId: 'arrival',
-        framing: 'medium',
-        location: 'day',
-        subjects: [{ characterId: 'aiko' }],
-        camera: 'static',
+        id         : 's1',
+        sceneId    : 'arrival',
+        framing    : 'medium',
+        location   : 'day',
+        subjects   : [{ characterId: 'aiko' }],
+        camera     : 'static',
         coversLines: [],
-        status: 'pending',
+        status     : 'pending',
       };
       await writeShots(p.paths, 'arrival', [shot]);
       await p.run();

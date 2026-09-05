@@ -95,7 +95,7 @@ const electron = run('pnpm', ['exec', 'electron', '.', ...process.argv.slice(2)]
   env: {
     ...process.env,
     VITE_DEV_SERVER_URL: devUrl,
-    VN_CDP_PORT: process.env.VN_CDP_PORT ?? '9222',
+    VN_CDP_PORT        : process.env.VN_CDP_PORT ?? '9222',
   },
 });
 electron.on('exit', (code) => shutdown(code ?? 0));

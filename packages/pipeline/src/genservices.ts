@@ -116,9 +116,9 @@ async function ringFetch(url: string, init: GenFetchInit = {}): Promise<GenFetch
       ...(init.body === undefined ? {} : { body: init.body }),
     });
     return {
-      status: response.status,
+      status : response.status,
       headers: headersOf(response),
-      bytes: new Uint8Array(await response.arrayBuffer()),
+      bytes  : new Uint8Array(await response.arrayBuffer()),
     };
   } catch (err) {
     await capture.failed(err);
@@ -144,10 +144,10 @@ export function createGenServices(deps: GenServicesDeps): GenServices {
         params: ImageParams,
       ): Promise<ImageResult> => imageBackend.edit(base, prompt, refs, params),
     },
-    text: textService(deps.providers),
-    blobs: deps.blobs ?? noBlobs(),
+    text  : textService(deps.providers),
+    blobs : deps.blobs ?? noBlobs(),
     assets: assetService(deps.model, deps.store),
-    fetch: ringFetch,
-    key: (name: string) => Promise.resolve(deps.keys?.[name as keyof ResolvedKeys]),
+    fetch : ringFetch,
+    key   : (name: string) => Promise.resolve(deps.keys?.[name as keyof ResolvedKeys]),
   };
 }

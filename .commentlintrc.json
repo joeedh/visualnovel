@@ -1,7 +1,7 @@
 {
-  "exclude": ["vendor/path.ux/**", "vendor/nstructjs/**"],
-  "cache": true,
-  "markdown": false,
+  "exclude"      : ["vendor/path.ux/**", "vendor/nstructjs/**"],
+  "cache"        : true,
+  "markdown"     : false,
   // whitelist
   "markdownFiles": [
     "CLAUDE.md",
@@ -11,7 +11,7 @@
     "docs/reference/guided-tours.md",
     "docs/research/formalizing-the-rules-modules.md"
   ],
-  "disableRules": ["P10", "P4"],
+  "disableRules" : ["P10", "P4"],
   "npm": {
     "fetch": {
       "ref": "895e4732f411fe13d8b139f4f28f641dd861fdea"

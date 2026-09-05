@@ -67,8 +67,8 @@ afterEach(async () => {
 function ctx(): CommandContext<CommandHost> {
   return {
     root,
-    git: openGit(root),
-    log: () => {},
+    git : openGit(root),
+    log : () => {},
     host: { ui: (effect: UiEffect) => pushed.push(effect) },
   } as unknown as CommandContext<CommandHost>;
 }
@@ -129,23 +129,23 @@ describe('the gengraph commands over a project', () => {
     const output = await addNode('portrait', 'GenOutput');
 
     await run(gengraphLink, {
-      slug: 'portrait',
-      from: prompt,
+      slug      : 'portrait',
+      from      : prompt,
       fromSocket: 'prompt',
-      to: image,
-      toSocket: 'prompt',
+      to        : image,
+      toSocket  : 'prompt',
     });
     await run(gengraphLink, {
-      slug: 'portrait',
-      from: image,
+      slug      : 'portrait',
+      from      : image,
       fromSocket: 'image',
-      to: output,
-      toSocket: 'image',
+      to        : output,
+      toSocket  : 'image',
     });
     await run(gengraphSetProp, {
-      slug: 'portrait',
-      node: output,
-      key: 'slot',
+      slug : 'portrait',
+      node : output,
+      key  : 'slot',
       value: 'shot:cafe/1',
     });
     await run(gengraphSetActiveOutput, { slug: 'portrait', node: output });
@@ -173,7 +173,7 @@ describe('the gengraph commands over a project', () => {
       ],
     };
     const applied = await run(gengraphApply, {
-      slug: 'portrait',
+      slug       : 'portrait',
       description: JSON.stringify(described),
     });
     expect(applied.message).toContain('3');
@@ -209,10 +209,10 @@ describe('the gengraph commands over a project', () => {
     // left for the selection to catch up with
     expect(pushed).toEqual([
       {
-        type: 'view',
-        action: 'open',
-        editor: 'gengraph',
-        where: 'elsewhere',
+        type   : 'view',
+        action : 'open',
+        editor : 'gengraph',
+        where  : 'elsewhere',
         subject: 'plate-cafe-night',
       },
     ]);
@@ -240,10 +240,10 @@ describe('the gengraph commands over a project', () => {
     await link(a, 'a');
     await link(b, 'b');
     await run(gengraphUnlink, {
-      slug: 'sw',
-      to: sw,
-      toSocket: 'a',
-      from: a,
+      slug      : 'sw',
+      to        : sw,
+      toSocket  : 'a',
+      from      : a,
       fromSocket: 'image',
     });
     const cut = await loaded('sw');
@@ -292,8 +292,8 @@ describe('what the gengraph commands refuse', () => {
     const reason = await refusal(gengraphAddNode, {
       slug: 'portrait',
       type: 'GenNonesuch',
-      x: 0,
-      y: 0,
+      x   : 0,
+      y   : 0,
     });
     expect(reason).toContain("no node type 'GenNonesuch'");
     expect(reason).toContain('plugin');
@@ -312,21 +312,21 @@ describe('what the gengraph commands refuse', () => {
 
     expect(
       await refusal(gengraphLink, {
-        slug: 'portrait',
-        from: image,
+        slug      : 'portrait',
+        from      : image,
         fromSocket: 'image',
-        to: output,
-        toSocket: 'nope',
+        to        : output,
+        toSocket  : 'nope',
       }),
     ).toContain("declares no input 'nope'");
 
     expect(
       await refusal(gengraphLink, {
-        slug: 'portrait',
-        from: image,
+        slug      : 'portrait',
+        from      : image,
         fromSocket: 'image',
-        to: rewrite,
-        toSocket: 'text',
+        to        : rewrite,
+        toSocket  : 'text',
       }),
     ).toContain('cannot feed');
 
@@ -334,19 +334,19 @@ describe('what the gengraph commands refuse', () => {
     const first = await addNode('portrait', 'GenTemplate');
     const second = await addNode('portrait', 'GenTemplate');
     await run(gengraphLink, {
-      slug: 'portrait',
-      from: first,
+      slug      : 'portrait',
+      from      : first,
       fromSocket: 'text',
-      to: second,
-      toSocket: 'varA',
+      to        : second,
+      toSocket  : 'varA',
     });
     expect(
       await refusal(gengraphLink, {
-        slug: 'portrait',
-        from: second,
+        slug      : 'portrait',
+        from      : second,
         fromSocket: 'text',
-        to: first,
-        toSocket: 'varA',
+        to        : first,
+        toSocket  : 'varA',
       }),
     ).toContain('cycle');
   }, 20_000);
@@ -356,10 +356,10 @@ describe('what the gengraph commands refuse', () => {
     const output = await addNode('portrait', 'GenOutput');
     expect(
       await refusal(gengraphUnlink, {
-        slug: 'portrait',
-        to: output,
-        toSocket: 'image',
-        from: image,
+        slug      : 'portrait',
+        to        : output,
+        toSocket  : 'image',
+        from      : image,
         fromSocket: '',
       }),
     ).toContain('the output on it');
@@ -387,7 +387,7 @@ describe('what the gengraph commands refuse', () => {
     const output = await addNode('portrait', 'GenOutput');
 
     await run(gengraphMoveNodes, {
-      slug: 'portrait',
+      slug : 'portrait',
       moves: JSON.stringify([
         { node: image, x: 12, y: 34 },
         { node: output, x: 200, y: 34 },
@@ -432,23 +432,23 @@ describe('groups', () => {
     const image = await addNode('portrait', 'GenImage');
     const output = await addNode('portrait', 'GenOutput');
     await run(gengraphLink, {
-      slug: 'portrait',
-      from: template,
+      slug      : 'portrait',
+      from      : template,
       fromSocket: 'text',
-      to: image,
-      toSocket: 'prompt',
+      to        : image,
+      toSocket  : 'prompt',
     });
     await run(gengraphLink, {
-      slug: 'portrait',
-      from: image,
+      slug      : 'portrait',
+      from      : image,
       fromSocket: 'image',
-      to: output,
-      toSocket: 'image',
+      to        : output,
+      toSocket  : 'image',
     });
     const made = await run(gengraphCreateGroup, {
-      slug: 'portrait',
+      slug : 'portrait',
       nodes: `${template}, ${image}`,
-      name: '',
+      name : '',
     });
     const instance = String((made.data as { node?: unknown }).node);
     const def = await loadedGroup('group-1');
@@ -493,10 +493,10 @@ describe('groups', () => {
     const before = await readFile(join(root, DOC), 'utf8');
 
     const added = await run(gengraphAddNode, {
-      slug: 'portrait',
-      type: 'GenRewrite',
-      x: 0,
-      y: 0,
+      slug : 'portrait',
+      type : 'GenRewrite',
+      x    : 0,
+      y    : 0,
       group: 'group-1',
     });
     expect(added.written).toEqual([LIB]);
@@ -513,8 +513,8 @@ describe('groups', () => {
     const { template, image } = await grouped();
     const exposed = await run(gengraphExpose, {
       group: 'group-1',
-      node: template,
-      key: 'template',
+      node : template,
+      key  : 'template',
       label: '',
     });
     expect(exposed.written).toEqual([LIB]);
@@ -549,9 +549,9 @@ describe('groups', () => {
     const { instance } = await grouped();
     const added = await run(gengraphAddBoundary, {
       group: 'group-1',
-      dir: 'in',
-      key: 'extra',
-      type: 'TextSocket',
+      dir  : 'in',
+      key  : 'extra',
+      type : 'TextSocket',
     });
     expect(added.written).toEqual([LIB]);
     expect('extra' in (await loadedGroup('group-1')).inputs).toBe(true);
@@ -561,17 +561,17 @@ describe('groups', () => {
     expect(
       await refusal(gengraphAddBoundary, {
         group: 'group-1',
-        dir: 'sideways',
-        key: 'x',
-        type: 'TextSocket',
+        dir  : 'sideways',
+        key  : 'x',
+        type : 'TextSocket',
       }),
     ).toBe("a side is 'in' or 'out'");
     expect(
       await refusal(gengraphAddBoundary, {
         group: 'group-1',
-        dir: 'in',
-        key: 'x',
-        type: 'NopeSocket',
+        dir  : 'in',
+        key  : 'x',
+        type : 'NopeSocket',
       }),
     ).toContain("no socket type 'NopeSocket'");
 
@@ -596,10 +596,10 @@ describe('groups', () => {
     );
     expect(
       await refusal(gengraphAddGroup, {
-        slug: 'portrait',
-        ref: 'group-1',
-        x: 0,
-        y: 0,
+        slug : 'portrait',
+        ref  : 'group-1',
+        x    : 0,
+        y    : 0,
         group: 'group-1',
       }),
     ).toContain('cannot contain itself');
@@ -610,9 +610,9 @@ describe('groups', () => {
     const key = `${instance}/${template}`;
 
     const set = await run(gengraphSetProp, {
-      slug: 'portrait',
-      node: key,
-      key: 'template',
+      slug : 'portrait',
+      node : key,
+      key  : 'template',
       value: 'in ink wash',
     });
     expect(set.written).toEqual([DOC]);
@@ -632,8 +632,8 @@ describe('groups', () => {
     const copied = await run(gengraphDuplicateNode, {
       slug: 'portrait',
       node: instance,
-      x: 0,
-      y: 0,
+      x   : 0,
+      y   : 0,
     });
     const copy = (await loaded('portrait')).nodeIdMap.get(
       (copied.data as { node: number }).node,
@@ -655,7 +655,7 @@ describe('groups', () => {
     await grouped();
     await run(gengraphCreate, { name: 'other' });
     await run(gengraphApply, {
-      slug: 'other',
+      slug       : 'other',
       description: JSON.stringify({
         nodes: [{ id: 1, type: 'GroupNode', group: 'group-1' }],
         links: [],
@@ -688,10 +688,10 @@ describe('groups', () => {
 
   it('records the group prop, so provenance says which file an edit went to', async () => {
     const digested = await digestProps(gengraphAddNode.props, {
-      slug: 'portrait',
-      type: 'GenRewrite',
-      x: 0,
-      y: 0,
+      slug : 'portrait',
+      type : 'GenRewrite',
+      x    : 0,
+      y    : 0,
       group: 'group-1',
     });
     expect(digested.group).toBe('group-1');

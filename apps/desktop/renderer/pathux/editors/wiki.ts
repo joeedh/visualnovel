@@ -54,9 +54,9 @@ export class WikiEditor extends VnEditor {
 
   static override define() {
     return {
-      tagname: 'vn-wiki-editor-x',
+      tagname : 'vn-wiki-editor-x',
       areaname: 'wiki',
-      icon: -1,
+      icon    : -1,
     };
   }
 

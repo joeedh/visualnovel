@@ -44,10 +44,10 @@ describe('makeProject — inputs on disk', () => {
 
   it('honors explicit specs, config overrides and extra files', async () => {
     const p = await makeProject({
-      script: SCRIPTS.linear,
+      script    : SCRIPTS.linear,
       characters: [{ id: 'aiko', name: 'Aiko', status: 'approved', approvedPortrait: 'abc123' }],
-      config: { concurrency: 1, art_style: 'ink wash' },
-      files: { 'AICONTEXT.md': 'Keep it short.\n' },
+      config    : { concurrency: 1, art_style: 'ink wash' },
+      files     : { 'AICONTEXT.md': 'Keep it short.\n' },
     });
     try {
       const { config, model } = await p.reload();
@@ -124,7 +124,7 @@ describe('makeProject — a sheet filed in the wiki', () => {
   it('builds the same model as the conventional layout', async () => {
     const conventional = await makeProject({ script: SCRIPTS.linear });
     const wiki = await makeProject({
-      script: SCRIPTS.linear,
+      script    : SCRIPTS.linear,
       characters: [{ id: 'aiko', wiki: 'cast/aiko' }],
     });
     try {
@@ -141,7 +141,7 @@ describe('makeProject — a sheet filed in the wiki', () => {
 
   it('is the file approval writes back to', async () => {
     const p = await makeProject({
-      script: SCRIPTS.linear,
+      script    : SCRIPTS.linear,
       characters: [{ id: 'aiko', wiki: 'cast/aiko' }],
     });
     try {

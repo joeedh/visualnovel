@@ -13,11 +13,11 @@ const report = (reviewer: string, severity: 'blocking' | 'major' | 'minor'): Def
 
 const taskWith = (reviews: unknown[] | undefined): AnyTask =>
   ({
-    hash: 'abc123',
-    kind: 'shot_image',
-    deps: [],
-    inputs: { shotId: 'arrival__establishing', prompt: 'a room', refs: [], params: {} },
-    status: 'needs_human',
+    hash    : 'abc123',
+    kind    : 'shot_image',
+    deps    : [],
+    inputs  : { shotId: 'arrival__establishing', prompt: 'a room', refs: [], params: {} },
+    status  : 'needs_human',
     attempts: [{ attempt: 1, refs: [], output: 'deadbeef', reviews }],
   }) as unknown as AnyTask;
 

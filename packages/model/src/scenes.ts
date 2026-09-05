@@ -131,16 +131,16 @@ export function splitScenes(script: FountainScript, opts: SplitOptions = {}): Sp
         mined.push(loc);
         index += 1;
         current = {
-          id: el.sceneNumber ? slug(el.sceneNumber) : `${loc.id}_${index}`,
-          location: loc.id,
+          id             : el.sceneNumber ? slug(el.sceneNumber) : `${loc.id}_${index}`,
+          location       : loc.id,
           locationVariant: loc.variant,
-          headingPrefix: headingPrefixOf(el.text),
-          characters: [],
-          synopsis: pendingSynopsis,
-          lines: [],
-          choices: [],
-          next: undefined,
-          shots: [],
+          headingPrefix  : headingPrefixOf(el.text),
+          characters     : [],
+          synopsis       : pendingSynopsis,
+          lines          : [],
+          choices        : [],
+          next           : undefined,
+          shots          : [],
         };
         pendingSynopsis = undefined;
         break;
@@ -210,9 +210,9 @@ export function splitScenes(script: FountainScript, opts: SplitOptions = {}): Sp
       if (override !== undefined && override !== opts.sceneId) {
         diagnostics.push({
           severity: 'warning',
-          code: 'ignored_scene_marker',
+          code    : 'ignored_scene_marker',
           message: `[[scene: ${override}]] in scene "${opts.sceneId}" is ignored; a chunk's id is its filename`,
-          where: opts.sceneId,
+          where   : opts.sceneId,
         });
       }
       scene.id = opts.sceneId;
@@ -230,9 +230,9 @@ export function splitScenes(script: FountainScript, opts: SplitOptions = {}): Sp
       if (count > 1) {
         diagnostics.push({
           severity: 'error',
-          code: 'duplicate_line_id',
+          code    : 'duplicate_line_id',
           message: `scene "${scene.id}" marks ${count} lines with line id "${id}"; a shot covering it cannot say which`,
-          where: scene.id,
+          where   : scene.id,
         });
       }
     }
@@ -248,9 +248,9 @@ export function splitScenes(script: FountainScript, opts: SplitOptions = {}): Sp
     for (const id of dangling.get(scene) ?? []) {
       diagnostics.push({
         severity: 'error',
-        code: 'dangling_line_id',
-        message: `[[line: ${id}]] in scene "${scene.id}" names no line`,
-        where: scene.id,
+        code    : 'dangling_line_id',
+        message : `[[line: ${id}]] in scene "${scene.id}" names no line`,
+        where   : scene.id,
       });
     }
   }
@@ -286,13 +286,13 @@ function strayNoteDiagnostic(text: string): Omit<Diagnostic, 'where'> | null {
   if (key === 'choice' || key === 'next' || key === 'goto' || key === 'line') {
     return {
       severity: 'error',
-      code: 'unparsed_branch_marker',
+      code    : 'unparsed_branch_marker',
       message: `is a ${key} marker that does not parse; the edge or anchor it names is lost, and it will be absent from the scene the next time it is written`,
     };
   }
   return {
     severity: 'warning',
-    code: 'unknown_marker',
+    code    : 'unknown_marker',
     message: `is not a branch marker; it will be absent from the scene the next time it is written`,
   };
 }

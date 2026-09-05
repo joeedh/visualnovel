@@ -81,7 +81,7 @@ async function shotsFor(
       for (const d of loaded.dropped) {
         logger?.warn('shot covers lines the screenplay no longer has; dropped', {
           scene: scene.id,
-          shot: d.shotId,
+          shot : d.shotId,
           lines: d.lineIds,
         });
       }
@@ -94,7 +94,7 @@ async function shotsFor(
   // logged here; `decomposeAll` refuses to write it at all.
   if (decomposition.source === 'baseline') {
     logger?.warn('decomposition fell back to the deterministic storyboard', {
-      scene: scene.id,
+      scene : scene.id,
       reason: decomposition.reason,
     });
   }

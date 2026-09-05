@@ -3,28 +3,28 @@ import type { ThreadHeader } from '../../../src/shared/convo';
 import { NO_VOCABULARY, picksAnAsset, vocabularyFor, type ProjectVocabulary } from '../vocabulary';
 
 const prop = (over: Partial<CatalogProp> & { name: string }): CatalogProp => ({
-  kind: 'string',
+  kind       : 'string',
   description: `the ${over.name}`,
-  required: true,
+  required   : true,
   ...over,
 });
 
 const entry = (id: string, props: CatalogProp[]): CatalogEntry => ({
   id,
-  title: id,
+  title      : id,
   description: '',
-  mutating: false,
-  confirm: false,
-  undoable: false,
-  checkable: false,
+  mutating   : false,
+  confirm    : false,
+  undoable   : false,
+  checkable  : false,
   props,
-  usage: `${id}()`,
+  usage : `${id}()`,
   schema: { type: 'object', properties: {}, required: [], additionalProperties: false },
 });
 
 const THREAD: ThreadHeader = {
-  id: 'thread-1',
-  title: 'the rooftop pass',
+  id       : 'thread-1',
+  title    : 'the rooftop pass',
   startedAt: '2026-08-31T10:54:00.000Z',
 };
 
@@ -37,7 +37,7 @@ const PROJECT: ProjectVocabulary = {
     { id: 'aiko', name: 'Aiko', status: 'approved' },
     { id: 'haruki', name: '', status: 'candidates' },
   ],
-  threads: [THREAD],
+  threads   : [THREAD],
   boundModel: 'claude-sonnet-5',
 };
 

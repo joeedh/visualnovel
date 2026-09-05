@@ -139,10 +139,10 @@ export class VnHeaderEditor extends VnEditor {
 
   static override define() {
     return {
-      tagname: 'vn-header-editor-x',
+      tagname : 'vn-header-editor-x',
       areaname: 'header',
-      uiname: 'Header',
-      icon: -1,
+      uiname  : 'Header',
+      icon    : -1,
       // No switcher (so `makeHeader` gives a plain row), no collapse, and hidden from the
       // area list: this is chrome, not somewhere the author navigates to.
       flag:
@@ -416,7 +416,7 @@ export class VnHeaderEditor extends VnEditor {
       spinner.style['display'] = 'inline-block';
     });
     spinner.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }], {
-      duration: 1600,
+      duration  : 1600,
       iterations: Infinity,
     });
 
@@ -504,83 +504,83 @@ export class VnHeaderEditor extends VnEditor {
   private appMenu(): MenuTemplate {
     return [
       {
-        name: 'Command Palette…',
+        name    : 'Command Palette…',
         callback: () => openPalette(),
-        hotkey: 'Ctrl+Shift+P',
-        tooltip: 'Search every command by name and fill in its arguments',
+        hotkey  : 'Ctrl+Shift+P',
+        tooltip : 'Search every command by name and fill in its arguments',
       },
       Menu.SEP,
       {
-        name: 'Undo',
+        name    : 'Undo',
         callback: () => void move('undo'),
-        hotkey: 'Ctrl+Z',
-        tooltip: 'Put the project back the way it was before the last act',
+        hotkey  : 'Ctrl+Z',
+        tooltip : 'Put the project back the way it was before the last act',
       },
       {
-        name: 'Redo',
+        name    : 'Redo',
         callback: () => void move('redo'),
-        hotkey: 'Ctrl+Shift+Z',
-        tooltip: 'Reapply the act that was just undone',
+        hotkey  : 'Ctrl+Shift+Z',
+        tooltip : 'Reapply the act that was just undone',
       },
       Menu.SEP,
       // Fired rather than formed: this entry and the header's button run the same act, and
       // neither takes an argument. `runPipelineNow` checks first, so a refusal is shown before
       // anything starts.
       {
-        name: 'Run Pipeline',
+        name    : 'Run Pipeline',
         callback: () => {
           const offer = runAction(this.ui.busyWhat, isLive);
           if (offer.ok) runPipelineNow(offer.props);
           else say(offer.reason, true);
         },
-        tooltip: 'Plan and render everything that is ready, to the next gate',
+        tooltip : 'Plan and render everything that is ready, to the next gate',
       },
       // The advanced entry opens `pipeline.run`'s own form, where the flags live. `mock` is
       // seeded from whether this is a live app — a preview has no keys, so a dry run is all it
       // could do.
       {
-        name: 'Run Pipeline (adv)…',
+        name    : 'Run Pipeline (adv)…',
         callback: () => openCommandDialog('pipeline.run', { mock: !isLive }),
-        tooltip: 'Start a run with the flags spelled out — dry run, scene filter, task limit',
+        tooltip : 'Start a run with the flags spelled out — dry run, scene filter, task limit',
       },
       // The form takes a folder to browse for, a title, and the checkbox that turns the two into
       // a folder the OS chooser could not have named. The checkbox is ticked here rather than in
       // the command, whose own default has always been "the project goes here".
       {
-        name: 'New Project…',
+        name    : 'New Project…',
         callback: () => openCommandDialog('workspace.create', { newFolder: true }),
-        tooltip: 'Scaffold a project in a new folder and open it, closing this one',
+        tooltip : 'Scaffold a project in a new folder and open it, closing this one',
       },
       // These two take no argument and ask for no confirmation, so the palette would be an empty
       // form the author dismisses with the same click. They run, and say what they answered — the
       // chooser `workspace.pick` opens is its own confirmation.
       {
-        name: 'Open Project…',
+        name    : 'Open Project…',
         callback: () => act('workspace.pick'),
-        tooltip: 'Choose a project folder and open it, closing this one',
+        tooltip : 'Choose a project folder and open it, closing this one',
       },
       this.recentMenu(),
       {
-        name: 'Reindex Project',
+        name    : 'Reindex Project',
         callback: () => act('workspace.reindex'),
-        tooltip: 'Rebuild the map the authoring agent reads: cast, locations, story graph, bible',
+        tooltip : 'Rebuild the map the authoring agent reads: cast, locations, story graph, bible',
       },
       // The Setup pane rather than `project.setKey`'s bare form: a box asking for a credential is
       // no use to someone who does not yet have one, and the pane is the same box with the steps
       // for getting there above it. The form is still in the palette for anyone who just wants it.
       {
-        name: 'Set Up API Keys…',
+        name    : 'Set Up API Keys…',
         callback: () => act('view.open', { editor: 'onboarding', where: 'elsewhere' }),
-        tooltip: 'How to get a model key, which of yours are set, and where they are read from',
+        tooltip : 'How to get a model key, which of yours are set, and where they are read from',
       },
       Menu.SEP,
       // This is not fired from the menu either. `upload.pick` is `confirm`, so the dialog runs
       // first and says what the command is about to do before the OS chooser takes over the
       // screen.
       {
-        name: 'Upload Files…',
+        name    : 'Upload Files…',
         callback: () => openCommandDialog('upload.pick'),
-        tooltip: 'Copy files into the project archive, verbatim, under a dated folder',
+        tooltip : 'Copy files into the project archive, verbatim, under a dated folder',
       },
       // Formed rather than fired: the command is `confirm`, and its note is where the author
       // learns which branch gets pushed and which one gets published.
@@ -592,17 +592,17 @@ export class VnHeaderEditor extends VnEditor {
       },
       Menu.SEP,
       {
-        name: 'Plan ⇄ Execute',
+        name    : 'Plan ⇄ Execute',
         callback: () => void toggleMode(),
-        hotkey: 'Shift+Tab',
-        tooltip: 'Switch the agent between reading only and being allowed to apply edits',
+        hotkey  : 'Shift+Tab',
+        tooltip : 'Switch the agent between reading only and being allowed to apply edits',
       },
       Menu.SEP,
       {
-        name: 'Quit',
+        name    : 'Quit',
         callback: () => void quit(),
-        hotkey: 'Ctrl+Q',
-        tooltip: 'Close every window and quit vnstudio',
+        hotkey  : 'Ctrl+Q',
+        tooltip : 'Close every window and quit vnstudio',
       },
     ];
   }
@@ -620,12 +620,12 @@ export class VnHeaderEditor extends VnEditor {
       ? this.recents.map((root) => {
           const open = root === this.current;
           return {
-            name: open ? `${projectName(root)} ✓` : projectName(root),
+            name    : open ? `${projectName(root)} ✓` : projectName(root),
             callback: open ? () => {} : () => void exec('workspace.open', { path: root }),
             tooltip: open
               ? `${root} is the project you have open`
               : `Close this project and open ${root}`,
-            id: root,
+            id      : root,
           };
         })
       : [{ name: '(none)', callback: () => {}, tooltip: 'No project has been opened yet' }];
@@ -648,35 +648,35 @@ export class VnHeaderEditor extends VnEditor {
       // only a pointer can give. `view.close` still exists for the palette, the agent and CDP,
       // where there is no pointer and the active pane is the only pane that can be meant.
       {
-        name: 'Close Pane…',
+        name    : 'Close Pane…',
         callback: () => this.closePane(),
-        tooltip: 'Point at a pane to close it — it is outlined and crossed out. Escape cancels.',
+        tooltip : 'Point at a pane to close it — it is outlined and crossed out. Escape cancels.',
       },
       {
-        name: 'Split Area',
+        name    : 'Split Area',
         callback: () => this.ctx.screen.splitTool(),
-        tooltip: 'Drag a line across a pane to divide it in two.',
+        tooltip : 'Drag a line across a pane to divide it in two.',
       },
       Menu.SEP,
       // A window is the fourth way to divide the screen, and it belongs beside the other three
       // rather than in a menu of its own — an author reaching for "put this on the other
       // monitor" is looking where they look for a split.
       {
-        name: 'New Window',
+        name    : 'New Window',
         callback: () => void exec('window.new'),
-        hotkey: 'Ctrl+Shift+N',
-        tooltip: 'Open another window onto this project — one app, panes across two monitors',
+        hotkey  : 'Ctrl+Shift+N',
+        tooltip : 'Open another window onto this project — one app, panes across two monitors',
       },
       {
-        name: 'Close Window',
+        name    : 'Close Window',
         callback: () => void closeWindow(),
-        hotkey: 'Ctrl+W',
-        tooltip: 'Close this window; closing the last one quits',
+        hotkey  : 'Ctrl+W',
+        tooltip : 'Close this window; closing the last one quits',
       },
       {
-        name: 'Move Pane to New Window',
+        name    : 'Move Pane to New Window',
         callback: () => void this.movePaneToWindow(),
-        tooltip: 'Reopen the active pane’s editor in a window of its own and close it here',
+        tooltip : 'Reopen the active pane’s editor in a window of its own and close it here',
       },
     ];
   }
@@ -694,49 +694,49 @@ export class VnHeaderEditor extends VnEditor {
   private editMenu(): MenuTemplate {
     return [
       {
-        name: 'Undo',
+        name    : 'Undo',
         callback: () => void move('undo'),
-        hotkey: 'Ctrl+Z',
-        tooltip: 'Put the project back the way it was before the last act',
+        hotkey  : 'Ctrl+Z',
+        tooltip : 'Put the project back the way it was before the last act',
       },
       {
-        name: 'Redo',
+        name    : 'Redo',
         callback: () => void move('redo'),
-        hotkey: 'Ctrl+Shift+Z',
-        tooltip: 'Reapply the act that was just undone',
+        hotkey  : 'Ctrl+Shift+Z',
+        tooltip : 'Reapply the act that was just undone',
       },
       Menu.SEP,
       {
-        name: 'Create Group',
+        name    : 'Create Group',
         callback: () => this.withGenGraph((pane) => pane.groupSelected()),
-        hotkey: 'Ctrl+G',
+        hotkey  : 'Ctrl+G',
         tooltip:
           'Move the selected nodes of the active Gen Graph pane into a new group, and leave an ' +
           'instance of it in their place',
       },
       {
-        name: 'Ungroup',
+        name    : 'Ungroup',
         callback: () => this.withGenGraph((pane) => pane.ungroupSelected()),
-        hotkey: 'Ctrl+Alt+G',
-        tooltip: 'Put a copy of each selected group’s nodes where the instance stands',
+        hotkey  : 'Ctrl+Alt+G',
+        tooltip : 'Put a copy of each selected group’s nodes where the instance stands',
       },
       {
-        name: 'Edit Group',
+        name    : 'Edit Group',
         callback: () => this.withGenGraph((pane) => pane.enterGroup()),
-        hotkey: 'Tab',
-        tooltip: 'Open the selected group’s definition, which every instance of it follows',
+        hotkey  : 'Tab',
+        tooltip : 'Open the selected group’s definition, which every instance of it follows',
       },
       {
-        name: 'Exit Group',
+        name    : 'Exit Group',
         callback: () => this.withGenGraph((pane) => pane.exitGroup()),
-        tooltip: 'Go back up one level, to the graph the open group sits in',
+        tooltip : 'Go back up one level, to the graph the open group sits in',
       },
       Menu.SEP,
       // This opens a dialog rather than firing directly, because the command is `confirm`. The
       // dialog says how many pictures it is about to approve and how many tasks it is about to
       // run, which an author wants to read before an unattended pass spends real model calls.
       {
-        name: 'Approve & Generate All…',
+        name    : 'Approve & Generate All…',
         callback: () => openCommandDialog('pipeline.approveAndRun'),
         tooltip:
           'Approve every picture that is waiting and run the pipeline, repeatedly, until nothing ' +
@@ -799,7 +799,7 @@ export class VnHeaderEditor extends VnEditor {
   private helpMenu(): MenuTemplate {
     return [
       {
-        name: 'Check for Updates…',
+        name    : 'Check for Updates…',
         callback: () => act('app.checkForUpdates'),
         tooltip:
           'Ask GitHub whether a newer VN Studio has been released. Downloads nothing — if there ' +
@@ -807,7 +807,7 @@ export class VnHeaderEditor extends VnEditor {
       },
       Menu.SEP,
       {
-        name: 'Report a Difficult Agent…',
+        name    : 'Report a Difficult Agent…',
         callback: () => void seedReport(),
         tooltip:
           'Have a conversation that went wrong read by a debug agent, and draft a bug report ' +
@@ -830,9 +830,9 @@ export class VnHeaderEditor extends VnEditor {
       'Editors',
       'Show a different editor in this pane',
       OFFERED_EDITOR_IDS.map((id) => ({
-        name: editorTitle(id),
+        name    : editorTitle(id),
         callback: () => void exec('view.open', { editor: id }),
-        tooltip: editorTooltip(id),
+        tooltip : editorTooltip(id),
         id,
       })),
     );
@@ -845,12 +845,12 @@ export class VnHeaderEditor extends VnEditor {
    */
   private layoutMenu(): Menu {
     const rows = this.layouts.map((layout) => ({
-      name: layout.slug === this.activeSlug ? `${layout.title} ✓` : layout.title,
+      name    : layout.slug === this.activeSlug ? `${layout.title} ✓` : layout.title,
       callback: () => void exec('view.applyLayout', { name: layout.slug }),
       tooltip: layout.problem
         ? `Cannot be used: ${layout.problem}`
         : `Rearrange the window: ${layout.description}`,
-      id: layout.slug,
+      id      : layout.slug,
     }));
 
     const items = rows.length
@@ -861,16 +861,16 @@ export class VnHeaderEditor extends VnEditor {
       ...items,
       Menu.SEP,
       {
-        name: 'Save Current Layout As…',
+        name    : 'Save Current Layout As…',
         // The dialog collects the name; the mesh it saves is composed here, because only this
         // half can serialize one.
         callback: () => this.saveLayout(),
-        tooltip: 'File the arrangement on screen in the project under a name of your own',
+        tooltip : 'File the arrangement on screen in the project under a name of your own',
       },
       {
-        name: 'Reset View Layout…',
+        name    : 'Reset View Layout…',
         callback: () => openCommandDialog('view.resetLayout'),
-        tooltip: 'Put the layouts that ship with the app back the way they shipped — undoable',
+        tooltip : 'Put the layouts that ship with the app back the way they shipped — undoable',
       },
     ]);
   }

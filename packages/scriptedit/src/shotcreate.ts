@@ -153,8 +153,8 @@ export function newShot<S extends CoverShot>(
     { id, coversLines: [] },
   ];
   const op = setCoverage(covers, {
-    shot: id,
-    lines: args.lines,
+    shot     : id,
+    lines    : args.lines,
     lineOrder: scene.lines.map((l) => l.id),
   });
   if (!op.ok) return { ok: false, error: op.error };
@@ -207,7 +207,7 @@ export function newShot<S extends CoverShot>(
     nextShot: n + 1,
     created,
     uncovered: op.uncovered,
-    message: parts.join(' '),
+    message  : parts.join(' '),
   };
 }
 
@@ -246,6 +246,6 @@ export function deleteShot(board: ShotBoard, args: { shot: string }): DeleteShot
     deleteFile,
     released,
     nextShot: board.nextShot ?? derivedNextShot(board.shots),
-    message: parts.join(' '),
+    message : parts.join(' '),
   };
 }

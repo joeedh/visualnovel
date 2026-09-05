@@ -14,7 +14,7 @@ import { loadEntry } from './lib/load-entry.mjs';
 import { buildCommandTables } from './lib/command-table.mjs';
 
 const FILES = {
-  'docs/reference/command-table.md': 'flatFile',
+  'docs/reference/command-table.md'     : 'flatFile',
   'docs/reference/command-namespaces.md': 'namespaceFile',
 };
 

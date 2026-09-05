@@ -155,7 +155,7 @@ function readStruct<T extends StructableInstance>(
     return {
       diagnostics: [
         {
-          code: 'unreadable-graph-file',
+          code   : 'unreadable-graph-file',
           message: err instanceof Error ? err.message : String(err),
         },
       ],

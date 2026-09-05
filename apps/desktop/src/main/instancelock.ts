@@ -90,7 +90,7 @@ const nodeIo: LockIo = {
         fail(err);
       });
     }),
-  unlink: (address) => unlink(address).catch(() => {}),
+  unlink : (address) => unlink(address).catch(() => {}),
 };
 
 function isAddressInUse(err: unknown): boolean {

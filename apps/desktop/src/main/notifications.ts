@@ -72,16 +72,16 @@ export function buildNotification(
   session = SESSION_ID,
 ): Notification {
   return {
-    v: NOTIFICATION_VERSION,
-    r: 0,
-    h: 0,
+    v : NOTIFICATION_VERSION,
+    r : 0,
+    h : 0,
     id: nextId(),
     at: now.toISOString(),
     session,
     category: input.category,
-    level: input.level ?? 'info',
-    source: input.source ?? 'main',
-    message: input.message,
+    level   : input.level ?? 'info',
+    source  : input.source ?? 'main',
+    message : input.message,
     ...(input.link ? { link: input.link } : {}),
   };
 }

@@ -76,7 +76,7 @@ describe('what a row is written down as', () => {
 
   it('writes a tool by name and by what it acted on, and never by what came back', () => {
     const row: ReportRow = {
-      kind: 'event',
+      kind : 'event',
       event: { type: 'tool', tool: 'read_request', args: { id: 3 }, result },
     };
     expect(transcriptBody(row)).toEqual({ kind: 'tool', text: 'read_request 3' });
@@ -94,7 +94,7 @@ describe('what a row is written down as', () => {
 
   it('writes a refused call, which is a fact about the turn rather than a result', () => {
     const row: ReportRow = {
-      kind: 'event',
+      kind : 'event',
       event: { type: 'blocked', tool: 'read_file', reason: 'outside the source root' },
     };
     expect(transcriptBody(row)).toEqual({
@@ -109,7 +109,7 @@ describe('what a row is written down as', () => {
     ).toBeUndefined();
     expect(
       transcriptBody({
-        kind: 'event',
+        kind : 'event',
         event: { type: 'api', phase: 'retrying', attempt: 2, of: 3, message: 'overloaded' },
       }),
     ).toBeUndefined();
@@ -117,23 +117,23 @@ describe('what a row is written down as', () => {
 
   it('writes a filed report without the path the archived copy went to', () => {
     const row: ReportRow = {
-      kind: 'filed',
+      kind  : 'filed',
       report: {} as Report,
-      title: 'edit_scene dropped a line',
-      body: '# edit_scene dropped a line',
-      file: 'C:/Users/someone/AppData/Roaming/vnstudio/reports/one.md',
+      title : 'edit_scene dropped a line',
+      body  : '# edit_scene dropped a line',
+      file  : 'C:/Users/someone/AppData/Roaming/vnstudio/reports/one.md',
     };
     expect(transcriptBody(row)).toEqual({
-      kind: 'filed',
+      kind : 'filed',
       title: 'edit_scene dropped a line',
-      body: '# edit_scene dropped a line',
+      body : '# edit_scene dropped a line',
     });
   });
 
   it('keeps a tool’s output out of the file itself', async () => {
     const transcript = await openTranscript(new Date('2026-08-22T10:00:00.000Z'));
     transcript.row({
-      kind: 'event',
+      kind : 'event',
       event: { type: 'tool', tool: 'read_request', args: { id: 3 }, result },
     });
     await transcript.settled();
@@ -156,18 +156,18 @@ describe('the line format', () => {
 
     expect(await readTranscript(transcript.file)).toEqual([
       {
-        v: TRANSCRIPT_VERSION,
-        at: '2026-08-22T10:00:01.000Z',
-        kind: 'opened',
+        v     : TRANSCRIPT_VERSION,
+        at    : '2026-08-22T10:00:01.000Z',
+        kind  : 'opened',
         thread: 't1',
-        model: 'claude-opus-5',
+        model : 'claude-opus-5',
         source: true,
         detail: false,
       },
       {
-        v: TRANSCRIPT_VERSION,
-        at: '2026-08-22T10:05:00.000Z',
-        kind: 'granted',
+        v     : TRANSCRIPT_VERSION,
+        at    : '2026-08-22T10:05:00.000Z',
+        kind  : 'granted',
         access: 'detail',
       },
     ]);

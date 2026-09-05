@@ -7,7 +7,7 @@ function flaky(
 ): { fn: () => Promise<string>; calls: () => number } {
   let calls = 0;
   return {
-    fn: () => (++calls < succeedAt ? Promise.reject(err) : Promise.resolve('ok')),
+    fn   : () => (++calls < succeedAt ? Promise.reject(err) : Promise.resolve('ok')),
     calls: () => calls,
   };
 }
@@ -36,8 +36,8 @@ describe('retry', () => {
     const seen: string[] = [];
     const f = flaky(3, new Error('transient'));
     await retry(f.fn, {
-      attempts: 3,
-      baseMs: 0,
+      attempts   : 3,
+      baseMs     : 0,
       shouldRetry: (err) => (seen.push((err as Error).message), true),
     });
     expect(seen).toEqual(['transient', 'transient']);

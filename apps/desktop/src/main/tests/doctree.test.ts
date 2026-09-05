@@ -19,55 +19,55 @@ import {
 import { WorkspaceSession, type SessionDeps } from '../session.js';
 
 const deps: SessionDeps = {
-  emitEvent: () => {},
-  emitReport: () => {},
-  requestPlan: () => Promise.resolve({ approved: false }),
-  requestAnswer: () => Promise.resolve([]),
+  emitEvent     : () => {},
+  emitReport    : () => {},
+  requestPlan   : () => Promise.resolve({ approved: false }),
+  requestAnswer : () => Promise.resolve([]),
   requestConfirm: () => Promise.resolve(false),
-  pushBusy: () => {},
+  pushBusy      : () => {},
 };
 
 const ROOT = process.platform === 'win32' ? 'C:\\proj' : '/proj';
 const at = (...parts: string[]) => [ROOT, ...parts].join(process.platform === 'win32' ? '\\' : '/');
 
 const scene = (id: string, over: Partial<Shot> = {}): Shot => ({
-  id: `${id}-s1`,
-  sceneId: id,
-  framing: 'wide',
-  location: 'gate',
-  subjects: [{ characterId: 'aiko' }],
+  id         : `${id}-s1`,
+  sceneId    : id,
+  framing    : 'wide',
+  location   : 'gate',
+  subjects   : [{ characterId: 'aiko' }],
   coversLines: [],
-  status: 'pending',
+  status     : 'pending',
   ...over,
 });
 
 const asset = (hash: string, over: Partial<Asset> = {}): Asset => ({
   hash,
-  ext: 'png',
-  kind: 'portrait',
+  ext       : 'png',
+  kind      : 'portrait',
   sourceTask: 't',
-  refs: [],
-  modelId: 'm',
-  satisfies: [{ characterId: 'aiko' }],
-  accepted: false,
+  refs      : [],
+  modelId   : 'm',
+  satisfies : [{ characterId: 'aiko' }],
+  accepted  : false,
   ...over,
 });
 
 function makeInput(over: Partial<DocTreeInput> = {}): DocTreeInput {
   const model = {
-    title: 'T',
+    title      : 'T',
     characters: new Map([
       [
         'aiko',
         {
-          id: 'aiko',
-          name: 'Aiko',
-          description: '',
-          traits: [],
-          palette: [],
-          status: 'approved',
+          id           : 'aiko',
+          name         : 'Aiko',
+          description  : '',
+          traits       : [],
+          palette      : [],
+          status       : 'approved',
           defaultOutfit: 'uniform',
-          outfits: [],
+          outfits      : [],
         },
       ],
     ]),
@@ -84,19 +84,19 @@ function makeInput(over: Partial<DocTreeInput> = {}): DocTreeInput {
       ],
       ['orphan', { id: 'orphan', location: 'gate', characters: [], lines: [], choices: [] }],
     ]),
-    reachable: new Set(['arrival']),
-    entry: 'arrival',
+    reachable  : new Set(['arrival']),
+    entry      : 'arrival',
     diagnostics: [],
   } as unknown as ProjectModel;
 
   const inputs = {
     characterDocs: [{ id: 'aiko', file: at('wiki', 'cast', 'aiko.md') }],
-    locationDocs: [{ id: 'gate', file: at('locations', 'gate.md') }],
+    locationDocs : [{ id: 'gate', file: at('locations', 'gate.md') }],
     sceneDocs: [
       { id: 'arrival', file: at('scenes', 'arrival.md') },
       { id: 'orphan', file: at('scenes', 'orphan.md') },
     ],
-    diagnostics: [],
+    diagnostics  : [],
   } as unknown as LoadedInputs;
 
   return {
@@ -106,16 +106,16 @@ function makeInput(over: Partial<DocTreeInput> = {}): DocTreeInput {
     manifest: [
       asset('a'.repeat(64), { accepted: true }),
       asset('b'.repeat(64), {
-        kind: 'shot_image',
+        kind     : 'shot_image',
         satisfies: [{ sceneId: 'arrival', shotId: 'arrival-s1' }],
       }),
     ],
-    shots: new Map<string, Shot[] | null>([['arrival', [scene('arrival')]]]),
+    shots   : new Map<string, Shot[] | null>([['arrival', [scene('arrival')]]]),
     bible: [
       { file: 'cast/aiko.md', title: 'Aiko', tags: ['character'], headings: [], bytes: 10 },
       { file: 'history/canal.md', title: 'The canal', tags: [], headings: [], bytes: 20 },
     ],
-    wikiDir: 'wiki',
+    wikiDir : 'wiki',
     ...over,
   };
 }
@@ -177,9 +177,9 @@ describe('buildDocTree', () => {
   it('carries the file an entity was found in, wherever it was filed', () => {
     const characters = branch(tree.roots, 'branch:characters').children!;
     expect(characters[0]).toMatchObject({
-      id: 'character:aiko',
+      id   : 'character:aiko',
       label: 'Aiko',
-      path: 'wiki/cast/aiko.md',
+      path : 'wiki/cast/aiko.md',
       badge: 'approved',
     });
   });
@@ -243,19 +243,19 @@ describe('the Unapproved branch', () => {
   const slot = (key: string, binding: RefBinding, over: Partial<SlotNode> = {}): SlotNode => ({
     key,
     binding,
-    label: key,
-    refs: [],
+    label     : key,
+    refs      : [],
     candidates: [],
-    approved: false,
+    approved  : false,
     ...over,
   });
 
   // The projection is what is under test, so the graph is handed over rather than built — what
   // `buildSlotGraph` puts in these fields is `slotgraph.test.ts`'s job.
   const slots = (nodes: SlotNode[]): SlotGraph => ({
-    nodes: new Map(nodes.map((n) => [n.key, n])),
+    nodes     : new Map(nodes.map((n) => [n.key, n])),
     dependents: new Map(),
-    order: nodes.map((n) => n.key),
+    order     : nodes.map((n) => n.key),
   });
 
   const portrait = slot(
@@ -301,12 +301,12 @@ describe('the Unapproved branch', () => {
     const waiting = treeWith(slots([portrait]))!.children![0]!.children!;
     expect(waiting).toEqual([
       {
-        id: `asset:${HASH_A}`,
-        kind: 'asset',
+        id   : `asset:${HASH_A}`,
+        kind : 'asset',
         label: 'aaaaaaaa.png',
         badge: 'portrait',
-        slot: 'portrait:aiko',
-        note: 'Waiting on approval for portrait:aiko.',
+        slot : 'portrait:aiko',
+        note : 'Waiting on approval for portrait:aiko.',
       },
     ]);
   });
@@ -315,10 +315,10 @@ describe('the Unapproved branch', () => {
     const unrendered = treeWith(slots([plate]))!.children![0]!.children!;
     expect(unrendered).toEqual([
       {
-        id: 'slot:plate:gate/day',
-        kind: 'slot',
+        id   : 'slot:plate:gate/day',
+        kind : 'slot',
         label: 'plate:gate/day',
-        note: 'The gate has no approved look yet.',
+        note : 'The gate has no approved look yet.',
       },
     ]);
   });
@@ -361,7 +361,7 @@ describe('the Unapproved branch', () => {
     const hashes = ['1', '2', '3'].map((n) => n.repeat(64));
     const drafts = hashes.map((hash) =>
       asset(hash, {
-        kind: 'shot_image',
+        kind     : 'shot_image',
         satisfies: [{ sceneId: 'arrival', shotId: 'arrival-s1' }],
       }),
     );
@@ -440,18 +440,18 @@ describe('the Generation graphs branch', () => {
     const rows = treeWith({ boundGraphs: bound })!.children!;
     expect(rows[0]!.children).toEqual([
       {
-        id: 'slot:plate:gate/day',
-        kind: 'slot',
-        label: 'plate:gate/day',
+        id        : 'slot:plate:gate/day',
+        kind      : 'slot',
+        label     : 'plate:gate/day',
         boundGraph: 'plates',
-        note: 'Drawn by the plates generation graph.',
+        note      : 'Drawn by the plates generation graph.',
       },
       {
-        id: 'slot:plate:gate/night',
-        kind: 'slot',
-        label: 'plate:gate/night',
+        id        : 'slot:plate:gate/night',
+        kind      : 'slot',
+        label     : 'plate:gate/night',
         boundGraph: 'plates',
-        note: 'Drawn by the plates generation graph.',
+        note      : 'Drawn by the plates generation graph.',
       },
     ]);
     expect(rows[1]!.children).toBeUndefined();
@@ -461,18 +461,18 @@ describe('the Generation graphs branch', () => {
     const broken = [{ slug: 'plates', file: 'x.json', problem: 'x.json is mid-merge' }];
     expect(treeWith({ graphs: broken })!.children![0]).toMatchObject({
       badge: 'unreadable',
-      note: 'x.json is mid-merge',
+      note : 'x.json is mid-merge',
     });
   });
 });
 
 describe('the Skills branch', () => {
   const skill = (over: Partial<SkillEntry> = {}): SkillEntry => ({
-    id: 'continuity-pass',
-    name: 'Continuity pass',
+    id         : 'continuity-pass',
+    name       : 'Continuity pass',
     description: 'Re-read a scene against the bible and list what contradicts it.',
-    file: '.aiagent/skills/continuity-pass/SKILL.md',
-    script: false,
+    file       : '.aiagent/skills/continuity-pass/SKILL.md',
+    script     : false,
     ...over,
   });
 
@@ -487,9 +487,9 @@ describe('the Skills branch', () => {
   // `undefined` are deliberately different answers.
   it('is drawn empty when the caller looked and found none', () => {
     expect(skills([])).toEqual({
-      id: 'branch:skills',
-      kind: 'branch',
-      label: 'Skills',
+      id      : 'branch:skills',
+      kind    : 'branch',
+      label   : 'Skills',
       children: [],
     });
   });
@@ -498,17 +498,17 @@ describe('the Skills branch', () => {
     // One slot waiting, so the Unapproved branch is drawn too — otherwise there is no second
     // root between Skills and Assets to be ordered against.
     const waiting: SlotNode = {
-      key: 'portrait:aiko',
-      binding: { kind: 'portrait', characterId: 'aiko' },
-      label: 'portrait:aiko',
-      refs: [],
+      key       : 'portrait:aiko',
+      binding   : { kind: 'portrait', characterId: 'aiko' },
+      label     : 'portrait:aiko',
+      refs      : [],
       candidates: ['a'.repeat(64)],
-      approved: false,
+      approved  : false,
     };
     const graph: SlotGraph = {
-      nodes: new Map([[waiting.key, waiting]]),
+      nodes     : new Map([[waiting.key, waiting]]),
       dependents: new Map(),
-      order: [waiting.key],
+      order     : [waiting.key],
     };
     const roots = buildDocTree(makeInput({ skills: [], slots: graph })).roots;
     expect(roots.map((n) => n.id)).toEqual([
@@ -525,11 +525,11 @@ describe('the Skills branch', () => {
   it('draws one leaf per skill: the name, the SKILL.md, and no children', () => {
     const [leaf] = skills([skill()])!.children!;
     expect(leaf).toEqual({
-      id: 'skill:continuity-pass',
-      kind: 'skill',
+      id   : 'skill:continuity-pass',
+      kind : 'skill',
       label: 'Continuity pass',
-      path: '.aiagent/skills/continuity-pass/SKILL.md',
-      note: 'Re-read a scene against the bible and list what contradicts it.',
+      path : '.aiagent/skills/continuity-pass/SKILL.md',
+      note : 'Re-read a scene against the bible and list what contradicts it.',
     });
     expect(leaf!.children).toBeUndefined();
   });
@@ -571,17 +571,17 @@ describe('the Assets branch, one row per slot', () => {
   const slot = (key: string, binding: RefBinding, over: Partial<SlotNode> = {}): SlotNode => ({
     key,
     binding,
-    label: key,
-    refs: [],
+    label     : key,
+    refs      : [],
     candidates: [],
-    approved: false,
+    approved  : false,
     ...over,
   });
 
   const slots = (nodes: SlotNode[]): SlotGraph => ({
-    nodes: new Map(nodes.map((n) => [n.key, n])),
+    nodes     : new Map(nodes.map((n) => [n.key, n])),
     dependents: new Map(),
-    order: nodes.map((n) => n.key),
+    order     : nodes.map((n) => n.key),
   });
 
   /** The default manifest plus one older portrait take, and the slot that moved on from it. */
@@ -592,14 +592,14 @@ describe('the Assets branch, one row per slot', () => {
       { kind: 'portrait', characterId: 'aiko' },
       {
         candidates: [HASH_A, OLD],
-        hash: HASH_A,
+        hash      : HASH_A,
         ...over,
       },
     );
     return buildDocTree({
       ...base,
       manifest: [...base.manifest, asset(OLD)],
-      slots: slots([portrait]),
+      slots   : slots([portrait]),
     });
   };
 
@@ -676,9 +676,9 @@ describe('the Assets branch, one row per slot', () => {
     );
     const tree = buildDocTree({
       ...base,
-      manifest: hashes.map((hash) => asset(hash)),
+      manifest   : hashes.map((hash) => asset(hash)),
       assetLabels: labels,
-      slots: slots(nodes),
+      slots      : slots(nodes),
     });
     expect(kinds(tree)[0]!.children!.map((n) => n.label)).toEqual(['Aiko', 'Shot 9', 'Shot 10']);
   });
@@ -697,20 +697,20 @@ describe('backlinks', () => {
 
   it('join an entity to its sheet, its art, its scenes and its shots', () => {
     expect(backlinks['character:aiko']).toEqual({
-      sheet: 'wiki/cast/aiko.md',
-      wiki: 'wiki/cast/aiko.md',
+      sheet : 'wiki/cast/aiko.md',
+      wiki  : 'wiki/cast/aiko.md',
       assets: [
         {
-          hash: 'a'.repeat(64),
-          ext: 'png',
-          kind: 'portrait',
-          label: 'aaaaaaaa.png',
+          hash    : 'a'.repeat(64),
+          ext     : 'png',
+          kind    : 'portrait',
+          label   : 'aaaaaaaa.png',
           accepted: true,
-          base: true,
+          base    : true,
         },
       ],
       scenes: ['arrival'],
-      shots: [{ scene: 'arrival', shot: 'arrival-s1' }],
+      shots : [{ scene: 'arrival', shot: 'arrival-s1' }],
     });
   });
 
@@ -729,20 +729,20 @@ describe('backlinks', () => {
   // and each frame carries the shot it illustrates so the frames can be grouped by shot.
   it('join a scene to the frames drawn from it, naming the shot each one is for', () => {
     expect(backlinks['scene:arrival']).toEqual({
-      sheet: 'scenes/arrival.md',
+      sheet : 'scenes/arrival.md',
       assets: [
         {
-          hash: 'b'.repeat(64),
-          ext: 'png',
-          kind: 'shot_image',
-          label: 'bbbbbbbb.png',
+          hash    : 'b'.repeat(64),
+          ext     : 'png',
+          kind    : 'shot_image',
+          label   : 'bbbbbbbb.png',
           accepted: false,
-          base: false,
-          shotId: 'arrival-s1',
+          base    : false,
+          shotId  : 'arrival-s1',
         },
       ],
       scenes: ['arrival'],
-      shots: [{ scene: 'arrival', shot: 'arrival-s1' }],
+      shots : [{ scene: 'arrival', shot: 'arrival-s1' }],
     });
     expect(backlinks['scene:orphan']!.assets).toEqual([]);
   });
@@ -809,10 +809,10 @@ describe('WorkspaceSession — the tree over a real project', () => {
 
   beforeAll(async () => {
     p = await makeProject({
-      title: 'Tree',
+      title : 'Tree',
       script: SCRIPTS.linear,
       files: {
-        'wiki/history/canal.md': '# The canal\n\nRaised over a filled canal.\n',
+        'wiki/history/canal.md'                   : '# The canal\n\nRaised over a filled canal.\n',
         '.aiagent/skills/continuity-pass/SKILL.md': SKILL_MD,
       },
     });
@@ -845,11 +845,11 @@ describe('WorkspaceSession — the tree over a real project', () => {
     const tree = await new WorkspaceSession(p.dir, true, deps).docTree();
     expect(branch(tree.roots, 'branch:skills').children).toEqual([
       {
-        id: 'skill:continuity-pass',
-        kind: 'skill',
+        id   : 'skill:continuity-pass',
+        kind : 'skill',
         label: 'Continuity pass',
-        path: '.aiagent/skills/continuity-pass/SKILL.md',
-        note: 'List what a scene contradicts.',
+        path : '.aiagent/skills/continuity-pass/SKILL.md',
+        note : 'List what a scene contradicts.',
       },
     ]);
   });

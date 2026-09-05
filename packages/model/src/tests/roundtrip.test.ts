@@ -16,17 +16,17 @@ import { docToMarkdown, sceneToDoc, sceneToFountain } from '../serialize.js';
 /** The scene reduced to what a round-trip has to preserve. */
 function projected(scene: Scene): unknown {
   return {
-    id: scene.id,
-    location: scene.location,
+    id             : scene.id,
+    location       : scene.location,
     locationVariant: scene.locationVariant,
-    headingPrefix: scene.headingPrefix,
-    characters: scene.characters,
-    synopsis: scene.synopsis,
-    nextLineId: scene.nextLineId,
-    lines: scene.lines,
-    choices: scene.choices,
-    next: scene.next,
-    outfits: scene.outfits,
+    headingPrefix  : scene.headingPrefix,
+    characters     : scene.characters,
+    synopsis       : scene.synopsis,
+    nextLineId     : scene.nextLineId,
+    lines          : scene.lines,
+    choices        : scene.choices,
+    next           : scene.next,
+    outfits        : scene.outfits,
   };
 }
 
@@ -73,15 +73,15 @@ function sceneOf(id: string, lines: Omit<SceneLine, 'id'>[], extra: Partial<Scen
   }
   return {
     id,
-    location: 'classroom',
+    location       : 'classroom',
     locationVariant: 'day',
-    headingPrefix: 'INT.',
-    characters: speakers,
-    lines: lines.map((line, i) => ({ ...line, id: `${id}:L${i + 1}` })),
-    nextLineId: lines.length + 1,
-    choices: [],
-    next: undefined,
-    shots: [],
+    headingPrefix  : 'INT.',
+    characters     : speakers,
+    lines          : lines.map((line, i) => ({ ...line, id: `${id}:L${i + 1}` })),
+    nextLineId     : lines.length + 1,
+    choices        : [],
+    next           : undefined,
+    shots          : [],
     ...extra,
   };
 }
@@ -226,9 +226,9 @@ describe('sceneFromDoc — what a chunk is allowed to be', () => {
     expect(result.value.diagnostics).toEqual([
       {
         severity: 'warning',
-        code: 'ignored_scene_marker',
-        message: '[[scene: rooftop]] in scene "arrival" is ignored; a chunk\'s id is its filename',
-        where: 'arrival',
+        code    : 'ignored_scene_marker',
+        message : '[[scene: rooftop]] in scene "arrival" is ignored; a chunk\'s id is its filename',
+        where   : 'arrival',
       },
     ]);
   });

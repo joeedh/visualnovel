@@ -4,12 +4,12 @@ import type { Drift } from '@vn/types';
 
 const shot = (id: string, drift: Drift): CoverageShot => ({
   id,
-  framing: 'medium',
-  subjects: [],
-  location: 'day',
-  outfits: {},
+  framing    : 'medium',
+  subjects   : [],
+  location   : 'day',
+  outfits    : {},
   coversLines: [],
-  status: 'accepted',
+  status     : 'accepted',
   drift,
 });
 

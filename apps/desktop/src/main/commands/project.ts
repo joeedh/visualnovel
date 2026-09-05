@@ -26,16 +26,16 @@ function verdict(result: { ok: boolean; message: string }): CheckResult {
 }
 
 export const projectInfo = define({
-  id: 'project.info',
-  title: 'Project settings',
+  id         : 'project.info',
+  title      : 'Project settings',
   description:
     'What `project.yaml` says: the title, the entry scene, the art style, the model ids and the ' +
     'image parameters — plus how many image tasks the art style reaches. Never the API keys, ' +
     'whose names live in the file and whose values never leave the environment.',
   notes:
     'What `project.yaml` says: title, entry scene, art style, model ids, image params, and how many image tasks the art style reaches. Never the API keys — their *names* are in the file and a pane listing them is one screenshot away from looking like it lists their values.',
-  mutating: false,
-  props: {},
+  mutating   : false,
+  props      : {},
   async run(_props, ctx) {
     const view = await ctx.host.session.projectView();
     return { message: `${view.title} — ${view.imageTasks} image task(s).`, data: view };
@@ -43,8 +43,8 @@ export const projectInfo = define({
 });
 
 export const projectSetArtStyle = define({
-  id: 'project.setArtStyle',
-  title: 'Set the art style',
+  id         : 'project.setArtStyle',
+  title      : 'Set the art style',
   description:
     "Set the project's art style — the sentence every image prompt opens with. It is not art " +
     'notes on one rung: it reaches every portrait, sheet, plate and shot, so setting it re-keys ' +
@@ -52,11 +52,11 @@ export const projectSetArtStyle = define({
     'spliced into `project.yaml`, so comments and key order survive.',
   notes:
     'The sentence every image prompt opens with. Not art notes on one rung: it reaches every portrait, sheet, plate and shot, so it re-keys **every** image task. Spliced into `project.yaml`, so comments and key order survive.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   // Every other document mutator changes one document's words. This one changes what the project
   // looks like, and the next run redraws the whole library for it.
-  confirm: true,
+  confirm    : true,
   props: {
     style: prop.string('the art style; empty clears it', { default: '' }),
   },
@@ -74,8 +74,8 @@ export const projectSetArtStyle = define({
 const KEY_SCOPES = ['project', 'user'] as const;
 
 export const projectSetKey = define({
-  id: 'project.setKey',
-  title: 'Provide a model key',
+  id         : 'project.setKey',
+  title      : 'Provide a model key',
   description:
     'Store an API key for one model provider — the file `resolveKeys` reads when the matching ' +
     'environment variable is unset. `scope=project` writes it into this project (`keys/`, added ' +
@@ -84,14 +84,14 @@ export const projectSetKey = define({
     'way the value reaches that file and nowhere else: the history records `<secret>`.',
   notes:
     "Store one model provider's API key in `keys/`, the file `resolveKeys` reads when the matching environment variable is unset — and it says so when one is set, because the variable wins. The value goes to that file and nowhere else: the history records `<secret>`, and `keys` is added to `.gitignore` **before** the write, because commit-on-save runs `git commit -A`. Deliberately **not undoable**: `keys/` is outside the class a snapshot covers, which is what keeps an undo from writing over or deleting the credential this command exists to store.",
-  mutating: true,
+  mutating   : true,
   // Deliberately not undoable: an undo point is a git snapshot, and this command exists to keep
   // the credential out of git. At the user scope the file is not in a repository at all, so no
   // snapshot is possible.
-  undoable: false,
+  undoable   : false,
   props: {
     provider: prop.oneOf(KEY_VENDORS, 'which model provider the key is for'),
-    key: prop.secret('the API key; it is written to a gitignored file and never recorded'),
+    key     : prop.secret('the API key; it is written to a gitignored file and never recorded'),
     scope: prop.oneOf(
       KEY_SCOPES,
       'where the key is written: in this project, or once for every project on this machine',
@@ -109,8 +109,8 @@ export const projectSetKey = define({
 });
 
 export const projectTestKey = define({
-  id: 'project.testKey',
-  title: 'Test a model key',
+  id         : 'project.testKey',
+  title      : 'Test a model key',
   description:
     'Make one small real call with a provider’s key and say whether it worked. This is the ' +
     'question `project.keyStatus` cannot answer: a key can resolve and still be revoked, ' +
@@ -119,7 +119,7 @@ export const projectTestKey = define({
     'nothing, because a mock run never calls a provider.',
   // Writes nothing of its own. It does spend money, which the description states so that an author
   // is not left to infer the cost.
-  mutating: false,
+  mutating   : false,
   props: {
     provider: prop.oneOf(KEY_VENDORS, 'which provider’s key to try'),
   },
@@ -134,23 +134,23 @@ export const projectTestKey = define({
 });
 
 export const projectKeyStatus = define({
-  id: 'project.keyStatus',
-  title: 'Which model keys are set',
+  id         : 'project.keyStatus',
+  title      : 'Which model keys are set',
   description:
     'For each model provider, whether a key resolved and **which source** answered — an ' +
     'environment variable by name, this project’s `keys/`, an enclosing repository’s, or the ' +
     'user-level one. Never the key itself. It is also the honest answer to “why is it still ' +
     'asking me”: a set environment variable is read before every file, so it shadows one that ' +
     'was just pasted.',
-  mutating: false,
-  props: {},
+  mutating   : false,
+  props      : {},
   async run(_props, ctx) {
     const view = await ctx.host.session.keyStatusView();
     const missing = view.vendors.filter((v) => !v.resolved).map((v) => v.vendor);
     return {
       message:
         missing.length === 0 ? 'Every provider has a key.' : `No key for ${missing.join(', ')}.`,
-      data: view,
+      data   : view,
     };
   },
 });
@@ -177,14 +177,14 @@ async function pagesView(ctx: { host: CommandHost }, publishBranch: string) {
 }
 
 export const projectPagesStatus = define({
-  id: 'project.pagesStatus',
-  title: 'GitHub Pages status',
+  id         : 'project.pagesStatus',
+  title      : 'GitHub Pages status',
   description:
     'Whether this project carries the GitHub Pages publisher, whether it came from this build ' +
     'of the app, and what the repository would publish from.',
   notes:
     'Whether this project carries the GitHub page builder, and whether the copy it carries came from this build of the app. Read by the menu, which reads Install or Update accordingly.',
-  mutating: false,
+  mutating   : false,
   props: {
     branch: prop.string('The branch the workflow publishes the site to.', {
       default: 'gh-pages',
@@ -208,16 +208,16 @@ export const projectPagesStatus = define({
 });
 
 export const projectInstallPages = define({
-  id: 'project.installPages',
-  title: 'Install the GitHub page builder',
+  id         : 'project.installPages',
+  title      : 'Install the GitHub page builder',
   description:
     'Write a GitHub Actions workflow into this project that publishes it as a light-novel web ' +
     'page. The workflow and the renderer it runs are committed to the project repository; ' +
     'pushing the repository then publishes the site to a branch GitHub Pages can serve.',
   notes:
     'Write a GitHub Actions workflow into the project that publishes it as a light-novel web page, plus the bundled renderer the workflow runs. Refuses a project that is not a git repository, has no branch checked out, or has no `origin` remote. Exports the playable first, so the commit CI builds from is complete. Deliberately **not undoable**: it writes `.github/` and `.vnstudio/`, outside the tree the undo snapshot covers. The app never pushes. See [`../guides/github-pages.md`](../guides/github-pages.md).',
-  mutating: true,
-  confirm: true,
+  mutating   : true,
+  confirm    : true,
   props: {
     branch: prop.string('The branch the workflow publishes the site to.', {
       default: 'gh-pages',
@@ -229,27 +229,27 @@ export const projectInstallPages = define({
     const view = await pagesView(ctx, props.branch);
     if (!view.repo) {
       return {
-        ok: false,
+        ok    : false,
         reason: 'This project is not a git repository, so there is nothing to publish from.',
       };
     }
     if (!view.onBranch) {
       return {
-        ok: false,
+        ok    : false,
         reason:
           'This repository has no branch checked out yet. Make a commit first, then install the page builder.',
       };
     }
     if (!view.remote) {
       return {
-        ok: false,
+        ok    : false,
         reason:
           'This repository has no `origin` remote. Add one on GitHub, then install the page builder.',
       };
     }
     const verb = view.installed ? 'Updates' : 'Installs';
     return {
-      ok: true,
+      ok  : true,
       note:
         `${verb} the workflow and the renderer, and exports the playable. Pushing ${view.branch} ` +
         `then publishes the site to ${props.branch}. Serving it is a setting only you can change: ` +
@@ -262,7 +262,7 @@ export const projectInstallPages = define({
     // a file the author has no reason to know about.
     const { scenes } = await ctx.host.session.exportPlayable();
     const written = await installPages(ctx.host.session.dir, {
-      branch: view.branch,
+      branch       : view.branch,
       publishBranch: props.branch,
     });
 
@@ -281,7 +281,7 @@ export const projectInstallPages = define({
 
     return {
       message: `${view.installed ? 'Updated' : 'Installed'} the page builder; exported ${scenes} scene(s).`,
-      data: { ...view, publishBranch: props.branch },
+      data   : { ...view, publishBranch: props.branch },
       written: [...written, 'vngen/build/story.play.json'],
     };
   },

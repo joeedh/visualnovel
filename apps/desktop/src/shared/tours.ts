@@ -53,60 +53,60 @@ export interface Tour {
 
 export const TOURS: readonly Tour[] = [
   {
-    id: 'first-key',
+    id   : 'first-key',
     title: 'Set up a model key',
-    what: 'Put an API key where the app can find it, and prove it works.',
+    what : 'Put an API key where the app can find it, and prove it works.',
     steps: [
       {
         kind: 'command',
-        id: 'app.openKeyLink',
-        say: 'Open the provider’s console from the Setup pane and create a key there.',
+        id  : 'app.openKeyLink',
+        say : 'Open the provider’s console from the Setup pane and create a key there.',
       },
       {
-        kind: 'input',
-        id: 'project.setKey',
+        kind    : 'input',
+        id      : 'project.setKey',
         supplies: 'key',
-        say: 'Paste the key into the box beside it. It goes to one file and is never logged.',
+        say     : 'Paste the key into the box beside it. It goes to one file and is never logged.',
       },
       {
         kind: 'command',
-        id: 'project.testKey',
-        say: 'Press Test key. It makes one small real call and says whether the key works.',
+        id  : 'project.testKey',
+        say : 'Press Test key. It makes one small real call and says whether the key works.',
       },
     ],
   },
   {
-    id: 'art-direction',
+    id   : 'art-direction',
     title: 'Steer how something is drawn',
-    what: 'Say what you want changed about a picture, and render it again.',
+    what : 'Say what you want changed about a picture, and render it again.',
     steps: [
       {
-        kind: 'input',
-        id: 'art.setNotes',
+        kind    : 'input',
+        id      : 'art.setNotes',
         supplies: 'notes',
         say: 'Open the picture you want to change and type what you want different in its art notes.',
       },
       {
         kind: 'command',
-        id: 'asset.regenerate',
+        id  : 'asset.regenerate',
         say: 'Press Redraw. The note goes into the prompt, and the old take is kept beside the new one.',
       },
     ],
   },
   {
-    id: 'first-run',
+    id   : 'first-run',
     title: 'Approve a portrait and render',
-    what: 'Get past the approval gate and render everything that is waiting on it.',
+    what : 'Get past the approval gate and render everything that is waiting on it.',
     steps: [
       {
         kind: 'command',
-        id: 'gate.approve',
-        say: 'Pick the portrait you want the rest of the art drawn from, and approve it.',
+        id  : 'gate.approve',
+        say : 'Pick the portrait you want the rest of the art drawn from, and approve it.',
       },
       {
         kind: 'command',
-        id: 'pipeline.run',
-        say: 'Press Run. Everything that was blocked on the gate is planned and drawn.',
+        id  : 'pipeline.run',
+        say : 'Press Run. Everything that was blocked on the gate is planned and drawn.',
       },
     ],
   },

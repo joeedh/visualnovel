@@ -18,7 +18,7 @@ function chunks(png: Uint8Array): Chunk[] {
     out.push({
       type: buf.subarray(at + 4, at + 8).toString('latin1'),
       data: buf.subarray(at + 8, at + 8 + len),
-      crc: buf.readUInt32BE(at + 8 + len),
+      crc : buf.readUInt32BE(at + 8 + len),
     });
     at += 12 + len;
   }

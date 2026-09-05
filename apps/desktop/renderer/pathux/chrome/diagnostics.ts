@@ -126,8 +126,8 @@ class DiagnosticList {
     ui.shotId = '';
     shell().api.notifyChange();
     openNode(shell().screen as VnScreen | undefined, {
-      id: `scene:${scene}`,
-      kind: 'scene',
+      id   : `scene:${scene}`,
+      kind : 'scene',
       label: scene,
     });
     this.close();

@@ -16,7 +16,7 @@ const bytes = (s: string) => new TextEncoder().encode(s);
 const meta = (kind: 'portrait' | 'shot_image', extra = {}) => ({
   kind,
   sourceTask: 't',
-  modelId: 'm',
+  modelId   : 'm',
   ...extra,
 });
 
@@ -166,14 +166,14 @@ describe('manifests written before the split', () => {
         version: 1,
         assets: [
           {
-            hash: 'abc',
-            ext: 'png',
-            kind: 'portrait',
+            hash      : 'abc',
+            ext       : 'png',
+            kind      : 'portrait',
             sourceTask: 't',
-            refs: [],
-            modelId: 'm',
-            satisfies: { characterId: 'aiko' },
-            accepted: false,
+            refs      : [],
+            modelId   : 'm',
+            satisfies : { characterId: 'aiko' },
+            accepted  : false,
           },
         ],
       }),

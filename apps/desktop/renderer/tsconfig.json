@@ -1,23 +1,23 @@
 {
-  "extends": "../../../tsconfig.base.json",
+  "extends"        : "../../../tsconfig.base.json",
   "compilerOptions": {
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
-    "types": ["node", "jest"],
+    "lib"             : ["ES2023", "DOM", "DOM.Iterable"],
+    "types"           : ["node", "jest"],
     "moduleResolution": "bundler",
     "paths": {
       "@vn/artgen/slotaddr": ["../../../packages/artgen/src/slotaddr.ts"],
-      "@vn/authoring": ["../../../packages/authoring/src/index.ts"],
-      "@vn/commands": ["../../../packages/commands/src/index.ts"],
-      "@vn/gengraph": ["../../../packages/gengraph/src/index.ts"],
-      "@vn/git": ["../../../packages/git/src/index.ts"],
-      "@vn/debug2d": ["../../../packages/debug2d/src/index.ts"],
-      "@vn/types": ["../../../packages/types/src/index.ts"],
-      "pathux": ["../dist/pathux-types/pathux.d.ts"],
-      "pathux-graph": ["../dist/pathux-types/graph/index.d.ts"],
-      "pathux-base-types": ["../dist/pathux-types/core/base/ui_base_types.d.ts"],
-      "pathux-toolprop": ["../dist/pathux-types/path-controller/toolsys/toolprop.d.ts"],
-      "nstructjs": ["../../../vendor/nstructjs/build/structjs.d.ts"]
+      "@vn/authoring"      : ["../../../packages/authoring/src/index.ts"],
+      "@vn/commands"       : ["../../../packages/commands/src/index.ts"],
+      "@vn/gengraph"       : ["../../../packages/gengraph/src/index.ts"],
+      "@vn/git"            : ["../../../packages/git/src/index.ts"],
+      "@vn/debug2d"        : ["../../../packages/debug2d/src/index.ts"],
+      "@vn/types"          : ["../../../packages/types/src/index.ts"],
+      "pathux"             : ["../dist/pathux-types/pathux.d.ts"],
+      "pathux-graph"       : ["../dist/pathux-types/graph/index.d.ts"],
+      "pathux-base-types"  : ["../dist/pathux-types/core/base/ui_base_types.d.ts"],
+      "pathux-toolprop"    : ["../dist/pathux-types/path-controller/toolsys/toolprop.d.ts"],
+      "nstructjs"          : ["../../../vendor/nstructjs/build/structjs.d.ts"]
     }
   },
-  "include": ["./**/*.ts"]
+  "include"        : ["./**/*.ts"]
 }

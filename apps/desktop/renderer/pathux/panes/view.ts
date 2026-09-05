@@ -138,11 +138,9 @@ const CLOSE_SIZE = 18;
 function growCloseButton(sarea: ScreenArea): void {
   const shadow = (sarea as unknown as { shadow: ShadowRoot }).shadow;
   const bar = [...shadow.children].reverse().find((el) => el.tagName === 'ROWFRAME-X') as
-    | (UIBase & { shadow: ShadowRoot })
-    | undefined;
+    (UIBase & { shadow: ShadowRoot }) | undefined;
   const button = bar?.shadow.querySelector('iconbutton-x') as
-    | (IconButton & { dom: HTMLElement })
-    | null;
+    (IconButton & { dom: HTMLElement }) | null;
   if (!bar || !button) return;
 
   // Drawn in the colour the title beside it is drawn in, since the sheet's own glyphs are baked
@@ -165,7 +163,7 @@ type Split = { horiz: boolean; intoNew: boolean };
 
 /** Which way `splitArea` divides, and whether the new half is the one that gets the editor. */
 const SPLIT: Record<Exclude<OpenWhere, 'here' | 'elsewhere' | 'window' | 'popup'>, Split> = {
-  left: { horiz: false, intoNew: false },
+  left : { horiz: false, intoNew: false },
   right: { horiz: false, intoNew: true },
   above: { horiz: true, intoNew: false },
   below: { horiz: true, intoNew: true },
@@ -189,8 +187,8 @@ function open(screen: VnScreen, editor: EditorId, where: OpenWhere): string | nu
   if (where === 'popup') {
     const [wide, tall] = popupSize(editor);
     const sarea = screen.popupArea(cls as unknown as Parameters<VnScreen['popupArea']>[0], {
-      title: editorTitle(editor),
-      width: Math.min(wide, screen.size[0] * 0.9),
+      title : editorTitle(editor),
+      width : Math.min(wide, screen.size[0] * 0.9),
       height: Math.min(tall, screen.size[1] * 0.9),
     });
     growCloseButton(sarea as unknown as ScreenArea);
@@ -271,12 +269,12 @@ export function collapsePane(screen: VnScreen, index: number): void {
  */
 export function panesOf(screen: VnScreen): Pane[] {
   return (screen.sareas as ScreenArea[]).map((sarea) => ({
-    editor: areaNameOf(sarea),
-    chrome: Boolean(sarea.area && sarea.area.flag & AreaFlags.HIDDEN),
+    editor  : areaNameOf(sarea),
+    chrome  : Boolean(sarea.area && sarea.area.flag & AreaFlags.HIDDEN),
     floating: Boolean(sarea.floating),
-    active: screen.sareas.active === sarea,
-    width: sarea.size[0] ?? 0,
-    height: sarea.size[1] ?? 0,
+    active  : screen.sareas.active === sarea,
+    width   : sarea.size[0] ?? 0,
+    height  : sarea.size[1] ?? 0,
   }));
 }
 

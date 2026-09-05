@@ -30,7 +30,7 @@ export async function loadAssetThumb(hash: string, ext: string): Promise<ImageBi
     throw new Error(`No stored bytes for ${hash.slice(0, 8)}.${ext} (${response.status}).`);
   }
   return createImageBitmap(await response.blob(), {
-    resizeWidth: THUMB_WIDTH,
+    resizeWidth  : THUMB_WIDTH,
     resizeQuality: 'high',
   });
 }
@@ -46,10 +46,10 @@ export function galleryItem(asset: AssetListing): GalleryItem {
   if (asset.accepted) tags.push('accepted');
 
   return {
-    id: asset.hash,
-    label: asset.label,
-    tooltip: `${asset.label} — ${asset.kind}${asset.accepted ? ' · accepted' : ''}`,
+    id        : asset.hash,
+    label     : asset.label,
+    tooltip   : `${asset.label} — ${asset.kind}${asset.accepted ? ' · accepted' : ''}`,
     searchTags: tags,
-    image: () => loadAssetThumb(asset.hash, asset.ext),
+    image     : () => loadAssetThumb(asset.hash, asset.ext),
   };
 }

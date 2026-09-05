@@ -99,7 +99,7 @@ export function redactEvidence(evidence: Evidence, redactor: Redactor): Evidence
     // `ThreadRecord` later into the report unscrubbed. Everything named here either holds no
     // authored text or is scrubbed on the way past.
     thread: {
-      id: evidence.thread.id,
+      id       : evidence.thread.id,
       startedAt: evidence.thread.startedAt,
       ...(evidence.thread.commit === undefined ? {} : { commit: evidence.thread.commit }),
       ...(evidence.thread.model === undefined ? {} : { model: evidence.thread.model }),
@@ -123,7 +123,7 @@ export function redactEvidence(evidence: Evidence, redactor: Redactor): Evidence
     acts: evidence.acts.map((act) => ({
       ...act,
       invocation: scrub(act.invocation),
-      message: scrub(act.message),
+      message   : scrub(act.message),
       ...(act.error === undefined ? {} : { error: scrub(act.error) }),
       ...(act.written === undefined ? {} : { written: act.written.map(scrub) }),
     })),
@@ -208,9 +208,9 @@ function block(text: string): string {
 }
 
 const ROLES: Record<FeedItem['role'], string> = {
-  user: 'author',
-  agent: 'agent',
-  tool: 'tool',
+  user   : 'author',
+  agent  : 'agent',
+  tool   : 'tool',
   blocked: 'blocked',
 };
 

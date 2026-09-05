@@ -3,7 +3,7 @@ import { DslError, formatCommand, parseCommand } from '../dsl.js';
 describe('parseCommand', () => {
   it('parses the documented form', () => {
     expect(parseCommand("something.command(property1='bleh' property2=1)")).toEqual({
-      id: 'something.command',
+      id   : 'something.command',
       props: { property1: 'bleh', property2: 1 },
     });
   });
@@ -23,11 +23,11 @@ describe('parseCommand', () => {
       'x.y(s="dq" b=true f=false n=-1.5 e=2e3 bare=execute list=[\'a\', "b"])',
     );
     expect(props).toEqual({
-      s: 'dq',
-      b: true,
-      f: false,
-      n: -1.5,
-      e: 2000,
+      s   : 'dq',
+      b   : true,
+      f   : false,
+      n   : -1.5,
+      e   : 2000,
       bare: 'execute',
       list: ['a', 'b'],
     });

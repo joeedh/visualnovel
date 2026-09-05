@@ -18,7 +18,7 @@ function asset(
     kind,
     sourceTask: `task-${hash}`,
     refs,
-    modelId: 'm',
+    modelId : 'm',
     accepted: false,
     satisfies,
   };
@@ -30,7 +30,7 @@ function cafe(pin: string | undefined, mute = false): Location {
   l.variants = [
     { id: 'night', description: 'lamps on' },
     {
-      id: 'dawn',
+      id         : 'dawn',
       description: 'grey light',
       ...(pin
         ? {
@@ -41,7 +41,7 @@ function cafe(pin: string | undefined, mute = false): Location {
                 variant: [
                   {
                     pin,
-                    ext: 'png',
+                    ext : 'png',
                     from: { kind: 'plate' as const, locationId: 'cafe', variant: 'night' },
                   },
                 ],
@@ -55,13 +55,13 @@ function cafe(pin: string | undefined, mute = false): Location {
 }
 
 const SHOT: Shot = {
-  id: 'arrival__a',
-  sceneId: 'arrival',
-  framing: 'medium',
-  location: 'dawn',
-  subjects: [],
+  id         : 'arrival__a',
+  sceneId    : 'arrival',
+  framing    : 'medium',
+  location   : 'dawn',
+  subjects   : [],
   coversLines: [],
-  status: 'pending',
+  status     : 'pending',
 };
 
 /**
@@ -75,7 +75,7 @@ function ctx(pin: string | undefined, mute = false): SuspendContext {
     [cafe(pin, mute)],
   );
   return {
-    model: m,
+    model  : m,
     assets: [
       asset('oldnightplate', 'location_ref', [{ locationId: 'cafe', variant: 'night' }]),
       {
@@ -85,7 +85,7 @@ function ctx(pin: string | undefined, mute = false): SuspendContext {
       asset('plate-dawn', 'location_ref', [{ locationId: 'cafe', variant: 'dawn' }]),
       asset('frame', 'shot_image', [{ sceneId: 'arrival', shotId: 'arrival__a' }], ['plate-dawn']),
     ],
-    shots: new Map([['arrival', [SHOT]]]),
+    shots  : new Map([['arrival', [SHOT]]]),
     angleOf: () => undefined,
   };
 }
@@ -126,8 +126,8 @@ describe('suspendedAssets', () => {
       refs: {
         variant: [
           {
-            pin: 'plate-dawn-old',
-            ext: 'png',
+            pin : 'plate-dawn-old',
+            ext : 'png',
             from: { kind: 'plate', locationId: 'cafe', variant: 'dawn' },
           },
         ],

@@ -13,11 +13,11 @@ import { adoptSlot, adoptionForSlot, generateConcept } from '../index.js';
 const image: ImageProvider = {
   generate: (): Promise<ImageResult> =>
     Promise.resolve({
-      bytes: new TextEncoder().encode('a repaint an artist handed in'),
-      ext: 'png',
+      bytes  : new TextEncoder().encode('a repaint an artist handed in'),
+      ext    : 'png',
       modelId: 'fake-image',
     }),
-  edit: () => Promise.reject(new Error('a concept is generated, never edited')),
+  edit    : () => Promise.reject(new Error('a concept is generated, never edited')),
 };
 
 /** A project holding one real asset that carries no mock marking, ready to be adopted. */
@@ -50,7 +50,7 @@ describe('adoptionForSlot', () => {
         code: 'NOT_A_SLOT',
       });
       expect(await refusal({ kind: 'portrait', characterId: 'aiko' })).toMatchObject({
-        code: 'GATED_SLOT',
+        code  : 'GATED_SLOT',
         reason: expect.stringContaining('gate.approve'),
       });
       expect(
@@ -73,7 +73,7 @@ describe('adoptionForSlot', () => {
         slot: { kind: 'plate', locationId: 'rooftop', variant: 'evening' },
       });
       expect(decided.ok && decided.plan).toMatchObject({
-        kind: 'location_ref',
+        kind : 'location_ref',
         label: 'rooftop — evening plate',
       });
       expect(decided.ok && decided.plan.supersedes).toBeUndefined();
@@ -140,7 +140,7 @@ describe('adoptSlot', () => {
       // drift-unknown, because the artist worked from these lines
       const after = JSON.parse(await p.read('vngen/work/shots/arrival.json')) as ShotsFile;
       expect(after.shots[0]!.shotData).toMatchObject({
-        image: ref.hash,
+        image    : ref.hash,
         proseHash: expect.any(String),
       });
 

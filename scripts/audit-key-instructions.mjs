@@ -68,13 +68,13 @@ await build({
       "export { extractJson } from '@vn/providers';",
     ].join('\n'),
     resolveDir: root,
-    loader: 'ts',
+    loader    : 'ts',
   },
-  outfile: TMP,
-  bundle: true,
+  outfile : TMP,
+  bundle  : true,
   platform: 'node',
-  format: 'cjs',
-  target: 'node20',
+  format  : 'cjs',
+  target  : 'node20',
   alias,
   external: EXTERNAL,
   logLevel: 'warning',
@@ -107,8 +107,8 @@ async function readPage(url) {
   try {
     const response = await fetch(url, {
       redirect: 'follow',
-      headers: HEADERS,
-      signal: abort.signal,
+      headers : HEADERS,
+      signal  : abort.signal,
     });
     if (!response.ok) return { problem: `the page answered HTTP ${response.status}` };
     const text = htmlToText(await response.text());
@@ -162,9 +162,9 @@ for (const vendor of guide.vendors) {
   const ours = vendor.body.map((block) => blockText(block)).join('\n\n');
   const prompt = auditPrompt({
     vendor: vendor.vendor,
-    name: vendor.name,
+    name  : vendor.name,
     ours,
-    pageUrl: vendor.docs,
+    pageUrl : vendor.docs,
     pageText: page.text,
   });
 

@@ -73,10 +73,10 @@ describe('pageProblem', () => {
 
 describe('auditPrompt', () => {
   const prompt = auditPrompt({
-    vendor: 'gemini',
-    name: 'Google Gemini',
-    ours: 'Open the console and press Create key.',
-    pageUrl: 'https://ai.google.dev/gemini-api/docs/api-key',
+    vendor  : 'gemini',
+    name    : 'Google Gemini',
+    ours    : 'Open the console and press Create key.',
+    pageUrl : 'https://ai.google.dev/gemini-api/docs/api-key',
     pageText: 'Get an API key. Click Get API key.',
   });
 
@@ -92,10 +92,10 @@ describe('auditPrompt', () => {
 
   it('caps the page, so a weekly run cannot be priced by a vendor’s footer', () => {
     const huge = auditPrompt({
-      vendor: 'gemini',
-      name: 'Google Gemini',
-      ours: 'ours',
-      pageUrl: 'https://example.com',
+      vendor  : 'gemini',
+      name    : 'Google Gemini',
+      ours    : 'ours',
+      pageUrl : 'https://example.com',
       pageText: 'x'.repeat(200_000),
     });
     expect(huge.length).toBeLessThan(60_000);
@@ -119,11 +119,11 @@ describe('parseReview', () => {
   it('keeps a drift report whole', () => {
     const review = parseReview(
       {
-        vendor: 'anthropic',
-        verdict: 'drifted',
-        summary: 'The button was renamed.',
-        ours: 'press Create key',
-        theirs: 'press Create Key',
+        vendor  : 'anthropic',
+        verdict : 'drifted',
+        summary : 'The button was renamed.',
+        ours    : 'press Create key',
+        theirs  : 'press Create Key',
         proposal: '3. Press **Create Key**.',
       },
       'anthropic',
@@ -158,11 +158,11 @@ describe('parseReview', () => {
 describe('renderReview', () => {
   const agreed: VendorReview = { vendor: 'gemini', verdict: 'agree', summary: 'Same steps.' };
   const drifted: VendorReview = {
-    vendor: 'anthropic',
-    verdict: 'drifted',
-    summary: 'The key page moved.',
-    ours: 'Open Settings ▸ API keys.',
-    theirs: 'Open Developer ▸ Keys.',
+    vendor  : 'anthropic',
+    verdict : 'drifted',
+    summary : 'The key page moved.',
+    ours    : 'Open Settings ▸ API keys.',
+    theirs  : 'Open Developer ▸ Keys.',
     proposal: '2. Open **Developer ▸ Keys**.',
   };
 

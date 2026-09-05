@@ -13,11 +13,11 @@ import { generateConcept, promoteConcept, promotionOf } from '../index.js';
 const image: ImageProvider = {
   generate: (): Promise<ImageResult> =>
     Promise.resolve({
-      bytes: new TextEncoder().encode('a concept of the rooftop'),
-      ext: 'png',
+      bytes  : new TextEncoder().encode('a concept of the rooftop'),
+      ext    : 'png',
       modelId: 'fake-image',
     }),
-  edit: () => Promise.reject(new Error('a concept is generated, never edited')),
+  edit    : () => Promise.reject(new Error('a concept is generated, never edited')),
 };
 
 /** A rooftop concept in a fresh project, plus everything a promotion needs. */

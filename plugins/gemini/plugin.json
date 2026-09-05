@@ -1,16 +1,16 @@
 {
-  "name": "gemini",
-  "version": "1.0.0",
-  "apiVersion": 1,
+  "name"       : "gemini",
+  "version"    : "1.0.0",
+  "apiVersion" : 1,
   "description": "Google's Gemini image models, as generate and edit nodes that call the vendor directly.",
-  "nodeTypes": ["GeminiImage", "GeminiEditImage"],
-  "services": ["blobs", "assets", "text", "fetch", "key"],
-  "keys": ["gemini"],
-  "entry": "index.ts",
-  "priceAgent": true,
+  "nodeTypes"  : ["GeminiImage", "GeminiEditImage"],
+  "services"   : ["blobs", "assets", "text", "fetch", "key"],
+  "keys"       : ["gemini"],
+  "entry"      : "index.ts",
+  "priceAgent" : true,
   "prices": {
     "pricesAsOf": "2026-08-25",
-    "source": "published list prices, read when this plugin was written",
+    "source"    : "published list prices, read when this plugin was written",
     "models": {
       "gemini-2.5-flash-image": { "image": 0.039 }
     }

@@ -25,12 +25,12 @@ import type { Selection } from '../selection.js';
 import type { DocNode, DocNodeKind, EntityLinks } from '../../../../src/shared/ipc.js';
 
 const NONE: Selection = {
-  sceneId: '',
-  shotId: '',
+  sceneId    : '',
+  shotId     : '',
   characterId: '',
-  docPath: '',
-  assetHash: '',
-  graphSlug: '',
+  docPath    : '',
+  assetHash  : '',
+  graphSlug  : '',
 };
 
 const node = (id: string, kind: DocNode['kind'], over: Partial<DocNode> = {}): DocNode => ({
@@ -44,7 +44,7 @@ const TREE: DocNode[] = [
   node('branch:story', 'branch', {
     children: [
       node('scene:greet', 'scene', {
-        path: 'scenes/greet.md',
+        path    : 'scenes/greet.md',
         children: [node('shot:greet/greet__s1', 'shot', { badge: 'wide' })],
       }),
       node('scene:leave', 'scene', { path: 'scenes/leave.md', badge: 'unreachable' }),
@@ -58,8 +58,8 @@ const TREE: DocNode[] = [
 
 const SKILL = node('skill:continuity-pass', 'skill', {
   label: 'Continuity pass',
-  path: '.aiagent/skills/continuity-pass/SKILL.md',
-  note: 'List what a scene contradicts.',
+  path : '.aiagent/skills/continuity-pass/SKILL.md',
+  note : 'List what a scene contradicts.',
 });
 
 const ids = (rows: DocRow[]): string[] => rows.map((row) => row.node.id);
@@ -104,7 +104,7 @@ describe('a counted `more`', () => {
       children: [
         node('scene:a', 'scene'),
         node('more:branch:story', 'more', {
-          label: '… and 2 more',
+          label   : '… and 2 more',
           children: [node('scene:b', 'scene'), node('scene:c', 'scene')],
         }),
       ],
@@ -144,7 +144,7 @@ describe('filterTree', () => {
       children: [
         node('scene:a', 'scene'),
         node('more:branch:story', 'more', {
-          label: '… and 2 more',
+          label   : '… and 2 more',
           children: [node('scene:greet', 'scene')],
         }),
       ],
@@ -248,7 +248,7 @@ describe('selectionForNode', () => {
     const shot = TREE[0]!.children![0]!.children![0]!;
     expect(selectionForNode(shot, NONE)).toMatchObject({
       sceneId: 'greet',
-      shotId: 'greet__s1',
+      shotId : 'greet__s1',
     });
   });
 
@@ -256,7 +256,7 @@ describe('selectionForNode', () => {
     expect(selectionForNode(TREE[1]!.children![0]!, NONE)).toEqual({
       ...NONE,
       characterId: 'aiko',
-      docPath: 'characters/aiko/character.md',
+      docPath    : 'characters/aiko/character.md',
     });
   });
 
@@ -285,7 +285,7 @@ describe('selectionForNode', () => {
     const asset = node('asset:a1b2c3d4', 'asset');
     expect(selectionForNode(asset, { ...NONE, docPath: 'wiki/a.md' })).toEqual({
       ...NONE,
-      docPath: 'wiki/a.md',
+      docPath  : 'wiki/a.md',
       assetHash: 'a1b2c3d4',
     });
     expect(nodeIsSelected(asset, { ...NONE, assetHash: 'a1b2c3d4' })).toBe(true);
@@ -298,7 +298,7 @@ describe('selectionForNode', () => {
    */
   it('names the graph a drawn picture came from as well as the picture', () => {
     const drawn = node('asset:a1b2c3d4', 'asset', {
-      slot: 'portrait:aiko',
+      slot      : 'portrait:aiko',
       boundGraph: 'portraits',
     });
     expect(selectionForNode(drawn, NONE)).toEqual({
@@ -316,7 +316,7 @@ describe('selectionForNode', () => {
     const bound = node('slot:portrait:aiko', 'slot', { boundGraph: 'portraits' });
     expect(selectionForNode(bound, { ...NONE, docPath: 'wiki/a.md' })).toEqual({
       ...NONE,
-      docPath: 'wiki/a.md',
+      docPath  : 'wiki/a.md',
       graphSlug: 'portraits',
     });
 
@@ -330,7 +330,7 @@ describe('selectionForNode', () => {
     expect(selectionForNode(orphan, { ...NONE, docPath: 'wiki/a.md' })).toEqual({
       ...NONE,
       characterId: 'rin',
-      docPath: 'wiki/a.md',
+      docPath    : 'wiki/a.md',
     });
   });
 
@@ -402,7 +402,7 @@ describe('assetGroups', () => {
   const links = (assets: EntityLinks['assets']): EntityLinks => ({
     assets,
     scenes: [],
-    shots: [],
+    shots : [],
   });
   const asset = (hash: string, kind: string, shotId?: string) =>
     ({
@@ -410,7 +410,7 @@ describe('assetGroups', () => {
       ext: 'png',
       kind,
       accepted: false,
-      base: true,
+      base    : true,
       ...(shotId !== undefined ? { shotId } : {}),
     }) as EntityLinks['assets'][number];
 
@@ -453,9 +453,9 @@ describe('menuFor', () => {
   it('offers a location a reference shot, bound to that location', () => {
     const entries = menuFor(node('location:cafe', 'location', { path: 'locations/cafe.md' }));
     expect(entries[0]).toMatchObject({
-      id: 'art.generate',
+      id   : 'art.generate',
       props: { subject: 'location:cafe', open: true },
-      form: true,
+      form : true,
     });
     expect(idsOf(node('location:cafe', 'location', { path: 'locations/cafe.md' }))).toEqual([
       'art.generate',
@@ -506,9 +506,9 @@ describe('menuFor', () => {
       { label: 'New skill…', id: 'doc.create', props: { kind: 'skill' }, form: true },
       {
         label: 'Ask the agent for a skill…',
-        id: 'agent.run',
+        id   : 'agent.run',
         props: { input: NEW_SKILL_PROMPT },
-        form: true,
+        form : true,
       },
     ]);
   });
@@ -533,13 +533,13 @@ describe('menuFor', () => {
     const entries = menuFor(node('scene:greet', 'scene'));
     expect(entries[1]).toEqual({
       label: 'Edit in the agent…',
-      id: 'agent.run',
+      id   : 'agent.run',
       props: { input: 'edit greet ' },
-      form: true,
+      form : true,
     });
     expect(entries[3]).toEqual({
       label: 'Copy scene id',
-      id: 'app.copy',
+      id   : 'app.copy',
       props: { text: 'greet', what: 'scene id' },
     });
   });
@@ -578,7 +578,7 @@ describe('menuFor', () => {
     expect(entries[1]).toMatchObject({
       label: 'Un-approve',
       props: { hash: 'a1b2c3' },
-      form: true,
+      form : true,
     });
   });
 
@@ -588,7 +588,7 @@ describe('menuFor', () => {
     const filled = node('asset:a1b2c3', 'asset', { slot: 'portrait:aiko' });
     expect(menuFor(filled)[4]).toEqual({
       label: 'Create a graph for this slot',
-      id: 'gengraph.createForSlot',
+      id   : 'gengraph.createForSlot',
       props: { slot: 'portrait:aiko' },
     });
     expect(idsOf(node('asset:a1b2c3', 'asset'))).not.toContain('gengraph.createForSlot');
@@ -649,22 +649,22 @@ describe('menuFor', () => {
     expect(menuFor(SKILL)).toEqual([
       {
         label: 'Open in the Skills pane',
-        id: 'view.open',
+        id   : 'view.open',
         props: {
-          editor: 'skills',
-          where: 'elsewhere',
+          editor : 'skills',
+          where  : 'elsewhere',
           subject: '.aiagent/skills/continuity-pass/SKILL.md',
         },
       },
       {
         label: 'Ask the agent to change this skill…',
-        id: 'agent.run',
+        id   : 'agent.run',
         props: { input: 'Edit the "Continuity pass" skill: ' },
-        form: true,
+        form : true,
       },
       {
         label: 'Copy skill id',
-        id: 'app.copy',
+        id   : 'app.copy',
         props: { text: 'continuity-pass', what: 'skill id' },
       },
     ]);
@@ -776,21 +776,21 @@ describe('rowTitle', () => {
     // A `Record` rather than a list, so adding a `DocNodeKind` fails to compile here until
     // someone has decided what its row says on hover.
     const kinds: Record<DocNodeKind, true> = {
-      branch: true,
-      scene: true,
-      shot: true,
+      branch   : true,
+      scene    : true,
+      shot     : true,
       character: true,
-      location: true,
-      wiki: true,
-      wikidir: true,
-      skill: true,
-      dir: true,
-      file: true,
-      asset: true,
+      location : true,
+      wiki     : true,
+      wikidir  : true,
+      skill    : true,
+      dir      : true,
+      file     : true,
+      asset    : true,
       assetkind: true,
-      slot: true,
-      graph: true,
-      more: true,
+      slot     : true,
+      graph    : true,
+      more     : true,
     };
     for (const kind of Object.keys(kinds) as DocNodeKind[]) {
       expect(rowTitle(node(`${kind}:x`, kind), plain)).not.toBe('');
@@ -808,8 +808,8 @@ describe('nodeKey', () => {
 describe('offerOf', () => {
   it('reads a menu entry as the invocation it already holds', () => {
     expect(offerOf({ label: 'Accept', id: 'asset.accept', props: { hash: 'a1' } })).toEqual({
-      ok: true,
-      id: 'asset.accept',
+      ok   : true,
+      id   : 'asset.accept',
       props: { hash: 'a1' },
       label: 'Accept',
     });

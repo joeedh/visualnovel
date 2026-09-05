@@ -38,26 +38,26 @@ const say = z.string().describe('what to tell the author, written as an instruct
 const step = z.union([
   z.object({
     kind: z.enum(['command']).describe('a button to press'),
-    id: z.string().describe('the command it runs'),
+    id  : z.string().describe('the command it runs'),
     props,
     say,
   }),
   z.object({
     kind: z.enum(['input']).describe('a box to type in'),
-    id: z.string().describe('the command the box commits'),
+    id  : z.string().describe('the command the box commits'),
     props,
     supplies: z.string().describe('the prop the author types'),
     say,
   }),
   z.object({
-    kind: z.enum(['select']).describe('a subject to pick before the step that acts on it'),
+    kind    : z.enum(['select']).describe('a subject to pick before the step that acts on it'),
     itemKind: z.string().describe('scene, shot, asset, character, location'),
-    key: z.string().describe('its id'),
+    key     : z.string().describe('its id'),
     say,
   }),
   z.object({
-    kind: z.enum(['gesture']).describe('a drag'),
-    id: z.string().describe('the interaction id, from interaction.list'),
+    kind   : z.enum(['gesture']).describe('a drag'),
+    id     : z.string().describe('the interaction id, from interaction.list'),
     carried: z.string().describe('what the author picks up, as that interaction spells it'),
     target: z
       .string()
@@ -69,7 +69,7 @@ const step = z.union([
 
 const ARGS = z.object({
   title: z.string().describe('a few words naming what this walks through'),
-  what: z.string().describe('one sentence on what the author will have done by the end'),
+  what : z.string().describe('one sentence on what the author will have done by the end'),
   steps: z.array(step).min(1),
 });
 
@@ -90,38 +90,38 @@ export interface ShowMeDeps {
  */
 export function showMeTool(deps: ShowMeDeps): Tool<ShowMeArgs> {
   const known: Known = {
-    command: (id) => deps.commands.get(id)?.props,
+    command    : (id) => deps.commands.get(id)?.props,
     interaction: (id) => deps.interactions.get(id) !== undefined,
-    coerce: coerceProps,
+    coerce     : coerceProps,
   };
   return {
-    name: 'show_me',
+    name       : 'show_me',
     description: DESCRIPTION,
-    mutating: false,
-    args: ARGS,
+    mutating   : false,
+    args       : ARGS,
     run(args) {
       const tour: Tour = {
-        id: 'agent',
+        id   : 'agent',
         title: args.title,
-        what: args.what,
+        what : args.what,
         steps: args.steps as Step[],
       };
       if (!deps.show) {
         return Promise.resolve({
-          ok: false,
+          ok    : false,
           output: 'A tour points at controls, and there is no window here to point at.',
         });
       }
       const problems = checkTour(tour, known);
       if (problems.length > 0) {
         return Promise.resolve({
-          ok: false,
+          ok    : false,
           output: `That tour will not run:\n${problems.join('\n')}`,
         });
       }
       deps.show(tour);
       return Promise.resolve({
-        ok: true,
+        ok    : true,
         output: `Walking the author through ${tour.steps.length} step(s), which they press themselves.`,
       });
     },

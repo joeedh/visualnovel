@@ -12,12 +12,12 @@ import { driftOf, proseHash } from '../drift.js';
 const line = (id: string, text: string): SceneLine => ({ id, kind: 'narration', text });
 
 const scene = (lines: SceneLine[]): Scene => ({
-  id: 's',
-  location: 'roof',
+  id        : 's',
+  location  : 'roof',
   characters: [],
   lines,
   choices: [],
-  shots: [],
+  shots  : [],
 });
 
 const LINES = [
@@ -30,15 +30,15 @@ const SCENE = scene(LINES);
 /** A rendered shot whose recorded hash is, by construction, the one its lines produce now. */
 function rendered(coversLines: string[], from: Scene = SCENE): Shot {
   return {
-    id: 's__a',
-    sceneId: 's',
-    framing: 'medium',
+    id      : 's__a',
+    sceneId : 's',
+    framing : 'medium',
     location: 'day',
     subjects: [],
     coversLines,
-    image: 'abc',
+    image    : 'abc',
     proseHash: proseHash(from, coversLines),
-    status: 'accepted',
+    status   : 'accepted',
   };
 }
 
@@ -120,15 +120,15 @@ describe('the stamp a run leaves', () => {
 
       const after = (await p.reload()).model.scenes.get('arrival')!;
       const shot: Shot = {
-        id: persisted.id,
-        sceneId: 'arrival',
-        framing: persisted.framing,
-        location: persisted.location,
-        subjects: [],
+        id         : persisted.id,
+        sceneId    : 'arrival',
+        framing    : persisted.framing,
+        location   : persisted.location,
+        subjects   : [],
         coversLines: persisted.coversLines,
-        image: persisted.shotData!.image,
-        proseHash: stamped,
-        status: 'accepted',
+        image      : persisted.shotData!.image,
+        proseHash  : stamped,
+        status     : 'accepted',
       };
       expect(driftOf(after, shot)).toBe('drifted');
 

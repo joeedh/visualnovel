@@ -34,8 +34,8 @@ async function tempProject(): Promise<{
   cleanup: () => Promise<void>;
 }> {
   const p = await makeProject({
-    title: 'Test',
-    script: SCRIPT,
+    title     : 'Test',
+    script    : SCRIPT,
     characters: [{ id: 'aiko', name: 'Aiko', status: 'candidates' }],
   });
   return { dir: p.dir, store: (await p.reload()).store, cleanup: () => p.cleanup() };
@@ -60,17 +60,17 @@ function scriptIO(answers: string[]): { io: ApproveIO; out: () => string } {
   const lines: string[] = [];
   let i = 0;
   const io: ApproveIO = {
-    ask: (q) => (lines.push(q), Promise.resolve(answers[i++] ?? '')),
+    ask  : (q) => (lines.push(q), Promise.resolve(answers[i++] ?? '')),
     write: (l) => void lines.push(l),
   };
   return { io, out: () => lines.join('\n') };
 }
 
 const portraitMeta = (characterId: string) => ({
-  kind: 'portrait' as const,
+  kind      : 'portrait' as const,
   sourceTask: `task-${characterId}-${Math.random()}`,
-  modelId: 'mock-image',
-  satisfies: { characterId },
+  modelId   : 'mock-image',
+  satisfies : { characterId },
 });
 
 const readChar = (dir: string): Promise<string> =>
@@ -103,9 +103,9 @@ describe('cmdRun — a failure is not a clean run', () => {
 
   /** An image backend that rejects every call, so a provider outage is deterministic. */
   const brokenImages = (message: string): ImageBackend => ({
-    modelId: 'broken-image',
+    modelId : 'broken-image',
     generate: () => Promise.reject(new Error(message)),
-    edit: () => Promise.reject(new Error(message)),
+    edit    : () => Promise.reject(new Error(message)),
   });
 
   const runIn = (dir: string, providers: Providers) =>
@@ -113,8 +113,8 @@ describe('cmdRun — a failure is not a clean run', () => {
 
   it('exits 1, names the reason, and says the next run will retry', async () => {
     const p = await makeProject({
-      title: 'Test',
-      script: SCRIPT,
+      title     : 'Test',
+      script    : SCRIPT,
       characters: [{ id: 'aiko', name: 'Aiko', status: 'candidates' }],
     });
     try {
@@ -137,8 +137,8 @@ describe('cmdRun — a failure is not a clean run', () => {
 
   it('still reports a clean run as clean', async () => {
     const p = await makeProject({
-      title: 'Test',
-      script: SCRIPT,
+      title     : 'Test',
+      script    : SCRIPT,
       characters: [{ id: 'aiko', name: 'Aiko', status: 'candidates' }],
     });
     try {
@@ -288,15 +288,15 @@ describe('parseArgs', () => {
   it('reads a short flag value from the next argument, and `-` as that value', () => {
     expect(parseArgs(['dir', '-o', 'out.fountain'])).toEqual({
       positional: ['dir'],
-      flags: { o: 'out.fountain' },
+      flags     : { o: 'out.fountain' },
     });
     expect(parseArgs(['-o', '-', '--clean'])).toEqual({
       positional: [],
-      flags: { o: '-', clean: true },
+      flags     : { o: '-', clean: true },
     });
     expect(parseArgs(['-o=out.fountain'])).toEqual({
       positional: [],
-      flags: { o: 'out.fountain' },
+      flags     : { o: 'out.fountain' },
     });
   });
 

@@ -57,10 +57,10 @@ describe('parseKeyGuide', () => {
     expect(guide.vendors).toHaveLength(1);
     const gemini = guide.vendors[0]!;
     expect(gemini).toMatchObject({
-      vendor: 'gemini',
-      name: 'Google Gemini',
-      console: 'https://example.test/console',
-      env: 'GEMINI_API_KEY',
+      vendor  : 'gemini',
+      name    : 'Google Gemini',
+      console : 'https://example.test/console',
+      env     : 'GEMINI_API_KEY',
       freeTier: true,
     });
     // The yaml block is read for its facts and then dropped from the body
@@ -135,7 +135,7 @@ describe('linkVerdict', () => {
 
   it('passes a page that answered from where it was asked', () => {
     expect(linkVerdict(CONSOLE, { status: 200, finalUrl: CONSOLE })).toEqual({
-      ok: true,
+      ok    : true,
       detail: 'HTTP 200',
     });
   });
@@ -170,7 +170,7 @@ describe('linkVerdict', () => {
 
   it('accepts a root URL that stayed at the root', () => {
     const verdict = linkVerdict('https://claude.com/', {
-      status: 200,
+      status  : 200,
       finalUrl: 'https://claude.com/',
     });
     expect(verdict.ok).toBe(true);
@@ -178,14 +178,14 @@ describe('linkVerdict', () => {
 
   it('fails on a non-2xx status, naming it', () => {
     expect(linkVerdict(CONSOLE, { status: 404, finalUrl: CONSOLE })).toEqual({
-      ok: false,
+      ok    : false,
       detail: 'HTTP 404',
     });
   });
 
   it('fails when nothing answered, and repeats what went wrong', () => {
     expect(linkVerdict(CONSOLE, { error: 'getaddrinfo ENOTFOUND' })).toEqual({
-      ok: false,
+      ok    : false,
       detail: 'getaddrinfo ENOTFOUND',
     });
   });

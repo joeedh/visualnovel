@@ -144,10 +144,10 @@ describe('updateContext', () => {
 describe('composeSystem', () => {
   it('appends project context to the system prompt', () => {
     const composed = composeSystem({
-      systemPrompt: 'SYS',
-      projectContext: 'CTX',
+      systemPrompt    : 'SYS',
+      projectContext  : 'CTX',
       generatedContext: '',
-      files: [],
+      files           : [],
     });
     expect(composed).toContain('SYS');
     expect(composed).toContain('CTX');

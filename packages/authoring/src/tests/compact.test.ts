@@ -2,13 +2,13 @@ import { compactRange, compactionMessage, compactionPrompt } from '../compact.js
 import type { AgentMessage } from '../backend.js';
 
 const call = (id: string): AgentMessage => ({
-  role: 'assistant',
+  role   : 'assistant',
   content: [{ type: 'tool_use', id, name: 'read_file', input: {} }],
 });
 const result = (id: string): AgentMessage => ({
-  role: 'observation',
+  role     : 'observation',
   toolUseId: id,
-  content: 'the file',
+  content  : 'the file',
 });
 
 describe('compactRange', () => {

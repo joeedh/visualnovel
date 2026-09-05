@@ -193,12 +193,12 @@ function strings(node: unknown, at: string, into: { path: string; value: string 
 
 function listTool(opts: RequestToolOptions): Tool<Record<string, never>> {
   return {
-    name: 'list_requests',
+    name       : 'list_requests',
     description:
       'List the requests this app sent to the model API in this session, newest last. Headers ' +
       'only — number, when, size, and the failure if there was one. Start here.',
-    mutating: false,
-    args: z.object({}),
+    mutating   : false,
+    args       : z.object({}),
     async run() {
       const headers = opts.snapshot.headers();
       if (headers.length === 0) {
@@ -219,15 +219,15 @@ function readTool(opts: RequestToolOptions): Tool<{ seq: number; path?: string }
   const cap = opts.maxValue ?? MAX_VALUE;
   const budget = opts.budget ?? new Budget();
   return {
-    name: 'read_request',
+    name       : 'read_request',
     description:
       'Read one captured request. With no path you get its structure — every field and, per ' +
       'message, its blocks by type, name and size — which is what a positional error like ' +
       '"messages.1.content.0" points into. With a JSON Pointer path ("/messages/1/content/0") ' +
       "you get that node's text values, shortened. Content is never returned in bulk.",
-    mutating: false,
+    mutating   : false,
     args: z.object({
-      seq: z.number().int().describe('the number from list_requests'),
+      seq : z.number().int().describe('the number from list_requests'),
       path: z
         .string()
         .optional()

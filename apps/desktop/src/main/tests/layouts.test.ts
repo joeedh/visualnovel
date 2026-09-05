@@ -89,8 +89,8 @@ describe('listLayouts', () => {
     await ensureLayouts(root);
     await writeLayout(root, {
       ...shippedLayoutFile('art')!,
-      slug: 'my_desk',
-      title: 'My Desk',
+      slug  : 'my_desk',
+      title : 'My Desk',
       source: 'saved',
     });
 
@@ -131,7 +131,7 @@ describe('readLayout', () => {
 
   it('refuses a layout that is not there, by name', async () => {
     expect(await readLayout(root, 'nosuch')).toEqual({
-      ok: false,
+      ok    : false,
       reason: 'there is no nosuch layout in this project',
     });
   });
@@ -151,8 +151,8 @@ describe('resetLayouts', () => {
     await ensureLayouts(root);
     await writeLayout(root, {
       ...shippedLayoutFile('art')!,
-      slug: 'my_desk',
-      title: 'My Desk',
+      slug  : 'my_desk',
+      title : 'My Desk',
       source: 'saved',
     });
 
@@ -169,8 +169,8 @@ describe('resetLayouts', () => {
     await ensureLayouts(root);
     await writeLayout(root, {
       ...shippedLayoutFile('art')!,
-      slug: 'my_desk',
-      title: 'My Desk',
+      slug  : 'my_desk',
+      title : 'My Desk',
       source: 'saved',
     });
 

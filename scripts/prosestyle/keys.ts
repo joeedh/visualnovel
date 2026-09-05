@@ -15,7 +15,7 @@ interface KeySpec {
 }
 
 const KEYS: Record<Route, KeySpec> = {
-  anthropic: { env: 'ANTHROPIC_API_KEY', files: ['claude.txt', 'anthropic.txt'] },
+  anthropic : { env: 'ANTHROPIC_API_KEY', files: ['claude.txt', 'anthropic.txt'] },
   openrouter: { env: 'OPENROUTER_API_KEY', files: ['openrouter.txt'] },
 };
 

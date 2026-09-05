@@ -51,7 +51,7 @@ async function generateAsset(
   return deps.store.write(result.bytes, result.ext, {
     ...meta,
     prompt,
-    refs: refs.map((r) => r.hash),
+    refs   : refs.map((r) => r.hash),
     modelId: result.modelId,
   });
 }
@@ -80,9 +80,9 @@ async function drawThroughGraph(
 const runLocationRef: Runner<'location_ref'> = async (task, deps) => {
   const { locationId, variant, prompt, refs, params } = task.inputs;
   const meta: AssetWriteMeta = {
-    kind: 'location_ref',
+    kind      : 'location_ref',
     sourceTask: task.hash,
-    satisfies: { locationId, variant },
+    satisfies : { locationId, variant },
   };
   const binding = boundGraph(task, deps);
   const ref = binding
@@ -94,9 +94,9 @@ const runLocationRef: Runner<'location_ref'> = async (task, deps) => {
 const runPortrait: Runner<'portrait'> = async (task, deps) => {
   const { characterId, prompt, refs, params } = task.inputs;
   const meta: AssetWriteMeta = {
-    kind: 'portrait',
+    kind      : 'portrait',
     sourceTask: task.hash,
-    satisfies: { characterId },
+    satisfies : { characterId },
   };
   const binding = boundGraph(task, deps);
   const ref = binding
@@ -109,9 +109,9 @@ const runPortrait: Runner<'portrait'> = async (task, deps) => {
 const runModelSheet: Runner<'model_sheet'> = async (task, deps) => {
   const { characterId, outfit, prompt, refs, params } = task.inputs;
   const meta: AssetWriteMeta = {
-    kind: 'model_sheet',
+    kind      : 'model_sheet',
     sourceTask: task.hash,
-    satisfies: { characterId, outfit },
+    satisfies : { characterId, outfit },
   };
 
   const binding = boundGraph(task, deps);
@@ -128,7 +128,7 @@ const runModelSheet: Runner<'model_sheet'> = async (task, deps) => {
   const ref = await deps.store.write(result.bytes, result.ext, {
     ...meta,
     prompt,
-    refs: refs.map((r) => r.hash),
+    refs   : refs.map((r) => r.hash),
     modelId: result.modelId,
   });
   return { status: 'done', output: ref.hash };
@@ -152,9 +152,9 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
     const refs = task.inputs.refs;
     const maxAttempts = Math.max(1, config.max_refine_attempts);
     const meta: AssetWriteMeta = {
-      kind: 'shot_image',
+      kind      : 'shot_image',
       sourceTask: task.hash,
-      satisfies: found ? { sceneId: found.scene.id, shotId: found.shot.id } : {},
+      satisfies : found ? { sceneId: found.scene.id, shotId: found.shot.id } : {},
     };
     const binding = boundGraph(task, deps);
     // A critique re-enters a bound graph through its refine node, which changes that node's
@@ -180,10 +180,10 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
       const record: TaskAttempt = {
         attempt,
         prompt,
-        refs: refs.map((r) => r.hash),
-        output: ref.hash,
+        refs   : refs.map((r) => r.hash),
+        output : ref.hash,
         reviews: reports,
-        at: deps.now?.(),
+        at     : deps.now?.(),
       };
       task.attempts.push(record);
 
@@ -241,15 +241,15 @@ export function createRunners(config: ProjectConfig): Record<TaskKind, Runner> {
     (task) =>
       Promise.resolve({
         status: 'failed',
-        error: `no runner for task kind "${kind}" (${task.hash})`,
+        error : `no runner for task kind "${kind}" (${task.hash})`,
       });
   return {
-    location_ref: runLocationRef as Runner,
-    portrait: runPortrait as Runner,
-    model_sheet: runModelSheet as Runner,
-    shot_image: shot as Runner,
+    location_ref : runLocationRef as Runner,
+    portrait     : runPortrait as Runner,
+    model_sheet  : runModelSheet as Runner,
+    shot_image   : shot as Runner,
     // P7 review/refine are folded into shot_image; these kinds are reserved (report deviation).
-    outfit_sheet: unsupported('outfit_sheet'),
+    outfit_sheet : unsupported('outfit_sheet'),
     vision_review: unsupported('vision_review'),
     prompt_refine: unsupported('prompt_refine'),
   };

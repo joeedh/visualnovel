@@ -124,7 +124,7 @@ describe('drawing a picture', () => {
 
   it('quotes what the vendor said when it refuses', async () => {
     const services = mockServices({
-      keys: { gemini: 'a-key' },
+      keys  : { gemini: 'a-key' },
       answer: () => ({ status: 400, body: '{"error":{"message":"bad part 3"}}' }),
     });
     await expect(
@@ -141,9 +141,9 @@ describe('redrawing a picture', () => {
 
     await genNodeRuntime('GeminiEditImage')?.(
       {
-        base: { store: 'blob', ...base },
+        base  : { store: 'blob', ...base },
         prompt: 'make it night',
-        refs: [{ store: 'blob', ...ref }],
+        refs  : [{ store: 'blob', ...ref }],
       },
       { model: 'gemini-2.5-flash-image', aspect: '', seed: '' },
       services,

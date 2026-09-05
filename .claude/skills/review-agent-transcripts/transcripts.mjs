@@ -100,12 +100,12 @@ function summarize(file) {
     file,
     title,
     startedAt: header.startedAt,
-    endedAt: items.length ? (items[items.length - 1].at ?? null) : null,
-    model: header.model ?? null,
-    effort: header.effort ?? null,
-    commit: header.commit ?? null,
-    bytes: statSync(file).size,
-    items: items.length,
+    endedAt  : items.length ? (items[items.length - 1].at ?? null) : null,
+    model    : header.model ?? null,
+    effort   : header.effort ?? null,
+    commit   : header.commit ?? null,
+    bytes    : statSync(file).size,
+    items    : items.length,
     counts,
     toolCalls: Object.values(tools).reduce((a, b) => a + b, 0),
     // The whole census of a 300-call thread is longer than the reading it exists to guide, so
@@ -115,7 +115,7 @@ function summarize(file) {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 12),
     ),
-    lines: items,
+    lines    : items,
   };
 }
 
@@ -154,10 +154,10 @@ if (cmd === 'list') {
         totalTranscripts: all.length,
         transcripts: inWindow.map((t) => ({
           ...t,
-          lines: undefined,
-          file: posix(relative(repo, t.file)),
-          absFile: t.file,
-          reviewed: seen.has(t.id),
+          lines     : undefined,
+          file      : posix(relative(repo, t.file)),
+          absFile   : t.file,
+          reviewed  : seen.has(t.id),
           reviewedAt: seen.get(t.id)?.reviewedAt ?? null,
         })),
       },
@@ -207,7 +207,7 @@ if (cmd === 'record') {
     seen.set(id, { id, reviewedAt: at, ...(flags.note ? { note: flags.note } : {}) });
   ledger.projects[key] = {
     lastReviewedAt: at,
-    reviewed: [...seen.values()].sort((a, b) => a.id.localeCompare(b.id)),
+    reviewed      : [...seen.values()].sort((a, b) => a.id.localeCompare(b.id)),
   };
   writeFileSync(ledgerPath, `${JSON.stringify(ledger, null, 2)}\n`, 'utf8');
   console.log(`recorded ${ids.length} transcript(s) in ${ledgerPath}`);

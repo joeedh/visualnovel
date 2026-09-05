@@ -34,7 +34,7 @@ async function tempProject(): Promise<{ paths: ProjectPaths; cleanup: () => Prom
   const dir = await fs.mkdtemp(join(tmpdir(), 'vn-apply-'));
   await fs.mkdir(join(dir, 'scenes'), { recursive: true });
   return {
-    paths: new ProjectPaths(dir),
+    paths  : new ProjectPaths(dir),
     cleanup: () => fs.rm(dir, { recursive: true, force: true }),
   };
 }

@@ -108,33 +108,33 @@ export function projectMap(
     // id with no description is still an outfit
     const rest = c.outfits.map((o) => o.id).filter((id) => id !== c.defaultOutfit);
     return {
-      id: c.id,
-      name: c.name,
+      id    : c.id,
+      name  : c.name,
       status: c.status,
       ...(characterFiles.has(c.id) ? { file: characterFiles.get(c.id)! } : {}),
       defaultOutfit: c.defaultOutfit,
-      outfits: c.defaultOutfit ? [c.defaultOutfit, ...rest] : rest,
+      outfits      : c.defaultOutfit ? [c.defaultOutfit, ...rest] : rest,
     };
   });
 
   const locations: MappedLocation[] = [...model.locations.values()].map((l) => ({
-    id: l.id,
-    name: l.name,
+    id   : l.id,
+    name : l.name,
     mined: l.mined,
     ...(locationFiles.has(l.id) ? { file: locationFiles.get(l.id)! } : {}),
     variants: l.variants.map((v) => v.id),
   }));
 
   const scenes: MappedScene[] = [...model.scenes.values()].map((s) => ({
-    id: s.id,
-    location: s.location,
+    id        : s.id,
+    location  : s.location,
     characters: s.characters,
     edges: s.choices.length
       ? s.choices.map((c) => ({ label: c.label, goto: c.goto }))
       : s.next
         ? [{ goto: s.next }]
         : [],
-    reachable: model.reachable.has(s.id),
+    reachable : model.reachable.has(s.id),
     ...(sceneFiles.has(s.id) ? { file: sceneFiles.get(s.id)! } : {}),
   }));
 
@@ -152,9 +152,9 @@ export function projectMap(
 export function countsOf(map: ProjectMap): GeneratedCounts {
   return {
     characters: map.characters.length,
-    locations: map.locations.length,
-    scenes: map.scenes.length,
-    bible: map.bible.length,
+    locations : map.locations.length,
+    scenes    : map.scenes.length,
+    bible     : map.bible.length,
   };
 }
 
@@ -235,23 +235,23 @@ export function renderGeneratedContext(map: ProjectMap, opts: { budget?: number 
   const sections: Section[] = [
     {
       heading: `## Characters (${counts.characters})`,
-      rows: map.characters.map(characterRow),
-      more: (n) => `… and ${n} more character(s); list_workspace lists them all.`,
+      rows   : map.characters.map(characterRow),
+      more   : (n) => `… and ${n} more character(s); list_workspace lists them all.`,
     },
     {
       heading: `## Locations (${counts.locations})`,
-      rows: map.locations.map(locationRow),
-      more: (n) => `… and ${n} more location(s); list_workspace lists them all.`,
+      rows   : map.locations.map(locationRow),
+      more   : (n) => `… and ${n} more location(s); list_workspace lists them all.`,
     },
     {
       heading: `## Scenes (${counts.scenes})${map.entry ? ` — entry: ${map.entry}` : ''}`,
-      rows: map.scenes.map(sceneRow),
-      more: (n) => `… and ${n} more scene(s); list_workspace lists them all.`,
+      rows   : map.scenes.map(sceneRow),
+      more   : (n) => `… and ${n} more scene(s); list_workspace lists them all.`,
     },
     {
       heading: `## Story bible (${counts.bible} note(s) under wiki/)`,
-      rows: map.bible.map(bibleRow),
-      more: (n) => `… and ${n} more note(s); use search_bible.`,
+      rows   : map.bible.map(bibleRow),
+      more   : (n) => `… and ${n} more note(s); use search_bible.`,
     },
   ];
 

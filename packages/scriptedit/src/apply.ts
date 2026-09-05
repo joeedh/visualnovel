@@ -86,7 +86,7 @@ export async function planSceneEdit(
     // Comparing the text rather than the scenes keeps the check on the bytes being written.
     if (sceneToDoc(read.value.scene).body !== doc.body) {
       return {
-        ok: false,
+        ok     : false,
         message: `Writing ${scene.id} would not read back as the scene it was written from.`,
       };
     }
@@ -105,7 +105,7 @@ export async function planSceneEdit(
       const lost = before.filter((n) => !after.includes(n));
       if (lost.length > 0) {
         return {
-          ok: false,
+          ok     : false,
           message:
             `Writing ${scene.id} would drop ${lost.length} note(s) the model does not keep: ` +
             `${lost.map((n) => `[[${n}]]`).join(', ')}. Remove or fix them in the file first.`,
@@ -133,11 +133,11 @@ export async function planSceneEdit(
   }
 
   return {
-    ok: true,
+    ok     : true,
     message: op.message,
     pending,
     chunkRemoves: op.removes,
-    fallout: shotFallout(op, shots),
+    fallout     : shotFallout(op, shots),
   };
 }
 

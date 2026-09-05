@@ -10,11 +10,11 @@ import { DEFAULT_QUESTION, describeAsset, generateConcept } from '../index.js';
 const image: ImageProvider = {
   generate: (): Promise<ImageResult> =>
     Promise.resolve({
-      bytes: new TextEncoder().encode('the picture itself'),
-      ext: 'png',
+      bytes  : new TextEncoder().encode('the picture itself'),
+      ext    : 'png',
       modelId: 'fake-image',
     }),
-  edit: () => Promise.reject(new Error('a concept is generated, never edited')),
+  edit    : () => Promise.reject(new Error('a concept is generated, never edited')),
 };
 
 /** A project holding one real picture, plus a backend that records what it was asked. */
@@ -38,12 +38,12 @@ describe('describeAsset', () => {
     const { p, ref, sent, deps } = await fixture();
     try {
       const result = await describeAsset(deps, {
-        hash: ref.hash,
+        hash    : ref.hash,
         question: 'Does this read as brutalist yet?',
       });
       expect(result).toEqual({
-        hash: ref.hash,
-        label: 'a brutalist rooftop',
+        hash  : ref.hash,
+        label : 'a brutalist rooftop',
         answer: 'A grey concrete parapet under an evening sky.',
       });
       expect(sent).toHaveLength(1);

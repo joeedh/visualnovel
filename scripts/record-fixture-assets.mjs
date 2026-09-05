@@ -32,11 +32,11 @@ const TMP = resolve(root, 'packages/providers/.record-entry.cjs');
 
 await build({
   entryPoints: [resolve(root, 'packages/testkit/src/record.ts')],
-  outfile: TMP,
-  bundle: true,
-  platform: 'node',
-  format: 'cjs',
-  target: 'node20',
+  outfile    : TMP,
+  bundle     : true,
+  platform   : 'node',
+  format     : 'cjs',
+  target     : 'node20',
   alias,
   external: EXTERNAL,
   logLevel: 'warning',

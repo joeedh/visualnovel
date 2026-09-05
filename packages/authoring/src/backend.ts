@@ -102,7 +102,7 @@ export type CacheVerdict = 'cold' | 'hit' | 'expired' | 'miss';
 function plus(a: TokenUsage | undefined, b: TokenUsage | undefined): TokenUsage | undefined {
   if (!b) return a;
   const sum: TokenUsage = {
-    input: (a?.input ?? 0) + b.input,
+    input : (a?.input ?? 0) + b.input,
     output: (a?.output ?? 0) + b.output,
   };
   if (a?.cacheRead !== undefined || b.cacheRead !== undefined) {
@@ -149,9 +149,9 @@ export interface AgentBackend {
 const turnSchema = z
   .object({
     thought: z.string().optional(),
-    tool: z.string().optional(),
-    args: z.unknown().optional(),
-    final: z.string().optional(),
+    tool   : z.string().optional(),
+    args   : z.unknown().optional(),
+    final  : z.string().optional(),
   })
   .refine((t) => t.tool !== undefined || t.final !== undefined, {
     message: 'each turn must contain either "tool" or "final"',
@@ -310,7 +310,7 @@ function turnOf(m: AgentMessage): ChatTurn {
     // host-authored note (a refusal, a cancellation) and belongs in the transcript as prose
     if (m.toolUseId) {
       return {
-        role: 'user',
+        role   : 'user',
         content: [
           { type: 'tool_result', tool_use_id: m.toolUseId, content: messageText(m.content) },
         ],

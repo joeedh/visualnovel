@@ -67,7 +67,7 @@ describe('renameInText', () => {
 
   it('refuses a blank name rather than writing an untitled document', () => {
     expect(renameInText('wiki/note.md', '# Old\n', '  ')).toEqual({
-      ok: false,
+      ok    : false,
       reason: expect.stringContaining('blank'),
     });
   });

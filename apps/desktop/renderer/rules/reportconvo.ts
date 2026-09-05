@@ -54,12 +54,12 @@ export interface ReportConvo {
 
 export function emptyReport(): ReportConvo {
   return {
-    convo: emptyConvo(REPORT_OPENING),
+    convo  : emptyConvo(REPORT_OPENING),
     granted: { source: false, detail: false },
     reports: [],
-    setup: { thread: '', model: '', effort: '', source: false, detail: false },
+    setup  : { thread: '', model: '', effort: '', source: false, detail: false },
     threads: [],
-    note: '',
+    note   : '',
   };
 }
 
@@ -81,9 +81,9 @@ export function grantBox(
   offer: string,
 ): GrantBox {
   return {
-    checked: granted,
+    checked : granted,
     disabled: granted || verdict?.state === 'refuse',
-    tooltip: verdict?.message || offer,
+    tooltip : verdict?.message || offer,
   };
 }
 
@@ -111,7 +111,7 @@ export function reduceRow(state: ReportConvo, row: ReportRow): ReportConvo {
           {
             after: state.convo.seq,
             title: row.title,
-            body: row.body,
+            body : row.body,
             ...(row.file === undefined ? {} : { file: row.file }),
           },
         ],
@@ -129,16 +129,16 @@ export function reduceRow(state: ReportConvo, row: ReportRow): ReportConvo {
 export function fromState(base: ReportConvo, view: ReportStateView): ReportConvo {
   const folded = view.rows.reduce(reduceRow, {
     ...base,
-    convo: emptyConvo(REPORT_OPENING),
+    convo  : emptyConvo(REPORT_OPENING),
     reports: [],
   });
   const next: ReportConvo = {
-    convo: { ...folded.convo, busy: view.busy },
+    convo  : { ...folded.convo, busy: view.busy },
     granted: { ...view.granted },
     reports: folded.reports,
-    setup: folded.setup,
+    setup  : folded.setup,
     threads: folded.threads,
-    note: folded.note,
+    note   : folded.note,
   };
   return view.thread ? { ...next, thread: view.thread } : next;
 }

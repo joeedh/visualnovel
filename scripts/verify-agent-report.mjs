@@ -164,13 +164,13 @@ async function preflight(baseUrl) {
         "export { faultKind, captureSnapshot, clearCaptures } from '@vn/providers';",
       ].join('\n'),
       resolveDir: root,
-      loader: 'ts',
+      loader    : 'ts',
     },
-    outfile: entry,
-    bundle: true,
+    outfile : entry,
+    bundle  : true,
     platform: 'node',
-    format: 'cjs',
-    target: 'node20',
+    format  : 'cjs',
+    target  : 'node20',
     alias,
     external: EXTERNAL,
     logLevel: 'warning',
@@ -225,7 +225,7 @@ const forbidden = await names(dir);
 /** What the fake noticed in the analyst's own requests: its observations ride in the next one. */
 const seen = { listedRequests: false, sawOutline: false };
 const fake = await startFakeAnthropic({
-  port: 0,
+  port     : 0,
   failAfter: 1,
   inspect: (raw, who) => {
     if (who !== 'analyst') return;
@@ -234,7 +234,7 @@ const fake = await startFakeAnthropic({
     if (raw.includes('convo') && raw.includes('FAILED:')) seen.listedRequests = true;
     if (raw.includes('/messages/') && raw.includes('role=')) seen.sawOutline = true;
   },
-  log: () => {},
+  log      : () => {},
 });
 
 say('');
@@ -252,15 +252,15 @@ say('  Fake API:  ' + fake.baseUrl + '  (nothing leaves this machine, nothing is
 say('  CDP:       127.0.0.1:' + CDP_PORT);
 
 const app = spawn('pnpm', ['exec', 'electron', '.', '--project', dir], {
-  cwd: resolve(root, 'apps/desktop'),
+  cwd  : resolve(root, 'apps/desktop'),
   stdio: 'inherit',
   shell: process.platform === 'win32',
   env: {
     ...process.env,
-    VN_CDP_PORT: String(CDP_PORT),
+    VN_CDP_PORT       : String(CDP_PORT),
     ANTHROPIC_BASE_URL: fake.baseUrl,
     // Real binding, fake endpoint — so a key still has to resolve. Never printed.
-    ANTHROPIC_API_KEY: 'not-a-real-key',
+    ANTHROPIC_API_KEY : 'not-a-real-key',
   },
 });
 app.on('error', (err) => {

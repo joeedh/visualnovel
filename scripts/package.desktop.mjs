@@ -51,11 +51,11 @@ async function sourceManifest() {
   const tmp = join(APP, 'dist', '.sourcemap-entry.cjs');
   await build({
     entryPoints: [join(REPO_ROOT, 'packages', 'agentreport', 'src', 'sourcemap.ts')],
-    outfile: tmp,
-    bundle: true,
-    platform: 'node',
-    format: 'cjs',
-    target: 'node20',
+    outfile    : tmp,
+    bundle     : true,
+    platform   : 'node',
+    format     : 'cjs',
+    target     : 'node20',
     alias,
     external: EXTERNAL,
     logLevel: 'warning',
@@ -127,21 +127,21 @@ await writeFile(
   join(SCRATCH, 'package.json'),
   JSON.stringify(
     {
-      name: 'vnstudio',
-      version: app.version,
-      private: true,
-      main: app.main,
+      name        : 'vnstudio',
+      version     : app.version,
+      private     : true,
+      main        : app.main,
       // electron-builder warns when this is missing, and the warning is not ceremony.
       // NSIS copies this value into the installer's own file properties, which is where
       // Windows displays it during an install.
-      description: app.description,
-      author: 'Joe Eagar',
-      license: 'UNLICENSED',
+      description : app.description,
+      author      : 'Joe Eagar',
+      license     : 'UNLICENSED',
       // The whole runtime dependency tree. Everything else is bundled into `dist/`.
       dependencies: {
         '@anthropic-ai/sdk': app.dependencies['@anthropic-ai/sdk'],
-        '@google/genai': app.dependencies['@google/genai'],
-        esbuild: app.dependencies['esbuild'],
+        '@google/genai'    : app.dependencies['@google/genai'],
+        esbuild            : app.dependencies['esbuild'],
       },
     },
     null,
@@ -167,7 +167,7 @@ console.log(
 // otherwise resolve against it; `hoisted` because that is the entire point of this directory.
 console.log('[package] hoisted install of the runtime dependencies');
 execFileSync('pnpm', ['install', '--ignore-workspace', '--config.node-linker=hoisted'], {
-  cwd: SCRATCH,
+  cwd  : SCRATCH,
   stdio: 'inherit',
   shell: process.platform === 'win32',
 });

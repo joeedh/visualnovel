@@ -14,13 +14,7 @@
  * rather than as its value (`digest.ts`).
  */
 export type PropKind =
-  | 'string'
-  | 'directory'
-  | 'secret'
-  | 'number'
-  | 'boolean'
-  | 'enum'
-  | 'string[]';
+  'string' | 'directory' | 'secret' | 'number' | 'boolean' | 'enum' | 'string[]';
 
 /** Every value a command property can hold. Matches what the DSL can express. */
 export type PropValue = string | number | boolean | string[];
@@ -126,19 +120,18 @@ function make(
 }
 
 export const prop: PropBuilders = {
-  string: (description: string, opts?: Opts<string>) => make('string', description, opts),
-  directory: (description: string, opts?: Opts<string>) => make('directory', description, opts),
-  secret: (description: string) => make('secret', description, undefined),
-  number: (description: string, opts?: Opts<number>) => make('number', description, opts),
-  boolean: (description: string, opts?: Opts<boolean>) => make('boolean', description, opts),
+  string    : (description: string, opts?: Opts<string>) => make('string', description, opts),
+  directory : (description: string, opts?: Opts<string>) => make('directory', description, opts),
+  secret    : (description: string) => make('secret', description, undefined),
+  number    : (description: string, opts?: Opts<number>) => make('number', description, opts),
+  boolean   : (description: string, opts?: Opts<boolean>) => make('boolean', description, opts),
   oneOf: (values: readonly string[], description: string, opts?: Opts<string>) =>
     make('enum', description, opts, values),
   stringList: (description: string, opts?: Opts<string[]>) => make('string[]', description, opts),
 } as PropBuilders;
 
 export type CoerceResult =
-  | { ok: true; value: Record<string, PropValue> }
-  | { ok: false; errors: string[] };
+  { ok: true; value: Record<string, PropValue> } | { ok: false; errors: string[] };
 
 /** Coerce one loose value to `kind`; `undefined` means it can't be. */
 function coerceOne(kind: PropKind, raw: unknown): PropValue | undefined {

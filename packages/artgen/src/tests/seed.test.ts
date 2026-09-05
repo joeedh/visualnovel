@@ -17,22 +17,22 @@ import {
 } from '../index.js';
 
 const config = projectConfig.parse({
-  title: 'Test',
+  title    : 'Test',
   art_style: 'watercolor',
-  models: { vision: ['gemini', 'claude'] },
+  models   : { vision: ['gemini', 'claude'] },
 });
 
 const base: ImageParams = imageParams(config);
 
 function shotOf(seed?: number): Shot {
   return {
-    id: 's1__a',
-    sceneId: 's1',
-    framing: 'medium',
-    location: 'day',
-    subjects: [{ characterId: 'aiko' }],
+    id         : 's1__a',
+    sceneId    : 's1',
+    framing    : 'medium',
+    location   : 'day',
+    subjects   : [{ characterId: 'aiko' }],
     coversLines: [],
-    status: 'pending',
+    status     : 'pending',
     ...(seed === undefined ? {} : { seed }),
   };
 }
@@ -76,7 +76,7 @@ describe('the four builders', () => {
   it('reads a character seed for the portrait and an outfit seed for the sheet', () => {
     const c = {
       ...aiko,
-      seed: 4,
+      seed   : 4,
       outfits: [{ id: 'default', characterId: 'aiko', description: '', seed: 11 }],
     };
     // A portrait wears no outfit, so it stops at the character rung; a sheet reads the outfit rung.
@@ -90,7 +90,7 @@ describe('the four builders', () => {
   it('reads a variant seed for a plate, and the location seed for a variant that authored none', () => {
     const l = {
       ...cafe,
-      seed: 2,
+      seed    : 2,
       variants: [
         { id: 'day', description: '' },
         { id: 'night', description: '', seed: 8 },

@@ -157,7 +157,7 @@ async function storeImage(
 ): Promise<{ image: GenImageRef; modelId: string; prompt: string }> {
   const ref = await services.blobs.write(result.bytes, result.ext);
   return {
-    image: { store: 'blob', hash: ref.hash, ext: ref.ext },
+    image  : { store: 'blob', hash: ref.hash, ext: ref.ext },
     modelId: result.modelId,
     prompt,
   };

@@ -10,14 +10,14 @@ const task = (hash: string, status: TaskStatus): Task => ({
   deps: [],
   status,
   attempts: [],
-  inputs: { locationId: 'classroom', variant: 'day', prompt: '', refs: [], params: PARAMS },
+  inputs  : { locationId: 'classroom', variant: 'day', prompt: '', refs: [], params: PARAMS },
 });
 
 const filter = (over: Partial<ListFilter> = {}): ListFilter => ({
-  cleared: new Set(),
-  onlyDone: false,
+  cleared    : new Set(),
+  onlyDone   : false,
   onlyRunning: false,
-  onlyFailed: false,
+  onlyFailed : false,
   ...over,
 });
 

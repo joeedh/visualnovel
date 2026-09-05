@@ -9,12 +9,12 @@ const node = {
 };
 
 const anchor = (over: Partial<Anchor> = {}): Anchor => ({
-  key: commandKey('asset.regenerate'),
-  id: 'asset.regenerate',
-  props: { hash: 'a1b2' },
+  key    : commandKey('asset.regenerate'),
+  id     : 'asset.regenerate',
+  props  : { hash: 'a1b2' },
   enabled: true,
-  editor: 'asset' as EditorId,
-  via: { kind: 'dom', node },
+  editor : 'asset' as EditorId,
+  via    : { kind: 'dom', node },
   ...over,
 });
 
@@ -58,10 +58,10 @@ describe('guide', () => {
       key === drawn.key ? 'aiko has no portrait yet.' : undefined,
     );
     expect(shown).toEqual({
-      show: 'blocked',
-      say: 'Press Redraw.',
+      show  : 'blocked',
+      say   : 'Press Redraw.',
       reason: 'aiko has no portrait yet.',
-      where: { state: 'ready', anchor: drawn },
+      where : { state: 'ready', anchor: drawn },
     });
   });
 
@@ -74,17 +74,17 @@ describe('guide', () => {
   it('passes on the app’s own refusal rather than writing one, and rings what refused', () => {
     const greyed = anchor({ enabled: false, reason: 'This take is already approved.' });
     expect(guide(map, live([greyed]), state)).toEqual({
-      show: 'blocked',
-      say: 'Press Redraw.',
+      show  : 'blocked',
+      say   : 'Press Redraw.',
       reason: 'This take is already approved.',
-      where: { state: 'disabled', anchor: greyed, reason: 'This take is already approved.' },
+      where : { state: 'disabled', anchor: greyed, reason: 'This take is already approved.' },
     });
   });
 
   it('names the pane to open when the map knows where the control lives', () => {
     expect(guide(map, live([], { open: [] }), state)).toEqual({
-      show: 'open',
-      say: 'Press Redraw.',
+      show  : 'open',
+      say   : 'Press Redraw.',
       editor: 'asset',
     });
   });
@@ -92,8 +92,8 @@ describe('guide', () => {
   it('routes to the palette for a command no pane draws', () => {
     const unknown = start(tour([{ kind: 'command', id: 'doc.write', say: 'Save it.' }]));
     expect(guide(map, live([]), unknown)).toEqual({
-      show: 'route',
-      say: 'Save it.',
+      show  : 'route',
+      say   : 'Save it.',
       action: { id: 'doc.write', props: {} },
     });
   });
@@ -118,36 +118,36 @@ describe('guide', () => {
 
 describe('a step whose control is on another subject', () => {
   const step: Step = {
-    kind: 'command',
-    id: 'asset.regenerate',
+    kind : 'command',
+    id   : 'asset.regenerate',
     props: { hash: 'ffff' },
-    say: 'Redraw it.',
+    say  : 'Redraw it.',
   };
   const state = start(tour([step]));
   const elsewhere = anchor({ props: { hash: 'a1b2' } });
   const row = (): Anchor => ({
-    key: itemKey('asset', 'ffff'),
-    props: {},
-    enabled: true,
+    key      : itemKey('asset', 'ffff'),
+    props    : {},
+    enabled  : true,
     publishes: { assetHash: 'ffff' },
-    editor: 'documents' as EditorId,
-    via: { kind: 'dom', node },
+    editor   : 'documents' as EditorId,
+    via      : { kind: 'dom', node },
   });
   const seen = (anchors: Anchor[]): LiveAnchors =>
     live(anchors, { open: ['asset', 'documents'] as EditorId[] });
 
   it('rings the row that selects the subject rather than the button on the wrong one', () => {
     expect(guide(map, seen([elsewhere, row()]), state)).toMatchObject({
-      show: 'pick',
-      say: 'Redraw it.',
+      show : 'pick',
+      say  : 'Redraw it.',
       where: { state: 'ready', anchor: row() },
     });
   });
 
   it('says which subject is missing when nothing on screen selects it', () => {
     expect(guide(map, seen([elsewhere]), state)).toEqual({
-      show: 'blocked',
-      say: 'Redraw it.',
+      show  : 'blocked',
+      say   : 'Redraw it.',
       reason: 'Nothing on screen selects ffff, which is what this step acts on.',
     });
   });
@@ -161,14 +161,14 @@ describe('a step whose control is on another subject', () => {
   it('answers with the control’s own refusal where it is greyed and names no subject', () => {
     const greyed = anchor({ props: {}, enabled: false, reason: 'Nothing is shown here.' });
     expect(guide(map, seen([greyed]), state)).toEqual({
-      show: 'blocked',
-      say: 'Redraw it.',
+      show  : 'blocked',
+      say   : 'Redraw it.',
       reason: 'Nothing is shown here.',
       where: {
-        state: 'wrong-subject',
+        state : 'wrong-subject',
         anchor: greyed,
-        needs: { id: 'asset.regenerate', props: { hash: 'ffff' } },
-        holds: [],
+        needs : { id: 'asset.regenerate', props: { hash: 'ffff' } },
+        holds : [],
       },
     });
   });
@@ -179,23 +179,23 @@ describe('a step whose control is on another subject', () => {
    */
   it('does not ring a row named by a prop the anchor never held', () => {
     const line: Step = {
-      kind: 'command',
-      id: 'story.setLine',
+      kind : 'command',
+      id   : 'story.setLine',
       props: { sceneId: 'greet', lineId: 'l3', speaker: 'aiko', text: 'Hello.' },
-      say: 'Set the line.',
+      say  : 'Set the line.',
     };
     const box = anchor({
-      key: commandKey('story.setLine'),
-      id: 'story.setLine',
+      key  : commandKey('story.setLine'),
+      id   : 'story.setLine',
       props: { sceneId: 'greet' },
     });
     const character: Anchor = {
-      key: itemKey('character', 'aiko'),
-      props: {},
-      enabled: true,
+      key      : itemKey('character', 'aiko'),
+      props    : {},
+      enabled  : true,
       publishes: { characterId: 'aiko' },
-      editor: 'documents' as EditorId,
-      via: { kind: 'dom', node },
+      editor   : 'documents' as EditorId,
+      via      : { kind: 'dom', node },
     };
     expect(guide(map, seen([box, character]), start(tour([line])))).toMatchObject({ show: 'ring' });
   });
@@ -203,11 +203,11 @@ describe('a step whose control is on another subject', () => {
 
 describe('a gesture step', () => {
   const drag: Step = {
-    kind: 'gesture',
-    id: 'branch.connect',
+    kind   : 'gesture',
+    id     : 'branch.connect',
     carried: 'arrival',
-    target: 'greet',
-    say: 'Drag the handle onto the next scene.',
+    target : 'greet',
+    say    : 'Drag the handle onto the next scene.',
   };
   const state = start(tour([drag]));
 
@@ -223,16 +223,16 @@ describe('a gesture step', () => {
   const wire: Verdict = {
     target: 'greet',
     accept: true,
-    note: 'arrival now leads to greet.',
+    note  : 'arrival now leads to greet.',
     invoke: { id: 'story.setNext', props: { scene: 'arrival', next: 'greet' } },
   };
 
   it('rings what is picked up and outlines what would take it', () => {
     const shown = guide(map, seen, state, judged([wire]));
     expect(shown).toMatchObject({
-      show: 'ring',
-      say: 'Drag the handle onto the next scene.',
-      also: [itemKey('scene', 'greet')],
+      show  : 'ring',
+      say   : 'Drag the handle onto the next scene.',
+      also  : [itemKey('scene', 'greet')],
       awaits: { id: 'story.setNext', props: { scene: 'arrival', next: 'greet' } },
     });
   });
@@ -240,14 +240,14 @@ describe('a gesture step', () => {
   it('passes on the verdict’s own refusal', () => {
     const refused: Verdict = { target: 'greet', accept: false, reason: 'greet already forks.' };
     expect(guide(map, seen, state, judged([refused]))).toMatchObject({
-      show: 'blocked',
+      show  : 'blocked',
       reason: 'greet already forks.',
     });
   });
 
   it('says so when no open surface can judge the gesture', () => {
     expect(guide(map, seen, state, () => undefined)).toMatchObject({
-      show: 'blocked',
+      show  : 'blocked',
       reason: 'Nothing on screen runs branch.connect yet.',
     });
   });
@@ -255,7 +255,7 @@ describe('a gesture step', () => {
   it('reports a carried token the state does not have', () => {
     const lost: Verdict = { target: UNRESOLVED, accept: false, reason: 'No scene "arrival".' };
     expect(guide(map, seen, state, judged([lost]))).toMatchObject({
-      show: 'blocked',
+      show  : 'blocked',
       reason: 'No scene "arrival".',
     });
   });
@@ -294,11 +294,11 @@ describe('satisfies', () => {
 
   it('ignores the prop an input step said the author would type', () => {
     const typed: Step = {
-      kind: 'input',
-      id: 'art.setNotes',
-      props: { target: 'location:cafe/night', notes: '' },
+      kind    : 'input',
+      id      : 'art.setNotes',
+      props   : { target: 'location:cafe/night', notes: '' },
       supplies: 'notes',
-      say: 'Say what you want changed.',
+      say     : 'Say what you want changed.',
     };
     const ran = { id: 'art.setNotes', props: { target: 'location:cafe/night', notes: 'colder' } };
     expect(satisfies(typed, ran)).toBe(true);
@@ -310,11 +310,11 @@ describe('satisfies', () => {
   /** `art.setNotes` takes an empty note as a legitimate value: it removes the note. */
   it('waits for the value an input step asked for, rather than counting a blank field', () => {
     const typed: Step = {
-      kind: 'input',
-      id: 'art.setNotes',
-      props: { target: 'location:cafe/night' },
+      kind    : 'input',
+      id      : 'art.setNotes',
+      props   : { target: 'location:cafe/night' },
       supplies: 'notes',
-      say: 'Say what you want changed.',
+      say     : 'Say what you want changed.',
     };
     const ran = { id: 'art.setNotes', props: { target: 'location:cafe/night', notes: '' } };
     expect(satisfies(typed, ran)).toBe(false);
@@ -325,11 +325,11 @@ describe('satisfies', () => {
   /** What reaches here is the recorded props, so a bulk prop arrives digested either way. */
   it('reads the empty digest of a bulk prop as a blank field', () => {
     const written: Step = {
-      kind: 'input',
-      id: 'doc.write',
-      props: { path: 'wiki/ada.md' },
+      kind    : 'input',
+      id      : 'doc.write',
+      props   : { path: 'wiki/ada.md' },
       supplies: 'text',
-      say: 'Write the entry.',
+      say     : 'Write the entry.',
     };
     const ran = { id: 'doc.write', props: { path: 'wiki/ada.md', text: EMPTY_DIGEST } };
     expect(satisfies(written, ran)).toBe(false);

@@ -154,7 +154,7 @@ export class SessionStore {
         // the rename fail with EPERM on Windows.
         await retry(() => writeFileAtomic(this.file, JSON.stringify(merged, null, 2) + '\n'), {
           attempts: 4,
-          baseMs: 25,
+          baseMs  : 25,
         });
         // Adopt the merge, keeping values set while this flush was in flight.
         for (const key of this.dirty) merged[key] = this.cache[key] as SessionValue;

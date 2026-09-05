@@ -106,41 +106,41 @@ export function originAction(origin: ChunkOrigin): OriginAction {
   switch (origin.kind) {
     case 'project':
       return {
-        ok: true,
-        kind: 'open',
-        editor: 'project',
+        ok     : true,
+        kind   : 'open',
+        editor : 'project',
         subject: '',
         publish: {},
-        label: 'Open project.yaml',
+        label  : 'Open project.yaml',
       };
     case 'character':
     case 'outfit':
       return {
-        ok: true,
-        kind: 'open',
-        editor: 'wiki',
+        ok     : true,
+        kind   : 'open',
+        editor : 'wiki',
         subject: `characters/${origin.id}/character.md`,
         publish: { characterId: origin.id },
-        label: `Open ${origin.id}'s sheet`,
+        label  : `Open ${origin.id}'s sheet`,
       };
     case 'location':
     case 'variant':
       return {
-        ok: true,
-        kind: 'open',
-        editor: 'wiki',
+        ok     : true,
+        kind   : 'open',
+        editor : 'wiki',
         subject: `locations/${origin.id}.md`,
         publish: { docPath: `locations/${origin.id}.md` },
-        label: `Open ${origin.id}'s sheet`,
+        label  : `Open ${origin.id}'s sheet`,
       };
     case 'shot':
       return {
-        ok: true,
-        kind: 'open',
-        editor: 'timeline',
+        ok     : true,
+        kind   : 'open',
+        editor : 'timeline',
         subject: '',
         publish: { sceneId: origin.sceneId, shotId: origin.shotId },
-        label: `Show ${origin.shotId} in the timeline`,
+        label  : `Show ${origin.shotId} in the timeline`,
       };
     case 'art-notes':
       return { ok: true, kind: 'scroll', to: origin.target, label: 'Edit these art notes' };
@@ -148,7 +148,7 @@ export function originAction(origin: ChunkOrigin): OriginAction {
       return { ok: true, kind: 'scroll', to: 'request', label: 'Edit the request' };
     case 'builder':
       return {
-        ok: false,
+        ok    : false,
         reason: 'The builders wrote this sentence — there is no document behind it.',
       };
   }
@@ -186,13 +186,13 @@ export function modeStrip(view: PromptView): ModeButton[] {
 
   return [
     seg('chunks', 'Chunks', {
-      ok: true,
-      id: 'prompt.clear',
+      ok   : true,
+      id   : 'prompt.clear',
       props: { hash: view.hash, part: view.mode === 'agent' ? 'agent' : 'custom' },
     }),
     seg('custom', 'Custom', {
-      ok: true,
-      id: 'prompt.setCustom',
+      ok   : true,
+      id   : 'prompt.setCustom',
       props: { hash: view.hash, text: view.text },
     }),
     seg('agent', 'Agent', condenseInvocation(view)),
@@ -203,12 +203,12 @@ export function modeStrip(view: PromptView): ModeButton[] {
 const commandOfMode: Record<ModeButton['id'], string> = {
   chunks: 'prompt.clear',
   custom: 'prompt.setCustom',
-  agent: 'prompt.condense',
+  agent : 'prompt.condense',
 };
 
 const alreadyIn = (id: ModeButton['id']): { ok: false; reason: string; id: string } => ({
-  ok: false,
-  id: commandOfMode[id],
+  ok    : false,
+  id    : commandOfMode[id],
   reason: `This prompt is already in ${id} mode.`,
 });
 
@@ -238,16 +238,16 @@ export function condenseAction(view: PromptView): CondenseAction {
   }
   if (view.mode === 'custom') {
     return {
-      ok: true,
-      id: 'prompt.condense',
+      ok   : true,
+      id   : 'prompt.condense',
       props: { hash: view.hash, force: true },
       label: 'Reconcile…',
-      note: 'Your custom prompt is handed to the model as the thing to preserve.',
+      note : 'Your custom prompt is handed to the model as the thing to preserve.',
     };
   }
   return {
-    ok: true,
-    id: 'prompt.condense',
+    ok   : true,
+    id   : 'prompt.condense',
     props: { hash: view.hash },
     label: view.held ? 'Recondense' : 'Condense…',
     note: view.held
@@ -293,8 +293,8 @@ export interface RefChip {
  */
 export function refStrip(chunk: PromptChunkInfo): RefChip[] {
   return (chunk.refs ?? []).map((ref) => ({
-    pin: ref.pin,
-    ext: ref.ext,
+    pin  : ref.pin,
+    ext  : ref.ext,
     label: ref.label,
     muted: chunk.muted,
     drift: !!ref.drift,
@@ -345,15 +345,15 @@ export const REF_SUPPLIES = ['ref'];
  */
 export function chunkActs(view: PromptView, chunk: PromptChunkInfo): ChunkAct[] {
   const setChunk = (op: string, text?: string): Offer => ({
-    ok: true,
-    id: 'prompt.setChunk',
+    ok   : true,
+    id   : 'prompt.setChunk',
     props: { hash: view.hash, chunk: chunk.key, op, ...(text === undefined ? {} : { text }) },
   });
   const nothingDone = !chunk.muted && !chunk.edit;
 
   return [
     {
-      key: 'mute',
+      key  : 'mute',
       label: 'Mute',
       title: chunk.muted ? 'Already muted.' : 'Leave this clause out of the prompt',
       offer: chunk.muted
@@ -361,28 +361,28 @@ export function chunkActs(view: PromptView, chunk: PromptChunkInfo): ChunkAct[] 
         : setChunk('mute', ''),
     },
     {
-      key: 'replace',
+      key  : 'replace',
       label: 'Replace…',
       title: 'Say this clause in your own words',
       offer: setChunk('replace'),
       opens: 'replace',
     },
     {
-      key: 'append',
+      key  : 'append',
       label: 'Append…',
       title: 'Add to what the builders derived, keeping it',
       offer: setChunk('append'),
       opens: 'append',
     },
     {
-      key: 'attach',
+      key  : 'attach',
       label: 'Attach…',
       title: 'Send a reference image with this clause',
       offer: { ok: true, id: 'prompt.addRef', props: { hash: view.hash, chunk: chunk.key } },
       picks: true,
     },
     {
-      key: 'reset',
+      key  : 'reset',
       label: 'Reset',
       title: nothingDone
         ? 'Nothing has been done to this clause.'
@@ -397,8 +397,8 @@ export function chunkActs(view: PromptView, chunk: PromptChunkInfo): ChunkAct[] 
 /** Detach one reference image from a clause. Its own function so the strip records what it runs. */
 export function dropRefAction(view: PromptView, chunk: PromptChunkInfo, pin: string): Offer {
   return {
-    ok: true,
-    id: 'prompt.dropRef',
+    ok   : true,
+    id   : 'prompt.dropRef',
     props: { hash: view.hash, chunk: chunk.key, ref: pin },
   };
 }

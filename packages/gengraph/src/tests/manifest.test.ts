@@ -4,13 +4,13 @@ import { GEN_PLUGIN_API_VERSION } from '../plugin.js';
 /** A manifest that parses, so each case below changes one thing about it. */
 function raw(over: Record<string, unknown> = {}): Record<string, unknown> {
   return {
-    name: 'acme-image',
-    version: '1.2.0',
-    apiVersion: GEN_PLUGIN_API_VERSION,
+    name       : 'acme-image',
+    version    : '1.2.0',
+    apiVersion : GEN_PLUGIN_API_VERSION,
     description: 'Draws pictures through the Acme backend.',
-    nodeTypes: ['AcmeImage'],
-    services: ['image', 'key'],
-    keys: ['ACME_API_KEY'],
+    nodeTypes  : ['AcmeImage'],
+    services   : ['image', 'key'],
+    keys       : ['ACME_API_KEY'],
     ...over,
   };
 }
@@ -25,7 +25,7 @@ describe('reading a plugin manifest', () => {
   it('reads the fields a plugin declares', () => {
     const result = parseGenPluginManifest(raw());
     expect(result).toMatchObject({
-      ok: true,
+      ok      : true,
       manifest: { name: 'acme-image', nodeTypes: ['AcmeImage'], keys: ['ACME_API_KEY'] },
     });
   });
@@ -33,7 +33,7 @@ describe('reading a plugin manifest', () => {
   it('fills in the entry and the two empty lists', () => {
     const result = parseGenPluginManifest(raw({ services: undefined, keys: undefined }));
     expect(result).toMatchObject({
-      ok: true,
+      ok      : true,
       manifest: { entry: 'index.ts', services: [], keys: [] },
     });
   });
@@ -104,7 +104,7 @@ describe('what an author is asked to confirm', () => {
   it('pluralizes what there is more than one of', () => {
     const text = described({
       nodeTypes: ['AcmeImage', 'AcmeEdit'],
-      keys: ['ACME_API_KEY', 'ACME_ORG'],
+      keys     : ['ACME_API_KEY', 'ACME_ORG'],
     });
     expect(text).toContain('2 node types');
     expect(text).toContain('ACME_API_KEY and ACME_ORG keys');

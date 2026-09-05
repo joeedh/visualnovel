@@ -14,11 +14,11 @@ export async function loadEntry(entryPoint, exportName) {
   const tmp = resolve(root, `apps/desktop/dist/.${exportName}-entry.cjs`);
   await build({
     entryPoints: [resolve(root, entryPoint)],
-    outfile: tmp,
-    bundle: true,
-    platform: 'node',
-    format: 'cjs',
-    target: 'node20',
+    outfile    : tmp,
+    bundle     : true,
+    platform   : 'node',
+    format     : 'cjs',
+    target     : 'node20',
     alias,
     external: EXTERNAL,
     logLevel: 'warning',

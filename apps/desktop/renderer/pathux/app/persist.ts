@@ -197,13 +197,13 @@ function buildable(blob: object): boolean {
 
 export function saveSelection(ui: ShellState): void {
   const selection: StoredSelection = {
-    sceneId: ui.sceneId,
-    shotId: ui.shotId,
+    sceneId    : ui.sceneId,
+    shotId     : ui.shotId,
     characterId: ui.characterId,
-    docPath: ui.docPath,
-    assetHash: ui.assetHash,
-    taskHash: ui.taskHash,
-    graphSlug: ui.graphSlug,
+    docPath    : ui.docPath,
+    assetHash  : ui.assetHash,
+    taskHash   : ui.taskHash,
+    graphSlug  : ui.graphSlug,
   };
   api.session.set(SELECTION_KEY, selection, ME.scope);
 }
@@ -226,13 +226,13 @@ export function restoreSelection(ui: ShellState): StoredSelection {
     ui.graphSlug = selection.graphSlug ?? '';
   }
   return {
-    sceneId: ui.sceneId,
-    shotId: ui.shotId,
+    sceneId    : ui.sceneId,
+    shotId     : ui.shotId,
     characterId: ui.characterId,
-    docPath: ui.docPath,
-    assetHash: ui.assetHash,
-    taskHash: ui.taskHash,
-    graphSlug: ui.graphSlug,
+    docPath    : ui.docPath,
+    assetHash  : ui.assetHash,
+    taskHash   : ui.taskHash,
+    graphSlug  : ui.graphSlug,
   };
 }
 

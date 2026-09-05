@@ -21,9 +21,9 @@ in the generative pipeline.
 - Design: [`docs/history/vn-generator-report.md`](docs/history/vn-generator-report.md)
 - Pipeline contracts (the invariants below, in full):
   [`docs/reference/pipeline-contracts.md`](docs/reference/pipeline-contracts.md)
-- Debugging guide: [`docs/guides/debugGuide.md`](docs/guides/debugGuide.md). Read it before
-  debugging anything in this repo; it orders the tools cheapest-first and prefers evidence
-  over reproduction.
+- Debugging guide: [`docs/guides/debugGuide.md`](docs/guides/debugGuide.md). Read it
+  before debugging anything in this repo; it orders the tools cheapest-first and prefers
+  evidence over reproduction.
 - Out of scope: export to an external engine (Ren'Py, Ink, and the like). The generative
   pipeline core stops at a populated `build/` plus `manifest.json`. On top of that sit a
   small in-house playable (`vngen export` → `story.play.json`) and a desktop runner for
@@ -36,8 +36,8 @@ pipeline.
 
 ## Setup
 
-A fresh clone needs four steps, in this order (you can also run 'pnpm setup:all'; keep
-it up to date with this list):
+A fresh clone needs four steps, in this order (you can also run 'pnpm setup:all'; keep it
+up to date with this list):
 
 ```bash
 git submodule update --init --recursive   # vendor/path.ux, and the one it carries
@@ -51,11 +51,12 @@ alias, and needs its own install separately from the root's — `pnpm check:setu
 (`scripts/check-submodules.mjs`, also the desktop build's first step) fails by name when
 either step is still owed. nstructjs is a submodule too, at `vendor/nstructjs`, but the
 desktop app depends on it via `link:../../vendor/nstructjs` and uses only its committed
-build output, so it needs no install of its own and `pnpm check:setup` exempts it.
-Then `pnpm check && pnpm test && pnpm lint` should be green, and `pnpm build` bundles
+build output, so it needs no install of its own and `pnpm check:setup` exempts it. Then
+`pnpm check && pnpm test && pnpm lint` should be green, and `pnpm build` bundles
 everything. [`docs/guides/toolchain.md`](docs/guides/toolchain.md) covers why each choice
 is made and the exact failure symptoms, and
-[`docs/reference/desktop-app.md`](docs/reference/desktop-app.md) covers the submodule's role.
+[`docs/reference/desktop-app.md`](docs/reference/desktop-app.md) covers the submodule's
+role.
 
 ## Commands
 
@@ -81,11 +82,12 @@ Run from the repo root.
 | Lint comment prose           | `pnpm lint:comments` (part of `pnpm lint`; `commentlint <file>...` for one file)        |
 | Propose a prose-style pass   | `pnpm prose:style --file docs/<page>.md` (advisory, needs a key; writes `.prosestyle/`) |
 
-`pnpm check`, `pnpm test`, and `pnpm lint` should all be green before and after any change.
+`pnpm check`, `pnpm test`, and `pnpm lint` should all be green before and after any
+change.
 
-The toolchain's shape, and every deliberate deviation from the original plan, is documented
-in [`docs/guides/toolchain.md`](docs/guides/toolchain.md). Four things cause enough mistakes
-to repeat here:
+The toolchain's shape, and every deliberate deviation from the original plan, is
+documented in [`docs/guides/toolchain.md`](docs/guides/toolchain.md). Four things cause
+enough mistakes to repeat here:
 
 - `pnpm check` runs two passes: the flat workspace check plus `pnpm check:renderer`,
   because `apps/desktop/renderer/**` lives outside `src/` and nothing else typechecks it.
@@ -122,12 +124,11 @@ providers   │      ╲ ╲  │
            cli
 ```
 
-- The pipeline spine and the authoring branch are disjoint below `@vn/store`;
-  they are not allowed to depend on each other.
-  `@vn/authoring` reuses the input-side packages but must never import `@vn/pipeline` or
-  `@vn/scheduler`. The boundaries rule checks each import statement rather than the
-  transitive closure, so routing a forbidden import through an allowed leaf package still
-  violates the design and must not be done.
+- The pipeline spine and the authoring branch are disjoint below `@vn/store`; they are not
+  allowed to depend on each other. `@vn/authoring` reuses the input-side packages but must
+  never import `@vn/pipeline` or `@vn/scheduler`. The boundaries rule checks each import
+  statement rather than the transitive closure, so routing a forbidden import through an
+  allowed leaf package still violates the design and must not be done.
 - Six leaves share that constrained allow-list. `@vn/export`, `@vn/scriptedit`,
   `@vn/bible`, `@vn/artgen` and `@vn/gengraph` are leaves because two hosts (the desktop
   app and `vnauthor`) must run the same rules, so the rules cannot live in either host.
@@ -143,20 +144,21 @@ providers   │      ╲ ╲  │
 
 The core application contracts — the ones that cost money or corrupt provenance when
 broken — are written up in full in
-[`docs/reference/pipeline-contracts.md`](docs/reference/pipeline-contracts.md), each with the
-failure it prevents and a link to the plan that established it. Read the linked doc in full,
-and any doc it links in turn, before changing the invariant it names. Look there for: the
-content-addressed task graph and asset store, the P3 approval gate, sheet planning, incremental
-planning, the slot graph, explicit decomposition, failure records, outfit inheritance, art
-direction (including the agent's own art-revision tools), concept images, adoption, prose drift
-reporting, generation-graph drift, line ids, the scene round-trip, entity discovery, the P7
-refine loop, and provider seams. Story-bible access is the one core idea documented on its own,
-in [`docs/reference/story-bible.md`](docs/reference/story-bible.md), because it has no
-pipeline-contract failure mode of its own — only the query-only access rule. Generation graphs —
-`@vn/gengraph`, the `gengraph.*` commands, the run journal, groups, the Gen Graph pane and
-plugins — are written up end to end in
-[`docs/reference/gen-graphs.md`](docs/reference/gen-graphs.md); the contracts doc keeps only
-their three invariants.
+[`docs/reference/pipeline-contracts.md`](docs/reference/pipeline-contracts.md), each with
+the failure it prevents and a link to the plan that established it. Read the linked doc in
+full, and any doc it links in turn, before changing the invariant it names. Look there
+for: the content-addressed task graph and asset store, the P3 approval gate, sheet
+planning, incremental planning, the slot graph, explicit decomposition, failure records,
+outfit inheritance, art direction (including the agent's own art-revision tools), concept
+images, adoption, prose drift reporting, generation-graph drift, line ids, the scene
+round-trip, entity discovery, the P7 refine loop, and provider seams. Story-bible access
+is the one core idea documented on its own, in
+[`docs/reference/story-bible.md`](docs/reference/story-bible.md), because it has no
+pipeline-contract failure mode of its own — only the query-only access rule. Generation
+graphs — `@vn/gengraph`, the `gengraph.*` commands, the run journal, groups, the Gen Graph
+pane and plugins — are written up end to end in
+[`docs/reference/gen-graphs.md`](docs/reference/gen-graphs.md); the contracts doc keeps
+only their three invariants.
 
 ## CLI
 
@@ -166,9 +168,9 @@ vngen run | approve | status | graph | export | cost | import | screenplay   [di
 
 [`docs/guides/cli.md`](docs/guides/cli.md) documents the flags, `--mock` semantics, key
 resolution, the on-disk project layout, and the `templates/basic` walkthrough. Two things
-are worth knowing before running anything. `--mock` writes no assets and needs no keys. In a
-real project `vngen/` is committed, because it is the reproducible output of a run rather
-than something to gitignore.
+are worth knowing before running anything. `--mock` writes no assets and needs no keys. In
+a real project `vngen/` is committed, because it is the reproducible output of a run
+rather than something to gitignore.
 
 ## Playable & desktop app
 
@@ -184,30 +186,32 @@ which also covers the shell, the canvas, and the sixteen editors in full.
 playable format, [`docs/reference/desktopAppState.md`](docs/reference/desktopAppState.md)
 records what persists where, and
 [`docs/reference/document-tree.md`](docs/reference/document-tree.md) covers the document
-tree, asset naming and `doc.rename`. Showing an editor to the author is always `view.open` /
-`view.focus`, reached through `exec` or pushed as a `command:ui` effect, never through the pane
-rules directly:
-[`docs/guides/showEditorPaneGuide.md`](docs/guides/showEditorPaneGuide.md) is how to call it
-correctly, and [`docs/reference/swappingPaneEditors.md`](docs/reference/swappingPaneEditors.md)
-is the pure pane-choice logic (`panes.ts`) it calls into. An editor the app decides to show —
-a shot double-clicked in Shot Coverage, an asset clicked in the tree — lands in the biggest pane
-that is neither the document tree nor a conversation, and never covers the pane the author is
-navigating from. That rule lives in `sparing` in `panes.ts`; a surface must not pick a pane of its
-own.
+tree, asset naming and `doc.rename`. Showing an editor to the author is always `view.open`
+/ `view.focus`, reached through `exec` or pushed as a `command:ui` effect, never through
+the pane rules directly:
+[`docs/guides/showEditorPaneGuide.md`](docs/guides/showEditorPaneGuide.md) is how to call
+it correctly, and
+[`docs/reference/swappingPaneEditors.md`](docs/reference/swappingPaneEditors.md) is the
+pure pane-choice logic (`panes.ts`) it calls into. An editor the app decides to show — a
+shot double-clicked in Shot Coverage, an asset clicked in the tree — lands in the biggest
+pane that is neither the document tree nor a conversation, and never covers the pane the
+author is navigating from. That rule lives in `sparing` in `panes.ts`; a surface must not
+pick a pane of its own.
 
 Every control an editor draws also records what pressing it would run, through `act()` in
-`renderer/pathux/tour/anchors.ts` — one `Offer` wires the click and the record together, so the two
-cannot drift apart. That layer is what lets the app point at itself, and a guided tour rides on it.
-[`docs/reference/guided-tours.md`](docs/reference/guided-tours.md) covers both, including the
-committed `anchors.json` and the CDP sweep that measures it, which must be re-run after touching
-`apps/desktop/renderer/pathux/editors/**`.
+`renderer/pathux/tour/anchors.ts` — one `Offer` wires the click and the record together,
+so the two cannot drift apart. That layer is what lets the app point at itself, and a
+guided tour rides on it.
+[`docs/reference/guided-tours.md`](docs/reference/guided-tours.md) covers both, including
+the committed `anchors.json` and the CDP sweep that measures it, which must be re-run
+after touching `apps/desktop/renderer/pathux/editors/**`.
 
 Picking an asset out of the whole manifest — **Attach…** on a prompt clause — goes through
 path.ux's gallery popup rather than a bespoke browser.
-[`docs/reference/asset-picker.md`](docs/reference/asset-picker.md) is the app's half of it: the
-`asset.list` snapshot behind the entries, the `vnasset://` decode that feeds the thumbnail cache,
-and why the picked value only ever reaches `prompt.addRef` as a hash. The widget itself is
-documented in path.ux, at
+[`docs/reference/asset-picker.md`](docs/reference/asset-picker.md) is the app's half of
+it: the `asset.list` snapshot behind the entries, the `vnasset://` decode that feeds the
+thumbnail cache, and why the picked value only ever reaches `prompt.addRef` as a hash. The
+widget itself is documented in path.ux, at
 [`vendor/path.ux/documentation/gallery.md`](vendor/path.ux/documentation/gallery.md).
 
 ## Command system
@@ -215,7 +219,8 @@ documented in path.ux, at
 Every desktop action is a registered command rather than a bespoke IPC channel. A command
 has typed properties, a string DSL (`namespace.command(a='x' b=1)`), git-stamped
 provenance, and one JSON catalog.
-[`docs/reference/command-system.md`](docs/reference/command-system.md) is the full write-up.
+[`docs/reference/command-system.md`](docs/reference/command-system.md) is the full
+write-up.
 
 - `@vn/commands` is the framework. The desktop app owns the commands, in
   `apps/desktop/src/main/commands/`, as thin wrappers over `WorkspaceSession`.
@@ -224,8 +229,8 @@ provenance, and one JSON catalog.
   refusals.
 - Props are declarative specs rather than zod, and `coerceProps` is the single validation
   authority; `prop.secret` marks a string redacted at `digestProps` and never persisted.
-- A mutating command declares its refusal before it runs, via `stack.check`
-  (`accept` / `refuse` / `undeclared`); `undeclared` is not treated as permission.
+- A mutating command declares its refusal before it runs, via `stack.check` (`accept` /
+  `refuse` / `undeclared`); `undeclared` is not treated as permission.
 - The palette, the menu bar, right-click menus and CDP all reach the same registry; the
   agent does not. An agent tool like `edit_scene` shares the underlying rule its `story.*`
   counterpart uses, without invoking the registry, so a command with no tool wrapper
@@ -233,9 +238,9 @@ provenance, and one JSON catalog.
   ([`docs/reference/command-system.md#from-the-agent`](docs/reference/command-system.md#from-the-agent),
   [`docs/plans/archive/INDEX.md#document-tree-context-menus`](docs/plans/archive/INDEX.md#document-tree-context-menus))
 - Provenance, undo and commits are each opt-in: `vngen/state/commands.jsonl` for
-  provenance, undo over an in-memory content-addressed snapshot of the document tree (no git,
-  and no history across a restart), and per-repo commit-on-save. A command sent once per
-  frame declares `defersCommit`, and a run of them commits once.
+  provenance, undo over an in-memory content-addressed snapshot of the document tree (no
+  git, and no history across a restart), and per-repo commit-on-save. A command sent once
+  per frame declares `defersCommit`, and a run of them commits once.
   ([`docs/reference/repos-and-commits.md`](docs/reference/repos-and-commits.md),
   [`docs/reference/command-system.md`](docs/reference/command-system.md))
 - `view.*` commands run in main and push a `command:ui` effect naming an editor, never a
@@ -247,26 +252,27 @@ provenance, and one JSON catalog.
 
 - **`vnauthor`** — a plan-first, git-backed authoring agent. Plan mode is read-only, each
   approved plan produces one commit, edits round-trip through `@vn/model`'s serializers,
-  and approval is authorized only by the author's own typed words, never agent-written text.
-  [`docs/reference/vnauthor.md`](docs/reference/vnauthor.md),
+  and approval is authorized only by the author's own typed words, never agent-written
+  text. [`docs/reference/vnauthor.md`](docs/reference/vnauthor.md),
   [`docs/plans/archive/INDEX.md#prompt-caching-and-deferred-tool-loading`](docs/plans/archive/INDEX.md#prompt-caching-and-deferred-tool-loading),
   [`docs/plans/archive/INDEX.md#improving-the-authoring-agent`](docs/plans/archive/INDEX.md#improving-the-authoring-agent),
   [`docs/plans/archive/INDEX.md#skills-editor-and-agent-authored-skills`](docs/plans/archive/INDEX.md#skills-editor-and-agent-authored-skills).
 - **`@vn/bible`** — retrieval over `wiki/`. `query` is budgeted and is the only entry
   point. A missing `wiki/` yields an empty bible, not an error.
   [`docs/reference/story-bible.md`](docs/reference/story-bible.md).
-- **`@vn/testkit`** — real projects on disk through the real scheduler with mock providers.
-  Nothing may import it, and mock art carries a marker the real backend refuses.
-  [`docs/guides/testkit.md`](docs/guides/testkit.md).
+- **`@vn/testkit`** — real projects on disk through the real scheduler with mock
+  providers. Nothing may import it, and mock art carries a marker the real backend
+  refuses. [`docs/guides/testkit.md`](docs/guides/testkit.md).
 - **`@vn/debug2d`** — source-agnostic 2D debugging for the renderer. Zero deps and
-  dev-only, so `vite build` drops it. [`docs/guides/debugGuide.md`](docs/guides/debugGuide.md).
+  dev-only, so `vite build` drops it.
+  [`docs/guides/debugGuide.md`](docs/guides/debugGuide.md).
 
 ## Conventions
 
 - **Secrets.** The `keys/` directory is gitignored (the generated `vngen/` tree is not).
   API key values must never be logged or committed. `project.yaml` records only model ids
-  and env-var names. `resolveKeys` throws errors naming the source (env var or file), never
-  the value.
+  and env-var names. `resolveKeys` throws errors naming the source (env var or file),
+  never the value.
 - **Key resolution.** A key resolves from four places, and the first answer wins: the env
   var named in `project.yaml`, the project's own `keys/`, the enclosing repo root's
   `keys/`, then the user-level directory. A project carrying its own key therefore wins
@@ -297,41 +303,45 @@ below stay here because they are rules you need while the work is happening.
 
 ### Comments
 
-Comments are prose, so the Prose rules below govern them as well. The rules in this section
-are the ones that apply only to code.
+Comments are prose, so the Prose rules below govern them as well. The rules in this
+section are the ones that apply only to code.
 
 - **A comment describes the code directly beneath it.** Placing a comment above an `if`
   captions the branch it guards, so a comment explaining the opposite case belongs on the
   `else`, or should be reworded to describe the test itself. Misplacing a comment this way
   breaks correctness, not just style.
 - **Delete commented-out code — never leave it as commentary.** Git history holds it. A
-  commented-out call, import or block explains nothing about the code that survives, and it
-  goes stale silently because nothing type-checks it.
+  commented-out call, import or block explains nothing about the code that survives, and
+  it goes stale silently because nothing type-checks it.
 - **Never restate what the code already says.** `inputs: {}, //tool properties` and
-  `case keymap.Escape: //esc` add a maintenance burden and no information. A comment earns its
-  place by giving a reason, a constraint, or a consequence.
-- **Cite a named constant rather than its value.** A comment saying "thirty seconds" beside
-  `LINGER_MS` is wrong the first time the constant changes; write `` `LINGER_MS` ``.
+  `case keymap.Escape: //esc` add a maintenance burden and no information. A comment earns
+  its place by giving a reason, a constraint, or a consequence.
+- **Cite a named constant rather than its value.** A comment saying "thirty seconds"
+  beside `LINGER_MS` is wrong the first time the constant changes; write
+  `` `LINGER_MS` ``.
 - **Rename instead of commenting a name.** If the sentence's work is translating an
   identifier — what `snapMode` means, what a bare `-1` means — rename the identifier or
   introduce a named constant, then delete the sentence. Comment a name only when the name
-  cannot be fixed. Try to avoid names longer than three words or 25 characters
-  (10 characters or less is preferred).
-- **Comment the consequence, not the arguments.** Options passed at a call site (`capture`,
-  `passive`, a flag, a lifetime) are already on screen. State what the reader cannot see: what
-  the call does to everything around it. Write "Does not inhibit the event from reaching other
-  consumers", not "registered `passive` so it cannot call `preventDefault`".
-- **State facts; do not defend the design.** Rationale belongs in a comment only when a reader
-  looking at the surrounding code still could not derive it — an ordering constraint, a platform
-  quirk, a decision with a live alternative. Explaining why this approach beats a naive one, or
-  what would go wrong under that naive approach, belongs in the commit message instead.
-- **A doc comment continues its declaration; it does not restate it.** Do not re-supply the
-  subject the declaration already names, and do not narrate the signature. A field or property
-  takes a noun phrase or a bare predicate — "Pointer ids currently down.", "Detected via the
-  presence of multiple pointer ids." A class, function or method takes a predicate, because the
-  reader needs to know what it does — "Draws the links beneath the node frames in screen space."
-  A headless noun phrase over a class or a function is a fragment opener; do not use one.
-  A doc comment that reads as a standalone paragraph is usually rationale in disguise.
+  cannot be fixed. Try to avoid names longer than three words or 25 characters (10
+  characters or less is preferred).
+- **Comment the consequence, not the arguments.** Options passed at a call site
+  (`capture`, `passive`, a flag, a lifetime) are already on screen. State what the reader
+  cannot see: what the call does to everything around it. Write "Does not inhibit the
+  event from reaching other consumers", not "registered `passive` so it cannot call
+  `preventDefault`".
+- **State facts; do not defend the design.** Rationale belongs in a comment only when a
+  reader looking at the surrounding code still could not derive it — an ordering
+  constraint, a platform quirk, a decision with a live alternative. Explaining why this
+  approach beats a naive one, or what would go wrong under that naive approach, belongs in
+  the commit message instead.
+- **A doc comment continues its declaration; it does not restate it.** Do not re-supply
+  the subject the declaration already names, and do not narrate the signature. A field or
+  property takes a noun phrase or a bare predicate — "Pointer ids currently down.",
+  "Detected via the presence of multiple pointer ids." A class, function or method takes a
+  predicate, because the reader needs to know what it does — "Draws the links beneath the
+  node frames in screen space." A headless noun phrase over a class or a function is a
+  fragment opener; do not use one. A doc comment that reads as a standalone paragraph is
+  usually rationale in disguise.
 - **Inline notes and doc comments are punctuated differently.** An inline `//` note is a
   fragment with no terminal period; a `/** … */` doc comment is a punctuated sentence. One
   line each, unless the fact genuinely needs two.
@@ -363,8 +373,8 @@ See ['docs/reference/proseStyle.md'](docs/reference/proseStyle.md).
   conversation that produced it, and ask it to attack the plan: what does it assume
   without stating, what does it contradict in the code or in `docs/`, what does it leave
   undecided, and what would it cost to undo. The reviewer must be a separate context,
-  because the author's context already holds the reasoning the plan is supposed to carry on
-  its own, so an agent that helped write the plan cannot tell a stated decision from a
+  because the author's context already holds the reasoning the plan is supposed to carry
+  on its own, so an agent that helped write the plan cannot tell a stated decision from a
   remembered one.
 - The plan is then updated to answer what came back: each finding is either fixed, or
   recorded in the plan with the reason it is wrong. If a review's findings leave no trace
@@ -377,49 +387,51 @@ See ['docs/reference/proseStyle.md'](docs/reference/proseStyle.md).
   involved), then land it from the master checkout with `git merge --ff-only <branch>`.
   `--ff-only` verifies the rebase happened rather than merely guarding against surprises:
   if it refuses, rebase again rather than falling back to a plain `git merge`. Set
-  `pull.rebase true` so a routine pull cannot introduce a merge commit either. A worktree's
-  branch lands the same way, with `ExitWorktree` and `action: "keep"` first, because the
-  merge must run from the master checkout rather than from inside the worktree.
+  `pull.rebase true` so a routine pull cannot introduce a merge commit either. A
+  worktree's branch lands the same way, with `ExitWorktree` and `action: "keep"` first,
+  because the merge must run from the master checkout rather than from inside the
+  worktree.
 - Squash a branch that is one idea; keep the stages of a branch that is several. A fix, a
   small feature, a docs pass: one commit, squashed on the way in. A plan implemented in
   reviewable stages keeps those stages, because each is a commit a reader would want to
   land on. The noise made along the way (`wip`, `fix typo`, `address review`, `oops`) is
   always squashed. Fold each into the commit it repairs with `git commit --fixup <sha>`
   while working, then collapse them before landing with
-  `GIT_SEQUENCE_EDITOR=: git rebase -i --autosquash master`. It is spelled that way because
-  an agent session has no interactive editor, and because a fixup is a note to the rebase
-  rather than a commit anyone reads.
+  `GIT_SEQUENCE_EDITOR=: git rebase -i --autosquash master`. It is spelled that way
+  because an agent session has no interactive editor, and because a fixup is a note to the
+  rebase rather than a commit anyone reads.
 - Every commit on `master` is green under `pnpm check`, `pnpm test` and `pnpm lint`, so
   that `git bisect` always lands on a buildable tree and `git log -p <file>` reads as that
   file's history. A stage that only compiles once the next stage arrives belongs in the
   next stage.
-- Only rewrite history nobody else has pulled yet. Rebasing, squashing and `--fixup` are for
-  a branch still in hand; once history is published and someone could have pulled it, treat
-  it as append-only.
+- Only rewrite history nobody else has pulled yet. Rebasing, squashing and `--fixup` are
+  for a branch still in hand; once history is published and someone could have pulled it,
+  treat it as append-only.
 
 ### Tooltips
 
 - Every interactive UI element carries a tooltip — no exceptions. Buttons, checkboxes,
   text fields, menu and palette entries, tree rows, thumbnails, drag handles, icon-only
-  controls: if the author can click, type into, or drag it, it says what it does on
-  hover. A control shipped without one is an unfinished control.
+  controls: if the author can click, type into, or drag it, it says what it does on hover.
+  A control shipped without one is an unfinished control.
 - Describe what a control does rather than naming it. Write "Leave this clause out of the
   prompt" rather than "Mute". Where the label already says everything (a plain `OK`), the
   tooltip adds the consequence instead of repeating the word.
 - A disabled control's tooltip states why it refused. When a command declined through
   `stack.check`, show that sentence verbatim — a greyed control that will not say why is
   the same bug as a hidden one.
-- Tooltips are set through two mechanisms. A path.ux widget takes `.description`; a raw DOM
-  node in an `appendSurface` root takes `.title`. Command-backed controls default to the
-  registry's own text (the entry's `title`, a prop's `description`), so a command with a
-  vague description is fixed in the definition rather than papered over at the call site. A
-  pane tab uses neither mechanism: it is painted on the docker's canvas, so its tooltip
-  comes from `define().description`, which `registerEditor` splices in from `EDITORS`'s
-  `what` — the same sentence View ▸ Editors shows.
+- Tooltips are set through two mechanisms. A path.ux widget takes `.description`; a raw
+  DOM node in an `appendSurface` root takes `.title`. Command-backed controls default to
+  the registry's own text (the entry's `title`, a prop's `description`), so a command with
+  a vague description is fixed in the definition rather than papered over at the call
+  site. A pane tab uses neither mechanism: it is painted on the docker's canvas, so its
+  tooltip comes from `define().description`, which `registerEditor` splices in from
+  `EDITORS`'s `what` — the same sentence View ▸ Editors shows.
 
 ## Euphemeral UI data (saveUIData/loadUIData)
 
-See [vendor\path.ux\scripts\core\base\ui_savedata.ts](vendor\path.ux\scripts\core\base\ui_savedata.ts)
+See
+[vendor\path.ux\scripts\core\base\ui_savedata.ts](vendor\path.ux\scripts\core\base\ui_savedata.ts)
 
 Path.ux has a system to store 'euphemeral' data, such as:
 
@@ -429,20 +441,20 @@ Path.ux has a system to store 'euphemeral' data, such as:
 - Last selected item in a list
 - etc.
 
-UIBase subclasses can override saveData and loadData methods,
-they should be fault-tolerant.
+UIBase subclasses can override saveData and loadData methods, they should be
+fault-tolerant.
 
 The typical pattern to use is:
 
 ```ts
 // note: the second parameter is currently unused but is required
-const data = saveUIData(widget, 'something');
+const data = saveUIData(widget, "something");
 // reinitialize widget
 loadUIData(widget, data);
 ```
 
-saveUIData is implemented using a simple DOM path system and is
-meant to fail gracefully if e.g. the widget's subtree has reconfigured.
+saveUIData is implemented using a simple DOM path system and is meant to fail gracefully
+if e.g. the widget's subtree has reconfigured.
 
-The base pathux editor class (Area) uses this system to save and load
-the state of widgets in area editors in its STRUCT script.
+The base pathux editor class (Area) uses this system to save and load the state of widgets
+in area editors in its STRUCT script.

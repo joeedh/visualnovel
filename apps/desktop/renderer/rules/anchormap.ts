@@ -21,7 +21,7 @@ interface SweptRecord {
 }
 
 const records: AnchorRecord[] = (sweep.records as SweptRecord[]).map((record) => ({
-  id: record.id,
+  id    : record.id,
   editor: record.editor as AnchorHome,
   ...(record.supplies ? { supplies: record.supplies } : {}),
   ...(record.form ? { form: true } : {}),

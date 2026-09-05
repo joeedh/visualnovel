@@ -20,8 +20,8 @@ describe('the node registry', () => {
     expect(genNodeSpec('TestSource')).toEqual({ cls: TestSource });
 
     expect(genNodeSpec('TestOutput')).toEqual({
-      cls: TestOutput,
-      spends: true,
+      cls     : TestOutput,
+      spends  : true,
       slotProp: 'slot',
     });
     expect(genNodeTypes().get('TestOutput')).toBe(TestOutput);

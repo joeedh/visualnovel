@@ -74,7 +74,7 @@ function droppedWarnings(script: FountainScript): Diagnostic[] {
     if (lines.length === 0) continue;
     out.push({
       severity: 'warning',
-      code: 'dropped_element',
+      code    : 'dropped_element',
       message:
         `${lines.length} ${label}${lines.length > 1 ? 's' : ''} (source line ` +
         `${lines.join(', ')}) will be absent from the chunks; the model does not keep ${label}s`,
@@ -84,7 +84,7 @@ function droppedWarnings(script: FountainScript): Diagnostic[] {
   if (keys.length > 0) {
     out.push({
       severity: 'warning',
-      code: 'dropped_title_page',
+      code    : 'dropped_title_page',
       message: `the title page (${keys.join(', ')}) will be absent from the chunks; a scene chunk's front-matter is its id and nothing else`,
     });
   }
@@ -185,7 +185,7 @@ export function sceneChunksFromScript(
   const failed = diagnostics.some((d) => d.severity === 'error');
   return {
     chunks: failed ? [] : chunks,
-    entry: failed ? undefined : (opts.start ?? split.scenes[0]?.id),
+    entry : failed ? undefined : (opts.start ?? split.scenes[0]?.id),
     diagnostics,
   };
 }

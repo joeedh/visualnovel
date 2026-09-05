@@ -260,9 +260,9 @@ function groupDiagnostics(
     for (const node of graph.nodes) {
       if ((node as GroupNode).ref !== ref) continue;
       out.push({
-        code: 'unresolved-group',
+        code   : 'unresolved-group',
         message: `group '${ref}' did not load: ${reason}`,
-        nodeId: node.id,
+        nodeId : node.id,
       });
     }
   }

@@ -19,12 +19,12 @@ const alias = { ...shared, '@vn/authoring-app': resolve(root, 'apps/authoring/sr
 /** @type {import('esbuild').BuildOptions} */
 const options = {
   entryPoints: [resolve(root, 'apps/authoring/src/vnauthor.ts')],
-  outfile: resolve(root, 'apps/authoring/dist/vnauthor.js'),
-  bundle: true,
-  platform: 'node',
-  format: 'esm',
-  target: 'node20',
-  sourcemap: true,
+  outfile    : resolve(root, 'apps/authoring/dist/vnauthor.js'),
+  bundle     : true,
+  platform   : 'node',
+  format     : 'esm',
+  target     : 'node20',
+  sourcemap  : true,
   alias,
   external: EXTERNAL,
   banner: {

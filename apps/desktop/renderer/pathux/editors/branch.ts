@@ -142,9 +142,9 @@ export class BranchEditor extends VnEditor {
 
   static override define() {
     return {
-      tagname: 'vn-branch-editor-x',
+      tagname : 'vn-branch-editor-x',
       areaname: 'branches',
-      icon: -1,
+      icon    : -1,
     };
   }
 
@@ -157,9 +157,9 @@ export class BranchEditor extends VnEditor {
     this.surface = el('div', 'branch branch-surface') as HTMLDivElement;
 
     this.canvas = new GraphCanvas({
-      edgeStyle: wireStyle,
-      pickOptions: { edgeSlop: 10 },
-      onPick: (hit, event) => this.onPick(hit, event),
+      edgeStyle      : wireStyle,
+      pickOptions    : { edgeSlop: 10 },
+      onPick         : (hit, event) => this.onPick(hit, event),
       onSurfaceChange: () => this.fitOnce(),
     });
     // The canvas's own `pickAt`, so a tour asking whether a ring lands on its node gets the
@@ -182,8 +182,8 @@ export class BranchEditor extends VnEditor {
     // after clearing, so a pointer move can repaint the overlay without rebuilding the content.
     this.overlayHost = el('div') as HTMLDivElement;
     Object.assign(this.overlayHost.style, {
-      position: 'absolute',
-      inset: '0',
+      position     : 'absolute',
+      inset        : '0',
       pointerEvents: 'none',
     });
     this.canvas.setOverlay(this.overlayHost);
@@ -294,9 +294,9 @@ export class BranchEditor extends VnEditor {
     this.paintOverlay();
     const nodes = redrawing('branches', 'nodes');
     this.canvas.setContent({
-      layout: this.layout,
-      edges: this.edges,
-      renderNode: (node) => this.renderNode(node),
+      layout     : this.layout,
+      edges      : this.edges,
+      renderNode : (node) => this.renderNode(node),
       renderLabel: (edge) => this.renderLabel(edge),
       // The scene a card names, so a step that wants another scene on screen can ring the card
       // that puts one there. A shot left over from another scene is dropped, which is what
@@ -414,9 +414,9 @@ export class BranchEditor extends VnEditor {
         // The original stays put: a splice rewires the story, it does not move the scene.
         const ghost = el('div', 'carried-card');
         Object.assign(ghost.style, {
-          left: `${drag.at.x - CARD.width / 2}px`,
-          top: `${drag.at.y - CARD.height / 2}px`,
-          width: `${CARD.width}px`,
+          left  : `${drag.at.x - CARD.width / 2}px`,
+          top   : `${drag.at.y - CARD.height / 2}px`,
+          width : `${CARD.width}px`,
           height: `${CARD.height}px`,
         });
         ghost.appendChild(sceneCard(carried, false, false, true));
@@ -517,10 +517,10 @@ export class BranchEditor extends VnEditor {
     const onMove = (event: PointerEvent): void => {
       if (!this.drag) return;
       this.drag = aim(this.drag, {
-        at: this.worldAt(event.clientX, event.clientY),
-        node: this.nodeUnder(event),
-        edge: this.edgeUnder(event),
-        away: this.awayFromArrow(event),
+        at   : this.worldAt(event.clientX, event.clientY),
+        node : this.nodeUnder(event),
+        edge : this.edgeUnder(event),
+        away : this.awayFromArrow(event),
         scale: this.canvas.viewport.scale,
       });
       this.paintGesture();

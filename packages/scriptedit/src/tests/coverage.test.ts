@@ -16,8 +16,8 @@ const shots = (): CoverShot[] => [
 describe('setCoverage', () => {
   it('takes a claimed line off whatever shot held it', () => {
     const op = setCoverage(shots(), {
-      shot: 's__beat1',
-      lines: ['s:L2', 's:L4', 's:L5'],
+      shot     : 's__beat1',
+      lines    : ['s:L2', 's:L4', 's:L5'],
       lineOrder: LINES,
     });
     if (!op.ok) throw new Error(op.error);
@@ -30,8 +30,8 @@ describe('setCoverage', () => {
 
   it('orders the new set by the screenplay, not by the request', () => {
     const op = setCoverage(shots(), {
-      shot: 's__beat1',
-      lines: ['s:L5', 's:L2', 's:L1'],
+      shot     : 's__beat1',
+      lines    : ['s:L5', 's:L2', 's:L1'],
       lineOrder: LINES,
     });
     if (!op.ok) throw new Error(op.error);
@@ -40,8 +40,8 @@ describe('setCoverage', () => {
 
   it('never leaves a line in two shots, however the claim overlaps', () => {
     const op = setCoverage(shots(), {
-      shot: 's__beat2',
-      lines: ['s:L1', 's:L2', 's:L3', 's:L6'],
+      shot     : 's__beat2',
+      lines    : ['s:L1', 's:L2', 's:L3', 's:L6'],
       lineOrder: LINES,
     });
     if (!op.ok) throw new Error(op.error);
@@ -59,8 +59,8 @@ describe('setCoverage', () => {
    */
   it('refuses a claim that would leave another shot covering nothing', () => {
     const op = setCoverage(shots(), {
-      shot: 's__establishing',
-      lines: ['s:L1', 's:L2', 's:L4', 's:L5'],
+      shot     : 's__establishing',
+      lines    : ['s:L1', 's:L2', 's:L4', 's:L5'],
       lineOrder: LINES,
     });
     expect(op).toMatchObject({ ok: false, error: expect.stringContaining('s__beat1') });
@@ -76,8 +76,8 @@ describe('setCoverage', () => {
   it('does not refuse over a shot that already covered nothing', () => {
     const withOrphan = [...shots(), { id: 's__orphan', coversLines: [] }];
     const op = setCoverage(withOrphan, {
-      shot: 's__establishing',
-      lines: ['s:L1', 's:L4', 's:L6'],
+      shot     : 's__establishing',
+      lines    : ['s:L1', 's:L4', 's:L6'],
       lineOrder: LINES,
     });
     expect(op.ok).toBe(true);
@@ -93,8 +93,8 @@ describe('setCoverage', () => {
 
   it('refuses a line the scene does not have', () => {
     const op = setCoverage(shots(), {
-      shot: 's__beat1',
-      lines: ['s:L2', 's:L9'],
+      shot     : 's__beat1',
+      lines    : ['s:L2', 's:L9'],
       lineOrder: LINES,
     });
     expect(op).toEqual({ ok: false, error: 'Scene has no line "s:L9".' });
@@ -105,8 +105,8 @@ describe('setCoverage', () => {
       ok: false,
     });
     const noop = setCoverage(shots(), {
-      shot: 's__beat1',
-      lines: ['s:L2', 's:L5'],
+      shot     : 's__beat1',
+      lines    : ['s:L2', 's:L5'],
       lineOrder: LINES,
     });
     expect(noop).toMatchObject({ ok: false, error: expect.stringContaining('already covers') });
@@ -114,8 +114,8 @@ describe('setCoverage', () => {
 
   it('deduplicates a repeated claim', () => {
     const op = setCoverage(shots(), {
-      shot: 's__beat1',
-      lines: ['s:L2', 's:L3', 's:L3'],
+      shot     : 's__beat1',
+      lines    : ['s:L2', 's:L3', 's:L3'],
       lineOrder: LINES,
     });
     if (!op.ok) throw new Error(op.error);
@@ -155,12 +155,12 @@ const SCRIPT: RichLine[] = [
 
 const drawn = (id: string, coversLines: string[]): RichShot => ({
   id,
-  framing: 'medium',
+  framing : 'medium',
   subjects: [],
-  outfits: {},
+  outfits : {},
   coversLines,
   status: 'accepted',
-  drift: 'current',
+  drift : 'current',
 });
 
 const SHOTS: RichShot[] = [

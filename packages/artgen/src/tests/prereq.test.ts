@@ -20,9 +20,9 @@ function asset(
     ext: 'png',
     kind,
     sourceTask: `task-${hash}`,
-    refs: [],
-    modelId: 'm',
-    accepted: false,
+    refs      : [],
+    modelId   : 'm',
+    accepted  : false,
     satisfies,
     ...over,
   };
@@ -45,7 +45,7 @@ function ctx(assets: Asset[], m?: ProjectModel): PrereqContext {
         [location('cafe')],
       ),
     assets,
-    shots: new Map(),
+    shots  : new Map(),
     angleOf: () => undefined,
   };
 }
@@ -100,21 +100,21 @@ describe('assetPrereqs', () => {
     // Pins live at the frame's own rung (its shot), so they are read out of `work/shots/`.
     const pinned = asset('pin1', 'location_ref', [{ locationId: 'cafe', variant: 'dawn' }]);
     const shot = (mute?: string[]): Shot => ({
-      id: 'arrival__a',
-      sceneId: 'arrival',
-      framing: 'medium',
-      location: 'night',
-      subjects: [],
-      coversLines: [],
-      status: 'pending',
+      id            : 'arrival__a',
+      sceneId       : 'arrival',
+      framing       : 'medium',
+      location      : 'night',
+      subjects      : [],
+      coversLines   : [],
+      status        : 'pending',
       promptOverride: {
         mode: 'chunks',
         ...(mute ? { mute } : {}),
         refs: {
           setting: [
             {
-              pin: 'pin1',
-              ext: 'png',
+              pin : 'pin1',
+              ext : 'png',
               from: { kind: 'plate', locationId: 'cafe', variant: 'dawn' },
             },
           ],

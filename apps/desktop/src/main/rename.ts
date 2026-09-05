@@ -64,7 +64,7 @@ export function renameInText(path: string, text: string, name: string): RenameRe
   if (title) {
     const entry = `title: ${JSON.stringify(next)}${title[0].endsWith('\n') ? '\n' : ''}`;
     return {
-      ok: true,
+      ok  : true,
       text: spliceAt(prefix, title.index, title[0].length, entry) + body,
       what: 'the page title',
     };
@@ -73,7 +73,7 @@ export function renameInText(path: string, text: string, name: string): RenameRe
   const heading = H1_LINE.exec(body);
   if (heading) {
     return {
-      ok: true,
+      ok  : true,
       text: prefix + spliceAt(body, heading.index, heading[0].length, `# ${next}`),
       what: 'the page heading',
     };

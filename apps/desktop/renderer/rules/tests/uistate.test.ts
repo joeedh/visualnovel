@@ -16,12 +16,12 @@ describe('repairedAsset', () => {
 
 describe('prunedIds', () => {
   const index: IndexedIds = {
-    scenes: [{ id: 'arrival' }],
+    scenes    : [{ id: 'arrival' }],
     characters: [{ id: 'aiko' }],
   };
   const selected = (over: Partial<SelectedIds> = {}): SelectedIds => ({
-    sceneId: 'arrival',
-    shotId: 's2',
+    sceneId    : 'arrival',
+    shotId     : 's2',
     characterId: 'aiko',
     ...over,
   });

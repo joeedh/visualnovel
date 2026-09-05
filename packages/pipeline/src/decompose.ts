@@ -77,7 +77,7 @@ export async function decomposeAll(opts: DecomposeAllOptions): Promise<Decompose
     if (result.source === 'baseline' && !opts.keepBaseline) {
       out.fellBack.push({ scene: scene.id, reason: result.reason ?? 'the model did not answer' });
       logger?.warn('not writing a baseline storyboard', {
-        scene: scene.id,
+        scene : scene.id,
         reason: result.reason,
       });
       continue;

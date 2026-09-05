@@ -18,12 +18,12 @@ const node = {
 };
 
 const anchor = (over: Partial<Anchor> = {}): Anchor => ({
-  key: commandKey('asset.regenerate'),
-  id: 'asset.regenerate',
-  props: { hash: 'a1b2' },
+  key    : commandKey('asset.regenerate'),
+  id     : 'asset.regenerate',
+  props  : { hash: 'a1b2' },
   enabled: true,
-  editor: 'asset' as EditorId,
-  via: { kind: 'dom', node },
+  editor : 'asset' as EditorId,
+  via    : { kind: 'dom', node },
   ...over,
 });
 
@@ -59,13 +59,13 @@ describe('subsumes', () => {
 
   it('reads a prop only the step names as something to type, when the widget supplies it', () => {
     const box = anchor({
-      id: 'art.setNotes',
-      props: { target: 'location:cafe/night' },
+      id      : 'art.setNotes',
+      props   : { target: 'location:cafe/night' },
       supplies: ['notes'],
     });
     expect(
       subsumes(box, {
-        id: 'art.setNotes',
+        id   : 'art.setNotes',
         props: { target: 'location:cafe/night', notes: 'dusk' },
       }),
     ).toEqual({ state: 'input', supplies: ['notes'] });
@@ -98,12 +98,12 @@ describe('subsumes', () => {
 
 describe('a graph node', () => {
   const card = (): Anchor => ({
-    key: itemKey('scene', 'greet'),
-    props: {},
-    enabled: true,
+    key      : itemKey('scene', 'greet'),
+    props    : {},
+    enabled  : true,
     publishes: { sceneId: 'greet' },
-    editor: 'branches' as EditorId,
-    via: { kind: 'pick', nodeId: 'greet', node },
+    editor   : 'branches' as EditorId,
+    via      : { kind: 'pick', nodeId: 'greet', node },
   });
 
   it('resolves as the place its subject is chosen', () => {
@@ -122,7 +122,7 @@ describe('a form anchor', () => {
 
   it('reads every prop the step names as something typed in the form', () => {
     expect(subsumes(door, { id: 'pipeline.run', props: { mock: true, only: 'greet' } })).toEqual({
-      state: 'input',
+      state   : 'input',
       supplies: ['mock', 'only'],
     });
   });
@@ -148,7 +148,7 @@ describe('resolveAnchor', () => {
   it('reports the rule’s own sentence for a greyed control', () => {
     const greyed = anchor({ enabled: false, reason: 'The asset is suspended.' });
     expect(resolveAnchor(map, live([greyed]), step)).toEqual({
-      state: 'disabled',
+      state : 'disabled',
       anchor: greyed,
       reason: 'The asset is suspended.',
     });
@@ -163,10 +163,10 @@ describe('resolveAnchor', () => {
   it('names what has to change when the pane is showing something else', () => {
     const elsewhere = anchor({ props: { hash: 'ffff' } });
     expect(resolveAnchor(map, live([elsewhere]), step)).toEqual({
-      state: 'wrong-subject',
+      state : 'wrong-subject',
       anchor: elsewhere,
-      needs: { id: 'asset.regenerate', props: { hash: 'a1b2' } },
-      holds: ['hash'],
+      needs : { id: 'asset.regenerate', props: { hash: 'a1b2' } },
+      holds : ['hash'],
     });
   });
 
@@ -177,7 +177,7 @@ describe('resolveAnchor', () => {
 
   it('says the pane is closed when the map knows where the command lives', () => {
     expect(resolveAnchor(map, live([], { open: [] }), step)).toEqual({
-      state: 'pane-closed',
+      state : 'pane-closed',
       editor: 'asset',
     });
   });
@@ -221,12 +221,12 @@ describe('resolveAnchor', () => {
 
 describe('resolveItem', () => {
   const row: Anchor = {
-    key: itemKey('asset', 'a1b2'),
-    props: {},
-    enabled: true,
+    key      : itemKey('asset', 'a1b2'),
+    props    : {},
+    enabled  : true,
     publishes: { assetHash: 'a1b2' },
-    editor: 'documents' as EditorId,
-    via: { kind: 'dom', node },
+    editor   : 'documents' as EditorId,
+    via      : { kind: 'dom', node },
   };
 
   it('finds the row that publishes a subject', () => {
@@ -240,12 +240,12 @@ describe('resolveItem', () => {
 
 describe('resolveSubject', () => {
   const row = (over: Partial<Anchor>): Anchor => ({
-    key: itemKey('asset', 'ffff'),
-    props: {},
-    enabled: true,
+    key      : itemKey('asset', 'ffff'),
+    props    : {},
+    enabled  : true,
     publishes: { assetHash: 'ffff' },
-    editor: 'documents' as EditorId,
-    via: { kind: 'dom', node },
+    editor   : 'documents' as EditorId,
+    via      : { kind: 'dom', node },
     ...over,
   });
 
@@ -260,7 +260,7 @@ describe('resolveSubject', () => {
     const character = row({ key: itemKey('character', 'aiko'), publishes: {} });
     const wanted = { id: 'art.setNotes', props: { target: 'character:aiko' } };
     expect(resolveSubject(live([character]), wanted, ['target'])).toEqual({
-      state: 'ready',
+      state : 'ready',
       anchor: character,
     });
   });
@@ -275,7 +275,7 @@ describe('resolveSubject', () => {
   it('asks for a scroll before pointing at a row that is off screen', () => {
     const away = row({});
     expect(resolveSubject(live([away], { offscreen: [away.key] }), needs, ['hash'])).toEqual({
-      state: 'offscreen',
+      state : 'offscreen',
       anchor: away,
     });
   });

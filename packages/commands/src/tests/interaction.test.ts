@@ -14,13 +14,13 @@ import { prop } from '../props.js';
 type Doors = Record<string, boolean>;
 
 const walk = defineInteraction<Doors>({
-  id: 'room.walk',
-  title: 'Walk through a door',
+  id         : 'room.walk',
+  title      : 'Walk through a door',
   description: 'Drag yourself onto a door.',
-  grab: 'yourself',
-  carries: 'you',
-  accepts: 'a door',
-  commands: ['room.enter'],
+  grab       : 'yourself',
+  carries    : 'you',
+  accepts    : 'a door',
+  commands   : ['room.enter'],
   cancellable: true,
   targets: (doors, who) =>
     Object.entries(doors).map(([door, open]) =>
@@ -28,7 +28,7 @@ const walk = defineInteraction<Doors>({
         ? {
             target: door,
             accept: true,
-            note: `${who} goes through ${door}.`,
+            note  : `${who} goes through ${door}.`,
             invoke: { id: 'room.enter', props: { door } },
           }
         : { target: door, accept: false, reason: `${door} is locked.` },
@@ -36,11 +36,11 @@ const walk = defineInteraction<Doors>({
 });
 
 const enter = defineCommand({
-  id: 'room.enter',
-  title: 'Enter',
+  id         : 'room.enter',
+  title      : 'Enter',
   description: 'Go through a door.',
-  mutating: true,
-  props: { door: prop.string('which door') },
+  mutating   : true,
+  props      : { door: prop.string('which door') },
   async run() {
     return { message: 'in' };
   },
@@ -80,7 +80,7 @@ describe('targets', () => {
     expect(verdicts[0]).toEqual({
       target: 'north',
       accept: true,
-      note: 'you goes through north.',
+      note  : 'you goes through north.',
       invoke: { id: 'room.enter', props: { door: 'north' } },
     });
   });
@@ -97,13 +97,13 @@ describe('projections', () => {
     registry.register(walk);
     const [entry] = toInteractionCatalog(registry);
     expect(entry).toEqual({
-      id: 'room.walk',
-      title: 'Walk through a door',
+      id         : 'room.walk',
+      title      : 'Walk through a door',
       description: 'Drag yourself onto a door.',
-      grab: 'yourself',
-      carries: 'you',
-      accepts: 'a door',
-      commands: ['room.enter'],
+      grab       : 'yourself',
+      carries    : 'you',
+      accepts    : 'a door',
+      commands   : ['room.enter'],
       cancellable: true,
     });
     expect(entry).not.toHaveProperty('targets');

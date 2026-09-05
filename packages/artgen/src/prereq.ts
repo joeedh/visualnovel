@@ -89,10 +89,10 @@ function prereqOf(hash: string, up: Asset | undefined, ctx: PrereqContext): Prer
   if (!up) {
     return {
       hash,
-      label: `asset ${hash.slice(0, 8)}`,
+      label   : `asset ${hash.slice(0, 8)}`,
       approved: true,
-      missing: true,
-      note: 'Not in the manifest — there is nothing here to approve.',
+      missing : true,
+      note    : 'Not in the manifest — there is nothing here to approve.',
     };
   }
   const slot = slotOf(up, ctx.angleOf?.(up.sourceTask));
@@ -100,7 +100,7 @@ function prereqOf(hash: string, up: Asset | undefined, ctx: PrereqContext): Prer
   const base = {
     hash,
     label: assetSlotLabel(up),
-    kind: up.kind,
+    kind : up.kind,
     ...(slot ? { slot: slotKey(slot) } : {}),
     approved,
   };

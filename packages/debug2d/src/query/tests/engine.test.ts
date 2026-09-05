@@ -7,25 +7,25 @@ const frame = () =>
   makeTestFrame([
     { id: 'bg', bounds: { x: 0, y: 0, w: 800, h: 600 }, tags: ['chrome'] },
     {
-      id: 'card',
+      id    : 'card',
       bounds: { x: 100, y: 100, w: 200, h: 150 },
-      tags: ['card'],
-      owner: { id: 'Floor/card', label: 'Floor/card', kind: 'component', parent: 'Floor' },
+      tags  : ['card'],
+      owner : { id: 'Floor/card', label: 'Floor/card', kind: 'component', parent: 'Floor' },
     },
     {
-      id: 'label',
+      id    : 'label',
       bounds: { x: 110, y: 110, w: 80, h: 20 },
-      owner: { id: 'Floor/label', label: 'Floor/label', kind: 'component', parent: 'Floor/card' },
+      owner : { id: 'Floor/label', label: 'Floor/label', kind: 'component', parent: 'Floor/card' },
     },
     {
-      id: 'ghost',
+      id    : 'ghost',
       bounds: { x: 150, y: 120, w: 40, h: 40 },
-      style: { alpha: 0 },
+      style : { alpha: 0 },
     },
     {
-      id: 'scrim',
+      id    : 'scrim',
       bounds: { x: 0, y: 0, w: 800, h: 600 },
-      pick: { mode: 'none' },
+      pick  : { mode: 'none' },
     },
   ]);
 
@@ -76,9 +76,9 @@ describe('at()', () => {
         staticSource(
           makeTestFrame([
             {
-              id: 'wire',
+              id    : 'wire',
               bounds: { x: 100, y: 100, w: 40, h: 2 },
-              pick: { mode: 'auto', slop: 4 },
+              pick  : { mode: 'auto', slop: 4 },
             },
           ]),
         ),
@@ -90,7 +90,7 @@ describe('at()', () => {
 
   it('queries in a registered non-css space through the registry', () => {
     const spaces = createSpaceRegistry({
-      css: { parent: 'device', label: 'devicePixelRatio', matrix: scaleMat(1) },
+      css          : { parent: 'device', label: 'devicePixelRatio', matrix: scaleMat(1) },
       'world:graph': { parent: 'css', label: 'pan/zoom', matrix: scaleMat(2) },
     });
     const d = createDebugger({
@@ -99,7 +99,7 @@ describe('at()', () => {
           makeTestFrame([{ id: 'node', bounds: { x: 100, y: 100, w: 50, h: 50 } }], { spaces }),
         ),
       ],
-      spaces: { 'world:graph': { parent: 'css', label: 'pan/zoom', matrix: scaleMat(2) } },
+      spaces : { 'world:graph': { parent: 'css', label: 'pan/zoom', matrix: scaleMat(2) } },
     });
     // world point (60, 60) lands at css (120, 120), inside the node.
     expect(d.at(60, 60, { space: 'world:graph' }).length).toBe(1);

@@ -17,14 +17,14 @@ const lines: CoverageLine[] = [
 ];
 
 const scene: SceneCoverage = {
-  sceneId: 'a',
+  sceneId : 'a',
   location: 'GATE',
-  heading: 'INT. GATE - DAY',
+  heading : 'INT. GATE - DAY',
   lines,
-  shots: [],
-  cast: [],
+  shots     : [],
+  cast      : [],
   characters: [],
-  variants: ['day'],
+  variants  : ['day'],
   decomposed: false,
 };
 
@@ -56,7 +56,7 @@ describe('aiming it at an insertion point', () => {
 
   test('after a line is that line’s id, not its index', () => {
     expect(dropOf(aim(held, 'a:L3'))).toEqual({
-      id: 'story.moveLine',
+      id   : 'story.moveLine',
       props: { line: 'a:L2', after: 'a:L3' },
     });
   });
@@ -78,12 +78,12 @@ describe('aiming it at an insertion point', () => {
 describe('what right-clicking a line offers', () => {
   const shot = (id: string, covers: string[], image?: CoverageShot['image']): CoverageShot => ({
     id,
-    framing: 'medium',
-    subjects: [],
-    location: 'day',
-    outfits: {},
+    framing    : 'medium',
+    subjects   : [],
+    location   : 'day',
+    outfits    : {},
     coversLines: covers,
-    status: 'accepted',
+    status     : 'accepted',
     image,
     drift: 'current',
   });
@@ -102,7 +102,7 @@ describe('what right-clicking a line offers', () => {
       { label: 'Edit with agent', id: 'agent.editLine', props: { scene: 'a', line: 'a:L1' } },
       {
         label: 'Open shot asset',
-        id: 'view.open',
+        id   : 'view.open',
         props: { editor: 'asset', where: 'elsewhere', subject: 'abc123' },
       },
     ]);
@@ -136,7 +136,7 @@ describe('what right-clicking a line offers', () => {
   test('a bracket asks for the same entry, refusing in the words its own surface uses', () => {
     expect(shotAssetEntry(drawn, 'Open shot asset', 'never asked')).toEqual({
       label: 'Open shot asset',
-      id: 'view.open',
+      id   : 'view.open',
       props: { editor: 'asset', where: 'elsewhere', subject: 'abc123' },
     });
     const refused = shotAssetEntry(bare, 'Open shot asset', 'a:S2 has no frame yet.');

@@ -14,9 +14,9 @@ const ctxWith = (state: Partial<Candidacy>): CommandContext<CommandHost> =>
     host: {
       session: {
         gateCandidacy: async (): Promise<Candidacy> => ({
-          character: true,
-          candidate: false,
-          approved: false,
+          character : true,
+          candidate : false,
+          approved  : false,
           candidates: 0,
           ...state,
         }),

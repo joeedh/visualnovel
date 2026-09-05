@@ -37,8 +37,8 @@ export class StubImageBackend implements ImageBackend {
   private make(prompt: string, refs: ImageInput[]): ImageResult {
     const seedText = prompt + refs.map((r) => sha256(r.bytes)).join(',');
     return {
-      bytes: placeholderPng(sha256(seedText).slice(0, 16)),
-      ext: 'png',
+      bytes  : placeholderPng(sha256(seedText).slice(0, 16)),
+      ext    : 'png',
       modelId: this.modelId,
     };
   }
@@ -82,7 +82,7 @@ export function createMockProviders(
   const clean = '{"reviewer":"mock","defects":[]}';
   const reviewerResponses = opts.reviewResponses ?? [clean];
   return {
-    image: new BackendImageProvider(opts.imageBackend ?? new StubImageBackend(), loadRef),
+    image    : new BackendImageProvider(opts.imageBackend ?? new StubImageBackend(), loadRef),
     reviewers: [
       new ChatVisionReviewer(
         'gemini',

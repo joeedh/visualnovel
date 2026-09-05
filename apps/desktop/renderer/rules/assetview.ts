@@ -62,23 +62,23 @@ export function approveAction(info: AssetInfo): ApproveAction {
   const approving = info.kind === 'portrait' ? 'gate.approve' : 'asset.accept';
   if (info.kind === 'concept') {
     return {
-      ok: false,
-      id: approving,
+      ok    : false,
+      id    : approving,
       reason: 'A concept is a sketch — nothing downstream consumes one. Promote it to a plate.',
     };
   }
   if (info.kind === 'reference') {
     return {
-      ok: false,
-      id: approving,
+      ok    : false,
+      id    : approving,
       reason:
         'An upload is not generated art — it counts by being pointed at, not by being blessed.',
     };
   }
   if (info.accepted) {
     return {
-      ok: true,
-      id: 'asset.unapprove',
+      ok   : true,
+      id   : 'asset.unapprove',
       props: { hash: info.hash },
       label: 'Un-approve',
     };
@@ -97,14 +97,14 @@ export function approveAction(info: AssetInfo): ApproveAction {
   const characterId = characterOf(info);
   if (characterId === '') {
     return {
-      ok: false,
-      id: approving,
+      ok    : false,
+      id    : approving,
       reason: 'This portrait names no character — approve it from the gate.',
     };
   }
   return {
-    ok: true,
-    id: 'gate.approve',
+    ok   : true,
+    id   : 'gate.approve',
     props: { characterId, hash: info.hash },
     label: 'Approve',
   };
@@ -138,15 +138,15 @@ export type PromoteAction =
 export function promoteAction(info: AssetInfo): PromoteAction {
   if (info.kind !== 'concept') {
     return {
-      ok: false,
-      id: 'art.promote',
+      ok    : false,
+      id    : 'art.promote',
       reason: `A ${info.kind} is already what it is — only a concept promotes.`,
     };
   }
   if (characterOf(info) !== '') {
     return {
-      ok: false,
-      id: 'art.promote',
+      ok    : false,
+      id    : 'art.promote',
       reason:
         "That is a concept of a character, and a character's look goes through the approval gate.",
     };
@@ -154,14 +154,14 @@ export function promoteAction(info: AssetInfo): PromoteAction {
   const locationId = locationOf(info);
   if (locationId === '') {
     return {
-      ok: false,
-      id: 'art.promote',
+      ok    : false,
+      id    : 'art.promote',
       reason: 'This concept names no location, so there is no sheet to write to.',
     };
   }
   return {
-    ok: true,
-    id: 'art.promote',
+    ok   : true,
+    id   : 'art.promote',
     props: { hash: info.hash },
     label: 'Promote',
     locationId,
@@ -203,25 +203,25 @@ export type ReplaceAction =
 export function replaceAction(info: AssetInfo): ReplaceAction {
   if (info.slot === undefined) {
     return {
-      ok: false,
-      id: 'asset.replace',
+      ok    : false,
+      id    : 'asset.replace',
       reason: `A ${info.kind} fills no slot — nothing planned it, or a newer render holds the slot now.`,
     };
   }
   if (info.slot.startsWith('portrait:')) {
     return {
-      ok: false,
-      id: 'asset.replace',
+      ok    : false,
+      id    : 'asset.replace',
       reason:
         'A portrait is the look the gate owns — upload the file, then approve it with gate.approve.',
     };
   }
   return {
-    ok: true,
-    id: 'asset.replace',
+    ok   : true,
+    id   : 'asset.replace',
     props: { hash: info.hash },
     label: 'Replace with a file…',
-    slot: info.slot,
+    slot : info.slot,
   };
 }
 
@@ -252,18 +252,18 @@ export type RedrawAction =
 export function promptEditable(info: AssetInfo): RedrawAction {
   if (info.kind !== 'concept') {
     return {
-      ok: false,
-      id: 'art.redraw',
+      ok    : false,
+      id    : 'art.redraw',
       reason: `A ${info.kind}'s prompt is composed from the project on every planning pass — edit it a clause at a time below, not as one string.`,
     };
   }
   return {
-    ok: true,
-    id: 'art.redraw',
-    props: { hash: info.hash },
-    label: 'Redraw',
+    ok    : true,
+    id    : 'art.redraw',
+    props : { hash: info.hash },
+    label : 'Redraw',
     prompt: info.prompt ?? '',
-    title: info.title ?? '',
+    title : info.title ?? '',
   };
 }
 
@@ -300,17 +300,17 @@ export type RegenerateAction =
  */
 export function regenerateAction(info: AssetInfo): RegenerateAction {
   const requeue = {
-    act: 'requeue',
-    id: 'asset.regenerate',
+    act  : 'requeue',
+    id   : 'asset.regenerate',
     props: { hash: info.hash, run: true },
     label: 'Regenerate',
-    hint: 'Requeue the task behind these bytes and run the pipeline',
+    hint : 'Requeue the task behind these bytes and run the pipeline',
   } as const;
   if (info.failure?.later) return requeue;
   if (!info.stale) return requeue;
   return {
-    act: 'pipeline',
-    id: 'pipeline.run',
+    act  : 'pipeline',
+    id   : 'pipeline.run',
     props: { mock: false },
     label: 'Regenerate',
     hint: 'Offer a pipeline run: this picture is behind the project, and the task that catches it up is already planned',
@@ -345,16 +345,16 @@ export type TaskAction =
 export function taskAction(taskHash: string | undefined): TaskAction {
   if (taskHash === undefined || taskHash === '') {
     return {
-      ok: false,
-      id: 'view.open',
+      ok    : false,
+      id    : 'view.open',
       reason: 'The manifest records no task for this asset.',
     };
   }
   return {
-    ok: true,
-    id: 'view.open',
-    props: { editor: 'inspector', where: 'elsewhere' },
-    label: 'Task',
+    ok     : true,
+    id     : 'view.open',
+    props  : { editor: 'inspector', where: 'elsewhere' },
+    label  : 'Task',
     publish: { taskHash },
   };
 }

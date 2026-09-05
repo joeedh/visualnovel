@@ -13,24 +13,24 @@ import type { Scene } from '@vn/types';
 export function canonicalScenes(scenes: Scene[]): string {
   return JSON.stringify(
     scenes.map((s) => ({
-      id: s.id,
-      location: s.location,
+      id             : s.id,
+      location       : s.location,
       locationVariant: s.locationVariant ?? null,
-      headingPrefix: s.headingPrefix ?? null,
-      synopsis: s.synopsis ?? null,
-      characters: s.characters,
-      nextLineId: s.nextLineId ?? null,
+      headingPrefix  : s.headingPrefix ?? null,
+      synopsis       : s.synopsis ?? null,
+      characters     : s.characters,
+      nextLineId     : s.nextLineId ?? null,
       lines: s.lines.map((l) => ({
-        id: l.id,
-        kind: l.kind,
+        id     : l.id,
+        kind   : l.kind,
         speaker: l.speaker ?? null,
-        text: l.text,
+        text   : l.text,
       })),
-      choices: s.choices.map((c) => ({ label: c.label, goto: c.goto })),
-      next: s.next ?? null,
+      choices        : s.choices.map((c) => ({ label: c.label, goto: c.goto })),
+      next           : s.next ?? null,
       // Normalized so "no markers" and "every marker removed" compare equal — a patch that
       // clears the last one has to be able to reproduce the scene it intended.
-      outfits: s.outfits && Object.keys(s.outfits).length > 0 ? s.outfits : null,
+      outfits        : s.outfits && Object.keys(s.outfits).length > 0 ? s.outfits : null,
     })),
   );
 }

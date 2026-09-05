@@ -38,14 +38,14 @@ function templateKeyFor(ctx: { origin?: number; host: CommandHost }): string {
 }
 
 const WHERE: Record<OpenWhere, string> = {
-  here: 'in this pane',
-  left: 'to the left',
-  right: 'to the right',
-  above: 'above',
-  below: 'below',
+  here     : 'in this pane',
+  left     : 'to the left',
+  right    : 'to the right',
+  above    : 'above',
+  below    : 'below',
   elsewhere: 'in another pane',
-  window: 'in a new window',
-  popup: 'in a floating window',
+  window   : 'in a new window',
+  popup    : 'in a floating window',
 };
 
 /** What the optional subject is, said once — both `view.*` verbs take it and mean the same. */
@@ -57,8 +57,8 @@ const SUBJECT =
 const onSubject = (subject: string): string => (subject ? ` on ${subject}` : '');
 
 export const viewOpen = define({
-  id: 'view.open',
-  title: 'Show an editor',
+  id         : 'view.open',
+  title      : 'Show an editor',
   description:
     'Show an editor: in the active pane, in a new pane split off it, `elsewhere` — the ' +
     'biggest pane that is not the active one — or `popup`, a floating window over the mesh. ' +
@@ -66,10 +66,10 @@ export const viewOpen = define({
     'opened twice.',
   notes:
     'Shows an editor, in the active pane or in a new pane split off it. `elsewhere` is anywhere but the asking pane; `window` is not a pane at all — it opens a second window showing the editor.',
-  mutating: false,
+  mutating   : false,
   props: {
-    editor: prop.oneOf(EDITOR_IDS, 'which editor to show'),
-    where: prop.oneOf(OPEN_WHERE, 'where to put it', { default: 'here' }),
+    editor : prop.oneOf(EDITOR_IDS, 'which editor to show'),
+    where  : prop.oneOf(OPEN_WHERE, 'where to put it', { default: 'here' }),
     subject: prop.string(SUBJECT, { default: '' }),
   },
   async run({ editor, where, subject }, ctx) {
@@ -79,7 +79,7 @@ export const viewOpen = define({
       const id = await ctx.host.newWindow({ editor, subject: subject || undefined });
       return {
         message: `Showing ${editorTitle(editor)}${onSubject(subject)} in window ${id}.`,
-        data: { window: id },
+        data   : { window: id },
       };
     }
 
@@ -91,13 +91,13 @@ export const viewOpen = define({
 });
 
 export const viewFocus = define({
-  id: 'view.focus',
-  title: 'Focus an editor',
+  id         : 'view.focus',
+  title      : 'Focus an editor',
   description: 'Make the pane already showing an editor the active one, without moving anything.',
-  notes: 'Makes the pane already showing an editor the active one.',
-  mutating: false,
+  notes      : 'Makes the pane already showing an editor the active one.',
+  mutating   : false,
   props: {
-    editor: prop.oneOf(EDITOR_IDS, 'which editor to focus'),
+    editor : prop.oneOf(EDITOR_IDS, 'which editor to focus'),
     subject: prop.string(SUBJECT, { default: '' }),
   },
   run({ editor, subject }, ctx) {
@@ -107,12 +107,12 @@ export const viewFocus = define({
 });
 
 export const viewClose = define({
-  id: 'view.close',
-  title: 'Close the active pane',
+  id         : 'view.close',
+  title      : 'Close the active pane',
   description: 'Collapse the active pane into its neighbour. The last pane is kept.',
-  notes: 'Collapses the active pane into its neighbour; the last pane is kept.',
-  mutating: false,
-  props: {},
+  notes      : 'Collapses the active pane into its neighbour; the last pane is kept.',
+  mutating   : false,
+  props      : {},
   run(_props, ctx) {
     ctx.host.ui({ type: 'view', action: 'close' }, ctx.origin);
     return Promise.resolve({ message: 'Closed the pane.' });
@@ -120,16 +120,16 @@ export const viewClose = define({
 });
 
 export const viewLayout = define({
-  id: 'view.layout',
-  title: 'Rebuild the default arrangement',
+  id         : 'view.layout',
+  title      : 'Rebuild the default arrangement',
   description:
     'Throw the arrangement away and build the one the app ships with, ignoring the layout ' +
     'templates in the project entirely. The escape hatch for a mesh no template can fix; the ' +
     'menu offers `view.applyLayout` instead.',
   notes:
     "Throws the remembered arrangement away and rebuilds the default one, ignoring the project's layout templates. The escape hatch; the menu offers `view.applyLayout` instead.",
-  mutating: false,
-  props: {},
+  mutating   : false,
+  props      : {},
   run(_props, ctx) {
     ctx.host.ui({ type: 'view', action: 'reset' }, ctx.origin);
     return Promise.resolve({ message: 'Layout reset.' });
@@ -137,16 +137,16 @@ export const viewLayout = define({
 });
 
 export const viewLayouts = define({
-  id: 'view.layouts',
-  title: 'List the layout templates',
+  id         : 'view.layouts',
+  title      : 'List the layout templates',
   description:
     'Every named arrangement this project has, and which one the window is showing. A layout ' +
     'that cannot be applied — one a merge left unresolved, one naming an editor this build has ' +
     'not got — is listed with the reason rather than left out.',
   notes:
     'Every layout template the project has, and which one the window is showing. One a merge left unresolved is listed with the reason rather than left out.',
-  mutating: false,
-  props: {},
+  mutating   : false,
+  props      : {},
   async run(_props, ctx) {
     const layouts = await listLayouts(ctx.root);
     const active = ctx.host.state.get(templateKeyFor(ctx), '');
@@ -155,21 +155,21 @@ export const viewLayouts = define({
       message: `${layouts.length} layout${layouts.length === 1 ? '' : 's'}${
         broken ? `, ${broken} unusable` : ''
       }.`,
-      data: { active, layouts },
+      data   : { active, layouts },
     };
   },
 });
 
 export const viewApplyLayout = define({
-  id: 'view.applyLayout',
-  title: 'Rearrange the window to a layout',
+  id         : 'view.applyLayout',
+  title      : 'Rearrange the window to a layout',
   description:
     'Rearrange the whole window to one of the project’s layout templates. Not undoable and not ' +
     'a write: which panes you have open is a window fact, remembered per install.',
   notes:
     "Rearranges the whole window to one of the project's layout templates. Refuses a missing or unreadable one by name.",
-  mutating: false,
-  props: { name: prop.string('the layout’s slug, as `view.layouts` lists it') },
+  mutating   : false,
+  props      : { name: prop.string('the layout’s slug, as `view.layouts` lists it') },
   async run({ name }, ctx) {
     const read = await readLayout(ctx.root, name);
     if (!read.ok) throw new Error(read.reason);
@@ -177,11 +177,11 @@ export const viewApplyLayout = define({
     ctx.host.state.set(templateKeyFor(ctx), name);
     ctx.host.ui(
       {
-        type: 'view',
-        action: 'apply',
-        slug: name,
+        type       : 'view',
+        action     : 'apply',
+        slug       : name,
         fingerprint: read.fingerprint,
-        layout: read.file,
+        layout     : read.file,
       },
       ctx.origin,
     );
@@ -190,18 +190,18 @@ export const viewApplyLayout = define({
 });
 
 export const viewSaveLayout = define({
-  id: 'view.saveLayout',
-  title: 'Save the current layout as a template',
+  id         : 'view.saveLayout',
+  title      : 'Save the current layout as a template',
   description:
     'File the arrangement on screen in the project as a named layout, so it can be applied ' +
     'again and travels to whoever else works on the story. Saving over one that exists is ' +
     'allowed and is one undo away.',
   notes:
     'Files the arrangement on screen in the project as `.vnstudio/layouts/<slug>.json`. Saving over one that exists is allowed and is one undo away.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    name: prop.string('what to call it; the filename is derived from this'),
+    name  : prop.string('what to call it; the filename is derived from this'),
     // Composed by the renderer, because only a live screen can serialize a mesh or say which
     // editors are in it. Main still decides the slug, the title and where the file goes.
     layout: prop.string('the arrangement, as the renderer serialized it', { digest: true }),
@@ -216,7 +216,7 @@ export const viewSaveLayout = define({
 
     const existing = (await listLayouts(ctx.root)).find((entry) => entry.slug === slug);
     return {
-      ok: true,
+      ok  : true,
       note: existing
         ? `replaces the ${existing.title} layout at ${LAYOUT_DIR}/${slug}.json`
         : `writes ${LAYOUT_DIR}/${slug}.json`,
@@ -236,17 +236,17 @@ export const viewSaveLayout = define({
 });
 
 export const viewResetLayout = define({
-  id: 'view.resetLayout',
-  title: 'Reset the layout templates',
+  id         : 'view.resetLayout',
+  title      : 'Reset the layout templates',
   description:
     'Put the layouts the app ships with back the way they shipped, overwriting any edits to ' +
     'them, and rearrange the window to the one it was showing. Undoable — the edits come back, ' +
     'and so does the arrangement.',
   notes:
     'Puts the layouts the app ships with back the way they shipped and re-applies the one on screen. `all` also deletes the ones the author saved.',
-  mutating: true,
-  undoable: true,
-  confirm: true,
+  mutating   : true,
+  undoable   : true,
+  confirm    : true,
   props: {
     scope: prop.oneOf(['shipped', 'all'] as const, 'which layouts to put back', {
       default: 'shipped',
@@ -277,11 +277,11 @@ export const viewResetLayout = define({
       ctx.host.state.set(templateKeyFor(ctx), slug);
       ctx.host.ui(
         {
-          type: 'view',
+          type  : 'view',
           action: 'apply',
           slug,
           fingerprint: read.fingerprint,
-          layout: read.file,
+          layout     : read.file,
         },
         ctx.origin,
       );
@@ -292,12 +292,12 @@ export const viewResetLayout = define({
 });
 
 export const viewPalette = define({
-  id: 'view.palette',
-  title: 'Toggle palette',
+  id         : 'view.palette',
+  title      : 'Toggle palette',
   description: 'Open or close the command palette.',
-  notes: 'Opens or closes the command palette.',
-  mutating: false,
-  props: { open: prop.boolean('true to open, false to close', { default: true }) },
+  notes      : 'Opens or closes the command palette.',
+  mutating   : false,
+  props      : { open: prop.boolean('true to open, false to close', { default: true }) },
   run({ open }, ctx) {
     ctx.host.ui({ type: 'palette', open }, ctx.origin);
     return Promise.resolve({ message: open ? 'Palette opened.' : 'Palette closed.' });

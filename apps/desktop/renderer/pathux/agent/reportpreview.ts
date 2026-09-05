@@ -79,10 +79,10 @@ class Preview {
     if (draft.file) paragraph(col, `A copy is kept at ${draft.file}.`, PROSE);
 
     writingBox(col.row(), {
-      value: draft.body,
-      title: 'The report, as it will be filed. Edit anything you would rather not publish.',
-      label: 'the report',
-      rows: 20,
+      value    : draft.body,
+      title    : 'The report, as it will be filed. Edit anything you would rather not publish.',
+      label    : 'the report',
+      rows     : 20,
       minHeight: '340px',
       onInput: (text) => {
         this.body = text;
@@ -105,7 +105,7 @@ class Preview {
 
   private async recheck(): Promise<void> {
     const check = await api.invoke('command:check', {
-      id: 'report.openIssue',
+      id   : 'report.openIssue',
       props: { title: this.draft.title, body: this.body },
     });
     if (!this.live) return;

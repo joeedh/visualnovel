@@ -99,9 +99,9 @@ export class TaskGraphEditor extends VnEditor {
 
   static override define() {
     return {
-      tagname: 'vn-graph-editor-x',
+      tagname : 'vn-graph-editor-x',
       areaname: 'taskgraph',
-      icon: -1,
+      icon    : -1,
     };
   }
 
@@ -111,8 +111,8 @@ export class TaskGraphEditor extends VnEditor {
     this.bar = (this.header as Container).row();
 
     this.canvas = new GraphCanvas({
-      edgeStyle: wireStyle,
-      onPick: (hit) => this.onPick(hit),
+      edgeStyle      : wireStyle,
+      onPick         : (hit) => this.onPick(hit),
       onSurfaceChange: () => this.fitOnce(),
     });
     // The canvas's own `pickAt`, so a tour asking whether a ring lands on its node gets the
@@ -139,14 +139,14 @@ export class TaskGraphEditor extends VnEditor {
   private buildSearchRow(): HTMLElement {
     const bar = document.createElement('div');
     Object.assign(bar.style, {
-      position: 'relative',
-      flex: '0 0 auto',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      padding: '5px 8px',
+      position    : 'relative',
+      flex        : '0 0 auto',
+      display     : 'flex',
+      alignItems  : 'center',
+      gap         : '8px',
+      padding     : '5px 8px',
       borderBottom: `1px solid ${TOKENS.inkLine}`,
-      background: TOKENS.ink,
+      background  : TOKENS.ink,
     });
 
     this.search = document.createElement('input');
@@ -154,15 +154,15 @@ export class TaskGraphEditor extends VnEditor {
     this.search.title =
       'Show only what one picture is drawn from — type part of its name and pick it from the list';
     Object.assign(this.search.style, {
-      flex: '1 1 auto',
-      minWidth: '0px',
-      padding: '3px 7px',
-      color: TOKENS.paper,
-      background: TOKENS.inkSunken,
-      border: `1px solid ${TOKENS.inkLine}`,
+      flex        : '1 1 auto',
+      minWidth    : '0px',
+      padding     : '3px 7px',
+      color       : TOKENS.paper,
+      background  : TOKENS.inkSunken,
+      border      : `1px solid ${TOKENS.inkLine}`,
       borderRadius: `${TOKENS.radiusChrome}px`,
-      fontFamily: TOKENS.mono,
-      fontSize: '11.5px',
+      fontFamily  : TOKENS.mono,
+      fontSize    : '11.5px',
     });
     this.search.addEventListener('input', () => {
       this.query = this.search.value;
@@ -178,18 +178,18 @@ export class TaskGraphEditor extends VnEditor {
 
     this.results = document.createElement('div');
     Object.assign(this.results.style, {
-      display: 'none',
-      position: 'absolute',
-      zIndex: '5',
-      top: '100%',
-      left: '8px',
-      width: 'min(420px, calc(100% - 16px))',
-      maxHeight: '260px',
-      overflowY: 'auto',
-      border: `1px solid ${TOKENS.inkLine}`,
+      display     : 'none',
+      position    : 'absolute',
+      zIndex      : '5',
+      top         : '100%',
+      left        : '8px',
+      width       : 'min(420px, calc(100% - 16px))',
+      maxHeight   : '260px',
+      overflowY   : 'auto',
+      border      : `1px solid ${TOKENS.inkLine}`,
       borderRadius: `${TOKENS.radiusChrome}px`,
-      background: TOKENS.inkRaised,
-      boxShadow: `0 6px 18px ${alpha(TOKENS.ink, 0.6)}`,
+      background  : TOKENS.inkRaised,
+      boxShadow   : `0 6px 18px ${alpha(TOKENS.ink, 0.6)}`,
     });
 
     bar.append(this.search, this.results);
@@ -227,17 +227,17 @@ export class TaskGraphEditor extends VnEditor {
     entry.textContent = slot.label;
     entry.title = `Show only the work ${slot.label} is drawn from`;
     Object.assign(entry.style, {
-      display: 'block',
-      width: '100%',
-      textAlign: 'left',
-      cursor: 'pointer',
-      padding: '4px 8px',
-      color: TOKENS.paper,
-      background: 'transparent',
-      border: 'none',
+      display     : 'block',
+      width       : '100%',
+      textAlign   : 'left',
+      cursor      : 'pointer',
+      padding     : '4px 8px',
+      color       : TOKENS.paper,
+      background  : 'transparent',
+      border      : 'none',
       borderBottom: `1px solid ${TOKENS.inkLine}`,
-      fontFamily: TOKENS.mono,
-      fontSize: '11px',
+      fontFamily  : TOKENS.mono,
+      fontSize    : '11px',
     });
     entry.addEventListener('click', () => {
       this.clearQuery();
@@ -325,12 +325,12 @@ export class TaskGraphEditor extends VnEditor {
   private selection(): Selection {
     const ui = this.ui;
     return {
-      sceneId: ui.sceneId,
-      shotId: ui.shotId,
+      sceneId    : ui.sceneId,
+      shotId     : ui.shotId,
       characterId: ui.characterId,
-      docPath: ui.docPath,
-      assetHash: ui.assetHash,
-      graphSlug: ui.graphSlug,
+      docPath    : ui.docPath,
+      assetHash  : ui.assetHash,
+      graphSlug  : ui.graphSlug,
     };
   }
 
@@ -359,7 +359,7 @@ export class TaskGraphEditor extends VnEditor {
     const nodes = redrawing('taskgraph', 'nodes');
     this.canvas.setContent({
       layout,
-      edges: this.routes,
+      edges     : this.routes,
       renderNode: (node) => this.renderNode(node),
       // Only the task cards. A gate, a slot and a cluster are all drawn here too, and none of them
       // is a subject any other pane follows.
@@ -503,11 +503,11 @@ export class TaskGraphEditor extends VnEditor {
     const box = nodeCard();
     Object.assign(box.style, {
       flexDirection: 'row',
-      alignItems: 'center',
-      gap: '10px',
-      padding: '0px 12px',
-      border: `1px dashed ${alpha(TOKENS.sodium, 0.55)}`,
-      background: TOKENS.ink,
+      alignItems   : 'center',
+      gap          : '10px',
+      padding      : '0px 12px',
+      border       : `1px dashed ${alpha(TOKENS.sodium, 0.55)}`,
+      background   : TOKENS.ink,
     });
 
     box.appendChild(stamp('⟂ GATE', TOKENS.sodium));
@@ -523,19 +523,19 @@ export class TaskGraphEditor extends VnEditor {
         // The node layer is `pointer-events: none`, and this button is the one element that needs
         // a real DOM target.
         pointerEvents: 'auto',
-        marginLeft: 'auto',
-        maxWidth: '96px',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
-        cursor: 'pointer',
-        padding: '3px 9px',
-        color: TOKENS.paper,
-        background: TOKENS.inkRaised,
-        border: `1px solid ${TOKENS.inkLine}`,
-        borderRadius: `${TOKENS.radiusChrome}px`,
-        fontFamily: TOKENS.mono,
-        fontSize: '11px',
+        marginLeft   : 'auto',
+        maxWidth     : '96px',
+        overflow     : 'hidden',
+        textOverflow : 'ellipsis',
+        whiteSpace   : 'nowrap',
+        cursor       : 'pointer',
+        padding      : '3px 9px',
+        color        : TOKENS.paper,
+        background   : TOKENS.inkRaised,
+        border       : `1px solid ${TOKENS.inkLine}`,
+        borderRadius : `${TOKENS.radiusChrome}px`,
+        fontFamily   : TOKENS.mono,
+        fontSize     : '11px',
       });
       cta.addEventListener('click', (event) => {
         event.stopPropagation();
@@ -614,8 +614,8 @@ const MAX_RESULTS = 12;
 /** What a cluster is called on its box, in the words the rest of the app uses. */
 const GROUP_WORD: Record<ClusterKind, string> = {
   scene: 'scene',
-  char: 'character',
-  loc: 'location',
+  char : 'character',
+  loc  : 'location',
   other: 'task',
 };
 
@@ -623,11 +623,11 @@ const GROUP_WORD: Record<ClusterKind, string> = {
 const COUNT_ORDER: readonly TaskStatus[] = ['failed', 'needs_human', 'running', 'pending', 'done'];
 
 const STATUS_WORD: Record<TaskStatus, string> = {
-  failed: 'failed',
+  failed     : 'failed',
   needs_human: 'needs you',
-  running: 'running',
-  pending: 'waiting',
-  done: 'done',
+  running    : 'running',
+  pending    : 'waiting',
+  done       : 'done',
 };
 
 /**
@@ -715,7 +715,7 @@ function slotNode(view: Extract<TaskNodeView, { kind: 'slot' }>): HTMLElement {
   const slot = view.slot;
   const box = nodeCard();
   Object.assign(box.style, {
-    border: `1px dashed ${slot.blocked ? alpha(TOKENS.sodium, 0.4) : TOKENS.inkLine}`,
+    border    : `1px dashed ${slot.blocked ? alpha(TOKENS.sodium, 0.4) : TOKENS.inkLine}`,
     background: `repeating-linear-gradient(135deg, ${alpha(TOKENS.signal, 0.04)} 0 8px, transparent 8px 16px)`,
   });
 

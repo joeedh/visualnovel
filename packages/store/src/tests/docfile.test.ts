@@ -33,9 +33,9 @@ describe('reading a document', () => {
     expect(read.ok).toBe(true);
     if (!read.ok) return;
     expect(read.file).toEqual({
-      path: 'wiki/history.md',
-      text: '# History\n',
-      hash: sha256('# History\n'),
+      path : 'wiki/history.md',
+      text : '# History\n',
+      hash : sha256('# History\n'),
       bytes: 10,
     });
   });

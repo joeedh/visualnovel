@@ -513,7 +513,7 @@ interface LoadedProject {
 
 /** The inputs `@vn/scriptedit` decides and writes against, built from one loaded project. */
 const editInputOf = (project: LoadedProject): SceneEditInput => ({
-  paths: project.paths,
+  paths  : project.paths,
   sources: project.sources,
   ...(project.config.start === undefined ? {} : { entry: project.config.start }),
 });
@@ -802,7 +802,7 @@ function resumedNote(header: ThreadHeader): AgentMessage {
   const archived = header.archived?.[header.archived.length - 1];
   const saved = archived ? ` It was last saved into git at ${archived.commit.slice(0, 8)}.` : '';
   return {
-    role: 'context',
+    role   : 'context',
     content:
       'This conversation was closed and has now been reopened, so the project may have changed ' +
       `since the messages above.${saved} Nothing read earlier in it still counts as read: read a ` +
@@ -909,7 +909,7 @@ interface GenDeps {
 async function buildGenDeps(project: LoadedProject, mock: boolean): Promise<GenDeps> {
   const loadRef = async (ref: { hash: string; ext: string }) => ({
     bytes: await project.store.read(ref),
-    ext: ref.ext,
+    ext  : ref.ext,
   });
   if (mock) {
     const imageBackend = new StubImageBackend();
@@ -919,10 +919,10 @@ async function buildGenDeps(project: LoadedProject, mock: boolean): Promise<GenD
   // backends degrade more gracefully and are checked where they are built.
   const keys = await resolveKeys(project.config, {
     secretsDirs: await secretDirsFor(project.dir),
-    require: ['gemini'],
+    require    : ['gemini'],
   });
   return {
-    providers: createProviders({ config: project.config, keys, loadRef }),
+    providers   : createProviders({ config: project.config, keys, loadRef }),
     imageBackend: createImageBackend(project.config, keys),
     keys,
   };
@@ -980,10 +980,10 @@ export class WorkspaceSession {
    * been written yet, and how far a compaction has covered.
    */
   private native = {
-    kind: 'mock' as BackendKind,
-    sections: [] as SystemSection[],
-    n: 0,
-    opened: false,
+    kind       : 'mock' as BackendKind,
+    sections   : [] as SystemSection[],
+    n          : 0,
+    opened     : false,
     /** The highest `n` the newest summary replaces. Undefined until the author compacts. */
     compactedTo: undefined as number | undefined,
   };
@@ -1028,8 +1028,7 @@ export class WorkspaceSession {
    * budget the earlier turns have already drawn on.
    */
   private analysis:
-    | { req: AnalysisRequest; parts: AnalysisParts; thread: ThreadHeader }
-    | undefined;
+    { req: AnalysisRequest; parts: AnalysisParts; thread: ThreadHeader } | undefined;
   /** Every row of the open debug conversation, in order. What `report.state` returns. */
   private reportRows: ReportRow[] = [];
   /** Which access has been granted. One-way, so neither ever goes back to false. */
@@ -1202,7 +1201,7 @@ export class WorkspaceSession {
     const paths = new ProjectPaths(this.dir);
     const usage: ThreadUsage = {
       step,
-      input: event.input,
+      input : event.input,
       output: event.output,
       ...(event.cacheRead === undefined ? {} : { cacheRead: event.cacheRead }),
       ...(event.cacheWrite === undefined ? {} : { cacheWrite: event.cacheWrite }),
@@ -1242,12 +1241,12 @@ export class WorkspaceSession {
     if (!this.native.opened) {
       this.native.opened = true;
       this.writeNative(id, {
-        v: NATIVE_VERSION,
-        type: 'resume',
-        thread: id,
-        at: new Date().toISOString(),
-        backend: this.native.kind,
-        vendor: chatVendorFor(this.model),
+        v       : NATIVE_VERSION,
+        type    : 'resume',
+        thread  : id,
+        at      : new Date().toISOString(),
+        backend : this.native.kind,
+        vendor  : chatVendorFor(this.model),
         sections: this.native.sections,
         ...(this.model === '' ? {} : { model: this.model }),
         ...(this.effort === undefined ? {} : { effort: this.effort }),
@@ -1256,8 +1255,8 @@ export class WorkspaceSession {
     const { role, content, toolUseId } = message;
     this.writeNative(id, {
       type: 'msg',
-      n: this.native.n++,
-      at: new Date().toISOString(),
+      n   : this.native.n++,
+      at  : new Date().toISOString(),
       role,
       content,
       ...(toolUseId === undefined ? {} : { toolUseId }),
@@ -1285,7 +1284,7 @@ export class WorkspaceSession {
     const modelId = model ?? config.models.text;
     const keys = await resolveKeys(config, {
       secretsDirs: await secretDirsFor(this.dir),
-      require: [chatVendorFor(modelId)],
+      require    : [chatVendorFor(modelId)],
     });
     const chat = chatBackendFor(modelId, keys, this.effort).backend;
     return chat.chatConversation ? new NativeAgentBackend(chat) : new StructuredAgentBackend(chat);
@@ -1313,19 +1312,19 @@ export class WorkspaceSession {
     const workspace = new Workspace(this.dir);
     const ctx: ToolContext = {
       workspace,
-      git: openGit(this.dir),
+      git     : openGit(this.dir),
       // The agent's `generate_image` and the palette's `art.generate` draw the same picture; the
       // session's own `mock` is the only policy about whether it is real art.
-      art: workspaceArtGen(workspace, { mock: this.mock }),
-      text: workspaceTextLLM(workspace, { mock: this.mock }),
+      art     : workspaceArtGen(workspace, { mock: this.mock }),
+      text    : workspaceTextLLM(workspace, { mock: this.mock }),
       // Approval is authorized by the author's own words, so this seam carries the model that
       // reads them alongside the two acts it gates.
       approval: {
-        list: () => this.approvable(),
-        approve: (item) => this.approveOne(item),
-        approved: () => this.approvedAssets(),
+        list     : () => this.approvable(),
+        approve  : (item) => this.approveOne(item),
+        approved : () => this.approvedAssets(),
         unapprove: (item) => this.unapproveOne(item),
-        triage: () => this.triageBackend(),
+        triage   : () => this.triageBackend(),
       },
       // The capability `vnauthor` does not have: the same two calls `asset.regenerate` makes, so
       // an agent-started re-render takes the busy flag a pipeline run takes.
@@ -1345,7 +1344,7 @@ export class WorkspaceSession {
             ? { ok: true, note: estimateSentence(counted.estimate, counted.stale) }
             : { ok: false, reason: counted.reason };
         },
-        run: (slug, opts) => this.runGraph(slug, { force: opts.force, mock: this.mock }),
+        run     : (slug, opts) => this.runGraph(slug, { force: opts.force, mock: this.mock }),
       },
     };
     const context = await loadContext(this.dir);
@@ -1358,13 +1357,13 @@ export class WorkspaceSession {
         ...historyTools(this.history()),
         showMeTool({
           ...(this.deps.showTour ? { show: this.deps.showTour.bind(this.deps) } : {}),
-          commands: createDesktopRegistry(),
+          commands    : createDesktopRegistry(),
           interactions: createDesktopInteractions(),
         }) as Tool,
       ]),
       permission: this.permission(),
-      system: composeSystem(context),
-      budget: this.budget,
+      system    : composeSystem(context),
+      budget    : this.budget,
       onEvent: (event) => {
         this.record((convo) => received(convo, event));
         if (event.type === 'usage') this.recordUsage(event);
@@ -1372,7 +1371,7 @@ export class WorkspaceSession {
         if (event.type === 'api') this.announceApi(event);
       },
       onApiError: (failure) => this.recoverApi(failure),
-      onMessage: (message) => this.recordMessage(message),
+      onMessage : (message) => this.recordMessage(message),
     });
     return this.agent;
   }
@@ -1424,15 +1423,15 @@ export class WorkspaceSession {
     if (event.phase === 'recovered') {
       void notify({
         category: 'agent',
-        source: 'agent',
-        message: `The model answered after ${tries(event.attempt)}.`,
+        source  : 'agent',
+        message : `The model answered after ${tries(event.attempt)}.`,
       });
     } else if (event.phase === 'gaveup') {
       void notify({
         category: 'error',
-        level: 'error',
-        source: 'agent',
-        message: `Gave up on the model after ${tries(event.attempt)}: ${event.message}`,
+        level   : 'error',
+        source  : 'agent',
+        message : `Gave up on the model after ${tries(event.attempt)}: ${event.message}`,
       });
     }
   }
@@ -1527,10 +1526,10 @@ export class WorkspaceSession {
     const id = this.thread?.id;
     if (!id || !this.native.opened || !delta) return;
     this.writeNative(id, {
-      type: 'sections',
-      n: this.native.n,
-      at: new Date().toISOString(),
-      set: delta.set,
+      type : 'sections',
+      n    : this.native.n,
+      at   : new Date().toISOString(),
+      set  : delta.set,
       unset: delta.unset,
     });
   }
@@ -1635,8 +1634,8 @@ export class WorkspaceSession {
     const context = await loadContext(this.dir);
     return {
       sections: systemSections(context).map((section) => ({ ...section })),
-      files: context.files,
-      modelId: this.model,
+      files   : context.files,
+      modelId : this.model,
     };
   }
 
@@ -1686,8 +1685,8 @@ export class WorkspaceSession {
       // the commit that did — the pointer records where the conversation is, not who put it there.
       const sha =
         (await git.commit({
-          message: `Close conversation: ${thread.title}`,
-          paths: hasNative ? [file, native] : [file],
+          message : `Close conversation: ${thread.title}`,
+          paths   : hasNative ? [file, native] : [file],
           trailers: { 'Vn-Thread': thread.id },
         })) ?? (await git.lastCommitFor(file));
       if (sha) await archiveThread(paths, thread.id, sha);
@@ -1776,7 +1775,7 @@ export class WorkspaceSession {
     const agent = await this.ensureAgent();
     const { state, log } = await this.resumeState(id);
     const refusal = resumeRefusal(record.title, state, {
-      model: this.model,
+      model  : this.model,
       backend: this.native.kind,
     });
     if (refusal) throw new Error(refusal);
@@ -1798,9 +1797,9 @@ export class WorkspaceSession {
     const highest = log.messages.reduce((max, message) => Math.max(max, message.n), -1);
     this.native = {
       ...this.native,
-      sections: log.sections,
-      n: highest + 1,
-      opened: true,
+      sections   : log.sections,
+      n          : highest + 1,
+      opened     : true,
       compactedTo: log.compaction?.covers.to,
     };
     return record;
@@ -1873,9 +1872,9 @@ export class WorkspaceSession {
       const to = this.native.n - 1;
       this.native.compactedTo = to;
       this.writeNative(thread.id, {
-        type: 'compact',
-        covers: { from: 0, to },
-        role: head.role,
+        type   : 'compact',
+        covers : { from: 0, to },
+        role   : head.role,
         content: typeof head.content === 'string' ? head.content : JSON.stringify(head.content),
         at,
         ...(this.model === '' ? {} : { model: this.model }),
@@ -1884,8 +1883,8 @@ export class WorkspaceSession {
 
       const mark: CompactionMark = {
         afterId: this.convo.feed[this.convo.feed.length - 1]?.id ?? 0,
-        covers: covered.length,
-        text: summary,
+        covers : covered.length,
+        text   : summary,
         at,
         ...(this.model === '' ? {} : { model: this.model }),
       };
@@ -1959,7 +1958,7 @@ export class WorkspaceSession {
   async previewReport(ask: ReportAsk): Promise<PromptResult> {
     if (this.mock) {
       return {
-        ok: false,
+        ok     : false,
         message:
           'Not while this workspace is running with mock providers — a real model has to read ' +
           'the conversation.',
@@ -1983,7 +1982,7 @@ export class WorkspaceSession {
     // turns finding that out.
     if (ask.detail && captureSnapshot().headers().length === 0) {
       return {
-        ok: false,
+        ok     : false,
         message:
           'Nothing was sent to the model API in this session, so there are no requests to read. ' +
           'Untick reading the requests.',
@@ -1993,7 +1992,7 @@ export class WorkspaceSession {
     const advice = adviseRun(modelId, effort ?? this.effort, ask.source, this.effort);
     const also = ask.detail ? ' It also reads the requests this session sent.' : '';
     return {
-      ok: true,
+      ok     : true,
       message: `Reads “${target.header.title}” with ${modelId}.${advice ? ` ${advice}` : ''}${also}`,
     };
   }
@@ -2006,7 +2005,7 @@ export class WorkspaceSession {
   private agentTools(): { name: string; description: string }[] {
     if (this.agent) return this.agent.tools;
     return [...createRegistry().values()].map((t) => ({
-      name: t.name,
+      name       : t.name,
       description: t.description,
     }));
   }
@@ -2041,20 +2040,20 @@ export class WorkspaceSession {
     const { modelId, effort } = this.analysisBinding(project.config, ask);
     const keys = await resolveKeys(project.config, {
       secretsDirs: await secretDirsFor(this.dir),
-      require: [chatVendorFor(modelId)],
+      require    : [chatVendorFor(modelId)],
     });
 
     return {
       header: target.header,
       req: {
-        dir: this.dir,
-        paths: project.paths,
+        dir   : this.dir,
+        paths : project.paths,
         config: project.config,
-        model: project.model,
+        model : project.model,
         keys,
         threadId: target.header.id,
         modelId,
-        source: ask.source,
+        source       : ask.source,
         reportedTools: this.agentTools(),
         ...(ask.detail ? { detail: true } : {}),
         ...(effort ? { effort } : {}),
@@ -2081,7 +2080,7 @@ export class WorkspaceSession {
     this.analyst = createAnalyst({
       ...parts.options,
       host: {
-        ask: (form) => this.deps.requestAnswer([...form]),
+        ask    : (form) => this.deps.requestAnswer([...form]),
         onEvent: (event) => this.showReport(event),
       },
     });
@@ -2107,7 +2106,7 @@ export class WorkspaceSession {
       transcript.write({
         kind: 'opened',
         thread,
-        model: req.modelId,
+        model : req.modelId,
         source: req.source,
         detail: req.detail === true,
         ...(req.effort ? { effort: req.effort } : {}),
@@ -2148,9 +2147,9 @@ export class WorkspaceSession {
       if (!turn.report || !evidence) return;
       const body = renderReport(turn.report, evidence);
       this.recordReport({
-        kind: 'filed',
+        kind  : 'filed',
         report: turn.report,
-        title: reportTitle(turn.report),
+        title : reportTitle(turn.report),
         body,
         ...(await this.keepReport(body)),
       });
@@ -2180,7 +2179,7 @@ export class WorkspaceSession {
     if (!open || !this.analyst) return { ok: false, message: NO_REPORT };
     if (this.reportGrants[kind]) {
       return {
-        ok: false,
+        ok     : false,
         message:
           kind === 'source'
             ? 'The debug agent has already been shown the source.'
@@ -2190,13 +2189,13 @@ export class WorkspaceSession {
     if (kind === 'source' && !(await sourceRoot())) return { ok: false, message: NO_SOURCE };
     if (kind === 'detail' && open.parts.snapshot.headers().length === 0) {
       return {
-        ok: false,
+        ok     : false,
         message:
           'Nothing was sent to the model API in this session, so there are no requests to read.',
       };
     }
     return {
-      ok: true,
+      ok     : true,
       message:
         kind === 'source'
           ? 'The debug agent gets the source with your next message.'
@@ -2228,9 +2227,9 @@ export class WorkspaceSession {
     const open = this.analysis;
     return {
       ...(open ? { thread: { id: open.thread.id, title: open.thread.title } } : {}),
-      busy: this.running(BUSY_REPORT),
+      busy   : this.running(BUSY_REPORT),
       granted: { ...this.reportGrants },
-      rows: [...this.reportRows],
+      rows   : [...this.reportRows],
     };
   }
 
@@ -2277,7 +2276,7 @@ export class WorkspaceSession {
     if (leaked.length > 0) return { ok: false, message: leakSentence(leaked) };
 
     return {
-      ok: true,
+      ok     : true,
       message:
         'Copies the report to your clipboard and opens a new issue in your browser, for you to ' +
         'paste it into. Nothing is posted until you press Create.',
@@ -2351,9 +2350,9 @@ export class WorkspaceSession {
       .filter((a) => a.kind === 'portrait' && bindsTo(a, { characterId }));
     const suspended = await this.suspensionFor(project, hash);
     return {
-      character: Boolean(character),
-      candidate: candidates.some((a) => a.hash === hash),
-      approved: character ? isApproved(character) : false,
+      character : Boolean(character),
+      candidate : candidates.some((a) => a.hash === hash),
+      approved  : character ? isApproved(character) : false,
       candidates: candidates.length,
       ...(suspended ? { suspended } : {}),
     };
@@ -2394,7 +2393,7 @@ export class WorkspaceSession {
       assets: manifest,
       shots,
       config: project.config,
-      graph: project.graph,
+      graph : project.graph,
     });
     const names = labelAssets(manifest, labels);
     const byHash = new Map(manifest.map((a) => [a.hash, a]));
@@ -2455,7 +2454,7 @@ export class WorkspaceSession {
       assets: manifest,
       shots,
       config: project.config,
-      graph: project.graph,
+      graph : project.graph,
     });
     const names = labelAssets(manifest, labels);
     const byHash = new Map(manifest.map((a) => [a.hash, a]));
@@ -2471,10 +2470,10 @@ export class WorkspaceSession {
         const characterId = asset.satisfies[0]?.characterId;
         out.push({
           hash,
-          kind: asset.kind,
+          kind : asset.kind,
           label: names.get(hash) ?? hash,
-          slot: slot.label,
-          door: asset.kind === 'portrait' ? 'gate' : 'accept',
+          slot : slot.label,
+          door : asset.kind === 'portrait' ? 'gate' : 'accept',
           ...(characterId === undefined ? {} : { characterId }),
         });
       }
@@ -2496,7 +2495,7 @@ export class WorkspaceSession {
     if (item.door !== 'gate') return this.acceptAsset(item.hash);
     if (!item.characterId) {
       return {
-        ok: false,
+        ok     : false,
         message: `${item.label} is a portrait of nobody — nothing to clear.`,
       };
     }
@@ -2520,7 +2519,7 @@ export class WorkspaceSession {
     const config = await loadConfig(this.dir);
     const keys = await resolveKeys(config, {
       secretsDirs: await secretDirsFor(this.dir),
-      require: [chatVendorFor(TRIAGE_MODEL)],
+      require    : [chatVendorFor(TRIAGE_MODEL)],
     });
     return chatBackendFor(TRIAGE_MODEL, keys).backend;
   }
@@ -2555,7 +2554,7 @@ export class WorkspaceSession {
       model: project.model,
       shots,
       config: project.config,
-      graph: project.graph,
+      graph : project.graph,
     });
     return decided.ok ? slotTaskHash(decided.plan) : undefined;
   }
@@ -2578,12 +2577,12 @@ export class WorkspaceSession {
       const task = project.graph.get(hash);
       if (!task || (task.status !== 'failed' && task.status !== 'needs_human')) continue;
       return {
-        task: hash,
+        task  : hash,
         status: task.status,
         ...(task.error === undefined ? {} : { error: task.error }),
-        attempts: task.attempts.filter((a) => a.error).length,
+        attempts   : task.attempts.filter((a) => a.error).length,
         maxAttempts: project.config.max_task_attempts,
-        later: hash !== sourceTask,
+        later      : hash !== sourceTask,
       };
     }
     return undefined;
@@ -2602,10 +2601,10 @@ export class WorkspaceSession {
     return manifest.map((asset) => {
       const slot = slotOf(asset, labels.angleOf?.(asset.sourceTask));
       return {
-        hash: asset.hash,
-        ext: asset.ext,
-        kind: asset.kind,
-        label: names.get(asset.hash) ?? asset.hash,
+        hash    : asset.hash,
+        ext     : asset.ext,
+        kind    : asset.kind,
+        label   : names.get(asset.hash) ?? asset.hash,
         accepted: assetApproved(asset, project.model),
         ...(slot ? { slot: slotKey(slot) } : {}),
       };
@@ -2660,11 +2659,11 @@ export class WorkspaceSession {
       : undefined;
     return {
       hash: asset.hash,
-      ext: asset.ext,
+      ext : asset.ext,
       kind: asset.kind,
       label,
-      base: isBaseKind(asset.kind),
-      accepted: asset.accepted,
+      base      : isBaseKind(asset.kind),
+      accepted  : asset.accepted,
       sourceTask: asset.sourceTask,
       ...(asset.prompt === undefined ? {} : { prompt: asset.prompt }),
       ...(asset.title === undefined ? {} : { title: asset.title }),
@@ -2704,19 +2703,19 @@ export class WorkspaceSession {
       const who = info.rungs[0]?.target.split(':')[1];
       const call = who ? `(characterId='${who}' hash='${hash}')` : '';
       return {
-        ok: false,
+        ok     : false,
         message: `${info.label} is a portrait; use gate.approve${call}, which also writes character.md and approved.png.`,
       };
     }
     if (info.kind === 'concept') {
       return {
-        ok: false,
+        ok     : false,
         message: `${info.label} is a concept; nothing downstream consumes one. Use art.promote(hash='${hash}' variant=…) to make it a location plate.`,
       };
     }
     if (info.kind === 'reference') {
       return {
-        ok: false,
+        ok     : false,
         message: `${info.label} is an upload; nothing generated it, so there is no work to bless. It counts by being pointed at with prompt.addRef.`,
       };
     }
@@ -2724,7 +2723,7 @@ export class WorkspaceSession {
       // Accepting says these bytes are the answer, and a suspended asset was drawn against a
       // reference that has since moved.
       return {
-        ok: false,
+        ok     : false,
         message: `${info.label} is suspended: ${info.suspended}. Repin or regenerate it first.`,
       };
     }
@@ -2732,7 +2731,7 @@ export class WorkspaceSession {
     // reference that moved, which is more specific than a claim about other bytes upstream.
     if (info.unapproved) return { ok: false, message: info.unapproved };
     return {
-      ok: true,
+      ok     : true,
       message: info.accepted
         ? `${info.label} is already accepted; would re-accept it.`
         : `Would accept ${info.label}.`,
@@ -2780,7 +2779,7 @@ export class WorkspaceSession {
     if (!info) return { ok: false, message: `No asset "${hash}" in the manifest.` };
     if (info.kind === 'concept' || info.kind === 'reference') {
       return {
-        ok: false,
+        ok     : false,
         message: `${info.label} is a ${info.kind}; nothing ever approved it, so there is nothing to take back.`,
       };
     }
@@ -2796,7 +2795,7 @@ export class WorkspaceSession {
         return { ok: false, message: `${who}'s approved portrait is a different take.` };
       }
       return {
-        ok: true,
+        ok     : true,
         message: `Would put ${who} back at the gate, dropping approved.png and the hash in their sheet.`,
       };
     }
@@ -2824,7 +2823,7 @@ export class WorkspaceSession {
     if (info.kind !== 'portrait') {
       await project.store.unaccept(hash);
       return {
-        ok: true,
+        ok     : true,
         message: `Un-accepted ${info.label}.`,
         written: ['vngen/build/manifest.json'],
       };
@@ -2838,7 +2837,7 @@ export class WorkspaceSession {
     await removeApprovedPortrait(project.paths, who);
     await project.store.unaccept(hash);
     return {
-      ok: true,
+      ok     : true,
       message: `${who} is back at the approval gate.`,
       written: [
         `characters/${who}/character.md`,
@@ -2867,7 +2866,7 @@ export class WorkspaceSession {
     const project = await loadProject(this.dir);
     if (project.store.base.state === 'unavailable') {
       return {
-        ok: false,
+        ok    : false,
         reason: baseRefusal(project.store.base) ?? 'Base assets are unavailable.',
       };
     }
@@ -2875,7 +2874,7 @@ export class WorkspaceSession {
     // generic "no task" refusal below would be true and useless. Redrawing one is its own act.
     if (info.kind === 'concept') {
       return {
-        ok: false,
+        ok    : false,
         reason: `${info.label} is a concept: the planner never made it, so there is no task to re-run. Draw it again with art.redraw(hash='${hash}'), which takes an edited prompt.`,
       };
     }
@@ -2883,14 +2882,14 @@ export class WorkspaceSession {
     // the request that brought the bytes in, and no node ever answered to it.
     if (info.kind === 'reference') {
       return {
-        ok: false,
+        ok    : false,
         reason: `${info.label} is an upload: nothing generated it, so there is no task to re-run. Bring in a different image with asset.upload(file=…).`,
       };
     }
     const task = info.sourceTask ? project.graph.get(info.sourceTask) : undefined;
     if (!task) {
       return {
-        ok: false,
+        ok    : false,
         reason: `${info.label} records no task in the graph, so there is nothing to re-run.`,
       };
     }
@@ -2901,7 +2900,7 @@ export class WorkspaceSession {
       const later = project.graph.get(info.failure.task);
       if (later) {
         return {
-          ok: true,
+          ok  : true,
           task: later,
           note: `Would re-run the ${later.kind} that gave up on ${info.label}. The picture on screen is the last one that got through, and it stays until the new render lands.`,
         };
@@ -2909,7 +2908,7 @@ export class WorkspaceSession {
     }
     if (info.stale) {
       return {
-        ok: false,
+        ok    : false,
         reason: `${info.label} was rendered from a prompt the project has since changed, so its task is an orphan. Run the pipeline — a fresh task is already planned for it.`,
       };
     }
@@ -2952,13 +2951,13 @@ export class WorkspaceSession {
       ...decided.task,
       status: 'pending',
       output: undefined,
-      error: undefined,
+      error : undefined,
     });
     const written = [relPath(this.dir, project.paths.tasksLog)];
     const invalidated = await this.invalidateBound(project, decided.task);
     if (invalidated !== undefined) written.push(invalidated);
     return {
-      ok: true,
+      ok     : true,
       message: `Queued ${decided.task.kind} ${decided.task.hash.slice(0, 8)} for re-run.`,
       written,
     };
@@ -3070,8 +3069,8 @@ export class WorkspaceSession {
     const ctx = { ...labels, assets: manifest };
     return (chunk) =>
       (override.refs?.[chunk] ?? []).map((ref) => ({
-        pin: ref.pin,
-        ext: ref.ext,
+        pin  : ref.pin,
+        ext  : ref.ext,
         label: names.get(ref.pin) ?? ref.pin.slice(0, 8),
         ...(ref.from ? { from: slotKey(ref.from) } : {}),
         ...(refDrift(ref, ctx) ? { drift: true } : {}),
@@ -3099,18 +3098,18 @@ export class WorkspaceSession {
           asset.kind === 'concept'
             ? [
                 {
-                  key: 'request',
+                  key     : 'request',
                   category: 'request',
-                  origin: { kind: 'request' },
+                  origin  : { kind: 'request' },
                   text,
                   derived: text,
-                  muted: false,
+                  muted  : false,
                 },
               ]
             : [],
-        held: false,
+        held   : false,
         missing: [],
-        frozen: frozenReason(asset.kind),
+        frozen : frozenReason(asset.kind),
       };
     }
 
@@ -3129,14 +3128,14 @@ export class WorkspaceSession {
     const refsOf = this.chunkRefs(project, override);
     return {
       hash,
-      mode: composed.mode,
-      text: composed.text,
+      mode   : composed.mode,
+      text   : composed.text,
       chunks: composed.chunks.map((c) => ({
-        key: c.key,
+        key     : c.key,
         category: c.category,
-        origin: c.origin,
+        origin  : c.origin,
         ...(c.also ? { also: c.also } : {}),
-        text: c.text,
+        text   : c.text,
         derived: c.derived,
         ...(c.edit ? { edit: c.edit } : {}),
         ...(c.authored === undefined ? {} : { authored: c.authored }),
@@ -3145,7 +3144,7 @@ export class WorkspaceSession {
         ...(marks?.has(c.key) ? { represented: marks.get(c.key)! } : {}),
         ...(refsOf(c.key).length ? { refs: refsOf(c.key) } : {}),
       })),
-      held: composed.held,
+      held   : composed.held,
       missing: marks ? [...marks].filter(([, found]) => !found).map(([key]) => key) : [],
       ...(override?.custom ? { custom: override.custom } : {}),
       ...(override?.agent
@@ -3242,7 +3241,7 @@ export class WorkspaceSession {
     const binding = parseSlot(ref);
     if (!binding) {
       return {
-        ok: false,
+        ok    : false,
         reason: `"${ref}" names no reference. Give an asset hash, or a slot: portrait:<character>, sheet:<character>/<outfit>/<angle>, plate:<location>/<variant>, shot:<scene>/<shot>.`,
       };
     }
@@ -3250,14 +3249,14 @@ export class WorkspaceSession {
     const pin = resolveBinding(binding, { ...labels, assets: project.store.manifest() });
     if (!pin) {
       return {
-        ok: false,
+        ok    : false,
         reason: `Nothing fills ${slotLabel(binding)} today, so there is no image to attach.`,
       };
     }
     const target = project.store.manifest().find((a) => a.hash === pin);
     if (!target) {
       return {
-        ok: false,
+        ok    : false,
         reason: `${slotLabel(binding)} names ${pin.slice(0, 8)}, which is not in the manifest.`,
       };
     }
@@ -3347,7 +3346,7 @@ export class WorkspaceSession {
     }
     if (!pinned.from) {
       return {
-        ok: false,
+        ok    : false,
         reason: `${pinned.pin.slice(0, 8)} is an unlinked reference — it names no slot, so there is nothing to repin it to.`,
       };
     }
@@ -3357,14 +3356,14 @@ export class WorkspaceSession {
     });
     if (!to) {
       return {
-        ok: false,
+        ok    : false,
         reason: `Nothing fills that slot today, so there is no hash to repin ${pinned.pin.slice(0, 8)} to.`,
       };
     }
     const target = project.store.manifest().find((a) => a.hash === to);
     if (!target)
       return {
-        ok: false,
+        ok    : false,
         reason: `The slot names ${to.slice(0, 8)}, which is not in the manifest.`,
       };
     const edit: PromptEdit = { op: 'repin', chunk, ref: pinned.pin, to, ext: target.ext };
@@ -3381,7 +3380,7 @@ export class WorkspaceSession {
     const node = project.graph.get(asset.sourceTask);
     if (!node || !('refs' in node.inputs)) {
       return {
-        ok: false,
+        ok    : false,
         reason: `${hash.slice(0, 8)} has no task on record to re-approve against, so it can only be repinned with regenerate=true.`,
       };
     }
@@ -3393,7 +3392,7 @@ export class WorkspaceSession {
     } as TaskInputs[TaskKind];
     const req = { kind: node.kind, inputs, output: asset };
     const ctx = {
-      has: (h: string) => project.store.has(h),
+      has : (h: string) => project.store.has(h),
       node: (h: string) => project.graph.get(h),
     };
     const decided = adoptionOf(req, ctx);
@@ -3453,7 +3452,7 @@ export class WorkspaceSession {
     if (view.frozen) return { ok: false, message: view.frozen };
     if (view.mode === 'custom' && !force) {
       return {
-        ok: false,
+        ok     : false,
         message:
           `A custom prompt is already written. prompt.condense(hash='${hash.slice(0, 8)}' ` +
           'force=true) reconciles it against the chunks instead of discarding it.',
@@ -3483,17 +3482,17 @@ export class WorkspaceSession {
     });
     if (result.source === 'fallback') {
       return {
-        ok: false,
+        ok     : false,
         message: 'No text model answered, so nothing was condensed and nothing was written.',
         written: [],
       };
     }
 
     const written = await this.writePrompt(hash, {
-      op: 'agent',
-      text: result.prompt,
+      op     : 'agent',
+      text   : result.prompt,
       modelId: project.config.models.text,
-      at: new Date().toISOString(),
+      at     : new Date().toISOString(),
     });
     if (!written.ok) return written;
     const lost = result.coverage.filter((c) => !c.found).map((c) => c.key);
@@ -3517,7 +3516,7 @@ export class WorkspaceSession {
       return { ok: true, message: `Every clause is represented in the ${view.mode} prompt.` };
     }
     return {
-      ok: true,
+      ok     : true,
       message: `Not found in the ${view.mode} prompt: ${view.missing.join(', ')}.`,
     };
   }
@@ -3527,13 +3526,13 @@ export class WorkspaceSession {
     const project = await loadProject(this.dir);
     const { config } = project;
     return {
-      root: this.dir,
-      title: config.title,
-      artStyle: config.art_style,
-      start: config.start ?? '',
-      models: { ...config.models },
+      root       : this.dir,
+      title      : config.title,
+      artStyle   : config.art_style,
+      start      : config.start ?? '',
+      models     : { ...config.models },
       imageParams: { ...config.image_params },
-      imageTasks: project.graph.all().filter((task) => IMAGE_KINDS.has(task.kind)).length,
+      imageTasks : project.graph.all().filter((task) => IMAGE_KINDS.has(task.kind)).length,
     };
   }
 
@@ -3546,7 +3545,7 @@ export class WorkspaceSession {
     const count = project.graph.all().filter((task) => IMAGE_KINDS.has(task.kind)).length;
     const said = style.trim() ? `Set the art style to "${style.trim()}".` : 'Clear the art style.';
     return {
-      ok: true,
+      ok     : true,
       message: `${said} It opens every image prompt, so it re-keys ${count} image task(s).`,
     };
   }
@@ -3563,7 +3562,7 @@ export class WorkspaceSession {
       return { ok: false, message: 'The project already says that.', written: [] };
     }
     return {
-      ok: true,
+      ok     : true,
       message: preview.message,
       written: [relPath(this.dir, join(this.dir, CONFIG_FILENAME))],
     };
@@ -3588,7 +3587,7 @@ export class WorkspaceSession {
     return {
       path,
       shown,
-      had: await exists(path),
+      had   : await exists(path),
       shadow: set ? ` $${envName} is set and is read first, so the file goes unused.` : '',
     };
   }
@@ -3599,7 +3598,7 @@ export class WorkspaceSession {
     const reach =
       scope === 'user' ? ' Every project on this machine reads it.' : ' This project reads it.';
     return {
-      ok: true,
+      ok     : true,
       message: `${had ? 'Replace' : 'Write'} the ${vendor} key in ${shown}.${reach}${shadow}`,
     };
   }
@@ -3638,7 +3637,7 @@ export class WorkspaceSession {
     const reach =
       scope === 'user' ? ' Every project on this machine reads it.' : ' This project reads it.';
     return {
-      ok: true,
+      ok     : true,
       message: `${had ? 'Replaced' : 'Wrote'} the ${vendor} key in ${shown}${safety}.${reach}${shadow}`,
       written: ignored ? ['.gitignore'] : [],
     };
@@ -3658,13 +3657,13 @@ export class WorkspaceSession {
         const s = byVendor.get(vendor);
         return {
           vendor,
-          resolved: s?.resolved ?? false,
-          source: describeKeySource(this.dir, s),
-          envName: s?.envName ?? config.keys[vendor],
+          resolved : s?.resolved ?? false,
+          source   : describeKeySource(this.dir, s),
+          envName  : s?.envName ?? config.keys[vendor],
           envShadow: s?.envShadow ?? false,
           writesTo: {
             project: `keys/${secretFileFor(vendor)}`,
-            user: join(userKeysDir(), secretFileFor(vendor)),
+            user   : join(userKeysDir(), secretFileFor(vendor)),
           },
         };
       }),
@@ -3720,11 +3719,11 @@ export class WorkspaceSession {
     try {
       const response = await fetch(RELEASES_API, {
         headers: {
-          accept: 'application/vnd.github+json',
+          accept      : 'application/vnd.github+json',
           // GitHub asks every client to name itself, and answers 403 to one that does not.
           'user-agent': `vnstudio/${running || 'dev'} (+${RELEASES_PAGE})`,
         },
-        signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
+        signal : AbortSignal.timeout(CHECK_TIMEOUT_MS),
       });
       // 403 and 429 are the rate limit, and 404 is a repository with no release yet. All three
       // are "no answer today" rather than anything the author can act on.
@@ -3786,7 +3785,7 @@ export class WorkspaceSession {
     );
     if (!modelId) {
       return {
-        ok: false,
+        ok     : false,
         message: `This project configures no ${vendor} chat model, so there is nothing cheap to call.`,
       };
     }
@@ -3794,7 +3793,7 @@ export class WorkspaceSession {
     try {
       const keys = await resolveKeys(config, {
         secretsDirs: await secretDirsFor(this.dir),
-        require: [vendor],
+        require    : [vendor],
       });
       const backend = chatBackendFor(modelId, keys).backend;
       await backend.message({ prompt: 'Reply with the single word OK.' });
@@ -3870,9 +3869,9 @@ export class WorkspaceSession {
       const scene = project.model.scenes.get(rung.sceneId);
       if (!scene) return { ok: false, reason: `No scene "${rung.sceneId}" to write to.` };
       return {
-        ok: true,
-        note: next.note,
-        file: project.paths.shotsFile(rung.sceneId),
+        ok   : true,
+        note : next.note,
+        file : project.paths.shotsFile(rung.sceneId),
         write: async () => {
           const loaded = await readShots(
             project.paths,
@@ -3898,9 +3897,9 @@ export class WorkspaceSession {
     const doc = entityDoc(docs, id);
     if (!doc) return { ok: false, reason: `No sheet on disk for ${kind} "${id}".` };
     return {
-      ok: true,
-      note: next.note,
-      file: doc.file,
+      ok   : true,
+      note : next.note,
+      file : doc.file,
       write: async () => {
         const edited =
           rung.kind === 'variant'
@@ -3928,7 +3927,7 @@ export class WorkspaceSession {
     const named = subject ? parseSubject(subject) : undefined;
     if (subject && !named) {
       return {
-        ok: false,
+        ok    : false,
         reason: `"${subject}" names no subject; expected location:<id> or character:<id>.`,
       };
     }
@@ -3941,7 +3940,7 @@ export class WorkspaceSession {
     }
     const of = bound ? `of ${formatSubject(bound)}` : 'bound to nothing in the project';
     return {
-      ok: true,
+      ok  : true,
       note: `Would draw a concept ${of}. It is a sketch — nothing in the pipeline plans or renders it.`,
       project,
       req: { sentence: said, ...(bound ? { subject: bound } : {}) },
@@ -3977,18 +3976,18 @@ export class WorkspaceSession {
       return generateConcept(
         {
           config: project.config,
-          model: project.model,
-          store: project.store,
-          image: providers.image,
+          model : project.model,
+          store : project.store,
+          image : providers.image,
         },
         req,
       );
     });
     const of = result.subject ? ` of ${formatSubject(result.subject)}` : '';
     return {
-      ok: true,
+      ok     : true,
       message: `Drew a concept${of}: ${result.ref.hash.slice(0, 8)}.`,
-      hash: result.ref.hash,
+      hash   : result.ref.hash,
       written: [relPath(this.dir, result.file), relPath(this.dir, project.paths.baseManifest)],
     };
   }
@@ -4079,16 +4078,16 @@ export class WorkspaceSession {
     const adopted = await this.adoptAsset(result.ref.hash, slot, replace);
     if (!adopted.ok) {
       return {
-        ok: false,
+        ok     : false,
         message: `${uploaded} It could not be adopted, and stays a reference: ${adopted.message} Finish with asset.adopt(hash='${result.ref.hash}' slot='${slot}').`,
-        hash: result.ref.hash,
+        hash   : result.ref.hash,
         written,
       };
     }
     return {
-      ok: true,
+      ok     : true,
       message: `${uploaded} ${adopted.message}`,
-      hash: result.ref.hash,
+      hash   : result.ref.hash,
       written: [...written, ...adopted.written],
     };
   }
@@ -4110,8 +4109,8 @@ export class WorkspaceSession {
     const said = parseSlot(slot);
     if (!said) {
       return {
-        ok: false,
-        code: 'NOT_A_SLOT',
+        ok    : false,
+        code  : 'NOT_A_SLOT',
         reason: `"${slot}" is not a picture in this project. A slot reads like plate:cafe/night, sheet:aiko/gala/front or shot:greet/s2.`,
       };
     }
@@ -4158,9 +4157,9 @@ export class WorkspaceSession {
       ? ` It supersedes the render ${result.plan.supersedes.slice(0, 8)}, whose bytes stay in the store.`
       : '';
     return {
-      ok: true,
+      ok     : true,
       message: `${hash.slice(0, 8)} is now the ${result.plan.label}.${superseded}`,
-      hash: result.ref.hash,
+      hash   : result.ref.hash,
       written: this.adoptWrote(project, binding, result.plan),
     };
   }
@@ -4179,7 +4178,7 @@ export class WorkspaceSession {
     if (!info) return { ok: false, reason: `No asset "${hash}" in the manifest.` };
     if (!info.slot) {
       return {
-        ok: false,
+        ok    : false,
         reason: `${info.label} fills no slot — nothing planned it, or a later render took the slot over, so there is nothing for a file to replace.`,
       };
     }
@@ -4220,19 +4219,19 @@ export class WorkspaceSession {
       const who = this.portraitOwner(info);
       const call = who ? `(characterId='${who}' hash='${hash}')` : '';
       return {
-        ok: false,
+        ok    : false,
         reason: `${info.label} is a portrait; an earlier look goes back through gate.approve${call}.`,
       };
     }
     if (info.kind === 'concept' || info.kind === 'reference') {
       return {
-        ok: false,
+        ok    : false,
         reason: `${info.label} is a ${info.kind}; nothing planned it, so it was never a take of anything.`,
       };
     }
     if (info.newerTake === undefined) {
       return {
-        ok: false,
+        ok    : false,
         reason: info.slot
           ? `${info.label} is already the ${info.slot}.`
           : `${info.label} fills no slot, so there is nothing to put it back into.`,
@@ -4243,7 +4242,7 @@ export class WorkspaceSession {
     }
     if (info.suspended) {
       return {
-        ok: false,
+        ok    : false,
         reason: `${info.label} is suspended: ${info.suspended}. Repin or regenerate it first.`,
       };
     }
@@ -4275,7 +4274,7 @@ export class WorkspaceSession {
     const decided = await this.restorePlan(hash);
     if (!decided.ok) return { ok: false, message: decided.reason };
     return {
-      ok: true,
+      ok     : true,
       message:
         `Would make ${decided.label} the ${decided.slot} again and accept it, superseding ` +
         `${decided.newer.slice(0, 8)} — whose bytes stay in the store, and whose prompt is then ` +
@@ -4300,7 +4299,7 @@ export class WorkspaceSession {
     const slot = parseSlot(decided.slot);
     if (!slot)
       return {
-        ok: false,
+        ok     : false,
         message: `"${decided.slot}" is not a picture in this project.`,
         written: [],
       };
@@ -4311,7 +4310,7 @@ export class WorkspaceSession {
     const accepted = await this.acceptAsset(hash);
     if (!accepted.ok) return { ok: false, message: accepted.message, written: [] };
     return {
-      ok: true,
+      ok     : true,
       message: `${decided.label} is the ${result.plan.label} again, and accepted. It supersedes ${decided.newer.slice(0, 8)}, whose bytes stay in the store.`,
       written: this.adoptWrote(project, slot, result.plan),
     };
@@ -4389,9 +4388,9 @@ export class WorkspaceSession {
       return redrawConcept(
         {
           config: project.config,
-          model: project.model,
-          store: project.store,
-          image: providers.image,
+          model : project.model,
+          store : project.store,
+          image : providers.image,
         },
         { hash, prompt, title },
       );
@@ -4400,9 +4399,9 @@ export class WorkspaceSession {
       ? ' The same prompt and a fixed seed gave back the same picture, so nothing new was written.'
       : ` ${hash.slice(0, 8)} is still there.`;
     return {
-      ok: true,
+      ok     : true,
       message: `Redrew ${hash.slice(0, 8)} as ${result.ref.hash.slice(0, 8)}.${same}`,
-      hash: result.ref.hash,
+      hash   : result.ref.hash,
       written: [relPath(this.dir, result.file), relPath(this.dir, project.paths.baseManifest)],
     };
   }
@@ -4440,7 +4439,7 @@ export class WorkspaceSession {
     );
     const added = result.addedVariant ? ` "${result.variant}" is new on its sheet.` : '';
     return {
-      ok: true,
+      ok     : true,
       message: `Promoted ${hash.slice(0, 8)} to the ${result.variant} plate for ${result.locationId}.${added}`,
       written: [
         ...(result.file ? [relPath(this.dir, result.file)] : []),
@@ -4465,17 +4464,17 @@ export class WorkspaceSession {
     const labels = labelContext(project.model, project.graph);
     const { graphs, bound } = await this.graphIndex();
     return buildDocTree({
-      root: this.dir,
-      model: project.model,
+      root  : this.dir,
+      model : project.model,
       inputs: project.inputs,
       manifest,
       shots,
-      bible: bible.files(),
-      wikiDir: relPath(this.dir, project.paths.wikiDir),
+      bible      : bible.files(),
+      wikiDir    : relPath(this.dir, project.paths.wikiDir),
       assetLabels: labelAssets(manifest, labels),
       // Always an array, never undefined: the branch is drawn even with nothing in it, and only a
       // caller outside the app (a test, the CLI) leaves it out.
-      skills: await this.skillEntries(),
+      skills     : await this.skillEntries(),
       // The same walk the Task Graph pane reads, over the same load: the tree's two unapproved
       // groups are projections of it, so nothing here enumerates slots a second time.
       slots: buildSlotGraph({
@@ -4483,7 +4482,7 @@ export class WorkspaceSession {
         assets: manifest,
         shots,
         config: project.config,
-        graph: project.graph,
+        graph : project.graph,
       }),
       boundGraphs: bound,
       graphs,
@@ -4523,11 +4522,11 @@ export class WorkspaceSession {
   async skillEntries(): Promise<SkillEntry[]> {
     const skills = await discoverSkills(skillRoots(this.dir));
     return skills.map((skill) => ({
-      id: skill.id,
-      name: skill.name,
+      id         : skill.id,
+      name       : skill.name,
       description: skill.description,
-      file: relPath(this.dir, skill.file),
-      script: skill.script !== undefined,
+      file       : relPath(this.dir, skill.file),
+      script     : skill.script !== undefined,
     }));
   }
 
@@ -4585,9 +4584,9 @@ export class WorkspaceSession {
     await fileCache.note(plan.file, text);
     const diagnostic = entityDiagnostic(plan.path, plan.doc);
     return {
-      ok: true,
-      path: plan.path,
-      hash: plan.hash,
+      ok   : true,
+      path : plan.path,
+      hash : plan.hash,
       bytes: plan.bytes,
       ...(diagnostic ? { diagnostic } : {}),
     };
@@ -4664,10 +4663,10 @@ export class WorkspaceSession {
     if (!written.ok) return written;
     await fileCache.note(written.file, scaffold.text);
     return {
-      ok: true,
-      id: scaffold.id,
-      path: written.path,
-      hash: written.hash,
+      ok   : true,
+      id   : scaffold.id,
+      path : written.path,
+      hash : written.hash,
       bytes: written.bytes,
     };
   }
@@ -4738,20 +4737,20 @@ export class WorkspaceSession {
 
     if (plan.patches.length === 0) {
       return {
-        ok: true,
+        ok     : true,
         message: `${op.message} (already wired that way — nothing written)`,
         written: [],
-        graph: storyGraphOf(project.model),
+        graph  : storyGraphOf(project.model),
       };
     }
 
     const files = await applyMarkerPlan(plan.patches);
     const reloaded = await loadProject(this.dir);
     return {
-      ok: true,
+      ok     : true,
       message: op.message,
       written: files.map((file) => relPath(this.dir, file)),
-      graph: storyGraphOf(reloaded.model),
+      graph  : storyGraphOf(reloaded.model),
     };
   }
 
@@ -4803,16 +4802,16 @@ export class WorkspaceSession {
 
     if (written.length === 0 && removed.length === 0) {
       return {
-        ok: true,
+        ok     : true,
         message: `${plan.message} (already reads that way — nothing written)`,
         written: [],
         removed: [],
-        graph: storyGraphOf(project.model),
+        graph  : storyGraphOf(project.model),
       };
     }
     const reloaded = await loadProject(this.dir);
     return {
-      ok: true,
+      ok     : true,
       message: scenePlanMessage(plan),
       written,
       removed,
@@ -4838,7 +4837,7 @@ export class WorkspaceSession {
     const loaded = await readShots(project.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
     if (!loaded) {
       return () => ({
-        ok: false,
+        ok   : false,
         error: `Scene "${sceneId}" has no decomposition yet — run the pipeline past the gate.`,
       });
     }
@@ -4886,7 +4885,7 @@ export class WorkspaceSession {
     const plan = await this.planLineIds(sceneId);
     if (!plan.ok) return { ok: false, message: plan.message, assigned: 0 };
     return {
-      ok: true,
+      ok      : true,
       message: plan.assigned
         ? `${plan.assigned} line id(s) would be written into ${plan.where}.`
         : `Every line in ${plan.where} already carries its id.`,
@@ -4906,7 +4905,7 @@ export class WorkspaceSession {
     if (!plan.ok) return { ok: false, message: plan.message, written: [] };
     if (plan.pending.length === 0) {
       return {
-        ok: true,
+        ok     : true,
         message: `Every line in ${plan.where} already carries its id.`,
         written: [],
       };
@@ -4916,7 +4915,7 @@ export class WorkspaceSession {
       await fileCache.write(source.file, source.prefix + text);
     }
     return {
-      ok: true,
+      ok     : true,
       message: `Wrote ${plan.assigned} line id(s) into ${plan.where}.`,
       written: plan.pending.map((p) => relPath(this.dir, p.source.file)),
     };
@@ -4939,8 +4938,8 @@ export class WorkspaceSession {
     const fail = (message: string) => ({
       ok: false,
       message,
-      chunks: [],
-      entry: undefined,
+      chunks    : [],
+      entry     : undefined,
       scriptPath: undefined,
     });
 
@@ -4969,10 +4968,10 @@ export class WorkspaceSession {
 
     const warnings = result.diagnostics.length ? ` ${result.diagnostics.length} warning(s).` : '';
     return {
-      ok: true,
+      ok     : true,
       message: `${result.chunks.length} scene(s) would move into scenes/.${warnings}`,
-      chunks: result.chunks,
-      entry: result.entry,
+      chunks : result.chunks,
+      entry  : result.entry,
       scriptPath,
     };
   }
@@ -5009,7 +5008,7 @@ export class WorkspaceSession {
     written.push(relPath(this.dir, aside));
 
     return {
-      ok: true,
+      ok     : true,
       message:
         `Imported ${plan.chunks.length} scene(s) into scenes/; the screenplay is now ` +
         `${relPath(this.dir, aside)} — delete it once you are satisfied.`,
@@ -5037,17 +5036,17 @@ export class WorkspaceSession {
     ]);
     return {
       sceneId,
-      location: scene.location,
-      heading: headingOf(scene),
+      location  : scene.location,
+      heading   : headingOf(scene),
       lines: scene.lines.map((l) => ({
-        id: l.id,
+        id  : l.id,
         kind: l.kind,
         ...(l.speaker ? { speaker: l.speaker } : {}),
         text: l.text,
       })),
       shots: (loaded?.shots ?? []).map((s) => ({
-        id: s.id,
-        framing: s.framing,
+        id      : s.id,
+        framing : s.framing,
         subjects: s.subjects.map((sub) => sub.characterId),
         location: s.location,
         ...(s.castOptional ? { castOptional: true } : {}),
@@ -5057,7 +5056,7 @@ export class WorkspaceSession {
           s.subjects.filter((sub) => sub.outfit).map((sub) => [sub.characterId, sub.outfit!]),
         ),
         coversLines: s.coversLines,
-        status: s.status,
+        status     : s.status,
         ...(s.image ? { image: { hash: s.image, ext: exts.get(s.image) ?? 'png' } } : {}),
         // Against `scene` as just loaded, so an edit made anywhere — this app, the CLI, the
         // agent, a hand-edit — shows up the next time the strip is read.
@@ -5074,7 +5073,7 @@ export class WorkspaceSession {
       // Only the ones with a wardrobe, for the reason `cast` is filtered: a shot may only be
       // given a character the subject rule would accept.
       characters: [...wardrobes.keys()],
-      variants: (project.model.locations.get(scene.location)?.variants ?? []).map((v) => v.id),
+      variants  : (project.model.locations.get(scene.location)?.variants ?? []).map((v) => v.id),
       decomposed: loaded !== null,
       ...(loaded?.nextShot !== undefined ? { nextShot: loaded.nextShot } : {}),
     };
@@ -5098,7 +5097,7 @@ export class WorkspaceSession {
     const loaded = await readShots(project.paths, sceneId, new Set(lineOrder));
     if (!loaded) {
       return {
-        ok: false,
+        ok     : false,
         message: `Scene "${sceneId}" has no decomposition yet — run the pipeline past the gate.`,
         written: [],
       };
@@ -5113,9 +5112,9 @@ export class WorkspaceSession {
 
     const gaps = op.uncovered.length ? ` ${op.uncovered.length} line(s) now uncovered.` : '';
     return {
-      ok: true,
-      message: op.message + gaps,
-      written: [`vngen/work/shots/${sceneId}.json`],
+      ok      : true,
+      message : op.message + gaps,
+      written : [`vngen/work/shots/${sceneId}.json`],
       coverage: await this.sceneCoverage(sceneId),
     };
   }
@@ -5180,7 +5179,7 @@ export class WorkspaceSession {
       return {
         project,
         op: {
-          ok: false,
+          ok   : false,
           error: `Scene "${sceneId}" has no decomposition yet — run the pipeline past the gate.`,
         },
       };
@@ -5218,9 +5217,9 @@ export class WorkspaceSession {
 
     await writeShots(project.paths, sceneId, op.shots);
     return {
-      ok: true,
-      message: op.message,
-      written: [`vngen/work/shots/${sceneId}.json`],
+      ok      : true,
+      message : op.message,
+      written : [`vngen/work/shots/${sceneId}.json`],
       coverage: await this.sceneCoverage(sceneId),
     };
   }
@@ -5247,7 +5246,7 @@ export class WorkspaceSession {
       return {
         project,
         op: {
-          ok: false,
+          ok   : false,
           error: `Scene "${sceneId}" has no decomposition yet — run the pipeline past the gate.`,
         },
       };
@@ -5282,9 +5281,9 @@ export class WorkspaceSession {
 
     await writeShots(project.paths, sceneId, op.shots);
     return {
-      ok: true,
-      message: op.message,
-      written: [`vngen/work/shots/${sceneId}.json`],
+      ok      : true,
+      message : op.message,
+      written : [`vngen/work/shots/${sceneId}.json`],
       coverage: await this.sceneCoverage(sceneId),
     };
   }
@@ -5307,7 +5306,7 @@ export class WorkspaceSession {
       return {
         project,
         op: {
-          ok: false,
+          ok   : false,
           error: `Scene "${sceneId}" has no decomposition yet — run the pipeline past the gate.`,
         },
       };
@@ -5352,9 +5351,9 @@ export class WorkspaceSession {
 
     await writeShots(project.paths, sceneId, op.shots);
     return {
-      ok: true,
-      message: op.message,
-      written: [`vngen/work/shots/${sceneId}.json`],
+      ok      : true,
+      message : op.message,
+      written : [`vngen/work/shots/${sceneId}.json`],
       coverage: await this.sceneCoverage(sceneId),
     };
   }
@@ -5389,9 +5388,9 @@ export class WorkspaceSession {
 
     await writeShots(project.paths, sceneId, op.shots);
     return {
-      ok: true,
-      message: op.message,
-      written: [`vngen/work/shots/${sceneId}.json`],
+      ok      : true,
+      message : op.message,
+      written : [`vngen/work/shots/${sceneId}.json`],
       coverage: await this.sceneCoverage(sceneId),
     };
   }
@@ -5418,7 +5417,7 @@ export class WorkspaceSession {
       ...(framing ? { framing: framing as Shot['framing'] } : {}),
       subjects,
       variants: location?.variants.map((v) => v.id) ?? [],
-      cast: [...project.model.characters.keys()],
+      cast    : [...project.model.characters.keys()],
     });
     return { project, op };
   }
@@ -5449,9 +5448,9 @@ export class WorkspaceSession {
 
     await writeShots(project.paths, sceneId, op.shots, { nextShot: op.nextShot });
     return {
-      ok: true,
-      message: op.message,
-      written: [`vngen/work/shots/${sceneId}.json`],
+      ok      : true,
+      message : op.message,
+      written : [`vngen/work/shots/${sceneId}.json`],
       coverage: await this.sceneCoverage(sceneId),
     };
   }
@@ -5495,9 +5494,9 @@ export class WorkspaceSession {
     if (op.deleteFile) await deleteShots(project.paths, sceneId);
     else await writeShots(project.paths, sceneId, op.shots, { nextShot: op.nextShot });
     return {
-      ok: true,
-      message: op.message,
-      written: [`vngen/work/shots/${sceneId}.json`],
+      ok      : true,
+      message : op.message,
+      written : [`vngen/work/shots/${sceneId}.json`],
       coverage: await this.sceneCoverage(sceneId),
     };
   }
@@ -5542,7 +5541,7 @@ export class WorkspaceSession {
     const file = join(this.dir, 'screenplay.fountain');
     await fileCache.write(file, scriptFromScenes(project.model, { clean }));
     return {
-      ok: true,
+      ok     : true,
       message: `Wrote ${project.model.scenes.size} scene(s) to screenplay.fountain${
         clean ? ' (clean: markers dropped, so it cannot be imported back)' : ''
       }.`,
@@ -5560,15 +5559,15 @@ export class WorkspaceSession {
     const slots = buildSlotGraph({
       ...labelContext(project.model, project.graph),
       assets: manifest,
-      shots: await readAllShots(project),
+      shots : await readAllShots(project),
       config: project.config,
-      graph: project.graph,
+      graph : project.graph,
     });
     return {
-      tasks: [...project.graph.all()].map((t) => narrowTask(t, (hash) => exts.get(hash))),
-      gatePending: gate.pending,
+      tasks        : [...project.graph.all()].map((t) => narrowTask(t, (hash) => exts.get(hash))),
+      gatePending  : gate.pending,
       blockedOnGate: !gate.cleared,
-      slots: slots.order.map((key) => slots.nodes.get(key)!),
+      slots        : slots.order.map((key) => slots.nodes.get(key)!),
     };
   }
 
@@ -5604,17 +5603,17 @@ export class WorkspaceSession {
       }
       loaded.push({
         slug,
-        graph: read.graph,
-        journal: await readGraphJournal(project.paths, slug),
+        graph   : read.graph,
+        journal : await readGraphJournal(project.paths, slug),
         services: createGenServices({
-          model: project.model,
-          store: project.store,
-          providers: deps.providers,
+          model       : project.model,
+          store       : project.store,
+          providers   : deps.providers,
           imageBackend: deps.imageBackend,
-          blobs: graphBlobStore(project.paths, slug),
+          blobs       : graphBlobStore(project.paths, slug),
           ...(deps.keys === undefined ? {} : { keys: deps.keys }),
         }),
-        record: (record: GraphJournalRecord) => appendGraphJournal(project.paths, slug, record),
+        record  : (record: GraphJournalRecord) => appendGraphJournal(project.paths, slug, record),
       });
     }
 
@@ -5641,9 +5640,9 @@ export class WorkspaceSession {
     for (const slot of conflicts) {
       void notify({
         category: 'error',
-        level: 'warn',
-        source: 'pipeline',
-        message: `More than one active output claims ${slot}, so no graph draws it.`,
+        level   : 'warn',
+        source  : 'pipeline',
+        message : `More than one active output claims ${slot}, so no graph draws it.`,
       });
     }
     return runtime;
@@ -5668,9 +5667,9 @@ export class WorkspaceSession {
     const read = await readGraph(this.dir, slug);
     const answer: GraphDocRead = read.ok
       ? {
-          ok: true,
-          path: read.path,
-          file: writeGraphFile(read.graph),
+          ok         : true,
+          path       : read.path,
+          file       : writeGraphFile(read.graph),
           diagnostics: read.diagnostics,
         }
       : { ok: false, reason: read.reason };
@@ -5694,9 +5693,9 @@ export class WorkspaceSession {
     const read = await readGroupDoc(this.dir, ref);
     const answer: GroupDocRead = read.ok
       ? {
-          ok: true,
-          path: read.path,
-          file: writeGroupFile(read.def),
+          ok         : true,
+          path       : read.path,
+          file       : writeGroupFile(read.def),
           diagnostics: read.diagnostics,
         }
       : { ok: false, reason: read.reason };
@@ -5764,9 +5763,9 @@ export class WorkspaceSession {
     const project = await loadProject(this.dir);
     const deps = await buildGenDeps(project, false);
     const services = createGenServices({
-      model: project.model,
-      store: project.store,
-      providers: deps.providers,
+      model       : project.model,
+      store       : project.store,
+      providers   : deps.providers,
       imageBackend: deps.imageBackend,
       ...(deps.keys === undefined ? {} : { keys: deps.keys }),
     });
@@ -5794,7 +5793,7 @@ export class WorkspaceSession {
       opts.node === undefined ? activeOutputOf(read.graph) : nodeIdOf(read.graph, opts.node);
     if (target === undefined) {
       return {
-        ok: false,
+        ok     : false,
         message: `the ${slug} graph has no active output node, so there is nothing to run to`,
         written: [],
       };
@@ -5813,8 +5812,8 @@ export class WorkspaceSession {
 
       const ctx: GenRunContext = {
         services: entry.services,
-        journal: entry.journal,
-        record: entry.record,
+        journal : entry.journal,
+        record  : entry.record,
       };
       const result = await executeGenGraph(read.graph, ctx, {
         targets: [target],
@@ -5829,7 +5828,7 @@ export class WorkspaceSession {
       const ran = result.ran.length;
       const skipped = result.skipped.length;
       return {
-        ok: true,
+        ok     : true,
         message:
           `Ran ${ran} node${ran === 1 ? '' : 's'} in ${slug}` +
           `${skipped === 0 ? '' : `, resuming ${skipped} from the journal`}.`,
@@ -5854,7 +5853,7 @@ export class WorkspaceSession {
       try {
         await resolveKeys(project.config, {
           secretsDirs: await secretDirsFor(project.dir),
-          require: ['gemini'],
+          require    : ['gemini'],
         });
       } catch (err) {
         keyError = err instanceof Error ? err.message : String(err);
@@ -5863,23 +5862,23 @@ export class WorkspaceSession {
     const deps = await buildGenDeps(project, true);
     const graphs = await this.graphRuntime(project, deps);
     const summary = await runPipeline({
-      model: project.model,
-      graph: project.graph,
-      store: project.store,
+      model    : project.model,
+      graph    : project.graph,
+      store    : project.store,
       providers: deps.providers,
-      config: project.config,
-      paths: project.paths,
-      dryRun: true,
-      now: () => new Date().toISOString(),
+      config   : project.config,
+      paths    : project.paths,
+      dryRun   : true,
+      now      : () => new Date().toISOString(),
       ...(graphs === undefined ? {} : { graphs }),
     });
     return {
-      pending: summary.preview.pendingTasks,
-      byKind: summary.preview.byKind,
-      imageCalls: summary.preview.imageCalls,
-      reviewCalls: summary.preview.reviewCalls,
+      pending      : summary.preview.pendingTasks,
+      byKind       : summary.preview.byKind,
+      imageCalls   : summary.preview.imageCalls,
+      reviewCalls  : summary.preview.reviewCalls,
       blockedOnGate: summary.blockedOnGate,
-      gatePending: summary.gate.pending,
+      gatePending  : summary.gate.pending,
       keyError,
     };
   }
@@ -5906,7 +5905,7 @@ export class WorkspaceSession {
     try {
       await resolveKeys(project.config, {
         secretsDirs: await secretDirsFor(project.dir),
-        require: ['anthropic'],
+        require    : ['anthropic'],
       });
     } catch (err) {
       keyError = err instanceof Error ? err.message : String(err);
@@ -5923,9 +5922,9 @@ export class WorkspaceSession {
     return this.while('decomposing scenes', async () => {
       const project = await loadProject(this.dir);
       return decomposeAll({
-        model: project.model,
+        model    : project.model,
         providers: await buildProviders(project, false),
-        paths: project.paths,
+        paths    : project.paths,
       });
     });
   }
@@ -5941,15 +5940,15 @@ export class WorkspaceSession {
       const deps = await buildGenDeps(project, mock);
       const graphs = await this.graphRuntime(project, deps);
       const ran = await runPipeline({
-        model: project.model,
-        graph: project.graph,
-        store: project.store,
+        model    : project.model,
+        graph    : project.graph,
+        store    : project.store,
         providers: deps.providers,
-        config: project.config,
-        paths: project.paths,
-        dryRun: mock,
-        now: () => new Date().toISOString(),
-        signal: cancel.signal,
+        config   : project.config,
+        paths    : project.paths,
+        dryRun   : mock,
+        now      : () => new Date().toISOString(),
+        signal   : cancel.signal,
         ...(graphs === undefined ? {} : { graphs }),
         onProgress: (p) => {
           this.progress = { ran: p.ran, pending: p.pending };
@@ -5967,16 +5966,16 @@ export class WorkspaceSession {
     });
     this.announceRun(summary, assets, mock);
     return {
-      ran: summary.ran.length,
+      ran          : summary.ran.length,
       blockedOnGate: summary.blockedOnGate,
-      gatePending: summary.gate.pending,
+      gatePending  : summary.gate.pending,
       preview: {
         pendingTasks: summary.preview.pendingTasks,
-        imageCalls: summary.preview.imageCalls,
-        reviewCalls: summary.preview.reviewCalls,
+        imageCalls  : summary.preview.imageCalls,
+        reviewCalls : summary.preview.reviewCalls,
       },
-      failed: summary.failed.length,
-      failures: summary.failed.map((t) => ({ hash: t.hash, kind: t.kind, error: t.error })),
+      failed       : summary.failed.length,
+      failures     : summary.failed.map((t) => ({ hash: t.hash, kind: t.kind, error: t.error })),
       ...(summary.stopped ? { stopped: true } : {}),
     };
   }
@@ -5996,17 +5995,17 @@ export class WorkspaceSession {
       const label = asset ? assetSlotLabel(asset) : `${task.kind} ${hash.slice(0, 8)}`;
       void notify({
         category: 'asset',
-        source: 'pipeline',
-        message: `Rendered ${label}.`,
-        link: { editor: 'asset', subject: hash },
+        source  : 'pipeline',
+        message : `Rendered ${label}.`,
+        link    : { editor: 'asset', subject: hash },
       });
     }
 
     for (const task of summary.failed) {
       void notify({
         category: 'error',
-        level: 'error',
-        source: 'pipeline',
+        level   : 'error',
+        source  : 'pipeline',
         message: `${task.kind} ${task.hash.slice(0, 8)} failed: ${task.error ?? 'no reason recorded'}.`,
       });
     }
@@ -6021,8 +6020,8 @@ export class WorkspaceSession {
       : '';
     void notify({
       category: 'pipeline',
-      level: summary.failed.length > 0 ? 'warn' : 'info',
-      source: 'pipeline',
+      level   : summary.failed.length > 0 ? 'warn' : 'info',
+      source  : 'pipeline',
       message: `${how} ${ended}: ${ran} task${ran === 1 ? '' : 's'}, ${summary.failed.length} failed${redrawn}${gate}.`,
     });
   }

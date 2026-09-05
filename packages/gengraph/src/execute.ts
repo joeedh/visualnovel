@@ -106,11 +106,11 @@ export async function executeGenGraph(
   }
 
   const result: GenRunResult = {
-    ran: [],
-    skipped: [],
-    blocked: [],
+    ran     : [],
+    skipped : [],
+    blocked : [],
     failures: [],
-    outputs: new Map(),
+    outputs : new Map(),
   };
   const blocked = new Set<Node>();
   // A node's hash covers what feeds it rather than what that produced, so an upstream node
@@ -170,7 +170,7 @@ export async function executeGenGraph(
         ...hash,
         status: 'done',
         output: outputs,
-        at: stamp(),
+        at    : stamp(),
         ...(usage === undefined ? {} : { usage }),
       }),
     );

@@ -350,7 +350,7 @@ export function applySceneMarkerEdit(
     return {
       ...s,
       choices: edit.choices?.map((c) => ({ label: c.label.trim(), goto: c.goto })) ?? s.choices,
-      next: edit.next === undefined ? s.next : (edit.next ?? undefined),
+      next   : edit.next === undefined ? s.next : (edit.next ?? undefined),
       outfits: edit.outfits ?? s.outfits,
     } satisfies Scene;
   });

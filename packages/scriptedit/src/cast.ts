@@ -34,7 +34,7 @@ export function setShotSubjects(
   const unknown = wanted.filter((id) => !cast.includes(id));
   if (unknown.length > 0) {
     return {
-      ok: false,
+      ok   : false,
       error: `No character "${unknown[0]}" in this project — it has ${listed(cast)}.`,
     };
   }
@@ -42,11 +42,11 @@ export function setShotSubjects(
   const was = shot.subjects.map((s) => s.characterId);
   if (was.length === wanted.length && was.every((id, i) => id === wanted[i])) {
     return {
-      ok: false,
+      ok   : false,
       error: wanted.length
         ? `${args.shot} already frames ${wanted.join(', ')}.`
         : `${args.shot} already frames nobody.`,
-      noop: true,
+      noop : true,
     };
   }
 
@@ -78,16 +78,16 @@ export function requireShotCast(
   const optional = shot.castOptional === true;
   if (optional === !args.required) {
     return {
-      ok: false,
+      ok   : false,
       error: optional
         ? `${args.shot} already lets its cast out of frame.`
         : `${args.shot} already requires its cast in frame.`,
-      noop: true,
+      noop : true,
     };
   }
   if (!args.required && shot.subjects.length === 0) {
     return {
-      ok: false,
+      ok   : false,
       error: `${args.shot} frames nobody, so there is nothing to stop requiring.`,
     };
   }

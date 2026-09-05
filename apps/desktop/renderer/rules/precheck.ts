@@ -17,8 +17,8 @@ import type { Action, Anchor } from './anchors.js';
 
 /** The unanswered value for each kind that has one. A kind absent here cannot be blanked. */
 const BLANK: Partial<Record<PropKind, PropValue>> = {
-  string: '',
-  directory: '',
+  string    : '',
+  directory : '',
   'string[]': [],
 };
 

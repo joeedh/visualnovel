@@ -34,8 +34,7 @@ export interface Action {
  * by the id the step names.
  */
 export type Offer =
-  | (Action & { ok: true; label?: string })
-  | { ok: false; reason: string; id?: string };
+  (Action & { ok: true; label?: string }) | { ok: false; reason: string; id?: string };
 
 /** The part of a `DOMRect` the overlay reads. Typed structurally so a test needs no DOM. */
 export interface AnchorRect {

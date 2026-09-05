@@ -11,7 +11,7 @@ const BRANCHES = 'branches' as EditorId;
 
 const state = (): BranchState => ({
   scenes: new Map([['greet', { id: 'greet', choices: [], next: undefined }]]),
-  edges: [],
+  edges : [],
 });
 
 describe('verdictsFor', () => {

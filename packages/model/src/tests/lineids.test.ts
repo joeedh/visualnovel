@@ -286,10 +286,10 @@ She bows.
     expect(diagnostics).toEqual([
       {
         severity: 'error',
-        code: 'duplicate_line_id',
+        code    : 'duplicate_line_id',
         message:
           'scene "arrival" marks 2 lines with line id "L4"; a shot covering it cannot say which',
-        where: 'arrival',
+        where   : 'arrival',
       },
     ]);
     // The ids are still produced; the diagnostic reports the collision rather than refusing
@@ -316,9 +316,9 @@ Wind.
     expect(diagnostics).toEqual([
       {
         severity: 'error',
-        code: 'dangling_line_id',
-        message: '[[line: L9]] in scene "arrival" names no line',
-        where: 'arrival',
+        code    : 'dangling_line_id',
+        message : '[[line: L9]] in scene "arrival" names no line',
+        where   : 'arrival',
       },
     ]);
     // The dangling mark does not leak into the next scene.
@@ -338,9 +338,9 @@ Rain ticks off the gate.
     expect(diagnostics).toEqual([
       {
         severity: 'error',
-        code: 'dangling_line_id',
-        message: '[[line: L5]] in scene "arrival" names no line',
-        where: 'arrival',
+        code    : 'dangling_line_id',
+        message : '[[line: L5]] in scene "arrival" names no line',
+        where   : 'arrival',
       },
     ]);
     expect(scenes[0]!.lines.map((l) => l.id)).toEqual(['arrival:L4']);

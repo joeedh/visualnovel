@@ -8,23 +8,17 @@ import type { AgentMode } from '../../../src/shared/ipc.js';
 
 /** Names the fields that say what the author is looking at; these are the only fields that report a write. */
 export type SelectionField =
-  | 'sceneId'
-  | 'shotId'
-  | 'characterId'
-  | 'docPath'
-  | 'taskHash'
-  | 'assetHash'
-  | 'graphSlug';
+  'sceneId' | 'shotId' | 'characterId' | 'docPath' | 'taskHash' | 'assetHash' | 'graphSlug';
 
 export class ShellState {
   private selection: Record<SelectionField, string> = {
-    sceneId: '',
-    shotId: '',
+    sceneId    : '',
+    shotId     : '',
     characterId: '',
-    docPath: '',
-    taskHash: '',
-    assetHash: '',
-    graphSlug: '',
+    docPath    : '',
+    taskHash   : '',
+    assetHash  : '',
+    graphSlug  : '',
   };
 
   /**

@@ -10,9 +10,9 @@ function el(
 ): SnapNode {
   return {
     id,
-    tag: 'div',
+    tag    : 'div',
     classes: [],
-    bounds: { x: 0, y: 0, w: 100, h: 100 },
+    bounds : { x: 0, y: 0, w: 100, h: 100 },
     style,
     children,
     ...extra,
@@ -39,9 +39,9 @@ describe('fragmentsFromSnapshot', () => {
     const frags = fragmentsFromSnapshot(tree);
     expect(zOf(frags, 'modal').z).toBeLessThan(zOf(frags, 'toast').z);
     expect(zOf(frags, 'modal').zContext).toEqual({
-      by: 'stage',
+      by     : 'stage',
       byLabel: 'div.stage',
-      reason: 'transform',
+      reason : 'transform',
     });
     // The sibling's z-index is scoped by the real root, so it carries no note
     expect(zOf(frags, 'toast').zContext).toBeUndefined();

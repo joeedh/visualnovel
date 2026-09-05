@@ -15,7 +15,7 @@ export const KEY_VENDORS = ['gemini', 'anthropic'] as const;
 
 /** Filenames to look for when an env var is unset: `<secretsDir>/<file>`, by vendor. */
 const SECRET_FILES: Record<keyof ResolvedKeys, string[]> = {
-  gemini: ['gemini.txt'],
+  gemini   : ['gemini.txt'],
   anthropic: ['claude.txt', 'anthropic.txt'],
 };
 
@@ -64,8 +64,8 @@ function nativeConfigDir({ platform, env, home }: Required<UserDirEnv>): string 
 function userDirEnv(opts: UserDirEnv): Required<UserDirEnv> {
   return {
     platform: opts.platform ?? process.platform,
-    env: opts.env ?? process.env,
-    home: opts.home ?? homedir(),
+    env     : opts.env ?? process.env,
+    home    : opts.home ?? homedir(),
   };
 }
 

@@ -48,7 +48,7 @@ function grepFiles(pattern) {
   let out;
   try {
     out = execFileSync('git', ['grep', '-l', '--fixed-strings', pattern], {
-      cwd: repoRoot,
+      cwd     : repoRoot,
       encoding: 'utf8',
     }).trim();
   } catch {
@@ -81,10 +81,10 @@ console.log(
     {
       totalArchived: entries.length,
       keepCount,
-      keep: keep.map((e) => e.file),
-      candidatesToZip: plainCandidates.map((e) => e.file),
+      keep                       : keep.map((e) => e.file),
+      candidatesToZip            : plainCandidates.map((e) => e.file),
       candidatesNeedingExtraction: referencedCandidates.map((e) => ({
-        file: e.file,
+        file     : e.file,
         backlinks: e.backlinks,
       })),
     },

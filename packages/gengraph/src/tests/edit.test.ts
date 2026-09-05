@@ -142,11 +142,11 @@ describe('linking and unlinking', () => {
     graph.add(output);
 
     const edit: GenEdit = {
-      op: 'link',
-      from: image.id,
+      op        : 'link',
+      from      : image.id,
       fromSocket: 'image',
-      to: output.id,
-      toSocket: 'image',
+      to        : output.id,
+      toSocket  : 'image',
     };
     expect(note(decideGenEdit(graph, edit))).toBe(
       "Feeds 'image' on the Output image node from the Generate image node.",
@@ -161,11 +161,11 @@ describe('linking and unlinking', () => {
     graph.add(other);
 
     const edit: GenEdit = {
-      op: 'link',
-      from: other.id,
+      op        : 'link',
+      from      : other.id,
       fromSocket: 'image',
-      to: output.id,
-      toSocket: 'image',
+      to        : output.id,
+      toSocket  : 'image',
     };
     expect(note(decideGenEdit(graph, edit))).toBe(
       "Rewires 'image' on the Output image node, replacing what feeds it.",
@@ -179,22 +179,22 @@ describe('linking and unlinking', () => {
     expect(
       reason(
         decideGenEdit(graph, {
-          op: 'link',
-          from: image.id,
+          op        : 'link',
+          from      : image.id,
           fromSocket: 'picture',
-          to: output.id,
-          toSocket: 'image',
+          to        : output.id,
+          toSocket  : 'image',
         }),
       ),
     ).toBe("node type 'GenImage' declares no output 'picture'");
     expect(
       reason(
         decideGenEdit(graph, {
-          op: 'link',
-          from: image.id,
+          op        : 'link',
+          from      : image.id,
           fromSocket: 'image',
-          to: output.id,
-          toSocket: 'picture',
+          to        : output.id,
+          toSocket  : 'picture',
         }),
       ),
     ).toBe("node type 'GenOutput' declares no input 'picture'");
@@ -210,11 +210,11 @@ describe('linking and unlinking', () => {
     expect(
       reason(
         decideGenEdit(graph, {
-          op: 'link',
-          from: image.id,
+          op        : 'link',
+          from      : image.id,
           fromSocket: 'image',
-          to: template.id,
-          toSocket: 'varA',
+          to        : template.id,
+          toSocket  : 'varA',
         }),
       ),
     ).toBe("a 'image' output cannot feed the 'text' input 'varA'");
@@ -231,11 +231,11 @@ describe('linking and unlinking', () => {
     expect(
       reason(
         decideGenEdit(graph, {
-          op: 'link',
-          from: b.id,
+          op        : 'link',
+          from      : b.id,
           fromSocket: 'text',
-          to: a.id,
-          toSocket: 'varA',
+          to        : a.id,
+          toSocket  : 'varA',
         }),
       ),
     ).toBe('linking these makes a cycle, and a cycle has no order to run in');
@@ -284,10 +284,10 @@ describe('linking and unlinking', () => {
     expect(
       reason(
         decideGenEdit(graph, {
-          op: 'unlink',
-          to: output.id,
-          toSocket: 'image',
-          from: other.id,
+          op        : 'unlink',
+          to        : output.id,
+          toSocket  : 'image',
+          from      : other.id,
           fromSocket: 'image',
         }),
       ),
@@ -328,9 +328,9 @@ describe('setting a prop', () => {
     expect(
       reason(
         decideGenEdit(graph, {
-          op: 'setProp',
-          node: output.id,
-          key: 'slot',
+          op   : 'setProp',
+          node : output.id,
+          key  : 'slot',
           value: 'asset:abc123',
         }),
       ),
@@ -349,11 +349,11 @@ describe('reading a prop value written as text', () => {
   it('reads text as the kind the property takes', () => {
     const { graph, image, output } = bound();
     expect(readGenPropValue(graph, output.id, 'active', 'false')).toEqual({
-      ok: true,
+      ok   : true,
       value: false,
     });
     expect(readGenPropValue(graph, image.id, 'aspect', ' 3:4 ')).toEqual({
-      ok: true,
+      ok   : true,
       value: ' 3:4 ',
     });
   });
@@ -406,7 +406,7 @@ describe('moving nodes', () => {
     ).toBe('Moves the Generate image node.');
 
     const edit: GenEdit = {
-      op: 'moveNodes',
+      op   : 'moveNodes',
       moves: [
         { node: image.id, x: 5, y: 6 },
         { node: output.id, x: 70, y: 80 },
@@ -430,7 +430,7 @@ describe('moving nodes', () => {
     const before = [...image.pos];
 
     const decided = decideGenEdit(graph, {
-      op: 'moveNodes',
+      op   : 'moveNodes',
       moves: [
         { node: image.id, x: 5, y: 6 },
         { node: 4242, x: 7, y: 8 },
@@ -454,7 +454,7 @@ describe('replacing the whole graph with a description', () => {
   it('keeps a node the description names by id and counts what changed', () => {
     const { graph, image, output } = bound();
     const decided = decideGenEdit(graph, {
-      op: 'apply',
+      op         : 'apply',
       description: {
         nodes: [
           { id: image.id, type: 'GenImage' },
@@ -472,7 +472,7 @@ describe('replacing the whole graph with a description', () => {
   it('refuses a description with a problem in it, quoting the first', () => {
     const { graph } = bound();
     const decided = decideGenEdit(graph, {
-      op: 'apply',
+      op         : 'apply',
       description: { nodes: [{ id: 'fresh', type: 'GenUpscale' }], links: [] },
     });
     expect(reason(decided)).toMatch(/^the description cannot be applied: /);

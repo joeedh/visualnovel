@@ -38,9 +38,9 @@ export function branchGraph(story: StoryGraph): BranchGraph {
         ...[...stubs].map((id) => ({ id, ...STUB })),
       ],
       edges: story.edges.map((e) => ({
-        id: e.id,
+        id  : e.id,
         from: e.from,
-        to: e.to,
+        to  : e.to,
         kind: e.inert ? 'inert' : e.kind,
         ...(e.label !== undefined ? { label: e.label } : {}),
       })),

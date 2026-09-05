@@ -13,12 +13,12 @@ import { userKeysDir } from '@vn/config';
 import { WorkspaceSession, describeKeySource, type SessionDeps } from '../session.js';
 
 const deps: SessionDeps = {
-  emitEvent: () => {},
-  emitReport: () => {},
-  requestPlan: () => Promise.resolve({ approved: false }),
-  requestAnswer: () => Promise.resolve([]),
+  emitEvent     : () => {},
+  emitReport    : () => {},
+  requestPlan   : () => Promise.resolve({ approved: false }),
+  requestAnswer : () => Promise.resolve([]),
   requestConfirm: () => Promise.resolve(false),
-  pushBusy: () => {},
+  pushBusy      : () => {},
 };
 
 const SECRET = 'sk-not-a-real-key-0123456789';
@@ -190,20 +190,20 @@ describe('describeKeySource', () => {
 
     expect(
       describeKeySource(dir, {
-        vendor: 'gemini',
-        resolved: true,
-        source: { kind: 'env', name: 'GEMINI_API_KEY' },
-        envName: 'GEMINI_API_KEY',
+        vendor   : 'gemini',
+        resolved : true,
+        source   : { kind: 'env', name: 'GEMINI_API_KEY' },
+        envName  : 'GEMINI_API_KEY',
         envShadow: true,
       }),
     ).toBe('From $GEMINI_API_KEY.');
 
     expect(
       describeKeySource(dir, {
-        vendor: 'gemini',
-        resolved: true,
-        source: { kind: 'file', dir: join(dir, 'keys'), file: 'gemini.txt' },
-        envName: 'GEMINI_API_KEY',
+        vendor   : 'gemini',
+        resolved : true,
+        source   : { kind: 'file', dir: join(dir, 'keys'), file: 'gemini.txt' },
+        envName  : 'GEMINI_API_KEY',
         envShadow: false,
       }),
     ).toBe('From keys/gemini.txt in this project.');
@@ -211,10 +211,10 @@ describe('describeKeySource', () => {
     // An enclosing repository's keys/ is outside the project, so it is named in full rather than
     // as a relative path climbing out of the workspace.
     const elsewhere = describeKeySource(dir, {
-      vendor: 'gemini',
-      resolved: true,
-      source: { kind: 'file', dir: join('/tmp', 'keys'), file: 'gemini.txt' },
-      envName: 'GEMINI_API_KEY',
+      vendor   : 'gemini',
+      resolved : true,
+      source   : { kind: 'file', dir: join('/tmp', 'keys'), file: 'gemini.txt' },
+      envName  : 'GEMINI_API_KEY',
       envShadow: false,
     });
     expect(elsewhere).toContain(join('/tmp', 'keys', 'gemini.txt'));
@@ -222,10 +222,10 @@ describe('describeKeySource', () => {
 
     expect(
       describeKeySource(dir, {
-        vendor: 'anthropic',
-        resolved: true,
-        source: { kind: 'file', dir: userKeysDir(), file: 'claude.txt' },
-        envName: 'ANTHROPIC_API_KEY',
+        vendor   : 'anthropic',
+        resolved : true,
+        source   : { kind: 'file', dir: userKeysDir(), file: 'claude.txt' },
+        envName  : 'ANTHROPIC_API_KEY',
         envShadow: false,
       }),
     ).toContain('every project on this machine');

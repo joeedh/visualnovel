@@ -51,8 +51,7 @@ const define = defineFor<CommandHost>();
 type EditPlan = GenEdit | { refuse: string };
 
 type Decided =
-  | { ok: false; reason: string }
-  | { ok: true; note: string; graph: Graph; apply: () => GenApplied };
+  { ok: false; reason: string } | { ok: true; note: string; graph: Graph; apply: () => GenApplied };
 
 /** The document one edit reads and writes: a graph's file, or a definition's. */
 interface Target {
@@ -76,7 +75,7 @@ async function target(
     const read = await readGraph(ctx.root, slug);
     if (!read.ok) return read;
     return {
-      ok: true,
+      ok    : true,
       target: { graph: read.graph, write: (graph) => writeGraph(ctx.root, slug, graph) },
     };
   }
@@ -85,7 +84,7 @@ async function target(
   if (!read.ok) return read;
   const def = read.def;
   return {
-    ok: true,
+    ok    : true,
     target: {
       graph: def.subgraph,
       // The subgraph is edited in place, so the definition holding it is what gets written
@@ -142,7 +141,7 @@ async function edit(
   written.push(await decided.target!.write(applied.graph));
   return {
     message: decided.note,
-    data: applied.node === undefined ? {} : { node: applied.node },
+    data   : applied.node === undefined ? {} : { node: applied.node },
     written,
   };
 }
@@ -158,36 +157,36 @@ const GROUP_ONLY = 'which group definition under `lib/`, by the name its file ca
 const groupProp = () => prop.string(GROUP, { default: '' });
 
 export const gengraphList = define({
-  id: 'gengraph.list',
-  title: 'List the generation graphs',
+  id         : 'gengraph.list',
+  title      : 'List the generation graphs',
   description:
     'Every graph this project holds, with the file it lives in. A graph that will not load ' +
     'carries the reason instead, so a conflicted or corrupt one is visible rather than absent.',
   notes:
     'Every generation graph the project holds, with the sentence an unreadable one earns instead of opening.',
-  mutating: false,
-  props: {},
+  mutating   : false,
+  props      : {},
   async run(_props, ctx) {
     const graphs = await listGraphs(ctx.root);
     const broken = graphs.filter((entry) => entry.problem !== undefined).length;
     const said = broken === 0 ? '' : `, ${broken} of them unreadable`;
     return {
       message: `${graphs.length} graph${graphs.length === 1 ? '' : 's'}${said}.`,
-      data: { graphs },
+      data   : { graphs },
     };
   },
 });
 
 export const gengraphCreate = define({
-  id: 'gengraph.create',
-  title: 'Create a generation graph',
+  id         : 'gengraph.create',
+  title      : 'Create a generation graph',
   description:
     'Start an empty graph at `vngen/work/graphs/<name>.json`. Nothing is drawn by it until an ' +
     'output node in it binds a slot and is made the active one.',
   notes:
     'Start an empty graph at `vngen/work/graphs/<slug>.json`. The slug comes from the name once, at creation, so a graph is renamed the way a scene is — not at all.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
     name: prop.string('what to call it; the filename is this name'),
   },
@@ -210,16 +209,16 @@ export const gengraphCreate = define({
 });
 
 export const gengraphCreateForSlot = define({
-  id: 'gengraph.createForSlot',
-  title: 'Create a graph for a slot',
+  id         : 'gengraph.createForSlot',
+  title      : 'Create a graph for a slot',
   description:
     'Start a graph that draws one slot, wired the way the pipeline draws it: the derived prompt ' +
     'and the task references feed an image node, and its picture fills the slot. A slot another ' +
     'graph already draws is refused, because two graphs claiming one slot bind neither.',
   notes:
     'Start a graph that draws one slot, wired the way the pipeline draws it: the derived prompt and the task references feed an image node, and its picture fills the slot. An empty `name` is derived from the slot address, and takes the next free `<base>-2` where a graph of that name exists. A slot another graph already draws is refused, because two active outputs claiming one slot leave it bound to neither. `open` shows the new graph in the Gen Graph editor, focusing a pane already open on one rather than making a second. This is what _Create a graph for this slot_ dispatches, on a slot row and on a picture a slot claims alike.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
     slot: prop.string('which slot the graph fills, as the document tree writes it'),
     name: prop.string('what to call it; an empty name is derived from the slot', { default: '' }),
@@ -229,7 +228,7 @@ export const gengraphCreateForSlot = define({
     const planned = await planForSlot(ctx, slot, name);
     if ('refuse' in planned) return { ok: false, reason: planned.refuse };
     return {
-      ok: true,
+      ok  : true,
       note: `writes vngen/work/graphs/${planned.slug}.json, bound to ${slot.trim()}`,
     };
   },
@@ -245,10 +244,10 @@ export const gengraphCreateForSlot = define({
     if (open) {
       ctx.host.ui(
         {
-          type: 'view',
-          action: 'open',
-          editor: 'gengraph',
-          where: 'elsewhere',
+          type   : 'view',
+          action : 'open',
+          editor : 'gengraph',
+          where  : 'elsewhere',
           subject: planned.slug,
         },
         ctx.origin,
@@ -256,7 +255,7 @@ export const gengraphCreateForSlot = define({
     }
     return {
       message: `Created the ${planned.slug} graph, which draws ${said}.`,
-      data: { slug: planned.slug, slot: said, path },
+      data   : { slug: planned.slug, slot: said, path },
       written: [path],
     };
   },
@@ -332,16 +331,16 @@ function freeName(base: string, taken: ReadonlySet<string>): string {
 }
 
 export const gengraphDelete = define({
-  id: 'gengraph.delete',
-  title: 'Delete a generation graph',
+  id         : 'gengraph.delete',
+  title      : 'Delete a generation graph',
   description:
     'Remove a graph document. Its journal and its blobs are left where they are, because they ' +
     'record runs that happened and a slot the graph drew still points at the pictures.',
   notes:
     "Remove a graph's document. Its journal and blobs under `vngen/state/graphs/` stay, being the record of runs that happened.",
-  mutating: true,
-  undoable: true,
-  confirm: true,
+  mutating   : true,
+  undoable   : true,
+  confirm    : true,
   props: {
     slug: prop.string(SLUG),
   },
@@ -360,20 +359,20 @@ export const gengraphDelete = define({
 });
 
 export const gengraphAddNode = define({
-  id: 'gengraph.addNode',
-  title: 'Add a node',
+  id         : 'gengraph.addNode',
+  title      : 'Add a node',
   description:
     'Put one node of the named type into a graph. A type no plugin provides is refused by name, ' +
     'so a graph never gains a node the run cannot execute.',
   notes:
     'Place one node of a registered type. A type no plugin provides is refused by name rather than written and reported on the next load.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    slug: prop.string(SLUG),
-    type: prop.string('the node type, such as `GenImage`'),
-    x: prop.number('where to place it across the canvas', { default: 0 }),
-    y: prop.number('where to place it down the canvas', { default: 0 }),
+    slug : prop.string(SLUG),
+    type : prop.string('the node type, such as `GenImage`'),
+    x    : prop.number('where to place it across the canvas', { default: 0 }),
+    y    : prop.number('where to place it down the canvas', { default: 0 }),
     group: groupProp(),
   },
   async check({ slug, type, x, y, group }, ctx) {
@@ -385,19 +384,19 @@ export const gengraphAddNode = define({
 });
 
 export const gengraphDuplicateNode = define({
-  id: 'gengraph.duplicateNode',
-  title: 'Duplicate a node',
+  id         : 'gengraph.duplicateNode',
+  title      : 'Duplicate a node',
   description:
     'Add a copy of one node, carrying over the values it authored. The copy takes a fresh id, ' +
     'so it starts with no run journal of its own and runs the first time the graph does; links ' +
     'are not carried over. A copied group instance keeps its group and its overrides.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    slug: prop.string(SLUG),
-    node: prop.string(NODE),
-    x: prop.number('where to place the copy across the canvas', { default: 0 }),
-    y: prop.number('where to place the copy down the canvas', { default: 0 }),
+    slug : prop.string(SLUG),
+    node : prop.string(NODE),
+    x    : prop.number('where to place the copy across the canvas', { default: 0 }),
+    y    : prop.number('where to place the copy down the canvas', { default: 0 }),
     group: groupProp(),
   },
   async check({ slug, node, x, y, group }, ctx) {
@@ -421,15 +420,15 @@ export const gengraphDuplicateNode = define({
 });
 
 export const gengraphRemoveNode = define({
-  id: 'gengraph.removeNode',
-  title: 'Remove a node',
+  id         : 'gengraph.removeNode',
+  title      : 'Remove a node',
   description: 'Take one node out of a graph, along with every link into or out of it.',
-  notes: 'Delete one node and every link touching it.',
-  mutating: true,
-  undoable: true,
+  notes      : 'Delete one node and every link touching it.',
+  mutating   : true,
+  undoable   : true,
   props: {
-    slug: prop.string(SLUG),
-    node: prop.string(NODE),
+    slug : prop.string(SLUG),
+    node : prop.string(NODE),
     group: groupProp(),
   },
   async check({ slug, node, group }, ctx) {
@@ -448,22 +447,22 @@ export const gengraphRemoveNode = define({
 });
 
 export const gengraphLink = define({
-  id: 'gengraph.link',
-  title: 'Link two nodes',
+  id         : 'gengraph.link',
+  title      : 'Link two nodes',
   description:
     "Feed one node's input from another node's output. A link whose types disagree is " +
     'refused, and so is one that would make a cycle, because a cycle has no order to run in.',
   notes:
     "Feed one node's input from another node's output. A pair whose types cannot coerce is refused, and so is a link that would close a cycle.",
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    slug: prop.string(SLUG),
-    from: prop.string('the id of the node the value comes from'),
+    slug      : prop.string(SLUG),
+    from      : prop.string('the id of the node the value comes from'),
     fromSocket: prop.string('which of its outputs'),
-    to: prop.string('the id of the node the value goes to'),
-    toSocket: prop.string('which of its inputs'),
-    group: groupProp(),
+    to        : prop.string('the id of the node the value goes to'),
+    toSocket  : prop.string('which of its inputs'),
+    group     : groupProp(),
   },
   async check({ slug, from, fromSocket, to, toSocket, group }, ctx) {
     return verdict(
@@ -471,7 +470,7 @@ export const gengraphLink = define({
         ctx,
         slug,
         (graph) => ({
-          op: 'link',
+          op  : 'link',
           from: nodeIdOf(graph, from),
           fromSocket,
           to: nodeIdOf(graph, to),
@@ -486,7 +485,7 @@ export const gengraphLink = define({
       ctx,
       slug,
       (graph) => ({
-        op: 'link',
+        op  : 'link',
         from: nodeIdOf(graph, from),
         fromSocket,
         to: nodeIdOf(graph, to),
@@ -498,22 +497,22 @@ export const gengraphLink = define({
 });
 
 export const gengraphUnlink = define({
-  id: 'gengraph.unlink',
-  title: 'Sever a link',
+  id         : 'gengraph.unlink',
+  title      : 'Sever a link',
   description:
     'Cut what feeds one input. Naming a source cuts that one link; leaving it empty cuts every ' +
     'link into the input.',
   notes:
     'Sever what feeds an input. Naming a source severs that one edge; naming none severs every edge into the socket.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    slug: prop.string(SLUG),
-    to: prop.string('the id of the node being fed'),
-    toSocket: prop.string('which of its inputs'),
+    slug      : prop.string(SLUG),
+    to        : prop.string('the id of the node being fed'),
+    toSocket  : prop.string('which of its inputs'),
     from: prop.string('the id of one source to cut, or empty for all of them', { default: '' }),
     fromSocket: prop.string("which of that source's outputs", { default: '' }),
-    group: groupProp(),
+    group     : groupProp(),
   },
   async check({ slug, to, toSocket, from, fromSocket, group }, ctx) {
     return verdict(
@@ -540,16 +539,16 @@ function unlinkOf(
     return { refuse: 'naming a source also needs the output on it that the link comes from' };
   }
   return {
-    op: 'unlink',
-    to: nodeIdOf(graph, said.to),
+    op      : 'unlink',
+    to      : nodeIdOf(graph, said.to),
     toSocket: said.toSocket,
     ...(named ? { from: nodeIdOf(graph, said.from), fromSocket: said.fromSocket } : {}),
   };
 }
 
 export const gengraphSetProp = define({
-  id: 'gengraph.setProp',
-  title: 'Set a node property',
+  id          : 'gengraph.setProp',
+  title       : 'Set a node property',
   description:
     'Write one authored value on a node — a model id, an aspect ratio, the slot an output ' +
     "binds. The value is typed as text and the node's own property decides how to read it, " +
@@ -559,14 +558,14 @@ export const gengraphSetProp = define({
     'instance alone.',
   notes:
     "Write one node property. The value is typed as text and the node's own property decides how to read it, so a number field refuses prose. Addressed by node key into a group instance, the write is an override on that instance.",
-  mutating: true,
-  undoable: true,
+  mutating    : true,
+  undoable    : true,
   // Dragging a slider sends one of these per frame, and each is a separate undo point either way.
   defersCommit: true,
   props: {
-    slug: prop.string(SLUG),
-    node: prop.string(NODE),
-    key: prop.string('which property, by the name the node declares it under'),
+    slug : prop.string(SLUG),
+    node : prop.string(NODE),
+    key  : prop.string('which property, by the name the node declares it under'),
     value: prop.string('the new value, written as text'),
     group: groupProp(),
   },
@@ -585,16 +584,16 @@ function propOf(graph: Graph, node: string, key: string, value: string): EditPla
 }
 
 export const gengraphSetActiveOutput = define({
-  id: 'gengraph.setActiveOutput',
-  title: 'Choose the active output',
+  id         : 'gengraph.setActiveOutput',
+  title      : 'Choose the active output',
   description:
     'Make one output node the one a run of this graph terminates on, standing every rival output ' +
     'for the same slot down. Which output is active is part of the document, so it is undoable ' +
     'and it shows up in a diff.',
   notes:
     "Choose which Output node a run targets and which slot binding counts. An Output filling no slot is refused, because a task's slot is what names the graph that draws it.",
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
     slug: prop.string(SLUG),
     node: prop.string(NODE),
@@ -610,19 +609,19 @@ export const gengraphSetActiveOutput = define({
 });
 
 export const gengraphMoveNodes = define({
-  id: 'gengraph.moveNodes',
-  title: 'Move nodes',
+  id          : 'gengraph.moveNodes',
+  title       : 'Move nodes',
   description:
     'Put nodes where a drag left them. One drag is one edit, so a graph is never half-moved and ' +
     'one undo puts every node back. A move naming a node the graph has lost is refused whole.',
-  mutating: true,
-  undoable: true,
+  mutating    : true,
+  undoable    : true,
   // A drag across the canvas sends one of these per frame, the way `gengraph.setProp` does.
   defersCommit: true,
   props: {
-    slug: prop.string(SLUG),
+    slug : prop.string(SLUG),
     moves: prop.string('the new positions, as JSON `[{"node":"1","x":0,"y":0}]`', {
-      digest: true,
+      digest   : true,
       multiline: true,
     }),
     group: groupProp(),
@@ -664,18 +663,18 @@ function movesOf(graph: Graph, said: string): EditPlan {
 }
 
 export const gengraphApply = define({
-  id: 'gengraph.apply',
-  title: 'Replace a graph from a description',
+  id         : 'gengraph.apply',
+  title      : 'Replace a graph from a description',
   description:
     "Rewrite a whole graph from a JSON description in path.ux's graph DSL. A node the " +
     'description keeps by id keeps its journal, so replacing the graph does not by itself spend ' +
     'anything. A description that will not build leaves the graph on disk untouched.',
   notes:
     "Rewrite a whole graph from a JSON description in path.ux's graph DSL, diffed by node id so a node the description leaves alone keeps its position and its journal. The description is a string prop because `@vn/commands` has no JSON kind.",
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    slug: prop.string(SLUG),
+    slug       : prop.string(SLUG),
     description: prop.string('the whole graph, as DSL JSON', { digest: true, multiline: true }),
   },
   async check({ slug, description }, ctx) {
@@ -704,29 +703,29 @@ async function applyOf(ctx: { root: string }, description: string): Promise<Edit
 }
 
 export const gengraphListGroups = define({
-  id: 'gengraph.listGroups',
-  title: 'List the group definitions',
+  id         : 'gengraph.listGroups',
+  title      : 'List the group definitions',
   description:
     'Every group definition under `vngen/work/graphs/lib/`, with the file it lives in. One that ' +
     'will not load carries the reason instead, so a broken definition is visible rather than absent.',
   notes:
     'Every group definition the project holds, with the sentence an unreadable one earns instead of opening. What Add Group offers.',
-  mutating: false,
-  props: {},
+  mutating   : false,
+  props      : {},
   async run(_props, ctx) {
     const groups = await listGroups(ctx.root);
     const broken = groups.filter((entry) => entry.problem !== undefined).length;
     const said = broken === 0 ? '' : `, ${broken} of them unreadable`;
     return {
       message: `${groups.length} group${groups.length === 1 ? '' : 's'}${said}.`,
-      data: { groups },
+      data   : { groups },
     };
   },
 });
 
 export const gengraphCreateGroup = define({
-  id: 'gengraph.createGroup',
-  title: 'Create a group',
+  id         : 'gengraph.createGroup',
+  title      : 'Create a group',
   description:
     'Move the named nodes into a new group definition under `lib/` and put one instance of it ' +
     'where they stood, with the links that crossed the selection rewired through the instance. ' +
@@ -734,10 +733,10 @@ export const gengraphCreateGroup = define({
     'the whole graph to a slot and belongs at the root.',
   notes:
     'Move the selected nodes into a new definition file under `lib/` and leave an instance in their place; every link that crossed the selection is rewired through the instance. Writes both files. What Ctrl+G and Edit ▸ Create Group run.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    slug: prop.string(SLUG),
+    slug : prop.string(SLUG),
     nodes: prop.string('the ids of the nodes to group, separated by commas'),
     name: prop.string('what to call the group; empty takes the next free `group-<n>`', {
       default: '',
@@ -782,18 +781,18 @@ function createGroupOf(graph: Graph, nodes: string, ref: string): EditPlan {
 }
 
 export const gengraphUngroup = define({
-  id: 'gengraph.ungroup',
-  title: 'Ungroup an instance',
+  id         : 'gengraph.ungroup',
+  title      : 'Ungroup an instance',
   description:
     'Replace one group instance with a copy of what is inside it, overrides included, wired the ' +
     'way the instance was. The definition file stays for the other instances of it.',
   notes:
     "Inline a copy of the instance's subgraph, overrides included, where the instance stood. The definition under `lib/` is left for its other instances. What Edit ▸ Ungroup runs.",
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    slug: prop.string(SLUG),
-    node: prop.string('the id of the group instance'),
+    slug : prop.string(SLUG),
+    node : prop.string('the id of the group instance'),
     group: groupProp(),
   },
   async check({ slug, node, group }, ctx) {
@@ -807,21 +806,21 @@ export const gengraphUngroup = define({
 });
 
 export const gengraphAddGroup = define({
-  id: 'gengraph.addGroup',
-  title: 'Add a group instance',
+  id         : 'gengraph.addGroup',
+  title      : 'Add a group instance',
   description:
     'Put one instance of an existing group definition into a graph. Its sockets and forwarded ' +
     'controls are the definition’s, and editing the definition later reaches this instance too. ' +
     'A definition cannot be added inside itself, directly or through another group.',
   notes:
     'Place one instance of a definition under `lib/`, bound at once so the file never holds an unresolved instance. What the Add Group menu runs.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    slug: prop.string(SLUG),
-    ref: prop.string('which group definition to instance, by the name its file carries'),
-    x: prop.number('where to place it across the canvas', { default: 0 }),
-    y: prop.number('where to place it down the canvas', { default: 0 }),
+    slug : prop.string(SLUG),
+    ref  : prop.string('which group definition to instance, by the name its file carries'),
+    x    : prop.number('where to place it across the canvas', { default: 0 }),
+    y    : prop.number('where to place it down the canvas', { default: 0 }),
     group: groupProp(),
   },
   async check({ slug, ref, x, y, group }, ctx) {
@@ -862,20 +861,20 @@ const ROW = 'which forwarded row, counting from 0 in the order the group lists t
 const EXPOSED_KEY = "which of the node's properties; empty forwards the node's whole control panel";
 
 export const gengraphExpose = define({
-  id: 'gengraph.expose',
-  title: 'Expose a control on a group',
+  id         : 'gengraph.expose',
+  title      : 'Expose a control on a group',
   description:
     "Forward one inner node's property, or its whole control panel, onto every instance of the " +
     'group, so an author editing an instance can set it without entering the group. The row is ' +
     'added at the end; reorder it afterwards.',
   notes:
     "Add a forwarded row to a definition: one inner node's property, or the node's whole panel when no key is named. Every instance shows it. What the designer's Expose runs.",
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
     group: prop.string(GROUP_ONLY),
-    node: prop.string('the id of the inner node, as the definition lists it'),
-    key: prop.string(EXPOSED_KEY, { default: '' }),
+    node : prop.string('the id of the inner node, as the definition lists it'),
+    key  : prop.string(EXPOSED_KEY, { default: '' }),
     label: prop.string('what to call the row; empty takes the property’s own name', {
       default: '',
     }),
@@ -891,7 +890,7 @@ export const gengraphExpose = define({
 function exposeOf(graph: Graph, node: string, key: string, label: string): EditPlan {
   const said = key.trim();
   return {
-    op: 'expose',
+    op  : 'expose',
     kind: said === '' ? 'nodeUI' : 'prop',
     node: nodeIdOf(graph, node),
     ...(said === '' ? {} : { key: said }),
@@ -900,13 +899,13 @@ function exposeOf(graph: Graph, node: string, key: string, label: string): EditP
 }
 
 export const gengraphUnexpose = define({
-  id: 'gengraph.unexpose',
-  title: 'Remove a forwarded row',
+  id         : 'gengraph.unexpose',
+  title      : 'Remove a forwarded row',
   description:
     'Stop forwarding one row onto the group’s instances. The inner node keeps its value; only ' +
     'the control on the instances goes.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
     group: prop.string(GROUP_ONLY),
     index: prop.number(ROW),
@@ -930,17 +929,17 @@ function rowOf(index: number, plan: (at: number) => GenEdit): EditPlan {
 }
 
 export const gengraphReorderExposed = define({
-  id: 'gengraph.reorderExposed',
-  title: 'Reorder the forwarded rows',
+  id         : 'gengraph.reorderExposed',
+  title      : 'Reorder the forwarded rows',
   description:
     'Move one forwarded row to another position, which is the order every instance of the ' +
     'group shows its controls in.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
     group: prop.string(GROUP_ONLY),
-    from: prop.number(ROW),
-    to: prop.number('where the row goes, counting the same way'),
+    from : prop.number(ROW),
+    to   : prop.number('where the row goes, counting the same way'),
   },
   async check({ group, from, to }, ctx) {
     return verdict(
@@ -968,18 +967,18 @@ export const gengraphReorderExposed = define({
 });
 
 export const gengraphRepointExposed = define({
-  id: 'gengraph.repointExposed',
-  title: 'Repoint a forwarded row',
+  id         : 'gengraph.repointExposed',
+  title      : 'Repoint a forwarded row',
   description:
     'Point one forwarded row at a different inner node, or a different property of one, keeping ' +
     'its place and its label. A row forwarding a property needs a property; one forwarding a ' +
     'whole panel takes a node alone.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
     group: prop.string(GROUP_ONLY),
     index: prop.number(ROW),
-    node: prop.string('the id of the inner node the row now points at'),
+    node : prop.string('the id of the inner node the row now points at'),
     key: prop.string("which of that node's properties, for a row that forwards one", {
       default: '',
     }),
@@ -995,9 +994,9 @@ export const gengraphRepointExposed = define({
 function repointOf(graph: Graph, index: number, node: string, key: string): EditPlan {
   const said = key.trim();
   return rowOf(index, (at) => ({
-    op: 'repointExposed',
+    op   : 'repointExposed',
     index: at,
-    node: nodeIdOf(graph, node),
+    node : nodeIdOf(graph, node),
     ...(said === '' ? {} : { key: said }),
   }));
 }
@@ -1005,19 +1004,19 @@ function repointOf(graph: Graph, index: number, node: string, key: string): Edit
 const DIR = "which side of the group: 'in' for an input, 'out' for an output";
 
 export const gengraphAddBoundary = define({
-  id: 'gengraph.addBoundary',
-  title: 'Add a group socket',
+  id         : 'gengraph.addBoundary',
+  title      : 'Add a group socket',
   description:
     'Declare a new input or output on the group, of a registered socket type. Every instance ' +
     'gains the socket, and inside the definition it appears on the group’s input or output node ' +
     'to be wired from.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
     group: prop.string(GROUP_ONLY),
-    dir: prop.string(DIR),
-    key: prop.string('what to call the socket'),
-    type: prop.string('the socket type, such as `TextSocket`'),
+    dir  : prop.string(DIR),
+    key  : prop.string('what to call the socket'),
+    type : prop.string('the socket type, such as `TextSocket`'),
   },
   async check({ group, dir, key, type }, ctx) {
     return verdict(
@@ -1040,17 +1039,17 @@ export const gengraphAddBoundary = define({
 });
 
 export const gengraphRemoveBoundary = define({
-  id: 'gengraph.removeBoundary',
-  title: 'Remove a group socket',
+  id         : 'gengraph.removeBoundary',
+  title      : 'Remove a group socket',
   description:
     'Take one input or output off the group. Every link into it inside the definition is ' +
     'severed, and every instance loses the socket along with whatever fed it.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
     group: prop.string(GROUP_ONLY),
-    dir: prop.string(DIR),
-    key: prop.string('which socket, by name'),
+    dir  : prop.string(DIR),
+    key  : prop.string('which socket, by name'),
   },
   async check({ group, dir, key }, ctx) {
     return verdict(
@@ -1080,15 +1079,15 @@ function sideOf(dir: string, plan: (side: 'in' | 'out') => GenEdit): EditPlan {
 }
 
 export const gengraphEstimate = define({
-  id: 'gengraph.estimate',
-  title: 'Estimate what a graph costs',
+  id         : 'gengraph.estimate',
+  title      : 'Estimate what a graph costs',
   description:
     'What one run of a graph is expected to spend if it runs from nothing, priced against the ' +
     'table the app ships with. The refine tail is counted `max_refine_attempts` times, so the ' +
     'figure is the worst case rather than the cost of a run that passes first time.',
   notes:
     'What one run would cost, per paid node and in total, from the shipped price table. Writes nothing.',
-  mutating: false,
+  mutating   : false,
   props: {
     slug: prop.string(SLUG),
   },
@@ -1105,8 +1104,8 @@ function estimateLine(counted: { estimate: GenPricedEstimate; stale: boolean }):
 }
 
 export const gengraphRun = define({
-  id: 'gengraph.run',
-  title: 'Run a generation graph',
+  id         : 'gengraph.run',
+  title      : 'Run a generation graph',
   description:
     'Execute a graph now, through the same executor and journal a scheduled run uses. Every node ' +
     'whose hash still matches its last record resumes from the journal rather than running ' +
@@ -1115,12 +1114,12 @@ export const gengraphRun = define({
     'the target instead of resuming it.',
   notes:
     'Execute the graph through the same executor and journal the scheduler uses, targeting the active Output or the named one. Confirmed, quoting the estimate. Not undoable: what it writes is a journal record and a blob under `vngen/state`. `force` re-runs every paid node feeding the target rather than resuming from the journal.',
-  mutating: true,
-  undoable: false,
-  confirm: true,
+  mutating   : true,
+  undoable   : false,
+  confirm    : true,
   props: {
-    slug: prop.string(SLUG),
-    node: prop.string('which output to run to, or empty for the active one', { default: '' }),
+    slug : prop.string(SLUG),
+    node : prop.string('which output to run to, or empty for the active one', { default: '' }),
     force: prop.boolean('re-run the paid nodes rather than resuming them', { default: false }),
   },
   async check({ slug, force }, ctx) {

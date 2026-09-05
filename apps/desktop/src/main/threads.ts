@@ -275,7 +275,7 @@ export async function openThread(
 
   const header: ThreadHeader = {
     id,
-    title: info.title ?? NEW_THREAD_TITLE,
+    title    : info.title ?? NEW_THREAD_TITLE,
     startedAt: now.toISOString(),
     ...(info.model === undefined ? {} : { model: info.model }),
     ...(info.effort === undefined ? {} : { effort: info.effort }),
@@ -481,7 +481,7 @@ export async function nativeHeader(
   id: string,
 ): Promise<ResumeHeader | undefined> {
   const parsed = await lines<NativeLine>(nativeFile(paths, id), {
-    keep: (raw) => raw.includes('"type":"resume"'),
+    keep           : (raw) => raw.includes('"type":"resume"'),
     refuseConflicts: true,
   });
   const first = parsed.find((line) => line.type === 'resume');

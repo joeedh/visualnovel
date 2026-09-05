@@ -23,13 +23,13 @@ const vnPackages: Plugin = {
 };
 
 const VENDOR_ALIAS = {
-  'pathux-graph': resolve(REPO_ROOT, 'vendor/path.ux/scripts/graph/index.ts'),
+  'pathux-graph'     : resolve(REPO_ROOT, 'vendor/path.ux/scripts/graph/index.ts'),
   'pathux-toolprop': resolve(
     REPO_ROOT,
     'vendor/path.ux/scripts/path-controller/toolsys/toolprop.ts',
   ),
   'pathux-base-types': resolve(REPO_ROOT, 'vendor/path.ux/scripts/core/base/ui_base_types.ts'),
-  nstructjs: resolve(REPO_ROOT, 'vendor/nstructjs/build/nstructjs_es6.js'),
+  nstructjs          : resolve(REPO_ROOT, 'vendor/nstructjs/build/nstructjs_es6.js'),
 };
 
 let outDir = '';
@@ -53,16 +53,16 @@ it('loads, saves and validates a graph in a bare node process', async () => {
   await build({
     entryPoints: [resolve(__dirname, '__fixtures__/headless-entry.ts')],
     outfile,
-    bundle: true,
-    platform: 'node',
+    bundle   : true,
+    platform : 'node',
     // CommonJS, because the bundle reaches CJS dependencies that an ESM output would
     // have to load through a require it cannot supply.
-    format: 'cjs',
-    target: 'node20',
+    format   : 'cjs',
+    target   : 'node20',
     keepNames: true,
-    alias: VENDOR_ALIAS,
-    plugins: [vnPackages],
-    logLevel: 'silent',
+    alias    : VENDOR_ALIAS,
+    plugins  : [vnPackages],
+    logLevel : 'silent',
   });
 
   const run = spawnSync(process.execPath, [outfile], { encoding: 'utf8' });

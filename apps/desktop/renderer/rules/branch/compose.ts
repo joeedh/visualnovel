@@ -32,22 +32,22 @@ export interface NewScene {
 
 export function proposeScene(story: StoryGraph | null): NewScene {
   return {
-    scene: freeSceneId((story?.scenes ?? []).map((s) => s.id)),
+    scene  : freeSceneId((story?.scenes ?? []).map((s) => s.id)),
     heading: 'INT. SOMEWHERE - DAY',
   };
 }
 
 /** A scene made here is deliberately unwired; wiring it is a separate act on the canvas. */
 export const newSceneIntent = (next: NewScene): Intent => ({
-  id: 'story.newScene',
+  id   : 'story.newScene',
   props: { scene: next.scene, heading: next.heading },
-  note: `Wrote ${next.scene}.`,
+  note : `Wrote ${next.scene}.`,
 });
 
 export const deleteSceneIntent = (scene: string): Intent => ({
-  id: 'story.deleteScene',
+  id   : 'story.deleteScene',
   props: { scene },
-  note: `Removed ${scene}.`,
+  note : `Removed ${scene}.`,
 });
 
 /**
@@ -64,6 +64,6 @@ export function selectionAfterDelete(story: StoryGraph | null, deleted: string):
 
 /** The same invocation, for the `check` a hover asks before the click runs it. */
 export const asInvocation = (intent: Intent): Invocation => ({
-  id: intent.id,
+  id   : intent.id,
   props: intent.props,
 });

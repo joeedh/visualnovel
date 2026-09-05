@@ -3,12 +3,12 @@ import type { ResumeState } from '../threads.js';
 import type { ResumeHeader } from '../convo.js';
 
 const header = (over: Partial<ResumeHeader> = {}): ResumeHeader => ({
-  v: NATIVE_VERSION,
-  thread: 't1',
-  at: '2026-08-22T14:00:28.041Z',
-  backend: 'native',
-  vendor: 'anthropic',
-  model: 'claude-opus-5',
+  v       : NATIVE_VERSION,
+  thread  : 't1',
+  at      : '2026-08-22T14:00:28.041Z',
+  backend : 'native',
+  vendor  : 'anthropic',
+  model   : 'claude-opus-5',
   sections: [{ name: 'BUILT-IN', text: 'the contract' }],
   ...over,
 });
@@ -54,7 +54,7 @@ describe('resumeRefusal', () => {
 
   it('refuses a protocol the bound backend does not speak', () => {
     const refusal = resumeRefusal('Casting', recorded(), {
-      model: 'claude-opus-5',
+      model  : 'claude-opus-5',
       backend: 'structured',
     });
     expect(refusal).toContain('native tool-calling path');

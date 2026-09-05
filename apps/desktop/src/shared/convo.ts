@@ -170,9 +170,9 @@ export function threadLabel(thread: ThreadHeader): string {
   const at = new Date(thread.startedAt);
   if (Number.isNaN(at.getTime())) return thread.title;
   const when = at.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
+    month : 'short',
+    day   : 'numeric',
+    hour  : '2-digit',
     minute: '2-digit',
   });
   return `${thread.title} · ${when}`;
@@ -396,15 +396,15 @@ export function emptyConvo(line: string): Convo {
   return {
     feed: [],
     line,
-    plan: null,
-    question: null,
-    confirm: null,
-    busy: false,
+    plan       : null,
+    question   : null,
+    confirm    : null,
+    busy       : false,
     suggestions: [],
-    tokens: { input: 0, output: 0 },
-    turnSpend: 0,
+    tokens     : { input: 0, output: 0 },
+    turnSpend  : 0,
     compactions: [],
-    seq: 0,
+    seq        : 0,
   };
 }
 
@@ -460,8 +460,8 @@ export function received(convo: Convo, event: AgentEvent): Convo {
   switch (event.type) {
     case 'tool':
       return push(convo, 'tool', toolSummary(event.tool, event.args), {
-        args: stringifyArgs(event.args),
-        ok: event.result.ok,
+        args  : stringifyArgs(event.args),
+        ok    : event.result.ok,
         output: event.result.output,
       });
     case 'blocked':
@@ -473,7 +473,7 @@ export function received(convo: Convo, event: AgentEvent): Convo {
       );
     case 'usage': {
       const tokens: Convo['tokens'] = {
-        input: convo.tokens.input + event.input,
+        input : convo.tokens.input + event.input,
         output: convo.tokens.output + event.output,
       };
       if (convo.tokens.cacheRead !== undefined || event.cacheRead !== undefined) {
@@ -491,7 +491,7 @@ export function received(convo: Convo, event: AgentEvent): Convo {
         ...convo,
         tokens,
         turnSpend: convo.turnSpend + charge(event),
-        context: event.input,
+        context  : event.input,
       };
     }
     case 'message':
@@ -610,9 +610,9 @@ export function replayed(
   const highest = items.reduce((max, item) => Math.max(max, item.id), 0);
   return {
     ...emptyConvo(banner),
-    feed: [...items],
+    feed       : [...items],
     compactions: [...marks],
-    seq: Math.max(convo.seq, highest),
+    seq        : Math.max(convo.seq, highest),
   };
 }
 

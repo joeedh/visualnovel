@@ -42,9 +42,9 @@ export class OnboardingEditor extends VnEditor {
 
   static override define() {
     return {
-      tagname: 'vn-onboarding-editor-x',
+      tagname : 'vn-onboarding-editor-x',
       areaname: 'onboarding',
-      icon: -1,
+      icon    : -1,
     };
   }
 
@@ -187,7 +187,7 @@ export class OnboardingEditor extends VnEditor {
     const row = el('div', 'ob-buttons');
     const labels: Record<(typeof GUIDE_URL_FIELDS)[number], [string, string]> = {
       console: ['Open console', 'Open the page where a key is created, in your browser'],
-      docs: ['Provider docs', "Open the provider's own version of these steps"],
+      docs   : ['Provider docs', "Open the provider's own version of these steps"],
       billing: ['Pricing', 'Open what this provider charges'],
     };
     for (const field of GUIDE_URL_FIELDS) {
@@ -262,8 +262,8 @@ export class OnboardingEditor extends VnEditor {
       // The command's own sentence about what it would do, so the pane never invents one.
       const verdict = await check('project.setKey', {
         provider: vendor.vendor,
-        key: '',
-        scope: chosen,
+        key     : '',
+        scope   : chosen,
       });
       const reason = verdict.state === 'refuse' ? verdict.message : '';
       save.disabled = reason !== '' || box.value.trim() === '';

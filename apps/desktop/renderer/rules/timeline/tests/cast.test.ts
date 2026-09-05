@@ -15,21 +15,21 @@ const shot = (id: string, subjects: string[], castOptional?: boolean): CoverageS
   subjects,
   location: 'night',
   ...(castOptional ? { castOptional: true } : {}),
-  outfits: {},
+  outfits    : {},
   coversLines: ['club:L1'],
-  status: 'accepted',
-  drift: 'current',
+  status     : 'accepted',
+  drift      : 'current',
 });
 
 const coverage = (shots: CoverageShot[]): SceneCoverage => ({
-  sceneId: 'club',
+  sceneId : 'club',
   location: 'club_room',
-  heading: 'INT. CLUB ROOM - NIGHT',
-  lines: [],
+  heading : 'INT. CLUB ROOM - NIGHT',
+  lines   : [],
   shots,
-  cast: [],
+  cast      : [],
   characters: ['aiko', 'ben', 'cho'],
-  variants: ['day', 'night'],
+  variants  : ['day', 'night'],
   decomposed: true,
 });
 
@@ -37,12 +37,12 @@ describe('shotCast', () => {
   it('names who is framed and who is left to add', () => {
     const cast = shotCast(coverage([shot('club__beat1', ['ben'])]), 'club__beat1');
     expect(cast).toMatchObject({
-      scene: 'club',
-      shot: 'club__beat1',
-      framed: ['ben'],
-      spare: ['aiko', 'cho'],
+      scene   : 'club',
+      shot    : 'club__beat1',
+      framed  : ['ben'],
+      spare   : ['aiko', 'cho'],
       required: true,
-      variant: 'night',
+      variant : 'night',
       variants: ['day', 'night'],
     });
   });
@@ -80,7 +80,7 @@ describe('the invocations the controls run', () => {
 
   it('sends a cast list comma-separated, the way the prop reads it', () => {
     expect(subjectsInvocation(cast, ['ben', 'aiko'])).toEqual({
-      id: 'story.setSubjects',
+      id   : 'story.setSubjects',
       props: { scene: 'club', shot: 'club__beat1', subjects: 'ben,aiko' },
     });
   });
@@ -91,14 +91,14 @@ describe('the invocations the controls run', () => {
 
   it('sends the demand as a boolean', () => {
     expect(requireCastInvocation(cast, false)).toEqual({
-      id: 'story.requireCast',
+      id   : 'story.requireCast',
       props: { scene: 'club', shot: 'club__beat1', required: false },
     });
   });
 
   it('sends a variant change through the command that owns the rule', () => {
     expect(variantInvocation(cast, 'day')).toEqual({
-      id: 'story.setVariant',
+      id   : 'story.setVariant',
       props: { scene: 'club', shot: 'club__beat1', variant: 'day' },
     });
   });

@@ -80,8 +80,7 @@ import type { VnScreen } from '../app/screen.js';
 
 /** What one gesture would do, weighed against the graph on screen with nothing written. */
 type Weighed =
-  | { ok: true; edit: GenEdit; decision: GenEditDecision }
-  | { ok: false; reason: string };
+  { ok: true; edit: GenEdit; decision: GenEditDecision } | { ok: false; reason: string };
 
 /** One property the pane listens to, holding the value it last saw an edit accepted for. */
 interface PropWatch {
@@ -157,9 +156,9 @@ export class GenGraphEditor extends VnEditor {
 
   static override define() {
     return {
-      tagname: 'vn-gengraph-editor-x',
+      tagname : 'vn-gengraph-editor-x',
       areaname: 'gengraph',
-      icon: -1,
+      icon    : -1,
     };
   }
 
@@ -407,10 +406,10 @@ export class GenGraphEditor extends VnEditor {
     const id = 'gengraph.createGroup';
     if (ids.length === 0) return { ok: false, id, reason: 'Select the nodes to group first.' };
     return this.offerOf(id, {
-      kind: 'createGroup',
+      kind     : 'createGroup',
       graphPath: this.view.currentGraphPath,
       storePath: this.view.graphPath,
-      nodeIds: ids,
+      nodeIds  : ids,
     });
   }
 
@@ -421,9 +420,9 @@ export class GenGraphEditor extends VnEditor {
       return { ok: false, id, reason: 'Select a group instance to ungroup.' };
     }
     return this.offerOf(id, {
-      kind: 'ungroup',
+      kind     : 'ungroup',
       graphPath: this.view.currentGraphPath,
-      nodeId: groups[0]!.id,
+      nodeId   : groups[0]!.id,
     });
   }
 
@@ -447,11 +446,11 @@ export class GenGraphEditor extends VnEditor {
 
     this.designerEl.hidden = false;
     buildGroupDesigner(this.designerEl, {
-      ctx: this.view.graphContext,
-      def: level.def,
-      graphPath: this.view.currentGraphPath,
-      delegate: this.view.delegate,
-      onChanged: () => this.view.syncGraph(),
+      ctx       : this.view.graphContext,
+      def       : level.def,
+      graphPath : this.view.currentGraphPath,
+      delegate  : this.view.delegate,
+      onChanged : () => this.view.syncGraph(),
       errorColor: this.view.getDefault('ErrorColor') as string,
     });
   }
@@ -653,8 +652,8 @@ export class GenGraphEditor extends VnEditor {
           throw err;
         }
       },
-      check: (_ctx, edit): EditVerdict => this.judge(edit),
-      perform: (_ctx, edit): void => this.dispatch(edit),
+      check        : (_ctx, edit): EditVerdict => this.judge(edit),
+      perform      : (_ctx, edit): void => this.dispatch(edit),
       undoStepEnd: async (): Promise<void> => {
         const checkpoint = this.checkpoint;
         this.checkpoint = undefined;

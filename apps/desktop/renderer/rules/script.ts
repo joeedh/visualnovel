@@ -111,9 +111,9 @@ export function keyAct(scene: ScriptScene, editing: Editing, draft: Draft, key: 
     const step = commitOf(editing.line, draft.text);
     const atEnd = draft.start === draft.end && draft.start === draft.text.length;
     return {
-      act: 'run',
+      act  : 'run',
       steps: step ? [step] : [],
-      then: atEnd ? { open: 'compose', after: editing.line.id } : { open: 'none' },
+      then : atEnd ? { open: 'compose', after: editing.line.id } : { open: 'none' },
     };
   }
 
@@ -121,9 +121,9 @@ export function keyAct(scene: ScriptScene, editing: Editing, draft: Draft, key: 
     if (editing.row === 'new') return DISCARD;
     const above = lineAbove(scene.lines, editing.line.id);
     return {
-      act: 'run',
+      act  : 'run',
       steps: [{ id: 'story.deleteLine', props: { line: editing.line.id } }],
-      then: above ? { open: 'line', line: above.id } : { open: 'none' },
+      then : above ? { open: 'line', line: above.id } : { open: 'none' },
     };
   }
 
@@ -274,8 +274,8 @@ export function cueLabel(cast: readonly CastMember[], speaker?: string): string 
 export function cueChoices(cast: readonly CastMember[], speaker?: string): CueChoice[] {
   const mine = castFor(cast, speaker);
   const choices: CueChoice[] = cast.map((m) => ({
-    cue: cueFor(m),
-    label: m.name || m.id,
+    cue    : cueFor(m),
+    label  : m.name || m.id,
     current: m === mine,
   }));
   if (speaker && !mine) {
@@ -322,7 +322,7 @@ export function composedCueText(
 
 /** `story.setSpeaker` as the column asks for it. An empty `speaker` makes the line narration. */
 export const setSpeakerOf = (line: string, cue: string): Invocation => ({
-  id: 'story.setSpeaker',
+  id   : 'story.setSpeaker',
   props: { line, speaker: cue },
 });
 
@@ -363,12 +363,12 @@ export function dropTarget(rows: readonly RowBox[], y: number): string {
  */
 export function moveStateOf(coverage: SceneCoverage): ScriptState {
   const scene: Scene = {
-    id: coverage.sceneId,
-    location: coverage.location,
+    id        : coverage.sceneId,
+    location  : coverage.location,
     characters: [],
-    lines: [...coverage.lines],
-    choices: [],
-    shots: [],
+    lines     : [...coverage.lines],
+    choices   : [],
+    shots     : [],
   };
   return { scenes: new Map([[scene.id, scene]]) };
 }
@@ -430,13 +430,13 @@ export function canContinue(story: StoryGraph, sceneId: string): boolean {
 
 /** `story.splitScene` as the column asks for it: `at` and everything below it move into `into`. */
 export const splitOf = (scene: string, at: string, into: string): Invocation => ({
-  id: 'story.splitScene',
+  id   : 'story.splitScene',
   props: { scene, at, into },
 });
 
 /** `story.mergeScene`: `absorbed`'s lines are appended to the scene that continues to it. */
 export const mergeOf = (absorbed: string, into: string): Invocation => ({
-  id: 'story.mergeScene',
+  id   : 'story.mergeScene',
   props: { scene: absorbed, into },
 });
 
@@ -463,8 +463,8 @@ export type Pending =
  */
 export function continueFrom(scene: string, location: string, taken: Iterable<string>): Pending {
   return {
-    act: 'scene',
-    scene: proposeSceneId(scene, taken),
+    act    : 'scene',
+    scene  : proposeSceneId(scene, taken),
     heading: `INT. ${location.toUpperCase()} - DAY`,
   };
 }

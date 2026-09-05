@@ -129,7 +129,7 @@ export function parseLayoutFile(
 ): { ok: true; file: LayoutFile } | { ok: false; problem: string } {
   if (isConflicted(text)) {
     return {
-      ok: false,
+      ok     : false,
       problem:
         'a merge left both versions in it — pick a side with `git checkout --ours` or `--theirs`',
     };
@@ -151,13 +151,13 @@ export function parseLayoutFile(
   const file = parsed as Partial<LayoutFile>;
   if (file.vnstudio !== LAYOUT_FORMAT) {
     return {
-      ok: false,
+      ok     : false,
       problem: `it is in the ${String(file.vnstudio)} format, not ${LAYOUT_FORMAT}`,
     };
   }
   if (file.recipe !== undefined && file.screen !== undefined) {
     return {
-      ok: false,
+      ok     : false,
       problem: 'it holds both a recipe and a saved screen, and only one can be right',
     };
   }
@@ -171,20 +171,20 @@ export function parseLayoutFile(
   const missing = (file.editors ?? []).filter((id) => !known.includes(id));
   if (missing.length > 0) {
     return {
-      ok: false,
+      ok     : false,
       problem: `it uses the ${missing.join(', ')} editor(s), which this build has not got`,
     };
   }
 
   return {
-    ok: true,
+    ok  : true,
     file: {
-      vnstudio: LAYOUT_FORMAT,
-      slug: typeof file.slug === 'string' ? file.slug : '',
+      vnstudio   : LAYOUT_FORMAT,
+      slug       : typeof file.slug === 'string' ? file.slug : '',
       title: typeof file.title === 'string' && file.title ? file.title : (file.slug ?? 'Untitled'),
       description: typeof file.description === 'string' ? file.description : '',
-      editors: file.editors ?? [],
-      source: file.source === 'shipped' ? 'shipped' : 'saved',
+      editors    : file.editors ?? [],
+      source     : file.source === 'shipped' ? 'shipped' : 'saved',
       ...(file.recipe !== undefined ? { recipe: file.recipe } : {}),
       ...(file.screen !== undefined ? { screen: file.screen } : {}),
     },
@@ -209,24 +209,24 @@ export function serializeLayoutFile(file: LayoutFile): string {
 }
 
 const WRITING: LayoutRecipe = {
-  split: 'columns',
-  at: 0.6,
+  split : 'columns',
+  at    : 0.6,
   first: {
-    split: 'columns',
-    at: 0.3,
-    first: { pane: ['documents'] },
+    split : 'columns',
+    at    : 0.3,
+    first : { pane: ['documents'] },
     second: { pane: ['script', 'branches'] },
   },
   second: { pane: ['convo'] },
 };
 
 const ART: LayoutRecipe = {
-  split: 'columns',
-  at: 0.7,
+  split : 'columns',
+  at    : 0.7,
   first: {
-    split: 'columns',
-    at: 0.3,
-    first: { pane: ['documents'] },
+    split : 'columns',
+    at    : 0.3,
+    first : { pane: ['documents'] },
     second: { pane: ['asset'] },
   },
   second: { pane: ['tasklist', 'taskgraph'] },
@@ -244,16 +244,16 @@ export const SHIPPED_LAYOUTS: readonly {
   recipe: LayoutRecipe;
 }[] = [
   {
-    slug: 'writing',
-    title: 'Writing',
+    slug       : 'writing',
+    title      : 'Writing',
     description: 'The documents tree, the script with the branch cards behind it, and the agent.',
-    recipe: WRITING,
+    recipe     : WRITING,
   },
   {
-    slug: 'art',
-    title: 'Art',
+    slug       : 'art',
+    title      : 'Art',
     description: 'The documents tree, one asset with its art notes, and the pipeline queue.',
-    recipe: ART,
+    recipe     : ART,
   },
 ];
 
@@ -267,13 +267,13 @@ export function shippedLayoutFile(slug: string): LayoutFile | undefined {
   const shipped = SHIPPED_LAYOUTS.find((entry) => entry.slug === slug);
   if (!shipped) return undefined;
   return {
-    vnstudio: LAYOUT_FORMAT,
-    slug: shipped.slug,
-    title: shipped.title,
+    vnstudio   : LAYOUT_FORMAT,
+    slug       : shipped.slug,
+    title      : shipped.title,
     description: shipped.description,
-    editors: recipeEditors(shipped.recipe),
-    source: 'shipped',
-    recipe: shipped.recipe,
+    editors    : recipeEditors(shipped.recipe),
+    source     : 'shipped',
+    recipe     : shipped.recipe,
   };
 }
 

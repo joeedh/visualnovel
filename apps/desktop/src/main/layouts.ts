@@ -56,9 +56,9 @@ export async function listLayouts(root: string): Promise<LayoutSummary[]> {
 
     found.set(slug, {
       slug,
-      title: parsed.ok ? parsed.file.title : (shipped?.title ?? slug),
+      title      : parsed.ok ? parsed.file.title : (shipped?.title ?? slug),
       description: parsed.ok ? parsed.file.description : (shipped?.description ?? ''),
-      source: parsed.ok ? parsed.file.source : shipped ? 'shipped' : 'saved',
+      source     : parsed.ok ? parsed.file.source : shipped ? 'shipped' : 'saved',
       fingerprint: fingerprint(text),
       ...(parsed.ok ? {} : { problem: parsed.problem }),
     });
@@ -68,10 +68,10 @@ export async function listLayouts(root: string): Promise<LayoutSummary[]> {
   for (const shipped of SHIPPED_LAYOUTS) {
     out.push(
       found.get(shipped.slug) ?? {
-        slug: shipped.slug,
-        title: shipped.title,
+        slug       : shipped.slug,
+        title      : shipped.title,
         description: shipped.description,
-        source: 'shipped',
+        source     : 'shipped',
         fingerprint: fingerprint(serializeLayoutFile(shippedLayoutFile(shipped.slug)!)),
       },
     );
@@ -82,8 +82,7 @@ export async function listLayouts(root: string): Promise<LayoutSummary[]> {
 }
 
 export type LayoutRead =
-  | { ok: true; file: LayoutFile; fingerprint: string }
-  | { ok: false; reason: string };
+  { ok: true; file: LayoutFile; fingerprint: string } | { ok: false; reason: string };
 
 /** One template, or a sentence saying why it cannot be had. A shipped one needs no file. */
 export async function readLayout(root: string, slug: string): Promise<LayoutRead> {

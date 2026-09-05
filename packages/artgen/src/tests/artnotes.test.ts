@@ -21,14 +21,14 @@ cafe.variants = [
 ];
 
 const shot: Shot = {
-  id: 's2',
-  sceneId: 'greet',
-  framing: 'medium',
-  location: 'day',
-  subjects: [],
+  id         : 's2',
+  sceneId    : 'greet',
+  framing    : 'medium',
+  location   : 'day',
+  subjects   : [],
   coversLines: [],
-  artNotes: 'wider than the last one',
-  status: 'pending',
+  artNotes   : 'wider than the last one',
+  status     : 'pending',
 };
 
 const ctx = {
@@ -40,13 +40,13 @@ const ctx = {
 function asset(kind: AssetKind, binding: AssetBinding): Asset {
   return {
     hash: 'a'.repeat(64),
-    ext: 'png',
+    ext : 'png',
     kind,
     sourceTask: 'b'.repeat(64),
-    refs: [],
-    modelId: 'fake',
-    satisfies: [binding],
-    accepted: false,
+    refs      : [],
+    modelId   : 'fake',
+    satisfies : [binding],
+    accepted  : false,
   };
 }
 
@@ -84,8 +84,8 @@ describe('rungAt', () => {
   it('answers with what is authored there, and the rung it is', () => {
     expect(rungAt({ kind: 'character', id: 'aiko' }, ctx)).toEqual({
       target: 'character:aiko',
-      label: 'Aiko',
-      notes: 'soft key light',
+      label : 'Aiko',
+      notes : 'soft key light',
     });
     expect(rungAt({ kind: 'character', id: 'aiko', outfit: 'gala' }, ctx)).toMatchObject({
       label: 'Aiko — gala',
@@ -106,7 +106,7 @@ describe('rungAt', () => {
   it('distinguishes a silent rung from a missing one', () => {
     expect(rungAt({ kind: 'location', id: 'cafe', variant: 'day' }, ctx)).toEqual({
       target: 'location:cafe/day',
-      label: 'Café Mori — day',
+      label : 'Café Mori — day',
     });
     expect(rungAt({ kind: 'location', id: 'cafe', variant: 'dawn' }, ctx)).toBeUndefined();
     expect(rungAt({ kind: 'character', id: 'haruki' }, ctx)).toBeUndefined();

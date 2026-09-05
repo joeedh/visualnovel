@@ -11,9 +11,9 @@ import { TOKENS } from '../app/tokens.js';
 
 /** The one colour the whole shell reads a task status by. */
 export const STATUS_COLOUR: Record<string, string> = {
-  done: TOKENS.jade,
-  running: TOKENS.signal,
-  failed: TOKENS.vermilion,
+  done       : TOKENS.jade,
+  running    : TOKENS.signal,
+  failed     : TOKENS.vermilion,
   needs_human: TOKENS.sodium,
 };
 
@@ -23,16 +23,16 @@ export const statusColour = (status: string): string => STATUS_COLOUR[status] ??
 export function card(): HTMLDivElement {
   const box = document.createElement('div');
   Object.assign(box.style, {
-    boxSizing: 'border-box',
-    display: 'flex',
-    flexDirection: 'column',
+    boxSizing     : 'border-box',
+    display       : 'flex',
+    flexDirection : 'column',
     justifyContent: 'center',
-    gap: '3px',
-    padding: '6px 9px',
-    overflow: 'hidden',
-    border: `1px solid ${TOKENS.inkLine}`,
-    borderRadius: `${TOKENS.radiusChrome}px`,
-    background: TOKENS.inkRaised,
+    gap           : '3px',
+    padding       : '6px 9px',
+    overflow      : 'hidden',
+    border        : `1px solid ${TOKENS.inkLine}`,
+    borderRadius  : `${TOKENS.radiusChrome}px`,
+    background    : TOKENS.inkRaised,
   });
   return box;
 }
@@ -51,10 +51,10 @@ export function stamp(text: string, color: string, size = 10): HTMLElement {
   span.textContent = text;
   Object.assign(span.style, {
     color,
-    fontFamily: TOKENS.disp,
-    fontWeight: '800',
+    fontFamily   : TOKENS.disp,
+    fontWeight   : '800',
     letterSpacing: '0.2em',
-    fontSize: `${size}px`,
+    fontSize     : `${size}px`,
   });
   return span;
 }
@@ -72,10 +72,10 @@ export function subject(text: string, color: string): HTMLElement {
   div.textContent = text;
   Object.assign(div.style, {
     fontFamily: TOKENS.mono,
-    fontSize: '11.5px',
+    fontSize  : '11.5px',
     color,
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
+    whiteSpace  : 'nowrap',
+    overflow    : 'hidden',
     textOverflow: 'ellipsis',
   });
   return div;
@@ -85,11 +85,11 @@ export function subject(text: string, color: string): HTMLElement {
 export function dot(colour: string, size = 7): HTMLElement {
   const span = document.createElement('span');
   Object.assign(span.style, {
-    width: `${size}px`,
-    height: `${size}px`,
+    width       : `${size}px`,
+    height      : `${size}px`,
     borderRadius: '50%',
-    flex: 'none',
-    background: colour,
+    flex        : 'none',
+    background  : colour,
   });
   return span;
 }
@@ -99,16 +99,16 @@ export function centered(text: string): HTMLElement {
   const div = document.createElement('div');
   div.textContent = text;
   Object.assign(div.style, {
-    position: 'absolute',
-    inset: '0',
-    display: 'flex',
-    alignItems: 'center',
+    position      : 'absolute',
+    inset         : '0',
+    display       : 'flex',
+    alignItems    : 'center',
     justifyContent: 'center',
-    padding: '0px 24px',
-    textAlign: 'center',
-    color: TOKENS.mist,
-    fontFamily: TOKENS.mono,
-    fontSize: '13px',
+    padding       : '0px 24px',
+    textAlign     : 'center',
+    color         : TOKENS.mist,
+    fontFamily    : TOKENS.mono,
+    fontSize      : '13px',
   });
   return div;
 }
@@ -121,7 +121,7 @@ export function note(text: string, color: string = TOKENS.mistDim): HTMLElement 
     padding: '10px 12px',
     color,
     fontFamily: TOKENS.mono,
-    fontSize: '12px',
+    fontSize  : '12px',
     lineHeight: '1.5',
   });
   return div;

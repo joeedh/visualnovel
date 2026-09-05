@@ -139,7 +139,7 @@ export function selectionForNode(node: DocNode, current: Selection): Selection {
       return {
         ...current,
         sceneId: key,
-        shotId: keep ? current.shotId : '',
+        shotId : keep ? current.shotId : '',
         docPath: node.path ?? current.docPath,
       };
     }
@@ -259,7 +259,7 @@ export function shotGroups(links: EntityLinks, sceneId: string): AssetGroup[] {
 function openSheet(path: string): MenuEntry {
   return {
     label: 'Open sheet elsewhere',
-    id: 'view.open',
+    id   : 'view.open',
     props: { editor: 'wiki', where: 'elsewhere', subject: path },
   };
 }
@@ -347,15 +347,15 @@ export function menuFor(node: DocNode): MenuEntry[] {
         // subject already answered, so only the sentence is left to fill in
         {
           label: 'New reference shot…',
-          id: 'art.generate',
+          id   : 'art.generate',
           props: { subject: `location:${key}`, open: true },
-          form: true,
+          form : true,
         },
         {
           label: 'Art notes…',
-          id: 'art.setNotes',
+          id   : 'art.setNotes',
           props: { target: `location:${key}` },
-          form: true,
+          form : true,
         },
         copyId('location', key),
         ...(node.path ? [openSheet(node.path)] : []),
@@ -364,15 +364,15 @@ export function menuFor(node: DocNode): MenuEntry[] {
       return [
         {
           label: 'New concept image…',
-          id: 'art.generate',
+          id   : 'art.generate',
           props: { subject: `character:${key}`, open: true },
-          form: true,
+          form : true,
         },
         {
           label: 'Art notes…',
-          id: 'art.setNotes',
+          id   : 'art.setNotes',
           props: { target: `character:${key}` },
-          form: true,
+          form : true,
         },
         copyId('character', key),
         ...(node.path ? [openSheet(node.path)] : []),
@@ -396,14 +396,14 @@ export function menuFor(node: DocNode): MenuEntry[] {
       return [
         {
           label: 'Open in the Skills pane',
-          id: 'view.open',
+          id   : 'view.open',
           props: { editor: 'skills', where: 'elsewhere', subject: node.path ?? '' },
         },
         {
           label: 'Ask the agent to change this skill…',
-          id: 'agent.run',
+          id   : 'agent.run',
           props: { input: `Edit the "${node.label}" skill: ` },
-          form: true,
+          form : true,
         },
         copyId('skill', key),
       ];
@@ -421,7 +421,7 @@ export function menuFor(node: DocNode): MenuEntry[] {
         copyId('asset', key),
         {
           label: 'Open in the Asset editor',
-          id: 'view.open',
+          id   : 'view.open',
           props: { editor: 'asset', where: 'elsewhere', subject: key },
         },
       ];
@@ -445,9 +445,9 @@ export function menuFor(node: DocNode): MenuEntry[] {
         { label: 'Assign line ids', id: 'story.assignLineIds', props: { scene: key } },
         {
           label: 'Edit in the agent…',
-          id: 'agent.run',
+          id   : 'agent.run',
           props: { input: `edit ${key} ` },
-          form: true,
+          form : true,
         },
         { label: MENU_SEP, id: MENU_SEP },
         copyId('scene', key),
@@ -459,15 +459,15 @@ export function menuFor(node: DocNode): MenuEntry[] {
       return [
         {
           label: 'Set coverage…',
-          id: 'story.setCoverage',
+          id   : 'story.setCoverage',
           props: { scene: sceneId, shot: shotId },
-          form: true,
+          form : true,
         },
         {
           label: 'Set outfit…',
-          id: 'story.setOutfit',
+          id   : 'story.setOutfit',
           props: { scene: sceneId, shot: shotId },
-          form: true,
+          form : true,
         },
         // The frame the storyboard recorded, where there is one, so the picture a shot stands for
         // is approvable from the row that names it
@@ -501,9 +501,9 @@ export function menuFor(node: DocNode): MenuEntry[] {
             newSheet('skill', 'New skill…'),
             {
               label: 'Ask the agent for a skill…',
-              id: 'agent.run',
+              id   : 'agent.run',
               props: { input: NEW_SKILL_PROMPT },
-              form: true,
+              form : true,
             },
           ];
         default:
@@ -557,17 +557,17 @@ const MENU_NODES: readonly DocNode[] = [
       'more',
     ] as const satisfies readonly Exclude<DocNodeKind, 'branch'>[]
   ).map((kind) => ({
-    id: `${kind}:sample${kind === 'shot' ? '/shot1' : ''}`,
-    kind: kind as DocNodeKind,
-    label: kind,
-    path: `wiki/${kind}.md`,
-    hash: 'a1b2c3d4',
-    slot: 'plate:sample/night',
+    id      : `${kind}:sample${kind === 'shot' ? '/shot1' : ''}`,
+    kind    : kind as DocNodeKind,
+    label   : kind,
+    path    : `wiki/${kind}.md`,
+    hash    : 'a1b2c3d4',
+    slot    : 'plate:sample/night',
     approved: false,
   })),
   ...['story', 'characters', 'locations', 'wiki', 'graphs', 'skills', 'assets'].map((key) => ({
-    id: `branch:${key}`,
-    kind: 'branch' as DocNodeKind,
+    id   : `branch:${key}`,
+    kind : 'branch' as DocNodeKind,
     label: key,
   })),
 ];
@@ -586,9 +586,9 @@ export function menuAnchors(): AnchorRecord[] {
     for (const entry of menuFor(node)) {
       if (entry.id === MENU_SEP) continue;
       records.push({
-        id: entry.id,
+        id    : entry.id,
         editor: 'documents',
-        when: node.id,
+        when  : node.id,
         ...(entry.form ? { form: true } : {}),
       });
     }

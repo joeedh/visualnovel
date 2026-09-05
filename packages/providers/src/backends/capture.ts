@@ -156,7 +156,7 @@ export async function captureRequest(
   }
 
   return {
-    seq: entry.seq,
+    seq   : entry.seq,
     failed: async (err: unknown) => {
       const text = err instanceof Error ? (err.stack ?? err.message) : String(err);
       entry.error = text;
@@ -188,7 +188,7 @@ export function captureSnapshot(): CaptureSnapshot {
   const taken = ring.map((entry) => ({ ...entry }));
   return {
     headers: () => taken.map(({ json: _json, ...header }) => ({ ...header })),
-    body: (seq: number) => taken.find((entry) => entry.seq === seq)?.json,
+    body   : (seq: number) => taken.find((entry) => entry.seq === seq)?.json,
   };
 }
 

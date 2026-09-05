@@ -42,8 +42,8 @@ export function grabLine(scene: SceneCoverage, line: string): Drag {
   return {
     line,
     verdicts: new Map(judged.map((v) => [v.target, v])),
-    over: null,
-    verdict: null,
+    over    : null,
+    verdict : null,
   };
 }
 
@@ -98,7 +98,7 @@ export function shotAssetEntry(shot: CoverageShot, label: string, missing: strin
 export function lineMenu(scene: SceneCoverage, lineId: string): MenuEntry[] {
   const edit: MenuEntry = {
     label: 'Edit with agent',
-    id: 'agent.editLine',
+    id   : 'agent.editLine',
     props: { scene: scene.sceneId, line: lineId },
   };
   const label = 'Open shot asset';

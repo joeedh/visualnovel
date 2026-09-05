@@ -3,11 +3,11 @@ import { DEFAULT_RESOLVERS, nodeLabel, resolveOwner, type OwnerResolver } from '
 
 function el(extra: Partial<SnapNode>): SnapNode {
   return {
-    id: 'dom:0',
-    tag: 'div',
-    classes: [],
-    bounds: { x: 0, y: 0, w: 10, h: 10 },
-    style: {},
+    id      : 'dom:0',
+    tag     : 'div',
+    classes : [],
+    bounds  : { x: 0, y: 0, w: 10, h: 10 },
+    style   : {},
     children: [],
     ...extra,
   };
@@ -26,9 +26,9 @@ describe('resolveOwner', () => {
 
   it('falls back to the tag/class path', () => {
     expect(resolveOwner(el({ classes: ['rail', 'left'] }))).toEqual({
-      id: 'div.rail.left',
+      id   : 'div.rail.left',
       label: 'div.rail.left',
-      kind: 'element',
+      kind : 'element',
     });
     expect(resolveOwner(el({ elemId: 'root' })).id).toBe('div#root');
   });
@@ -44,9 +44,9 @@ describe('resolveOwner', () => {
     };
     // A broken resolver is skipped; when no resolver returns an owner, attribution is 'unknown'
     expect(resolveOwner(el({ tag: '' }), undefined, [exploding, ...DEFAULT_RESOLVERS])).toEqual({
-      id: 'unknown',
-      label: 'unknown',
-      kind: 'unknown',
+      id    : 'unknown',
+      label : 'unknown',
+      kind  : 'unknown',
       parent: undefined,
     });
     expect(

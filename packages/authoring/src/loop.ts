@@ -237,19 +237,19 @@ const MAX_ASK_QUESTIONS = 4;
 
 const CONTROL_TOOLS: ToolSpec[] = [
   {
-    name: 'propose_plan',
+    name       : 'propose_plan',
     description:
       'Propose a plan and request approval. args: {summary, steps[], files[], risks?[]}. ' +
       'On approval you switch to execute mode and may apply edits; on rejection you stay in plan mode.',
-    mutating: false,
+    mutating   : false,
   },
   {
-    name: 'ask_user',
+    name       : 'ask_user',
     description: 'Ask the user a clarifying question and receive their answer. args: {question}',
-    mutating: false,
+    mutating   : false,
   },
   {
-    name: 'ask_choice',
+    name       : 'ask_choice',
     description:
       'Ask the user a question and offer a shortlist of answers. args: {question, choices[], multi?} ' +
       `for one question, or {questions: [{question, choices?[], multi?}, …]} for up to ${MAX_ASK_QUESTIONS} ` +
@@ -260,7 +260,7 @@ const CONTROL_TOOLS: ToolSpec[] = [
       'Prefer this over ask_user whenever the sensible answers can be listed — it is far less work ' +
       'to answer. The user may still type something that is not on the list, or say they would ' +
       'rather talk it through; either way you get their answer verbatim.',
-    mutating: false,
+    mutating   : false,
   },
 ];
 
@@ -371,9 +371,9 @@ function withdrawMessage(name: string): string {
 
 const planSchema = z.object({
   summary: z.string().min(1),
-  steps: z.array(z.string()).default([]),
-  files: z.array(z.string()).default([]),
-  risks: z.array(z.string()).optional(),
+  steps  : z.array(z.string()).default([]),
+  files  : z.array(z.string()).default([]),
+  risks  : z.array(z.string()).optional(),
 });
 
 const askSchema = z.object({ question: z.string().min(1) });
@@ -382,8 +382,8 @@ const askSchema = z.object({ question: z.string().min(1) });
 // disagree with except falling back to the free-text box.
 const oneChoiceSchema = z.object({
   question: z.string().min(1),
-  choices: z.array(z.string().min(1)).min(2),
-  multi: z.boolean().default(false),
+  choices : z.array(z.string().min(1)).min(2),
+  multi   : z.boolean().default(false),
 });
 
 /**
@@ -547,7 +547,7 @@ export class Agent {
       ...opts.ctx,
       // The ledger belongs to the conversation, so the agent owns it rather than the host: a
       // context passed in fresh each turn would forget every read between one turn and the next.
-      seen: this.seen,
+      seen   : this.seen,
       // The author's own turns, read live rather than copied: a tool that asks what they said
       // must see what they said this turn, not what the context held when the agent was built.
       said: () =>
@@ -727,10 +727,10 @@ export class Agent {
     const fromRegistry = [...this.registry.values()].map((t) => {
       const schema = jsonSchemaOf(t.args);
       return {
-        name: t.name,
+        name       : t.name,
         description: t.description,
-        mutating: t.mutating,
-        parameters: describeToolParams(t.args),
+        mutating   : t.mutating,
+        parameters : describeToolParams(t.args),
         ...(schema ? { schema } : {}),
       };
     });
@@ -840,9 +840,9 @@ export class Agent {
         } catch (err) {
           const reason = failureText(err);
           emit({
-            type: 'tool',
-            tool: action.tool,
-            args: action.args,
+            type  : 'tool',
+            tool  : action.tool,
+            args  : action.args,
             result: { ok: false, output: reason },
           });
           observation =
@@ -852,7 +852,7 @@ export class Agent {
             `moving on.`;
         }
         this.append({
-          role: 'observation',
+          role   : 'observation',
           content: observation,
           ...(action.id ? { toolUseId: action.id } : {}),
         });
@@ -864,7 +864,7 @@ export class Agent {
       if (!warned && spent >= this.budget * 0.8) {
         warned = true;
         this.append({
-          role: 'system',
+          role   : 'system',
           content: budgetWarning(Math.max(0, this.budget - spent)),
         });
       }
@@ -916,9 +916,9 @@ export class Agent {
               ? await this.onApiError({
                   message,
                   transient: err instanceof RetryableProviderError,
-                  kind: faultKind(err),
-                  attempt: failures,
-                  waitMs: wait,
+                  kind     : faultKind(err),
+                  attempt  : failures,
+                  waitMs   : wait,
                 })
               : ({ do: 'stop' } as const);
           if (recovery.do !== 'retry' || recovery.times < 1) {

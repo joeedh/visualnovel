@@ -25,7 +25,7 @@ function scriptChannel(inputs: string[]): { channel: Channel; out: string[] } {
 
 async function tempProject(): Promise<{ dir: string; cleanup: () => Promise<void> }> {
   const p = await makeProject({
-    title: 'Test Project',
+    title : 'Test Project',
     script: 'INT. CLASSROOM - DAY\n\n[[scene: arrival]]\n\nAIKO\nHi.\n',
   });
   return { dir: p.dir, cleanup: () => p.cleanup() };
@@ -35,9 +35,9 @@ describe('render helpers', () => {
   it('renders a plan with steps, files, and risks', () => {
     const text = renderPlan({
       summary: 'Approve Aiko',
-      steps: ['set status to approved'],
-      files: ['characters/aiko/character.md'],
-      risks: ['locks the portrait'],
+      steps  : ['set status to approved'],
+      files  : ['characters/aiko/character.md'],
+      risks  : ['locks the portrait'],
     });
     expect(text).toContain('Approve Aiko');
     expect(text).toContain('set status to approved');
@@ -51,9 +51,9 @@ describe('render helpers', () => {
 
   it('summarizes a tool event with its written paths', () => {
     const line = renderEvent({
-      type: 'tool',
-      tool: 'edit_character',
-      args: {},
+      type  : 'tool',
+      tool  : 'edit_character',
+      args  : {},
       result: { ok: true, output: 'done', written: ['characters/aiko/character.md'] },
     });
     expect(line).toContain('edit_character');
@@ -77,8 +77,8 @@ describe('terminalPermission', () => {
     const { channel } = scriptChannel(['y']);
     const decision = await terminalPermission(channel).approvePlan({
       summary: 's',
-      steps: [],
-      files: [],
+      steps  : [],
+      files  : [],
     });
     expect(decision.approved).toBe(true);
   });
@@ -87,8 +87,8 @@ describe('terminalPermission', () => {
     const { channel } = scriptChannel(['n', 'not yet']);
     const decision = await terminalPermission(channel).approvePlan({
       summary: 's',
-      steps: [],
-      files: [],
+      steps  : [],
+      files  : [],
     });
     expect(decision).toEqual({ approved: false, feedback: 'not yet' });
   });

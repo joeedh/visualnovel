@@ -19,8 +19,8 @@ describe('a note no branch marker parses', () => {
     expect(rest).toEqual([]);
     expect(d).toMatchObject({
       severity: 'error',
-      code: 'unparsed_branch_marker',
-      where: 'rooftop',
+      code    : 'unparsed_branch_marker',
+      where   : 'rooftop',
     });
     expect(d?.message).toContain('"Tell the truth" => s13');
     // The typo really does change the story graph, which is the half worth proving.
@@ -32,15 +32,15 @@ describe('a note no branch marker parses', () => {
   it('errors on a next or a line that does not parse', () => {
     expect(diagnose('[[next:]]')[0]).toMatchObject({
       severity: 'error',
-      code: 'unparsed_branch_marker',
+      code    : 'unparsed_branch_marker',
     });
     expect(diagnose('[[goto:]]')[0]).toMatchObject({
       severity: 'error',
-      code: 'unparsed_branch_marker',
+      code    : 'unparsed_branch_marker',
     });
     expect(diagnose('[[line: L 4]]')[0]).toMatchObject({
       severity: 'error',
-      code: 'unparsed_branch_marker',
+      code    : 'unparsed_branch_marker',
     });
   });
 

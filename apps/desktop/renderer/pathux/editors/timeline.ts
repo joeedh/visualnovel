@@ -200,9 +200,9 @@ export class TimelineEditor extends VnEditor {
 
   static override define() {
     return {
-      tagname: 'vn-timeline-editor-x',
+      tagname : 'vn-timeline-editor-x',
       areaname: 'timeline',
-      icon: -1,
+      icon    : -1,
     };
   }
 
@@ -669,7 +669,7 @@ export class TimelineEditor extends VnEditor {
         { label: MENU_SEP, id: MENU_SEP },
         {
           label: 'Delete this shot',
-          id: 'story.deleteShot',
+          id   : 'story.deleteShot',
           props: { scene: this.ui.sceneId, shot: shotId },
         },
       ]);
@@ -886,9 +886,9 @@ export class TimelineEditor extends VnEditor {
 
   private mode() {
     return {
-      editing: this.editing,
+      editing : this.editing,
       dragging: this.drag !== null || this.reorder !== null || this.create !== null,
-      pending: this.busy.pending,
+      pending : this.busy.pending,
     };
   }
 

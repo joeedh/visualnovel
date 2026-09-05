@@ -32,18 +32,18 @@ const STAYS_LAST = 'The last pane is kept';
 export function pickPaneToClose(screen: VnScreen, report: (text: string) => void): void {
   const overlay = document.createElement('div');
   Object.assign(overlay.style, {
-    position: 'fixed',
-    display: 'none',
-    pointerEvents: 'none',
-    zIndex: '9100',
-    boxSizing: 'border-box',
-    borderRadius: '4px',
-    alignItems: 'center',
+    position      : 'fixed',
+    display       : 'none',
+    pointerEvents : 'none',
+    zIndex        : '9100',
+    boxSizing     : 'border-box',
+    borderRadius  : '4px',
+    alignItems    : 'center',
     justifyContent: 'center',
-    font: '600 13px var(--sans)',
-    letterSpacing: '0.04em',
-    textAlign: 'center',
-    padding: '8px',
+    font          : '600 13px var(--sans)',
+    letterSpacing : '0.04em',
+    textAlign     : 'center',
+    padding       : '8px',
   });
   document.body.appendChild(overlay);
 
@@ -125,14 +125,14 @@ function why(panes: ReturnType<typeof panesOf>, at: number): string {
 function draw(overlay: HTMLDivElement, rect: DOMRect, closable: boolean, label: string): void {
   const hue = closable ? 'var(--vermilion)' : 'var(--mist-dim)';
   Object.assign(overlay.style, {
-    display: 'flex',
-    left: `${rect.x}px`,
-    top: `${rect.y}px`,
-    width: `${rect.width}px`,
-    height: `${rect.height}px`,
-    border: `3px solid ${hue}`,
+    display   : 'flex',
+    left      : `${rect.x}px`,
+    top       : `${rect.y}px`,
+    width     : `${rect.width}px`,
+    height    : `${rect.height}px`,
+    border    : `3px solid ${hue}`,
     background: closable ? 'rgba(229, 83, 75, 0.16)' : 'rgba(90, 98, 113, 0.16)',
-    color: closable ? 'var(--paper)' : 'var(--mist)',
+    color     : closable ? 'var(--paper)' : 'var(--mist)',
   });
   overlay.replaceChildren(cross(rect, hue, closable), caption(label, closable));
 }
@@ -147,9 +147,9 @@ function cross(rect: DOMRect, hue: string, closable: boolean): SVGSVGElement {
   svg.setAttribute('viewBox', '0 0 100 100');
   Object.assign(svg.style, {
     position: 'absolute',
-    width: `${span}px`,
-    height: `${span}px`,
-    opacity: closable ? '0.85' : '0',
+    width   : `${span}px`,
+    height  : `${span}px`,
+    opacity : closable ? '0.85' : '0',
   });
   for (const d of ['M14 14 L86 86', 'M86 14 L14 86']) {
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -168,12 +168,12 @@ function caption(label: string, closable: boolean): HTMLDivElement {
   const box = document.createElement('div');
   box.textContent = label;
   Object.assign(box.style, {
-    position: 'relative',
-    maxWidth: '100%',
-    padding: '4px 10px',
+    position    : 'relative',
+    maxWidth    : '100%',
+    padding     : '4px 10px',
     borderRadius: '999px',
-    background: 'rgba(10, 13, 18, 0.82)',
-    color: closable ? 'var(--paper)' : 'var(--mist)',
+    background  : 'rgba(10, 13, 18, 0.82)',
+    color       : closable ? 'var(--paper)' : 'var(--mist)',
   });
   return box;
 }

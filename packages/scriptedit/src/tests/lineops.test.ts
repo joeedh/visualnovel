@@ -116,11 +116,11 @@ describe('setLineText', () => {
 describe('insertLine', () => {
   it('takes the next id from the allocator rather than the position it lands in', () => {
     const op = insertLine(state(), {
-      scene: 'arrival',
-      after: '',
-      kind: 'narration',
+      scene  : 'arrival',
+      after  : '',
+      kind   : 'narration',
       speaker: '',
-      text: 'The bell has already gone.',
+      text   : 'The bell has already gone.',
     });
     const scene = written(op, 'arrival');
     expect(ids(scene)).toEqual(['arrival:L3', 'arrival:L1', 'arrival:L2']);
@@ -129,11 +129,11 @@ describe('insertLine', () => {
 
   it('inserts after a named line', () => {
     const op = insertLine(state(), {
-      scene: 'arrival',
-      after: 'arrival:L1',
-      kind: 'dialogue',
+      scene  : 'arrival',
+      after  : 'arrival:L1',
+      kind   : 'dialogue',
       speaker: 'REN',
-      text: 'Move up.',
+      text   : 'Move up.',
     });
     const scene = written(op, 'arrival');
     expect(ids(scene)).toEqual(['arrival:L1', 'arrival:L3', 'arrival:L2']);
@@ -142,11 +142,11 @@ describe('insertLine', () => {
 
   it('refuses an anchor from another scene rather than silently appending', () => {
     const op = insertLine(state(), {
-      scene: 'arrival',
-      after: 'rooftop:L1',
-      kind: 'narration',
+      scene  : 'arrival',
+      after  : 'rooftop:L1',
+      kind   : 'narration',
       speaker: '',
-      text: 'x',
+      text   : 'x',
     });
     expect(error(op)).toBe('Line "rooftop:L1" is not in scene "arrival".');
   });
@@ -299,13 +299,13 @@ describe('setSpeaker', () => {
   it('makes narration dialogue, and dialogue narration again', () => {
     const spoken = setSpeaker(state(), { line: 'arrival:L1', speaker: 'AIKO' });
     expect(written(spoken, 'arrival').lines[0]).toMatchObject({
-      kind: 'dialogue',
+      kind   : 'dialogue',
       speaker: 'AIKO',
     });
 
     const cleared = setSpeaker(state(), { line: 'arrival:L2', speaker: '' });
     expect(written(cleared, 'arrival').lines[1]).toEqual({
-      id: 'arrival:L2',
+      id  : 'arrival:L2',
       kind: 'narration',
       text: "You're late.",
     });
@@ -325,13 +325,13 @@ describe('newScene', () => {
   it('creates an empty chunk from a heading, wired to nothing', () => {
     const op = newScene(state(), { scene: 'garden', heading: 'EXT. WALLED GARDEN - DAWN' });
     expect(written(op, 'garden')).toMatchObject({
-      id: 'garden',
-      location: 'walled_garden',
+      id             : 'garden',
+      location       : 'walled_garden',
       locationVariant: 'dawn',
-      headingPrefix: 'EXT.',
-      lines: [],
-      nextLineId: 1,
-      choices: [],
+      headingPrefix  : 'EXT.',
+      lines          : [],
+      nextLineId     : 1,
+      choices        : [],
     });
     expect(written(op, 'garden').next).toBeUndefined();
   });
@@ -352,10 +352,10 @@ describe('setHeading', () => {
     const op = setHeading(state(), { scene: 'arrival', heading: 'EXT. WALLED GARDEN - DAWN' });
     const scene = written(op, 'arrival');
     expect(scene).toMatchObject({
-      location: 'walled_garden',
+      location       : 'walled_garden',
       locationVariant: 'dawn',
-      headingPrefix: 'EXT.',
-      next: 'rooftop',
+      headingPrefix  : 'EXT.',
+      next           : 'rooftop',
     });
     expect(ids(scene)).toEqual(['arrival:L1', 'arrival:L2']);
     expect(op).toMatchObject({ retired: [], moved: [], retyped: [] });
@@ -400,8 +400,8 @@ describe('deleteScene', () => {
   it('removes a chunk nothing points at, retiring its line ids', () => {
     const op = deleteScene(state(), { scene: 'attic' });
     expect(op).toMatchObject({
-      ok: true,
-      writes: [],
+      ok     : true,
+      writes : [],
       removes: ['attic'],
       retired: ['attic:L1'],
     });
@@ -433,10 +433,10 @@ describe('splitScene', () => {
     const op = splitScene(state(), { scene: 'rooftop', at: 'rooftop:L2', into: 'aftermath' });
     expect(written(op, 'rooftop')).toMatchObject({ choices: [], next: 'aftermath' });
     expect(written(op, 'aftermath')).toMatchObject({
-      choices: [{ label: 'Stay a while', goto: 'ending' }],
-      location: 'rooftop',
+      choices        : [{ label: 'Stay a while', goto: 'ending' }],
+      location       : 'rooftop',
       locationVariant: 'sunset',
-      headingPrefix: 'EXT.',
+      headingPrefix  : 'EXT.',
     });
   });
 
@@ -464,7 +464,7 @@ describe('mergeScene', () => {
     expect(merged.nextLineId).toBe(5);
     // Renumbered rather than retired, so a shot's coverage can follow the merge
     expect(op).toMatchObject({
-      ok: true,
+      ok     : true,
       removes: ['rooftop'],
       retired: [],
       moved: [

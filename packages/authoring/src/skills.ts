@@ -95,7 +95,7 @@ export async function readSkill(dir: string, id: string): Promise<Skill | null> 
     file,
     body: doc.body.trim(),
     script,
-    raw: data,
+    raw   : data,
     issues: [],
   };
   skill.issues = skillIssues(skill);
@@ -239,7 +239,7 @@ export function newSkillTemplate(name: string): string {
   return stringifyFrontMatter(
     {
       name,
-      description: 'One sentence saying what this playbook is for.',
+      description  : 'One sentence saying what this playbook is for.',
       'when-to-use': 'The situation that should make the agent reach for this skill.',
     },
     `# ${name}
@@ -257,8 +257,7 @@ Keep it about *this* project: general advice the agent already has is noise.
 
 /** What `writeSkill` answers with. */
 export type SkillWriteResult =
-  | { ok: true; id: string; file: string }
-  | { ok: false; reason: string };
+  { ok: true; id: string; file: string } | { ok: false; reason: string };
 
 /**
  * Write `<root>/.aiagent/skills/<id>/SKILL.md`. Refuses an existing directory unless `overwrite`:
@@ -273,7 +272,7 @@ export async function writeSkill(
   // An id names one directory and never a path
   if (!input.id || input.id === '.' || input.id === '..' || basename(input.id) !== input.id) {
     return {
-      ok: false,
+      ok    : false,
       reason: `"${input.id}" is not a skill id: it names a directory, not a path.`,
     };
   }
@@ -281,7 +280,7 @@ export async function writeSkill(
   // which reads whatever it is actually called, so its name is not this function's to judge.
   if (!opts.overwrite && !isSkillId(input.id)) {
     return {
-      ok: false,
+      ok    : false,
       reason: `"${input.id}" is not a skill id: give the skill a name with Latin letters or digits in it.`,
     };
   }
@@ -346,7 +345,7 @@ export async function runSkill(
 
   if (!opts.confirm) {
     return {
-      ok: false,
+      ok       : false,
       ranScript: false,
       output: `Skill "${skill.id}" runs a script (${skill.script}) and needs confirmation, but no confirmation channel is available.`,
     };
@@ -361,8 +360,8 @@ export async function runSkill(
   const { cmd, args } = interpreterFor(skill.script);
   try {
     const { stdout, stderr } = await run(cmd, [...args, opts.workspaceRoot], {
-      cwd: opts.workspaceRoot,
-      timeout: 60_000,
+      cwd      : opts.workspaceRoot,
+      timeout  : 60_000,
       maxBuffer: 8 * 1024 * 1024,
     });
     const output = [stdout, stderr]
@@ -372,9 +371,9 @@ export async function runSkill(
     return { ok: true, ranScript: true, output: output || `Skill "${skill.id}" ran (no output).` };
   } catch (err) {
     return {
-      ok: false,
+      ok       : false,
       ranScript: true,
-      output: `Skill "${skill.id}" failed: ${err instanceof Error ? err.message : String(err)}`,
+      output   : `Skill "${skill.id}" failed: ${err instanceof Error ? err.message : String(err)}`,
     };
   }
 }

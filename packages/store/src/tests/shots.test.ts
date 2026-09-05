@@ -11,13 +11,13 @@ async function tempPaths(): Promise<ProjectPaths> {
 
 function shot(overrides: Partial<Shot> = {}): Shot {
   return {
-    id: 'arrival__establishing',
-    sceneId: 'arrival',
-    framing: 'establishing',
-    location: 'evening',
-    subjects: [],
+    id         : 'arrival__establishing',
+    sceneId    : 'arrival',
+    framing    : 'establishing',
+    location   : 'evening',
+    subjects   : [],
     coversLines: ['arrival:L1', 'arrival:L2'],
-    status: 'pending',
+    status     : 'pending',
     ...overrides,
   };
 }
@@ -30,7 +30,7 @@ describe('shots file', () => {
   it('round-trips the authored half and omits shotData until a run produced something', async () => {
     const paths = await tempPaths();
     const authored = shot({
-      camera: 'slow push in',
+      camera  : 'slow push in',
       subjects: [{ characterId: 'aiko', outfit: 'default' }],
     });
     expect(await writeShots(paths, 'arrival', [authored])).toBe(true);
@@ -54,7 +54,7 @@ describe('shots file', () => {
     const raw = JSON.parse(await readFile(paths.shotsFile('arrival'), 'utf8'));
     expect(raw.shots[0].shotData).toEqual({
       prompt: 'an evening street',
-      image: 'deadbeef',
+      image : 'deadbeef',
       status: 'accepted',
     });
     // The derived fields live only under shotData on disk.
@@ -86,8 +86,8 @@ describe('shots file', () => {
     const paths = await tempPaths();
     const overridden = shot({
       promptOverride: {
-        mode: 'chunks',
-        mute: ['camera'],
+        mode  : 'chunks',
+        mute  : ['camera'],
         append: { subject: { text: 'Seen from behind.', of: 'abc123' } },
       },
     });
@@ -126,8 +126,8 @@ describe('shots file', () => {
         refs: {
           subject: [
             {
-              pin: 'cc33',
-              ext: 'png',
+              pin : 'cc33',
+              ext : 'png',
               from: { kind: 'plate', locationId: 'cafe', variant: 'night' },
             },
           ],

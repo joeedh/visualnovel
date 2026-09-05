@@ -20,14 +20,14 @@ function verdict(result: { ok: true; note: string } | { ok: false; reason: strin
 }
 
 export const docRead = define({
-  id: 'doc.read',
-  title: 'Read a document',
+  id         : 'doc.read',
+  title      : 'Read a document',
   description:
     'The text of one workspace document — a wiki note, a character or location sheet — with the ' +
     'content hash it was read at, which a later save presents back. Bounded and text only.',
   notes:
     'The text of one workspace document, with the content hash it was read at. Bounded and text only.',
-  mutating: false,
+  mutating   : false,
   props: {
     path: prop.string('workspace-relative path to the file'),
   },
@@ -39,8 +39,8 @@ export const docRead = define({
 });
 
 export const docWrite = define({
-  id: 'doc.write',
-  title: 'Save a document',
+  id         : 'doc.write',
+  title      : 'Save a document',
   description:
     'Overwrite one workspace document with the given text. `seenHash` is the hash `doc.read` ' +
     'returned: a file that changed underneath the edit is refused rather than overwritten. ' +
@@ -49,11 +49,11 @@ export const docWrite = define({
     'saves, with the diagnostic beside it.',
   notes:
     'Overwrite a document. A file changed underneath the edit is refused by content. `scenes/**` is refused outright.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    path: prop.string('workspace-relative path to the file'),
-    text: prop.string('the whole new contents of the file', { digest: true }),
+    path    : prop.string('workspace-relative path to the file'),
+    text    : prop.string('the whole new contents of the file', { digest: true }),
     seenHash: prop.string('the hash the text was read at; empty to create a new file', {
       default: '',
     }),
@@ -67,15 +67,15 @@ export const docWrite = define({
     const note = saved.diagnostic ? ` ${saved.diagnostic}` : '';
     return {
       message: `Saved ${saved.path} (${saved.bytes} bytes).${note}`,
-      data: saved,
+      data   : saved,
       written: [saved.path],
     };
   },
 });
 
 export const docRename = define({
-  id: 'doc.rename',
-  title: 'Rename a document',
+  id         : 'doc.rename',
+  title      : 'Rename a document',
   description:
     'Change the name a document is known by, in place. A character or location sheet is renamed ' +
     'through its `name:` field; anything else through its title — front-matter `title:`, else the ' +
@@ -84,8 +84,8 @@ export const docRename = define({
     'cast lists and `[[goto:]]` markers point at.',
   notes:
     "Change the name a document is known by, **in place**. A sheet is renamed through its `name:` field, anything else through its title — front-matter `title:`, else the first heading — so the new name is read back from wherever the old one was. The file does not move: an id is derived from a name once, at creation, and afterwards it is what shots, cast lists and `[[goto:]]` markers point at. What the tree's double-click-to-rename dispatches.",
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
     path: prop.string('workspace-relative path to the file'),
     name: prop.string('the new name'),
@@ -98,22 +98,22 @@ export const docRename = define({
     if (!saved.ok) throw new Error(saved.reason);
     return {
       message: `Renamed ${saved.path}: ${saved.what} is now "${name.trim()}".`,
-      data: saved,
+      data   : saved,
       written: [saved.path],
     };
   },
 });
 
 export const docCreate = define({
-  id: 'doc.create',
-  title: 'Create a document',
+  id         : 'doc.create',
+  title      : 'Create a document',
   description:
     'Scaffold a character sheet, a location sheet, a wiki note or a skill from a name, in its ' +
     'conventional home. Refuses rather than overwriting a document already at that path.',
   notes:
     "Scaffold a sheet, a note or a skill in its conventional home, from the same templates the agent's create tools use. Refuses over an existing path.",
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
     kind: prop.oneOf(NEW_DOC_KINDS, 'what to create'),
     name: prop.string('the name it is known by; the id is derived from it'),
@@ -136,7 +136,7 @@ export const docCreate = define({
     }
     return {
       message: `Created ${made.path}.`,
-      data: made,
+      data   : made,
       written: [made.path],
     };
   },

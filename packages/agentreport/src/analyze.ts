@@ -146,17 +146,17 @@ export function openingMessage(opts: AnalyzeOptions): string {
 /** Put the analyst's own prose through the redactor too — it quotes the transcript back. */
 function scrub(analysis: Analysis, redactor: Redactor): Analysis {
   return {
-    summary: redactor.apply(analysis.summary),
-    whatHappened: redactor.apply(analysis.whatHappened),
-    whatWentWrong: analysis.whatWentWrong.map((line) => redactor.apply(line)),
-    rootCause: redactor.apply(analysis.rootCause),
+    summary        : redactor.apply(analysis.summary),
+    whatHappened   : redactor.apply(analysis.whatHappened),
+    whatWentWrong  : analysis.whatWentWrong.map((line) => redactor.apply(line)),
+    rootCause      : redactor.apply(analysis.rootCause),
     recommendations: analysis.recommendations.map((rec) => ({
       behaviour: redactor.apply(rec.behaviour),
       ...(rec.where === undefined ? {} : { where: redactor.apply(rec.where) }),
       rationale: redactor.apply(rec.rationale),
     })),
-    confidence: analysis.confidence,
-    evidence: analysis.evidence.map((line) => redactor.apply(line)),
+    confidence     : analysis.confidence,
+    evidence       : analysis.evidence.map((line) => redactor.apply(line)),
   };
 }
 
@@ -234,7 +234,7 @@ export interface AnalyzeOptions {
  */
 function unattended(): Permission {
   return {
-    approvePlan: async () => ({ approved: true }),
+    approvePlan  : async () => ({ approved: true }),
     confirmAction: async () => false,
     ask: async (form) =>
       form.map(
@@ -252,9 +252,9 @@ function unattended(): Permission {
  */
 function attended(host: AnalystHost): Permission {
   return {
-    approvePlan: async () => ({ approved: true }),
+    approvePlan  : async () => ({ approved: true }),
     confirmAction: async () => false,
-    ask: (form) => host.ask(form),
+    ask          : (form) => host.ask(form),
   };
 }
 
@@ -278,14 +278,14 @@ async function analyzeDirectly(opts: AnalyzeOptions): Promise<Analysis> {
  */
 function submitTool(sink: { report?: Analysis }, attending: boolean): Tool<Analysis> {
   return {
-    name: 'submit_report',
+    name       : 'submit_report',
     description: attending
       ? 'File your report. Call this once per turn you have concluded in, and again with a ' +
         'whole revised report when a later message changes your conclusion.'
       : 'File your finished report. Call this exactly once, when you have concluded. ' +
         'After it returns, finish your turn.',
-    mutating: false,
-    args: analysisArgs,
+    mutating   : false,
+    args       : analysisArgs,
     async run(args) {
       sink.report = args;
       return { ok: true, output: 'Report received. Finish your turn now; nothing else is needed.' };
@@ -333,7 +333,7 @@ function redactEvent(event: AgentEvent, redactor: Redactor): AgentEvent {
     case 'tool':
       return {
         ...event,
-        args: redactDeep(event.args, redactor),
+        args  : redactDeep(event.args, redactor),
         result: { ...event.result, output: say(event.result.output) },
       };
     case 'blocked':
@@ -348,8 +348,8 @@ function redactEvent(event: AgentEvent, redactor: Redactor): AgentEvent {
         plan: {
           ...event.plan,
           summary: say(event.plan.summary),
-          steps: event.plan.steps.map(say),
-          files: event.plan.files.map(say),
+          steps  : event.plan.steps.map(say),
+          files  : event.plan.files.map(say),
           ...(event.plan.risks ? { risks: event.plan.risks.map(say) } : {}),
         },
       };
@@ -452,9 +452,9 @@ export function createAnalyst(opts: AnalystOptions): Analyst {
     // Every tool here is needed. Deferring them would buy no context back and would hide
     // submit_report behind tool search, which ends the run without a report
     deferTools: false,
-    ctx: opts.source?.ctx ?? opts.ctx,
+    ctx       : opts.source?.ctx ?? opts.ctx,
     permission: opts.host ? attended(opts.host) : unattended(),
-    system: '',
+    system    : '',
     registry,
     maxIterations: opts.maxIterations ?? 24,
     ...(onEvent ? { onEvent: (event) => onEvent(redactEvent(event, opts.redactor)) } : {}),
@@ -464,8 +464,8 @@ export function createAnalyst(opts: AnalystOptions): Analyst {
   let filed: Report | undefined;
 
   const reportOf = (analysis: Analysis): Report => ({
-    analysis: scrub(confidenceOf(analysis, offered.source, read.source), opts.redactor),
-    model: opts.backend.modelId,
+    analysis  : scrub(confidenceOf(analysis, offered.source, read.source), opts.redactor),
+    model     : opts.backend.modelId,
     readSource: read.source,
     ...statementOf(opts),
   });
@@ -533,7 +533,7 @@ export async function analyze(opts: AnalyzeOptions): Promise<Report> {
       analysis: scrub(await analyzeDirectly(opts), opts.redactor),
       model,
       readSource: false,
-      fellBack: `the analyst finished without filing one — it said: ${turn.final}`,
+      fellBack  : `the analyst finished without filing one — it said: ${turn.final}`,
       ...said,
     };
   }

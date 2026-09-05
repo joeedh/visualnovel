@@ -11,11 +11,11 @@ import { allCharacters, allLocationVariants, reachableScenes, usedOutfits } from
 const shot = (id: string, sceneId: string, subjects: Shot['subjects']): Shot => ({
   id,
   sceneId,
-  framing: 'medium',
+  framing : 'medium',
   location: 'day',
   subjects,
   coversLines: [],
-  status: 'pending',
+  status     : 'pending',
 });
 
 describe('reachableScenes', () => {

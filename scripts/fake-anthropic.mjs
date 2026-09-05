@@ -61,18 +61,18 @@ const DEFAULT_ANALYST = [
   JSON.stringify({ thought: 'see what was actually sent', tool: 'list_requests', args: {} }),
   JSON.stringify({
     thought: 'read the shape of the failing one',
-    tool: 'read_request',
-    args: { seq: 1 },
+    tool   : 'read_request',
+    args   : { seq: 1 },
   }),
   JSON.stringify({
     thought: 'file it',
-    tool: 'submit_report',
+    tool   : 'submit_report',
     args: {
       summary: 'The agent sent a tool result block carrying an id the API does not accept there',
       whatHappened:
         'The turn assembled a conversation whose second message opened with a tool result block, ' +
         'and the API rejected it by position before the model saw any of it.',
-      whatWentWrong: ['A block was built with a field that block type does not take'],
+      whatWentWrong  : ['A block was built with a field that block type does not take'],
       rootCause: 'The result of a deferred tool search was written as an ordinary tool result.',
       recommendations: [
         {
@@ -80,8 +80,8 @@ const DEFAULT_ANALYST = [
           rationale: 'The provider will only ever answer with a position, never with a reason',
         },
       ],
-      confidence: 'high',
-      evidence: ['messages.1.content.0 was the block the API named'],
+      confidence     : 'high',
+      evidence       : ['messages.1.content.0 was the block the API named'],
     },
   }),
   JSON.stringify({ final: 'Filed.' }),
@@ -91,16 +91,16 @@ const DEFAULT_ANALYST = [
 function reply(id, text) {
   return JSON.stringify({
     id,
-    type: 'message',
-    role: 'assistant',
-    model: 'claude-fake',
-    content: [{ type: 'text', text }],
+    type       : 'message',
+    role       : 'assistant',
+    model      : 'claude-fake',
+    content    : [{ type: 'text', text }],
     stop_reason: 'end_turn',
     // A cache split, so a walkthrough that reads the receipt sees the shape it expects.
     usage: {
-      input_tokens: 1200,
-      output_tokens: 40,
-      cache_read_input_tokens: 0,
+      input_tokens               : 1200,
+      output_tokens              : 40,
+      cache_read_input_tokens    : 0,
       cache_creation_input_tokens: 0,
     },
   });
@@ -162,7 +162,7 @@ export function startFakeAnthropic(opts = {}) {
         res.writeHead(400, { 'content-type': 'application/json' });
         res.end(
           JSON.stringify({
-            type: 'error',
+            type : 'error',
             error: { type: 'invalid_request_error', message: POSITIONAL_REFUSAL },
           }),
         );
@@ -192,7 +192,7 @@ export function startFakeAnthropic(opts = {}) {
           calls.length = 0;
           analystStep = 0;
         },
-        stop: () => new Promise((done) => server.close(done)),
+        stop : () => new Promise((done) => server.close(done)),
       });
     });
   });
@@ -206,7 +206,7 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '
     return at === -1 ? fallback : Number(argv[at + 1]);
   };
   const fake = await startFakeAnthropic({
-    port: flag('--port', 8788),
+    port     : flag('--port', 8788),
     failAfter: argv.includes('--always-fail') ? 0 : flag('--fail-after', 1),
   });
   process.stdout.write(

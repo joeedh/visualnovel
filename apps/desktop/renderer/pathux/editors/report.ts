@@ -102,9 +102,9 @@ export class ReportEditor extends VnEditor {
 
   static override define() {
     return {
-      tagname: 'vn-report-editor-x',
+      tagname : 'vn-report-editor-x',
       areaname: 'report',
-      icon: -1,
+      icon    : -1,
     };
   }
 
@@ -117,22 +117,22 @@ export class ReportEditor extends VnEditor {
     this.surface.appendChild(this.transcript);
 
     this.stage = new ChatStage({
-      nameplate: 'DEBUG AGENT',
-      placeholder: 'Tell the debug agent what you had wanted the agent to do…',
+      nameplate   : 'DEBUG AGENT',
+      placeholder : 'Tell the debug agent what you had wanted the agent to do…',
       inputTitle:
         'Say what went wrong, or answer what the debug agent asked. Enter sends it. It runs on ' +
         'your own model key, and names from your story are replaced before it sees them.',
-      sendTitle: 'Send what is in the box to the debug agent',
-      stopTitle: 'Stop the debug agent after the step it is on. What it said is kept.',
-      onSend: (text) => void sayToReport(text),
-      onStop: () => void exec('report.stop').then(report),
+      sendTitle   : 'Send what is in the box to the debug agent',
+      stopTitle   : 'Stop the debug agent after the step it is on. What it said is kept.',
+      onSend      : (text) => void sayToReport(text),
+      onStop      : () => void exec('report.stop').then(report),
       // Recorded once with the composer, which outlives every rebuild. The button is hidden
       // between turns, and a hidden node is dropped from the live set, so the anchor comes and
       // goes with the button without anything having to re-record it.
       onStopButton: (button) =>
         redrawing('report', 'composer').record(button, {
-          ok: true,
-          id: 'report.stop',
+          ok   : true,
+          id   : 'report.stop',
           props: {},
         }),
     });
@@ -378,7 +378,7 @@ export class ReportEditor extends VnEditor {
     open.addEventListener('click', () =>
       openReportPreview({
         title: filed.title,
-        body: filed.body,
+        body : filed.body,
         ...(filed.file === undefined ? {} : { file: filed.file }),
       }),
     );

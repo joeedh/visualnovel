@@ -7,12 +7,12 @@ import type { Approvable } from '@vn/authoring';
 const define = defineFor<CommandHost>();
 
 export const pipelineStatus = define({
-  id: 'pipeline.status',
-  title: 'Pipeline status',
+  id         : 'pipeline.status',
+  title      : 'Pipeline status',
   description: 'Task counts, gate-pending characters, and whether the run is gate-blocked.',
-  notes: 'Task counts, gate-pending characters, gate-blocked state.',
-  mutating: false,
-  props: {},
+  notes      : 'Task counts, gate-pending characters, gate-blocked state.',
+  mutating   : false,
+  props      : {},
   async run(_props, ctx) {
     const status = await ctx.host.session.status();
     const blocked = status.blockedOnGate ? ', blocked on the approval gate' : '';
@@ -21,17 +21,17 @@ export const pipelineStatus = define({
 });
 
 export const pipelineRun = define({
-  id: 'pipeline.run',
-  title: 'Run pipeline',
+  id         : 'pipeline.run',
+  title      : 'Run pipeline',
   description:
     'Plan and execute to the next gate. A dry run previews the work without calling a model.',
   notes:
     'Plan and execute to the next gate. Deliberately **not** confirmed: every door to it is already a click on the words "run pipeline", and the `check` note carries the upper bound in image and review calls.',
-  mutating: true,
+  mutating   : true,
   // Deliberately not `confirm`. The header's button, the menu entry and the advanced dialog's OK
   // are each already a deliberate click on the words "run pipeline", so a second card repeating
   // them gets dismissed without being read.
-  props: { mock: prop.boolean('dry run: preview only, no model calls', { default: true }) },
+  props      : { mock: prop.boolean('dry run: preview only, no model calls', { default: true }) },
   async check({ mock }, ctx) {
     // The session runs one long thing at a time, and a second run would plan against a graph the
     // first is still writing. The refusal names what is busy, whether a pipeline run or an agent
@@ -79,20 +79,20 @@ export const pipelineRun = define({
     const how = result.stopped ? ', stopped' : result.blockedOnGate ? ', halted at the gate' : '.';
     return {
       message: `${what}${failed}${how}`,
-      data: result,
+      data   : result,
       ...(mock ? {} : { written: ['vngen/build/', 'vngen/state/tasks.jsonl'] }),
     };
   },
 });
 
 export const pipelineStop = define({
-  id: 'pipeline.stop',
-  title: 'Stop pipeline',
+  id         : 'pipeline.stop',
+  title      : 'Stop pipeline',
   description: 'Stop the run in progress after the task it is on. Finished work is kept.',
   // A stop writes nothing of its own — the run it interrupts records what it managed, and that
   // is already `pipeline.run`'s undo point.
-  mutating: false,
-  props: {},
+  mutating   : false,
+  props      : {},
   check(_props, ctx) {
     const busy = ctx.host.session.busy();
     // An approve-and-generate pass is stopped by the same button, and reaching it is the point of
@@ -189,8 +189,8 @@ export function toApprove(items: readonly Approvable[]): Approvable[] {
 }
 
 export const pipelineApproveAndRun = define({
-  id: 'pipeline.approveAndRun',
-  title: 'Approve and generate everything',
+  id         : 'pipeline.approveAndRun',
+  title      : 'Approve and generate everything',
   description:
     'Approve every picture that is waiting and run the pipeline, over and over, until nothing ' +
     'is left to approve and nothing is left to generate. Each round unlocks the next rung — an ' +
@@ -199,11 +199,11 @@ export const pipelineApproveAndRun = define({
     'pipeline ends it after the task in progress.',
   notes:
     'Approve everything waiting, run, and repeat until nothing is left of either — a whole art pass as one act. Each round unlocks the next rung of the slot graph, so it takes at most `MAX_ROUNDS` (twelve) of them and stops early on convergence, on a round that approved nothing and failed everything, or on `pipeline.stop`. The pass holds the session under its own busy name (`BUSY_PASS`) for all of its rounds and the gaps between them, sharing one `AbortController` with the runs inside it, so `pipeline.stop` ends the pass rather than only the round it interrupted — and the Stop button stays drawn while a round is approving, which is not a run and had nothing to abort before. It approves **one** candidate per slot, and **nothing at all for a slot that already has an answer** — a cleared gate, or another candidate already accepted. Candidates for one slot are alternatives rather than separate pictures: two approved portraits of one character settle her look and then change it, and two accepted sheets for one angle leave the slot unable to say which it holds. A finished project still lists the takes that lost, so without that rule the pass re-decides every settled slot each round, is offered the previous winner the round after, and never converges while the pipeline it runs between rounds has nothing to do. Confirmed because it is the one command that both approves art and spends money without asking again in between.',
-  mutating: true,
+  mutating   : true,
   // The one command that both approves art and spends money without asking again in between.
   // Every step is undoable on its own; the pass as a whole is not.
-  confirm: true,
-  props: {},
+  confirm    : true,
+  props      : {},
   async check(_props, ctx) {
     const busy = ctx.host.session.busy();
     if (busy) return { ok: false, reason: `${busy} is already in progress.` };
@@ -269,9 +269,9 @@ export const pipelineApproveAndRun = define({
         const reason = stopReason(
           {
             approved: approvedNow,
-            ran: result.ran,
-            failed: result.failed,
-            stopped: result.stopped === true,
+            ran     : result.ran,
+            failed  : result.failed,
+            stopped : result.stopped === true,
           },
           round,
         );
@@ -285,7 +285,7 @@ export const pipelineApproveAndRun = define({
     const trouble = failed > 0 ? `, ${failed} failed` : '';
     return {
       message: `${approved} approved, ${ran} task(s) ran over ${rounds} round(s)${trouble} — ${why}.`,
-      data: { approved, ran, failed, rounds, why },
+      data   : { approved, ran, failed, rounds, why },
       written: ['vngen/build/', 'vngen/state/tasks.jsonl', 'vngen/build/manifest.json'],
     };
   },

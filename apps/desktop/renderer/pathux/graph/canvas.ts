@@ -97,23 +97,23 @@ export class GraphCanvas {
 
     this.element = document.createElement('div');
     Object.assign(this.element.style, {
-      position: 'relative',
-      overflow: 'hidden',
-      background: TOKENS.inkSunken,
+      position       : 'relative',
+      overflow       : 'hidden',
+      background     : TOKENS.inkSunken,
       // A faint plotting grid, so panning an empty region still reads as movement.
       backgroundImage: `radial-gradient(circle at 1px 1px, ${TOKENS.inkLineSoft} 1px, transparent 0)`,
-      backgroundSize: '32px 32px',
-      cursor: 'grab',
-      touchAction: 'none',
-      userSelect: 'none',
+      backgroundSize : '32px 32px',
+      cursor         : 'grab',
+      touchAction    : 'none',
+      userSelect     : 'none',
     });
 
     this.wires = document.createElementNS(SVG, 'svg');
     Object.assign(this.wires.style, {
       position: 'absolute',
-      inset: '0',
-      width: '100%',
-      height: '100%',
+      inset   : '0',
+      width   : '100%',
+      height  : '100%',
       overflow: 'visible',
     });
     const markerId = `vn-graph-arrow-${++markerSeq}`;
@@ -140,10 +140,10 @@ export class GraphCanvas {
 
     this.layer = document.createElement('div');
     Object.assign(this.layer.style, {
-      position: 'absolute',
-      inset: '0',
+      position       : 'absolute',
+      inset          : '0',
       transformOrigin: '0 0',
-      pointerEvents: 'none',
+      pointerEvents  : 'none',
     });
     this.element.appendChild(this.layer);
 
@@ -225,10 +225,10 @@ export class GraphCanvas {
       const box = document.createElement('div');
       Object.assign(box.style, {
         position: 'absolute',
-        left: `${node.x}px`,
-        top: `${node.y}px`,
-        width: `${node.width}px`,
-        height: `${node.height}px`,
+        left    : `${node.x}px`,
+        top     : `${node.y}px`,
+        width   : `${node.width}px`,
+        height  : `${node.height}px`,
       });
       box.appendChild(content);
       this.layer.appendChild(box);
@@ -241,19 +241,19 @@ export class GraphCanvas {
         if (!content) continue;
         const box = document.createElement('div');
         Object.assign(box.style, {
-          position: 'absolute',
-          left: `${edge.labelAnchor.x}px`,
-          top: `${edge.labelAnchor.y}px`,
-          transform: 'translate(-50%, -50%)',
-          maxWidth: '220px',
-          padding: '1px 6px',
+          position  : 'absolute',
+          left      : `${edge.labelAnchor.x}px`,
+          top       : `${edge.labelAnchor.y}px`,
+          transform : 'translate(-50%, -50%)',
+          maxWidth  : '220px',
+          padding   : '1px 6px',
           background: alpha(TOKENS.inkSunken, 0.92),
-          color: TOKENS.paper,
+          color     : TOKENS.paper,
           fontFamily: TOKENS.prose,
-          fontStyle: 'italic',
-          fontSize: '13px',
+          fontStyle : 'italic',
+          fontSize  : '13px',
           lineHeight: '1.25',
-          textAlign: 'center',
+          textAlign : 'center',
         });
         box.appendChild(content);
         this.layer.appendChild(box);

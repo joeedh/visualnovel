@@ -87,9 +87,9 @@ export class DocumentsEditor extends VnEditor {
 
   static override define() {
     return {
-      tagname: 'vn-documents-editor-x',
+      tagname : 'vn-documents-editor-x',
       areaname: 'documents',
-      icon: -1,
+      icon    : -1,
     };
   }
 
@@ -181,12 +181,12 @@ export class DocumentsEditor extends VnEditor {
   private selection(): Selection {
     const ui = this.ui;
     return {
-      sceneId: ui.sceneId,
-      shotId: ui.shotId,
+      sceneId    : ui.sceneId,
+      shotId     : ui.shotId,
       characterId: ui.characterId,
-      docPath: ui.docPath,
-      assetHash: ui.assetHash,
-      graphSlug: ui.graphSlug,
+      docPath    : ui.docPath,
+      assetHash  : ui.assetHash,
+      graphSlug  : ui.graphSlug,
     };
   }
 
@@ -384,11 +384,11 @@ export class DocumentsEditor extends VnEditor {
         title: rowTitle(row.node, {
           renamable: renameOf(row.node) !== undefined,
           sheetless: this.sheetless(row.node),
-          expanded: row.expanded,
+          expanded : row.expanded,
         }),
       }),
-      onToggle: (id) => this.toggle(id),
-      onClick: (row) => this.pick(row),
+      onToggle     : (id) => this.toggle(id),
+      onClick      : (row) => this.pick(row),
       // A location mined from a heading has no sheet, so its second click writes one rather than
       // renaming — the only place in the tree where a second click authors a file. A shot's second
       // click opens the frame it was drawn as, and a shot with no frame yet does nothing, which is
@@ -399,7 +399,7 @@ export class DocumentsEditor extends VnEditor {
         else if (this.sheetless(row.node)) void this.writeSheet(row.node.label);
         else if (row.node.kind === 'shot' && row.node.hash) this.openAsset(row.node.hash);
       },
-      onMenu: (row, x, y) => this.openMenu(row, x, y),
+      onMenu       : (row, x, y) => this.openMenu(row, x, y),
       // Records every row, including the headings that publish nothing, so a tour pointing at one
       // still has somewhere to draw its ring.
       onRow: (row, line) =>

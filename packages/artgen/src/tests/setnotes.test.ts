@@ -16,21 +16,21 @@ async function depsOf(p: TestProject) {
 /** One dressed character, plus a storyboard for the scene carrying a shot rung. */
 async function fixture(): Promise<TestProject> {
   const p = await makeProject({
-    script: SCRIPTS.branching,
+    script    : SCRIPTS.branching,
     characters: [
       { id: 'aiko', outfits: { uniform: 'navy blazer', gala: 'a long green dress' } },
       { id: 'haruki' },
     ],
   });
   const shot: Shot = {
-    id: 's1',
-    sceneId: 'rooftop',
-    framing: 'medium',
-    location: 'rooftop/evening',
-    subjects: [{ characterId: 'aiko' }],
-    camera: 'slow push in',
+    id         : 's1',
+    sceneId    : 'rooftop',
+    framing    : 'medium',
+    location   : 'rooftop/evening',
+    subjects   : [{ characterId: 'aiko' }],
+    camera     : 'slow push in',
     coversLines: [],
-    status: 'pending',
+    status     : 'pending',
   };
   await writeShots(p.paths, 'rooftop', [shot]);
   return p;
@@ -42,12 +42,12 @@ describe('artNotesOf', () => {
     try {
       const deps = await depsOf(p);
       expect(await artNotesOf(deps, { target: 'scene:rooftop', notes: 'x' })).toMatchObject({
-        code: 'BAD_TARGET',
+        code  : 'BAD_TARGET',
         reason: expect.stringContaining('names no art-notes rung'),
       });
       expect(await artNotesOf(deps, { target: 'character:aiko/tuxedo', notes: 'x' })).toMatchObject(
         {
-          code: 'NO_SUCH_RUNG',
+          code  : 'NO_SUCH_RUNG',
           reason: 'No such art-notes rung: character:aiko/tuxedo.',
         },
       );
@@ -136,8 +136,8 @@ describe('setArtNotes', () => {
       expect(plan.file).toBe(p.paths.shotsFile('rooftop'));
       const loaded = await readShots(p.paths, 'rooftop');
       expect(loaded?.shots[0]).toMatchObject({
-        id: 's1',
-        camera: 'slow push in',
+        id      : 's1',
+        camera  : 'slow push in',
         artNotes: 'wider',
       });
     } finally {
@@ -183,7 +183,7 @@ describe('the seed half', () => {
       const bad = async (seed: number) => await artSeedOf(deps, { target: 'character:aiko', seed });
       expect(await bad(-1)).toMatchObject({ code: 'BAD_SEED' });
       expect(await bad(1.5)).toMatchObject({
-        code: 'BAD_SEED',
+        code  : 'BAD_SEED',
         reason: '"1.5" is not a seed; expected a whole number of 0 or more.',
       });
       // 0 is a seed like any other; only `null` clears one.
@@ -203,7 +203,7 @@ describe('the seed half', () => {
         code: 'BAD_TARGET',
       });
       expect(await artSeedOf(deps, { target: 'character:aiko/tuxedo', seed: 1 })).toMatchObject({
-        code: 'NO_SUCH_RUNG',
+        code  : 'NO_SUCH_RUNG',
         reason: 'No such art-notes rung: character:aiko/tuxedo.',
       });
     } finally {
@@ -231,7 +231,7 @@ describe('the seed half', () => {
       // The seed is one field beside the authored half of the shot, and that half has to survive.
       expect((await readShots(p.paths, 'rooftop'))?.shots[0]).toMatchObject({
         camera: 'slow push in',
-        seed: 9,
+        seed  : 9,
       });
       await setArtSeed(deps, { target: 'shot:rooftop/s1', seed: null });
       expect((await readShots(p.paths, 'rooftop'))?.shots[0]?.seed).toBeUndefined();

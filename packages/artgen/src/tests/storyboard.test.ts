@@ -8,41 +8,41 @@ import type { ProjectModel, Scene } from '@vn/types';
 import { realizeDecomposition } from '../storyboard.js';
 
 const SCENE: Scene = {
-  id: 'epilogue',
-  location: 'classroom',
+  id        : 'epilogue',
+  location  : 'classroom',
   characters: [],
-  lines: [{ id: 'epilogue:L1', kind: 'narration', text: 'Morning light.' }],
-  choices: [],
-  shots: [],
+  lines     : [{ id: 'epilogue:L1', kind: 'narration', text: 'Morning light.' }],
+  choices   : [],
+  shots     : [],
 };
 
 const MODEL: ProjectModel = {
-  title: 'T',
-  characters: new Map(),
+  title      : 'T',
+  characters : new Map(),
   locations: new Map([
     [
       'classroom',
       {
-        id: 'classroom',
-        name: 'Classroom 2-B',
+        id         : 'classroom',
+        name       : 'Classroom 2-B',
         description: 'A classroom',
-        palette: [],
-        variants: [{ id: 'day', description: 'daylight' }],
-        mined: false,
+        palette    : [],
+        variants   : [{ id: 'day', description: 'daylight' }],
+        mined      : false,
       },
     ],
   ]),
-  scenes: new Map([['epilogue', SCENE]]),
-  reachable: new Set(['epilogue']),
-  entry: 'epilogue',
+  scenes     : new Map([['epilogue', SCENE]]),
+  reachable  : new Set(['epilogue']),
+  entry      : 'epilogue',
   diagnostics: [],
 };
 
 const shot = (id: string) => ({
   id,
-  framing: 'medium' as const,
-  location: 'day',
-  subjects: [],
+  framing    : 'medium' as const,
+  location   : 'day',
+  subjects   : [],
   coversLines: ['epilogue:L1'],
 });
 

@@ -34,12 +34,12 @@ export function shotCast(data: SceneCoverage | null, selected: string | null): S
   const shot = data.shots.find((s) => s.id === selected);
   if (!shot) return null;
   return {
-    scene: data.sceneId,
-    shot: shot.id,
-    framed: [...shot.subjects],
-    spare: data.characters.filter((id) => !shot.subjects.includes(id)),
+    scene   : data.sceneId,
+    shot    : shot.id,
+    framed  : [...shot.subjects],
+    spare   : data.characters.filter((id) => !shot.subjects.includes(id)),
     required: shot.castOptional !== true,
-    variant: shot.location,
+    variant : shot.location,
     variants: [...data.variants],
   };
 }
@@ -60,7 +60,7 @@ export function subjectsInvocation(
   subjects: readonly string[],
 ): { id: string; props: Record<string, string> } {
   return {
-    id: 'story.setSubjects',
+    id   : 'story.setSubjects',
     props: { scene: cast.scene, shot: cast.shot, subjects: subjects.join(',') },
   };
 }
@@ -71,7 +71,7 @@ export function requireCastInvocation(
   required: boolean,
 ): { id: string; props: Record<string, string | boolean> } {
   return {
-    id: 'story.requireCast',
+    id   : 'story.requireCast',
     props: { scene: cast.scene, shot: cast.shot, required },
   };
 }
@@ -82,7 +82,7 @@ export function variantInvocation(
   variant: string,
 ): { id: string; props: Record<string, string> } {
   return {
-    id: 'story.setVariant',
+    id   : 'story.setVariant',
     props: { scene: cast.scene, shot: cast.shot, variant },
   };
 }

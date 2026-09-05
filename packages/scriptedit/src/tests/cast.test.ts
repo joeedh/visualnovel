@@ -6,30 +6,30 @@ const CAST = ['aiko', 'ben', 'cho'];
 
 const shots = (subjects: ShotSubject[], castOptional?: boolean): Shot[] => [
   {
-    id: 'club__beat1',
-    sceneId: 'club',
-    framing: 'medium',
+    id      : 'club__beat1',
+    sceneId : 'club',
+    framing : 'medium',
     location: 'day',
     subjects,
     ...(castOptional ? { castOptional: true } : {}),
     coversLines: ['club:L1'],
-    status: 'generated',
+    status     : 'generated',
   },
   {
-    id: 'club__beat2',
-    sceneId: 'club',
-    framing: 'close',
-    location: 'day',
-    subjects: [{ characterId: 'ben' }],
+    id         : 'club__beat2',
+    sceneId    : 'club',
+    framing    : 'close',
+    location   : 'day',
+    subjects   : [{ characterId: 'ben' }],
     coversLines: ['club:L2'],
-    status: 'generated',
+    status     : 'generated',
   },
 ];
 
 describe('setShotSubjects', () => {
   it('sets the list, in the order given, and leaves the other shots alone', () => {
     const op = setShotSubjects(shots([{ characterId: 'aiko' }]), scene, CAST, {
-      shot: 'club__beat1',
+      shot    : 'club__beat1',
       subjects: ['cho', 'aiko'],
     });
     if (!op.ok) throw new Error(op.error);
@@ -40,7 +40,7 @@ describe('setShotSubjects', () => {
 
   it('keeps the outfit override of a character that stays', () => {
     const op = setShotSubjects(shots([{ characterId: 'aiko', outfit: 'gala' }]), scene, CAST, {
-      shot: 'club__beat1',
+      shot    : 'club__beat1',
       subjects: ['aiko', 'ben'],
     });
     if (!op.ok) throw new Error(op.error);
@@ -52,7 +52,7 @@ describe('setShotSubjects', () => {
 
   it('drops the override of a character that leaves, and says so', () => {
     const op = setShotSubjects(shots([{ characterId: 'aiko', outfit: 'gala' }]), scene, CAST, {
-      shot: 'club__beat1',
+      shot    : 'club__beat1',
       subjects: ['ben'],
     });
     if (!op.ok) throw new Error(op.error);
@@ -62,7 +62,7 @@ describe('setShotSubjects', () => {
 
   it('empties the list into a background plate', () => {
     const op = setShotSubjects(shots([{ characterId: 'aiko' }]), scene, CAST, {
-      shot: 'club__beat1',
+      shot    : 'club__beat1',
       subjects: [],
     });
     if (!op.ok) throw new Error(op.error);
@@ -72,7 +72,7 @@ describe('setShotSubjects', () => {
 
   it('collapses a repeated character rather than framing them twice', () => {
     const op = setShotSubjects(shots([]), scene, CAST, {
-      shot: 'club__beat1',
+      shot    : 'club__beat1',
       subjects: ['aiko', 'aiko'],
     });
     if (!op.ok) throw new Error(op.error);
@@ -81,7 +81,7 @@ describe('setShotSubjects', () => {
 
   it('refuses a character no sheet describes, and names the ones there are', () => {
     const op = setShotSubjects(shots([]), scene, CAST, {
-      shot: 'club__beat1',
+      shot    : 'club__beat1',
       subjects: ['dan'],
     });
     expect(op).toMatchObject({ ok: false });
@@ -92,7 +92,7 @@ describe('setShotSubjects', () => {
 
   it('refuses the list it already holds as a no-op', () => {
     const op = setShotSubjects(shots([{ characterId: 'aiko' }]), scene, CAST, {
-      shot: 'club__beat1',
+      shot    : 'club__beat1',
       subjects: ['aiko'],
     });
     expect(op).toMatchObject({ ok: false, noop: true });
@@ -107,7 +107,7 @@ describe('setShotSubjects', () => {
 describe('requireShotCast', () => {
   it('lets the cast out of frame without taking it off the shot', () => {
     const op = requireShotCast(shots([{ characterId: 'aiko' }]), scene, {
-      shot: 'club__beat1',
+      shot    : 'club__beat1',
       required: false,
     });
     if (!op.ok) throw new Error(op.error);
@@ -118,7 +118,7 @@ describe('requireShotCast', () => {
 
   it('requires it again by clearing the flag rather than storing a false', () => {
     const op = requireShotCast(shots([{ characterId: 'aiko' }], true), scene, {
-      shot: 'club__beat1',
+      shot    : 'club__beat1',
       required: true,
     });
     if (!op.ok) throw new Error(op.error);
@@ -134,7 +134,7 @@ describe('requireShotCast', () => {
 
   it('refuses the state it already holds as a no-op', () => {
     const op = requireShotCast(shots([{ characterId: 'aiko' }]), scene, {
-      shot: 'club__beat1',
+      shot    : 'club__beat1',
       required: true,
     });
     expect(op).toMatchObject({ ok: false, noop: true });

@@ -8,9 +8,9 @@ import type { Approvable } from '@vn/authoring';
 
 const round = (over: Partial<Parameters<typeof stopReason>[0]> = {}) => ({
   approved: 1,
-  ran: 1,
-  failed: 0,
-  stopped: false,
+  ran     : 1,
+  failed  : 0,
+  stopped : false,
   ...over,
 });
 
@@ -54,11 +54,11 @@ describe('stopReason', () => {
 });
 
 const item = (over: Partial<Approvable> = {}): Approvable => ({
-  hash: 'h1',
-  kind: 'shot',
+  hash : 'h1',
+  kind : 'shot',
   label: 'a picture',
-  slot: 'shot:greet/s1',
-  door: 'accept',
+  slot : 'shot:greet/s1',
+  door : 'accept',
   ...over,
 });
 
@@ -73,24 +73,24 @@ describe('toApprove', () => {
   it('takes one portrait per character, and the first one offered', () => {
     const rows = [
       item({
-        hash: 'p1',
-        kind: 'portrait',
-        door: 'gate',
-        slot: 'portrait:aiko',
+        hash       : 'p1',
+        kind       : 'portrait',
+        door       : 'gate',
+        slot       : 'portrait:aiko',
         characterId: 'aiko',
       }),
       item({
-        hash: 'p2',
-        kind: 'portrait',
-        door: 'gate',
-        slot: 'portrait:aiko',
+        hash       : 'p2',
+        kind       : 'portrait',
+        door       : 'gate',
+        slot       : 'portrait:aiko',
         characterId: 'aiko',
       }),
       item({
-        hash: 'p3',
-        kind: 'portrait',
-        door: 'gate',
-        slot: 'portrait:haruki',
+        hash       : 'p3',
+        kind       : 'portrait',
+        door       : 'gate',
+        slot       : 'portrait:haruki',
         characterId: 'haruki',
       }),
     ];
@@ -120,12 +120,12 @@ describe('toApprove', () => {
     const rows = [
       item({ hash: 'a', settled: true }),
       item({
-        hash: 'p1',
-        kind: 'portrait',
-        door: 'gate',
-        slot: 'portrait:aiko',
+        hash       : 'p1',
+        kind       : 'portrait',
+        door       : 'gate',
+        slot       : 'portrait:aiko',
         characterId: 'aiko',
-        settled: true,
+        settled    : true,
       }),
     ];
     expect(toApprove(rows)).toEqual([]);

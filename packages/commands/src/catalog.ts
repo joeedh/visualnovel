@@ -79,19 +79,19 @@ export interface DocCommandEntry {
 
 export function toDocIndex(registry: CommandRegistry<any>): DocCommandEntry[] {
   return registry.list().map<DocCommandEntry>((command) => ({
-    id: command.id,
+    id       : command.id,
     namespace: command.id.split('.')[0]!,
-    title: command.title,
-    mutating: command.mutating,
-    confirm: command.confirm ?? false,
-    undoable: command.undoable ?? false,
+    title    : command.title,
+    mutating : command.mutating,
+    confirm  : command.confirm ?? false,
+    undoable : command.undoable ?? false,
     checkable: Boolean(command.check),
     ...(command.notes ? { notes: command.notes } : {}),
     props: Object.entries(command.props).map(([name, spec]) => ({
       name,
-      kind: spec.kind,
+      kind       : spec.kind,
       description: spec.description,
-      required: spec.required,
+      required   : spec.required,
       ...(spec.default !== undefined ? { default: spec.default } : {}),
       ...(spec.values ? { values: [...spec.values] } : {}),
       ...(spec.digest ? { digest: true } : {}),
@@ -169,26 +169,26 @@ export function toCatalog(
     }
 
     return {
-      id: command.id,
-      title: command.title,
+      id         : command.id,
+      title      : command.title,
       description: command.description,
-      mutating: command.mutating,
-      confirm: command.confirm ?? false,
-      undoable: command.undoable ?? false,
-      checkable: Boolean(command.check),
+      mutating   : command.mutating,
+      confirm    : command.confirm ?? false,
+      undoable   : command.undoable ?? false,
+      checkable  : Boolean(command.check),
       props: entries.map(([name, spec]) => ({
         name,
-        kind: spec.kind,
+        kind       : spec.kind,
         description: spec.description,
-        required: spec.required,
+        required   : spec.required,
         ...(spec.default !== undefined ? { default: spec.default } : {}),
         ...(spec.values ? { values: [...spec.values] } : {}),
         ...(spec.digest ? { digest: true } : {}),
         ...(spec.multiline ? { multiline: true } : {}),
         ...(spec.hint ? { hint: spec.hint } : {}),
       })),
-      usage: formatCommand(command.id, template),
-      schema: { type: 'object', properties, required, additionalProperties: false },
+      usage      : formatCommand(command.id, template),
+      schema     : { type: 'object', properties, required, additionalProperties: false },
     };
   });
 

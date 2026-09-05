@@ -27,7 +27,7 @@ async function wouldUpload(
   if (named.length === 0) return { ok: false, reason: 'Name at least one file to upload.' };
   if (busy) return { ok: false, reason: `${busy} is still running; wait for it to finish.` };
   return {
-    ok: true,
+    ok  : true,
     note:
       `Copies ${named.length} file(s) into archive/, saves the open conversation and starts ` +
       'a new one in plan mode.',
@@ -66,34 +66,34 @@ async function upload(
 }
 
 export const uploadFiles = define({
-  id: 'upload.files',
-  title: 'Upload documents',
+  id         : 'upload.files',
+  title      : 'Upload documents',
   description:
     "Copy the author's own documents into archive/ unchanged, then open a fresh conversation " +
     'in plan mode asking what to do with them. The archive is outside every directory the agent ' +
     'sweeps, so nothing here turns up in `search` or the story bible — it is read by name only.',
   notes:
     "Copy the author's own documents into `archive/` verbatim, then open a fresh conversation in plan mode asking what to do with them. The archive is outside every directory the agent sweeps, so nothing here reaches `search` or the bible — it is read by name.",
-  mutating: true,
+  mutating   : true,
   // Confirmed because it copies bytes into the repo from paths the author named, which is the same
   // bar `asset.upload` meets.
-  confirm: true,
-  props: { paths: prop.stringList('the files to upload (absolute paths)') },
-  check: ({ paths }, ctx) => wouldUpload(paths, ctx.host.session.busy()),
-  run: ({ paths }, ctx) => upload(paths, ctx),
+  confirm    : true,
+  props      : { paths: prop.stringList('the files to upload (absolute paths)') },
+  check      : ({ paths }, ctx) => wouldUpload(paths, ctx.host.session.busy()),
+  run        : ({ paths }, ctx) => upload(paths, ctx),
 });
 
 export const uploadPick = define({
-  id: 'upload.pick',
-  title: 'Upload documents…',
+  id         : 'upload.pick',
+  title      : 'Upload documents…',
   description:
     'Choose documents in a file dialog, then upload them — `upload.files` with the picker in ' +
     'front. Cancelling changes nothing.',
   notes:
     '`upload.files` with the native multi-select file chooser in front. Cancelling changes nothing, and the dialog is not a permission: what the command refuses is refused after it too.',
-  mutating: true,
-  confirm: true,
-  props: {},
+  mutating   : true,
+  confirm    : true,
+  props      : {},
   async check(_props, ctx) {
     const busy = ctx.host.session.busy();
     return busy

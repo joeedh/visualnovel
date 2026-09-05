@@ -12,15 +12,15 @@ export function flashRect(rect: { x: number; y: number; width: number; height: n
   if (rect.width <= 0 || rect.height <= 0) return;
   const overlay = document.createElement('div');
   Object.assign(overlay.style, {
-    position: 'fixed',
-    left: `${rect.x}px`,
-    top: `${rect.y}px`,
-    width: `${rect.width}px`,
-    height: `${rect.height}px`,
+    position     : 'fixed',
+    left         : `${rect.x}px`,
+    top          : `${rect.y}px`,
+    width        : `${rect.width}px`,
+    height       : `${rect.height}px`,
     pointerEvents: 'none',
-    zIndex: '9000',
-    borderRadius: '4px',
-    boxSizing: 'border-box',
+    zIndex       : '9000',
+    borderRadius : '4px',
+    boxSizing    : 'border-box',
   });
   document.body.appendChild(overlay);
 

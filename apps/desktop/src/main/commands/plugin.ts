@@ -26,33 +26,33 @@ const define = defineFor<CommandHost>();
 const NAME = 'the plugin, by the name its manifest carries';
 
 export const pluginList = define({
-  id: 'plugin.list',
-  title: 'List the generation plugins',
+  id         : 'plugin.list',
+  title      : 'List the generation plugins',
   description:
     'Every plugin installed for this user, with what each one declares. A directory that does ' +
     'not read as a plugin carries the reason instead, so a half-installed one is visible.',
-  mutating: false,
-  props: {},
+  mutating   : false,
+  props      : {},
   async run() {
     const plugins = await readInstalledPlugins();
     const broken = plugins.filter((entry) => entry.reason !== undefined).length;
     const said = broken === 0 ? '' : `, ${broken} of them unreadable`;
     return {
       message: `${plugins.length} plugin${plugins.length === 1 ? '' : 's'}${said}.`,
-      data: { plugins },
+      data   : { plugins },
     };
   },
 });
 
 export const pluginInstall = define({
-  id: 'plugin.install',
-  title: 'Install a generation plugin…',
+  id         : 'plugin.install',
+  title      : 'Install a generation plugin…',
   description:
     "Copy a plugin directory into this user's plugins folder and activate it, after confirming " +
     "the services and key names it declares. An installed plugin runs with this application's " +
     'own permissions. Installing over a plugin of the same name replaces it.',
-  mutating: true,
-  undoable: false,
+  mutating   : true,
+  undoable   : false,
   props: {
     source: prop.string('the plugin directory to install from, or empty to choose one'),
   },
@@ -86,20 +86,20 @@ export const pluginInstall = define({
 
     return {
       message: `Installed ${active.manifest.name} ${active.manifest.version}.`,
-      data: { name: active.manifest.name, dir: installed.dir },
+      data   : { name: active.manifest.name, dir: installed.dir },
     };
   },
 });
 
 export const pluginPrices = define({
-  id: 'plugin.prices',
-  title: 'Refresh what a plugin’s models charge…',
+  id         : 'plugin.prices',
+  title      : 'Refresh what a plugin’s models charge…',
   description:
     'Ask a plugin to look up what its vendor charges and fold the answer into your own price ' +
     'table. It calls a model on your own key, so nothing is looked up until you ask. The ' +
     'models it does not mention keep the prices they already had.',
-  mutating: true,
-  undoable: false,
+  mutating   : true,
+  undoable   : false,
   props: {
     name: prop.string(NAME),
   },
@@ -126,20 +126,20 @@ export const pluginPrices = define({
     const count = done.models.length;
     return {
       message: `Priced ${count} model${count === 1 ? '' : 's'} as of ${done.pricesAsOf}.`,
-      data: { name, models: done.models, pricesAsOf: done.pricesAsOf },
+      data   : { name, models: done.models, pricesAsOf: done.pricesAsOf },
     };
   },
 });
 
 export const pluginRemove = define({
-  id: 'plugin.remove',
-  title: 'Remove a generation plugin',
+  id         : 'plugin.remove',
+  title      : 'Remove a generation plugin',
   description:
     'Delete an installed plugin and its cached bundle. The node types it declared stay in the ' +
     'registry until the app restarts, and a graph holding one of them then reports the node ' +
     'type as unknown rather than substituting anything.',
-  mutating: true,
-  undoable: false,
+  mutating   : true,
+  undoable   : false,
   props: {
     name: prop.string(NAME),
   },

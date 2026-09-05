@@ -71,11 +71,11 @@ const refuse = (error: string): LineOp => ({ ok: false, error });
 const done = (message: string, change: Partial<Omit<Applied, 'ok' | 'message'>> = {}): LineOp => ({
   ok: true,
   message,
-  writes: [],
-  removes: [],
-  retired: [],
-  moved: [],
-  retyped: [],
+  writes   : [],
+  removes  : [],
+  retired  : [],
+  moved    : [],
+  retyped  : [],
   relocated: [],
   ...change,
 });
@@ -164,7 +164,7 @@ export function setLineText(state: ScriptState, args: { line: string; text: stri
   const before = scene.lines[index] as SceneLine;
   const lines = scene.lines.map((l, i) => (i === index ? { ...l, text } : l));
   return done(`${args.line} retyped.`, {
-    writes: [withLines(scene, lines, nextIdOf(scene))],
+    writes : [withLines(scene, lines, nextIdOf(scene))],
     retyped: before.text === text ? [] : [args.line],
   });
 }
@@ -198,7 +198,7 @@ export function insertLine(
 
   const next = nextIdOf(scene);
   const line: SceneLine = {
-    id: `${scene.id}:L${next}`,
+    id  : `${scene.id}:L${next}`,
     kind: args.kind,
     ...(speaker ? { speaker } : {}),
     text,
@@ -261,7 +261,7 @@ export function deleteLine(state: ScriptState, args: { line: string }): LineOp {
   const { scene, index } = found;
   const lines = scene.lines.filter((_, i) => i !== index);
   return done(`Deleted ${args.line}; ${lines.length} line(s) left in ${scene.id}.`, {
-    writes: [withLines(scene, lines, nextIdOf(scene))],
+    writes : [withLines(scene, lines, nextIdOf(scene))],
     retired: [args.line],
   });
 }
@@ -319,7 +319,7 @@ export function moveLine(state: ScriptState, args: { line: string; after: string
   const lines = [...rest.slice(0, at), scene.lines[index] as SceneLine, ...rest.slice(at)];
   const where = args.after ? `after ${args.after}` : 'to the top';
   return done(`Moved ${args.line} ${where} in ${scene.id}.`, {
-    writes: [withLines(scene, lines, nextIdOf(scene))],
+    writes : [withLines(scene, lines, nextIdOf(scene))],
     retyped: [args.line],
   });
 }
@@ -362,7 +362,7 @@ export function setSpeaker(state: ScriptState, args: { line: string; speaker: st
   return done(
     speaker ? `${args.line} is spoken by ${speaker}.` : `${args.line} is now narration.`,
     {
-      writes: [withLines(scene, lines, nextIdOf(scene))],
+      writes : [withLines(scene, lines, nextIdOf(scene))],
       retyped: [args.line],
     },
   );
@@ -391,14 +391,14 @@ export function newScene(state: ScriptState, args: { scene: string; heading: str
   const prefix = headingPrefixOf(heading);
   const scene: Scene = {
     id,
-    location: mined.id,
+    location       : mined.id,
     locationVariant: mined.variant,
     ...(prefix ? { headingPrefix: prefix } : {}),
     characters: [],
-    lines: [],
+    lines     : [],
     nextLineId: 1,
-    choices: [],
-    shots: [],
+    choices   : [],
+    shots     : [],
   };
   return done(`Created ${id} (${mined.id}/${mined.variant}); nothing points at it yet.`, {
     writes: [scene],
@@ -513,23 +513,23 @@ export function splitScene(
     .slice(position)
     .map((l, i) => [l.id, (tailLines[i] as SceneLine).id]);
   const tail: Scene = {
-    id: into,
+    id      : into,
     location: scene.location,
     ...(scene.locationVariant !== undefined ? { locationVariant: scene.locationVariant } : {}),
     ...(scene.headingPrefix !== undefined ? { headingPrefix: scene.headingPrefix } : {}),
     characters: [],
-    lines: tailLines,
+    lines     : tailLines,
     nextLineId: next,
-    choices: scene.choices.map((c) => ({ ...c })),
+    choices   : scene.choices.map((c) => ({ ...c })),
     ...(scene.next !== undefined ? { next: scene.next } : {}),
     shots: [],
   };
   const head: Scene = {
     ...scene,
-    lines: scene.lines.slice(0, position),
+    lines     : scene.lines.slice(0, position),
     nextLineId: next,
-    choices: [],
-    next: into,
+    choices   : [],
+    next      : into,
   };
   return done(
     `Split ${scene.id} at ${args.at}: ${tail.lines.length} line(s) moved into ${into}, which ` +
@@ -579,13 +579,13 @@ export function mergeScene(state: ScriptState, args: { scene: string; into: stri
   ]);
   const merged: Scene = {
     ...unwired(into),
-    lines: [...into.lines, ...absorbed],
+    lines     : [...into.lines, ...absorbed],
     nextLineId: next,
-    choices: scene.choices.map((c) => ({ ...c })),
+    choices   : scene.choices.map((c) => ({ ...c })),
     ...(scene.next !== undefined ? { next: scene.next } : {}),
   };
   return done(`Merged ${scene.id} into ${into.id}: ${absorbed.length} line(s) appended.`, {
-    writes: [merged],
+    writes : [merged],
     removes: [scene.id],
     moved,
   });

@@ -9,8 +9,8 @@ import {
 import type { StoryGraph } from '../../../../src/shared/ipc';
 
 const graph = (ids: string[]): StoryGraph => ({
-  scenes: ids.map((id) => ({ id, location: id, characters: [], lines: 0, reachable: true })),
-  edges: [],
+  scenes     : ids.map((id) => ({ id, location: id, characters: [], lines: 0, reachable: true })),
+  edges      : [],
   diagnostics: [],
 });
 
@@ -28,7 +28,7 @@ describe('freeSceneId', () => {
 describe('proposeScene', () => {
   it('prefills both props off the graph, and works with no graph yet', () => {
     expect(proposeScene(graph(['scene_1']))).toEqual({
-      scene: 'scene_2',
+      scene  : 'scene_2',
       heading: 'INT. SOMEWHERE - DAY',
     });
     expect(proposeScene(null).scene).toBe('scene_1');

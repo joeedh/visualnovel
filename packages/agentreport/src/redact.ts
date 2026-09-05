@@ -83,9 +83,9 @@ function longEnough(alias: string): boolean {
 
 const SERIES: Record<NamedEntity['kind'], { label: string; numeric: boolean }> = {
   character: { label: 'Character', numeric: false },
-  location: { label: 'Location', numeric: false },
-  item: { label: 'Item', numeric: false },
-  scene: { label: 'Scene', numeric: true },
+  location : { label: 'Location', numeric: false },
+  item     : { label: 'Item', numeric: false },
+  scene    : { label: 'Scene', numeric: true },
 };
 
 /** `0 → A`, `25 → Z`, `26 → AA`. Bijective base 26, so no index is spelled two ways. */
@@ -202,8 +202,8 @@ export function buildRedactor(sources: RedactionSources): Redactor {
   if (sources.projectRoot) {
     paths.push({
       pattern: pathPattern(sources.projectRoot),
-      with: PROJECT,
-      source: sources.projectRoot,
+      with   : PROJECT,
+      source : sources.projectRoot,
     });
   }
   if (sources.homeDir) {

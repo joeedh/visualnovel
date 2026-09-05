@@ -85,7 +85,7 @@ describe('uploadReference', () => {
     try {
       const { store } = await p.reload();
       const decided = uploadOf(store, {
-        file: 'notes.png',
+        file : 'notes.png',
         bytes: new TextEncoder().encode('# just some notes'),
       });
       expect(decided.ok).toBe(false);

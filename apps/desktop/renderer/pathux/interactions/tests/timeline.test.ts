@@ -21,13 +21,13 @@ const LINES: CoverageLine[] = [
 
 const shot = (id: string, coversLines: string[]): CoverageShot => ({
   id,
-  framing: 'medium',
+  framing : 'medium',
   subjects: [],
   location: 'day',
-  outfits: {},
+  outfits : {},
   coversLines,
   status: 'accepted',
-  drift: 'current',
+  drift : 'current',
 });
 
 const SHOTS: CoverageShot[] = [
@@ -37,14 +37,14 @@ const SHOTS: CoverageShot[] = [
 ];
 
 const data: SceneCoverage = {
-  sceneId: 's',
-  location: 'roof',
-  heading: 'EXT. ROOF - NIGHT',
-  lines: LINES,
-  shots: SHOTS,
-  cast: [],
+  sceneId   : 's',
+  location  : 'roof',
+  heading   : 'EXT. ROOF - NIGHT',
+  lines     : LINES,
+  shots     : SHOTS,
+  cast      : [],
   characters: [],
-  variants: ['day'],
+  variants  : ['day'],
   decomposed: true,
 };
 

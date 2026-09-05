@@ -107,9 +107,9 @@ export class ConvoEditor extends VnEditor {
 
   static override define() {
     return {
-      tagname: 'vn-convo-editor-x',
+      tagname : 'vn-convo-editor-x',
       areaname: 'convo',
-      icon: -1,
+      icon    : -1,
     };
   }
 
@@ -127,17 +127,17 @@ export class ConvoEditor extends VnEditor {
     this.surface.appendChild(this.transcript);
 
     this.stage = new ChatStage({
-      nameplate: 'VNAUTHOR',
-      placeholder: 'Reply to vnauthor, or ask for a change…',
+      nameplate   : 'VNAUTHOR',
+      placeholder : 'Reply to vnauthor, or ask for a change…',
       inputTitle:
         'Say what you want changed. Enter sends it; the agent answers with a plan. Start the ' +
         'line with / to name one of this project’s skills.',
-      sendTitle: 'Send what is in the box to the agent',
+      sendTitle   : 'Send what is in the box to the agent',
       // Through the registry like everything else, so interrupting from here and interrupting
       // from the palette are one act with one record. A turn that ended in the meantime is
       // refused in the command's own words
-      stopTitle: 'Stop the agent after the step it is on. What it already did is kept.',
-      onSend: (text) => void ask(text),
+      stopTitle   : 'Stop the agent after the step it is on. What it already did is kept.',
+      onSend      : (text) => void ask(text),
       onStop: () => {
         const offer = stopTurnAction(convo().busy);
         if (offer.ok) void exec(offer.id, offer.props).then(report);
@@ -145,8 +145,8 @@ export class ConvoEditor extends VnEditor {
       // Recorded once with the composer, which outlives every rebuild. The button is hidden between
       // turns, and a hidden node is dropped from the live set, so the anchor comes and goes with it.
       onStopButton: (button) => redrawing('convo', 'composer').record(button, stopTurnAction(true)),
-      onPalette: () => openPalette(),
-      skills: () => this.skills,
+      onPalette   : () => openPalette(),
+      skills      : () => this.skills,
     });
     this.surface.appendChild(this.stage.root);
     this.appendSurface(this.surface);
@@ -175,12 +175,12 @@ export class ConvoEditor extends VnEditor {
   /** The vnauthor side of a question card: the store in `agent.ts`, and this pane's redraw. */
   private askHost(): AskHost {
     return {
-      head: 'VNAUTHOR ASKS',
+      head   : 'VNAUTHOR ASKS',
       formFor: (request) => askFormFor(request),
       formNow: () => askFormNow(),
       setForm: (next: AskForm, redraw = true) => setAskForm(next, redraw),
-      send: (answers) => answer(answers),
-      redraw: () => this.rebuild(),
+      send   : (answers) => answer(answers),
+      redraw : () => this.rebuild(),
     };
   }
 

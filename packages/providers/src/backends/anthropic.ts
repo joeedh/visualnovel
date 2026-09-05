@@ -19,8 +19,8 @@ const MAX_TOKENS = 10_000;
 const MAX_TOKENS_THINKING = 16_000;
 
 const MIME: Record<string, string> = {
-  png: 'image/png',
-  jpg: 'image/jpeg',
+  png : 'image/png',
+  jpg : 'image/jpeg',
   jpeg: 'image/jpeg',
   webp: 'image/webp',
 };
@@ -85,9 +85,9 @@ export function createAnthropicChat(
     // so `output_config` is left off when thinking is disabled
     if (choice === 'none') return { max_tokens: MAX_TOKENS, thinking: { type: 'disabled' } };
     return {
-      max_tokens: MAX_TOKENS_THINKING,
+      max_tokens   : MAX_TOKENS_THINKING,
       output_config: { effort: choice },
-      thinking: { type: 'adaptive' },
+      thinking     : { type: 'adaptive' },
     };
   };
   let clientPromise: Promise<any> | undefined;
@@ -106,18 +106,18 @@ export function createAnthropicChat(
     const content: any[] = [];
     for (const img of req.images ?? []) {
       content.push({
-        type: 'image',
+        type  : 'image',
         source: {
-          type: 'base64',
+          type      : 'base64',
           media_type: MIME[img.ext.toLowerCase()] ?? 'image/png',
-          data: Buffer.from(img.bytes).toString('base64'),
+          data      : Buffer.from(img.bytes).toString('base64'),
         },
       });
     }
     content.push({ type: 'text', text: req.prompt });
     const body = {
-      model: modelId,
-      system: req.system,
+      model   : modelId,
+      system  : req.system,
       messages: [{ role: 'user', content }],
       ...tuning(),
     };
@@ -143,31 +143,31 @@ export function createAnthropicChat(
     // Every call reports `cache_read_input_tokens` and `cache_creation_input_tokens` as billing
     // facts, so a zero read here is a real zero rather than a backend with no accounting
     cacheReporting: 'billed',
-    cacheTtlMs: CACHE_TTL_MS,
+    cacheTtlMs    : CACHE_TTL_MS,
     // The text path drops the usage `messageWithUsage` returns, so there is one request builder
     // and one retry policy rather than two that drift
-    message: async (req: ChatRequest) => (await messageWithUsage(req)).text,
+    message       : async (req: ChatRequest) => (await messageWithUsage(req)).text,
     messageWithUsage,
     async chatWithTools(req: ChatRequest, tools: ToolSchema[]): Promise<ChatToolReply> {
       const anthropic = await client();
       const content: any[] = [];
       for (const img of req.images ?? []) {
         content.push({
-          type: 'image',
+          type  : 'image',
           source: {
-            type: 'base64',
+            type      : 'base64',
             media_type: MIME[img.ext.toLowerCase()] ?? 'image/png',
-            data: Buffer.from(img.bytes).toString('base64'),
+            data      : Buffer.from(img.bytes).toString('base64'),
           },
         });
       }
       content.push({ type: 'text', text: req.prompt });
       const body = {
-        model: modelId,
-        system: req.system,
+        model   : modelId,
+        system  : req.system,
         tools: tools.map((t) => ({
-          name: t.name,
-          description: t.description,
+          name        : t.name,
+          description : t.description,
           input_schema: t.parameters,
         })),
         messages: [{ role: 'user', content }],

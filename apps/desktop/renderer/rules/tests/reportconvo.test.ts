@@ -51,8 +51,8 @@ describe('one row at a time', () => {
       {
         after: 2,
         title: 'edit_scene dropped a line',
-        body: '# edit_scene dropped a line',
-        file: 'C:/reports/one.md',
+        body : '# edit_scene dropped a line',
+        file : 'C:/reports/one.md',
       },
     ]);
   });
@@ -86,9 +86,9 @@ describe('rebuilding from what main holds', () => {
   it('keeps the setup card, the thread list and the note, which main knows nothing about', () => {
     const base: ReportConvo = {
       ...emptyReport(),
-      note: 'The model API refused this turn.',
+      note   : 'The model API refused this turn.',
       threads: [{ id: 't1', title: 'a bad turn', startedAt: '2026-08-21T10:00:00.000Z' }],
-      setup: { thread: 't1', model: 'opus', effort: 'high', source: true, detail: true },
+      setup  : { thread: 't1', model: 'opus', effort: 'high', source: true, detail: true },
     };
     const next = fromState(base, state([], { thread: { id: 't1', title: 'a bad turn' } }));
     expect(next.note).toBe(base.note);
@@ -127,38 +127,38 @@ describe('a grant box', () => {
   it('offers an access while the command still accepts it', () => {
     const accept = { state: 'accept' as const, message: 'The debug agent gets the source.' };
     expect(grantBox(false, accept, OFFER)).toEqual({
-      checked: false,
+      checked : false,
       disabled: false,
-      tooltip: 'The debug agent gets the source.',
+      tooltip : 'The debug agent gets the source.',
     });
   });
 
   it('reads the offer until a verdict lands', () => {
     expect(grantBox(false, undefined, OFFER)).toEqual({
-      checked: false,
+      checked : false,
       disabled: false,
-      tooltip: OFFER,
+      tooltip : OFFER,
     });
   });
 
   it('sticks on a grant already made, and says the command refused to repeat it', () => {
     const refuse = {
-      state: 'refuse' as const,
+      state  : 'refuse' as const,
       message: 'The debug agent has already been shown the source.',
     };
     expect(grantBox(true, refuse, OFFER)).toEqual({
-      checked: true,
+      checked : true,
       disabled: true,
-      tooltip: 'The debug agent has already been shown the source.',
+      tooltip : 'The debug agent has already been shown the source.',
     });
   });
 
   it('greys an access there is nothing to hand over, unticked, with the reason', () => {
     const refuse = { state: 'refuse' as const, message: 'Nothing was sent to the model API.' };
     expect(grantBox(false, refuse, OFFER)).toEqual({
-      checked: false,
+      checked : false,
       disabled: true,
-      tooltip: 'Nothing was sent to the model API.',
+      tooltip : 'Nothing was sent to the model API.',
     });
   });
 

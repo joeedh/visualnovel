@@ -20,9 +20,9 @@ import {
 } from '../index.js';
 
 const config = projectConfig.parse({
-  title: 'Test',
+  title    : 'Test',
   art_style: 'watercolor',
-  models: { vision: ['gemini', 'claude'] },
+  models   : { vision: ['gemini', 'claude'] },
 });
 
 describe('prompts', () => {
@@ -42,13 +42,13 @@ describe('art notes', () => {
     const c = character('aiko', 'approved', 'h1');
     const l = location('cafe');
     const s: Shot = {
-      id: 's1__a',
-      sceneId: 's1',
-      framing: 'medium',
-      location: 'day',
-      subjects: [{ characterId: 'aiko' }],
+      id         : 's1__a',
+      sceneId    : 's1',
+      framing    : 'medium',
+      location   : 'day',
+      subjects   : [{ characterId: 'aiko' }],
       coversLines: [],
-      status: 'pending',
+      status     : 'pending',
     };
     const sc = scene('s1', ['aiko'], 'cafe');
     expect(buildPortraitPrompt(c, config)).toBe(
@@ -104,14 +104,14 @@ describe('art notes', () => {
     c.artNotes = 'ink-wash linework';
     const sc = scene('s1', ['aiko'], 'cafe');
     const s: Shot = {
-      id: 's1__a',
-      sceneId: 's1',
-      framing: 'medium',
-      location: 'day',
-      subjects: [{ characterId: 'aiko' }],
+      id         : 's1__a',
+      sceneId    : 's1',
+      framing    : 'medium',
+      location   : 'day',
+      subjects   : [{ characterId: 'aiko' }],
       coversLines: [],
-      status: 'pending',
-      artNotes: 'low angle, long lens',
+      status     : 'pending',
+      artNotes   : 'low angle, long lens',
     };
     const prompt = buildShotPrompt(s, sc, model([c], [sc], [location('cafe')]), config);
     expect(prompt).toContain('Art direction: low angle, long lens');
@@ -121,13 +121,13 @@ describe('art notes', () => {
 
 describe('buildShotPrompt — the outfit it says', () => {
   const shotOf = (subjects: Shot['subjects']): Shot => ({
-    id: 's1__a',
-    sceneId: 's1',
-    framing: 'medium',
+    id      : 's1__a',
+    sceneId : 's1',
+    framing : 'medium',
     location: 'day',
     subjects,
     coversLines: [],
-    status: 'pending',
+    status     : 'pending',
   });
   const build = (subjects: Shot['subjects'], sceneOutfits?: Record<string, string>): string => {
     const c = character('aiko', 'approved', 'h1');
@@ -172,13 +172,13 @@ describe('shotSpec', () => {
   it('describes the shot, not the scene, and quotes only its own lines', () => {
     const spec = shotSpec(
       {
-        id: 's1__b1',
-        sceneId: 's1',
-        framing: 'medium',
-        location: 'day',
-        subjects: [{ characterId: 'aiko', outfit: 'default' }],
+        id         : 's1__b1',
+        sceneId    : 's1',
+        framing    : 'medium',
+        location   : 'day',
+        subjects   : [{ characterId: 'aiko', outfit: 'default' }],
         coversLines: ['s1:L2'],
-        status: 'pending',
+        status     : 'pending',
       },
       s,
     );
@@ -192,13 +192,13 @@ describe('shotSpec', () => {
   it('tells the reviewer a cast-less shot is a plate, so an absent character is not a defect', () => {
     const spec = shotSpec(
       {
-        id: 's1__est',
-        sceneId: 's1',
-        framing: 'establishing',
-        location: 'day',
-        subjects: [],
+        id         : 's1__est',
+        sceneId    : 's1',
+        framing    : 'establishing',
+        location   : 'day',
+        subjects   : [],
         coversLines: ['s1:L1'],
-        status: 'pending',
+        status     : 'pending',
       },
       s,
     );
@@ -212,14 +212,14 @@ describe('shotSpec', () => {
   it('names a relaxed shot’s cast to the generator and demands it of nobody', () => {
     const spec = shotSpec(
       {
-        id: 's1__b1',
-        sceneId: 's1',
-        framing: 'medium',
-        location: 'day',
-        subjects: [{ characterId: 'aiko' }],
+        id          : 's1__b1',
+        sceneId     : 's1',
+        framing     : 'medium',
+        location    : 'day',
+        subjects    : [{ characterId: 'aiko' }],
         castOptional: true,
-        coversLines: ['s1:L2'],
-        status: 'pending',
+        coversLines : ['s1:L2'],
+        status      : 'pending',
       },
       s,
     );
@@ -234,9 +234,9 @@ describe('refinePrompt', () => {
   it('appends corrections and does not accumulate across refines', () => {
     const once = refinePrompt('a shot', [
       {
-        severity: 'blocking',
-        category: 'outfit',
-        description: 'wrong',
+        severity    : 'blocking',
+        category    : 'outfit',
+        description : 'wrong',
         suggestedFix: 'use blazer',
       },
     ]);
@@ -252,9 +252,9 @@ describe('refinePrompt', () => {
     const base = 'a shot of the classroom';
     expect(basePromptOf(base)).toBe(base);
     const defect = (fix: string): Defect => ({
-      severity: 'blocking',
-      category: 'outfit',
-      description: 'wrong',
+      severity    : 'blocking',
+      category    : 'outfit',
+      description : 'wrong',
       suggestedFix: fix,
     });
     const once = refinePrompt(base, [defect('use blazer')]);
@@ -346,7 +346,7 @@ describe('decomposeScene (LLM path)', () => {
 
   const SHOT = (id: string, coversLines: string[]) => ({
     id,
-    framing: 'medium',
+    framing : 'medium',
     location: 'day',
     subjects: [{ characterId: 'aiko', outfit: 'default' }],
     coversLines,
@@ -358,7 +358,7 @@ describe('decomposeScene (LLM path)', () => {
     let seen = '';
     const inner = providers.text;
     providers.text = {
-      complete: (p, s) => inner.complete(p, s),
+      complete  : (p, s) => inner.complete(p, s),
       structured: (prompt, parse, system) => {
         seen = `${prompt}\n---\n${system}`;
         return inner.structured(prompt, parse, system);
@@ -663,7 +663,7 @@ describe('planTasks (unavailable base assets)', () => {
       graph,
       config,
       providers: createMockProviders(),
-      base: { state: 'unavailable', root: '/p/assets', count: 0 },
+      base     : { state: 'unavailable', root: '/p/assets', count: 0 },
     });
     expect(graph.all()).toEqual([]);
   });

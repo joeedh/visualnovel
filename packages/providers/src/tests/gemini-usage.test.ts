@@ -26,9 +26,9 @@ const ask = (usageMetadata: unknown) =>
 describe('what a Gemini call reports it cost', () => {
   it('counts thinking as output, because that is how it is billed', async () => {
     const reply = await ask({
-      promptTokenCount: 4886,
+      promptTokenCount    : 4886,
       candidatesTokenCount: 2,
-      thoughtsTokenCount: 31,
+      thoughtsTokenCount  : 31,
     });
     expect(reply.usage).toEqual({ input: 4886, output: 33 });
   });
@@ -40,16 +40,16 @@ describe('what a Gemini call reports it cost', () => {
   describe('the cache split', () => {
     it('carves a matched prefix out of the input rather than adding it beside', async () => {
       const reply = await ask({
-        promptTokenCount: 3452,
-        candidatesTokenCount: 2,
+        promptTokenCount       : 3452,
+        candidatesTokenCount   : 2,
         cachedContentTokenCount: 3045,
       });
       // `input` is unchanged because `promptTokenCount` already includes the cached tokens, and
       // `cacheRead` reports how much of that total was already cached.
       expect(reply.usage).toEqual({
-        input: 3452,
-        output: 2,
-        cacheRead: 3045,
+        input         : 3452,
+        output        : 2,
+        cacheRead     : 3045,
         cacheEstimated: true,
       });
     });

@@ -57,13 +57,13 @@ await build({
       "  from './apps/desktop/src/shared/apikeys.js';",
     ].join('\n'),
     resolveDir: root,
-    loader: 'ts',
+    loader    : 'ts',
   },
-  outfile: TMP,
-  bundle: true,
+  outfile : TMP,
+  bundle  : true,
   platform: 'node',
-  format: 'cjs',
-  target: 'node20',
+  format  : 'cjs',
+  target  : 'node20',
   alias,
   external: EXTERNAL,
   logLevel: 'warning',
@@ -87,8 +87,8 @@ async function ask(url) {
   try {
     const response = await fetch(url, {
       redirect: 'follow',
-      headers: HEADERS,
-      signal: abort.signal,
+      headers : HEADERS,
+      signal  : abort.signal,
     });
     return { status: response.status, finalUrl: response.url };
   } catch (err) {

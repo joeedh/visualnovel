@@ -43,8 +43,7 @@ export type SceneOutfitOp =
 
 /** A shot-override change: the scene's shots as they would be written. */
 export type ShotOutfitOp =
-  | { ok: true; shots: Shot[]; message: string }
-  | { ok: false; error: string; noop?: boolean };
+  { ok: true; shots: Shot[]; message: string } | { ok: false; error: string; noop?: boolean };
 
 const refuse = (error: string, noop?: true): { ok: false; error: string; noop?: boolean } =>
   noop ? { ok: false, error, noop } : { ok: false, error };

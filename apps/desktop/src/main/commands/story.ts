@@ -101,7 +101,7 @@ async function edit(
   if (!result.ok) throw new Error(result.message);
   return {
     message: result.message,
-    data: result.graph,
+    data   : result.graph,
     written: [...result.written, ...result.removed],
   };
 }
@@ -136,36 +136,36 @@ const spliceOp =
   };
 
 export const storyGraph = define({
-  id: 'story.graph',
-  title: 'Story graph',
+  id         : 'story.graph',
+  title      : 'Story graph',
   description: 'Scenes, branch edges and reachability — what the branch editor draws.',
-  notes: 'Scenes + branch edges for the editor; reachability marked.',
-  mutating: false,
-  props: {},
+  notes      : 'Scenes + branch edges for the editor; reachability marked.',
+  mutating   : false,
+  props      : {},
   async run(_props, ctx) {
     const graph = await ctx.host.session.storyGraph();
     const dead = graph.scenes.filter((s) => !s.reachable).length;
     return {
       message: `${graph.scenes.length} scene(s), ${graph.edges.length} edge(s), ${dead} unreachable.`,
-      data: graph,
+      data   : graph,
     };
   },
 });
 
 export const storySetChoice = define({
-  id: 'story.setChoice',
-  title: 'Set a choice',
+  id         : 'story.setChoice',
+  title      : 'Set a choice',
   description: 'Add a branch choice to a scene, or replace the one at an index.',
-  notes: '`-1` appends. Rewrites one `[[choice:]]` marker.',
-  mutating: true,
-  undoable: true,
+  notes      : '`-1` appends. Rewrites one `[[choice:]]` marker.',
+  mutating   : true,
+  undoable   : true,
   props: {
     scene: prop.string('the scene the choice is offered in'),
-    goto: prop.string('the scene it leads to'),
+    goto : prop.string('the scene it leads to'),
     label: prop.string('the decision text shown to the player'),
     index: prop.number('which choice to replace; omit to append a new one', {
       default: OPTIONAL_INDEX,
-      min: OPTIONAL_INDEX,
+      min    : OPTIONAL_INDEX,
     }),
   },
   check({ scene, goto, label, index }, ctx) {
@@ -177,12 +177,12 @@ export const storySetChoice = define({
 });
 
 export const storyRemoveChoice = define({
-  id: 'story.removeChoice',
-  title: 'Remove a choice',
+  id         : 'story.removeChoice',
+  title      : 'Remove a choice',
   description: "Delete one of a scene's branch choices by index.",
-  notes: 'Deletes the marker line; the prose is untouched.',
-  mutating: true,
-  undoable: true,
+  notes      : 'Deletes the marker line; the prose is untouched.',
+  mutating   : true,
+  undoable   : true,
   props: {
     scene: prop.string('the scene to edit'),
     index: prop.number('which choice to remove', { min: 0 }),
@@ -196,15 +196,15 @@ export const storyRemoveChoice = define({
 });
 
 export const storySetNext = define({
-  id: 'story.setNext',
-  title: 'Set the next scene',
+  id         : 'story.setNext',
+  title      : 'Set the next scene',
   description: "Set a scene's linear continuation, or clear it by passing an empty goto.",
-  notes: 'Empty `goto` clears the `[[next:]]` marker.',
-  mutating: true,
-  undoable: true,
+  notes      : 'Empty `goto` clears the `[[next:]]` marker.',
+  mutating   : true,
+  undoable   : true,
   props: {
     scene: prop.string('the scene to edit'),
-    goto: prop.string('the scene to continue to; empty clears the continuation', { default: '' }),
+    goto : prop.string('the scene to continue to; empty clears the continuation', { default: '' }),
   },
   check({ scene, goto }, ctx) {
     return preview(ctx, (scenes) => setNext(scenes, { scene, goto }));
@@ -215,18 +215,18 @@ export const storySetNext = define({
 });
 
 export const storySpliceScene = define({
-  id: 'story.spliceScene',
-  title: 'Splice a scene into an edge',
+  id         : 'story.spliceScene',
+  title      : 'Splice a scene into an edge',
   description: 'Rewire A→B into A→C→B in one patch. Refuses when C already forks.',
-  notes: '`A→B` becomes `A→scene→B`, as one two-scene patch.',
-  mutating: true,
-  undoable: true,
+  notes      : '`A→B` becomes `A→scene→B`, as one two-scene patch.',
+  mutating   : true,
+  undoable   : true,
   props: {
     scene: prop.string('the scene to splice in (C)'),
-    from: prop.string('the scene the edge leaves (A)'),
+    from : prop.string('the scene the edge leaves (A)'),
     edge: prop.number('which choice on `from`; omit for its next edge', {
       default: OPTIONAL_INDEX,
-      min: OPTIONAL_INDEX,
+      min    : OPTIONAL_INDEX,
     }),
   },
   check({ scene, from, edge }, ctx) {
@@ -250,14 +250,14 @@ const LINE_KINDS = [
 ] as const;
 
 export const storySetLineText = define({
-  id: 'story.setLineText',
-  title: 'Retype a line',
+  id         : 'story.setLineText',
+  title      : 'Retype a line',
   description:
     "Replace one line's text. The line id survives, so every shot covering it still does — but a " +
     'shot prompt never reads prose, so rendered art of this line drifts and will not re-render.',
-  notes: 'Retype one line. Says how many rendered shots now illustrate the old prose.',
-  mutating: true,
-  undoable: true,
+  notes      : 'Retype one line. Says how many rendered shots now illustrate the old prose.',
+  mutating   : true,
+  undoable   : true,
   props: {
     line: prop.string('the line id, e.g. arrival:L3'),
     text: prop.string('what the line should say'),
@@ -271,19 +271,19 @@ export const storySetLineText = define({
 });
 
 export const storyInsertLine = define({
-  id: 'story.insertLine',
-  title: 'Insert a line',
+  id         : 'story.insertLine',
+  title      : 'Insert a line',
   description:
     'Add a line after another, or at the top of the scene when `after` is omitted. The new line ' +
     "takes the scene's next allocated id, so no other line's coverage moves.",
-  notes: 'Empty `after` means the top of the scene; the id is allocated, not positional.',
-  mutating: true,
-  undoable: true,
+  notes      : 'Empty `after` means the top of the scene; the id is allocated, not positional.',
+  mutating   : true,
+  undoable   : true,
   props: {
-    scene: prop.string('the scene to insert into'),
-    text: prop.string('what the line says'),
-    after: prop.string('the line id to insert after; empty inserts at the top', { default: '' }),
-    kind: prop.oneOf(LINE_KINDS, 'what sort of line it is', { default: 'dialogue' }),
+    scene  : prop.string('the scene to insert into'),
+    text   : prop.string('what the line says'),
+    after  : prop.string('the line id to insert after; empty inserts at the top', { default: '' }),
+    kind   : prop.oneOf(LINE_KINDS, 'what sort of line it is', { default: 'dialogue' }),
     speaker: prop.string(
       'who says it; required for dialogue and parenthetical, refused otherwise',
       {
@@ -300,15 +300,15 @@ export const storyInsertLine = define({
 });
 
 export const storyDeleteLine = define({
-  id: 'story.deleteLine',
-  title: 'Delete a line',
+  id         : 'story.deleteLine',
+  title      : 'Delete a line',
   description:
     'Remove a line. Its id is retired and never reused, so a shot that covered it covers one ' +
     'line fewer — possibly none, which the timeline shows rather than treating as an error.',
   notes: "A shot left covering nothing is **kept** — deleting paid-for art is the author's call.",
-  mutating: true,
-  undoable: true,
-  props: { line: prop.string('the line id to remove') },
+  mutating   : true,
+  undoable   : true,
+  props      : { line: prop.string('the line id to remove') },
   check({ line }, ctx) {
     return previewEdit(ctx, (state) => deleteLine(state, { line }));
   },
@@ -318,16 +318,16 @@ export const storyDeleteLine = define({
 });
 
 export const storyMoveLine = define({
-  id: 'story.moveLine',
-  title: 'Move a line',
+  id         : 'story.moveLine',
+  title      : 'Move a line',
   description:
     'Reorder a line within its scene. Ids do not change, so nothing detaches — but a shot was ' +
     'made to depict its covered lines in order, so art covering the moved line drifts.',
-  notes: 'Reorder within the scene. What `script.moveLine` commits.',
-  mutating: true,
-  undoable: true,
+  notes      : 'Reorder within the scene. What `script.moveLine` commits.',
+  mutating   : true,
+  undoable   : true,
   props: {
-    line: prop.string('the line id to move'),
+    line : prop.string('the line id to move'),
     after: prop.string('the line id to sit after; empty moves it to the top', { default: '' }),
   },
   check({ line, after }, ctx) {
@@ -339,16 +339,16 @@ export const storyMoveLine = define({
 });
 
 export const storySetSpeaker = define({
-  id: 'story.setSpeaker',
-  title: 'Set who speaks a line',
+  id         : 'story.setSpeaker',
+  title      : 'Set who speaks a line',
   description:
     'Change who speaks a line, or clear the speaker to make it narration. Attribution is the ' +
     'line kind, so this is also what turns narration into dialogue and back.',
-  notes: 'Empty `speaker` makes the line narration.',
-  mutating: true,
-  undoable: true,
+  notes      : 'Empty `speaker` makes the line narration.',
+  mutating   : true,
+  undoable   : true,
   props: {
-    line: prop.string('the line id to re-attribute'),
+    line   : prop.string('the line id to re-attribute'),
     speaker: prop.string('the character cue; empty makes the line narration', { default: '' }),
   },
   check({ line, speaker }, ctx) {
@@ -360,16 +360,16 @@ export const storySetSpeaker = define({
 });
 
 export const storyNewScene = define({
-  id: 'story.newScene',
-  title: 'New scene',
+  id         : 'story.newScene',
+  title      : 'New scene',
   description:
     'Create an empty scenes/<id>.md from a heading. Deliberately unwired: a new scene is ' +
     'unreachable until story.setNext or story.setChoice points at it.',
-  notes: 'A `scenes/<id>.md` with a heading and no lines; nothing points at it yet.',
-  mutating: true,
-  undoable: true,
+  notes      : 'A `scenes/<id>.md` with a heading and no lines; nothing points at it yet.',
+  mutating   : true,
+  undoable   : true,
   props: {
-    scene: prop.string('the scene id, which is also its filename'),
+    scene  : prop.string('the scene id, which is also its filename'),
     heading: prop.string('the Fountain heading, e.g. INT. CLASSROOM - EVENING'),
   },
   check({ scene, heading }, ctx) {
@@ -381,18 +381,18 @@ export const storyNewScene = define({
 });
 
 export const storySetHeading = define({
-  id: 'story.setHeading',
-  title: 'Set a scene’s heading',
+  id         : 'story.setHeading',
+  title      : 'Set a scene’s heading',
   description:
     'Move a scene somewhere else by rewriting its Fountain heading. No line id changes, but the ' +
     'location is in every shot’s task inputs, so the scene’s rendered art is drawn again — the ' +
     'check says how much, and the prose it leaves behind is the agent’s to rewrite.',
   notes:
     "Move a scene somewhere else. No line id changes, but a location is in every shot's task inputs, so the check says how many rendered shots will be drawn again — and the prose it leaves behind is the agent's to rewrite. Deliberately not `confirm`: the check **is** the warning.",
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    scene: prop.string('the scene to move'),
+    scene  : prop.string('the scene to move'),
     heading: prop.string('the new Fountain heading, e.g. EXT. ROOFTOP - NIGHT'),
   },
   check({ scene, heading }, ctx) {
@@ -404,15 +404,15 @@ export const storySetHeading = define({
 });
 
 export const storyDeleteScene = define({
-  id: 'story.deleteScene',
-  title: 'Delete a scene',
+  id         : 'story.deleteScene',
+  title      : 'Delete a scene',
   description:
     'Remove a scene chunk, refusing while any choice, next edge or start: still points at it — ' +
     'the same failure a dangling goto would be, caught before it exists.',
-  notes: 'Refuses while anything still points at it, naming what.',
-  mutating: true,
-  undoable: true,
-  props: { scene: prop.string('the scene to remove') },
+  notes      : 'Refuses while anything still points at it, naming what.',
+  mutating   : true,
+  undoable   : true,
+  props      : { scene: prop.string('the scene to remove') },
   check({ scene }, ctx) {
     return previewEdit(ctx, (state) => deleteScene(state, { scene }));
   },
@@ -422,19 +422,19 @@ export const storyDeleteScene = define({
 });
 
 export const storySplitScene = define({
-  id: 'story.splitScene',
-  title: 'Split a scene',
+  id         : 'story.splitScene',
+  title      : 'Split a scene',
   description:
     'Cut a scene in two at a line: that line and everything below move into a new chunk the ' +
     'original continues to, and the branch out of the scene goes with the tail. Lines keep ' +
     'their local ids, so coverage can follow them.',
-  notes: '`at` starts the second half; shots follow their lines, keeping their ids.',
-  mutating: true,
-  undoable: true,
+  notes      : '`at` starts the second half; shots follow their lines, keeping their ids.',
+  mutating   : true,
+  undoable   : true,
   props: {
     scene: prop.string('the scene to split'),
-    at: prop.string('the line id that starts the second half'),
-    into: prop.string('the id for the new second half'),
+    at   : prop.string('the line id that starts the second half'),
+    into : prop.string('the id for the new second half'),
   },
   check({ scene, at, into }, ctx) {
     return previewEdit(ctx, (state) => splitScene(state, { scene, at, into }));
@@ -445,18 +445,18 @@ export const storySplitScene = define({
 });
 
 export const storyMergeScene = define({
-  id: 'story.mergeScene',
-  title: 'Merge a scene',
+  id         : 'story.mergeScene',
+  title      : 'Merge a scene',
   description:
     'Absorb a scene into the one that continues to it, removing its chunk. Only across a linear ' +
     'continuation, and only when nothing else points at it. The absorbed lines are renumbered, ' +
     'so shots covering them stop covering anything.',
-  notes: "Only across a `next` boundary; `scene`'s file and storyboard are removed.",
-  mutating: true,
-  undoable: true,
+  notes      : "Only across a `next` boundary; `scene`'s file and storyboard are removed.",
+  mutating   : true,
+  undoable   : true,
   props: {
     scene: prop.string('the scene to absorb'),
-    into: prop.string('the scene that continues to it'),
+    into : prop.string('the scene that continues to it'),
   },
   check({ scene, into }, ctx) {
     return previewEdit(ctx, (state) => mergeScene(state, { scene, into }));
@@ -467,12 +467,12 @@ export const storyMergeScene = define({
 });
 
 export const storyCoverage = define({
-  id: 'story.coverage',
-  title: 'Scene coverage',
+  id         : 'story.coverage',
+  title      : 'Scene coverage',
   description: "A scene's lines and the shots that cover them — what the timeline draws.",
-  notes: "One scene's lines + persisted shots — the timeline's input.",
-  mutating: false,
-  props: { scene: prop.string('the scene to read') },
+  notes      : "One scene's lines + persisted shots — the timeline's input.",
+  mutating   : false,
+  props      : { scene: prop.string('the scene to read') },
   async run({ scene }, ctx) {
     const coverage = await ctx.host.session.sceneCoverage(scene);
     const covered = new Set(coverage.shots.flatMap((s) => s.coversLines));
@@ -481,23 +481,23 @@ export const storyCoverage = define({
       message: coverage.decomposed
         ? `${coverage.shots.length} shot(s) over ${coverage.lines.length} line(s); ${gaps} uncovered.`
         : `${scene} has no decomposition yet.`,
-      data: coverage,
+      data   : coverage,
     };
   },
 });
 
 export const storySetCoverage = define({
-  id: 'story.setCoverage',
-  title: 'Set shot coverage',
+  id         : 'story.setCoverage',
+  title      : 'Set shot coverage',
   description:
     'Set which lines a shot is on screen for. Claimed lines are taken off every other shot; ' +
     'released ones become visible gaps. Changes no prompt, so nothing rehashes.',
-  notes: 'Comma-separated line ids; claimed lines leave every other shot.',
-  mutating: true,
-  undoable: true,
+  notes      : 'Comma-separated line ids; claimed lines leave every other shot.',
+  mutating   : true,
+  undoable   : true,
   props: {
     scene: prop.string('the scene the shot belongs to'),
-    shot: prop.string('the shot id, e.g. arrival__beat1'),
+    shot : prop.string('the shot id, e.g. arrival__beat1'),
     lines: prop.string('comma-separated line ids; empty clears the shot', { default: '' }),
   },
   async check({ scene, shot, lines }, ctx) {
@@ -505,7 +505,7 @@ export const storySetCoverage = define({
     if (!coverage.decomposed) return { ok: false, reason: `${scene} has no decomposition yet.` };
     const op = decideCoverage(coverage.shots, {
       shot,
-      lines: idsOf(lines),
+      lines    : idsOf(lines),
       lineOrder: coverage.lines.map((l) => l.id),
     });
     return op.ok ? { ok: true, note: op.message } : { ok: false, reason: op.error };
@@ -519,8 +519,8 @@ export const storySetCoverage = define({
 });
 
 export const storyMoveShot = define({
-  id: 'story.moveShot',
-  title: 'Move a shot',
+  id         : 'story.moveShot',
+  title      : 'Move a shot',
   description:
     "Reorder a shot within its scene, which means moving the lines it covers. No shot's coverage " +
     'changes and no covered line changes or changes order within its own shot, so nothing drifts ' +
@@ -528,11 +528,11 @@ export const storyMoveShot = define({
     'and has no single position, so it is refused by name.',
   notes:
     'Reorder a shot by moving the lines it covers; empty `after` means the top. A shot other shots draw inside is refused by name.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
     scene: prop.string('the scene the shot belongs to'),
-    shot: prop.string('the shot id to move, e.g. arrival__beat1'),
+    shot : prop.string('the shot id to move, e.g. arrival__beat1'),
     after: prop.string('the shot id to sit after; empty moves it to the top', { default: '' }),
   },
   async check({ scene, shot, after }, ctx) {
@@ -544,8 +544,8 @@ export const storyMoveShot = define({
 });
 
 export const storyNewShot = define({
-  id: 'story.newShot',
-  title: 'New shot',
+  id         : 'story.newShot',
+  title      : 'New shot',
   description:
     'Place a shot by hand over the lines it covers. Claimed lines are taken off other shots the ' +
     'way a coverage drag takes them; a new shot id is a new task, so this is a new frame to ' +
@@ -555,11 +555,11 @@ export const storyNewShot = define({
     '`story.setSubjects` can change it afterwards.',
   notes:
     'Place a shot by hand over the lines it covers; claimed lines leave other shots. A new shot id is a new task — a new frame to render. On a scene with no storyboard this **creates** it, which ends decomposition for that scene; lines the shot does not claim stay uncovered until covered by hand. Empty `subjects` casts the speakers of the covered lines; a character no sheet describes is refused by name. `story.setSubjects` changes the cast afterwards.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    scene: prop.string('the scene to place the shot in'),
-    lines: prop.string('comma-separated line ids the shot covers; at least one'),
+    scene   : prop.string('the scene to place the shot in'),
+    lines   : prop.string('comma-separated line ids the shot covers; at least one'),
     framing: prop.oneOf(
       ['medium', 'wide', 'close', 'establishing'] as const,
       'how the shot frames its subjects',
@@ -582,19 +582,19 @@ export const storyNewShot = define({
 });
 
 export const storyDeleteShot = define({
-  id: 'story.deleteShot',
-  title: 'Delete a shot',
+  id         : 'story.deleteShot',
+  title      : 'Delete a shot',
   description:
     'Remove a shot from its scene. The lines it covered become visible gaps — never handed to a ' +
     'neighbour — and a rendered frame it had is orphaned, not deleted. Removing the last shot ' +
     'deletes the storyboard file itself, so the scene will be decomposed again.',
   notes:
     'The covered lines become visible gaps — never handed to a neighbour — and a rendered frame is orphaned, not deleted. Removing the last shot deletes the storyboard file itself, so the scene will be decomposed again.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
     scene: prop.string('the scene the shot belongs to'),
-    shot: prop.string('the shot id to delete, e.g. arrival__beat1'),
+    shot : prop.string('the shot id to delete, e.g. arrival__beat1'),
   },
   async check({ scene, shot }, ctx) {
     const op = await ctx.host.session.previewDeleteShot(scene, shot);
@@ -611,18 +611,18 @@ export const storyDeleteShot = define({
 // and the graph carries edges and reachability but nothing about clothes.
 
 export const storySetSceneOutfit = define({
-  id: 'story.setSceneOutfit',
-  title: 'Dress a character for a scene',
+  id         : 'story.setSceneOutfit',
+  title      : 'Dress a character for a scene',
   description:
     "Write a scene's [[outfit:]] marker for one character, or clear it with an empty outfit. It " +
     'applies to the whole scene wherever the marker sits, and every shot that does not override ' +
     'it re-renders in the new clothes.',
   notes:
     "Writes the scene's `[[outfit:]]` marker; empty clears it. Every shot that does not override it re-renders.",
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    scene: prop.string('the scene to dress'),
+    scene    : prop.string('the scene to dress'),
     character: prop.string('the character id'),
     outfit: prop.string(
       "the outfit id; empty clears the marker and falls back to the character's",
@@ -641,21 +641,21 @@ export const storySetSceneOutfit = define({
 });
 
 export const storySetOutfit = define({
-  id: 'story.setOutfit',
-  title: 'Dress a subject in a shot',
+  id         : 'story.setOutfit',
+  title      : 'Dress a subject in a shot',
   description:
     "Override what one subject of one shot wears, or clear the override so the scene's marker — " +
     "or the character's default — reaches it again. Unlike coverage this changes the shot's " +
     'prompt, so the shot re-hashes and the next run re-renders it.',
   notes:
     'One subject of one shot; empty clears the override. Unlike coverage this re-hashes the shot.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    scene: prop.string('the scene the shot belongs to'),
-    shot: prop.string('the shot id, e.g. arrival__beat1'),
+    scene    : prop.string('the scene the shot belongs to'),
+    shot     : prop.string('the shot id, e.g. arrival__beat1'),
     character: prop.string("which of the shot's subjects to dress"),
-    outfit: prop.string('the outfit id; empty clears the override', { default: '' }),
+    outfit   : prop.string('the outfit id; empty clears the override', { default: '' }),
   },
   async check({ scene, shot, character, outfit }, ctx) {
     const op = await ctx.host.session.previewShotOutfit(scene, shot, character, outfit);
@@ -669,17 +669,17 @@ export const storySetOutfit = define({
 });
 
 export const storySetVariant = define({
-  id: 'story.setVariant',
-  title: 'Set which variant a shot is drawn in',
+  id         : 'story.setVariant',
+  title      : 'Set which variant a shot is drawn in',
   description:
     "Change which variant of the scene's location one shot is set in — the `@night` the " +
     'storyboard listing shows. That is the plate the frame is drawn against, so the shot ' +
     're-hashes and the next run re-renders it.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    scene: prop.string('the scene the shot belongs to'),
-    shot: prop.string('the shot id, e.g. arrival__beat1'),
+    scene  : prop.string('the scene the shot belongs to'),
+    shot   : prop.string('the shot id, e.g. arrival__beat1'),
     variant: prop.string("a variant id of the scene's location, e.g. night"),
   },
   async check({ scene, shot, variant }, ctx) {
@@ -694,8 +694,8 @@ export const storySetVariant = define({
 });
 
 export const storySetSubjects = define({
-  id: 'story.setSubjects',
-  title: 'Set who a shot frames',
+  id         : 'story.setSubjects',
+  title      : 'Set who a shot frames',
   description:
     'Replace the characters one shot frames, in the order given. Their sheets are what the frame ' +
     'is drawn from, so this changes both the prompt and the references: the shot re-hashes and ' +
@@ -703,11 +703,11 @@ export const storySetSubjects = define({
     'stays keeps its outfit override; one that leaves takes its own with it.',
   notes:
     'Replace the cast of one shot; empty makes it a background plate. Changes the prompt and the reference sheets, so the frame is drawn again. A character no sheet describes is refused by name.',
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    scene: prop.string('the scene the shot belongs to'),
-    shot: prop.string('the shot id, e.g. arrival__beat1'),
+    scene   : prop.string('the scene the shot belongs to'),
+    shot    : prop.string('the shot id, e.g. arrival__beat1'),
     subjects: prop.string('comma-separated character ids on screen; empty frames nobody', {
       default: '',
     }),
@@ -724,8 +724,8 @@ export const storySetSubjects = define({
 });
 
 export const storyRequireCast = define({
-  id: 'story.requireCast',
-  title: 'Require a shot to show its cast',
+  id         : 'story.requireCast',
+  title      : 'Require a shot to show its cast',
   description:
     "Say whether the characters a shot frames have to appear in it. Turned off, the shot's cast " +
     'still reaches the generator as reference sheets, but the vision reviewer is told nothing ' +
@@ -734,11 +734,11 @@ export const storyRequireCast = define({
     'again on the next run.',
   notes:
     "Turn the reviewer's demand that a shot show its cast on or off. Off keeps the reference sheets and only stops an absence counting as a defect, which is how a frame the refine loop cannot satisfy is unstuck.",
-  mutating: true,
-  undoable: true,
+  mutating   : true,
+  undoable   : true,
   props: {
-    scene: prop.string('the scene the shot belongs to'),
-    shot: prop.string('the shot id, e.g. arrival__beat1'),
+    scene   : prop.string('the scene the shot belongs to'),
+    shot    : prop.string('the shot id, e.g. arrival__beat1'),
     required: prop.boolean('whether the cast must be in frame', { default: true }),
   },
   async check({ scene, shot, required }, ctx) {
@@ -753,14 +753,14 @@ export const storyRequireCast = define({
 });
 
 export const storyAssignLineIds = define({
-  id: 'story.assignLineIds',
-  title: 'Assign line ids',
+  id         : 'story.assignLineIds',
+  title      : 'Assign line ids',
   description:
     'Write the line ids reading already allocated into the scene files as [[line:]] marks, so ' +
     'inserting a line can no longer re-point the shots that cover the ones below it.',
-  notes: 'Writes allocated ids down as `[[line:]]` marks; empty `scene` means all.',
-  mutating: true,
-  undoable: true,
+  notes      : 'Writes allocated ids down as `[[line:]]` marks; empty `scene` means all.',
+  mutating   : true,
+  undoable   : true,
   props: {
     scene: prop.string('the scene to mark; empty means every scene', { default: '' }),
   },
@@ -778,8 +778,8 @@ export const storyAssignLineIds = define({
 });
 
 export const storyDecomposeAll = define({
-  id: 'story.decomposeAll',
-  title: 'Storyboard every scene',
+  id         : 'story.decomposeAll',
+  title      : 'Storyboard every scene',
   description:
     'Ask the writing model for a storyboard for every reachable scene that has none yet, so the ' +
     'project can see the whole graph instead of one wave of it. One model call per scene, so it ' +
@@ -792,13 +792,13 @@ export const storyDecomposeAll = define({
     'the shots silently and permanently.',
   notes:
     'Storyboard every reachable scene that has none, so the graph is whole rather than one wave of it. One model call per scene. Additive only — a scene with a file is left alone and there is **no `force`**, because the file wins forever and re-decomposing would move shot ids, hence task identities, hence re-render art already paid for. A scene the model does not answer for is named and **not written**: an absent file is the only signal meaning "decompose this" (so a scene begun by hand with `story.newShot` already has its file, and is left alone like any other). `check` refuses mock or unresolved keys with `pipeline.run`\'s own sentence, reports the count, and warns about scenes naming a character the project does not have yet. One undo point for the batch.',
-  mutating: true,
+  mutating   : true,
   // One undo point covers the whole batch, so this runs as one command rather than N.
-  undoable: true,
+  undoable   : true,
   // Confirmed because it costs a model call per scene, and because the storyboard it writes is
   // never regenerated afterwards.
-  confirm: true,
-  props: {},
+  confirm    : true,
+  props      : {},
   async check(_props, ctx) {
     const state = await ctx.host.session.decomposePreconditions();
     // Mock or unresolved keys give the deterministic baseline for every scene, which
@@ -829,35 +829,35 @@ export const storyDecomposeAll = define({
     }
     return {
       message: `${parts.join('; ')}.`,
-      data: result,
+      data   : result,
       ...(result.decomposed.length ? { written: ['vngen/work/shots/'] } : {}),
     };
   },
 });
 
 export const storyPlay = define({
-  id: 'story.play',
-  title: 'Build playable',
+  id         : 'story.play',
+  title      : 'Build playable',
   description: 'Project the model + asset store into the playable, in memory (no file written).',
-  notes: 'Build the playable in memory; writes nothing.',
-  mutating: false,
-  props: {},
+  notes      : 'Build the playable in memory; writes nothing.',
+  mutating   : false,
+  props      : {},
   async run(_props, ctx) {
     const playable = await ctx.host.session.playable();
     return {
       message: `Playable built: ${Object.keys(playable.scenes).length} scene(s).`,
-      data: playable,
+      data   : playable,
     };
   },
 });
 
 export const storyExport = define({
-  id: 'story.export',
-  title: 'Export playable',
+  id         : 'story.export',
+  title      : 'Export playable',
   description: 'Write vngen/build/story.play.json — the `vngen export` equivalent.',
-  notes: 'Write `vngen/build/story.play.json` (`vngen export`).',
-  mutating: true,
-  props: {},
+  notes      : 'Write `vngen/build/story.play.json` (`vngen export`).',
+  mutating   : true,
+  props      : {},
   async check(_props, ctx) {
     // Building the playable is the question, and it is pure and writes nothing, so the check
     // answers with the real projection rather than a guess about whether one would work.
@@ -877,16 +877,16 @@ export const storyExport = define({
 });
 
 export const storyScreenplay = define({
-  id: 'story.screenplay',
+  id         : 'story.screenplay',
   // Named for the format it writes, beside `story.export`'s "Export playable". A menu entry
   // takes its tooltip from this title, so the two must be the same words.
-  title: 'Export Fountain',
+  title      : 'Export Fountain',
   description:
     'Project the scenes back into one Fountain screenplay at the project root — the `vngen ' +
     'screenplay` equivalent. A snapshot, not a mirror: it goes stale as soon as a scene changes.',
   notes:
     'Project the scenes back to one Fountain file at the project root (`vngen screenplay`). `clean` drops the `[[…]]` markers, which makes it one-way.',
-  mutating: true,
+  mutating   : true,
   props: {
     clean: prop.boolean('drop the [[…]] machine markers, which makes the output one-way', {
       default: false,

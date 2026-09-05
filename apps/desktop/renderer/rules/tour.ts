@@ -147,8 +147,8 @@ export function guide(
       if (names.length === 0) {
         if (!where.anchor.enabled) {
           return {
-            show: 'blocked',
-            say: step.say,
+            show  : 'blocked',
+            say   : step.say,
             reason: where.anchor.reason ?? UNAVAILABLE,
             where,
           };
@@ -226,10 +226,10 @@ function gesture(live: LiveAnchors, step: GestureStep, judge?: Judge): Guidance 
   }
   if (!at.accept) return { show: 'blocked', say: step.say, reason: at.reason };
   return {
-    show: 'ring',
-    say: step.say,
-    where: grab,
-    also: keysOf(live, editor, [at]),
+    show  : 'ring',
+    say   : step.say,
+    where : grab,
+    also  : keysOf(live, editor, [at]),
     awaits: { id: at.invoke.id, props: at.invoke.props },
   };
 }

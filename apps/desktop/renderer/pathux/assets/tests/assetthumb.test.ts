@@ -2,10 +2,10 @@ import { assetThumbUrl, galleryItem, loadAssetThumb } from '../assetthumb.js';
 import type { AssetListing } from '../../../../src/shared/ipc.js';
 
 const listing = (over: Partial<AssetListing> = {}): AssetListing => ({
-  hash: 'a'.repeat(64),
-  ext: 'png',
-  kind: 'portrait',
-  label: 'Aiko',
+  hash    : 'a'.repeat(64),
+  ext     : 'png',
+  kind    : 'portrait',
+  label   : 'Aiko',
   accepted: false,
   ...over,
 });

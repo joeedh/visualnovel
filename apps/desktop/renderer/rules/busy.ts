@@ -19,8 +19,8 @@ export interface BusyControls {
 }
 
 const PIPELINE: BusyControls = {
-  stop: 'pipeline.stop',
-  stops: stopsWhat(BUSY_RUN),
+  stop    : 'pipeline.stop',
+  stops   : stopsWhat(BUSY_RUN),
   progress: (ran, pending) =>
     `The pipeline is running — ${ran} task(s) done, ` +
     `${pending} ${pending === 1 ? 'task' : 'tasks'} left.`,
@@ -37,8 +37,8 @@ const PASS: BusyControls = { ...PIPELINE, stops: stopsWhat(BUSY_PASS) };
  * what has happened rather than what remains.
  */
 const REPORT: BusyControls = {
-  stop: 'report.stop',
-  stops: 'The turn ends after the step it is on. What the debug agent has said is kept.',
+  stop    : 'report.stop',
+  stops   : 'The turn ends after the step it is on. What the debug agent has said is kept.',
   progress: (ran) => `The debug agent is reading — ${ran} step(s) so far.`,
 };
 

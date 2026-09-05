@@ -179,12 +179,12 @@ describe('running a graph with groups', () => {
   function context(into: GraphJournalRecord[]): GenRunContext {
     return {
       services: mock,
-      journal: replayJournal(into.map((r) => JSON.stringify(r)).join('\n')),
+      journal : replayJournal(into.map((r) => JSON.stringify(r)).join('\n')),
       record: (record) => {
         into.push(record);
         return Promise.resolve();
       },
-      now: () => new Date('2026-01-01T00:00:00.000Z'),
+      now     : () => new Date('2026-01-01T00:00:00.000Z'),
     };
   }
 
@@ -197,7 +197,7 @@ describe('running a graph with groups', () => {
 
     const result = await executeGenGraph(graph, context(records), {
       targets: [output.id],
-      seeds: SEEDS,
+      seeds  : SEEDS,
     });
 
     expect(result.failures).toEqual([]);
@@ -247,7 +247,7 @@ describe('running a graph with groups', () => {
 
     const second = await executeGenGraph(graph, context(records), {
       targets: [output.id],
-      seeds: SEEDS,
+      seeds  : SEEDS,
     });
     expect(second.ran).toEqual([]);
     expect(second.skipped).toHaveLength(4);
@@ -260,8 +260,8 @@ describe('the DSL with groups', () => {
     const dsl = graphToDSL(graph);
 
     expect(dsl.nodes?.find((n) => n.id === group.id)).toEqual({
-      id: group.id,
-      type: 'GroupNode',
+      id   : group.id,
+      type : 'GroupNode',
       group: 'inkwash',
     });
     expect(dsl.links).toEqual(
@@ -326,9 +326,9 @@ describe('editing a graph with groups', () => {
   it('groups a selection into a definition and hands the definition back', () => {
     const { graph, prompt, image, output } = chain();
     const decided = decideGenEdit(graph, {
-      op: 'createGroup',
+      op   : 'createGroup',
       nodes: [prompt.id, image.id],
-      ref: 'front',
+      ref  : 'front',
     });
     expect(decided.ok && decided.note).toBe("Groups 2 nodes into 'front'.");
     if (!decided.ok) return;
@@ -437,10 +437,10 @@ describe('editing a graph with groups', () => {
     const graph = def.subgraph;
 
     const decided = decideGenEdit(graph, {
-      op: 'expose',
+      op  : 'expose',
       kind: 'prop',
       node: inner.id,
-      key: 'template',
+      key : 'template',
     });
     expect(decided.ok && decided.note).toBe(
       "Exposes 'template' of the Text node on every instance of the group.",
@@ -564,11 +564,11 @@ describe('the group library on disk', () => {
 
   it('says why a definition cannot be had', async () => {
     expect(await readGroupDoc(root, 'missing')).toEqual({
-      ok: false,
+      ok    : false,
       reason: 'there is no missing group in this project',
     });
     expect(await readGroupDoc(root, '../etc')).toEqual({
-      ok: false,
+      ok    : false,
       reason: "'../etc' is not a group name",
     });
   });

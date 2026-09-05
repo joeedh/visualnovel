@@ -8,8 +8,8 @@ import type { GenImageInput, GenImageRef, GenServices } from '@vn/gengraph/plugi
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 const MIME: Record<string, string> = {
-  png: 'image/png',
-  jpg: 'image/jpeg',
+  png : 'image/png',
+  jpg : 'image/jpeg',
   jpeg: 'image/jpeg',
   webp: 'image/webp',
 };
@@ -56,7 +56,7 @@ function imagePart(img: GenImageInput): unknown {
   return {
     inlineData: {
       mimeType: MIME[img.ext.toLowerCase()] ?? 'image/png',
-      data: Buffer.from(img.bytes).toString('base64'),
+      data    : Buffer.from(img.bytes).toString('base64'),
     },
   };
 }
@@ -110,7 +110,7 @@ export async function drawWithGemini(
   });
 
   const answer = await services.fetch(`${ENDPOINT}/${draw.model}:generateContent`, {
-    method: 'POST',
+    method : 'POST',
     headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
     body,
   });

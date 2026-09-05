@@ -51,8 +51,8 @@ describe('makeProject({ assets: "cached" })', () => {
 
     // Pass 2: a fresh project asking the same questions, now with the recording in place.
     const p = await makeProject({
-      script: SCRIPTS.linear,
-      assets: 'cached',
+      script       : SCRIPTS.linear,
+      assets       : 'cached',
       assetCacheDir: cacheDir,
     });
     try {

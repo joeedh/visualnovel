@@ -90,11 +90,11 @@ describe('tour.start', () => {
     ({
       host: {
         known: {
-          command: (id: string) => registry.get(id)?.props,
+          command    : (id: string) => registry.get(id)?.props,
           interaction: (id: string) => interactions.get(id) !== undefined,
-          coerce: coerceProps,
+          coerce     : coerceProps,
         },
-        ui: () => {},
+        ui   : () => {},
       },
     }) as unknown as CommandContext<CommandHost>;
 
@@ -112,9 +112,9 @@ describe('tour.start', () => {
    */
   it('refuses a custom tour naming a command the app does not have', () => {
     const bad = {
-      id: 'x',
+      id   : 'x',
       title: 'X',
-      what: 'Do a thing.',
+      what : 'Do a thing.',
       steps: [{ kind: 'command', id: 'story.invent', say: 'Press it.' }],
     };
     expect(() => tourStart.run({ tour: '', custom: JSON.stringify(bad) }, ctx())).toThrow(

@@ -12,9 +12,9 @@ import type { Container, Label } from 'pathux';
 export function paragraph(col: Container, text: string, width: number): Label {
   const label = col.label(text);
   Object.assign(label.dom.style, {
-    whiteSpace: 'normal',
+    whiteSpace  : 'normal',
     overflowWrap: 'break-word',
-    maxWidth: `${width}px`,
+    maxWidth    : `${width}px`,
   });
   return label;
 }

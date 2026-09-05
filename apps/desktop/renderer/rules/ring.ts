@@ -43,11 +43,11 @@ export function union(a: AnchorRect, b: AnchorRect): AnchorRect {
 /** The same rect with `pad` added on every side. */
 export function outset(rect: AnchorRect, pad: number): AnchorRect {
   return {
-    left: rect.left - pad,
-    top: rect.top - pad,
-    right: rect.right + pad,
+    left  : rect.left - pad,
+    top   : rect.top - pad,
+    right : rect.right + pad,
     bottom: rect.bottom + pad,
-    width: rect.width + pad * 2,
+    width : rect.width + pad * 2,
     height: rect.height + pad * 2,
   };
 }

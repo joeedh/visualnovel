@@ -1,14 +1,14 @@
 {
-  "name": "shipped",
+  "name"      : "shipped",
   "pricesAsOf": "2026-08-25",
-  "source": "published list prices, refreshed as part of the release process",
+  "source"    : "published list prices, refreshed as part of the release process",
   "models": {
     "gemini-2.5-flash-image": { "image": 0.039 },
-    "gemini-2.5-flash": { "mtok-in": 0.3, "mtok-out": 2.5 },
-    "gemini-2.5-pro": { "mtok-in": 1.25, "mtok-out": 10.0 },
-    "gemini-2.0-flash": { "mtok-in": 0.1, "mtok-out": 0.4 },
-    "claude-haiku-4-5": { "mtok-in": 1.0, "mtok-out": 5.0 },
-    "claude-sonnet-4-5": { "mtok-in": 3.0, "mtok-out": 15.0 },
-    "claude-opus-4-1": { "mtok-in": 15.0, "mtok-out": 75.0 }
+    "gemini-2.5-flash"      : { "mtok-in": 0.3, "mtok-out": 2.5 },
+    "gemini-2.5-pro"        : { "mtok-in": 1.25, "mtok-out": 10.0 },
+    "gemini-2.0-flash"      : { "mtok-in": 0.1, "mtok-out": 0.4 },
+    "claude-haiku-4-5"      : { "mtok-in": 1.0, "mtok-out": 5.0 },
+    "claude-sonnet-4-5"     : { "mtok-in": 3.0, "mtok-out": 15.0 },
+    "claude-opus-4-1"       : { "mtok-in": 15.0, "mtok-out": 75.0 }
   }
 }

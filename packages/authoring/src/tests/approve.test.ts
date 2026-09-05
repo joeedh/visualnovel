@@ -24,25 +24,25 @@ import {
 } from '../index.js';
 
 const AIKO: Approvable = {
-  hash: 'a'.repeat(64),
-  kind: 'sheet',
+  hash : 'a'.repeat(64),
+  kind : 'sheet',
   label: 'Aiko — uniform sheet',
-  slot: 'sheet:aiko/uniform',
-  door: 'accept',
+  slot : 'sheet:aiko/uniform',
+  door : 'accept',
 };
 const PLATE: Approvable = {
-  hash: 'b'.repeat(64),
-  kind: 'plate',
+  hash : 'b'.repeat(64),
+  kind : 'plate',
   label: 'Classroom 2-B — day plate',
-  slot: 'plate:classroom/day',
-  door: 'accept',
+  slot : 'plate:classroom/day',
+  door : 'accept',
 };
 const PORTRAIT: Approvable = {
-  hash: 'c'.repeat(64),
-  kind: 'portrait',
-  label: 'Aiko — portrait',
-  slot: 'portrait:aiko',
-  door: 'gate',
+  hash       : 'c'.repeat(64),
+  kind       : 'portrait',
+  label      : 'Aiko — portrait',
+  slot       : 'portrait:aiko',
+  door       : 'gate',
   characterId: 'aiko',
 };
 const ALL = [PORTRAIT, AIKO, PLATE];
@@ -50,7 +50,7 @@ const ALL = [PORTRAIT, AIKO, PLATE];
 /** A backend that answers with whatever JSON it was handed, and records what it was asked. */
 function fakeTriage(answer: unknown): ChatBackend & { asked: string[] } {
   const backend = {
-    asked: [] as string[],
+    asked  : [] as string[],
     modelId: 'fake-haiku',
     message(req: { system?: string; prompt: string }): Promise<string> {
       backend.asked.push(req.prompt);
@@ -63,7 +63,7 @@ function fakeTriage(answer: unknown): ChatBackend & { asked: string[] } {
 describe('reading what the author asked for', () => {
   it('only ever hands back hashes that were on the list', async () => {
     const backend = fakeTriage({
-      asked: true,
+      asked : true,
       reason: 'you said "approve the art"',
       hashes: [AIKO.hash, 'd'.repeat(64)],
     });
@@ -152,21 +152,21 @@ describe('the approve_assets tool', () => {
     undone: string[];
   } {
     const it = {
-      done: [] as string[],
-      undone: [] as string[],
-      list: () => Promise.resolve(assets),
+      done     : [] as string[],
+      undone   : [] as string[],
+      list     : () => Promise.resolve(assets),
       approve: (item: Approvable) => {
         it.done.push(item.hash);
         return Promise.resolve({ ok: true, message: `Accepted ${item.hash.slice(0, 8)}.` });
       },
-      approved: () => Promise.resolve(assets),
+      approved : () => Promise.resolve(assets),
       unapprove: (item: Approvable) => {
         it.undone.push(item.hash);
         return Promise.resolve({ ok: true, message: `Un-accepted ${item.hash.slice(0, 8)}.` });
       },
       // Answering `null` puts the offline matcher in charge, so the fixed `triage` is injected
       // by handing back a backend that replies with it.
-      triage: () => Promise.resolve(fakeTriage(triage) as ChatBackend | null),
+      triage   : () => Promise.resolve(fakeTriage(triage) as ChatBackend | null),
     };
     return it;
   }
@@ -201,7 +201,7 @@ describe('the approve_assets tool', () => {
     const approval = host(ALL, { asked: false, reason: 'you asked to see it.', hashes: [] });
     const { ctx, cleanup } = await tempCtx({
       approval,
-      said: () => ['show me the plate'],
+      said   : () => ['show me the plate'],
       confirm: () => Promise.resolve(true),
     });
     try {
@@ -216,14 +216,14 @@ describe('the approve_assets tool', () => {
 
   it('shows the list, then approves it in the order it was listed', async () => {
     const approval = host(ALL, {
-      asked: true,
+      asked : true,
       reason: 'you said "approve the art"',
       hashes: [PLATE.hash, PORTRAIT.hash],
     });
     const cards: string[] = [];
     const { ctx, cleanup } = await tempCtx({
       approval,
-      said: () => ['approve the art'],
+      said   : () => ['approve the art'],
       confirm: (message) => {
         cards.push(message);
         return Promise.resolve(true);
@@ -245,7 +245,7 @@ describe('the approve_assets tool', () => {
     const approval = host(ALL, { asked: true, reason: 'r', hashes: [AIKO.hash] });
     const { ctx, cleanup } = await tempCtx({
       approval,
-      said: () => ['approve it'],
+      said   : () => ['approve it'],
       confirm: () => Promise.resolve(false),
     });
     try {
@@ -261,14 +261,14 @@ describe('the approve_assets tool', () => {
   it('holds back what is waiting upstream, and says so on the card', async () => {
     const held: Approvable = { ...PLATE, blocked: 'the sketch it was drawn from is unapproved' };
     const approval = host([AIKO, held], {
-      asked: true,
+      asked : true,
       reason: 'you said "approve everything"',
       hashes: [AIKO.hash, held.hash],
     });
     const cards: string[] = [];
     const { ctx, cleanup } = await tempCtx({
       approval,
-      said: () => ['approve everything'],
+      said   : () => ['approve everything'],
       confirm: (message) => {
         cards.push(message);
         return Promise.resolve(true);
@@ -290,7 +290,7 @@ describe('the approve_assets tool', () => {
     const approval = host([held], { asked: true, reason: 'r', hashes: [held.hash] });
     const { ctx, cleanup } = await tempCtx({
       approval,
-      said: () => ['approve the plate'],
+      said   : () => ['approve the plate'],
       confirm: () => Promise.resolve(true),
     });
     try {
@@ -307,7 +307,7 @@ describe('the approve_assets tool', () => {
     const approval = host([], { asked: true, reason: 'r', hashes: [] });
     const { ctx, cleanup } = await tempCtx({
       approval,
-      said: () => ['approve everything'],
+      said   : () => ['approve everything'],
       confirm: () => Promise.resolve(true),
     });
     try {
@@ -328,7 +328,7 @@ describe('the approve_assets tool', () => {
       const approval = host(ALL, { asked: false, reason: 'you asked for a redraw.', hashes: [] });
       const { ctx, cleanup } = await tempCtx({
         approval,
-        said: () => ['redraw the plate'],
+        said   : () => ['redraw the plate'],
         confirm: () => Promise.resolve(true),
       });
       try {
@@ -343,14 +343,14 @@ describe('the approve_assets tool', () => {
 
     it('shows the list, then un-approves it in the order it was listed', async () => {
       const approval = host(ALL, {
-        asked: true,
+        asked : true,
         reason: 'you said "un-approve the art"',
         hashes: [PLATE.hash, PORTRAIT.hash],
       });
       const cards: string[] = [];
       const { ctx, cleanup } = await tempCtx({
         approval,
-        said: () => ['un-approve the art'],
+        said   : () => ['un-approve the art'],
         confirm: (message) => {
           cards.push(message);
           return Promise.resolve(true);
@@ -371,7 +371,7 @@ describe('the approve_assets tool', () => {
       const approval = host(ALL, { asked: true, reason: 'r', hashes: [AIKO.hash] });
       const { ctx, cleanup } = await tempCtx({
         approval,
-        said: () => ['un-approve it'],
+        said   : () => ['un-approve it'],
         confirm: () => Promise.resolve(false),
       });
       try {

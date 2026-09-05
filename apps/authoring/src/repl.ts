@@ -87,7 +87,7 @@ export function terminalChannel(): Channel {
       if (closed) return Promise.resolve(null);
       return new Promise((resolve) => waiters.push(resolve));
     },
-    write: (text) => void process.stdout.write(text.endsWith('\n') ? text : text + '\n'),
+    write     : (text) => void process.stdout.write(text.endsWith('\n') ? text : text + '\n'),
     close: () => {
       if (!closed) rl.close();
     },
@@ -241,7 +241,7 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
   let session: AuthoringSession;
   try {
     session = await createAuthoringAgent(opts.dir, permission, {
-      mock: opts.mock,
+      mock    : opts.mock,
       noNative: opts.noNative,
       ...(opts.budget ? { budget: opts.budget } : {}),
       onEvent: (event) => {

@@ -2,12 +2,12 @@ import type { Character, Scene } from '@vn/types';
 import { outfitFor, outfitText } from '../outfits.js';
 
 const aiko: Character = {
-  id: 'aiko',
-  name: 'Aiko',
-  description: 'A transfer student.',
-  traits: [],
-  palette: [],
-  status: 'approved',
+  id           : 'aiko',
+  name         : 'Aiko',
+  description  : 'A transfer student.',
+  traits       : [],
+  palette      : [],
+  status       : 'approved',
   defaultOutfit: 'uniform',
   outfits: [
     { id: 'uniform', characterId: 'aiko', description: 'navy winter uniform' },
@@ -39,11 +39,11 @@ describe('outfitFor', () => {
 
   it('answers for a subject the model does not have, rather than throwing', () => {
     expect(outfitFor({ characterId: 'ghost' }, sceneWith(), undefined)).toEqual({
-      id: 'default',
+      id    : 'default',
       origin: 'default',
     });
     expect(outfitFor({ characterId: 'ghost' }, sceneWith({ ghost: 'suit' }), undefined)).toEqual({
-      id: 'suit',
+      id    : 'suit',
       origin: 'scene',
     });
   });

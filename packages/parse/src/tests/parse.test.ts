@@ -101,14 +101,14 @@ describe('parseBranchMarker', () => {
   it('parses scene ids', () => {
     expect(parseBranchMarker('scene: s12_classroom')).toEqual({
       kind: 'scene',
-      id: 's12_classroom',
+      id  : 's12_classroom',
     });
   });
   it('parses labeled choices', () => {
     expect(parseBranchMarker('choice: "Tell the truth" -> s13')).toEqual({
-      kind: 'choice',
+      kind : 'choice',
       label: 'Tell the truth',
-      goto: 's13',
+      goto : 's13',
     });
   });
   it('parses next/goto', () => {
@@ -117,14 +117,14 @@ describe('parseBranchMarker', () => {
   });
   it('parses one character=outfit pair', () => {
     expect(parseBranchMarker('outfit: aiko=track')).toEqual({
-      kind: 'outfit',
+      kind       : 'outfit',
       characterId: 'aiko',
-      outfit: 'track',
+      outfit     : 'track',
     });
     expect(parseBranchMarker('  OUTFIT:  aiko = track  ')).toEqual({
-      kind: 'outfit',
+      kind       : 'outfit',
       characterId: 'aiko',
-      outfit: 'track',
+      outfit     : 'track',
     });
   });
   it('treats a half-written outfit marker as a plain note', () => {

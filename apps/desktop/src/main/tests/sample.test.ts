@@ -15,12 +15,12 @@ import { setNext } from '@vn/scriptedit';
 const TEMPLATE = resolve(__dirname, '../../../../../templates/basic');
 
 const deps: SessionDeps = {
-  emitEvent: () => {},
-  emitReport: () => {},
-  requestPlan: () => Promise.resolve({ approved: false }),
-  requestAnswer: () => Promise.resolve([]),
+  emitEvent     : () => {},
+  emitReport    : () => {},
+  requestPlan   : () => Promise.resolve({ approved: false }),
+  requestAnswer : () => Promise.resolve([]),
   requestConfirm: () => Promise.resolve(false),
-  pushBusy: () => {},
+  pushBusy      : () => {},
 };
 
 describe('templates/basic, seeded and opened', () => {

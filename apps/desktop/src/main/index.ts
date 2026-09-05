@@ -137,7 +137,7 @@ if (CDP_PORT) {
 // image-loadable scheme (standard + secure) so `<img src="vnasset://…">` is allowed.
 protocol.registerSchemesAsPrivileged([
   {
-    scheme: 'vnasset',
+    scheme    : 'vnasset',
     privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true },
   },
 ]);
@@ -255,9 +255,9 @@ async function seedSample(): Promise<string> {
  */
 async function promptForWorkspace(): Promise<string | undefined> {
   const result = await dialog.showOpenDialog({
-    title: 'Open or create a VN project',
+    title      : 'Open or create a VN project',
     buttonLabel: 'Open project',
-    properties: ['openDirectory', 'createDirectory'],
+    properties : ['openDirectory', 'createDirectory'],
   });
   const picked = result.filePaths[0];
   if (result.canceled || !picked) return undefined;
@@ -431,13 +431,13 @@ async function openRepos(): Promise<void> {
  */
 async function askAboutGit(): Promise<void> {
   const { response } = await dialog.showMessageBox({
-    type: 'warning',
-    title: 'Git was not found',
-    message: 'Git was not found on this machine',
-    detail: GIT_MISSING_MESSAGE,
-    buttons: ['Download git', 'Continue without it'],
+    type     : 'warning',
+    title    : 'Git was not found',
+    message  : 'Git was not found on this machine',
+    detail   : GIT_MISSING_MESSAGE,
+    buttons  : ['Download git', 'Continue without it'],
     defaultId: 0,
-    cancelId: 1,
+    cancelId : 1,
   });
   if (response === 0) await shell.openExternal(GIT_DOWNLOAD_URL);
 }
@@ -454,9 +454,9 @@ async function noticeMissingGit(): Promise<void> {
 
   await notifications().post({
     category: 'workspace',
-    level: 'warn',
-    source: 'main',
-    message: GIT_MISSING_MESSAGE,
+    level   : 'warn',
+    source  : 'main',
+    message : GIT_MISSING_MESSAGE,
   });
 }
 
@@ -487,12 +487,12 @@ async function noticeMissingKeys(): Promise<void> {
 
   await notifications().post({
     category: 'workspace',
-    level: 'warn',
-    source: 'main',
+    level   : 'warn',
+    source  : 'main',
     message:
       `No API key for ${missing.map((vendor) => vendor.vendor).join(' or ')}, so anything that ` +
       `needs ${missing.length > 1 ? 'them' : 'it'} fails at the first call. Setup has the steps.`,
-    link: { editor: 'onboarding' },
+    link    : { editor: 'onboarding' },
   });
 }
 
@@ -594,7 +594,7 @@ const deps: SessionDeps = {
     if (event.type === 'tool') noteWrites(event.result.written ?? []);
     broadcast('agent:event', event);
   },
-  emitReport: (event) => broadcast('report:event', event),
+  emitReport    : (event) => broadcast('report:event', event),
   requestPlan: (plan) =>
     askWindow(pendingPlans, (id, target) => {
       const request: PlanRequest = { id, plan };
@@ -615,18 +615,18 @@ const deps: SessionDeps = {
   get appVersion() {
     return appVersion;
   },
-  userData: app.getPath('userData'),
-  openExternal: (url) => shell.openExternal(url),
+  userData      : app.getPath('userData'),
+  openExternal  : (url) => shell.openExternal(url),
   writeClipboard: (text) => clipboard.writeText(text),
-  pushBusy: (state) => broadcast('command:ui', { type: 'busy', ...state }),
+  pushBusy      : (state) => broadcast('command:ui', { type: 'busy', ...state }),
   offerDiagnosis: (fault) =>
     broadcast('command:ui', { type: 'agent', action: 'diagnose', ...fault }),
   showTour: (tour) =>
     broadcast('command:ui', {
-      type: 'tour',
+      type  : 'tour',
       action: 'start',
-      tour: '',
-      steps: JSON.stringify(tour),
+      tour  : '',
+      steps : JSON.stringify(tour),
     }),
 };
 
@@ -674,37 +674,37 @@ function getStack(): CommandStack<CommandHost> {
     const paths = new ProjectPaths(root);
     const git = openGit(root);
     const host: CommandHost = {
-      session: getSession(),
-      state: getSessionState(),
+      session                 : getSession(),
+      state                   : getSessionState(),
       // A `view.*` effect is targeted at the window whose palette or menu ran the command.
       // `windowFor` falls back to the focused window for the agent, CDP and main.
       ui: (effect: UiEffect, target?: WindowId) => sendTo(target, 'command:ui', effect),
-      openWorkspace: (next: string) => switchWorkspace(next),
+      openWorkspace           : (next: string) => switchWorkspace(next),
       workspaceIsOpenElsewhere: async (next: string) => {
         const root = resolvePath(next);
         if (workspaceRoot && resolvePath(workspaceRoot) === root) return false;
         return workspaceIsTaken(root);
       },
-      newWindow: async (options) => createWindow(options),
+      newWindow               : async (options) => createWindow(options),
       closeWindow: (target?: WindowId) => {
         const target_ = windowFor(target);
         if (!target_) return false;
         target_.close();
         return true;
       },
-      quitApp: () => app.quit(),
+      quitApp                 : () => app.quit(),
       noteTurnWindow: (origin) => {
         turnWindow = origin;
       },
-      windowCount: () => windows.size,
-      focusedWindow: () => windows.focused() ?? 0,
+      windowCount             : () => windows.size,
+      focusedWindow           : () => windows.focused() ?? 0,
       pickDirectory: async (options, target) => {
         const parent = windowFor(target);
         if (!parent) throw new Error('that window is gone');
         const result = await dialog.showOpenDialog(parent, {
-          title: options?.title ?? 'Open or create a VN project',
+          title      : options?.title ?? 'Open or create a VN project',
           buttonLabel: options?.buttonLabel ?? 'Open project',
-          properties: ['openDirectory', 'createDirectory'],
+          properties : ['openDirectory', 'createDirectory'],
         });
         return result.canceled ? undefined : result.filePaths[0];
       },
@@ -712,9 +712,9 @@ function getStack(): CommandStack<CommandHost> {
         const parent = windowFor(target);
         if (!parent) throw new Error('that window is gone');
         const result = await dialog.showOpenDialog(parent, {
-          title: options?.title ?? 'Upload documents',
+          title      : options?.title ?? 'Upload documents',
           buttonLabel: options?.buttonLabel ?? 'Upload',
-          properties: options?.single ? ['openFile'] : ['openFile', 'multiSelections'],
+          properties : options?.single ? ['openFile'] : ['openFile', 'multiSelections'],
           ...(options?.extensions
             ? { filters: [{ name: options.filterName ?? 'Files', extensions: options.extensions }] }
             : {}),
@@ -725,7 +725,7 @@ function getStack(): CommandStack<CommandHost> {
         const parent = windowFor(target);
         if (!parent) throw new Error('that window is gone');
         const result = await dialog.showSaveDialog(parent, {
-          title: options?.title ?? 'Save a copy',
+          title      : options?.title ?? 'Save a copy',
           buttonLabel: options?.buttonLabel ?? 'Save',
           ...(options?.defaultName ? { defaultPath: options.defaultName } : {}),
           ...(options?.extensions
@@ -735,13 +735,13 @@ function getStack(): CommandStack<CommandHost> {
         return result.canceled ? undefined : result.filePath;
       },
       known: {
-        command: (id) => registry.get(id)?.props,
+        command    : (id) => registry.get(id)?.props,
         interaction: (id) => desktopInteractions.get(id) !== undefined,
-        coerce: coerceProps,
+        coerce     : coerceProps,
       },
       // Lazily through `getStack`, not the local `stack`: the host is built while the stack
       // is still being constructed, so capturing it here would capture `undefined`.
-      check: (id, props) => getStack().check(id, props),
+      check                   : (id, props) => getStack().check(id, props),
     };
     stack = new CommandStack<CommandHost>({
       registry,
@@ -749,24 +749,24 @@ function getStack(): CommandStack<CommandHost> {
         root,
         git,
         host,
-        log: (level, message) => broadcast('log', { level, message }),
+        log    : (level, message) => broadcast('log', { level, message }),
         // TODO(desktop): route through the renderer once a confirm dialog exists; until
         // then a `confirm: true` command is reachable only from the UI's own affordances.
         confirm: () => Promise.resolve(true),
       },
       // Undo still works where commit-on-save refuses: a snapshot is held in memory and writes
       // nobody's history, so a project nested in a larger repo is snapshotted like any other.
-      journal: new UndoJournal({ root, store: snapshotStore, exclude: UNDO_EXCLUDES }),
-      committer: committer(),
+      journal      : new UndoJournal({ root, store: snapshotStore, exclude: UNDO_EXCLUDES }),
+      committer    : committer(),
       // A held-back run of edits that could not be committed is the one commit-on-save failure an
       // author has to act on, so it is filed durably rather than logged. The edits are on disk and
       // the stack keeps the batch, so the next flush retries.
       onCommitError: (error, records) => {
         void notify({
           category: 'error',
-          level: 'error',
+          level   : 'error',
           message: `${records.length} edit(s) (seq ${seqRanges(records.map((r) => r.seq))}) are saved but not committed: ${String(error)}`,
-          source: 'ui',
+          source  : 'ui',
         });
       },
       onRecord: async (record) => {
@@ -786,9 +786,9 @@ function getStack(): CommandStack<CommandHost> {
         if (shouldFileCommand(record)) {
           await notify({
             category: record.status === 'ok' ? categoryOfCommand(record.id) : 'error',
-            level: record.status === 'ok' ? 'info' : 'error',
-            message: record.status === 'ok' ? record.message : (record.error ?? record.message),
-            source: record.source === 'agent' || record.source === 'cdp' ? record.source : 'ui',
+            level   : record.status === 'ok' ? 'info' : 'error',
+            message : record.status === 'ok' ? record.message : (record.error ?? record.message),
+            source  : record.source === 'agent' || record.source === 'cdp' ? record.source : 'ui',
           });
         }
         // Scheduled rather than awaited: a recount reloads the project, and this hook sits on the
@@ -799,8 +799,8 @@ function getStack(): CommandStack<CommandHost> {
         // window. Ctrl+Z in window B deliberately undoes an edit made in window A: undo restores a
         // snapshot of the whole worktree, so a per-window stack would misstate what it restores.
         broadcast('command:ui', {
-          type: 'undo',
-          state: getStack().undoState(),
+          type    : 'undo',
+          state   : getStack().undoState(),
           revision: undoRevision,
         });
       },
@@ -961,12 +961,12 @@ function registerAssetProtocol(): void {
 /** What `<img>` and `fetch` are told a stored asset is, from the extension its name carries. */
 function assetType(ext: string): string {
   const known: Record<string, string> = {
-    png: 'image/png',
-    jpg: 'image/jpeg',
+    png : 'image/png',
+    jpg : 'image/jpeg',
     jpeg: 'image/jpeg',
-    gif: 'image/gif',
+    gif : 'image/gif',
     webp: 'image/webp',
-    svg: 'image/svg+xml',
+    svg : 'image/svg+xml',
   };
   return known[ext.toLowerCase()] ?? 'application/octet-stream';
 }
@@ -1072,17 +1072,17 @@ function loadWindow(win: BrowserWindow, id: WindowId, options: NewWindowOptions 
 
 function createWindow(options: NewWindowOptions = {}): WindowId {
   const win = new BrowserWindow({
-    width: 1360,
-    height: 860,
-    minWidth: 880,
+    width    : 1360,
+    height   : 860,
+    minWidth : 880,
     minHeight: 620,
     ...(options.bounds ?? {}),
     backgroundColor: '#0E1116',
-    title: 'vnstudio',
+    title          : 'vnstudio',
     webPreferences: {
-      preload: join(__dirname, '..', 'preload', 'index.cjs'),
+      preload         : join(__dirname, '..', 'preload', 'index.cjs'),
       contextIsolation: true,
-      nodeIntegration: false,
+      nodeIntegration : false,
     },
   });
   const id = windows.add(win);
@@ -1120,13 +1120,13 @@ function createWindow(options: NewWindowOptions = {}): WindowId {
   // anyway". Asked once per window, including during the cascade a quit produces.
   win.webContents.on('will-prevent-unload', (event) => {
     const leave = dialog.showMessageBoxSync(win, {
-      type: 'warning',
-      buttons: ['Cancel', 'Discard and close'],
+      type     : 'warning',
+      buttons  : ['Cancel', 'Discard and close'],
       defaultId: 0,
-      cancelId: 0,
-      title: 'Unsaved changes',
-      message: 'A document has unsaved changes.',
-      detail: 'Closing now discards them.',
+      cancelId : 0,
+      title    : 'Unsaved changes',
+      message  : 'A document has unsaved changes.',
+      detail   : 'Closing now discards them.',
     });
     if (leave === 1) event.preventDefault();
   });
@@ -1165,7 +1165,7 @@ void app.whenReady().then(async () => {
   if (!app.isPackaged) {
     appVersion = describeVersion(app.getVersion(), {
       packaged: false,
-      sha: await shortSha(app.getAppPath()),
+      sha     : await shortSha(app.getAppPath()),
     });
   }
   if (!gitHealth().ok) await askAboutGit();

@@ -44,9 +44,9 @@ async function readCandidate(
   } catch (err) {
     diagnostics.push({
       severity,
-      code: 'entity_file',
+      code   : 'entity_file',
       message: `${file} has unparseable front-matter: ${(err as Error).message}`,
-      where: id,
+      where  : id,
     });
     return undefined;
   }
@@ -62,9 +62,9 @@ function tagConflict(doc: EntityDoc, kind: EntityTag, diagnostics: Diagnostic[])
   if (stated === undefined || stated === kind) return false;
   diagnostics.push({
     severity: 'error',
-    code: 'entity_tag_conflict',
+    code    : 'entity_tag_conflict',
     message: `${doc.file} is a ${kind} by its location but declares ${ENTITY_TAG_KEY}: ${stated}; move the file or fix the tag`,
-    where: doc.id,
+    where   : doc.id,
   });
   return true;
 }
@@ -169,9 +169,9 @@ function dedupe(candidates: Candidate[], kind: EntityTag, diagnostics: Diagnosti
     for (const loser of losers) {
       diagnostics.push({
         severity: 'warning',
-        code: 'duplicate_entity',
+        code    : 'duplicate_entity',
         message: `${kind} "${id}" is claimed by both ${winner!.doc.file} and ${loser.doc.file}; the first is used`,
-        where: id,
+        where   : id,
       });
     }
     docs.push(winner!.doc);
@@ -215,6 +215,6 @@ export async function discoverEntities(
   const candidates = [...characters, ...locations, ...wiki];
   return {
     characterDocs: dedupe(candidates, ENTITY_TAGS.character, diagnostics),
-    locationDocs: dedupe(candidates, ENTITY_TAGS.location, diagnostics),
+    locationDocs : dedupe(candidates, ENTITY_TAGS.location, diagnostics),
   };
 }

@@ -12,34 +12,34 @@ import boundaries from 'eslint-plugin-boundaries';
 // The acyclic dependency graph from docs/plans/initial-implementation.md §3.
 // Each package may import ONLY the packages listed here (plus externals).
 const ALLOWED = {
-  types: [],
-  util: ['types'],
-  config: ['types', 'util'],
-  parse: ['types', 'util'],
-  model: ['types', 'util', 'parse'],
-  store: ['types', 'util', 'parse'],
+  types          : [],
+  util           : ['types'],
+  config         : ['types', 'util'],
+  parse          : ['types', 'util'],
+  model          : ['types', 'util', 'parse'],
+  store          : ['types', 'util', 'parse'],
   // Leaf exporter: manifest → playable projection. Reuses the input-side + store packages;
   // forbidden from the generative pipeline/scheduler (runner plan, Part B), like `authoring`.
-  export: ['types', 'util', 'parse', 'model', 'store'],
+  export         : ['types', 'util', 'parse', 'model', 'store'],
   // Scene-edit rules + the write path that applies them. Same allow-list as `export`, and
   // input-side for the same reason: it decides and patches authored prose, and must be
   // importable by BOTH the desktop app and `authoring` — which is why it cannot live in
   // either (scene-edit-package plan).
-  scriptedit: ['types', 'util', 'parse', 'model', 'store'],
+  scriptedit     : ['types', 'util', 'parse', 'model', 'store'],
   // Retrieval over the story bible. Input-side leaf like `export`/`scriptedit` — the desktop
   // app and `authoring` both search the wiki, so the ranking policy lives in neither, and it
   // is forbidden from the generative pipeline/scheduler (story-bible-and-retrieval plan).
-  bible: ['types', 'util', 'parse', 'store'],
+  bible          : ['types', 'util', 'parse', 'store'],
   // Art-generation policy: the prompt builders every planned image derives from, plus the
   // on-demand `concept` door and its promotion to a plate. A leaf for the same reason as the
   // three above — the pipeline, the desktop app and `authoring` all need it, and `authoring`
   // cannot import the pipeline. `taskgraph` is here so promotion can mint the planner's own task
   // identity; that reach stays inside this package, since boundaries are per-import.
-  artgen: ['types', 'util', 'config', 'parse', 'model', 'store', 'taskgraph', 'providers'],
-  git: ['util'],
+  artgen         : ['types', 'util', 'config', 'parse', 'model', 'store', 'taskgraph', 'providers'],
+  git            : ['util'],
   // The command framework: registry, prop specs, DSL, stack. Reads git HEAD for provenance,
   // knows nothing about the domain — commands themselves are defined by the host app.
-  commands: ['types', 'util', 'git'],
+  commands       : ['types', 'util', 'git'],
   // Reading a bad conversation back: evidence assembly, redaction, the debug agent and the
   // GitHub issue it produces. Input-side, and forbidden from the pipeline/scheduler for the same
   // reason `authoring` is — analysing an agent is not generating art. `commands` is here because
@@ -57,9 +57,9 @@ const ALLOWED = {
   ],
   // 2D debug layer: sits OUTSIDE the layering graph — imports nothing from packages/ and is
   // imported only by the desktop renderer. Must stay strippable from production builds.
-  debug2d: [],
-  taskgraph: ['types', 'util', 'store'],
-  providers: ['types', 'util', 'config'],
+  debug2d        : [],
+  taskgraph      : ['types', 'util', 'store'],
+  providers      : ['types', 'util', 'config'],
   pipeline: [
     'types',
     'util',
@@ -75,10 +75,10 @@ const ALLOWED = {
   // executor over path.ux's graph module (node-based-asset-generation plan). A leaf like
   // `artgen` — the pipeline, the desktop app and `authoring` all reach it, so it lives in
   // none of them, and it may not import the pipeline or scheduler.
-  gengraph: ['types', 'util', 'config', 'model', 'store', 'taskgraph', 'artgen', 'pathux'],
+  gengraph       : ['types', 'util', 'config', 'model', 'store', 'taskgraph', 'artgen', 'pathux'],
   // `config` and `store` are pass-through only: the scheduler takes a `ProjectConfig` and a
   // `ProjectPaths` in `RunOptions` and hands them to `@vn/pipeline`, which owns both.
-  scheduler: ['types', 'util', 'config', 'store', 'taskgraph', 'pipeline'],
+  scheduler      : ['types', 'util', 'config', 'store', 'taskgraph', 'pipeline'],
   // Test-only fixture builder: composes every layer to build real projects on disk, so it may
   // import anything. Nothing may import IT — no rule grants that, and the default is
   // `disallow`, so production code reaching for testkit is a lint error. Tests are exempt via
@@ -198,19 +198,19 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   // Build scripts / config files run in Node (ESM or CJS), outside the TS project.
   {
-    files: ['**/*.mjs', '**/*.cjs', '*.config.*', 'scripts/**'],
+    files          : ['**/*.mjs', '**/*.cjs', '*.config.*', 'scripts/**'],
     languageOptions: {
       globals: {
-        process: 'readonly',
-        __dirname: 'readonly',
-        module: 'writable',
-        require: 'readonly',
-        console: 'readonly',
-        fetch: 'readonly',
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly',
+        process        : 'readonly',
+        __dirname      : 'readonly',
+        module         : 'writable',
+        require        : 'readonly',
+        console        : 'readonly',
+        fetch          : 'readonly',
+        setTimeout     : 'readonly',
+        clearTimeout   : 'readonly',
         AbortController: 'readonly',
-        URL: 'readonly',
+        URL            : 'readonly',
       },
     },
     rules: {
@@ -220,7 +220,7 @@ export default tseslint.config(
   // The one script that runs inside jest rather than beside it, so it sees the framework's
   // globals. A `.test.ts` file needs no such entry: typescript-eslint turns `no-undef` off.
   {
-    files: ['scripts/jest-timeout.cjs'],
+    files          : ['scripts/jest-timeout.cjs'],
     languageOptions: { globals: { jest: 'readonly' } },
   },
   // Repository tooling. No boundaries entry, because nothing under `scripts/` is a layered
@@ -235,8 +235,8 @@ export default tseslint.config(
     },
   },
   {
-    files: ['packages/**/*.ts', 'apps/**/*.ts'],
-    plugins: { import: importPlugin, boundaries },
+    files   : ['packages/**/*.ts', 'apps/**/*.ts'],
+    plugins : { import: importPlugin, boundaries },
     settings: {
       'boundaries/elements': [
         { type: 'types', pattern: 'packages/types', mode: 'folder' },
@@ -282,12 +282,12 @@ export default tseslint.config(
       },
     },
     rules: {
-      'import/no-cycle': 'error',
+      'import/no-cycle'                   : 'error',
       'boundaries/element-types': [
         'error',
         {
           default: 'disallow',
-          rules: boundaryRules,
+          rules  : boundaryRules,
         },
       ],
       '@typescript-eslint/no-unused-vars': [

@@ -138,19 +138,19 @@ describe('the tools an agent can reach', () => {
     const { ctx, cleanup } = await tempProject();
     try {
       const extra: Tool<Record<string, never>> = {
-        name: 'house_style',
+        name       : 'house_style',
         description: 'read the house style',
-        mutating: false,
-        args: z.object({}),
-        run: () => Promise.resolve({ ok: true, output: 'terse' }),
+        mutating   : false,
+        args       : z.object({}),
+        run        : () => Promise.resolve({ ok: true, output: 'terse' }),
       };
       const backend = new StructuredAgentBackend(new RecordedChatBackend('mock', []));
       const agent = new Agent({
         backend,
         ctx,
         permission: scriptPermission(),
-        system: 'SYS',
-        registry: createRegistry([extra as Tool]),
+        system    : 'SYS',
+        registry  : createRegistry([extra as Tool]),
       });
       const names = agent.tools.map((t) => t.name);
       expect(names).toContain('house_style');
@@ -194,8 +194,8 @@ describe('what the turn cost', () => {
     try {
       // There are two calls, the tool step and the one that finishes; each is billed and reported
       const chat: ChatBackend = {
-        modelId: 'mock-usage',
-        message: () => Promise.reject(new Error('the usage path should be preferred')),
+        modelId         : 'mock-usage',
+        message         : () => Promise.reject(new Error('the usage path should be preferred')),
         messageWithUsage: (() => {
           const answers = [
             JSON.stringify({ thought: 'look around', tool: 'list_workspace', args: {} }),
@@ -204,7 +204,7 @@ describe('what the turn cost', () => {
           let i = 0;
           return () =>
             Promise.resolve({
-              text: answers[Math.min(i++, 1)]!,
+              text : answers[Math.min(i++, 1)]!,
               usage: { input: 900, output: 40 },
             });
         })(),
@@ -213,7 +213,7 @@ describe('what the turn cost', () => {
         backend: new StructuredAgentBackend(chat),
         ctx,
         permission: scriptPermission(),
-        system: 'SYS',
+        system    : 'SYS',
       });
       const res = await agent.run('what is in this project?');
       expect(res.events.filter((e) => e.type === 'usage')).toEqual([
@@ -251,7 +251,7 @@ describe('what the host knew when the turn started', () => {
       backend: new StructuredAgentBackend(chat),
       ctx,
       permission: scriptPermission(),
-      system: 'SYS',
+      system    : 'SYS',
     });
     await agent.run('rewrite the last line', focus);
     return prompts;
@@ -347,7 +347,7 @@ describe('a call to the model that failed', () => {
   /** A backend that throws the first `fails` times it is called, then answers. */
   function brittleBackend(fails: number, answer = 'made it'): AgentBackend & { calls: number } {
     const backend = {
-      kind: 'mock' as const,
+      kind : 'mock' as const,
       calls: 0,
       next(): Promise<{ final: string }> {
         backend.calls++;
@@ -371,8 +371,8 @@ describe('a call to the model that failed', () => {
       backend,
       ctx,
       permission: scriptPermission(),
-      system: 'SYS',
-      onEvent: (event) => events.push(event),
+      system    : 'SYS',
+      onEvent   : (event) => events.push(event),
       ...(recover ? { onApiError: recover } : {}),
     });
     try {
@@ -736,7 +736,7 @@ describe('ask_choice', () => {
     try {
       const { asked } = await askWith(ctx, {
         question: 'Which outfit?',
-        choices: ['uniform', 'track'],
+        choices : ['uniform', 'track'],
       });
       expect(asked).toEqual([
         [{ question: 'Which outfit?', choices: ['uniform', 'track'], multi: false }],
@@ -751,8 +751,8 @@ describe('ask_choice', () => {
     try {
       const { asked } = await askWith(ctx, {
         question: 'Which scenes?',
-        choices: ['arrival', 'greet', 'ending'],
-        multi: true,
+        choices : ['arrival', 'greet', 'ending'],
+        multi   : true,
       });
       expect(asked[0]?.[0]?.multi).toBe(true);
     } finally {
@@ -1014,7 +1014,7 @@ describe('what the transcript says out of band', () => {
         backend: new StructuredAgentBackend(chat),
         ctx,
         permission: scriptPermission(),
-        system: 'SYS',
+        system    : 'SYS',
       });
       await agent.run('what is in project.yaml?');
       expect(prompts[1]).toContain('{"tool":"read_file","args":{"path":"project.yaml"}}');
@@ -1055,7 +1055,7 @@ describe('the tool catalog', () => {
         backend,
         ctx,
         permission: scriptPermission(),
-        system: 'SYS',
+        system    : 'SYS',
         deferTools: false,
       });
       await agent.run('one');
@@ -1092,8 +1092,8 @@ function meteredBackend(usage: {
   cacheRead?: number;
 }): AgentBackend & { steps: number; systemSaid: string[] } {
   const state = {
-    kind: 'mock' as const,
-    steps: 0,
+    kind      : 'mock' as const,
+    steps     : 0,
     systemSaid: [] as string[],
     next(_system: string, messages: AgentMessage[]) {
       state.steps++;
@@ -1118,8 +1118,8 @@ describe('the turn budget', () => {
         backend,
         ctx,
         permission: scriptPermission(),
-        system: 'SYS',
-        budget: '50k',
+        system    : 'SYS',
+        budget    : '50k',
       });
       const res = await agent.run('go');
       // 25k a step, so the third step is the one that finds the meter already at 50k.
@@ -1142,8 +1142,8 @@ describe('the turn budget', () => {
         backend,
         ctx,
         permission: scriptPermission(),
-        system: 'SYS',
-        budget: '50k',
+        system    : 'SYS',
+        budget    : '50k',
       });
       await agent.run('go');
       expect(backend.steps).toBe(25);
@@ -1162,8 +1162,8 @@ describe('the turn budget', () => {
         backend,
         ctx,
         permission: scriptPermission(),
-        system: 'SYS',
-        budget: '50k',
+        system    : 'SYS',
+        budget    : '50k',
       });
       await agent.run('go');
       const warnings = backend.systemSaid.filter((t) => t.startsWith('BUDGET:'));
@@ -1181,9 +1181,9 @@ describe('the turn budget', () => {
       const agent = new Agent({
         backend,
         ctx,
-        permission: scriptPermission(),
-        system: 'SYS',
-        budget: 'unlimited',
+        permission   : scriptPermission(),
+        system       : 'SYS',
+        budget       : 'unlimited',
         maxIterations: 4,
       });
       const res = await agent.run('go');
@@ -1214,11 +1214,11 @@ describe('the turn budget', () => {
 describe('a tool that throws mid-turn', () => {
   /** A tool whose run always fails the way a locked file does. */
   const explode: Tool = {
-    name: 'explode',
+    name       : 'explode',
     description: 'always fails',
-    mutating: false,
-    args: z.object({}),
-    run: () => Promise.reject(new Error('EPERM: operation not permitted, rename')),
+    mutating   : false,
+    args       : z.object({}),
+    run        : () => Promise.reject(new Error('EPERM: operation not permitted, rename')),
   };
 
   it('answers the call with an error observation and lets the turn carry on', async () => {
@@ -1234,7 +1234,7 @@ describe('a tool that throws mid-turn', () => {
           if (step === 1) {
             return Promise.resolve({
               actions: [{ tool: 'explode', args: {}, id: 'toolu_boom' }],
-              raw: [{ type: 'tool_use', id: 'toolu_boom', name: 'explode', input: {} }],
+              raw    : [{ type: 'tool_use', id: 'toolu_boom', name: 'explode', input: {} }],
             });
           }
           return Promise.resolve({ final: 'recovered' });
@@ -1245,9 +1245,9 @@ describe('a tool that throws mid-turn', () => {
         backend,
         ctx,
         permission: scriptPermission(),
-        system: 'SYS',
-        registry: new Map([[explode.name, explode]]),
-        onEvent: (e) => events.push(e),
+        system    : 'SYS',
+        registry  : new Map([[explode.name, explode]]),
+        onEvent   : (e) => events.push(e),
       });
       const res = await agent.run('go');
       // The throw did not end the turn: the model was shown the failure and answered after it.
@@ -1352,7 +1352,7 @@ describe('resuming a stored conversation', () => {
       const interrupted: AgentMessage[] = [
         { role: 'user', content: 'rename the scene' },
         {
-          role: 'assistant',
+          role   : 'assistant',
           content: [{ type: 'tool_use', id: 'toolu_lost', name: 'edit_file', input: {} }],
         },
       ];
@@ -1371,10 +1371,10 @@ describe('resuming a stored conversation', () => {
     try {
       let heard: readonly string[] = [];
       const listen: Tool<Record<string, never>> = {
-        name: 'listen',
+        name       : 'listen',
         description: 'report what the author said',
-        mutating: false,
-        args: z.object({}),
+        mutating   : false,
+        args       : z.object({}),
         run: (_args, toolCtx) => {
           heard = toolCtx.said?.() ?? [];
           return Promise.resolve({ ok: true, output: 'heard' });
@@ -1389,8 +1389,8 @@ describe('resuming a stored conversation', () => {
         ),
         ctx,
         permission: scriptPermission(),
-        system: 'SYS',
-        registry: createRegistry([listen as Tool]),
+        system    : 'SYS',
+        registry  : createRegistry([listen as Tool]),
       });
       agent.restore({ messages: STORED, sections: SECTIONS });
       await agent.run('and her outfit?');
@@ -1434,8 +1434,8 @@ describe('resuming a stored conversation', () => {
         backend: recordingBackend(),
         ctx,
         permission: scriptPermission(),
-        system: 'SYS',
-        onMessage: (m) => written.push(m),
+        system    : 'SYS',
+        onMessage : (m) => written.push(m),
       });
       agent.restore({ messages: STORED, sections: SECTIONS });
       expect(written).toEqual([]);
@@ -1451,7 +1451,7 @@ describe('resuming a stored conversation', () => {
 
 describe('where a transcript can be cut', () => {
   const call = (id: string): AgentMessage => ({
-    role: 'assistant',
+    role   : 'assistant',
     content: [{ type: 'tool_use', id, name: 'read_file', input: {} }],
   });
 

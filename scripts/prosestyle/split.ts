@@ -8,15 +8,7 @@
  */
 
 export type BlockKind =
-  | 'prose'
-  | 'gap'
-  | 'fence'
-  | 'toc'
-  | 'comment'
-  | 'heading'
-  | 'table'
-  | 'checkbox'
-  | 'link';
+  'prose' | 'gap' | 'fence' | 'toc' | 'comment' | 'heading' | 'table' | 'checkbox' | 'link';
 
 export interface Block {
   kind: BlockKind;
@@ -197,16 +189,16 @@ export function structure(markdown: string): Structure {
   const blocks = splitBlocks(markdown);
   const count = (kind: BlockKind) => blocks.filter((b) => b.kind === kind).length;
   return {
-    blocks: blocks.length,
-    prose: blocks.filter(isProse).length,
-    headings: count('heading'),
-    fences: count('fence'),
-    tables: count('table'),
+    blocks    : blocks.length,
+    prose     : blocks.filter(isProse).length,
+    headings  : count('heading'),
+    fences    : count('fence'),
+    tables    : count('table'),
     tableRows: blocks
       .filter((b) => b.kind === 'table')
       .reduce((n, b) => n + lines(b.text).length, 0),
     checkboxes: count('checkbox'),
-    bullets: blocks.filter((b) => isProse(b) && LIST_ITEM.test(b.text)).length,
-    length: markdown.length,
+    bullets   : blocks.filter((b) => isProse(b) && LIST_ITEM.test(b.text)).length,
+    length    : markdown.length,
   };
 }

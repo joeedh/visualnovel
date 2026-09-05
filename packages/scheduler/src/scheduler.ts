@@ -189,7 +189,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
     providers,
     paths,
     logger,
-    base: store.base,
+    base         : store.base,
     readOnlyShots: dryRun,
   });
 
@@ -203,11 +203,11 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
       preview: costPreview(graph, config, drawnByGraph),
       gate,
       blockedOnGate: false,
-      retried: [],
-      redrawn: [],
-      failed: [],
-      needsHuman: [],
-      base: store.base,
+      retried      : [],
+      redrawn      : [],
+      failed       : [],
+      needsHuman   : [],
+      base         : store.base,
       refused,
     };
   }
@@ -249,9 +249,9 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
       blockedOnGate: !gate.cleared,
       retried,
       redrawn,
-      failed: live(plannedNow, 'failed'),
+      failed    : live(plannedNow, 'failed'),
       needsHuman: live(plannedNow, 'needs_human'),
-      base: store.base,
+      base      : store.base,
     };
   }
 
@@ -307,7 +307,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
       } catch (err) {
         result = {
           status: 'failed' as const,
-          error: err instanceof Error ? err.message : String(err),
+          error : err instanceof Error ? err.message : String(err),
         };
       }
 
@@ -315,7 +315,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
       // stale reason from an earlier attempt and drops out of the logged JSON entirely.
       graph.setStatus(task.hash, result.status, {
         output: result.output,
-        error: result.error,
+        error : result.error,
       });
       const finished = graph.get(task.hash)!;
       // A runner that threw recorded nothing, so the failure would otherwise leave no trace in
@@ -323,9 +323,9 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
       if (result.status === 'failed') {
         finished.attempts.push({
           attempt: finished.attempts.length + 1,
-          refs: inputRefHashes(finished),
-          error: result.error,
-          at: now?.(),
+          refs   : inputRefHashes(finished),
+          error  : result.error,
+          at     : now?.(),
         });
       }
       await logTask(paths, finished);
@@ -333,10 +333,10 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
       running--;
       progress();
       logger?.[result.status === 'failed' ? 'error' : 'info']('task.end', {
-        hash: task.hash,
-        kind: task.kind,
+        hash  : task.hash,
+        kind  : task.kind,
         status: result.status,
-        error: result.error,
+        error : result.error,
       });
     });
   }
@@ -352,9 +352,9 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
     blockedOnGate: !gate.cleared,
     retried,
     redrawn,
-    failed: live(plannedNow, 'failed'),
+    failed    : live(plannedNow, 'failed'),
     needsHuman: live(plannedNow, 'needs_human'),
-    base: store.base,
+    base      : store.base,
     ...(stopped ? { stopped } : {}),
   };
 }

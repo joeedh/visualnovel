@@ -71,11 +71,11 @@ const applied = (op: LineOp): AppliedLineOp => {
 const shot = (id: string, sceneId: string, lines: string[], image?: string): Shot => ({
   id,
   sceneId,
-  framing: 'medium',
-  location: 'classroom/evening',
-  subjects: [],
+  framing    : 'medium',
+  location   : 'classroom/evening',
+  subjects   : [],
   coversLines: lines,
-  status: image ? 'accepted' : 'pending',
+  status     : image ? 'accepted' : 'pending',
   ...(image ? { image } : {}),
 });
 
@@ -240,24 +240,24 @@ describe('an edit with no coverage consequence', () => {
     const out = shotFallout(
       applied(
         insertLine(state(), {
-          scene: 'arrival',
-          after: '',
-          kind: 'narration',
+          scene  : 'arrival',
+          after  : '',
+          kind   : 'narration',
           speaker: '',
-          text: 'Rain.',
+          text   : 'Rain.',
         }),
       ),
       shots,
     );
 
     expect(out).toMatchObject({
-      removes: [],
-      carried: [],
-      detached: [],
-      orphaned: [],
+      removes  : [],
+      carried  : [],
+      detached : [],
+      orphaned : [],
       discarded: [],
-      drifted: [],
-      note: '',
+      drifted  : [],
+      note     : '',
     });
     expect(out.writes.size).toBe(0);
   });

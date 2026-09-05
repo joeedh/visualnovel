@@ -115,8 +115,7 @@ export async function runSmoke(
   for (const { spec, pick } of SDKS) {
     try {
       const Client = pick(await load(spec)) as
-        | (new (opts: { apiKey: string }) => unknown)
-        | undefined;
+        (new (opts: { apiKey: string }) => unknown) | undefined;
       if (typeof Client !== 'function') {
         checks.push({ what: spec, ok: false, detail: 'resolved, but exports no constructor' });
         continue;
@@ -144,8 +143,8 @@ async function sourceCheck(
   const root = await findSource().catch(() => undefined);
   if (root === undefined) {
     return {
-      what: 'source',
-      ok: false,
+      what  : 'source',
+      ok    : false,
       detail: 'not found — the debug agent will refuse to read the source',
     };
   }

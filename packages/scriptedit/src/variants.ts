@@ -27,14 +27,14 @@ export function setShotVariant(
   if (!shot) return { ok: false, error: `No shot "${args.shot}" in ${scene.id}.` };
   if (location.id !== scene.location) {
     return {
-      ok: false,
+      ok   : false,
       error: `${scene.id} is set in "${scene.location}", not "${location.id}".`,
     };
   }
   const variants = location.variants.map((v) => v.id);
   if (!variants.includes(args.variant)) {
     return {
-      ok: false,
+      ok   : false,
       error: `"${location.id}" has no variant "${args.variant}" — it has ${listed(variants)}.`,
     };
   }
@@ -44,8 +44,8 @@ export function setShotVariant(
 
   const next = shots.map((s) => (s.id === args.shot ? { ...s, location: args.variant } : s));
   return {
-    ok: true,
-    shots: next,
+    ok     : true,
+    shots  : next,
     message:
       `${args.shot} is now set in "${args.variant}". That is the plate it is drawn against, so ` +
       'the frame is drawn again on the next run.',

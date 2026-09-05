@@ -4,60 +4,60 @@ import type { Task } from '../../../../src/shared/ipc';
 
 const PARAMS: ImageParams = { modelId: 'mock-image' };
 const NONE: Selection = {
-  sceneId: '',
-  shotId: '',
+  sceneId    : '',
+  shotId     : '',
   characterId: '',
-  docPath: '',
-  assetHash: '',
-  graphSlug: '',
+  docPath    : '',
+  assetHash  : '',
+  graphSlug  : '',
 };
 
 const task = (over: Partial<Task> & Pick<Task, 'hash' | 'kind' | 'inputs'>): Task => ({
-  deps: [],
-  status: 'pending',
+  deps    : [],
+  status  : 'pending',
   attempts: [],
   ...over,
 });
 
 const shot = (shotId: string): Task =>
   task({
-    hash: `h:${shotId}`,
-    kind: 'shot_image',
+    hash  : `h:${shotId}`,
+    kind  : 'shot_image',
     inputs: { shotId, prompt: '', refs: [], params: PARAMS },
   });
 
 const portrait = (characterId: string): Task =>
   task({
-    hash: `h:${characterId}`,
-    kind: 'portrait',
+    hash  : `h:${characterId}`,
+    kind  : 'portrait',
     inputs: { characterId, prompt: '', refs: [], params: PARAMS },
   });
 
 const sheet = (characterId: string): Task =>
   task({
-    hash: `sheet:${characterId}`,
-    kind: 'model_sheet',
+    hash  : `sheet:${characterId}`,
+    kind  : 'model_sheet',
     inputs: {
       characterId,
       outfit: 'default',
-      angle: 'front',
+      angle : 'front',
       prompt: '',
-      refs: [],
+      refs  : [],
       params: PARAMS,
     },
   });
 
 const plate = (locationId: string): Task =>
   task({
-    hash: `plate:${locationId}`,
-    kind: 'location_ref',
+    hash  : `plate:${locationId}`,
+    kind  : 'location_ref',
     inputs: { locationId, variant: 'day', prompt: '', refs: [], params: PARAMS },
   });
 
 const view = (t: Task): { kind: 'task'; id: string; task: Task; subject: string } => ({
-  kind: 'task',
-  id: t.hash,
-  task: t,
+  kind   : 'task',
+  id     : t.hash,
+  task   : t,
   subject: '',
 });
 
@@ -66,7 +66,7 @@ describe('selectionForTask', () => {
     expect(selectionForTask(shot('arrival__beat1'), NONE)).toEqual({
       ...NONE,
       sceneId: 'arrival',
-      shotId: 'arrival__beat1',
+      shotId : 'arrival__beat1',
     });
   });
 
@@ -83,8 +83,8 @@ describe('selectionForTask', () => {
     const current: Selection = { ...NONE, sceneId: 'arrival', shotId: 'arrival__1' };
     expect(selectionForTask(portrait('aiko'), current)).toEqual({
       ...NONE,
-      sceneId: 'arrival',
-      shotId: 'arrival__1',
+      sceneId    : 'arrival',
+      shotId     : 'arrival__1',
       characterId: 'aiko',
     });
   });
@@ -92,8 +92,8 @@ describe('selectionForTask', () => {
   it('returns the same object for a task that names neither, so nothing is lost', () => {
     const current: Selection = {
       ...NONE,
-      sceneId: 'arrival',
-      shotId: 'arrival__1',
+      sceneId    : 'arrival',
+      shotId     : 'arrival__1',
       characterId: 'aiko',
     };
     expect(selectionForTask(plate('school'), current)).toBe(current);
@@ -104,8 +104,8 @@ describe('taskIsSelected', () => {
   it('answers for a bare task, which is what a list has', () => {
     const sel: Selection = {
       ...NONE,
-      sceneId: 'arrival',
-      shotId: 'arrival__beat1',
+      sceneId    : 'arrival',
+      shotId     : 'arrival__beat1',
       characterId: 'aiko',
     };
     expect(taskIsSelected(shot('arrival__beat1'), sel)).toBe(true);
@@ -142,21 +142,21 @@ describe('isSelected', () => {
   it('never selects a slot or the gate barrier', () => {
     const slot = {
       kind: 'slot' as const,
-      id: 'slot:shot:arrival/1',
+      id  : 'slot:shot:arrival/1',
       slot: {
-        key: 'shot:arrival/1',
-        binding: { kind: 'shot' as const, sceneId: 'arrival', shotId: '1' },
-        label: 'arrival · 1',
-        refs: [],
+        key       : 'shot:arrival/1',
+        binding   : { kind: 'shot' as const, sceneId: 'arrival', shotId: '1' },
+        label     : 'arrival · 1',
+        refs      : [],
         candidates: [],
-        approved: false,
+        approved  : false,
       },
     };
     const barrier = { kind: 'barrier' as const, id: 'gate:barrier', pending: ['aiko'] };
     const sel: Selection = {
       ...NONE,
-      sceneId: 'arrival',
-      shotId: 'arrival__1',
+      sceneId    : 'arrival',
+      shotId     : 'arrival__1',
       characterId: 'aiko',
     };
     expect(isSelected(slot, sel)).toBe(false);

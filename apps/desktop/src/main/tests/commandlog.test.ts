@@ -9,17 +9,17 @@ import { appendItem, openThread } from '../threads.js';
 
 const record = (seq: number, over: Partial<CommandRecord> = {}): CommandRecord => ({
   seq,
-  id: 'story.editScene',
-  props: {},
+  id        : 'story.editScene',
+  props     : {},
   invocation: `story.editScene(id='s1')`,
-  source: 'agent',
-  mutating: true,
-  gitHead: null,
-  gitDirty: false,
-  startedAt: '2026-08-15T14:02:00.000Z',
+  source    : 'agent',
+  mutating  : true,
+  gitHead   : null,
+  gitDirty  : false,
+  startedAt : '2026-08-15T14:02:00.000Z',
   finishedAt: '2026-08-15T14:02:01.000Z',
-  status: 'ok',
-  message: 'Rewrote 3 lines.',
+  status    : 'ok',
+  message   : 'Rewrote 3 lines.',
   ...over,
 });
 

@@ -30,8 +30,8 @@ export class TestSource extends Node<Sockets, { blob: TestBlobSocket; amount: Fl
   static override graphDef(): NodeDef {
     return {
       typeName: 'TestSource',
-      outputs: { blob: new TestBlobSocket('out'), amount: new FloatSocket('out') },
-      props: { label: new StringProperty('') },
+      outputs : { blob: new TestBlobSocket('out'), amount: new FloatSocket('out') },
+      props   : { label: new StringProperty('') },
     };
   }
 }
@@ -41,8 +41,8 @@ export class TestSeeded extends Node<{ amount: FloatSocket }, { blob: TestBlobSo
   static override graphDef(): NodeDef {
     return {
       typeName: 'TestSeeded',
-      inputs: { amount: new FloatSocket('in') },
-      outputs: { blob: new TestBlobSocket('out') },
+      inputs  : { amount: new FloatSocket('in') },
+      outputs : { blob: new TestBlobSocket('out') },
     };
   }
 }
@@ -51,8 +51,8 @@ export class TestOutput extends Node<{ image: TestBlobSocket }, Sockets> {
   static override graphDef(): NodeDef {
     return {
       typeName: 'TestOutput',
-      inputs: { image: new TestBlobSocket('in') },
-      props: { slot: new StringProperty('') },
+      inputs  : { image: new TestBlobSocket('in') },
+      props   : { slot: new StringProperty('') },
     };
   }
 }
@@ -64,10 +64,10 @@ export class TestOutput extends Node<{ image: TestBlobSocket }, Sockets> {
 export class TestRenamed extends Node<{ from: TestBlobSocket }, { blob: TestBlobSocket }> {
   static override graphDef(): NodeDef {
     return {
-      typeName: 'TestRenamed',
-      inputs: { from: new TestBlobSocket('in') },
-      outputs: { blob: new TestBlobSocket('out') },
-      props: { label: new StringProperty('') },
+      typeName   : 'TestRenamed',
+      inputs     : { from: new TestBlobSocket('in') },
+      outputs    : { blob: new TestBlobSocket('out') },
+      props      : { label: new StringProperty('') },
       typeVersion: 3,
     };
   }

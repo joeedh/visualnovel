@@ -19,9 +19,9 @@ import { REPO_ROOT } from './aliases.mjs';
 const SMOKE_PREFIX = 'VN-SMOKE ';
 
 const UNPACKED = {
-  win32: join('win-unpacked', 'vnstudio.exe'),
+  win32 : join('win-unpacked', 'vnstudio.exe'),
   darwin: join('mac', 'vnstudio.app', 'Contents', 'MacOS', 'vnstudio'),
-  linux: join('linux-unpacked', 'vnstudio'),
+  linux : join('linux-unpacked', 'vnstudio'),
 };
 
 const exe =
@@ -41,8 +41,8 @@ try {
   // test that quietly depends on the developer's key is not a test of the installer.
   stdout = execFileSync(exe, ['--smoke'], {
     encoding: 'utf8',
-    timeout: 60_000,
-    env: { ...process.env, GEMINI_API_KEY: '', ANTHROPIC_API_KEY: '' },
+    timeout : 60_000,
+    env     : { ...process.env, GEMINI_API_KEY: '', ANTHROPIC_API_KEY: '' },
   });
 } catch (err) {
   stdout = (err.stdout ?? '').toString();

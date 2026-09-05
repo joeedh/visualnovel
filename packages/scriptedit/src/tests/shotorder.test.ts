@@ -33,12 +33,12 @@ const state = (): ScriptState => {
 
 const shot = (id: string, lines: string[]): Shot => ({
   id,
-  sceneId: 'arrival',
-  framing: 'medium',
-  location: 'classroom/evening',
-  subjects: [],
+  sceneId    : 'arrival',
+  framing    : 'medium',
+  location   : 'classroom/evening',
+  subjects   : [],
   coversLines: lines.map((n) => `arrival:${n}`),
-  status: 'pending',
+  status     : 'pending',
 });
 
 /** Three shots, each over a contiguous pair — the shape a reorder is defined on. */

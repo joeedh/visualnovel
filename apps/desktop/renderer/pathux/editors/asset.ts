@@ -128,9 +128,9 @@ export class AssetEditor extends VnEditor {
 
   static override define() {
     return {
-      tagname: 'vn-asset-editor-x',
+      tagname : 'vn-asset-editor-x',
       areaname: 'asset',
-      icon: -1,
+      icon    : -1,
     };
   }
 
@@ -417,7 +417,7 @@ export class AssetEditor extends VnEditor {
     this.announce();
     await exec('view.open', {
       editor: action.editor,
-      where: 'elsewhere',
+      where : 'elsewhere',
       ...(action.subject ? { subject: action.subject } : {}),
     });
   }
@@ -443,7 +443,7 @@ export class AssetEditor extends VnEditor {
     this.drag = {
       chunk,
       verdicts: new Map(verdicts.map((v) => [v.target, v])),
-      target: chunk,
+      target  : chunk,
     };
     rail.setPointerCapture(event.pointerId);
 
@@ -463,8 +463,8 @@ export class AssetEditor extends VnEditor {
     return [...this.surface.querySelectorAll('.as-chunk')].map((node) => {
       const box = node.getBoundingClientRect();
       return {
-        key: (node as HTMLElement).dataset['chunk'] ?? '',
-        top: box.top,
+        key   : (node as HTMLElement).dataset['chunk'] ?? '',
+        top   : box.top,
         bottom: box.bottom,
       };
     });
@@ -954,8 +954,8 @@ export class AssetEditor extends VnEditor {
       this.drawing.act(
         thumb,
         {
-          ok: true,
-          id: 'view.open',
+          ok   : true,
+          id   : 'view.open',
           props: { editor: 'asset', where: 'elsewhere', subject: chip.pin },
         },
         (a) => void exec(a.id, a.props),
@@ -994,11 +994,11 @@ export class AssetEditor extends VnEditor {
         this.drawing.record(
           open,
           {
-            ok: true,
-            id: 'view.open',
+            ok   : true,
+            id   : 'view.open',
             props: {
               editor: origin.editor,
-              where: 'elsewhere',
+              where : 'elsewhere',
               ...(origin.subject ? { subject: origin.subject } : {}),
             },
           },
@@ -1080,7 +1080,7 @@ export class AssetEditor extends VnEditor {
     const picked = await pickAssetPopup(this, {
       items: assets.map(galleryItem),
       cache: this.thumbs,
-      at: { x: rect.left, y: rect.bottom },
+      at   : { x: rect.left, y: rect.bottom },
     });
     if (!picked) return;
 

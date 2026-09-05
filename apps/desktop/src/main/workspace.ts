@@ -91,9 +91,9 @@ export interface Scaffolding {
  */
 export async function writeScaffolding(root: string): Promise<Scaffolding> {
   return {
-    layouts: await ensureLayouts(root),
+    layouts   : await ensureLayouts(root),
     attributes: await ensureGitAttributes(root),
-    ignores: await ensureIgnored(root, [SESSION_IGNORE]),
+    ignores   : await ensureIgnored(root, [SESSION_IGNORE]),
   };
 }
 
@@ -301,7 +301,7 @@ const GITATTRIBUTES_BLOCKS = [
   },
   {
     line: 'vngen/work/graphs/lib/*.json -merge',
-    why: '# A saved node group is a graph fragment, and merges no better than a whole one.\n',
+    why : '# A saved node group is a graph fragment, and merges no better than a whole one.\n',
   },
 ];
 

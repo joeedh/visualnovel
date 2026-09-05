@@ -58,13 +58,13 @@ await build({
       "export { findKey } from './scripts/prosestyle/keys.js';",
     ].join('\n'),
     resolveDir: root,
-    loader: 'ts',
+    loader    : 'ts',
   },
-  outfile: TMP,
-  bundle: true,
+  outfile : TMP,
+  bundle  : true,
   platform: 'node',
-  format: 'cjs',
-  target: 'node20',
+  format  : 'cjs',
+  target  : 'node20',
   logLevel: 'warning',
 });
 
@@ -113,7 +113,7 @@ const call = async ({ model, system, user, maxTokens }) => {
   const ref = parseModelRef(model);
   const client = await clientFor(ref.route);
   const res = await client.messages.create({
-    model: ref.model,
+    model     : ref.model,
     max_tokens: maxTokens,
     system,
     messages: [{ role: 'user', content: user }],
@@ -168,7 +168,7 @@ async function run() {
       'git',
       ['diff', '--no-index', '--no-color', '--', absolute, revisedPath],
       {
-        encoding: 'utf8',
+        encoding : 'utf8',
         maxBuffer: 64 * 1024 * 1024,
       },
     );
@@ -206,8 +206,8 @@ async function run() {
 
   const report = await runFixtures({
     call,
-    models: { revise: reviseModel, judge: judgeModel },
-    rulesPath: RULES,
+    models    : { revise: reviseModel, judge: judgeModel },
+    rulesPath : RULES,
     fixtureDir: FIXTURES,
     ...(only ? { sets: [only] } : {}),
   });

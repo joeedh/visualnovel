@@ -57,10 +57,10 @@ describe('effectiveOrder', () => {
   // is in the browser bundle), so this test pins the two copies together
   it('agrees with the reordering @vn/artgen does inside composePrompt', () => {
     const derived: PromptChunk[] = chunks.map((c) => ({
-      key: c.key,
+      key     : c.key,
       category: 'style',
-      text: c.text!,
-      origin: { kind: 'builder' },
+      text    : c.text!,
+      origin  : { kind: 'builder' },
     }));
     for (const order of [undefined, ['palette', 'style'], ['gone', 'scaffolding'], []]) {
       const o = order ? ({ mode: 'chunks', order } satisfies PromptOverride) : undefined;
@@ -113,14 +113,14 @@ describe('moveChunk', () => {
 
   it('refuses a chunk or an anchor the prompt does not have — and that is not a no-op', () => {
     expect(moveChunk(state(), { chunk: 'gone', after: '' })).toEqual({
-      ok: false,
+      ok   : false,
       error: 'No chunk "gone" in this prompt.',
-      noop: false,
+      noop : false,
     });
     expect(moveChunk(state(), { chunk: 'style', after: 'gone' })).toEqual({
-      ok: false,
+      ok   : false,
       error: 'No chunk "gone" to sit after.',
-      noop: false,
+      noop : false,
     });
   });
 

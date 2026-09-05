@@ -17,7 +17,7 @@ jest.setTimeout(30_000);
 function answering(): Providers {
   const providers = createMockProviders();
   providers.text = {
-    complete: () => Promise.resolve(''),
+    complete  : () => Promise.resolve(''),
     structured: (prompt, parse) => {
       const lines = [...prompt.matchAll(/^\[([^\]]+)\]/gm)].map((m) => m[1]);
       return Promise.resolve(
@@ -69,7 +69,7 @@ describe('decomposeAll', () => {
       const result = await decomposeAll({
         model,
         providers: createMockProviders(),
-        paths: p.paths,
+        paths    : p.paths,
       });
 
       expect(result.fellBack.map((f) => f.scene).sort()).toEqual(['arrival', 'rooftop']);
@@ -90,8 +90,8 @@ describe('decomposeAll', () => {
       const { model } = await p.reload();
       const result = await decomposeAll({
         model,
-        providers: createMockProviders(),
-        paths: p.paths,
+        providers   : createMockProviders(),
+        paths       : p.paths,
         keepBaseline: true,
       });
 
@@ -149,10 +149,10 @@ describe('decomposeAllPreview', () => {
     try {
       const { model } = await p.reload();
       expect(await decomposeAllPreview(model, p.paths)).toEqual({
-        pending: ['arrival', 'rooftop'],
-        kept: [],
+        pending   : ['arrival', 'rooftop'],
+        kept      : [],
         unreadable: [],
-        atRisk: [],
+        atRisk    : [],
       });
 
       await decomposeAll({ model, providers: answering(), paths: p.paths });

@@ -139,11 +139,11 @@ describe('structure', () => {
   it('counts what a guard has to compare', () => {
     const md = ['# H', '', '- [ ] task', '- bullet', '', '| a |', '| - |', '', 'para'].join('\n');
     expect(structure(md)).toMatchObject({
-      headings: 1,
+      headings  : 1,
       checkboxes: 1,
-      bullets: 1,
-      tables: 1,
-      tableRows: 2,
+      bullets   : 1,
+      tables    : 1,
+      tableRows : 2,
     });
   });
 });

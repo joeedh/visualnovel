@@ -30,8 +30,7 @@ export function genPriceAgents(): string[] {
 }
 
 export type GenPriceModelsResult =
-  | { ok: true; models: GenPriceModels }
-  | { ok: false; reason: string };
+  { ok: true; models: GenPriceModels } | { ok: false; reason: string };
 
 /**
  * Reads what an agent answered. A price agent's figures come from a model, so they are parsed
@@ -44,7 +43,7 @@ export function parseGenPriceModels(raw: unknown): GenPriceModelsResult {
     const issue = parsed.error.issues[0];
     const at = issue?.path.join('.') ?? '';
     return {
-      ok: false,
+      ok    : false,
       reason: `the prices are not a price table: ${at} ${issue?.message ?? ''}`.trim(),
     };
   }

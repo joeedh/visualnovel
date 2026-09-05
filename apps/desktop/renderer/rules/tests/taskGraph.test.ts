@@ -21,24 +21,24 @@ const PARAMS: ImageParams = { modelId: 'mock-image' };
 
 /** A task with only the fields the derivation reads; `inputs` is per-kind, so it is passed in. */
 const task = (over: Partial<Task> & Pick<Task, 'hash' | 'kind' | 'inputs'>): Task => ({
-  deps: [],
-  status: 'pending',
+  deps    : [],
+  status  : 'pending',
   attempts: [],
   ...over,
 });
 
 const plate = (id: string, locationId: string, output?: string): Task =>
   task({
-    hash: id,
-    kind: 'location_ref',
+    hash  : id,
+    kind  : 'location_ref',
     inputs: { locationId, variant: 'day', prompt: '', refs: [], params: PARAMS },
     ...(output ? { output, status: 'done' } : {}),
   });
 
 const portrait = (id: string, characterId: string, output?: string): Task =>
   task({
-    hash: id,
-    kind: 'portrait',
+    hash  : id,
+    kind  : 'portrait',
     inputs: { characterId, prompt: '', refs: [], params: PARAMS },
     ...(output ? { output, status: 'done' } : {}),
   });
@@ -51,21 +51,21 @@ const shot = (id: string, shotId: string, refs: string[], deps: string[]): Task 
     inputs: {
       shotId,
       prompt: '',
-      refs: refs.map((hash) => ({ hash, ext: 'png' })),
+      refs  : refs.map((hash) => ({ hash, ext: 'png' })),
       params: PARAMS,
     },
   });
 
 const story = (scenes: Partial<StoryGraph['scenes'][number]>[]): StoryGraph => ({
   scenes: scenes.map((s) => ({
-    id: 'x',
-    location: 'loc',
+    id        : 'x',
+    location  : 'loc',
     characters: [],
-    lines: 3,
-    reachable: true,
+    lines     : 3,
+    reachable : true,
     ...s,
   })),
-  edges: [],
+  edges      : [],
   diagnostics: [],
 });
 
@@ -84,10 +84,10 @@ const status = (
 const slot = (key: string, binding: RefBinding, over: Partial<SlotNode> = {}): SlotNode => ({
   key,
   binding,
-  label: key,
-  refs: [],
+  label     : key,
+  refs      : [],
   candidates: [],
-  approved: false,
+  approved  : false,
   ...over,
 });
 
@@ -98,10 +98,10 @@ const sheetSlot = (id: string, over: Partial<SlotNode> = {}): SlotNode =>
   slot(
     `sheet:${id}/uniform/front`,
     {
-      kind: 'sheet',
+      kind       : 'sheet',
       characterId: id,
-      outfit: 'uniform',
-      angle: 'front',
+      outfit     : 'uniform',
+      angle      : 'front',
     },
     { refs: [`portrait:${id}`], ...over },
   );
@@ -110,9 +110,9 @@ const shotSlot = (sceneId: string, shotId: string, refs: string[], over: Partial
   slot(`shot:${sceneId}/${shotId}`, { kind: 'shot', sceneId, shotId }, { refs, ...over });
 
 const taskView = (t: Task) => ({
-  kind: 'task' as const,
-  id: t.hash,
-  task: t,
+  kind   : 'task' as const,
+  id     : t.hash,
+  task   : t,
   subject: subjectOf(t),
 });
 const slotView = (s: SlotNode) => ({ kind: 'slot' as const, id: `slot:${s.key}`, slot: s });
@@ -187,9 +187,9 @@ describe('buildSlotEdges', () => {
     const slots = [portraitSlot('aiko'), sheetSlot('aiko')];
     expect(buildSlotEdges(status([], [], slots), [])).toEqual([
       {
-        id: 'slot:slot:portrait:aiko->slot:sheet:aiko/uniform/front',
+        id  : 'slot:slot:portrait:aiko->slot:sheet:aiko/uniform/front',
         from: 'slot:portrait:aiko',
-        to: 'slot:sheet:aiko/uniform/front',
+        to  : 'slot:sheet:aiko/uniform/front',
         kind: 'slot',
       },
     ]);
@@ -210,16 +210,16 @@ describe('buildSlotEdges', () => {
     const tasks = [
       portrait('por', 'aiko'),
       task({
-        hash: 'sh',
-        kind: 'model_sheet',
-        deps: ['por'],
+        hash  : 'sh',
+        kind  : 'model_sheet',
+        deps  : ['por'],
         inputs: {
           characterId: 'aiko',
-          outfit: 'uniform',
-          angle: 'front',
-          prompt: '',
-          refs: [],
-          params: PARAMS,
+          outfit     : 'uniform',
+          angle      : 'front',
+          prompt     : '',
+          refs       : [],
+          params     : PARAMS,
         },
       }),
     ];
@@ -388,8 +388,8 @@ describe('clusterKeyOf', () => {
 
   it('stands a review on its own, since it is about one task rather than a subject', () => {
     const review = task({
-      hash: 'rv',
-      kind: 'vision_review',
+      hash  : 'rv',
+      kind  : 'vision_review',
       inputs: { target: 'assetPor', spec: '', refs: [], modelId: 'mock-text' },
     });
     expect(clusterKeyOf(taskView(review))).toBe('other:rv');
@@ -436,21 +436,21 @@ describe('clusteredGraphOf', () => {
   it('draws one edge per coupled pair, at the firmest kind between them', () => {
     expect(clustered.edges).toEqual([
       {
-        id: 'cluster:char:aiko->scene:arrival',
+        id  : 'cluster:char:aiko->scene:arrival',
         from: 'char:aiko',
-        to: 'scene:arrival',
+        to  : 'scene:arrival',
         kind: 'ref',
       },
       {
-        id: 'cluster:char:aiko->scene:rooftop',
+        id  : 'cluster:char:aiko->scene:rooftop',
         from: 'char:aiko',
-        to: 'scene:rooftop',
+        to  : 'scene:rooftop',
         kind: 'ref',
       },
       {
-        id: 'cluster:loc:classroom->scene:arrival',
+        id  : 'cluster:loc:classroom->scene:arrival',
         from: 'loc:classroom',
-        to: 'scene:arrival',
+        to  : 'scene:arrival',
         kind: 'dep',
       },
     ]);

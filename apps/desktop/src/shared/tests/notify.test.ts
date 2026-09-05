@@ -15,16 +15,16 @@ let seq = 0;
 function note(over: Partial<Notification> = {}): Notification {
   seq++;
   return {
-    v: 1,
-    r: 0,
-    h: 0,
-    id: `n${seq}`,
-    at: `2026-08-16T00:00:${String(seq).padStart(2, '0')}.000Z`,
-    session: 's',
+    v       : 1,
+    r       : 0,
+    h       : 0,
+    id      : `n${seq}`,
+    at      : `2026-08-16T00:00:${String(seq).padStart(2, '0')}.000Z`,
+    session : 's',
     category: 'command',
-    level: 'info',
-    source: 'main',
-    message: `note ${seq}`,
+    level   : 'info',
+    source  : 'main',
+    message : `note ${seq}`,
     ...over,
   };
 }
@@ -186,7 +186,7 @@ describe('linkTarget', () => {
 
   it('narrows a known editor and carries the subject', () => {
     expect(linkTarget(note({ link: { editor: 'asset', subject: 'abc123' } }))).toEqual({
-      editor: 'asset',
+      editor : 'asset',
       subject: 'abc123',
     });
   });

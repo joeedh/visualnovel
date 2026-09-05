@@ -12,7 +12,7 @@ import type { Step, Tour } from '../../shared/tours.js';
 
 const specs = {
   regenerate: { hash: prop.string('which asset'), note: prop.string('why', { default: '' }) },
-  setNotes: { target: prop.string('what to change'), notes: prop.string('what to say') },
+  setNotes  : { target: prop.string('what to change'), notes: prop.string('what to say') },
 };
 
 const known: Known = {
@@ -23,7 +23,7 @@ const known: Known = {
         ? specs.setNotes
         : undefined,
   interaction: (id) => id === 'branch.connect',
-  coerce: coerceProps,
+  coerce     : coerceProps,
 };
 
 const tourOf = (steps: Step[]): Tour => ({ id: 'agent', title: 'T', what: 'nothing', steps });
@@ -37,7 +37,7 @@ describe('readTour', () => {
 
   it('names the field a tour is missing', () => {
     expect(readTour(JSON.stringify({ id: 'a', title: 'b', what: 'c', steps: [] }))).toEqual({
-      ok: false,
+      ok    : false,
       reason: 'it needs at least one step',
     });
   });
@@ -103,7 +103,7 @@ describe('show_me', () => {
 
   const args = {
     title: 'Redraw a picture',
-    what: 'Draw the portrait again.',
+    what : 'Draw the portrait again.',
     steps: [{ kind: 'command' as const, id: 'asset.regenerate', say: 'Press Redraw.' }],
   };
 

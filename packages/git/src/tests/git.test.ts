@@ -110,8 +110,8 @@ describe('@vn/git', () => {
     try {
       await write(dir, 'a.md', 'a\n');
       await git.commit({
-        message: 'Moved line L4 into rooftop',
-        paths: ['-A'],
+        message : 'Moved line L4 into rooftop',
+        paths   : ['-A'],
         trailers: { 'Vn-Command': 'story.moveLine', 'Vn-Seq': '12' },
       });
       const shown = await git.show('HEAD');

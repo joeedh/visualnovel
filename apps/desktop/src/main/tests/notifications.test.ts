@@ -13,7 +13,7 @@ import {
 
 const input = (over: Partial<NotificationInput> = {}): NotificationInput => ({
   category: 'command',
-  message: 'Renamed the scene',
+  message : 'Renamed the scene',
   ...over,
 });
 

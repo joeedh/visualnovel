@@ -3,10 +3,10 @@ import { createSpaceRegistry } from '../spaces.js';
 
 const registry = () =>
   createSpaceRegistry({
-    css: { parent: 'device', label: 'devicePixelRatio', matrix: scaleMat(2) },
+    css          : { parent: 'device', label: 'devicePixelRatio', matrix: scaleMat(2) },
     'world:graph': {
       parent: 'css',
-      label: 'pan/zoom',
+      label : 'pan/zoom',
       matrix: mul(translateMat(120, 40), scaleMat(1.5)),
     },
   });
@@ -78,7 +78,7 @@ describe('SpaceRegistry', () => {
   it('re-reads matrix thunks at query time', () => {
     let zoom = 1;
     const reg = createSpaceRegistry({
-      css: { parent: 'device', label: 'devicePixelRatio', matrix: IDENTITY },
+      css          : { parent: 'device', label: 'devicePixelRatio', matrix: IDENTITY },
       'world:graph': { parent: 'css', label: 'pan/zoom', matrix: () => scaleMat(zoom) },
     });
     expect(applyToPoint(reg.transform('world:graph', 'css')!, { x: 10, y: 0 }).x).toBe(10);

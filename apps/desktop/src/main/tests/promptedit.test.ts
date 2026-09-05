@@ -5,22 +5,22 @@ import { applyPromptEdit } from '../promptedit.js';
 
 const chunks: PromptChunk[] = [
   {
-    key: 'style',
+    key     : 'style',
     category: 'style',
-    origin: { kind: 'project', field: 'art_style' },
-    text: 'Watercolour.',
+    origin  : { kind: 'project', field: 'art_style' },
+    text    : 'Watercolour.',
   },
   {
-    key: 'subject',
+    key     : 'subject',
     category: 'subject',
-    origin: { kind: 'character', id: 'aiko', field: 'appearance' },
-    text: 'Aiko.',
+    origin  : { kind: 'character', id: 'aiko', field: 'appearance' },
+    text    : 'Aiko.',
   },
   {
-    key: 'palette',
+    key     : 'palette',
     category: 'palette',
-    origin: { kind: 'project', field: 'art_style' },
-    text: 'Muted blues.',
+    origin  : { kind: 'project', field: 'art_style' },
+    text    : 'Muted blues.',
   },
 ];
 
@@ -33,13 +33,13 @@ function overrideOf(result: ReturnType<typeof applyPromptEdit>): PromptOverride 
 describe('applyPromptEdit — refusals', () => {
   it('names the chunks it has when the edit names one it does not', () => {
     const result = applyPromptEdit(chunks, undefined, {
-      op: 'chunk',
+      op   : 'chunk',
       chunk: 'mood',
-      how: 'mute',
-      text: '',
+      how  : 'mute',
+      text : '',
     });
     expect(result).toEqual({
-      ok: false,
+      ok    : false,
       reason: 'No chunk "mood" in this prompt. It has: style, subject, palette.',
     });
   });
@@ -47,30 +47,30 @@ describe('applyPromptEdit — refusals', () => {
   it('refuses to mute a chunk that is already muted', () => {
     const current: PromptOverride = { mode: 'chunks', mute: ['style'] };
     const result = applyPromptEdit(chunks, current, {
-      op: 'chunk',
+      op   : 'chunk',
       chunk: 'style',
-      how: 'mute',
-      text: '',
+      how  : 'mute',
+      text : '',
     });
     expect(result).toEqual({ ok: false, reason: '"style" is already muted.' });
   });
 
   it('refuses to clear a chunk with nothing on it', () => {
     const result = applyPromptEdit(chunks, undefined, {
-      op: 'chunk',
+      op   : 'chunk',
       chunk: 'style',
-      how: 'clear',
-      text: '',
+      how  : 'clear',
+      text : '',
     });
     expect(result).toEqual({ ok: false, reason: '"style" has no override to clear.' });
   });
 
   it('refuses an empty replacement, and names the op that restores the words', () => {
     const result = applyPromptEdit(chunks, undefined, {
-      op: 'chunk',
+      op   : 'chunk',
       chunk: 'style',
-      how: 'replace',
-      text: '   ',
+      how  : 'replace',
+      text : '   ',
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toContain('prompt.setChunk(op=clear)');
@@ -93,14 +93,14 @@ describe('applyPromptEdit — writes', () => {
   it('stamps a replacement with the derived text it was written against', () => {
     const override = overrideOf(
       applyPromptEdit(chunks, undefined, {
-        op: 'chunk',
+        op   : 'chunk',
         chunk: 'palette',
-        how: 'replace',
-        text: '  Warm ochres.  ',
+        how  : 'replace',
+        text : '  Warm ochres.  ',
       }),
     );
     expect(override).toEqual({
-      mode: 'chunks',
+      mode   : 'chunks',
       replace: { palette: { text: 'Warm ochres.', of: sha256('Muted blues.') } },
     });
   });
@@ -109,10 +109,10 @@ describe('applyPromptEdit — writes', () => {
     const current: PromptOverride = { mode: 'chunks', replace: { style: { text: 'Ink.' } } };
     const override = overrideOf(
       applyPromptEdit(chunks, current, {
-        op: 'chunk',
+        op   : 'chunk',
         chunk: 'palette',
-        how: 'append',
-        text: 'A little gold.',
+        how  : 'append',
+        text : 'A little gold.',
       }),
     );
     expect(override?.replace).toEqual({ style: { text: 'Ink.' } });
@@ -128,7 +128,7 @@ describe('applyPromptEdit — writes', () => {
 
   it('refuses a move that would change nothing', () => {
     const result = applyPromptEdit(chunks, undefined, {
-      op: 'move',
+      op   : 'move',
       chunk: 'subject',
       after: 'style',
     });
@@ -150,15 +150,15 @@ describe('applyPromptEdit — writes', () => {
   it('carries the model and the timestamp when the caller supplies them', () => {
     const override = overrideOf(
       applyPromptEdit(chunks, undefined, {
-        op: 'agent',
-        text: 'Aiko.',
+        op     : 'agent',
+        text   : 'Aiko.',
         modelId: 'claude-opus-4-8',
-        at: '2026-01-01T00:00:00.000Z',
+        at     : '2026-01-01T00:00:00.000Z',
       }),
     );
     expect(override?.agent).toMatchObject({
       modelId: 'claude-opus-4-8',
-      at: '2026-01-01T00:00:00.000Z',
+      at     : '2026-01-01T00:00:00.000Z',
     });
   });
 });
@@ -167,13 +167,13 @@ describe('applyPromptEdit — settling back to nothing', () => {
   it('returns no override at all once the last thing on it is cleared', () => {
     const current: PromptOverride = { mode: 'chunks', mute: ['style'] };
     const result = applyPromptEdit(chunks, current, {
-      op: 'chunk',
+      op   : 'chunk',
       chunk: 'style',
-      how: 'clear',
-      text: '',
+      how  : 'clear',
+      text : '',
     });
     expect(result).toEqual({
-      ok: true,
+      ok  : true,
       note: 'Restored the derived words of "style".',
     });
   });
@@ -181,7 +181,7 @@ describe('applyPromptEdit — settling back to nothing', () => {
   it('clears everything with part=all', () => {
     const current: PromptOverride = { mode: 'custom', custom: 'By hand.', mute: ['style'] };
     expect(applyPromptEdit(chunks, current, { op: 'clear', part: 'all' })).toEqual({
-      ok: true,
+      ok  : true,
       note: 'Cleared the override; the prompt is the derived chunks again.',
     });
   });
@@ -194,8 +194,8 @@ describe('applyPromptEdit — settling back to nothing', () => {
 
   it('keeps the other half when only one is cleared', () => {
     const current: PromptOverride = {
-      mode: 'agent',
-      mute: ['style'],
+      mode : 'agent',
+      mute : ['style'],
       agent: { text: 'Aiko.', of: 'abc' },
     };
     const override = overrideOf(applyPromptEdit(chunks, current, { op: 'clear', part: 'chunks' }));
@@ -217,11 +217,11 @@ describe('applyPromptEdit — repin', () => {
   it('moves the one reference it names and leaves the rest of the list alone', () => {
     const override = overrideOf(
       applyPromptEdit(chunks, pinned, {
-        op: 'repin',
+        op   : 'repin',
         chunk: 'subject',
-        ref: 'oldportrait',
-        to: 'newportrait',
-        ext: 'png',
+        ref  : 'oldportrait',
+        to   : 'newportrait',
+        ext  : 'png',
       }),
     );
     expect(override?.refs?.['subject']).toEqual([
@@ -234,11 +234,11 @@ describe('applyPromptEdit — repin', () => {
   // than letting an author pin it somewhere it cannot drift back from.
   it('refuses an unlinked reference', () => {
     const result = applyPromptEdit(chunks, pinned, {
-      op: 'repin',
+      op   : 'repin',
       chunk: 'subject',
-      ref: 'anupload',
-      to: 'newportrait',
-      ext: 'png',
+      ref  : 'anupload',
+      to   : 'newportrait',
+      ext  : 'png',
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toContain('unlinked reference');
@@ -246,11 +246,11 @@ describe('applyPromptEdit — repin', () => {
 
   it('lists what the chunk has when the reference is not one of them', () => {
     const result = applyPromptEdit(chunks, pinned, {
-      op: 'repin',
+      op   : 'repin',
       chunk: 'subject',
-      ref: 'somethingelse',
-      to: 'newportrait',
-      ext: 'png',
+      ref  : 'somethingelse',
+      to   : 'newportrait',
+      ext  : 'png',
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toContain('oldportr');
@@ -258,11 +258,11 @@ describe('applyPromptEdit — repin', () => {
 
   it('refuses a chunk carrying no references at all', () => {
     const result = applyPromptEdit(chunks, pinned, {
-      op: 'repin',
+      op   : 'repin',
       chunk: 'palette',
-      ref: 'oldportrait',
-      to: 'newportrait',
-      ext: 'png',
+      ref  : 'oldportrait',
+      to   : 'newportrait',
+      ext  : 'png',
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toContain('no reference images');
@@ -270,11 +270,11 @@ describe('applyPromptEdit — repin', () => {
 
   it('refuses a repin that would not move anything', () => {
     const result = applyPromptEdit(chunks, pinned, {
-      op: 'repin',
+      op   : 'repin',
       chunk: 'subject',
-      ref: 'oldportrait',
-      to: 'oldportrait',
-      ext: 'png',
+      ref  : 'oldportrait',
+      to   : 'oldportrait',
+      ext  : 'png',
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toContain('already pins');
@@ -295,11 +295,11 @@ describe('applyPromptEdit — addRef and dropRef', () => {
   it('appends to the chunk it names, keeping authored order', () => {
     const override = overrideOf(
       applyPromptEdit(chunks, pinned, {
-        op: 'addRef',
+        op   : 'addRef',
         chunk: 'subject',
         ref: {
-          pin: 'aplate',
-          ext: 'png',
+          pin : 'aplate',
+          ext : 'png',
           from: { kind: 'plate', locationId: 'cafe', variant: 'night' },
         },
       }),
@@ -314,9 +314,9 @@ describe('applyPromptEdit — addRef and dropRef', () => {
   it('starts a chunk that had no references', () => {
     const override = overrideOf(
       applyPromptEdit(chunks, undefined, {
-        op: 'addRef',
+        op   : 'addRef',
         chunk: 'palette',
-        ref: { pin: 'anupload', ext: 'png' },
+        ref  : { pin: 'anupload', ext: 'png' },
       }),
     );
     expect(override?.refs).toEqual({ palette: [{ pin: 'anupload', ext: 'png' }] });
@@ -324,9 +324,9 @@ describe('applyPromptEdit — addRef and dropRef', () => {
 
   it('names the chunks it has when the edit names one it does not', () => {
     const result = applyPromptEdit(chunks, pinned, {
-      op: 'addRef',
+      op   : 'addRef',
       chunk: 'mood',
-      ref: { pin: 'anupload', ext: 'png' },
+      ref  : { pin: 'anupload', ext: 'png' },
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toContain('No chunk "mood"');
@@ -335,9 +335,9 @@ describe('applyPromptEdit — addRef and dropRef', () => {
   // `refs` is inside the task hash and maps positionally, so a duplicate is not free.
   it('refuses a reference the chunk already carries', () => {
     const result = applyPromptEdit(chunks, pinned, {
-      op: 'addRef',
+      op   : 'addRef',
       chunk: 'subject',
-      ref: { pin: 'anupload', ext: 'png' },
+      ref  : { pin: 'anupload', ext: 'png' },
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toContain('already a reference');
@@ -357,18 +357,18 @@ describe('applyPromptEdit — addRef and dropRef', () => {
       refs: { subject: [{ pin: 'anupload', ext: 'png' }] },
     };
     const result = applyPromptEdit(chunks, one, {
-      op: 'dropRef',
+      op   : 'dropRef',
       chunk: 'subject',
-      ref: 'anupload',
+      ref  : 'anupload',
     });
     expect(result).toEqual({ ok: true, note: 'Removed anupload from "subject".' });
   });
 
   it('refuses a chunk carrying no references at all', () => {
     const result = applyPromptEdit(chunks, pinned, {
-      op: 'dropRef',
+      op   : 'dropRef',
       chunk: 'palette',
-      ref: 'anupload',
+      ref  : 'anupload',
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toContain('no reference images');

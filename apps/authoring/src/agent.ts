@@ -92,7 +92,7 @@ export async function buildAgentBackend(
   const modelId = opts.model ?? config.models.text;
   const keys = await resolveKeys(config, {
     secretsDirs: await secretDirsFor(dir),
-    require: [chatVendorFor(modelId)],
+    require    : [chatVendorFor(modelId)],
   });
   const chat = chatBackendFor(modelId, keys, opts.effort);
   if (!opts.noNative && chat.chatConversation) return new NativeAgentBackend(chat);
@@ -124,8 +124,8 @@ export async function createAuthoringAgent(
   const workspace = new Workspace(dir);
   const ctx: ToolContext = {
     workspace,
-    git: openGit(dir),
-    art: workspaceArtGen(workspace, { mock: opts.mock }),
+    git : openGit(dir),
+    art : workspaceArtGen(workspace, { mock: opts.mock }),
     text: workspaceTextLLM(workspace, { mock: opts.mock }),
   };
   const context = await loadContext(dir);

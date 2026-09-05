@@ -98,8 +98,8 @@ function toolsOf(tools: ToolSchema[]): unknown[] {
     if (!t.defer) lastLoaded = i;
   });
   const body = tools.map((t, i) => ({
-    name: t.name,
-    description: t.description,
+    name        : t.name,
+    description : t.description,
     input_schema: t.parameters,
     ...(t.defer ? { defer_loading: true } : {}),
     ...(i === lastLoaded ? { cache_control: EPHEMERAL } : {}),
@@ -121,7 +121,7 @@ export function buildConvoRequest(
   extra: Record<string, unknown> = {},
 ): Record<string, unknown> {
   const body: Record<string, unknown> = {
-    model: modelId,
+    model   : modelId,
     messages: messagesOf(req.turns, modelId),
     ...extra,
   };

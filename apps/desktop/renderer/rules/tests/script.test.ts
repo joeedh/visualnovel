@@ -65,9 +65,9 @@ describe('keyAct on an open line', () => {
 
   it('commits and opens a composer below when Enter comes at the end', () => {
     expect(keyAct(scene, editing, at('Um… hi.'), 'Enter')).toEqual({
-      act: 'run',
+      act  : 'run',
       steps: [{ id: 'story.setLineText', props: { line: 'a:L2', text: 'Um… hi.' } }],
-      then: { open: 'compose', after: 'a:L2' },
+      then : { open: 'compose', after: 'a:L2' },
     });
   });
 
@@ -75,34 +75,34 @@ describe('keyAct on an open line', () => {
   // opens without recording an undo point that would undo nothing
   it('opens the composer with no steps when the draft says what the line already said', () => {
     expect(keyAct(scene, editing, at('Um… hello.'), 'Enter')).toEqual({
-      act: 'run',
+      act  : 'run',
       steps: [],
-      then: { open: 'compose', after: 'a:L2' },
+      then : { open: 'compose', after: 'a:L2' },
     });
   });
 
   it('only commits when Enter comes mid-line', () => {
     expect(keyAct(scene, editing, at('Um… hi.', 3), 'Enter')).toEqual({
-      act: 'run',
+      act  : 'run',
       steps: [{ id: 'story.setLineText', props: { line: 'a:L2', text: 'Um… hi.' } }],
-      then: { open: 'none' },
+      then : { open: 'none' },
     });
   });
 
   it('deletes an emptied line on Backspace and reopens the one above', () => {
     expect(keyAct(scene, editing, at('  ', 0), 'Backspace')).toEqual({
-      act: 'run',
+      act  : 'run',
       steps: [{ id: 'story.deleteLine', props: { line: 'a:L2' } }],
-      then: { open: 'line', line: 'a:L1' },
+      then : { open: 'line', line: 'a:L1' },
     });
   });
 
   it('has nowhere to reopen when the emptied line was the first', () => {
     const first = { row: 'line', line: lines[0] as CoverageLine } as const;
     expect(keyAct(scene, first, at(''), 'Backspace')).toEqual({
-      act: 'run',
+      act  : 'run',
       steps: [{ id: 'story.deleteLine', props: { line: 'a:L1' } }],
-      then: { open: 'none' },
+      then : { open: 'none' },
     });
   });
 
@@ -129,20 +129,20 @@ describe('keyAct on a composer row', () => {
   it('inserts what was typed and opens the next composer under it', () => {
     const editing = { row: 'new', after: 'a:L2' } as const;
     expect(keyAct(scene, editing, at('You came.'), 'Enter')).toEqual({
-      act: 'run',
+      act  : 'run',
       steps: [
         {
-          id: 'story.insertLine',
+          id   : 'story.insertLine',
           props: {
-            scene: 'a',
-            after: 'a:L2',
-            kind: 'dialogue',
+            scene  : 'a',
+            after  : 'a:L2',
+            kind   : 'dialogue',
             speaker: 'aiko',
-            text: 'You came.',
+            text   : 'You came.',
           },
         },
       ],
-      then: { open: 'compose', after: COMPOSED },
+      then : { open: 'compose', after: COMPOSED },
     });
   });
 
@@ -158,14 +158,14 @@ describe('keyAct on a composer row', () => {
 describe('attributionAfter', () => {
   it('continues a dialogue block under the same cue', () => {
     expect(attributionAfter(lines[1] as CoverageLine)).toEqual({
-      kind: 'dialogue',
+      kind   : 'dialogue',
       speaker: 'aiko',
     });
   });
 
   it('follows a parenthetical with the spoken line, not another note', () => {
     expect(attributionAfter(lines[2] as CoverageLine)).toEqual({
-      kind: 'dialogue',
+      kind   : 'dialogue',
       speaker: 'aiko',
     });
   });
@@ -180,7 +180,7 @@ describe('attributionAfter', () => {
 describe('insertOf', () => {
   it('inserts at the top of the scene when there is nothing above', () => {
     expect(insertOf(scene, '', 'Rain, at first.')).toEqual({
-      id: 'story.insertLine',
+      id   : 'story.insertLine',
       props: { scene: 'a', after: '', kind: 'narration', speaker: '', text: 'Rain, at first.' },
     });
   });
@@ -240,7 +240,7 @@ describe('nextEditing', () => {
     expect(nextEditing(lines, null, { open: 'none' })).toBeNull();
     expect(nextEditing(lines, null, { open: 'line', line: 'a:L3' })).toEqual({
       editing: { row: 'line', line: lines[2] },
-      draft: 'quietly',
+      draft  : 'quietly',
     });
   });
 });
@@ -305,14 +305,14 @@ describe('dropTarget', () => {
 
 describe('moveStateOf', () => {
   const coverage: SceneCoverage = {
-    sceneId: 'a',
+    sceneId : 'a',
     location: 'gate',
-    heading: 'INT. GATE - DAY',
+    heading : 'INT. GATE - DAY',
     lines,
-    shots: [],
-    cast: [],
+    shots     : [],
+    cast      : [],
     characters: [],
-    variants: ['day'],
+    variants  : ['day'],
     decomposed: false,
   };
 
@@ -327,7 +327,7 @@ describe('moveStateOf', () => {
     expect(verdicts.find((v) => v.target === TOP)).toEqual({
       target: TOP,
       accept: true,
-      note: 'Moved a:L2 to the top in a.',
+      note  : 'Moved a:L2 to the top in a.',
       invoke: { id: 'story.moveLine', props: { line: 'a:L2', after: '' } },
     });
     // Dropping where it already sits reorders nothing, so it is not a target at all.
@@ -340,14 +340,14 @@ describe('moveStateOf', () => {
 // surface stays thin
 describe('a drag, from a pointer position to an invocation', () => {
   const coverage: SceneCoverage = {
-    sceneId: 'a',
+    sceneId : 'a',
     location: 'gate',
-    heading: 'INT. GATE - DAY',
+    heading : 'INT. GATE - DAY',
     lines,
-    shots: [],
-    cast: [],
+    shots     : [],
+    cast      : [],
     characters: [],
-    variants: ['day'],
+    variants  : ['day'],
     decomposed: false,
   };
   const boxes = lines.map((l, i) => ({ id: l.id, top: i * 20, bottom: i * 20 + 20 }));
@@ -365,12 +365,12 @@ describe('a drag, from a pointer position to an invocation', () => {
 
   it('commits the verdict the drop lands on', () => {
     expect(commits('a:L4', 5)).toEqual({
-      id: 'story.moveLine',
+      id   : 'story.moveLine',
       props: { line: 'a:L4', after: '' },
     });
     // y=50 is past L3's midpoint, so the insertion point is "after a:L3".
     expect(commits('a:L1', 50)).toEqual({
-      id: 'story.moveLine',
+      id   : 'story.moveLine',
       props: { line: 'a:L1', after: 'a:L3' },
     });
   });
@@ -424,15 +424,15 @@ describe('the cue picker', () => {
 
   it('keeps an unresolved cue in the list, so picking through it cannot discard one', () => {
     expect(cueChoices(cast, 'KENJI')).toContainEqual({
-      cue: 'KENJI',
-      label: 'KENJI — not in characters/',
+      cue    : 'KENJI',
+      label  : 'KENJI — not in characters/',
       current: true,
     });
   });
 
   it('asks for `story.setSpeaker`, and for narration with an empty cue', () => {
     expect(setSpeakerOf('a:L1', 'AIKO')).toEqual({
-      id: 'story.setSpeaker',
+      id   : 'story.setSpeaker',
       props: { line: 'a:L1', speaker: 'AIKO' },
     });
     expect(setSpeakerOf('a:L2', '').props).toEqual({ line: 'a:L2', speaker: '' });
@@ -507,12 +507,12 @@ describe('mergeTarget', () => {
 
   it('refuses to name one where the scene forks — a merge only removes a boundary', () => {
     const choice: StoryEdge = {
-      id: 'a#choice:0',
-      from: 'a',
-      to: 'b',
-      kind: 'choice',
-      label: 'Go in',
-      index: 0,
+      id      : 'a#choice:0',
+      from    : 'a',
+      to      : 'b',
+      kind    : 'choice',
+      label   : 'Go in',
+      index   : 0,
       dangling: false,
     };
     expect(mergeTarget(graph([choice, next('a', 'c')]), 'a')).toBeNull();
@@ -551,8 +551,8 @@ describe('canContinue', () => {
 describe('continueFrom', () => {
   it('proposes a free id and a heading composed from the location id', () => {
     expect(continueFrom('arrival', 'gate', ['arrival'])).toEqual({
-      act: 'scene',
-      scene: 'arrival_2',
+      act    : 'scene',
+      scene  : 'arrival_2',
       heading: 'INT. GATE - DAY',
     });
   });

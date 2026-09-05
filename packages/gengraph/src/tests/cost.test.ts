@@ -19,8 +19,8 @@ class CostPrompt extends Node<Sockets, { text: TestBlobSocket }> {
   static override graphDef(): NodeDef {
     return {
       typeName: 'CostPrompt',
-      outputs: { text: new TestBlobSocket('out') },
-      props: { model: new StringProperty('gemini-2.5-flash') },
+      outputs : { text: new TestBlobSocket('out') },
+      props   : { model: new StringProperty('gemini-2.5-flash') },
     };
   }
 }
@@ -33,8 +33,8 @@ class CostImage extends Node<
   static override graphDef(): NodeDef {
     return {
       typeName: 'CostImage',
-      inputs: { prompt: new TestBlobSocket('in'), refine: new TestBlobSocket('in') },
-      outputs: { image: new TestBlobSocket('out') },
+      inputs  : { prompt: new TestBlobSocket('in'), refine: new TestBlobSocket('in') },
+      outputs : { image: new TestBlobSocket('out') },
       props: { model: new StringProperty('gemini-2.5-flash-image'), count: new FloatProperty(1) },
     };
   }
@@ -45,9 +45,9 @@ class CostReview extends Node<{ image: TestBlobSocket }, { notes: TestBlobSocket
   static override graphDef(): NodeDef {
     return {
       typeName: 'CostReview',
-      inputs: { image: new TestBlobSocket('in') },
-      outputs: { notes: new TestBlobSocket('out') },
-      props: { model: new StringProperty('gemini-2.5-flash') },
+      inputs  : { image: new TestBlobSocket('in') },
+      outputs : { notes: new TestBlobSocket('out') },
+      props   : { model: new StringProperty('gemini-2.5-flash') },
     };
   }
 }
@@ -60,7 +60,7 @@ class CostFree extends Node<{ any: FloatSocket }, Sockets> {
 }
 
 registerGenNode({
-  cls: CostPrompt,
+  cls           : CostPrompt,
   refineFallback: true,
   estimate: (props) => [
     { service: 'text', model: String(props.model), unit: 'mtok-in', count: 0.001 },
@@ -68,8 +68,8 @@ registerGenNode({
 });
 
 registerGenNode({
-  cls: CostImage,
-  spends: true,
+  cls        : CostImage,
+  spends     : true,
   refineInput: 'refine',
   estimate: (props) => [
     { service: 'image', model: String(props.model), unit: 'image', count: Number(props.count) },
@@ -77,8 +77,8 @@ registerGenNode({
 });
 
 registerGenNode({
-  cls: CostReview,
-  spends: true,
+  cls     : CostReview,
+  spends  : true,
   estimate: (props, ctx) =>
     ctx.connected.has('image')
       ? [{ service: 'text', model: String(props.model), unit: 'mtok-out', count: 0.002 }]

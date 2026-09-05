@@ -37,7 +37,7 @@ export function tweenLayout(from: GraphLayout, to: GraphLayout, t: number): Grap
   return {
     ...to,
     nodes,
-    byId: new Map(nodes.map((n) => [n.id, n])),
+    byId  : new Map(nodes.map((n) => [n.id, n])),
     bounds: boundsOf(nodes.map(rectOf)),
   };
 }

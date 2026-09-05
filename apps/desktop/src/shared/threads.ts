@@ -51,9 +51,9 @@ export interface ResumeBinding {
 
 /** How each protocol reads in a refusal. */
 const BACKENDS: Record<BackendKind, string> = {
-  native: 'the native tool-calling path',
+  native    : 'the native tool-calling path',
   structured: 'the text tool-calling path',
-  mock: 'a mock backend',
+  mock      : 'a mock backend',
 };
 
 /** How each vendor reads in a refusal, as the author would name it rather than as an api key does. */

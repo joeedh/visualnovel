@@ -89,9 +89,9 @@ export function parseMarkdown(text: string): Block[] {
   const flushList = () => {
     if (list) {
       blocks.push({
-        kind: 'list',
+        kind   : 'list',
         ordered: list.ordered,
-        items: list.items.map((item) => parseInline(item)),
+        items  : list.items.map((item) => parseInline(item)),
       });
     }
     list = undefined;
@@ -122,7 +122,7 @@ export function parseMarkdown(text: string): Block[] {
     if (heading) {
       flush();
       blocks.push({
-        kind: 'heading',
+        kind : 'heading',
         level: heading[1]!.length,
         spans: parseInline(heading[2]!.trim()),
       });

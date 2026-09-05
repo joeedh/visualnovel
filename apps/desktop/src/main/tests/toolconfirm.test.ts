@@ -9,7 +9,7 @@ describe('confirmDetail', () => {
   it('names the sentence a concept will be drawn from, and the cost', () => {
     const said = confirmDetail('generate_image', {
       sentence: 'an aerial shot of the high school at dusk',
-      subject: 'location:school',
+      subject : 'location:school',
     });
     expect(said).toContain('an aerial shot of the high school at dusk');
     expect(said).toContain('location:school');
@@ -18,7 +18,7 @@ describe('confirmDetail', () => {
 
   it('says a redraw keeps the original, and quotes the edited prompt', () => {
     const said = confirmDetail('edit_image', {
-      hash: 'abcdef0123456789abcdef',
+      hash  : 'abcdef0123456789abcdef',
       prompt: 'the same shot, but at night',
     });
     expect(said).toContain('abcdef012345');

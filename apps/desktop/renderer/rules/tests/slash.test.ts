@@ -5,8 +5,8 @@ const skill = (id: string, name: string): SkillEntry => ({
   id,
   name,
   description: `What ${name} does.`,
-  file: `.aiagent/skills/${id}/SKILL.md`,
-  script: false,
+  file       : `.aiagent/skills/${id}/SKILL.md`,
+  script     : false,
 });
 
 const SKILLS = [
@@ -71,7 +71,7 @@ describe('what picking a skill puts in the box', () => {
 
   test('whatever was already typed after the token is kept', () => {
     expect(completeSlash('/c scene 3', SKILLS[1]!)).toEqual({
-      text: '/cast-a-scene scene 3',
+      text : '/cast-a-scene scene 3',
       caret: 14,
     });
   });

@@ -21,12 +21,12 @@ function fakeImage(): { image: ImageProvider; calls: { prompt: string; refs: Ass
     generate: (prompt, refs): Promise<ImageResult> => {
       calls.push({ prompt, refs });
       return Promise.resolve({
-        bytes: new TextEncoder().encode(`concept:${calls.length}`),
-        ext: 'png',
+        bytes  : new TextEncoder().encode(`concept:${calls.length}`),
+        ext    : 'png',
         modelId: 'fake-image',
       });
     },
-    edit: () => Promise.reject(new Error('a concept is generated, never edited')),
+    edit    : () => Promise.reject(new Error('a concept is generated, never edited')),
   };
   return { image, calls };
 }
@@ -61,7 +61,7 @@ describe('matchSubject', () => {
     const m = model([['rooftop', 'Rooftop']], [['aiko', 'Aiko']]);
     expect(matchSubject(m, 'an aerial shot of the rooftop')).toEqual({
       kind: 'location',
-      id: 'rooftop',
+      id  : 'rooftop',
     });
   });
 
@@ -72,7 +72,7 @@ describe('matchSubject', () => {
     ]);
     expect(matchSubject(m, 'the high school gym at night')).toEqual({
       kind: 'location',
-      id: 'gym',
+      id  : 'gym',
     });
   });
 
@@ -135,7 +135,7 @@ describe('generateConcept', () => {
       await expect(
         generateConcept(deps, {
           sentence: 'a portrait',
-          subject: { kind: 'character', id: 'nobody' },
+          subject : { kind: 'character', id: 'nobody' },
         }),
       ).rejects.toThrow(/No character "nobody"/);
     } finally {

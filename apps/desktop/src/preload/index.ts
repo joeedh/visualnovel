@@ -17,7 +17,7 @@ const initialSession = ipcRenderer.sendSync('session:snapshot:sync') as Record<
 >;
 
 const api: DesktopApi = {
-  invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
+  invoke : (channel, ...args) => ipcRenderer.invoke(channel, ...args),
   on: (channel, listener) => {
     const wrapped = (_event: IpcRendererEvent, payload: unknown): void =>
       listener(payload as never);
@@ -28,7 +28,7 @@ const api: DesktopApi = {
   },
   session: {
     initial: () => initialSession,
-    set: (key, value, scope) => void ipcRenderer.invoke('session:set', { key, value, scope }),
+    set    : (key, value, scope) => void ipcRenderer.invoke('session:set', { key, value, scope }),
   },
 };
 
@@ -45,11 +45,11 @@ const vn: CommandBridge = {
       'command:exec',
       props === undefined ? { dsl: dslOrId, source: 'cdp' } : { id: dslOrId, props, source: 'cdp' },
     ),
-  check: (id, props) => ipcRenderer.invoke('command:check', { id, props: props ?? {} }),
+  check  : (id, props) => ipcRenderer.invoke('command:check', { id, props: props ?? {} }),
   catalog: () => ipcRenderer.invoke('command:catalog'),
   history: (limit) => ipcRenderer.invoke('command:history', limit),
-  undo: () => ipcRenderer.invoke('command:undo'),
-  redo: () => ipcRenderer.invoke('command:redo'),
+  undo   : () => ipcRenderer.invoke('command:undo'),
+  redo   : () => ipcRenderer.invoke('command:redo'),
 };
 
 contextBridge.exposeInMainWorld('vn', vn);

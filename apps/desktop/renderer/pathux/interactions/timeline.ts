@@ -63,8 +63,8 @@ export interface Reorder {
 export function coverState(data: SceneCoverage | null): CoverState {
   return {
     sceneId: data?.sceneId ?? '',
-    lines: data?.lines ?? [],
-    shots: data?.shots ?? [],
+    lines  : data?.lines ?? [],
+    shots  : data?.shots ?? [],
     ...(data?.nextShot !== undefined ? { nextShot: data.nextShot } : {}),
   };
 }
@@ -79,8 +79,8 @@ export function grabEdge(data: SceneCoverage | null, shotId: string, edge: Edge)
     shotId,
     edge,
     verdicts: new Map(verdicts.map((v) => [v.target, v])),
-    lines: null,
-    verdict: null,
+    lines   : null,
+    verdict : null,
   };
 }
 
@@ -94,8 +94,8 @@ export function grabShot(data: SceneCoverage | null, shotId: string): Reorder {
   return {
     shotId,
     verdicts: new Map(verdicts.map((v) => [v.target, v])),
-    target: shotId,
-    verdict: null,
+    target  : shotId,
+    verdict : null,
   };
 }
 
@@ -107,10 +107,10 @@ export function grabShot(data: SceneCoverage | null, shotId: string): Reorder {
 export function grabGutter(data: SceneCoverage | null, lineId: string): Create {
   const verdicts = timelineCreate.targets(coverState(data), lineId);
   return {
-    anchor: lineId,
+    anchor  : lineId,
     verdicts: new Map(verdicts.map((v) => [v.target, v])),
-    lines: null,
-    verdict: null,
+    lines   : null,
+    verdict : null,
   };
 }
 

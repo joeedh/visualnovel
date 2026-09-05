@@ -43,7 +43,7 @@ describe('a gesture read as an edit', () => {
   it('writes a single drag as the same one-node move a multi-drag writes', () => {
     const one = genEditFor({ kind: 'moveNode', graphPath: '', nodeId: '3', x: 10, y: 20 });
     expect(one).toEqual({
-      ok: true,
+      ok  : true,
       edit: { op: 'moveNodes', moves: [{ node: '3', x: 10, y: 20 }] },
     });
   });
@@ -67,7 +67,7 @@ describe('a gesture read as an edit', () => {
 
   it('carries the node id and the drop position a duplicate was placed at', () => {
     expect(genEditFor({ kind: 'duplicateNode', graphPath: '', nodeId: '3', x: 5, y: 7 })).toEqual({
-      ok: true,
+      ok  : true,
       edit: { op: 'duplicateNode', node: '3', pos: [5, 7] },
     });
   });
@@ -75,18 +75,18 @@ describe('a gesture read as an edit', () => {
   it('names both ends of a link, and of the link a drag severs', () => {
     const ends = {
       graphPath: '',
-      srcNode: '1',
+      srcNode  : '1',
       srcSocket: 'image',
-      dstNode: '2',
+      dstNode  : '2',
       dstSocket: 'base',
     } as const;
     expect(genEditFor({ kind: 'connect', ...ends })).toEqual({
-      ok: true,
+      ok  : true,
       edit: { op: 'link', from: '1', fromSocket: 'image', to: '2', toSocket: 'base' },
     });
     // An unlink gesture always names its source, so it cuts the one link rather than the input.
     expect(genEditFor({ kind: 'disconnect', ...ends })).toEqual({
-      ok: true,
+      ok  : true,
       edit: { op: 'unlink', to: '2', toSocket: 'base', from: '1', fromSocket: 'image' },
     });
   });
@@ -95,17 +95,17 @@ describe('a gesture read as an edit', () => {
   // allocates one. A ref the gesture did carry is passed on as the name to use.
   it('groups the selection under no name unless the gesture named one', () => {
     const group = {
-      kind: 'createGroup' as const,
+      kind     : 'createGroup' as const,
       graphPath: '',
       storePath: '',
-      nodeIds: ['1', '2'],
+      nodeIds  : ['1', '2'],
     };
     expect(genEditFor(group)).toEqual({
-      ok: true,
+      ok  : true,
       edit: { op: 'createGroup', nodes: ['1', '2'] },
     });
     expect(genEditFor({ ...group, ref: 'wash' })).toEqual({
-      ok: true,
+      ok  : true,
       edit: { op: 'createGroup', nodes: ['1', '2'], ref: 'wash' },
     });
   });
@@ -113,60 +113,60 @@ describe('a gesture read as an edit', () => {
   it('reads an added GroupNode as an instance of the definition it names', () => {
     expect(
       genEditFor({
-        kind: 'addNode',
+        kind     : 'addNode',
         graphPath: '',
-        nodeType: 'GroupNode',
-        ref: 'wash',
-        x: 5,
-        y: 7,
+        nodeType : 'GroupNode',
+        ref      : 'wash',
+        x        : 5,
+        y        : 7,
       }),
     ).toEqual({ ok: true, edit: { op: 'addGroup', ref: 'wash', pos: [5, 7] } });
   });
 
   it('carries an ungroup and the definition edits through by name', () => {
     expect(genEditFor({ kind: 'ungroup', graphPath: '', nodeId: '4' })).toEqual({
-      ok: true,
+      ok  : true,
       edit: { op: 'ungroup', node: '4' },
     });
     expect(
       genEditFor({
-        kind: 'exposeEntry',
+        kind     : 'exposeEntry',
         graphPath: '',
-        entry: { kind: 'prop', nodeId: '1', propKey: 'template', label: 'Prompt' },
+        entry    : { kind: 'prop', nodeId: '1', propKey: 'template', label: 'Prompt' },
       }),
     ).toEqual({
-      ok: true,
+      ok  : true,
       edit: { op: 'expose', kind: 'prop', node: '1', key: 'template', label: 'Prompt' },
     });
     expect(
       genEditFor({ kind: 'exposeEntry', graphPath: '', entry: { kind: 'nodeUI', nodeId: '1' } }),
     ).toEqual({ ok: true, edit: { op: 'expose', kind: 'nodeUI', node: '1' } });
     expect(genEditFor({ kind: 'reorderEntry', graphPath: '', from: 2, to: 0 })).toEqual({
-      ok: true,
+      ok  : true,
       edit: { op: 'reorderExposed', from: 2, to: 0 },
     });
     expect(
       genEditFor({ kind: 'repointEntry', graphPath: '', index: 1, nodeId: '2', propKey: SEED }),
     ).toEqual({ ok: true, edit: { op: 'repointExposed', index: 1, node: '2', key: 'seed' } });
     expect(genEditFor({ kind: 'removeEntry', graphPath: '', index: 1 })).toEqual({
-      ok: true,
+      ok  : true,
       edit: { op: 'unexpose', index: 1 },
     });
     expect(
       genEditFor({
-        kind: 'addBoundary',
-        graphPath: '',
-        dir: 'in',
-        key: 'extra',
+        kind      : 'addBoundary',
+        graphPath : '',
+        dir       : 'in',
+        key       : 'extra',
         socketType: 'TextSocket',
       }),
     ).toEqual({
-      ok: true,
+      ok  : true,
       edit: { op: 'addBoundary', dir: 'in', key: 'extra', type: 'TextSocket' },
     });
     expect(genEditFor({ kind: 'removeBoundary', graphPath: '', dir: 'out', key: 'extra' })).toEqual(
       {
-        ok: true,
+        ok  : true,
         edit: { op: 'removeBoundary', dir: 'out', key: 'extra' },
       },
     );
@@ -194,7 +194,7 @@ describe('a gesture with no command behind it', () => {
 describe('the command an edit is written through', () => {
   it('sends a move list as the JSON the command parses', () => {
     const command = commandFor(ROOT, {
-      op: 'moveNodes',
+      op   : 'moveNodes',
       moves: [{ node: 7, x: 1.5, y: -2 }],
     });
     expect(command.id).toBe('gengraph.moveNodes');
@@ -205,8 +205,8 @@ describe('the command an edit is written through', () => {
     expect(commandFor(ROOT, { op: 'addNode', type: 'GenOutput' }).props).toEqual({
       slug: 'plates',
       type: 'GenOutput',
-      x: 0,
-      y: 0,
+      x   : 0,
+      y   : 0,
     });
   });
 
@@ -220,10 +220,10 @@ describe('the command an edit is written through', () => {
   // unlink carrying no source means.
   it('leaves the source empty when the edit named none', () => {
     expect(commandFor(ROOT, { op: 'unlink', to: '2', toSocket: 'base' }).props).toEqual({
-      slug: 'plates',
-      to: '2',
-      toSocket: 'base',
-      from: '',
+      slug      : 'plates',
+      to        : '2',
+      toSocket  : 'base',
+      from      : '',
       fromSocket: '',
     });
   });
@@ -258,7 +258,7 @@ describe('the command an edit is written through', () => {
 
   it('names the definition an instance stands for, and where it lands', () => {
     expect(commandFor(ROOT, { op: 'addGroup', ref: 'wash', pos: [3, 4] })).toEqual({
-      id: 'gengraph.addGroup',
+      id   : 'gengraph.addGroup',
       props: { slug: 'plates', ref: 'wash', x: 3, y: 4 },
     });
     expect(commandFor(ROOT, { op: 'ungroup', node: 4 }).props).toEqual({
@@ -273,8 +273,8 @@ describe('the command an edit is written through', () => {
     const edit = { op: 'removeNode', node: '2' } as const;
     expect(commandFor(ROOT, edit).props).not.toHaveProperty('group');
     expect(commandFor(DEFINITION, edit).props).toEqual({
-      slug: 'plates',
-      node: '2',
+      slug : 'plates',
+      node : '2',
       group: 'wash',
     });
     expect(commandFor(DEFINITION, { op: 'createGroup', nodes: ['1'] }).props.group).toBe('wash');
@@ -301,18 +301,18 @@ describe('the command an edit is written through', () => {
     ).toEqual({ group: 'wash', node: '1', key: 'template', label: '' });
     expect(commandFor(DEFINITION, { op: 'expose', kind: 'nodeUI', node: 1 }).props).toEqual({
       group: 'wash',
-      node: '1',
-      key: '',
+      node : '1',
+      key  : '',
       label: '',
     });
     expect(commandFor(DEFINITION, { op: 'unexpose', index: 2 })).toEqual({
-      id: 'gengraph.unexpose',
+      id   : 'gengraph.unexpose',
       props: { group: 'wash', index: 2 },
     });
     expect(commandFor(DEFINITION, { op: 'reorderExposed', from: 2, to: 0 }).props).toEqual({
       group: 'wash',
-      from: 2,
-      to: 0,
+      from : 2,
+      to   : 0,
     });
     expect(
       commandFor(DEFINITION, { op: 'repointExposed', index: 1, node: 2, key: 'seed' }).props,
@@ -320,11 +320,11 @@ describe('the command an edit is written through', () => {
     expect(
       commandFor(DEFINITION, { op: 'addBoundary', dir: 'in', key: 'extra', type: 'TextSocket' }),
     ).toEqual({
-      id: 'gengraph.addBoundary',
+      id   : 'gengraph.addBoundary',
       props: { group: 'wash', dir: 'in', key: 'extra', type: 'TextSocket' },
     });
     expect(commandFor(DEFINITION, { op: 'removeBoundary', dir: 'out', key: 'extra' })).toEqual({
-      id: 'gengraph.removeBoundary',
+      id   : 'gengraph.removeBoundary',
       props: { group: 'wash', dir: 'out', key: 'extra' },
     });
   });

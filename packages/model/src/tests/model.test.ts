@@ -9,10 +9,10 @@ const charDoc = (id: string, name: string, declaredId = id): EntityDoc => {
 
 function inputs(script: string, withChars = true): BuildInputs {
   return {
-    title: 'Test',
+    title        : 'Test',
     characterDocs: withChars ? [charDoc('aiko', 'Aiko'), charDoc('ren', 'Ren')] : [],
-    locationDocs: [],
-    script: parseFountain(script),
+    locationDocs : [],
+    script       : parseFountain(script),
   };
 }
 
@@ -180,16 +180,16 @@ describe('buildModel — an entity id must agree with the file that holds it', (
 
   it('says nothing when a location agrees', () => {
     const doc: EntityDoc = {
-      id: 'pier',
+      id  : 'pier',
       file: '/p/wiki/sets/pier.md',
-      doc: parseFrontMatter('---\nid: pier\ntype: location\nname: Pier\n---\n\nA pier.\n'),
+      doc : parseFrontMatter('---\nid: pier\ntype: location\nname: Pier\n---\n\nA pier.\n'),
       text: '',
     };
     const model = buildModel({
-      title: 'Test',
+      title        : 'Test',
       characterDocs: [],
-      locationDocs: [doc],
-      script: parseFountain(''),
+      locationDocs : [doc],
+      script       : parseFountain(''),
     });
     expect([...model.locations.keys()]).toEqual(['pier']);
     expect(model.diagnostics.some((d) => d.code === 'entity_id_mismatch')).toBe(false);
@@ -198,17 +198,17 @@ describe('buildModel — an entity id must agree with the file that holds it', (
 
 describe('buildModel — the wardrobe', () => {
   const sheet = (frontMatter: string): EntityDoc => ({
-    id: 'ada',
+    id  : 'ada',
     file: '/p/characters/ada/character.md',
-    doc: parseFrontMatter(`---\nid: ada\nname: Ada\n${frontMatter}---\n\nAda.\n`),
+    doc : parseFrontMatter(`---\nid: ada\nname: Ada\n${frontMatter}---\n\nAda.\n`),
     text: '',
   });
   const build = (fm: string) =>
     buildModel({
-      title: 'Test',
+      title        : 'Test',
       characterDocs: [sheet(fm)],
-      locationDocs: [],
-      script: parseFountain(''),
+      locationDocs : [],
+      script       : parseFountain(''),
     });
 
   it('warns when the default outfit is the one the wardrobe does not describe', () => {
@@ -250,9 +250,9 @@ const chunk = (id: string, body: string): SceneChunkDoc => {
 
 function chunkInputs(sceneDocs: SceneChunkDoc[], start?: string, script = ''): BuildInputs {
   return {
-    title: 'Test',
+    title        : 'Test',
     characterDocs: [charDoc('aiko', 'Aiko'), charDoc('ren', 'Ren')],
-    locationDocs: [],
+    locationDocs : [],
     sceneDocs,
     script: parseFountain(script),
     start,
@@ -275,7 +275,7 @@ Yo.
 
 describe('buildModel — the scene outfit marker', () => {
   const dressed: EntityDoc = {
-    id: 'aiko',
+    id  : 'aiko',
     file: '/p/characters/aiko/character.md',
     doc: parseFrontMatter(
       '---\nid: aiko\nname: Aiko\ndefault_outfit: uniform\noutfits:\n  uniform: grey blazer\n  track: club tracksuit\n---\n\nAiko.\n',
@@ -286,7 +286,7 @@ describe('buildModel — the scene outfit marker', () => {
     buildModel({
       ...chunkInputs([chunk('arrival', `INT. CLASSROOM - DAY\n\n${markers}\nAIKO\nHi.\n`)]),
       characterDocs: [dressed],
-      start: 'arrival',
+      start        : 'arrival',
     });
 
   it('keeps a marker naming an outfit the character has', () => {

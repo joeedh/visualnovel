@@ -229,13 +229,11 @@ export class CommandForm {
     }
 
     if (prop.kind === 'enum') {
-      const options = (prop.values ?? []).map(
-        (option): ChoiceRow => ({
-          value: option,
-          label: option === '' ? 'leave empty' : option,
-          tooltip: `Set ${prop.name} to ${option}`,
-        }),
-      );
+      const options = (prop.values ?? []).map((option): ChoiceRow => ({
+        value  : option,
+        label  : option === '' ? 'leave empty' : option,
+        tooltip: `Set ${prop.name} to ${option}`,
+      }));
       this.chooser(row, prop, options, String(value ?? ''));
       return undefined;
     }
@@ -289,7 +287,7 @@ export class CommandForm {
     }
 
     const menu: DropBox = row.listenum(undefined, {
-      enumDef: new EnumProperty(value, keys).addUINames(labels).addDescriptions(tooltips),
+      enumDef   : new EnumProperty(value, keys).addUINames(labels).addDescriptions(tooltips),
       defaultval: value,
       callback: (picked) => {
         this.values[prop.name] = String(picked);
@@ -335,8 +333,8 @@ export class CommandForm {
   private multiline(row: Container, prop: CatalogProp, value: string): void {
     writingBox(row, {
       value,
-      title: prop.hint ?? prop.description,
-      label: prop.description,
+      title  : prop.hint ?? prop.description,
+      label  : prop.description,
       onInput: (text) => {
         this.values[prop.name] = text;
         void this.recheck();

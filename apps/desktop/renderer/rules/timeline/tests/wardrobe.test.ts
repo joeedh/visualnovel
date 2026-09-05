@@ -5,25 +5,25 @@ const AIKO: CoverageCast = { id: 'aiko', outfits: ['uniform', 'track'], defaultO
 const REN: CoverageCast = { id: 'ren', outfits: ['uniform'], defaultOutfit: 'uniform' };
 
 const shot = (outfits: Record<string, string>, subjects = ['aiko', 'ren']): CoverageShot => ({
-  id: 'club__beat1',
+  id     : 'club__beat1',
   framing: 'medium',
   subjects,
   location: 'day',
   outfits,
   coversLines: ['club:L1'],
-  status: 'accepted',
-  drift: 'current',
+  status     : 'accepted',
+  drift      : 'current',
 });
 
 const coverage = (cast: CoverageCast[], shots: CoverageShot[]): SceneCoverage => ({
-  sceneId: 'club',
+  sceneId : 'club',
   location: 'club_room',
-  heading: 'INT. CLUB ROOM - DAY',
-  lines: [],
+  heading : 'INT. CLUB ROOM - DAY',
+  lines   : [],
   shots,
   cast,
   characters: [],
-  variants: ['day'],
+  variants  : ['day'],
   decomposed: shots.length > 0,
 });
 
@@ -32,13 +32,13 @@ describe('outfitRows', () => {
     const rows = outfitRows(coverage([AIKO, REN], []), null);
     expect(rows).toHaveLength(2);
     expect(rows[0]).toMatchObject({
-      level: 'scene',
-      scene: 'club',
+      level    : 'scene',
+      scene    : 'club',
       character: 'aiko',
-      outfits: ['uniform', 'track'],
-      value: INHERIT,
+      outfits  : ['uniform', 'track'],
+      value    : INHERIT,
       effective: { id: 'uniform', origin: 'default' },
-      inherits: { id: 'uniform', origin: 'default' },
+      inherits : { id: 'uniform', origin: 'default' },
     });
     expect(rows[0]).not.toHaveProperty('shot');
   });
@@ -46,11 +46,11 @@ describe('outfitRows', () => {
   it('reads a scene marker as the row that is in force', () => {
     const rows = outfitRows(coverage([{ ...AIKO, marked: 'track' }], []), null);
     expect(rows[0]).toMatchObject({
-      value: 'track',
+      value    : 'track',
       effective: { id: 'track', origin: 'scene' },
       // Clearing the marker falls back to the character sheet, never to a shot; the shot level
       // sits below the scene level
-      inherits: { id: 'uniform', origin: 'default' },
+      inherits : { id: 'uniform', origin: 'default' },
     });
   });
 
@@ -76,14 +76,14 @@ describe('outfitRows', () => {
     const aiko = rows.find((r) => r.level === 'shot' && r.character === 'aiko')!;
     const ren = rows.find((r) => r.level === 'shot' && r.character === 'ren')!;
     expect(aiko).toMatchObject({
-      value: INHERIT,
+      value    : INHERIT,
       effective: { id: 'track', origin: 'scene' },
-      inherits: { id: 'track', origin: 'scene' },
+      inherits : { id: 'track', origin: 'scene' },
     });
     expect(ren).toMatchObject({
-      value: 'uniform',
+      value    : 'uniform',
       effective: { id: 'uniform', origin: 'shot' },
-      inherits: { id: 'uniform', origin: 'default' },
+      inherits : { id: 'uniform', origin: 'default' },
     });
   });
 
@@ -121,11 +121,11 @@ describe('outfitInvocation', () => {
   it('sends each level to its own command', () => {
     const rows = outfitRows(coverage([AIKO], [shot({}, ['aiko'])]), 'club__beat1');
     expect(outfitInvocation(rows[0]!, 'track')).toEqual({
-      id: 'story.setSceneOutfit',
+      id   : 'story.setSceneOutfit',
       props: { scene: 'club', character: 'aiko', outfit: 'track' },
     });
     expect(outfitInvocation(rows[1]!, INHERIT)).toEqual({
-      id: 'story.setOutfit',
+      id   : 'story.setOutfit',
       props: { scene: 'club', shot: 'club__beat1', character: 'aiko', outfit: '' },
     });
   });

@@ -1,11 +1,11 @@
 {
-  "sweptAt": "2026-09-04T14:26:45.397Z",
-  "gitSha": "fe05f9e8424fd4b21f402c96b23565b41efffccd",
+  "sweptAt"      : "2026-09-04T14:26:45.397Z",
+  "gitSha"       : "fe05f9e8424fd4b21f402c96b23565b41efffccd",
   "under": {
-    "project": "The Transfer Student",
+    "project" : "The Transfer Student",
     "selected": {
       "scene": "scene/arrival",
-      "shot": ""
+      "shot" : ""
     }
   },
   "commands": [
@@ -233,779 +233,779 @@
   ],
   "records": [
     {
-      "id": "story.assignLineIds",
+      "id"    : "story.assignLineIds",
       "editor": "documents",
-      "when": "scene:sample"
+      "when"  : "scene:sample"
     },
     {
-      "id": "agent.run",
+      "id"    : "agent.run",
       "editor": "documents",
-      "when": "scene:sample",
-      "form": true
+      "when"  : "scene:sample",
+      "form"  : true
     },
     {
-      "id": "app.copy",
+      "id"    : "app.copy",
       "editor": "documents",
-      "when": "scene:sample"
+      "when"  : "scene:sample"
     },
     {
-      "id": "story.newScene",
+      "id"    : "story.newScene",
       "editor": "documents",
-      "when": "scene:sample",
-      "form": true
+      "when"  : "scene:sample",
+      "form"  : true
     },
     {
-      "id": "story.screenplay",
+      "id"    : "story.screenplay",
       "editor": "documents",
-      "when": "scene:sample"
+      "when"  : "scene:sample"
     },
     {
-      "id": "story.setCoverage",
+      "id"    : "story.setCoverage",
       "editor": "documents",
-      "when": "shot:sample/shot1",
-      "form": true
+      "when"  : "shot:sample/shot1",
+      "form"  : true
     },
     {
-      "id": "story.setOutfit",
+      "id"    : "story.setOutfit",
       "editor": "documents",
-      "when": "shot:sample/shot1",
-      "form": true
+      "when"  : "shot:sample/shot1",
+      "form"  : true
     },
     {
-      "id": "asset.accept",
+      "id"    : "asset.accept",
       "editor": "documents",
-      "when": "shot:sample/shot1"
+      "when"  : "shot:sample/shot1"
     },
     {
-      "id": "gate.approve",
+      "id"    : "gate.approve",
       "editor": "documents",
-      "when": "shot:sample/shot1",
-      "form": true
+      "when"  : "shot:sample/shot1",
+      "form"  : true
     },
     {
-      "id": "art.promote",
+      "id"    : "art.promote",
       "editor": "documents",
-      "when": "shot:sample/shot1",
-      "form": true
+      "when"  : "shot:sample/shot1",
+      "form"  : true
     },
     {
-      "id": "app.copy",
+      "id"    : "app.copy",
       "editor": "documents",
-      "when": "shot:sample/shot1"
+      "when"  : "shot:sample/shot1"
     },
     {
-      "id": "art.generate",
+      "id"    : "art.generate",
       "editor": "documents",
-      "when": "character:sample",
-      "form": true
+      "when"  : "character:sample",
+      "form"  : true
     },
     {
-      "id": "art.setNotes",
+      "id"    : "art.setNotes",
       "editor": "documents",
-      "when": "character:sample",
-      "form": true
+      "when"  : "character:sample",
+      "form"  : true
     },
     {
-      "id": "app.copy",
+      "id"    : "app.copy",
       "editor": "documents",
-      "when": "character:sample"
+      "when"  : "character:sample"
     },
     {
-      "id": "view.open",
+      "id"    : "view.open",
       "editor": "documents",
-      "when": "character:sample"
+      "when"  : "character:sample"
     },
     {
-      "id": "art.generate",
+      "id"    : "art.generate",
       "editor": "documents",
-      "when": "location:sample",
-      "form": true
+      "when"  : "location:sample",
+      "form"  : true
     },
     {
-      "id": "art.setNotes",
+      "id"    : "art.setNotes",
       "editor": "documents",
-      "when": "location:sample",
-      "form": true
+      "when"  : "location:sample",
+      "form"  : true
     },
     {
-      "id": "app.copy",
+      "id"    : "app.copy",
       "editor": "documents",
-      "when": "location:sample"
+      "when"  : "location:sample"
     },
     {
-      "id": "view.open",
+      "id"    : "view.open",
       "editor": "documents",
-      "when": "location:sample"
+      "when"  : "location:sample"
     },
     {
-      "id": "doc.create",
+      "id"    : "doc.create",
       "editor": "documents",
-      "when": "wikidir:sample",
-      "form": true
+      "when"  : "wikidir:sample",
+      "form"  : true
     },
     {
-      "id": "doc.create",
+      "id"    : "doc.create",
       "editor": "documents",
-      "when": "wikidir:sample",
-      "form": true
+      "when"  : "wikidir:sample",
+      "form"  : true
     },
     {
-      "id": "doc.create",
+      "id"    : "doc.create",
       "editor": "documents",
-      "when": "wikidir:sample",
-      "form": true
+      "when"  : "wikidir:sample",
+      "form"  : true
     },
     {
-      "id": "asset.regenerate",
+      "id"    : "asset.regenerate",
       "editor": "documents",
-      "when": "asset:sample",
-      "form": true
+      "when"  : "asset:sample",
+      "form"  : true
     },
     {
-      "id": "asset.accept",
+      "id"    : "asset.accept",
       "editor": "documents",
-      "when": "asset:sample"
+      "when"  : "asset:sample"
     },
     {
-      "id": "gate.approve",
+      "id"    : "gate.approve",
       "editor": "documents",
-      "when": "asset:sample",
-      "form": true
+      "when"  : "asset:sample",
+      "form"  : true
     },
     {
-      "id": "art.promote",
+      "id"    : "art.promote",
       "editor": "documents",
-      "when": "asset:sample",
-      "form": true
+      "when"  : "asset:sample",
+      "form"  : true
     },
     {
-      "id": "gengraph.createForSlot",
+      "id"    : "gengraph.createForSlot",
       "editor": "documents",
-      "when": "asset:sample"
+      "when"  : "asset:sample"
     },
     {
-      "id": "asset.export",
+      "id"    : "asset.export",
       "editor": "documents",
-      "when": "asset:sample"
+      "when"  : "asset:sample"
     },
     {
-      "id": "app.copy",
+      "id"    : "app.copy",
       "editor": "documents",
-      "when": "asset:sample"
+      "when"  : "asset:sample"
     },
     {
-      "id": "view.open",
+      "id"    : "view.open",
       "editor": "documents",
-      "when": "asset:sample"
+      "when"  : "asset:sample"
     },
     {
-      "id": "asset.upload",
+      "id"    : "asset.upload",
       "editor": "documents",
-      "when": "slot:sample",
-      "form": true
+      "when"  : "slot:sample",
+      "form"  : true
     },
     {
-      "id": "asset.adopt",
+      "id"    : "asset.adopt",
       "editor": "documents",
-      "when": "slot:sample",
-      "form": true
+      "when"  : "slot:sample",
+      "form"  : true
     },
     {
-      "id": "gengraph.createForSlot",
+      "id"    : "gengraph.createForSlot",
       "editor": "documents",
-      "when": "slot:sample"
+      "when"  : "slot:sample"
     },
     {
-      "id": "app.copy",
+      "id"    : "app.copy",
       "editor": "documents",
-      "when": "slot:sample"
+      "when"  : "slot:sample"
     },
     {
-      "id": "pipeline.run",
+      "id"    : "pipeline.run",
       "editor": "documents",
-      "when": "slot:sample",
-      "form": true
+      "when"  : "slot:sample",
+      "form"  : true
     },
     {
-      "id": "view.open",
+      "id"    : "view.open",
       "editor": "documents",
-      "when": "skill:sample"
+      "when"  : "skill:sample"
     },
     {
-      "id": "agent.run",
+      "id"    : "agent.run",
       "editor": "documents",
-      "when": "skill:sample",
-      "form": true
+      "when"  : "skill:sample",
+      "form"  : true
     },
     {
-      "id": "app.copy",
+      "id"    : "app.copy",
       "editor": "documents",
-      "when": "skill:sample"
+      "when"  : "skill:sample"
     },
     {
-      "id": "gengraph.estimate",
+      "id"    : "gengraph.estimate",
       "editor": "documents",
-      "when": "graph:sample"
+      "when"  : "graph:sample"
     },
     {
-      "id": "gengraph.run",
+      "id"    : "gengraph.run",
       "editor": "documents",
-      "when": "graph:sample",
-      "form": true
+      "when"  : "graph:sample",
+      "form"  : true
     },
     {
-      "id": "app.copy",
+      "id"    : "app.copy",
       "editor": "documents",
-      "when": "graph:sample"
+      "when"  : "graph:sample"
     },
     {
-      "id": "gengraph.delete",
+      "id"    : "gengraph.delete",
       "editor": "documents",
-      "when": "graph:sample",
-      "form": true
+      "when"  : "graph:sample",
+      "form"  : true
     },
     {
-      "id": "story.newScene",
+      "id"    : "story.newScene",
       "editor": "documents",
-      "when": "branch:story",
-      "form": true
+      "when"  : "branch:story",
+      "form"  : true
     },
     {
-      "id": "story.screenplay",
+      "id"    : "story.screenplay",
       "editor": "documents",
-      "when": "branch:story"
+      "when"  : "branch:story"
     },
     {
-      "id": "doc.create",
+      "id"    : "doc.create",
       "editor": "documents",
-      "when": "branch:characters",
-      "form": true
+      "when"  : "branch:characters",
+      "form"  : true
     },
     {
-      "id": "doc.create",
+      "id"    : "doc.create",
       "editor": "documents",
-      "when": "branch:locations",
-      "form": true
+      "when"  : "branch:locations",
+      "form"  : true
     },
     {
-      "id": "doc.create",
+      "id"    : "doc.create",
       "editor": "documents",
-      "when": "branch:wiki",
-      "form": true
+      "when"  : "branch:wiki",
+      "form"  : true
     },
     {
-      "id": "doc.create",
+      "id"    : "doc.create",
       "editor": "documents",
-      "when": "branch:wiki",
-      "form": true
+      "when"  : "branch:wiki",
+      "form"  : true
     },
     {
-      "id": "doc.create",
+      "id"    : "doc.create",
       "editor": "documents",
-      "when": "branch:wiki",
-      "form": true
+      "when"  : "branch:wiki",
+      "form"  : true
     },
     {
-      "id": "gengraph.create",
+      "id"    : "gengraph.create",
       "editor": "documents",
-      "when": "branch:graphs",
-      "form": true
+      "when"  : "branch:graphs",
+      "form"  : true
     },
     {
-      "id": "doc.create",
+      "id"    : "doc.create",
       "editor": "documents",
-      "when": "branch:skills",
-      "form": true
+      "when"  : "branch:skills",
+      "form"  : true
     },
     {
-      "id": "agent.run",
+      "id"    : "agent.run",
       "editor": "documents",
-      "when": "branch:skills",
-      "form": true
+      "when"  : "branch:skills",
+      "form"  : true
     },
     {
-      "id": "story.newScene",
-      "editor": "branches",
-      "key": "cmd:story.newScene",
+      "id"      : "story.newScene",
+      "editor"  : "branches",
+      "key"     : "cmd:story.newScene",
       "supplies": ["scene", "heading"]
     },
     {
-      "id": "story.deleteScene",
-      "editor": "branches",
-      "key": "cmd:story.deleteScene",
+      "id"     : "story.deleteScene",
+      "editor" : "branches",
+      "key"    : "cmd:story.deleteScene",
       "refused": "arrival is the entry scene — point start: in project.yaml elsewhere first."
     },
     {
-      "id": "story.setHeading",
+      "id"    : "story.setHeading",
       "editor": "script",
-      "key": "cmd:story.setHeading",
-      "form": true
+      "key"   : "cmd:story.setHeading",
+      "form"  : true
     },
     {
-      "id": "story.setLineText",
-      "editor": "script",
-      "key": "cmd:story.setLineText#arrival:L2",
+      "id"      : "story.setLineText",
+      "editor"  : "script",
+      "key"     : "cmd:story.setLineText#arrival:L2",
       "supplies": ["text"]
     },
     {
-      "id": "story.setLineText",
-      "editor": "script",
-      "key": "cmd:story.setLineText#arrival:L3",
+      "id"      : "story.setLineText",
+      "editor"  : "script",
+      "key"     : "cmd:story.setLineText#arrival:L3",
       "supplies": ["text"]
     },
     {
-      "id": "story.setLineText",
-      "editor": "script",
-      "key": "cmd:story.setLineText#arrival:L1",
+      "id"      : "story.setLineText",
+      "editor"  : "script",
+      "key"     : "cmd:story.setLineText#arrival:L1",
       "supplies": ["text"]
     },
     {
-      "id": "agent.setMode",
+      "id"    : "agent.setMode",
       "editor": "convo",
-      "key": "cmd:agent.setMode"
+      "key"   : "cmd:agent.setMode"
     },
     {
-      "id": "agent.setModel",
-      "editor": "convo",
-      "key": "cmd:agent.setModel",
+      "id"      : "agent.setModel",
+      "editor"  : "convo",
+      "key"     : "cmd:agent.setModel",
       "supplies": ["modelId"]
     },
     {
-      "id": "agent.openThread",
-      "editor": "convo",
-      "key": "cmd:agent.openThread",
+      "id"      : "agent.openThread",
+      "editor"  : "convo",
+      "key"     : "cmd:agent.openThread",
       "supplies": ["id"]
     },
     {
-      "id": "agent.newThread",
+      "id"    : "agent.newThread",
       "editor": "convo",
-      "key": "cmd:agent.newThread"
+      "key"   : "cmd:agent.newThread"
     },
     {
-      "id": "agent.compact",
-      "editor": "convo",
-      "key": "cmd:agent.compact",
+      "id"     : "agent.compact",
+      "editor" : "convo",
+      "key"    : "cmd:agent.compact",
       "refused": "This conversation is open for reading. Continue it before compacting it."
     },
     {
-      "id": "story.newShot",
+      "id"    : "story.newShot",
       "editor": "timeline",
-      "key": "cmd:story.newShot",
-      "form": true
+      "key"   : "cmd:story.newShot",
+      "form"  : true
     },
     {
-      "id": "pipeline.run",
+      "id"    : "pipeline.run",
       "editor": "tasklist",
-      "key": "cmd:pipeline.run",
-      "form": true
+      "key"   : "cmd:pipeline.run",
+      "form"  : true
     },
     {
-      "id": "gengraph.createGroup",
-      "editor": "gengraph",
-      "key": "cmd:gengraph.createGroup",
+      "id"     : "gengraph.createGroup",
+      "editor" : "gengraph",
+      "key"    : "cmd:gengraph.createGroup",
       "refused": "Select the nodes to group first."
     },
     {
-      "id": "gengraph.ungroup",
-      "editor": "gengraph",
-      "key": "cmd:gengraph.ungroup",
+      "id"     : "gengraph.ungroup",
+      "editor" : "gengraph",
+      "key"    : "cmd:gengraph.ungroup",
       "refused": "Select a group instance to ungroup."
     },
     {
-      "id": "doc.write",
-      "editor": "skills",
-      "key": "cmd:doc.write",
+      "id"      : "doc.write",
+      "editor"  : "skills",
+      "key"     : "cmd:doc.write",
       "supplies": ["text", "seenHash"],
-      "refused": "No document is open."
+      "refused" : "No document is open."
     },
     {
-      "id": "doc.write",
-      "editor": "wiki",
-      "key": "cmd:doc.write",
+      "id"      : "doc.write",
+      "editor"  : "wiki",
+      "key"     : "cmd:doc.write",
       "supplies": ["text", "seenHash"],
-      "refused": "Nothing to save"
+      "refused" : "Nothing to save"
     },
     {
-      "id": "doc.create",
-      "editor": "documents",
-      "key": "cmd:doc.create",
+      "id"      : "doc.create",
+      "editor"  : "documents",
+      "key"     : "cmd:doc.create",
       "supplies": ["kind", "name"]
     },
     {
-      "id": "asset.replace",
+      "id"    : "asset.replace",
       "editor": "asset",
-      "key": "cmd:asset.replace"
+      "key"   : "cmd:asset.replace"
     },
     {
-      "id": "prompt.clear",
-      "editor": "asset",
-      "key": "cmd:prompt.clear#chunks",
+      "id"     : "prompt.clear",
+      "editor" : "asset",
+      "key"    : "cmd:prompt.clear#chunks",
       "refused": "This prompt is already in chunks mode."
     },
     {
-      "id": "prompt.setCustom",
+      "id"    : "prompt.setCustom",
       "editor": "asset",
-      "key": "cmd:prompt.setCustom#custom"
+      "key"   : "cmd:prompt.setCustom#custom"
     },
     {
-      "id": "prompt.condense",
+      "id"    : "prompt.condense",
       "editor": "asset",
-      "key": "cmd:prompt.condense#agent"
+      "key"   : "cmd:prompt.condense#agent"
     },
     {
-      "id": "prompt.condense",
+      "id"    : "prompt.condense",
       "editor": "asset",
-      "key": "cmd:prompt.condense"
+      "key"   : "cmd:prompt.condense"
     },
     {
-      "id": "prompt.check",
+      "id"    : "prompt.check",
       "editor": "asset",
-      "key": "cmd:prompt.check"
+      "key"   : "cmd:prompt.check"
     },
     {
-      "id": "view.open",
+      "id"    : "view.open",
       "editor": "asset",
-      "key": "cmd:view.open#style"
+      "key"   : "cmd:view.open#style"
     },
     {
-      "id": "prompt.setChunk",
+      "id"    : "prompt.setChunk",
       "editor": "asset",
-      "key": "cmd:prompt.setChunk#style/mute"
+      "key"   : "cmd:prompt.setChunk#style/mute"
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#style/replace",
+      "id"      : "prompt.setChunk",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.setChunk#style/replace",
       "supplies": ["text"]
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#style/append",
+      "id"      : "prompt.setChunk",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.setChunk#style/append",
       "supplies": ["text"]
     },
     {
-      "id": "prompt.addRef",
-      "editor": "asset",
-      "key": "cmd:prompt.addRef#style/attach",
+      "id"      : "prompt.addRef",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.addRef#style/attach",
       "supplies": ["ref"]
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#style/reset",
+      "id"     : "prompt.setChunk",
+      "editor" : "asset",
+      "key"    : "cmd:prompt.setChunk#style/reset",
       "refused": "Nothing has been done to this clause."
     },
     {
-      "id": "view.open",
+      "id"    : "view.open",
       "editor": "asset",
-      "key": "cmd:view.open#subject"
+      "key"   : "cmd:view.open#subject"
     },
     {
-      "id": "prompt.setChunk",
+      "id"    : "prompt.setChunk",
       "editor": "asset",
-      "key": "cmd:prompt.setChunk#subject/mute"
+      "key"   : "cmd:prompt.setChunk#subject/mute"
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#subject/replace",
+      "id"      : "prompt.setChunk",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.setChunk#subject/replace",
       "supplies": ["text"]
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#subject/append",
+      "id"      : "prompt.setChunk",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.setChunk#subject/append",
       "supplies": ["text"]
     },
     {
-      "id": "prompt.addRef",
-      "editor": "asset",
-      "key": "cmd:prompt.addRef#subject/attach",
+      "id"      : "prompt.addRef",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.addRef#subject/attach",
       "supplies": ["ref"]
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#subject/reset",
+      "id"     : "prompt.setChunk",
+      "editor" : "asset",
+      "key"    : "cmd:prompt.setChunk#subject/reset",
       "refused": "Nothing has been done to this clause."
     },
     {
-      "id": "view.open",
+      "id"    : "view.open",
       "editor": "asset",
-      "key": "cmd:view.open#description"
+      "key"   : "cmd:view.open#description"
     },
     {
-      "id": "prompt.setChunk",
+      "id"    : "prompt.setChunk",
       "editor": "asset",
-      "key": "cmd:prompt.setChunk#description/mute"
+      "key"   : "cmd:prompt.setChunk#description/mute"
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#description/replace",
+      "id"      : "prompt.setChunk",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.setChunk#description/replace",
       "supplies": ["text"]
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#description/append",
+      "id"      : "prompt.setChunk",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.setChunk#description/append",
       "supplies": ["text"]
     },
     {
-      "id": "prompt.addRef",
-      "editor": "asset",
-      "key": "cmd:prompt.addRef#description/attach",
+      "id"      : "prompt.addRef",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.addRef#description/attach",
       "supplies": ["ref"]
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#description/reset",
+      "id"     : "prompt.setChunk",
+      "editor" : "asset",
+      "key"    : "cmd:prompt.setChunk#description/reset",
       "refused": "Nothing has been done to this clause."
     },
     {
-      "id": "view.open",
+      "id"    : "view.open",
       "editor": "asset",
-      "key": "cmd:view.open#mood"
+      "key"   : "cmd:view.open#mood"
     },
     {
-      "id": "prompt.setChunk",
+      "id"    : "prompt.setChunk",
       "editor": "asset",
-      "key": "cmd:prompt.setChunk#mood/mute"
+      "key"   : "cmd:prompt.setChunk#mood/mute"
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#mood/replace",
+      "id"      : "prompt.setChunk",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.setChunk#mood/replace",
       "supplies": ["text"]
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#mood/append",
+      "id"      : "prompt.setChunk",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.setChunk#mood/append",
       "supplies": ["text"]
     },
     {
-      "id": "prompt.addRef",
-      "editor": "asset",
-      "key": "cmd:prompt.addRef#mood/attach",
+      "id"      : "prompt.addRef",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.addRef#mood/attach",
       "supplies": ["ref"]
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#mood/reset",
+      "id"     : "prompt.setChunk",
+      "editor" : "asset",
+      "key"    : "cmd:prompt.setChunk#mood/reset",
       "refused": "Nothing has been done to this clause."
     },
     {
-      "id": "view.open",
+      "id"    : "view.open",
       "editor": "asset",
-      "key": "cmd:view.open#variant"
+      "key"   : "cmd:view.open#variant"
     },
     {
-      "id": "prompt.setChunk",
+      "id"    : "prompt.setChunk",
       "editor": "asset",
-      "key": "cmd:prompt.setChunk#variant/mute"
+      "key"   : "cmd:prompt.setChunk#variant/mute"
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#variant/replace",
+      "id"      : "prompt.setChunk",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.setChunk#variant/replace",
       "supplies": ["text"]
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#variant/append",
+      "id"      : "prompt.setChunk",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.setChunk#variant/append",
       "supplies": ["text"]
     },
     {
-      "id": "prompt.addRef",
-      "editor": "asset",
-      "key": "cmd:prompt.addRef#variant/attach",
+      "id"      : "prompt.addRef",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.addRef#variant/attach",
       "supplies": ["ref"]
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#variant/reset",
+      "id"     : "prompt.setChunk",
+      "editor" : "asset",
+      "key"    : "cmd:prompt.setChunk#variant/reset",
       "refused": "Nothing has been done to this clause."
     },
     {
-      "id": "view.open",
+      "id"    : "view.open",
       "editor": "asset",
-      "key": "cmd:view.open#palette"
+      "key"   : "cmd:view.open#palette"
     },
     {
-      "id": "prompt.setChunk",
+      "id"    : "prompt.setChunk",
       "editor": "asset",
-      "key": "cmd:prompt.setChunk#palette/mute"
+      "key"   : "cmd:prompt.setChunk#palette/mute"
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#palette/replace",
+      "id"      : "prompt.setChunk",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.setChunk#palette/replace",
       "supplies": ["text"]
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#palette/append",
+      "id"      : "prompt.setChunk",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.setChunk#palette/append",
       "supplies": ["text"]
     },
     {
-      "id": "prompt.addRef",
-      "editor": "asset",
-      "key": "cmd:prompt.addRef#palette/attach",
+      "id"      : "prompt.addRef",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.addRef#palette/attach",
       "supplies": ["ref"]
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#palette/reset",
+      "id"     : "prompt.setChunk",
+      "editor" : "asset",
+      "key"    : "cmd:prompt.setChunk#palette/reset",
       "refused": "Nothing has been done to this clause."
     },
     {
-      "id": "prompt.setChunk",
+      "id"    : "prompt.setChunk",
       "editor": "asset",
-      "key": "cmd:prompt.setChunk#scaffolding/mute"
+      "key"   : "cmd:prompt.setChunk#scaffolding/mute"
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#scaffolding/replace",
+      "id"      : "prompt.setChunk",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.setChunk#scaffolding/replace",
       "supplies": ["text"]
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#scaffolding/append",
+      "id"      : "prompt.setChunk",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.setChunk#scaffolding/append",
       "supplies": ["text"]
     },
     {
-      "id": "prompt.addRef",
-      "editor": "asset",
-      "key": "cmd:prompt.addRef#scaffolding/attach",
+      "id"      : "prompt.addRef",
+      "editor"  : "asset",
+      "key"     : "cmd:prompt.addRef#scaffolding/attach",
       "supplies": ["ref"]
     },
     {
-      "id": "prompt.setChunk",
-      "editor": "asset",
-      "key": "cmd:prompt.setChunk#scaffolding/reset",
+      "id"     : "prompt.setChunk",
+      "editor" : "asset",
+      "key"    : "cmd:prompt.setChunk#scaffolding/reset",
       "refused": "Nothing has been done to this clause."
     },
     {
-      "id": "art.setSeed",
-      "editor": "asset",
-      "key": "cmd:art.setSeed#location:classroom",
+      "id"      : "art.setSeed",
+      "editor"  : "asset",
+      "key"     : "cmd:art.setSeed#location:classroom",
       "supplies": ["seed"]
     },
     {
-      "id": "art.setNotes",
-      "editor": "asset",
-      "key": "cmd:art.setNotes#location:classroom",
+      "id"      : "art.setNotes",
+      "editor"  : "asset",
+      "key"     : "cmd:art.setNotes#location:classroom",
       "supplies": ["notes"]
     },
     {
-      "id": "art.setSeed",
-      "editor": "asset",
-      "key": "cmd:art.setSeed#location:classroom/day",
+      "id"      : "art.setSeed",
+      "editor"  : "asset",
+      "key"     : "cmd:art.setSeed#location:classroom/day",
       "supplies": ["seed"]
     },
     {
-      "id": "art.setNotes",
-      "editor": "asset",
-      "key": "cmd:art.setNotes#location:classroom/day",
+      "id"      : "art.setNotes",
+      "editor"  : "asset",
+      "key"     : "cmd:art.setNotes#location:classroom/day",
       "supplies": ["notes"]
     },
     {
-      "id": "asset.accept",
+      "id"    : "asset.accept",
       "editor": "asset",
-      "key": "cmd:asset.accept"
+      "key"   : "cmd:asset.accept"
     },
     {
-      "id": "asset.regenerate",
+      "id"    : "asset.regenerate",
       "editor": "asset",
-      "key": "cmd:asset.regenerate"
+      "key"   : "cmd:asset.regenerate"
     },
     {
-      "id": "view.open",
+      "id"    : "view.open",
       "editor": "asset",
-      "key": "cmd:view.open"
+      "key"   : "cmd:view.open"
     },
     {
-      "id": "asset.export",
+      "id"    : "asset.export",
       "editor": "asset",
-      "key": "cmd:asset.export"
+      "key"   : "cmd:asset.export"
     },
     {
-      "id": "project.setArtStyle",
-      "editor": "project",
-      "key": "cmd:project.setArtStyle",
+      "id"      : "project.setArtStyle",
+      "editor"  : "project",
+      "key"     : "cmd:project.setArtStyle",
       "supplies": ["style"],
-      "refused": "No changes"
+      "refused" : "No changes"
     },
     {
-      "id": "app.openKeyLink",
+      "id"    : "app.openKeyLink",
       "editor": "onboarding",
-      "key": "cmd:app.openKeyLink#gemini/console"
+      "key"   : "cmd:app.openKeyLink#gemini/console"
     },
     {
-      "id": "app.openKeyLink",
+      "id"    : "app.openKeyLink",
       "editor": "onboarding",
-      "key": "cmd:app.openKeyLink#gemini/docs"
+      "key"   : "cmd:app.openKeyLink#gemini/docs"
     },
     {
-      "id": "app.openKeyLink",
+      "id"    : "app.openKeyLink",
       "editor": "onboarding",
-      "key": "cmd:app.openKeyLink#gemini/billing"
+      "key"   : "cmd:app.openKeyLink#gemini/billing"
     },
     {
-      "id": "app.openKeyLink",
+      "id"    : "app.openKeyLink",
       "editor": "onboarding",
-      "key": "cmd:app.openKeyLink#anthropic/console"
+      "key"   : "cmd:app.openKeyLink#anthropic/console"
     },
     {
-      "id": "app.openKeyLink",
+      "id"    : "app.openKeyLink",
       "editor": "onboarding",
-      "key": "cmd:app.openKeyLink#anthropic/docs"
+      "key"   : "cmd:app.openKeyLink#anthropic/docs"
     },
     {
-      "id": "app.openKeyLink",
+      "id"    : "app.openKeyLink",
       "editor": "onboarding",
-      "key": "cmd:app.openKeyLink#anthropic/billing"
+      "key"   : "cmd:app.openKeyLink#anthropic/billing"
     },
     {
-      "id": "project.testKey",
-      "editor": "onboarding",
-      "key": "cmd:project.testKey#gemini",
+      "id"     : "project.testKey",
+      "editor" : "onboarding",
+      "key"    : "cmd:project.testKey#gemini",
       "refused": "Mock mode makes no calls, so there is nothing to test."
     },
     {
-      "id": "project.testKey",
-      "editor": "onboarding",
-      "key": "cmd:project.testKey#anthropic",
+      "id"     : "project.testKey",
+      "editor" : "onboarding",
+      "key"    : "cmd:project.testKey#anthropic",
       "refused": "Mock mode makes no calls, so there is nothing to test."
     },
     {
-      "id": "project.setKey",
-      "editor": "onboarding",
-      "key": "cmd:project.setKey#anthropic",
+      "id"      : "project.setKey",
+      "editor"  : "onboarding",
+      "key"     : "cmd:project.setKey#anthropic",
       "supplies": ["key"],
-      "refused": "Paste a key first"
+      "refused" : "Paste a key first"
     },
     {
-      "id": "project.setKey",
-      "editor": "onboarding",
-      "key": "cmd:project.setKey#gemini",
+      "id"      : "project.setKey",
+      "editor"  : "onboarding",
+      "key"     : "cmd:project.setKey#gemini",
       "supplies": ["key"],
-      "refused": "Paste a key first"
+      "refused" : "Paste a key first"
     },
     {
-      "id": "report.open",
-      "editor": "report",
-      "key": "cmd:report.open",
+      "id"     : "report.open",
+      "editor" : "report",
+      "key"    : "cmd:report.open",
       "refused": "Not while this workspace is running with mock providers — a real model has to read the conversation."
     }
   ],

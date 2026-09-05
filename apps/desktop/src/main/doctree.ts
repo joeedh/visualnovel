@@ -114,13 +114,13 @@ function capped(id: string, children: DocNode[], cap: number): DocNode[] {
 const BY_LABEL = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 const ASSET_KIND_LABELS: Record<AssetKind, string> = {
-  portrait: 'Portraits',
-  model_sheet: 'Model sheets',
+  portrait    : 'Portraits',
+  model_sheet : 'Model sheets',
   outfit_sheet: 'Outfit sheets',
   location_ref: 'Location plates',
-  shot_image: 'Shot frames',
-  concept: 'Concepts',
-  reference: 'References',
+  shot_image  : 'Shot frames',
+  concept     : 'Concepts',
+  reference   : 'References',
 };
 
 function storyBranch(input: DocTreeInput, cap: number): DocNode {
@@ -207,7 +207,7 @@ function wikiBranch(input: DocTreeInput): DocNode {
       let dir = dirs.get(prefix);
       if (!dir) {
         dir = node(`wikidir:${prefix}`, 'wikidir', segment, {
-          path: `${input.wikiDir}/${prefix}`,
+          path    : `${input.wikiDir}/${prefix}`,
           children: [],
         });
         dirs.set(prefix, dir);
@@ -377,7 +377,7 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
     // one slot rendered nine times counts as one, since the other eight are not drawn
     .map(([kind, rows]) =>
       node(`assetkind:${kind}`, 'assetkind', `${ASSET_KIND_LABELS[kind]} (${rows.length})`, {
-        badge: isBaseKind(kind) ? 'base' : 'project',
+        badge   : isBaseKind(kind) ? 'base' : 'project',
         children: capped(
           `assetkind:${kind}`,
           [...rows].sort((a, b) => BY_LABEL.compare(a.label, b.label)),
@@ -440,7 +440,7 @@ function unapprovedBranch(input: DocTreeInput, cap: number): DocNode | undefined
       waiting.push(
         node(`asset:${hash}`, 'asset', assetLabelOf(input, asset), {
           badge: slot.binding.kind,
-          slot: key,
+          slot : key,
           ...boundGraphOf(input, key),
           note: `Waiting on approval for ${slot.label}.`,
         }),
@@ -515,7 +515,7 @@ function graphBranch(input: DocTreeInput, cap: number): DocNode | undefined {
     const children = slots.map((key) =>
       node(`slot:${key}`, 'slot', input.slots?.nodes.get(key)?.label ?? key, {
         boundGraph: graph.slug,
-        note: `Drawn by the ${graph.slug} generation graph.`,
+        note      : `Drawn by the ${graph.slug} generation graph.`,
       }),
     );
     return node(`graph:${graph.slug}`, 'graph', graph.slug, {
@@ -579,12 +579,12 @@ function linksFor(input: DocTreeInput, binding: Subject, sheet: string | undefin
           ? a.satisfies.find((b) => b.sceneId === binding.sceneId)?.shotId
           : undefined;
       return {
-        hash: a.hash,
-        ext: a.ext,
-        kind: a.kind,
-        label: assetLabelOf(input, a),
+        hash    : a.hash,
+        ext     : a.ext,
+        kind    : a.kind,
+        label   : assetLabelOf(input, a),
         accepted: a.accepted,
-        base: isBaseKind(a.kind),
+        base    : isBaseKind(a.kind),
         ...(shotId !== undefined ? { shotId } : {}),
       };
     });
@@ -692,7 +692,7 @@ export function fileTree(
       let dir = dirs.get(prefix);
       if (!dir) {
         dir = node(`dir:${base}${prefix}`, 'dir', segment, {
-          path: `${base}${prefix}`,
+          path    : `${base}${prefix}`,
           children: [],
         });
         dirs.set(prefix, dir);

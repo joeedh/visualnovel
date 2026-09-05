@@ -98,8 +98,8 @@ async function locateRung(deps: SetNotesDeps, address: string): Promise<Decided<
   const parsed = parseArtTarget(address);
   if (!parsed) {
     return {
-      ok: false,
-      code: 'BAD_TARGET',
+      ok    : false,
+      code  : 'BAD_TARGET',
       reason: `"${address}" names no art-notes rung; expected character:<id>[/<outfit>], location:<id>[/<variant>] or shot:<sceneId>/<shotId>.`,
     };
   }
@@ -129,8 +129,8 @@ async function locateRung(deps: SetNotesDeps, address: string): Promise<Decided<
   const found = entityDoc(docs, parsed.id);
   if (!found) {
     return {
-      ok: false,
-      code: 'NO_SHEET',
+      ok    : false,
+      code  : 'NO_SHEET',
       reason: `No sheet on disk for ${parsed.kind} "${parsed.id}".`,
     };
   }
@@ -210,8 +210,8 @@ export async function artSeedOf(
 ): Promise<Decided<SetSeedPlan>> {
   if (req.seed !== null && (!Number.isInteger(req.seed) || req.seed < 0)) {
     return {
-      ok: false,
-      code: 'BAD_SEED',
+      ok    : false,
+      code  : 'BAD_SEED',
       reason: `"${req.seed}" is not a seed; expected a whole number of 0 or more.`,
     };
   }

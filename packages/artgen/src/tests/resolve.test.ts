@@ -9,12 +9,12 @@ import { overrideAt, overrideOf, rungOf } from '../index.js';
 function asset(kind: AssetKind, satisfies: Asset['satisfies']): Asset {
   return {
     hash: 'h',
-    ext: 'png',
+    ext : 'png',
     kind,
     sourceTask: 't',
-    refs: [],
-    modelId: 'm',
-    accepted: false,
+    refs      : [],
+    modelId   : 'm',
+    accepted  : false,
     satisfies,
   };
 }
@@ -24,23 +24,23 @@ const MUTE: PromptOverride = { mode: 'chunks', mute: ['palette'] };
 describe('rungOf', () => {
   it('maps each planned kind to the rung that names one whole picture', () => {
     expect(rungOf(asset('portrait', [{ characterId: 'aiko' }]))).toEqual({
-      kind: 'character',
+      kind       : 'character',
       characterId: 'aiko',
     });
     expect(rungOf(asset('model_sheet', [{ characterId: 'aiko', outfit: 'gala' }]))).toEqual({
-      kind: 'outfit',
+      kind       : 'outfit',
       characterId: 'aiko',
-      outfit: 'gala',
+      outfit     : 'gala',
     });
     expect(rungOf(asset('location_ref', [{ locationId: 'cafe', variant: 'night' }]))).toEqual({
-      kind: 'variant',
+      kind      : 'variant',
       locationId: 'cafe',
-      variant: 'night',
+      variant   : 'night',
     });
     expect(rungOf(asset('shot_image', [{ sceneId: 's1', shotId: 's1__a' }]))).toEqual({
-      kind: 'shot',
+      kind   : 'shot',
       sceneId: 's1',
-      shotId: 's1__a',
+      shotId : 's1__a',
     });
   });
 
@@ -69,13 +69,13 @@ describe('overrideAt', () => {
   ];
   const sc = scene('s1', ['aiko'], 'cafe');
   const shot: Shot = {
-    id: 's1__a',
-    sceneId: 's1',
-    framing: 'medium',
-    location: 'day',
-    subjects: [],
-    coversLines: [],
-    status: 'pending',
+    id            : 's1__a',
+    sceneId       : 's1',
+    framing       : 'medium',
+    location      : 'day',
+    subjects      : [],
+    coversLines   : [],
+    status        : 'pending',
     promptOverride: MUTE,
   };
   const ctx = { model: model([c], [sc], [l]), shots: new Map([['s1', [shot]]]) };

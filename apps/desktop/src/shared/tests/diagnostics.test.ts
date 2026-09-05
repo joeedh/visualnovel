@@ -3,7 +3,7 @@ import { diagnosticDetail, diagnosticSummary, orderDiagnostics } from '../diagno
 
 const warn = (message: string, over: Partial<Diagnostic> = {}): Diagnostic => ({
   severity: 'warning',
-  code: 'W1',
+  code    : 'W1',
   message,
   ...over,
 });

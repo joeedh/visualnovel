@@ -141,11 +141,11 @@ async function settles(order, message) {
 const mouse = (type, x, y) =>
   send(socket, 'Input.dispatchMouseEvent', {
     type,
-    x: Math.round(x),
-    y: Math.round(y),
-    button: 'left',
+    x         : Math.round(x),
+    y         : Math.round(y),
+    button    : 'left',
     clickCount: 1,
-    buttons: type === 'mouseReleased' ? 0 : 1,
+    buttons   : type === 'mouseReleased' ? 0 : 1,
   });
 
 const rectOf = (selector) =>

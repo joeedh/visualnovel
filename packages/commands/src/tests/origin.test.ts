@@ -15,8 +15,8 @@ import type { Git } from '@vn/git';
 
 const fakeGit = (): Git =>
   ({
-    isRepo: () => Promise.resolve(true),
-    head: () => Promise.resolve('a7c9ff4'),
+    isRepo : () => Promise.resolve(true),
+    head   : () => Promise.resolve('a7c9ff4'),
     isDirty: () => Promise.resolve(false),
   }) as unknown as Git;
 
@@ -30,11 +30,11 @@ interface Host {
 const define = defineFor<Host>();
 
 const slow = define({
-  id: 'demo.slow',
-  title: 'Slow',
+  id         : 'demo.slow',
+  title      : 'Slow',
   description: 'Reads its origin, waits, then reads it again.',
-  mutating: false,
-  props: { tag: prop.string('which caller this is') },
+  mutating   : false,
+  props      : { tag: prop.string('which caller this is') },
   async run(_props, ctx) {
     const before = ctx.origin;
     await (ctx.host.gate ?? Promise.resolve());
@@ -53,7 +53,7 @@ function setup() {
   const host: Host = { seen: [] };
   const context: CommandContext<Host> = {
     root: '/ws',
-    git: fakeGit(),
+    git : fakeGit(),
     host,
     log: () => {},
   };

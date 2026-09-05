@@ -15,7 +15,7 @@ export const analysisSchema = z.object({
     .string()
     .min(1)
     .describe('one line naming the problem; it becomes the issue title, so no names and no paths'),
-  whatHappened: z.string().min(1).describe('the sequence, in general terms'),
+  whatHappened   : z.string().min(1).describe('the sequence, in general terms'),
   whatWentWrong: z
     .array(z.string())
     .default([])

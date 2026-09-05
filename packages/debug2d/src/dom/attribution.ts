@@ -22,9 +22,9 @@ export const dbgIdResolver: OwnerResolver = (node) =>
 export const fiberResolver: OwnerResolver = (node) =>
   node.fiberName
     ? {
-        id: `${node.fiberName}/${nodeLabel(node)}`,
+        id   : `${node.fiberName}/${nodeLabel(node)}`,
         label: `${node.fiberName}/${nodeLabel(node)}`,
-        kind: 'component',
+        kind : 'component',
       }
     : undefined;
 

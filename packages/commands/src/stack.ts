@@ -252,11 +252,11 @@ export class CommandStack<Host = unknown> {
     const base = {
       seq,
       id,
-      props: recorded,
+      props     : recorded,
       invocation: formatCommand(id, recorded),
       source,
       mutating: command.mutating,
-      gitHead: head,
+      gitHead : head,
       gitDirty: dirty,
       startedAt,
     };
@@ -276,8 +276,8 @@ export class CommandStack<Host = unknown> {
       const record: CommandRecord = {
         ...base,
         finishedAt: this.now(),
-        status: 'ok',
-        message: output.message,
+        status    : 'ok',
+        message   : output.message,
         ...(output.subject ? { subject: output.subject } : {}),
         ...(output.written ? { written: output.written } : {}),
         ...(journal && pre && post ? { undo: journal.point(pre, post) } : {}),
@@ -301,8 +301,8 @@ export class CommandStack<Host = unknown> {
       const record: CommandRecord = {
         ...base,
         finishedAt: this.now(),
-        status: 'error',
-        message: `${id} failed`,
+        status    : 'error',
+        message   : `${id} failed`,
         error,
         ...(checkpoint ? { checkpoint: checkpoint.seq } : {}),
       };
@@ -361,7 +361,7 @@ export class CommandStack<Host = unknown> {
           scope,
           pre,
           startedAt: this.now(),
-          tail: Promise.resolve(),
+          tail     : Promise.resolve(),
           release,
           timeoutHandle: this.armCheckpointTimeout(seq),
         };
@@ -408,23 +408,23 @@ export class CommandStack<Host = unknown> {
 
     const { head, dirty } = await this.gitState();
     const record: CommandRecord = {
-      seq: ++this.seq,
-      id: 'stack.checkpoint',
-      props: {},
+      seq       : ++this.seq,
+      id        : 'stack.checkpoint',
+      props     : {},
       // Synthetic and non-replayable, for `commands.jsonl` consistency; `label` is what the UI
       // shows in its place.
       invocation: `stack.checkpoint(seq=${oc.seq})`,
-      label: oc.shortLabel,
-      source: 'ui',
-      mutating: true,
-      gitHead: head,
-      gitDirty: dirty,
-      startedAt: oc.startedAt,
+      label     : oc.shortLabel,
+      source    : 'ui',
+      mutating  : true,
+      gitHead   : head,
+      gitDirty  : dirty,
+      startedAt : oc.startedAt,
       finishedAt: this.now(),
-      status: 'ok',
-      message: oc.message,
-      undo: journal.point(oc.pre, post),
-      undoScope: oc.scope,
+      status    : 'ok',
+      message   : oc.message,
+      undo      : journal.point(oc.pre, post),
+      undoScope : oc.scope,
     };
     await this.record(record);
     this.closeCheckpoint(oc);
@@ -468,19 +468,19 @@ export class CommandStack<Host = unknown> {
 
     const { head, dirty } = await this.gitState();
     const record: CommandRecord = {
-      seq: ++this.seq,
-      id: 'stack.checkpointRollback',
-      props: { checkpoint: seq },
+      seq       : ++this.seq,
+      id        : 'stack.checkpointRollback',
+      props     : { checkpoint: seq },
       invocation: `stack.checkpointRollback(seq=${seq})`,
-      source: 'ui',
-      mutating: true,
+      source    : 'ui',
+      mutating  : true,
       checkpoint: seq,
-      gitHead: head,
-      gitDirty: dirty,
-      startedAt: this.now(),
+      gitHead   : head,
+      gitDirty  : dirty,
+      startedAt : this.now(),
       finishedAt: this.now(),
-      status: 'error',
-      message: `Rolled back "${shortLabel}": ${error}`,
+      status    : 'error',
+      message   : `Rolled back "${shortLabel}": ${error}`,
       error,
       ...(restored.length > 0 ? { written: restored } : {}),
     };
@@ -566,7 +566,7 @@ export class CommandStack<Host = unknown> {
     const coerced = coerceProps(command.props as PropSpecMap, raw);
     if (!coerced.ok) {
       return {
-        state: 'refuse',
+        state  : 'refuse',
         message: `invalid props for "${id}": ${coerced.errors.join('; ')}`,
       };
     }
@@ -622,8 +622,8 @@ export class CommandStack<Host = unknown> {
     const redo = this.undone[this.undone.length - 1] ?? null;
     const undoable = Boolean(this.opts.journal && undo?.undo);
     return {
-      canUndo: undoable,
-      canRedo: Boolean(this.opts.journal && redo),
+      canUndo  : undoable,
+      canRedo  : Boolean(this.opts.journal && redo),
       undoLabel: undoable ? (undo!.label ?? undo!.invocation) : null,
       redoLabel: redo ? (redo.label ?? redo.invocation) : null,
     };
@@ -648,11 +648,11 @@ export class CommandStack<Host = unknown> {
     }
     return this.move({
       target,
-      kind: 'undo',
+      kind : 'undo',
       point: target.undo,
-      from: 'post',
-      to: 'pre',
-      done: () => this.undone.push(target),
+      from : 'post',
+      to   : 'pre',
+      done : () => this.undone.push(target),
     });
   }
 
@@ -670,11 +670,11 @@ export class CommandStack<Host = unknown> {
     if (!target?.undo) return { ok: false, error: 'nothing to redo' };
     return this.move({
       target,
-      kind: 'redo',
+      kind : 'redo',
       point: target.undo,
-      from: 'pre',
-      to: 'post',
-      done: () => void this.undone.pop(),
+      from : 'pre',
+      to   : 'post',
+      done : () => void this.undone.pop(),
     });
   }
 
@@ -712,7 +712,7 @@ export class CommandStack<Host = unknown> {
       if (error !== undefined) return { ok: false, error: `${kind} failed: ${error}` };
     } catch (err) {
       return {
-        ok: false,
+        ok   : false,
         error: `${kind} failed: ${err instanceof Error ? err.message : String(err)}`,
       };
     }
@@ -720,19 +720,19 @@ export class CommandStack<Host = unknown> {
 
     const { head, dirty } = await this.gitState();
     const record: CommandRecord = {
-      seq: ++this.seq,
-      id: `stack.${kind}`,
-      props: { target: target.seq },
+      seq       : ++this.seq,
+      id        : `stack.${kind}`,
+      props     : { target: target.seq },
       invocation: `stack.${kind}(target=${target.seq})`,
-      source: 'ui',
-      mutating: true,
-      stack: kind,
-      gitHead: head,
-      gitDirty: dirty,
+      source    : 'ui',
+      mutating  : true,
+      stack     : kind,
+      gitHead   : head,
+      gitDirty  : dirty,
       startedAt,
       finishedAt: this.now(),
-      status: 'ok',
-      message: `${kind === 'undo' ? 'Undid' : 'Redid'} ${target.label ?? target.invocation}.`,
+      status    : 'ok',
+      message   : `${kind === 'undo' ? 'Undid' : 'Redid'} ${target.label ?? target.invocation}.`,
       // What the restore moved, so a surface following a document hears about an undo on the same
       // channel as the command it is undoing. Absent rather than empty where it moved nothing.
       ...(restored.length > 0 ? { written: restored } : {}),

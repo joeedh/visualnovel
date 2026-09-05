@@ -71,16 +71,16 @@ export function promotionOf(
     return { ok: false, code: 'UNKNOWN_ASSET', reason: `No asset "${req.hash}" in the store.` };
   if (asset.kind !== 'concept') {
     return {
-      ok: false,
-      code: 'NOT_A_CONCEPT',
+      ok    : false,
+      code  : 'NOT_A_CONCEPT',
       reason: `Asset ${short} is a ${asset.kind}, not a concept — only a concept is promoted.`,
     };
   }
   const locationId = asset.satisfies.find((b) => b.locationId)?.locationId;
   if (!locationId) {
     return {
-      ok: false,
-      code: 'UNBOUND_CONCEPT',
+      ok    : false,
+      code  : 'UNBOUND_CONCEPT',
       reason: asset.satisfies.some((b) => b.characterId)
         ? "That concept is of a character, and a character's look goes through the approval gate — promote a location concept, or approve a portrait with gate.approve."
         : 'That concept is not bound to a location, so there is no sheet to write a variant onto.',
@@ -89,13 +89,13 @@ export function promotionOf(
   const variant = req.variant.trim();
   if (!VARIANT_ID.test(variant)) {
     return {
-      ok: false,
-      code: 'BAD_VARIANT',
+      ok    : false,
+      code  : 'BAD_VARIANT',
       reason: `"${req.variant}" is not a usable variant id.`,
     };
   }
   return {
-    ok: true,
+    ok  : true,
     plan: {
       locationId,
       variant,

@@ -34,9 +34,9 @@ export class ProjectEditor extends VnEditor {
 
   static override define() {
     return {
-      tagname: 'vn-project-editor-x',
+      tagname : 'vn-project-editor-x',
       areaname: 'project',
-      icon: -1,
+      icon    : -1,
     };
   }
 

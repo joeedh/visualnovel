@@ -50,9 +50,9 @@ export function currentLayoutFile(shell: ShellApp, editors: EditorId[]): LayoutF
   if (screen === undefined) return undefined;
 
   return {
-    vnstudio: LAYOUT_FORMAT,
-    slug: '',
-    title: '',
+    vnstudio   : LAYOUT_FORMAT,
+    slug       : '',
+    title      : '',
     description: editors.map(editorTitle).join(', '),
     editors,
     source: 'saved',

@@ -93,7 +93,7 @@ export interface ApprovalRequest {
 
 export const approvalTriageSchema = z.object({
   /** Whether the author asked for approval at all, in these words, recently. */
-  asked: z.boolean(),
+  asked : z.boolean(),
   /** One sentence quoting or paraphrasing what they said — shown to them on the card. */
   reason: z.string(),
   /** The hashes they meant, from the list and only from the list. */
@@ -192,7 +192,7 @@ export function offlineTriage(
   if (!asking) {
     const what = way === 'approve' ? 'approved' : 'un-approved';
     return {
-      asked: false,
+      asked : false,
       reason: `Nothing in the recent messages asks for artwork to be ${what} (matched offline).`,
       hashes: [],
     };
@@ -202,7 +202,7 @@ export function offlineTriage(
   const named = req.assets.filter((a) => mentions(words, a));
   const covered = named.length ? named : req.assets;
   return {
-    asked: true,
+    asked : true,
     reason: `Matched "${asking.trim().slice(0, 120)}" offline, without a model.`,
     hashes: covered.map((a) => a.hash),
   };

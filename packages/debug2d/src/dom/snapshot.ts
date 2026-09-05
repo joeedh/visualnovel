@@ -87,9 +87,7 @@ function fiberComponentName(el: ElementLike): string | undefined {
     let fiber = rec[key] as { elementType?: unknown; type?: unknown; return?: unknown } | null;
     for (let hops = 0; fiber && hops < 50; hops++) {
       const t = (fiber.elementType ?? fiber.type) as
-        | { displayName?: string; name?: string }
-        | string
-        | null;
+        { displayName?: string; name?: string } | string | null;
       if (typeof t === 'function' || (t && typeof t === 'object')) {
         const name =
           (t as { displayName?: string; name?: string }).displayName ??
@@ -127,28 +125,28 @@ export function snapshotDom(doc: DocumentLike): DomSnapshot {
     const node: SnapNode = {
       id,
       tag,
-      elemId: el.id || undefined,
-      classes: el.classList.value ? el.classList.value.split(/\s+/).filter(Boolean) : [],
-      dbgId: el.getAttribute('data-dbg-id') ?? undefined,
-      bounds: { x: r.x, y: r.y, w: r.width, h: r.height },
+      elemId   : el.id || undefined,
+      classes  : el.classList.value ? el.classList.value.split(/\s+/).filter(Boolean) : [],
+      dbgId    : el.getAttribute('data-dbg-id') ?? undefined,
+      bounds   : { x: r.x, y: r.y, w: r.width, h: r.height },
       style: {
-        position: cs['position'],
-        zIndex: cs['zIndex'],
-        opacity: Number(cs['opacity'] ?? '1'),
-        transform: cs['transform'],
-        filter: cs['filter'],
-        willChange: cs['willChange'],
-        isolation: cs['isolation'],
-        contain: cs['contain'],
+        position       : cs['position'],
+        zIndex         : cs['zIndex'],
+        opacity        : Number(cs['opacity'] ?? '1'),
+        transform      : cs['transform'],
+        filter         : cs['filter'],
+        willChange     : cs['willChange'],
+        isolation      : cs['isolation'],
+        contain        : cs['contain'],
         backdropFilter: cs['backdropFilter'] ?? cs.getPropertyValue('backdrop-filter') ?? undefined,
-        pointerEvents: cs['pointerEvents'],
-        overflowX: cs['overflowX'],
-        overflowY: cs['overflowY'],
+        pointerEvents  : cs['pointerEvents'],
+        overflowX      : cs['overflowX'],
+        overflowY      : cs['overflowY'],
         backgroundColor: cs['backgroundColor'],
       },
       fiberName: fiberComponentName(el),
-      children: [],
-      raw: el,
+      children : [],
+      raw      : el,
     };
     visitInto(el.children, node.children);
     // Open shadow roots (path.ux widgets) are a separate child list from `el.children`;

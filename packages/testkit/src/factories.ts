@@ -18,13 +18,13 @@ export function character(
 ): Character {
   return {
     id,
-    name: id.toUpperCase(),
+    name       : id.toUpperCase(),
     description: `${id} description`,
-    traits: [],
-    palette: ['#112233'],
+    traits     : [],
+    palette    : ['#112233'],
     status,
     defaultOutfit: 'default',
-    outfits: [{ id: 'default', characterId: id, description: '' }],
+    outfits      : [{ id: 'default', characterId: id, description: '' }],
     approvedPortrait,
   };
 }
@@ -33,11 +33,11 @@ export function character(
 export function location(id: string): Location {
   return {
     id,
-    name: id,
+    name       : id,
     description: `${id} desc`,
-    palette: [],
-    variants: [{ id: 'day', description: '' }],
-    mined: false,
+    palette    : [],
+    variants   : [{ id: 'day', description: '' }],
+    mined      : false,
   };
 }
 
@@ -53,12 +53,12 @@ export function model(
   locations: Location[],
 ): ProjectModel {
   return {
-    title: 'Test',
-    characters: new Map(characters.map((c) => [c.id, c])),
-    locations: new Map(locations.map((l) => [l.id, l])),
-    scenes: new Map(scenes.map((s) => [s.id, s])),
-    reachable: new Set(scenes.map((s) => s.id)),
-    entry: scenes[0]?.id,
+    title      : 'Test',
+    characters : new Map(characters.map((c) => [c.id, c])),
+    locations  : new Map(locations.map((l) => [l.id, l])),
+    scenes     : new Map(scenes.map((s) => [s.id, s])),
+    reachable  : new Set(scenes.map((s) => s.id)),
+    entry      : scenes[0]?.id,
     diagnostics: [],
   };
 }

@@ -2,17 +2,17 @@ import { assetOpener, lineOpener } from '../agentseed.js';
 import type { AssetFailure, AssetInfo, SceneCoverage } from '../ipc.js';
 
 const scene: SceneCoverage = {
-  sceneId: 'cafe_night',
-  location: 'cafe',
-  heading: 'INT. CAFÉ MORI - NIGHT',
+  sceneId   : 'cafe_night',
+  location  : 'cafe',
+  heading   : 'INT. CAFÉ MORI - NIGHT',
   lines: [
     { id: 's:L1', kind: 'narration', text: 'Rain on the window.' },
     { id: 's:L2', kind: 'dialogue', speaker: 'aiko', text: 'I told you not to come.' },
   ],
-  shots: [],
-  cast: [],
+  shots     : [],
+  cast      : [],
   characters: [],
-  variants: [],
+  variants  : [],
   decomposed: true,
 };
 
@@ -22,16 +22,16 @@ function failed(over: Partial<AssetFailure> = {}): AssetFailure {
 
 function info(over: Partial<AssetInfo> = {}): AssetInfo {
   return {
-    hash: 'abc123',
-    ext: 'png',
-    kind: 'location_ref',
-    label: 'Café Mori — night',
-    base: true,
-    accepted: false,
+    hash      : 'abc123',
+    ext       : 'png',
+    kind      : 'location_ref',
+    label     : 'Café Mori — night',
+    base      : true,
+    accepted  : false,
     sourceTask: 't1',
-    stale: false,
-    prereqs: [],
-    rungs: [],
+    stale     : false,
+    prereqs   : [],
+    rungs     : [],
     ...over,
   };
 }

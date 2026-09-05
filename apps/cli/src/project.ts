@@ -74,7 +74,7 @@ export async function buildGenDeps(
 ): Promise<GenDeps> {
   const loadRef = async (ref: { hash: string; ext: string }) => ({
     bytes: await project.store.read(ref),
-    ext: ref.ext,
+    ext  : ref.ext,
   });
   if (opts.mock) {
     const imageBackend = new StubImageBackend();
@@ -85,10 +85,10 @@ export async function buildGenDeps(
   // for a missing image key would be a refusal the author cannot act on.
   const keys: ResolvedKeys = await resolveKeys(project.config, {
     secretsDirs: await secretDirsFor(project.dir),
-    require: opts.require ?? ['gemini'],
+    require    : opts.require ?? ['gemini'],
   });
   return {
-    providers: createProviders({ config: project.config, keys, loadRef }),
+    providers   : createProviders({ config: project.config, keys, loadRef }),
     imageBackend: createImageBackend(project.config, keys),
     keys,
   };

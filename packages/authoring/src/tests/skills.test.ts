@@ -51,7 +51,7 @@ describe('discoverSkills', () => {
       'name-character': { 'SKILL.md': PROSE_SKILL },
       'echo-root': {
         'SKILL.md': SCRIPT_SKILL,
-        'run.mjs': 'console.log("hi from", process.argv[2]);',
+        'run.mjs' : 'console.log("hi from", process.argv[2]);',
       },
     });
     try {
@@ -120,7 +120,7 @@ describe('runSkill', () => {
       const skill = (await discoverSkills(skillRoots(root)))[0]!;
       const result = await runSkill(skill, {
         workspaceRoot: root,
-        confirm: () => Promise.resolve(false),
+        confirm      : () => Promise.resolve(false),
       });
       expect(result.ok).toBe(false);
       expect(result.ranScript).toBe(false);
@@ -134,14 +134,14 @@ describe('runSkill', () => {
     const { root, cleanup } = await tempWorkspace({
       'echo-root': {
         'SKILL.md': SCRIPT_SKILL,
-        'run.mjs': 'console.log("root:" + process.argv[2]);',
+        'run.mjs' : 'console.log("root:" + process.argv[2]);',
       },
     });
     try {
       const skill = (await discoverSkills(skillRoots(root)))[0]!;
       const result = await runSkill(skill, {
         workspaceRoot: root,
-        confirm: () => Promise.resolve(true),
+        confirm      : () => Promise.resolve(true),
       });
       expect(result.ok).toBe(true);
       expect(result.ranScript).toBe(true);
@@ -191,11 +191,11 @@ describe('isSkillId', () => {
 
 describe('writeSkill', () => {
   const INPUT = {
-    id: 'pace-a-scene',
-    name: 'Pace a Scene',
+    id         : 'pace-a-scene',
+    name       : 'Pace a Scene',
     description: 'How long a beat should run.',
-    whenToUse: 'When a scene reads flat.',
-    body: 'Count the beats, then cut one.',
+    whenToUse  : 'When a scene reads flat.',
+    body       : 'Count the beats, then cut one.',
   };
 
   it('round-trips through discoverSkills', async () => {
@@ -269,7 +269,7 @@ describe('writeSkill', () => {
       'pace-a-scene': {
         'SKILL.md':
           '---\nname: Old\ndescription: Old.\nscript: run.mjs\nauthor: Joe\n---\n\nOld.\n',
-        'run.mjs': 'console.log("vetted");',
+        'run.mjs' : 'console.log("vetted");',
       },
     });
     try {
@@ -325,11 +325,11 @@ describe('skillIssues', () => {
   it('names what readSkill degraded over', async () => {
     const { root, cleanup } = await tempWorkspace({
       nameless: { 'SKILL.md': '---\ndescription: Something.\n---\n\nDo the thing.\n' },
-      mute: { 'SKILL.md': '---\nname: Mute\n---\n\nDo the thing.\n' },
-      empty: { 'SKILL.md': '---\nname: Empty\ndescription: Nothing.\n---\n' },
+      mute    : { 'SKILL.md': '---\nname: Mute\n---\n\nDo the thing.\n' },
+      empty   : { 'SKILL.md': '---\nname: Empty\ndescription: Nothing.\n---\n' },
       stale: {
         'SKILL.md': '---\nname: Stale\ndescription: Stale.\nscript: build.mjs\n---\n\nRun it.\n',
-        'run.mjs': 'console.log("surprise");',
+        'run.mjs' : 'console.log("surprise");',
       },
     });
     try {

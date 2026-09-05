@@ -12,7 +12,7 @@ class HashProbe extends Node {
   static override graphDef(): NodeDef {
     return {
       typeName: 'HashProbe',
-      props: { amount: new FloatProperty(0), note: new StringProperty('') },
+      props   : { amount: new FloatProperty(0), note: new StringProperty('') },
     };
   }
 }
@@ -89,7 +89,7 @@ describe('node identity', () => {
       static override graphDef(): NodeDef {
         return {
           typeName: 'HashProbeTwin',
-          props: { amount: new FloatProperty(0), note: new StringProperty('') },
+          props   : { amount: new FloatProperty(0), note: new StringProperty('') },
         };
       }
     })();

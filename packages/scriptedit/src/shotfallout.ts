@@ -158,7 +158,7 @@ export function shotFallout(op: AppliedLineOp, shots: ShotsByScene): ShotFallout
       if (variant !== undefined && variant !== shot.location) restaged.push(shot.id);
       listFor(home).push({
         ...shot,
-        sceneId: home,
+        sceneId    : home,
         coversLines: lines,
         ...(variant !== undefined ? { location: variant } : {}),
       });

@@ -5,11 +5,11 @@ import { routeFor, type Route } from '../route.js';
 
 const pane = (editor: string): Pane => ({
   editor,
-  chrome: false,
+  chrome  : false,
   floating: false,
-  active: false,
-  width: 400,
-  height: 400,
+  active  : false,
+  width   : 400,
+  height  : 400,
 });
 
 const documents = [pane('documents')];
@@ -23,46 +23,46 @@ const node = (kind: DocNodeKind, over: Partial<DocNode> = {}): DocNode => ({
 
 /** Every kind, and the node the table below routes for it. */
 const NODES: Record<DocNodeKind, DocNode> = {
-  branch: node('branch', { id: 'branch:story', label: 'Story' }),
-  scene: node('scene', { id: 'scene:greet', path: 'scenes/greet.md' }),
-  shot: node('shot', { id: 'shot:greet/greet__s1' }),
+  branch   : node('branch', { id: 'branch:story', label: 'Story' }),
+  scene    : node('scene', { id: 'scene:greet', path: 'scenes/greet.md' }),
+  shot     : node('shot', { id: 'shot:greet/greet__s1' }),
   character: node('character', { id: 'character:aiko', path: 'characters/aiko.md' }),
-  location: node('location', { id: 'location:cafe', path: 'locations/cafe.md' }),
-  wikidir: node('wikidir', { id: 'wikidir:wiki/lore' }),
-  wiki: node('wiki', { id: 'wiki:wiki/lore/tea.md', path: 'wiki/lore/tea.md' }),
+  location : node('location', { id: 'location:cafe', path: 'locations/cafe.md' }),
+  wikidir  : node('wikidir', { id: 'wikidir:wiki/lore' }),
+  wiki     : node('wiki', { id: 'wiki:wiki/lore/tea.md', path: 'wiki/lore/tea.md' }),
   assetkind: node('assetkind', { id: 'assetkind:portrait' }),
-  asset: node('asset', { id: 'asset:a1b2c3' }),
-  slot: node('slot', { id: 'slot:plate:cafe/night' }),
-  graph: node('graph', { id: 'graph:plates', path: 'vngen/work/graphs/plates.json' }),
+  asset    : node('asset', { id: 'asset:a1b2c3' }),
+  slot     : node('slot', { id: 'slot:plate:cafe/night' }),
+  graph    : node('graph', { id: 'graph:plates', path: 'vngen/work/graphs/plates.json' }),
   skill: node('skill', {
-    id: 'skill:continuity-pass',
+    id  : 'skill:continuity-pass',
     path: '.aiagent/skills/continuity-pass/SKILL.md',
   }),
-  dir: node('dir', { id: 'dir:art' }),
-  file: node('file', { id: 'file:notes.md', path: 'notes.md' }),
-  more: node('more', { id: 'more:assets' }),
+  dir      : node('dir', { id: 'dir:art' }),
+  file     : node('file', { id: 'file:notes.md', path: 'notes.md' }),
+  more     : node('more', { id: 'more:assets' }),
 };
 
 /** With nothing but the tree open, which editor each kind reaches. */
 const WITH_NOTHING_OPEN: Record<DocNodeKind, EditorId | ''> = {
-  branch: '',
-  scene: 'script',
-  shot: 'timeline',
+  branch   : '',
+  scene    : 'script',
+  shot     : 'timeline',
   character: 'wiki',
-  location: 'wiki',
-  wikidir: '',
-  wiki: 'wiki',
+  location : 'wiki',
+  wikidir  : '',
+  wiki     : 'wiki',
   assetkind: '',
-  asset: 'asset',
+  asset    : 'asset',
   // Taskgraph is the one pane that can draw a slot that has no bytes yet.
-  slot: 'taskgraph',
-  graph: 'gengraph',
+  slot     : 'taskgraph',
+  graph    : 'gengraph',
   // Skills answers for a `SKILL.md`, and Wiki deliberately does not claim one: a plain text box
   // would let an author edit the front-matter the Skills pane owns.
-  skill: 'skills',
-  dir: '',
-  file: 'wiki',
-  more: '',
+  skill    : 'skills',
+  dir      : '',
+  file     : 'wiki',
+  more     : '',
 };
 
 const opened = (route: Route): EditorId | '' => (route.action === 'open' ? route.editor : '');
@@ -76,9 +76,9 @@ describe('where a clicked node goes', () => {
   test('a claimant that is up is focused rather than opened again', () => {
     const route = routeFor({ node: NODES.wiki, panes: [...documents, pane('wiki')] });
     expect(route).toEqual({
-      action: 'open',
-      editor: 'wiki',
-      where: 'here',
+      action : 'open',
+      editor : 'wiki',
+      where  : 'here',
       subject: 'wiki/lore/tea.md',
     });
   });
@@ -86,9 +86,9 @@ describe('where a clicked node goes', () => {
   test('a claimant that is not up goes anywhere but the pane that asked', () => {
     const route = routeFor({ node: NODES.asset, panes: documents });
     expect(route).toEqual({
-      action: 'open',
-      editor: 'asset',
-      where: 'elsewhere',
+      action : 'open',
+      editor : 'asset',
+      where  : 'elsewhere',
       subject: 'a1b2c3',
     });
   });
@@ -142,7 +142,7 @@ describe('a claim looks at the node, not just its kind', () => {
   // which lists `skills` before `wiki`.
   test('a skill file clicked in file mode lands in Skills rather than Wiki', () => {
     const file = node('file', {
-      id: 'file:.aiagent/skills/continuity-pass/SKILL.md',
+      id  : 'file:.aiagent/skills/continuity-pass/SKILL.md',
       path: '.aiagent/skills/continuity-pass/SKILL.md',
     });
     expect(opened(routeFor({ node: file, panes: documents }))).toBe('skills');
@@ -151,7 +151,7 @@ describe('a claim looks at the node, not just its kind', () => {
   // Visibility still comes first, so the click lands where the author is looking.
   test('but lands in Wiki when Wiki is up and Skills is not', () => {
     const file = node('file', {
-      id: 'file:.aiagent/skills/continuity-pass/SKILL.md',
+      id  : 'file:.aiagent/skills/continuity-pass/SKILL.md',
       path: '.aiagent/skills/continuity-pass/SKILL.md',
     });
     expect(opened(routeFor({ node: file, panes: [...documents, pane('wiki')] }))).toBe('wiki');

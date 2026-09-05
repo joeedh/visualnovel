@@ -99,24 +99,24 @@ export function fragmentsFromSnapshot(root: SnapNode): Fragment[] {
   ): void {
     const declared = zIndexOf(node);
     out.push({
-      id: node.id,
-      z: paintZ++,
-      kind: 'box',
+      id    : node.id,
+      z     : paintZ++,
+      kind  : 'box',
       bounds: node.bounds,
-      space: 'css',
-      clip: clips.length ? clips : undefined,
+      space : 'css',
+      clip  : clips.length ? clips : undefined,
       style: {
-        alpha: node.style.opacity ?? 1,
-        fill: node.style.backgroundColor,
+        alpha : node.style.opacity ?? 1,
+        fill  : node.style.backgroundColor,
         zIndex: declared ?? undefined,
       },
-      pick: { mode: pe },
+      pick  : { mode: pe },
       owner,
-      tags: [],
-      source: 'dom',
+      tags    : [],
+      source  : 'dom',
       // The scoping note only matters where a declared z-index is being reinterpreted.
       zContext: declared !== null && scope ? scope : undefined,
-      raw: node.raw,
+      raw     : node.raw,
     });
   }
 
@@ -142,12 +142,12 @@ export function fragmentsFromSnapshot(root: SnapNode): Fragment[] {
       const childOwner = resolveOwner(child, owner);
       const reason = contextReason(child);
       const item: Item = {
-        node: child,
-        clips: child.style.position === 'fixed' ? childFixedClips : childClips,
+        node      : child,
+        clips     : child.style.position === 'fixed' ? childFixedClips : childClips,
         fixedClips: childFixedClips,
-        owner: childOwner,
-        pe: childPe,
-        z: zIndexOf(child) ?? 0,
+        owner     : childOwner,
+        pe        : childPe,
+        z         : zIndexOf(child) ?? 0,
         reason,
         seq: seq++,
       };
@@ -207,14 +207,14 @@ export function fragmentsFromSnapshot(root: SnapNode): Fragment[] {
 
   paint(
     {
-      node: root,
-      clips: [],
+      node      : root,
+      clips     : [],
       fixedClips: [],
-      owner: resolveOwner(root),
-      pe: effectivePointerEvents(root),
-      z: 0,
-      reason: 'root',
-      seq: seq++,
+      owner     : resolveOwner(root),
+      pe        : effectivePointerEvents(root),
+      z         : 0,
+      reason    : 'root',
+      seq       : seq++,
     },
     undefined,
   );

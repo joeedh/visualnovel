@@ -55,7 +55,7 @@ INT. CLASSROOM - AFTERNOON
 AIKO
 Hello.
 `,
-  greet: '---\nscene: greet\n---\n\nINT. CLASSROOM - AFTERNOON\n\n[[next: ending]]\n',
+  greet  : '---\nscene: greet\n---\n\nINT. CLASSROOM - AFTERNOON\n\n[[next: ending]]\n',
   observe: '---\nscene: observe\n---\n\nINT. CLASSROOM - EVENING\n\n[[next: ending]]\n',
   // Three lines, so it can hold two shots and therefore an order worth changing.
   ending: `---
@@ -343,7 +343,7 @@ describe('search_bible', () => {
 
   it('is counted — not pasted — by list_workspace', async () => {
     const { ctx, cleanup } = await withBible({
-      'a.md': '# A\n\nOne.\n',
+      'a.md'     : '# A\n\nOne.\n',
       'deep/b.md': '# B\n\nA secret nobody asked for.\n',
     });
     try {
@@ -482,7 +482,7 @@ describe('editing tools', () => {
       const r = await run(
         'edit_location',
         {
-          id: 'classroom',
+          id      : 'classroom',
           artNotes: 'heavy formwork, ink-wash linework',
           variants: ['day', { id: 'afternoon', art_notes: 'low sun raking across the desks' }],
         },
@@ -503,9 +503,9 @@ describe('editing tools', () => {
       const r = await run(
         'edit_character',
         {
-          id: 'aiko',
+          id      : 'aiko',
           artNotes: 'soft cel shading',
-          outfits: { uniform: 'grey blazer', gala: { art_notes: 'satin sheen' } },
+          outfits : { uniform: 'grey blazer', gala: { art_notes: 'satin sheen' } },
         },
         ctx,
       );
@@ -638,7 +638,7 @@ describe('edit_scene', () => {
       const r = await run(
         'edit_scene',
         {
-          op: 'insertLines',
+          op   : 'insertLines',
           scene: 'arrival',
           after: 'arrival:L1',
           lines: [
@@ -667,7 +667,7 @@ describe('edit_scene', () => {
       const r = await run(
         'edit_scene',
         {
-          op: 'insertLines',
+          op   : 'insertLines',
           scene: 'arrival',
           after: '',
           lines: [{ kind: 'narration', text: 'Fine.' }, { text: 'Who says this?' }],
@@ -732,13 +732,13 @@ describe('edit_scene', () => {
     try {
       const paths = new ProjectPaths(dir);
       const shot: Shot = {
-        id: 'arrival__beat1',
-        sceneId: 'arrival',
-        framing: 'medium',
-        location: 'classroom',
-        subjects: [{ characterId: 'aiko', outfit: 'uniform' }],
+        id         : 'arrival__beat1',
+        sceneId    : 'arrival',
+        framing    : 'medium',
+        location   : 'classroom',
+        subjects   : [{ characterId: 'aiko', outfit: 'uniform' }],
         coversLines: ['arrival:L1'],
-        status: 'pending',
+        status     : 'pending',
       };
       await writeShots(paths, 'arrival', [shot]);
 
@@ -768,8 +768,8 @@ describe('edit_scene', () => {
       const paths = new ProjectPaths(dir);
       const shot = (id: string, coversLines: string[]): Shot => ({
         id,
-        sceneId: 'ending',
-        framing: 'medium',
+        sceneId : 'ending',
+        framing : 'medium',
         location: 'classroom',
         subjects: [],
         coversLines,
@@ -998,13 +998,13 @@ describe('set_outfit', () => {
       await dressAiko(ctx);
       const paths = new ProjectPaths(dir);
       const shot: Shot = {
-        id: 'arrival__beat1',
-        sceneId: 'arrival',
-        framing: 'medium',
-        location: 'classroom',
-        subjects: [{ characterId: 'aiko' }],
+        id         : 'arrival__beat1',
+        sceneId    : 'arrival',
+        framing    : 'medium',
+        location   : 'classroom',
+        subjects   : [{ characterId: 'aiko' }],
         coversLines: ['arrival:L1'],
-        status: 'pending',
+        status     : 'pending',
       };
       await writeShots(paths, 'arrival', [shot]);
 
@@ -1045,13 +1045,13 @@ describe('set_variant', () => {
   const boarded = (variant: string, paths: ProjectPaths): Promise<unknown> =>
     writeShots(paths, 'arrival', [
       {
-        id: 'arrival__beat1',
-        sceneId: 'arrival',
-        framing: 'medium',
-        location: variant,
-        subjects: [{ characterId: 'aiko' }],
+        id         : 'arrival__beat1',
+        sceneId    : 'arrival',
+        framing    : 'medium',
+        location   : variant,
+        subjects   : [{ characterId: 'aiko' }],
         coversLines: ['arrival:L1'],
-        status: 'pending',
+        status     : 'pending',
       },
     ]);
 
@@ -1125,32 +1125,32 @@ function fakeArt(dir: string): {
   const looked: DescribeRequest[] = [];
   const objectFile = (hash: string): string => join(dir, 'assets', 'objects', `${hash}.png`);
   const art: ArtGen = {
-    preview: (req) => Promise.resolve({ prompt: `PROMPT ${req.sentence}` }),
+    preview : (req) => Promise.resolve({ prompt: `PROMPT ${req.sentence}` }),
     generate: (req) => {
       asked.push(req);
       return Promise.resolve({
         ref: { hash: 'f'.repeat(64), ext: 'png' },
         ...(req.subject ? { subject: req.subject } : {}),
         prompt: `PROMPT ${req.sentence}`,
-        file: objectFile('f'.repeat(64)),
+        file  : objectFile('f'.repeat(64)),
       });
     },
-    list: () => Promise.resolve(concepts),
+    list    : () => Promise.resolve(concepts),
     redraw: (req) => {
       redrawn.push(req);
       return Promise.resolve({
-        ref: { hash: 'a'.repeat(64), ext: 'png' },
-        prompt: req.prompt ?? 'THE RECORDED PROMPT',
-        file: objectFile('a'.repeat(64)),
-        from: req.hash,
+        ref      : { hash: 'a'.repeat(64), ext: 'png' },
+        prompt   : req.prompt ?? 'THE RECORDED PROMPT',
+        file     : objectFile('a'.repeat(64)),
+        from     : req.hash,
         unchanged: false,
       });
     },
     describe: (req) => {
       looked.push(req);
       return Promise.resolve({
-        hash: req.hash,
-        label: 'the picture',
+        hash  : req.hash,
+        label : 'the picture',
         answer: `LOOKED AT ${req.hash.slice(0, 8)}: ${req.question ?? '(the default question)'}`,
       });
     },
@@ -1248,10 +1248,10 @@ describe('list_images', () => {
     try {
       const { art, concepts } = fakeArt(dir);
       concepts.push({
-        hash: 'b'.repeat(64),
-        file: join(dir, 'assets', 'objects', `${'b'.repeat(64)}.png`),
-        title: 'the school from above',
-        prompt: 'STYLE. Subject: School. from above',
+        hash   : 'b'.repeat(64),
+        file   : join(dir, 'assets', 'objects', `${'b'.repeat(64)}.png`),
+        title  : 'the school from above',
+        prompt : 'STYLE. Subject: School. from above',
         subject: { kind: 'location', id: 'classroom' },
       });
       const r = await run('list_images', {}, { ...ctx, art });
@@ -1261,9 +1261,9 @@ describe('list_images', () => {
       expect(r.output).toContain('STYLE. Subject: School. from above');
       expect(r.data).toEqual([
         {
-          hash: 'b'.repeat(64),
-          title: 'the school from above',
-          prompt: 'STYLE. Subject: School. from above',
+          hash   : 'b'.repeat(64),
+          title  : 'the school from above',
+          prompt : 'STYLE. Subject: School. from above',
           subject: 'location:classroom',
         },
       ]);
@@ -1276,8 +1276,8 @@ describe('list_images', () => {
 describe('edit_image', () => {
   const sketch = (dir: string, hash: string): ConceptListing => ({
     hash,
-    file: join(dir, 'assets', 'objects', `${hash}.png`),
-    title: 'the school from above',
+    file  : join(dir, 'assets', 'objects', `${hash}.png`),
+    title : 'the school from above',
     prompt: 'STYLE. Subject: School. from above',
   });
 
@@ -1358,10 +1358,10 @@ describe('edit_image', () => {
 async function plate(dir: string): Promise<string> {
   const store = await AssetStore.open(new ProjectPaths(dir));
   const ref = await store.write(new TextEncoder().encode('the plate itself'), 'png', {
-    kind: 'location_ref',
+    kind      : 'location_ref',
     sourceTask: 't'.repeat(64),
-    modelId: 'fake-image',
-    satisfies: { locationId: 'classroom', variant: 'day' },
+    modelId   : 'fake-image',
+    satisfies : { locationId: 'classroom', variant: 'day' },
   });
   return ref.hash;
 }
@@ -1374,7 +1374,7 @@ function fakePipeline(): { pipeline: PipelineControl; queued: string[]; ran: () 
     regenerate: (hash) => {
       queued.push(hash);
       return Promise.resolve({
-        ok: true,
+        ok     : true,
         message: `Queued location_ref ${hash.slice(0, 8)} for re-run.`,
         written: ['vngen/state/tasks.jsonl'],
       });
@@ -1590,10 +1590,10 @@ describe('regenerate_asset', () => {
 
 describe('skills', () => {
   const NEW_SKILL = {
-    name: 'Pace a Scene',
+    name       : 'Pace a Scene',
     description: 'How long a beat should run before it is cut.',
-    whenToUse: 'When a scene reads flat.',
-    body: 'Count the beats, then cut one.',
+    whenToUse  : 'When a scene reads flat.',
+    body       : 'Count the beats, then cut one.',
   };
 
   it('create_skill writes a skill discover_skills then lists', async () => {
@@ -1852,7 +1852,7 @@ describe('edit_file', () => {
       const r = await run(
         'edit_file',
         {
-          path: 'wiki/district.md',
+          path : 'wiki/district.md',
           edits: [{ old: 'in spring', new: 'in the last week of March' }],
         },
         ctx,
@@ -1939,7 +1939,7 @@ describe('edit_file', () => {
       const r = await run(
         'edit_file',
         {
-          path: 'wiki/district.md',
+          path : 'wiki/district.md',
           edits: [
             { old: 'spring', new: 'autumn' },
             { old: 'a sentence that is not there', new: 'anything' },
@@ -2104,13 +2104,13 @@ describe('create tools with the full field set', () => {
       const r = await run(
         'create_character',
         {
-          name: 'Ren Takada',
-          description: 'Tall, black hair cut short, a burn scar along the left forearm.',
-          status: 'draft',
+          name         : 'Ren Takada',
+          description  : 'Tall, black hair cut short, a burn scar along the left forearm.',
+          status       : 'draft',
           defaultOutfit: 'everyday',
-          outfits: { everyday: 'grey coat over a work shirt' },
-          traits: ['guarded', 'quick'],
-          palette: ['#1a2a44', '#a02828'],
+          outfits      : { everyday: 'grey coat over a work shirt' },
+          traits       : ['guarded', 'quick'],
+          palette      : ['#1a2a44', '#a02828'],
         },
         ctx,
       );
@@ -2172,7 +2172,7 @@ describe('create tools with the full field set', () => {
 describe('storyboard tools', () => {
   /** A text seam that answers with fixed JSON — or refuses to parse, like the mock echo does. */
   const fakeText = (answer: string): TextLLM => ({
-    complete: () => Promise.resolve(answer),
+    complete  : () => Promise.resolve(answer),
     structured: async (_prompt, parse) => parse(answer),
   });
 
@@ -2296,10 +2296,10 @@ describe('storyboard tools', () => {
         JSON.stringify({
           shots: [
             {
-              id: 'opener',
-              framing: 'wide',
-              location: 'day',
-              subjects: [{ characterId: 'aiko' }],
+              id         : 'opener',
+              framing    : 'wide',
+              location   : 'day',
+              subjects   : [{ characterId: 'aiko' }],
               coversLines: ['ending:L1', 'ending:L2', 'ending:L3'],
             },
           ],
@@ -2327,11 +2327,11 @@ describe('storyboard tools', () => {
         JSON.stringify({
           shots: [
             {
-              id: 'opener',
-              framing: 'wide',
-              location: 'day',
-              camera: 'slow push in',
-              subjects: [{ characterId: 'aiko', pose: 'seated', expression: 'wary' }],
+              id         : 'opener',
+              framing    : 'wide',
+              location   : 'day',
+              camera     : 'slow push in',
+              subjects   : [{ characterId: 'aiko', pose: 'seated', expression: 'wary' }],
               coversLines: ['ending:L1', 'ending:L2', 'ending:L3'],
             },
           ],
@@ -2344,11 +2344,11 @@ describe('storyboard tools', () => {
       ) as unknown[];
       expect(shots).toEqual([
         {
-          id: 'ending__opener',
-          framing: 'wide',
-          location: 'day',
-          camera: 'slow push in',
-          subjects: [{ characterId: 'aiko', pose: 'seated', expression: 'wary' }],
+          id         : 'ending__opener',
+          framing    : 'wide',
+          location   : 'day',
+          camera     : 'slow push in',
+          subjects   : [{ characterId: 'aiko', pose: 'seated', expression: 'wary' }],
           coversLines: ['ending:L1', 'ending:L2', 'ending:L3'],
         },
       ]);
@@ -2383,10 +2383,10 @@ describe('storyboard tools', () => {
           scene: 'ending',
           shots: [
             {
-              id: 'opener',
-              framing: 'wide',
-              location: 'nowhere', // not a classroom variant — coerced to the first one
-              subjects: [{ characterId: 'AIKO' }, { characterId: 'ghost' }],
+              id         : 'opener',
+              framing    : 'wide',
+              location   : 'nowhere', // not a classroom variant — coerced to the first one
+              subjects   : [{ characterId: 'AIKO' }, { characterId: 'ghost' }],
               coversLines: ['ending:L1', 'ending:L99'],
             },
           ],
@@ -2413,10 +2413,10 @@ describe('storyboard tools', () => {
   it('write_storyboard rejects a shot key it does not take, rather than dropping it', () => {
     const shape = tool('write_storyboard').args;
     const shot = {
-      id: 'opener',
-      framing: 'wide',
-      location: 'day',
-      subjects: [],
+      id         : 'opener',
+      framing    : 'wide',
+      location   : 'day',
+      subjects   : [],
       coversLines: ['ending:L1'],
     };
     expect(shape.safeParse({ scene: 'ending', shots: [shot] }).success).toBe(true);
@@ -2435,10 +2435,10 @@ describe('storyboard tools', () => {
       await run('edit_scene', { op: 'newShot', scene: 'ending', lineIds: ['ending:L1'] }, ctx);
       const shots = [
         {
-          id: 'opener',
-          framing: 'wide',
-          location: 'day',
-          subjects: [],
+          id         : 'opener',
+          framing    : 'wide',
+          location   : 'day',
+          subjects   : [],
           coversLines: ['ending:L1'],
         },
       ];
@@ -2467,10 +2467,10 @@ describe('storyboard tools', () => {
           scene: 'ending',
           shots: [
             {
-              id: 'opener',
-              framing: 'wide',
-              location: 'day',
-              subjects: [],
+              id         : 'opener',
+              framing    : 'wide',
+              location   : 'day',
+              subjects   : [],
               coversLines: ['ending:L99'], // no real line — realization would baseline
             },
           ],

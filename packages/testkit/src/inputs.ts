@@ -64,11 +64,11 @@ export function characterDoc(spec: CharacterSpec): string {
     // so writing it there too would test a spelling the fixture never has to use.
     ...(spec.wiki ? { [ENTITY_TAG_KEY]: ENTITY_TAGS.character } : {}),
     name,
-    status: spec.status ?? 'draft',
+    status        : spec.status ?? 'draft',
     default_outfit: spec.defaultOutfit ?? 'uniform',
     ...(spec.outfits ? { outfits: spec.outfits } : {}),
     palette: spec.palette ?? ['#a02828', '#e8c8b0'],
-    traits: spec.traits ?? ['curious', 'soft-spoken'],
+    traits : spec.traits ?? ['curious', 'soft-spoken'],
   };
   if (spec.approvedPortrait) data['approved_portrait'] = spec.approvedPortrait;
   return stringifyFrontMatter(data, `${spec.description ?? `${name}, a fixture character.`}\n`);
@@ -81,9 +81,9 @@ export function locationDoc(spec: LocationSpec): string {
     id: spec.id,
     ...(spec.wiki ? { [ENTITY_TAG_KEY]: ENTITY_TAGS.location } : {}),
     name,
-    mood: spec.mood ?? 'quiet',
+    mood    : spec.mood ?? 'quiet',
     lighting: spec.lighting ?? 'flat afternoon light',
-    palette: spec.palette ?? ['#d8c19a', '#8aa6c1'],
+    palette : spec.palette ?? ['#d8c19a', '#8aa6c1'],
     variants: spec.variants ?? ['day'],
   };
   return stringifyFrontMatter(data, `${spec.description ?? `${name}, a fixture location.`}\n`);

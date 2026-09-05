@@ -111,16 +111,16 @@ function variantData(variant: LocationVariant): NonNullable<LocationEdit['varian
 export function characterToDoc(character: Character): FrontMatterDoc {
   return {
     data: compact({
-      id: character.id,
-      name: character.name,
-      status: character.status,
-      default_outfit: character.defaultOutfit,
-      outfits: wardrobeData(character),
-      traits: character.traits,
-      palette: character.palette,
-      art_notes: character.artNotes,
-      seed: character.seed,
-      prompt_override: overrideData(character.promptOverride),
+      id               : character.id,
+      name             : character.name,
+      status           : character.status,
+      default_outfit   : character.defaultOutfit,
+      outfits          : wardrobeData(character),
+      traits           : character.traits,
+      palette          : character.palette,
+      art_notes        : character.artNotes,
+      seed             : character.seed,
+      prompt_override  : overrideData(character.promptOverride),
       approved_portrait: character.approvedPortrait,
     }),
     body: character.description,
@@ -131,14 +131,14 @@ export function characterToDoc(character: Character): FrontMatterDoc {
 export function locationToDoc(location: Location): FrontMatterDoc {
   return {
     data: compact({
-      id: location.id,
-      name: location.name,
-      mood: location.mood,
-      lighting: location.lighting,
-      palette: location.palette,
-      variants: location.variants.map(variantData),
+      id       : location.id,
+      name     : location.name,
+      mood     : location.mood,
+      lighting : location.lighting,
+      palette  : location.palette,
+      variants : location.variants.map(variantData),
       art_notes: location.artNotes,
-      seed: location.seed,
+      seed     : location.seed,
     }),
     body: location.description,
   };

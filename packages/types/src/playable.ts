@@ -15,18 +15,18 @@ import { z } from 'zod';
 /** A content-addressed asset reference, mirrors {@link AssetRef}. */
 export const playableAssetRefSchema = z.object({
   hash: z.string().min(1),
-  ext: z.string().min(1),
+  ext : z.string().min(1),
 });
 
 /** Show a background / shot image for the beats that follow. */
 const showBeatSchema = z.object({
-  type: z.literal('show'),
+  type : z.literal('show'),
   /**
    * Which shot this frame is, so a runner can say where the frame sits in the project. This is
    * the one place the playable names an authored id. Optional so that a file written before the
    * field still parses; a runner reading a beat without this id cannot jump to the shot.
    */
-  shot: z.string().min(1).optional(),
+  shot : z.string().min(1).optional(),
   /** The shot image; omitted when the shot has no accepted asset yet (runner shows a placeholder). */
   image: playableAssetRefSchema.optional(),
 });
@@ -35,7 +35,7 @@ const showBeatSchema = z.object({
 const sayBeatSchema = z.object({
   type: z.literal('say'),
   /** Speaking character id (a key into {@link Playable.characters}). */
-  who: z.string().min(1),
+  who : z.string().min(1),
   text: z.string(),
 });
 
@@ -56,36 +56,36 @@ export type Beat = z.infer<typeof beatSchema>;
 /** A branch edge in the playable (mirrors {@link Choice}). */
 export const playableChoiceSchema = z.object({
   label: z.string(),
-  goto: z.string().min(1),
+  goto : z.string().min(1),
 });
 
 /** A character as the runner needs it: display name + optional portrait. */
 export const playableCharacterSchema = z.object({
-  name: z.string().min(1),
+  name    : z.string().min(1),
   portrait: playableAssetRefSchema.optional(),
 });
 
 /** One scene, flattened into ordered beats plus its outgoing edges. */
 export const playableSceneSchema = z.object({
-  beats: z.array(beatSchema).default([]),
+  beats  : z.array(beatSchema).default([]),
   choices: z.array(playableChoiceSchema).default([]),
   /** Linear continuation, followed when `choices` is empty. */
-  next: z.string().optional(),
+  next   : z.string().optional(),
 });
 export type PlayableScene = z.infer<typeof playableSceneSchema>;
 
 /** The whole playable story. */
 export const playableSchema = z.object({
-  version: z.literal(1),
-  title: z.string(),
+  version        : z.literal(1),
+  title          : z.string(),
   /** Entry scene id. */
-  start: z.string().optional(),
+  start          : z.string().optional(),
   /**
    * Draw the speaking character's portrait over the shot image. Defaulted rather than optional
    * so every consumer reads a plain boolean, and a file written before the field still parses.
    */
   portraitOverlay: z.boolean().default(false),
-  characters: z.record(z.string(), playableCharacterSchema).default({}),
-  scenes: z.record(z.string(), playableSceneSchema).default({}),
+  characters     : z.record(z.string(), playableCharacterSchema).default({}),
+  scenes         : z.record(z.string(), playableSceneSchema).default({}),
 });
 export type Playable = z.infer<typeof playableSchema>;

@@ -1,11 +1,19 @@
-/**
- * Formatting config. The plan (§5) specifies a `@pathtx/prettier` fork; that package
- * is not published, so this uses upstream `prettier` with the same options. Swap the
- * dependency and this file keeps working — options are fork-compatible.
- */
 module.exports = {
-  printWidth: 100,
-  singleQuote: true,
-  trailingComma: 'all',
-  semi: true,
+  alignPropertyValues: 'group',
+  alignEnumValues    : 'group',
+  printWidth         : 100,
+  singleQuote        : true,
+  trailingComma      : 'all',
+  semi               : true,
+  overrides: [
+    {
+      files  : ['*.md', '*.MD', '*.markdown'],
+      options: {
+        proseWrap  : 'always',
+        printWidth : 90,
+        tabWidth   : 4,
+        singleQuote: false,
+      },
+    },
+  ],
 };

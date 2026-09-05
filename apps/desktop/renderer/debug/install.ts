@@ -22,12 +22,12 @@ export function installDebug(): () => void {
   const dbg = createDebugger({
     sources: [
       domSource({
-        documentElement: document.documentElement,
-        defaultView: document.defaultView,
+        documentElement  : document.documentElement,
+        defaultView      : document.defaultView,
         elementsFromPoint: elementsAt,
       } as unknown as DomDocument),
     ],
-    spaces: {},
+    spaces : {},
   });
   window.__vnDebug = dbg;
   const dispose = () => {

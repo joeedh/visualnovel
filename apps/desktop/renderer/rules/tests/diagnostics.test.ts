@@ -3,8 +3,8 @@ import type { Diagnostic } from '@vn/types';
 
 const diag = (over: Partial<Diagnostic> = {}): Diagnostic => ({
   severity: 'error',
-  code: 'dangling_line_id',
-  message: 'names no line',
+  code    : 'dangling_line_id',
+  message : 'names no line',
   ...over,
 });
 

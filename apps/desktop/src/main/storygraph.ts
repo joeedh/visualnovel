@@ -21,20 +21,20 @@ export function storyGraphOf(model: ProjectModel): StoryGraph {
 
   for (const scene of model.scenes.values()) {
     scenes.push({
-      id: scene.id,
+      id      : scene.id,
       location: scene.location,
       ...(scene.synopsis !== undefined ? { synopsis: scene.synopsis } : {}),
       characters: [...scene.characters],
-      lines: scene.lines.length,
-      reachable: model.reachable.has(scene.id),
+      lines     : scene.lines.length,
+      reachable : model.reachable.has(scene.id),
     });
 
     scene.choices.forEach((choice, index) => {
       edges.push({
-        id: choiceEdgeId(scene.id, index),
-        from: scene.id,
-        to: choice.goto,
-        kind: 'choice',
+        id   : choiceEdgeId(scene.id, index),
+        from : scene.id,
+        to   : choice.goto,
+        kind : 'choice',
         label: choice.label,
         index,
         dangling: !model.scenes.has(choice.goto),
@@ -43,10 +43,10 @@ export function storyGraphOf(model: ProjectModel): StoryGraph {
 
     if (scene.next !== undefined) {
       edges.push({
-        id: nextEdgeId(scene.id),
-        from: scene.id,
-        to: scene.next,
-        kind: 'next',
+        id      : nextEdgeId(scene.id),
+        from    : scene.id,
+        to      : scene.next,
+        kind    : 'next',
         dangling: !model.scenes.has(scene.next),
         // The runner only follows `next` when a scene has no choices, but `computeReachable`
         // counts it either way. Emitting it flagged rather than hiding it keeps the editor

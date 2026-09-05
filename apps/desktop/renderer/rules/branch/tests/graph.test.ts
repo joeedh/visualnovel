@@ -9,10 +9,10 @@ import type { StoryEdge } from '../../../../src/shared/ipc';
 // it reaches the scheduler, and the renderer's typecheck deliberately can't see that far.)
 const wired = (id: string, choices: Scene['choices'], next?: string): Scene => ({
   id,
-  location: 'classroom',
+  location  : 'classroom',
   characters: [],
-  lines: [],
-  shots: [],
+  lines     : [],
+  shots     : [],
   choices,
   ...(next !== undefined ? { next } : {}),
 });
@@ -20,12 +20,12 @@ const wired = (id: string, choices: Scene['choices'], next?: string): Scene => (
 const scene = (id: string): Scene => wired(id, []);
 
 const model = (scenes: Scene[]): ProjectModel => ({
-  title: 'Test',
-  characters: new Map(),
-  locations: new Map(),
-  scenes: new Map(scenes.map((s) => [s.id, s])),
-  reachable: new Set(scenes.map((s) => s.id)),
-  entry: scenes[0]?.id,
+  title      : 'Test',
+  characters : new Map(),
+  locations  : new Map(),
+  scenes     : new Map(scenes.map((s) => [s.id, s])),
+  reachable  : new Set(scenes.map((s) => s.id)),
+  entry      : scenes[0]?.id,
   diagnostics: [],
 });
 
@@ -96,10 +96,10 @@ describe('scenesOf', () => {
   it('ignores an edge leaving a scene that is not in the graph', () => {
     const story = sample();
     story.edges.push({
-      id: 'ghost#next',
-      from: 'ghost',
-      to: 'greet',
-      kind: 'next',
+      id      : 'ghost#next',
+      from    : 'ghost',
+      to      : 'greet',
+      kind    : 'next',
       dangling: true,
     });
     expect(scenesOf(story).has('ghost')).toBe(false);
@@ -108,10 +108,10 @@ describe('scenesOf', () => {
 
 describe('edgeTarget', () => {
   const edge = (over: Partial<StoryEdge>): StoryEdge => ({
-    id: 'x',
-    from: 'greet',
-    to: 'ending',
-    kind: 'choice',
+    id      : 'x',
+    from    : 'greet',
+    to      : 'ending',
+    kind    : 'choice',
     dangling: false,
     ...over,
   });

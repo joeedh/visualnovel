@@ -36,7 +36,7 @@ describe('planMarkerEdit', () => {
 
   it('refuses a scene no file holds, and a project with no files at all', () => {
     expect(planMarkerEdit(SOURCES, [{ sceneId: 'rooftop', outfits: {} }])).toEqual({
-      ok: false,
+      ok     : false,
       message: 'No file holds scene "rooftop".',
     });
     expect(planMarkerEdit([], [{ sceneId: 'arrival', outfits: {} }])).toMatchObject({ ok: false });

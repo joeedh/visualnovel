@@ -40,62 +40,62 @@ class Convo implements ChatBackend {
     }
     const id = `call_${this.calls}`;
     return {
-      raw: [{ type: 'tool_use', id, name: next.tool, input: next.args }],
+      raw      : [{ type: 'tool_use', id, name: next.tool, input: next.args }],
       toolCalls: [{ id, name: next.tool, args: next.args }],
     };
   }
 }
 
 const findings = {
-  summary: 'The agent rewrote Titus Vale instead of reading about him',
-  whatHappened: 'It edited C:\\dev\\proj\\scenes\\s1.md without being asked.',
-  whatWentWrong: ['It wrote in plan mode'],
-  rootCause: 'A question read as an instruction.',
+  summary        : 'The agent rewrote Titus Vale instead of reading about him',
+  whatHappened   : 'It edited C:\\dev\\proj\\scenes\\s1.md without being asked.',
+  whatWentWrong  : ['It wrote in plan mode'],
+  rootCause      : 'A question read as an instruction.',
   recommendations: [{ behaviour: 'Ask first', rationale: 'Cheaper than an undo' }],
-  confidence: 'medium',
-  evidence: ['Titus Vale was renamed'],
+  confidence     : 'medium',
+  evidence       : ['Titus Vale was renamed'],
 };
 
 const evidence: Evidence = {
   thread: {
-    id: 't1',
-    title: 'About Titus Vale',
+    id       : 't1',
+    title    : 'About Titus Vale',
     startedAt: '2026-01-01T14:00:00.000Z',
     items: [
       {
-        id: 1,
+        id  : 1,
         role: 'user',
         text: 'what happens to Titus Vale in scenes/s1.md?',
-        at: '2026-01-01T14:00:00.000Z',
+        at  : '2026-01-01T14:00:00.000Z',
       },
     ],
   },
-  acts: [],
-  thin: false,
+  acts   : [],
+  thin   : false,
   context: {},
 };
 
 const redactor = () =>
   buildRedactor({
-    entities: [{ id: 'titus', name: 'Titus Vale', kind: 'character' }],
+    entities   : [{ id: 'titus', name: 'Titus Vale', kind: 'character' }],
     projectRoot: 'C:\\dev\\proj',
   });
 
 const grep: Tool = {
-  name: 'grep',
+  name       : 'grep',
   description: 'search the source',
-  mutating: false,
-  args: z.object({ pattern: z.string() }),
+  mutating   : false,
+  args       : z.object({ pattern: z.string() }),
   async run() {
     return { ok: true, output: 'loop.ts:240 mutating tool blocked in plan mode' };
   },
 } as Tool;
 
 const list: Tool = {
-  name: 'list_requests',
+  name       : 'list_requests',
   description: 'list what was sent',
-  mutating: false,
-  args: z.object({}),
+  mutating   : false,
+  args       : z.object({}),
   async run() {
     return { ok: true, output: '#1  convo  900 B' };
   },
@@ -130,8 +130,8 @@ function analystOn(
     evidence,
     backend,
     redactor: redactor(),
-    detail: extra.detail ?? new Map<string, Tool>([['list_requests', list]]),
-    ctx: {} as ToolContext,
+    detail  : extra.detail ?? new Map<string, Tool>([['list_requests', list]]),
+    ctx     : {} as ToolContext,
     ...(host ? { host } : {}),
   });
 }

@@ -77,10 +77,10 @@ export async function condensePrompt(
     const condensed = result.prompt.replace(/\s+/g, ' ').trim();
     if (!condensed) throw new Error('empty prompt');
     return {
-      prompt: condensed,
+      prompt  : condensed,
       coverage: coverage(chunks, condensed),
-      source: 'llm',
-      omitted: result.omitted,
+      source  : 'llm',
+      omitted : result.omitted,
     };
   } catch {
     return { prompt: flat, coverage: coverage(chunks, flat), source: 'fallback', omitted: [] };

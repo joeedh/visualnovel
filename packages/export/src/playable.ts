@@ -77,13 +77,13 @@ function coveringShots(scene: Scene, persisted?: readonly Shot[]): CoveringShot[
     scene.lines.filter(predicate).map((l) => l.id);
   const shots: CoveringShot[] = [
     {
-      id: `${scene.id}__establishing`,
+      id         : `${scene.id}__establishing`,
       coversLines: lineIds((l) => l.kind !== 'dialogue' && l.kind !== 'parenthetical'),
     },
   ];
   scene.characters.forEach((characterId, i) => {
     shots.push({
-      id: `${scene.id}__beat${i + 1}`,
+      id         : `${scene.id}__beat${i + 1}`,
       coversLines: lineIds((l) => l.kind === 'dialogue' && l.speaker === characterId),
     });
   });
@@ -175,7 +175,7 @@ export function buildPlayable(
   const scenes: Record<string, PlayableScene> = {};
   for (const scene of model.scenes.values()) {
     scenes[scene.id] = {
-      beats: sceneBeats(scene, assets, shots?.get(scene.id)),
+      beats  : sceneBeats(scene, assets, shots?.get(scene.id)),
       choices: scene.choices.map((c) => ({ label: c.label, goto: c.goto })),
       ...(scene.next ? { next: scene.next } : {}),
     };
@@ -183,7 +183,7 @@ export function buildPlayable(
 
   return {
     version: 1,
-    title: model.title,
+    title  : model.title,
     ...(model.entry ? { start: model.entry } : {}),
     // Written even when false, so an author reading story.play.json sees the setting present
     // and off. An omitted field would read as "not generated yet", the way a missing ref does.

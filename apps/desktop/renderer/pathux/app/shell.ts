@@ -153,8 +153,8 @@ class Shell implements ShellApp {
   private async repairAsset(restored: StoredSelection): Promise<void> {
     if (restored.assetHash === '') return;
     const outcome = await api.invoke('command:exec', {
-      id: 'asset.info',
-      props: { hash: restored.assetHash },
+      id    : 'asset.info',
+      props : { hash: restored.assetHash },
       source: 'ui',
     });
     const info = outcome.ok ? (outcome.data as AssetInfo) : undefined;
@@ -195,7 +195,7 @@ class Shell implements ShellApp {
     if (!editor) return;
     void exec('view.open', {
       editor,
-      where: 'elsewhere',
+      where  : 'elsewhere',
       subject: params.get('subject') ?? '',
     });
   }

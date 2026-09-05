@@ -32,9 +32,9 @@ export class SystemPromptEditor extends VnEditor {
 
   static override define() {
     return {
-      tagname: 'vn-systemprompt-editor-x',
+      tagname : 'vn-systemprompt-editor-x',
       areaname: 'systemprompt',
-      icon: -1,
+      icon    : -1,
     };
   }
 
