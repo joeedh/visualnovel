@@ -1,5 +1,38 @@
 # API map
 
+<!-- toc -->
+
+- [Layer 0 — leaves](#layer-0--leaves)
+  * [@vn/types — zod schemas and shared value types (`packages/types`)](#vntypes--zod-schemas-and-shared-value-types-packagestypes)
+  * [@vn/util — fs, hashing, concurrency primitives (`packages/util`)](#vnutil--fs-hashing-concurrency-primitives-packagesutil)
+- [Layer 1](#layer-1)
+  * [@vn/config — project.yaml and key resolution (`packages/config`)](#vnconfig--projectyaml-and-key-resolution-packagesconfig)
+  * [@vn/parse — authored inputs (`packages/parse`)](#vnparse--authored-inputs-packagesparse)
+- [Layer 2](#layer-2)
+  * [@vn/model — the in-memory project model (`packages/model`)](#vnmodel--the-in-memory-project-model-packagesmodel)
+  * [@vn/store — on-disk project layout (`packages/store`)](#vnstore--on-disk-project-layout-packagesstore)
+  * [@vn/git — thin git plumbing (`packages/git`)](#vngit--thin-git-plumbing-packagesgit)
+  * [@vn/commands — command framework (`packages/commands`)](#vncommands--command-framework-packagescommands)
+- [Layer 3 — rules packages (leaves by design; two hosts run each)](#layer-3--rules-packages-leaves-by-design-two-hosts-run-each)
+  * [@vn/scriptedit — scene prose writes (`packages/scriptedit`)](#vnscriptedit--scene-prose-writes-packagesscriptedit)
+  * [@vn/bible — retrieval over `wiki/` (`packages/bible`)](#vnbible--retrieval-over-wiki-packagesbible)
+  * [@vn/artgen — art rules: prompts, slot graph, approvals (`packages/artgen`)](#vnartgen--art-rules-prompts-slot-graph-approvals-packagesartgen)
+  * [@vn/gengraph — generation graphs (`packages/gengraph`)](#vngengraph--generation-graphs-packagesgengraph)
+- [Layer 4 — orchestration](#layer-4--orchestration)
+  * [@vn/taskgraph — content-addressed task graph (`packages/taskgraph`)](#vntaskgraph--content-addressed-task-graph-packagestaskgraph)
+  * [@vn/providers — model backends (`packages/providers`)](#vnproviders--model-backends-packagesproviders)
+  * [@vn/pipeline — the P-phases (`packages/pipeline`)](#vnpipeline--the-p-phases-packagespipeline)
+  * [@vn/scheduler — resumable run loop (`packages/scheduler`)](#vnscheduler--resumable-run-loop-packagesscheduler)
+  * [@vn/agentreport — transcript analysis reports (`packages/agentreport`)](#vnagentreport--transcript-analysis-reports-packagesagentreport)
+- [Authoring branch](#authoring-branch)
+  * [@vn/authoring — the vnauthor agent core (`packages/authoring`)](#vnauthoring--the-vnauthor-agent-core-packagesauthoring)
+- [Outside the graph](#outside-the-graph)
+  * [@vn/debug2d — dev-only renderer debugging (`packages/debug2d`, zero deps)](#vndebug2d--dev-only-renderer-debugging-packagesdebug2d-zero-deps)
+  * [@vn/testkit — real projects through the real scheduler with mock providers](#vntestkit--real-projects-through-the-real-scheduler-with-mock-providers)
+- [Hosts (not mapped here)](#hosts-not-mapped-here)
+
+<!-- tocstop -->
+
 One line per module, grouped by layer. Use this to locate a symbol before reading the file;
 the authoritative package responsibilities and import rules are in
 [`packages.md`](packages.md). Regenerate the module lists with `pnpm gen:apimap`
@@ -148,6 +181,8 @@ the authoritative package responsibilities and import rules are in
 | `index.ts` | barrel |
 
 ### @vn/gengraph — generation graphs (`packages/gengraph`)
+As shipped: [`gen-graphs.md`](gen-graphs.md).
+
 | module | purpose |
 | --- | --- |
 | `document.ts` / `dsl.ts` / `edit.ts` | graph document, its DSL, edits |

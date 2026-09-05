@@ -280,7 +280,9 @@ class WorkspaceSession {
     └── …
 ```
 
-**Path authority:** `packages/store/src/paths.ts` is the single authority; this tree reads it. Scene file discovery is `loadInputs` (`packages/store/src/worktree.ts`), which reads `scenes/` and only *reports* leftover `screenplay/`.
+**Path authority:** `packages/store/src/paths.ts` is the single authority; this tree reads it. The
+graph documents, definitions, journals and blobs under `graphs/` are described in
+[`gen-graphs.md`](gen-graphs.md#where-things-live-on-disk). Scene file discovery is `loadInputs` (`packages/store/src/worktree.ts`), which reads `scenes/` and only *reports* leftover `screenplay/`.
 
 **Committed:**
 - `project.yaml`, characters, locations, scenes

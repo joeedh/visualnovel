@@ -54,7 +54,8 @@ tests of the pure planners where building on disk would just be noise.
   entry is keyed by the slug its journal and blobs are filed under, and the run indexes them
   by the slot each active output claims, so a task whose slot one of them names draws through
   the graph and every other task runs the path it ran before graphs existed. Two active
-  outputs claiming one slot throws by name rather than letting load order decide.
+  outputs claiming one slot throws by name rather than letting load order decide. Graphs
+  themselves are [`../reference/gen-graphs.md`](../reference/gen-graphs.md).
 
 ## Placeholder art and the recorded corpus
 

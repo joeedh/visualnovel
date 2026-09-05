@@ -259,7 +259,8 @@ authored on the character sheet (`edit_character`'s `outfits` / `defaultOutfit`)
 A generation graph is the node network a picture is drawn by, stored at
 `vngen/work/graphs/<slug>.json`. Three tools reach one, and they share their decisions with the
 `gengraph.*` commands by importing `@vn/gengraph` rather than by invoking the registry, which is
-the same arrangement `edit_scene` has with `story.*`.
+the same arrangement `edit_scene` has with `story.*`. The graphs themselves, the node types, the
+journal and the commands are described in [`gen-graphs.md`](gen-graphs.md).
 
 - **A graph is read and written whole, and diffed by node id.** `read_asset_graph` gives back
   every node with its type and authored values plus every link, and leaves out where the nodes sit

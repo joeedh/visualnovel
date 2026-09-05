@@ -23,7 +23,8 @@ This page covers the cross-cutting invariants. The rest of the app is split by c
 - [`desktop-app-editors-story.md`](desktop-app-editors-story.md) — the writing editors: Branches,
   Script, Convo, Shot Coverage.
 - [`desktop-app-editors-pipeline.md`](desktop-app-editors-pipeline.md) — the pipeline editors:
-  Tasks/Task Graph/Inspector, Gen Graph, Play, Asset.
+  Tasks/Task Graph/Inspector, Gen Graph, Play, Asset. The Gen Graph pane is described in full with
+  the graphs it edits, in [`gen-graphs.md`](gen-graphs.md#the-gen-graph-pane).
 - [`desktop-app-editors-misc.md`](desktop-app-editors-misc.md) — the remaining document and
   settings editors: Wiki, Skills, Documents, Project, System Prompt, Setup, Debug Agent.
 - [`desktop-app-state.md`](desktop-app-state.md) — what the shell remembers between runs (the two

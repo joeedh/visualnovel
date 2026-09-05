@@ -96,7 +96,7 @@ to repeat here:
 
 ## Architecture
 
-- **Module map**: docs/reference/api-map.md
+- **Module map**: docs/reference/module-map.md
 
 ### Package layering
 
@@ -151,7 +151,11 @@ direction (including the agent's own art-revision tools), concept images, adopti
 reporting, generation-graph drift, line ids, the scene round-trip, entity discovery, the P7
 refine loop, and provider seams. Story-bible access is the one core idea documented on its own,
 in [`docs/reference/story-bible.md`](docs/reference/story-bible.md), because it has no
-pipeline-contract failure mode of its own — only the query-only access rule.
+pipeline-contract failure mode of its own — only the query-only access rule. Generation graphs —
+`@vn/gengraph`, the `gengraph.*` commands, the run journal, groups, the Gen Graph pane and
+plugins — are written up end to end in
+[`docs/reference/gen-graphs.md`](docs/reference/gen-graphs.md); the contracts doc keeps only
+their three invariants.
 
 ## CLI
 

@@ -8,7 +8,9 @@ which. The fresh-context pressure-test that conventions.md requires ran on 2026-
 (seventeen findings, three blocking) and every finding is folded in below — the typecheck
 wiring in Stage 1, the nstructjs pinning, the executor's target set, the requeue decision,
 the refine scope, the claims/pins enabling work in Stage 10, and the plugin install
-location are all sentences that review changed.
+location are all sentences that review changed. The as-shipped description of everything
+this plan built is [`../reference/gen-graphs.md`](../reference/gen-graphs.md); this file
+keeps the stages and what each deviated from.
 
 <!-- toc -->
 

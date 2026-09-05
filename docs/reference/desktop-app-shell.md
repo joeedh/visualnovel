@@ -370,7 +370,7 @@ are the bridge's.
   **Exit Group**, which act on the Gen Graph pane that is the active one in `paneToUse`'s sense
   (the pane the pointer last entered, else the biggest) and say so when that pane is not a Gen
   Graph; the keys themselves belong to the pane's keymap, and the menu only names them
-  ([`desktop-app-editors-pipeline.md#gen-graph`](desktop-app-editors-pipeline.md#gen-graph)) —
+  ([`gen-graphs.md#the-gen-graph-pane`](gen-graphs.md#the-gen-graph-pane)) —
   plus **Approve & Generate All…**, which opens `pipeline.approveAndRun`'s dialog. That command approves every
   picture waiting, runs the pipeline, and repeats until neither half moves: each round unlocks the
   next rung of the slot graph, so an approved portrait clears the gate and an approved sheet lets

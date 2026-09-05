@@ -153,7 +153,8 @@ because the next batch of plans should follow it too:
 Decided against in the survey, recorded here so it does not get re-proposed:
 
 - **Prompt node editor.** Superseded by the Gen Graph pane
-  ([`node-based-asset-generation.md`](node-based-asset-generation.md)), which answers the objection
+  ([`node-based-asset-generation.md`](node-based-asset-generation.md), shipped and described in
+  [`../reference/gen-graphs.md`](../reference/gen-graphs.md)), which answers the objection
   this entry was written for. The objection was that turning deterministic plumbing into user data
   rehashes downstream tasks on every edit, so casual fiddling silently invalidates generated art. A
   generation graph is a document the author opts into per slot, the deterministic runners are still

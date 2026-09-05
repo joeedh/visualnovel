@@ -10,7 +10,8 @@ ops, the level stack and the designer panel are path.ux's and are planned in
 node inside a group, the `gengraph.*` commands the view's edits become, and the pane, menu
 and IPC that host it. It carries out decision 4 of
 [`../node-based-asset-generation.md`](../node-based-asset-generation.md), which shipped the
-file layout and the resolve pass but no way to make a group.
+file layout and the resolve pass but no way to make a group. The as-shipped description is
+[`../../reference/gen-graphs.md`](../../reference/gen-graphs.md#groups).
 
 <!-- toc -->
 

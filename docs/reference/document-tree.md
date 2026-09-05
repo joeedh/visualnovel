@@ -152,6 +152,7 @@ Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
   pane already open follows the click. It only publishes: `EDITORS` has the Gen Graph editor claim
   the `slot` row and not the `asset` row, since `routeFor` ranks a visible claimant above a hidden
   one and an open Gen Graph pane would otherwise take clicks on pictures away from the Asset editor.
+  What a graph is, and how one binds a slot, is [`gen-graphs.md`](gen-graphs.md#slots-and-outputs).
 - **A node carries identity, never a click action.** It would be tidy to ship the command
   invocation a click runs, the way an interaction target does — but selection is renderer state
   (`ui.sceneId`, `ui.shotId`, `ui.characterId`, `ui.docPath`, `ui.assetHash`), not something main

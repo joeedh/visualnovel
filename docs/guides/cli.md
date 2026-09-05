@@ -39,6 +39,10 @@ answer for rather than writing a fallback, and it is the only verb that asks for
 rather than the image one: it draws nothing, so refusing it for a missing Gemini key would be a
 refusal the author cannot act on. `story.decomposeAll` in the desktop app is the same function.
 
+`run`, `status` and `cost` also know about generation graphs: a slot bound to one is drawn through
+it, reported as drifted when the graph was edited since it last ran, and priced node by node. What a
+graph is and what each verb prints is [`../reference/gen-graphs.md`](../reference/gen-graphs.md#the-cli).
+
 `export` and `screenplay` are different artifacts: `export` writes the playable the desktop app
 runs ([`../reference/playable-format.md`](../reference/playable-format.md)), `screenplay` writes Fountain a human (or
 `vngen import`) can read. `import` runs once per project, refuses over an existing `scenes/`, and

@@ -399,7 +399,8 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   - The requeue happens at run time rather than at the graph write, because undo excludes
     `vngen/state/`: undoing a graph edit restores the authored hash and the drift disappears
     before anything is redrawn.
-  - Plan: [`../plans/node-based-asset-generation.md`](../plans/node-based-asset-generation.md)
+  - Reference: [`gen-graphs.md`](gen-graphs.md#identity-the-journal-and-drift). Plan:
+    [`../plans/node-based-asset-generation.md`](../plans/node-based-asset-generation.md)
     (Stage 2; the plan overall is in progress).
 - **A node inside a group is identified by its key, never by its id alone.**
   - Every graph's id counter starts at zero, so a node inside a group instance shares its id
@@ -414,7 +415,7 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
     `decideGenEdit` with the sentence `structuralEditsRefused` gives, and belongs to the group's
     definition, which every `gengraph.*` editing command reaches with its `group` prop and
     writes as `vngen/work/graphs/lib/<ref>.json`. The renderer only ever reads that file.
-  - Plan:
+  - Reference: [`gen-graphs.md`](gen-graphs.md#groups). Plan:
     [`../plans/archive/group-nodes-in-the-gen-graph-editor.md`](../plans/archive/group-nodes-in-the-gen-graph-editor.md).
 - **Renaming a node type's socket or prop takes a migration in the same commit.**
   - path.ux reconciles a loaded node against its definition by key, so a file written before a
@@ -430,6 +431,7 @@ package layering that carries them is in [`../../CLAUDE.md`](../../CLAUDE.md), p
   - So a rename is two edits: bump `typeVersion`, and add the step that lands on it.
   - The file on disk keeps the old keys until something writes it back, which means the
     migration has to stay in place rather than being deleted a release later.
+  - Reference: [`gen-graphs.md`](gen-graphs.md#node-types).
 - **Editing a scene's heading invalidates art, unlike every other scene edit, and shows the
   cost before it runs.**
   - A location reaches a shot's task inputs twice — `buildShotPrompt` bakes `location.name`
