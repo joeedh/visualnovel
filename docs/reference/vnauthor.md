@@ -1,9 +1,8 @@
 # `vnauthor` — the authoring agent
 
-A plan-first, git-backed conversational agent that helps an author write and refine the inputs
-the pipeline consumes. It does **not** run the generative pipeline — it stops at well-formed,
-validated input files in a clean commit. Design:
-[`../history/authoring-agent-report.md`](../history/authoring-agent-report.md); plan:
+Helps an author write and refine the inputs the pipeline consumes, working plan-first and backed by git. It does not run the generative pipeline; it
+stops at well-formed, validated input files in a clean commit. The design is in
+[`../history/authoring-agent-report.md`](../history/authoring-agent-report.md) and the plan is in
 [`../plans/archive/INDEX.md#authoring-agent-implementation`](../plans/archive/INDEX.md#authoring-agent-implementation).
 
 <!-- toc -->
@@ -26,33 +25,25 @@ validated input files in a clean commit. Design:
 vnauthor [dir] [--mock] [--no-native]
 ```
 
-- `--mock` runs offline with no model (read-only smoke test — exercises workspace/skill loading
-  and the REPL without API keys).
-- `--no-native` forces structured ReAct (Path A). Provider-native function-calling (Path B) is
-  the default wherever the configured backend offers `chatConversation`; a backend without it falls
-  back to Path A on its own.
-- Model + keys resolve exactly like `vngen`: `models.text` in `project.yaml`, key via env var or
-  a secret file under `<dir>/keys/` (falling back to a shared `keys/` at the enclosing repo
-  root).
+- `--mock` runs offline with no model. It is a read-only smoke test that exercises workspace/skill loading and the REPL without API keys.
+- `--no-native` forces structured ReAct (Path A). Provider-native function-calling (Path B) is the default when the configured backend offers
+  `chatConversation`. A backend that does not offer `chatConversation` uses Path A.
+- Model and keys resolve exactly as they do in `vngen`. The model comes from `models.text` in `project.yaml`, and the key comes from an env var or
+  from a secret file under `<dir>/keys/` (falling back to a shared `keys/` at the enclosing repo root).
 
-REPL commands: `/help`, `/mode` (plan vs. execute), `/model [id]` (switch the text model; no arg
-→ interactive menu), `/effort [level]` (set reasoning — `low`…`max` map to Anthropic
-`output_config.effort` + adaptive thinking, `no thinking` sends `thinking: disabled`, and the menu
-offers only what the model takes; it starts at `low` and is ignored on models with no such knob;
-no arg → interactive menu), `/clear` (reset the conversation context, back to plan mode), `/status`
-(project index), `/skills` (available skills), `/makeimage <what to draw>` (a concept image,
-directly — see [Concept images](#concept-images)), `/upload <file…>` (archive documents and ask
-what to do with them — see [The archive](#the-archive)), `/exit` (or `/quit`). **Shift-Tab** cycles
-between plan and execute mode. `/model` and `/effort` rebuild the backend and hot-swap it into
-the running agent, preserving conversation state.
+REPL commands: `/help`, `/mode` (plan vs. execute), `/model [id]` (switch the text model; no arg → interactive menu), `/effort [level]` (set reasoning
+— `low`…`max` map to Anthropic `output_config.effort` + adaptive thinking, `no thinking` sends `thinking: disabled`, and the menu lists only the
+levels the model supports; the level starts at `low` and is ignored on models that have no such setting; no arg → interactive menu), `/clear` (reset
+the conversation context and return to plan mode), `/status` (show the project index), `/skills` (list the available skills), `/makeimage <what to
+draw>` (generate a concept image directly — see [Concept images](#concept-images)), `/upload <file…>` (archive documents and ask what to do with them
+— see [The archive](#the-archive)), `/exit` (or `/quit`). **Shift-Tab** cycles between plan and execute mode. `/model` and `/effort` rebuild the
+backend and hot-swap it into the running agent, preserving conversation state.
 
-**The REPL keeps no transcript.** A conversation here lives as long as the process does, and
-`/clear` ends it with nothing written down. The desktop app writes two files per conversation:
-the turns as they are drawn, at `vngen/state/threads/<id>.jsonl`, and the model's own messages at
-`<id>.native.jsonl`, which is what its Continue button reads to pick a conversation back up (see
-[`desktop-app.md`](desktop-app.md)). Nothing stops the REPL from writing either file, and it
-writes neither yet, so a conversation here cannot be continued after `/exit` and the two
-`search_history` and `read_history` tools the desktop registers are absent here.
+The REPL keeps no transcript. A conversation exists only while the process runs, and `/clear` ends it without writing anything to disk. The desktop
+app writes two files per conversation. It writes the turns as they are drawn to `vngen/state/threads/<id>.jsonl`, and it writes the model's own
+messages to `<id>.native.jsonl`, which its Continue button reads to resume a conversation (see [`desktop-app.md`](desktop-app.md)). The REPL could
+write either file but writes neither yet, so a conversation here cannot be continued after `/exit`, and the two `search_history` and `read_history`
+tools the desktop registers are absent here.
 
 Offline smoke test:
 
@@ -61,137 +52,88 @@ pnpm build
 printf '/skills\n/status\n/exit\n' | node apps/authoring/dist/vnauthor.js templates/basic --mock
 ```
 
-[`../../templates/basic/AICONTEXT.md`](../../templates/basic/AICONTEXT.md) shows project guidance the
-agent honors.
+[`../../templates/basic/AICONTEXT.md`](../../templates/basic/AICONTEXT.md) shows the project guidance that the agent follows.
 
 ## How it works
 
-- **Two-mode state machine (`@vn/authoring` `loop.ts`).** The agent starts in **plan mode
-  (read-only)**: only non-mutating tools dispatch; any mutating tool is blocked until the user
-  approves a proposed plan. Approving a plan switches to **execute mode**, where edits apply,
-  `validate_inputs` runs, and `git_commit` is **blocked while error-severity diagnostics remain**
-  (soft/style issues only warn). One commit per approved plan.
-- **A turn is bounded by what it spends, not by how many steps it took.** `BUDGET_CHOICES`
-  (50k…5m, `unlimited`; default 200k) is a **per-turn** ceiling on non-cached tokens, set beside
-  `effort` in the convo bar and by `agent.setBudget`. The meter is checked **between** steps, like
-  `stop()`, because a `tool_use` the transcript never answers is a request the API refuses to
-  continue; at 80% the loop appends a `{"role":"system"}` message telling the agent to stop
-  starting work and land what it has; running out emits a final naming the spend, the ceiling and
-  what was written since the last commit. `MAX_ITERATIONS` survives as a runaway backstop rather
-  than a policy — a backend that reports no usage spends nothing against any budget — so
-  `unlimited` means an unlimited budget, not an unbounded loop.
-- **A call to the model that failed is the author's decision, and it is asked once per grant.**
-  When `backend.next` throws, the loop asks its host (`onApiError`) what to do and offers three
-  answers: retry automatically up to ten times, switch to another model and try again, or stop.
-  Both hosts put the same question through the same shortlist door — the desktop as an ask card,
-  `vnauthor` as a numbered list — because the wording lives in `@vn/authoring`'s `apierror.ts`
-  rather than in either of them. The answer is a **grant**: "retry ten times" is one decision that
-  buys ten attempts, not ten cards, and the host is only asked again when the grant runs out. A
-  second failure after a spent grant stops instead of asking twice — the transcript is intact, so
-  re-sending is one keystroke.
-  - **The loop still knows nothing about models.** `ApiRecovery` has no `switch` case; a host that
-    wants a different provider swaps the backend (`Agent.setBackend`, or `session.setModel`) and
-    then answers `retry`, because every attempt re-reads the field.
-  - **The wait is the provider's where it named one.** `retry-after` — seconds or an HTTP-date —
-    is read off the response in `@vn/providers` and carried on `RetryableProviderError`; absent, the
-    wait doubles from a second and stops at a minute. No jitter: jitter de-synchronises a fleet, and
-    there is one conversation here.
-  - **Progress is visible and its end is reported.** The desktop header shows `⟳ retry n/of` while
-    attempts are being spent and clears it the moment the turn moves on either way, and a
-    notification says whether the model came back or was given up on. `vnauthor` prints the same
-    three lines inline.
+- **Two-mode state machine (`@vn/authoring` `loop.ts`).** The agent starts in plan mode, which is read-only: only non-mutating tools dispatch, and
+  mutating tools are blocked until the user approves a proposed plan. Approving a plan switches to execute mode, where edits apply, `validate_inputs`
+  runs, and `git_commit` is blocked while error-severity diagnostics remain (soft and style issues only warn). Each approved plan produces one commit.
+- **A turn is bounded by the tokens it spends, not by the number of steps it takes.** `BUDGET_CHOICES` (50k…5m, `unlimited`; default 200k) is a
+  per-turn ceiling on non-cached tokens, and is set beside `effort` in the convo bar and by `agent.setBudget`. The loop checks the meter between
+  steps, as it does for `stop()`, because the API refuses to continue a transcript that never answers a `tool_use`. At 80% of the ceiling the loop
+  appends a `{"role":"system"}` message telling the agent to stop starting work and land what it has. When the budget runs out, the loop emits a final
+  message naming the spend, the ceiling and what was written since the last commit. `MAX_ITERATIONS` stays in place as a runaway backstop rather than
+  a policy (a backend that reports no usage spends nothing against any budget), so `unlimited` means an unlimited budget, not an unbounded loop.
+- **The author decides what happens after a failed call to the model, and is asked once per grant.** When `backend.next` throws, the loop asks its
+  host (`onApiError`) what to do and offers three answers: retry automatically up to ten times, switch to another model and try again, or stop. Both
+  hosts ask the same question through the same shortlist mechanism — the desktop shows an ask card and `vnauthor` shows a numbered list — because the
+  wording lives in `@vn/authoring`'s `apierror.ts` rather than in either of them. The answer is a grant: "retry ten times" is one decision that allows
+  ten attempts rather than ten cards, and the host is asked again only when the grant runs out. After a grant is spent, a second failure stops the
+  loop rather than asking again, and the transcript is intact, so re-sending takes one keystroke.
+  - **The loop contains no model-specific code.** `ApiRecovery` has no `switch` case; a host that switches to a different provider swaps the backend
+    (`Agent.setBackend`, or `session.setModel`) and then answers `retry`, because every attempt re-reads the field.
+  - **Waits as long as the provider asks whenever it names a wait.** `@vn/providers` reads `retry-after` (seconds or an HTTP-date) off the response
+    and carries it on `RetryableProviderError`. If the provider names no wait, the wait doubles from a second and stops at a minute. The wait carries
+    no jitter, because jitter de-synchronises a fleet and only one conversation runs here.
+  - **Shows progress and reports its end.** The desktop header shows `⟳ retry n/of` while the retries run, and clears it as soon as the turn ends
+    either way. A notification states whether the model responded or the retries were given up. `vnauthor` prints the same three lines inline.
 - **Always-confirm.** `git_revert`/`git_restore` and the first run of a script-bearing skill
   route through the permission gate regardless of mode.
-- **Asking with a shortlist is its own tool, over the same door.** `ask_choice` sits beside
-  `ask_user` in `CONTROL_TOOLS` — a distinct name, because the failure being corrected is a model
-  asking an open question when the sensible answers can be listed — but both reach one
-  `Permission.ask(form)`. The shortlist is how the question is _put_, not what comes
-  back: the answer is a string either way, the author may always type past the list, and the
-  observation reads `User answered: …` regardless, so the model has to read it rather than
-  pattern-match a click. A shortlist of fewer than two is refused, being a leading question. In the
-  terminal the list is numbered and anything that is not a run of valid numbers is taken as the
-  author's own words.
-- **A question is a page of a form, and one question is a one-page form.** `Permission.ask` takes
-  an array of `AskQuestion` and returns one answer per question, positionally — so `ask_user`, a
-  lone `ask_choice` and a `{questions: […]}` form are one shape rather than three doors, and a
-  single question draws and reads exactly as it did before forms existed. `ask_choice` accepts up
-  to `MAX_ASK_QUESTIONS` (4) at once, because a model that wants more than that has stopped asking
-  and started interviewing. **Inside a form a question may omit its `choices`** and be answered in
-  the author's own words: on its own that question is `ask_user`, but a form is one parked turn,
-  and making the model ask the listed questions here and the open one separately would spend a
-  second turn to learn nothing extra. What the model reads back is numbered against the questions,
-  because `ok, ok` says nothing on its own; an unanswered one reads `(no answer)`.
-- **A host that miscounts must not hang a parked turn.** `answersFor` pads a short reply and drops
-  a long one — neither throws, because the model reads these as prose and a missing answer says
-  "nothing" perfectly well. That is what lets the terminal put a form one question at a time (it
-  has no Back button, so the numbering is all it can offer) while the desktop card pages through
-  it, without either host owing the loop any arithmetic.
-- **Agent backend seam, and Path B is the default.** The loop targets an internal
-  `AgentBackend`; `StructuredAgentBackend` (Path A) drives tools as zod-validated JSON over the text
-  seam, `NativeAgentBackend` (Path B) drives them through the vendor tool protocol. The loop is the
-  arg-validation authority, so Path B advertises permissive tool params and re-validates via the
-  registry. **The probe is `chatConversation`, deliberately not `chatWithTools`** — Gemini
-  implements the latter for a request that is still one re-rendered string and therefore caches
-  nothing, and a request that cannot be cached is the fault Path B exists to fix.
-- **The request is a conversation, and it is shaped to be cached.** `buildConvoRequest`
-  (`@vn/providers`) lays out `tools` → `system` → `messages` and spends the API's four
-  `cache_control` breakpoints on the last non-deferred tool, the system prompt, and the two newest
-  message turns — a rolling pair, so each turn reads the previous one's write. A breakpoint never
-  lands on a `thinking` block, assistant blocks are echoed back verbatim (`AgentTurn.raw`), and the
-  builder clones rather than marking the caller's own arrays.
-- **Most tools are deferred, and the model searches for them.** `toolSpecs()` sends exactly six
-  schemas up front — `propose_plan`, `ask_user`, `ask_choice`, `read_file`, `search`,
-  `list_workspace` — and flags the rest `defer_loading`, alongside the server-side
-  `tool_search_tool_bm25` tool. The rendered catalog is byte-identical for the life of a session,
-  including across a mode change, because a tool list that moves invalidates everything after it.
-- **What changes mid-conversation is said in the transcript, never edited into the prefix.** The
-  mode, and any `AICONTEXT.md` section that has been superseded or withdrawn, are appended as
-  `{"role":"system"}` messages — filed on change only (`Agent.filedMode`), so restating the mode it
-  is already in costs nothing. On a model without the system role the builder down-renders those
-  turns to user turns at request time, which is what keeps a mid-session `/model` switch from
-  leaving a conversation that can no longer be sent.
-- **Context precedence:** built-in input contract > `AICONTEXT.md` (+ nested per-dir files and
-  `@import` lines; `AGENTS.md`/`CLAUDE.md` as fallbacks) > `AICONTEXT.generated.md` (the project
-  map) > inferred defaults. `update_context` turns a chat instruction into a durable line in
-  `AICONTEXT.md`; `regenerate_context` rebuilds the map. The map states facts and the author states
-  policy, so the author wins — the two are separately labelled sections of the system message, and
-  a file at the generated path without the generator's banner is ignored rather than trusted.
-  **The desktop host keeps the map current without walking the project every turn**: it starts a
-  session stale (so the first turn covers opening a workspace that has never had one written) and
-  goes stale again whenever a finished turn wrote under `characters/`, `locations/`, `scenes/` or
-  `wiki/` — the four directories the map is derived from. Rebuilding it is best-effort and never
-  throws: a map that could not be regenerated is a worse prompt, not a failed turn.
-- **What the agent wrote is what gets committed.** The loop unions `git_commit`'s `paths` with the
-  paths the tools actually reported writing rather than letting the argument replace them. The
-  record is complete and the model's memory is not — which is how an `AICONTEXT.md` the agent
-  updated and then forgot about went uncommitted — but a path named on purpose is still honoured.
+- **A shortlist question is a separate tool that reaches the same permission call.** `ask_choice` sits beside `ask_user` in `CONTROL_TOOLS` under a
+  distinct name, because it corrects a model asking an open question when the sensible answers can be listed. Both reach one `Permission.ask(form)`.
+  The shortlist changes how the question is presented, not what comes back: the answer is a string either way, the author may always type past the
+  list, and the observation reads `User answered: …` regardless, so the model has to read the answer rather than pattern-match a click. A shortlist of
+  fewer than two entries is refused, because it asks a leading question. In the terminal the list is numbered, and anything that is not a run of valid
+  numbers is taken as the author's own words.
+- **One shape covers a single question and a multi-question form.** `Permission.ask` takes an array of `AskQuestion` and returns one answer per
+  question, positionally, so `ask_user`, a lone `ask_choice` and a `{questions: […]}` form all use that one shape, and a single question draws and
+  reads exactly as it did before forms existed. `ask_choice` accepts at most `MAX_ASK_QUESTIONS` (4) questions at once, because more than that is an
+  interview rather than a question. A question inside a form may omit its `choices`, and the author answers it in their own words; that same question
+  on its own is `ask_user`. A form is one parked turn, so asking the listed questions here and the open one separately would spend a second turn
+  without learning anything extra. The model reads the answers back numbered against the questions, because `ok, ok` says nothing on its own, and an
+  unanswered question reads `(no answer)`.
+- **A host that miscounts must not hang a parked turn.** `answersFor` pads a short reply and drops a long one, and neither case throws, because the
+  model reads these as prose and takes a missing answer as "nothing". This padding and dropping is what lets the terminal present a form one question
+  at a time (it has no Back button, so the numbering is all it can offer) while the desktop card pages through the same form, and neither host has to
+  do the arithmetic.
+- **Agent backend seam, and Path B is the default.** The loop targets an internal `AgentBackend`; `StructuredAgentBackend` (Path A) drives tools as
+  zod-validated JSON over the text seam, `NativeAgentBackend` (Path B) drives them through the vendor tool protocol. The loop validates tool args, so
+  Path B advertises permissive tool params and re-validates via the registry. The probe is `chatConversation`, deliberately not `chatWithTools`.
+  Gemini implements `chatWithTools` for a request that is still one re-rendered string and therefore caches nothing, and Path B exists to fix requests
+  that cannot be cached.
+- **`buildConvoRequest` (`@vn/providers`) assembles the conversation into a request ordered for caching.** It lays out `tools` → `system` →
+  `messages` and spends the API's four `cache_control` breakpoints on the last non-deferred tool, the system prompt, and the two newest message turns.
+  That pair of message breakpoints rolls forward, so the cache written on one turn is read on the next. A breakpoint never lands on a `thinking`
+  block, assistant blocks are echoed back verbatim (`AgentTurn.raw`), and the builder clones the caller's arrays rather than marking them in place.
+- **Most tools are deferred, and the model searches for them.** `toolSpecs()` sends exactly six schemas up front — `propose_plan`, `ask_user`,
+  `ask_choice`, `read_file`, `search`, `list_workspace` — and flags the rest `defer_loading`, alongside the server-side `tool_search_tool_bm25` tool.
+  The rendered catalog is byte-identical for the life of a session, including across a mode change, because changing the tool list invalidates
+  everything after it.
+- **Changes made mid-conversation appear in the transcript and are never edited into the prefix.** The mode and any `AICONTEXT.md` section that has
+  been superseded or withdrawn are appended as `{"role":"system"}` messages, filed only on change (`Agent.filedMode`), so restating a mode the
+  conversation is already in costs nothing. On a model without the system role the builder down-renders those turns to user turns at request time, so
+  a mid-session `/model` switch leaves a conversation that can still be sent.
+- **Context precedence:** built-in input contract > `AICONTEXT.md` (+ nested per-dir files and `@import` lines; `AGENTS.md`/`CLAUDE.md` as
+  fallbacks) > `AICONTEXT.generated.md` (the project map) > inferred defaults. `update_context` writes a chat instruction as a durable line in
+  `AICONTEXT.md`; `regenerate_context` rebuilds the map. The map states facts and `AICONTEXT.md` states policy, so `AICONTEXT.md` takes precedence.
+  The two are separately labelled sections of the system message, and a file at the generated path without the generator's banner is ignored rather
+  than trusted. The desktop host keeps the map current without walking the project every turn. It marks the map stale at the start of a session (so
+  the first turn covers opening a workspace that has never had one written) and marks it stale again whenever a finished turn wrote under
+  `characters/`, `locations/`, `scenes/` or `wiki/`, the four directories the map is derived from. Rebuilding it is best-effort and never throws: a
+  map that could not be regenerated degrades the prompt but does not fail the turn.
+- **Every file the agent wrote is committed.** The loop unions `git_commit`'s `paths` argument with the paths the tools reported writing rather than
+  letting the argument replace them. The tool record is complete and the model's recollection is not: an `AICONTEXT.md` that the agent updated and
+  then forgot about went uncommitted. A path named in the argument is still honoured.
 - **Round-trip safety.** Edits go through `@vn/model`'s `*ToDoc` / `applyCharacterEdit` /
   `applyLocationEdit` serializers (`fromDoc(toDoc(x)) ≡ x`), rewriting only changed front-matter
   so untouched prose and branch markers are preserved.
-- **Prose edits are the desktop's edits.** `edit_scene` names the same fifteen acts the `story.*`
-  commands do — thirteen over prose, plus `newShot`/`deleteShot`, which write the storyboard —
-  and `set_outfit` the two outfit commands — running the same `@vn/scriptedit`
-  decisions, so a refusal an author sees mid-drag is the refusal the agent gets, and the storyboard
-  consequence is accounted for once. `newShot` takes the cast as well, because the speakers of the
-  covered lines are not who is on screen in a reaction shot, an establishing frame over narration,
-  or any scene where someone is present and silent — and no later act changes a shot's subjects, so
-  a character the project does not have is refused at birth rather than reaching the prompt. **Drafting a run of prose is one call, and so is clearing
-  one**: `insertLines` and `deleteLines` fold over `insertLine` and `deleteLine` inside
-  `@vn/scriptedit`, so ids stay allocated by the one prose write path, a bad line anywhere in the
-  run writes none of it and says which line it was, and the whole run is a single write rather than
-  forty — which is what makes *rewriting* a scene two calls instead of forty-one. Twelve of the
-  thirteen are prose; `setHeading` is the one that moves
-  a scene somewhere else, and it says in its own result that the rendered art will be drawn again
-  and that the prose it left behind is the agent's to rewrite. **Wiring is the second half and a
-  second tool**: `edit_branches` runs `branchops`' four rewires, which is what makes `newScene`'s
-  own _"nothing points at it yet"_ actionable rather than a dead end. See
-  [`command-system.md`](command-system.md#from-the-agent).
+- **The ag
 
 ## Tools
 
-The registry is `packages/authoring/src/tools.ts` — 49 tools. **M** marks `mutating: true`
-(blocked in plan mode); **C** marks `confirm: true` (always through the permission gate,
-whatever the mode).
+`packages/authoring/src/tools.ts` holds the registry of 49 tools. **M** marks `mutating: true` (plan mode blocks it); **C** marks `confirm: true` (it
+always goes through the permission gate, in every mode).
 
 | Group | Tools |
 | ----- | ----- |
@@ -212,122 +154,92 @@ whatever the mode).
 | Git (write) | `git_commit` **M**, `git_init` **M**, `git_revert` **M C**, `git_restore` **M C** |
 | Skills | `discover_skills`, `create_skill` **M**, `edit_skill` **M**, `run_skill` **M** (**C** on the first run of a script-bearing skill) |
 
-**A long document is changed in part, not restated.** `edit_file` replaces exact strings and
-writes through the same `writeDocFile` the Wiki pane saves through, so bad front-matter earns the
-same refusal in both. It rests on a **read ledger** — `ToolContext.seen`, owned by the loop and
-cleared with the conversation — recording what each `read_file` showed and the hash it showed it
-at: an edit to a file this conversation never read is refused, and so is one to a file that moved
-since. Every hunk lands in memory and the file is written once, so a refusal half-way through
-leaves the bytes exactly as the model last read them. It is the escape hatch's partial twin, not a
-way around the typed tools: a `scenes/`, `characters/` or `locations/` path is refused by name.
+`edit_file` changes part of a long document rather than restating the whole file. It replaces exact strings and writes through the same `writeDocFile`
+the Wiki pane saves through, so both refuse bad front-matter the same way. It rests on a read ledger, `ToolContext.seen`, which the loop owns and
+clears with the conversation. The ledger records what each `read_file` showed and the hash it showed it at. An edit to a file this conversation never
+read is refused, and so is an edit to a file that moved since. Every hunk is applied in memory and the file is written once, so a refusal part-way
+through leaves the bytes exactly as the model last read them. It partly overlaps the escape hatch and is not a way around the typed tools: an edit to
+a `scenes/`, `characters/` or `locations/` path is refused by name.
 
-**Editing an entity is typed** rather than done with `edit_file`: `edit_character`/`edit_location`
-route through `@vn/model`'s serializers, so the round-trip guarantee holds by construction. Both
-edit tools patch the sheet the workspace index actually loaded — a character tagged
-`type: character` under `wiki/` is edited where it lives, never at the conventional path — while
-the `create_*` tools do write to the conventional directory, because that is where a sheet that
-does not exist yet goes. **A create tool takes the whole sheet**: its arguments are the edit tool's
-minus `id` (slugged from the name), routed through the same `applyCharacterEdit`/`applyLocationEdit`,
-so a created sheet is validated by exactly what would have validated an edited one and a character
-does not have to be created and then immediately edited. Given no fields at all, `create_character`
-still writes the template — and says which of the three it did, because a sheet of placeholders and
-a sheet with an empty body are different things to whoever draws from it next.
+Editing an entity is typed rather than done with `edit_file`: `edit_character`/`edit_location` route through `@vn/model`'s serializers, so the
+round-trip guarantee holds by construction. Both edit tools patch the sheet the workspace index actually loaded (a character tagged `type: character`
+under `wiki/` is edited where it lives, not at the conventional path). The `create_*` tools do write to the conventional directory, because that is
+where a sheet that does not exist yet goes. A create tool takes the whole sheet: its arguments are the edit tool's arguments minus `id`, which is
+slugged from the name, and they route through the same `applyCharacterEdit`/`applyLocationEdit`. A created sheet is therefore validated by exactly
+what would have validated an edited one, and a character does not have to be created and then immediately edited. Given no fields at all,
+`create_character` still writes the template. It also reports which of the three cases it wrote, because a sheet of placeholders and a sheet with an
+empty body are different things to whoever draws from it next.
 
-Three things stay out of the model's hands. **Scene prose**: `write_file` and `edit_file` both
-refuse a `scenes/` path outright and name `edit_scene` instead, because a chunk written whole is a
-chunk with no proof: duplicate line ids, a lost heading, a scene id that stopped matching its
-filename, and stranded storyboards, none of which anything downstream would notice. **Nor
-`.aiagent/skills/`**, which `create_skill` and `edit_skill` own for the same reason turned the
-other way: those two write prose, and a raw write that could reach the directory would put a
-`run.mjs` there — or rewrite the one already sitting beside a skill — that `run_skill` then offers
-to execute behind a confirm card reading identically whether a human vetted the file last year or
-the agent wrote it ninety seconds ago. And **nothing lets the model change its own mode** — there is no
-`enter_plan_mode`/`exit_plan_mode` tool. Mode is owned by the REPL and the permission gate,
-which is what makes plan mode a guarantee rather than a request.
+Three things stay out of the model's hands. The first is scene prose: `write_file` and `edit_file` both refuse a `scenes/` path outright and name
+`edit_scene` instead, because a chunk written whole carries no check on its contents, and nothing downstream would notice duplicate line ids, a lost
+heading, a scene id that stopped matching its filename, or stranded storyboards. The second is `.aiagent/skills/`, which `create_skill` and
+`edit_skill` own for the same reason in reverse: those two write prose, and a raw write that could reach the directory would put a `run.mjs` there (or
+rewrite the one already sitting beside a skill) that `run_skill` then offers to execute behind a confirm card that reads identically whether a human
+vetted the file last year or the agent wrote it ninety seconds ago. Third, the model cannot change its own mode, because there is no
+`enter_plan_mode`/`exit_plan_mode` tool. The REPL and the permission gate own the mode, which makes plan mode a guarantee rather than a request.
 
-`set_outfit` is **one tool for both levels** of the outfit chain, because they are one authorial
-sentence: "put Aiko in her tracksuit for the club scene" and "…for this one frame" differ by a
-word, and which file the change lands in is a consequence rather than a choice the author makes.
-The `shot` argument picks the level — absent, a `[[outfit:]]` marker is spliced into the scene
-chunk; present, the subject's override is written to `work/shots/<sceneId>.json`, which re-hashes
-that shot. `outfit=""` clears either and lets the level below answer. The wardrobe itself is
-authored on the character sheet (`edit_character`'s `outfits` / `defaultOutfit`), so the set
-`set_outfit` will accept is the set the sheet declares.
+`set_outfit` is one tool for both levels of the outfit chain, because the author phrases the change the same way at either level: "put Aiko in her
+tracksuit for the club scene" and "…for this one frame" differ by a word, and which file the change lands in follows from that word rather than being
+a choice the author makes. The `shot` argument picks the level. Without it, a `[[outfit:]]` marker is spliced into the scene chunk. With it, the
+subject's override is written to `work/shots/<sceneId>.json`, which re-hashes that shot. `outfit=""` clears the setting at either level, and the level
+below then applies. The wardrobe itself is authored on the character sheet (`edit_character`'s `outfits` / `defaultOutfit`), so `set_outfit` accepts
+only the outfits the sheet declares.
 
 ### Generation graphs
 
-A generation graph is the node network a picture is drawn by, stored at
-`vngen/work/graphs/<slug>.json`. Three tools reach one, and they share their decisions with the
-`gengraph.*` commands by importing `@vn/gengraph` rather than by invoking the registry, which is
-the same arrangement `edit_scene` has with `story.*`. The graphs themselves, the node types, the
-journal and the commands are described in [`gen-graphs.md`](gen-graphs.md).
+A generation graph is the node network used to draw a picture, stored at `vngen/work/graphs/<slug>.json`. Three tools reach a generation graph. Those
+tools and the `gengraph.*` commands make the same decisions because the tools import `@vn/gengraph` rather than invoking the registry. `edit_scene`
+has the same arrangement with `story.*`. The graphs themselves, the node types, the journal and the commands are described in
+[`gen-graphs.md`](gen-graphs.md).
 
-- **A graph is read and written whole, and diffed by node id.** `read_asset_graph` gives back
-  every node with its type and authored values plus every link, and leaves out where the nodes sit
-  on the canvas, so writing one back never moves what the author arranged. `edit_asset_graph` takes
-  that same description back: a node kept under the id it had keeps its position and keeps its
-  journal record, and a node left out is removed. A group instance reads as `type: "GroupNode"`
-  with `group: <ref>` naming its definition under `work/graphs/lib/`, and writes back the same
-  way, so a rewrite keeps the instances a graph held; the definitions themselves are edited by
-  hand in the Gen Graph pane, not through this tool.
-- **A description that will not build is refused with every problem in it.** The file is left
-  exactly as it was, and the model gets the whole list rather than the first line, so one round
-  trip repairs a description it wrote. A graph that builds but is still incomplete is written and
-  its remaining diagnostics reported, because a half-built graph is a normal thing to save.
-- **Only the run needs a host.** Reading and editing go straight to the files through
-  `@vn/gengraph/state`, so both work wherever the project is opened. `run_asset_graph` goes through
-  `ToolContext.graphs`, wired by the host that owns the executor and the image backend, and refuses
-  by naming the desktop app where nothing wired it.
-- **A run is quoted before it is confirmed.** The estimate comes back in the sentence
-  `estimateSentence` builds, which is the sentence the desktop's own confirmation shows, so an
-  author reads the same figure whichever half asks. The card goes through `ctx.confirm` rather than
-  `confirm: true`, because the generic prompt shows a tool name and its arguments and could not
-  carry a price.
-- **A run fills no slot.** It writes journal records and blobs, and a picture enters the asset
-  store only where a planned task names the graph.
+- **A graph is read and written whole, and diffed by node id.** `read_asset_graph` returns every node with its type and authored values plus every
+  link, and omits where the nodes sit on the canvas, so writing a graph back never moves the nodes the author arranged. `edit_asset_graph` accepts
+  that same description. A node kept under the id it had keeps its position and its journal record, and a node left out is removed. A group instance
+  reads as `type: "GroupNode"` with `group: <ref>` naming its definition under `work/graphs/lib/`, and writes back the same way, so a rewrite keeps
+  the instances a graph held. The definitions themselves are edited by hand in the Gen Graph pane, not through this tool.
+- **A description that will not build is refused, and every problem is reported.** The file is left exactly as it was, and the report lists every
+  problem rather than the first one, so the model can repair a description it wrote in one round trip. A graph that builds but is still incomplete is
+  written and its remaining diagnostics are reported, because saving a half-built graph is normal.
+- **Only the run needs a host.** Reading and editing go straight to the files through `@vn/gengraph/state`, so both work wherever the project is
+  opened. `run_asset_graph` goes through `ToolContext.graphs`, which the host that owns the executor and the image backend wires up. If nothing wired
+  it, the call refuses and names the desktop app.
+- **A run is quoted before it is confirmed.** The estimate comes back in the sentence that `estimateSentence` builds, and the desktop's confirmation
+  shows that same sentence, so an author reads the same figure in both places. The card goes through `ctx.confirm` rather than `confirm: true`,
+  because the generic prompt shows a tool name and its arguments and has no place for a price.
+- **A run does not fill a slot.** It writes journal records and blobs, and a picture is added to the asset store only when a planned task names the
+  graph.
 
 ### Concept images
 
-`generate_image` and `/makeimage` are the same act reached two ways: a sentence in, a picture out,
-without a task in the graph. Both run `@vn/artgen`'s `generateConcept`, which is also what the
-desktop's `art.generate` runs.
+`generate_image` and `/makeimage` are two ways to reach the same operation. Each takes a sentence, returns a picture, and adds no task to the graph.
+Both run `@vn/artgen`'s `generateConcept`, which is also what the desktop's `art.generate` runs.
 
-- **The agent core never constructs a provider.** `ToolContext.art` is an `ArtGen` seam —
-  `generate`, `preview`, `redraw`, `list` and `describe` — wired by the host, which is the half that
-  knows whether this run is `--mock` and
-  where the keys are. A bare context has no `art`, and the tool refuses rather than assume an API
-  key exists to spend. This is the same shape as `confirm`: the core decides *what*, the host
-  decides *whether*.
-- **It is `confirm: true`, because it costs money.** Every generation is one image billed, so it
-  goes through the permission gate whatever the mode, exactly like `git_revert`.
-- **`/makeimage` is not a turn through the model.** A one-line request should cost one generation
-  and no tokens, so the REPL calls the seam directly. It still obeys plan mode — and there it prints
-  the resolved subject and the composed prompt anyway, which is the part worth reading before
-  spending anything.
-- **The subject is matched from the sentence, or named.** `location:<id>` / `character:<id>`
-  overrides it; a tie goes to the location, since a place is what gets asked for and a character
-  already has a portrait pipeline. Existing plates of that location (or the approved portrait) are
-  fed back as references, so "an aerial shot of the high school" is a shot of *that* high school.
-- **A concept stays a sketch.** The pipeline never plans one, no scene renders one, and
-  `vngen export` ignores it. Turning one into a real location plate is `art.promote` — a separate,
-  human decision, and deliberately not a tool the agent has.
-- **A concept is the one asset the agent can edit, because it is the one whose prompt is
-  authored.** Every other prompt is derived on each planning pass and folded into a task hash, so
-  the agent moves those with art notes (`set_art_notes`, below) and the pipeline
-  re-renders. A concept has no builder behind it: `edit_image` redraws one from a rewritten
-  prompt and files the result as a **new** sketch, leaving the original where it is. It is
-  `confirm: true` for the same reason `generate_image` is — one image, billed.
-- **A hash is not memorable, so `list_images` exists.** It is the only non-mutating art tool: it
-  prints every concept with its short hash, name, subject and prompt, and `edit_image` accepts a
-  hash *prefix*, refusing an unknown or ambiguous one by name rather than guessing which picture
-  the author meant.
+- **The agent core never constructs a provider.** `ToolContext.art` is an `ArtGen` "seam" (an injection point) exposing `generate`, `preview`,
+  `redraw`, `list` and `describe`, and the host wires it, because the host knows whether this run is `--mock` and where the keys are. A bare context
+  has no `art`, and the tool refuses rather than assuming an API key exists to spend. `confirm` works the same way: the core decides what to do, and
+  the host decides whether it happens.
+- **Costs money.** Sets `confirm: true`, because each generation bills one image. Every generation goes through the permission gate in every mode,
+  exactly like `git_revert`.
+- **`/makeimage` does not take a turn through the model.** A one-line request costs one generation and no tokens, so the REPL calls the seam
+  directly. It still obeys plan mode, and in plan mode it prints the resolved subject and the composed prompt before anything is spent.
+- **The subject is matched from the sentence, or named explicitly.** `location:<id>` and `character:<id>` override the match. A tie resolves to the
+  location, since a place is what the request asks for and a character already has a portrait pipeline. Existing plates of that location (or the
+  approved portrait) are fed back as references, so "an aerial shot of the high school" is a shot of that same high school.
+- **A concept stays a sketch.** The pipeline never plans a concept, no scene renders a concept, and `vngen export` ignores it. `art.promote` turns a
+  concept into a real location plate. It is a separate, human decision, and the agent deliberately does not have it as a tool.
+- **A concept is the one asset the agent can edit, because it is the one whose prompt is authored.** Every other prompt is derived on each planning
+  pass and folded into a task hash, so the agent changes those prompts through art notes (`set_art_notes`, below) and the pipeline re-renders. No
+  builder generates a concept: `edit_image` redraws one from a rewritten prompt and files the result as a new sketch, leaving the original in place.
+  It sets `confirm: true` for the same reason `generate_image` does, because it renders one billed image.
+- **`list_images` prints the available concepts.** It is the only non-mutating art tool, and it prints every concept with its short hash, name,
+  subject and prompt. A hash is hard to remember, so `edit_image` accepts a hash prefix, and it refuses an unknown or ambiguous prefix by name rather
+  than guessing which picture the author meant.
 
 ### Revising planned art
 
-A picture the pipeline planned is not edited, it is **re-directed**: the prompt is derived on every
-planning pass, so the durable thing an author changes is the art note behind it. The five tools are
-that loop — see what exists, read how it was directed, change the direction, draw it again, look at
-what came back:
+The pipeline does not edit a picture it planned; it draws that picture again from a new direction. The prompt is derived on every planning pass, so
+the durable thing an author changes is the art note behind it. The five tools carry out that loop by showing what exists, reading how it was directed,
+changing the direction, drawing it again, and showing what came back:
 
 ```
 list_assets(subject='location:cafe')          → the plates bound to that location, by short hash
@@ -339,166 +251,130 @@ view_image(hash=…)                            → what actually came back
   …propose the next note…
 ```
 
-- **`set_art_notes` appends by default.** The agent is adding a correction to what the author
-  already wrote, not replacing an authorial paragraph it never read; `mode='replace'` and
-  `mode='clear'` are available and say so. It goes through `@vn/artgen`'s `setArtNotes`, so the
-  agent reaches the same five rungs through the same refusals the desktop's `art.setNotes` does —
-  including the one that matters, that a note never invents the outfit, variant or shot it names.
-  It is **M** but not **C**: a note costs nothing, and the write is a plain undoable edit.
-- **`regenerate_asset` is the capability-gated one.** `@vn/authoring` may not import `@vn/pipeline`
-  or `@vn/scheduler`, so re-rendering arrives as an injected `ToolContext.pipeline` — `regenerate`
-  and `run`, which is all an agent has business asking for. In `vnauthor`'s REPL it is absent and
-  the tool refuses by naming the host that can do it. In the desktop app it is the same two calls
-  `asset.regenerate` makes, so an agent-started run takes the busy flag a pipeline run takes.
-- **It is `confirm: true`, and the card separates queueing from paying.** `run=false` puts the task
-  back to `pending` and nothing is drawn; `run=true` says *one image generation* on the card,
-  because that is what clicking it spends.
-- **`view_image` is the read-back, and it is the reason this is a loop rather than a shot in the
-  dark.** It sends the bytes to the vision backend with a question and prints the answer, so the
-  agent proposes the *next* note against the picture that exists instead of against its own prompt.
-  Like the concept tools it needs `ToolContext.art` and refuses without it.
-- **Every one of them takes a hash prefix**, resolved against the manifest and refused by name when
-  it is unknown or ambiguous — before a capability is called, so a typo never costs anything.
+- **`set_art_notes` appends by default.** The agent is adding a correction to what the author already wrote, not replacing an authorial paragraph it
+  never read. `mode='replace'` and `mode='clear'` are available, and their names state what they do. The tool calls `@vn/artgen`'s `setArtNotes`, so
+  the agent gets the same five rungs and the same refusals as the desktop's `art.setNotes`. One of those refusals is that a note never invents the
+  outfit, variant or shot it names. `set_art_notes` is **M** but not **C**: a note costs nothing, and the write is a plain undoable edit.
+- **`regenerate_asset` is gated on a capability.** `@vn/authoring` may not import `@vn/pipeline` or `@vn/scheduler`, so re-rendering is injected as
+  `ToolContext.pipeline`, which exposes `regenerate` and `run`, the only calls an agent needs. In `vnauthor`'s REPL the injection is absent, and the
+  tool refuses and names the host that can regenerate the asset. In the desktop app the injected pipeline makes the same two calls `asset.regenerate`
+  makes, so an agent-started run takes the busy flag a pipeline run takes.
+- **The setting is `confirm: true`, and the card keeps queueing separate from paying.** `run=false` puts the task back to `pending` and draws
+  nothing; `run=true` shows "one image generation" on the card, because clicking the card spends one image generation.
+- **`view_image` reads the rendered image back, which makes the process a loop rather than a single attempt.** It sends the bytes to the vision
+  backend with a question and prints the answer, so the agent proposes the next note against the picture that exists instead of against its own
+  prompt. Like the concept tools, it needs `ToolContext.art` and refuses without it.
+- Every one of them takes a hash prefix. The prefix resolves against the manifest before a capability is called, and an unknown or ambiguous prefix
+  is refused by name, so a typo costs nothing.
 
-`regenerate_context` writes the **project map**, `AICONTEXT.generated.md`: the cast with each
-sheet's path and wardrobe, the locations and their variants, the story graph, and the story
-bible's table of contents — one line per note, its path, title and headings. It is a map, not
-content: no line of what any file *says* appears in it, which is what keeps it affordable and
-keeps the bible reached by query. The table of contents is the point — it turns a blind
-`search_bible` into an aimed one, because the agent can see that `wiki/history/the-war.md` has a
-`Casualties` heading before it queries. The file is budgeted (8000 characters, spent cast-first),
-and a section that could not print every row says how many it dropped and which tool answers the
-rest. The same act is the desktop's `workspace.reindex`.
+`regenerate_context` writes the project map, `AICONTEXT.generated.md`: the cast with each sheet's path and wardrobe, the locations and their variants,
+the story graph, and the story bible's table of contents, which gives one line per note with its path, title and headings. The file maps the project
+rather than reproducing it: no line of what any file *says* appears in it, which keeps it affordable and keeps the bible reached by query. The table
+of contents turns a blind `search_bible` into an aimed one, because the agent can see that wiki/history/the-war.md has a Casualties heading before it
+queries. The file is budgeted (8000 characters, spent cast-first), and a section that could not print every row says how many it dropped and which
+tool answers the rest. The desktop exposes the same operation as `workspace.reindex`.
 
-**The map is a snapshot, and it says so.** Both hosts recompose the system message per turn
-(`Agent.setSystem`, beside `setBackend`), so an agent that outlives a rewrite of the file — its own
-`regenerate_context`, or the desktop's `workspace.reindex` — stops quoting the version it was built
-with. Its header names `list_workspace` as what is true now, because nothing re-reads the map
-between turns of the same turn, and a stale list that looks authoritative is worse than no list.
+The map is a snapshot, and it is labeled as such. Both hosts recompose the system message per turn (`Agent.setSystem`, beside `setBackend`), so an
+agent still running after the file is rewritten (by its own `regenerate_context`, or by the desktop's `workspace.reindex`) no longer reproduces the
+version it was built with. The header names `list_workspace` as the source for the current state, because nothing re-reads the map between turns, and
+a stale list that looks authoritative is worse than no list.
 
-**`list_workspace` names the file every row was found in**, and says of a location with no sheet
-that it was mined from the screenplay. Locations are merged by the slug `parseHeading` derives, so
-authoring a sheet for a place the script already mentions converts a row instead of adding one —
-without the path, the before and the after are the same two lines.
+`list_workspace` names the file every row was found in, and for a location with no sheet it reports that the location was mined from the screenplay.
+Locations are merged by the slug `parseHeading` derives, so authoring a sheet for a place the script already mentions converts a row instead of adding
+one. Without the path, the output before the change and the output after it are the same two lines.
 
-**What the host had on screen is a message, not a system line.** `Agent.run(input, focus?)` files
-the host's `focus` as a `context` message ahead of the user's — a fourth `AgentMessage.role` that
-`renderTranscript` upper-cases to `CONTEXT:`, so both backends carry it unchanged. It is a message
-because it was true at _that_ turn and not at the others, and the system message is recomposed per
-turn, so putting it there would let the last selection rewrite every earlier one. `focusOnScene`
-builds the sentence from the live `WorkspaceIndex` and returns `undefined` for an id nothing
-answers to, so a stale selection says **nothing** rather than asserting a scene that is gone. The
-REPL passes no focus and reads exactly as it did before.
+The host's focus is sent as a message rather than a system line. `Agent.run(input, focus?)` files the host's `focus` as a `context` message ahead of
+the user's message. `context` is a fourth `AgentMessage.role`, which `renderTranscript` upper-cases to `CONTEXT:`, so both backends carry it
+unchanged. The focus is a message because it was true at one turn and not at the others, and the system message is recomposed per turn, so placing the
+focus there would let the last selection rewrite every earlier one. `focusOnScene` builds the sentence from the live `WorkspaceIndex` and returns
+`undefined` for an id that nothing matches, so a stale selection produces no context message rather than naming a scene that is gone. The REPL passes
+no focus and reads exactly as it did before.
 
-`search` and `search_bible` are separate on purpose. `search` scans the authored input files —
-a bounded set, so it can afford to be exhaustive and unranked. `search_bible` queries `wiki/`,
-which is unbounded, so it is ranked and capped at a character budget; there is no tool that
-returns a bible file whole. `list_workspace` reports the bible only as a file count, so the
-agent learns one exists without paying for it. See [`story-bible.md`](story-bible.md).
+`search` and `search_bible` are separate on purpose. The authored input files are a bounded set, so `search` scans all of them and does not rank the
+results. `wiki/` is unbounded, so `search_bible` ranks its results and caps them at a character budget; no tool returns a bible file whole.
+`list_workspace` reports the bible only as a file count, so the agent learns a bible exists without reading any of its files. See
+[`story-bible.md`](story-bible.md).
 
 ### Approving art on the author's say-so
 
-`approve_assets` is the one act where the *authority* is the author's own words rather than the
-agent's argument for them, because approval is what everything downstream is drawn from and a
-cleared gate is a run that keeps going. It is built so that one specific mistake cannot happen: the
-agent deciding, mid-turn and for reasons of its own, that the author would surely want all of this
-approved. Three checks, in order, each of which can only *narrow* what the one before it allowed:
+`approve_assets` takes its authority from the author's own words rather than from the agent's argument for them, because everything downstream is
+drawn from approval and a run continues once the gate clears. It is built so that one specific mistake cannot happen: the agent cannot decide
+mid-turn, for reasons of its own, that the author would want all of this approved. Three checks run in order, and each one can only narrow what the
+check before it allowed:
 
-- **The list is the project's, not the model's.** The host enumerates what is approvable right now
-  — `ToolContext.approval`, wired in the desktop app to the same walk the document tree's
-  *Awaiting approval* group is a projection of, upstream first — and nothing outside that list can
-  be approved however it is named. As with `regenerate_asset`, `vnauthor`'s REPL has no such host
-  and the tool refuses by naming the one that does.
-- **A small model reads what the author actually typed.** Not what the agent says they meant: the
-  triage prompt carries the author's own recent turns (`SAID_WINDOW`, six) and the list, and
-  *nothing the assistant said*, with the rule spelt out that being asked is not evidence. It
-  answers two questions at once because they are one question — did they ask, and which of these
-  did they mean — and the answer is narrowed again in code, because a hallucinated hash that
-  happens to match something is an approval nobody asked for. The model is fixed at
-  `TRIAGE_MODEL` rather than following the conversation's: this is a check *on* the agent, and
-  running it on the model being checked is not a check. A mocked session has no model, and
-  `offlineTriage` stands in and says in its own words that it matched text without one.
-- **The author confirms the final list.** Every picture by name, what approving it would do, and
-  the triage model's sentence for why it is on the list at all — a list of ten hashes with no
-  account of where it came from is not something anyone can consent to.
+- **The project defines the approvable list, not the model.** The host enumerates what is approvable right now through `ToolContext.approval`. The
+  desktop app wires that field to the same walk the document tree's *Awaiting approval* group projects, upstream first. An asset outside that list
+  cannot be approved, whatever name it is given. As with `regenerate_asset`, `vnauthor`'s REPL provides no such host, so the tool refuses and names
+  the host that does provide one.
+- **A small model reads what the author actually typed.** The triage prompt carries the author's own recent turns (`SAID_WINDOW`, six) and the list,
+  and nothing the assistant said, with the rule spelt out that being asked is not evidence. The model answers two questions at once, because they are
+  a single question: whether the author asked, and which entry in the list they meant. Code narrows the answer again, because a hallucinated hash that
+  happens to match an entry would be an approval nobody asked for. The model is fixed at `TRIAGE_MODEL` rather than following the model the
+  conversation uses, because this is a check on the agent, and running it on the model being checked is not a check. A mocked session has no model, so
+  `offlineTriage` stands in and reports in its own words that it matched text without one.
+- **The author confirms the final list.** The list names every picture, states what approving it would do, and gives the triage model's sentence for
+  why that picture is on the list at all. An author can consent only to a list that accounts for where its entries came from, not to ten bare hashes.
 
-**The tool takes no arguments.** That is the point rather than an omission: an argument is
-something the agent fills in, and there is nothing here for it to aim. What is blocked upstream is
-shown to the triage model and held back *after* it, listed under its own heading with the sentence
-saying what it is waiting on — filtering it out first would make “approve everything” quietly mean
-“approve some of it”. What survives is approved in the order the host listed it, which is upstream
-first, so one call can approve a plate and the frame drawn from it.
+The tool takes no arguments, and that is deliberate rather than an oversight: an argument is something the agent fills in, and here there is nothing
+for it to supply. Work blocked upstream is shown to the triage model and held back after the model has seen it, listed under its own heading with a
+sentence saying what it is waiting on. Filtering it out beforehand would make “approve everything” mean “approve some of it”. What survives is
+approved in the order the host listed it, which is upstream first, so one call can approve a plate and the frame drawn from it.
 
-**`unapprove_assets` is the same three checks, run the other way.** The host lists what is approved
-rather than what is approvable, the triage model is given its own rule sheet keyed on the words that
-ask for approval to come back off, and the card says what each picture stops being. Two details
-differ. The order is reversed — downstream first, so a frame stops being accepted before the plate
-it was drawn from does, and nothing is left approved over an un-approved reference partway through.
-And the offline stand-in matches the un-approve words by their own pattern first, because
-"un-approve it" contains the string a naive approve matcher reads as consent. Neither direction
-touches the bytes, so the same take can be approved again.
+`unapprove_assets` runs the same three checks in the other direction. The host lists what is approved rather than what is approvable, the triage model
+gets its own rule sheet keyed on the words that ask for approval to come back off, and the card names what each picture stops being. Two details
+differ. The order is reversed, taking downstream assets first, so a frame stops being accepted before the plate it was drawn from does, and nothing is
+left approved over an un-approved reference partway through. The offline stand-in matches the un-approve words by their own pattern first, because
+"un-approve it" contains the string a naive approve matcher reads as consent. Neither direction touches the bytes, so the same take can be approved
+again.
 
 ## The archive
 
-An author's own documents — a worldbuilding dump, a cast list, an outline someone else wrote —
-come in through **`/upload <file…>`** in the REPL, or **Upload Files…** in the desktop app. Both
-run `archiveUpload` in `packages/authoring/src/archive.ts`, so there is one archive and one layout.
-Plan: [`../plans/archive/INDEX.md#upload-and-archive`](../plans/archive/INDEX.md#upload-and-archive).
+An author's own documents (a worldbuilding dump, a cast list, an outline someone else wrote) come in through `/upload <file…>` in the REPL, or through
+"Upload Files…" in the desktop app. Both run `archiveUpload` in `packages/authoring/src/archive.ts`, so there is one archive and one layout. The plan
+is [`../plans/archive/INDEX.md#upload-and-archive`](../plans/archive/INDEX.md#upload-and-archive).
 
-- **The originals are copied verbatim to `archive/<yyyymmdd-hhmmss>-<slug>/<original filename>`**,
-  one directory per batch, at the project root. Not under `wiki/` and not under `vngen/`: the first
-  is retrievable, the second is generated output, and an uploaded document is neither.
-- **The archive is invisible to every sweep, and that costs no code.** `search` walks an allow-list
-  (`characters/ locations/ scenes/ screenplay/` plus `AICONTEXT.md` and `project.yaml`), entity
-  discovery walks `characters/ locations/ wiki/**`, and the bible reads `wiki/` — so a top-level
-  `archive/` is reached by none of them. That is the whole "not indexable or searchable" policy, and
-  it holds exactly as long as nothing adds `archive` to those lists.
-- **It is readable when the author names it.** `read_file` serves any workspace path, so an archived
-  note is read on request and never by accident. `list_archive` prints the batches and their files
-  so the agent can see what arrived without a walk it is not allowed to do.
-- **An upload refuses before it copies**: a file already inside the workspace, a path that is not a
-  regular file, one over 25 MB, or a second file with a name already taken in the same batch. A
-  batch where everything was refused writes no directory at all.
-- **A format with no converter is archived anyway, and said so.** `.docx`, `.odt`, `.zip` and the
-  rest are copied unchanged and reported as *"archived, not yet readable: no converter for …"* —
-  the bytes are safe now, and the converter that writes a text sidecar beside the original is a
-  later step that needs no change to this layout. `readable` means what `read_file` would actually
-  serve today: strict UTF-8, under its own size bound.
-- **Uploading ends in plan mode with a question, not an edit.** The REPL prints the batch and a
-  short numbered list of ways to phrase the next prompt; the desktop opens a fresh conversation on
-  the same sentence with the same openers as chips. The suggestions are built from the file list
-  alone — count, extensions, whether names look like scenes — never from the contents, because
-  reading them to propose a sentence the author will rewrite costs a model call for nothing.
+- **The originals are copied verbatim to `archive/<yyyymmdd-hhmmss>-<slug>/<original filename>`**, one directory per batch, at the project root. The
+  archive directory is not under `wiki/` and not under `vngen/`. Files under `wiki/` are retrievable and files under `vngen/` are generated output,
+  and an uploaded document is neither.
+- **No sweep reaches the archive, and excluding it takes no code.** `search` walks an allow-list (`characters/ locations/ scenes/ screenplay/` plus
+  `AICONTEXT.md` and `project.yaml`), entity discovery walks `characters/ locations/ wiki/**`, and the bible reads `wiki/`, so none of them reach a
+  top-level `archive/`. Those allow-lists are the entire "not indexable or searchable" policy, and the policy holds as long as nothing adds `archive`
+  to them.
+- **An archived note is readable when the author names it.** `read_file` serves any workspace path, so an archived note is read on request and never
+  by accident. `list_archive` prints the batches and their files, so the agent can see what arrived without walking the directory, which the agent is
+  not allowed to do.
+- **Uploads are refused before anything is copied.** An upload is refused if the file is already inside the workspace, if the path is not a regular
+  file, if the file is over 25 MB, or if a second file in the same batch has a name already taken. A batch in which every file was refused writes no
+  directory at all.
+- **A format with no converter is archived and reported as such.** `.docx`, `.odt`, `.zip` and the rest are copied unchanged and reported as
+  "archived, not yet readable: no converter for …". Copying preserves the bytes, and the converter that writes a text sidecar beside the original is a
+  later step that needs no change to this layout. `readable` means what `read_file` serves today: strict UTF-8, under its own size bound.
+- **Uploading ends in plan mode with a question rather than an edit.** The REPL prints the batch and a short numbered list of ways to phrase the
+  next prompt; the desktop opens a fresh conversation on the same sentence and shows the same openers as chips. The suggestions are built from the
+  file list alone (count, extensions, whether names look like scenes) and never from the contents, because reading them to propose a sentence the
+  author will rewrite costs a model call for nothing.
 
 ## Skills
 
-Reusable authoring playbooks live under `<dir>/.aiagent/skills/<id>/SKILL.md` (front-matter:
-`name`, `description`, `when-to-use`). A pure-prose skill returns its body as guidance; a skill
-with a `run.{mjs,js,cjs,sh}` script runs a vetted command — and **each run is permissioned**
-(always-confirm), executing in the workspace root with the workspace path as its first argument.
-Three ship with the sample: [`new-character`](../../templates/basic/.aiagent/skills/new-character), a
-playbook for one act; [`branching`](../../templates/basic/.aiagent/skills/branching), the three shapes
-a fork can take, how to split a shared scene into per-route chunks, and the refusal to hand back
-when the author asks for something that would need a conditional; and
-[`full-production`](../../templates/basic/.aiagent/skills/full-production), a spine — nine
-phases from premise to storyboard, each its own plan and its own commit, ending at the choice
-of how a scene gets its shots (batch decomposition, a proposal the agent drafts, or by hand),
-which stays the author's.
+Reusable authoring playbooks live under `<dir>/.aiagent/skills/<id>/SKILL.md`, whose front matter carries `name`, `description`, and `when-to-use`. A
+pure-prose skill returns its body as guidance. A skill with a `run.{mjs,js,cjs,sh}` script runs a vetted command instead, and every run is
+permissioned (always-confirm) before it executes in the workspace root with the workspace path as its first argument. Three skills ship with the
+sample. [`new-character`](../../templates/basic/.aiagent/skills/new-character) is a playbook for one act.
+[`branching`](../../templates/basic/.aiagent/skills/branching) covers the three shapes a fork can take, how to split a shared scene into per-route
+chunks, and the refusal to hand back when the author asks for something that would need a conditional.
+[`full-production`](../../templates/basic/.aiagent/skills/full-production) runs nine phases from premise to storyboard, each with its own plan and its
+own commit, and ends at the choice of how a scene gets its shots (batch decomposition, a proposal the agent drafts, or by hand), which stays the
+author's.
 
-**The agent can write a skill, and what it writes is prose.** `create_skill` scaffolds
-`.aiagent/skills/<id>/SKILL.md` from a name, a description, an optional _when to use_ and a body;
-`edit_skill` changes one field of an existing skill, carrying forward front-matter it does not
-model — a `script:` a person added, most of all — and losing YAML _comments_, because the file is
-re-emitted in canonical key order rather than spliced. Neither has a `script` argument, and their
-schemas are `.strict()`, so passing one is a parse error before the tool is entered; `write_file`
-refuses every path under `.aiagent/skills/` and names those two instead. A script-bearing skill
-stays fully supported — it just has to be added by a person, because `run_skill`'s confirm card
-says only which script wants to run, which is a sentence that reads the same whether the file was
-vetted a year ago or written ninety seconds ago. `git_restore` and `git_revert` are deliberately
-not gated: they are `confirm: true` and their cards name the file, so a person approves that
-specific resurrection.
+The agent can write a skill, and it writes only prose. `create_skill` scaffolds `.aiagent/skills/<id>/SKILL.md` from a name, a description, an
+optional "when to use" and a body; `edit_skill` changes one field of an existing skill, carrying forward front-matter it does not model (most
+importantly a `script:` a person added) and losing YAML comments, because the file is re-emitted in canonical key order rather than spliced. Neither
+has a `script` argument, and their schemas are `.strict()`, so passing one is a parse error before the tool is entered; `write_file` refuses every
+path under `.aiagent/skills/` and names those two instead. A script-bearing skill stays fully supported, but a person has to add it, because
+`run_skill`'s confirm card names only the script to be run, and that card reads the same whether the file was vetted a year ago or written ninety
+seconds ago. `git_restore` and `git_revert` are deliberately not gated. Both are `confirm: true` and their cards name the file, so a person approves
+the change to that named file.
 
-A skill also stops degrading silently: `discover_skills` appends `(!)` and says what is wrong when
-a skill has no description, no body, or a `script:` naming a file that is not there — the last of
-which is the dangerous one, because `findScript` then falls through to the `run.mjs` scan and a
-different script runs under the name nobody wrote down.
+`discover_skills` also reports a degraded skill rather than passing over it. It appends `(!)` and states what is wrong when a skill has no
+description, no body, or a `script:` naming a file that is not there. A missing script file is the dangerous case, because `findScript` then falls
+through to the `run.mjs` scan and a different script runs under that skill's name.

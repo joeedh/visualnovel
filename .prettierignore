@@ -10,7 +10,6 @@ vendor/**
 pnpm-lock.yaml
 coverage/**
 keys/**
-docs/**
 Readme.MD
 
 # The author's running list. Hand-written shorthand, deliberately not markdown checkboxes —

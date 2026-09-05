@@ -12,8 +12,8 @@
   gemini and claude and double-checked for correctness, with the gemini prompt updated to fix errors.
   this iteration should happen no more then 4 times.
   
-  to avoid duplicate generative ai work the system should build a global list of tasks and prune duplicates.  
+  To avoid duplicate generative AI work, the system should build a global list of tasks and prune duplicates.
   
-  the report should propose possible directory layouts for both the input provided by the user and the generated visual novel data.   note: the actual final export to a visual novel engine is out of scope of the report.
+  The report should propose possible directory layouts for both the input provided by the user and the generated visual novel data. The final export to a visual novel engine is out of scope of the report.
   
   

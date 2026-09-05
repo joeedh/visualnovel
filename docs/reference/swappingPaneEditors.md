@@ -19,23 +19,23 @@
 
 <!-- tocstop -->
 
-`apps/desktop/renderer/pathux/panes/panes.ts` decides which pane a `view.*` command means. It takes
-no path.ux types and touches no DOM — every function is arithmetic over a `Pane[]` array — so
-the choice a command makes can be tested in node, without a screen or a running app.
+`apps/desktop/renderer/pathux/panes/panes.ts` resolves which pane a `view.*` command targets. It
+uses no path.ux types and no DOM, and every function computes over a `Pane[]` array, so the pane a
+command resolves to can be tested in node, without a screen or a running app.
 
 ## Where this fits
 
-`view.*` runs in main, which has no mesh and cannot answer "which pane is that". Main answers
-optimistically and `apps/desktop/renderer/pathux/panes/view.ts` applies the effect in the renderer,
-using `panes.ts` to pick a pane and returning a correction sentence when the mesh disagrees —
-"No pane is showing Script." The full command shape is in
+`view.*` runs in main, which has no mesh and so cannot determine which pane a command means. Main
+answers optimistically, and `apps/desktop/renderer/pathux/panes/view.ts` applies the effect in the
+renderer. That module calls `panes.ts` to pick a pane, and when the mesh disagrees it returns a
+correction sentence: "No pane is showing Script." The full command shape is in
 [`command-system.md`](command-system.md); the mesh-level behavior of `view.*` is described in
 [`desktop-app-shell.md`](desktop-app-shell.md#the-shell). This page covers only `panes.ts` itself:
 its inputs, its six exported functions, and who calls each one.
 
 ## The `Pane` shape
 
-A `Pane` is a screen area reduced to what a choice depends on:
+A `Pane` holds only the parts of a screen area that a choice depends on:
 
 ```ts
 interface Pane {
@@ -51,13 +51,13 @@ interface Pane {
 `view.ts`'s `panesOf(screen)` builds this array from the live mesh on every call, reading
 `sarea.area.flag & AreaFlags.HIDDEN` for `chrome`, `sarea.floating` for `floating`, and
 `screen.sareas.active === sarea` for `active`. Nothing in `panes.ts` holds a reference to a
-`ScreenArea` or a ScreenArea's shadow root; the conversion to and from real areas stays in
+`ScreenArea` or a `ScreenArea`'s shadow root; the conversion to and from real areas stays in
 `view.ts`.
 
 ## Arrangeable panes
 
-Most functions in this file only consider panes the arranging rules may move, split, cover or
-collapse:
+Most functions in this file consider only the panes that the arranging rules may move, split, cover
+or collapse:
 
 ```ts
 function arrangeable(pane: Pane): boolean {
@@ -65,17 +65,17 @@ function arrangeable(pane: Pane): boolean {
 }
 ```
 
-The header is chrome: it is not somewhere the author navigates to, so it is never a candidate
-for `open`, `close` or `elsewhere`. A floating popup is on screen and can be found by
-`paneShowing`, so a second popup is never opened for an editor already showing in one — but it
-plays no part in arranging the mesh, because splitting, closing or covering a popup is not a
-thing the author asked for when they asked to open, close, or focus a tiled editor.
+The header is "chrome" (surrounding UI rather than editor content). The author never navigates to
+it, so it is never a candidate for `open`, `close` or `elsewhere`. A floating popup is on screen
+and can be found by `paneShowing`, so a second popup is never opened for an editor already showing
+in one. A popup takes no part in arranging the mesh, because a request to open, close or focus a
+tiled editor is not a request to split, close or cover a popup.
 
 ## `NO_PANE`
 
-`NO_PANE` is `-1`, returned rather than thrown. Every caller has something to say when there
-is no answer — a correction sentence, a refusal, a picker that shows nothing under the
-pointer — so a thrown exception would just be caught and turned back into one of those.
+`NO_PANE` is `-1`, returned rather than thrown. Every caller handles the absence of an answer
+itself, through a correction sentence, a refusal, or a picker that shows nothing under the pointer.
+A thrown exception would be caught and turned back into one of those.
 
 ## The functions
 
@@ -85,10 +85,10 @@ pointer — so a thrown exception would just be caught and turned back into one 
 function paneShowing(panes: readonly Pane[], editor: string): number
 ```
 
-The pane showing `editor`, or `NO_PANE`. The first, if the author opened two. Floating popups
-count — the question this answers is whether the editor is on screen at all, which is what
-stops `open(where='popup')` from making a second popup for an editor already in one. The
-header never answers, because `paneShowing` still applies `!pane.chrome` to the row it
+Returns the pane showing `editor`, or `NO_PANE`. Returns the first such pane if the author opened
+two. Floating popups are included, because this reports whether the editor is on screen at all,
+which is what stops `open(where='popup')` from making a second popup for an editor already in one.
+A header pane is never returned, because `paneShowing` applies `!pane.chrome` to the row it
 matches, even though the caller did not filter the array through `arrangeable` first.
 
 ### `paneToUse`
@@ -97,12 +97,12 @@ matches, even though the caller did not filter the array through `arrangeable` f
 function paneToUse(panes: readonly Pane[]): number
 ```
 
-The pane an `open` lands in is the active arrangeable pane. When the pointer is over chrome, or
-no arrangeable pane is active, it is the biggest arrangeable pane instead, on the grounds that
-it is the one the author is most likely looking at. A conversation pane is answered the same as
-any other pane here. Closing or splitting the pane the pointer is in still means that pane,
-whether or not it is showing Convo. `paneToUse` returns `NO_PANE` when the mesh has nothing
-arrangeable — a window that is only chrome.
+An `open` lands in the active arrangeable pane. If the pointer is over chrome (or no arrangeable
+pane is active), the `open` lands in the biggest arrangeable pane instead, because the biggest pane
+is the one the author is most likely looking at. A conversation pane counts the same as any other
+pane here. Closing or splitting the pane the pointer is in still acts on that pane, whether or not
+that pane is showing Convo. `paneToUse` returns `NO_PANE` when the mesh has nothing arrangeable,
+which happens in a window that is only chrome.
 
 ### `paneToShowIn`
 
@@ -110,12 +110,11 @@ arrangeable — a window that is only chrome.
 function paneToShowIn(panes: readonly Pane[]): number
 ```
 
-The pane an automatic `open` replaces. Same rule as `paneToUse`, except the candidates are
-narrowed by `sparing` first (see
-[The panes an automatic open spares](#the-panes-an-automatic-open-spares)): a click in the
-document tree while reading what the agent said should not open the scene over the sentence being
-read, and it should not open over the tree that was clicked either. Falls back to a spared pane
-when those are the only panes there are.
+Picks the pane an automatic `open` replaces. Applies the same rule as `paneToUse`, except that
+`sparing` narrows the candidates first (see [The panes an automatic open
+spares](#the-panes-an-automatic-open-spares)). A click in the document tree while reading what the
+agent said should not open the scene over the sentence being read, and it should not open over the
+tree that was clicked either. Falls back to a spared pane when those are the only panes there are.
 
 ### `paneElsewhere`
 
@@ -123,12 +122,11 @@ when those are the only panes there are.
 function paneElsewhere(panes: readonly Pane[], from: number): number
 ```
 
-The pane `open(where='elsewhere')` lands in: the biggest arrangeable pane that is not `from`,
-after the same narrowing `paneToShowIn` applies. `elsewhere` is what a click in the document
-tree asks for, and what a double-click in Shot Coverage asks for, so opening an asset never
-replaces the tree that named it — from either direction. Returns `NO_PANE` when `from` is the
-only arrangeable pane — a window with one pane has nowhere else, and the caller splits instead
-of calling this again.
+The pane `open(where='elsewhere')` lands in is the biggest arrangeable pane that is not `from`,
+after the same narrowing `paneToShowIn` applies. A click in the document tree asks for `elsewhere`,
+and a double-click in Shot Coverage asks for it too, so opening an asset never replaces the tree
+that named it in either direction. Returns `NO_PANE` when `from` is the only arrangeable pane. A
+window with one pane has nowhere else, and the caller splits instead of calling this again.
 
 ### `paneToClose`
 
@@ -136,11 +134,11 @@ of calling this again.
 function paneToClose(panes: readonly Pane[]): number
 ```
 
-The pane a `close` collapses: `paneToUse`'s answer, unless fewer than two panes are
-arrangeable, in which case `NO_PANE`. A mesh of nothing but the header is a window with no way
-back, so refusing is friendlier than emptying the screen — refusing here is what lets
-`view.ts`'s `close` say "This is the only pane — closing it would leave nothing." instead of
-collapsing the last editor.
+Returns the pane that a `close` collapses. The result is `paneToUse`'s answer, unless fewer than
+two panes are arrangeable, in which case the result is `NO_PANE`. A mesh containing nothing but the
+header leaves the window with no editor to return to, so this function refuses rather than empty
+the screen. The refusal is what lets `view.ts`'s `close` report "This is the only pane — closing it
+would leave nothing." instead of collapsing the last editor.
 
 ### `paneClosable`
 
@@ -148,11 +146,11 @@ collapsing the last editor.
 function paneClosable(panes: readonly Pane[], index: number): boolean
 ```
 
-Whether the pane at `index` may be collapsed, judged by the same two rules `paneToClose`
-applies to the whole mesh — not chrome, and not the last arrangeable pane. `closepane.ts`'s
-interactive picker needs the verdict per pane, one at a time, because it has to say no while
-the pointer is still moving over a candidate; `paneToClose` only ever names the one pane the
-rules would pick on their own, which the picker overrides with wherever the author points.
+Reports whether the pane at `index` may be collapsed, applying the same two rules `paneToClose`
+applies to the whole mesh: the pane must not be chrome, and it must not be the last arrangeable
+pane. The interactive picker in `closepane.ts` checks one pane at a time, because it has to refuse
+while the pointer is still moving over a candidate. `paneToClose` returns only the single pane
+those rules select, and the picker overrides that selection with the pane the author points at.
 
 ## The panes an automatic open spares
 
@@ -170,26 +168,25 @@ function sparing(candidates: readonly Pane[]): readonly Pane[] {
 }
 ```
 
-Two editors are covered last, and `SPARED` lists them in the order the rules are most reluctant
-to cover them.
+Two editors are covered last, and `SPARED` lists them in order of how unlikely the rules are to
+cover them, least likely first.
 
-The document tree is how the author reached whatever is opening, so covering it takes away the
-list the next click comes from. That is the rule a shot double-clicked in Shot Coverage used to
-break: the tree was the biggest pane that was not the strip, so the frame landed on it.
+The document tree shows how the author reached whatever is opening, so covering it removes the list
+the next click comes from. Double-clicking a shot in Shot Coverage used to break that rule: the
+tree was the biggest pane that was not the strip, so the frame was placed on the tree.
 
 Convo is the one editor whose contents the author wrote. Every other editor redraws from the
-project, so covering it costs a scroll position at worst; covering a transcript mid-turn hides
-the answer the author is waiting for.
+project, so covering one loses at most a scroll position. Covering a transcript mid-turn hides the
+answer the author is waiting for.
 
 `sparing` drops both from a candidate list. When that leaves nothing, it walks `SPARED` backwards
-and answers with the least reluctantly spared kind present — a mesh of a tree and a transcript
-covers the transcript. So `paneToShowIn` and `paneElsewhere` step around both when another pane
-is free, and land in one anyway when there is no other pane.
+and returns the least reluctantly spared kind present. For example, a mesh of a tree and a
+transcript covers the transcript. `paneToShowIn` and `paneElsewhere` therefore avoid both when
+another pane is free, and use one when there is no other pane.
 
-`paneToUse` ignores this preference on purpose. Closing a pane or splitting one always means
-the pane the pointer is in, whether or not it happens to be showing Convo or the tree. Only
-`paneToShowIn` and `paneElsewhere`, which choose where an automatic open lands, apply the
-preference.
+`paneToUse` ignores this preference on purpose. Closing a pane or splitting one always acts on the
+pane the pointer is in, whether that pane shows Convo or the tree. Only `paneToShowIn` and
+`paneElsewhere` apply the preference, and those two choose where an automatic open lands.
 
 ## Callers
 
@@ -206,5 +203,5 @@ preference.
 ## Testing
 
 `apps/desktop/renderer/pathux/tests/panes.test.ts` covers all six functions against hand-built
-`Pane` arrays — no `ScreenArea`, no screen, no path.ux. A change to the rules in this file
-should be provable there before it is checked against a running app.
+`Pane` arrays, and it uses no `ScreenArea`, no screen, and no path.ux. Prove a change to the rules
+in this file there before checking it against a running app.

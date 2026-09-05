@@ -1,11 +1,11 @@
 # Packages and layering
 
-What each package in the monorepo is responsible for, and the rules that keep the graph acyclic.
-The dependency graph itself — the ASCII layering diagram — is in
-[`../../CLAUDE.md`](../../CLAUDE.md#package-layering),
-which is the map this page is the territory of. The layering is enforced by
+Describes what each package in the monorepo is responsible for, and the rules that keep the graph
+acyclic. The dependency graph itself (the ASCII layering diagram) is in
+[`../../CLAUDE.md`](../../CLAUDE.md#package-layering). The layering is enforced by
 `eslint-plugin-boundaries` + `import/no-cycle`, configured in `eslint.config.mjs`; adding a package
-means adding it to four lists — see [`../guides/toolchain.md`](../guides/toolchain.md#adding-a-package).
+means adding it to four lists — see
+[`../guides/toolchain.md`](../guides/toolchain.md#adding-a-package).
 
 <!-- toc -->
 
@@ -16,31 +16,32 @@ means adding it to four lists — see [`../guides/toolchain.md`](../guides/toolc
 
 ## The layering rules
 
-The pipeline spine (`pipeline → scheduler → cli`) and the authoring branch
-(`authoring → authoring-app`) are disjoint below `@vn/store`/`@vn/providers`: `@vn/authoring`
-reuses the input-side packages (types, util, config, parse, model, store, providers, git) but
-**must never import `@vn/pipeline` or `@vn/scheduler`** — enforced by `eslint-plugin-boundaries`.
+The pipeline spine (`pipeline → scheduler → cli`) and the authoring branch (`authoring →
+authoring-app`) are disjoint below `@vn/store`/`@vn/providers`. `@vn/authoring` reuses the
+input-side packages (types, util, config, parse, model, store, providers, git) but must never
+import `@vn/pipeline` or `@vn/scheduler`. `eslint-plugin-boundaries` enforces this.
 
-Four leaves share that same constrained allow-list, each for a reason worth stating:
+Four leaves share that same constrained allow-list, and each has its own reason:
 
-- **`@vn/export`** projects the manifest into `story.play.json` and is likewise forbidden from the
-  generative pipeline/scheduler.
-- **`@vn/scriptedit`** exists for a sharper reason: it holds the scene-edit rules and write path,
-  and both the desktop app's `story.*` commands _and_ `vnauthor` must run the same ones — so they
-  cannot live in either ([`../plans/archive/INDEX.md#scene-edit-package`](../plans/archive/INDEX.md#scene-edit-package)).
-- **`@vn/bible`** is the third, for the same reason: both the agent and the desktop app search the
-  story bible, so the ranking policy belongs to neither ([`story-bible.md`](story-bible.md)).
-- **`@vn/artgen`** is the fourth, and the one that reaches furthest down: it holds prompt
-  composition (moved out of `@vn/pipeline`, which re-exports it) and on-demand generation, so it
-  imports `providers` and `taskgraph` as well. `@vn/authoring` importing it is **not** a way around
-  the pipeline ban — **the boundaries rule is per import statement, not transitive**
+- **`@vn/export`** projects the manifest into `story.play.json`. It is also forbidden from using
+  the generative pipeline or the scheduler.
+- **`@vn/scriptedit`** holds the scene-edit rules and write path. The desktop app's `story.*`
+  commands and `vnauthor` both run the same rules, so those rules cannot live in either
+  ([`../plans/archive/INDEX.md#scene-edit-package`](../plans/archive/INDEX.md#scene-edit-package)).
+- **`@vn/bible`** is the third package. Both the agent and the desktop app search the story
+  bible, so the ranking policy belongs to neither ([`story-bible.md`](story-bible.md)).
+- **`@vn/artgen`** is the fourth package, and the one with the deepest dependencies. It holds
+  prompt composition (moved out of `@vn/pipeline`, which re-exports it) and on-demand generation,
+  so it imports `providers` and `taskgraph` as well. `@vn/authoring` importing it is not a way
+  around the pipeline ban, because the boundaries rule applies per import statement and is not
+  transitive
   ([`../plans/archive/INDEX.md#on-demand-concept-images`](../plans/archive/INDEX.md#on-demand-concept-images)).
 
-Two packages sit **outside the graph entirely**, and neither is drawn in the diagram.
-`@vn/debug2d` imports nothing from `packages/` and is imported only by the desktop renderer's
-dev-only debug glue (`debug2d: []` in `eslint.config.mjs`), so it stays strippable from production
-builds. `@vn/testkit` is the mirror image: it may import _every_ layer, and **nothing may import
-it** — see [`../guides/testkit.md`](../guides/testkit.md).
+Two packages sit outside the graph entirely, and neither is drawn in the diagram. `@vn/debug2d`
+imports nothing from `packages/` and is imported only by the desktop renderer's dev-only debug glue
+(`debug2d: []` in `eslint.config.mjs`), so it stays strippable from production builds.
+`@vn/testkit` has the opposite constraint: it may import every layer, and nothing may import it —
+see [`../guides/testkit.md`](../guides/testkit.md).
 
 ## What each package is responsible for
 

@@ -31,16 +31,16 @@
 
 <!-- tocstop -->
 
-**Fountain** is a plain-text markup format for writing screenplays. It is to
-screenplays roughly what Markdown is to prose: you write in an ordinary text editor
-using a few simple, unobtrusive conventions, and a parser infers the structure
-(scene headings, dialogue, action, transitions, …) from the way the text is laid out.
+**Fountain** is a plain-text markup format for writing screenplays. It uses roughly the same
+approach for screenplays that Markdown uses for prose: you write in an ordinary text editor using a
+few simple, unobtrusive conventions, and a parser infers the structure (scene headings, dialogue,
+action, transitions, and so on) from the way the text is laid out.
 
-Because Fountain files are just UTF-8 text, they are diff-friendly, version-control
-friendly, and trivially machine-parseable — which is exactly why this project uses it
-as the input format for scene prose (see `vn-generator-report.md`). This project writes
-**one scene per file**, so the Fountain lives in the body of a `scenes/<id>.md` — see
-[Where the Fountain lives](#where-the-fountain-lives-project-specific).
+Fountain files are UTF-8 text, so they diff cleanly, work well under version control, and are easy
+to parse by machine. This project uses Fountain as the input format for scene prose for those
+reasons (see vn-generator-report.md). This project writes one scene per file, and the Fountain
+occupies the body of a `scenes/<id>.md` file — see [Where the Fountain
+lives](#where-the-fountain-lives-project-specific).
 
 ---
 
@@ -48,32 +48,33 @@ as the input format for scene prose (see `vn-generator-report.md`). This project
 
 - **Human-readable.** A `.fountain` file reads like a screenplay even before it's
   rendered.
-- **Tool-agnostic.** Any text editor works; no proprietary binary format.
-- **Structure for free.** Scene headings, character cues, and dialogue are recognized
-  by layout convention, so a parser can reliably extract the elements we need
-  (locations, scenes, who-speaks-what) without NLP guesswork.
-- **Forgiving but overridable.** Most elements are auto-detected; every element also
-  has an explicit "forced" form for the rare ambiguous case.
+- **Tool-agnostic.** Any text editor works, and the format is not a proprietary binary.
+- - **Layout conventions carry the structure.** Scene headings, character cues, and dialogue
+  follow those conventions, so a parser can reliably extract the elements we need (locations,
+  scenes, who speaks what) without NLP guesswork.
+- **Auto-detected but overridable.** Most elements are auto-detected. Every element also has an
+  explicit "forced" form for the rare ambiguous case.
 
 ---
 
 ## The mental model
 
-Fountain decides what each block of text *is* primarily from:
+Fountain relies primarily on the following to decide what each block of text is:
 
 1. **Blank lines** — most elements must be preceded (and often followed) by a blank
    line.
-2. **Capitalization** — e.g. an all-caps line surrounded by blanks is a Character cue.
-3. **Leading symbols** — a small set of prefixes (`.`, `@`, `!`, `>`, `~`, `#`, `=`)
-   force or mark an element.
+2. 2. **Capitalization** — e.g. an all-caps line surrounded by blanks marks a Character cue.
+3. 3. **Leading symbols** — a small set of prefixes (`.`, `@`, `!`, `>`, `~`, `#`, `=`) forces or
+   marks an element.
 
-If auto-detection would guess wrong, you "force" the element with its prefix symbol.
+Prefix the element with its symbol to select it explicitly when auto-detection would otherwise
+select the wrong one.
 
 ---
 
 ## Title page (optional)
 
-If present, it comes first, as `Key: Value` pairs, and is ended by a blank line.
+If a block of `Key: Value` pairs is present, it comes first. A blank line ends the block.
 
 ```fountain
 Title: The Long Afternoon
@@ -93,9 +94,8 @@ Recognized keys include `Title`, `Credit`, `Author` (or `Authors`), `Source`,
 
 ### Scene headings (sluglines)
 
-A line that **starts with** `INT`, `EXT`, `EST`, `INT./EXT`, `INT/EXT`, or `I/E`
-(case-insensitive in practice, conventionally uppercase) and is surrounded by blank
-lines.
+Starts with `INT`, `EXT`, `EST`, `INT./EXT`, `INT/EXT`, or `I/E` and is surrounded by blank lines.
+The prefixes are conventionally uppercase, and the match ignores case.
 
 ```fountain
 INT. CLASSROOM - AFTERNOON
@@ -103,28 +103,27 @@ INT. CLASSROOM - AFTERNOON
 EXT. ROOFTOP - SUNSET
 ```
 
-- **Force** a heading that doesn't start with a known prefix by beginning the line
-  with a period: `.FLASHBACK` (the period is not shown in output).
+- Force a heading that does not start with a known prefix by beginning the line with a period:
+  `.FLASHBACK` (the output omits the period).
 - **Scene numbers** can be appended in hashes: `INT. CLASSROOM - DAY #12#`.
 
-> For this project, scene headings are the primary source for **mining locations** and
-> for **splitting the script into scenes**.
+For this project, scene headings are the primary source for extracting locations and for splitting
+the script into scenes.
 
 ### Action (description)
 
-The default element — any text that isn't recognized as something else. It preserves
-your indentation/spacing.
+The default element holds text that is not recognized as another element. The default element
+preserves your indentation and spacing.
 
 ```fountain
 Aiko stares at the empty desk by the window. Outside, cicadas.
 ```
 
-- **Force** action that would otherwise be misread (e.g. an all-caps line) by prefixing
-  with `!`.
+- Prefix with `!` to force an action that would otherwise be misread (e.g. an all-caps line).
 
 ### Character cue
 
-An **all-uppercase** line, preceded by a blank line, naming who speaks next.
+An all-uppercase line preceded by a blank line names the next speaker.
 
 ```fountain
 AIKO
@@ -132,13 +131,12 @@ AIKO
 REN (O.S.)
 ```
 
-- Parenthetical **extensions** like `(O.S.)`, `(V.O.)`, or `(on the radio)` are allowed
-  after the name.
-- **Force** a mixed-case character name with `@`: `@McAVOY`.
+- Parenthetical extensions such as `(O.S.)`, `(V.O.)`, or `(on the radio)` may follow the name.
+- Force a mixed-case character name with `@`, as in `@McAVOY`.
 
 ### Dialogue
 
-The line(s) immediately **following** a Character cue (or a Parenthetical).
+Holds the line or lines that immediately follow a Character cue (or a Parenthetical).
 
 ```fountain
 AIKO
@@ -147,8 +145,7 @@ I didn't think you'd actually come.
 
 ### Parentheticals
 
-Wrapped in parentheses, sitting between the Character cue and the dialogue (or between
-dialogue lines).
+Appears in parentheses between the Character cue and the dialogue (or between dialogue lines).
 
 ```fountain
 AIKO
@@ -158,8 +155,8 @@ You're late.
 
 ### Dual dialogue
 
-Two characters speaking simultaneously, side by side. Append a caret `^` to the
-**second** character's cue.
+Shows two characters speaking simultaneously, side by side. Append a caret `^` to the second
+character's cue.
 
 ```fountain
 AIKO
@@ -171,14 +168,14 @@ We need to talk.
 
 ### Transitions
 
-Right-aligned cues. Auto-detected when an uppercase line **ends with** `TO:`
-(e.g. `CUT TO:`), surrounded by blanks.
+Cues are right-aligned. A line counts as a cue when it is uppercase, ends with `TO:` (e.g. `CUT
+TO:`), and is surrounded by blanks.
 
 ```fountain
 CUT TO:
 ```
 
-- **Force** a transition with a leading `>`: `> Burn to White.`
+- Force a transition with a leading `>`: `> Burn to White.`
 
 ---
 
@@ -201,7 +198,7 @@ Escape a literal marker with a backslash: `\*not italic\*`.
 
 ### Centered text
 
-Wrap a line in angle brackets:
+<line>
 
 ```fountain
 >THE END<
@@ -209,7 +206,7 @@ Wrap a line in angle brackets:
 
 ### Lyrics
 
-Prefix each lyric line with a tilde `~`:
+~ Prefix each lyric line with a tilde `~`:
 
 ```fountain
 ~Somewhere beyond the sea
@@ -218,29 +215,30 @@ Prefix each lyric line with a tilde `~`:
 
 ### Sections and synopses (outlining)
 
-These are **author-only** aids that do **not** appear in the rendered screenplay —
+These aids are for the author only and do not appear in the rendered screenplay. These aids are
 useful for structuring a draft.
 
-- **Sections:** Markdown-style headers with `#`. More `#`s = deeper nesting.
+- **Sections:** A section starts with a Markdown-style header written with `#`. Each additional
+  `#` nests the section one level deeper.
 
   ```fountain
   # Act One
   ## The Meeting
   ```
 
-- **Synopses:** a line beginning with `=`.
+- **Synopses:** A synopsis is a line that begins with `=`.
 
   ```fountain
   = Aiko and Ren finally speak after the festival.
   ```
 
-> Sections are a handy hook for **organizing branches/acts**, and synopses give the
-> generator a concise per-scene summary to work from.
+Sections organize branches and acts. Each synopsis is a concise per-scene summary that the
+generator works from.
 
 ### Notes
 
-Inline annotations in double brackets — ignored by the screenplay output, visible to
-collaborators/tools:
+Double brackets mark an inline annotation. The annotation does not appear in the screenplay output,
+but collaborators and tools can read it:
 
 ```fountain
 Aiko hesitates. [[is this too on-the-nose?]]
@@ -248,7 +246,7 @@ Aiko hesitates. [[is this too on-the-nose?]]
 
 ### Boneyard (block comments)
 
-Text between `/*` and `*/` is omitted entirely (can span multiple lines):
+Text between `/*` and `*/` (which can span multiple lines) is omitted entirely:
 
 ```fountain
 /* cut this whole beat for now
@@ -324,13 +322,12 @@ The city spreads out below.
 
 ## A note on branching (project-specific)
 
-Standard Fountain describes a **linear** screenplay. Visual novels branch, so this
-project layers a lightweight convention on top — branch markers that point a scene at
-its possible successors (see `vn-generator-report.md`, §6). Fountain's **Sections**
-and **Notes** are convenient anchors for this, and because they're ignored by ordinary
-Fountain renderers, a file with our branch markers still parses as valid Fountain.
+Standard Fountain describes a linear screenplay. Visual novels branch, so this project adds a
+lightweight convention of branch markers that name a scene's possible successors (see
+vn-generator-report.md §6). Fountain's "Sections" and "Notes" carry these markers, and ordinary
+Fountain renderers ignore both, so a file with our branch markers still parses as valid Fountain.
 
-Every project marker is a **note**, so all of them are invisible to other tooling:
+Every project marker is stored as a note, so no other tooling sees it:
 
 | Marker | Means |
 |---|---|
@@ -341,29 +338,29 @@ Every project marker is a **note**, so all of them are invisible to other toolin
 | `[[line: L4]]` | The id of the element it leads — see below |
 | `[[nextline: 12]]` | The scene's line-id allocator; sits under the heading |
 
-`[[outfit:]]` is **one pair per marker**, repeated for a second character, and both halves are
-ids — an outfit id off the character's sheet, not a description. A value with whitespace in it
-or a missing half (`[[outfit: aiko=club tracksuit]]`, `[[outfit: aiko]]`) is left as a plain
-note rather than half-read. Position within the scene is not meaningful; the marker dresses the
-whole scene, and one frame is overridden on the shot instead. What it sits inside is the
-inheritance chain — shot override, then this, then the character's `default_outfit`.
+`[[outfit:]]` takes one pair per marker, repeated for a second character. Both halves are ids, and
+the outfit half is an outfit id from the character's sheet, not a description. A value with
+whitespace in it or a missing half (`[[outfit: aiko=club tracksuit]]`, `[[outfit: aiko]]`) is left
+as a plain note instead of being parsed in part. Position within the scene is not meaningful. The
+marker applies to the whole scene, and overriding a single frame is done on the shot instead.
+Resolution takes the shot override first, then this marker, then the character's `default_outfit`.
 
-`[[line:]]` and `[[nextline:]]` exist because `Shot.coversLines` binds art to line ids.
-An id derived from position silently re-points every shot below an inserted line, so ids
-are **allocated and written down** instead: a `[[line: L4]]` note on its own line
-immediately above an element names that element, and `[[nextline:]]` records the next
-free number for the scene. Reading a screenplay never writes to it — unmarked elements
-get ids in memory, and persisting them is the separate `story.assignLineIds` command.
+`[[line:]]` and `[[nextline:]]` exist because `Shot.coversLines` binds art to line ids. Deriving an
+id from position silently re-points every shot below an inserted line, so ids are allocated and
+written down instead. A `[[line: L4]]` note on its own line immediately above an element names that
+element, and `[[nextline:]]` records the next free number for the scene. Reading a screenplay never
+writes to it. Unmarked elements get ids in memory, and the separate `story.assignLineIds` command
+persists them.
 
-An unforced `CUT TO:` is the one element whose mark goes **on** its own line
-(`[[line: L2]]CUT TO:`) rather than above it: the parser recognizes it by the blank line
-above, and a marker line is not blank.
+An unforced `CUT TO:` is the only element whose mark goes on the element's own line. The line reads
+`[[line: L2]]CUT TO:` rather than carrying the mark on the line above. The parser recognizes the
+element by the blank line above it, and a marker line is not blank.
 
 ## Where the Fountain lives (project-specific)
 
-An authored scene is one file, `scenes/<id>.md` at the project root beside `characters/`
-and `locations/`. It is a markdown file with YAML front-matter, and the front-matter is
-**identity and nothing else**:
+An authored scene is one file `scenes/<id>.md` at the project root, beside `characters/` and
+`locations/`. The file is Markdown with YAML front-matter, and the front-matter holds identifying
+fields and nothing else:
 
 ```markdown
 ---
@@ -380,53 +377,55 @@ Oh — sorry. I didn't think anyone came up here.
 [[next: ending]]
 ```
 
-The rules that make that body predictable:
+These rules make that body predictable:
 
-- **The body is a complete one-scene Fountain screenplay**, its own heading included. Not a
-  fragment, not prose with the heading hoisted into front-matter — everything on this page
-  applies to it unchanged, and the same parser reads it.
-- **Exactly one scene heading.** A body with none, or with two, is refused: there is no single
-  id it could belong to.
-- **No `[[scene:]]` marker.** The id is the filename and the `scene:` key, which must agree; a
-  body that could rename its own file is the one thing the front-matter exists to prevent.
-- **Every other field stays in the body**, as a Fountain element or a `[[…]]` marker —
-  `location` and the time-of-day variant in the heading, `synopsis` as `=`, `choices`/`next` and
-  the line ids as markers. Front-matter is a **closed** schema, so putting one of them up there
-  is an error rather than a second source of truth.
-- **No title page.** `Title:` and friends belong to a screenplay, not a scene; the project title
-  is `title:` in `project.yaml`.
-- Line-id marks are optional. A hand-authored scene usually has none — reading allocates them in
-  memory, and `story.assignLineIds` is what writes them down.
+- The body is a complete one-scene Fountain screenplay, including its own heading. It is not a
+  fragment, and it is not prose with the heading hoisted into front-matter. Every rule on this page
+  applies to the body unchanged, and the same parser reads it.
+- - **Exactly one scene heading.** Refuses a body with no heading, and refuses a body with two
+  headings, because neither a missing heading nor a second heading names the single id the body
+  belongs to.
+- - **No `[[scene:]]` marker.** The filename and the `scene:` key both state the id and must
+  agree. The front-matter holds the id, so the body does not set it.
+- **Every other field stays in the body**, in a Fountain element or a `[[…]]` marker. The heading
+  carries `location` and the time-of-day variant, `=` carries `synopsis`, and markers carry
+  `choices`/`next` and the line ids. Front-matter is a closed schema, so putting one of these
+  fields in the front-matter is an error and does not create a second source of truth.
+- **No title page.** `Title:` and similar keys belong to a screenplay rather than a scene. Set
+  the project title with `title:` in `project.yaml`.
+- Line-id marks are optional. A hand-authored scene usually has none. Reading a scene allocates
+  the marks in memory, and `story.assignLineIds` writes them.
 
-A directory has no document order, so the entry scene is named by `start:` in `project.yaml`.
+A directory has no document order, so `start:` in `project.yaml` names the entry scene.
 
-The older form — one `screenplay/*.fountain` holding every scene, separated by `[[scene: id]]`
-markers, entry inferred from document order — is **no longer read**. A project holding one and no
-`scenes/` reports an error naming `vngen import`; one left beside chunks is a warning telling you
-to delete it or rename it `<name>.fountain.imported`, which the reader does not look at. A single
-Fountain file is now an export target rather than an input — see below.
+The older form is no longer read. That form held every scene in one `screenplay/*.fountain` file,
+separated by `[[scene: id]]` markers, and the entry scene was inferred from document order. A
+project that holds such a file and no `scenes/` directory produces an error that names `vngen
+import`. A file in the older form left beside chunks raises a warning that asks you to delete it or
+rename it `<name>.fountain.imported`. The reader skips a file with that suffix. A single Fountain
+file is now an export target rather than an input (see below).
 
 ## One Fountain file, in and out (project-specific)
 
-Two commands, two directions, and only one of them is a migration:
+The two commands run in opposite directions, and only one of them is a migration:
 
 ```sh
 vngen import     [dir]                       # screenplay/*.fountain → scenes/<id>.md, once
 vngen screenplay [dir] [-o <file>|-] [--clean]   # scenes → one Fountain file, any time
 ```
 
-**`vngen import` runs once.** It refuses over an existing `scenes/`, converts every scene, writes
-`start:` into `project.yaml`, and moves the original to `<name>.fountain.imported` **last** — while
-it is still a `.fountain` the project reports it on every load, so the rename is what finishes the
-job. Scene ids are carried through unchanged (generated art binds to them), the whole conversion is
-round-trip-checked in memory before any file is written, and anything the model cannot keep —
-sections, page breaks, dual dialogue, the title page — is a warning naming what will be absent
-rather than a silent drop. Every line gets a `[[line:]]` mark under a `[[nextline:]]` allocator, so
-the file you first open is the file the app will keep.
+`vngen import` runs once. It refuses to run when `scenes/` already exists, converts every scene,
+writes `start:` into `project.yaml`, and moves the original to `<name>.fountain.imported` last. The
+project reports the file on every load while it is still a `.fountain`, so the rename stops those
+reports. Scene ids are carried through unchanged (generated art binds to them), and the whole
+conversion is round-trip-checked in memory before any file is written. Anything the model cannot
+keep (sections, page breaks, dual dialogue, the title page) raises a warning that names what will
+be absent instead of dropping it silently. Every line gets a `[[line:]]` mark under a
+`[[nextline:]]` allocator, so the app preserves the file as it was first opened.
 
-**`vngen screenplay` is a projection**, in the same sense `vngen export` is — no claim that
-re-importing its output reproduces the project, and no relation to `story.play.json`, which is what
-`export` writes. What comes out:
+`vngen screenplay` produces a projection, in the same sense that `vngen export` does. The command
+does not claim that re-importing its output reproduces the project, and its output is unrelated to
+`story.play.json` (the file that `export` writes). The output contains:
 
 ```fountain
 INT. CLASSROOM - DAY
@@ -451,25 +450,25 @@ EXT. ROOFTOP - EVENING
 The city hums somewhere below.
 ```
 
-- **Order is the graph's, not the directory's**: breadth-first from `start:`, `next` before
-  `choices`. Anything the entry cannot reach is appended under a `# Unreachable` section rather
-  than dropped.
-- **Markers are kept by default**, which is what makes the output a valid input to `vngen import`.
-  `--clean` drops all of them for a human or a screenwriting tool, and that output is explicitly
-  one-way: the branch structure went with the markers.
-- **It writes where it is told** — `<dir>/screenplay.fountain` by default, `-o` to override, `-`
-  for stdout — and it refuses an `-o` inside `screenplay/`, where the project would report the
-  file on every load from now on.
+- - **Ordering follows the graph rather than the directory**: nodes are emitted breadth-first
+  from `start:`, taking `next` before `choices`. Nodes that `start:` cannot reach are appended
+  under a `# Unreachable` section rather than dropped.
+- Markers are kept by default, so the output is valid input to `vngen import`. `--clean` drops
+  every marker for a human reader or a screenwriting tool. Cleaned output cannot be imported again,
+  because dropping the markers drops the branch structure.
+- **Writes to the path it is given.** Writes `<dir>/screenplay.fountain` by default, `-o` sets a
+  different path, and `-` writes to stdout. Refuses an `-o` path inside `screenplay/`, because the
+  project would then report the file on every load.
 
-`templates/basic` is the shipped worked example: it was converted by running `vngen import` on it,
-and a test proves it is a fixed point — export it, import that, and the committed files come back
-byte for byte.
+`templates/basic` is the worked example, converted by running `vngen import` on it. A test checks
+that `templates/basic` is a fixed point by exporting it, importing that export, and comparing the
+result against the committed files. The result matches those files byte for byte.
 
 ## What the model retains (project-specific)
 
-`splitScenes` turns a screenplay into scenes whose prose is a list of **lines**, and
-`sceneToFountain` writes them back — `parse(write(scene)) ≡ scene`, pinned by a property
-test. Which elements survive that trip is therefore a decision, not an accident:
+`splitScenes` turns a screenplay into scenes, each holding its prose as a list of lines, and
+`sceneToFountain` writes them back, so that `parse(write(scene)) ≡ scene`. A property test checks
+that equivalence. Each element that survives the round trip is therefore chosen deliberately:
 
 | Element | Kept as | Notes |
 |---|---|---|

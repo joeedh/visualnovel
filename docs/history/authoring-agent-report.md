@@ -22,106 +22,95 @@
 
 <!-- tocstop -->
 
-> Scope: A conversational agent that helps a user **author and refine the input
-> files** for the visual novel generator — character descriptions, the branching
-> screenplay (Fountain + branch markers), and location descriptions. The agent chats
-> about the story, makes edits on the user's behalf, plans before acting, integrates
-> with git, knows the required input formats, loads project context from an
-> `AICONTEXT.md` file, and is extensible with user-authored skills.
->
-> This agent operates on the **input/authoring** side (see `vn-generator-report.md`
-> §9.1). It does **not** run the generative image pipeline — it prepares and maintains
-> the source files that pipeline consumes. The two are separate concerns connected by
-> the input directory contract.
+Scope: the agent converses with a user to author and refine the input files for the visual novel generator —
+character descriptions, the branching screenplay (Fountain + branch markers), and location descriptions. It chats
+about the story, makes edits on the user's behalf, plans before acting, integrates with git, knows the required
+input formats, loads project context from an `AICONTEXT.md` file, and is extensible with user-authored skills. This
+agent operates on the input/authoring side (see vn-generator-report.md §9.1). It does not run the generative image
+pipeline; it prepares and maintains the source files that pipeline consumes. The two are separate concerns
+connected by the input directory contract.
 
 ---
 
 ## 1. What the agent is for
 
-The input files are the single source of truth for the whole generator. They're also
-the part a human most wants to iterate on: tweaking a character's backstory, rewriting
-a branch, splitting a location. The authoring agent makes that iteration
-*conversational* while keeping the files **valid, consistent, and version-controlled**.
+The input files are the single source of truth for the whole generator. They are also the part a human most wants
+to iterate on, by tweaking a character's backstory, rewriting a branch, or splitting a location. The authoring
+agent makes that iteration conversational while keeping the files valid, consistent, and version-controlled.
 
 Core responsibilities:
 
-1. **Discuss the story** — answer questions, summarize, find inconsistencies, suggest
-   options ("what if Aiko's arc diverged earlier?").
-2. **Edit input files** — create/modify characters, locations, and screenplay scenes,
-   always producing output that conforms to the required formats.
+1. 1. **Discuss the story** — answers questions, summarizes, finds inconsistencies, and suggests options ("what if
+   Aiko's arc diverged earlier?").
+2. 2. **Edit input files** — create or modify characters, locations, and screenplay scenes, always producing output
+   that conforms to the required formats.
 3. **Plan before acting** — propose a change set, get approval, then execute (plan
    mode).
-4. **Track history** — auto-commit edits to git, show history, and revert on request
-   (with explicit confirmation).
-5. **Stay grounded** — know the required files/formats and the project's own
-   conventions via `AICONTEXT.md`.
+4. 4. **Track history** — auto-commits edits to git, shows history, and reverts on request (with explicit
+   confirmation).
+5. 5. **Know the conventions** — read `AICONTEXT.md` for the required files, the required formats, and the
+   project's own conventions.
 6. **Be extensible** — let users drop in their own skills.
 
 ---
 
 ## 2. Domain awareness (what the agent must "know")
 
-The agent ships with a built-in understanding of the **input contract** so it never
-produces malformed files:
+The agent has a built-in understanding of the input contract, so it never produces malformed files:
 
-- **Project layout** (the `input/` side from the generator report): `project.yaml`,
-  `characters/<id>/character.md` (+ optional `refs/`), `locations/<id>.md`,
-  `screenplay/*.fountain`. _As shipped_ scenes are authored one per file —
-  `scenes/<id>.md`, entry named by `start:` — and `screenplay/` is not read at all; the agent
-  tells the author to run `vngen import` rather than editing one. See
-  [`../reference/fountain.md`](../reference/fountain.md#where-the-fountain-lives-project-specific).
-- **Character file schema** — YAML front-matter (`id`, `name`, `status`,
-  `default_outfit`, `palette`, …) + canonical prose description + wardrobe section.
-  _As shipped_ `reference_images` is **retired** — it was storage nothing read, and a file
-  still setting it gets a diagnostic. A reference image now attaches to a prompt clause
-  (`prompt.addRef`), not to a character.
+- **Project layout**: the `input/` side of the generator report holds `project.yaml`,
+  `characters/<id>/character.md` (plus an optional `refs/`), `locations/<id>.md`, and `screenplay/*.fountain`. As
+  shipped, each scene is authored in its own `scenes/<id>.md` file and `start:` names the entry scene, and
+  `screenplay/` is not read at all; the agent tells the author to run `vngen import` rather than editing a Fountain
+  file. See [`../reference/fountain.md`](../reference/fountain.md#where-the-fountain-lives-project-specific).
+- **Character file schema** — a character file holds YAML front-matter (`id`, `name`, `status`, `default_outfit`,
+  `palette`, …), a canonical prose description, and a wardrobe section. As shipped, `reference_images` is retired:
+  it stored data nothing read, and a file that still sets it gets a diagnostic. A reference image now attaches to a
+  prompt clause (`prompt.addRef`), not to a character.
 - **Location file schema** — description, mood/lighting, time-of-day/weather variants,
   camera notes.
-- **Fountain + branch markers** — the agent knows Fountain syntax (see `fountain.md`)
-  and the project's branching convention (scene graph, `goto`/`choices`).
+- **Fountain + branch markers** — the agent knows Fountain syntax (see fountain.md) and the project's branching
+  convention (scene graph, `goto`/`choices`).
 - **Cross-file invariants** — every character referenced in the screenplay exists;
   every branch target resolves; outfit ids referenced in scenes exist; location ids
   are consistent (alias detection).
 
-This domain knowledge is delivered as a **system prompt + bundled reference skill**
-(e.g. a built-in `validate-inputs` capability), so it's always available and
-consistent. The two existing docs (`fountain.md`, `vn-generator-report.md`) are the
-authoritative spec the agent is built against.
+This domain knowledge ships as a system prompt plus a bundled reference skill (for example, a built-in
+`validate-inputs` capability), so it is always available and consistent. The two existing docs (fountain.md,
+vn-generator-report.md) are the authoritative spec the agent is built against.
 
 ---
 
 ## 3. Context loading: `AICONTEXT.md` and friends
 
-On startup (and when the workspace changes), the agent assembles its context from:
+On startup (and when the workspace changes) the agent assembles its context from:
 
-1. **Built-in system prompt** — role, the input contract, safety rules.
-2. **`AICONTEXT.md`** in the workspace root — the user's project-specific guidance,
-   loaded into context the same way Claude Code uses `CLAUDE.md` / `AGENTS.md`. This is
-   where the author records tone, canon, style rules, naming conventions, "things you
-   always get wrong about my world," etc.
+1. 1. **Built-in system prompt** — covers the role, the input contract, and the safety rules.
+2. 2. **`AICONTEXT.md`** in the workspace root holds the user's project-specific guidance and is loaded into
+   context the same way Claude Code uses `CLAUDE.md` / `AGENTS.md`. This file is where the author records tone,
+   canon, style rules, naming conventions, "things you always get wrong about my world," etc.
 3. **Nested / discovered context** (optional, recommended): support `AICONTEXT.md`
    files in subdirectories (e.g. a per-character note) that are pulled in when the
    agent works in that area, plus an `@import` / `@path` mechanism so a context file
    can reference others. Honor `AGENTS.md`/`CLAUDE.md` as fallbacks if present, for
    familiarity.
-4. **Live project snapshot** — a cheap index of which characters/locations/scenes
-   exist (not full bodies), so the agent knows what's there without reading everything.
+4. 4. **Live project snapshot** — Holds a cheap index of which characters, locations and scenes exist, without
+   their full bodies, so the agent knows what is there without reading everything.
 
-Precedence: built-in rules > user `AICONTEXT.md` > inferred defaults. The agent should
-be able to *update* `AICONTEXT.md` when the user says "always remember X about the
-story" — turning a chat instruction into durable project context.
+Built-in rules take precedence over the user's `AICONTEXT.md`, which in turn takes precedence over inferred
+defaults. The agent should be able to update `AICONTEXT.md` when the user says "always remember X about the story",
+which turns a chat instruction into durable project context.
 
 ---
 
 ## 4. Plan mode
 
-A two-state interaction model, mirroring Claude Code's plan mode:
+The interaction model has two states, mirroring Claude Code's plan mode:
 
-- **Chat / plan mode (read-only):** the agent can read files, search, inspect git
-  history, and *propose* a plan, but makes **no edits**. Used for discussion,
-  exploration, and designing a change.
-- **Execute mode (read-write):** after the user approves a plan, the agent applies the
-  edits, runs validation, and commits.
+- **Chat / plan mode (read-only):** the agent can read files, search, inspect git history, and propose a plan,
+  but makes no edits. Used for discussion, exploration, and designing a change.
+- **Execute mode (read-write):** the agent applies the edits, runs validation, and commits once the user approves
+  a plan.
 
 Flow:
 
@@ -139,35 +128,32 @@ agent proposes a PLAN:
 agent applies edits → runs validate-inputs → git commit → reports result
 ```
 
-Plan mode is the safety valve for an agent that edits creative source files: the user
-sees *exactly* what will change before anything is written, and every change lands as a
-reviewable commit.
+Plan mode guards an agent that edits creative source files: the user sees what will change before anything is
+written, and every change lands as a reviewable commit.
 
 ---
 
 ## 5. Git integration
 
-If the workspace is a git repository, the agent treats git as its undo/history system.
+If the workspace is a git repository, the agent undoes changes and reads history through git.
 
-- **Auto-commit on change.** After each approved edit set, the agent stages and commits
-  with a descriptive message ("Soften Ren's early dialogue; update temperament"). One
-  logical change = one commit, so history is meaningful and revertible.
-- **View history.** The agent can show the log, diff any commit, and summarize "what
-  changed and why" in plain language — useful for an author returning after time away.
-- **Revert with permission.** The agent can revert a commit or restore a file to an
-  earlier state, but **only after explicit user confirmation** naming the target
-  commit. Prefer `git revert` (new commit undoing changes) over destructive
-  `reset --hard` to keep history intact; offer `reset` only when the user explicitly
-  asks and understands the consequence.
+- **Auto-commit on change.** After each approved edit set, the agent stages and commits with a descriptive
+  message ("Soften Ren's early dialogue; update temperament"). Each logical change becomes one commit, so the
+  history stays readable and any single change can be reverted on its own.
+- **View history.** The agent can show the log, diff any commit, and summarize "what changed and why" in plain
+  language. This helps an author returning after time away.
+- **Revert with permission.** The agent can revert a commit or restore a file to an earlier state, but only after
+  explicit user confirmation naming the target commit. Prefer `git revert` (a new commit undoing the changes) over
+  destructive `reset --hard` to keep history intact; offer `reset` only when the user explicitly asks and
+  understands the consequence.
 - **Safety rails:**
   - Never commit secrets (the user's Gemini/API keys live outside the repo or in
     `.gitignore`d config).
-  - If the working tree is dirty with un-agent changes, surface them before committing
-    rather than sweeping them in.
-  - Work on the current branch by default; offer to branch for large/experimental
-    rewrites.
-  - If the workspace is **not** a git repo, offer to `git init` (so history/undo is
-    available), but don't require it.
+  - If the working tree is dirty with changes the agent did not make, report them before committing rather than
+    sweeping them in.
+  - Work on the current branch by default; offer to branch for large or experimental rewrites.
+  - If the workspace is not a git repo, offer to run `git init` so that history and undo are available, but do
+    not require it.
 
 ---
 
@@ -175,21 +161,19 @@ If the workspace is a git repository, the agent treats git as its undo/history s
 
 Users can teach the agent new capabilities by dropping **skills** into the workspace.
 
-- **What a skill is:** a self-contained folder with a definition file
-  (`skill.md`/`SKILL.md` with front-matter: `name`, `description`, `when-to-use`) plus
-  optional supporting files/scripts. The `description`/`when-to-use` is how the agent
-  decides relevance — same model as Claude Code skills.
-- **Discovery:** the agent scans a conventional location, e.g.
-  `.aiagent/skills/` (project) and a user-global dir, and lists discovered skills in
-  its context. The user invokes one explicitly (`/my-skill`) or the agent triggers it
-  when the description matches the task.
+- **Skill structure.** A skill is a self-contained folder holding a definition file (`skill.md`/`SKILL.md` with
+  front-matter: `name`, `description`, `when-to-use`) plus optional supporting files and scripts. The agent decides
+  whether a skill is relevant from its `description` and `when-to-use`, the same model Claude Code skills use.
+- **Discovery:** the agent scans a conventional location (for example `.aiagent/skills/` in the project and a
+  user-global directory) and lists the discovered skills in its context. The user invokes one explicitly
+  (`/my-skill`), or the agent triggers it when the description matches the task.
 - **Examples a user might write:**
-  - `name-checker` — verify character names against a canon glossary.
+  - `name-checker` — verifies character names against a canon glossary.
   - `dialogue-pass` — rewrite a scene's dialogue in a defined voice.
-  - `branch-linter` — project-specific rules for valid choice structures.
-  - `import-from-outline` — turn the user's outline format into scaffolded scene files.
-- **Trust model:** a skill may include scripts; running those is a permissioned action
-  (see §8). The agent should describe what a skill will do before first run.
+  - `branch-linter` — enforces project-specific rules for valid choice structures.
+  - `- `import-from-outline` — turn the user's outline format into scaffolded scene files.`
+- **Trust model:** A skill may include scripts, and running those is a permissioned action (see §8). The agent
+  describes what a skill will do before the first run.
 
 This keeps the core agent small while letting each author encode their own workflow.
 
@@ -197,15 +181,14 @@ This keeps the core agent small while letting each author encode their own workf
 
 ## 7. Tools the agent needs
 
-Grouped by concern. (Names illustrative — the shipped registry is
-`packages/authoring/src/tools.ts` and its 23 tools are enumerated in
-[`../reference/vnauthor.md`](../reference/vnauthor.md). It follows this grouping, with four differences: editing is
-typed per entity — `create_character` / `create_location` / `edit_character` /
-`edit_location` — rather than a generic `edit_file`, so every write goes through `@vn/model`'s
-round-trip-safe serializers; `load_context` is not a tool, because context is loaded before
-the loop starts, not requested by the model; and the interaction-control group has no tools at
-all — mode is owned by the REPL and the permission gate, not by something the model can call,
-which is what makes plan mode a guarantee rather than a request.)
+The tools are grouped by concern. The names are illustrative. The shipped registry is
+`packages/authoring/src/tools.ts`, and its 23 tools are enumerated in
+[`../reference/vnauthor.md`](../reference/vnauthor.md). That registry follows this grouping with four differences.
+Editing is typed per entity — `create_character`, `create_location`, `edit_character`, `edit_location` — rather
+than a generic `edit_file`, so every write goes through `@vn/model`'s round-trip-safe serializers. `load_context`
+is not a tool, because context is loaded before the loop starts rather than requested by the model. The
+interaction-control group has no tools at all: the REPL and the permission gate control mode, not anything the
+model can call, so plan mode is enforced rather than requested.
 
 ### File & content
 | Tool | Purpose |
@@ -250,17 +233,16 @@ which is what makes plan mode a guarantee rather than a request.)
 
 ## 8. Permissions & safety model
 
-- **Mode-gated writes.** No file writes or commits in plan/chat mode — only after an
-  approved plan.
-- **Confirmation for irreversible/outward actions.** Reverts, hard resets, deleting
-  files, and first-run of a script-bearing skill require explicit user approval.
-- **Diff-first.** Every edit is previewable as a diff before it's written; every change
-  becomes a commit, so nothing is truly unrecoverable in a git workspace.
+- **Mode-gated writes.** The agent does not write files or commit in plan mode or chat mode. It writes and
+  commits only after a plan is approved.
+- **Confirmation for irreversible/outward actions.** Reverts, hard resets, file deletions, and the first run of a
+  script-bearing skill require explicit user approval.
+- **Diff-first.** Every edit can be previewed as a diff before it is written, and every change becomes a commit,
+  so a git workspace can recover any change.
 - **Secret hygiene.** API keys are never read into context, committed, or logged.
-- **Scoped to the workspace.** The agent operates within the project directory; it
-  doesn't reach outside it.
-- **Honest reporting.** If validation fails or a commit is skipped, the agent says so
-  with the actual output rather than claiming success.
+- **Scoped to the workspace.** The agent operates within the project directory and does not reach outside it.
+- **Honest reporting.** If validation fails or a commit is skipped, the agent reports that with the actual output
+  rather than claiming success.
 
 ---
 
@@ -322,10 +304,8 @@ which is what makes plan mode a guarantee rather than a request.)
 
 ## 12. Summary
 
-The authoring agent is a **plan-first, git-backed, format-aware conversational editor**
-for the visual novel's input files. It knows the required file schemas and Fountain
-(so it never writes malformed input), plans changes before making them, commits every
-approved edit to git (and can revert with permission), grounds itself in a workspace
-`AICONTEXT.md`, and is extended by user-authored skills. It is deliberately separate
-from the image-generation pipeline: its only job is to keep the source-of-truth input
-files coherent, valid, and easy to evolve.
+The authoring agent is a plan-first, git-backed, format-aware conversational editor for the visual novel's input
+files. It knows the required file schemas and Fountain, so it does not write malformed input. It plans changes
+before making them, commits every approved edit to git, reverts with permission, reads a workspace `AICONTEXT.md`
+for grounding, and is extended by user-authored skills. It is separate from the image-generation pipeline by
+design. Its work is limited to keeping the source-of-truth input files coherent, valid, and easy to evolve.

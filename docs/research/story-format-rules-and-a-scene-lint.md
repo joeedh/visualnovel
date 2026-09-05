@@ -1,15 +1,15 @@
 # Story format rules, and a lint that enforces them
 
-_Investigation. Not a plan — no steps, no waves committed to. It asks three things the author
-asked: whether the agent has access to the story metadata format rules, whether a lint over story
-files exists, and what else the fourteen saved `examples/test4` conversations say. The answers are
-**no, half, and eight more things** — and the first of those turns out to have nearly cost the
-project all forty of its scenes._
+_This document is an investigation rather than a plan, so it commits to no steps and no waves. It
+asks the three questions the author asked: whether the agent has access to the story metadata format
+rules, whether a lint over story files exists, and what else the fourteen saved `examples/test4`
+conversations say. The answers are no, half, and eight more things. The agent's lack of access to
+the format rules nearly cost the project all forty of its scenes._
 
-_Status: **nothing built.** Successor to
-[`agent-transcript-review-test4.md`](agent-transcript-review-test4.md), which read the first four
-of these conversations against the loop that produced them; this reads all fourteen against what
-the agent **knows**. That report's findings are not repeated here._
+_Status: nothing built. This report succeeds
+[`agent-transcript-review-test4.md`](agent-transcript-review-test4.md), which read the first four of
+these conversations against the loop that produced them. This report reads all fourteen against what
+the agent knows, and does not repeat the earlier report's findings._
 
 <!-- toc -->
 
@@ -28,33 +28,34 @@ the agent **knows**. That report's findings are not repeated here._
 
 ## What was asked, and what I checked
 
-Three asks and a survey:
+There are three requests and a survey:
 
 1. the agent should have access to valid story metadata formatting rules;
 2. a lint that validates metadata tags, if one does not already exist;
 3. a system-prompt instruction to run it after changing story files;
-4. whatever else the `examples/test4` transcripts turn up.
+4. 4. whatever else the `examples/test4` transcripts show.
 
-The evidence base is fourteen threads in `examples/test4/vngen/state/threads/`, 17 August to 19
-August 2026, all on `gemini-2.5-flash` — about 700 tool calls across the whole arc of a project,
-from "create a wiki bible page about a steampunk story world" to forty scenes, twenty-six
-locations, eleven characters and an argument about approving plates. Alongside them, the code that
-produced them: `SYSTEM_PROMPT` in `packages/authoring/src/context.ts`, `parseBranchMarker` in
-`packages/parse/src/branch.ts`, and the diagnostic set in `packages/model/src/`.
+The evidence base is fourteen threads in `examples/test4/vngen/state/threads/`, dated 17 August to
+19 August 2026 and all on `gemini-2.5-flash`. The threads hold about 700 tool calls across the whole
+arc of a project, from "create a wiki bible page about a steampunk story world" to forty scenes,
+twenty-six locations, eleven characters and an argument about approving plates. The code that
+produced them belongs to the same evidence base: `SYSTEM_PROMPT` in
+`packages/authoring/src/context.ts`, `parseBranchMarker` in `packages/parse/src/branch.ts`, and the
+diagnostic set in `packages/model/src/`.
 
-Two framings in the ask need correcting before anything else, because both are close to right and
-the difference is where the work is:
+Two framings in the request need correcting first. Both are close to right, and they differ in where
+they place the work:
 
-- **A lint does exist** — `validate_inputs`, over a model with twenty-three diagnostic codes. It is
-  a real cross-file validator, not a stub. What it does not do is validate **metadata tags**, which
-  is the one thing the ask named. That gap is §4 and it is a genuine hole.
-- **The mess was not two scenes in one file.** Every one of the forty scene files holds exactly one
-  front-matter id, one slugline, one scene. What the author saw was worse and less visible, and it
-  is §3.
+- **A lint does exist** — `validate_inputs` runs over a model with twenty-three diagnostic codes.
+  It is a real cross-file validator, not a stub. It does not validate metadata tags, which is the
+  one thing the ask named. §4 covers that missing tag validation, and the gap is genuine.
+- **The mess was not two scenes in one file.** Every one of the forty scene files holds exactly
+  one front-matter id, one slugline, one scene. What the author saw was worse and less visible, and
+  §3 describes it.
 
 ## The headline: the agent does not know three of its own six markers
 
-`BranchMarker` has six kinds (`packages/parse/src/branch.ts:16-22`):
+`BranchMarker` has six kinds (packages/parse/src/branch.ts:16-22):
 
 | marker           | what it does                              | in `SYSTEM_PROMPT`?           |
 | ---------------- | ----------------------------------------- | ----------------------------- |
@@ -65,79 +66,80 @@ the difference is where the work is:
 | `[[line:]]`      | **the allocated id of the element below**  | **absent**                    |
 | `[[nextline:]]`  | **the scene's id-allocator high-water mark** | **absent**                  |
 
-The prompt's `FOUNTAIN + BRANCH MARKERS` block lists three of six and no more. `[[outfit:]]`
-appears once, forty lines away, inside the art-style section as "else the scene's `[[outfit:]]`
-marker" — a passing reference in a paragraph about inheritance, not a definition. `[[line:]]` and
-`[[nextline:]]` appear nowhere in the prompt at all.
+The prompt's `FOUNTAIN + BRANCH MARKERS` block lists three of the six markers and no more.
+`[[outfit:]]` appears once, forty lines away, inside the art-style section as "else the scene's
+`[[outfit:]]` marker". That single mention is a passing reference in a paragraph about inheritance,
+not a definition. `[[line:]]` and `[[nextline:]]` appear nowhere in the prompt at all.
 
-They are also the two that appear on **every non-blank element of every scene file**. So the
-agent's own domain knowledge describes a minority of what it reads.
+They are also the two that appear on every non-blank element of every scene file, so the agent's own
+domain knowledge describes a minority of what it reads.
 
 ### What that cost, twice
 
 On 19 August the author asked the agent to look at a scene that seemed to have branches packed into
-it. Thread `20260819-182956`, turn 5 — its **first substantive statement**, after reading exactly
-one file:
+it. Thread `20260819-182956`, turn 5 — its first substantive statement, after reading exactly one
+file:
 
-> This scene uses non-standard markers — `[[line: L8]]`, `[[nextline: 15]]` — which aren't valid
-> branch markers…
+This scene uses non-standard markers (`[[line: L8]]`, `[[nextline: 15]]`) that aren't valid > branch
+markers.
 
-It then spent eight tool calls reverse-engineering the format from the files themselves, and at
-turn 13 reversed itself, correctly and without being told:
+It then spent eight tool calls reverse-engineering the format from the files themselves. At turn 13
+it correctly reversed its earlier position, without being told to:
 
-> These `[[line: LN]]` / `[[nextline: N]]` markers are a machine-managed line-addressing scheme
-> (note `opening.md` stores L1, L3, L2, L4 out of order — the marker sets display order), present
-> in all 40 scenes and passing validation. **They're not the problem.**
+These `[[line: LN]]` / `[[nextline: N]]` markers are a machine-managed line-addressing scheme (note
+that `opening.md` stores L1, L3, L2, L4 out of order, so the marker sets display order). The markers
+are present in all 40 scenes and pass validation. The markers are not the problem.
 
 That recovery is a good outcome from a bad start, and it cost eight calls. The next session did not
 recover. Thread `20260819-183528`, turn 4:
 
-> Those L9–L13 variants use markers I don't recognize as standard branch syntax — `[[line: L8]]`,
-> `[[nextline: 15]]` … Standard Fountain branching here is `[[scene:]]` / `[[choice:]]` /
-> `[[next:]]` only.
+> Those L9–L13 variants use markers I don't recognize as standard branch syntax (`[[line: L8]]` and
+> `[[nextline: 15]]`). Standard Fountain branching here is `[[scene:]]`, `[[choice:]]`, and >
+`[[next:]]` only.
 
-and at turn 14, having decided the scheme was **"inert"**, it offered the author this as the first
-option on a list:
+and at turn 14, having decided the scheme was "inert", it offered the author the following as the
+first option on a list:
 
-> Strip the dead markers everywhere and flatten each scene to the prose that should actually
-> render (I'll propose exactly what stays)…
+Strip every dead marker and flatten each scene to the prose that should render. I'll propose exactly
+what stays.
 
-Stripping `[[line:]]` from all forty scenes discards every allocated line id in the project. Line
-ids are what shots are keyed on (`docs/pipeline-contracts.md`), what `driftOf` compares, and what
-`Shot.lines` names; re-derived, they are positional again, and every shot in the storyboard covers
-different prose than it was drawn for. The agent proposed it in good faith, having correctly
-concluded from its own instructions that the markers were not part of the format. It was one click
-from a project-wide data loss, and the click was the author's.
+Stripping `[[line:]]` from all forty scenes discards every allocated line id in the project. Shots
+are keyed on line ids (docs/pipeline-contracts.md), `driftOf` compares them, and `Shot.lines` names
+them. Once the ids are re-derived they are positional again, so every shot in the storyboard covers
+different prose than it was drawn for. The agent proposed the change in good faith, having correctly
+concluded from its own instructions that the markers were not part of the format. One click by the
+author would have caused a project-wide data loss.
 
-**A reference for this already exists and the agent cannot reach it.** `docs/fountain.md` §"A note
-on branching (project-specific)" documents all five wiring and addressing markers, correctly,
-including `[[line:]]` and `[[nextline:]]`. It is repository documentation — the wrong side of the
-process boundary. The knowledge is written down; it is just written down for us.
+A reference for this already exists, and the agent cannot reach it. docs/fountain.md §"A note on
+branching (project-specific)" correctly documents all five wiring and addressing markers, including
+`[[line:]]` and `[[nextline:]]`. That file is repository documentation, so it sits on the wrong side
+of the process boundary. The knowledge is written down, but it is written down for readers of the
+repository rather than for the agent.
 
 ### The narrower version of the same bug
 
-The prompt contradicts itself about `[[scene:]]` within fifteen lines. The layout paragraph:
+The prompt contradicts itself about `[[scene:]]` within fifteen lines. The layout paragraph says:
 
-> a chunk body carries no `[[scene:]]` marker: its id is the front-matter's, and the body cannot
-> override it
+a chunk body carries no `[[scene:]]` marker; its id comes from the front matter, and the body cannot
+override it
 
-and the marker table, below it:
+and the marker table below it:
 
-> `[[scene: s12_rooftop]]` assigns a stable id to the current scene
+`[[scene: s12_rooftop]]` assigns a stable id to the current scene
 
-Both are true of different eras — the second describes the retired whole-file screenplay, which the
-same paragraph says is not read. The model resolves the contradiction by writing the marker and
-earning an `ignored_scene_marker` warning, which is the cheapest possible symptom of a prompt that
-disagrees with itself. Worth fixing while the block is being rewritten anyway.
+Both statements are true of different eras. The second describes the retired whole-file screenplay,
+which the same paragraph says is not read. The model resolves the contradiction by writing the
+marker, which produces an `ignored_scene_marker` warning — the cheapest possible symptom of a prompt
+whose two statements contradict each other. Fix it while the block is being rewritten anyway.
 
 ## The real mess: an invented conditional, because the format has none
 
-The author's diagnosis was "various scene branches packed into a single scene file". The files
-disagree, and what is actually there is a subtler failure with a clearer cause.
+The author diagnosed the problem as "various scene branches packed into a single scene file". The
+files do not support that diagnosis. The actual failure is subtler and has a clearer cause.
 
 In thread `20260819-024948` the agent wrote six shared trunk scenes — `c06`, `c07`, `c08`, `c09`,
-`c11b`, `c11_execution` — with **five alternate versions of the same beat stacked as consecutive
-narration lines**, each opened with a parenthetical tag:
+`c11b`, `c11_execution` — with five alternate versions of the same beat stacked as consecutive
+narration lines, each opened with a parenthetical tag:
 
 ```
 [[line: L9]]
@@ -150,45 +152,44 @@ narration lines**, each opened with a parenthetical tag:
 (Seraphine path) …
 ```
 
-That is not branching. It is five mutually exclusive paragraphs that a reader sees **all of, in a
-row**. Every one is a real line with a real id, so the pipeline will happily storyboard shots for
-all five. The agent later named the scheme "route coloring" — a phrase it invented, as it admitted
-when challenged ("that was my phrase, not anything the file says").
+That is not branching. The five paragraphs are mutually exclusive, but a reader sees all five in a
+row. Every one is a real line with a real id, so the pipeline storyboards shots for all five. The
+agent later named the scheme "route coloring", a phrase it invented and admitted inventing when
+challenged ("that was my phrase, not anything the file says").
 
-The cause is not carelessness. The story bible told it the routes "share one trunk … coloured only
-by which love interest Caedon gravitates toward", and the format it was given has **no way to
-express that**. There are no variables, no flags, no affection counters, no conditional lines, no
-per-route variants of a beat. Branching happens at exactly one granularity: a whole scene, reached
-by `[[choice:]]` or `[[next:]]`. Faced with an author's requirement the format cannot hold, the
-model did the thing models do — it invented a notation and wrote it into the prose layer, where
-nothing would reject it.
+The cause is not carelessness. The story bible told the model that the routes "share one trunk …
+coloured only by which love interest Caedon gravitates toward", and the format the model was given
+cannot express that. There are no variables, no flags, no affection counters, no conditional lines,
+no per-route variants of a beat. Branching happens at exactly one granularity: a whole scene,
+reached by `[[choice:]]` or `[[next:]]`. Faced with an author's requirement the format cannot hold,
+the model invented a notation and wrote it into the prose layer, where nothing would reject it.
 
-**The prompt never states the closed-world fact.** It lists what exists; it never says what does
-not, and for a generative model those are very different statements. One sentence would have
-forced the question back to the author two days earlier:
+**The prompt never states the closed-world fact.** It lists what exists, and it never says what does
+not exist. For a generative model those two statements differ. One sentence would have forced the
+question back to the author two days earlier:
 
-> Branching is scene-granular and there is nothing finer: no variables, no flags, no conditional
-> lines, no per-route variants of a beat. If two readers should see different prose, that is two
-> scenes. If an author asks for something that needs a condition, say the format has none and
-> propose the scene split instead.
+Branching happens at the granularity of a scene and no finer: no variables, no flags, no conditional
+lines, no per-route variants of a beat. Two readers who should see different prose need two scenes.
+If an author asks for something that needs a condition, say that the format has no conditions and
+propose the scene split instead.
 
-Everything in the format section should be read for this failure mode. A list of what is available
-is an invitation to extrapolate; the useful half of a format contract is its boundary.
+Read everything in the format section for this failure mode. A list of what is available invites the
+reader to extrapolate beyond it, so a format contract is useful only where it states its boundary.
 
-Worth noting what the author's own preference turned out to be, since it settles the design
-question the invention was papering over: given the choice, they took *"early affinity branch that
-RECONVERGES at c11 … split c07/c08/c09/c11b into per-route versions"*. Real scenes, real wiring,
-~15 more of them. The format was adequate; only the agent's account of it was not.
+The author's own preference settles the design question that the invention had obscured. Given the
+choice, they took "early affinity branch that RECONVERGES at c11 … split c07/c08/c09/c11b into
+per-route versions". That means real scenes and real wiring, ~15 more of them. The format was
+adequate; the agent's account of it was wrong.
 
 ## The lint: what exists, and the one hole that matters
 
 `validate_inputs` builds the whole model and reports its diagnostics, blocking on error severity.
-Twenty-three codes, and they are the right ones — `dangling_goto`, `unreachable_scene`,
+The twenty-three codes it reports are the right ones: `dangling_goto`, `unreachable_scene`,
 `unknown_character`, `unknown_location`, `unknown_outfit`, `duplicate_line_id`, `dangling_line_id`,
 `duplicate_scene`, `unknown_start`, `entity_id_mismatch`, `ignored_scene_marker`, and the rest.
-Cross-file invariants are covered properly. Nothing needs building there.
+Cross-file invariants are covered properly. Validation needs no further work.
 
-**The hole is that an unrecognised marker is silently discarded.** `packages/model/src/scenes.ts`:
+The gap is that an unrecognised marker is silently discarded. packages/model/src/scenes.ts:
 
 ```ts
 case 'note': {
@@ -196,156 +197,160 @@ case 'note': {
   if (!marker || !current) break;   // :147
 ```
 
-`parseBranchMarker` returns `null` for anything outside the six kinds, and `null` means *drop it,
-say nothing*. So every one of these vanishes with no diagnostic, at any severity:
+`parseBranchMarker` returns `null` for anything outside the six kinds, and a `null` result is
+dropped without a diagnostic. Each of the markers below therefore vanishes, and no diagnostic is
+emitted at any severity:
 
-- `[[if: ember]]`, `[[route: ember]]`, `[[condition: affection > 3]]`, `[[var: flag=1]]` — the
-  invented conditionals, i.e. exactly what a model reaches for when the format runs out;
-- `[[jump: s13]]`, `[[goto_if: …]]` — plausible synonyms for markers that do exist;
-- `[[choice: "Tell the truth" => s13]]` — a real marker with `=>` for `->`. The choice does not
-  exist. Nothing says so. `story_graph` reports the scene as a dead end and cannot say why.
+- `[[if: ember]]`, `[[route: ember]]`, `[[condition: affection > 3]]`, `[[var: flag=1]]` —
+  invented conditionals, which a model produces when the format has no construct for what it needs;
+- `[[jump: s13]]`, `[[goto_if: …]]` — both are plausible synonyms for markers that do exist;
+- `[[choice: "Tell the truth" => s13]]` writes `=>` where the marker requires `->`. The choice
+  does not exist, and nothing reports the mistake. `story_graph` reports the scene as a dead end and
+  cannot give the cause.
 
-That last one is the sharpest, because it is a **typo class that produces a silent story-graph
-change**. The scene still parses, still validates, still commits.
+The last case is the sharpest, because it is a typo class that produces a silent story-graph change.
+The scene still parses, still validates, still commits.
 
-Note that the write path is already stricter than the read path: `branchpatch.ts:151` rejects
-anything that cannot survive `parseBranchMarker` before a byte is written, so `edit_branches`
-refuses a malformed goto. But `edit_scene`'s prose text is not scanned for markers at all, and
-`write_file` reaches every non-scene file. A marker that arrives by any route other than
-`edit_branches` is unchecked.
+The write path is already stricter than the read path: `branchpatch.ts:151` rejects anything that
+cannot survive `parseBranchMarker` before writing it, so `edit_branches` refuses a malformed goto.
+But `edit_scene` does not scan its prose text for markers, and `write_file` writes every non-scene
+file. Markers that arrive by a route other than `edit_branches` are unchecked.
 
-**So the lint to build is small and specific**: a diagnostic for every `[[…]]` note in a scene body
-that `parseBranchMarker` does not recognise, naming the file, the line and the six legal kinds.
-Not a new tool — a new code in the validator that already runs. The tool the ask describes is
-mostly there; it is missing the check the ask actually named.
+The lint to build is small and specific. It raises a diagnostic for every `[[…]]` note in a scene
+body that `parseBranchMarker` does not recognise, naming the file, the line and the six legal kinds.
+It is not a new tool but a new code in the validator that already runs. Most of the tool the request
+describes already exists; the missing piece is the check the request named.
 
-Two smaller checks belong with it, both cheap:
+Two smaller checks belong with it, and both are cheap:
 
-- **A second slugline or a second front-matter `scene:` in one chunk** — the failure the author
-  believed they were looking at. It did not happen here, but it is unguarded, and a diagnostic
-  costs one comparison.
-- **`(Something path)` as a narration opener** is not lintable and should not be attempted. Prose
-  is prose. That failure is prevented by §3's sentence in the prompt, not by a validator — worth
-  stating so nobody tries to pattern-match their way out of it.
+- **A second slugline or a second front-matter `scene:` in one chunk** — the author believed this
+  was the failure they were looking at. It did not happen here, but nothing guards against it, and a
+  diagnostic costs one comparison.
+- **`(Something path)` as a narration opener** cannot be linted, and no one should attempt it.
+  §3's sentence in the prompt prevents that failure, not a validator. This bullet states that so
+  that no one tries to pattern-match their way out of it.
 
 ## Running it: an instruction with nothing behind it
 
 The prompt says, under `HOW YOU WORK`:
 
-> Block a commit on error-severity validation; warn (do not block) on soft/style issues.
+Block a commit on error-severity validation. Warn on soft or style issues without blocking.
 
-`git_commit` does not validate. It checks `isRepo`, stages, commits. The rule is prompt discipline
-with no enforcement anywhere in the code, and the transcripts show what prompt discipline is worth:
-**14 of 20 commits** had a `validate_inputs` within the four preceding tool calls. Six did not.
-Across the whole corpus, 313 `edit_scene` calls produced 13 `validate_inputs` calls.
+`git_commit` does not validate. It checks `isRepo`, stages, commits. Nothing in the code enforces
+the rule, which lives only in the prompt, and the transcripts show how well prompt discipline held.
+In 14 of 20 commits, a `validate_inputs` call appeared within the four preceding tool calls. Six
+commits had none. Across the whole corpus, 313 `edit_scene` calls produced 13 `validate_inputs`
+calls.
 
-The ask — an instruction to run the lint after changing story files — is right, and it should go in
-the prompt next to the marker table rather than buried in `HOW YOU WORK` beside six other bullets.
-But an instruction is the weaker half. The stronger half is that `git_commit` should run the
-validation itself and refuse on error severity, which is what the prompt already claims happens.
-Then the instruction becomes a description of the tool's behaviour rather than a rule the model has
-to remember, and the ordinary path — edit, commit — is the validated path.
+Requesting a lint run after changes to story files is correct, and that instruction belongs in the
+prompt next to the marker table rather than in `HOW YOU WORK` alongside six other bullets. An
+instruction on its own is not enough. `git_commit` should also run the validation itself and refuse
+on error severity, which is what the prompt already claims happens. The instruction then describes
+the tool's behaviour rather than stating a rule the model has to remember, and the ordinary sequence
+of editing and then committing runs the validation.
 
-Worth pairing with a discoverability fix: `validate_inputs`, `parse_fountain` and `story_graph` are
-all deferred tools (`ALWAYS_LOADED` is six, and none of them is on it), and the prompt names none
-of the three. `story_graph` — the tool that answers "is everything wired together", which is
-**literally what the author asked for** in thread `20260819-024948` — was called twice in fourteen
-sessions.
+This is worth pairing with a discoverability fix. `validate_inputs`, `parse_fountain` and
+`story_graph` are all deferred tools (`ALWAYS_LOADED` has six entries, and none of the three is
+among them), and the prompt names none of the three. `story_graph` answers the question "is
+everything wired together", which is what the author asked for in thread `20260819-024948`, and it
+was called twice in fourteen sessions.
 
 ## Six more things the transcripts show
 
-**1. `approve_assets` is denied, in four separate sessions.** The most repeated frustration in the
-corpus, and the clearest context-system defect in it. The author asked to approve artwork on 18 and
-19 August; the agent refused each time, confidently and with reasoning drawn straight from its
+**1. `approve_assets` is denied, in four separate sessions.** This is the most repeated frustration
+in the corpus and the clearest context-system defect in it. The author asked to approve artwork on
+18 and 19 August; the agent refused each time, with confident reasoning drawn straight from its
 prompt:
 
-> Approving the generated location background images is an **image-pipeline** step: I only author
-> the _input_ source files … so I can't render, review, or bless those image assets.
+Approving the generated location background images belongs to the image pipeline. I author only the
+input source files, so I cannot render, review, or approve those image assets.
 
-The tool exists. Its description is careful and complete. It is deferred, it is named nowhere in
-`SYSTEM_PROMPT`, and the prompt's **first paragraph** actively teaches against it — *"you never run
-the image-generation pipeline"* — as does the `LOCATION front-matter` field list, which the agent
-twice cited as proof that locations have no approval state. It took the author saying *"You're
-wrong — there IS a way"*, then *"actually you can, you have a special tool for that"*, then finally
-*"use the approve_assets tool"* by name. It worked perfectly on the first call. Deferred-tool
-discovery does not work when the prompt argues the other way: the model does not search for a
+The tool exists and its description is careful and complete. It is deferred, it is named nowhere in
+`SYSTEM_PROMPT`, and the prompt's first paragraph teaches against it — "you never run the
+image-generation pipeline" — as does the `LOCATION front-matter` field list, which the agent twice
+cited as proof that locations have no approval state. The model reached the tool only after the
+author said "You're wrong — there IS a way", then "actually you can, you have a special tool for
+that", then "use the approve_assets tool" by name. It then worked on the first call. Deferred-tool
+discovery fails when the prompt argues the other way, because the model does not search for a
 capability it has been told it lacks.
 
 **2. Wiki paths are guessed, and the guesses are wrong.** Five of six `read_file` failures were
 invented bible paths — `treatment/treatment-ember.md` four times in a row (the file is under
 `wiki/`), and `breakdown.md` (it is `wiki/breakdown_md.md`). The prompt forbids walking the wiki
-with `read_file` and offers `search_bible`, which returns passages, not a file list. There is no
-door that answers "what is in `wiki/treatment/`". This is independent corroboration of
+with `read_file` and offers `search_bible`, which returns passages, not a file list. No tool answers
+"what is in `wiki/treatment/`". The transcripts corroborate
 [`navigating-the-story-bible.md`](navigating-the-story-bible.md) from the failure side: the gap that
-report predicts is visible in the transcripts as repeated four-call path guessing.
+report predicts shows up as repeated four-call path guessing.
 
-**3. A line id was invented as an anchor.** `edit_scene op=insertLines … after: "c01_arrival:L1"`
-→ _Scene "c01_arrival" has no line "c01_arrival:L1"_. Line ids are allocated, never chosen, and the
-agent had not read the scene. The refusal is correct and its message is good. What is missing is
-anywhere in the prompt saying ids are allocated — which is the same §2 gap, since `[[line:]]` is
-the marker that would have said so.
+**3. A line id was invented as an anchor.** `edit_scene op=insertLines … after: "c01_arrival:L1"` →
+_Scene "c01_arrival" has no line "c01_arrival:L1"_. Line ids are allocated, never chosen, and the
+agent had not read the scene. The refusal is correct and its message is good. The prompt never says
+that ids are allocated, which is the same §2 gap, since `[[line:]]` is the marker that would have
+said so.
 
 **4. There is no batch delete.** `deleteLine` was called **159 times** against 11 `insertLines`
-calls. `edit_scene` has twelve ops; `insertLines` is the only plural one. Rewriting a scene body is
-therefore one call per line removed plus one to insert, and rewriting scene bodies is most of what
-this job is. The prompt tells the model to work at scale and spend its budget carefully, and then
-hands it an API where the common operation is O(lines) round trips. A `deleteLines` taking a list,
-or a `replaceLines`, would collapse the largest single category of call in the corpus.
+calls. `edit_scene` has twelve ops, and `insertLines` is the only plural one. Rewriting a scene body
+therefore costs one call per line removed plus one to insert, and rewriting scene bodies is most of
+what this job is. The prompt tells the model to work at scale and spend its budget carefully, and
+then hands it an API where the common operation is O(lines) round trips. A `deleteLines` taking a
+list, or a `replaceLines`, would collapse the largest single category of call in the corpus.
 
-**5. `writeFileAtomic` leaves orphans.** `examples/test4/scenes/wr_truth.md.tmp-b124425f`, 97
-bytes, timestamped 09:30 on 18 August — the minute thread `20260818-084637` ended. `fs.ts:14-27`
-writes a temp sibling then renames, with no `try`/`finally`: a crash between the two leaves the
-temp in place forever. It sits **in `scenes/`**, the directory whose contents are the story. It
-does not end in `.md` so the scene reader ignores it, but it is committed noise in the one
-directory that should hold nothing but scenes, and the fix is an `unlink` in a `finally`.
+**5. `writeFileAtomic` leaves orphans.** `examples/test4/scenes/wr_truth.md.tmp-b124425f` is 97
+bytes and timestamped 09:30 on 18 August, the minute thread `20260818-084637` ended. `fs.ts:14-27`
+writes a temp sibling then renames, with no `try`/`finally`, so a crash between the two leaves the
+temp in place forever. The file sits in `scenes/`, the directory that holds the story. It does not
+end in `.md`, so the scene reader ignores it, but it is committed noise in the one directory that
+should hold nothing but scenes. Add an `unlink` in a `finally` to remove it.
 
-**6. The generated map was doing its job here, and is worth not breaking.** Unlike the four threads
-the earlier review read, these ones have an `AICONTEXT.generated.md`, and the difference shows: no
-thread after 17 August re-derives the cast from scratch. Related, and a genuine success worth
-naming — `update_context` was used to record the roster, and the "categories the author names" rule
-held: the eleven characters carry their category in `traits`. That machinery works. Whatever
-changes to the map [`navigating-the-story-bible.md`](navigating-the-story-bible.md) proposes should
-not cost this.
+**6. The generated map worked here, and is worth keeping.** Unlike the four threads the earlier
+review read, these ones have an `AICONTEXT.generated.md`. No thread after 17 August re-derives the
+cast from scratch. A related success is that `update_context` recorded the roster, and the
+"categories the author names" rule held: the eleven characters carry their category in `traits`.
+That machinery works. Whatever changes to the map
+[`navigating-the-story-bible.md`](navigating-the-story-bible.md) proposes should not break that
+machinery.
 
 ## What I would not do
 
-- **Do not add conditionals to the format** on the strength of this. The author, offered the
-  choice, picked real scenes and reconvergence — the structural answer, not the conditional one.
-  Route coloring is evidence that the boundary was never stated, not evidence that the boundary is
-  wrong.
-- **Do not lint prose.** A validator that guesses at `(Ember path)` will misfire on parentheticals,
-  stage directions and the author's own voice. The prompt is the right instrument.
-- **Do not build a second lint tool.** `validate_inputs` is the lint; it needs one diagnostic code
-  and a caller that cannot be skipped.
-- **Do not paste `docs/fountain.md` into the prompt.** It is 490 lines and mostly an introduction to
-  Fountain for humans. What belongs in the prompt is the six-row marker table, the closed-world
-  sentence, and a pointer — and the pointer needs somewhere the agent can actually read, which is a
-  question this report leaves open.
+- **Do not add conditionals to the format** on the strength of this. When offered the choice, the
+  author picked real scenes and reconvergence, which is the structural answer rather than the
+  conditional one. Route coloring is evidence that the boundary was never stated, not evidence that
+  the boundary is wrong.
+- **Do not lint prose.** A validator that guesses at `(Ember path)` misfires on parentheticals,
+  stage directions and the author's own voice. Use the prompt instead.
+- **Do not build a second lint tool.** `validate_inputs` already does the linting. It needs one
+  diagnostic code and a caller that cannot be skipped.
+- **Do not paste `docs/fountain.md` into the prompt.** It is 490 lines and mostly an introduction
+  to Fountain for humans. The prompt needs the six-row marker table, the closed-world sentence, and
+  a pointer. The pointer must name a location the agent can read, and this report leaves that
+  question open.
 
 ## Open questions
 
-- **Where do the format rules live?** Three candidates, and they are not equivalent. In
-  `SYSTEM_PROMPT` they are always present and cost every turn's cache. As a bundled skill under
-  `.aiagent/skills/` they are on-demand and discoverable, but a skill is guidance a project can
-  delete, and this is not optional knowledge. As a generated section of `AICONTEXT.generated.md`
-  they are per-project and overwritable, which is wrong for a fact about the format itself. My
-  instinct is the prompt for the table and the closed-world sentence — six rows is cheap — with
-  depth in a skill.
+- **Where do the format rules live?** There are three candidates, and they are not equivalent. In
+  `SYSTEM_PROMPT` the rules are always present and cost every turn's cache. As a bundled skill under
+  `.aiagent/skills/` they are on-demand and discoverable, but a project can delete a skill, and this
+  knowledge is not optional. As a generated section of `AICONTEXT.generated.md` they are per-project
+  and overwritable, which is wrong for a fact about the format itself. I favor putting the table and
+  the closed-world sentence in the prompt, since six rows is cheap, and keeping the depth in a
+  skill.
 - **Should the marker table be generated from `BranchMarker`?** The failure here was documentation
-  drifting behind code, and there is a real seam: the union is exhaustive and a test could assert
-  every kind appears in the prompt. That is cheap and would have caught this. Whether the prose
-  beside each row can be generated too, or only checked for presence, is the actual question.
+  drifting behind code, and the code offers a place to attach a check: the union is exhaustive, so a
+  test could assert that every kind appears in the prompt. Such a test is cheap and would have
+  caught this drift. The actual question is whether the prose beside each row can be generated too
+  (or only checked for presence).
 - **Should `git_commit` validate, or should the loop?** Validating inside `git_commit` catches the
   common path but not an agent that edits and stops. A post-mutation check in the loop catches
-  everything and spends a model build after every write. There may be a cheap middle — validate on
-  the first `git_commit` after any `scenes/**` write, which is where the transcripts show the misses.
+  everything and spends a model build after every write. A cheaper option is to validate on the
+  first `git_commit` after any `scenes/**` write, which is where the transcripts show the misses.
 - **Does the closed-world sentence belong to `[[choice:]]` or to the whole format?** Conditionals
-  are the case that bit here, but the same extrapolation is available for character fields, outfit
-  rungs and shot framing. A single "the format has no X" sentence per section is more text than one
-  general rule and much harder to ignore; which is worth it is a judgement about how much of this
-  prompt a model reads closely.
+  are the case that prompted the question, but a model can extrapolate the same way for character
+  fields, outfit rungs and shot framing. One "the format has no X" sentence per section is more text
+  than a single general rule and much harder to ignore. Choosing between the two is a judgement
+  about how much of this prompt a model reads closely.
 - **How many of these are Gemini-specific?** Every thread is `gemini-2.5-flash`. The invented
-  notation, the confident denial of a tool it holds, and the four-times-repeated wrong path all
-  have the flavour of a fast model under-reading its context — but the prompt defects behind them
-  are real for any model, and a stronger one would only fail later and less visibly. Worth one
-  thread of the same work on a larger model before concluding anything about which is which.
+  notation, the confident denial of a tool it holds, and the four-times-repeated wrong path are all
+  consistent with a fast model under-reading its context. The prompt defects behind them are real
+  for any model, and a stronger model would only fail later and less visibly. Run one thread of the
+  same work on a larger model before concluding which defects are Gemini-specific and which hold for
+  any model.

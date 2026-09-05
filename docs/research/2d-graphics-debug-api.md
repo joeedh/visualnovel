@@ -34,22 +34,20 @@
 
 <!-- tocstop -->
 
-_Status: exploratory design, **partly shipped**. The first slice of §14 — the fragment/frame
-IR, the DOM adapter, the space registry, the query engine and `explainPick` — is implemented as
-`@vn/debug2d` ([`../plans/archive/INDEX.md#2d-graphics-debug-api`](../plans/archive/INDEX.md#2d-graphics-debug-api)); see
-[`../guides/debugGuide.md`](../guides/debugGuide.md) for how to use it. The canvas/SVG adapters, composite
-frames, time travel, `explainTransform`/`whyInvalidated`, and the node-editor domain layer (§10)
-remain design only._
+Status: exploratory design, partly shipped. The first slice of §14 — the fragment/frame IR, the DOM adapter, the space
+registry, the query engine and `explainPick` — is implemented as `@vn/debug2d`
+([`../plans/archive/INDEX.md#2d-graphics-debug-api`](../plans/archive/INDEX.md#2d-graphics-debug-api)); see
+[`../guides/debugGuide.md`](../guides/debugGuide.md) for how to use it. The canvas/SVG adapters, composite frames, time
+travel, `explainTransform`/`whyInvalidated`, and the node-editor domain layer (§10) remain design only._
 
-A debugging layer for complex 2D UIs — the desktop app's rooms today, a node-based story
-editor later. The premise is that the hard part of UI debugging is not drawing overlays; it
-is **answering questions about what was drawn, by whom, in what order, and when it changed**.
-So this is designed as a query engine over a recorded frame log, with visual overlays as one
-of several views onto a query result.
+This is a debugging layer for complex 2D UIs. It covers the desktop app's rooms today and a node-based story editor
+later. The premise is that the hard part of UI debugging is not drawing overlays. The hard part is answering questions
+about what was drawn, by whom, in what order, and when it changed. So the layer is built as a query engine over a
+recorded frame log, and visual overlays are one of several views onto a query result.
 
-The second premise: the UI is a mix of DOM/React chrome and our own canvas rendering, and the
-worst bugs live exactly at that boundary. So the system must be **agnostic to who drew a
-thing**. A neutral intermediate representation sits between capture and query:
+The second premise is that the UI mixes DOM/React chrome with our own canvas rendering, and the worst bugs occur at that
+boundary. The system must therefore treat both sources alike, without depending on which one drew a given element. A
+neutral intermediate representation sits between capture and query:
 
 ```
 CanvasRecorder ┐
@@ -58,21 +56,19 @@ SvgSampler     │                                                              
 SceneGraph     ┘
 ```
 
-Everything above the IR — queries, time travel, `explain()`, invariants — is written once and
-never learns which source it is looking at.
+Queries, time travel, `explain()` and invariants all sit above the IR. Each is written once, and none of them depends on
+which source the data came from.
 
-The third premise, which shapes more of the design than it first appears: **the question you
-arrive with is almost never "what is at this point."** It is "why did my click miss," "why is
-this on top," "why did this move," "why did this re-render." Spatial queries are the substrate;
-the causal `explain()` family in §6 is the product.
+The third premise shapes more of the design than it first appears. The question you arrive with is almost never "what is
+at this point." It is "why did my click miss," "why is this on top," "why did this move," "why did this re-render."
+Spatial queries underlie the causal `explain()` family in §6, and that family is what the design delivers.
 
 ## 1. The IR
 
 ### Fragment
 
-The unit of the IR is a **visual fragment**: one contiguous mark on screen with attribution.
-A canvas `fillRect` is one fragment; so is a DOM element's background box; so is each line box
-of a wrapped inline `<span>`.
+The unit of the IR is a visual fragment, which is one contiguous mark on screen with attribution. A canvas `fillRect` is
+one fragment. A DOM element's background box is one fragment. Each line box of a wrapped inline `<span>` is one fragment.
 
 ```ts
 type FragId = string; // unique within a frame, e.g. 'canvas:218', 'dom:t9'
@@ -122,20 +118,18 @@ type OwnerRef = {
 type ClipRef = { rect: Rect; by: FragId };  // *which* ancestor clipped, not just the rect
 ```
 
-`raw` is deliberate. The IR should be *sufficient* for querying, not lossless; when you need
-the actual `HTMLElement` or the original draw op, take the typed escape hatch rather than
-growing the IR.
+`raw` is deliberate. The IR should be sufficient for querying, not lossless. When you need the actual `HTMLElement` or
+the original draw op, take the typed escape hatch instead of growing the IR.
 
-`ClipRef` carries `by` because "this is clipped away" is a much weaker answer than "this is
-clipped away **by `.rail`**". Every field the IR can attribute, it should.
+`ClipRef` carries `by` because "this is clipped away" is a much weaker answer than "this is clipped away by `.rail`". The
+IR should attribute every field it can.
 
 ### Paint is not pick
 
-A fragment models a mark on screen, but the most common bug is about *interaction*, and paint
-order and hit-test order are not the same relation. `pointer-events`, hit slop, `opacity: 0`
-(invisible but still clickable — a genuine and frequent bug), and SVG's `pointer-events`
-variants all pull the two apart. So hit-testability is a first-class part of the IR, not an
-inference from `style`:
+A fragment models a mark on screen, but the most common bug concerns interaction, and paint order and hit-test order are
+not the same relation. `pointer-events`, hit slop, `opacity: 0` (invisible but still clickable, a genuine and frequent
+bug), and SVG's `pointer-events` variants all pull the two apart. Hit-testability is therefore a first-class part of the
+IR rather than an inference from `style`:
 
 ```ts
 type PickSnapshot = {
@@ -145,9 +139,9 @@ type PickSnapshot = {
 };
 ```
 
-When `pick.shape` is present it is the authority for `dbg.at()`; `shape` remains the authority
-for what you see. Keeping both lets `mismatch()` (§5) diff them, which is the single highest-
-value invariant in a node editor: *the thing you click is not the thing you see.*
+When `pick.shape` is present it is the authority for `dbg.at()`, and `shape` remains the authority for what is drawn.
+Keeping both lets `mismatch()` (§5) diff them, which catches the highest-value invariant in a node editor: the shape that
+receives the click differs from the shape that is drawn.
 
 ### Frame
 
@@ -165,15 +159,14 @@ type Frame = {
 };
 ```
 
-`fidelity` is load-bearing. A canvas frame is *recorded* — the fragments are exactly what was
-drawn. A DOM frame is *sampled* — it is a snapshot of retained state at a moment, and anything
-that changed and changed back between samples is invisible. Never let a consumer forget which
-one they are holding.
+`fidelity` marks which of two kinds of frame a consumer holds. A canvas frame is recorded: its fragments are exactly what
+was drawn. A DOM frame is sampled: it is a snapshot of retained state at one moment, so a change that was made and undone
+between two samples is not captured. A consumer must check `fidelity` before reading a frame.
 
 ### Spaces
 
-Every rect carries the space it is expressed in, and conversion is explicit and automatic —
-never implicit. Silent coordinate-space confusion otherwise eats days.
+Every rect records the space it is expressed in, and conversion is explicit and automatic rather than implicit. Without
+that, coordinate-space confusion goes unnoticed and costs days.
 
 ```ts
 type SpaceId = 'device' | 'css' | `world:${string}`;
@@ -187,13 +180,11 @@ interface SpaceRegistry {
 type TransformStep = { label: string; matrix: Mat3; by?: FragId };
 ```
 
-`device` is the common root; every source registers its transform chain into it. The node
-editor registers `world:graph` from its pan/zoom matrix, so `dbg.inAABB(r, {space:'world:graph'})`
-is expressible directly in graph coordinates.
+`device` is the common root; every source registers its transform chain into it. The node editor registers `world:graph`
+from its pan/zoom matrix, so you can call `dbg.inAABB(r, {space:'world:graph'})` with `r` in graph coordinates.
 
-`chain()` exists so the registry can *narrate* a conversion, not merely perform it — see
-`explainTransform` in §6. The classic double-applied DPI scale is invisible in a composed
-matrix and obvious in a labeled chain.
+`chain()` exists so the registry can describe a conversion as well as perform it (see `explainTransform` in §6). The
+classic double-applied DPI scale is invisible in a composed matrix and obvious in a labeled chain.
 
 ## 2. The capture seam
 
@@ -207,14 +198,13 @@ interface FrameSource {
 }
 ```
 
-Push vs. pull is the first real asymmetry between backends. Canvas is push: fragments fall out
-of drawing for free, every frame. DOM is pull: nothing is emitted, you walk the tree and read
-boxes. The source owns its capture strategy; the recorder only asks for "the frame at time t."
+Push and pull capture is the first real asymmetry between backends. Canvas capture is push-based: drawing emits fragments
+every frame at no extra cost. DOM capture is pull-based: nothing is emitted, so the capture walks the tree and reads
+boxes. Each source implements its own capture strategy, and the recorder requests only the frame at time t.
 
 ### Capabilities, not lowest-common-denominator
 
-The abstraction stays honest by declaring what each source can actually do, rather than
-degrading the IR to what the weakest backend supports.
+Each source declares what it can do, and the IR is not degraded to what the weakest backend supports.
 
 ```ts
 type SourceCaps = {
@@ -228,61 +218,57 @@ type SourceCaps = {
 };
 ```
 
-A query the source cannot answer returns `{ unsupported: [SourceId] }` — it does not return
-zeros. Silently-wrong debug tooling is worse than none.
+If the source cannot answer a query, it returns `{ unsupported: [SourceId] }` rather than zeros. Debug tooling that
+reports wrong numbers without saying so is worse than debug tooling that reports nothing.
 
 ## 3. Adapters
 
 ### Canvas / scene graph
 
-Highest fidelity, cheapest. Proxy the 2D context so every real draw call is recorded with
-attribution; `z` is the emission index. Attribution comes from an explicit scope wrapper
-around widget draw code:
+This approach has the highest fidelity and the lowest cost. Proxy the 2D context so that every real draw call is recorded
+with attribution. The emission index supplies `z`. Attribution comes from an explicit scope wrapper around widget draw
+code:
 
 ```ts
 dbg.scope('node:b1/port-in', ['port'], () => { ctx.fillRect(…); });
 ```
 
-Because it wraps *real* drawing, there is no parallel debug-draw system to keep in sync — the
-single most common failure mode of hand-rolled debug layers.
+It wraps the real drawing, so there is no parallel debug-draw system to keep in sync. Keeping such a system in sync is
+the single most common failure mode of hand-rolled debug layers.
 
-The same rule should hold on the pick side, where — unlike the DOM — we control the hit tester:
-**the canvas adapter's pick fragments must come from the editor's real spatial index**, not
-from a second traversal written for the debugger. Otherwise `mismatch()` reports a permanent
-background hum of adapter drift instead of real bugs, and gets ignored. Concretely: the index
-emits `pick.shape`/`pick.slop` as it is populated, the same way `dbg.scope` emits draw geometry.
+The same rule should hold on the pick side, where we control the hit tester (unlike the DOM). The canvas adapter's pick
+fragments must come from the editor's real spatial index, not from a second traversal written for the debugger. Otherwise
+`mismatch()` reports constant adapter drift instead of real bugs, and gets ignored. The index emits
+`pick.shape`/`pick.slop` as it is populated, the same way `dbg.scope` emits draw geometry.
 
 ### DOM
 
-The hard adapter, and the one that earns the most.
+This is the hard adapter, and it earns the most.
 
-- **Geometry** — `getBoundingClientRect()`, plus `getClientRects()` for inline elements that
-  fragment across line boxes. One element legitimately becomes several fragments, which is why
-  `Shape` includes `rects[]`.
-- **Z** — paint order is **not** `z-index`. Walk stacking contexts (established by `z-index` on
-  positioned elements, `opacity < 1`, `transform`, `filter`, `will-change`, `isolation`,
-  `contain`, `backdrop-filter`), then apply CSS 2.1 painting order within each: backgrounds →
-  negative z → block-level → floats → inline → `z:0`/`auto` → positive z. Implement it once,
-  honestly, and set `exactZ: false`. Roughly 150 lines, and the single most valuable thing this
-  adapter does — nobody can answer "what paints on top here" by inspection.
+- **Geometry** — Comes from `getBoundingClientRect()`, plus `getClientRects()` for inline elements that fragment across
+  line boxes. One element becomes several fragments, which is why `Shape` includes `rects[]`.
+- **Z** — paint order is not `z-index`. Walk stacking contexts (established by `z-index` on positioned elements,
+  `opacity < 1`, `transform`, `filter`, `will-change`, `isolation`, `contain`, `backdrop-filter`), then apply CSS 2.1
+  painting order within each: backgrounds → negative z → block-level → floats → inline → `z:0`/`auto` → positive z.
+  Implement it once and set `exactZ: false`. This takes roughly 150 lines and is the most valuable thing this adapter
+  does, because a reader cannot determine what paints on top by inspecting the source.
 
-  Crucially, **retain the culprit**: when the walk finds an element whose `z-index` was scoped
-  by an ancestor that established a context, record that ancestor. That fact is what §6 prints,
-  and it is free here and unrecoverable later.
-- **Pick + oracle** — `pick.mode` from computed `pointer-events`. Then cross-check the computed
-  stack against `document.elementsFromPoint()`, which is the browser's *actual* hit order,
-  obtained for free. Set `hitOracle: true`. A disagreement between the two is always
-  interesting: it is either a bug in our 150 lines of stacking-order code or a genuine UI bug,
-  and `explainPick` should say which it cannot distinguish rather than pick a side silently.
-- **Attribution** — a pluggable resolver chain: `data-dbg-id` attribute → React fiber
-  (`_debugOwner` / `elementType` name, and `_debugSource` for `file:line` when the JSX source
-  transform is on, as it is in Vite dev) → tag + class path. The fiber walk is a dev-only,
-  React-version-fragile *fallback*, never the primary path; apps should be able to override the
-  chain outright, and it must degrade to `unknown` rather than throw.
-- **Commits** — subscribe to React commits via `<Profiler onRender>` wrapping each room, and
-  attach a `CommitRecord[]` to the frame. This is what makes `whyInvalidated` (§6) possible, and
-  it is the difference between `diff` telling you *that* 400 nodes moved and telling you *which
-  prop change* moved them:
+  The walk must record the ancestor. When it finds an element whose `z-index` was scoped by an ancestor that established
+  a context, record that ancestor. §6 prints that ancestor, and recording it during the walk costs nothing, while a later
+  pass cannot recover it.
+- **Pick + oracle** — `pick.mode` comes from the computed `pointer-events`. The computed stack is then cross-checked
+  against `document.elementsFromPoint()`, which reports the browser's real hit order and is obtained at no cost. Set
+  `hitOracle: true`. A disagreement between the two is always worth investigating: it indicates either a bug in our 150
+  lines of stacking-order code or a genuine UI bug, and `explainPick` reports that it cannot tell the two apart rather
+  than choosing one silently.
+- **Attribution** — resolvers form a pluggable chain: the `data-dbg-id` attribute, then the React fiber (`_debugOwner`
+  / `elementType` name, plus `_debugSource` for `file:line` when the JSX source transform is on, as it is in Vite dev),
+  then the tag + class path. The fiber walk is a dev-only fallback that is fragile across React versions, and it is never
+  the primary path. Apps should be able to override the chain outright, and attribution must degrade to `unknown` rather
+  than throw.
+- **Commits** — subscribe to React commits via `<Profiler onRender>` wrapping each room, and attach a `CommitRecord[]`
+  to the frame. The commit records make `whyInvalidated` (§6) possible, and they let `diff` report which prop change
+  moved 400 nodes rather than only that the nodes moved:
 
   ```ts
   type CommitRecord = {
@@ -293,26 +279,25 @@ The hard adapter, and the one that earns the most.
   };
   ```
 
-  `changed` should distinguish *identity changed, value equal* — the new-array-same-contents
-  re-render is the most common React performance bug and is invisible to a value diff.
-- **Cost** — batch all geometry reads in a single pass and never interleave them with writes
-  (each interleave forces layout). Do not sample every frame: coalesce a `MutationObserver` into
-  a rAF, and prefer aligning samples to React commits over bare rAF where both are available.
-  Store DOM frames as diffs against the previous one, or the ring buffer becomes enormous.
-- **Self-exclusion** — the adapter must skip its own overlay subtree (`[data-dbg-overlay]`) and
-  any element it injected. A debugger that captures its own highlight rectangles produces
-  results that change when you look at them.
+  `changed` should distinguish the case where identity changed but the value is equal. A re-render caused by a new array
+  with the same contents is the most common React performance bug, and a value diff does not detect it.
+- **Cost** — batch all geometry reads in a single pass and never interleave them with writes (each interleave forces
+  layout). Do not sample every frame. Coalesce a `MutationObserver` into a rAF, and prefer aligning samples to React
+  commits over bare rAF where both are available. Store DOM frames as diffs against the previous one, or the ring buffer
+  becomes enormous.
+- **Self-exclusion** — the adapter must skip its own overlay subtree (`[data-dbg-overlay]`) and any element it
+  injected. Capturing its own highlight rectangles would make the results depend on whether the debugger is running.
 
 ### SVG
 
-Sits between the two: real paths (`caps.paths: true`), DOM-ish z (document order plus
-`paint-order`), moderate cost. Mostly a variant of the DOM adapter, with the extra wrinkle that
-SVG `pointer-events` has its own vocabulary (`visiblePainted`, `boundingBox`, …) that maps onto
-`PickSnapshot.mode` rather than onto CSS's two values.
+This adapter falls between the two. It reports real paths (`caps.paths: true`), takes z-order the way the DOM does
+(document order plus `paint-order`), and carries a moderate cost. It is mostly a variant of the DOM adapter, except that
+SVG `pointer-events` has its own vocabulary (`visiblePainted`, `boundingBox`, …), which maps onto `PickSnapshot.mode`
+rather than onto CSS's two values.
 
 ## 4. Composite frames
 
-A multiplexing recorder is what makes the DOM/canvas boundary debuggable:
+A multiplexing recorder makes the DOM/canvas boundary debuggable:
 
 ```ts
 const dbg = createDebugger({
@@ -326,22 +311,21 @@ const dbg = createDebugger({
 });
 ```
 
-Two mechanisms make it work:
+Two mechanisms are involved:
 
-1. **Splicing.** The canvas element is one DOM fragment at some z. Its canvas-source fragments
-   splice into the global order at that slot — so one `dbg.at(x, y)` walks from the DOM tooltip,
-   down through canvas contents, out to the page background, as a single z-ordered stack.
+1. 1. **Splicing.** The canvas element is one DOM fragment at some z. Its canvas-source fragments splice into the global
+   order at that slot, so a single `dbg.at(x, y)` call reports the DOM tooltip, the canvas contents beneath it, and the
+   page background beneath those, as one z-ordered stack.
 2. **Space registry.** All sources register transforms into `device`, so a query in any space
    resolves against fragments from every source.
 
-Splicing is also where the highest-value cross-boundary answer comes from: *"is my click being
-eaten by a transparent DOM overlay, or is my canvas hit-test wrong?"* — a question that no
-single-source tool can even represent.
+Splicing also answers the highest-value cross-boundary question. Is a click being intercepted by a transparent DOM
+overlay, or is the canvas hit-test wrong? No single-source tool can represent that question.
 
 ## 5. Query vocabulary
 
-Chainable and lazy, jQuery-style — the design constraint is that it must be pleasant to type
-into a console at 2am.
+The design constraint is that it must be pleasant to type into a console at 2am, so it is chainable and lazy in the style
+of jQuery.
 
 ### Spatial
 
@@ -355,9 +339,8 @@ dbg.nearest(pt, { k, maxDist, filter }) // the snapping / magnetism debugger
 dbg.overlapping(other?, { minArea })    // within a set, or between two sets
 ```
 
-`using: 'paint' | 'pick'` (default `'pick'` for `at`, `'paint'` elsewhere) selects which
-geometry the query tests against. Defaulting `at` to pick geometry means the console answer
-matches what a click would do, which is what you meant.
+`using: 'paint' | 'pick'` (default `'pick'` for `at`, `'paint'` elsewhere) selects which geometry the query tests
+against. Because `at` defaults to pick geometry, the console answer matches what a click would do.
 
 ### Structural / semantic
 
@@ -382,24 +365,23 @@ dbg.overdraw(rect)   // per-pixel coverage heatmap + top offenders (canvas only)
 dbg.mismatch(a, b, { tolerance })   // set-vs-set geometry diff
 ```
 
-`mismatch` deserves special mention: run the visual geometry and the hit-test geometry as two
-tagged fragment streams over the same engine, and diff them. In every node editor, the top bug
-class is "the thing you click is not the thing you see," and it is invisible until both are
-drawn.
+`mismatch` runs the visual geometry and the hit-test geometry as two tagged fragment streams over the same engine and
+diffs them. In every node editor, the most common bug class is that the region you click is not the region you see, and
+that bug stays invisible until both geometries are drawn.
 
-**Result ordering is part of the contract.** Every query returns a deterministically sorted set
-(z descending, then `FragId`), because these results are going into golden tests (§8) and a set
-that reorders between runs is a set nobody will assert on.
+Result ordering is part of the contract. Every query returns a deterministically sorted set (z descending, then
+`FragId`), because these results go into golden tests (§8), and a golden test cannot assert on results that reorder
+between runs.
 
 ## 6. Explaining — the causal layer
 
-Everything above answers *what*. This answers *why*, and it is the reason to build the rest.
-Each of these is derivable from data the adapters already compute; the only design work is
-refusing to throw it away.
+The sections above answer what the system does. This section answers why, and these reasons motivate building the rest.
+Each item below is derivable from data the adapters already compute, so the only design work is keeping that data rather
+than discarding it.
 
 ### `explainPick(x, y)` — an ordered rejection log
 
-Not an inventory of what is under the point: a ranked account of why each candidate **lost**.
+This is a ranked account of why each candidate lost, not an inventory of what is under the point.
 
 ```
 explainPick(412, 308) css → winner + 6 rejections
@@ -415,12 +397,11 @@ explainPick(412, 308) css → winner + 6 rejections
     may be wrong here, or the DOM adapter is stale relative to this frame.
 ```
 
-The stacking-context line is the flagship output. It is mechanically derivable from the walk in
-§3, it is the single most-lost hour in CSS debugging, and no existing tool prints it.
+The stacking-context line is the primary output. It follows mechanically from the walk in §3, it is where CSS debugging
+loses the most time, and no existing tool prints it.
 
-The `⚠` line matters as much: where the computed order and the browser oracle disagree, say so
-rather than choosing. An honest "I don't know which of us is wrong" is actionable; a confident
-wrong answer is not.
+The `⚠` line matters as much. Where the computed order and the browser oracle disagree, report the disagreement rather
+than choosing between them. A reported disagreement is actionable; a confident wrong answer is not.
 
 ### The rest of the family
 
@@ -444,8 +425,8 @@ explainTransform(node:b1)  world:graph → device
   cumulative                              scale 6.0   translate 480,160
 ```
 
-`whyInvalidated` is the one I would want most in a node editor, and it is why `CommitRecord`
-is in the IR rather than in the open-questions list:
+`whyInvalidated` is the one I would want most in a node editor, and that need is why `CommitRecord` sits in the IR rather
+than in the open-questions list:
 
 ```
 whyInvalidated(node:b1)  frame 812
@@ -455,8 +436,8 @@ whyInvalidated(node:b1)  frame 812
   → 400 owners re-rendered; 398 had unchanged bounds and style
 ```
 
-That last line — *how much of the commit was wasted* — is a query result, not a new mechanism:
-it is `diff(prev, cur)` filtered by the commit's owner subtree.
+The last line reports how much of the commit was wasted. That figure comes from an existing query rather than a new
+mechanism. It is `diff(prev, cur)` filtered by the commit's owner subtree.
 
 ## 7. Time
 
@@ -469,20 +450,20 @@ dbg.when(pred)                 // first frame where a predicate became true
 dbg.pin()                      // freeze the ring buffer
 ```
 
-`dbg.when(f => f.byTag('wire').overlapping().length > 0)` — "find the frame the wires started
-crossing" — is the highest-value query here and the one no existing tool offers. Pair it with
-**auto-pin**: a ring buffer that freezes itself the moment a registered invariant trips, so the
-evidence survives past the symptom. Retroactive capture is what makes a ring buffer worth
-paying for; without it you are always one repro away from the frame you needed.
+`dbg.when(f => f.byTag('wire').overlapping().length > 0)` finds the frame where the wires started crossing. It is the
+highest-value query here and the one no existing tool offers. Pair it with auto-pin, a ring buffer that freezes itself
+the moment a registered invariant trips, so the frames leading up to the symptom are still available afterwards. A ring
+buffer is only worth its cost with retroactive capture; without it, you must reproduce the bug again to reach the frame
+you needed.
 
-Caveat: over sampled (DOM) history, `when` has sampling gaps by construction. `frame.fidelity`
-is how a consumer knows.
+Over sampled (DOM) history, `when` has sampling gaps by construction. A consumer checks `frame.fidelity` to learn whether
+the history is sampled.
 
 ## 8. Invariants
 
-Once queries exist, assertions are nearly free — and they convert one-off debugging into
-permanent regression tests. Because the query layer is pure over a plain `Frame`, the *same*
-predicate runs live in dev and headless in tests against a synthetic frame.
+Once queries exist, assertions cost little to add, and they convert one-off debugging into permanent regression tests.
+The query layer is pure over a plain `Frame`, so the same predicate runs live in dev and headless in tests against a
+synthetic frame.
 
 ```ts
 dbg.invariant('ports-inside-node', f =>
@@ -503,21 +484,20 @@ dbg.invariant('port-hitboxes-match-visual', f =>
 dbg.invariant('nothing-invisible-is-clickable', f => f.invisibleButClickable().isEmpty());
 ```
 
-On failure: pin the buffer, log the `explain()`, optionally throw or screenshot.
+On a failure, pin the buffer, log the `explain()` output, and optionally throw or take a screenshot.
 
 ## 9. Views
 
-Three consumers, three renderings of one result set.
+Three consumers render one result set in three different ways.
 
-- **Overlay** — `dbg.show(result)` highlights the set live; `dbg.isolate(result)` dims
-  everything else; hover for a fragment card. Overdraw as a heatmap, invalid rects as flashing
-  outlines. Rendered into a `[data-dbg-overlay]` portal with `pointer-events: none`, excluded
-  from capture per §3.
-- **Table** — `result.table()`: owner, source, bounds, tags, z.
-- **Text** — `result.explain()`, a compact ASCII stack. First-class, not an afterthought: it is
-  what makes the debugger usable over a text channel, by a human reading logs or by an agent
-  debugging the editor without screenshots. Floats are canonicalized (fixed precision) and
-  ordering is deterministic, so `explain()` output is diffable and can itself be a golden.
+- **Overlay** — `dbg.show(result)` highlights the set live, and `dbg.isolate(result)` dims everything else. Hovering
+  shows a fragment card. Overdraw draws as a heatmap, and invalid rects draw as flashing outlines. The overlay renders
+  into a `[data-dbg-overlay]` portal with `pointer-events: none`, and capture excludes it per §3.
+- **Table** — `result.table()` lists owner, source, bounds, tags, and z.
+- **Text** — `result.explain()` prints a compact ASCII stack. Text output is a primary interface, and it makes the
+  debugger usable over a text channel, whether by a human reading logs or by an agent debugging the editor without
+  screenshots. Floats are canonicalized to fixed precision and ordering is deterministic, so `explain()` output is
+  diffable and can itself serve as a golden.
 
 ```
 at(412, 88) css → 5 fragments, top-first
@@ -530,7 +510,7 @@ at(412, 88) css → 5 fragments, top-first
 
 ## 10. Node-editor domain layer
 
-Generic geometry does not know what a graph is, so a thin domain layer sits on top:
+Generic geometry is not specific to graphs, so a thin domain layer sits on top:
 
 ```ts
 dbg.graph.wiresCrossing()        // pairwise wire intersections — routing + aesthetic bugs
@@ -543,108 +523,100 @@ dbg.graph.snapCandidates(pt)     // ranked ports with distances — why it snapp
 dbg.graph.hairline()             // assert 1px strokes land on 1 device pixel at this zoom
 ```
 
-The last two are zoom-specific and easy to get wrong in both directions: hit slop must scale in
-*screen* space while geometry scales in *world* space, and a hairline that is correct at 100%
-is a smear at 150%.
+The last two are zoom-specific and easy to get wrong in both directions. Hit slop must scale in screen space, while
+geometry scales in world space. A hairline that is correct at 100% renders as a smear at 150%.
 
 ## 11. Access paths
 
-The text view only pays off if something can reach it. Three surfaces, cheapest first:
+The text view is only useful if something can reach it. Three surfaces reach it, ordered cheapest first:
 
-1. **`window.__vnDebug`** — the console surface, and also the agent surface. Exposed through
-   `contextBridge` in `apps/desktop/src/preload/` so it survives context isolation. Dev-only.
-2. **chrome-devtools-mcp `evaluate_script`** — reaches surface 1 in a running renderer with
-   zero additional plumbing. This is how the design gets validated against the real app before
-   any IPC work.
-3. **A `debug:query` IPC channel** — declared alongside `story:play` in
-   `apps/desktop/src/shared/ipc.ts`, so the main process (and therefore the CLI, and therefore
-   an agent or a test harness) can query the live renderer and get JSON back. Queries arrive as
-   a serializable descriptor, not a function, so the channel stays a data boundary.
+1. 1. **`window.__vnDebug`** — Serves both the console and agents. It is exposed through `contextBridge` in
+   `apps/desktop/src/preload/` so it survives context isolation, and it exists only in development builds.
+2. 2. **chrome-devtools-mcp `evaluate_script`** — reaches surface 1 in a running renderer with zero additional plumbing,
+   so it validates the design against the real app before any IPC work.
+3. 3. **A `debug:query` IPC channel** — the channel is declared alongside `story:play` in
+   `apps/desktop/src/shared/ipc.ts`, so the main process (and therefore the CLI, and therefore an agent or a test
+   harness) can query the live renderer and get JSON back. Queries arrive as a serializable descriptor rather than a
+   function, so the channel carries only data.
 
-Surface 3 is the one that changes how debugging feels: an agent inspecting `explainPick` output
-is reasoning from ground truth instead of from a screenshot.
+Surface 3 is the surface that changes debugging. An agent that inspects `explainPick` output reasons from ground truth
+rather than from a screenshot.
 
 ## 12. Pragmatics
 
-- **Tiers.** `off | bounds | full | full+stacks`, switchable at runtime. Recording bounds and
-  style is cheap; retaining paths and capturing stacks is not. Gate `full` behind a dev flag.
-- **Ring buffer.** ~120 frames. DOM frames stored as diffs.
-- **Lazy indexing.** Do not build a spatial index per frame eagerly — build on the first spatial
-  query against that frame and cache it. Most frames are never queried.
-- **Text truncation.** `StyleSnapshot.text` is capped (~120 chars) and the buffer holds
-  rendered UI strings, which in this app means authored screenplay content. Not a secret, but
-  worth knowing before `explain()` output is pasted anywhere.
-- **Replay.** `dbg.replay(frame)` re-executes recorded ops into a fresh context (canvas sources
-  only). Enables golden-image tests and bisecting a bad frame by replaying a prefix.
-- **Honest limits.** `overdraw`, exact z, stacks, and replay are canvas-only; DOM frames are
-  sampled and their z is computed, not observed. This is inherent to source-agnosticism, not a
-  defect — provided `caps` and `fidelity` say so on every frame.
+- **Tiers.** The tier is one of `off | bounds | full | full+stacks` and can be switched at runtime. Recording bounds
+  and style is cheap. Retaining paths and capturing stacks is expensive. Gate `full` behind a dev flag.
+- **Ring buffer.** Holds ~120 frames. Stores DOM frames as diffs.
+- **Lazy indexing.** The spatial index for a frame is not built eagerly each frame. It is built on the first spatial
+  query against that frame and then cached. Most frames are never queried.
+- **Text truncation.** `StyleSnapshot.text` is capped (~120 chars) and the buffer holds rendered UI strings, which in
+  this app means authored screenplay content. That content is not a secret, but know it is there before pasting
+  `explain()` output elsewhere.
+- **Replay.** `dbg.replay(frame)` re-executes recorded ops into a fresh context (canvas sources only). Golden-image
+  tests use replay, and replaying a prefix bisects a bad frame.
+- **Limits.** `overdraw`, exact z, stacks, and replay work only for canvas sources. DOM frames are sampled, and their z
+  is computed rather than observed. These limits follow from source-agnosticism and are not a defect, provided `caps` and
+  `fidelity` report them on every frame.
 
 ## 13. Testing
 
-The split that makes this testable under the repo's existing jest setup:
+This split makes the code testable under the repo's existing jest setup:
 
-- **Query core, `explain()` formatting, geometry, space math** — pure functions over a plain
-  `Frame`. Fully unit-testable against synthetic frames, no browser. This is most of the code
-  and all of the logic worth asserting on.
-- **Canvas adapter** — testable headlessly against a stub 2D context, since it only needs to
-  record ops.
-- **DOM adapter** — **not** testable under jsdom, which has no layout engine: every rect comes
-  back zero. Needs real Electron or Playwright. Keep the adapter deliberately thin for that
-  reason, and push every non-trivial decision (stacking order, pick resolution) into pure
-  functions that take computed-style records as data.
+- **Query core, `explain()` formatting, geometry, space math** — these are pure functions over a plain `Frame`. They
+  are fully unit-testable against synthetic frames and need no browser. These functions are most of the code and all of
+  the logic worth asserting on.
+- **Canvas adapter** — can be tested headlessly against a stub 2D context, because the stub only needs to record ops.
+- **DOM adapter** — jsdom has no layout engine, so every rect comes back zero and the adapter is not testable there.
+  Testing it needs real Electron or Playwright. Keep the adapter deliberately thin for that reason, and push every
+  non-trivial decision (stacking order, pick resolution) into pure functions that take computed-style records as data.
 
-That last point is the strongest argument for the stacking-order walk being a pure function
-over a plain tree of style snapshots rather than an `Element`-crawling method: it is the part
-most likely to be subtly wrong, and it is the part that only tests can keep honest.
+That last point is the strongest argument for making the stacking-order walk a pure function over a plain tree of style
+snapshots rather than an `Element`-crawling method. The walk is the part most likely to be subtly wrong, and only tests
+can verify that it is correct.
 
 ## 14. Suggested first slice
 
 Roughly in dependency order:
 
 1. `Fragment`, `Frame`, `SpaceRegistry`, `FrameSource`, `SourceCaps`, `PickSnapshot`.
-2. **DOM adapter, minimal**: bounds + stacking-order z (retaining culprits) + `pick.mode` +
-   attribution + `elementsFromPoint` oracle. **No** shapes, stacks, commits, or continuous
-   capture at v1.
+2. 2. **DOM adapter, minimal**: bounds, stacking-order z (retaining culprits), `pick.mode`, attribution, and an
+   `elementsFromPoint` oracle. v1 has no shapes, stacks, commits, or continuous capture.
 3. Query engine: `at`, `inAABB`, `byOwner`, `byTag`, `bySource`, `where`, `owners`.
-4. `explainPick()`, `explain()`, `table()` — the payoff, and the reason step 2 retained culprits.
-5. `window.__vnDebug` via preload; validate against the running app with chrome-devtools-mcp.
-6. Canvas adapter: context proxy, `dbg.scope`, emission-order z, real-index-backed pick.
+4. 4. `explainPick()`, `explain()`, and `table()` deliver the payoff, and they are why step 2 retained culprits.
+5. 5. Expose `window.__vnDebug` via preload, then validate against the running app with chrome-devtools-mcp.
+6. 6. The canvas adapter provides a context proxy, `dbg.scope`, emission-order z, and real-index-backed pick.
 7. Ring buffer + `pin()`.
 
-**DOM before canvas** is a deliberate inversion of the obvious order. Two reasons. The canvas
-editor does not exist yet, while `Runner.tsx` and `Floor.tsx` do — DOM-first is the only path to
-using this on real content in the near term. And DOM is the harsher constraint (sampled,
-approximate z, fragmenting geometry, no stacks), so designing the IR against it first prevents
-a canvas-shaped IR that the DOM adapter then has to be bent into. Canvas will fit into an IR
-built for DOM; the reverse is not true.
+Ordering DOM before canvas inverts the obvious order deliberately, for two reasons. The canvas editor does not exist yet,
+while `Runner.tsx` and `Floor.tsx` do, so DOM-first is the only path to using the IR on real content in the near term.
+DOM is also the harsher constraint (sampled, approximate z, fragmenting geometry, no stacks), so designing the IR against
+it first prevents a canvas-shaped IR that the DOM adapter then has to be bent into. Canvas will fit into an IR built for
+DOM, but an IR built for canvas will not fit the DOM.
 
-Time travel (`diff`, `when`, `history`), commits + `whyInvalidated`, invariants with auto-pin,
-the diagnostic queries, and the graph domain layer all stack on afterwards without revisiting
-the IR.
+Time travel (`diff`, `when`, `history`), commits with `whyInvalidated`, invariants with auto-pin, the diagnostic queries,
+and the graph domain layer are all added afterwards without changing the IR.
 
 ## 15. Where it lives
 
-Almost certainly its own package (`@vn/debug2d` or similar), with the query core dependency-free
-and each adapter an optional entry point. It sits outside the pipeline layering graph entirely —
-nothing in `packages/` should import it, and it should import nothing from `packages/`. Worth an
-explicit `eslint-plugin-boundaries` element type saying exactly that, so the isolation is
-enforced rather than merely intended: a debug layer that accretes production dependencies stops
-being safe to strip from a build.
+It should almost certainly be its own package (`@vn/debug2d` or similar), with the query core dependency-free and each
+adapter an optional entry point. It sits outside the pipeline layering graph entirely. Nothing in `packages/` should
+import it, and it should import nothing from `packages/`. An explicit `eslint-plugin-boundaries` element type should
+state both constraints, so that the isolation is enforced rather than merely intended. A debug layer that accretes
+production dependencies is no longer safe to strip from a build.
 
 ## Open questions
 
-- **Event attribution.** Tying an input event to the fragment that *handled* it (not merely the
-  one under the cursor) needs cooperation from the app's dispatch layer. `explainPick` answers
-  "what should have been hit"; only the dispatcher knows what actually ran, and whether a
-  listener stopped propagation. Probably a `dbg.dispatched(evt, ownerId)` hook the app calls,
-  but the contract is unclear and it is the one place the design cannot stay app-agnostic.
-- **Animation.** A fragment mid-CSS-transition has a sampled bound true for one instant. Does
-  the IR want `animating: boolean` plus a target bound? Without it, `when()` and `diff()` over
+- **Event attribution.** Tying an input event to the fragment that handled it (not merely the one under the cursor)
+  needs cooperation from the app's dispatch layer. `explainPick` reports what should have been hit; only the dispatcher
+  can report what actually ran, and whether a listener stopped propagation. A `dbg.dispatched(evt, ownerId)` hook the app
+  calls is the likely shape, but the contract is unclear, and event attribution is the one place the design cannot stay
+  app-agnostic.
+- **Animation.** A fragment mid-CSS-transition has a sampled bound that holds for one instant only. One open question
+  is whether the IR should carry `animating: boolean` alongside a target bound. Without it, `when()` and `diff()` over
   animated content produce noise that looks like bugs.
-- **Retained-mode canvas.** The context-proxy design assumes immediate-mode drawing. If the node
-  editor ends up retained (a scene graph that damages and redraws regions), `z` as emission
-  index stops being meaningful for unredrawn regions, and the adapter needs to merge a recorded
-  partial frame into a retained model. Worth deciding before the canvas adapter is built.
-- **Multi-window.** The desktop app is single-window today. If it stops being, `device` is no
-  longer a single root space.
+- **Retained-mode canvas.** The context-proxy design assumes immediate-mode drawing. If the node editor ends up
+  retained (a scene graph that damages and redraws regions), the emission index `z` stops being meaningful for unredrawn
+  regions, and the adapter needs to merge a recorded partial frame into a retained model. Decide this before building the
+  canvas adapter.
+- **Multi-window.** The desktop app has one window today. If it gains a second window, `device` no longer names a
+  single root space.

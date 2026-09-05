@@ -1,27 +1,27 @@
 # Refactor task list
 
-**Draft.** The master tracker for the refactor from the app as shipped to the app
+**Draft.** Tracks the refactor from the app as shipped to the app
 [`../history/designRequirementsEtc.md`](../history/designRequirementsEtc.md) describes. Like
-[`desktop-editors-tracking.md`](desktop-editors-tracking.md), this is not a plan — it is the
-list of plans, their ordering constraints, and the decisions that bind them. Each work item
-below either links to its plan or is marked **needs plan**; a plan is the authority on its own
-scope, [`index.md`](index.md) stays the authority on status.
+[`desktop-editors-tracking.md`](desktop-editors-tracking.md), this file is not a plan; it
+lists the plans, their ordering constraints, and the decisions that bind them. Each work item
+below either links to its plan or is marked **needs plan**. A plan is the authority on its own
+scope, and [`index.md`](index.md) stays the authority on status.
 
 ## Decisions taken so far
 
-- **The UX is rewritten on path.ux** — frame manager *and* widget library, because
-  `FrameManager.ts` hard-imports the widget modules and `Area`/`ScreenArea` are `UIBase`
-  custom elements; "frame manager alone" was found not to be separable. React is displaced
-  from the renderer. path.ux will be cloned from GitHub as a **git submodule**.
-- **path-controller is not adopted** as the app↔UX glue. Its DataAPI/pathwatch assumes a
-  long-lived mutable in-memory model; this app's renderer state is immutable IPC snapshots,
-  and `@vn/commands` already covers what `toolsys`/`toolprop` would provide, with git
-  provenance and the `stack.check` refusal protocol. What we take is the *pattern* of a
-  generated, machine-readable path/API catalog (path.ux's `API_PATHS.md` /
-  `KnownDataPath`), which mirrors the existing `commands.json`.
-- **Requirements are the spec.** `docs/designRequirementsEtc.md` §UX *specifies* the
-  subdividing dockable UX; linear-workflow concerns are constraints to satisfy inside the
-  pane model, not reasons to revisit it.
+- **The UX is rewritten on path.ux** — this covers both the frame manager and the widget
+  library, because `FrameManager.ts` hard-imports the widget modules and `Area`/`ScreenArea`
+  are `UIBase` custom elements, so the frame manager cannot be taken on its own. path.ux
+  displaces React in the renderer. path.ux will be cloned from GitHub as a git submodule.
+- path-controller is not adopted as the glue between the app and the UX. Its
+  DataAPI/pathwatch assumes a long-lived mutable in-memory model, while this app's renderer
+  state is immutable IPC snapshots, and `@vn/commands` already covers what
+  `toolsys`/`toolprop` would provide, with git provenance and the `stack.check` refusal
+  protocol. We take the pattern of a generated, machine-readable path/API catalog (path.ux's
+  `API_PATHS.md` / `KnownDataPath`), which mirrors the existing `commands.json`.
+- **Follow the requirements document.** docs/designRequirementsEtc.md §UX specifies the
+  subdividing dockable UX. Linear-workflow concerns are constraints to satisfy inside the pane
+  model, not reasons to revisit it.
 
 ## Work items
 
@@ -42,40 +42,44 @@ scope, [`index.md`](index.md) stays the authority on status.
 | 12 | Wiki and document-tree editors — the panes for 3 and 9, plus the `doc.*` read/write commands they need | **shipped** | [`archive/INDEX.md#wiki-and-document-tree-editors`](archive/INDEX.md#wiki-and-document-tree-editors) — the `documents` and `wiki` editors, `doc.read`/`doc.write`/`doc.create`, `ui.docPath`, per-pane `registerEditor` fields, and `vnasset://` reaching the base root |
 | 13 | Generation from an authored surface — "generate this character's assets" beside the character, rather than only from the pipeline pane | **shipped** | [`archive/INDEX.md#asset-names-and-the-asset-editor`](archive/INDEX.md#asset-names-and-the-asset-editor) — descriptive asset labels, `artNotes` as an authored field at five rungs, the `asset`/`art` command namespaces, and the eleventh editor, which approves and regenerates one asset from where it is named |
 
-Ordering constraints, and the design decisions each plan must settle first, are in the
-migration report (item 0) — it is the input to writing plans 2–10. Item 1 is independent of
+The migration report (item 0) holds the ordering constraints and the design decisions each
+plan must settle first, and it is the input to writing plans 2–10. Item 1 is independent of
 2–10 in code (it replaces the renderer; the main process, IPC shapes and command registry
-carry over) but every new backend capability lands as commands + index shapes that the new
+carry over), but every new backend capability lands as commands and index shapes that the new
 editors then present, so plans should state which side of that seam they are on.
 
-**Item 12 is what that seam dropped.** Item 1 put the wiki editor, the document-tree sidebar
-and the backlink panel out of scope as belonging to items 3, 9 and 10; items 3 and 9 put the
-panes that draw them out of scope as belonging to item 1. Both were right about their own
-scope and the UI ended up owned by nobody, so it gets a row of its own rather than a line in
-someone else's Out of scope. When a plan defers work to another item, the other item needs a
-row that names it — a pointer to a plan whose scope excludes it is not a home.
+Item 12 covers the work that fell into that seam. Item 1 put the wiki editor, the
+document-tree sidebar and the backlink panel out of scope as belonging to items 3, 9 and 10;
+items 3 and 9 put the panes that draw them out of scope as belonging to item 1. Both were
+right about their own scope, and no item owned the UI, so it gets a row of its own rather than
+a line in another item's Out of scope. When a plan defers work to another item, that item
+needs a row that names the work. A pointer to a plan whose scope excludes the work assigns no
+owner.
 
-**Item 13 is that rule applied once more.** Item 12's first draft sent the "generate this
-character's assets" button to "the one gate surface the rewrite plan names" — a surface that
-has since shipped, leaving item 1 with no open row to receive it. Pointing at a *finished*
-item is the same failure as pointing at a plan that excludes the work, so the button gets a
-row before it gets a plan.
+Item 13 applies that rule again. Item 12's first draft sent the "generate this character's
+assets" button to "the one gate surface the rewrite plan names", and that surface has since
+shipped, so item 1 has no open row to receive it. Pointing at a finished item fails in the
+same way as pointing at a plan that excludes the work, so the button gets a row before it gets
+a plan.
 
 ## Sequencing sketch (from the report)
 
-1. Item 2 (tag discovery + source paths) is the foundation — 3, 6 and 9 all sit on it.
-2. Item 4 (repo map + commit policy) blocks 3's "wiki in its own repo" option and 10.
-3. Item 5 (asset split) is independent of the wiki work; only 9 reads both.
-4. Items 7 and 6 touch the same files (`work/shots/<sceneId>.json`, scene chunks). **Ordered
-   7 before 6**: shot ordering adds no authored field to the shots file and re-renders
-   nothing, while outfits add one and deliberately re-hash shots — so what a shot's *position*
-   is gets settled before the outfit override arrives into that file. See
+1. Item 2 (tag discovery + source paths) comes first, because items 3, 6 and 9 all depend on
+   it.
+2. 2. Item 4 (repo map + commit policy) blocks the "wiki in its own repo" option in item 3,
+   and it blocks item 10.
+3. 3. Item 5 (asset split) is independent of the wiki work. Only item 9 reads both.
+4. 4. Items 7 and 6 touch the same files (`work/shots/<sceneId>.json`, scene chunks). Item 7
+   is ordered before item 6 because shot ordering adds no authored field to the shots file and
+   re-renders nothing, while outfits add one and deliberately re-hash shots. A shot's position
+   is settled before the outfit override arrives in that file. See
    [`archive/INDEX.md#shot-ordering-in-scenes`](archive/INDEX.md#shot-ordering-in-scenes).
-5. Item 1 (path.ux rewrite) can start in parallel; it consumes whatever index/command
-   surface exists at the time.
+5. 5. Item 1 (path.ux rewrite) can start in parallel; it consumes the index and command
+   surface that exists at the time.
 
 ## Keeping this file true
 
-Update the row when an item gets its plan (link it) or ships (mark it, and add the plan to
-[`index.md`](index.md)). Decisions that bind more than one plan get recorded under
-"Decisions taken so far" in the same commit that takes them.
+Update the row when an item's plan is written, and link the plan there. Update the row again
+when the item ships: mark it shipped and add the plan to [`index.md`](index.md). Record
+decisions that bind more than one plan under "Decisions taken so far" in the same commit that
+takes them.

@@ -9,24 +9,24 @@
 
 <!-- tocstop -->
 
-Reference material for the VN Generator monorepo. For the working map of the code itself
-(package layering, the invariants in brief), see [`../CLAUDE.md`](../CLAUDE.md); each area's
-full write-up is below. CLAUDE.md keeps the git-history and tooltip rules in hand; the rest of
-how this repo is written is [`reference/conventions.md`](reference/conventions.md). For how to debug the repo
-(state files, CDP, the 2D debug surface, known traps), see [`guides/debugGuide.md`](guides/debugGuide.md).
+The pages below are reference material for the VN Generator monorepo. For the working map of the code itself
+(package layering, the invariants in brief), see [`../CLAUDE.md`](../CLAUDE.md); each area's full write-up is
+below. CLAUDE.md holds the git-history and tooltip rules, and the rest of the conventions for how this repo
+is written are in [`reference/conventions.md`](reference/conventions.md). For how to debug the repo (state
+files, CDP, the 2D debug surface, known traps), see [`guides/debugGuide.md`](guides/debugGuide.md).
 
 Implementation plans live separately in [`plans/`](plans); [`plans/index.md`](plans/index.md)
 lists all of them with their build status, and a shipped plan's file sits in
 [`plans/archive/`](plans/archive).
 
-The directories say what kind of document a file is: [`guides/`](guides) is how to *do*
-something (run, debug, get a key), [`reference/`](reference) is how a shipped part of the
-system *works*, [`history/`](history) is the reports and surveys that shaped the design and
-are now static, and [`research/`](research) is exploratory work that may never ship.
+Each directory holds one kind of document. [`guides/`](guides) explains how to carry out a task, such as
+running the system, debugging it, or getting a key. [`reference/`](reference) explains how a shipped part of
+the system works. [`history/`](history) holds the reports and surveys that shaped the design and are now
+static. [`research/`](research) holds exploratory work that may never ship.
 
 ## As-shipped guides
 
-How a part of the system actually works today, in the detail CLAUDE.md only summarizes.
+Describes how a part of the system works today, in the detail that CLAUDE.md only summarizes.
 
 | Document | What it covers |
 | -------- | -------------- |
@@ -65,7 +65,7 @@ How a part of the system actually works today, in the detail CLAUDE.md only summ
 
 ## Research
 
-Surveys, investigations, and exploratory designs live in [`research/`](research).
+[`research/`](research) holds surveys, investigations, and exploratory designs.
 
 | Document | What it covers |
 | -------- | -------------- |

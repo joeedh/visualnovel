@@ -29,25 +29,24 @@
 
 <!-- tocstop -->
 
-> Scope: A pipeline that turns written character descriptions, an optional set of
-> reference images, a branching screenplay, and optional location descriptions into
-> a complete set of generated visual-novel art assets (backgrounds, character
-> sprites/portraits, and per-shot composited images), plus the structured markdown
-> "source of truth" that drives them.
->
-> **Out of scope (per request):** the final export into a specific VN engine
-> (Ren'Py, Naninovel, TyranoBuilder, etc.). This report stops at a clean,
-> well-organized library of generated images + metadata that an export step could
-> later consume.
+Scope: this report covers a pipeline that turns written character descriptions, an optional
+set of reference images, a branching screenplay, and optional location descriptions into a
+complete set of generated visual-novel art assets (backgrounds, character sprites/portraits,
+and per-shot composited images), plus the structured markdown "source of truth" (the canonical
+description the assets are generated from) that drives them. **Out of scope (per request):**
+this report does not cover the final export into a specific VN engine (Ren'Py, Naninovel,
+TyranoBuilder, etc.). It stops at a clean, well-organized library of generated images and
+metadata that an export step could later consume.
 
 ---
 
 ## Where this report differs from what shipped
 
-This is the **original design report**, kept as written. The architecture it proposes is the
-one that got built, but nine specifics came out differently once implemented. For the
-invariants as they actually hold today, read
-[`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md); this list is only the delta.
+This is the original design report, kept as written. The architecture it proposes is the one
+that got built, but nine specifics came out differently once implemented. For the invariants
+as they actually hold today, read
+[`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md); the list below
+records only the differences.
 
 | Report says | Shipped |
 | ----------- | ------- |
@@ -63,8 +62,9 @@ invariants as they actually hold today, read
 | §3, §4 P5, §9.2 — `scenes/<id>.md` is a *generated* file under `work/` | Inverted: `scenes/<id>.md` is now the **author's** file at the project root, and there is no `vngen/work/scenes/` at all. What P5 produces is `work/shots/<sceneId>.json` (previous row). |
 
 One thing the report holds out of scope has since been partly built, in a narrower form than
-it warns against: there is no external-engine export, but there *is* a small in-house playable
-(`story.play.json`) and a desktop runner — see [`../reference/playable-format.md`](../reference/playable-format.md).
+it warns against. There is no external-engine export, but there is a small in-house playable
+(`story.play.json`) and a desktop runner — see
+[`../reference/playable-format.md`](../reference/playable-format.md).
 
 ---
 
@@ -74,16 +74,17 @@ it warns against: there is no external-engine export, but there *is* a small in-
    directory layout, and task scheduling are deterministic code. Only the genuinely
    generative steps (prose → prompt refinement, image synthesis, image critique)
    call out to LLMs/image models.
-2. **Everything is a file.** Every intermediate artifact — location breakdowns,
-   scene files, shot descriptions, prompts, and a manifest of every generated image
-   — lives on disk as human-readable markdown/JSON. The user can inspect, hand-edit,
-   and re-run. This makes the system debuggable and gives the user real control.
-3. **Human approval gates.** The character "look" is approved by a human before the
-   expensive downstream work (model sheets, then thousands of shots) is committed.
-   Approval is a first-class state, not an afterthought.
-4. **Consistency is the central engineering problem.** A visual novel lives or dies
-   on whether the same character looks like the same character across hundreds of
-   shots. Almost every design decision below is in service of consistency.
+2. 2. **Every artifact is written to disk.** Every intermediate artifact — location
+   breakdowns, scene files, shot descriptions, prompts, and a manifest of every generated
+   image — is stored on disk as human-readable markdown/JSON. The user can inspect these
+   files, hand-edit them, and re-run. Storing artifacts this way makes the system debuggable
+   and gives the user control.
+3. 3. **Human approval gates.** A human approves the character "look" before the expensive
+   downstream work (model sheets, then thousands of shots) is committed. Approval is tracked
+   as an explicit state.
+4. 4. **Consistency is the central engineering problem.** A visual novel succeeds only if the
+   same character looks like the same character across hundreds of shots. Almost every design
+   decision below serves consistency.
 5. **Never do the same generative work twice.** A global, content-addressed task
    graph dedupes identical requests and makes the whole pipeline resumable and
    incremental.
@@ -125,19 +126,19 @@ it warns against: there is no external-engine export, but there *is* a small in-
             └──────────────────────────────────────────────────────────────┘
 ```
 
-Cross-cutting subsystems that span all phases:
+The following subsystems cut across all phases:
 
-- **Task graph & dedupe** (§7) — every generative call is a node; identical nodes
-  collapse.
-- **Asset store & manifest** (§8) — content-addressed image storage + metadata.
-- **Project state machine** (§9) — tracks what's pending / generated / approved /
-  stale.
+- **Task graph & dedupe** (§7) — the graph holds one node per generative call, and identical
+  nodes are merged into one.
+- **Asset store & manifest** (§8) — stores images by content address and records their
+  metadata.
+- **Project state machine** (§9) — tracks what is pending, generated, approved or stale.
 
 ---
 
 ## 3. Core data model
 
-A small number of entities, each backed by a markdown or JSON file on disk.
+Holds a small number of entities, each backed by a markdown or JSON file on disk.
 
 | Entity | Key fields | Backed by |
 |---|---|---|
@@ -149,10 +150,10 @@ A small number of entities, each backed by a markdown or JSON file on disk.
 | **Asset** | content hash, kind (location-ref / portrait / model-sheet / shot), source task, parent prompt, refs used, accepted? | `manifest.json` entry + file in asset store |
 | **Task** | content hash (the dedupe key), kind, inputs, status, output asset hash, attempts | `tasks.jsonl` / task DB |
 
-**Front-matter convention.** Every markdown file carries a YAML front-matter header
-with the stable `id`, status fields, and references to other entities by id. The
-prose body is for humans and for feeding to the LLM; the front-matter is for the
-machine. Example character file:
+**Front-matter convention.** Every markdown file begins with a YAML front-matter header that
+holds the stable `id`, status fields, and references to other entities by id. Humans read the
+prose body, and it is fed to the LLM; the machine reads the front-matter. Example character
+file:
 
 ```markdown
 ---
@@ -182,87 +183,86 @@ single braided strand... [the canonical, authoritative description]
 
 ### P0 — Ingestion & parsing
 
-- Load all input files. Accept the screenplay as **Fountain** (the de-facto plain-text
-  screenplay format) or structured markdown. Fountain is attractive because scene
-  headings (`INT./EXT. LOCATION - TIME`), character cues, dialogue, and parentheticals
-  are already machine-parseable, which makes location mining and scene splitting much
-  more reliable than free prose.
-- Branching is expressed with an explicit, lightweight convention layered on top
-  (see §6) — e.g. labeled `[[choice: ... -> scene_id]]` markers, since standard
-  Fountain is linear.
-- Produce an in-memory **project model** and validate it (every referenced character
-  exists, every choice targets a real scene, etc.). Validation errors are reported
-  before any money is spent on generation.
+- Load all input files. Accept the screenplay as Fountain (the de-facto plain-text
+  screenplay format) or as structured markdown. Fountain suits this step because scene
+  headings (`INT./EXT. LOCATION - TIME`), character cues, dialogue, and parentheticals are
+  already machine-parseable, which makes location mining and scene splitting much more
+  reliable than they are on free prose.
+- Standard Fountain is linear, so branching uses an explicit, lightweight convention layered
+  on top (see §6), such as labeled `[[choice: ... -> scene_id]]` markers.
+- Produce an in-memory project model and validate it (every referenced character exists,
+  every choice targets a real scene, etc.). Validation errors are reported before any money is
+  spent on generation.
 
 ### P1 — Location extraction & breakdown
 
 1. **Collect** explicit locations from `locations/` (user-provided).
-2. **Mine** additional locations: an LLM pass over the screenplay scene headings and
-   over character descriptions extracts every distinct setting, normalizes aliases
-   ("the classroom" == "Class 3-B" == "homeroom"), and proposes a canonical id/name
-   for each. Deduplication of near-synonyms is done by the LLM proposing, then a
-   deterministic merge step the user can review.
-3. For each location, generate a **detailed breakdown markdown file** containing:
-   architecture/geography, key props, color palette, lighting, mood, **time-of-day
-   and weather variants** that the script actually needs, and camera-friendly notes
-   (what a wide establishing shot vs. an interior two-shot would frame). This file is
-   the authoritative prompt source for all later background generation.
+2. 2. **Mine** additional locations: an LLM pass over the screenplay scene headings and over
+   character descriptions extracts every distinct setting, normalizes aliases ("the classroom"
+   == "Class 3-B" == "homeroom"), and proposes a canonical id/name for each. The LLM proposes
+   how to deduplicate near-synonyms, and a deterministic merge step the user can review
+   follows.
+3. 3. For each location, generate a detailed breakdown markdown file containing:
+   architecture/geography, key props, color palette, lighting, mood, the time-of-day and
+   weather variants that the script actually needs, and camera-friendly notes (what a wide
+   establishing shot vs. an interior two-shot would frame). Later background generation takes
+   its prompts from this file.
 4. The user can edit any breakdown before art is generated.
 
 ### P2 — Location reference shots
 
-- For each location (and each needed variant: day/night/rain/etc.), enqueue a
-  generative task to produce one or more **establishing/reference images**.
-- These serve two purposes: (a) the user approves the look of the world, and (b) they
-  become **reference images fed back into Gemini** when generating shots set there, to
-  anchor background consistency.
-- Variants are derived from a single "master" reference via image-editing
-  (re-light/re-time the same room) rather than generating from scratch, which keeps
-  the geometry consistent across times of day.
+- For each location (and each needed variant: day/night/rain/etc.), enqueue a generative
+  task to produce one or more establishing/reference images.
+- These serve two purposes: (a) the user approves the look of the world, and (b) they become
+  reference images fed back into Gemini when generating shots set there, which anchors
+  background consistency.
+- Variants are derived from a single "master" reference via image-editing (re-light/re-time
+  the same room) rather than generated from scratch. Editing one reference keeps the geometry
+  consistent across times of day.
 
 ### P3 — Character design + human approval gate
 
 This is the most important gate in the system.
 
-1. For each character, synthesize a **portrait prompt** from the canonical description
+1. 1. For each character, synthesize a portrait prompt from the canonical description
    + palette (+ any user reference images supplied as Gemini image inputs).
-2. Generate **N candidate portraits** (e.g. 3–4) at a neutral pose/expression on a
-   plain background.
-3. **Refinement loop with the user:** the user can (a) pick a candidate, (b) request
-   tweaks in natural language ("older, warmer eyes, less anime"), which edits the
-   prompt and regenerates, or (c) supply/replace a reference image. This loop is
-   human-paced, not auto-iterated.
-4. When satisfied, the user **approves** one portrait. That asset hash is recorded as
-   `approved_portrait` and the character's status flips to `approved`. **Nothing
-   downstream (model sheets, shots) runs for a character until it is approved** — this
-   prevents generating a thousand shots of a face the user will reject.
+2. 2. Generate N candidate portraits (e.g. 3–4) at a neutral pose/expression on a plain
+   background.
+3. 3. **Refinement loop with the user:** The user can (a) pick a candidate, (b) request tweaks
+   in natural language ("older, warmer eyes, less anime"), which edits the prompt and
+   regenerates, or (c) supply or replace a reference image. A person drives this loop; it does
+   not iterate automatically.
+4. 4. When satisfied, the user approves one portrait. That asset hash is recorded as
+   `approved_portrait` and the character's status is set to `approved`. No downstream work
+   (model sheets, shots) runs for a character until it is approved, which prevents generating
+   a thousand shots of a face the user will reject.
 
 ### P4 — Model sheets (turnarounds) = the default outfit
 
-- From the approved portrait, generate a **model sheet / turnaround**: the same
-  character from multiple vantage points (front, 3/4, side, back) and a small set of
-  canonical expressions, on a neutral background.
-- Technique: feed the approved portrait as a reference image to Gemini and prompt for
-  each angle, so all angles derive from the one approved look. Optionally assemble a
-  contact-sheet grid for the user, but **store each angle/expression as its own clean
-  image** because those individual images are what get fed as references later.
-- This model-sheet set **is** the character's **default outfit** ("school_uniform" in
-  the example).
-- **On-demand outfits:** when a later scene needs different clothing, the system
-  detects it during shot decomposition (§P5), and enqueues a new mini-model-sheet for
-  that `(character, outfit)` pair — generated by editing the default model sheet to
-  swap clothing, preserving the face/body. Outfits are first-class, reusable, and
+- From the approved portrait, generate a model sheet or turnaround. It shows the same
+  character from multiple vantage points (front, 3/4, side, back) and a small set of canonical
+  expressions, on a neutral background.
+- Feed the approved portrait to Gemini as a reference image and prompt for each angle, so
+  that all angles derive from the one approved look. You can assemble a contact-sheet grid for
+  the user, but store each angle or expression as its own clean image, because those
+  individual images are what get fed as references later.
+- This model-sheet set defines the character's default outfit ("school_uniform" in the
+  example).
+- **On-demand outfits:** when a later scene needs different clothing, the system detects it
+  during shot decomposition (§P5) and enqueues a new mini-model-sheet for that `(character,
+  outfit)` pair. That mini-model-sheet is generated by editing the default model sheet to swap
+  the clothing while preserving the face and body. Outfits are first-class, reusable, and
   cached.
 
 ### P5 — Scene & shot decomposition
 
-1. **Split the branching screenplay into scenes.** A scene = a continuous unit at one
-   location with a stable cast. Each scene becomes `scenes/<id>.md` with front-matter
-   (location id, characters present, the graph edges to next scenes).
-2. **Split each scene into shots.** An LLM pass proposes shots: each shot is a single
-   rendered image — a description of framing (wide/medium/close), which character(s)
-   are visible, pose, expression, what they're wearing (→ outfit id), camera angle,
-   time of day, and the dialogue line(s) the shot covers.
+1. 1. **Split the branching screenplay into scenes.** A scene is a continuous unit at one
+   location with a stable cast. Each scene becomes `scenes/<id>.md` with front-matter that
+   records the location id, the characters present, and the graph edges to next scenes.
+2. 2. **Split each scene into shots.** An LLM pass proposes shots. Each shot renders to a
+   single image, and its description gives the framing (wide/medium/close), which character(s)
+   are visible, pose, expression, what they are wearing (→ outfit id), camera angle, time of
+   day, and the dialogue line(s) the shot covers.
 3. Each shot is written as a structured block in the scene file:
 
 ```markdown
@@ -277,24 +277,23 @@ This is the most important gate in the system.
 - status: pending
 ```
 
-4. This is also where the system computes the **outfit demand** and the
-   **reference-image needs** per shot, which feed the task graph.
+4. 4. The system also computes the outfit demand and the reference-image needs per shot at
+   this stage, which feed the task graph.
 
 ### P6 — Shot prompt synthesis
 
-- For each shot, an LLM refines the terse shot description into a **full Gemini image
-  prompt** ("nano banana" = Gemini 2.5 Flash Image), in the model's preferred style:
-  concrete, scene-described-as-a-photograph/illustration, explicit about subject
-  placement, expression, lighting, and the established art style.
-- The prompt is paired with the **reference image bundle** for that shot:
+- For each shot, an LLM refines the terse shot description into a full Gemini image prompt
+  ("nano banana" is Gemini 2.5 Flash Image), in the model's preferred style: concrete,
+  scene-described-as-a-photograph/illustration, explicit about subject placement, expression,
+  lighting, and the established art style.
+- The prompt is paired with the reference image bundle for that shot:
   - the relevant **character model-sheet angle(s)** for the needed outfit,
   - the **location reference** (correct time-of-day variant),
-  - a **style anchor** image (a previously approved shot or a style key) to hold the
-    rendering style steady.
-- Gemini 2.5 Flash Image accepts multiple input images and is designed for
-  character/subject consistency and targeted edits, which is exactly the property this
-  pipeline needs. Storing the prompt in the scene file means it's inspectable and
-  hand-tunable.
+  - a style anchor image (a previously approved shot or a style key) to hold the rendering
+    style steady.
+- Gemini 2.5 Flash Image accepts multiple input images and is designed for character/subject
+  consistency and targeted edits. The pipeline needs that property. Storing the prompt in the
+  scene file keeps the prompt inspectable and hand-tunable.
 
 ### P7 — Generate → critique → refine loop (≤ 4 iterations)
 
@@ -312,18 +311,18 @@ for attempt in 1..4:
 # after 4 attempts: mark needs_human, keep best-scoring image
 ```
 
-- **Why two reviewers?** Gemini sees its own output (good at "did I render what the
-  prompt said") and Claude provides an independent check (good at catching consistency
-  drift vs. the character description and continuity errors). Disagreements are
-  surfaced. The critique is requested as **structured output** (a JSON list of
-  defects with severity + suggested fix), not prose, so the refine step can act on it
-  programmatically.
-- **What's checked:** right character(s) present and recognizable; correct outfit;
-  correct expression/pose; correct location and time of day; no extra/duplicate limbs
-  or people; text/no-text as intended; framing matches.
-- **Hard cap of 4** prevents runaway spend. On failure, the shot is flagged
-  `needs_human` and the best candidate is retained so the user can intervene rather
-  than block the batch.
+- **Two reviewers.** Gemini reviews its own output, which is good for checking whether it
+  rendered what the prompt said, and Claude provides an independent check, which is good for
+  catching consistency drift against the character description and continuity errors.
+  Disagreements are surfaced. The critique is requested as structured output (a JSON list of
+  defects with severity and a suggested fix) rather than prose, so the refine step can act on
+  it programmatically.
+- **What's checked:** The right characters are present and recognizable. The outfit is
+  correct. The expression and pose are correct. The location and time of day are correct. No
+  limbs or people are duplicated or added. Text is present or absent as intended. The framing
+  matches.
+- A hard cap of 4 prevents runaway spend. On failure, the shot is flagged `needs_human` and
+  the best candidate is retained, so the user can intervene instead of blocking the batch.
 - Every attempt (prompt, refs, image, both reviews) is logged for provenance and
   debugging.
 
@@ -331,28 +330,28 @@ for attempt in 1..4:
 
 ## 5. Consistency strategy (the hard part), summarized
 
-Because this is what makes or breaks the result, the techniques are consolidated here:
+The techniques are consolidated here because they decide whether the result succeeds:
 
-1. **Single approved source per character.** All angles/outfits derive from one
-   approved portrait via reference-image editing — never re-rolled from text alone.
-2. **Reference-image bundles on every shot.** Character model-sheet angle + location
-   ref + style anchor are always fed in, leaning on Gemini's multi-image consistency.
-3. **Locations: edit, don't re-generate, for variants.** Time-of-day/weather come from
-   editing a master plate so geometry stays fixed.
+1. 1. **Single approved source per character.** All angles and outfits derive from one
+   approved portrait via reference-image editing, and are never re-rolled from text alone.
+2. 2. **Reference-image bundles on every shot.** Every shot is fed a character model-sheet
+   angle, a location reference, and a style anchor. This relies on Gemini's multi-image
+   consistency.
+3. 3. **Locations: edit a master plate for variants rather than re-generating.** Time-of-day
+   and weather variants come from editing a master plate, so the geometry stays fixed.
 4. **Style anchor.** A small set of canonical "style key" images keeps the rendering
    style uniform across the whole novel.
 5. **Palette in front-matter.** Explicit per-character/per-location palettes are
    injected into prompts.
-6. **The critique loop** (P7) is the backstop that catches drift before an image is
-   accepted.
-7. **Seeds where supported,** recorded in the manifest for reproducibility.
+6. 6. **The critique loop** (P7) catches drift before an image is accepted.
+7. 7. **Seeds where supported.** The manifest records the seed for reproducibility.
 
 ---
 
 ## 6. Modeling the branching screenplay
 
-A branching screenplay is a **directed graph** of scenes, not a linear list. Cycles
-are possible (returning to a hub), so it's a general digraph, usually a DAG with
+A branching screenplay is a directed graph of scenes, not a linear list. A path can return to
+a hub, so cycles are possible and the structure is a general digraph, usually a DAG with
 occasional back-edges.
 
 - **Representation:** each scene file declares its outgoing edges in front-matter:
@@ -372,15 +371,15 @@ choices:
 ```
 
 - **Why a graph matters for generation:**
-  - **Enumeration:** the set of *scenes* (graph nodes) is finite and is what we
-    generate — we generate every reachable node once, **not** every root-to-leaf
-    *path* (which can explode combinatorially). This is a key cost control: a shot is
-    generated per node, and branches share nodes/assets via the dedupe graph.
-  - **Reachability check:** detect dead/unreachable scenes and dangling `goto`s during
+  - **Enumeration:** The set of "scenes" (graph nodes) is finite, and we generate every
+    reachable node once rather than every root-to-leaf path, which can explode
+    combinatorially. This is a key cost control, since one shot is generated per node and
+    branches share nodes and assets through the dedupe graph.
+  - **Reachability check:** Detects dead or unreachable scenes and dangling `goto`s during
     P0 validation.
-  - **Shared assets across branches:** two branches that both visit the classroom at
-    dusk with Aiko in her uniform request *identical* generative work — the task graph
-    (§7) collapses them automatically.
+  - **Shared assets across branches:** Two branches that both visit the classroom at dusk
+    with Aiko in her uniform request identical generative work. The task graph (§7) collapses
+    them automatically.
 - **Visualization:** the system can emit a `story.graph` (e.g. Graphviz/Mermaid) so
   the user can see the branch structure.
 
@@ -388,12 +387,12 @@ choices:
 
 ## 7. Task graph & deduplication
 
-The mechanism that guarantees "never do the same generative work twice."
+Guarantees that the same generative work is never done twice.
 
 - **Every generative request is a Task node** with a `kind`
   (`location_ref`, `portrait`, `model_sheet`, `outfit_sheet`, `shot_image`,
   `vision_review`, `prompt_refine`) and a fully-specified input set.
-- **Content-addressed dedupe key.** Each task's identity is a hash of everything that
+- **Content-addressed dedupe key.** Each task is identified by a hash of everything that
   determines its output:
 
   ```
@@ -405,48 +404,47 @@ The mechanism that guarantees "never do the same generative work twice."
   )
   ```
 
-  Two shots in different branches that resolve to the same prompt + same refs + same
-  params produce the **same hash** → one task, one image, reused everywhere it's
+  Two shots in different branches that resolve to the same prompt, the same refs and the same
+  params produce the same hash, so there is one task and one image, reused everywhere it is
   referenced.
-- **Build order = topological sort.** Tasks depend on upstream assets (a shot task
-  depends on the model-sheet task and location-ref task, which depend on the approved
-  portrait, which depends on the user gate). The scheduler runs tasks in dependency
-  order, in parallel where independent, respecting the approval gates as barriers.
-- **Status & resumability.** Each task is `pending → running → done | failed |
-  needs_human`. Re-running the pipeline skips `done` tasks (their output asset already
-  exists in the store). This makes the whole system incremental: edit one location
-  breakdown, and only the tasks whose hash changed re-run.
-- **Staleness / invalidation.** If an upstream artifact changes (the user edits a
-  character description, or re-approves a different portrait), every downstream task
-  whose hash now differs is automatically marked stale and re-queued; untouched
-  branches are left alone.
-- **Cost preview.** Because the full task set is known before execution, the system can
-  show the user "this run will make N new image calls and M vision reviews" and let
-  them confirm before spending.
-- **Storage:** `tasks.jsonl` (append-only log) or a small SQLite DB; the asset store is
-  content-addressed (`assets/<hash>.png`) so identical outputs are physically stored
-  once.
+- **Build order comes from a topological sort.** Tasks depend on upstream assets (a shot
+  task depends on the model-sheet task and location-ref task, which depend on the approved
+  portrait, which depends on the user gate). The scheduler runs tasks in dependency order,
+  runs independent tasks in parallel, and treats each approval gate as a barrier.
+- **Status & resumability.** Each task is `pending → running → done | failed | needs_human`.
+  Re-running the pipeline skips `done` tasks (their output asset already exists in the store).
+  Skipping makes the whole system incremental, so editing one location breakdown re-runs only
+  the tasks whose hash changed.
+- **Staleness / invalidation.** When an upstream artifact changes (the user edits a
+  character description, or re-approves a different portrait), every downstream task whose
+  hash now differs is automatically marked stale and re-queued. Untouched branches are not
+  re-queued.
+- **Cost preview.** The full task set is known before execution, so the system can show the
+  user "this run will make N new image calls and M vision reviews" and wait for confirmation
+  before spending.
+- **Storage:** Tasks live in `tasks.jsonl` (an append-only log) or in a small SQLite DB. The
+  asset store is content-addressed (`assets/<hash>.png`), so identical outputs are physically
+  stored once.
 
 ---
 
 ## 8. Gemini integration & the asset store
 
-- **Image model:** Gemini 2.5 Flash Image ("nano banana") for generation and
-  reference-guided editing; it accepts multiple reference images and is built for
-  subject consistency and localized edits — the core capabilities this pipeline
-  depends on.
-- **Vision review:** Gemini (its own multimodal read-back) **and** Claude (independent
-  read-back) for the P7 critique, both requested with structured JSON output.
-- **Text/refinement:** an LLM for location mining, scene/shot decomposition, and
-  prompt refinement. Claude is a natural fit for the structured-reasoning steps.
-- **Key handling:** the user supplies their own Google Gemini API key (and a key for
-  the critique LLM). Keys come from env/secret config, never committed; the manifest
-  records *which model id* produced each asset but not the key.
-- **Asset store + manifest:** every accepted image is written to
-  `build/assets/<hash>.<ext>` and registered in `build/manifest.json` with full
-  provenance: source task hash, prompt, reference asset hashes, model id/params,
-  review verdicts, and which scene/shot/character/outfit it satisfies. The manifest is
-  the single index a future engine-export step would read.
+- **Image model:** Gemini 2.5 Flash Image ("nano banana") handles generation and
+  reference-guided editing. It accepts multiple reference images and is built for subject
+  consistency and localized edits, which are the core capabilities this pipeline depends on.
+- **Vision review:** the P7 critique is requested from Gemini (its own multimodal read-back)
+  and Claude (independent read-back), both with structured JSON output.
+- **Text/refinement:** An LLM handles location mining, scene/shot decomposition, and prompt
+  refinement. Claude suits the structured-reasoning steps.
+- **Key handling:** the user supplies their own Google Gemini API key (and a key for the
+  critique LLM). Keys come from env/secret config and are never committed. The manifest
+  records which model id produced each asset but not the key.
+- **Asset store + manifest:** every accepted image is written to `build/assets/<hash>.<ext>`
+  and registered in `build/manifest.json`. Each record carries full provenance: source task
+  hash, prompt, reference asset hashes, model id/params, review verdicts, and which
+  scene/shot/character/outfit the image satisfies. The manifest is the single index a future
+  engine-export step would read.
 
 ---
 
@@ -474,15 +472,16 @@ my-novel/
 ```
 
 Notes:
-- `locations/` is optional; missing ones are derived (§P1).
-- `refs/` per character is optional; if present, fed to Gemini as image inputs in P3.
-- Everything is plain text/markdown + images, so it lives happily in git.
+- `locations/` is optional, and a missing location is derived (§P1).
+- Each character's `refs/` directory is optional. If it is present, P3 passes its images to
+  Gemini as image inputs.
+- Everything is plain text/markdown + images, so git versions all of it.
 
 ### 9.2 Generated (produced by the system)
 
-Two-tier: a **working tree** (human-readable markdown + breakdowns, the editable
-"source of truth") and a **build tree** (content-addressed assets + manifest, the
-machine output).
+The project keeps two trees. The **working tree** holds human-readable markdown and
+breakdowns, and is the editable "source of truth". The **build tree** holds content-addressed
+assets and a manifest, and is the machine output.
 
 ```
 my-novel/
@@ -531,31 +530,31 @@ my-novel/
 ```
 
 Design choices:
-- **`work/` is for humans, `build/` is for machines.** Users edit `work/` markdown;
-  `build/assets/` is regenerable and content-addressed.
-- **Approval artifacts are explicit** (`candidates/`, `approved.png`) so the gate is
-  visible on disk.
-- **Outfits nest under the character**, each with its own model sheet, matching the
-  "default outfit + on-demand outfits" model.
-- **Scenes mirror the screenplay graph**, one file per node; branches reference shared
-  scene ids rather than duplicating.
-- **`state/` makes runs resumable and auditable** — task statuses and the full
-  critique history live here.
+- **`work/` holds hand-edited files and `build/` holds generated ones.** Users edit the
+  Markdown under `work/`; `build/assets/` is regenerable and content-addressed.
+- **Approval artifacts are explicit** (`candidates/`, `approved.png`), so the approval step
+  is visible on disk.
+- Outfits nest under the character, and each outfit has its own model sheet. This matches
+  the "default outfit + on-demand outfits" model.
+- Scenes mirror the screenplay graph, with one file per node. Branches reference shared
+  scene ids rather than duplicating the scenes.
+- **`state/` makes runs resumable and auditable** — it stores task statuses and the full
+  critique history.
 
 ---
 
 ## 10. Execution model, state & resumability
 
-- **A single `run` command** walks: parse → validate → build task graph → show cost
-  preview → execute up to the next approval gate → stop. The user approves characters,
-  re-runs, and the pipeline continues past the gate.
-- **Gates are barriers in the topological sort:** no character's model sheets or shots
-  run until that character is `approved`.
-- **Incremental by construction:** because task identity is a content hash, re-running
-  only does new/changed work. Editing one shot's description re-runs only that shot's
-  prompt + image + review tasks.
-- **Idempotent & crash-safe:** append-only task log + content-addressed store means an
-  interrupted run resumes cleanly.
+- **A single `run` command** parses the input, validates it, builds the task graph, shows a
+  cost preview, executes up to the next approval gate, and stops. The user approves characters
+  and re-runs, and the pipeline continues past the gate.
+- **Gates block the topological sort:** a character's model sheets and shots run only once
+  that character is `approved`.
+- **Incremental by construction:** Task identity is a content hash, so re-running does only
+  new or changed work. Editing one shot's description re-runs only that shot's prompt, image
+  and review tasks.
+- **Idempotent & crash-safe:** the append-only task log and the content-addressed store let
+  an interrupted run resume cleanly.
 
 ---
 
@@ -577,32 +576,33 @@ Design choices:
 
 ## 12. Suggested implementation stack (non-binding)
 
-- **Language:** TypeScript or Python — both have solid Gemini + Anthropic SDKs.
-- **Screenplay parsing:** a Fountain parser + a thin custom layer for branch markers.
+- **Language:** TypeScript or Python. Both have solid Gemini and Anthropic SDKs.
+- **Screenplay parsing:** a Fountain parser parses the screenplay, and a thin custom layer
+  parses the branch markers.
 - **Task graph/state:** SQLite (via a tiny ORM) or append-only JSONL + in-memory DAG.
-- **Asset store:** content-addressed files on disk; manifest as JSON.
-- **Orchestration:** a dependency-ordered scheduler with a configurable concurrency cap
-  and a dry-run/cost-preview mode.
-- **Prompts/critique:** structured-output (JSON-schema-constrained) calls for every
-  machine-consumed LLM result.
+- **Asset store:** holds content-addressed files on disk. The manifest is JSON.
+- **Orchestration:** The scheduler orders work by dependency, caps concurrency at a
+  configurable limit, and offers a dry-run/cost-preview mode.
+- **Prompts/critique:** Every machine-consumed LLM result comes from a structured-output
+  (JSON-schema-constrained) call.
 
 ---
 
 ## 13. End-to-end summary
 
-1. Author provides characters (+ optional refs), a branching screenplay, optional
-   locations.
-2. System parses & validates, mines + writes **location breakdowns**, generates
-   **location reference shots**.
-3. System generates **character candidates**; the user **refines & approves** the look.
-4. Approved looks become **model-sheet turnarounds** = the default outfit; extra
+1. 1. The author provides characters (with optional refs), a branching screenplay, and
+   optional locations.
+2. 2. The system parses and validates, mines and writes location breakdowns, and generates
+   location reference shots.
+3. 3. The system generates character candidates. The user refines and approves the look.
+4. 4. Approved looks become model-sheet turnarounds, which cover the default outfit. Extra
    outfits are generated on demand.
-5. The branching script is split into **scenes (graph nodes) → shots**; each shot gets
-   a refined **Gemini prompt + reference bundle**.
-6. Each shot is **generated, double-checked by Gemini *and* Claude, and prompt-refined
-   up to 4×**.
-7. A **content-addressed task graph** dedupes all generative work and makes the whole
-   pipeline incremental and resumable.
-8. Output is a clean `build/` of approved images + a provenance manifest — ready for a
-   future, out-of-scope engine export.
+5. 5. The branching script is split into scenes (graph nodes), and each scene is split into
+   shots. Each shot gets a refined Gemini prompt and a reference bundle.
+6. 6. Each shot is generated, double-checked by Gemini and Claude, and prompt-refined up to
+   4×.
+7. 7. A content-addressed task graph dedupes all generative work, so the whole pipeline is
+   incremental and resumable.
+8. 8. Produces a clean `build/` holding the approved images and a provenance manifest. A
+   future engine export, which is out of scope here, can consume it.
 ```

@@ -1,25 +1,24 @@
 # Plan index and status
 
-Every implementation plan in this directory, and whether it has been built. A plan is the
-authority on its own scope; this file is the authority on **what state it is in**.
+Lists every implementation plan in this directory and whether it has been built. A plan is the authority
+on its own scope; this file is the authority on what state it is in.
 
-Status values:
+Status values are:
 
-- **shipped** — implemented and in the codebase. The plan's own As-shipped section records
-  deviations; the plan is history, not a task list.
-- **partial** — some of it is built and the plan still describes unbuilt work.
-- **planned** — nothing built yet.
-- **superseded** — a later plan took the work over. The row names the plan that did.
+- **shipped** — implemented and in the codebase. The plan's own As-shipped section records deviations.
+  Read the plan as a record of what was done rather than as a task list.
+- **partial** — some of the work is built and the plan still describes unbuilt work.
+- **planned** — nothing is built yet.
+- **superseded** — a later plan took the work over. The row names that later plan.
 
-**A shipped plan's file lives in [`archive/`](archive)**; open plans and the tracker files
-stay in this directory. This table indexes both, and moving a file the moment its row flips
-to shipped is part of flipping the row (see
-[`../reference/conventions.md`](../reference/conventions.md#plans)).
+A shipped plan's file lives in [`archive/`](archive); open plans and the tracker files stay in this
+directory. This table indexes both, and moving a file the moment its row flips to shipped is part of
+flipping the row (see [`../reference/conventions.md`](../reference/conventions.md#plans)).
 
-Three batches carry extra working detail of their own. Two are complete:
-[`desktop-editors-tracking.md`](desktop-editors-tracking.md) for the desktop editors, and the
-[scene authoring](#scene-authoring) section below. The third is the eight open plans of the
-authoring surface, whose running order and checkboxes are in
+Three batches have extra working detail of their own. Two are complete:
+[`desktop-editors-tracking.md`](desktop-editors-tracking.md) for the desktop editors, and the [scene
+authoring](#scene-authoring) section below. The third batch contains the eight open plans of the
+authoring surface, and their running order and checkboxes are in
 [authoring-surface-tasklist](archive/INDEX.md#authoring-surface-tasklist).
 
 <!-- toc -->
@@ -138,12 +137,12 @@ authoring surface, whose running order and checkboxes are in
 
 ## Scene authoring
 
-Seven plans that together make a scene an editable document. They come from
+Seven plans together make a scene an editable document. They come from
 [`../research/scene-chunks-as-the-authored-unit.md`](../research/scene-chunks-as-the-authored-unit.md).
-The order below is a dependency order, not a preference: each plan's guarantees are what the next
-one rests on. **All seven are shipped.** One plan not
-in the original seven has been carved out since:
-[`archive/INDEX.md#scene-edit-package`](archive/INDEX.md#scene-edit-package), a prerequisite for 5's agent tool.
+The order below is a dependency order rather than a preference, because each plan rests on the
+guarantees of the one before it. All seven are shipped. One plan outside the original seven has been
+carved out since: [`archive/INDEX.md#scene-edit-package`](archive/INDEX.md#scene-edit-package) is a
+prerequisite for 5's agent tool.
 
 | # | Plan | Depends on | Why it is here |
 | --- | --- | --- | --- |
@@ -156,77 +155,77 @@ in the original seven has been carved out since:
 | 6 | [`archive/INDEX.md#line-editing-in-floor`](archive/INDEX.md#line-editing-in-floor) ✔ | 5 | Correct a line where you can see the frame it produced |
 | 7 | [`archive/INDEX.md#script-composition-in-studio`](archive/INDEX.md#script-composition-in-studio) ✔ | 5 | Write, reorder, split and merge — everything that changes which lines exist |
 
-6 and 7 are siblings and independent of each other; the division is one sentence — **FLOOR edits
-a line, STUDIO edits the script.**
+6 and 7 are siblings and independent of each other. FLOOR edits a line, and STUDIO edits the script.
 
 ### Decisions that span the batch
 
-Recorded here because each was settled once and every later plan assumes it.
+These are recorded here because each was settled once and every later plan assumes it.
 
-- **Line ids are scene-scoped and stay that way.** `${sceneId}:L<n>` is what `Shot.coversLines`
-  binds to, so no line can cross a scene boundary and keep its coverage. The batch makes the
-  detachment visible (in `splitScene`/`mergeScene`) rather than introducing global ids.
-- **No edit to a scene invalidates art — which is why drift has to be reported.** `buildShotPrompt`
-  reads neither `coversLines` nor line text (prose reaches only the P7 reviewer spec, which never
-  enters a task's `inputs`), so retyping a covered line rehashes nothing and re-renders nothing: the
-  frame goes on illustrating words the scene no longer contains. Plan 5 settled this against the
-  code, and it reversed the batch's original premise. Every plan that can change prose owes the
-  author that sentence before the commit, not a bill.
-- **Drift is derived, never stored.** A shot is drifted when a hash of the covered lines' *text*,
-  recorded when its image was written, disagrees with the hash those lines produce now — computable,
-  self-healing, and correct for edits made through the CLI or by hand. Not the task hash: that is
-  precisely the hash prose cannot move. Shipped in plan 6 as `Shot.proseHash` (stamped only when the
-  image's bytes are new) and `driftOf`; a shot rendered before the field existed reads `unknown`.
-- **One authorial act, one command, one undo point.** No batch edits, no JSON-patch command, no
-  buffer diffed to commands on save.
-- **Both input formats loaded during the move**, and a project with both was an error. Plan 4
-  ended the move: `scenes/` is the only form scenes load from, a leftover `screenplay/` is reported
-  rather than read, and the both-present error became a warning — nothing that builds no scenes can
+- **Line ids are scene-scoped and remain so.** `Shot.coversLines` binds to `${sceneId}:L<n>`, so no
+  line can cross a scene boundary and keep its coverage. The batch makes the detachment visible (in
+  `splitScene`/`mergeScene`) rather than introducing global ids.
+- **No edit to a scene invalidates art, so drift has to be reported.** `buildShotPrompt` reads neither
+  `coversLines` nor line text (prose reaches only the P7 reviewer spec, which never enters a task's
+  `inputs`), so retyping a covered line rehashes nothing and re-renders nothing. The frame still
+  illustrates words the scene no longer contains. Plan 5 settled this against the code, and it reversed
+  the batch's original premise. Every plan that can change prose must report the drift to the author
+  before the commit.
+- **Drift is derived, never stored.** A shot has drifted when the hash of the covered lines' text,
+  recorded when its image was written, disagrees with the hash those lines produce now. That comparison
+  is computable, self-healing, and correct for edits made through the CLI or by hand. It does not use
+  the task hash, because prose cannot move the task hash. Plan 6 shipped it as `Shot.proseHash` (stamped
+  only when the image's bytes are new) and `driftOf`; a shot rendered before the field existed reads
+  `unknown`.
+- **Each authorial act is one command and one undo point.** There are no batch edits, no JSON-patch
+  command, and no buffer diffed to commands on save.
+- Both input formats loaded during the move, and a project with both was an error. Plan 4 ended the
+  move: `scenes/` is the only form scenes load from, a leftover `screenplay/` is reported rather than
+  read, and the both-present error became a warning, because a directory that builds no scenes cannot
   contend with the chunks.
-- **A scene chunk's front-matter is its identity and nothing else** — `scene: <id>`, matching the
-  filename, on a closed schema. Heading, location, synopsis, `choices`, `next` and line ids stay
-  `[[…]]` markers and Fountain elements in the body, because `splitScenes` already reads them there
-  and `sceneToFountain` already writes them back losslessly. It was marked for revisit once 4–7 had
-  shipped, against working editors rather than ahead of them.
-  [`archive/INDEX.md#scene-chunk-files`](archive/INDEX.md#scene-chunk-files) records the argument
-  on both sides. **The revisit has happened and came out the same way**: scene-level outfits were
-  the first field to want in, and
+- **A scene chunk's front-matter carries only `scene: <id>`** — matching the filename, on a closed
+  schema. Heading, location, synopsis, `choices`, `next` and line ids stay `[[…]]` markers and Fountain
+  elements in the body, because `splitScenes` already reads them there and `sceneToFountain` already
+  writes them back losslessly. It was marked for revisit once 4–7 had shipped, against working editors
+  rather than ahead of them. [`archive/INDEX.md#scene-chunk-files`](archive/INDEX.md#scene-chunk-files)
+  records the argument on both sides. The revisit has happened and came out the same way: scene-level
+  outfits were the first candidate field, and
   [`archive/INDEX.md#outfits-at-scene-and-shot-level`](archive/INDEX.md#outfits-at-scene-and-shot-level)
-  took the `[[outfit:]]` marker, because `vngen screenplay`/`vngen import` round-trip markers for
-  free and would silently drop a front-matter field. What would change the answer: a second field
-  that has no reading as a marker (something positionless *and* structured, e.g. a per-scene
-  render budget), or the Fountain projection being retired — neither is true today.
+  took the `[[outfit:]]` marker, because `vngen screenplay`/`vngen import` round-trip markers for free
+  and would silently drop a front-matter field. Two things would change the answer: a second field that
+  has no reading as a marker (something positionless and structured, such as a per-scene render budget),
+  or the Fountain projection being retired. Neither is true today.
 
 ### Blockers found while planning
 
-Things that are broken or dead today and that a plan above has to deal with. Each is scoped into a
-plan; the ones marked **fixed** have shipped with the plan that owned them.
+The items below are broken or dead today, and a plan above has to deal with each one. Each is scoped
+into a plan. The ones marked **fixed** have shipped with the plan that owned them.
 
-- ~~`headingFor` (`packages/model/src/serialize.ts:60`) reconstructs every heading as
-  `INT. <LOCATION> - DAY`, discarding `EXT.` and the time of day~~ → **fixed** in plan 2:
-  `Scene` carries `headingPrefix` and `locationVariant`, and `headingFor` is gone.
-- ~~`currentSpeaker` (`packages/model/src/scenes.ts`) is cleared only on `flush()`, and the
-  `action`-with-speaker branch describes a case `parseFountain` cannot produce~~ → **fixed** in
-  plan 2: attribution ends with the dialogue block, and `'action'` is no longer a `SceneLine.kind`.
-- ~~`buildModel` takes the entry scene as `sceneList[0]` (`packages/model/src/build.ts:154`), which
-  becomes readdir order the moment scenes are files~~ → **fixed** in plan 3 step 6: `entry` comes
-  from `config.start`, and a missing or dangling `start:` is an error diagnostic rather than a
-  fallback to sorted-first.
+- ~~`headingFor` (`packages/model/src/serialize.ts:60`) reconstructs every heading as `INT. <LOCATION> -
+  DAY`, discarding `EXT.` and the time of day~~ → **fixed** in plan 2. `Scene` carries `headingPrefix`
+  and `locationVariant`, and `headingFor` is gone.
+- ~~`currentSpeaker` (packages/model/src/scenes.ts) is cleared only on `flush()`, and the
+  `action`-with-speaker branch describes a case `parseFountain` cannot produce~~ → **fixed** in plan 2:
+  attribution ends with the dialogue block, and `'action'` is no longer a `SceneLine.kind`.
+- ~~`buildModel` takes the entry scene as `sceneList[0]` (packages/model/src/build.ts:154), so the
+  entry follows readdir order once scenes are files~~ → **fixed** in plan 3 step 6: `entry` comes from
+  `config.start`, and a missing or dangling `start:` produces an error diagnostic instead of falling
+  back to the sorted-first scene.
 - ~~Four call sites duplicate `loadInputs` → `parseFountain` → `buildModel` (CLI, desktop session,
-  authoring workspace, testkit)~~ → **fixed** in plan 3 step 1: `@vn/model`'s `modelFromInputs` is
-  the one sequencing point, and `LoadedInputs` moved to `@vn/parse` so the reader and the builder
-  name one shape. Not `loadProjectModel` in `@vn/store` as planned — store may not import `model`.
-- ~~`ProjectPaths.sceneFile` / `writeSceneFile` are dead, and they hold the name authored chunks
-  want~~ → **fixed** in plan 3 step 2: both deleted, so the name is free for authored chunks.
+  authoring workspace, testkit)~~ → **fixed** in plan 3 step 1: `@vn/model`'s `modelFromInputs` is the
+  one sequencing point, and `LoadedInputs` moved to `@vn/parse` so the reader and the builder use the
+  same shape. The sequencing point is not `loadProjectModel` in `@vn/store` as planned, because
+  `@vn/store` may not import `model`.
+- ~~`ProjectPaths.sceneFile` / `writeSceneFile` are dead code, and they hold the name that authored
+  chunks require~~ → **fixed** in plan 3 step 2: both deleted, so the name is free for authored chunks.
 - ~~`vngen export` and `story.export` already mean the playable, so Fountain output needs a
   different name~~ → **fixed** in plan 4: the Fountain projection is `vngen screenplay` /
   `story.screenplay`, and the two artifacts never share a name.
-- ~~`Timeline.tsx:156` refuses to draw an undecomposed scene, which is exactly the scene you want to
-  write before paying for art~~ → **fixed** in plan 6 step 2: the script column renders on its own
-  with a note, and the vermilion gap gutter waits for a decomposition rather than marking every line.
-- ~~`write_file` (`packages/authoring/src/tools.ts:408`) is an unvalidated whole-file overwrite
-  that would happily write a chunk with duplicate line ids~~ → **fixed** in plan 5 step 6:
-  `write_file` refuses `scenes/` outright and its description names `edit_scene` instead.
+- ~~`Timeline.tsx:156` refuses to draw an undecomposed scene, which is the scene to write before
+  paying for art~~ → **fixed** in plan 6 step 2: the script column renders on its own with a note, and
+  the vermilion gap gutter stays empty until a decomposition exists, rather than marking every line.
+- ~~`write_file` (`packages/authoring/src/tools.ts:408`) is an unvalidated whole-file overwrite that
+  can write a chunk with duplicate line ids~~ → **fixed** in plan 5 step 6: `write_file` refuses
+  `scenes/` and its description names `edit_scene` instead.
 
 ### Checklist
 
@@ -240,8 +239,8 @@ plan; the ones marked **fixed** have shipped with the plan that owned them.
 
 ## Keeping this file true
 
-- A plan states its own status in its first lines (`Status: **planned**` / a `## As shipped`
-  section). This table is a projection of those — if the two disagree, the plan wins and the table
-  is stale.
-- Update the row in the same commit that finishes the plan, alongside the plan's As-shipped
-  section and the `CLAUDE.md` edits its final step calls for.
+- A plan states its own status in its first lines (`Status: **planned**` or a `## As shipped`
+  section). This table restates the status each plan declares. If a plan and the table disagree, the
+  plan wins and the table is stale.
+- Update the row in the same commit that finishes the plan, alongside the plan's As-shipped section
+  and the edits to `CLAUDE.md` that the plan's final step calls for.

@@ -1,42 +1,43 @@
 # Node-based asset generation
 
-Design study, 24 August 2026. A node-based asset generator: per-slot graphs drawn in
-path.ux's upcoming node editor, executed by the app itself, with pluggable provider nodes
-(Gemini image, OpenAI image, FLUX, text LLMs), persistent knowledge of which nodes need
-re-execution across app restarts, a DSL the authoring agent edits graphs through without
-touching visual layout, and a cost estimate computed before anything spends money.
+Design study, 24 August 2026. The subject is a node-based asset generator. It draws one graph per
+slot in path.ux's upcoming node editor and executes that graph in the app itself. Provider nodes
+are pluggable and cover Gemini image, OpenAI image, FLUX, and text LLMs. The app records which
+nodes need re-execution and keeps that record across restarts. A DSL lets the authoring agent
+edit graphs without touching visual layout, and a cost estimate is computed before any money is
+spent.
 
-Nine decisions were settled with the user on 2026-08-24 and are written into the design
-below rather than listed as options:
+The user settled nine decisions on 2026-08-24. The design below applies them rather than listing
+them as options:
 
-1. **A bound graph is the slot's runner, and also runs interactively.** The slot's task
-   keeps today's identity; the scheduler's runner executes the graph with the derived
-   prompt and refs as inputs and records its image as the task's output. The editor can
-   also run the same graph interactively, sharing one execution journal.
-2. **The path.ux graph is the model.** The document is nstructjs JSON validated by
-   nstructjs's own `validateJSON` at the boundary; main holds real `Graph` objects. The
-   verification that makes this safe is recorded below.
-3. **Plugins install by explicit confirmation** and run trusted, against a
-   capability-only API shaped so a sandbox can be added later without rewriting plugins.
-4. **Groups ship in v1**, consumed from path.ux stage 5.
-5. **A graph may contain several Output nodes.** Each binds an output target, so one
-   graph can feed several slots; among Output nodes with the same target, only the
-   active one — the most recently selected, Blender-style — is used. The editor-side
-   selection mechanics are deferred until the path.ux node editor lands.
-6. **The refine loop wraps the graph run.** The runner keeps `shot_image`'s critique
-   loop. The critique enters through the graph's Refine input node when one is wired
-   into a path that reaches the slot's active Output node; when none is wired, the
-   refiner modifies the derived prompt itself between attempts. Model nodes —
-   configurable to emit any output type their model supports — can process the refine
-   prompt into a more detailed one on the way.
+1. 1. **A bound graph runs the slot, and the editor can also run it interactively.** The slot's
+   task keeps its current identity; the scheduler's runner executes the graph with the derived
+   prompt and refs as inputs and records the resulting image as the task's output. The editor can
+   run the same graph interactively, and both runs share one execution journal.
+2. 2. **The model is stored as a path.ux graph.** The document is nstructjs JSON, and nstructjs's
+   own `validateJSON` validates it at the boundary; main holds real `Graph` objects. The section
+   below records the verification that makes this arrangement safe.
+3. 3. **Plugins install by explicit confirmation.** They run as trusted code against a
+   capability-only API, and that API is shaped so a sandbox can be added later without rewriting
+   plugins.
+4. 4. **Groups ship in v1** and are consumed from path.ux stage 5.
+5. 5. **A graph may contain several Output nodes.** Each binds an output target, so one graph can
+   feed several slots. Among Output nodes with the same target, only the active one (the most
+   recently selected, as in Blender) is used. The editor-side selection mechanics are deferred
+   until the path.ux node editor is in place.
+6. 6. **The refine loop wraps the graph run.** The runner keeps `shot_image`'s critique loop. The
+   critique enters through the graph's Refine input node when one is wired into a path that
+   reaches the slot's active Output node. When none is wired, the refiner modifies the derived
+   prompt itself between attempts. Model nodes (configurable to emit any output type their model
+   supports) can process the refine prompt into a more detailed one on the way.
 7. **Intermediates are saved in the project repo but are not assets.** Only the
    terminal image enters the asset store; intermediate node outputs are
    journal-referenced blobs with no `AssetKind`.
-8. **Prices come from the release and from the plugins.** The shipped table is
-   refreshed as part of the release process, and a user-level table — per user,
-   deliberately not per project — can be populated automatically, owned by the model
-   plugins. Where a provider exposes no per-key pricing API, a plugin may request
-   access to an LLM agent with web fetch to read published pricing.
+8. 8. **Prices come from the release and from the plugins.** The shipped table is refreshed as
+   part of the release process. The model plugins own a user-level table (per user, deliberately
+   not per project) and can populate it automatically. Where a provider exposes no per-key
+   pricing API, a plugin may request access to an LLM agent with web fetch to read published
+   pricing.
 9. **Names.** The rules package is `@vn/gengraph`, the command namespace is
    `gengraph.*`, and the editor pane is titled Gen Graph. An earlier `agraph.*`
    placeholder was rejected because it reads as "acyclic graph".
@@ -72,420 +73,411 @@ below rather than listed as options:
 
 ### The path.ux node graph
 
-The design is `vendor/path.ux/documentation/research/nodeEditor.md`; the implementation
-plans are `documentation/plans/node-editor.md` (the library, stages 1–7, all done — the
-graph module lives at vendor/path.ux/scripts/graph/: socket.ts, node.ts, graph.ts,
-group.ts, dsl.ts) and `node-editor-view.md` (the editor; V1, the pan/zoom container, is
-done and V2–V4 are unstarted). The facts that shape this design:
+The design is vendor/path.ux/documentation/research/nodeEditor.md. The implementation plans are
+documentation/plans/node-editor.md (the library: stages 1–7 are all done, and the graph module
+lives at vendor/path.ux/scripts/graph/, which holds socket.ts, node.ts, graph.ts, group.ts,
+dsl.ts) and node-editor-view.md (the editor: V1 is the pan/zoom container and is done, while
+V2–V4 are unstarted). The following facts shape this design:
 
-- **The library owns structure, not evaluation.** Nodes have no `exec` method. The graph
-  provides typed sockets with coercion, dirty tracking, a topological sort flattened
-  through group boundaries, and serialization; the client walks the order and decides what
-  running a node means. Whatever executor this app builds, that division was already
-  decided for it.
-- **Stage 6 ships an LLM DSL.** A flat `nodes: [{id, type, props}]` /
-  `links: [[from, "out", to, "in"]]` format with `validateGraphDSL` returning diagnostics
-  rather than throwing, so a model can repair its own output, and `buildGraphFromDSL`
-  producing a real `Graph`. With the library graph as the model, both are consumed
-  directly.
-- **Stage 5 ships groups**: instanced subgraphs whose definitions live in other files
-  (client-supplied `groupLoader`/`groupSaver`), with per-instance sparse property
-  overrides tracked by `wasSet`. This maps directly onto "one pipeline, instanced per
-  character, with per-character tweaks that survive updates to the shared definition".
-- **The view plan builds `NodeGraphView`**, a hostable widget owning the canvas — node
-  bodies as real path.ux containers, a canvas link underlay, auto-arrange via
-  `graphPack`/`graphGetIslands` — with `NodeEditor extends Area` as a thin shell around
-  it, registered by the consumer.
-- Stage 7 ships ToolOps and a datapath API for the library's own undo and forwarded UI.
-  The desktop app has its own command stack and undo, so it installs a `NodeGraphDelegate`
-  that routes editor gestures into commands rather than into the library's ToolOps (see
-  "Asks of path.ux").
+- **The library defines structure and does not evaluate.** Nodes have no `exec` method. The
+  graph provides typed sockets with coercion, dirty tracking, a topological sort flattened
+  through group boundaries, and serialization; the client walks that order and decides what
+  running a node means. Any executor this app builds keeps this split between structure and
+  evaluation.
+- **Stage 6 ships an LLM DSL.** The DSL uses a flat format of `nodes: [{id, type, props}]` and
+  `links: [[from, "out", to, "in"]]`. `validateGraphDSL` returns diagnostics rather than
+  throwing, so a model can repair its own output, and `buildGraphFromDSL` produces a real
+  `Graph`. The library graph is the model, so `validateGraphDSL` and `buildGraphFromDSL` consume
+  it directly.
+- **Stage 5 ships groups.** A group is an instanced subgraph whose definition lives in another
+  file, loaded and saved by the client-supplied `groupLoader`/`groupSaver`, and each instance
+  tracks sparse property overrides in `wasSet`. Groups map directly onto "one pipeline, instanced
+  per character, with per-character tweaks that survive updates to the shared definition".
+- The view plan builds `NodeGraphView`, a hostable widget that owns the canvas. Node bodies are
+  real path.ux containers, a canvas underlay draws the links, and auto-arrange runs through
+  `graphPack`/`graphGetIslands`. `NodeEditor extends Area` is a thin shell around the widget, and
+  the consumer registers it.
+- Stage 7 ships ToolOps and a datapath API for the library's own undo and forwarded UI. The
+  desktop app has its own command stack and undo, so it installs a `NodeGraphDelegate` that
+  routes editor gestures into commands rather than into the library's ToolOps (see "Asks of
+  path.ux").
 
 ### The attachment point: slots
 
-A slot is a `RefBinding` (packages/types/src/prompt.ts:94) with a canonical string form
-from `slotKey` (packages/artgen/src/refcycle.ts:23): `portrait:aiko`,
-`sheet:aiko/gala/front`, `plate:cafe/night`, `shot:greet/s2`. `buildSlotGraph`
-(packages/artgen/src/slotgraph.ts:304) already enumerates every picture the project
-implies — whether or not anything has drawn one — with stable addresses that survive a
-re-plan, a reverse dependency index, and per-slot status. That graph of slots, not the
-task graph of hashes, is the right thing to attach a generator graph to: a slot address
-is stable across regeneration, a task hash is not.
+A slot is a `RefBinding` (packages/types/src/prompt.ts:94) with a canonical string form from
+`slotKey` (packages/artgen/src/refcycle.ts:23): `portrait:aiko`, `sheet:aiko/gala/front`,
+`plate:cafe/night`, `shot:greet/s2`. `buildSlotGraph` (packages/artgen/src/slotgraph.ts:304)
+already enumerates every picture the project implies (whether or not one has been drawn), with
+stable addresses that survive a re-plan, a reverse dependency index, and per-slot status. Attach
+the generator graph to that graph of slots rather than to the task graph of hashes, because a
+slot address is stable across regeneration and a task hash is not.
 
 ### Identity, resume, and the runner seam
 
-Three pieces of existing machinery this design extends rather than replaces:
+This design extends three pieces of existing machinery rather than replacing them:
 
-- **Task identity** is `hashParts(kind, inputs)` — canonical-JSON, key-order-insensitive
-  (packages/taskgraph/src/hash.ts:10, packages/util/src/hash.ts:29) — with upstream
-  *outputs'* content hashes embedded in `inputs.refs`. Embedding output hashes is what
-  makes dirtiness propagate: change an upstream picture and every downstream identity
-  moves. The graph-bound slot keeps exactly this identity; the graph changes how the task
-  is *run*, never what it *is*.
-- **Resume is emergent.** `state/tasks.jsonl` is an append-only log of full task
-  snapshots, replayed last-writer-wins (packages/taskgraph/src/log.ts:18); a replayed
-  `done` node is simply never ready again. "Re-run this" is one appended `pending`
-  snapshot (apps/desktop/src/main/session.ts:2561).
-- **A runner** is `(task, deps) => Promise<TaskResult>`
-  (packages/pipeline/src/runners.ts:24), chosen by task kind, with providers reached only
-  through `RunDeps` — the scheduler never imports a concrete backend. A graph runner
-  slots into this seam the way `makeShotRunner` (runners.ts:103) does.
+- **Task identity** is `hashParts(kind, inputs)`, a canonical-JSON, key-order-insensitive hash
+  (packages/taskgraph/src/hash.ts:10, packages/util/src/hash.ts:29), with the content hashes of
+  upstream outputs embedded in `inputs.refs`. Embedding those output hashes propagates dirtiness:
+  a change to an upstream picture moves every downstream identity. The graph-bound slot keeps
+  this same identity. The graph changes how the task runs, not what the task is.
+- **Resume needs no separate mechanism.** `state/tasks.jsonl` is an append-only log of full
+  task snapshots, replayed last-writer-wins (packages/taskgraph/src/log.ts:18), and a replayed
+  `done` node is never ready again. Re-running a task appends one `pending` snapshot
+  (apps/desktop/src/main/session.ts:2561).
+- **A runner** is `(task, deps) => Promise<TaskResult>` (packages/pipeline/src/runners.ts:24),
+  chosen by task kind. Providers are reached only through `RunDeps`, so the scheduler never
+  imports a concrete backend. A graph runner attaches at the same point as `makeShotRunner`
+  (runners.ts:103).
 
-The provider layer already has a record/replay cache keyed by
-`sha256(canonicalJson({op, prompt, ref byte-hashes, params}))`
-(packages/providers/src/cache.ts:27) — a request-identity memo, which is the shape a
-nondeterministic node's cache key takes below.
+The provider layer already has a record/replay cache keyed by `sha256(canonicalJson({op, prompt,
+ref byte-hashes, params}))` (packages/providers/src/cache.ts:27). That key memoizes on request
+identity, and a nondeterministic node's cache key below takes the same shape.
 
 ### Providers and money
 
-`ImageProvider` is `generate(prompt, refs, params)` / `edit(base, prompt, refs, params)`
+`ImageProvider` declares `generate(prompt, refs, params)` and `edit(base, prompt, refs, params)`
 (packages/types/src/providers.ts:9). Images are currently hardcoded to Gemini
-(packages/providers/src/factory.ts:51). Accounting is tokens only — `TokenUsage` reaches
-the desktop as usage events, image calls report nothing, and **no price data exists
-anywhere in the repo**: `vngen cost` (packages/pipeline/src/pipeline.ts:48) counts calls,
-not dollars, and undercounts because planning is incremental. Every provider request
-passes through the bounded in-memory ring that the API-fault diagnosis reads; plugin
-nodes must not lose that.
+(packages/providers/src/factory.ts:51). Accounting covers tokens only: `TokenUsage` reaches the
+desktop as usage events, image calls report nothing, and the repo holds no price data. `vngen
+cost` (packages/pipeline/src/pipeline.ts:48) counts calls rather than dollars, and undercounts
+because planning is incremental. Every provider request passes through the bounded in-memory ring
+that the API-fault diagnosis reads, and plugin nodes must keep that ring.
 
 ### The desktop shell
 
-Editor #17 is one `EDITORS` entry (apps/desktop/src/shared/editors.ts:22) plus a
-`registerEditor(cls, 'vn.Nodes', fields)` call; the Asset editor is the binding precedent
-(subject `ui.assetHash`, `pins: 'assetHash'`) and Task Graph is the canvas precedent.
-Commands are the only write path; undo shadow-snapshots the document class and excludes
-`vngen/build` and `vngen/state` (packages/commands/src/undo.ts:16), so a graph document
-under `work/` is undoable and an execution journal under `vngen/state/` deliberately is
-not. Project convention: json for documents read whole, jsonl for append-only logs;
-per-file layout state is marked `-merge` in `.gitattributes` the way layout templates
-are.
+Editor #17 consists of one `EDITORS` entry (apps/desktop/src/shared/editors.ts:22) and a
+`registerEditor(cls, 'vn.Nodes', fields)` call; the Asset editor supplies the binding precedent
+(subject `ui.assetHash`, `pins: 'assetHash'`) and Task Graph supplies the canvas precedent. Every
+write goes through a command. Undo shadow-snapshots the document class and excludes `vngen/build`
+and `vngen/state` (packages/commands/src/undo.ts:16), so a graph document under `work/` is
+undoable while an execution journal under `vngen/state/` deliberately is not. By project
+convention, documents read whole are stored as json and append-only logs as jsonl; per-file
+layout state is marked `-merge` in `.gitattributes` the way layout templates are.
 
 ### The standing objection
 
-`docs/plans/desktop-editors-tracking.md:155` records "Prompt node editor" under **Not
-being built**: it "converts deterministic plumbing into user data, and every edit rehashes
-downstream tasks — casual fiddling silently invalidates generated art." The
-graph-as-runner decision answers both halves directly:
+docs/plans/desktop-editors-tracking.md:155 records "Prompt node editor" under **Not being
+built**: it "converts deterministic plumbing into user data, and every edit rehashes downstream
+tasks — casual fiddling silently invalidates generated art." The graph-as-runner decision
+resolves both concerns:
 
-1. **The deterministic plumbing stays derived.** Planning, task identity, dedup and
-   resume all keep reading the derived prompt, refs and params. The graph replaces only
-   the generative step — the one step that was never deterministic — and only for slots
-   that opt in. A slot with no graph is untouched.
-2. **A graph edit moves no hashes.** The task's identity does not include the graph, so
-   editing a graph invalidates nothing and discards nothing. The edit is reported as
-   drift — the journal records the hash of the Output node that produced the slot's
-   current art, and a mismatch against the current document shows as "graph changed
-   since last render", the way a prose edit shows against `Shot.proseHash`. Re-rendering stays an
-   explicit requeue, and interactive runs quote their cost first.
+1. 1. **The deterministic plumbing stays derived.** Planning, task identity, dedup and resume all
+   keep reading the derived prompt, refs and params. The graph replaces only the generative step
+   (the one step that was never deterministic) and only for slots that opt in. A slot with no
+   graph is untouched.
+2. 2. **A graph edit changes no hashes.** The task's identity does not include the graph, so
+   editing a graph invalidates nothing and discards nothing. The edit is reported as drift. The
+   journal records the hash of the Output node that produced the slot's current art, and a
+   mismatch against the current document shows as "graph changed since last render", just as a
+   prose edit shows against `Shot.proseHash`. Re-rendering still requires an explicit requeue,
+   and interactive runs quote their cost first.
 
 ## Architecture
 
 ### A graph is a project document whose Output nodes bind slots
 
-One graph, one JSON document, at `work/graphs/<slug>.json`. Binding lives on the graph's
-Output nodes rather than in the filename or a document-level field: each Output node
-carries a slot-key prop (`sheet:aiko/gala/front`), so one graph may feed several slots —
-a sheet graph with three Output nodes drives all three angles from one shared trunk. The
-pipeline finds a slot's graph through an index built by scanning the documents' output
-bindings on load. A graph whose Output nodes bind nothing is legal — a scratch graph is
-the node-based analogue of a concept image, and its results enter the pipeline the way a
-concept's do (adoption/promotion), which keeps `adoptSlot`'s existing refusals intact.
-The file is:
+Each graph is one JSON document at `work/graphs/<slug>.json`. Binding is declared on the graph's
+Output nodes rather than in the filename or a document-level field: each Output node carries a
+slot-key prop (`sheet:aiko/gala/front`), so one graph may feed several slots. A sheet graph with
+three Output nodes drives all three angles from one shared trunk. The pipeline finds a slot's
+graph through an index built by scanning the documents' output bindings on load. A graph whose
+Output nodes bind nothing is legal: such a scratch graph is the node-based analogue of a concept
+image, and its results enter the pipeline the way a concept image's results do
+(adoption/promotion), which keeps `adoptSlot`'s existing refusals intact. The file is:
 
-- nstructjs JSON (`writeJSON`), checked by `validateJSON` on load (see the next section);
+- nstructjs JSON written by `writeJSON`, checked by `validateJSON` on load (see the next
+  section);
 - written only by commands (a new `gengraph.*` namespace);
 - inside the undo scope (`work/` is in the document class);
-- marked `-merge` in `.gitattributes`: like a layout, two authors' versions merged line
-  by line make a graph neither of them built.
+- marked `-merge` in `.gitattributes`, like a layout, because merging two authors' versions
+  line by line produces a graph neither author built.
 
 ### The path.ux graph is the model
 
-Decided. Main holds a real `Graph` per open graph document; commands mutate it;
-`writeJSON` serializes it; the renderer's editor views the same graph. Two objections
-were raised against this and both were checked and cleared:
+This is decided. Main holds a real `Graph` per open graph document; commands mutate it;
+`writeJSON` serializes it; the renderer's editor views the same graph. Two objections were raised
+against this design, and both were checked and cleared:
 
 - **Boundary validation.** nstructjs's `validateJSON(json, cls)`
-  (vendor/nstructjs/documentation/jsonGuide.md) checks missing fields, wrong types,
-  unknown keys, and a polymorphic discriminator naming a non-subclass, with positional
-  error context. That is structural validation equivalent to a zod schema for this
-  format. The checks a schema cannot express — props matching the node type's declared
-  spec, link socket compatibility, a slot key that parses — are semantic and live in the
-  rules package regardless of format, as a pass after `readJSON`.
-- **Node-cleanliness.** The graph module's imports of `Container`, `IContextBase` and
-  `DataAPI` are all `import type` and vanish at compile time. Its runtime chain —
-  nstructjs, `ToolProperty`, vectormath, path-controller util — was checked for
-  module-scope DOM access: `navigator` and `window` uses in util.ts sit inside functions
-  (`isMobile`, the base64 helpers) or behind `debug_cacherings = false` (util.ts:678).
-  Electron main and the node-only CLI can import the graph module today. This is
-  currently an incidental property; the asks below make it a stated contract.
+  (vendor/nstructjs/documentation/jsonGuide.md) checks missing fields, wrong types, unknown keys,
+  and a polymorphic discriminator naming a non-subclass, with positional error context. Those
+  checks are structural validation equivalent to a zod schema for this format. A schema cannot
+  express whether props match the node type's declared spec, whether link sockets are compatible,
+  or whether a slot key parses. These semantic checks live in the rules package regardless of
+  format, as a pass after `readJSON`.
+- **Node-cleanliness.** The graph module's imports of `Container`, `IContextBase` and `DataAPI`
+  are all `import type` and are erased at compile time. Its runtime chain (nstructjs,
+  `ToolProperty`, vectormath, path-controller util) was checked for module-scope DOM access: the
+  `navigator` and `window` uses in util.ts are inside functions (`isMobile`, the base64 helpers)
+  or behind `debug_cacherings = false` (util.ts:678). Electron main and the node-only CLI can
+  import the graph module today. Node-cleanliness is currently an incidental property; the
+  requests below make it a stated contract.
 
-Two consequences of the decision: stage 6's `buildGraphFromDSL` and stage 5's group
-machinery are consumed wholesale rather than reimplemented, and the main-process and CLI
-bundles need the same `pathux` alias vite gives the renderer. nstructjs is a first-party
-submodule at vendor/nstructjs, so format-level needs (there should be few) are
-changeable, with the usual publish-and-bump for path.ux's own dependency when they land.
+The decision has two consequences. Stage 6's `buildGraphFromDSL` and stage 5's group machinery
+are consumed wholesale rather than reimplemented, and the main-process and CLI bundles need the
+same `pathux` alias vite gives the renderer. nstructjs is a first-party submodule at
+vendor/nstructjs, so format-level needs (there should be few) can be changed there, and each
+change reaches path.ux's own dependency through the usual publish-and-bump.
 
-The one cost of this route that stays real: editor gestures must dispatch commands
-rather than library ToolOps, so the command stack remains the only write path and
-`stack.check` supplies the mid-gesture verdict. That is the gesture-delegate ask below.
+This route has one real cost. Editor gestures must dispatch commands rather than library ToolOps,
+so the command stack remains the only write path and `stack.check` supplies the mid-gesture
+verdict. The gesture-delegate request below covers that cost.
 
 ### A node type has three parts
 
-1. **Class + spec** (shared): the path.ux `Node` subclass — sockets, `ToolProperty`
-   props, `NodeDef` — plus app metadata the library does not carry: `typeVersion`, a
-   `spends` flag, and the cost model. The graph module is browser-safe and node-clean, so
-   these classes live in shared code both processes import (the `src/shared/` node-free
-   rule is satisfied).
-2. **Runtime** (main and CLI): `run(inputs, props, services) → outputs`, registered by
-   type name, where `services` is a capability object the executor hands in — provider
-   access, key resolution, the asset store, a fetch that passes through the request ring.
-   Runtimes never get ambient `fs`/`net`.
-3. **UI** (renderer only, optional): a `createUI` body for nodes whose props deserve more
-   than generated widgets. Most nodes need nothing here.
+1. 1. **Class + spec** (shared): The class and spec pair the path.ux `Node` subclass — sockets,
+   `ToolProperty` props, `NodeDef` — with app metadata the library does not carry: `typeVersion`,
+   a `spends` flag, and the cost model. The graph module is browser-safe and node-clean, so these
+   classes live in shared code that both processes import, which satisfies the `src/shared/`
+   node-free rule.
+2. 2. **Runtime** (main and CLI): `run(inputs, props, services) → outputs`, registered by type
+   name. The executor hands in `services`, a capability object that holds provider access, key
+   resolution, the asset store, and a fetch that passes through the request ring. Runtimes never
+   receive ambient `fs`/`net`.
+3. 3. **UI** (renderer only, optional): Supplies a `createUI` body for nodes whose props need
+   more than generated widgets. Most nodes need nothing here.
 
-A first-party starter set: **Derived prompt** (the task's derived prompt — inside a
-scheduler run this is the running task's own prompt; interactively it is computed from
-the bound slot via the existing `build*Chunks` derivation), **Task refs** (the task's
-ordered refs, same dual sourcing), **Slot ref** (a specific upstream slot's current asset
-by `slotKey`), **Text** / **Template**, **LLM rewrite** (text model call), **Generate
-image** (Gemini today), **Edit image** (base + refs), **Reference list** (ordered — order
-is part of request identity), **Image file** (an adopted upload or concept by hash),
-**Refine prompt** (the refiner's critique text — empty on the first pass; see the refine
-loop), **Switch/Blend** utilities, and **Output image** (the special terminal; next
-section).
+The first-party starter set contains **Derived prompt** (the task's derived prompt — inside a
+scheduler run this is the running task's own prompt, and interactively it is computed from the
+bound slot via the existing `build*Chunks` derivation), **Task refs** (the task's ordered refs,
+with the same dual sourcing), **Slot ref** (a specific upstream slot's current asset by
+`slotKey`), **Text** / **Template**, **LLM rewrite** (text model call), **Generate image**
+(Gemini today), **Edit image** (base + refs), **Reference list** (ordered, because order is part
+of request identity), **Image file** (an adopted upload or concept by hash), **Refine prompt**
+(the refiner's critique text, which is empty on the first pass; see the refine loop),
+**Switch/Blend** utilities, and **Output image** (the special terminal; see the next section).
 
 ### Output nodes
 
-The Output node is the special terminal a run is read from, and a graph may contain any
-number of them:
+The Output node is a special terminal, and a run is read from it. A graph may contain any number
+of Output nodes:
 
-- **Different targets fan out.** Each Output node binds one slot key, so a sheet graph
-  binds three Output nodes to its three angles and each angle's task evaluates from its
-  own Output node. The tasks share the trunk upstream of the split, and the journal's
-  node cache means a shared node runs once, for whichever task reaches it first.
-- **Several Output nodes on one target are variants, resolved Blender-style.** Exactly
-  one Output node per target is active, and selecting an Output node in the editor makes
-  it the active one for its target. The active flag is document state written by a
-  command — undoable, diffable, and reachable from the agent's DSL — rather than
-  ephemeral selection. The editor-side mechanics (how a selection gesture reaches that
-  command) wait for the path.ux node editor, and nothing here asks path.ux for
-  active-output support; the app tracks the flag itself.
-- **Drift is measured at the active Output node.** An Output node's `nodeHash` (next
-  section) transitively embeds everything upstream of it, so a slot's drift check is one
-  comparison: the active Output node's recomputed hash against the journal's last `done`
-  record. An edit to a branch that does not feed a slot's active output does not drift
-  that slot, and switching the active output is itself a drift-visible change.
+- **Different targets fan out.** Each Output node binds one slot key, so a sheet graph binds
+  three Output nodes to its three angles and each angle's task evaluates from its own Output
+  node. The tasks share the trunk upstream of the split. Because of the journal's node cache, a
+  shared node runs once for whichever task reaches it first.
+- **Several Output nodes on one target are variants, resolved Blender-style.** Exactly one
+  Output node per target is active, and selecting an Output node in the editor makes it the
+  active one for its target. A command writes the active flag into document state, so the flag is
+  undoable, diffable, and reachable from the agent's DSL rather than being ephemeral selection.
+  The editor-side mechanics (how a selection gesture reaches that command) are left until the
+  path.ux node editor is in place. This design does not require active-output support from
+  path.ux; the app tracks the flag itself.
+- **Drift is measured at the active Output node.** An Output node's `nodeHash` (next section)
+  transitively embeds everything upstream of it, so a slot's drift check is a single comparison
+  of the active Output node's recomputed hash against the journal's last `done` record. An edit
+  to a branch that does not feed a slot's active output does not drift that slot, and switching
+  the active output shows up as drift.
 
 ### Execution
 
-- **The graph runner.** When a slot carries a graph binding, the pipeline's runner for
-  that task loads the document, feeds the task's prompt and refs into the Derived-prompt
-  and Task-refs input nodes, evaluates the flattened `sort()` order up to the slot's
-  active Output node executing what is dirty, and records that node's image as the
-  task's output and attempt — the same `TaskResult` shape every runner returns. Sibling
-  tasks bound into one graph each evaluate from their own Output node and meet in the
-  shared journal, so the common trunk runs once. Task failure records and the single retry
-  behave as they do for any task. The executor lives beside the pipeline spine so both
-  the CLI scheduler and the desktop reach it; `@vn/authoring` never imports it — the
-  agent's run tool goes through an injected capability, the `PipelineControl` pattern
-  (packages/authoring/src/tools.ts:126).
-- **Interactive runs** from the editor use the same executor with the same journal, so a
-  node already computed by a scheduler wave is not recomputed in the editor and vice
-  versa. Interactive runs evaluate lazily from a requested output and quote their cost
-  before any `spends` node fires.
+- **The graph runner.** When a slot carries a graph binding, the pipeline's runner for that
+  task loads the document, feeds the task's prompt and refs into the Derived-prompt and Task-refs
+  input nodes, evaluates the flattened `sort()` order up to the slot's active Output node,
+  executing what is dirty, and records that node's image as the task's output and attempt. That
+  record uses the same `TaskResult` shape every runner returns. Sibling tasks bound into one
+  graph each evaluate from their own Output node and share one journal, so the common trunk runs
+  once. Task failure records and the single retry behave as they do for any task. The executor
+  sits beside the pipeline spine so that both the CLI scheduler and the desktop can reach it.
+  `@vn/authoring` never imports it. The agent's run tool goes through an injected capability (the
+  `PipelineControl` pattern, packages/authoring/src/tools.ts:126).
+- **Interactive runs** from the editor use the same executor with the same journal, so the
+  editor does not recompute a node a scheduler wave has already computed, and a scheduler wave
+  does not recompute a node the editor has already computed. Interactive runs evaluate lazily
+  from a requested output and quote their cost before any `spends` node fires.
 - **Node identity**: `nodeHash = hashParts(typeName + typeVersion, canonicalProps,
-  orderedInputHashes)`, where an image input hashes by content and a scalar input by
-  canonical JSON. This is the task-graph identity rule transplanted one level down:
-  upstream output hashes are embedded, so dirtiness propagates by construction and no
-  separate invalidation bookkeeping exists to go stale.
-- **Journal**: `vngen/state/graphs/<slug>.jsonl`, append-only full snapshots per node
+  orderedInputHashes)`, where an image input hashes by content and a scalar input by canonical
+  JSON. Node hashing applies the task-graph identity rule one level down: upstream output hashes
+  are embedded, so dirtiness propagates by construction and no separate invalidation bookkeeping
+  exists to go stale.
+- **Journal**: `vngen/state/graphs/<slug>.jsonl` holds append-only full snapshots per node
   transition (`{nodeId, nodeHash, status, output?, usage?, error?, at}`), replayed
   last-writer-wins like `tasks.jsonl`. On load, recompute each node's `nodeHash` from the
-  document and compare with the journal: a match with a `done` record is clean, anything
-  else is dirty. That is the whole restart story, and it is correctly outside the undo
-  scope — undo can rewind the document; it must not pretend to rewind spend. The drift
-  report reads the same comparison at the active Output node, so no separate
-  document-hash record exists to fall out of step.
-- **Outputs**: the terminal image recorded as the task's output enters the
-  content-addressed asset store the way every runner's art does. Intermediate node
-  outputs are deliberately not assets — no `AssetKind`, no store root, invisible to the
-  slot graph and the exporters — but they are saved in the project repo so restart and
-  the journal's caching keep their evidence across clones: content-addressed blobs under
-  `vngen/state/graphs/<slug>/`, beside the journal that references them (proposed
-  layout; the decision is only that they live in the repo without being assets). Scalars
-  and strings live inline in the journal record.
+  document and compare it with the journal. A node whose hash matches a `done` record is clean,
+  and every other node is dirty. That comparison is all a restart needs, and it sits correctly
+  outside the undo scope: undo rewinds the document, and it does not rewind spend. The drift
+  report reads the same comparison at the active Output node, so there is no separate
+  document-hash record to keep in sync.
+- **Outputs**: The terminal image recorded as the task's output enters the content-addressed
+  asset store the way every runner's art does. Intermediate node outputs are deliberately not
+  assets: they have no `AssetKind` and no store root, and neither the slot graph nor the
+  exporters see them. The project repo still saves them, as content-addressed blobs under
+  `vngen/state/graphs/<slug>/` beside the journal that references them, so that a restart and the
+  journal's caching still have them across clones (proposed layout; the decision is only that
+  they live in the repo without being assets). Scalars and strings live inline in the journal
+  record.
 
 ### The refine loop
 
-The critique loop wraps the graph run, and a Refine input node inside the graph is where
-the refiner's prompt enters. `shot_image`'s generate→critique→refine shape — the critic,
-`config.max_refine_attempts`, `needs_human` at the cap — stays in the runner rather than
-becoming nodes, so the cap and the critic are host policy applied to every graph alike.
+The critique loop wraps the graph run, and a Refine input node inside the graph receives the
+refiner's prompt. `shot_image`'s generate→critique→refine shape (the critic,
+`config.max_refine_attempts`, and `needs_human` at the cap) stays in the runner rather than
+becoming nodes, so the runner applies the same cap and the same critic to every graph.
 
-- **The Refine prompt node carries the critique in when one is wired.** It emits an
-  empty string on the first pass; after each critique the runner sets it to the refine
+- **The Refine prompt node carries the critique when a critique is wired in.** The node emits
+  an empty string on the first pass. After each critique, the runner sets the node to the refine
   prompt and re-evaluates the slot's active Output node.
-- **An unwired graph is still refined, through its prompt.** If no path connects the
-  Refine input to a slot's active Output node, the refiner instead modifies the derived
-  prompt between attempts — the value the Derived-prompt node emits. Every graph gets
-  the critique loop; wiring the Refine input changes where the critique enters, not
-  whether it happens. The wiring test is judged per output, like drift.
-- **Only the tail downstream of the entry point re-runs.** An attempt changes the value
-  of one node — the Refine input when wired, the Derived-prompt node otherwise — so
-  only hashes downstream of it move, the trunk above stays cached in the journal, and a
-  Refine input wired in late keeps attempts cheap where a rewritten derived prompt
-  re-runs most of the graph.
-- **A model node can expand the prompt en route.** Model nodes are configurable to emit
-  any output type their backing model supports, so the author can route the refine
-  prompt through a text-model node that turns a terse critique into a more detailed
-  prompt before it reaches the image node.
+- **An unwired graph is still refined through its prompt.** If no path connects the Refine
+  input to a slot's active Output node, the refiner modifies the derived prompt between attempts
+  instead. The derived prompt is the value the Derived-prompt node emits. Every graph runs the
+  critique loop. Wiring the Refine input changes where the critique enters, and does not change
+  whether the critique runs. The wiring test is judged per output, and drift is judged per output
+  too.
+- **Only the tail downstream of the entry point re-runs.** An attempt changes the value of one
+  node. That node is the Refine input if one is wired, and the Derived-prompt node otherwise.
+  Only hashes downstream of that node change, and the trunk above it stays cached in the journal.
+  Wiring a Refine input in late keeps attempts cheap, while a rewritten derived prompt re-runs
+  most of the graph.
+- **A model node can expand the prompt before it reaches the image node.** A model node can be
+  configured to emit any output type its backing model supports, so the author can route the
+  refine prompt through a text-model node that turns a terse critique into a more detailed
+  prompt.
 
 ### Cost estimation
 
-The one structural advantage a graph has over the pipeline: **all edges are known up
-front**, so a complete estimate is a single pass over the dirty set — no
-incremental-planning undercount, which is the thing `vngen cost` cannot fix.
+A graph has one structural advantage over the pipeline. All edges are known up front, so a
+complete estimate is a single pass over the dirty set. This avoids the incremental-planning
+undercount, which `vngen cost` cannot fix.
 
-- Each node type's cost model: `estimate(props, inputContext) → [{service, model, unit:
+- Each node type has a cost model, `estimate(props, inputContext) → [{service, model, unit:
   'image' | 'mtok-in' | 'mtok-out', count}]`.
-- Refinement adds a bounded multiplier: the tail downstream of the critique's entry
-  point (the Refine input when wired, the Derived-prompt node otherwise) can re-run up
-  to `config.max_refine_attempts` times, so the estimate shows the first pass plus the
-  worst-case refine spend rather than pricing a single attempt.
-- A **price table** converts units to dollars. None exists in the repo. Two layers,
-  and the more specific wins: a shipped table, refreshed as part of the release process
-  and stamped with a `pricesAsOf` date, and a user-level table at `userConfigDir` the
-  author can have populated automatically — per user rather than per project, because
-  prices follow the author's account and keys, which are already user-level state.
-  Model plugins own population (see Plugins). Populating runs only when the author asks
-  — nothing is scheduled — and every priced figure keeps the call counts beside the
-  dollars so a stale table degrades to what `vngen cost` already honestly does.
-  (docs/research/a-less-technical-mode.md already flagged "the app can name call
-  counts but never money" as the missing fuel gauge; this is where it gets built.)
-- **Actuals**: the journal records each spending node's reported usage (tokens for text;
-  call counts for images, which report no usage today) and the priced estimate at run
-  time, so the graph header can show estimated vs. actual for the last run.
+- Refinement raises the estimate by a bounded factor. The tail downstream of the critique's
+  entry point can re-run up to `config.max_refine_attempts` times, so the estimate shows the
+  first pass plus the worst-case refine spend rather than pricing a single attempt. The entry
+  point is the Refine input if it is wired, and the Derived-prompt node otherwise.
+- A **price table** converts units to dollars. None exists in the repo. There are two layers,
+  and the more specific one wins. The shipped table is refreshed as part of the release process
+  and stamped with a `pricesAsOf` date. The user-level table sits at `userConfigDir` and can be
+  populated automatically for the author. It is per user rather than per project, because prices
+  follow the author's account and keys, which are already user-level state. Model plugins
+  populate it (see Plugins). Population runs only when the author asks, and nothing is scheduled.
+  Every priced figure keeps the call counts beside the dollars, so a stale table degrades to the
+  call counts `vngen cost` already reports. (docs/research/a-less-technical-mode.md already
+  flagged "the app can name call counts but never money" as the missing fuel gauge; the price
+  table described here supplies it.)
+- **Actuals**: The journal records each spending node's reported usage and the priced estimate
+  at run time, so the graph header can show estimated vs. actual for the last run. Reported usage
+  is tokens for text and call counts for images, which report no usage today.
 
 ### Slot coverage
 
-Because the graph is the runner and adoption is not involved, every slot kind is
-coverable, including `portrait:` — the P3 gate approves a portrait after it is drawn,
-whichever runner drew it, and `gate.approve` stays the only writer of
-`character.approvedPortrait`. `adoptSlot`'s refusal of portraits is untouched; it only
-ever concerned the side-channel path, which remains reserved for unbound scratch graphs
-and uploads.
+The graph acts as the runner and no adoption step is involved, so every slot kind is coverable,
+including `portrait:`. The P3 gate approves a portrait after it is drawn, no matter which runner
+drew it, and `gate.approve` remains the only writer of `character.approvedPortrait`. `adoptSlot`
+still refuses portraits. That refusal only ever concerned the side-channel path, which remains
+reserved for unbound scratch graphs and uploads.
 
 ### Agent integration
 
-The agent gets tools, not registry access, per the command-system seam:
+Under the command-system seam, the agent receives tools rather than registry access:
 
-- `read_asset_graph(slot | name)` returns the DSL form (nodes, links, props — no layout).
+- `read_asset_graph(slot | name)` returns the DSL form, which contains nodes, links and props
+  but no layout.
 - `edit_asset_graph` takes a whole replacement graph in DSL. The host validates with
   `validateGraphDSL` (diagnostics back to the model for self-repair), builds via
-  `buildGraphFromDSL`, diffs by node id against the current document, preserves positions
-  for surviving nodes, and auto-places new ones — `graphGetIslands`/`graphPack` seeded
-  with existing positions held fixed, so the author's arrangement survives the agent's
-  edit. Whole-graph replacement is fine at this scale (tens of nodes) and avoids
-  inventing a delta grammar.
-- `run_asset_graph` quotes the estimate and goes through the same confirm the human path
-  uses; plan mode blocks it.
+  `buildGraphFromDSL`, diffs by node id against the current document, preserves positions for
+  surviving nodes, and auto-places new ones by seeding `graphGetIslands`/`graphPack` with the
+  existing positions held fixed, so the author's arrangement survives the agent's edit.
+  Whole-graph replacement is fine at this scale (tens of nodes) and avoids inventing a delta
+  grammar.
+- `run_asset_graph` quotes the estimate and asks for the same confirmation the human path asks
+  for. Plan mode blocks the call.
 - The graph rules (validate, diff, apply, refusals) live in a constrained leaf package
-  beside `@vn/artgen` — `@vn/gengraph` — so desktop commands and agent tools
-  share decisions, not transport.
+  `@vn/gengraph`, beside `@vn/artgen`. Desktop commands and agent tools share its decisions
+  rather than its transport.
 
 ### Groups
 
-In v1, from path.ux stage 5. Definitions live at `work/graphs/lib/<name>.json`, served by
-an app `groupLoader`/`groupSaver` over that directory; instances carry sparse `wasSet`
-overrides, so "the shared portrait pipeline, tweaked for one character" survives updates
-to the shared definition. The executor needs nothing special — the library's `sort()` is
-already flattened through group boundaries — and a group instance's node hashes
-incorporate its resolved (overridden) props like any other node's.
+In v1, from path.ux stage 5, definitions live at `work/graphs/lib/<name>.json`, served by an app
+`groupLoader`/`groupSaver` over that directory. Instances carry sparse `wasSet` overrides, so
+"the shared portrait pipeline, tweaked for one character" survives updates to the shared
+definition. The executor needs nothing special, because the library's `sort()` is already
+flattened through group boundaries. A group instance's node hashes incorporate its resolved
+(overridden) props like any other node's.
 
 ### Plugins
 
-Plugin nodes are TypeScript files we transpile — not arbitrary packages with their own
+Plugin nodes are TypeScript files that we transpile rather than arbitrary packages with their own
 build:
 
-- A plugin is a directory: `plugin.json` manifest (name, version, node types it declares,
-  services it calls, key names it needs, its price-table fragment) plus `.ts` sources for
-  the class/spec, runtime, and optional UI, split the same three ways as first-party
-  nodes.
-- We ship the build tool: esbuild bundles each part against a declared, versioned API
-  (`@vn/gengraph/plugin`) at install time or on change. esbuild is a root devDependency
-  today and not a desktop runtime dependency; shipping this means adding it (native
-  binary through electron-builder, or `esbuild-wasm` to sidestep binary packaging — a
-  question for the packaging pass).
-- **Trust** (decided): installation is a deliberate confirmed act by a person, the
-  agent's file writers refuse plugin paths — the `create_skill`/`edit_skill` precedent —
-  and the code runs trusted thereafter. The runtime API is capability-only from day one
-  (runtimes see nothing but `services`), so a worker sandbox can be added later as a
-  change of harness, not of plugins.
-- **Keys** resolve through the existing four-place `resolveKeys` order; the manifest
-  names the key id, `project.setKey` stores it, `prop.secret` redaction applies, and
-  plugin requests go through the provider ring so the API-fault diagnosis works for them
-  too.
-- A model plugin declares the output types its model supports, and each node instance
-  is configured to choose which it emits — a text model emits prose or a prompt, an
-  image model an image or a caption where the backend offers one. The refine loop leans
-  on this: a refine prompt routed through a text-model node comes out as a more
-  detailed prompt.
-- Model plugins own price population. A plugin ships its price-table fragment in the
-  manifest and may implement a fetch hook that writes current prices into the
-  user-level table when the author asks for a refresh. Where its provider offers a
-  per-key pricing API, the hook calls it; where it does not, the plugin may request the
-  price-agent capability through `services` — an LLM agent with web fetch, run on the
-  author's own key, its requests through the provider ring. The hook and the agent
-  request are both declared in the manifest, so the install confirmation names them.
-- First-party providers (Gemini today; OpenAI image, BFL FLUX as wanted) ship as
-  built-in plugins through the same registry, so the seam is exercised from day one and
-  factory.ts's hardcoded Gemini stops being load-bearing for graphs.
+- A plugin is a directory. It holds a `plugin.json` manifest that lists the name, version, node
+  types it declares, services it calls, key names it needs, and its price-table fragment. It also
+  holds `.ts` sources for the class/spec, runtime, and optional UI, split the same three ways as
+  first-party nodes.
+- We ship the build tool. esbuild bundles each part against a declared, versioned API
+  (`@vn/gengraph/plugin`) at install time or on change. esbuild is a root devDependency today and
+  not a desktop runtime dependency, so shipping this means adding it (as a native binary through
+  electron-builder, or as `esbuild-wasm` to sidestep binary packaging). The packaging pass
+  decides between them.
+- **Trust** (decided): a person installs a plugin as a deliberate confirmed act, the agent's
+  file writers refuse plugin paths (following the `create_skill`/`edit_skill` precedent), and the
+  code runs trusted thereafter. The runtime API is capability-only from day one (runtimes see
+  nothing but `services`), so a worker sandbox can be added later as a change of harness rather
+  than a change of plugins.
+- **Keys** resolve through the existing four-place `resolveKeys` order. The manifest names the
+  key id, `project.setKey` stores it, and `prop.secret` redaction applies to it. Plugin requests
+  go through the provider ring, so the API-fault diagnosis works for them too.
+- A model plugin declares the output types its model supports, and each node instance is
+  configured to choose which one it emits. A text model emits prose or a prompt. An image model
+  emits an image, or a caption where the backend offers one. The refine loop uses this behavior,
+  so a refine prompt routed through a text-model node comes out as a more detailed prompt.
+- Model plugins populate prices. A plugin ships its price-table fragment in the manifest and
+  may implement a fetch hook that writes current prices into the user-level table when the author
+  asks for a refresh. If its provider offers a per-key pricing API, the hook calls that API.
+  Otherwise the plugin may request the price-agent capability through `services`, which runs an
+  LLM agent with web fetch on the author's own key and routes its requests through the provider
+  ring. The hook and the agent request are both declared in the manifest, so the install
+  confirmation names them.
+- First-party providers (Gemini today, OpenAI image and BFL FLUX if needed) ship as built-in
+  plugins through the same registry, so the "seam" (the provider plugin boundary) is exercised
+  from day one and graphs no longer depend on the hardcoded Gemini in factory.ts.
 
 ### The editor pane
 
-Editor #17, titled Gen Graph: an `EDITORS` entry (`id: 'gengraph'`, tooltip per the
-catalog), a
-`renderer/pathux/editors/nodes.ts` subclassing `VnEditor`, `pins` on the graph (or its
-slot), and a `claims` predicate for `slot`-selection contending with Task Graph's
-`primary` claim (EDITORS order breaks the tie).
+Editor #17 is titled Gen Graph. It consists of an `EDITORS` entry (`id: 'gengraph'`, tooltip per
+the catalog), a `renderer/pathux/editors/nodes.ts` subclassing `VnEditor`, `pins` on the graph
+(or on its slot), and a `claims` predicate for `slot`-selection that contends with Task Graph's
+`primary` claim. The `EDITORS` order breaks the tie.
 
-The hosting problem: the view plan builds `NodeEditor extends Area`, but desktop editors
-extend `VnEditor`, and a class cannot extend both. The clean fix is in path.ux: split the
-view so the pan/zoom surface, node frames, link underlay and gesture handling live in a
-hostable widget (`NodeGraphView`, a container), and `NodeEditor extends Area` becomes a
-thin shell around it. The desktop then hosts the widget inside a `VnEditor` via
+Hosting the editor on the desktop is blocked. The view plan builds `NodeEditor extends Area`, but
+desktop editors extend `VnEditor`, and a class cannot extend both. Fix this in path.ux by
+splitting the view so that the pan/zoom surface, node frames, link underlay and gesture handling
+live in a hostable widget (`NodeGraphView`, a container), while `NodeEditor extends Area` becomes
+a thin shell around it. The desktop then hosts the widget inside a `VnEditor` via
 `appendSurface`. The view plan is a draft, so this is a plan amendment, not rework.
 
 ## Asks of path.ux
 
-All three asks were folded into the path.ux plans on 2026-08-24:
+All three requests were incorporated into the path.ux plans on 2026-08-24:
 
-1. **`NodeGraphView` as a hostable widget** with `NodeEditor` as a thin Area shell.
-   Recorded as a settled decision in node-editor-view.md and worked into its stage V2.
-2. **A gesture delegate seam** (`NodeGraphDelegate`, with a `check` that answers a
-   proposed edit's verdict mid-gesture) defaulting to the library's ToolOps, so a host
-   routes edits into its own command system. Recorded beside the widget decision;
-   V2 defines the seam and V3 routes every editing gesture through it.
-3. **A stated headless contract for the graph module**: a test that imports
-   scripts/graph in plain Node, so the module-scope DOM cleanliness verified above cannot
-   silently regress under a util refactor. Recorded as an unchecked library addendum in
-   node-editor-tasklist.md, since the library stages themselves are complete.
+1. 1. **`NodeGraphView` is a hostable widget**, and `NodeEditor` is a thin Area shell around it.
+   This decision is recorded as settled in node-editor-view.md and is worked into its stage V2.
+2. 2. **A gesture delegate seam.** `NodeGraphDelegate` has a `check` method that returns a
+   verdict on a proposed edit mid-gesture, and it defaults to the library's ToolOps, so a host
+   routes edits into its own command system. Recorded beside the widget decision; V2 defines the
+   seam and V3 routes every editing gesture through it.
+3. 3. **A stated headless contract for the graph module**: A test imports scripts/graph in plain
+   Node, so a util refactor cannot silently regress the module-scope DOM cleanliness verified
+   above. node-editor-tasklist.md records this as an unchecked library addendum, since the
+   library stages themselves are complete.
 
 ## Phasing
 
 1. **path.ux view stage V2** — the library stages and V1 are already done, so the one
    remaining prerequisite is the `NodeGraphView` widget with its delegate seam.
-2. **`@vn/gengraph`**: node classes and specs, semantic validation, node hashing, DSL
-   diff/apply, cost model, journal format. Pure logic, tested with the testkit's mock
-   providers.
-3. **Executor and the graph runner** wired into the runner seam, plus `gengraph.*` commands
-   and the built-in node set — no editor yet. Graphs are authored via the agent DSL or
-   seeded from templates, run by the scheduler and from the palette. This proves
+2. 2. **`@vn/gengraph`**: Provides node classes and specs, semantic validation, node hashing, DSL
+   diff/apply, the cost model, and the journal format. It is pure logic and is tested with the
+   testkit's mock providers.
+3. 3. **Executor and the graph runner** are wired into the runner seam, along with `gengraph.*`
+   commands and the built-in node set. There is no editor yet. Graphs are authored via the agent
+   DSL or seeded from templates, and run by the scheduler and from the palette. This stage proves
    identity, resume, drift and cost end to end before any canvas exists.
-4. **The editor pane**, once the V2 widget split lands.
-5. **Plugins**: manifest, transpile toolchain, confirmed-install plumbing; port the
-   built-in providers onto the seam.
+4. 4. **The editor pane** (once the V2 widget split lands).
+5. 5. **Plugins**: add the manifest, the transpile toolchain and the confirmed-install plumbing,
+   then port the built-in providers onto the "seam".
 
-Each phase is separately shippable, and 3 before 4 means the agent and the scheduler can
-use graphs before the human editor exists — which also pressure-tests the DSL while it is
-cheap to change.
+Each phase is separately shippable. Running phase 3 before phase 4 lets the agent and the
+scheduler use graphs before the human editor exists, and it exercises the DSL while the DSL is
+still cheap to change.
 

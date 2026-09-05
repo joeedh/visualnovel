@@ -1,11 +1,11 @@
 # The cost of editing a generation graph — tasklist
 
-Status: **shipped**. Four plans, independent of each other, all aimed at the same complaint:
-dragging a slider or typing into a field in the Gen Graph pane is slow, and it is slow for
-reasons that have nothing to do with the graph.
+Status: **shipped**. Dragging a slider or typing into a field in the Gen Graph pane is slow,
+and the causes lie outside the graph. Four plans, independent of each other, address that same
+complaint.
 
 Each plan is the authority on its own scope and decisions. This page records what the four
-are, why they are separate, and what order they can be taken in.
+plans are, why they are separate, and what order they can be taken in.
 
 | # | Plan | Covers |
 | --- | --- | --- |
@@ -16,47 +16,49 @@ are, why they are separate, and what order they can be taken in.
 
 ## What the cost is made of
 
-One node property edit runs one command, and that command does four things. Three of them are
-paid whether or not the author is dragging.
+One node property edit runs one command, and that command does four things. Three of those four
+steps run whether or not the author is dragging.
 
-- **A read.** `decide()` in `apps/desktop/src/main/commands/gengraph.ts:49` calls
-  `readGraph(ctx.root, slug, ctx.git)` from disk on every edit, including on `check` during a
-  drag.
+- **A read.** `decide()` in apps/desktop/src/main/commands/gengraph.ts:49 reads the graph
+  from disk on every edit by calling `readGraph(ctx.root, slug, ctx.git)`, including on `check`
+  during a drag.
 - **A write.** `edit()` writes the whole graph JSON back
   (`apps/desktop/src/main/commands/gengraph.ts:79`).
 - **Seven or more git invocations.** `packages/commands/src/stack.ts:131` awaits the commit
   inline in the command's execution path, and `packages/commands/src/commit.ts:89` passes
-  `paths: ['-A']` — the whole worktree, no exclusions, never consulting the undo journal's
-  pathspec. The commit is not alone: `gitState` (`stack.ts:98`) runs `git status --porcelain`
-  over the same whole worktree before the command even starts, and two `write-tree` snapshots
-  bracket it. In a real project `vngen/` is committed, generated assets included, so each of
-  those scans walks a tree that may hold thousands of images. Which one dominates has not been
-  measured, and plan 1 measures before it changes anything.
-- **A reload.** `apps/desktop/renderer/pathux/bridge.ts:187` invalidates on every successful
-  mutating command, and the Gen Graph pane's `load()` re-reads the whole file and rebuilds the
-  view.
+  `paths: ['-A']`, covering the whole worktree with no exclusions and never consulting the undo
+  journal's pathspec. The commit is not the only pass over the worktree. `gitState`
+  (`stack.ts:98`) runs `git status --porcelain` over the same whole worktree before the command
+  even starts, and two `write-tree` snapshots bracket it. In a real project `vngen/` is
+  committed, generated assets included, so each of those scans walks a tree that may hold
+  thousands of images. Nobody has measured which one dominates, and plan 1 measures before
+  making any change.
+- **The pane reloads.** apps/desktop/renderer/pathux/bridge.ts:187 invalidates on every
+  successful mutating command, and the Gen Graph pane's `load()` re-reads the whole file and
+  rebuilds the view.
 
-Plan 1 takes the commit. Plan 2 takes the reload, and the widget rebuild that comes with it.
-The write is deliberately left alone by both: deferring it means the file on disk stops being
-current, which reaches the pipeline, undo, and the content-addressed task hash all at once.
-It is named as a non-goal in both plans rather than scheduled.
+Plan 1 covers the commit. Plan 2 covers the reload and the widget rebuild that comes with it.
+Both plans deliberately leave the write alone: deferring it would leave the file on disk out of
+date, which affects the pipeline, undo, and the content-addressed task hash at once. Both plans
+name it as a non-goal rather than scheduling it.
 
-Plans 3 and 4 came out of the reload proving to have two more layers under it. Plan 2 stopped
-the pane rebuilding its widgets, but the pane still adopted the echo of its own write, which is
-what made a dragged node snap backwards — plan 3. And underneath that, every command made every
-window reload and revalidate the whole project, measured at ~400 ms per window on a mid-size
-project for a write that touched one file under `vngen/work/graphs/` — plan 4.
+Plans 3 and 4 came out of two more layers found under the reload. Plan 2 stopped the pane
+rebuilding its widgets, but the pane still adopted the echo of its own write, which is why a
+dragged node snapped backwards. Plan 3 addresses that. Beneath that layer, every command made
+every window reload and revalidate the whole project, measured at ~400 ms per window on a
+mid-size project for a write that touched one file under `vngen/work/graphs/`. Plan 4 addresses
+that.
 
 ## Why the two are separate
 
 They share a symptom and nothing else.
 
-Plan 1 lives in `@vn/commands` and is not about graphs at all — it would speed up any run of
+Plan 1 lives in `@vn/commands` and does not concern graphs. It would speed up any run of
 consecutive commands in any editor. It changes no UI and needs no path.ux work.
 
-Plan 2 lives entirely inside `apps/desktop/renderer/pathux/editors/nodes.ts` and the DataAPI
-beside it. It changes no main-process behaviour, so undo, provenance, the pipeline and
-commit-on-save are untouched by it.
+Plan 2 is confined to `apps/desktop/renderer/pathux/editors/nodes.ts` and the DataAPI beside
+it. It changes no main-process behaviour, so it leaves undo, provenance, the pipeline and
+commit-on-save untouched.
 
 Neither depends on the other, and either alone is a real improvement. Taking plan 1 first is
 recommended only because it is smaller and its risk is better understood.
@@ -70,15 +72,15 @@ recommended only because it is smaller and its risk is better understood.
 
 ## Non-goals for the batch
 
-- **Deferring the graph file write.** An in-memory accumulator in main, with `readGraph`
-  routed through it, is the third and largest of the three deferrals. It needs a second undo
+- **Deferring the graph file write.** An in-memory accumulator in main (with `readGraph`
+  routed through it) is the third and largest of the three deferrals. It needs a second undo
   snapshot class holding serialized graph state, a `:(exclude)vngen/work/graphs` entry in the
   journal's pathspec, and a content-sha drift check at flush. It also opens a failure mode the
-  other two do not: node props feed `nodeHash` (`packages/gengraph/src/hash.ts:16`), so a
-  pipeline run against a stale file hashes to the old content address and returns a dedupe
-  hit. The author sees an instant "done" and the unchanged picture, with no error anywhere.
-  Not scheduled.
-- **A general data API for the application.** `apps/desktop/renderer/pathux/api.ts` maps
-  `ShellState` alone, deliberately, because the project model is reached through IPC and
-  mutated through commands. Plan 2 is a scoped exception for one editor over data path.ux
-  already describes, not a reversal of that stance.
+  other two do not: node props feed `nodeHash` (packages/gengraph/src/hash.ts:16), so a
+  pipeline run against a stale file hashes to the old content address and returns a dedupe hit.
+  The author sees an instant "done" and the unchanged picture, and nothing reports an error. It
+  is not scheduled.
+- **A general data API for the application.** `apps/desktop/renderer/pathux/api.ts`
+  deliberately maps `ShellState` alone, because the project model is reached through IPC and
+  mutated through commands. Plan 2 adds a scoped exception for one editor over data that
+  path.ux already describes; it does not reverse that stance.

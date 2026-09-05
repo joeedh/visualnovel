@@ -33,10 +33,10 @@
 
 <!-- tocstop -->
 
-One line per module, grouped by layer. Use this to locate a symbol before reading the file;
-the authoritative package responsibilities and import rules are in
+Lists one line per module, grouped by layer. Use this to locate a symbol before reading the
+file; the authoritative package responsibilities and import rules are in
 [`packages.md`](packages.md). Regenerate the module lists with `pnpm gen:apimap`
-(`scripts/gen-apimap.mjs`); keep the one-liners honest by hand when a module's job changes.
+(`scripts/gen-apimap.mjs`); update the one-liners by hand when a module's job changes.
 
 ## Layer 0 — leaves
 
@@ -181,7 +181,7 @@ the authoritative package responsibilities and import rules are in
 | `index.ts` | barrel |
 
 ### @vn/gengraph — generation graphs (`packages/gengraph`)
-As shipped: [`gen-graphs.md`](gen-graphs.md).
+See [`gen-graphs.md`](gen-graphs.md) for what ships.
 
 | module | purpose |
 | --- | --- |
@@ -202,7 +202,8 @@ As shipped: [`gen-graphs.md`](gen-graphs.md).
 ## Layer 4 — orchestration
 
 ### @vn/taskgraph — content-addressed task graph (`packages/taskgraph`)
-`graph.ts` (the graph + dedupe), `hash.ts` (task hashes), `log.ts` (append-only `state/tasks.jsonl` status log), `index.ts`.
+`graph.ts` (the graph and deduplication), `hash.ts` (task hashes), `log.ts` (the
+append-only status log in `state/tasks.jsonl`), `index.ts`.
 
 ### @vn/providers — model backends (`packages/providers`)
 | module | purpose |
@@ -238,7 +239,9 @@ As shipped: [`gen-graphs.md`](gen-graphs.md).
 `scheduler.ts` (schedule + resume + budget), `index.ts`.
 
 ### @vn/agentreport — transcript analysis reports (`packages/agentreport`)
-`analyze.ts` (createAnalyst/analyze), `transcript.ts` (assemble/redact), `redact.ts` (secret redaction), `render.ts`, `report.ts` (schema), `issue.ts` (GitHub issue), `sourcemap.ts`/`sourcetools.ts`/`requesttools.ts` (the analyst's own tooling), `index.ts`.
+`analyze.ts` (createAnalyst/analyze), `transcript.ts` (assemble/redact), `redact.ts`
+(secret redaction), `render.ts`, `report.ts` (schema), `issue.ts` (GitHub issue),
+`sourcemap.ts`/`sourcetools.ts`/`requesttools.ts` (tooling for the analyst), `index.ts`.
 
 ## Authoring branch
 
@@ -269,4 +272,5 @@ As shipped: [`gen-graphs.md`](gen-graphs.md).
 Nothing may import it. See [`docs/guides/testkit.md`](../guides/testkit.md).
 
 ## Hosts (not mapped here)
-`apps/cli`, `apps/authoring`, `apps/desktop` — see `docs/reference/desktop-app.md` for the desktop app's structure, including the sixteen editors.
+`apps/cli`, `apps/authoring`, `apps/desktop`. See docs/reference/desktop-app.md for the
+desktop app's structure, including the sixteen editors.
