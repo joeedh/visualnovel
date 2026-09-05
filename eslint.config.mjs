@@ -223,6 +223,17 @@ export default tseslint.config(
     files: ['scripts/jest-timeout.cjs'],
     languageOptions: { globals: { jest: 'readonly' } },
   },
+  // Repository tooling. No boundaries entry, because nothing under `scripts/` is a layered
+  // element; this exists so the `^_` relaxation below is not confined to packages and apps.
+  {
+    files: ['scripts/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+    },
+  },
   {
     files: ['packages/**/*.ts', 'apps/**/*.ts'],
     plugins: { import: importPlugin, boundaries },

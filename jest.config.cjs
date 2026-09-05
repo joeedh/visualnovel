@@ -97,6 +97,15 @@ module.exports = {
       rootDir: __dirname,
       testMatch: ['**/apps/cli/**/tests/*.test.ts'],
     },
+    // Repository tooling, outside the package layering graph. Spreads `shared` like every
+    // other project: without it a `.ts` test gets no esbuild transform and no `.js`-extension
+    // stripping, and nothing runs.
+    {
+      ...shared,
+      displayName: 'scripts',
+      rootDir: __dirname,
+      testMatch: ['**/scripts/**/tests/*.test.ts'],
+    },
     {
       ...shared,
       displayName: '@vn/authoring-app',

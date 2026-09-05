@@ -18,6 +18,9 @@ coverage
 .cache-entry.cjs*
 .keylinks-entry.cjs*
 .keyaudit-entry.cjs*
+.prosestyle-entry.cjs*
+# What the prose-style tool proposes: a revised copy and a diff, never applied automatically.
+.prosestyle
 # What the weekly key-docs audit proposes. It is an artifact and an issue body, never a commit.
 key-instructions-review.md
 # Packaging: the scratch project `scripts/package.desktop.mjs` assembles for a hoisted

@@ -269,6 +269,89 @@ proceeding past a failure, so the gate is stated here as a decision: **if the vi
 recall is poor the prompt is wrong and the rest of the plan is not worth building.** A high churn
 number on the conformance set is a reason to tune the contract, not a reason to stop.
 
+### What the first run found
+
+Run on 2026-09-05, `anthropic/claude-opus-5` revising and `anthropic/claude-sonnet-5` judging.
+
+- **Recall read 71%, and the number cannot be trusted.** All twelve assertion-graded fixtures
+  passed. Every failure was judge-graded.
+- **The judge reports a violation in 52% of conforming blocks**, against 84% sensitivity on
+  unrevised ones. On judged rules it is close to a coin flip, so a perfect reviser would score
+  around 48% and the recall figure measures the judge rather than the prompt. The audit that
+  produced these two numbers is `--audit-judge`, and it is the thing that should have run first.
+- **Inspection confirms the false positives are the judge's.** The revision of the backticks
+  fixture correctly removed the backticks and was scored as still violating; the unquoted-jargon
+  revision correctly quoted and glossed the term and was scored the same way.
+- **Four fixtures were miscategorised, and the mistake is instructive.** The dangling-pronoun and
+  adverb fixtures ("the second case", "the handler above", "the other two") name referents that
+  live outside the block, so no reviser can repair them from the block alone. They are context-set
+  fixtures wearing violation-set labels, and they are evidence for the stage 2 context question
+  rather than against the prompt.
+
+### Fixing the judge
+
+The yes/no judge was replaced by one that must **quote the offending words**, with a verdict
+counted only when the quoted span appears in the passage. `spanSupported` does that check and is
+unit-tested; an answer of NONE, an empty answer, and a quotation the passage does not carry all
+read as no violation, because a judge that cannot show the construction has not found one.
+
+Three measured steps, each an `--audit-judge` run:
+
+| judge prompt                                   | finds violations | false positives |
+| ---------------------------------------------- | ---------------- | --------------- |
+| yes/no                                          | 84%              | 52%             |
+| quote the span, "reply NONE when unsure"        | 53%              | 1%              |
+| quote the span, borderline instances still count| 58%              | 3%              |
+| the above, with concrete rule descriptions      | 84%              | 2%              |
+
+The first change fixed the false positives and cost most of the sensitivity. Loosening the
+caution clause recovered almost none of it, which located the fault: the **rule descriptions**
+were too abstract to recognise an instance by. Giving four of them a concrete example — drawn
+from `proseStyle.md`'s own illustrations rather than from the fixtures — restored sensitivity in
+full while keeping the false-positive rate at 2%.
+
+The lesson generalises past this tool. A judge asked whether prose "contains" a fuzzy
+construction will say yes to almost anything; a judge asked to point at it has to commit, and the
+pointing can be checked without a model.
+
+### Three revisers, measured the same way
+
+Same 30 fixtures, same prompt, judged at 76% sensitivity and 2% false positives.
+
+| reviser                         | recall | churn |
+| ------------------------------- | ------ | ----- |
+| `anthropic/claude-opus-5`       | 93%    | 50%   |
+| `anthropic/claude-sonnet-5`     | 83%    | 30%   |
+| `openrouter/z-ai/glm-5.3-flash` | 100%   | 50%   |
+
+- **All three fix every assertion-covered violation**, twelve for twelve. The rules a regular
+  expression can find are also the ones every model handles, so the assertions measure the floor
+  rather than the difference.
+- **Personification is what survives.** Both of Opus's failures and three of Sonnet's five are
+  that one rule. That is a finding about the rule and the prompt rather than about the models: the
+  reviser reliably replaces "remembers" with "stores" and then leaves "requires" or "decides"
+  alone, because the rule as stated does not say where standard engineering usage ends.
+- **The cheap third-party model scored highest on recall**, at half the churn discipline. Under
+  the stated priority that is the number that counts, which is an uncomfortable result worth
+  re-testing on a larger violation set before it decides anything.
+- **Every recall figure is an overstatement**, because the judge misses roughly a quarter of real
+  violations. The ordering between the three is more trustworthy than the absolute numbers.
+- **The OpenRouter route works.** `https://openrouter.ai/api` with the SDK appending
+  `/v1/messages` is confirmed by these runs, so `model.ts` no longer carries an unverified base
+  URL.
+
+Where that leaves the gate:
+
+- **It passes, with the accuracy of the instrument stated.** Recall between 83% and 100% against a
+  judge at 76%/2%, and every assertion-covered rule at 100%. Stages 3 to 6 are worth building.
+- **Assertions are worth more than the plan assumed.** Twelve for twelve for every model, at no
+  cost per run, with a self-test that caught two mis-written patterns before any money was spent.
+  Widening assertion coverage beats improving the judge wherever a construction can be matched.
+- **The personification rule needs work before the tool ships.** It is the one rule no reviser
+  reliably applies, and the cause is in `proseStyle.md` rather than in the prompt: the rule does
+  not say that ordinary engineering usage ("requires", "returns", "holds") is exempt. Fixing it
+  belongs with the stage 1 repairs.
+
 ## Stage 3 — the splitter and the reassembler
 
 Pure functions under `scripts/prosestyle/`, with `tests/` siblings and no model. The case list
@@ -312,6 +395,21 @@ The functions:
 reassembling it with every revision equal to its original reproduces the file byte for byte. A
 corpus this size will find the cases a hand-written fixture set does not.
 
+### As built
+
+- **Blocks tile the document.** Every line belongs to exactly one block, blank runs included, and
+  reassembly concatenates them. Byte-exact round-trip therefore holds whatever the grouping, which
+  makes a grouping mistake cost revision quality and never content. This was not in the plan and
+  is the decision that makes the round-trip test cheap to satisfy.
+- **A nested bullet is its own block.** The first implementation kept a sub-list with its parent
+  item, which collapsed the whole of `proseStyle.md`'s rule list into one block — the file states
+  one rule per nested bullet, and a reviser handed all of them at once is being handed a document.
+  Any list marker now opens a block whatever its indent.
+- **The trailing newline comes from the original block, not from the model's output.** It is
+  structural under tiling, and taking it from the revision ran blocks together.
+- The corpus round-trip, the nested-bullet granularity, and both of those fixes are covered by
+  tests in `scripts/prosestyle/tests/split.test.ts`.
+
 ## Stage 4 — the script
 
 `scripts/prose-style.mjs`, taking one input path from the allow-list.
@@ -329,6 +427,29 @@ corpus this size will find the cases a hand-written fixture set does not.
 - Write the revised file and the diff to `.prosestyle/`. Print the path, the block count, and how
   many blocks changed.
 
+### As built
+
+The allow-list is `allowsRewrite`, with tests: `CLAUDE.md` and `docs/**.md`, minus
+`docs/plans/archive/**` (history rather than prose to improve), `todos.md`, and the two generated
+command tables. The diff comes from `git diff --no-index` rather than a hand-written differ.
+
+First run on `docs/guides/testkit.md` — 35 blocks, 15 prose, **15 changed**:
+
+- **The wrap width was read wrongly and is fixed.** `wrapWidth` took the longest prose line in the
+  document, and that file carries a 125-character line holding a link that cannot be broken, so
+  every revised paragraph was re-wrapped to 125 columns. It now reads only the lines the author
+  actually broke — every line of a prose block except its last — because a final line stops where
+  the text ran out and an unbreakable line exceeds the width by necessity. Both cases are tested.
+- **Every prose block changed.** That is the churn cost arriving in full: this repository's
+  documentation is written in the voice the rules now forbid, so under a contract that says revise
+  when the call is close, a real page comes back rewritten throughout. The revisions themselves
+  are right — the opening fragment becomes a sentence, the rhetorical bold goes, an unquoted
+  "pure" gains its gloss — but a reviewer of that page is reading a rewrite rather than a patch.
+  Nothing here is a defect; it is the tradeoff the stated priority buys, and the number to watch
+  when the tool is used in earnest.
+- **The structural guard passed and the refusals fire.** Pointing the tool at `todos.md` or at an
+  archived plan is declined by name.
+
 ## Stage 5 — the fact-checker
 
 A separate process, the only component that reads the original. It carries more weight than its
@@ -344,6 +465,19 @@ finds suspicious.
 - A `drifted` finding is repaired by a fresh revision call over the revised block plus the
   offsets. The checker's own output never reaches a reviser as text, because there is no text.
 - It reports and does not edit, so a run finding nothing costs nobody anything to clear.
+
+### As built
+
+The model quotes the drifted words, `locateSpan` converts the quotation to offsets into the
+revised block, and the string is dropped, so the finding carries a verdict and two integers and no
+model-authored text. A quotation the revision does not carry reads as `unverifiable` rather than
+as drift, which surfaces a checker that is guessing instead of believing it.
+
+First run over `docs/guides/testkit.md`: 14 equivalent, 1 drifted, 0 unverifiable. The one finding
+is real and correctly located — `"would just be noise"` became `"would add noise"`, which is a
+mild change of claim — and the checker passed over the removed bold and the newly quoted "pure",
+which are style rather than meaning. It is a strict reader, and at this cost that is the right
+setting.
 
 ## Stage 6 — the wrapper and the documentation
 

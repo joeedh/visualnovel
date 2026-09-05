@@ -1,0 +1,163 @@
+=== id: else-01
+=== rule: clause-a-else-b
+=== source: docs/reference/desktop-app-shell.md
+An editor lands in the pane the pointer last entered, else the biggest, and says so when that
+pane is not a Gen Graph.
+=== end
+
+=== id: else-02
+=== rule: clause-a-else-b
+=== source: docs/reference/document-tree.md
+The new name is written back wherever the title was read from — front-matter `title:`, else the
+first H1, else a heading further down.
+=== end
+
+=== id: else-03
+=== rule: clause-a-else-b
+=== source: docs/guides/api-keys.md
+On Linux the keys directory is `$XDG_CONFIG_HOME/vnauthor/keys`, else `~/.config/vnauthor/keys`.
+=== end
+
+=== id: equation-01
+=== rule: metaphorical-equation
+=== source: docs/research/local-and-self-hosted-models.md
+Nothing leaving the machine is the strongest argument for the local path here.
+=== end
+
+=== id: equation-02
+=== rule: metaphorical-equation
+=== source: docs/research/retrieval-beyond-grep.md
+Where the vectors live is the unresolved part, and it is a consequence of `openBible(root)`
+taking a directory rather than a store.
+=== end
+
+=== id: equation-03
+=== rule: metaphorical-equation
+The undo journal is the cost of an edit, and the commit is the smaller half.
+=== end
+
+=== id: inverted-01
+=== rule: inverted-syntax
+Only after the barrier clears does the scheduler retry a failed task, and only twice.
+=== end
+
+=== id: inverted-02
+=== rule: inverted-syntax
+Rarely does a pane re-read a file it wrote itself, because the version it stamped comes back
+unchanged.
+=== end
+
+=== id: person-01
+=== rule: personification
+The cache remembers what it has already seen, so a second lookup for the same hash costs
+nothing.
+=== end
+
+=== id: person-02
+=== rule: personification
+The splitter wants a heading before it will treat the following lines as a section.
+=== end
+
+=== id: person-03
+=== rule: personification
+The scheduler decides for itself when a task is worth retrying, and the store agrees.
+=== end
+
+=== id: fragment-01
+=== rule: fragment-opener
+The directory a run writes into: the project's own `vngen/`, or a scratch path when `--mock` is
+set.
+=== end
+
+=== id: fragment-02
+=== rule: fragment-opener
+The check that runs first: submodules, because a missing `vendor/path.ux` fails the build much
+later and says nothing useful.
+=== end
+
+=== id: fragment-03
+=== rule: fragment-opener
+Two callers of `coerceProps` — the registry, and the agent tool that shares the rule without
+going through it.
+=== end
+
+=== id: negative-01
+=== rule: double-negative
+The ordering of entries in the manifest cannot be relied on not to change between runs.
+=== end
+
+=== id: negative-02
+=== rule: double-negative
+A deferred commit is never guaranteed not to be swept into the next command's own commit.
+=== end
+
+=== id: pronoun-03
+=== rule: dangling-pronoun
+A key resolves from an environment variable or from a file. The second case is the slower one,
+because it touches the disk.
+=== end
+
+=== id: adverb-02
+=== rule: adverb-hung
+A `pointerdown` anywhere closes the popup, and the listener below removes itself once it fires.
+=== end
+
+=== id: nonassert-01
+=== rule: non-assertive-under-definite
+The next pointerdown anywhere dismisses the palette.
+=== end
+
+=== id: nonassert-02
+=== rule: non-assertive-under-definite
+The first refusal ever recorded for a command is kept, so a later run can report it.
+=== end
+
+=== id: emphasis-01
+=== rule: rhetorical-emphasis
+The scheduler retries a failed task **twice** and then records a failure.
+=== end
+
+=== id: emphasis-02
+=== rule: rhetorical-emphasis
+A command is the **only** write path, for scene prose and branch markers alike.
+=== end
+
+=== id: emphasis-03
+=== rule: rhetorical-emphasis
+Keys resolve from four places and the *first* answer wins.
+=== end
+
+=== id: headnoun-01
+=== rule: head-noun-as
+`work/graphs/` holds the recipe an asset is generated from, as commands.
+=== end
+
+=== id: headnoun-02
+=== rule: head-noun-as
+`anchors.json` records what every control would run, in the form of a catalog.
+=== end
+
+=== id: backtick-01
+=== rule: backticks-non-code
+The rule is stated in full in `docs/reference/pipeline-contracts.md`, which the plan links.
+=== end
+
+=== id: backtick-02
+=== rule: backticks-non-code
+A `provenance` record is written for every mutating command, and the `author` reviews it later.
+=== end
+
+=== id: commafence-01
+=== rule: comma-fenced-alternative
+Dropping a node onto itself, or onto a neighbour it would split against, is not a rip.
+=== end
+
+=== id: jargon-01
+=== rule: jargon-substitute
+Resolution of a wanted invocation against the drawn anchors happens once per frame.
+=== end
+
+=== id: jargon-02
+=== rule: unquoted-jargon
+`renderer/rules/` holds the pure half of the renderer, and the impure half sits beside it.
+=== end

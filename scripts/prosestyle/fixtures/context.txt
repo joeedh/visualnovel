@@ -1,0 +1,48 @@
+Blocks whose referents live outside the block. A reviser sent one of these alone cannot know
+what the pronoun or the bare noun points at, so it must either leave the reference alone or
+guess. The run is read by a person: a revision that invents a referent is the evidence that
+neighbour context is needed, and one that leaves it untouched is the evidence that it is not.
+
+=== id: ctx-01
+=== source: hand-written
+It is cleared on a tour restart and on any successful command, because `askedAs`
+short-circuits the re-ask.
+=== end
+
+=== id: ctx-02
+=== source: hand-written
+The second of these is the one that costs money, since switching speed invalidates the prompt
+cache and the whole prompt is re-billed.
+=== end
+
+=== id: ctx-03
+=== source: hand-written
+That is why it takes a directory rather than a store, and why the vectors have nowhere to live
+yet.
+=== end
+
+=== id: ctx-04
+=== source: hand-written
+Both are caches that respawn on demand, so stopping them costs nothing.
+=== end
+
+=== id: ctx-06
+=== source: moved from the violation set after the first run
+The second case is the one that costs money, because it re-sends the whole prompt at full price.
+=== end
+
+=== id: ctx-07
+=== source: moved from the violation set after the first run
+Asking twice is how the caller finds out, and the same applies to the other two.
+=== end
+
+=== id: ctx-08
+=== source: moved from the violation set after the first run
+The handler above runs before the pane has parsed the file, so it sees the previous version.
+=== end
+
+=== id: ctx-05
+=== source: hand-written
+The same rule applies here, except that the refusal is declared before the command runs rather
+than after it fails.
+=== end

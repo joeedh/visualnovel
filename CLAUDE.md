@@ -61,24 +61,25 @@ is made and the exact failure symptoms, and
 
 Run from the repo root.
 
-| Task                         | Command                                                                          |
-| ---------------------------- | -------------------------------------------------------------------------------- |
-| Typecheck (the gate)         | `pnpm check`                                                                     |
-| Test (all)                   | `pnpm test`                                                                      |
-| Test one package             | `pnpm exec jest --selectProjects @vn/taskgraph`                                  |
-| Lint (eslint + format check) | `pnpm lint`                                                                      |
-| Auto-format                  | `pnpm format`                                                                    |
-| Update docs TOCs             | `pnpm markdown-toc` (skips `docs/plans/**`)                                      |
-| Check doc links              | `pnpm check:doclinks` (relative links + anchors; part of `pnpm lint`)            |
-| Bundle everything            | `pnpm build` (turbo: `vngen`, `vnauthor`, and the desktop app)                   |
-| Run the CLI                  | `node apps/cli/dist/cli.js <cmd>` (or `pnpm vngen <cmd>`)                        |
-| Run the authoring agent      | `node apps/authoring/dist/vnauthor.js [dir]` (or `pnpm vnauthor [dir]`)          |
-| Run the desktop app          | `pnpm vndesktop [--mock]` (built app, CDP on 9222)                               |
-| Package the desktop app      | `pnpm package` (installer) / `pnpm package:dir` (unpacked)                       |
-| Smoke-test the packaged app  | `pnpm smoke` (runs the built binary; proves both SDKs and the source resolve)    |
-| Check the key-guide links    | `pnpm check:keylinks` (blocking in CI; `docs/guides/api-keys.md` only)           |
-| Audit the key-guide wording  | `pnpm audit:keydocs [--dry-run]` (weekly, advisory, needs a key)                 |
-| Lint comment prose           | `pnpm lint:comments` (part of `pnpm lint`; `commentlint <file>...` for one file) |
+| Task                         | Command                                                                                 |
+| ---------------------------- | --------------------------------------------------------------------------------------- |
+| Typecheck (the gate)         | `pnpm check`                                                                            |
+| Test (all)                   | `pnpm test`                                                                             |
+| Test one package             | `pnpm exec jest --selectProjects @vn/taskgraph`                                         |
+| Lint (eslint + format check) | `pnpm lint`                                                                             |
+| Auto-format                  | `pnpm format`                                                                           |
+| Update docs TOCs             | `pnpm markdown-toc` (skips `docs/plans/**`)                                             |
+| Check doc links              | `pnpm check:doclinks` (relative links + anchors; part of `pnpm lint`)                   |
+| Bundle everything            | `pnpm build` (turbo: `vngen`, `vnauthor`, and the desktop app)                          |
+| Run the CLI                  | `node apps/cli/dist/cli.js <cmd>` (or `pnpm vngen <cmd>`)                               |
+| Run the authoring agent      | `node apps/authoring/dist/vnauthor.js [dir]` (or `pnpm vnauthor [dir]`)                 |
+| Run the desktop app          | `pnpm vndesktop [--mock]` (built app, CDP on 9222)                                      |
+| Package the desktop app      | `pnpm package` (installer) / `pnpm package:dir` (unpacked)                              |
+| Smoke-test the packaged app  | `pnpm smoke` (runs the built binary; proves both SDKs and the source resolve)           |
+| Check the key-guide links    | `pnpm check:keylinks` (blocking in CI; `docs/guides/api-keys.md` only)                  |
+| Audit the key-guide wording  | `pnpm audit:keydocs [--dry-run]` (weekly, advisory, needs a key)                        |
+| Lint comment prose           | `pnpm lint:comments` (part of `pnpm lint`; `commentlint <file>...` for one file)        |
+| Propose a prose-style pass   | `pnpm prose:style --file docs/<page>.md` (advisory, needs a key; writes `.prosestyle/`) |
 
 `pnpm check`, `pnpm test`, and `pnpm lint` should all be green before and after any change.
 

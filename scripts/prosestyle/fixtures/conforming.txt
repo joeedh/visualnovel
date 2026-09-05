@@ -1,0 +1,119 @@
+=== id: conf-01
+=== source: hand-written, certified by the author
+The `keys/` directory is gitignored. API key values are never logged and never committed.
+=== end
+
+=== id: conf-02
+=== source: hand-written, certified by the author
+A key resolves from four places, and the first answer wins: the environment variable named in
+`project.yaml`, the project's own `keys/`, the enclosing repo root's `keys/`, then the
+user-level directory.
+=== end
+
+=== id: conf-03
+=== source: hand-written, certified by the author
+Tests live in a `tests/` subfolder beside the code they cover. A `*.test.ts` file anywhere else
+is never run.
+=== end
+
+=== id: conf-04
+=== source: hand-written, certified by the author
+Internal packages are source-only and have no per-package `dist`, so consumers import
+`src/index.ts` directly. esbuild transpiles them and `tsgo` type-checks them.
+=== end
+
+=== id: conf-05
+=== source: hand-written, certified by the author
+`pnpm check` runs two passes. The second is `pnpm check:renderer`, because
+`apps/desktop/renderer/**` sits outside `src/` and nothing else type-checks it.
+=== end
+
+=== id: conf-06
+=== source: hand-written, certified by the author
+- **Imports carry explicit `.js` extensions on relative paths.** jest's `moduleNameMapper`
+  strips them. esbuild and `tsgo` resolve them.
+=== end
+
+=== id: conf-07
+=== source: hand-written, certified by the author
+The pipeline stops at a populated `build/` directory and a `manifest.json`. Exporting to an
+external engine is out of scope.
+=== end
+
+=== id: conf-08
+=== source: hand-written, certified by the author
+`master` has no merge commits. A branch lands by rebasing onto `master` and then merging with
+`--ff-only`.
+=== end
+
+=== id: conf-09
+=== source: hand-written, certified by the author
+Every commit on `master` passes `pnpm check`, `pnpm test` and `pnpm lint`, so `git bisect`
+always lands on a buildable tree.
+=== end
+
+=== id: conf-10
+=== source: hand-written, certified by the author
+- **A disabled control's tooltip states why it refused.** When a command declines through
+  `stack.check`, the tooltip shows that sentence verbatim.
+=== end
+
+=== id: conf-11
+=== source: hand-written, certified by the author
+A mutating command declares its refusal before it runs, through `stack.check`. The three
+answers are `accept`, `refuse` and `undeclared`, and `undeclared` does not grant permission.
+=== end
+
+=== id: conf-12
+=== source: hand-written, certified by the author
+Parse files and machine-consumed model output through the zod schemas in `@vn/types`, so
+malformed data never reaches the deterministic core.
+=== end
+
+=== id: conf-13
+=== source: hand-written, certified by the author
+`--mock` writes no assets and needs no keys. In a real project the `vngen/` directory is
+committed, because it is the reproducible output of a run.
+=== end
+
+=== id: conf-14
+=== source: hand-written, certified by the author
+The boundaries rule checks each import statement rather than the transitive closure. Routing a
+forbidden import through an allowed leaf package still breaks the design.
+=== end
+
+=== id: conf-15
+=== source: hand-written, certified by the author
+`@vn/testkit` may import every layer, and nothing may import it. Mock art carries a marker that
+the real backend refuses.
+=== end
+
+=== id: conf-16
+=== source: hand-written, certified by the author
+A missing `wiki/` directory yields an empty bible rather than an error. `query` is budgeted and
+is the only entry point.
+=== end
+
+=== id: conf-17
+=== source: hand-written, certified by the author
+User-level state lives in one directory outside any repository. `$VNAUTHOR_HOME` overrides the
+platform default, which keeps the platform branch testable.
+=== end
+
+=== id: conf-18
+=== source: hand-written, certified by the author
+The directory is Local rather than Roaming, because an API key should not follow the user to
+another machine.
+=== end
+
+=== id: conf-19
+=== source: hand-written, certified by the author
+`view.*` commands run in the main process and push a `command:ui` effect naming an editor.
+Main answers optimistically, and the mesh returns a correction.
+=== end
+
+=== id: conf-20
+=== source: hand-written, certified by the author
+Plan mode is read-only. Each approved plan produces one commit, and approval is authorized only
+by the author's own typed words.
+=== end
