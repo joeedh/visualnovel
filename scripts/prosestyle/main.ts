@@ -190,8 +190,10 @@ export async function runFile(opts: {
   });
 
   const revised = reassemble(blocks, revisions);
+  // Turned off during the doc sweep of f5bac18b and not turned back on; why is not recorded.
+  const STRUCTURAL_GUARD = false;
   const failure = guardFailure(structure(opts.source), structure(revised));
-  if (0 && failure)
+  if (STRUCTURAL_GUARD && failure)
     throw new Error(
       `structural guard failed — ${failure}${culprits(opts.source, blocks, changes)}`,
     );

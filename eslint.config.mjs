@@ -182,6 +182,10 @@ export default tseslint.config(
       '**/*.tmp-*',
       'apps/*/dist/**',
       'apps/desktop/.package/**',
+      // The esbuild bundle `scripts/prose-style.mjs` writes beside the SDK it resolves. It is
+      // removed on a clean exit, but a killed run leaves one behind, and flat config does not
+      // read .gitignore.
+      'apps/desktop/.prosestyle-entry.*.cjs',
       // The app image electron-builder writes, which holds a copy of this repo's own sources as
       // the debug agent's source snapshot. Linting those lints every file twice, and the copy
       // under `resources/source/scripts` is read with none of the overrides below applied.
