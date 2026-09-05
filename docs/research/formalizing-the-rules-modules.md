@@ -26,10 +26,10 @@ and the smallest change that would let it be.
 
 ## What the rule modules are
 
-`renderer/rules/` holds the pure half of the renderer: logic with a `tests/` sibling that runs in
-the desktop jest project, which is node-only. A pane can only be checked live over CDP, so
-anything that can be tested without a DOM is meant to live here. The directory holds 27 modules
-and about 4,200 lines.
+`renderer/rules/` holds the "pure" (validation) half of the renderer:
+logic with a `tests/` sibling that runs in the desktop jest project (which is node-only).
+A pane can only be checked live over CDP, so anything that can be tested without a DOM is 
+meant to live here. The directory holds 27 modules and about 4,200 lines.
 
 Two kinds of module share the directory.
 

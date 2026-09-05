@@ -13,6 +13,15 @@ this file, and to everything under `docs/`.
   directly: "An empty answer is deliberate and is passed to the model as-is", not "Empty is an
   answer — silence, said out loud." If a sentence needs a second read to parse, rewrite it.
   Specific patterns to catch:
+  - **Quote Ambiguous Jargon Words** Jargon words that mirror common words should be quoted, with 
+    a subsequent parenthesized explanation of the meaning, e.g.
+    '`renderer/rules/` holds the pure half of the renderer' should be:
+    '`renderer/rules/` holds the "pure" (validation) half of the renderer'
+  - Do not use substitutes for unambiguous standard engineering jargon, e.g. 
+    'resolution of a wanted invocation against the drawn anchors' should be:
+    'resolution of a requested invocation against the drawn anchors'; 'requested' 
+    is identical to its common use in engineering and is thus unambiguous, while 
+    'wanted' is personification.
   - **Inverted syntax and personification** — the sentence performs rather than informs.
   - **Metaphorical equations** — "The leak scan is the refusal", "what ships is identity",
     "the project as commands". The connector word varies — do not get hung up on "is"
