@@ -920,7 +920,7 @@ export const gengraphUnexpose = define({
   },
 });
 
-/** Reads a row index, refusing one that is not a whole number before the decision counts rows. */
+/** Applies `plan` to a row index. Refuses an index that is not a non-negative whole number. */
 function rowOf(index: number, plan: (at: number) => GenEdit): EditPlan {
   if (!Number.isInteger(index) || index < 0) {
     return { refuse: 'a row is counted from 0 in whole numbers' };

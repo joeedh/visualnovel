@@ -361,7 +361,7 @@ export class GenGraphEditor extends VnEditor {
     void this.view.enterDefinition(groups[0]!);
   }
 
-  /** Goes back up one level, or says that there is none to go to. */
+  /** Leaves the current group for the one containing it. Reports when the graph is at its top. */
   exitGroup(): void {
     if (this.view.descent.length === 0) {
       say('This pane is already at the top of the graph.', true);

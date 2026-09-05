@@ -87,7 +87,7 @@ The six modules follow a convention rather than a contract.
   `tasklist.ts`), and none of those modules returns an `Offer`. The inline offers are
   correct, but reading them means reading the surrounding DOM code.
 
-Keep the two things that are already right.
+The two properties below already hold, and the move must preserve both.
 
 - **The inputs are formal.** Each module reads a shared IPC view type: `PromptView`,
   `AssetInfo`, `Convo`, `OpenedThread`, `ReportStateView`, `BusyControls`. Main sends
@@ -104,12 +104,12 @@ Keep the two things that are already right.
 A derivation runs a rule module over a fixture and returns the controls the editor would
 draw. Four conditions must hold before a derivation can run, and none of them hold today.
 
-1.  1. **Enumerability.** Each editor has one function that returns every control for a
-       given state, keyed the way anchors are keyed.
-2.  2. **A complete offer.** The offer must carry everything the anchor records, so the
-       call site adds nothing.
-3.  3.  3. **One `Offer` type.** The derivation, the anchor layer and the tour all use the
-           same type.
+1.  **Enumerability.** Each editor has one function that returns every control for a given
+    state, keyed the way anchors are keyed.
+2.  **A complete offer.** The offer carries everything the anchor records, so the call
+    site adds nothing.
+3.  **One `Offer` declaration.** The rule modules, `anchors.ts` and the tour import the
+    type rather than declaring their own.
 4.  **A uniform driver.** The derivation calls the same function for every editor, passing
     a fixture of that editor's state type.
 
@@ -189,12 +189,12 @@ the keys the sweep measured for that editor under the matching situation in
 
 ## What this is not
 
-- **Not a framework.** There are no base classes, no decorators, and no registration DSL.
-  Each editor is one function with one return type, and nothing else is required.
-- **The app's behaviour does not change.** After the move, the same code computes every
-  offer from the same inputs and in the same way.
+- **No framework is introduced.** The move adds no base classes, no decorators and no
+  registration DSL. Each editor gets one function with one return type.
+- **The app behaves identically after the move.** Every offer is still computed by the
+  same code from the same inputs.
 - **The anchor layer's design rule is unchanged.** `act()` still takes the object it wires
-  the handler from, and it now takes fewer arguments.
+  the handler from. It takes fewer arguments than before.
 
 ## Costs
 
