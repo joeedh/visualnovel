@@ -30,6 +30,20 @@ export function isProse(block: Block): boolean {
   return block.kind === 'prose';
 }
 
+/**
+ * Whether this line ends the block above it and starts one of its own. `rewrap` consults it so a
+ * re-wrapped revision cannot open a line with a marker and split its own block in two.
+ */
+export function opensBlock(line: string): boolean {
+  return (
+    FENCE_OPEN.test(line) ||
+    HEADING.test(line) ||
+    TABLE_ROW.test(line) ||
+    LIST_ITEM.test(line) ||
+    COMMENT_START.test(line)
+  );
+}
+
 const FENCE_OPEN = /^(\s*)(`{3,}|~{3,})/;
 const HEADING = /^ {0,3}#{1,6}(\s|$)/;
 const TABLE_ROW = /^ {0,3}\|/;
@@ -125,8 +139,7 @@ export function splitBlocks(markdown: string): Block[] {
       // on its own; a fence or a table under an item is likewise its own block.
       while (i < all.length) {
         const next = all[i] as string;
-        if (isBlank(next) || FENCE_OPEN.test(next) || TABLE_ROW.test(next)) break;
-        if (LIST_ITEM.test(next) || HEADING.test(next)) break;
+        if (isBlank(next) || opensBlock(next)) break;
         i++;
       }
       push(kind, from, i);
@@ -141,16 +154,7 @@ export function splitBlocks(markdown: string): Block[] {
 
     while (i < all.length) {
       const next = all[i] as string;
-      if (
-        isBlank(next) ||
-        FENCE_OPEN.test(next) ||
-        HEADING.test(next) ||
-        TABLE_ROW.test(next) ||
-        LIST_ITEM.test(next) ||
-        COMMENT_START.test(next)
-      ) {
-        break;
-      }
+      if (isBlank(next) || opensBlock(next)) break;
       i++;
     }
     push('prose', from, i);

@@ -101,6 +101,20 @@ describe('rewrap', () => {
   it('keeps CRLF when the original had it', () => {
     expect(rewrap('a b', shapeOf('x\r\ny\r\n', 40))).toBe('a b\r\n');
   });
+
+  /** A bare `+` at the head of a wrapped line reads as a list marker and splits the block in two. */
+  it('overflows rather than opening a line with a token that starts a block', () => {
+    const shape = shapeOf('- x\n  y\n', 20);
+    const wrapped = rewrap('alpha beta gammas + delta', shape);
+    expect(wrapped).toBe('- alpha beta gammas +\n  delta\n');
+    expect(splitBlocks(wrapped)).toHaveLength(1);
+  });
+
+  it('does the same for a table pipe and a heading hash', () => {
+    const shape = shapeOf('- x\n  y\n', 20);
+    expect(splitBlocks(rewrap('alpha beta gammas | delta', shape))).toHaveLength(1);
+    expect(splitBlocks(rewrap('alpha beta gammas # delta', shape))).toHaveLength(1);
+  });
 });
 
 describe('wrapWidth', () => {

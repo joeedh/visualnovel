@@ -19,12 +19,13 @@ import { build } from 'esbuild';
 import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 import { promises as fs } from 'node:fs';
-import { basename, join, relative as relative_, resolve } from 'node:path';
+import { join, relative as relative_, resolve } from 'node:path';
 import { REPO_ROOT as root } from './aliases.mjs';
 
 /** Written where `@anthropic-ai/sdk` resolves; pnpm's layout does not hoist it to the root. */
 const SDK_HOST = join(root, 'apps/desktop');
-const TMP = resolve(SDK_HOST, '.prosestyle-entry.cjs');
+// Named per process so concurrent runs cannot truncate or delete each other's bundle.
+const TMP = resolve(SDK_HOST, `.prosestyle-entry.${process.pid}.cjs`);
 
 const RULES = join(root, 'docs/reference/proseStyle.md');
 const FIXTURES = join(root, 'scripts/prosestyle/fixtures');
@@ -35,6 +36,7 @@ function flag(name, fallback) {
   return at >= 0 ? process.argv[at + 1] : fallback;
 }
 
+const overwrite = process.argv.includes('--overwrite');
 const auditOnly = process.argv.includes('--audit-judge');
 const target = flag('file');
 if (!process.argv.includes('--fixtures') && !auditOnly && !target) {
@@ -95,6 +97,18 @@ async function clientFor(route) {
   return client;
 }
 
+/**
+ * Names this document's artifacts in `OUT_DIR`, from its path relative to the repository root.
+ * A bare basename would collide: `docs/index.md` and `docs/plans/index.md` are both `index`.
+ */
+function outputName(relative) {
+  return relative
+    .replace(/\\/g, '/')
+    .replace(/^docs\//, '')
+    .replace(/\.md$/, '')
+    .replace(/\//g, '-');
+}
+
 const call = async ({ model, system, user, maxTokens }) => {
   const ref = parseModelRef(model);
   const client = await clientFor(ref.route);
@@ -144,7 +158,7 @@ async function run() {
     const result = await runFile({ call, model: reviseModel, rulesPath: RULES, source });
 
     await fs.mkdir(OUT_DIR, { recursive: true });
-    const name = basename(absolute, '.md');
+    const name = outputName(relative);
     const revisedPath = join(OUT_DIR, `${name}.revised.md`);
     const diffPath = join(OUT_DIR, `${name}.diff`);
     await fs.writeFile(revisedPath, result.revised, 'utf8');
@@ -159,6 +173,10 @@ async function run() {
       },
     );
     await fs.writeFile(diffPath, diff.stdout ?? '', 'utf8');
+
+    if (overwrite) {
+      await fs.writeFile(absolute, result.revised, 'utf8');
+    }
 
     console.log(`\n${relative}`);
     console.log(`  ${result.blocks} blocks, ${result.prose} prose, ${result.changed} changed`);

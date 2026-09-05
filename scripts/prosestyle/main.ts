@@ -7,7 +7,14 @@ import { join } from 'node:path';
 import { loadFixtures, type Fixture } from './fixtures.js';
 import { buildSystem } from './prompt.js';
 import { JUDGE_SYSTEM, judgePrompt, spanSupported, stillViolates } from './grade.js';
-import { isProse, reassemble, splitBlocks, structure, type Structure } from './split.js';
+import {
+  isProse,
+  reassemble,
+  splitBlocks,
+  structure,
+  type Block,
+  type Structure,
+} from './split.js';
 import { rewrap, shapeOf, wrapWidth } from './rewrap.js';
 import { FACTCHECK_SYSTEM, factcheckPrompt, readAnswer, type FactFinding } from './factcheck.js';
 
@@ -143,6 +150,17 @@ function guardFailure(before: Structure, after: Structure): string | undefined {
 }
 
 /**
+ * Locates the changed blocks whose own structure moved, so the caller is told where to look
+ * instead of only that the document no longer matches.
+ */
+function culprits(source: string, blocks: Block[], changes: Change[]): string {
+  const at = changes
+    .filter((c) => guardFailure(structure(c.original), structure(c.revised)))
+    .map((c) => `${c.at} (line ${source.slice(0, blocks[c.at]?.start ?? 0).split('\n').length})`);
+  return at.length ? `; block ${at.join(', ')}` : '';
+}
+
+/**
  * Revises one document, block by block. Every call is its own `messages` array holding one block,
  * which is the property the whole design rests on; the blocks are revised in parallel because
  * nothing carries between them.
@@ -173,7 +191,10 @@ export async function runFile(opts: {
 
   const revised = reassemble(blocks, revisions);
   const failure = guardFailure(structure(opts.source), structure(revised));
-  if (failure) throw new Error(`structural guard failed — ${failure}`);
+  if (failure)
+    throw new Error(
+      `structural guard failed — ${failure}${culprits(opts.source, blocks, changes)}`,
+    );
 
   changes.sort((a, b) => a.at - b.at);
   return { blocks: blocks.length, prose: prose.length, changed: revisions.size, revised, changes };

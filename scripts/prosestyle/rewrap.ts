@@ -4,7 +4,7 @@
  * A block whose text did not change is emitted byte for byte by the caller and never reaches
  * this file, so nothing cosmetic pads the diff a person reviews.
  */
-import { splitBlocks, isProse } from './split.js';
+import { splitBlocks, isProse, opensBlock } from './split.js';
 
 const LIST_MARKER = /^(\s*(?:[-*+]|\d+[.)])\s+)/;
 
@@ -60,9 +60,19 @@ export function shapeOf(original: string, width: number): Shape {
 }
 
 /**
+ * Whether opening a line with this word would start a new block. The word is tested with a space
+ * after it, because a list marker opens an item only when something follows it and the rest of
+ * the line will supply that; a `+` carried over from "tag + class path" is the case that matters.
+ */
+function wouldOpen(hanging: string, word: string): boolean {
+  return opensBlock(`${hanging}${word} `);
+}
+
+/**
  * Pours revised text back into the original's shape. A word longer than the remaining room is
  * placed whole and allowed to overflow, since breaking a URL or an identifier is worse than a
- * long line.
+ * long line. A word that would open a block overflows for the same reason: breaking there splits
+ * the block in two and the structural guard rejects the whole document.
  */
 export function rewrap(revised: string, shape: Shape): string {
   const words = revised.trim().split(/\s+/).filter(Boolean);
@@ -74,7 +84,7 @@ export function rewrap(revised: string, shape: Shape): string {
 
   for (const word of words) {
     const candidate = empty ? line + word : `${line} ${word}`;
-    if (!empty && candidate.length > shape.width) {
+    if (!empty && candidate.length > shape.width && !wouldOpen(shape.hanging, word)) {
       out.push(line);
       line = shape.hanging + word;
     } else {
