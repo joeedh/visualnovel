@@ -174,7 +174,7 @@ export class GenGraphEditor extends VnEditor {
       'Add a node to this graph',
     );
     describe(
-      bar.button('Arrange', () => this.view.arrangeNodes()),
+      bar.button('Arrange', () => void this.view.arrangeNodes()),
       'Lay the whole graph out again, left to right',
     );
     describe(
@@ -334,21 +334,21 @@ export class GenGraphEditor extends VnEditor {
   // -------------------------------------------------------------------------
 
   /** Groups the selected nodes, or says what to select first. */
-  groupSelected(): void {
+  async groupSelected(): Promise<void> {
     if (this.view.selection.size === 0) {
       say('Select the nodes to group first.', true);
       return;
     }
-    this.view.groupSelected();
+    await this.view.groupSelected();
   }
 
   /** Inlines every selected group instance, or says what to select first. */
-  ungroupSelected(): void {
+  async ungroupSelected(): Promise<void> {
     if (this.selectedGroups().length === 0) {
       say('Select a group instance to ungroup.', true);
       return;
     }
-    void this.view.ungroupSelected();
+    await this.view.ungroupSelected();
   }
 
   /** Opens the definition of the one selected group, or says what to select first. */
@@ -392,12 +392,12 @@ export class GenGraphEditor extends VnEditor {
 
     const pass = redrawing('gengraph', 'groups');
     const group = this.groupOffer(ids);
-    pass.act(this.groupButton, group, () => this.groupSelected());
+    pass.act(this.groupButton, group, () => void this.groupSelected());
     this.groupButton.disabled = !group.ok;
     this.groupButton.description = group.ok ? GROUP_WHAT : group.reason;
 
     const ungroup = this.ungroupOffer();
-    pass.act(this.ungroupButton, ungroup, () => this.ungroupSelected());
+    pass.act(this.ungroupButton, ungroup, () => void this.ungroupSelected());
     this.ungroupButton.disabled = !ungroup.ok;
     this.ungroupButton.description = ungroup.ok ? UNGROUP_WHAT : ungroup.reason;
   }
@@ -653,7 +653,7 @@ export class GenGraphEditor extends VnEditor {
         }
       },
       check        : (_ctx, edit): EditVerdict => this.judge(edit),
-      perform      : (_ctx, edit): void => this.dispatch(edit),
+      perform      : async (_ctx, edit): Promise<void> => this.dispatch(edit),
       undoStepEnd: async (): Promise<void> => {
         const checkpoint = this.checkpoint;
         this.checkpoint = undefined;

@@ -708,7 +708,7 @@ export class VnHeaderEditor extends VnEditor {
       Menu.SEP,
       {
         name    : 'Create Group',
-        callback: () => this.withGenGraph((pane) => pane.groupSelected()),
+        callback: () => this.withGenGraph((pane) => void pane.groupSelected()),
         hotkey  : 'Ctrl+G',
         tooltip:
           'Move the selected nodes of the active Gen Graph pane into a new group, and leave an ' +
@@ -716,7 +716,7 @@ export class VnHeaderEditor extends VnEditor {
       },
       {
         name    : 'Ungroup',
-        callback: () => this.withGenGraph((pane) => pane.ungroupSelected()),
+        callback: () => this.withGenGraph((pane) => void pane.ungroupSelected()),
         hotkey  : 'Ctrl+Alt+G',
         tooltip : 'Put a copy of each selected group’s nodes where the instance stands',
       },
