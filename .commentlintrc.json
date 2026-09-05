@@ -8,8 +8,8 @@
     "docs/reference/swappingPaneEditors.md",
     "docs/guides/showEditorPaneGuide.md",
     "docs/reference/pipeline-contracts.md",
-    "docs/reference/guided-tours.md"
-    //"docs/plans/guided-ui-tours.md"
+    "docs/reference/guided-tours.md",
+    "docs/research/formalizing-the-rules-modules.md"
   ],
   "disableRules": ["P10", "P4"],
   "npm": {

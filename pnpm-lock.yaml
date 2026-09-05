@@ -24,8 +24,8 @@ importers:
         specifier: latest
         version: 7.0.0-dev.20260615.1
       comment-lint:
-        specifier: ^0.3.7
-        version: 0.3.7
+        specifier: ^0.4.0
+        version: 0.4.0
       esbuild:
         specifier: ^0.24.2
         version: 0.24.2
@@ -2194,8 +2194,8 @@ packages:
     resolution: {integrity: sha512-P0CysNDQ7rtVw4QIQtm+MRxV66vKFSvlsQvGYXZWR3qFU0jlMKHZZZgw8e+8DSah4UDKMqnknRDQz+xuQXQ/Zg==}
     engines: {node: '>= 6'}
 
-  comment-lint@0.3.7:
-    resolution: {integrity: sha512-0Njw7uUHcEVfyHaVZZwZvUFUBX/i92lPaW/RqH8e7uaGEgi8MIayvx0bMEwXlfN+vOUJNwsTlYEm84VuBVrB8Q==}
+  comment-lint@0.4.0:
+    resolution: {integrity: sha512-7ZudC06fC8vxhVUuECjwA4m5C1ISsul/I74CpJJVAadhHJw8us3iW7Foj7gCyHYL2ZskKSE92288u2qqfEgQ9A==}
     engines: {node: '>=16'}
     hasBin: true
 
@@ -6309,7 +6309,7 @@ snapshots:
 
   commander@5.1.0: {}
 
-  comment-lint@0.3.7: {}
+  comment-lint@0.4.0: {}
 
   compare-version@0.1.2: {}
 
