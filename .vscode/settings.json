@@ -1,4 +1,7 @@
 {
-  "cSpell.enabled": false,
-  "cSpell.words"  : ["defaultval", "sarea", "sareas", "screenarea", "toolstack"]
+  "markdownlint.appliesTo": "noFiles",
+  "prettier.prettierPath" : "./node_modules/@pathtx/prettier/index.cjs",
+  "prettier.configPath"   : "prettier.config.cjs",
+  "cSpell.enabled"        : false,
+  "cSpell.words"          : ["defaultval", "sarea", "sareas", "screenarea", "toolstack"]
 }

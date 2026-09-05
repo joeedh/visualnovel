@@ -244,13 +244,12 @@ Provenance comes from three sources, listed in order of preference. None of them
 build-time transform, which would need more machinery than the others and would only be as
 accurate as the transform.
 
-1.  1. **The rule function.** Once every offer comes from a rule module, the offer can
-       carry the name of the function that produced it. The function name is the most
-       stable reference because it survives DOM rewrites.
-2.  2. **Captures a stack at registration, in the sweep build only.** Calls
-       `new Error().stack` at `act()` time and resolves the result through the source map
-       to a file and line. The capture requires no annotations and never runs in
-       production.
+1.  **The rule function.** Once every offer comes from a rule module, the offer can carry
+    the name of the function that produced it. The function name is the most stable
+    reference because it survives DOM rewrites.
+2.  **Captures a stack at registration, in the sweep build only.** Calls
+    `new Error().stack` at `act()` time and resolves the result through the source map to
+    a file and line. The capture requires no annotations and never runs in production.
 3.  **The command id.** Command definitions are one file per namespace under
     `apps/desktop/src/main/commands/`, so an id already locates its implementation.
 
