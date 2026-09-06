@@ -16,6 +16,8 @@ every change it makes. It is not a lint step and does not run in CI. It differs 
 `prose:style` proposes a rewrite. Both the tool and the reasoning behind its shape are in
 [`../plans/enforcing-prose-style-without-context-poisoning.md`](../plans/enforcing-prose-style-without-context-poisoning.md).
 
+<!-- commentlint-off -->
+
 - **Write plain declarative prose — no epigrams.** State the constraint or decision
   directly: "An empty answer is deliberate and is passed to the model as-is", not "Empty
   is an answer — silence, said out loud." If a sentence needs a second read to parse,
@@ -91,3 +93,5 @@ every change it makes. It is not a lint step and does not run in CI. It differs 
   a new clause. Write "Dropping onto itself (or onto a neighbor it would split against) is
   not a rip". Drop any comma that would follow the closing bracket — it separates the
   subject from its verb.
+
+<!-- commentlint-on -->

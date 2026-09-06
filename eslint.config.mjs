@@ -178,6 +178,9 @@ export default tseslint.config(
     // error in either fails the run on master.
     ignores: [
       '**/dist/**',
+      '**/vendor/**',
+      '**/win-unpacked/**',
+      '**/apps/desktop/.package/**',
       '**/node_modules/**',
       '**/*.tmp-*',
       'apps/*/dist/**',

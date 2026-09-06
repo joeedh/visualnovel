@@ -1,4 +1,6 @@
 .claude/worktrees
+.eslintcache-d
+.quickbuild
 keys
 node_modules
 # Scratch projects: the workspace the desktop app seeds from templates/basic on first launch,

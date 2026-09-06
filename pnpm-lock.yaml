@@ -10,14 +10,16 @@ overrides:
 importers:
 
   .:
-    dependencies:
-      '@pathtx/prettier':
-        specifier: 3.10.0-dev
-        version: 3.10.0-dev
     devDependencies:
       '@eslint/js':
         specifier: ^9.17.0
         version: 9.39.4
+      '@pathtx/eslint-dispatcher':
+        specifier: ^0.0.3
+        version: 0.0.3
+      '@pathtx/prettier':
+        specifier: 3.10.0-dev
+        version: 3.10.0-dev
       '@types/jest':
         specifier: ^29.5.12
         version: 29.5.14
@@ -1290,6 +1292,10 @@ packages:
     resolution: {integrity: sha512-mJd2Z5TjYWq/ttPLLGqArdtnC74J6bOzg4rMDnN+p1xTacZ2yPRCk2y0oSWQtygLR9YVQXgOcONrwtnk3JupxQ==}
     engines: {node: ^12.13.0 || ^14.15.0 || >=16.0.0}
     deprecated: This functionality has been moved to @npmcli/fs
+
+  '@pathtx/eslint-dispatcher@0.0.3':
+    resolution: {integrity: sha512-c3G3gEwAYEvZNeiqCZ68CiPw+2P9PogN5kx1ciO8eirmDa8fqSC2wh3v/MuqzxHYeutCrJoH/a2EvZWKi4uCaA==}
+    hasBin: true
 
   '@pathtx/prettier@3.10.0-dev':
     resolution: {integrity: sha512-mS6FeyQlhT72iTxYz656qhOTeBbE0ViE79yXsM9zJ13pRrY3IJkEvnubBs5NLE1kTZXE+1Z//k4EPJhV3zu4hA==}
@@ -5381,6 +5387,8 @@ snapshots:
     dependencies:
       mkdirp: 1.0.4
       rimraf: 3.0.2
+
+  '@pathtx/eslint-dispatcher@0.0.3': {}
 
   '@pathtx/prettier@3.10.0-dev': {}
 

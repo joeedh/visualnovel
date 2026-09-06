@@ -399,6 +399,9 @@ it unreported.
   pane-choice rule that a linter would check `view.open` effects against.
 - [`vendor/path.ux/scripts/core/base/ui_meta_tags.ts`](../../vendor/path.ux/scripts/core/base/ui_meta_tags.ts)
   is the meta-tag sketch the carrier section describes.
+- [`zod-backed-model-interface.md`](zod-backed-model-interface.md) proposes binding
+  editors to documents by data path, with a proxy toolstack that keeps commands as the
+  only write path, and describes what that gives this model.
 - [`agent-access-to-the-ux-command-system.md`](agent-access-to-the-ux-command-system.md)
   explains why the agent does not get the registry, and why the agent needs a model to
   read instead.

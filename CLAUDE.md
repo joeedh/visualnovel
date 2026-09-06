@@ -68,6 +68,8 @@ Run from the repo root.
 | Test (all)                   | `pnpm test`                                                                             |
 | Test one package             | `pnpm exec jest --selectProjects @vn/taskgraph`                                         |
 | Lint (eslint + format check) | `pnpm lint`                                                                             |
+| Eslint only, with fixes      | `pnpm lint:eslint`                                                                      |
+| Eslint only, no fixes        | `pnpm lint:eslint:check`                                                                |
 | Auto-format                  | `pnpm format`                                                                           |
 | Update docs TOCs             | `pnpm markdown-toc` (skips `docs/plans/**`)                                             |
 | Check doc links              | `pnpm check:doclinks` (relative links + anchors; part of `pnpm lint`)                   |
@@ -91,6 +93,12 @@ enough mistakes to repeat here:
 
 - `pnpm check` runs two passes: the flat workspace check plus `pnpm check:renderer`,
   because `apps/desktop/renderer/**` lives outside `src/` and nothing else typechecks it.
+- `pnpm lint`'s eslint step runs through `eslint-dispatcher` (`@pathtx/eslint-dispatcher`)
+  rather than calling `eslint` directly. It walks the repo itself, batches files across a
+  worker pool, and caches per-file results under `.eslintcache/`, keyed on file content +
+  config + eslint version, so a re-run only re-lints what changed. `pnpm lint:eslint` runs
+  it with `--fix`; `pnpm lint:eslint:check` runs it without. Delete `.eslintcache/` to
+  force a full re-lint.
 - Tests must live in a `tests/` subfolder beside the code they cover. A `*.test.ts`
   anywhere else is silently never run.
 - Internal packages are source-only (no per-package `dist`), so consumers import
