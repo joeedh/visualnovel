@@ -26,6 +26,7 @@ hand-written model, a model measured only at runtime, and an enumerated state ma
 - [The proposed shape](#the-proposed-shape)
     - [Three tiers](#three-tiers)
     - [The record](#the-record)
+    - [Meta tags as the carrier](#meta-tags-as-the-carrier)
     - [Pseudo-commands](#pseudo-commands)
     - [Traceability](#traceability)
     - [Effects on commands](#effects-on-commands)
@@ -158,7 +159,8 @@ before every editor can be read this way.
   comparison catches the two drifts the derivation cannot see on its own: a control drawn
   without going through its rule, and a rule with no control. The existing checks stay,
   because enabled state against `stack.check` and the ring hit test can only be measured
-  live.
+  live. With the meta tags described below, the sweep walks the screen and serializes each
+  widget's tags instead of reading `window.__vnAnchors`.
 - **Executed** is the only tier where mutating commands run. `--mock` writes no assets and
   needs no keys, `@vn/testkit` runs real projects on disk through the real scheduler with
   mock providers, and undo takes a content-addressed snapshot of the document tree. A test
@@ -202,6 +204,43 @@ record:
 A refused control keeps the same shape with `ok: false` and a `reason`, exactly as `Offer`
 does today. The `situation` field replaces the sweep's single top-level `under`, because a
 model covering many states needs the state on each record.
+
+### Meta tags as the carrier
+
+path.ux has a sketch of a widget metadata system at
+[`vendor/path.ux/scripts/core/base/ui_meta_tags.ts`](../../vendor/path.ux/scripts/core/base/ui_meta_tags.ts).
+It is the natural carrier for the `offer` half of the record, and it replaces the app's
+own `AnchorDump` rather than sitting beside it.
+
+- **A tag is a typed object attached to a widget.** `setMeta` stores it on the widget
+  under the tag class's `metaDefine().typeName`, `getMeta` reads it back, and `allMeta`
+  lists every tag a widget carries. Tags are not part of the frame-mesh save file and hold
+  no ephemeral state, which stays in `saveData`/`loadData`. Their one serialized form is
+  the one that crosses IPC.
+- **`StdUXMeta` is the offer.** It carries `description` (the tooltip), `valuePath` (the
+  data path a control publishes to) and a list of `UXToolMeta` entries, each with a
+  `toolPath` and a `requirements` sentence. `description` and `valuePath` proxy to the
+  live widget, so the tag is never a second copy of what the widget shows.
+- **The app adds its own tool-meta subclass.** `UXToolMeta` is an abstract base with a
+  `type` discriminant, and `StdUXMeta.tools` is `array(abstract(UXToolMeta))`. The
+  `ActOptions` fields (`supplies`, `on`, `form`, `key`, `publishes`) belong on an
+  app-registered subclass, and path.ux never needs to know about them. `requirements` is
+  where the refusal sentence goes, so the "a disabled control states why" rule reads one
+  field.
+- **The STRUCT script is the wire schema.** A tag serializes with `nstructjs.writeJSON`,
+  and the receiving side either calls `validateJSON` and reads it back or runs a STRUCT
+  script to zod converter, which puts the model on the same footing as every other IPC
+  payload validated through `@vn/types`. `widgetPath` names the widget on the wire.
+- **One class serves both tiers.** With no owner, `StdUXMeta`'s setters buffer their
+  values, so a rule module can build the same record headlessly that the sweep reads off a
+  live widget. The derived and measured tiers then compare instances of one type.
+- **Builders write the tag.** `toolPath` and `valuePath` are trustworthy only if path.ux's
+  own builders (`container.tool`, `prop`, tool-path menu rows, `HotKey`) fill them as they
+  build. The app's `act()` then writes a `StdUXMeta` instead of an `AnchorRecord`, and the
+  anchor registry becomes a view over the tags rather than a parallel structure.
+
+The tags carry what a control does, not whether it may. Guards still come from the rule
+modules and `stack.check`, and the tag records their answer in `requirements`.
 
 ### Pseudo-commands
 
@@ -281,7 +320,9 @@ thread open, a run in flight, a portrait awaiting approval, a project with no ke
   like the command catalog and `anchors.json`, and a generated markdown projection for
   humans and models, like the catalog has. Here "formal" means a schema with a closed
   vocabulary. Parsing a grammar would add nothing the JSON does not already provide, and
-  the command DSL gives an invocation a textual form.
+  the command DSL gives an invocation a textual form. The `offer` half of each record is
+  nstructjs JSON from a meta tag, so its schema is the STRUCT script rather than a second
+  hand-written zod object.
 - **The readers already exist.** The tour's resolver reads `anchors.json` today, and the
   `show_me` tool writes tours against the registry. A model with situations and effects
   helps both. `show_me` can say which pane and which selection a step needs before the
@@ -320,6 +361,10 @@ it unreported.
 - **Recording renderer-local handlers as effects.** Each closure that expands, selects,
   opens or scrolls calls through a recorded effect. Recording these handlers is the
   largest single change and touches every editor.
+- **Finishing the meta-tag system in path.ux.** The sketch needs the builders to write
+  `toolPath` and `valuePath`, a `widgetPath` scheme, and the STRUCT to zod converter or a
+  `validateJSON` call on the main side. This is path.ux work, committed in the submodule
+  separately.
 - **Declaring `affects` on 170 commands**, and writing the executed-tier test that
   verifies it.
 - **Writing and maintaining the situation list.** The work is small, but the model is only
@@ -334,6 +379,9 @@ it unreported.
   it lives (`apps/desktop/ux-model.json` beside `anchors.json` is the obvious place).
 - Whether `anchors.json` is absorbed into the model's measured fields or kept as the
   tour's smaller input is an open question.
+- Whether `AnchorDump` is replaced outright by `StdUXMeta` plus an app tool-meta subclass,
+  or kept as a projection of it for the tour's resolver. Replacing it means the anchor
+  key, `editor` and `rect` need a home on the tag or in the sweep's wrapper.
 - What is the exact pseudo-command vocabulary, and is `key.bind` an effect or a property
   of a control?
 - Decide whether `affects` is a list of document-tree path prefixes, a list of `ui.*`
@@ -349,6 +397,8 @@ it unreported.
   and the catalog.
 - [`../reference/swappingPaneEditors.md`](../reference/swappingPaneEditors.md) states the
   pane-choice rule that a linter would check `view.open` effects against.
+- [`vendor/path.ux/scripts/core/base/ui_meta_tags.ts`](../../vendor/path.ux/scripts/core/base/ui_meta_tags.ts)
+  is the meta-tag sketch the carrier section describes.
 - [`agent-access-to-the-ux-command-system.md`](agent-access-to-the-ux-command-system.md)
   explains why the agent does not get the registry, and why the agent needs a model to
   read instead.
