@@ -72,7 +72,14 @@ class VnOverlay extends ContextOverlay {
 Context.register(VnOverlay);
 
 /** The context handed to the screen. `VnOverlay` supplies its members at runtime. */
-export class ShellContext extends Context<VnOverlay> {
+export class ShellContext extends Context {
+  // Forwarded from `VnOverlay` at runtime; declaring them satisfies `ContextLike`.
+  declare state: ShellApp;
+  declare toolstack: ToolStack;
+  declare api: DataAPI;
+  declare ui: ShellState;
+  declare screen: VnScreen;
+
   constructor(app: ShellApp) {
     super(app);
     this.pushOverlay(new VnOverlay(app));
