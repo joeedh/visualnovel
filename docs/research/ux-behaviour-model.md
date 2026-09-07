@@ -1,6 +1,8 @@
 # A UX behaviour model for the desktop app
 
-This document is research. Nothing here is planned work. The companion report
+This document is research. Nothing here is planned work in this repo, though some of the
+path.ux prerequisites it names have since been built or planned in that submodule — see
+[Meta tags as the carrier](#meta-tags-as-the-carrier). The companion report
 [`formalizing-the-rules-modules.md`](formalizing-the-rules-modules.md) covers the refactor
 of `apps/desktop/renderer/rules/` that this one depends on.
 
@@ -176,6 +178,7 @@ record:
 {
     "key"      : "cmd:gate.approve", // the anchor key, as today
     "editor"   : "asset", // AnchorHome
+    "api"      : "shell", // which DataAPI a valuePath resolves against
     "situation": "portrait:unapproved", // which fixture produced it
     "offer": {
         "ok"      : true,
@@ -204,6 +207,17 @@ record:
 A refused control keeps the same shape with `ok: false` and a `reason`, exactly as `Offer`
 does today. The `situation` field replaces the sweep's single top-level `under`, because a
 model covering many states needs the state on each record.
+
+`api` is there because a data path is no longer a process-wide name. path.ux moved its
+struct tables onto `DataAPI`, so `getStructByName` answers per api and a class an api
+never mapped does not resolve on it at all
+([`per-api-struct-tables.md`](../../vendor/path.ux/documentation/plans/per-api-struct-tables.md)).
+The app already runs several APIs: `defineShellApi()` once, and `defineGraphApi()` once
+per Gen Graph pane instance (`apps/desktop/renderer/pathux/editors/nodes.ts`). The
+boundary sits inside a pane rather than at its edge — the widgets under the pane's
+`NodeGraphView` resolve against the pane's own api, and the surrounding DOM against the
+shell's — so `editor` does not identify which api a swept `valuePath` belongs to, and only
+a record naming the api can be resolved by a reader that did not measure it.
 
 ### Meta tags as the carrier
 
@@ -241,6 +255,29 @@ own `AnchorDump` rather than sitting beside it.
 
 The tags carry what a control does, not whether it may. Guards still come from the rule
 modules and `stack.check`, and the tag records their answer in `requirements`.
+
+Part of this has since been built in path.ux, and the rest is now planned rather than
+merely wanted.
+
+- **The tags are wired into `UIBase`.** `getMeta` and `ensureMeta` are methods on the
+  widget base class, and `getMeta` walks `parentWidget` when the tag class sets
+  `inherits`. They were commented out when this section was written.
+- **A toolpath is about to stop being a process-wide name too.**
+  [`tool-registry.md`](../../vendor/path.ux/documentation/plans/tool-registry.md) moved
+  the four module-level tool tables onto a `ToolRegistry`, which is what lets an editor
+  carry its own catalog, and
+  [`per-api-tool-tables.md`](../../vendor/path.ux/documentation/plans/per-api-tool-tables.md)
+  plans the rest: an api holds an ordered list of registries and a merged
+  `toolpath → { class, registry }` table, with a duplicate across two registries refused
+  at merge. That refusal is what keeps a bare `toolPath` string usable as an identity in a
+  record, but it only holds within one api — cross-api identity is deferred there under
+  prefix claims.
+- **Three pieces of the sketch are still owed.** No builder writes `toolPath` or
+  `valuePath` yet, so neither is trustworthy. `walkWidgets` and `widgetPathOf` appear only
+  in the module's commented example, so there is no `widgetPath` scheme. And
+  `MetaTagSet.STRUCT` declares `array(abstract(IUIXMeta))` over an interface rather than a
+  registered struct, which will not validate — the comment on `UXToolMeta` records why
+  that shape needs a base class, and the same fix is owed one level up.
 
 ### Pseudo-commands
 
@@ -337,21 +374,29 @@ thread open, a run in flight, a portrait awaiting approval, a project with no ke
 The lint use case is the stronger of the two, and it should drive the schema. The rules
 below are checkable from the model, and each one lists what it needs:
 
-| Rule                                                                  | Needs                       | Status                        |
-| --------------------------------------------------------------------- | --------------------------- | ----------------------------- |
-| Every control carries a tooltip (CLAUDE.md's rule)                    | `tooltip` on the record     | not checked today             |
-| A disabled control states why, in the stack's own words               | `reason` on the record      | recorded, not checked         |
-| Enabled state agrees with `stack.check`                               | the measured tier           | checked by the sweep          |
-| The ring lands on the control                                         | the measured tier           | checked by the sweep (strays) |
-| A command has at least one control, or is listed as palette-only      | the derived tier            | partly, via `FLOOR`           |
-| A surface opens an editor only through the sparing rule               | `effects` with a pane field | not checked today             |
-| A mutating command reachable from a menu is undoable or confirms      | `effects` plus the catalog  | not checked today             |
-| A keyboard shortcut is bound once                                     | `key.bind` effects          | not checked today             |
-| Two controls in one pane share a key only with a discriminator        | `key` and `on`              | not checked today             |
-| The committed model was derived after the last change to `editors/**` | `gitSha` and git            | not checked today             |
+| Rule                                                                  | Needs                        | Status                        |
+| --------------------------------------------------------------------- | ---------------------------- | ----------------------------- |
+| Every control carries a tooltip (CLAUDE.md's rule)                    | `tooltip` on the record      | not checked today             |
+| A disabled control states why, in the stack's own words               | `reason` on the record       | recorded, not checked         |
+| Enabled state agrees with `stack.check`                               | the measured tier            | checked by the sweep          |
+| The ring lands on the control                                         | the measured tier            | checked by the sweep (strays) |
+| A command has at least one control, or is listed as palette-only      | the derived tier             | partly, via `FLOOR`           |
+| A surface opens an editor only through the sparing rule               | `effects` with a pane field  | not checked today             |
+| A mutating command reachable from a menu is undoable or confirms      | `effects` plus the catalog   | not checked today             |
+| A keyboard shortcut is bound once                                     | `key.bind` effects           | not checked today             |
+| Two controls in one pane share a key only with a discriminator        | `key` and `on`               | not checked today             |
+| A bound path resolves on the api its own pane carries                 | `api` plus the measured tier | not checked today             |
+| The committed model was derived after the last change to `editors/**` | `gitSha` and git             | not checked today             |
 
 The last rule reports the known weakness of a committed generated file rather than leaving
 it unreported.
+
+The `valuePath` rule is the cheapest of these to add and the newest to matter. When a path
+fails to resolve, path.ux records the reason on the api's own `lastResolveError` rather
+than printing a stack, so the measured tier can sweep the screen, read that field, and
+fail on any widget whose bound path did not resolve on its pane's api. That catches an api
+that skipped one of its `defineAPI` calls, which is the failure per-api struct tables
+introduced.
 
 ## Costs
 
@@ -373,6 +418,15 @@ it unreported.
 - **A second committed generated file** that has the same staleness problem as
   `anchors.json`. The sha rule above makes this staleness visible.
 
+One cost this section used to leave open is now measured rather than estimated. Giving
+each editor its own `DataAPI` — which the per-editor direction requires — was measured in
+the running app over CDP at 64 structs, 218 `DataPath`s and 184 `ToolProperty` copies per
+pane api, none of them shared between panes, for about 80 KB retained each. A whole Gen
+Graph pane costs roughly 690 KB, so the struct tables are about an eighth of it, and
+opening six more panes moved the heap from 10.28 MB to 14.33 MB. The method and the
+numbers are recorded in
+[`per-api-struct-tables.md`](../../vendor/path.ux/documentation/plans/per-api-struct-tables.md).
+
 ## Decisions a plan would settle
 
 - Decide whether the derived model is committed or generated in CI and compared, and where
@@ -382,6 +436,12 @@ it unreported.
 - Whether `AnchorDump` is replaced outright by `StdUXMeta` plus an app tool-meta subclass,
   or kept as a projection of it for the tour's resolver. Replacing it means the anchor
   key, `editor` and `rect` need a home on the tag or in the sweep's wrapper.
+- How a record names the api and the registry a path or a toolpath resolves against.
+  `valuePath` needs this today, since the app already runs one api per Gen Graph pane.
+  `toolPath` needs it only once an editor carries its own registry, and the merged per-api
+  table planned in path.ux answers it within one api but not across two. The alternative
+  is to assert one registry per renderer process and have the model check that, rather
+  than carrying a field nothing populates.
 - What is the exact pseudo-command vocabulary, and is `key.bind` an effect or a property
   of a control?
 - Decide whether `affects` is a list of document-tree path prefixes, a list of `ui.*`
@@ -398,7 +458,15 @@ it unreported.
 - [`../reference/swappingPaneEditors.md`](../reference/swappingPaneEditors.md) states the
   pane-choice rule that a linter would check `view.open` effects against.
 - [`vendor/path.ux/scripts/core/base/ui_meta_tags.ts`](../../vendor/path.ux/scripts/core/base/ui_meta_tags.ts)
-  is the meta-tag sketch the carrier section describes.
+  is the meta-tag module the carrier section describes.
+- [`tool-registry.md`](../../vendor/path.ux/documentation/plans/tool-registry.md),
+  [`per-api-structs.md`](../../vendor/path.ux/documentation/plans/per-api-structs.md) and
+  [`per-api-struct-tables.md`](../../vendor/path.ux/documentation/plans/per-api-struct-tables.md)
+  are the path.ux work that made tool tables and struct tables substitutable per api; the
+  first names this report as its motivating case.
+- [`per-api-tool-tables.md`](../../vendor/path.ux/documentation/plans/per-api-tool-tables.md)
+  plans the merged per-api toolpath table that would let a record key on a toolpath
+  string.
 - [`zod-backed-model-interface.md`](zod-backed-model-interface.md) proposes binding
   editors to documents by data path, with a proxy toolstack that keeps commands as the
   only write path, and describes what that gives this model.

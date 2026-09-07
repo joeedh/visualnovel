@@ -28,7 +28,7 @@
     "check:commandtable": "node scripts/check-command-table.mjs",
     "test": "jest",
     "lint": "pnpm lint:eslint && pnpm format:check && pnpm check:doclinks && pnpm check:commandtable && pnpm lint:comments",
-    "lint:eslint:check": "pnpm run eslint-dispatcher",
+    "lint:eslint:check": "pnpm exec eslint-dispatcher",
     "lint:eslint": "pnpm exec eslint-dispatcher --fix",
     "lint:comments": "pnpm exec commentlint . --concise",
     "lint:comments:full": "pnpm exec commentlint .",
