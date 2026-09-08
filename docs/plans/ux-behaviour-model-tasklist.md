@@ -30,7 +30,7 @@ about. Those are in
 | 1   | [One `Offer`, and the six rule modules unified](archive/one-offer-and-the-six-rule-modules.md)  | app              | —          | `Offer` absorbs `ActOptions`, `tooltip` becomes required, the refused branch carries a `Refusal`, the six modules gain `controls()`                    |
 | 2   | [The ten inline editors get a rule module](archive/the-ten-inline-editors-get-a-rule-module.md) | app              | 1          | `rules/<editor>.ts` extracted from each editor that computes offers beside its DOM code                                                                |
 | 3   | [Situations, and the derived model](archive/situations-and-the-derived-model.md)                | app              | 1, 2       | The fixture list, the headless driver, the zod schema, `ux-model.json`, and the three lint rules the derived tier answers                              |
-| 4   | Pseudo-commands, and a control's list of effects                                                | app              | 1          | The closed effect vocabulary in the catalog, closures rewritten as recorded effects, and the three rules effects unlock                                |
+| 4   | [Pseudo-commands, and a control's list of effects](pseudo-commands-and-a-controls-effects.md)   | app              | 1          | The closed effect vocabulary in the catalog, closures rewritten as recorded effects, and the three rules effects unlock                                |
 | 5   | Disabling menu items, and refusals that carry a reason                                          | `vendor/path.ux` | —          | **Already written and complete**, and the authority on its own scope: `menu-item-disabling.md`, stages 1-5 done, stage 6 (the native menu bar) dropped |
 | 6   | Finishing the meta-tag system                                                                   | `vendor/path.ux` | 5          | A `widgetPath` scheme, a `refusal` accessor on `StdUXMeta`, a validating deserialize, and the `toolPath` builders                                      |
 | 7   | The measured tier reads tags                                                                    | app              | 3, 6       | `act()` writes a `StdUXMeta`, the sweep walks widgets instead of `window.__vnAnchors`, derived compared against measured                               |
@@ -312,7 +312,8 @@ work, and the second one matters to the tooltip rule.
       [`archive/the-ten-inline-editors-get-a-rule-module.md`](archive/the-ten-inline-editors-get-a-rule-module.md))
 - [x] 3 — situations, and the derived model (shipped 2026-09-08:
       [`archive/situations-and-the-derived-model.md`](archive/situations-and-the-derived-model.md))
-- [ ] 4 — pseudo-commands, and a control's list of effects
+- [ ] 4 — pseudo-commands, and a control's list of effects (written:
+      [`pseudo-commands-and-a-controls-effects.md`](pseudo-commands-and-a-controls-effects.md))
 - [ ] 5 — disabling menu items, and refusals that carry a reason (path.ux, already
       planned)
 - [ ] 6 — finishing the meta-tag system (path.ux)
