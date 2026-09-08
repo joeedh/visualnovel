@@ -96,10 +96,16 @@ vocabulary plus what did not fit it.
   which asks `command:check` for each entry that is not `form` or already `refused`
   (`chrome/contextmenu.ts:60`, `needsCheck`), prefixes a refusal with `⃠ ` (`:57`), and
   executes an entry with `exec`, `openCommandDialog` for `form`, or `say` for a refusal
-  (`showmenu.ts:99`). It builds positional `MenuTemplateCustom` rows (`:79`), the one form
-  path.ux's per-item disabling does not reach
+  (`showmenu.ts:99`). Every row carries a tooltip: the refusal sentence, or the command's
+  registry description (`contextmenu.ts:77`, `entriesWithVerdicts`), passed in the tooltip
+  slot of a positional `MenuTemplateCustom` row (`showmenu.ts:79`), which `createMenu`
+  normalises into the object form (`vendor/path.ux/scripts/menu/menu_ops.ts:130`). What
+  the path does not do: it passes no hotkey label, it builds no submenu, and it marks a
+  refused row with the `⃠ ` prefix and leaves it clickable rather than greying it through
+  `setItemDisabled`, which path.ux's object form reaches through `disabled` and `validate`
   ([`menu-item-disabling.md`](../../vendor/path.ux/documentation/plans/menu-item-disabling.md),
-  complete). The shot menu (`editors/timeline.ts:649`), the line menu
+  complete; the comment at `contextmenu.ts:69` saying the template has no per-item
+  disabled state predates it). The shot menu (`editors/timeline.ts:649`), the line menu
   (`renderer/pathux/interactions/script.ts:98`) and the card menu
   (`interactions/branch.ts:207`) are `MenuEntry[]` on the same path and are not in the
   model. The header's four menus (`header.ts:478`, `:616`, `:668`, `:773`) and its Recent,
@@ -296,15 +302,17 @@ vocabulary plus what did not fit it.
   closure carries an effect id (`popup.open` for the palette, `history.move`,
   `pane.view: mode`, `screen.arrange`, `view.open` with `where: 'popup'` for Report a
   Difficult Agent…), the open project's Recent row is `refused`, and a row that runs a
-  command carries its id, with `form: true` where it opened a dialog. A new builder,
-  `chrome/barmenu.ts`, maps entries to the object-form rows `bar.menu` takes, with
-  `tooltip`, `hotkey` from the shortcut table, `disabled` and the refusal on a refused
-  row, and a nested `Menu` per submenu; `header.ts` supplies the handler table keyed by
-  effect id and deletes its templates. `showContextMenu` is untouched except that
+  command carries its id, with `form: true` where it opened a dialog. One builder serves
+  both: `showmenu.ts` splits into `menuTemplate(entries, verdicts, says, handlers)`,
+  returning object-form rows with `tooltip`, `hotkey` from the shortcut table, `disabled`
+  with the refusal on a refused row, and a nested `Menu` per submenu, and a
+  `showContextMenu` that starts it at a point; the header passes the same template to
+  `bar.menu` and supplies the handler table keyed by effect id, deleting its templates.
   `needsCheck` skips an effect id and `entriesWithVerdicts` reads an effect's tooltip from
-  the effect catalog. The shot, line and card menus join the driver's menu row with a
-  situation each, and the header's under `when: header/<menu>` with a submenu row under
-  `header/<menu>/<submenu>`.
+  the effect catalog. A refused context-menu row is then greyed with its sentence composed
+  above the tooltip, and the `⃠ ` prefix goes. The shot, line and card menus join the
+  driver's menu row with a situation each, and the header's under `when: header/<menu>`
+  with a submenu row under `header/<menu>/<submenu>`.
 - **The three chrome popups are homes, present like the header.** `notifications`,
   `approvals` and `diagnostics` join `ANCHOR_HOMES`. Each gets a rule module with
   `controls(state)` (`rules/notifications.ts` over a `NotificationsState`, and a row
@@ -381,10 +389,9 @@ vocabulary plus what did not fit it.
   `gengraph.removeNode`, `gengraph.duplicateNode`, `story.setSpeaker` and the five
   timeline `story.*` at stage 5. The test that fails on an entry matching an anchored
   command is what forces each edit.
-- **What stays out.** A tooltip on a context-menu row, which needs a template path.ux can
-  validate. Making undo, redo, quit and close-window commands. `drag.accept` as a control.
-  The Gen Graph designer's socket rows, which are path.ux widgets. The executed check that
-  a closure does what its effects say (plan 8).
+- **What stays out.** Making undo, redo, quit and close-window commands. `drag.accept` as
+  a control. The Gen Graph designer's socket rows, which are path.ux widgets. The executed
+  check that a closure does what its effects say (plan 8).
 
 ## What changes
 
@@ -442,16 +449,16 @@ test demands.
 
 ### Stage 4 — menus as data, and the menu rule
 
-- `MenuEntry` gains its four fields; `rules/headermenus.ts`; `chrome/barmenu.ts`;
-  `header.ts` supplies the handler table and deletes its templates; `showmenu.ts`'s
-  `needsCheck` and tooltip lookup learn effect ids.
+- `MenuEntry` gains its four fields; `rules/headermenus.ts`; `showmenu.ts` splits into
+  `menuTemplate` and `showContextMenu`, building object-form rows; `header.ts` supplies
+  the handler table and deletes its templates; `needsCheck` and the tooltip lookup learn
+  effect ids; the `⃠ ` prefix and the stale comment in `contextmenu.ts` go.
 - The shot, line and card menus join the driver's menu row with a situation each; the
   header's menus join it under `header/<menu>` and `header/<menu>/<submenu>`.
 - `rules/menuexempt.ts` and the rule test in `uxmodel.test.ts`; the palette-only edits the
   header's rows force.
 - A CDP check that every header menu, submenu and hotkey label draws as before, and that a
-  refused Recent row is greyed with its sentence, which the object-form template makes
-  possible for the first time.
+  refused Recent row and a refused tree row are greyed with the sentence on hover.
 
 ### Stage 5 — the widgets, the Threads rows, Delete and Duplicate
 
@@ -544,16 +551,15 @@ route situations.
   control rings the opener until the popup is open, then the control. The sweep has to
   open each popup, which is three more clicks in the script and nothing else.
 - **Undoing the plan** deletes the effect registry, the three popup modules,
-  `headermenus.ts`, `barmenu.ts`, `shortcuts.ts`, `menuexempt.ts`, `effects.ts` twice and
-  the schema fields; restores `item()`, `pickItem()`, the templates, the hand-kept labels
-  and the moved helpers. Nothing outside the desktop app and `@vn/commands` changes.
+  `headermenus.ts`, `menuTemplate`, `shortcuts.ts`, `menuexempt.ts`, `effects.ts` twice
+  and the schema fields; restores `item()`, `pickItem()`, the templates, the hand-kept
+  labels and the moved helpers. Nothing outside the desktop app and `@vn/commands`
+  changes.
 
 ## Follow-ups deliberately not in scope
 
 - **Undo, redo, quit and close-window as commands**, which would delete `history.move` and
   give the palette four entries, and would settle the sentence CLAUDE.md gains here.
-- **A tooltip on a context-menu row**, and per-item disabling through a template path.ux
-  can validate.
 - **Moving path.ux's node-editor hotkey table to a pure module**, so the `gengraph` scope
   is derived rather than copied.
 - **`drag.accept` and the drop targets in the model**, once plan 7's recipes can drive a
@@ -566,12 +572,15 @@ route situations.
 From the fresh-context review, before any work started. Each is fixed in the text above or
 answered here.
 
-1.  **Rewriting the header's menus through `showContextMenu` would have lost tooltips,
-    hotkeys, submenus and the disabling path.ux already supports**, since the header's
-    rows are object-form and only the context menus are positional. Fixed: a new
-    `chrome/barmenu.ts` maps `MenuEntry[]` to object-form rows and nested menus;
-    `MenuEntry` gains `tooltip`, `shortcut`, `then` and `submenu`; the Context bullet says
-    which form each menu uses.
+1.  **Rewriting the header's menus through `showContextMenu` as it stands would have lost
+    hotkey labels, submenus and greying**, since the context-menu path passes no hotkey,
+    nests nothing and marks a refusal with a prefix. The first draft of this fix also
+    claimed the path lost tooltips; it does not, since every row's tooltip is the refusal
+    sentence or the registry description, and the positional row is normalised into the
+    object form inside `createMenu`. Fixed: one template builder serves the header and the
+    context menus, with object-form rows, `hotkey`, `disabled` and nested menus;
+    `MenuEntry` gains `tooltip`, `shortcut`, `then` and `submenu`; the Context bullet
+    states what each path does.
 2.  **`popup.open` for a dialog would have hidden six commands from the menu rule and the
     coverage test.** Fixed: a dialog row is the command with `form: true`; the `command?`
     prop is gone.
