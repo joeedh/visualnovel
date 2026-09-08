@@ -4,10 +4,11 @@
  * provider-native function calling) can consume the surface without importing this package.
  */
 import { formatCommand } from './dsl.js';
+import type { EffectRegistry } from './effect.js';
 import { toInteractionCatalog, type InteractionCatalogEntry } from './interaction.js';
 import type { CommandRegistry } from './registry.js';
 import type { InteractionRegistry } from './interaction.js';
-import type { Prop, PropKind, PropValue } from './props.js';
+import type { Prop, PropKind, PropSpecMap, PropValue } from './props.js';
 
 export interface CatalogProp {
   name: string;
@@ -99,6 +100,14 @@ export function toDocIndex(registry: CommandRegistry<any>): DocCommandEntry[] {
   }));
 }
 
+/** One effect as the catalog carries it: the id, the two sentences, and the props. */
+export interface EffectCatalogEntry {
+  id: string;
+  title: string;
+  description: string;
+  props: CatalogProp[];
+}
+
 export interface CommandCatalog {
   version: 1;
   /** Which registry this was generated from, e.g. `@vn/desktop`. */
@@ -109,6 +118,32 @@ export interface CommandCatalog {
    * only knows about commands reads the same file unchanged.
    */
   interactions?: InteractionCatalogEntry[];
+  /** The effect vocabulary, when the host declares one. Additive and optional like the gestures. */
+  effects?: EffectCatalogEntry[];
+}
+
+/** The props of one spec map as the catalog lists them, in declaration order. */
+export function catalogProps(specs: PropSpecMap): CatalogProp[] {
+  return Object.entries(specs).map(([name, spec]) => ({
+    name,
+    kind       : spec.kind,
+    description: spec.description,
+    required   : spec.required,
+    ...(spec.default !== undefined ? { default: spec.default } : {}),
+    ...(spec.values ? { values: [...spec.values] } : {}),
+    ...(spec.digest ? { digest: true } : {}),
+    ...(spec.multiline ? { multiline: true } : {}),
+    ...(spec.hint ? { hint: spec.hint } : {}),
+  }));
+}
+
+export function toEffectCatalog(registry: EffectRegistry): EffectCatalogEntry[] {
+  return registry.list().map(({ id, title, description, props }) => ({
+    id,
+    title,
+    description,
+    props: catalogProps(props),
+  }));
 }
 
 /** A placeholder of the right type, so `usage` is a template the user can fill in. */
@@ -151,6 +186,7 @@ export function toCatalog(
   registry: CommandRegistry<any>,
   source: string,
   interactions?: InteractionRegistry<any>,
+  effects?: EffectRegistry,
 ): CommandCatalog {
   const commands = registry.list().map<CatalogEntry>((command) => {
     const entries = Object.entries(command.props);
@@ -176,17 +212,7 @@ export function toCatalog(
       confirm    : command.confirm ?? false,
       undoable   : command.undoable ?? false,
       checkable  : Boolean(command.check),
-      props: entries.map(([name, spec]) => ({
-        name,
-        kind       : spec.kind,
-        description: spec.description,
-        required   : spec.required,
-        ...(spec.default !== undefined ? { default: spec.default } : {}),
-        ...(spec.values ? { values: [...spec.values] } : {}),
-        ...(spec.digest ? { digest: true } : {}),
-        ...(spec.multiline ? { multiline: true } : {}),
-        ...(spec.hint ? { hint: spec.hint } : {}),
-      })),
+      props      : catalogProps(command.props),
       usage      : formatCommand(command.id, template),
       schema     : { type: 'object', properties, required, additionalProperties: false },
     };
@@ -197,5 +223,6 @@ export function toCatalog(
     source,
     commands,
     ...(interactions ? { interactions: toInteractionCatalog(interactions) } : {}),
+    ...(effects ? { effects: toEffectCatalog(effects) } : {}),
   };
 }

@@ -10,11 +10,15 @@
 import type { Refusal } from 'pathux';
 import type { PropValue } from '../../src/shared/ipc.js';
 import { HEADER, type AnchorHome, type EditorId } from '../../src/shared/editors.js';
+import { isEffectId, uiPublish } from '../../src/shared/effects.js';
 
 // Declared beside the editor list so the derived model's schema can enumerate every home
 export { HEADER, type AnchorHome };
 
-/** What a surface can be asked to do, as data, before it is a click. */
+/**
+ * What a surface can be asked to do, as data, before it is a click. `id` names a command, which
+ * main runs, or an effect (`src/shared/effects.ts`), which the surface's own closure performs.
+ */
 export interface Action {
   id: string;
   props: Record<string, PropValue>;
@@ -47,7 +51,12 @@ export interface Control {
  * module hold one type.
  */
 export type Offer =
-  | (Control & { ok: true; props: Record<string, PropValue> })
+  | (Control & {
+      ok: true;
+      props: Record<string, PropValue>;
+      /** What the click does after the first action: a row that publishes and then opens. */
+      then?: readonly Action[];
+    })
   | (Control & { ok: false; refusal: Refusal });
 
 /** The refused half of an offer, from the sentence alone: `{ ...refuse(why), id, label, tooltip }`. */
@@ -120,12 +129,14 @@ export type AnchorVia =
 
 /** One thing on screen that can be pointed at, and what pointing at it would do. */
 export interface Anchor {
-  /** `cmd:asset.regenerate` or `item:asset/<hash>` — see {@link commandKey}, {@link itemKey}. */
+  /** `cmd:asset.regenerate`, `item:asset/<hash>` or `fx:pane.view` — see {@link keyOf}. */
   key: string;
-  /** The command a click runs. Absent on an `item:` anchor, whose click publishes a selection. */
+  /** The command or effect a click runs. Absent on an `item:` anchor recorded by `item()`. */
   id?: string;
   /** The props known when the anchor was recorded. Partial wherever the widget supplies one. */
   props: Record<string, PropValue>;
+  /** What the click does after the first action, as the offer declared it. */
+  then?: readonly Action[];
   /** Prop names the click reads from the widget at commit time, so a step naming one is an input. */
   supplies?: string[];
   /**
@@ -181,9 +192,23 @@ export const commandKey = (id: string): string => `cmd:${id}`;
  */
 export const itemKey = (kind: string, key: string): string => `item:${kind}/${key}`;
 
-/** The key a control is re-resolved by: `cmd:<id>`, or `cmd:<id>#<on>`. */
-export const keyOf = (control: Pick<Control, 'id' | 'on'>): string =>
-  control.on === undefined ? commandKey(control.id) : `${commandKey(control.id)}#${control.on}`;
+/** The key of an effect other than a selection: `fx:<id>`. */
+export const effectKey = (id: string): string => `fx:${id}`;
+
+/**
+ * The key a control is re-resolved by. A command is `cmd:<id>`, or `cmd:<id>#<on>` where `on`
+ * tells two controls running it apart. A `ui.publish` is `item:<on>`, where `on` is `<kind>/<key>`
+ * and is required, so a row that selects a subject keeps the key a tour's `select` step names.
+ * Any other effect is `fx:<id>`, or `fx:<id>#<on>`.
+ */
+export const keyOf = (control: Pick<Control, 'id' | 'on'>): string => {
+  if (control.id === uiPublish.id) {
+    if (control.on === undefined) throw new Error('a ui.publish offer names no `on`');
+    return `item:${control.on}`;
+  }
+  const base = isEffectId(control.id) ? effectKey(control.id) : commandKey(control.id);
+  return control.on === undefined ? base : `${base}#${control.on}`;
+};
 
 /** The keys that appear more than once, which a `controls()` test asserts is empty. */
 export function duplicateKeys(controls: readonly Pick<Control, 'id' | 'on'>[]): string[] {

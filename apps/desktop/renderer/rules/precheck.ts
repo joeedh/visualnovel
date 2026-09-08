@@ -13,6 +13,7 @@
  */
 import type { PropKind } from '@vn/commands';
 import type { CatalogProp, PropValue } from '../../src/shared/ipc.js';
+import { isEffectId } from '../../src/shared/effects.js';
 import type { Action, Anchor } from './anchors.js';
 
 /** The unanswered value for each kind that has one. A kind absent here cannot be blanked. */
@@ -25,11 +26,11 @@ const BLANK: Partial<Record<PropKind, PropValue>> = {
 /**
  * The invocation to check, or nothing where a required prop cannot be blanked honestly.
  *
- * `props` is the command's catalog entry. An anchor with no command — an `item:` row — has no
- * precondition to ask about and answers nothing.
+ * `props` is the command's catalog entry. An anchor that names no command (a row publishing a
+ * subject, a button performing an effect) has no precondition in the stack, so nothing is asked.
  */
 export function checkFor(anchor: Anchor, props: readonly CatalogProp[]): Action | undefined {
-  if (anchor.id === undefined) return undefined;
+  if (anchor.id === undefined || isEffectId(anchor.id)) return undefined;
   const filled: Record<string, PropValue> = { ...anchor.props };
   for (const prop of props) {
     if (!prop.required || prop.name in filled) continue;

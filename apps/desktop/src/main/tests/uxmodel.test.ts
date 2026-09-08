@@ -6,8 +6,9 @@
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { desktopEffects } from '../commands/catalog-entry.js';
 import { createDesktopRegistry } from '../commands/index.js';
-import { paletteMatches, UX_MODEL } from '../../shared/uxmodel.js';
+import { actionProblems, paletteMatches, UX_MODEL } from '../../shared/uxmodel.js';
 
 const model = UX_MODEL.parse(
   JSON.parse(readFileSync(resolve(__dirname, '../../../ux-model.json'), 'utf8')),
@@ -18,8 +19,11 @@ const live = createDesktopRegistry()
   .map((command) => command.id)
   .sort();
 
+// The command ids only: an effect is a control's own doing and is checked against its registry
 const anchored = new Set(
-  model.records.map((record) => (record.via === 'control' ? record.offer.id : record.id)),
+  model.records
+    .map((record) => (record.via === 'control' ? record.offer.id : record.id))
+    .filter((id) => !desktopEffects.has(id)),
 );
 
 const listed = (id: string) => model.paletteOnly.some((entry) => paletteMatches(entry.match, id));
@@ -41,6 +45,10 @@ const sweep = JSON.parse(readFileSync(resolve(__dirname, '../../../anchors.json'
 describe('ux-model.json against the registry', () => {
   it('names only commands that exist', () => {
     expect([...anchored].filter((id) => !live.includes(id)).sort()).toEqual([]);
+  });
+
+  it('names only commands or effects in every action, with props the effect accepts', () => {
+    expect(actionProblems(model, new Set(live), desktopEffects)).toEqual([]);
   });
 
   it('gives every command a control or a reason', () => {

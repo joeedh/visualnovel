@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { COMMAND_ID } from '@vn/commands';
-import { catalog, catalogOf } from '../catalog-entry.js';
+import { catalog, catalogOf, desktopEffects } from '../catalog-entry.js';
 import { docIndex } from '../doc-entry.js';
 import { desktopInteractions } from '../interaction.js';
 import { createDesktopRegistry } from '../index.js';
@@ -450,6 +450,25 @@ describe('the desktop registry', () => {
       'timeline.cover',
       'timeline.create',
       'timeline.reorder',
+    ]);
+  });
+
+  /** The effect vocabulary is closed, so the ids that ship are pinned the way the gestures are. */
+  it('names every effect apart from every command', () => {
+    expect(() => desktopEffects.verify(createDesktopRegistry(), desktopInteractions)).not.toThrow();
+    expect(catalog().effects?.map((e) => e.id)).toEqual([
+      'agent.answer',
+      'drag.start',
+      'history.move',
+      'menu.open',
+      'pane.pin',
+      'pane.scroll',
+      'pane.view',
+      'popup.close',
+      'popup.open',
+      'screen.arrange',
+      'tree.expand',
+      'ui.publish',
     ]);
   });
 });

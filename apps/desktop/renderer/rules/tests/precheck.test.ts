@@ -77,6 +77,13 @@ describe('checkFor', () => {
     delete (row as { id?: string }).id;
     expect(checkFor(row, [])).toBeUndefined();
   });
+
+  it('answers nothing for an effect, which has no precondition in the stack', () => {
+    const reload = anchor({ key: 'fx:pane.view', id: 'pane.view', props: { what: 'reload' } });
+    expect(checkFor(reload, [])).toBeUndefined();
+    const row = anchor({ key: itemKey('scene', 'greet'), id: 'ui.publish', props: {} });
+    expect(checkFor(row, [])).toBeUndefined();
+  });
 });
 
 describe('askedAs', () => {

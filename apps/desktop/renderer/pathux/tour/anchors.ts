@@ -92,6 +92,7 @@ export class AnchorPass {
       key  : keyOf(offer),
       id   : offer.id,
       props: offer.ok ? offer.props : {},
+      ...(offer.ok && offer.then !== undefined ? { then: offer.then } : {}),
       ...(supplies.length > 0 ? { supplies: [...supplies] } : {}),
       ...(offer.form ? { form: true } : {}),
       enabled: offer.ok,
@@ -226,6 +227,7 @@ export interface AnchorDump {
   key: string;
   id?: string;
   props: Record<string, PropValue>;
+  then?: readonly Action[];
   supplies?: string[];
   form?: boolean;
   enabled: boolean;
@@ -243,6 +245,7 @@ export function dumpAnchors(): AnchorDump[] {
       key: anchor.key,
       ...(anchor.id === undefined ? {} : { id: anchor.id }),
       props: anchor.props,
+      ...(anchor.then ? { then: anchor.then } : {}),
       ...(anchor.supplies ? { supplies: anchor.supplies } : {}),
       ...(anchor.form ? { form: true } : {}),
       enabled: anchor.enabled,

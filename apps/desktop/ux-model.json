@@ -429,7 +429,13 @@
         "supplies": ["editor"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -444,7 +450,13 @@
         "supplies": ["name"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.applyLayout",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -460,7 +472,15 @@
         "props": {
           "mock": false
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "pipeline.run",
+          "props": {
+            "mock": false
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -476,7 +496,12 @@
         "refusal": {
           "reason": "Nothing is running."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "pipeline.stop"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -492,7 +517,15 @@
         "props": {
           "mode": "execute"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setMode",
+          "props": {
+            "mode": "execute"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -507,7 +540,13 @@
         "supplies": ["modelId"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setModel",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -522,7 +561,13 @@
         "supplies": ["editor"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -537,7 +582,13 @@
         "supplies": ["name"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.applyLayout",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -553,7 +604,15 @@
         "props": {
           "mock": true
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "pipeline.run",
+          "props": {
+            "mock": true
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -569,7 +628,12 @@
         "refusal": {
           "reason": "Nothing is running."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "pipeline.stop"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -585,7 +649,15 @@
         "props": {
           "mode": "execute"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setMode",
+          "props": {
+            "mode": "execute"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -600,7 +672,13 @@
         "supplies": ["modelId"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setModel",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -615,7 +693,13 @@
         "supplies": ["editor"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -630,7 +714,13 @@
         "supplies": ["name"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.applyLayout",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -646,7 +736,12 @@
         "refusal": {
           "reason": "Cannot start: a pipeline run is already in progress."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "pipeline.run"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -660,7 +755,13 @@
         "tooltip": "The run stops after the task it is on. Finished work is kept.",
         "ok"     : true,
         "props"  : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "pipeline.stop",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -676,7 +777,15 @@
         "props": {
           "mode": "execute"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setMode",
+          "props": {
+            "mode": "execute"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -691,7 +800,13 @@
         "supplies": ["modelId"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setModel",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -706,7 +821,13 @@
         "supplies": ["editor"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -721,7 +842,13 @@
         "supplies": ["name"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.applyLayout",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -737,7 +864,12 @@
         "refusal": {
           "reason": "Cannot start: an agent report is already in progress."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "pipeline.run"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -751,7 +883,13 @@
         "tooltip": "The turn ends after the step it is on. What the debug agent has said is kept.",
         "ok"     : true,
         "props"  : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "report.stop",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -767,7 +905,15 @@
         "props": {
           "mode": "plan"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setMode",
+          "props": {
+            "mode": "plan"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -782,7 +928,13 @@
         "supplies": ["modelId"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setModel",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -797,7 +949,13 @@
         "supplies": ["editor"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -812,7 +970,13 @@
         "supplies": ["name"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.applyLayout",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -828,7 +992,12 @@
         "refusal": {
           "reason": "Cannot start: an agent turn is already in progress."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "pipeline.run"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -844,7 +1013,12 @@
         "refusal": {
           "reason": "Nothing is running."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "pipeline.stop"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -860,7 +1034,15 @@
         "props": {
           "mode": "execute"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setMode",
+          "props": {
+            "mode": "execute"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -875,7 +1057,13 @@
         "supplies": ["modelId"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setModel",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -891,7 +1079,12 @@
         "refusal": {
           "reason": "No asset is on screen."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "asset.accept"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -907,7 +1100,12 @@
         "refusal": {
           "reason": "No asset is on screen."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "asset.regenerate"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -923,7 +1121,12 @@
         "refusal": {
           "reason": "The manifest records no task for this asset."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "view.open"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -939,7 +1142,12 @@
         "refusal": {
           "reason": "No picture on screen to save"
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "asset.export"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -955,7 +1163,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.unapprove",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -972,7 +1188,16 @@
           "hash": "a1b2c3d4",
           "run" : true
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.regenerate",
+          "props": {
+            "hash": "a1b2c3d4",
+            "run" : true
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -989,7 +1214,16 @@
           "editor": "inspector",
           "where" : "elsewhere"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor": "inspector",
+            "where" : "elsewhere"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1005,7 +1239,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.export",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1022,7 +1264,12 @@
         "refusal": {
           "reason": "A location_ref is already what it is — only a concept promotes."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "art.promote"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1038,7 +1285,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.replace",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1055,7 +1310,12 @@
         "refusal": {
           "reason": "A location_ref's prompt is composed from the project on every planning pass — edit it a clause at a time below, not as one string."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "art.redraw"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1073,7 +1333,15 @@
         "props": {
           "target": "location:cafe"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "art.setNotes",
+          "props": {
+            "target": "location:cafe"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1091,7 +1359,15 @@
         "props": {
           "target": "location:cafe"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "art.setSeed",
+          "props": {
+            "target": "location:cafe"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1107,7 +1383,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.accept",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1124,7 +1408,16 @@
           "hash": "a1b2c3d4",
           "run" : true
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.regenerate",
+          "props": {
+            "hash": "a1b2c3d4",
+            "run" : true
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1141,7 +1434,16 @@
           "editor": "inspector",
           "where" : "elsewhere"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor": "inspector",
+            "where" : "elsewhere"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1157,7 +1459,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.export",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1174,7 +1484,12 @@
         "refusal": {
           "reason": "A location_ref is already what it is — only a concept promotes."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "art.promote"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1190,7 +1505,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.replace",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1207,7 +1530,12 @@
         "refusal": {
           "reason": "A location_ref's prompt is composed from the project on every planning pass — edit it a clause at a time below, not as one string."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "art.redraw"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1225,7 +1553,15 @@
         "props": {
           "target": "location:cafe"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "art.setNotes",
+          "props": {
+            "target": "location:cafe"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1243,7 +1579,15 @@
         "props": {
           "target": "location:cafe"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "art.setSeed",
+          "props": {
+            "target": "location:cafe"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1260,7 +1604,16 @@
           "characterId": "aiko",
           "hash"       : "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "gate.approve",
+          "props": {
+            "characterId": "aiko",
+            "hash"       : "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1277,7 +1630,16 @@
           "hash": "a1b2c3d4",
           "run" : true
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.regenerate",
+          "props": {
+            "hash": "a1b2c3d4",
+            "run" : true
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1294,7 +1656,16 @@
           "editor": "inspector",
           "where" : "elsewhere"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor": "inspector",
+            "where" : "elsewhere"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1310,7 +1681,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.export",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1327,7 +1706,12 @@
         "refusal": {
           "reason": "A portrait is already what it is — only a concept promotes."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "art.promote"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1343,7 +1727,12 @@
         "refusal": {
           "reason": "A portrait is the look the gate owns — upload the file, then approve it with gate.approve."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "asset.replace"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1360,7 +1749,12 @@
         "refusal": {
           "reason": "A portrait's prompt is composed from the project on every planning pass — edit it a clause at a time below, not as one string."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "art.redraw"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1378,7 +1772,15 @@
         "props": {
           "target": "character:aiko"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "art.setNotes",
+          "props": {
+            "target": "character:aiko"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1396,7 +1798,15 @@
         "props": {
           "target": "character:aiko"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "art.setSeed",
+          "props": {
+            "target": "character:aiko"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1412,7 +1822,12 @@
         "refusal": {
           "reason": "A concept is a sketch — nothing downstream consumes one. Promote it to a plate."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "asset.accept"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1429,7 +1844,16 @@
           "hash": "a1b2c3d4",
           "run" : true
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.regenerate",
+          "props": {
+            "hash": "a1b2c3d4",
+            "run" : true
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1446,7 +1870,16 @@
           "editor": "inspector",
           "where" : "elsewhere"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor": "inspector",
+            "where" : "elsewhere"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1462,7 +1895,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.export",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1479,7 +1920,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "art.promote",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1495,7 +1944,12 @@
         "refusal": {
           "reason": "A concept fills no slot — nothing planned it, or a newer render holds the slot now."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "asset.replace"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1512,7 +1966,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "art.redraw",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1530,7 +1992,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "art.promote",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1548,7 +2018,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "art.redraw",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1566,7 +2044,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "art.redraw",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1584,7 +2070,15 @@
         "props": {
           "target": "location:cafe"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "art.setNotes",
+          "props": {
+            "target": "location:cafe"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1602,7 +2096,15 @@
         "props": {
           "target": "location:cafe"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "art.setSeed",
+          "props": {
+            "target": "location:cafe"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1618,7 +2120,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.accept",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1635,7 +2145,16 @@
           "hash": "a1b2c3d4",
           "run" : true
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.regenerate",
+          "props": {
+            "hash": "a1b2c3d4",
+            "run" : true
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1652,7 +2171,16 @@
           "editor": "inspector",
           "where" : "elsewhere"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor": "inspector",
+            "where" : "elsewhere"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1668,7 +2196,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.export",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1685,7 +2221,12 @@
         "refusal": {
           "reason": "A location_ref is already what it is — only a concept promotes."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "art.promote"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1701,7 +2242,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.replace",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1718,7 +2267,12 @@
         "refusal": {
           "reason": "A location_ref's prompt is composed from the project on every planning pass — edit it a clause at a time below, not as one string."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "art.redraw"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1736,7 +2290,16 @@
           "editor": "inspector",
           "where" : "elsewhere"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor": "inspector",
+            "where" : "elsewhere"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1752,7 +2315,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.fixAsset",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1770,7 +2341,15 @@
         "props": {
           "target": "location:cafe"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "art.setNotes",
+          "props": {
+            "target": "location:cafe"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1788,7 +2367,15 @@
         "props": {
           "target": "location:cafe"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "art.setSeed",
+          "props": {
+            "target": "location:cafe"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1804,7 +2391,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.restore",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1821,7 +2416,16 @@
           "hash": "a1b2c3d4",
           "run" : true
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.regenerate",
+          "props": {
+            "hash": "a1b2c3d4",
+            "run" : true
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1838,7 +2442,16 @@
           "editor": "inspector",
           "where" : "elsewhere"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor": "inspector",
+            "where" : "elsewhere"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1854,7 +2467,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.export",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1871,7 +2492,12 @@
         "refusal": {
           "reason": "A location_ref is already what it is — only a concept promotes."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "art.promote"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1887,7 +2513,12 @@
         "refusal": {
           "reason": "A location_ref fills no slot — nothing planned it, or a newer render holds the slot now."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "asset.replace"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1904,7 +2535,12 @@
         "refusal": {
           "reason": "A location_ref's prompt is composed from the project on every planning pass — edit it a clause at a time below, not as one string."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "art.redraw"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1922,7 +2558,15 @@
         "props": {
           "target": "location:cafe"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "art.setNotes",
+          "props": {
+            "target": "location:cafe"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1940,7 +2584,15 @@
         "props": {
           "target": "location:cafe"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "art.setSeed",
+          "props": {
+            "target": "location:cafe"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1956,7 +2608,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.accept",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1972,7 +2632,15 @@
         "props": {
           "mock": false
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "pipeline.run",
+          "props": {
+            "mock": false
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -1989,7 +2657,16 @@
           "editor": "inspector",
           "where" : "elsewhere"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor": "inspector",
+            "where" : "elsewhere"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2005,7 +2682,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.export",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2022,7 +2707,12 @@
         "refusal": {
           "reason": "A location_ref is already what it is — only a concept promotes."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "art.promote"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2038,7 +2728,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.replace",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2055,7 +2753,12 @@
         "refusal": {
           "reason": "A location_ref's prompt is composed from the project on every planning pass — edit it a clause at a time below, not as one string."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "art.redraw"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2073,7 +2776,15 @@
         "props": {
           "target": "location:cafe"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "art.setNotes",
+          "props": {
+            "target": "location:cafe"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2091,7 +2802,15 @@
         "props": {
           "target": "location:cafe"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "art.setSeed",
+          "props": {
+            "target": "location:cafe"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2107,7 +2826,12 @@
         "refusal": {
           "reason": "An upload is not generated art — it counts by being pointed at, not by being blessed."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "asset.accept"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2124,7 +2848,16 @@
           "hash": "a1b2c3d4",
           "run" : true
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.regenerate",
+          "props": {
+            "hash": "a1b2c3d4",
+            "run" : true
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2140,7 +2873,12 @@
         "refusal": {
           "reason": "The manifest records no task for this asset."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "view.open"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2156,7 +2894,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "asset.export",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2173,7 +2919,12 @@
         "refusal": {
           "reason": "A reference is already what it is — only a concept promotes."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "art.promote"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2189,7 +2940,12 @@
         "refusal": {
           "reason": "A reference fills no slot — nothing planned it, or a newer render holds the slot now."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "asset.replace"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2206,7 +2962,12 @@
         "refusal": {
           "reason": "A reference's prompt is composed from the project on every planning pass — edit it a clause at a time below, not as one string."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "art.redraw"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2223,7 +2984,12 @@
         "refusal": {
           "reason": "This prompt is already in chunks mode."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.clear"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2241,7 +3007,16 @@
           "hash": "a1b2c3d4",
           "text": "Aiko, a transfer student. Palette: #112233."
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setCustom",
+          "props": {
+            "hash": "a1b2c3d4",
+            "text": "Aiko, a transfer student. Palette: #112233."
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2258,7 +3033,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.condense",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2274,7 +3057,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.condense",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2290,7 +3081,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.check",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2307,7 +3106,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setCustom",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2327,7 +3134,18 @@
           "op"   : "mute",
           "text" : ""
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "mute",
+            "text" : ""
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2347,7 +3165,17 @@
           "chunk": "subject",
           "op"   : "replace"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "replace"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2367,7 +3195,17 @@
           "chunk": "subject",
           "op"   : "append"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "append"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2386,7 +3224,16 @@
           "hash" : "a1b2c3d4",
           "chunk": "subject"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.addRef",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2403,7 +3250,12 @@
         "refusal": {
           "reason": "Nothing has been done to this clause."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.setChunk"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2422,7 +3274,17 @@
           "where"  : "elsewhere",
           "subject": "characters/aiko/character.md"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "wiki",
+            "where"  : "elsewhere",
+            "subject": "characters/aiko/character.md"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2442,7 +3304,18 @@
           "op"   : "mute",
           "text" : ""
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "mute",
+            "text" : ""
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2462,7 +3335,17 @@
           "chunk": "palette",
           "op"   : "replace"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "replace"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2482,7 +3365,17 @@
           "chunk": "palette",
           "op"   : "append"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "append"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2501,7 +3394,16 @@
           "hash" : "a1b2c3d4",
           "chunk": "palette"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.addRef",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2518,7 +3420,12 @@
         "refusal": {
           "reason": "Nothing has been done to this clause."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.setChunk"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2536,7 +3443,16 @@
           "hash": "a1b2c3d4",
           "part": "custom"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.clear",
+          "props": {
+            "hash": "a1b2c3d4",
+            "part": "custom"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2553,7 +3469,12 @@
         "refusal": {
           "reason": "This prompt is already in custom mode."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.setCustom"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2571,7 +3492,16 @@
           "hash" : "a1b2c3d4",
           "force": true
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.condense",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "force": true
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2588,7 +3518,16 @@
           "hash" : "a1b2c3d4",
           "force": true
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.condense",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "force": true
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2604,7 +3543,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.check",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2621,7 +3568,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setCustom",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2639,7 +3594,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setCustom",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2659,7 +3622,18 @@
           "op"   : "mute",
           "text" : ""
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "mute",
+            "text" : ""
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2679,7 +3653,17 @@
           "chunk": "subject",
           "op"   : "replace"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "replace"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2699,7 +3683,17 @@
           "chunk": "subject",
           "op"   : "append"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "append"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2718,7 +3712,16 @@
           "hash" : "a1b2c3d4",
           "chunk": "subject"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.addRef",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2735,7 +3738,12 @@
         "refusal": {
           "reason": "Nothing has been done to this clause."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.setChunk"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2754,7 +3762,17 @@
           "where"  : "elsewhere",
           "subject": "characters/aiko/character.md"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "wiki",
+            "where"  : "elsewhere",
+            "subject": "characters/aiko/character.md"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2774,7 +3792,18 @@
           "op"   : "mute",
           "text" : ""
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "mute",
+            "text" : ""
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2794,7 +3823,17 @@
           "chunk": "palette",
           "op"   : "replace"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "replace"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2814,7 +3853,17 @@
           "chunk": "palette",
           "op"   : "append"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "append"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2833,7 +3882,16 @@
           "hash" : "a1b2c3d4",
           "chunk": "palette"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.addRef",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2850,7 +3908,12 @@
         "refusal": {
           "reason": "Nothing has been done to this clause."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.setChunk"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2868,7 +3931,16 @@
           "hash": "a1b2c3d4",
           "part": "agent"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.clear",
+          "props": {
+            "hash": "a1b2c3d4",
+            "part": "agent"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2886,7 +3958,16 @@
           "hash": "a1b2c3d4",
           "text": "Aiko, a transfer student. Palette: #112233."
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setCustom",
+          "props": {
+            "hash": "a1b2c3d4",
+            "text": "Aiko, a transfer student. Palette: #112233."
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2903,7 +3984,12 @@
         "refusal": {
           "reason": "This prompt is already in agent mode."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.condense"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2919,7 +4005,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.condense",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2935,7 +4029,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.check",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2952,7 +4054,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setCustom",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2972,7 +4082,18 @@
           "op"   : "mute",
           "text" : ""
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "mute",
+            "text" : ""
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -2992,7 +4113,17 @@
           "chunk": "subject",
           "op"   : "replace"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "replace"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3012,7 +4143,17 @@
           "chunk": "subject",
           "op"   : "append"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "append"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3031,7 +4172,16 @@
           "hash" : "a1b2c3d4",
           "chunk": "subject"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.addRef",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3048,7 +4198,12 @@
         "refusal": {
           "reason": "Nothing has been done to this clause."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.setChunk"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3067,7 +4222,17 @@
           "where"  : "elsewhere",
           "subject": "characters/aiko/character.md"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "wiki",
+            "where"  : "elsewhere",
+            "subject": "characters/aiko/character.md"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3087,7 +4252,18 @@
           "op"   : "mute",
           "text" : ""
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "mute",
+            "text" : ""
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3107,7 +4283,17 @@
           "chunk": "palette",
           "op"   : "replace"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "replace"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3127,7 +4313,17 @@
           "chunk": "palette",
           "op"   : "append"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "append"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3146,7 +4342,16 @@
           "hash" : "a1b2c3d4",
           "chunk": "palette"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.addRef",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3163,7 +4368,12 @@
         "refusal": {
           "reason": "Nothing has been done to this clause."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.setChunk"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3180,7 +4390,12 @@
         "refusal": {
           "reason": "This concept was drawn from a sentence you wrote; edit it in the redraw strip."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.clear"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3197,7 +4412,12 @@
         "refusal": {
           "reason": "This concept was drawn from a sentence you wrote; edit it in the redraw strip."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.setCustom"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3214,7 +4434,12 @@
         "refusal": {
           "reason": "This concept was drawn from a sentence you wrote; edit it in the redraw strip."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.condense"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3230,7 +4455,12 @@
         "refusal": {
           "reason": "This concept was drawn from a sentence you wrote; edit it in the redraw strip."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.condense"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3246,7 +4476,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.check",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3263,7 +4501,12 @@
         "refusal": {
           "reason": "This concept was drawn from a sentence you wrote; edit it in the redraw strip."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.setCustom"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3283,7 +4526,18 @@
           "op"   : "mute",
           "text" : ""
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "mute",
+            "text" : ""
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3303,7 +4557,17 @@
           "chunk": "subject",
           "op"   : "replace"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "replace"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3323,7 +4587,17 @@
           "chunk": "subject",
           "op"   : "append"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "append"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3342,7 +4616,16 @@
           "hash" : "a1b2c3d4",
           "chunk": "subject"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.addRef",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3359,7 +4642,12 @@
         "refusal": {
           "reason": "Nothing has been done to this clause."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.setChunk"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3378,7 +4666,17 @@
           "where"  : "elsewhere",
           "subject": "characters/aiko/character.md"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "wiki",
+            "where"  : "elsewhere",
+            "subject": "characters/aiko/character.md"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3398,7 +4696,18 @@
           "op"   : "mute",
           "text" : ""
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "mute",
+            "text" : ""
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3418,7 +4727,17 @@
           "chunk": "palette",
           "op"   : "replace"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "replace"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3438,7 +4757,17 @@
           "chunk": "palette",
           "op"   : "append"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "append"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3457,7 +4786,16 @@
           "hash" : "a1b2c3d4",
           "chunk": "palette"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.addRef",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3474,7 +4812,12 @@
         "refusal": {
           "reason": "Nothing has been done to this clause."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.setChunk"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3491,7 +4834,12 @@
         "refusal": {
           "reason": "This prompt is already in chunks mode."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.clear"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3509,7 +4857,16 @@
           "hash": "a1b2c3d4",
           "text": "Aiko, a transfer student. Palette: #112233."
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setCustom",
+          "props": {
+            "hash": "a1b2c3d4",
+            "text": "Aiko, a transfer student. Palette: #112233."
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3526,7 +4883,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.condense",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3542,7 +4907,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.condense",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3558,7 +4931,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.check",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3575,7 +4956,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setCustom",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3595,7 +4984,18 @@
           "op"   : "mute",
           "text" : ""
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "mute",
+            "text" : ""
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3615,7 +5015,17 @@
           "chunk": "subject",
           "op"   : "replace"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "replace"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3635,7 +5045,17 @@
           "chunk": "subject",
           "op"   : "append"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "append"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3654,7 +5074,16 @@
           "hash" : "a1b2c3d4",
           "chunk": "subject"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.addRef",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3671,7 +5100,12 @@
         "refusal": {
           "reason": "Nothing has been done to this clause."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.setChunk"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3691,7 +5125,17 @@
           "chunk": "subject",
           "op"   : "replace"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "replace"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3710,7 +5154,17 @@
           "where"  : "elsewhere",
           "subject": "characters/aiko/character.md"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "wiki",
+            "where"  : "elsewhere",
+            "subject": "characters/aiko/character.md"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3730,7 +5184,18 @@
           "op"   : "mute",
           "text" : ""
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "mute",
+            "text" : ""
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3750,7 +5215,17 @@
           "chunk": "palette",
           "op"   : "replace"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "replace"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3770,7 +5245,17 @@
           "chunk": "palette",
           "op"   : "append"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "append"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3789,7 +5274,16 @@
           "hash" : "a1b2c3d4",
           "chunk": "palette"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.addRef",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3806,7 +5300,12 @@
         "refusal": {
           "reason": "Nothing has been done to this clause."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.setChunk"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3823,7 +5322,12 @@
         "refusal": {
           "reason": "This prompt is already in chunks mode."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.clear"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3841,7 +5345,16 @@
           "hash": "a1b2c3d4",
           "text": "Aiko, a transfer student. Palette: #112233."
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setCustom",
+          "props": {
+            "hash": "a1b2c3d4",
+            "text": "Aiko, a transfer student. Palette: #112233."
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3858,7 +5371,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.condense",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3874,7 +5395,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.condense",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3890,7 +5419,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.check",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3907,7 +5444,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setCustom",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3924,7 +5469,12 @@
         "refusal": {
           "reason": "Already muted."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.setChunk"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3944,7 +5494,17 @@
           "chunk": "subject",
           "op"   : "replace"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "replace"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3964,7 +5524,17 @@
           "chunk": "subject",
           "op"   : "append"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "append"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -3983,7 +5553,16 @@
           "hash" : "a1b2c3d4",
           "chunk": "subject"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.addRef",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4003,7 +5582,18 @@
           "op"   : "clear",
           "text" : ""
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "clear",
+            "text" : ""
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4022,7 +5612,17 @@
           "where"  : "elsewhere",
           "subject": "characters/aiko/character.md"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "wiki",
+            "where"  : "elsewhere",
+            "subject": "characters/aiko/character.md"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4042,7 +5642,18 @@
           "op"   : "mute",
           "text" : ""
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "mute",
+            "text" : ""
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4062,7 +5673,17 @@
           "chunk": "palette",
           "op"   : "replace"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "replace"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4082,7 +5703,17 @@
           "chunk": "palette",
           "op"   : "append"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "append"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4101,7 +5732,16 @@
           "hash" : "a1b2c3d4",
           "chunk": "palette"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.addRef",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4118,7 +5758,12 @@
         "refusal": {
           "reason": "Nothing has been done to this clause."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.setChunk"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4135,7 +5780,12 @@
         "refusal": {
           "reason": "This prompt is already in chunks mode."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.clear"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4153,7 +5803,16 @@
           "hash": "a1b2c3d4",
           "text": "Aiko, a transfer student. Palette: #112233."
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setCustom",
+          "props": {
+            "hash": "a1b2c3d4",
+            "text": "Aiko, a transfer student. Palette: #112233."
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4170,7 +5829,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.condense",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4186,7 +5853,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.condense",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4202,7 +5877,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.check",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4219,7 +5902,15 @@
         "props": {
           "hash": "a1b2c3d4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setCustom",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4239,7 +5930,18 @@
           "op"   : "mute",
           "text" : ""
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "mute",
+            "text" : ""
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4259,7 +5961,17 @@
           "chunk": "subject",
           "op"   : "replace"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "replace"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4279,7 +5991,17 @@
           "chunk": "subject",
           "op"   : "append"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "append"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4298,7 +6020,16 @@
           "hash" : "a1b2c3d4",
           "chunk": "subject"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.addRef",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4315,7 +6046,12 @@
         "refusal": {
           "reason": "Nothing has been done to this clause."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.setChunk"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4334,7 +6070,17 @@
           "where"  : "elsewhere",
           "subject": "c3d4e5f6"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "c3d4e5f6"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4353,7 +6099,17 @@
           "where"  : "elsewhere",
           "subject": "d4e5f6a7"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "d4e5f6a7"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4372,7 +6128,17 @@
           "chunk": "subject",
           "ref"  : "c3d4e5f6"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.dropRef",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "ref"  : "c3d4e5f6"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4391,7 +6157,17 @@
           "chunk": "subject",
           "ref"  : "d4e5f6a7"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.dropRef",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "ref"  : "d4e5f6a7"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4410,7 +6186,17 @@
           "where"  : "elsewhere",
           "subject": "characters/aiko/character.md"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "wiki",
+            "where"  : "elsewhere",
+            "subject": "characters/aiko/character.md"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4430,7 +6216,18 @@
           "op"   : "mute",
           "text" : ""
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "mute",
+            "text" : ""
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4450,7 +6247,17 @@
           "chunk": "palette",
           "op"   : "replace"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "replace"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4470,7 +6277,17 @@
           "chunk": "palette",
           "op"   : "append"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette",
+            "op"   : "append"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4489,7 +6306,16 @@
           "hash" : "a1b2c3d4",
           "chunk": "palette"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.addRef",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "palette"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4506,7 +6332,12 @@
         "refusal": {
           "reason": "Nothing has been done to this clause."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "prompt.setChunk"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4521,7 +6352,13 @@
         "supplies": ["scene", "heading"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.newScene",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4536,7 +6373,13 @@
         "supplies": ["scene", "heading"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.newScene",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4552,7 +6395,15 @@
         "props": {
           "scene": "arrival"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.deleteScene",
+          "props": {
+            "scene": "arrival"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4567,7 +6418,13 @@
         "supplies": ["scene", "heading"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.newScene",
+          "props": {}
+        }
+      ]
     },
     {
       "via"       : "control",
@@ -4584,6 +6441,11 @@
           "reason": "arrival is the entry scene — point start: in project.yaml elsewhere first."
         }
       },
+      "effects": [
+        {
+          "id": "story.deleteScene"
+        }
+      ],
       "reasonFrom": "stack"
     },
     {
@@ -4601,7 +6463,16 @@
           "scene"  : "scene_2",
           "heading": "INT. HALL - DAY"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.newScene",
+          "props": {
+            "scene"  : "scene_2",
+            "heading": "INT. HALL - DAY"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4617,7 +6488,15 @@
         "props": {
           "mode": "execute"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setMode",
+          "props": {
+            "mode": "execute"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4632,7 +6511,13 @@
         "supplies": ["modelId"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setModel",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4647,7 +6532,13 @@
         "supplies": ["effort"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setEffort",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4662,7 +6553,13 @@
         "supplies": ["budget"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setBudget",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4677,7 +6574,13 @@
         "supplies": ["id"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.openThread",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4691,7 +6594,13 @@
         "tooltip": "Save this conversation and start a fresh one in plan mode. Nothing is lost — the old one stays under Threads.",
         "ok"     : true,
         "props"  : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.newThread",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4707,7 +6616,12 @@
         "refusal": {
           "reason": "Nothing has been said in this conversation yet."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "agent.compact"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4723,7 +6637,12 @@
         "refusal": {
           "reason": "No saved conversation is open."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "agent.resumeThread"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4739,7 +6658,12 @@
         "refusal": {
           "reason": "The agent is not running."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "agent.stop"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4755,7 +6679,15 @@
         "props": {
           "mode": "execute"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setMode",
+          "props": {
+            "mode": "execute"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4770,7 +6702,13 @@
         "supplies": ["modelId"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setModel",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4785,7 +6723,13 @@
         "supplies": ["effort"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setEffort",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4800,7 +6744,13 @@
         "supplies": ["budget"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setBudget",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4815,7 +6765,13 @@
         "supplies": ["id"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.openThread",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4829,7 +6785,13 @@
         "tooltip": "Save this conversation and start a fresh one in plan mode. Nothing is lost — the old one stays under Threads.",
         "ok"     : true,
         "props"  : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.newThread",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4843,7 +6805,13 @@
         "tooltip": "Summarize what has been said so far, so the agent carries a summary instead of every turn. Nothing is deleted — the summary is added to the saved conversation, and the turns above it stay readable. The last turn sent it 842 tokens of conversation.",
         "ok"     : true,
         "props"  : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.compact",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4859,7 +6827,12 @@
         "refusal": {
           "reason": "No saved conversation is open."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "agent.resumeThread"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4875,7 +6848,12 @@
         "refusal": {
           "reason": "The agent is not running."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "agent.stop"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4891,7 +6869,15 @@
         "props": {
           "mode": "execute"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setMode",
+          "props": {
+            "mode": "execute"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4906,7 +6892,13 @@
         "supplies": ["modelId"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setModel",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4921,7 +6913,13 @@
         "supplies": ["effort"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setEffort",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4936,7 +6934,13 @@
         "supplies": ["budget"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setBudget",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4951,7 +6955,13 @@
         "supplies": ["id"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.openThread",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4965,7 +6975,13 @@
         "tooltip": "Save this conversation and start a fresh one in plan mode. Nothing is lost — the old one stays under Threads.",
         "ok"     : true,
         "props"  : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.newThread",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4981,7 +6997,12 @@
         "refusal": {
           "reason": "A turn is still running; wait for it to finish."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "agent.compact"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -4997,7 +7018,12 @@
         "refusal": {
           "reason": "No saved conversation is open."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "agent.resumeThread"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5011,7 +7037,13 @@
         "tooltip": "Stop the agent after the step it is on. What it already did is kept.",
         "ok"     : true,
         "props"  : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.stop",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5027,7 +7059,15 @@
         "props": {
           "mode": "execute"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setMode",
+          "props": {
+            "mode": "execute"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5042,7 +7082,13 @@
         "supplies": ["modelId"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setModel",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5057,7 +7103,13 @@
         "supplies": ["effort"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setEffort",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5072,7 +7124,13 @@
         "supplies": ["budget"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setBudget",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5087,7 +7145,13 @@
         "supplies": ["id"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.openThread",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5101,7 +7165,13 @@
         "tooltip": "Save this conversation and start a fresh one in plan mode. Nothing is lost — the old one stays under Threads.",
         "ok"     : true,
         "props"  : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.newThread",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5117,7 +7187,12 @@
         "refusal": {
           "reason": "This conversation is open for reading. Continue it before compacting it."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "agent.compact"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5133,7 +7208,15 @@
         "props": {
           "id": "t1"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.resumeThread",
+          "props": {
+            "id": "t1"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5149,7 +7232,12 @@
         "refusal": {
           "reason": "The agent is not running."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "agent.stop"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5165,7 +7253,15 @@
         "props": {
           "mode": "execute"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setMode",
+          "props": {
+            "mode": "execute"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5180,7 +7276,13 @@
         "supplies": ["modelId"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setModel",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5195,7 +7297,13 @@
         "supplies": ["effort"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setEffort",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5210,7 +7318,13 @@
         "supplies": ["budget"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setBudget",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5225,7 +7339,13 @@
         "supplies": ["id"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.openThread",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5239,7 +7359,13 @@
         "tooltip": "Save this conversation and start a fresh one in plan mode. Nothing is lost — the old one stays under Threads.",
         "ok"     : true,
         "props"  : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.newThread",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5255,7 +7381,12 @@
         "refusal": {
           "reason": "This conversation is open for reading. Continue it before compacting it."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "agent.compact"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5271,7 +7402,12 @@
         "refusal": {
           "reason": "“Casting” was recorded before conversations could be continued, so only its transcript was kept. Open it for reading instead."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "agent.resumeThread"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5287,7 +7423,12 @@
         "refusal": {
           "reason": "The agent is not running."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "agent.stop"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5303,7 +7444,15 @@
         "props": {
           "mode": "execute"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setMode",
+          "props": {
+            "mode": "execute"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5318,7 +7467,13 @@
         "supplies": ["modelId"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setModel",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5335,7 +7490,12 @@
         "refusal": {
           "reason": "claude-haiku-4-5-20251001 has no reasoning-effort setting."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "agent.setEffort"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5350,7 +7510,13 @@
         "supplies": ["budget"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setBudget",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5365,7 +7531,13 @@
         "supplies": ["id"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.openThread",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5379,7 +7551,13 @@
         "tooltip": "Save this conversation and start a fresh one in plan mode. Nothing is lost — the old one stays under Threads.",
         "ok"     : true,
         "props"  : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.newThread",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5395,7 +7573,12 @@
         "refusal": {
           "reason": "Nothing has been said in this conversation yet."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "agent.compact"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5411,7 +7594,12 @@
         "refusal": {
           "reason": "No saved conversation is open."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "agent.resumeThread"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5427,7 +7615,12 @@
         "refusal": {
           "reason": "The agent is not running."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "agent.stop"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5442,7 +7635,13 @@
         "supplies": ["kind", "name"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "doc.create",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5457,7 +7656,13 @@
         "supplies": ["kind", "name"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "doc.create",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5474,7 +7679,15 @@
         "props": {
           "path": "characters/aiko/character.md"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "doc.rename",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5490,7 +7703,12 @@
         "refusal": {
           "reason": "Select the nodes to group first."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "gengraph.createGroup"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5506,7 +7724,12 @@
         "refusal": {
           "reason": "Select a group instance to ungroup."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "gengraph.ungroup"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5524,7 +7747,17 @@
           "nodes": "1,2",
           "name" : ""
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "gengraph.createGroup",
+          "props": {
+            "slug" : "plates",
+            "nodes": "1,2",
+            "name" : ""
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5540,7 +7773,12 @@
         "refusal": {
           "reason": "Select a group instance to ungroup."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "gengraph.ungroup"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5556,7 +7794,12 @@
         "refusal": {
           "reason": "a group instance cannot be grouped again"
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "gengraph.createGroup"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5573,7 +7816,16 @@
           "slug": "plates",
           "node": "4"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "gengraph.ungroup",
+          "props": {
+            "slug": "plates",
+            "node": "4"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5589,7 +7841,12 @@
         "refusal": {
           "reason": "this level of the graph is no longer there; go back up"
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "gengraph.createGroup"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5605,7 +7862,12 @@
         "refusal": {
           "reason": "Select a group instance to ungroup."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "gengraph.ungroup"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5623,7 +7885,16 @@
           "provider": "anthropic",
           "link"    : "console"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "app.openKeyLink",
+          "props": {
+            "provider": "anthropic",
+            "link"    : "console"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5641,7 +7912,16 @@
           "provider": "anthropic",
           "link"    : "docs"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "app.openKeyLink",
+          "props": {
+            "provider": "anthropic",
+            "link"    : "docs"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5659,7 +7939,16 @@
           "provider": "anthropic",
           "link"    : "billing"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "app.openKeyLink",
+          "props": {
+            "provider": "anthropic",
+            "link"    : "billing"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5677,7 +7966,12 @@
         "refusal": {
           "reason": "Paste a key first"
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "project.setKey"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5694,7 +7988,15 @@
         "props": {
           "provider": "anthropic"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "project.testKey",
+          "props": {
+            "provider": "anthropic"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5712,7 +8014,16 @@
           "provider": "anthropic",
           "link"    : "console"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "app.openKeyLink",
+          "props": {
+            "provider": "anthropic",
+            "link"    : "console"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5730,7 +8041,16 @@
           "provider": "anthropic",
           "link"    : "docs"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "app.openKeyLink",
+          "props": {
+            "provider": "anthropic",
+            "link"    : "docs"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5748,7 +8068,16 @@
           "provider": "anthropic",
           "link"    : "billing"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "app.openKeyLink",
+          "props": {
+            "provider": "anthropic",
+            "link"    : "billing"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5767,7 +8096,16 @@
           "provider": "anthropic",
           "scope"   : "project"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "project.setKey",
+          "props": {
+            "provider": "anthropic",
+            "scope"   : "project"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5784,7 +8122,15 @@
         "props": {
           "provider": "anthropic"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "project.testKey",
+          "props": {
+            "provider": "anthropic"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5802,7 +8148,16 @@
           "provider": "anthropic",
           "link"    : "console"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "app.openKeyLink",
+          "props": {
+            "provider": "anthropic",
+            "link"    : "console"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5820,7 +8175,16 @@
           "provider": "anthropic",
           "link"    : "docs"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "app.openKeyLink",
+          "props": {
+            "provider": "anthropic",
+            "link"    : "docs"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5838,7 +8202,16 @@
           "provider": "anthropic",
           "link"    : "billing"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "app.openKeyLink",
+          "props": {
+            "provider": "anthropic",
+            "link"    : "billing"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5856,7 +8229,12 @@
         "refusal": {
           "reason": "Paste a key first"
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "project.setKey"
+        }
+      ]
     },
     {
       "via"       : "control",
@@ -5874,6 +8252,11 @@
           "reason": "Mock mode makes no calls, so there is nothing to test."
         }
       },
+      "effects": [
+        {
+          "id": "project.testKey"
+        }
+      ],
       "reasonFrom": "stack"
     },
     {
@@ -5892,7 +8275,16 @@
           "provider": "anthropic",
           "link"    : "console"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "app.openKeyLink",
+          "props": {
+            "provider": "anthropic",
+            "link"    : "console"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5910,7 +8302,16 @@
           "provider": "anthropic",
           "link"    : "docs"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "app.openKeyLink",
+          "props": {
+            "provider": "anthropic",
+            "link"    : "docs"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5927,7 +8328,12 @@
         "refusal": {
           "reason": "The setup guide names no billing page for anthropic."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "app.openKeyLink"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5944,7 +8350,12 @@
         "refusal": {
           "reason": "No changes"
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "project.setArtStyle"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5959,7 +8370,13 @@
         "supplies": ["style"],
         "ok"      : true,
         "props"   : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "project.setArtStyle",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5980,7 +8397,20 @@
           "detail": false,
           "note"  : ""
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "report.open",
+          "props": {
+            "thread": "",
+            "model" : "",
+            "effort": "",
+            "source": false,
+            "detail": false,
+            "note"  : ""
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -5994,7 +8424,13 @@
         "tooltip": "Stop the debug agent after the step it is on. What it said is kept.",
         "ok"     : true,
         "props"  : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "report.stop",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6011,7 +8447,15 @@
         "props": {
           "access": "source"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "report.grant",
+          "props": {
+            "access": "source"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6028,7 +8472,15 @@
         "props": {
           "access": "detail"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "report.grant",
+          "props": {
+            "access": "detail"
+          }
+        }
+      ]
     },
     {
       "via"       : "control",
@@ -6045,6 +8497,11 @@
           "reason": "Not while this workspace is running with mock providers — a real model has to read the conversation."
         }
       },
+      "effects": [
+        {
+          "id": "report.open"
+        }
+      ],
       "reasonFrom": "stack"
     },
     {
@@ -6059,7 +8516,13 @@
         "tooltip": "Stop the debug agent after the step it is on. What it said is kept.",
         "ok"     : true,
         "props"  : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "report.stop",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6076,7 +8539,15 @@
         "props": {
           "access": "source"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "report.grant",
+          "props": {
+            "access": "source"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6093,7 +8564,15 @@
         "props": {
           "access": "detail"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "report.grant",
+          "props": {
+            "access": "detail"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6114,7 +8593,20 @@
           "detail": false,
           "note"  : ""
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "report.open",
+          "props": {
+            "thread": "",
+            "model" : "",
+            "effort": "",
+            "source": false,
+            "detail": false,
+            "note"  : ""
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6128,7 +8620,13 @@
         "tooltip": "Stop the debug agent after the step it is on. What it said is kept.",
         "ok"     : true,
         "props"  : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "report.stop",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6145,7 +8643,12 @@
         "refusal": {
           "reason": "This access has already been granted, and a grant does not come back off."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "report.grant"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6162,7 +8665,15 @@
         "props": {
           "access": "detail"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "report.grant",
+          "props": {
+            "access": "detail"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6180,7 +8691,16 @@
           "scene"  : "arrival",
           "heading": "EXT. SCHOOL GATE - MORNING"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.setHeading",
+          "props": {
+            "scene"  : "arrival",
+            "heading": "EXT. SCHOOL GATE - MORNING"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6198,7 +8718,15 @@
         "props": {
           "line": "arrival:L1"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L1"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6216,7 +8744,15 @@
         "props": {
           "line": "arrival:L2"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6234,7 +8770,16 @@
           "scene"  : "arrival",
           "heading": "EXT. SCHOOL GATE - MORNING"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.setHeading",
+          "props": {
+            "scene"  : "arrival",
+            "heading": "EXT. SCHOOL GATE - MORNING"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6252,7 +8797,15 @@
         "props": {
           "line": "arrival:L2"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6270,7 +8823,16 @@
           "scene"  : "arrival",
           "heading": "EXT. SCHOOL GATE - MORNING"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.setHeading",
+          "props": {
+            "scene"  : "arrival",
+            "heading": "EXT. SCHOOL GATE - MORNING"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6288,7 +8850,15 @@
         "props": {
           "line": "arrival:L1"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L1"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6306,7 +8876,15 @@
         "props": {
           "line": "arrival:L2"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6323,7 +8901,16 @@
           "scene": "departure",
           "into" : "arrival"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.mergeScene",
+          "props": {
+            "scene": "departure",
+            "into" : "arrival"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6341,7 +8928,16 @@
           "scene"  : "arrival",
           "heading": "EXT. SCHOOL GATE - MORNING"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.setHeading",
+          "props": {
+            "scene"  : "arrival",
+            "heading": "EXT. SCHOOL GATE - MORNING"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6359,7 +8955,15 @@
         "props": {
           "line": "arrival:L1"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L1"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6377,7 +8981,15 @@
         "props": {
           "line": "arrival:L2"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6395,7 +9007,17 @@
           "at"   : "arrival:L2",
           "into" : "arrival_2"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.splitScene",
+          "props": {
+            "scene": "arrival",
+            "at"   : "arrival:L2",
+            "into" : "arrival_2"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6413,7 +9035,16 @@
           "scene"  : "arrival",
           "heading": "EXT. SCHOOL GATE - MORNING"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.setHeading",
+          "props": {
+            "scene"  : "arrival",
+            "heading": "EXT. SCHOOL GATE - MORNING"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6431,7 +9062,15 @@
         "props": {
           "line": "arrival:L1"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L1"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6449,7 +9088,15 @@
         "props": {
           "line": "arrival:L2"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6466,7 +9113,16 @@
           "scene"  : "scene_2",
           "heading": "INT. HALL - DAY"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.newScene",
+          "props": {
+            "scene"  : "scene_2",
+            "heading": "INT. HALL - DAY"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6483,7 +9139,12 @@
         "refusal": {
           "reason": "No document is open."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6500,7 +9161,15 @@
         "props": {
           "input": "Write a new skill under .aiagent/skills — a SKILL.md with name, description and when-to-use in its front-matter, and the procedure below it. It should: "
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.run",
+          "props": {
+            "input": "Write a new skill under .aiagent/skills — a SKILL.md with name, description and when-to-use in its front-matter, and the procedure below it. It should: "
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6517,7 +9186,12 @@
         "refusal": {
           "reason": "Nothing to save"
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6534,7 +9208,15 @@
         "props": {
           "input": "Write a new skill under .aiagent/skills — a SKILL.md with name, description and when-to-use in its front-matter, and the procedure below it. It should: "
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.run",
+          "props": {
+            "input": "Write a new skill under .aiagent/skills — a SKILL.md with name, description and when-to-use in its front-matter, and the procedure below it. It should: "
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6551,7 +9233,15 @@
         "props": {
           "path": ".vnauthor/skills/casting/SKILL.md"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": ".vnauthor/skills/casting/SKILL.md"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6568,7 +9258,15 @@
         "props": {
           "input": "Write a new skill under .aiagent/skills — a SKILL.md with name, description and when-to-use in its front-matter, and the procedure below it. It should: "
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "agent.run",
+          "props": {
+            "input": "Write a new skill under .aiagent/skills — a SKILL.md with name, description and when-to-use in its front-matter, and the procedure below it. It should: "
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6587,7 +9285,15 @@
         "props": {
           "characterId": "aiko"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "gate.approve",
+          "props": {
+            "characterId": "aiko"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6606,7 +9312,15 @@
         "props": {
           "characterId": "aiko"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "gate.approve",
+          "props": {
+            "characterId": "aiko"
+          }
+        }
+      ]
     },
     {
       "via"       : "control",
@@ -6626,6 +9340,11 @@
           "reason": "No candidate portraits are on file for aiko yet — run the pipeline first."
         }
       },
+      "effects": [
+        {
+          "id": "gate.approve"
+        }
+      ],
       "reasonFrom": "stack"
     },
     {
@@ -6641,7 +9360,13 @@
         "form"   : true,
         "ok"     : true,
         "props"  : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "pipeline.run",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6656,7 +9381,13 @@
         "form"   : true,
         "ok"     : true,
         "props"  : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "pipeline.run",
+          "props": {}
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6674,7 +9405,15 @@
         "props": {
           "characterId": "aiko"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "gate.approve",
+          "props": {
+            "characterId": "aiko"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6691,7 +9430,12 @@
         "refusal": {
           "reason": "No scene is on screen."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "story.newShot"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6708,7 +9452,15 @@
         "props": {
           "scene": "arrival"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.newShot",
+          "props": {
+            "scene": "arrival"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6725,7 +9477,15 @@
         "props": {
           "scene": "arrival"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.newShot",
+          "props": {
+            "scene": "arrival"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6742,7 +9502,15 @@
         "props": {
           "scene": "arrival"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.newShot",
+          "props": {
+            "scene": "arrival"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6757,7 +9525,13 @@
         "form"   : true,
         "ok"     : true,
         "props"  : {}
-      }
+      },
+      "effects": [
+        {
+          "id"   : "story.decomposeAll",
+          "props": {}
+        }
+      ]
     },
     {
       "via"       : "control",
@@ -6776,6 +9550,11 @@
           "reason": "Line arrival:L1 is already covered by a shot."
         }
       },
+      "effects": [
+        {
+          "id": "story.newShot"
+        }
+      ],
       "reasonFrom": "stack"
     },
     {
@@ -6793,7 +9572,12 @@
         "refusal": {
           "reason": "No document is open."
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6810,7 +9594,12 @@
         "refusal": {
           "reason": "Nothing to save"
         }
-      }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -6827,7 +9616,15 @@
         "props": {
           "path": "characters/aiko/character.md"
         }
-      }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
+        }
+      ]
     },
     {
       "via"      : "menu",
@@ -7788,5 +10585,7 @@
       "match": "project.installPages",
       "why"  : "A menu-bar item opened as a command dialog."
     }
-  ]
+  ],
+  "shortcuts"  : [],
+  "menuExempt" : []
 }

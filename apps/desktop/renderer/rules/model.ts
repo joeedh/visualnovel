@@ -9,12 +9,19 @@
  */
 import { keyOf, type Offer } from './anchors.js';
 import { PALETTE_ONLY } from './paletteonly.js';
+import { isEffectId } from '../../src/shared/effects.js';
 import type { Situation } from './situations/situation.js';
 import { MENU_NODES, menuFor } from '../pathux/doctree/doctree.js';
 import { MENU_SEP } from '../pathux/chrome/contextmenu.js';
 import type { AnchorHome } from '../../src/shared/editors.js';
 import type { CommandCheck } from '../../src/shared/ipc.js';
-import type { UxControlRecord, UxMenuRecord, UxModel, UxOffer } from '../../src/shared/uxmodel.js';
+import type {
+  UxAction,
+  UxControlRecord,
+  UxMenuRecord,
+  UxModel,
+  UxOffer,
+} from '../../src/shared/uxmodel.js';
 import * as headerbar from './headerbar.js';
 import * as convobar from './convobar.js';
 import * as assetview from './assetview.js';
@@ -127,7 +134,14 @@ export function pickOffer(offer: Offer): UxOffer {
     ...(offer.supplies === undefined ? {} : { supplies: [...offer.supplies] }),
     ...(offer.form === undefined ? {} : { form: offer.form }),
   };
-  if (offer.ok) return { ...control, ok: true, props: { ...offer.props } };
+  if (offer.ok) {
+    return {
+      ...control,
+      ok   : true,
+      props: { ...offer.props },
+      ...(offer.then === undefined ? {} : { then: offer.then.map((a) => ({ ...a })) }),
+    };
+  }
   const { reason, description } = offer.refusal;
   return {
     ...control,
@@ -151,6 +165,12 @@ export function refusingVerdicts(state: unknown, found: string[] = []): string[]
   return found;
 }
 
+/** What a click does, in order: the offer's own action and its `then` list, or a refusal's bare id. */
+export function effectsOf(offer: UxOffer): UxAction[] {
+  if (!offer.ok) return [{ id: offer.id }];
+  return [{ id: offer.id, props: offer.props }, ...(offer.then ?? [])];
+}
+
 /** The records one situation yields: each offer picked, and stamped where its reason is the stack's. */
 export function situationRecords<S>(row: Row<S>, situation: Situation<S>): UxControlRecord[] {
   const stackWorded = new Set(refusingVerdicts(situation.state));
@@ -164,6 +184,7 @@ export function situationRecords<S>(row: Row<S>, situation: Situation<S>): UxCon
       situation: situation.name,
       key      : keyOf(offer),
       offer    : picked,
+      effects  : effectsOf(picked),
       ...(fromStack ? { reasonFrom: 'stack' } : {}),
     };
   });
@@ -213,14 +234,22 @@ export function model(): UxModel {
     why   : MENU_ROW.situation.why,
   });
   records.push(...menuRecords());
-  return { situations, records, paletteOnly: PALETTE_ONLY.map((entry) => ({ ...entry })) };
+  return {
+    situations,
+    records,
+    paletteOnly: PALETTE_ONLY.map((entry) => ({ ...entry })),
+    shortcuts  : [],
+    menuExempt : [],
+  };
 }
 
 /** Every command id some record names, sorted, which is what the coverage rule reads. */
 export function anchoredIds(file: UxModel): string[] {
   return [
     ...new Set(
-      file.records.map((record) => (record.via === 'control' ? record.offer.id : record.id)),
+      file.records
+        .map((record) => (record.via === 'control' ? record.offer.id : record.id))
+        .filter((id) => !isEffectId(id)),
     ),
   ].sort();
 }

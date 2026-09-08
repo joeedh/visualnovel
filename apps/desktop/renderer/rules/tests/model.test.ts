@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { duplicateKeys } from '../anchors.js';
 import {
   anchoredIds,
+  effectsOf,
   MENU_ROW,
   model,
   pickOffer,
@@ -12,7 +13,9 @@ import {
 } from '../model.js';
 import { PALETTE_ONLY } from '../paletteonly.js';
 import { menuAnchors } from '../../pathux/doctree/doctree.js';
+import { createDesktopEffects } from '../../../src/shared/effects.js';
 import {
+  actionProblems,
   paletteMatches,
   UX_MODEL,
   UX_PALETTE_ONLY,
@@ -80,6 +83,52 @@ describe('model()', () => {
     expect(derived).toEqual(menuAnchors().map(pair).sort());
   });
 
+  it('writes what a click does as its effects, in order', () => {
+    const then = [{ id: 'view.open', props: { editor: 'script', where: 'here' } }];
+    expect(
+      effectsOf({
+        id     : 'ui.publish',
+        label  : 'greet',
+        tooltip: 'Select it.',
+        on     : 'scene/greet',
+        ok     : true,
+        props  : { sceneId: 'greet' },
+        then,
+      }),
+    ).toEqual([{ id: 'ui.publish', props: { sceneId: 'greet' } }, ...then]);
+    expect(
+      effectsOf({
+        id     : 'asset.accept',
+        label  : 'Accept',
+        tooltip: 'Accept it.',
+        ok     : false,
+        refusal: { reason: 'Nothing is selected.' },
+      }),
+    ).toEqual([{ id: 'asset.accept' }]);
+  });
+
+  /**
+   * The command half of the same check is `uxmodel.test.ts`'s, in main, where the registry is.
+   * Here the effect half: every effect a record names exists, with props its spec accepts.
+   */
+  it('names only effects the app declares, with props they accept', () => {
+    const effects = createDesktopEffects();
+    const commands = new Set(anchoredIds(file));
+    expect(actionProblems(file, commands, effects)).toEqual([]);
+    const record = file.records.find((r) => r.via === 'control');
+    const made = {
+      ...file,
+      records: [
+        { ...record, effects: [{ id: 'pane.vanish', props: {} }] },
+        { ...record, effects: [{ id: 'pane.view', props: { what: 'sideways' } }] },
+      ],
+    } as typeof file;
+    const problems = actionProblems(made, commands, effects);
+    expect(problems).toHaveLength(2);
+    expect(problems[0]).toMatch(/unknown id pane.vanish/);
+    expect(problems[1]).toMatch(/must be one of/);
+  });
+
   it('records no field an Offer does not declare', () => {
     const picked = pickOffer({
       id     : 'x.y',
@@ -127,6 +176,8 @@ describe('ux-model.json', () => {
     expect(committed.records.length).toBe(file.records.length);
     expect(committed.situations).toEqual(file.situations);
     expect(committed.paletteOnly).toEqual(file.paletteOnly);
+    expect(committed.shortcuts).toEqual(file.shortcuts);
+    expect(committed.menuExempt).toEqual(file.menuExempt);
   });
 });
 

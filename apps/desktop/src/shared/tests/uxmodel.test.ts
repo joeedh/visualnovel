@@ -47,6 +47,7 @@ describe('the derived model schema', () => {
       via       : 'control',
       key       : 'cmd:story.deleteScene',
       offer     : refused,
+      effects   : [{ id: 'story.deleteScene' }],
       reasonFrom: 'stack',
     };
     const menu = {
@@ -61,6 +62,42 @@ describe('the derived model schema', () => {
     };
     expect(UX_RECORD.parse(control)).toEqual(control);
     expect(UX_RECORD.parse(menu)).toEqual(menu);
+  });
+
+  it('reads a control whose click does several things, and a menu entry with a tail', () => {
+    const then = [{ id: 'view.open', props: { editor: 'script', where: 'here' } }];
+    const offer = {
+      ok     : true,
+      id     : 'ui.publish',
+      on     : 'scene/arrival',
+      props  : { sceneId: 'arrival' },
+      label  : 'arrival',
+      tooltip: 'Show arrival in the Script pane.',
+      then,
+    };
+    const control = {
+      ...situated,
+      via: 'control',
+      key: 'item:scene/arrival',
+      offer,
+      effects : [{ id: 'ui.publish', props: { sceneId: 'arrival' } }, ...then],
+      shortcut: 'Ctrl+Z',
+    };
+    expect(UX_RECORD.parse(control)).toEqual(control);
+    const menu = {
+      editor   : 'header',
+      module   : 'headermenus',
+      situation: 'open',
+      via      : 'menu',
+      when     : 'header/view',
+      id       : 'window.new',
+      label    : 'Move Pane to New Window',
+      tooltip  : 'Open this pane in a window of its own.',
+      then     : [{ id: 'view.close' }],
+      shortcut : 'Ctrl+Shift+N',
+    };
+    expect(UX_RECORD.parse(menu)).toEqual(menu);
+    expect(UX_RECORD.safeParse({ ...control, effects: [] }).success).toBe(false);
   });
 
   it('knows every anchor home, and only those', () => {
@@ -87,22 +124,17 @@ describe('the derived model schema', () => {
   });
 
   it('accepts an empty model and a palette-only entry under the one-star grammar', () => {
-    expect(UX_MODEL.parse({ situations: [], records: [], paletteOnly: [] })).toEqual({
-      situations : [],
-      records    : [],
-      paletteOnly: [],
-    });
+    const empty = { situations: [], records: [], paletteOnly: [], shortcuts: [], menuExempt: [] };
+    expect(UX_MODEL.parse(empty)).toEqual(empty);
     for (const match of ['workspace.*', '*.list', 'command.check']) {
-      expect(
-        UX_MODEL.safeParse({ situations: [], records: [], paletteOnly: [{ match, why: 'w' }] })
-          .success,
-      ).toBe(true);
+      expect(UX_MODEL.safeParse({ ...empty, paletteOnly: [{ match, why: 'w' }] }).success).toBe(
+        true,
+      );
     }
     for (const match of ['*', 'a.*.b', '*.a.*', '']) {
-      expect(
-        UX_MODEL.safeParse({ situations: [], records: [], paletteOnly: [{ match, why: 'w' }] })
-          .success,
-      ).toBe(false);
+      expect(UX_MODEL.safeParse({ ...empty, paletteOnly: [{ match, why: 'w' }] }).success).toBe(
+        false,
+      );
     }
   });
 });
