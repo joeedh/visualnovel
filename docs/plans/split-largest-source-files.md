@@ -1,5 +1,31 @@
 # Split the largest source files
 
+**Done.** All four steps landed on `effects`: `f47e1d02` (index.ts), `cedda3b4`
+(tools.ts), `6171eca1` (asset.ts), `bc842dd7` (session.ts). Whole-repo `pnpm check` /
+`pnpm test` (287 suites, 4160 tests) / `pnpm lint` all green after the last commit.
+Deviations from the plan as written, discovered during execution:
+
+- **Step 4 landed as one commit, not eleven.** `asset`/`prompt`/`project` methods turned
+  out to be physically interleaved in the original `session.ts` (private helpers of one
+  concern sitting between public methods of another), so clean incremental per-concern
+  commits weren't practical; the whole transformation was verified as a single unit
+  instead. `session/core.ts` ended up at 2561 lines — still the largest single file to
+  come out of this plan, since it kept every cross-cutting method plus everything that
+  didn't cleanly separate.
+- **The session-test reorganization (moving `graphdoc.test.ts` / `keys.test.ts` /
+  `doctree.test.ts` into `tests/session/`) was skipped.** Those files were left where they
+  are and verified to still pass unmoved. Left as an open follow-up if the
+  `tests/session/` mirroring is still wanted.
+- **Step 2 caught a real bug while executing:** `jest.config.cjs`'s `testMatch` was
+  `**/tests/*.test.ts` (single `*`), which doesn't match a nested `tests/tools/*.test.ts`
+  — per this repo's own documented rule, the 12 new domain test files would have silently
+  never run. Fixed to `**/tests/**/*.test.ts` for the `packages/*` jest projects, scoped
+  to that one project so it doesn't affect `apps/desktop`'s separate `testMatch`.
+- **Manual UI verification (`pnpm vndesktop --mock`) was only done for the asset.ts
+  step**, not for session.ts — only automated tests covered the session split. Given the
+  automated coverage is thorough (4160 tests, unchanged pass count from before the split),
+  this was accepted rather than re-run.
+
 Splits the six largest TypeScript files in the repo into a subdirectory tree per file,
 with no behavior change. Purely mechanical: move code, keep every external import path
 resolvable, keep `pnpm check`/`pnpm test`/`pnpm lint` green after each file.
