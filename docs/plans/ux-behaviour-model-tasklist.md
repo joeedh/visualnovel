@@ -26,7 +26,7 @@ about. Those are in
 | --- | ----------------------------------------------------------------------------------------------- | ---------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 1   | [One `Offer`, and the six rule modules unified](archive/one-offer-and-the-six-rule-modules.md)  | app              | —          | `Offer` absorbs `ActOptions`, `tooltip` becomes required, the refused branch carries a `Refusal`, the six modules gain `controls()`                    |
 | 2   | [The ten inline editors get a rule module](archive/the-ten-inline-editors-get-a-rule-module.md) | app              | 1          | `rules/<editor>.ts` extracted from each editor that computes offers beside its DOM code                                                                |
-| 3   | Situations, and the derived model                                                               | app              | 1, 2       | The fixture list, the headless driver, the zod schema, `ux-model.json`, and the three lint rules the derived tier answers                              |
+| 3   | [Situations, and the derived model](situations-and-the-derived-model.md)                        | app              | 1, 2       | The fixture list, the headless driver, the zod schema, `ux-model.json`, and the three lint rules the derived tier answers                              |
 | 4   | Pseudo-commands, and a control's list of effects                                                | app              | 1          | The closed effect vocabulary in the catalog, closures rewritten as recorded effects, and the three rules effects unlock                                |
 | 5   | Disabling menu items, and refusals that carry a reason                                          | `vendor/path.ux` | —          | **Already written and complete**, and the authority on its own scope: `menu-item-disabling.md`, stages 1-5 done, stage 6 (the native menu bar) dropped |
 | 6   | Finishing the meta-tag system                                                                   | `vendor/path.ux` | 5          | A `widgetPath` scheme, a `refusal` accessor on `StdUXMeta`, a validating deserialize, and the `toolPath` builders                                      |
@@ -303,7 +303,8 @@ work, and the second one matters to the tooltip rule.
       [`archive/one-offer-and-the-six-rule-modules.md`](archive/one-offer-and-the-six-rule-modules.md))
 - [x] 2 — the ten inline editors get a rule module (shipped 2026-09-08:
       [`archive/the-ten-inline-editors-get-a-rule-module.md`](archive/the-ten-inline-editors-get-a-rule-module.md))
-- [ ] 3 — situations, and the derived model
+- [ ] 3 — situations, and the derived model (written:
+      [`situations-and-the-derived-model.md`](situations-and-the-derived-model.md))
 - [ ] 4 — pseudo-commands, and a control's list of effects
 - [ ] 5 — disabling menu items, and refusals that carry a reason (path.ux, already
       planned)
