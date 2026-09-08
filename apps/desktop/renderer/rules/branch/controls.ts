@@ -5,6 +5,7 @@
 import type { CommandCheck } from '../../../src/shared/ipc.js';
 import { noticeForCheck } from '../../../src/shared/lineedit.js';
 import { refuse, type Offer } from '../anchors.js';
+import { publish, startDrag } from '../effects.js';
 import { asInvocation, deleteSceneIntent, newSceneIntent, type NewScene } from './compose.js';
 
 /** What the branch editor reads when it draws its bar and its naming row. */
@@ -17,6 +18,34 @@ export interface BranchState {
   naming: NewScene | null;
   /** The delete button's verdict, for the scene it was asked about. */
   deleteVerdict?: { scene: string; check: CommandCheck };
+  /** The scene cards on the canvas, and the shot selected while they are drawn. */
+  cards?: { scenes: readonly SceneCard[]; shotId: string };
+}
+
+/** What a card says of its scene. Unreachable is drawn greyed and said in the tooltip. */
+export interface SceneCard {
+  id: string;
+  reachable: boolean;
+}
+
+/**
+ * What a press on a scene card does. A press that never travels selects the scene, which every
+ * other surface follows; a shot left over from another scene is dropped, as `selectionForNode`
+ * does for the same click in the document tree. A press that travels is the splice gesture.
+ */
+export function cardAction(card: SceneCard, shotId: string): Offer {
+  const scene = card.id;
+  const acts = 'click to select it, right-click to open its script, drag it to lay the graph out';
+  return {
+    ok: true,
+    ...publish({ sceneId: scene, ...(shotId.startsWith(`${scene}__`) ? {} : { shotId: '' }) }),
+    on     : `scene/${scene}`,
+    label  : scene,
+    tooltip: card.reachable
+      ? `${scene} — ${acts}`
+      : `${scene} — nothing reaches this scene; ${acts}`,
+    then   : [startDrag('branch.splice')],
+  };
 }
 
 /** What the delete button does, said before its check answers and again as its tooltip after. */
@@ -72,11 +101,14 @@ export function writeSceneAction(naming: NewScene): Offer {
  * its verdict is in for the scene on screen.
  */
 export function controls(state: BranchState): readonly Offer[] {
-  if (state.naming) return [writeSceneAction(state.naming)];
+  const cards = state.cards;
+  const drawn = cards ? cards.scenes.map((scene) => cardAction(scene, cards.shotId)) : [];
+  if (state.naming) return [writeSceneAction(state.naming), ...drawn];
   const list: Offer[] = [newSceneAction()];
   const verdict = state.deleteVerdict;
   if (state.sceneId && state.known && verdict?.scene === state.sceneId) {
     list.push(deleteSceneAction(state.sceneId, verdict.check));
   }
+  list.push(...drawn);
   return list;
 }

@@ -131,8 +131,8 @@ export type AnchorVia =
 export interface Anchor {
   /** `cmd:asset.regenerate`, `item:asset/<hash>` or `fx:pane.view` — see {@link keyOf}. */
   key: string;
-  /** The command or effect a click runs. Absent on an `item:` anchor recorded by `item()`. */
-  id?: string;
+  /** The command or effect a click runs. */
+  id: string;
   /** The props known when the anchor was recorded. Partial wherever the widget supplies one. */
   props: Record<string, PropValue>;
   /** What the click does after the first action, as the offer declared it. */
@@ -147,8 +147,6 @@ export interface Anchor {
   enabled: boolean;
   /** Why it is greyed. The sentence the rule already wrote, never invented here. */
   reason?: string;
-  /** The `ui.*` fields an `item:` anchor's click publishes. */
-  publishes?: Record<string, string>;
   editor: AnchorHome;
   via: AnchorVia;
 }
@@ -293,11 +291,7 @@ function sameValue(a: PropValue | undefined, b: PropValue): boolean {
  */
 export function resolveAnchor(map: AnchorMap, live: LiveAnchors, step: Action): Resolution {
   const offscreen = new Set(live.offscreen ?? []);
-  // An item anchor has no `id`, so a step with none of its own would otherwise match every one of
-  // them, subsume over no props, and ring an arbitrary tree row.
-  const candidates = live.anchors.filter(
-    (anchor) => anchor.id !== undefined && anchor.id === step.id,
-  );
+  const candidates = live.anchors.filter((anchor) => anchor.id === step.id);
 
   let mismatch: { anchor: Anchor; needs: Action; holds: string[] } | undefined;
   for (const anchor of candidates) {
@@ -351,9 +345,11 @@ export function resolveItem(live: LiveAnchors, kind: string, key: string): Resol
  * names nothing on screen.
  *
  * A subject is written two ways, so both are looked for. A bare id — an asset hash, a `sceneId` —
- * is what an item anchor's click publishes. A composite rung id such as `character:aiko` is a kind
- * and a key, which is the shape of an item key. Empty values are skipped, since a click that
- * clears a field publishes `''` and every such anchor would otherwise match every other.
+ * is what a `ui.publish` anchor's click publishes, and only that anchor's props are read: a button
+ * whose props carry a hash acts on the subject rather than selecting it. A composite rung id such
+ * as `character:aiko` is a kind and a key, which is the shape of an item key. Empty values are
+ * skipped, since a click that clears a field publishes `''` and every such anchor would otherwise
+ * match every other.
  *
  * `from` is the editor that gave the mismatch, preferred so the pane the author is already looking
  * at is the one that retargets. The selection is shared, so any pane's row would do.
@@ -375,7 +371,9 @@ export function resolveSubject(
   }
   if (values.size === 0) return { state: 'absent' };
   const selects = (anchor: Anchor): boolean =>
-    keys.has(anchor.key) || Object.values(anchor.publishes ?? {}).some((id) => values.has(id));
+    keys.has(anchor.key) ||
+    (anchor.id === uiPublish.id &&
+      Object.values(anchor.props).some((id) => typeof id === 'string' && values.has(id)));
   const found =
     live.anchors.find((anchor) => anchor.editor === from && selects(anchor)) ??
     live.anchors.find(selects);

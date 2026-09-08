@@ -121,8 +121,6 @@ export class GenGraphEditor extends VnEditor {
   private slug = '';
   /** The definitions the graph instances, learned when its groups resolved. */
   private refs: string[] = [];
-  /** The node ids last anchored, so the frames are only re-recorded when the set of them changes. */
-  private framed = ' ';
   /** The selection and level the group buttons were last drawn for. */
   private grouped = ' ';
   /** What the read and the file itself had to say. The graph's own notes are derived per paint. */
@@ -247,7 +245,6 @@ export class GenGraphEditor extends VnEditor {
       if (this.heldDescent === undefined) {
         this.descentJson = JSON.stringify({ slug: this.slug, descent: this.view.descent });
       }
-      this.framed = ' ';
       this.subscribe();
       this.paintDesigner();
       this.paintGroupButtons();
@@ -303,26 +300,7 @@ export class GenGraphEditor extends VnEditor {
 
     const slug = this.ui.graphSlug;
     if (slug !== this.slug) void this.load(slug);
-    this.recordNodes();
     this.paintGroupButtons();
-  }
-
-  /**
-   * One anchor per node frame, so a tour can point at the node it wants and the author can see
-   * which one it means. A frame is a real element with its own pointer handlers, so this is the
-   * plain DOM flavour rather than the canvas's.
-   *
-   * Re-recorded only when the set of frames changes. `syncGraph` reconciles frames by node id and
-   * keeps the element across every other redraw, so the anchors stay pointing at live boxes.
-   */
-  private recordNodes(): void {
-    const ids = [...this.view.frames.keys()].join(',');
-    if (ids === this.framed) return;
-    this.framed = ids;
-    const nodes = redrawing('gengraph', 'nodes');
-    for (const [id, frame] of this.view.frames) {
-      nodes.item(frame, 'gnode', String(id), {});
-    }
   }
 
   /** Drops the listeners with the pane, because path.ux detaches an editor on a tab switch. */

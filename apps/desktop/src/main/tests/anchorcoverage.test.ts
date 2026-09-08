@@ -10,12 +10,16 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createDesktopRegistry } from '../commands/index.js';
+import { createDesktopEffects } from '../../shared/effects.js';
 
 interface Sweep {
   sweptAt: string;
   gitSha: string;
   commands: string[];
+  /** The distinct command ids the records name. Effects are listed apart, under `effects`. */
   anchored: string[];
+  /** The distinct effect ids the records name; absent from a sweep made before effects existed. */
+  effects?: string[];
   records: { id: string; editor: string }[];
 }
 
@@ -28,10 +32,17 @@ const live = createDesktopRegistry()
   .map((command) => command.id)
   .sort();
 
+const effects = createDesktopEffects()
+  .list()
+  .map((effect) => effect.id)
+  .sort();
+
+const isEffect = (id: string): boolean => effects.includes(id);
+
 describe('anchors.json', () => {
-  it('points only at commands that still exist', () => {
+  it('points only at commands and effects that still exist', () => {
     const unknown = [...new Set(sweep.records.map((record) => record.id))].filter(
-      (id) => !live.includes(id),
+      (id) => !live.includes(id) && !isEffect(id),
     );
     expect(unknown).toEqual([]);
   });
@@ -43,6 +54,8 @@ describe('anchors.json', () => {
   });
 
   it('agrees with itself about what it found', () => {
-    expect(sweep.anchored).toEqual([...new Set(sweep.records.map((r) => r.id))].sort());
+    const named = [...new Set(sweep.records.map((r) => r.id))].sort();
+    expect(sweep.anchored).toEqual(named.filter((id) => !isEffect(id)));
+    expect(sweep.effects ?? []).toEqual(named.filter(isEffect));
   });
 });

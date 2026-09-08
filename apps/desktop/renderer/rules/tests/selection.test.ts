@@ -1,6 +1,7 @@
-import { isSelected, selectionForTask, taskIsSelected, type Selection } from '../selection.js';
+import { selectionForTask, taskIsSelected, type Selection } from '../selection.js';
+import { isSelected } from '../taskGraph.js';
 import type { ImageParams } from '@vn/types';
-import type { Task } from '../../../../src/shared/ipc';
+import type { Task } from '../../../src/shared/ipc';
 
 const PARAMS: ImageParams = { modelId: 'mock-image' };
 const NONE: Selection = {

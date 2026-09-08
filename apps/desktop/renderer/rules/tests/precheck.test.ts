@@ -72,12 +72,6 @@ describe('checkFor', () => {
     ).toBeUndefined();
   });
 
-  it('answers nothing for a row that publishes a subject rather than running a command', () => {
-    const row = anchor({ key: itemKey('scene', 'greet'), props: {} });
-    delete (row as { id?: string }).id;
-    expect(checkFor(row, [])).toBeUndefined();
-  });
-
   it('answers nothing for an effect, which has no precondition in the stack', () => {
     const reload = anchor({ key: 'fx:pane.view', id: 'pane.view', props: { what: 'reload' } });
     expect(checkFor(reload, [])).toBeUndefined();

@@ -20,6 +20,7 @@ import {
   failureTaskAction,
   fixAction,
   notesAction,
+  prereqAction,
   promoteAction,
   promoteBox,
   promptEditable,
@@ -1183,16 +1184,10 @@ export class AssetEditor extends VnEditor {
     row.appendChild(el('span', 'as-from-mark', p.approved ? '✓' : '·'));
     row.appendChild(el('span', 'as-from-name', p.label));
     if (p.slot) row.appendChild(el('span', 'as-from-slot', p.slot));
-
-    if (p.missing) {
-      row.disabled = true;
-      row.title = p.note;
-      return row;
-    }
-    row.title = `${p.note} Click to open ${p.label} in this pane.`;
-    // An item anchor rather than a command: the click retargets this pane by publishing the
-    // selection, which is what a `wrong-subject` step is sent here to do.
-    this.drawing.item(row, 'asset', p.hash, { assetHash: p.hash });
+    // Recorded rather than acted: the click retargets this pane through `showPrereq`, which keeps
+    // the hop back. A row the manifest has no bytes for is greyed with the note that says so.
+    this.drawing.record(row, prereqAction(p));
+    if (p.missing) return row;
     row.addEventListener('click', () => this.showPrereq(p.hash, info.hash));
     return row;
   }

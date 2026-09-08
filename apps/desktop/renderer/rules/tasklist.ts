@@ -10,6 +10,8 @@
  * moment ten things have.
  */
 import type { Offer } from './anchors.js';
+import { publish, type Publishes } from './effects.js';
+import { taskPublishes, type Selection } from './selection.js';
 import type { Task } from '../../src/shared/ipc';
 
 /** What the four controls are set to. Held by the pane; nothing here reads the pane. */
@@ -79,10 +81,56 @@ export function emptyBecause(tasks: readonly Task[], filter: ListFilter): string
   return 'Nothing here has finished — untick “only done” to see the rest.';
 }
 
-/** What the Task List pane reads when it draws its bar and its gate bars. */
+/** What the Task List pane reads when it draws its bar, its gate bars and its cards. */
 export interface TaskListState {
   /** The characters whose portrait approval the run is waiting on. */
   gatePending: string[];
+  /** The cards on screen, and the selection they are drawn against. */
+  cards?: { tasks: readonly Task[]; selection: Selection };
+}
+
+/**
+ * The asset hash a task left behind, whatever its status. `undefined` if it drew nothing.
+ *
+ * Bytes from a task that stopped are unusable downstream but still viewable, and a rejected
+ * picture is what an author clicking a failed card is asking to see. A `needs_human` shot
+ * carries its last rejected frame as `output`, and a `failed` task that got far enough to
+ * render something carries it on the attempt that rendered it, so the last attempt with bytes
+ * is the fallback. Nothing here accepts anything; the asset editor only displays.
+ */
+export function drewAsset(task: Task): string | undefined {
+  if (task.output) return task.output;
+  for (let i = task.attempts.length - 1; i >= 0; i--) {
+    const drew = task.attempts[i]?.output;
+    if (drew) return drew;
+  }
+  return undefined;
+}
+
+/**
+ * What clicking a card does: publish the task and whatever it names, then put its picture on
+ * screen where it drew one. The open goes through `view.open` rather than `ui.assetHash`, because
+ * the command finds or raises the pane and records the act; `elsewhere` keeps this list standing.
+ */
+export function cardAction(task: Task, selection: Selection): Offer {
+  const drew = drewAsset(task);
+  return {
+    ok: true,
+    ...publish(taskPublishes(task, selection) as Publishes),
+    on     : `task/${task.hash}`,
+    label  : task.kind,
+    tooltip: drew
+      ? `Open what this ${task.kind} drew in the asset editor — the last frame it rendered, ` +
+        'accepted or not; every other pane follows the pick'
+      : `Inspect this ${task.kind} — it rendered nothing to open; every other pane follows the pick`,
+    ...(drew
+      ? {
+          then: [
+            { id: 'view.open', props: { editor: 'asset', where: 'elsewhere', subject: drew } },
+          ],
+        }
+      : {}),
+  };
 }
 
 /**
@@ -115,5 +163,10 @@ export function gateAction(character: string): Offer {
 
 /** Every offer the Task List pane draws from this module. */
 export function controls(state: TaskListState): readonly Offer[] {
-  return [runAction(), ...state.gatePending.map(gateAction)];
+  const cards = state.cards;
+  return [
+    runAction(),
+    ...state.gatePending.map(gateAction),
+    ...(cards ? cards.tasks.map((task) => cardAction(task, cards.selection)) : []),
+  ];
 }

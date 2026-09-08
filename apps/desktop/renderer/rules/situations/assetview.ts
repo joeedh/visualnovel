@@ -24,8 +24,27 @@ export const SITUATIONS = situations<AssetInfo | undefined>(
   },
   {
     name : 'plate',
-    why: 'An accepted plate offers Un-approve, Replace on its slot, and the notes and seed boxes of its rung.',
-    state: info({ accepted: true, slot: 'plate:cafe/night', drawnFor: 'plate:cafe/night' }),
+    why: 'An accepted plate offers Un-approve, Replace on its slot, the notes and seed boxes of its rung, and a row per picture it was drawn from, greyed where the manifest has no such bytes.',
+    state: info({
+      accepted: true,
+      slot    : 'plate:cafe/night',
+      drawnFor: 'plate:cafe/night',
+      prereqs: [
+        {
+          hash    : 'b2c3d4e5',
+          label   : 'cafe — concept',
+          approved: true,
+          note    : 'A concept needs no approval.',
+        },
+        {
+          hash    : 'c3d4e5f6',
+          label   : 'moodboard.png',
+          approved: false,
+          note    : 'The manifest has no record of these bytes.',
+          missing : true,
+        },
+      ],
+    }),
   },
   {
     name : 'plate-unaccepted',

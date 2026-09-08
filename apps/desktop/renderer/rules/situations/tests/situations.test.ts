@@ -87,7 +87,7 @@ describe('situations', () => {
       (_name, { state }) => {
         const listed = controls(state);
         expect(duplicateKeys(listed)).toEqual([]);
-        for (const offer of listed) expect(keyOf(offer)).toMatch(/^cmd:/);
+        for (const offer of listed) expect(keyOf(offer)).toMatch(/^(cmd|item|fx):/);
       },
     );
   });

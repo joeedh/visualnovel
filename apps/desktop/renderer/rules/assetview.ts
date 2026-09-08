@@ -5,8 +5,9 @@
  * These are pure functions so they can be tested here. The desktop jest project is node-only and
  * the pane itself can only be checked live over CDP, so the rules are kept out of the markup.
  */
-import type { ArtRungInfo, AssetFailure, AssetInfo } from '../../src/shared/ipc.js';
+import type { ArtRungInfo, AssetFailure, AssetInfo, Prereq } from '../../src/shared/ipc.js';
 import { refuse, type Offer } from './anchors.js';
+import { publish } from './effects.js';
 
 /** The two halves of an {@link Offer}, for a control that carries more on one of them. */
 type Accepted = Extract<Offer, { ok: true }>;
@@ -468,9 +469,27 @@ export function redrawGo(info: AssetInfo): Offer {
 }
 
 /**
+ * One prerequisite row: click to retarget this pane on the picture it names, which is what a
+ * `wrong-subject` step is sent here to do. Bytes the manifest has no record of are refused with
+ * the note that says so.
+ */
+export function prereqAction(p: Prereq): Offer {
+  const control = { on: `asset/${p.hash}`, label: p.label };
+  if (p.missing) {
+    return { ...refuse(p.note), id: 'ui.publish', ...control, tooltip: `Open ${p.label} here` };
+  }
+  return {
+    ok: true,
+    ...publish({ assetHash: p.hash }),
+    ...control,
+    tooltip: `${p.note} Click to open ${p.label} in this pane.`,
+  };
+}
+
+/**
  * Every offer the asset editor draws from this module, in the order it draws them: the bar's
- * four, then the body's strips and their fields, the failure band's two, and each rung's two
- * boxes. With nothing on screen the bar's four are refusals. A strip's fields are listed only
+ * four, then the body's strips and their fields, the failure band's two, each rung's two
+ * boxes, and one row per prerequisite. With nothing on screen the bar's four are refusals. A strip's fields are listed only
  * while the strip is drawn, which is when its offer is accepted.
  */
 export function controls(info: AssetInfo | undefined): readonly Offer[] {
@@ -492,6 +511,7 @@ export function controls(info: AssetInfo | undefined): readonly Offer[] {
     ...(redraw.ok ? [redrawBox(info), redrawGo(info)] : []),
     ...(info.failure ? [failureTaskAction(info, info.failure), fixAction(info)] : []),
     ...info.rungs.flatMap((rung) => [notesAction(rung), seedAction(rung, info.configSeed)]),
+    ...info.prereqs.map(prereqAction),
   ];
 }
 

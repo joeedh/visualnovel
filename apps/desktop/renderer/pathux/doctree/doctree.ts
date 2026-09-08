@@ -6,12 +6,26 @@
  *
  * The same functions serve both modes: a file tree is a different source, not a different kind of
  * tree, so the toggle in the header buys a second fetch and no second flattener.
+ *
+ * What a click selects, and what a row says on hover, live in `rules/selection.ts` and
+ * `rules/documents.ts`, because the row's offer is built from them there.
  */
 import type { AnchorRecord } from '../../rules/anchors.js';
 import { NEW_SKILL_PROMPT } from '../../rules/skills.js';
+import { nodeKey, splitShot, type Selection } from '../../rules/selection.js';
 import type { DocNode, DocNodeKind, EntityLinks } from '../../../src/shared/ipc.js';
 import { MENU_SEP, type MenuEntry } from '../chrome/contextmenu.js';
-import type { Selection } from './selection.js';
+
+// The selection and title rules moved into `rules/`, where the offers are built from them. They
+// are still reached from here by the tree's own callers.
+export {
+  nodeIsSelected,
+  nodeKey,
+  publishedBy,
+  selectionForNode,
+  splitShot,
+} from '../../rules/selection.js';
+export { renameOf, rowTitle } from '../../rules/documents.js';
 
 /** One drawn line: the node, how deep it sits, and what its twisty would do. */
 export interface DocRow {
@@ -20,11 +34,6 @@ export interface DocRow {
   /** Has children to show. A node with none draws no twisty rather than an inert one. */
   expandable: boolean;
   expanded: boolean;
-}
-
-/** The part of a node id after its `<kind>:` prefix — `greet`, `greet/greet__s1`, `aiko`. */
-export function nodeKey(node: DocNode): string {
-  return node.id.slice(node.id.indexOf(':') + 1);
 }
 
 /**
@@ -113,85 +122,6 @@ export function toggleExpanded(expanded: ReadonlySet<string>, id: string): Set<s
  */
 export function defaultExpanded(roots: readonly DocNode[]): Set<string> {
   return new Set(roots.filter((node) => node.children?.length).map((node) => node.id));
-}
-
-/** `shot:greet/greet__s1` — the scene the node sits under, and the shot itself. */
-function splitShot(key: string): { sceneId: string; shotId: string } {
-  const cut = key.indexOf('/');
-  if (cut < 0) return { sceneId: '', shotId: key };
-  return { sceneId: key.slice(0, cut), shotId: key.slice(cut + 1) };
-}
-
-/**
- * What clicking a node selects. A grouping and a counted `more` name nothing the shell tracks, so
- * they return the same selection object unchanged — a click meant to open a branch must not cost
- * the author their place, which is the same contract `selectionForTask` has. That identity is also
- * what lets the pane spend such a click on the twisty instead, which is how `more` shows what it
- * counted.
- */
-export function selectionForNode(node: DocNode, current: Selection): Selection {
-  const key = nodeKey(node);
-  switch (node.kind) {
-    case 'scene': {
-      // A shot stays selected only while its own scene is: `<sceneId>__<raw>` is the whole link
-      // between the two, and a shot left over from elsewhere would name a scene nothing shows.
-      const keep = current.shotId.startsWith(`${key}__`);
-      return {
-        ...current,
-        sceneId: key,
-        shotId : keep ? current.shotId : '',
-        docPath: node.path ?? current.docPath,
-      };
-    }
-    // A shot a graph draws selects that graph too, for the reason the asset case below gives: the
-    // shot's own editors still claim the click, and an open Gen Graph pane follows it.
-    case 'shot': {
-      const { sceneId, shotId } = splitShot(key);
-      const picked = { ...current, sceneId: sceneId || current.sceneId, shotId };
-      return node.boundGraph === undefined ? picked : { ...picked, graphSlug: node.boundGraph };
-    }
-    // A graph is named by its slug rather than by its file, so selecting one leaves `docPath`
-    // alone: `doc.*` refuses `work/graphs/**`, and a graph opened as text would go past every
-    // `gengraph.*` check.
-    case 'graph':
-      return { ...current, graphSlug: key };
-    case 'character':
-      return { ...current, characterId: key, docPath: node.path ?? current.docPath };
-    // A location has no `ui.locationId` to publish, so its sheet is the whole selection — which
-    // is also all a wiki note, a skill or a bare file has. A skill's path is its `SKILL.md`, so
-    // selecting one is selecting that document, and the Skills pane opens on it like any other.
-    case 'location':
-    case 'wiki':
-    case 'skill':
-    case 'file':
-      return node.path === undefined ? current : { ...current, docPath: node.path };
-    // An asset carries no `path` on purpose — it is addressed by hash, which is its key here. A
-    // picture drawn by a graph selects that graph as well, so an open Gen Graph pane follows the
-    // click without taking it: the Asset editor still claims the picture, and routing is unchanged.
-    case 'asset': {
-      const picked = { ...current, assetHash: key };
-      return node.boundGraph === undefined ? picked : { ...picked, graphSlug: node.boundGraph };
-    }
-    // A slot a graph draws selects that graph, which is what the Gen Graph pane opens on. A slot
-    // no graph draws names nothing the shell tracks, so it costs the author nothing to click.
-    case 'slot':
-      return node.boundGraph === undefined ? current : { ...current, graphSlug: node.boundGraph };
-    default:
-      return current;
-  }
-}
-
-/**
- * Which `ui.*` fields clicking this row would change, and to what. An anchor carries this so a tour
- * can say which row puts a subject on screen without running the click to find out.
- */
-export function publishedBy(node: DocNode, current: Selection): Record<string, string> {
-  const next = selectionForNode(node, current);
-  const changed: Record<string, string> = {};
-  for (const field of Object.keys(next) as (keyof Selection)[]) {
-    if (next[field] !== current[field]) changed[field] = next[field];
-  }
-  return changed;
 }
 
 /**
@@ -583,87 +513,4 @@ export function menuAnchors(): AnchorRecord[] {
     }
   }
   return records;
-}
-
-/**
- * What double-clicking this node would rename, or `undefined` if it is not renamable. Answering
- * with the props `doc.rename` takes keeps the surface from assembling them: a row that can be
- * renamed is exactly a row this returns something for.
- *
- * A scene is deliberately not renamable. Its label is its id, and its id is its filename, the
- * config's `start:` and every `[[goto:]]` pointing at it — one of those is a rename and the rest
- * are a refactor. Assets, shots and branch headings are left out too: none is named by a document.
- *
- * A skill is left out for a different reason. It has a path and a label, so it looks renamable, but
- * `doc.rename` renames a document by rewriting a `title:` in its front-matter, and a `SKILL.md` has
- * no `title:`. Its label is `name:`, which is a different key, and its id is the directory, which no
- * rewrite of the file could move. Renaming a skill is `edit_skill`, or the Skills pane; a
- * double-click here would silently write a key nobody reads.
- */
-export function renameOf(node: DocNode): { path: string; name: string } | undefined {
-  if (!node.path) return undefined;
-  switch (node.kind) {
-    case 'character':
-    case 'location':
-    case 'wiki':
-      return { path: node.path, name: node.label };
-    default:
-      return undefined;
-  }
-}
-
-/**
- * What a row says on hover, and every row says something. A path is the useful thing to say where
- * there is one; the rest is what a row with no file says instead.
- *
- * The three facts the tree adds to the node are the arguments, because none is on `DocNode`:
- * `renamable` is `renameOf(node) !== undefined`, `sheetless` is a location known only from a
- * scene heading — its second click writes a sheet rather than renaming one — and `expanded` is
- * the row's own state, which only a counted stand-in has anything to say about.
- */
-export function rowTitle(
-  node: DocNode,
-  opts: { renamable: boolean; sheetless: boolean; expanded: boolean },
-): string {
-  if (node.path) {
-    return opts.renamable ? `${node.path} — double-click the name to rename it` : node.path;
-  }
-  if (node.note) return node.note;
-  if (opts.sheetless) return 'Only a heading names this place — double-click to write its sheet';
-  if (node.kind === 'branch' || node.kind === 'assetkind') {
-    return 'Show or hide what is filed under this heading';
-  }
-  if (node.kind === 'more') {
-    return opts.expanded
-      ? 'Hide the rest of this list again'
-      : 'More than the tree draws at once — click to show the rest';
-  }
-  if (node.kind === 'shot' && node.hash) {
-    return 'Open this shot in its editor — double-click to show the frame it was drawn as';
-  }
-  return `Open this ${node.kind} in its editor`;
-}
-
-/** Whether the shared selection names this node — the highlight, for both modes at once. */
-export function nodeIsSelected(node: DocNode, selection: Selection): boolean {
-  const key = nodeKey(node);
-  switch (node.kind) {
-    case 'scene':
-      return selection.sceneId !== '' && selection.sceneId === key;
-    case 'shot':
-      return selection.shotId !== '' && selection.shotId === splitShot(key).shotId;
-    case 'character':
-      return selection.characterId !== '' && selection.characterId === key;
-    case 'location':
-    case 'wiki':
-    case 'skill':
-    case 'file':
-      return selection.docPath !== '' && selection.docPath === node.path;
-    case 'asset':
-      return selection.assetHash !== '' && selection.assetHash === key;
-    case 'graph':
-      return selection.graphSlug !== '' && selection.graphSlug === key;
-    default:
-      return false;
-  }
 }

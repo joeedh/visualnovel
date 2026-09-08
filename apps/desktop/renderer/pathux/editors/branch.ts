@@ -14,6 +14,7 @@ import {
   type NewScene,
 } from '../../rules/branch/compose.js';
 import {
+  cardAction,
   deleteSceneAction,
   newSceneAction,
   removes,
@@ -307,13 +308,16 @@ export class BranchEditor extends VnEditor {
       renderNode : (node) => this.renderNode(node),
       renderLabel: (edge) => this.renderLabel(edge),
       // The scene a card names, so a step that wants another scene on screen can ring the card
-      // that puts one there. A shot left over from another scene is dropped, which is what
-      // `selectionForNode` does for the same click in the document tree.
+      // that puts one there. A card for a scene the story does not define is still a card.
       onNode: (node, box) =>
-        nodes.pickItem(node.id, box, 'scene', node.id, {
-          sceneId: node.id,
-          ...(this.ui.shotId.startsWith(`${node.id}__`) ? {} : { shotId: '' }),
-        }),
+        nodes.pick(
+          node.id,
+          box,
+          cardAction(
+            { id: node.id, reachable: this.sceneById.get(node.id)?.reachable ?? true },
+            this.ui.shotId,
+          ),
+        ),
     });
     // Re-appended by every draw, so the caret is restored rather than kept: an input's value and
     // selection survive being moved in the DOM, its focus does not.
@@ -831,11 +835,8 @@ function sceneCard(
   if (selected) classes.push('sel');
   if (ghost) classes.push('carried');
 
+  // The tooltip is the card's offer, which the anchor pass writes once the card is on the canvas
   const box = el('article', classes.join(' '));
-  const acts = 'click to select it, right-click to open its script, drag it to lay the graph out';
-  box.title = scene.reachable
-    ? `${scene.id} — ${acts}`
-    : `${scene.id} — nothing reaches this scene; ${acts}`;
 
   const head = el('header');
   head.appendChild(el('span', 'id', scene.id));

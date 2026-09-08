@@ -14,7 +14,7 @@ import {
 } from '../doctree/doctree.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { TREEVIEW_CSS, armDismissLatch, renderTree } from '../doctree/treeview.js';
-import type { Selection } from '../doctree/selection.js';
+import type { Selection } from '../../rules/selection.js';
 import { menuIsOpen } from '../chrome/showmenu.js';
 import SKILLS_CSS from '../../styles/skills.css?inline';
 import type { DocNode } from '../../../src/shared/ipc.js';

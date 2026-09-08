@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { duplicateKeys } from '../anchors.js';
+import { duplicateKeys, keyOf } from '../anchors.js';
 import {
   anchoredIds,
   effectsOf,
@@ -42,6 +42,24 @@ describe('model()', () => {
         expect(duplicateKeys(row.controls(situation.state))).toEqual([]);
       }
     }
+  });
+
+  // Two modules of one home (the asset editor's bar and its prompt) are re-resolved by key on the
+  // same pane, so a key both produce would ring whichever was recorded last.
+  it('gives no key to two modules of one home, over every situation', () => {
+    const owners = new Map<string, Set<string>>();
+    for (const row of ROWS) {
+      for (const situation of row.situations) {
+        for (const offer of row.controls(situation.state)) {
+          const key = `${row.editor} ${keyOf(offer)}`;
+          const modules = owners.get(key) ?? new Set<string>();
+          modules.add(row.module);
+          owners.set(key, modules);
+        }
+      }
+    }
+    const shared = [...owners].filter(([, modules]) => modules.size > 1).map(([key]) => key);
+    expect(shared).toEqual([]);
   });
 
   it('surfaces every refusing verdict in a fixture verbatim', () => {

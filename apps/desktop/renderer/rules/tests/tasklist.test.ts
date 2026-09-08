@@ -1,4 +1,5 @@
 import {
+  cardAction,
   controls,
   emptyBecause,
   gateAction,
@@ -9,6 +10,7 @@ import {
 import { duplicateKeys, keyOf } from '../anchors.js';
 import type { ImageParams, TaskStatus } from '@vn/types';
 import type { Task } from '../../../src/shared/ipc';
+import type { Selection } from '../selection.js';
 
 const PARAMS: ImageParams = { modelId: 'mock-image' };
 
@@ -153,7 +155,78 @@ describe('gateAction', () => {
   });
 });
 
+describe('cardAction', () => {
+  const NONE: Selection = {
+    sceneId    : '',
+    shotId     : '',
+    characterId: '',
+    docPath    : '',
+    assetHash  : '',
+    graphSlug  : '',
+  };
+  const shot: Task = {
+    hash    : 'f1e2d3c4',
+    kind    : 'shot_image',
+    deps    : [],
+    status  : 'needs_human',
+    attempts: [],
+    output  : 'a1b2c3d4',
+    inputs  : { shotId: 'arrival__s1', prompt: '', refs: [], params: PARAMS },
+  };
+
+  it('publishes the task and what it names, then opens its picture elsewhere', () => {
+    expect(cardAction(shot, NONE)).toEqual({
+      ok     : true,
+      id     : 'ui.publish',
+      props  : { taskHash: 'f1e2d3c4', sceneId: 'arrival', shotId: 'arrival__s1' },
+      on     : 'task/f1e2d3c4',
+      label  : 'shot_image',
+      tooltip:
+        'Open what this shot_image drew in the asset editor — the last frame it rendered, ' +
+        'accepted or not; every other pane follows the pick',
+      then: [
+        { id: 'view.open', props: { editor: 'asset', where: 'elsewhere', subject: 'a1b2c3d4' } },
+      ],
+    });
+  });
+
+  it('opens the last attempt with bytes when the task itself left none', () => {
+    const tried: Task = {
+      ...shot,
+      output  : undefined,
+      attempts: [{ attempt: 1, refs: [], reviews: [], output: 'e5f6a7b8' }],
+    };
+    expect(cardAction(tried, NONE)).toMatchObject({
+      then: [{ id: 'view.open', props: { subject: 'e5f6a7b8' } }],
+    });
+  });
+
+  it('only publishes a task that drew nothing', () => {
+    const drewNothing = task('a', 'pending');
+    const offer = cardAction(drewNothing, NONE);
+    expect(offer).toMatchObject({ id: 'ui.publish', props: { taskHash: 'a' } });
+    expect('then' in offer).toBe(false);
+    expect(keyOf(offer)).toBe('item:task/a');
+  });
+});
+
 describe('controls', () => {
+  it('lists the cards after the bar', () => {
+    const NONE: Selection = {
+      sceneId    : '',
+      shotId     : '',
+      characterId: '',
+      docPath    : '',
+      assetHash  : '',
+      graphSlug  : '',
+    };
+    const listed = controls({ gatePending: [], cards: { tasks: TASKS, selection: NONE } });
+    expect(listed.map(keyOf)).toEqual([
+      'cmd:pipeline.run',
+      ...TASKS.map((t) => `item:task/${t.hash}`),
+    ]);
+  });
+
   it('lists the run button and one gate per pending character, each key once', () => {
     for (const gatePending of [[], ['aiko'], ['aiko', 'ren']]) {
       const listed = controls({ gatePending });

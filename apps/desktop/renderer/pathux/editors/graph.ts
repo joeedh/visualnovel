@@ -7,6 +7,8 @@ import {
   clusterMembers,
   clusteredGraphOf,
   gateApproveAction,
+  isSelected,
+  nodeAction,
   slotNodeIds,
   subgraphFor,
   taskGraphOf,
@@ -19,12 +21,7 @@ import {
 import { card, dot, mono, note, row, stamp, statusColour, subject } from '../widgets/dom.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { GraphCanvas, type EdgeStyle } from '../graph/canvas.js';
-import {
-  isSelected,
-  selectionForTask,
-  taskPublishes,
-  type Selection,
-} from '../doctree/selection.js';
+import { selectionForTask, type Selection } from '../../rules/selection.js';
 import { openCommandDialog } from '../chrome/dialog.js';
 import { pickOracle, redrawing, type AnchorPass } from '../tour/anchors.js';
 import type { Offer } from '../../rules/anchors.js';
@@ -369,13 +366,7 @@ export class TaskGraphEditor extends VnEditor {
       onNode: (node, box) => {
         const view = this.view?.nodes.get(node.id);
         if (view?.kind !== 'task') return;
-        nodes.pickItem(
-          node.id,
-          box,
-          'task',
-          view.task.hash,
-          taskPublishes(view.task, this.selection()),
-        );
+        nodes.pick(node.id, box, nodeAction(view.task, this.selection()));
       },
     });
   }

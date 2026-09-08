@@ -40,4 +40,20 @@ export const SITUATIONS = situations<BranchState>(
     why  : 'The naming row is open, so Write it stands in for the bar’s buttons.',
     state: { ...base, naming: { scene: 'scene_2', heading: 'INT. HALL - DAY' } },
   },
+  {
+    name : 'cards',
+    why: 'Two cards are drawn while a shot of the first is selected, so pressing the second clears the shot and pressing the first keeps it; nothing reaches the second.',
+    state: {
+      ...base,
+      sceneId: '',
+      known  : false,
+      cards: {
+        scenes: [
+          { id: 'arrival', reachable: true },
+          { id: 'cafe', reachable: false },
+        ],
+        shotId: 'arrival__s1',
+      },
+    },
+  },
 );

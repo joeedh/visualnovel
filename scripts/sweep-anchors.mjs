@@ -59,6 +59,8 @@ async function run(invocation) {
 
 const catalog = await evaluate(socket, 'window.vn.catalog()');
 const commands = catalog.commands.map((c) => c.id).sort();
+/** The effects beside the commands. An anchor naming one is drawn by a surface, never checked. */
+const effectIds = new Set((catalog.effects ?? []).map((e) => e.id));
 
 const editors =
   catalog.commands.find((c) => c.id === 'view.open')?.props.find((p) => p.name === 'editor')
@@ -151,11 +153,13 @@ for (const editor of editors) {
   await run(`view.open(editor='${editor}' where='here'${where})`);
   await sleep(SETTLE_MS);
   const dump = JSON.parse(await evaluate(socket, 'JSON.stringify(window.__vnAnchors.dump())'));
-  const mine = dump.filter((a) => a.editor === editor && a.id !== undefined);
-  const items = dump.filter((a) => a.editor === editor && a.id === undefined).length;
+  const mine = dump.filter((a) => a.editor === editor);
+  const items = mine.filter((a) => a.id === 'ui.publish').length;
   const drawnIds = new Set(mine.map((a) => a.id));
-  const undrawn = [...(derivedIds.get(editor) ?? [])].filter((id) => !drawnIds.has(id)).sort();
-  drawn.push({ editor, count: mine.length, items, undrawn });
+  const undrawn = [...(derivedIds.get(editor) ?? [])]
+    .filter((id) => !effectIds.has(id) && !drawnIds.has(id))
+    .sort();
+  drawn.push({ editor, count: mine.filter((a) => !effectIds.has(a.id)).length, items, undrawn });
 
   // The second oracle. A box being where it says proves nothing about what a click there reaches:
   // a graph's node layer takes no pointer events, and a widget can be covered. The canvas's own
@@ -171,11 +175,12 @@ for (const editor of editors) {
       ...(anchor.form ? { form: true } : {}),
       ...(anchor.enabled ? {} : { refused: anchor.reason ?? '' }),
     });
-    // An anchor that supplies a prop is deliberately incomplete, so asking `stack.check` about it
-    // asks about the blank the author is on their way to filling in. A `form` anchor's props are a
-    // prefill for the same reason: the form is where the author finishes them. `MenuEntry.form`
-    // leaves its entries unchecked on that reasoning too.
-    if (anchor.supplies || anchor.form) continue;
+    // An effect has no precondition in the stack, so there is nothing to ask. An anchor that
+    // supplies a prop is deliberately incomplete, so asking `stack.check` about it asks about the
+    // blank the author is on their way to filling in. A `form` anchor's props are a prefill for
+    // the same reason: the form is where the author finishes them. `MenuEntry.form` leaves its
+    // entries unchecked on that reasoning too.
+    if (effectIds.has(anchor.id) || anchor.supplies || anchor.form) continue;
     const verdict = await evaluate(
       socket,
       `window.vn.check(${JSON.stringify(anchor.id)}, ${JSON.stringify(anchor.props)})`,
@@ -211,7 +216,9 @@ for (const editor of editors) {
   }
 }
 
-const anchored = [...new Set(records.map((r) => r.id))].sort();
+const named = [...new Set(records.map((r) => r.id))].sort();
+const anchored = named.filter((id) => !effectIds.has(id));
+const effects = named.filter((id) => effectIds.has(id));
 const gitSha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root }).toString().trim();
 
 const index = await run('workspace.index()');
@@ -229,6 +236,7 @@ await fs.writeFile(
       under,
       commands,
       anchored,
+      effects,
       records,
       disagreements,
       strays: [...new Set(strays)].sort(),
@@ -248,7 +256,8 @@ execFileSync('pnpm', ['exec', 'prettier', '--write', OUT], {
 
 process.stdout.write(
   `anchors.json: ${anchored.length} of ${commands.length} commands have a UI anchor; ` +
-    `the rest are palette-only. Measured against ${under.project || '(no project)'}\n`,
+    `the rest are palette-only. ${effects.length} of ${effectIds.size} effects are drawn. ` +
+    `Measured against ${under.project || '(no project)'}\n`,
 );
 for (const { editor, count, items, undrawn } of drawn) {
   if (count === 0) {

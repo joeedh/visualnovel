@@ -181,12 +181,12 @@ describe('subsumes', () => {
 
 describe('a graph node', () => {
   const card = (): Anchor => ({
-    key      : itemKey('scene', 'greet'),
-    props    : {},
-    enabled  : true,
-    publishes: { sceneId: 'greet' },
-    editor   : 'branches' as EditorId,
-    via      : { kind: 'pick', nodeId: 'greet', node },
+    key    : itemKey('scene', 'greet'),
+    id     : 'ui.publish',
+    props  : { sceneId: 'greet' },
+    enabled: true,
+    editor : 'branches' as EditorId,
+    via    : { kind: 'pick', nodeId: 'greet', node },
   });
 
   it('resolves as the place its subject is chosen', () => {
@@ -285,31 +285,29 @@ describe('resolveAnchor', () => {
     expect(resolveAnchor({ editorsFor: {} }, live([]), step)).toEqual({ state: 'unanchored' });
   });
 
-  /** A step read from JSON that is not an object at all has no `id`, and neither has a row. */
-  it('never matches an item anchor against a step with no id of its own', () => {
-    const row = anchor({ key: itemKey('asset', 'a1b2'), props: {} });
-    delete (row as { id?: string }).id;
+  /** A step read from JSON that is not an object at all has no `id`, and no anchor matches it. */
+  it('never matches a row against a step with no id of its own', () => {
+    const row = anchor({ key: itemKey('asset', 'a1b2'), id: 'ui.publish', props: {} });
     const nameless = { id: undefined as unknown as string, props: {} };
     expect(resolveAnchor({ editorsFor: {} }, live([row]), nameless)).toEqual({
       state: 'unanchored',
     });
   });
 
-  it('never matches an item anchor against a command step', () => {
-    const row = anchor({ key: itemKey('asset', 'a1b2'), props: {} });
-    delete (row as { id?: string }).id;
+  it('never matches a row against a command step', () => {
+    const row = anchor({ key: itemKey('asset', 'a1b2'), id: 'ui.publish', props: {} });
     expect(resolveAnchor({ editorsFor: {} }, live([row]), step)).toEqual({ state: 'unanchored' });
   });
 });
 
 describe('resolveItem', () => {
   const row: Anchor = {
-    key      : itemKey('asset', 'a1b2'),
-    props    : {},
-    enabled  : true,
-    publishes: { assetHash: 'a1b2' },
-    editor   : 'documents' as EditorId,
-    via      : { kind: 'dom', node },
+    key    : itemKey('asset', 'a1b2'),
+    id     : 'ui.publish',
+    props  : { assetHash: 'a1b2' },
+    enabled: true,
+    editor : 'documents' as EditorId,
+    via    : { kind: 'dom', node },
   };
 
   it('finds the row that publishes a subject', () => {
@@ -323,12 +321,12 @@ describe('resolveItem', () => {
 
 describe('resolveSubject', () => {
   const row = (over: Partial<Anchor>): Anchor => ({
-    key      : itemKey('asset', 'ffff'),
-    props    : {},
-    enabled  : true,
-    publishes: { assetHash: 'ffff' },
-    editor   : 'documents' as EditorId,
-    via      : { kind: 'dom', node },
+    key    : itemKey('asset', 'ffff'),
+    id     : 'ui.publish',
+    props  : { assetHash: 'ffff' },
+    enabled: true,
+    editor : 'documents' as EditorId,
+    via    : { kind: 'dom', node },
     ...over,
   });
 
@@ -340,7 +338,7 @@ describe('resolveSubject', () => {
   });
 
   it('finds a rung by its item key, since a rung id is a kind and a key', () => {
-    const character = row({ key: itemKey('character', 'aiko'), publishes: {} });
+    const character = row({ key: itemKey('character', 'aiko'), props: {} });
     const wanted = { id: 'art.setNotes', props: { target: 'character:aiko' } };
     expect(resolveSubject(live([character]), wanted, ['target'])).toEqual({
       state : 'ready',
@@ -364,7 +362,7 @@ describe('resolveSubject', () => {
   });
 
   it('ignores a held prop whose value is empty, which a click that clears a field publishes', () => {
-    const cleared = row({ publishes: { assetHash: '' } });
+    const cleared = row({ props: { assetHash: '' } });
     const blank = { id: 'asset.regenerate', props: { hash: '' } };
     expect(resolveSubject(live([cleared]), blank, ['hash'])).toEqual({ state: 'absent' });
   });
@@ -375,8 +373,17 @@ describe('resolveSubject', () => {
   });
 
   it('is absent when nothing on screen selects the subject', () => {
-    const other = row({ key: itemKey('asset', 'a1b2'), publishes: { assetHash: 'a1b2' } });
+    const other = row({ key: itemKey('asset', 'a1b2'), props: { assetHash: 'a1b2' } });
     expect(resolveSubject(live([other]), needs, ['hash'])).toEqual({ state: 'absent' });
+  });
+
+  it('ignores a command whose props carry the subject, since a button does not select one', () => {
+    const accept = anchor({
+      key  : commandKey('asset.accept'),
+      id   : 'asset.accept',
+      props: { hash: 'ffff' },
+    });
+    expect(resolveSubject(live([accept]), needs, ['hash'])).toEqual({ state: 'absent' });
   });
 });
 

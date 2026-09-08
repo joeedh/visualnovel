@@ -144,7 +144,7 @@ function stop(): void {
  * {@link asked} and the overlay's next re-resolve reads it, a beat later.
  */
 function askAbout(anchor: Anchor): void {
-  const props = specs?.get(anchor.id ?? '');
+  const props = specs?.get(anchor.id);
   if (!props) return;
   const action = checkFor(anchor, props);
   if (!action) return;

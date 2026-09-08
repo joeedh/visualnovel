@@ -11,6 +11,7 @@ import {
   fixAction,
   locationOf,
   notesAction,
+  prereqAction,
   promoteAction,
   promoteBox,
   promptEditable,
@@ -655,10 +656,52 @@ describe('the strips’ fields', () => {
   });
 });
 
+describe('prereqAction', () => {
+  const drawnFrom = {
+    hash    : 'b2c3d4e5',
+    label   : 'cafe — night plate',
+    approved: true,
+    note    : 'Approved.',
+  };
+
+  it('publishes the picture so this pane retargets to it', () => {
+    expect(prereqAction(drawnFrom)).toEqual({
+      ok     : true,
+      id     : 'ui.publish',
+      props  : { assetHash: 'b2c3d4e5' },
+      on     : 'asset/b2c3d4e5',
+      label  : 'cafe — night plate',
+      tooltip: 'Approved. Click to open cafe — night plate in this pane.',
+    });
+    expect(keyOf(prereqAction(drawnFrom))).toBe('item:asset/b2c3d4e5');
+  });
+
+  it('is refused with the note when the manifest has no such bytes', () => {
+    const gone = {
+      ...drawnFrom,
+      approved: false,
+      missing : true,
+      note    : 'No record of these bytes.',
+    };
+    expect(prereqAction(gone)).toEqual({
+      ok     : false,
+      refusal: { reason: 'No record of these bytes.' },
+      id     : 'ui.publish',
+      on     : 'asset/b2c3d4e5',
+      label  : 'cafe — night plate',
+      tooltip: 'Open cafe — night plate here',
+    });
+  });
+});
+
 describe('controls', () => {
   const shown = [
     undefined,
-    info(),
+    info({
+      prereqs: [
+        { hash: 'b2c3d4e5', label: 'cafe — night plate', approved: true, note: 'Approved.' },
+      ],
+    }),
     concept({ locationVariants: [], failure: failed({ task: 't9', later: true }) }),
     portrait({ accepted: true, configSeed: 3 }),
   ];
@@ -681,6 +724,7 @@ describe('controls', () => {
           notesAction(rung),
           seedAction(rung, one?.configSeed),
         ]),
+        ...(one?.prereqs ?? []).map(prereqAction),
       ];
       expect(new Set(listed.map(keyOf))).toEqual(new Set(each.map(keyOf)));
       expect(duplicateKeys(listed)).toEqual([]);

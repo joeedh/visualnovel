@@ -25,6 +25,8 @@ import type {
   TaskStatus,
 } from '../../src/shared/ipc';
 import { refuse, type Offer } from './anchors.js';
+import { publish, type Publishes } from './effects.js';
+import { taskIsSelected, taskPublishes, type Selection } from './selection.js';
 import type { Graph, GraphEdge, GraphNode } from '../graph/types.js';
 
 /** One size for tasks and slots, so the two never misalign within a rank. */
@@ -40,6 +42,11 @@ export type TaskNodeView =
   | { kind: 'task'; id: string; task: Task; subject: string }
   | { kind: 'slot'; id: string; slot: SlotNode }
   | { kind: 'barrier'; id: string; pending: string[] };
+
+/** Whether the selection names a graph node's task. Only a real task is ever selected. */
+export function isSelected(view: TaskNodeView, selection: Selection): boolean {
+  return view.kind === 'task' && taskIsSelected(view.task, selection);
+}
 
 /** What a cluster is of. `other` is the bucket for a task that names no subject at all. */
 export type ClusterKind = 'scene' | 'char' | 'loc' | 'other';
@@ -505,12 +512,29 @@ export function subgraphFor(model: TaskGraphModel, targetId: string): TaskGraphM
   return scopedView(model, keep, concerns);
 }
 
-/** What the task graph reads when it draws the gate's buttons. */
+/** What the task graph reads when it draws the gate's buttons and its task cards. */
 export interface GateState {
   /** The characters whose portrait approval the run is waiting on. */
   pending: string[];
   /** What `gate.approve` and the candidate list said for each character, once asked. */
   gates: Record<string, { check?: CommandCheck; candidates?: number }>;
+  /** The task cards on screen, and the selection they are drawn against. */
+  cards?: { tasks: readonly Task[]; selection: Selection };
+}
+
+/**
+ * What clicking a task card does: publish the task, and the scene, shot or character it names.
+ * Only the task cards; a gate, a slot and a cluster are drawn on the same canvas and none is a
+ * subject another pane follows.
+ */
+export function nodeAction(task: Task, selection: Selection): Offer {
+  return {
+    ok: true,
+    ...publish(taskPublishes(task, selection) as Publishes),
+    on     : `task/${task.hash}`,
+    label  : task.kind,
+    tooltip: `Select this ${task.kind} — the inspector and every other pane follow the pick`,
+  };
 }
 
 /**
@@ -544,8 +568,12 @@ export function gateApproveAction(
 
 /** Every offer the task graph draws from this module: one gate button per pending character. */
 export function controls(state: GateState): readonly Offer[] {
-  return state.pending.map((character) => {
-    const gate = state.gates[character];
-    return gateApproveAction(character, gate?.check, gate?.candidates);
-  });
+  const cards = state.cards;
+  return [
+    ...state.pending.map((character) => {
+      const gate = state.gates[character];
+      return gateApproveAction(character, gate?.check, gate?.candidates);
+    }),
+    ...(cards ? cards.tasks.map((task) => nodeAction(task, cards.selection)) : []),
+  ];
 }

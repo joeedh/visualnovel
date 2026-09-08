@@ -3,6 +3,8 @@ import { api } from '../../api.js';
 import { exec, onBusy, onInvalidate } from '../app/bridge.js';
 import { subjectOf } from '../../rules/taskGraph.js';
 import {
+  cardAction,
+  drewAsset,
   emptyBecause,
   gateAction,
   runAction,
@@ -13,12 +15,7 @@ import { card, dot, mono, note, row, stamp, statusColour, subject } from '../wid
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { openCommandDialog } from '../chrome/dialog.js';
 import { layoutChanged } from '../app/persist.js';
-import {
-  selectionForTask,
-  taskIsSelected,
-  taskPublishes,
-  type Selection,
-} from '../doctree/selection.js';
+import { selectionForTask, taskIsSelected, type Selection } from '../../rules/selection.js';
 import { redrawing, type AnchorPass } from '../tour/anchors.js';
 import { TOKENS, alpha } from '../app/tokens.js';
 import type { PipelineStatus, Task } from '../../../src/shared/ipc.js';
@@ -356,34 +353,11 @@ export class TaskListEditor extends VnEditor {
       box.appendChild(why);
     }
 
-    const drew = TaskListEditor.drewAsset(task);
-    box.title = drew
-      ? `Open what this ${task.kind} drew in the asset editor — the last frame it rendered, ` +
-        'accepted or not; every other pane follows the pick'
-      : `Inspect this ${task.kind} — it rendered nothing to open; every other pane follows the pick`;
     // The card publishes a task rather than running one, so it is anchored as the thing it names.
     // A step wanting a command that acts on this task rings this card when the pane is on another.
-    this.anchors.item(box, 'task', task.hash, taskPublishes(task, this.selection()));
+    this.anchors.record(box, cardAction(task, this.selection()));
     box.addEventListener('click', () => this.select(task));
     return box;
-  }
-
-  /**
-   * The asset hash a task left behind, whatever its status. `undefined` if it drew nothing.
-   *
-   * Bytes from a task that stopped are unusable downstream but still viewable, and a rejected
-   * picture is what an author clicking a failed card is asking to see. A `needs_human` shot
-   * carries its last rejected frame as `output`, and a `failed` task that got far enough to
-   * render something carries it on the attempt that rendered it, so the last attempt with bytes
-   * is the fallback. Nothing here accepts anything; the asset editor only displays.
-   */
-  private static drewAsset(task: Task): string | undefined {
-    if (task.output) return task.output;
-    for (let i = task.attempts.length - 1; i >= 0; i--) {
-      const drew = task.attempts[i]?.output;
-      if (drew) return drew;
-    }
-    return undefined;
   }
 
   private select(task: Task): void {
@@ -401,7 +375,7 @@ export class TaskListEditor extends VnEditor {
     // The click that picks a finished task also puts its picture on screen, a rejected frame
     // included. Routed through `view.open` rather than by setting `ui.assetHash` here, because the
     // command finds or raises the pane and records the act; `elsewhere` keeps this list standing.
-    const drew = TaskListEditor.drewAsset(task);
+    const drew = drewAsset(task);
     if (drew) void exec('view.open', { editor: 'asset', where: 'elsewhere', subject: drew });
   }
 }

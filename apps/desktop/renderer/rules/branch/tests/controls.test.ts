@@ -1,4 +1,5 @@
 import {
+  cardAction,
   controls,
   deleteSceneAction,
   newSceneAction,
@@ -72,6 +73,43 @@ describe('writeSceneAction', () => {
       label  : 'Write it',
       tooltip: 'Create the scene file and put it on the graph, connected to nothing',
     });
+  });
+});
+
+describe('cardAction', () => {
+  it('selects the scene, keeps a shot of its own and drops one from elsewhere', () => {
+    const card = { id: 'intro', reachable: true };
+    expect(cardAction(card, 'intro__s1')).toEqual({
+      ok     : true,
+      id     : 'ui.publish',
+      props  : { sceneId: 'intro' },
+      on     : 'scene/intro',
+      label  : 'intro',
+      tooltip:
+        'intro — click to select it, right-click to open its script, drag it to lay the graph out',
+      then   : [{ id: 'drag.start', props: { interaction: 'branch.splice' } }],
+    });
+    expect(cardAction(card, 'outro__s1')).toMatchObject({
+      props: { sceneId: 'intro', shotId: '' },
+    });
+    expect(keyOf(cardAction(card, ''))).toBe('item:scene/intro');
+  });
+
+  it('says when nothing reaches the scene', () => {
+    expect(cardAction({ id: 'lost', reachable: false }, '').tooltip).toMatch(/nothing reaches/);
+  });
+
+  it('is listed after the bar, and beside the naming row', () => {
+    const cards = { scenes: [{ id: 'intro', reachable: true }], shotId: '' };
+    expect(controls(state({ cards })).map(keyOf)).toEqual([
+      'cmd:story.newScene',
+      'item:scene/intro',
+    ]);
+    const naming = { scene: 'scene_2', heading: 'INT. HALL - DAY' };
+    expect(controls(state({ cards, naming }))).toEqual([
+      writeSceneAction(naming),
+      cardAction({ id: 'intro', reachable: true }, ''),
+    ]);
   });
 });
 

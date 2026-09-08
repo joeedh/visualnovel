@@ -11,6 +11,7 @@ import {
   clusteredGraphOf,
   controls,
   gateApproveAction,
+  nodeAction,
   slotNodeIds,
   subgraphFor,
   subjectOf,
@@ -622,6 +623,41 @@ describe('gateApproveAction', () => {
         refusal: { reason: REFUSE.message },
       });
     }
+  });
+});
+
+describe('nodeAction', () => {
+  const NONE = {
+    sceneId    : '',
+    shotId     : '',
+    characterId: '',
+    docPath    : '',
+    assetHash  : '',
+    graphSlug  : '',
+  };
+
+  it('publishes the task and the shot and scene it names', () => {
+    expect(nodeAction(shot('s1', 'arrival__s1', [], []), NONE)).toEqual({
+      ok     : true,
+      id     : 'ui.publish',
+      props  : { taskHash: 's1', sceneId: 'arrival', shotId: 'arrival__s1' },
+      on     : 'task/s1',
+      label  : 'shot_image',
+      tooltip: 'Select this shot_image — the inspector and every other pane follow the pick',
+    });
+  });
+
+  it('publishes only the task for one that names neither a shot nor a character', () => {
+    expect(nodeAction(plate('p1', 'cafe'), NONE)).toMatchObject({ props: { taskHash: 'p1' } });
+    expect(keyOf(nodeAction(plate('p1', 'cafe'), NONE))).toBe('item:task/p1');
+  });
+
+  it('is listed after the gate buttons', () => {
+    const cards = { tasks: [plate('p1', 'cafe')], selection: NONE };
+    expect(controls({ pending: ['aiko'], gates: {}, cards }).map(keyOf)).toEqual([
+      'cmd:gate.approve#aiko',
+      'item:task/p1',
+    ]);
   });
 });
 

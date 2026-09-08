@@ -20,7 +20,7 @@ import {
 import { MENU_SEP } from '../../chrome/contextmenu.js';
 import { mapOf } from '../../../rules/anchors.js';
 import { NEW_SKILL_PROMPT } from '../../../rules/skills.js';
-import type { Selection } from '../selection.js';
+import type { Selection } from '../../../rules/selection.js';
 import type { DocNode, DocNodeKind, EntityLinks } from '../../../../src/shared/ipc.js';
 
 const NONE: Selection = {

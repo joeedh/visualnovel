@@ -12,8 +12,6 @@ import {
   flattenTree,
   menuFor,
   nodeIsSelected,
-  nodeKey,
-  publishedBy,
   renameOf,
   rowTitle,
   selectionForNode,
@@ -22,13 +20,15 @@ import {
 } from '../doctree/doctree.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { VN_ICONS } from '../app/icons.js';
-import { createAction, renameAction } from '../../rules/documents.js';
+import { createAction, renameAction, rowAction } from '../../rules/documents.js';
 import { redrawing } from '../tour/anchors.js';
 import { assetNode, openNode } from '../panes/open.js';
+import { visibleEditors } from '../panes/route.js';
+import { panesOf } from '../panes/view.js';
 import { layoutChanged } from '../app/persist.js';
 import type { VnScreen } from '../app/screen.js';
 import { menuIsOpen, showContextMenu } from '../chrome/showmenu.js';
-import type { Selection } from '../doctree/selection.js';
+import type { Selection } from '../../rules/selection.js';
 import { TREEVIEW_CSS, armDismissLatch, renderTree, rowElementFor } from '../doctree/treeview.js';
 import DOCUMENTS_CSS from '../../styles/documents.css?inline';
 import type { DocNode, DocTree } from '../../../src/shared/ipc.js';
@@ -377,6 +377,8 @@ export class DocumentsEditor extends VnEditor {
     }
 
     const selection = this.selection();
+    const screen = this.ctx?.screen as VnScreen | undefined;
+    const visible = visibleEditors(screen ? panesOf(screen) : []);
     const anchors = redrawing('documents', 'rows');
     renderTree(this.rows, rows, {
       look: (row) => ({
@@ -400,10 +402,9 @@ export class DocumentsEditor extends VnEditor {
         else if (row.node.kind === 'shot' && row.node.hash) this.openAsset(row.node.hash);
       },
       onMenu       : (row, x, y) => this.openMenu(row, x, y),
-      // Records every row, including the headings that publish nothing, so a tour pointing at one
-      // still has somewhere to draw its ring.
-      onRow: (row, line) =>
-        anchors.item(line, row.node.kind, nodeKey(row.node), publishedBy(row.node, selection)),
+      // Records every row, the headings that only expand included, so a tour pointing at one still
+      // has somewhere to draw its ring. The click itself is `pick`, which `onClick` installs.
+      onRow        : (row, line) => anchors.record(line, rowAction(row, selection, visible)),
     });
   }
 

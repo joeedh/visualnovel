@@ -99,9 +99,7 @@ describe('guide', () => {
   });
 
   it('rings the row that publishes a subject for a select step', () => {
-    // No `id`: a row publishes a subject rather than running a command.
-    const { id: _id, ...rest } = anchor({ key: itemKey('scene', 'greet') });
-    const row: Anchor = rest;
+    const row = anchor({ key: itemKey('scene', 'greet'), id: 'ui.publish', props: {} });
     const picking = start(
       tour([{ kind: 'select', itemKind: 'scene', key: 'greet', say: 'Pick the arrival scene.' }]),
     );
@@ -126,12 +124,12 @@ describe('a step whose control is on another subject', () => {
   const state = start(tour([step]));
   const elsewhere = anchor({ props: { hash: 'a1b2' } });
   const row = (): Anchor => ({
-    key      : itemKey('asset', 'ffff'),
-    props    : {},
-    enabled  : true,
-    publishes: { assetHash: 'ffff' },
-    editor   : 'documents' as EditorId,
-    via      : { kind: 'dom', node },
+    key    : itemKey('asset', 'ffff'),
+    id     : 'ui.publish',
+    props  : { assetHash: 'ffff' },
+    enabled: true,
+    editor : 'documents' as EditorId,
+    via    : { kind: 'dom', node },
   });
   const seen = (anchors: Anchor[]): LiveAnchors =>
     live(anchors, { open: ['asset', 'documents'] as EditorId[] });
@@ -190,12 +188,12 @@ describe('a step whose control is on another subject', () => {
       props: { sceneId: 'greet' },
     });
     const character: Anchor = {
-      key      : itemKey('character', 'aiko'),
-      props    : {},
-      enabled  : true,
-      publishes: { characterId: 'aiko' },
-      editor   : 'documents' as EditorId,
-      via      : { kind: 'dom', node },
+      key    : itemKey('character', 'aiko'),
+      id     : 'ui.publish',
+      props  : { characterId: 'aiko' },
+      enabled: true,
+      editor : 'documents' as EditorId,
+      via    : { kind: 'dom', node },
     };
     expect(guide(map, seen([box, character]), start(tour([line])))).toMatchObject({ show: 'ring' });
   });
@@ -213,7 +211,12 @@ describe('a gesture step', () => {
 
   const cards = (): Anchor[] =>
     ['arrival', 'greet', 'ending'].map((id) =>
-      anchor({ key: itemKey('scene', id), id: undefined, editor: 'branches' as EditorId }),
+      anchor({
+        key   : itemKey('scene', id),
+        id    : 'ui.publish',
+        props : { sceneId: id },
+        editor: 'branches' as EditorId,
+      }),
     );
 
   const seen = live(cards(), { open: ['branches' as EditorId] });

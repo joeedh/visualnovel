@@ -40,7 +40,7 @@
       "module": "assetview",
       "editor": "asset",
       "name"  : "plate",
-      "why": "An accepted plate offers Un-approve, Replace on its slot, and the notes and seed boxes of its rung."
+      "why": "An accepted plate offers Un-approve, Replace on its slot, the notes and seed boxes of its rung, and a row per picture it was drawn from, greyed where the manifest has no such bytes."
     },
     {
       "module": "assetview",
@@ -151,6 +151,12 @@
       "why"   : "The naming row is open, so Write it stands in for the bar’s buttons."
     },
     {
+      "module": "branch",
+      "editor": "branches",
+      "name"  : "cards",
+      "why": "Two cards are drawn while a shot of the first is selected, so pressing the second clears the shot and pressing the first keeps it; nothing reaches the second."
+    },
+    {
       "module": "convobar",
       "editor": "convo",
       "name"  : "empty",
@@ -197,6 +203,18 @@
       "editor": "documents",
       "name"  : "renaming",
       "why"   : "A row holds the rename box, which commits doc.rename on the document it stands in."
+    },
+    {
+      "module": "documents",
+      "editor": "documents",
+      "name"  : "rows-claimant-hidden",
+      "why": "Only the tree is up, so a row that opens an editor opens it elsewhere; a heading and a stand-in expand."
+    },
+    {
+      "module": "documents",
+      "editor": "documents",
+      "name"  : "rows-claimant-visible",
+      "why": "Script and Asset are up, so a scene row and an asset row open here; the selected asset row expands instead."
     },
     {
       "module": "gengraph",
@@ -355,6 +373,12 @@
       "why": "Nothing is on file to approve, so the button is refused with the command’s sentence."
     },
     {
+      "module": "taskGraph",
+      "editor": "taskgraph",
+      "name"  : "cards",
+      "why": "Two task cards are drawn: a shot names its scene and shot, a portrait names its character."
+    },
+    {
       "module": "tasklist",
       "editor": "tasklist",
       "name"  : "idle",
@@ -365,6 +389,12 @@
       "editor": "tasklist",
       "name"  : "gate-pending",
       "why": "A run is waiting on a portrait, so the gate bar offers approval for that character."
+    },
+    {
+      "module": "tasklist",
+      "editor": "tasklist",
+      "name"  : "cards",
+      "why": "Two cards are drawn: a shot that rendered a frame opens it elsewhere after the pick, a task that drew nothing only publishes."
     },
     {
       "module": "timeline",
@@ -1366,6 +1396,53 @@
           "props": {
             "target": "location:cafe"
           }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "plate",
+      "key"      : "item:asset/b2c3d4e5",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "cafe — concept",
+        "tooltip": "A concept needs no approval. Click to open cafe — concept in this pane.",
+        "on"     : "asset/b2c3d4e5",
+        "ok"     : true,
+        "props": {
+          "assetHash": "b2c3d4e5"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "assetHash": "b2c3d4e5"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "plate",
+      "key"      : "item:asset/c3d4e5f6",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "moodboard.png",
+        "tooltip": "Open moodboard.png here",
+        "on"     : "asset/c3d4e5f6",
+        "ok"     : false,
+        "refusal": {
+          "reason": "The manifest has no record of these bytes."
+        }
+      },
+      "effects": [
+        {
+          "id": "ui.publish"
         }
       ]
     },
@@ -6476,6 +6553,107 @@
     },
     {
       "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
+      "situation": "cards",
+      "key"      : "cmd:story.newScene",
+      "offer": {
+        "id"      : "story.newScene",
+        "label"   : "+ scene",
+        "tooltip" : "Name a new scene and add it to the graph, unconnected",
+        "supplies": ["scene", "heading"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "story.newScene",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
+      "situation": "cards",
+      "key"      : "item:scene/arrival",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "arrival",
+        "tooltip": "arrival — click to select it, right-click to open its script, drag it to lay the graph out",
+        "on"     : "scene/arrival",
+        "ok"     : true,
+        "props": {
+          "sceneId": "arrival"
+        },
+        "then": [
+          {
+            "id"   : "drag.start",
+            "props": {
+              "interaction": "branch.splice"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "sceneId": "arrival"
+          }
+        },
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "branch.splice"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
+      "situation": "cards",
+      "key"      : "item:scene/cafe",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "cafe",
+        "tooltip": "cafe — nothing reaches this scene; click to select it, right-click to open its script, drag it to lay the graph out",
+        "on"     : "scene/cafe",
+        "ok"     : true,
+        "props": {
+          "sceneId": "cafe",
+          "shotId" : ""
+        },
+        "then": [
+          {
+            "id"   : "drag.start",
+            "props": {
+              "interaction": "branch.splice"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "sceneId": "cafe",
+            "shotId" : ""
+          }
+        },
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "branch.splice"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
       "editor"   : "convo",
       "module"   : "convobar",
       "situation": "empty",
@@ -7685,6 +7863,528 @@
           "id"   : "doc.rename",
           "props": {
             "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "documents",
+      "module"   : "documents",
+      "situation": "rows-claimant-hidden",
+      "key"      : "cmd:doc.create",
+      "offer": {
+        "id"      : "doc.create",
+        "label"   : "New…",
+        "tooltip" : "Add a character, location, page or skill to this project",
+        "supplies": ["kind", "name"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "doc.create",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "documents",
+      "module"   : "documents",
+      "situation": "rows-claimant-hidden",
+      "key"      : "fx:tree.expand#branch/story",
+      "offer": {
+        "id"     : "tree.expand",
+        "label"  : "Story",
+        "tooltip": "Show or hide what is filed under this heading",
+        "on"     : "branch/story",
+        "ok"     : true,
+        "props": {
+          "node": "branch:story"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "tree.expand",
+          "props": {
+            "node": "branch:story"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "documents",
+      "module"   : "documents",
+      "situation": "rows-claimant-hidden",
+      "key"      : "item:scene/arrival",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "arrival",
+        "tooltip": "scenes/arrival.md",
+        "on"     : "scene/arrival",
+        "ok"     : true,
+        "props": {
+          "sceneId": "arrival",
+          "docPath": "scenes/arrival.md"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "script",
+              "where"  : "elsewhere",
+              "subject": ""
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "sceneId": "arrival",
+            "docPath": "scenes/arrival.md"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "script",
+            "where"  : "elsewhere",
+            "subject": ""
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "documents",
+      "module"   : "documents",
+      "situation": "rows-claimant-hidden",
+      "key"      : "item:shot/arrival/arrival__s1",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "arrival__s1",
+        "tooltip": "Open this shot in its editor — double-click to show the frame it was drawn as",
+        "on"     : "shot/arrival/arrival__s1",
+        "ok"     : true,
+        "props": {
+          "sceneId": "arrival",
+          "shotId" : "arrival__s1"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "timeline",
+              "where"  : "elsewhere",
+              "subject": ""
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "sceneId": "arrival",
+            "shotId" : "arrival__s1"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "timeline",
+            "where"  : "elsewhere",
+            "subject": ""
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "documents",
+      "module"   : "documents",
+      "situation": "rows-claimant-hidden",
+      "key"      : "item:character/aiko",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "Aiko",
+        "tooltip": "characters/aiko/character.md — double-click the name to rename it",
+        "on"     : "character/aiko",
+        "ok"     : true,
+        "props": {
+          "characterId": "aiko",
+          "docPath"    : "characters/aiko/character.md"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "wiki",
+              "where"  : "elsewhere",
+              "subject": "characters/aiko/character.md"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "characterId": "aiko",
+            "docPath"    : "characters/aiko/character.md"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "wiki",
+            "where"  : "elsewhere",
+            "subject": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "documents",
+      "module"   : "documents",
+      "situation": "rows-claimant-hidden",
+      "key"      : "item:location/cafe",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "Café Mori",
+        "tooltip": "Only a heading names this place — double-click to write its sheet",
+        "on"     : "location/cafe",
+        "ok"     : true,
+        "props"  : {}
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "documents",
+      "module"   : "documents",
+      "situation": "rows-claimant-hidden",
+      "key"      : "item:asset/a1b2c3d4",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "a1b2c3d4",
+        "tooltip": "Open this asset in its editor",
+        "on"     : "asset/a1b2c3d4",
+        "ok"     : true,
+        "props": {
+          "assetHash": "a1b2c3d4"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "asset",
+              "where"  : "elsewhere",
+              "subject": "a1b2c3d4"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "assetHash": "a1b2c3d4"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "a1b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "documents",
+      "module"   : "documents",
+      "situation": "rows-claimant-hidden",
+      "key"      : "fx:tree.expand#more/assets",
+      "offer": {
+        "id"     : "tree.expand",
+        "label"  : "12 more",
+        "tooltip": "More than the tree draws at once — click to show the rest",
+        "on"     : "more/assets",
+        "ok"     : true,
+        "props": {
+          "node": "more:assets"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "tree.expand",
+          "props": {
+            "node": "more:assets"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "documents",
+      "module"   : "documents",
+      "situation": "rows-claimant-visible",
+      "key"      : "cmd:doc.create",
+      "offer": {
+        "id"      : "doc.create",
+        "label"   : "New…",
+        "tooltip" : "Add a character, location, page or skill to this project",
+        "supplies": ["kind", "name"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "doc.create",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "documents",
+      "module"   : "documents",
+      "situation": "rows-claimant-visible",
+      "key"      : "fx:tree.expand#branch/story",
+      "offer": {
+        "id"     : "tree.expand",
+        "label"  : "Story",
+        "tooltip": "Show or hide what is filed under this heading",
+        "on"     : "branch/story",
+        "ok"     : true,
+        "props": {
+          "node": "branch:story"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "tree.expand",
+          "props": {
+            "node": "branch:story"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "documents",
+      "module"   : "documents",
+      "situation": "rows-claimant-visible",
+      "key"      : "item:scene/arrival",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "arrival",
+        "tooltip": "scenes/arrival.md",
+        "on"     : "scene/arrival",
+        "ok"     : true,
+        "props": {
+          "sceneId": "arrival",
+          "docPath": "scenes/arrival.md"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "script",
+              "where"  : "here",
+              "subject": ""
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "sceneId": "arrival",
+            "docPath": "scenes/arrival.md"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "script",
+            "where"  : "here",
+            "subject": ""
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "documents",
+      "module"   : "documents",
+      "situation": "rows-claimant-visible",
+      "key"      : "item:shot/arrival/arrival__s1",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "arrival__s1",
+        "tooltip": "Open this shot in its editor — double-click to show the frame it was drawn as",
+        "on"     : "shot/arrival/arrival__s1",
+        "ok"     : true,
+        "props": {
+          "sceneId": "arrival",
+          "shotId" : "arrival__s1"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "timeline",
+              "where"  : "elsewhere",
+              "subject": ""
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "sceneId": "arrival",
+            "shotId" : "arrival__s1"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "timeline",
+            "where"  : "elsewhere",
+            "subject": ""
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "documents",
+      "module"   : "documents",
+      "situation": "rows-claimant-visible",
+      "key"      : "item:character/aiko",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "Aiko",
+        "tooltip": "characters/aiko/character.md — double-click the name to rename it",
+        "on"     : "character/aiko",
+        "ok"     : true,
+        "props": {
+          "characterId": "aiko",
+          "docPath"    : "characters/aiko/character.md"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "wiki",
+              "where"  : "elsewhere",
+              "subject": "characters/aiko/character.md"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "characterId": "aiko",
+            "docPath"    : "characters/aiko/character.md"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "wiki",
+            "where"  : "elsewhere",
+            "subject": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "documents",
+      "module"   : "documents",
+      "situation": "rows-claimant-visible",
+      "key"      : "item:location/cafe",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "Café Mori",
+        "tooltip": "Only a heading names this place — double-click to write its sheet",
+        "on"     : "location/cafe",
+        "ok"     : true,
+        "props"  : {}
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "documents",
+      "module"   : "documents",
+      "situation": "rows-claimant-visible",
+      "key"      : "fx:tree.expand#asset/a1b2c3d4",
+      "offer": {
+        "id"     : "tree.expand",
+        "label"  : "a1b2c3d4",
+        "tooltip": "Open this asset in its editor",
+        "on"     : "asset/a1b2c3d4",
+        "ok"     : true,
+        "props": {
+          "node": "asset:a1b2c3d4"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "tree.expand",
+          "props": {
+            "node": "asset:a1b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "documents",
+      "module"   : "documents",
+      "situation": "rows-claimant-visible",
+      "key"      : "fx:tree.expand#more/assets",
+      "offer": {
+        "id"     : "tree.expand",
+        "label"  : "12 more",
+        "tooltip": "More than the tree draws at once — click to show the rest",
+        "on"     : "more/assets",
+        "ok"     : true,
+        "props": {
+          "node": "more:assets"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "tree.expand",
+          "props": {
+            "node": "more:assets"
           }
         }
       ]
@@ -9349,6 +10049,62 @@
     },
     {
       "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "cards",
+      "key"      : "item:task/f1e2d3c4",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "shot_image",
+        "tooltip": "Select this shot_image — the inspector and every other pane follow the pick",
+        "on"     : "task/f1e2d3c4",
+        "ok"     : true,
+        "props": {
+          "taskHash": "f1e2d3c4",
+          "sceneId" : "arrival",
+          "shotId"  : "arrival__s1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "taskHash": "f1e2d3c4",
+            "sceneId" : "arrival",
+            "shotId"  : "arrival__s1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "cards",
+      "key"      : "item:task/c9d8e7f6",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "portrait",
+        "tooltip": "Select this portrait — the inspector and every other pane follow the pick",
+        "on"     : "task/c9d8e7f6",
+        "ok"     : true,
+        "props": {
+          "taskHash"   : "c9d8e7f6",
+          "characterId": "aiko"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "taskHash"   : "c9d8e7f6",
+            "characterId": "aiko"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
       "editor"   : "tasklist",
       "module"   : "tasklist",
       "situation": "idle",
@@ -9411,6 +10167,99 @@
           "id"   : "gate.approve",
           "props": {
             "characterId": "aiko"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "tasklist",
+      "module"   : "tasklist",
+      "situation": "cards",
+      "key"      : "cmd:pipeline.run",
+      "offer": {
+        "id"     : "pipeline.run",
+        "label"  : "▸ Run",
+        "tooltip": "Open the run form, where the flags are spelled out before anything is spent",
+        "form"   : true,
+        "ok"     : true,
+        "props"  : {}
+      },
+      "effects": [
+        {
+          "id"   : "pipeline.run",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "tasklist",
+      "module"   : "tasklist",
+      "situation": "cards",
+      "key"      : "item:task/f1e2d3c4",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "shot_image",
+        "tooltip": "Open what this shot_image drew in the asset editor — the last frame it rendered, accepted or not; every other pane follows the pick",
+        "on"     : "task/f1e2d3c4",
+        "ok"     : true,
+        "props": {
+          "taskHash": "f1e2d3c4",
+          "sceneId" : "arrival",
+          "shotId"  : "arrival__s1"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "asset",
+              "where"  : "elsewhere",
+              "subject": "a1b2c3d4"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "taskHash": "f1e2d3c4",
+            "sceneId" : "arrival",
+            "shotId"  : "arrival__s1"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "a1b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "tasklist",
+      "module"   : "tasklist",
+      "situation": "cards",
+      "key"      : "item:task/e5f6a7b8",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "prompt_refine",
+        "tooltip": "Inspect this prompt_refine — it rendered nothing to open; every other pane follows the pick",
+        "on"     : "task/e5f6a7b8",
+        "ok"     : true,
+        "props": {
+          "taskHash": "e5f6a7b8"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "taskHash": "e5f6a7b8"
           }
         }
       ]

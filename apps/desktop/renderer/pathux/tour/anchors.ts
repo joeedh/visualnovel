@@ -18,7 +18,6 @@ import { centreOf } from '../../rules/ring.js';
 import {
   HEADER,
   applyOffer,
-  itemKey,
   keyOf,
   type Action,
   type Anchor,
@@ -86,9 +85,26 @@ export class AnchorPass {
    * together.
    */
   record<N extends AnchorNode>(node: N, offer: Offer): N {
-    const supplies = offer.supplies ?? [];
     this.present(node, offer);
-    this.pass.anchors.push({
+    this.pass.anchors.push({ ...this.anchorOf(offer), via: { kind: 'dom', node } });
+    return node;
+  }
+
+  /**
+   * Present the offer on a graph card and record the anchor, for a card whose gesture the canvas's
+   * own `pick()` dispatches rather than the card. `box` is the card's own element, kept for its
+   * rect: it moves with every pan and zoom, so a rect copied at draw time would be wrong by the
+   * next frame.
+   */
+  pick(nodeId: string, box: AnchorNode, offer: Offer): void {
+    this.present(box, offer);
+    this.pass.anchors.push({ ...this.anchorOf(offer), via: { kind: 'pick', nodeId, node: box } });
+  }
+
+  /** The record an offer makes, short of where it is drawn. */
+  private anchorOf(offer: Offer): Omit<Anchor, 'via'> {
+    const supplies = offer.supplies ?? [];
+    return {
       key  : keyOf(offer),
       id   : offer.id,
       props: offer.ok ? offer.props : {},
@@ -98,9 +114,7 @@ export class AnchorPass {
       enabled: offer.ok,
       ...(offer.ok ? {} : { reason: offer.refusal.reason }),
       editor: this.pass.editor,
-      via   : { kind: 'dom', node },
-    });
-    return node;
+    };
   }
 
   /**
@@ -119,43 +133,6 @@ export class AnchorPass {
         `${keyOf(offer)} shares a node with ${keyOf(prior)} and would present it differently`,
       );
     }
-  }
-
-  /**
-   * Record where a subject is chosen. The tour rings one of these when the button it wanted acts
-   * on whatever the pane is showing and the pane is showing something else.
-   */
-  item(node: AnchorNode, kind: string, key: string, publishes: Record<string, string>): void {
-    this.pass.anchors.push({
-      key    : itemKey(kind, key),
-      props  : {},
-      enabled: true,
-      publishes,
-      editor: this.pass.editor,
-      via   : { kind: 'dom', node },
-    });
-  }
-
-  /**
-   * Record where a subject is chosen on a graph, whose gesture the canvas's own `pick()`
-   * dispatches. `box` is the node's own element, kept for its rect: it moves with every pan and
-   * zoom, so a rect copied at draw time would be wrong by the next frame.
-   */
-  pickItem(
-    nodeId: string,
-    box: AnchorNode,
-    kind: string,
-    key: string,
-    publishes: Record<string, string>,
-  ): void {
-    this.pass.anchors.push({
-      key    : itemKey(kind, key),
-      props  : {},
-      enabled: true,
-      publishes,
-      editor: this.pass.editor,
-      via   : { kind: 'pick', nodeId, node: box },
-    });
   }
 }
 
@@ -225,7 +202,7 @@ export function rectOf(anchor: Anchor): AnchorRect | undefined {
 /** One anchor as the sweep writes it down: everything but the node, which does not serialize. */
 export interface AnchorDump {
   key: string;
-  id?: string;
+  id: string;
   props: Record<string, PropValue>;
   then?: readonly Action[];
   supplies?: string[];
@@ -242,8 +219,8 @@ export function dumpAnchors(): AnchorDump[] {
   return liveAnchors().map((anchor) => {
     const rect = rectOf(anchor);
     return {
-      key: anchor.key,
-      ...(anchor.id === undefined ? {} : { id: anchor.id }),
+      key  : anchor.key,
+      id   : anchor.id,
       props: anchor.props,
       ...(anchor.then ? { then: anchor.then } : {}),
       ...(anchor.supplies ? { supplies: anchor.supplies } : {}),
