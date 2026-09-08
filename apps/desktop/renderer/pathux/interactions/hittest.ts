@@ -46,7 +46,7 @@ export const hitAt = (x: number, y: number): Element | undefined => elementsAt(x
  * `Element`, which is what lets the ascent stay one loop; a root path.ux did not create still
  * answers through `host`.
  */
-function up(node: Node): Node | undefined {
+export function up(node: Node): Node | undefined {
   if (typeof ShadowRoot !== 'undefined' && node instanceof ShadowRoot) {
     return (node as OwnedRoot).parentWidget ?? node.host;
   }

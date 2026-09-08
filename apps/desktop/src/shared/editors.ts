@@ -235,11 +235,27 @@ export const EDITOR_IDS: readonly EditorId[] = EDITORS.map((editor) => editor.id
  */
 export const HEADER = 'header';
 
-/** Where an anchor is drawn: a pane the author can close, or the toolbar that is always there. */
-export type AnchorHome = EditorId | typeof HEADER;
+/**
+ * The toolbar's three popups: the bell's list, the approval badge's list and the problem count's
+ * list. Not panes: each opens from a toolbar control and closes on Escape or a click outside, so
+ * its anchors are live only while it is up, and a step on one of them names the control that
+ * opens it until then.
+ */
+export const POPUP_HOMES = ['notifications', 'approvals', 'diagnostics'] as const;
+
+export type PopupHome = (typeof POPUP_HOMES)[number];
+
+export const isPopupHome = (home: string): home is PopupHome =>
+  (POPUP_HOMES as readonly string[]).includes(home);
+
+/**
+ * Where an anchor is drawn: a pane the author can close, the toolbar that is always there, or a
+ * popup the toolbar opens.
+ */
+export type AnchorHome = EditorId | typeof HEADER | PopupHome;
 
 /** Every anchor home, for a schema or a table that must cover them all. */
-export const ANCHOR_HOMES: readonly AnchorHome[] = [...EDITOR_IDS, HEADER];
+export const ANCHOR_HOMES: readonly AnchorHome[] = [...EDITOR_IDS, HEADER, ...POPUP_HOMES];
 
 /**
  * The editors on offer: the ones the pane switcher lists and the View ▸ Editors submenu draws.

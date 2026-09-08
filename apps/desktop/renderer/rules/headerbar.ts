@@ -7,8 +7,9 @@
  */
 import { refuse, type Offer } from './anchors.js';
 import { busyControls, type BusyControls } from './busy.js';
+import { openPopup } from './effects.js';
 
-/** What the header reads when it draws its three command buttons. */
+/** What the header reads when it draws its command buttons and its three popup openers. */
 export interface HeaderState {
   /** Which long-running work is in flight, or an empty string. */
   busyWhat: string;
@@ -17,6 +18,55 @@ export interface HeaderState {
   agentMode: string;
   /** The model the agent answers with, or an empty string before one is chosen. */
   model: string;
+  /** What validation counted. The problem button is drawn only while either is above zero. */
+  errors: number;
+  warnings: number;
+  needsApproval: number;
+  unread: number;
+}
+
+const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/**
+ * The problem count, which opens the diagnostics popup. Errors displace warnings: one count,
+ * showing the more severe kind. A button rather than a label, because a count the author cannot
+ * click to list is a number they cannot act on.
+ */
+export function problemsAction(errors: number, warnings: number): Offer {
+  return {
+    ok: true,
+    ...openPopup('diagnostics'),
+    on     : 'diagnostics',
+    label  : errors ? plural(errors, 'error') : plural(warnings, 'warning'),
+    tooltip:
+      errors && warnings
+        ? `List them — ${plural(errors, 'error')} and ${plural(warnings, 'warning')} in this project`
+        : 'List what validation says is wrong with this project',
+  };
+}
+
+/** The badge counting art waiting on approval, which opens the approvals popup. */
+export function approvalsAction(waiting: number): Offer {
+  return {
+    ok: true,
+    ...openPopup('approvals'),
+    on     : 'approvals',
+    label  : waiting ? `🎨 ${waiting}` : '🎨',
+    tooltip: waiting
+      ? `Show the art waiting on approval — ${waiting}`
+      : 'No art is waiting on approval',
+  };
+}
+
+/** The bell, which opens the notification popup. */
+export function notificationsAction(unread: number): Offer {
+  return {
+    ok: true,
+    ...openPopup('notifications'),
+    on     : 'notifications',
+    label  : unread ? `🔔 ${unread}` : '🔔',
+    tooltip: unread ? `Show notifications — ${unread} unread` : 'Show notifications',
+  };
 }
 
 /**
@@ -100,7 +150,10 @@ export function controls(state: HeaderState): readonly Offer[] {
     ...viewActions(),
     runAction(state.busyWhat, state.live),
     stopAction(busyControls(state.busyWhat)),
+    ...(state.errors || state.warnings ? [problemsAction(state.errors, state.warnings)] : []),
     modeAction(state.agentMode),
     modelAction(state.model),
+    approvalsAction(state.needsApproval),
+    notificationsAction(state.unread),
   ];
 }

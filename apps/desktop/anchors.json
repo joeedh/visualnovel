@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-08T06:21:33.584Z",
-  "gitSha"       : "003c30cf66a9ee082a8f7cfca7f459f5c407b34b",
+  "sweptAt"      : "2026-09-08T08:47:44.631Z",
+  "gitSha"       : "555741e02140327f8798627e9846a73195068ed0",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -211,6 +211,10 @@
     "gengraph.estimate",
     "gengraph.run",
     "gengraph.ungroup",
+    "notify.clear",
+    "notify.deleteAll",
+    "notify.follow",
+    "notify.hide",
     "pipeline.run",
     "project.setArtStyle",
     "project.setKey",
@@ -233,6 +237,7 @@
     "story.setOutfit",
     "view.open"
   ],
+  "effects"      : ["pane.view", "popup.close", "popup.open", "tree.expand", "ui.publish"],
   "records": [
     {
       "id"    : "story.assignLineIds",
@@ -532,6 +537,46 @@
       "supplies": ["scene", "heading"]
     },
     {
+      "id"    : "ui.publish",
+      "editor": "branches",
+      "key"   : "item:scene/arrival"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "branches",
+      "key"   : "item:scene/scene_monster"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "branches",
+      "key"   : "item:scene/greet"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "branches",
+      "key"   : "item:scene/observe"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "branches",
+      "key"   : "item:scene/rooftop"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "branches",
+      "key"   : "item:scene/rooftop_2"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "branches",
+      "key"   : "item:scene/ending"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "branches",
+      "key"   : "item:scene/epilogue"
+    },
+    {
       "id"     : "story.deleteScene",
       "editor" : "branches",
       "key"    : "cmd:story.deleteScene",
@@ -614,6 +659,216 @@
       "form"  : true
     },
     {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/5f2c8cddcc9f6971b6fa7aff40dfc2ef176dcaa89da3fb89377dc039e49c9662"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/4e810d2cf8748bde65b4e30bf3d981b5ad6987b46302d16d4abb738c3fa9c507"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/c286fe3b94035a92cecac09970434d7f7b59d85572412207176b6b92498987e6"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/b1a87d2310e5f2a78747da9a6c74316d3a7ff538079b1c9067ba2543ff417d00"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/7485d74f05137fe088b4098c50cd11d2864c5b4d43dc7395608fea935329b33d"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/d2cf12482be5e81d9b47f648e29807291e17d663dd99510691e4ed335e4126af"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/cd9b0ae115ec8ce77254f7adad97102754f0d6a83b3a62e081434e85ac7f462b"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/8a88664e4a18f46eec4d2825f220a0936ac8a039ef1bcfdca664b1a20972e989"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/4fb2f68ee17e16ee84522ea6b5ed02e67380acf9728118f0d75d0966a5839ee7"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/ea9ce0dc02bfa20426d3703641cb946369f5d453212f9f90289b3ddb3d795f23"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/bd28a6275337d3377caa17e2a4a61b6a0700b11ccd9a6493fabf501008b6643a"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/d9cc0358a9047d0ba965ea5565501b3ef7b3696e78fc28bac02f262035d481bb"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/46c8a4151e3668ea8196bdf6851e0f523cbb155a46e714a9be1bec56f5baf3ed"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/2827b4cd9c2416db5c49efa8826c4063fa3b3ee1515b80713e3f7d374f528f41"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/9cc3360a2032ed375775689e66ccda198654a20bc17251dcc92441db07f0c31e"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/c0771d4d5970297d3310f3c765ff9fc9065d841579e9e3593f8927e84bf9c3cf"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/0259ab68076c0a956a3887f3f0abada70cec8e013138fbd5f85fe2f21e74c119"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/961a63ba4c3086f52838482a08a8255ac97e99c056e3f0f141cd2c581f2f9e7f"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/2a4ee3c97595129ac0f88d203bb979f09a5d40bd4c7cd8f63ea35d6154eaf862"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/0dc80a5ac326dd90d6e9643a52915a9c3a2561ce57497f2279e87b9edb87aed6"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/d7ab6909bc6bbb901f9bad49d9661b1ef902e3c7ffcf16164c95fe2df33f25e8"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/33539bcdbbe4be8f79d9b7f2f2313128c813488a20c881cfec5ed0474b275b11"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/f989f88e1b83851ba353c302ff9e05c885bfca24a59bd685a92e9ef23e05e134"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/2b3491b4996c4f412d9a4d8c9e5f0bbf0e8294661b0e45c781d9e4267957076d"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/bf622ea704fcced068a81bb0bf3d3ec5529095f77c7e126b8fcd0f36a78bae6e"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/9f0dd7eadcad013471705b79dee5cbd40e500c1ffd49099d0569c7464ad24e74"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/cc8ad9971dcdc9518fbe2d4904ee54abcb711b7bd3bec09d3ddea74eaa8ce4d0"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/bca21035b3900d5e245df7a7e7c63cac29170d24a8de44d0dce77d4d972f8574"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/2d4c759f780da71568e3ecbb7f7116bf34c9d7af268c45943ad7b0bb0263f945"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/193959764d3e7b04cf7516d0d9a4667340ee3710f55ed71ca3522546cf326f6f"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/7e6106cc292ab784c51620a8a171f966e2b7fe1111fa115ae4750a2b3a668dc7"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/8712f0b92a0f593b101f3ce1461e732bc047b7f5c2b3d1e09fa76156db652e9d"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/9e040a80d0bdae9549363647ba9a6e06a156df28ee2aa8803eece40280a42c11"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/bd084a2528e9215ca81c7afff2e41b2769382fca8f516a63e0a63468af2f0f88"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/36578b22cd1f5b8046eb63d2ced22cb7dfbf7202557f54cf37eabe2c596ae647"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/fa5849df381546b0251f6aab8039f1e7f89e05a7a2fd061fa6c0add26a58aafe"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/1c5f711615f498f093251575fbb13be069b35170011ab719d8ae4f0ab187d3e7"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/5b3a20a1b047d2e03eb8dc884cf6fb34389311cff3995810264b07c1f8d51cec"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/33643da11f55c2252abc87bb19d0b8ed1c3c20f8c4e4ba1883f6f5c787e3a904"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/949c3d141db9a7e22ff2aa46be86d6537f994a8cece614d7b71f679be27ca382"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/2377742ad9a90e22cff217781bf5e6f73c4ae53bc0c6d1f10eb04ec048a4a274"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "tasklist",
+      "key"   : "item:task/4553c7bb2ed3cc7f136081c071cfeb877d50b7b3f46b33c5c4f6883bfdfaf460"
+    },
+    {
       "id"     : "gengraph.createGroup",
       "editor" : "gengraph",
       "key"    : "cmd:gengraph.createGroup",
@@ -650,6 +905,166 @@
       "editor"  : "documents",
       "key"     : "cmd:doc.create",
       "supplies": ["kind", "name"]
+    },
+    {
+      "id"    : "tree.expand",
+      "editor": "documents",
+      "key"   : "fx:tree.expand#branch/story"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "documents",
+      "key"   : "item:scene/arrival"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "documents",
+      "key"   : "item:scene/ending"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "documents",
+      "key"   : "item:scene/epilogue"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "documents",
+      "key"   : "item:scene/greet"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "documents",
+      "key"   : "item:scene/observe"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "documents",
+      "key"   : "item:scene/rooftop"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "documents",
+      "key"   : "item:scene/rooftop_2"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "documents",
+      "key"   : "item:scene/scene_monster"
+    },
+    {
+      "id"    : "tree.expand",
+      "editor": "documents",
+      "key"   : "fx:tree.expand#branch/characters"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "documents",
+      "key"   : "item:character/aiko"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "documents",
+      "key"   : "item:character/haruki"
+    },
+    {
+      "id"    : "tree.expand",
+      "editor": "documents",
+      "key"   : "fx:tree.expand#branch/locations"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "documents",
+      "key"   : "item:location/classroom"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "documents",
+      "key"   : "item:location/high_school"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "documents",
+      "key"   : "item:location/rooftop"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "documents",
+      "key"   : "item:location/classroom_2_b"
+    },
+    {
+      "id"    : "tree.expand",
+      "editor": "documents",
+      "key"   : "fx:tree.expand#branch/wiki"
+    },
+    {
+      "id"    : "tree.expand",
+      "editor": "documents",
+      "key"   : "fx:tree.expand#wikidir/locations"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "documents",
+      "key"   : "item:wiki/world.md"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "documents",
+      "key"   : "item:branch/skills"
+    },
+    {
+      "id"    : "tree.expand",
+      "editor": "documents",
+      "key"   : "fx:tree.expand#branch/graphs"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "documents",
+      "key"   : "item:graph/portrait-haruki"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "documents",
+      "key"   : "item:graph/testgraph"
+    },
+    {
+      "id"    : "tree.expand",
+      "editor": "documents",
+      "key"   : "fx:tree.expand#branch/unapproved"
+    },
+    {
+      "id"    : "tree.expand",
+      "editor": "documents",
+      "key"   : "fx:tree.expand#branch/waiting"
+    },
+    {
+      "id"    : "tree.expand",
+      "editor": "documents",
+      "key"   : "fx:tree.expand#branch/assets"
+    },
+    {
+      "id"    : "tree.expand",
+      "editor": "documents",
+      "key"   : "fx:tree.expand#assetkind/concept"
+    },
+    {
+      "id"    : "tree.expand",
+      "editor": "documents",
+      "key"   : "fx:tree.expand#assetkind/location_ref"
+    },
+    {
+      "id"    : "tree.expand",
+      "editor": "documents",
+      "key"   : "fx:tree.expand#assetkind/model_sheet"
+    },
+    {
+      "id"    : "tree.expand",
+      "editor": "documents",
+      "key"   : "fx:tree.expand#assetkind/portrait"
+    },
+    {
+      "id"    : "tree.expand",
+      "editor": "documents",
+      "key"   : "fx:tree.expand#assetkind/shot_image"
     },
     {
       "id"     : "prompt.clear",
@@ -1022,6 +1437,387 @@
       "editor" : "report",
       "key"    : "cmd:report.open",
       "refused": "Not while this workspace is running with mock providers — a real model has to read the conversation."
+    },
+    {
+      "id"    : "notify.clear",
+      "editor": "notifications",
+      "key"   : "cmd:notify.clear"
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "notifications",
+      "key"   : "fx:pane.view#hidden"
+    },
+    {
+      "id"    : "popup.open",
+      "editor": "notifications",
+      "key"   : "fx:popup.open#filter"
+    },
+    {
+      "id"    : "notify.deleteAll",
+      "editor": "notifications",
+      "key"   : "cmd:notify.deleteAll",
+      "form"  : true
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260907-172843-67be-0015"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260907-172843-67be-0015"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260907-172843-67be-0014"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260907-172843-67be-0014"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260907-172843-67be-0013"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260907-172843-67be-0013"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260907-172843-67be-0012"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260907-172843-67be-0012"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260907-172843-67be-0011"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260907-172843-67be-0011"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260907-172843-67be-0010"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260907-172843-67be-0010"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260907-172843-67be-0009"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260907-172843-67be-0009"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260907-172843-67be-0008"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260907-172843-67be-0008"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260907-172843-67be-0007"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260907-172843-67be-0007"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260907-172843-67be-0006"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260907-172843-67be-0006"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260907-172843-67be-0005"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260907-172843-67be-0005"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260907-172843-67be-0004"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260907-172843-67be-0004"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260907-172843-67be-0003"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260907-172843-67be-0003"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260907-172843-67be-0002"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260907-172843-67be-0002"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260907-172843-67be-0001"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260907-172843-67be-0001"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260907-172843-67be-0000"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260907-172843-67be-0000"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260907-013330-0bf5-0001"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260907-013330-0bf5-0001"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260907-013330-0bf5-0000"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260907-013330-0bf5-0000"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260906-145945-7ecd-0001"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260906-145945-7ecd-0001"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260906-145945-7ecd-0000"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260906-145945-7ecd-0000"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260905-013047-5302-0087"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260905-013047-5302-0087"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260905-013047-5302-0086"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260905-013047-5302-0086"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260905-013047-5302-0085"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260905-013047-5302-0085"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260905-013047-5302-0084"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260905-013047-5302-0084"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260905-013047-5302-0083"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260905-013047-5302-0083"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260905-013047-5302-0082"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260905-013047-5302-0082"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260905-013047-5302-0081"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260905-013047-5302-0081"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260905-013047-5302-0080"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260905-013047-5302-0080"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260905-013047-5302-0079"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260905-013047-5302-0079"
+    },
+    {
+      "id"    : "notify.follow",
+      "editor": "notifications",
+      "key"   : "cmd:notify.follow#20260905-013047-5302-0078"
+    },
+    {
+      "id"    : "notify.hide",
+      "editor": "notifications",
+      "key"   : "cmd:notify.hide#20260905-013047-5302-0078"
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "notifications",
+      "key"   : "fx:pane.view"
+    },
+    {
+      "id"    : "popup.close",
+      "editor": "approvals",
+      "key"   : "fx:popup.close#011b281aee20cdec4e83ae6525d4dda83ae8fdafacedf31b6d490e9547b18c8b"
+    },
+    {
+      "id"    : "popup.close",
+      "editor": "approvals",
+      "key"   : "fx:popup.close#9b979b83f3f40a0b6678c24c29824f73f7b3454c3af70bb1f224cd029e09b0c0"
+    },
+    {
+      "id"    : "popup.close",
+      "editor": "approvals",
+      "key"   : "fx:popup.close#ecb9bbcf9145c5f6873ed496880d84da77bd886846cb6baafbd801f2643990ff"
+    },
+    {
+      "id"    : "popup.close",
+      "editor": "approvals",
+      "key"   : "fx:popup.close#6c2828f231a59a151c8cd856b370f27333d1af78ffff40f2a5d01e5d6980fa69"
+    },
+    {
+      "id"    : "popup.close",
+      "editor": "approvals",
+      "key"   : "fx:popup.close#ce00bfbc8b93c673a588bf3a2ee960d6ec17ec7980f9bae8863485b339e56491"
+    },
+    {
+      "id"    : "popup.close",
+      "editor": "approvals",
+      "key"   : "fx:popup.close#d767c3af07a5b1933c0205900bf9aab284bcd51391c3014a9b50b327c2c2d48a"
+    },
+    {
+      "id"    : "popup.close",
+      "editor": "approvals",
+      "key"   : "fx:popup.close#f202f3f3f8d11b5d461c1af135dfc6eb1eda1a2e3fec78ca7d9bf5227d6647b0"
+    },
+    {
+      "id"    : "popup.close",
+      "editor": "approvals",
+      "key"   : "fx:popup.close#09dd119889947568f797a00ae8a5d4d1bc811da6a6047fc68a2ad2785d05929a"
+    },
+    {
+      "id"    : "popup.close",
+      "editor": "approvals",
+      "key"   : "fx:popup.close#a3fa8452f484e88ddd6f814474f3b6263a6d49ad192c8eba14a5e5244381eec2"
+    },
+    {
+      "id"    : "popup.close",
+      "editor": "approvals",
+      "key"   : "fx:popup.close#6e9fbd3e4a65e6c591fa2b25444014f61da042341a165c0fd583a853773f7539"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "diagnostics",
+      "key"   : "item:scene/scene_monster"
     }
   ],
   "disagreements": [],

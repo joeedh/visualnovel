@@ -9,7 +9,7 @@
  * reference kept over a redraw is a dangling pointer — so the loop keeps the key and asks again.
  */
 import type { Anchor, AnchorRect } from '../../rules/anchors.js';
-import type { Guidance } from '../../rules/tour.js';
+import { opens, type Guidance } from '../../rules/tour.js';
 import { RING_PAD, outset, ringRect } from '../../rules/ring.js';
 import { anchorFor, landsOn, rectOf } from './anchors.js';
 import { TOKENS, alpha } from '../app/tokens.js';
@@ -148,6 +148,7 @@ function asks(shown: Guidance): string[] {
   if (shown.show === 'route')
     return [shown.say, 'Filled into the command palette — press run there.'];
   if (shown.show === 'open') return [shown.say, `Open the ${shown.editor} pane first.`];
+  if (shown.show === 'popup') return [shown.say, opens(shown.popup)];
   if (shown.show === 'blocked') return [shown.say, shown.reason];
   return [];
 }

@@ -20,6 +20,8 @@ declare global {
       tree: () => AnchorRecord[];
       /** Anchors whose ring would not land on the thing they name. A healthy screen lists none. */
       strays: () => string[];
+      /** Click the control an anchor key names, which is how the sweep opens each toolbar popup. */
+      press: (key: string) => boolean;
     };
     /** Which tour is running, which step it is on, and what the overlay is ringing. Read over CDP. */
     __vnTour?: () => { tour: string; at: number; step: string; ring?: string } | null;

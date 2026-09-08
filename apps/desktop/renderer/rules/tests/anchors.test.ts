@@ -6,6 +6,7 @@ import {
   itemKey,
   keyOf,
   mapOf,
+  openerKey,
   resolveAnchor,
   resolveItem,
   resolveSubject,
@@ -279,6 +280,46 @@ describe('resolveAnchor', () => {
 
   it('says absent when the pane is open and the control was not drawn', () => {
     expect(resolveAnchor(map, live([]), step)).toEqual({ state: 'absent' });
+  });
+
+  describe('a control in a toolbar popup', () => {
+    const bell: AnchorMap = { editorsFor: { 'notify.clear': ['notifications'] } };
+    const clear = { id: 'notify.clear', props: {} };
+    const opener = anchor({
+      key   : openerKey('notifications'),
+      id    : 'popup.open',
+      props : { popup: 'notifications' },
+      editor: HEADER,
+    });
+
+    it('names the popup, and the toolbar control that opens it when that is drawn', () => {
+      expect(resolveAnchor(bell, live([opener], { open: [] }), clear)).toEqual({
+        state: 'popup-closed',
+        popup: 'notifications',
+        opener,
+      });
+      expect(resolveAnchor(bell, live([], { open: [] }), clear)).toEqual({
+        state: 'popup-closed',
+        popup: 'notifications',
+      });
+    });
+
+    it('is absent, not popup-closed, while the popup is open and the row is not drawn', () => {
+      expect(resolveAnchor(bell, live([opener], { open: ['notifications'] }), clear)).toEqual({
+        state: 'absent',
+      });
+    });
+
+    it('names a closed pane before a closed popup', () => {
+      const both: AnchorMap = {
+        editorsFor: { 'view.open': ['approvals', 'tasklist' as EditorId] },
+      };
+      const open = { id: 'view.open', props: {} };
+      expect(resolveAnchor(both, live([], { open: [] }), open)).toEqual({
+        state : 'pane-closed',
+        editor: 'tasklist',
+      });
+    });
   });
 
   it('says unanchored when no editor anchors the command at all', () => {

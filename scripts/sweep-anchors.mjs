@@ -66,6 +66,9 @@ const editors =
   catalog.commands.find((c) => c.id === 'view.open')?.props.find((p) => p.name === 'editor')
     ?.values ?? [];
 
+/** The toolbar popups that are anchor homes: the same list as `POPUP_HOMES` in `shared/editors.ts`. */
+const POPUP_HOMES = ['notifications', 'approvals', 'diagnostics'];
+
 /** Whether the anchor omits a prop its command requires. */
 function leavesBlank(anchor) {
   const props = catalog.commands.find((c) => c.id === anchor.id)?.props ?? [];
@@ -147,11 +150,8 @@ const selected = { scene: await select('scene'), shot: '' };
 await sleep(SETTLE_MS);
 selected.shot = await select('shot');
 
-for (const editor of editors) {
-  const subject = subjectFor[editor] ?? '';
-  const where = subject ? ` subject=${JSON.stringify(subject)}` : '';
-  await run(`view.open(editor='${editor}' where='here'${where})`);
-  await sleep(SETTLE_MS);
+/** Record every anchor one home draws right now, and ask the stack about each command. */
+async function sweepHome(editor) {
   const dump = JSON.parse(await evaluate(socket, 'JSON.stringify(window.__vnAnchors.dump())'));
   const mine = dump.filter((a) => a.editor === editor);
   const items = mine.filter((a) => a.id === 'ui.publish').length;
@@ -163,8 +163,10 @@ for (const editor of editors) {
 
   // The second oracle. A box being where it says proves nothing about what a click there reaches:
   // a graph's node layer takes no pointer events, and a widget can be covered. The canvas's own
-  // `pick()` answers for one, a shadow-piercing hit test for the other.
-  strays.push(...JSON.parse(await evaluate(socket, 'JSON.stringify(window.__vnAnchors.strays())')));
+  // `pick()` answers for one, a shadow-piercing hit test for the other. Only this home's anchors
+  // count, since an open popup covers whatever pane is under it by design.
+  const strayed = JSON.parse(await evaluate(socket, 'JSON.stringify(window.__vnAnchors.strays())'));
+  strays.push(...strayed.filter((stray) => stray.startsWith(`${editor} `)));
 
   for (const anchor of mine) {
     records.push({
@@ -216,6 +218,30 @@ for (const editor of editors) {
   }
 }
 
+for (const editor of editors) {
+  const subject = subjectFor[editor] ?? '';
+  const where = subject ? ` subject=${JSON.stringify(subject)}` : '';
+  await run(`view.open(editor='${editor}' where='here'${where})`);
+  await sleep(SETTLE_MS);
+  await sweepHome(editor);
+}
+
+// The toolbar's popups, each opened by pressing the toolbar control that opens it, which is the
+// control a `popup-closed` answer rings. Pressing it again closes the popup, since each toggles.
+const unopened = [];
+for (const popup of POPUP_HOMES) {
+  const opener = JSON.stringify(`fx:popup.open#${popup}`);
+  const opened = await evaluate(socket, `window.__vnAnchors.press(${opener})`);
+  if (!opened) {
+    unopened.push(popup);
+    continue;
+  }
+  await sleep(SETTLE_MS);
+  await sweepHome(popup);
+  await evaluate(socket, `window.__vnAnchors.press(${opener})`);
+  await sleep(SETTLE_MS / 2);
+}
+
 const named = [...new Set(records.map((r) => r.id))].sort();
 const anchored = named.filter((id) => !effectIds.has(id));
 const effects = named.filter((id) => effectIds.has(id));
@@ -259,6 +285,13 @@ process.stdout.write(
     `the rest are palette-only. ${effects.length} of ${effectIds.size} effects are drawn. ` +
     `Measured against ${under.project || '(no project)'}\n`,
 );
+for (const popup of unopened) {
+  // The problem count is drawn only while validation found something, so a clean project has
+  // no control to press
+  process.stdout.write(
+    `  ${popup}: the toolbar draws no control that opens it, so it was not swept\n`,
+  );
+}
 for (const { editor, count, items, undrawn } of drawn) {
   if (count === 0) {
     const item = items > 0 ? ` (${items} subjects to click, and no command)` : '';

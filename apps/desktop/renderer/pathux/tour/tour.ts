@@ -18,6 +18,7 @@ import { ANCHOR_MAP, SWEPT } from '../../rules/anchormap.js';
 import { askedAs, checkFor } from '../../rules/precheck.js';
 import {
   guide,
+  opens,
   satisfies,
   start,
   stepOf,
@@ -249,6 +250,7 @@ function explain(): void {
     return say(`${shown.say} No pane drew it when the map was swept, ${swept}.`);
   }
   if (shown.show === 'open') return say(`${shown.say} Open the ${shown.editor} pane first.`);
+  if (shown.show === 'popup') return say(`${shown.say} ${opens(shown.popup)}`);
   if (shown.show === 'pick') return say(`${shown.say} ${shown.first}`);
   if (shown.show === 'blocked') return say(`${shown.say} — ${shown.reason}`, true);
   say(shown.say);

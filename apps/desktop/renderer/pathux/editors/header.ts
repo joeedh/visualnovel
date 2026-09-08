@@ -20,8 +20,11 @@ import type { PropValue } from '../../../src/shared/ipc.js';
 import { busyControls, type BusyControls } from '../../rules/busy.js';
 import { HEADER } from '../../rules/anchors.js';
 import {
+  approvalsAction,
   modeAction,
   modelAction,
+  notificationsAction,
+  problemsAction,
   runAction,
   stopAction,
   viewActions,
@@ -311,19 +314,13 @@ export class VnHeaderEditor extends VnEditor {
     redo.description = ui.redoLabel ? `Redo ${ui.redoLabel}` : 'Nothing to redo';
     redo.disabled = !ui.canRedo;
 
-    // Errors displace warnings: one count, showing the more severe kind. A button rather than a
-    // label, because a count the author cannot click to list is a number they cannot act on.
-    const shown = ui.errors || ui.warnings;
-    if (shown > 0) {
-      const kind = ui.errors ? 'error' : 'warning';
-      const problems = this.bar.button(`${shown} ${kind}${shown === 1 ? '' : 's'}`, () =>
-        openDiagnostics(),
+    if (ui.errors || ui.warnings) {
+      const problems = problemsAction(ui.errors, ui.warnings);
+      this.anchors.act(
+        this.bar.button(problems.label, () => {}),
+        problems,
+        () => openDiagnostics(),
       );
-      problems.description =
-        ui.errors && ui.warnings
-          ? `List them — ${ui.errors} error${ui.errors === 1 ? '' : 's'} and ` +
-            `${ui.warnings} warning${ui.warnings === 1 ? '' : 's'} in this project`
-          : 'List what validation says is wrong with this project';
     }
 
     this.modelMenu();
@@ -344,19 +341,19 @@ export class VnHeaderEditor extends VnEditor {
 
     // The rect is read inside the callback, not here. The bar is still being built at this point
     // and the button has not been laid out yet, so a rect taken now would be the zero one.
-    const waiting = this.bar.button(ui.needsApproval ? `🎨 ${ui.needsApproval}` : '🎨', () =>
-      openApprovals(rectOf(waiting)),
+    const approvals = approvalsAction(ui.needsApproval);
+    const waiting = this.anchors.act(
+      this.bar.button(approvals.label, () => {}),
+      approvals,
+      () => openApprovals(rectOf(waiting)),
     );
-    waiting.description = ui.needsApproval
-      ? `Show the art waiting on approval — ${ui.needsApproval}`
-      : 'No art is waiting on approval';
 
-    const bell = this.bar.button(ui.unread ? `🔔 ${ui.unread}` : '🔔', () =>
-      openNotifications(rectOf(bell)),
+    const notes = notificationsAction(ui.unread);
+    const bell = this.anchors.act(
+      this.bar.button(notes.label, () => {}),
+      notes,
+      () => openNotifications(rectOf(bell)),
     );
-    bell.description = ui.unread
-      ? `Show notifications — ${ui.unread} unread`
-      : 'Show notifications';
 
     this.bar.flushUpdate();
   }

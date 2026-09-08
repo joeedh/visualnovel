@@ -5,7 +5,9 @@
  *
  * Nothing here writes. Validation re-derives the whole diagnostic list on every index, so there is
  * no dismiss, no acknowledge and no filter to persist: a diagnostic clears when what it is about is
- * fixed, and it is gone on the next read.
+ * fixed, and it is gone on the next read. What a row does is `rules/diagnostics.ts`; the rows are
+ * drawn through `act()` under a pass of the `diagnostics` anchor home, which is open while the
+ * list is up.
  */
 import { UIBase, type Container } from 'pathux';
 import type { Diagnostic } from '@vn/types';
@@ -14,11 +16,15 @@ import {
   diagnosticSummary,
   orderDiagnostics,
 } from '../../../src/shared/diagnostics.js';
+import { popupClose } from '../../../src/shared/effects.js';
 import { api } from '../../api.js';
-import { diagnosticScene } from '../../rules/diagnostics.js';
-import { shell } from '../app/bridge.js';
-import { openNode } from '../panes/open.js';
+import { diagnosticScene, rowAction, rowText } from '../../rules/diagnostics.js';
+import { exec, shell } from '../app/bridge.js';
+import { visibleEditors } from '../panes/route.js';
+import { panesOf } from '../panes/view.js';
 import type { VnScreen } from '../app/screen.js';
+import { onPopupClosed } from './popup.js';
+import { popupClosed, popupOpened, redrawing, type AnchorPass } from '../tour/anchors.js';
 
 /** What `Screen.popup` hands back: a container that also knows how to dismiss itself. */
 type Popup = Container & { end(): void };
@@ -34,20 +40,23 @@ class DiagnosticList {
   /** Scene ids, so a row can tell whether its `where` names a scene the author can be taken to. */
   private scenes: string[] = [];
   private read = false;
+  private pass: AnchorPass = redrawing('diagnostics', 'list');
 
   constructor() {
     const screen = shell().screen;
     if (!screen) throw new Error('no screen to hang the diagnostics on');
+    popupOpened('diagnostics');
 
     const x = Math.max(8, Math.round((screen.size[0] - WIDTH) / 2));
     this.popup = screen.popup(screen as unknown as UIBase, x, 40, false) as Popup;
     this.popup.style['width'] = `${WIDTH}px`;
 
-    const end = this.popup.end.bind(this.popup);
-    this.popup.end = () => {
+    // Escape and a click outside never reach `close`, so the singleton is cleared when the popup
+    // is removed rather than when it is dismissed.
+    onPopupClosed(this.popup, () => {
       list = undefined;
-      end();
-    };
+      popupClosed('diagnostics');
+    });
 
     this.body = this.popup.col();
     this.render();
@@ -73,6 +82,7 @@ class DiagnosticList {
 
   private render(): void {
     this.body.clear();
+    this.pass = redrawing('diagnostics', 'list');
 
     const head = this.body.row();
     head.label('PROBLEMS');
@@ -103,9 +113,7 @@ class DiagnosticList {
     // A flex child shrinks before its parent scrolls, so a row without this is squeezed instead of
     // scrolled — the same fix the notification list needed
     row.style['flexShrink'] = '0';
-    const mark = diagnostic.severity === 'error' ? '●' : '○';
-    const where = diagnostic.where ? ` (${diagnostic.where})` : '';
-    const text = `${mark} ${diagnostic.message}${where}`;
+    const text = rowText(diagnostic);
 
     const scene = diagnosticScene(diagnostic, this.scenes);
     if (scene === null) {
@@ -113,24 +121,35 @@ class DiagnosticList {
       return;
     }
 
-    const open = row.button(text, () => {
-      this.goto(scene);
-    });
-    open.description = `${diagnosticDetail(diagnostic)} · click to open ${scene}`;
+    const offer = rowAction(diagnostic, scene, this.visible());
+    this.pass.act(
+      row.button(text, () => {}),
+      offer,
+      () => this.goto(diagnostic, scene),
+    );
   }
 
-  /** Show the scene a row is about, then close the popup. */
-  private goto(scene: string): void {
+  /** The editors some pane is showing, which decides whether the scene opens here or elsewhere. */
+  private visible(): ReturnType<typeof visibleEditors> {
+    const screen = shell().screen as VnScreen | undefined;
+    return visibleEditors(screen ? panesOf(screen) : []);
+  }
+
+  /**
+   * Show the scene a row is about, then close the popup. The offer is read again here rather than
+   * kept from the draw, because a pane opened since then changes where the scene goes.
+   */
+  private goto(diagnostic: Diagnostic, scene: string): void {
+    const offer = rowAction(diagnostic, scene, this.visible());
+    if (!offer.ok) return;
     const ui = shell().ui;
-    ui.sceneId = scene;
+    ui.sceneId = String(offer.props['sceneId'] ?? '');
     ui.shotId = '';
     shell().api.notifyChange();
-    openNode(shell().screen as VnScreen | undefined, {
-      id   : `scene:${scene}`,
-      kind : 'scene',
-      label: scene,
-    });
-    this.close();
+    for (const next of offer.then ?? []) {
+      if (next.id === popupClose.id) this.close();
+      else void exec(next.id, next.props);
+    }
   }
 }
 

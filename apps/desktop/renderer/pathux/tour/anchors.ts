@@ -12,8 +12,9 @@
  */
 import { composeTooltip } from 'pathux';
 import type { PropValue } from '../../../src/shared/ipc.js';
+import type { PopupHome } from '../../../src/shared/editors.js';
 import { menuAnchors } from '../doctree/doctree.js';
-import { hitFor } from '../interactions/hittest.js';
+import { hitFor, up } from '../interactions/hittest.js';
 import { centreOf } from '../../rules/ring.js';
 import {
   HEADER,
@@ -42,6 +43,23 @@ interface Pass {
 let generation = 0;
 
 const passes = new Map<string, Pass>();
+
+/** The toolbar popups up right now. Each is an anchor home only while it is open. */
+const openPopups = new Set<PopupHome>();
+
+/** A toolbar popup came up, so its passes count and a step on one of its controls can ring. */
+export function popupOpened(popup: PopupHome): void {
+  openPopups.add(popup);
+}
+
+/**
+ * A toolbar popup went away, by whichever route. Its passes go with it, so a step on one of its
+ * controls resolves `popup-closed` and rings the opener instead of a widget no longer drawn.
+ */
+export function popupClosed(popup: PopupHome): void {
+  openPopups.delete(popup);
+  for (const [id, pass] of passes) if (pass.editor === popup) passes.delete(id);
+}
 
 /**
  * Record one editor's anchors again from scratch.
@@ -169,28 +187,52 @@ function drawn(anchor: Anchor): boolean {
  *
  * An editor no pane shows keeps its records — path.ux detaches an area on a tab switch and does
  * not redraw it on the way back — so they are dropped here rather than on the way out. Without
- * that, a step would resolve onto a widget that is no longer in the document.
+ * that, a step would resolve onto a widget that is no longer in the document. A toolbar popup is
+ * open while it is up and has no records once it is not, so it is in the set on its own say-so.
  */
 export function anchorSnapshot(open: readonly AnchorHome[]): LiveAnchors {
-  const shown: readonly AnchorHome[] = [...open, HEADER];
+  const shown: readonly AnchorHome[] = [...open, HEADER, ...openPopups];
   const anchors = liveAnchors().filter((anchor) => shown.includes(anchor.editor));
   return { anchors, open: shown, offscreen: anchors.filter(hidden).map((anchor) => anchor.key) };
 }
 
 /**
- * Whether an anchor has scrolled out of the window. Anything that is not drawn at all has already
- * been dropped by {@link drawn}. A pane's own clip is not consulted: a rect inside the window but
- * under another pane is a stacking question, and the pick oracle is what answers that.
+ * Whether an anchor has scrolled out of the window, or its middle out of a scrolling ancestor such
+ * as a popup's list. Anything that is not drawn at all has already been dropped by {@link drawn}.
+ * A pane's own clip is not consulted: a rect inside the window but under another pane is a
+ * stacking question, and the pick oracle is what answers that.
  */
 function hidden(anchor: Anchor): boolean {
   const rect = rectOf(anchor);
   if (!rect) return true;
-  return (
+  if (
     rect.bottom <= 0 ||
     rect.right <= 0 ||
     rect.top >= window.innerHeight ||
     rect.left >= window.innerWidth
-  );
+  ) {
+    return true;
+  }
+  const node = anchor.via.kind === 'dom' ? anchor.via.node : undefined;
+  if (typeof Node === 'undefined' || !(node instanceof Node)) return false;
+  return scrolledOut(node, centreOf(rect));
+}
+
+/**
+ * Whether a scrolling ancestor of a node clips the point, which is where a click or a ring would
+ * go. Ascends through shadow roots, since a popup's list is several roots above its rows.
+ */
+function scrolledOut(node: Node, point: { x: number; y: number }): boolean {
+  for (let parent = up(node); parent; parent = up(parent)) {
+    if (!(parent instanceof Element) || parent.scrollHeight <= parent.clientHeight) continue;
+    const overflow = getComputedStyle(parent).overflowY;
+    if (overflow !== 'auto' && overflow !== 'scroll') continue;
+    const box = parent.getBoundingClientRect();
+    if (point.y < box.top || point.y >= box.bottom || point.x < box.left || point.x >= box.right) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** Where the ring goes. A `pick` anchor carries its own rect, since its geometry is the layout's. */
@@ -271,10 +313,10 @@ export function pickOracle(editor: AnchorHome, oracle: PickOracle): void {
 export function landsOn(anchor: Anchor): { ok: boolean; hit?: AnchorRect } {
   const rect = rectOf(anchor);
   if (!anchor.enabled || !rect) return { ok: true };
+  // An anchor scrolled out of the window or out of its list has no hit test to give. That is the
+  // offscreen case, which {@link hidden} reports and the overlay answers by scrolling.
+  if (hidden(anchor)) return { ok: true };
   const { x, y } = centreOf(rect);
-  // A point outside the window has no hit test to give. That is the offscreen case, which
-  // {@link hidden} already reports and the overlay answers by scrolling rather than by warning.
-  if (x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight) return { ok: true };
   if (anchor.via.kind === 'pick') {
     const oracle = oracles.get(anchor.editor);
     return { ok: oracle ? oracle(anchor.via.nodeId, x, y) : true };
@@ -295,11 +337,25 @@ export function strayAnchors(): string[] {
     .map((anchor) => `${anchor.editor} ${anchor.key}`);
 }
 
+/**
+ * Click the control an anchor names, as the sweep does to open each toolbar popup. Answers whether
+ * the key named something drawn; a `pick` anchor's box takes no pointer events and is not pressed.
+ */
+export function press(key: string): boolean {
+  const anchor = anchorFor(key);
+  if (!anchor || anchor.via.kind !== 'dom') return false;
+  const node = anchor.via.node as { click?: () => void };
+  if (typeof node.click !== 'function') return false;
+  node.click();
+  return true;
+}
+
 export function installAnchors(): void {
   window.__vnAnchors = {
     generation: () => generation,
     dump      : dumpAnchors,
     tree      : menuAnchors,
     strays    : strayAnchors,
+    press,
   };
 }

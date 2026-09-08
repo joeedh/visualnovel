@@ -8,7 +8,8 @@
  *
  * Approving is not done from here. A row opens the Asset editor, which is where an author sees
  * the picture before deciding, and the decision leaves as `asset.accept` or `gate.approve` like
- * every other mutation.
+ * every other mutation. What a row does is `rules/approvals.ts`; the rows are drawn through
+ * `act()` under a pass of the `approvals` anchor home, which is open while the list is up.
  */
 import { UIBase, type Container } from 'pathux';
 import type { Approvable } from '@vn/authoring';
@@ -16,6 +17,8 @@ import { api } from '../../api.js';
 import { exec, shell } from '../app/bridge.js';
 import { paragraph } from '../widgets/paragraph.js';
 import { INSET, onPopupClosed, placeUnder, stylePopup, type Anchor } from './popup.js';
+import { rowAction } from '../../rules/approvals.js';
+import { popupClosed, popupOpened, redrawing, type AnchorPass } from '../tour/anchors.js';
 
 /** What `Screen.popup` hands back: a container that also knows how to dismiss itself. */
 type Popup = Container & { end(): void };
@@ -54,10 +57,12 @@ export function approvalsChanged(): void {
 class ApprovalList {
   private readonly popup: Popup;
   private readonly body: Container;
+  private pass: AnchorPass = redrawing('approvals', 'list');
 
   constructor(anchor?: Anchor) {
     const screen = shell().screen;
     if (!screen) throw new Error('no screen to hang the approvals on');
+    popupOpened('approvals');
 
     const [x, y] = placeUnder(screen.size[0], anchor, 40, WIDTH);
     this.popup = screen.popup(screen as unknown as UIBase, x, y, false) as Popup;
@@ -67,6 +72,7 @@ class ApprovalList {
     // is removed rather than when it is dismissed.
     onPopupClosed(this.popup, () => {
       list = undefined;
+      popupClosed('approvals');
     });
 
     this.body = this.popup.col();
@@ -80,6 +86,7 @@ class ApprovalList {
 
   render(): void {
     this.body.clear();
+    this.pass = redrawing('approvals', 'list');
 
     const head = this.body.row();
     head.style['flexShrink'] = '0';
@@ -112,14 +119,15 @@ class ApprovalList {
     row.style['flexShrink'] = '0';
     if (ruled) row.style['borderTop'] = '1px solid var(--ink-line, #232a35)';
 
-    const open = paragraph(row, `[${item.kind}] ${item.label} — ${item.slot}`, PROSE);
-    open.description = item.blocked ?? `Open ${item.label} in the Asset editor.`;
+    const offer = rowAction(item);
+    const open = paragraph(row, offer.label, PROSE);
     open.style['flexGrow'] = '1';
     open.dom.style.cursor = 'pointer';
     open.dom.style.padding = '4px 0';
-    open.addEventListener('click', () => {
+    // The click is the offer's own list: the close, then the open it names.
+    this.pass.act(open, offer, () => {
       this.close();
-      void exec('view.open', { editor: 'asset', where: 'elsewhere', subject: item.hash });
+      if (offer.ok) for (const next of offer.then ?? []) void exec(next.id, next.props);
     });
 
     for (const note of notesFor(item)) {

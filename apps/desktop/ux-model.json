@@ -31,6 +31,72 @@
       "why": "An agent turn is in flight, which the header cannot stop, so Run and Stop are both refused."
     },
     {
+      "module": "headerbar",
+      "editor": "header",
+      "name"  : "counts",
+      "why": "Validation found errors and warnings, art is waiting and notifications are unread, so the three popup openers carry counts and the problem button is drawn."
+    },
+    {
+      "module": "headerbar",
+      "editor": "header",
+      "name"  : "warnings",
+      "why"   : "Only warnings were found, so the problem button counts those."
+    },
+    {
+      "module": "notifications",
+      "editor": "notifications",
+      "name"  : "empty",
+      "why": "Nothing has happened yet, so Clear is refused and only the header’s controls are drawn."
+    },
+    {
+      "module": "notifications",
+      "editor": "notifications",
+      "name"  : "rows",
+      "why": "Three rows are drawn: two offer follow and ×, and the one ×’d in this popup offers Undo instead."
+    },
+    {
+      "module": "notifications",
+      "editor": "notifications",
+      "name"  : "paged",
+      "why"   : "The log runs past one page, so the button that draws the next page is offered."
+    },
+    {
+      "module": "notifications",
+      "editor": "notifications",
+      "name"  : "filtering",
+      "why": "The category filter is up with two categories on, so each category’s tick and Clear filters are drawn beside the list."
+    },
+    {
+      "module": "approvals",
+      "editor": "approvals",
+      "name"  : "empty",
+      "why"   : "Nothing needs approval, so no row is drawn."
+    },
+    {
+      "module": "approvals",
+      "editor": "approvals",
+      "name"  : "waiting",
+      "why": "Three pictures wait: a plate, a portrait blocked upstream, and a shot whose slot is already settled; each row opens its picture."
+    },
+    {
+      "module": "diagnostics",
+      "editor": "diagnostics",
+      "name"  : "clean",
+      "why"   : "Nothing is wrong with the project, so no row is drawn."
+    },
+    {
+      "module": "diagnostics",
+      "editor": "diagnostics",
+      "name"  : "problems",
+      "why": "Of three diagnostics only the one about a listed scene is a row; it opens Script elsewhere, since only the tree is up."
+    },
+    {
+      "module": "diagnostics",
+      "editor": "diagnostics",
+      "name"  : "problems-script-up",
+      "why"   : "Script is up, so the scene row opens it here."
+    },
+    {
       "module": "assetview",
       "editor": "asset",
       "name"  : "nothing",
@@ -582,6 +648,56 @@
       "via"      : "control",
       "editor"   : "header",
       "module"   : "headerbar",
+      "situation": "idle",
+      "key"      : "fx:popup.open#approvals",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "🎨",
+        "tooltip": "No art is waiting on approval",
+        "on"     : "approvals",
+        "ok"     : true,
+        "props": {
+          "popup": "approvals"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "approvals"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "idle",
+      "key"      : "fx:popup.open#notifications",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "🔔",
+        "tooltip": "Show notifications",
+        "on"     : "notifications",
+        "ok"     : true,
+        "props": {
+          "popup": "notifications"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "notifications"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
       "situation": "preview",
       "key"      : "cmd:view.open",
       "offer": {
@@ -707,6 +823,56 @@
         {
           "id"   : "agent.setModel",
           "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "preview",
+      "key"      : "fx:popup.open#approvals",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "🎨",
+        "tooltip": "No art is waiting on approval",
+        "on"     : "approvals",
+        "ok"     : true,
+        "props": {
+          "popup": "approvals"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "approvals"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "preview",
+      "key"      : "fx:popup.open#notifications",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "🔔",
+        "tooltip": "Show notifications",
+        "on"     : "notifications",
+        "ok"     : true,
+        "props": {
+          "popup": "notifications"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "notifications"
+          }
         }
       ]
     },
@@ -842,6 +1008,56 @@
       "via"      : "control",
       "editor"   : "header",
       "module"   : "headerbar",
+      "situation": "running",
+      "key"      : "fx:popup.open#approvals",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "🎨",
+        "tooltip": "No art is waiting on approval",
+        "on"     : "approvals",
+        "ok"     : true,
+        "props": {
+          "popup": "approvals"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "approvals"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "running",
+      "key"      : "fx:popup.open#notifications",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "🔔",
+        "tooltip": "Show notifications",
+        "on"     : "notifications",
+        "ok"     : true,
+        "props": {
+          "popup": "notifications"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "notifications"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
       "situation": "reporting",
       "key"      : "cmd:view.open",
       "offer": {
@@ -963,6 +1179,56 @@
         {
           "id"   : "agent.setModel",
           "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "reporting",
+      "key"      : "fx:popup.open#approvals",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "🎨",
+        "tooltip": "No art is waiting on approval",
+        "on"     : "approvals",
+        "ok"     : true,
+        "props": {
+          "popup": "approvals"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "approvals"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "reporting",
+      "key"      : "fx:popup.open#notifications",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "🔔",
+        "tooltip": "Show notifications",
+        "on"     : "notifications",
+        "ok"     : true,
+        "props": {
+          "popup": "notifications"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "notifications"
+          }
         }
       ]
     },
@@ -1092,6 +1358,3078 @@
         {
           "id"   : "agent.setModel",
           "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "agent-turn",
+      "key"      : "fx:popup.open#approvals",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "🎨",
+        "tooltip": "No art is waiting on approval",
+        "on"     : "approvals",
+        "ok"     : true,
+        "props": {
+          "popup": "approvals"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "approvals"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "agent-turn",
+      "key"      : "fx:popup.open#notifications",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "🔔",
+        "tooltip": "Show notifications",
+        "on"     : "notifications",
+        "ok"     : true,
+        "props": {
+          "popup": "notifications"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "notifications"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "counts",
+      "key"      : "cmd:view.open",
+      "offer": {
+        "id"      : "view.open",
+        "label"   : "View",
+        "tooltip" : "Split and close panes, and switch between the saved window layouts.",
+        "supplies": ["editor"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "counts",
+      "key"      : "cmd:view.applyLayout",
+      "offer": {
+        "id"      : "view.applyLayout",
+        "label"   : "View",
+        "tooltip" : "Split and close panes, and switch between the saved window layouts.",
+        "supplies": ["name"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "view.applyLayout",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "counts",
+      "key"      : "cmd:pipeline.run",
+      "offer": {
+        "id"     : "pipeline.run",
+        "label"  : "▶ Run",
+        "tooltip": "Plan and render everything that is ready, to the next gate",
+        "ok"     : true,
+        "props": {
+          "mock": false
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pipeline.run",
+          "props": {
+            "mock": false
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "counts",
+      "key"      : "cmd:pipeline.stop",
+      "offer": {
+        "id"     : "pipeline.stop",
+        "label"  : "■",
+        "tooltip": "Stop the work in progress after the step it is on",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing is running."
+        }
+      },
+      "effects": [
+        {
+          "id": "pipeline.stop"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "counts",
+      "key"      : "fx:popup.open#diagnostics",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "2 errors",
+        "tooltip": "List them — 2 errors and 1 warning in this project",
+        "on"     : "diagnostics",
+        "ok"     : true,
+        "props": {
+          "popup": "diagnostics"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "diagnostics"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "counts",
+      "key"      : "cmd:agent.setMode",
+      "offer": {
+        "id"     : "agent.setMode",
+        "label"  : "PLAN",
+        "tooltip": "Plan mode: the agent reads but never writes. Click to let it apply edits.",
+        "ok"     : true,
+        "props": {
+          "mode": "execute"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setMode",
+          "props": {
+            "mode": "execute"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "counts",
+      "key"      : "cmd:agent.setModel",
+      "offer": {
+        "id"      : "agent.setModel",
+        "label"   : "claude-opus-5",
+        "tooltip" : "Which model the agent answers with. Switching takes effect next turn.",
+        "supplies": ["modelId"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "agent.setModel",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "counts",
+      "key"      : "fx:popup.open#approvals",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "🎨 3",
+        "tooltip": "Show the art waiting on approval — 3",
+        "on"     : "approvals",
+        "ok"     : true,
+        "props": {
+          "popup": "approvals"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "approvals"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "counts",
+      "key"      : "fx:popup.open#notifications",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "🔔 5",
+        "tooltip": "Show notifications — 5 unread",
+        "on"     : "notifications",
+        "ok"     : true,
+        "props": {
+          "popup": "notifications"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "notifications"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "warnings",
+      "key"      : "cmd:view.open",
+      "offer": {
+        "id"      : "view.open",
+        "label"   : "View",
+        "tooltip" : "Split and close panes, and switch between the saved window layouts.",
+        "supplies": ["editor"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "warnings",
+      "key"      : "cmd:view.applyLayout",
+      "offer": {
+        "id"      : "view.applyLayout",
+        "label"   : "View",
+        "tooltip" : "Split and close panes, and switch between the saved window layouts.",
+        "supplies": ["name"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "view.applyLayout",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "warnings",
+      "key"      : "cmd:pipeline.run",
+      "offer": {
+        "id"     : "pipeline.run",
+        "label"  : "▶ Run",
+        "tooltip": "Plan and render everything that is ready, to the next gate",
+        "ok"     : true,
+        "props": {
+          "mock": false
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pipeline.run",
+          "props": {
+            "mock": false
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "warnings",
+      "key"      : "cmd:pipeline.stop",
+      "offer": {
+        "id"     : "pipeline.stop",
+        "label"  : "■",
+        "tooltip": "Stop the work in progress after the step it is on",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing is running."
+        }
+      },
+      "effects": [
+        {
+          "id": "pipeline.stop"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "warnings",
+      "key"      : "fx:popup.open#diagnostics",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "2 warnings",
+        "tooltip": "List what validation says is wrong with this project",
+        "on"     : "diagnostics",
+        "ok"     : true,
+        "props": {
+          "popup": "diagnostics"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "diagnostics"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "warnings",
+      "key"      : "cmd:agent.setMode",
+      "offer": {
+        "id"     : "agent.setMode",
+        "label"  : "PLAN",
+        "tooltip": "Plan mode: the agent reads but never writes. Click to let it apply edits.",
+        "ok"     : true,
+        "props": {
+          "mode": "execute"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setMode",
+          "props": {
+            "mode": "execute"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "warnings",
+      "key"      : "cmd:agent.setModel",
+      "offer": {
+        "id"      : "agent.setModel",
+        "label"   : "claude-opus-5",
+        "tooltip" : "Which model the agent answers with. Switching takes effect next turn.",
+        "supplies": ["modelId"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "agent.setModel",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "warnings",
+      "key"      : "fx:popup.open#approvals",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "🎨",
+        "tooltip": "No art is waiting on approval",
+        "on"     : "approvals",
+        "ok"     : true,
+        "props": {
+          "popup": "approvals"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "approvals"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "warnings",
+      "key"      : "fx:popup.open#notifications",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "🔔",
+        "tooltip": "Show notifications",
+        "on"     : "notifications",
+        "ok"     : true,
+        "props": {
+          "popup": "notifications"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "notifications"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "empty",
+      "key"      : "cmd:notify.clear",
+      "offer": {
+        "id"     : "notify.clear",
+        "label"  : "Clear",
+        "tooltip": "Archive everything this list is showing. Nothing is deleted.",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing is showing that could be archived."
+        }
+      },
+      "effects": [
+        {
+          "id": "notify.clear"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "empty",
+      "key"      : "fx:pane.view#hidden",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "show deleted",
+        "tooltip": "Include the notifications archived by × or by Clear.",
+        "on"     : "hidden",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "empty",
+      "key"      : "fx:popup.open#filter",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "Filter",
+        "tooltip": "Choose which kinds of notification this list shows.",
+        "on"     : "filter",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "empty",
+      "key"      : "cmd:notify.deleteAll",
+      "offer": {
+        "id"     : "notify.deleteAll",
+        "label"  : "⋯",
+        "tooltip": "Erase the whole log from disk, after a confirmation. This cannot be undone.",
+        "form"   : true,
+        "ok"     : true,
+        "props"  : {}
+      },
+      "effects": [
+        {
+          "id"   : "notify.deleteAll",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "rows",
+      "key"      : "cmd:notify.clear",
+      "offer": {
+        "id"     : "notify.clear",
+        "label"  : "Clear",
+        "tooltip": "Archive everything this list is showing. Nothing is deleted.",
+        "ok"     : true,
+        "props": {
+          "ids": ["n1", "n2"]
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.clear",
+          "props": {
+            "ids": ["n1", "n2"]
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "rows",
+      "key"      : "fx:pane.view#hidden",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "show deleted",
+        "tooltip": "Include the notifications archived by × or by Clear.",
+        "on"     : "hidden",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "rows",
+      "key"      : "fx:popup.open#filter",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "Filter",
+        "tooltip": "Choose which kinds of notification this list shows.",
+        "on"     : "filter",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "rows",
+      "key"      : "cmd:notify.deleteAll",
+      "offer": {
+        "id"     : "notify.deleteAll",
+        "label"  : "⋯",
+        "tooltip": "Erase the whole log from disk, after a confirmation. This cannot be undone.",
+        "form"   : true,
+        "ok"     : true,
+        "props"  : {}
+      },
+      "effects": [
+        {
+          "id"   : "notify.deleteAll",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "rows",
+      "key"      : "cmd:notify.follow#n1",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n1)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n1",
+        "ok"     : true,
+        "props": {
+          "id": "n1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "rows",
+      "key"      : "cmd:notify.hide#n1",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n1",
+        "ok"     : true,
+        "props": {
+          "id": "n1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "rows",
+      "key"      : "cmd:notify.follow#n2",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "The image model returned 503; retrying.",
+        "tooltip": "warn · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n2",
+        "ok"     : true,
+        "props": {
+          "id": "n2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n2"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "rows",
+      "key"      : "cmd:notify.hide#n2",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n2",
+        "ok"     : true,
+        "props": {
+          "id": "n2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n2"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "rows",
+      "key"      : "cmd:notify.unhide#n3",
+      "offer": {
+        "id"     : "notify.unhide",
+        "label"  : "undo",
+        "tooltip": "Put this notification back in the list.",
+        "on"     : "n3",
+        "ok"     : true,
+        "props": {
+          "id": "n3"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.unhide",
+          "props": {
+            "id": "n3"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.clear",
+      "offer": {
+        "id"     : "notify.clear",
+        "label"  : "Clear",
+        "tooltip": "Archive everything this list is showing. Nothing is deleted.",
+        "ok"     : true,
+        "props": {
+          "ids": [
+            "n1",
+            "n2",
+            "n3",
+            "n4",
+            "n5",
+            "n6",
+            "n7",
+            "n8",
+            "n9",
+            "n10",
+            "n11",
+            "n12",
+            "n13",
+            "n14",
+            "n15",
+            "n16",
+            "n17",
+            "n18",
+            "n19",
+            "n20",
+            "n21",
+            "n22",
+            "n23",
+            "n24",
+            "n25",
+            "n26",
+            "n27",
+            "n28",
+            "n29",
+            "n30",
+            "n31"
+          ]
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.clear",
+          "props": {
+            "ids": [
+              "n1",
+              "n2",
+              "n3",
+              "n4",
+              "n5",
+              "n6",
+              "n7",
+              "n8",
+              "n9",
+              "n10",
+              "n11",
+              "n12",
+              "n13",
+              "n14",
+              "n15",
+              "n16",
+              "n17",
+              "n18",
+              "n19",
+              "n20",
+              "n21",
+              "n22",
+              "n23",
+              "n24",
+              "n25",
+              "n26",
+              "n27",
+              "n28",
+              "n29",
+              "n30",
+              "n31"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "fx:pane.view#hidden",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "show deleted",
+        "tooltip": "Include the notifications archived by × or by Clear.",
+        "on"     : "hidden",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "fx:popup.open#filter",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "Filter",
+        "tooltip": "Choose which kinds of notification this list shows.",
+        "on"     : "filter",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.deleteAll",
+      "offer": {
+        "id"     : "notify.deleteAll",
+        "label"  : "⋯",
+        "tooltip": "Erase the whole log from disk, after a confirmation. This cannot be undone.",
+        "form"   : true,
+        "ok"     : true,
+        "props"  : {}
+      },
+      "effects": [
+        {
+          "id"   : "notify.deleteAll",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n1",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n1)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n1",
+        "ok"     : true,
+        "props": {
+          "id": "n1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n1",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n1",
+        "ok"     : true,
+        "props": {
+          "id": "n1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n2",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n2)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n2",
+        "ok"     : true,
+        "props": {
+          "id": "n2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n2"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n2",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n2",
+        "ok"     : true,
+        "props": {
+          "id": "n2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n2"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n3",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n3)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n3",
+        "ok"     : true,
+        "props": {
+          "id": "n3"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n3"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n3",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n3",
+        "ok"     : true,
+        "props": {
+          "id": "n3"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n3"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n4",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n4)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n4",
+        "ok"     : true,
+        "props": {
+          "id": "n4"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n4"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n4",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n4",
+        "ok"     : true,
+        "props": {
+          "id": "n4"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n4"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n5",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n5)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n5",
+        "ok"     : true,
+        "props": {
+          "id": "n5"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n5"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n5",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n5",
+        "ok"     : true,
+        "props": {
+          "id": "n5"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n5"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n6",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n6)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n6",
+        "ok"     : true,
+        "props": {
+          "id": "n6"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n6"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n6",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n6",
+        "ok"     : true,
+        "props": {
+          "id": "n6"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n6"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n7",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n7)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n7",
+        "ok"     : true,
+        "props": {
+          "id": "n7"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n7"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n7",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n7",
+        "ok"     : true,
+        "props": {
+          "id": "n7"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n7"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n8",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n8)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n8",
+        "ok"     : true,
+        "props": {
+          "id": "n8"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n8"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n8",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n8",
+        "ok"     : true,
+        "props": {
+          "id": "n8"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n8"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n9",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n9)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n9",
+        "ok"     : true,
+        "props": {
+          "id": "n9"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n9"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n9",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n9",
+        "ok"     : true,
+        "props": {
+          "id": "n9"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n9"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n10",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n10)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n10",
+        "ok"     : true,
+        "props": {
+          "id": "n10"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n10"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n10",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n10",
+        "ok"     : true,
+        "props": {
+          "id": "n10"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n10"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n11",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n11)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n11",
+        "ok"     : true,
+        "props": {
+          "id": "n11"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n11"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n11",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n11",
+        "ok"     : true,
+        "props": {
+          "id": "n11"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n11"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n12",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n12)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n12",
+        "ok"     : true,
+        "props": {
+          "id": "n12"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n12"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n12",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n12",
+        "ok"     : true,
+        "props": {
+          "id": "n12"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n12"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n13",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n13)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n13",
+        "ok"     : true,
+        "props": {
+          "id": "n13"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n13"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n13",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n13",
+        "ok"     : true,
+        "props": {
+          "id": "n13"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n13"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n14",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n14)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n14",
+        "ok"     : true,
+        "props": {
+          "id": "n14"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n14"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n14",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n14",
+        "ok"     : true,
+        "props": {
+          "id": "n14"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n14"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n15",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n15)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n15",
+        "ok"     : true,
+        "props": {
+          "id": "n15"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n15"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n15",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n15",
+        "ok"     : true,
+        "props": {
+          "id": "n15"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n15"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n16",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n16)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n16",
+        "ok"     : true,
+        "props": {
+          "id": "n16"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n16"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n16",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n16",
+        "ok"     : true,
+        "props": {
+          "id": "n16"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n16"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n17",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n17)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n17",
+        "ok"     : true,
+        "props": {
+          "id": "n17"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n17"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n17",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n17",
+        "ok"     : true,
+        "props": {
+          "id": "n17"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n17"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n18",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n18)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n18",
+        "ok"     : true,
+        "props": {
+          "id": "n18"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n18"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n18",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n18",
+        "ok"     : true,
+        "props": {
+          "id": "n18"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n18"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n19",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n19)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n19",
+        "ok"     : true,
+        "props": {
+          "id": "n19"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n19"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n19",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n19",
+        "ok"     : true,
+        "props": {
+          "id": "n19"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n19"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n20",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n20)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n20",
+        "ok"     : true,
+        "props": {
+          "id": "n20"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n20"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n20",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n20",
+        "ok"     : true,
+        "props": {
+          "id": "n20"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n20"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n21",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n21)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n21",
+        "ok"     : true,
+        "props": {
+          "id": "n21"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n21"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n21",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n21",
+        "ok"     : true,
+        "props": {
+          "id": "n21"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n21"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n22",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n22)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n22",
+        "ok"     : true,
+        "props": {
+          "id": "n22"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n22"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n22",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n22",
+        "ok"     : true,
+        "props": {
+          "id": "n22"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n22"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n23",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n23)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n23",
+        "ok"     : true,
+        "props": {
+          "id": "n23"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n23"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n23",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n23",
+        "ok"     : true,
+        "props": {
+          "id": "n23"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n23"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n24",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n24)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n24",
+        "ok"     : true,
+        "props": {
+          "id": "n24"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n24"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n24",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n24",
+        "ok"     : true,
+        "props": {
+          "id": "n24"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n24"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n25",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n25)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n25",
+        "ok"     : true,
+        "props": {
+          "id": "n25"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n25"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n25",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n25",
+        "ok"     : true,
+        "props": {
+          "id": "n25"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n25"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n26",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n26)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n26",
+        "ok"     : true,
+        "props": {
+          "id": "n26"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n26"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n26",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n26",
+        "ok"     : true,
+        "props": {
+          "id": "n26"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n26"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n27",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n27)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n27",
+        "ok"     : true,
+        "props": {
+          "id": "n27"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n27"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n27",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n27",
+        "ok"     : true,
+        "props": {
+          "id": "n27"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n27"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n28",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n28)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n28",
+        "ok"     : true,
+        "props": {
+          "id": "n28"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n28"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n28",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n28",
+        "ok"     : true,
+        "props": {
+          "id": "n28"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n28"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n29",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n29)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n29",
+        "ok"     : true,
+        "props": {
+          "id": "n29"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n29"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n29",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n29",
+        "ok"     : true,
+        "props": {
+          "id": "n29"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n29"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.follow#n30",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n30)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n30",
+        "ok"     : true,
+        "props": {
+          "id": "n30"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n30"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "cmd:notify.hide#n30",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n30",
+        "ok"     : true,
+        "props": {
+          "id": "n30"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n30"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "paged",
+      "key"      : "fx:pane.view",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Show 1 more",
+        "tooltip": "1 older notification(s) are not drawn yet. This draws the next 1.",
+        "ok"     : true,
+        "props": {
+          "what": "page"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "page"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "filtering",
+      "key"      : "cmd:notify.clear",
+      "offer": {
+        "id"     : "notify.clear",
+        "label"  : "Clear",
+        "tooltip": "Archive everything this list is showing. Nothing is deleted.",
+        "ok"     : true,
+        "props": {
+          "ids": ["n1"]
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.clear",
+          "props": {
+            "ids": ["n1"]
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "filtering",
+      "key"      : "fx:pane.view#hidden",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "show deleted",
+        "tooltip": "Leave out the notifications archived by × or by Clear.",
+        "on"     : "hidden",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "filtering",
+      "key"      : "fx:popup.open#filter",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "Filter",
+        "tooltip": "Choose which kinds of notification this list shows.",
+        "on"     : "filter",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "filtering",
+      "key"      : "cmd:notify.deleteAll",
+      "offer": {
+        "id"     : "notify.deleteAll",
+        "label"  : "⋯",
+        "tooltip": "Erase the whole log from disk, after a confirmation. This cannot be undone.",
+        "form"   : true,
+        "ok"     : true,
+        "props"  : {}
+      },
+      "effects": [
+        {
+          "id"   : "notify.deleteAll",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "filtering",
+      "key"      : "cmd:notify.follow#n1",
+      "offer": {
+        "id"     : "notify.follow",
+        "label"  : "Wrote scenes/arrival.md (n1)",
+        "tooltip": "info · main · 2026-09-01T10:00:00.000Z — click to mark it read and go to what it is about",
+        "on"     : "n1",
+        "ok"     : true,
+        "props": {
+          "id": "n1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.follow",
+          "props": {
+            "id": "n1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "filtering",
+      "key"      : "cmd:notify.hide#n1",
+      "offer": {
+        "id"     : "notify.hide",
+        "label"  : "×",
+        "tooltip": "Archive this notification. It can be brought back.",
+        "on"     : "n1",
+        "ok"     : true,
+        "props": {
+          "id": "n1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "notify.hide",
+          "props": {
+            "id": "n1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "filtering",
+      "key"      : "fx:pane.view#filter/asset",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "asset",
+        "tooltip": "Show asset notifications in the list.",
+        "on"     : "filter/asset",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "filtering",
+      "key"      : "fx:pane.view#filter/pipeline",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "pipeline",
+        "tooltip": "Show pipeline notifications in the list.",
+        "on"     : "filter/pipeline",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "filtering",
+      "key"      : "fx:pane.view#filter/agent",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "agent",
+        "tooltip": "Show agent notifications in the list.",
+        "on"     : "filter/agent",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "filtering",
+      "key"      : "fx:pane.view#filter/document",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "document",
+        "tooltip": "Leave document notifications out of the list.",
+        "on"     : "filter/document",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "filtering",
+      "key"      : "fx:pane.view#filter/workspace",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "workspace",
+        "tooltip": "Show workspace notifications in the list.",
+        "on"     : "filter/workspace",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "filtering",
+      "key"      : "fx:pane.view#filter/command",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "command",
+        "tooltip": "Leave command notifications out of the list.",
+        "on"     : "filter/command",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "filtering",
+      "key"      : "fx:pane.view#filter/error",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "error",
+        "tooltip": "Show error notifications in the list.",
+        "on"     : "filter/error",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "filtering",
+      "key"      : "fx:pane.view#filter/debug",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "debug",
+        "tooltip": "Show debug notifications in the list.",
+        "on"     : "filter/debug",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "notifications",
+      "module"   : "notifications",
+      "situation": "filtering",
+      "key"      : "fx:pane.view#filter/none",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Clear filters",
+        "tooltip": "Turn every category off, so one can be ticked back on by itself.",
+        "on"     : "filter/none",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "approvals",
+      "module"   : "approvals",
+      "situation": "waiting",
+      "key"      : "fx:popup.close#a1b2c3d4",
+      "offer": {
+        "id"     : "popup.close",
+        "label"  : "[plate] Café Mori — night — plate:cafe/night",
+        "tooltip": "Open Café Mori — night in the Asset editor.",
+        "on"     : "a1b2c3d4",
+        "ok"     : true,
+        "props": {
+          "popup": "approvals"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "asset",
+              "where"  : "elsewhere",
+              "subject": "a1b2c3d4"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "popup.close",
+          "props": {
+            "popup": "approvals"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "a1b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "approvals",
+      "module"   : "approvals",
+      "situation": "waiting",
+      "key"      : "fx:popup.close#b2c3d4e5",
+      "offer": {
+        "id"     : "popup.close",
+        "label"  : "[portrait] Aiko — portrait — portrait:aiko",
+        "tooltip": "Aiko’s model sheet is not approved yet. Opens Aiko — portrait in the Asset editor all the same.",
+        "on"     : "b2c3d4e5",
+        "ok"     : true,
+        "props": {
+          "popup": "approvals"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "asset",
+              "where"  : "elsewhere",
+              "subject": "b2c3d4e5"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "popup.close",
+          "props": {
+            "popup": "approvals"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "b2c3d4e5"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "approvals",
+      "module"   : "approvals",
+      "situation": "waiting",
+      "key"      : "fx:popup.close#c3d4e5f6",
+      "offer": {
+        "id"     : "popup.close",
+        "label"  : "[shot] arrival — s1 — shot:arrival/s1",
+        "tooltip": "Open arrival — s1 in the Asset editor.",
+        "on"     : "c3d4e5f6",
+        "ok"     : true,
+        "props": {
+          "popup": "approvals"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "asset",
+              "where"  : "elsewhere",
+              "subject": "c3d4e5f6"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "popup.close",
+          "props": {
+            "popup": "approvals"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "c3d4e5f6"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "diagnostics",
+      "module"   : "diagnostics",
+      "situation": "problems",
+      "key"      : "item:scene/arrival",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "● names no line (arrival)",
+        "tooltip": "error dangling_line_id · arrival · click to open arrival",
+        "on"     : "scene/arrival",
+        "ok"     : true,
+        "props": {
+          "sceneId": "arrival",
+          "shotId" : ""
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "script",
+              "where"  : "elsewhere",
+              "subject": ""
+            }
+          },
+          {
+            "id"   : "popup.close",
+            "props": {
+              "popup": "diagnostics"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "sceneId": "arrival",
+            "shotId" : ""
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "script",
+            "where"  : "elsewhere",
+            "subject": ""
+          }
+        },
+        {
+          "id"   : "popup.close",
+          "props": {
+            "popup": "diagnostics"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "diagnostics",
+      "module"   : "diagnostics",
+      "situation": "problems-script-up",
+      "key"      : "item:scene/arrival",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "● names no line (arrival)",
+        "tooltip": "error dangling_line_id · arrival · click to open arrival",
+        "on"     : "scene/arrival",
+        "ok"     : true,
+        "props": {
+          "sceneId": "arrival",
+          "shotId" : ""
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "script",
+              "where"  : "here",
+              "subject": ""
+            }
+          },
+          {
+            "id"   : "popup.close",
+            "props": {
+              "popup": "diagnostics"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "sceneId": "arrival",
+            "shotId" : ""
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "script",
+            "where"  : "here",
+            "subject": ""
+          }
+        },
+        {
+          "id"   : "popup.close",
+          "props": {
+            "popup": "diagnostics"
+          }
         }
       ]
     },
@@ -11139,16 +14477,8 @@
       "why": "A workspace is opened, created, indexed and imported from the menu bar, the launcher and CDP, before any editor exists."
     },
     {
-      "match": "window.*",
-      "why": "Window lifecycle belongs to the menu bar, the hotkeys and the OS rather than to a pane."
-    },
-    {
       "match": "tour.*",
       "why"  : "The tour layer advances itself; no editor draws a tour control."
-    },
-    {
-      "match": "notify.*",
-      "why": "The notification strip runs these from its own rows and menu, outside every rule module."
     },
     {
       "match": "plugin.*",
@@ -11157,6 +14487,22 @@
     {
       "match": "interaction.*",
       "why"  : "The drag layer’s own queries, answered over IPC rather than drawn."
+    },
+    {
+      "match": "window.new",
+      "why": "Window lifecycle belongs to the menu bar, the hotkeys and the OS rather than to a pane."
+    },
+    {
+      "match": "window.close",
+      "why": "Window lifecycle belongs to the menu bar, the hotkeys and the OS rather than to a pane."
+    },
+    {
+      "match": "window.quit",
+      "why": "Window lifecycle belongs to the menu bar, the hotkeys and the OS rather than to a pane."
+    },
+    {
+      "match": "notify.markRead",
+      "why": "Following a notification marks it read on the way; the palette and CDP mark one read without following it."
     },
     {
       "match": "*.list",

@@ -23,6 +23,9 @@ import type {
   UxOffer,
 } from '../../src/shared/uxmodel.js';
 import * as headerbar from './headerbar.js';
+import * as notifications from './notifications.js';
+import * as approvals from './approvals.js';
+import * as diagnostics from './diagnostics.js';
 import * as convobar from './convobar.js';
 import * as assetview from './assetview.js';
 import * as promptview from './promptview.js';
@@ -39,6 +42,9 @@ import * as tasklist from './tasklist.js';
 import * as timeline from './timeline/controls.js';
 import * as wiki from './wiki.js';
 import { SITUATIONS as HEADERBAR } from './situations/headerbar.js';
+import { SITUATIONS as NOTIFICATIONS } from './situations/notifications.js';
+import { SITUATIONS as APPROVALS } from './situations/approvals.js';
+import { SITUATIONS as DIAGNOSTICS } from './situations/diagnostics.js';
 import { SITUATIONS as CONVOBAR } from './situations/convobar.js';
 import { SITUATIONS as ASSETVIEW } from './situations/assetview.js';
 import { SITUATIONS as PROMPTVIEW } from './situations/promptview.js';
@@ -79,6 +85,9 @@ const row = <S>(
 /** Every module that answers `controls`, in the order the file lists them. */
 export const ROWS: readonly Row<unknown>[] = [
   row('headerbar', 'header', HEADERBAR, headerbar.controls),
+  row('notifications', 'notifications', NOTIFICATIONS, notifications.controls),
+  row('approvals', 'approvals', APPROVALS, approvals.controls),
+  row('diagnostics', 'diagnostics', DIAGNOSTICS, diagnostics.controls),
   row('assetview', 'asset', ASSETVIEW, assetview.controls),
   row('promptview', 'asset', PROMPTVIEW, ({ view, editing }) => promptview.controls(view, editing)),
   row(

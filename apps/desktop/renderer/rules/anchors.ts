@@ -9,11 +9,17 @@
  */
 import type { Refusal } from 'pathux';
 import type { PropValue } from '../../src/shared/ipc.js';
-import { HEADER, type AnchorHome, type EditorId } from '../../src/shared/editors.js';
-import { isEffectId, uiPublish } from '../../src/shared/effects.js';
+import {
+  HEADER,
+  isPopupHome,
+  type AnchorHome,
+  type EditorId,
+  type PopupHome,
+} from '../../src/shared/editors.js';
+import { isEffectId, popupOpen, uiPublish } from '../../src/shared/effects.js';
 
 // Declared beside the editor list so the derived model's schema can enumerate every home
-export { HEADER, type AnchorHome };
+export { HEADER, type AnchorHome, type PopupHome };
 
 /**
  * What a surface can be asked to do, as data, before it is a click. `id` names a command, which
@@ -159,12 +165,15 @@ export type Resolution =
   | { state: 'offscreen'; anchor: Anchor }
   | { state: 'wrong-subject'; anchor: Anchor; needs: Action; holds: string[] }
   | { state: 'pane-closed'; editor: EditorId }
+  /** The control is in a toolbar popup that is shut; `opener` is the toolbar control, when drawn. */
+  | { state: 'popup-closed'; popup: PopupHome; opener?: Anchor }
   | { state: 'absent' }
   | { state: 'unanchored' };
 
 /** The screen as the resolver reads it: what is drawn, what is open, and what has scrolled away. */
 export interface LiveAnchors {
   anchors: readonly Anchor[];
+  /** The panes that are up, the toolbar, and whichever of its popups are open right now. */
   open: readonly AnchorHome[];
   /** Keys whose rect lies outside the pane that drew them. */
   offscreen?: readonly string[];
@@ -192,6 +201,9 @@ export const itemKey = (kind: string, key: string): string => `item:${kind}/${ke
 
 /** The key of an effect other than a selection: `fx:<id>`. */
 export const effectKey = (id: string): string => `fx:${id}`;
+
+/** The key of the toolbar control that opens a popup, which a `popup-closed` answer rings. */
+export const openerKey = (popup: PopupHome): string => keyOf({ id: popupOpen.id, on: popup });
 
 /**
  * The key a control is re-resolved by. A command is `cmd:<id>`, or `cmd:<id>#<on>` where `on`
@@ -317,9 +329,14 @@ export function resolveAnchor(map: AnchorMap, live: LiveAnchors, step: Action): 
   if (editors.length === 0) return { state: 'unanchored' };
   if (editors.some((editor) => live.open.includes(editor))) return { state: 'absent' };
   // The toolbar cannot be closed, so a command the map places only there and that is nonetheless
-  // not drawn is a statement about the screen rather than about a missing pane.
-  const pane = editors.find((editor) => editor !== HEADER);
-  return pane === undefined ? { state: 'absent' } : { state: 'pane-closed', editor: pane };
+  // not drawn is a statement about the screen rather than about a missing pane. A pane is named
+  // before a popup, since opening a pane is the answer that stays on screen.
+  const pane = editors.find((editor) => editor !== HEADER && !isPopupHome(editor));
+  if (pane !== undefined) return { state: 'pane-closed', editor: pane };
+  const popup = editors.find(isPopupHome);
+  if (popup === undefined) return { state: 'absent' };
+  const opener = live.anchors.find((anchor) => anchor.key === openerKey(popup));
+  return { state: 'popup-closed', popup, ...(opener ? { opener } : {}) };
 }
 
 /**

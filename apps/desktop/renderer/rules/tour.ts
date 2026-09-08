@@ -22,6 +22,7 @@ import {
   type AnchorHome,
   type AnchorMap,
   type LiveAnchors,
+  type PopupHome,
   type Resolution,
 } from './anchors.js';
 
@@ -53,10 +54,12 @@ export function actionOf(step: Step): Action | undefined {
  *
  * `ring` is where the author is being pointed. `route` says the app has no control for this and the
  * palette is standing in — the guaranteed floor, since `CommandForm` shows the live `stack.check`
- * verdict above the run button. `open` names a pane the author has to bring up first, and `blocked`
- * carries the app's own refusal rather than one written here, along with the control that refused
- * where there is one, since a greyed control saying why is the whole answer. `pick` points at a row
- * that selects the step's subject, for a step whose control would act on a different one.
+ * verdict above the run button. `open` names a pane the author has to bring up first, and `popup`
+ * a toolbar popup whose opener is not drawn; `blocked` carries the app's own refusal rather than
+ * one written here, along with the control that refused where there is one, since a greyed control
+ * saying why is the whole answer. `pick` points at a control to press first: a row that selects the
+ * step's subject, for a step whose control would act on a different one, or the toolbar control
+ * that opens the popup the step's control is in.
  *
  * Named `pick` rather than `select` because a `select` step resolves to `ring`, and one word on
  * both sides of the table would read as the same thing.
@@ -74,12 +77,20 @@ export type Guidance =
   | { show: 'pick'; say: string; where: Resolution; first: string }
   | { show: 'route'; say: string; action: Action }
   | { show: 'open'; say: string; editor: string }
+  | { show: 'popup'; say: string; popup: PopupHome }
   | { show: 'blocked'; say: string; reason: string; where?: Resolution }
   | { show: 'done' };
 
 /** Said beside the row a `pick` answer rings, under the step's own instruction. */
 const PICK_FIRST =
   'Click this first. The button acts on what is selected, and it is on something else.';
+
+/** Said beside the toolbar control a `pick` answer rings for a control in a shut popup. */
+const openFirst = (popup: PopupHome): string =>
+  `Click this first. It opens the ${popup}, which is where the control is.`;
+
+/** What a step in a shut popup asks when the toolbar draws no control that opens it. */
+export const opens = (popup: PopupHome): string => `Open the ${popup} from the toolbar first.`;
 
 type WrongSubject = Extract<Resolution, { state: 'wrong-subject' }>;
 
@@ -165,6 +176,12 @@ export function guide(
       return { show: 'blocked', say: step.say, reason: where.reason, where };
     case 'pane-closed':
       return { show: 'open', say: step.say, editor: where.editor };
+    case 'popup-closed':
+      if (where.opener) {
+        const ready: Resolution = { state: 'ready', anchor: where.opener };
+        return { show: 'pick', say: step.say, where: ready, first: openFirst(where.popup) };
+      }
+      return { show: 'popup', say: step.say, popup: where.popup };
     default:
       return { show: 'route', say: step.say, action };
   }

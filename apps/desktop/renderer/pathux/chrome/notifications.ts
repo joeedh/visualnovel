@@ -6,7 +6,9 @@
  * `src/shared/notify.ts`, which both processes share and which the node-only jest project can
  * test. This file holds one fetch, one cached list, and the widgets over it.
  *
- * Every change to a notification leaves as a `notify.*` command, like every other mutation.
+ * Every change to a notification leaves as a `notify.*` command, like every other mutation. What
+ * each control does is `rules/notifications.ts`; the widgets here are drawn through `act()` and
+ * `record()` under passes of the `notifications` anchor home, which is open while the list is up.
  */
 import { UIBase, type Container } from 'pathux';
 import {
@@ -24,6 +26,20 @@ import { openCommandDialog } from './dialog.js';
 import { VN_ICONS } from '../app/icons.js';
 import { paragraph } from '../widgets/paragraph.js';
 import { INSET, onPopupClosed, placeUnder, rectOf, stylePopup, type Anchor } from './popup.js';
+import type { Action } from '../../rules/anchors.js';
+import {
+  categoryAction,
+  clearAction,
+  clearFiltersAction,
+  deleteAllAction,
+  filterAction,
+  followAction,
+  hideAction,
+  pageAction,
+  showHiddenAction,
+  unhideAction,
+} from '../../rules/notifications.js';
+import { popupClosed, popupOpened, redrawing, type AnchorPass } from '../tour/anchors.js';
 
 /** What `Screen.popup` hands back: a container that also knows how to dismiss itself. */
 type Popup = Container & { end(): void };
@@ -93,8 +109,8 @@ export function notificationsChanged(): void {
 }
 
 /** Run a `notify.*` command and take the new truth from the file rather than assuming it. */
-async function act(id: string, props: Record<string, string | string[]> = {}): Promise<void> {
-  await exec(id, props);
+async function run(action: Action): Promise<void> {
+  await exec(action.id, action.props);
   await refreshNotifications();
 }
 
@@ -105,10 +121,12 @@ class NotificationList {
   private readonly archived = new Set<string>();
   /** How many rows this popup has been asked to draw. Rises a page at a time, never falls. */
   private shown = NOTIFICATION_PAGE;
+  private pass: AnchorPass = redrawing('notifications', 'list');
 
   constructor(anchor?: Anchor) {
     const screen = shell().screen;
     if (!screen) throw new Error('no screen to hang the notifications on');
+    popupOpened('notifications');
 
     // Hung under the bell that opened it, since a fixed `y` lands far from the bell in a window
     // whose chrome is taller than the header
@@ -122,6 +140,7 @@ class NotificationList {
     onPopupClosed(this.popup, () => {
       list = undefined;
       closeFilters();
+      popupClosed('notifications');
     });
 
     this.body = this.popup.col();
@@ -135,6 +154,7 @@ class NotificationList {
 
   render(): void {
     this.body.clear();
+    this.pass = redrawing('notifications', 'list');
     const shown = this.showing();
     const page = notificationPage(shown, this.shown);
 
@@ -185,12 +205,15 @@ class NotificationList {
   private moreRow(rows: Container, more: number): void {
     const row = rows.row();
     row.style['flexShrink'] = '0';
-    const next = Math.min(more, NOTIFICATION_PAGE);
-    const button = row.button(`Show ${next} more`, () => {
-      this.shown += NOTIFICATION_PAGE;
-      this.render();
-    });
-    button.description = `${more} older notification(s) are not drawn yet. This draws the next ${next}.`;
+    const page = pageAction(more);
+    this.pass.act(
+      row.button(page.label, () => {}),
+      page,
+      () => {
+        this.shown += NOTIFICATION_PAGE;
+        this.render();
+      },
+    );
   }
 
   private header(shown: readonly Notification[], drawn: number): void {
@@ -210,16 +233,19 @@ class NotificationList {
     const live = shown.filter((note) => !note.h);
     // Clear archives without leaving Undo rows behind, unlike ×, which is one deliberate act on
     // one notification. `notify.unhide` brings a specific notification back.
-    const clear = row.button('Clear', () => {
-      this.archived.clear();
-      void act('notify.clear', { ids: live.map((n) => n.id) });
-    });
-    clear.description = 'Archive everything this list is showing. Nothing is deleted.';
-    clear.disabled = live.length === 0;
+    const clear = clearAction(live.map((n) => n.id));
+    this.pass.act(
+      row.button(clear.label, () => {}),
+      clear,
+      (action) => {
+        this.archived.clear();
+        void run(action);
+      },
+    );
 
     const hidden = row.check(undefined, 'show deleted');
     hidden.checked = filter.showHidden;
-    hidden.description = 'Include the notifications archived by × or by Clear.';
+    this.pass.record(hidden, showHiddenAction(filter.showHidden));
     // `on_change`, not `onchange` — path.ux's own hook (`ui_widgets.ts`), and the one
     // `commandform.ts` uses. A DOM-shaped name here is silently never called.
     hidden.on_change = (next: unknown) => {
@@ -232,11 +258,13 @@ class NotificationList {
     // Read at click time rather than at build time: the row has not been laid out yet while it
     // is being built, so a rect taken here would be the zero one.
     const under = () => openFilters(rectOf(funnel));
-    const funnel =
+    const funnel = this.pass.act(
       VN_ICONS.filter >= 0
-        ? row.iconbutton(VN_ICONS.filter, '', under)
-        : row.button('Filter', under);
-    funnel.description = 'Choose which kinds of notification this list shows.';
+        ? row.iconbutton(VN_ICONS.filter, '', () => {})
+        : row.button('Filter', () => {}),
+      filterAction(),
+      under,
+    );
 
     const more = row.menu('⋯', [
       {
@@ -246,7 +274,7 @@ class NotificationList {
         id      : 'deleteAll',
       },
     ]);
-    more.description = 'The acts that are not one click.';
+    this.pass.record(more, deleteAllAction());
   }
 
   /**
@@ -274,10 +302,15 @@ class NotificationList {
     if (ruled) row.style['borderTop'] = '1px solid var(--ink-line, #232a35)';
     if (this.archived.has(note.id)) {
       row.label('archived');
-      row.button('undo', () => {
-        this.archived.delete(note.id);
-        void act('notify.unhide', { id: note.id });
-      }).description = 'Put this notification back in the list.';
+      const undo = unhideAction(note);
+      this.pass.act(
+        row.button(undo.label, () => {}),
+        undo,
+        (action) => {
+          this.archived.delete(note.id);
+          void run(action);
+        },
+      );
       return;
     }
 
@@ -285,21 +318,22 @@ class NotificationList {
     // non-breaking because a plain one collapses away in wrapped prose.
     const mark = note.r ? '  ' : '● ';
     const open = paragraph(row, `${mark}[${note.category}] ${note.message}`, PROSE);
-    open.description = `${note.level} · ${note.source} · ${note.at}`;
     // The label is only as wide as its text, so on a one-line message the × would otherwise land
     // mid-row instead of at the end of it
     open.style['flexGrow'] = '1';
     open.dom.style.cursor = 'pointer';
     open.dom.style.padding = '4px 0';
-    open.addEventListener('click', () => {
-      void act('notify.follow', { id: note.id });
-    });
+    this.pass.act(open, followAction(note), (action) => void run(action));
 
-    const hide = row.button('×', () => {
-      this.archived.add(note.id);
-      void act('notify.hide', { id: note.id });
-    });
-    hide.description = 'Archive this notification. It can be brought back.';
+    const hide = hideAction(note);
+    this.pass.act(
+      row.button(hide.label, () => {}),
+      hide,
+      (action) => {
+        this.archived.add(note.id);
+        void run(action);
+      },
+    );
   }
 }
 
@@ -331,13 +365,14 @@ class FilterPopup {
   private render(): void {
     this.body.clear();
     this.body.label('SHOW');
+    const pass = redrawing('notifications', 'filter');
 
     const on = new Set(filter.categories);
     // Drawn from the union itself, so a category added to `@vn/types` cannot go unfilterable.
     for (const category of NOTIFICATION_CATEGORIES) {
       const box = this.body.check(undefined, category);
-      box.description = `Show ${category} notifications in the list.`;
       box.checked = on.has(category);
+      pass.record(box, categoryAction(category, on.has(category)));
       box.on_change = (ticked: unknown) => {
         const next = new Set(filter.categories);
         if (ticked === true) next.add(category);
@@ -348,8 +383,12 @@ class FilterPopup {
 
     // Turns every category off rather than on, so an author can clear and then tick the one they
     // want; the default already has every category on
-    const clear = this.body.button('Clear filters', () => this.apply([]));
-    clear.description = 'Turn every category off, so one can be ticked back on by itself.';
+    const clear = clearFiltersAction();
+    pass.act(
+      this.body.button(clear.label, () => {}),
+      clear,
+      () => this.apply([]),
+    );
 
     this.body.flushUpdate();
   }

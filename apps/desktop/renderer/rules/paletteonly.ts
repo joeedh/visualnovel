@@ -15,16 +15,8 @@ const NAMESPACES: readonly PaletteOnly[] = [
     why: 'A workspace is opened, created, indexed and imported from the menu bar, the launcher and CDP, before any editor exists.',
   },
   {
-    match: 'window.*',
-    why: 'Window lifecycle belongs to the menu bar, the hotkeys and the OS rather than to a pane.',
-  },
-  {
     match: 'tour.*',
     why  : 'The tour layer advances itself; no editor draws a tour control.',
-  },
-  {
-    match: 'notify.*',
-    why: 'The notification strip runs these from its own rows and menu, outside every rule module.',
   },
   {
     match: 'plugin.*',
@@ -33,6 +25,18 @@ const NAMESPACES: readonly PaletteOnly[] = [
   {
     match: 'interaction.*',
     why  : 'The drag layer’s own queries, answered over IPC rather than drawn.',
+  },
+];
+
+const WINDOW = ['window.new', 'window.close', 'window.quit'].map((match) => ({
+  match,
+  why: 'Window lifecycle belongs to the menu bar, the hotkeys and the OS rather than to a pane.',
+}));
+
+const NOTIFY: readonly PaletteOnly[] = [
+  {
+    match: 'notify.markRead',
+    why: 'Following a notification marks it read on the way; the palette and CDP mark one read without following it.',
   },
 ];
 
@@ -163,6 +167,8 @@ const MENU_BAR: readonly PaletteOnly[] = [
 
 export const PALETTE_ONLY: readonly PaletteOnly[] = [
   ...NAMESPACES,
+  ...WINDOW,
+  ...NOTIFY,
   ...NAMES,
   ...READS,
   ...VIEW,

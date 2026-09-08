@@ -1,10 +1,14 @@
 import {
+  approvalsAction,
   controls,
   modeAction,
   modelAction,
+  notificationsAction,
+  problemsAction,
   runAction,
   stopAction,
   viewActions,
+  type HeaderState,
 } from '../headerbar.js';
 import { busyControls } from '../busy.js';
 import { duplicateKeys, keyOf } from '../anchors.js';
@@ -68,11 +72,56 @@ describe('modeAction', () => {
   });
 });
 
+describe('the popup openers', () => {
+  it('count the problems, errors before warnings, and open the diagnostics', () => {
+    expect(problemsAction(2, 1)).toEqual({
+      ok     : true,
+      id     : 'popup.open',
+      props  : { popup: 'diagnostics' },
+      on     : 'diagnostics',
+      label  : '2 errors',
+      tooltip: 'List them — 2 errors and 1 warning in this project',
+    });
+    expect(problemsAction(0, 1)).toMatchObject({
+      label  : '1 warning',
+      tooltip: 'List what validation says is wrong with this project',
+    });
+  });
+
+  it('count the art waiting and the unread notifications', () => {
+    expect(approvalsAction(3)).toMatchObject({
+      id     : 'popup.open',
+      props  : { popup: 'approvals' },
+      label  : '🎨 3',
+      tooltip: 'Show the art waiting on approval — 3',
+    });
+    expect(approvalsAction(0)).toMatchObject({
+      label  : '🎨',
+      tooltip: 'No art is waiting on approval',
+    });
+    expect(notificationsAction(5)).toMatchObject({
+      id     : 'popup.open',
+      props  : { popup: 'notifications' },
+      label  : '🔔 5',
+      tooltip: 'Show notifications — 5 unread',
+    });
+    expect(notificationsAction(0)).toMatchObject({ label: '🔔', tooltip: 'Show notifications' });
+  });
+
+  it('are keyed by the popup each opens, which is what a popup-closed answer rings', () => {
+    expect(keyOf(problemsAction(1, 0))).toBe('fx:popup.open#diagnostics');
+    expect(keyOf(approvalsAction(0))).toBe('fx:popup.open#approvals');
+    expect(keyOf(notificationsAction(0))).toBe('fx:popup.open#notifications');
+  });
+});
+
 describe('controls', () => {
-  const states = [
-    { busyWhat: '', live: true, agentMode: 'plan', model: 'claude-opus-5' },
-    { busyWhat: BUSY_RUN, live: false, agentMode: 'execute', model: '' },
-    { busyWhat: BUSY_REPORT, live: true, agentMode: 'plan', model: 'claude-opus-5' },
+  const counts = { errors: 0, warnings: 0, needsApproval: 0, unread: 0 };
+  const states: HeaderState[] = [
+    { busyWhat: '', live: true, agentMode: 'plan', model: 'claude-opus-5', ...counts },
+    { busyWhat: BUSY_RUN, live: false, agentMode: 'execute', model: '', ...counts },
+    { busyWhat: BUSY_REPORT, live: true, agentMode: 'plan', model: 'claude-opus-5', ...counts },
+    { busyWhat: '', live: true, agentMode: 'plan', model: '', ...counts, errors: 1, unread: 2 },
   ];
 
   it('lists every control the functions produce, each key once', () => {
@@ -82,12 +131,21 @@ describe('controls', () => {
         ...viewActions(),
         runAction(state.busyWhat, state.live),
         stopAction(busyControls(state.busyWhat)),
+        ...(state.errors || state.warnings ? [problemsAction(state.errors, state.warnings)] : []),
         modeAction(state.agentMode),
         modelAction(state.model),
+        approvalsAction(state.needsApproval),
+        notificationsAction(state.unread),
       ];
       expect(new Set(listed.map(keyOf))).toEqual(new Set(each.map(keyOf)));
       expect(duplicateKeys(listed)).toEqual([]);
     }
+  });
+
+  it('draws the problem button only while validation counted something', () => {
+    const [idle, , , counted] = states;
+    expect(controls(idle!).map(keyOf)).not.toContain('fx:popup.open#diagnostics');
+    expect(controls(counted!).map(keyOf)).toContain('fx:popup.open#diagnostics');
   });
 });
 

@@ -1,6 +1,14 @@
 import { EMPTY_DIGEST, UNRESOLVED, type Verdict } from '@vn/commands';
 import { advance, finished, guide, satisfies, start, stepOf } from '../tour.js';
-import { commandKey, itemKey, type Anchor, type AnchorMap, type LiveAnchors } from '../anchors.js';
+import {
+  HEADER,
+  commandKey,
+  itemKey,
+  openerKey,
+  type Anchor,
+  type AnchorMap,
+  type LiveAnchors,
+} from '../anchors.js';
 import type { Step, Tour } from '../../../src/shared/tours.js';
 import type { EditorId } from '../../../src/shared/editors.js';
 
@@ -86,6 +94,28 @@ describe('guide', () => {
       show  : 'open',
       say   : 'Press Redraw.',
       editor: 'asset',
+    });
+  });
+
+  it('rings the toolbar control that opens the popup a step’s control is in', () => {
+    const bell: AnchorMap = { editorsFor: { 'notify.clear': ['notifications'] } };
+    const clearing = start(tour([{ kind: 'command', id: 'notify.clear', say: 'Clear them.' }]));
+    const opener = anchor({
+      key   : openerKey('notifications'),
+      id    : 'popup.open',
+      props : { popup: 'notifications' },
+      editor: HEADER,
+    });
+    expect(guide(bell, live([opener], { open: [] }), clearing)).toEqual({
+      show : 'pick',
+      say  : 'Clear them.',
+      where: { state: 'ready', anchor: opener },
+      first: 'Click this first. It opens the notifications, which is where the control is.',
+    });
+    expect(guide(bell, live([], { open: [] }), clearing)).toEqual({
+      show : 'popup',
+      say  : 'Clear them.',
+      popup: 'notifications',
     });
   });
 
