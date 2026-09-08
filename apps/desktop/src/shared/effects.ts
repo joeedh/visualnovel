@@ -10,7 +10,7 @@
 import { defineEffect, EffectRegistry, prop } from '@vn/commands';
 import { INTERACTION_IDS } from './interactions.js';
 
-/** Every menu a control can open, by name. */
+/** Every menu a control can open, by name. The last three are the header's submenus. */
 export const MENUS = [
   'app',
   'view',
@@ -23,6 +23,9 @@ export const MENUS = [
   'shot',
   'line',
   'card',
+  'recent',
+  'editors',
+  'layout',
 ] as const;
 export type MenuName = (typeof MENUS)[number];
 

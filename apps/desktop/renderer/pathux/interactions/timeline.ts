@@ -23,7 +23,9 @@ import {
 import { noticeForVerdict, type Notice } from '../../../src/shared/lineedit.js';
 import { shotDropTarget } from '../../rules/timeline/coverage.js';
 import type { Verdict } from '@vn/commands';
-import type { SceneCoverage } from '../../../src/shared/ipc.js';
+import type { CoverageShot, SceneCoverage } from '../../../src/shared/ipc.js';
+import { SEPARATOR, type MenuEntry } from '../chrome/contextmenu.js';
+import { shotAssetEntry } from './script.js';
 
 /** Dragging a bracket's outer handle onto a line: `timeline.cover`. */
 export interface Drag {
@@ -153,4 +155,26 @@ export function aimReorder(reorder: Reorder, spans: readonly ShotSpan[], row: nu
 /** The verdict's own sentence, or `null` where the drop is not a candidate. */
 export function noticeOf(gesture: { verdict: Verdict | null }): Notice | null {
   return gesture.verdict ? noticeForVerdict(gesture.verdict) : null;
+}
+
+/** Why a bracket cannot open, worded once so the double-click and the right-click refuse alike. */
+export function noFrameYet(shotId: string): string {
+  return `${shotId} has no frame yet — run the pipeline to draw one.`;
+}
+
+/**
+ * What right-clicking a bracket offers: leaving for the frame, then, below the separator so it is
+ * never the entry under the pointer, deleting the shot. Each command is checked before it is
+ * drawn, so deleting the last shot is refused rather than hidden.
+ */
+export function shotMenu(sceneId: string, shot: CoverageShot): MenuEntry[] {
+  return [
+    shotAssetEntry(shot, 'Open shot asset', noFrameYet(shot.id)),
+    SEPARATOR,
+    {
+      label: 'Delete this shot',
+      id   : 'story.deleteShot',
+      props: { scene: sceneId, shot: shot.id },
+    },
+  ];
 }

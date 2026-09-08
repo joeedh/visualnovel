@@ -509,6 +509,72 @@
       "editor": "documents",
       "name"  : "every-kind",
       "why": "One node of each kind the tree draws, so the menu’s coverage is total rather than a project’s."
+    },
+    {
+      "module": "shotmenu",
+      "editor": "timeline",
+      "name"  : "drawn",
+      "why"   : "The shot has a frame, so Open shot asset leaves for it in the Asset editor."
+    },
+    {
+      "module": "shotmenu",
+      "editor": "timeline",
+      "name"  : "undrawn",
+      "why": "The shot has no frame yet, so Open shot asset is refused with the strip’s sentence."
+    },
+    {
+      "module": "linemenu",
+      "editor": "script",
+      "name"  : "drawn",
+      "why"   : "The shot covering the line has a frame, so Open shot asset leaves for it."
+    },
+    {
+      "module": "linemenu",
+      "editor": "script",
+      "name"  : "undrawn",
+      "why": "The shot covering the line has no frame yet, so Open shot asset is refused saying so."
+    },
+    {
+      "module": "linemenu",
+      "editor": "script",
+      "name"  : "uncovered",
+      "why"   : "No shot covers the line, which is a different refusal with a different next move."
+    },
+    {
+      "module": "cardmenu",
+      "editor": "branches",
+      "name"  : "scene",
+      "why": "A written scene is offered its script, opened elsewhere so the canvas is never covered."
+    },
+    {
+      "module": "cardmenu",
+      "editor": "branches",
+      "name"  : "stub",
+      "why"   : "A stub has no script, so the one act it has is writing the scene, as a form."
+    },
+    {
+      "module": "headermenus",
+      "editor": "header",
+      "name"  : "fresh",
+      "why": "Nothing has been opened before and no layout is saved, so Recent and Layout each hold one refused row."
+    },
+    {
+      "module": "headermenus",
+      "editor": "header",
+      "name"  : "project",
+      "why": "Two projects are remembered, one of them open and refused; two layouts exist, one unusable; the page builder is installed; the agent is executing."
+    },
+    {
+      "module": "headermenus",
+      "editor": "header",
+      "name"  : "running",
+      "why": "A pipeline run is in flight, so Run Pipeline is refused with the header’s sentence."
+    },
+    {
+      "module": "headermenus",
+      "editor": "header",
+      "name"  : "no-pane",
+      "why": "No pane can be moved and the arrangement cannot be serialized, so both rows are refused."
     }
   ],
   "records": [
@@ -14469,13 +14535,2633 @@
         "input": "Write a new skill under .aiagent/skills — a SKILL.md with name, description and when-to-use in its front-matter, and the procedure below it. It should: "
       },
       "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "timeline",
+      "module"   : "shotmenu",
+      "situation": "drawn",
+      "when"     : "shot:arrival/arrival:s1",
+      "id"       : "view.open",
+      "label"    : "Open shot asset",
+      "props": {
+        "editor" : "asset",
+        "where"  : "elsewhere",
+        "subject": "a1b2c3d4"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "timeline",
+      "module"   : "shotmenu",
+      "situation": "drawn",
+      "when"     : "shot:arrival/arrival:s1",
+      "id"       : "story.deleteShot",
+      "label"    : "Delete this shot",
+      "props": {
+        "scene": "arrival",
+        "shot" : "arrival:s1"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "timeline",
+      "module"   : "shotmenu",
+      "situation": "undrawn",
+      "when"     : "shot:arrival/arrival:s1",
+      "id"       : "view.open",
+      "label"    : "Open shot asset",
+      "refused"  : "arrival:s1 has no frame yet — run the pipeline to draw one."
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "timeline",
+      "module"   : "shotmenu",
+      "situation": "undrawn",
+      "when"     : "shot:arrival/arrival:s1",
+      "id"       : "story.deleteShot",
+      "label"    : "Delete this shot",
+      "props": {
+        "scene": "arrival",
+        "shot" : "arrival:s1"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "script",
+      "module"   : "linemenu",
+      "situation": "drawn",
+      "when"     : "line:arrival:L1",
+      "id"       : "agent.editLine",
+      "label"    : "Edit with agent",
+      "props": {
+        "scene": "arrival",
+        "line" : "arrival:L1"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "script",
+      "module"   : "linemenu",
+      "situation": "drawn",
+      "when"     : "line:arrival:L1",
+      "id"       : "view.open",
+      "label"    : "Open shot asset",
+      "props": {
+        "editor" : "asset",
+        "where"  : "elsewhere",
+        "subject": "a1b2c3d4"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "script",
+      "module"   : "linemenu",
+      "situation": "undrawn",
+      "when"     : "line:arrival:L2",
+      "id"       : "agent.editLine",
+      "label"    : "Edit with agent",
+      "props": {
+        "scene": "arrival",
+        "line" : "arrival:L2"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "script",
+      "module"   : "linemenu",
+      "situation": "undrawn",
+      "when"     : "line:arrival:L2",
+      "id"       : "view.open",
+      "label"    : "Open shot asset",
+      "refused"  : "arrival:s2 covers arrival:L2 but has not been drawn."
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "script",
+      "module"   : "linemenu",
+      "situation": "uncovered",
+      "when"     : "line:arrival:L3",
+      "id"       : "agent.editLine",
+      "label"    : "Edit with agent",
+      "props": {
+        "scene": "arrival",
+        "line" : "arrival:L3"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "script",
+      "module"   : "linemenu",
+      "situation": "uncovered",
+      "when"     : "line:arrival:L3",
+      "id"       : "view.open",
+      "label"    : "Open shot asset",
+      "refused"  : "No shot covers arrival:L3 yet."
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "branches",
+      "module"   : "cardmenu",
+      "situation": "scene",
+      "when"     : "card:arrival",
+      "id"       : "view.open",
+      "label"    : "Go to script",
+      "props": {
+        "editor": "script",
+        "where" : "elsewhere"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "branches",
+      "module"   : "cardmenu",
+      "situation": "stub",
+      "when"     : "card:departure",
+      "id"       : "story.newScene",
+      "label"    : "Write departure…",
+      "props": {
+        "scene": "departure"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/app",
+      "id"       : "popup.open",
+      "label"    : "Command Palette…",
+      "tooltip"  : "Search every command by name and fill in its arguments",
+      "props": {
+        "popup": "palette"
+      },
+      "shortcut" : "Ctrl+Shift+P"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/app",
+      "id"       : "history.move",
+      "label"    : "Undo",
+      "tooltip"  : "Put the project back the way it was before the last act",
+      "props": {
+        "to": "undo"
+      },
+      "shortcut" : "Ctrl+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/app",
+      "id"       : "history.move",
+      "label"    : "Redo",
+      "tooltip"  : "Reapply the act that was just undone",
+      "props": {
+        "to": "redo"
+      },
+      "shortcut" : "Ctrl+Shift+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/app",
+      "id"       : "pipeline.run",
+      "label"    : "Run Pipeline",
+      "tooltip"  : "Plan and render everything that is ready, to the next gate",
+      "props": {
+        "mock": false
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/app",
+      "id"       : "pipeline.run",
+      "label"    : "Run Pipeline (adv)…",
+      "tooltip"  : "Start a run with the flags spelled out — dry run, scene filter, task limit",
+      "props": {
+        "mock": false
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/app",
+      "id"       : "workspace.create",
+      "label"    : "New Project…",
+      "tooltip"  : "Scaffold a project in a new folder and open it, closing this one",
+      "props": {
+        "newFolder": true
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/app",
+      "id"       : "workspace.pick",
+      "label"    : "Open Project…",
+      "tooltip"  : "Choose a project folder and open it, closing this one"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/app",
+      "id"       : "menu.open",
+      "label"    : "Recent Projects",
+      "tooltip"  : "Reopen a project you worked on before",
+      "props": {
+        "menu": "recent"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/app/recent",
+      "id"       : "workspace.open",
+      "label"    : "(none)",
+      "refused"  : "No project has been opened yet"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/app",
+      "id"       : "workspace.reindex",
+      "label"    : "Reindex Project",
+      "tooltip"  : "Rebuild the map the authoring agent reads: cast, locations, story graph, bible"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/app",
+      "id"       : "view.open",
+      "label"    : "Set Up API Keys…",
+      "tooltip"  : "How to get a model key, which of yours are set, and where they are read from",
+      "props": {
+        "editor": "onboarding",
+        "where" : "elsewhere"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/app",
+      "id"       : "upload.pick",
+      "label"    : "Upload Files…",
+      "tooltip"  : "Copy files into the project archive, verbatim, under a dated folder",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/app",
+      "id"       : "project.installPages",
+      "label"    : "Install GitHub Page Builder…",
+      "tooltip": "Commit a GitHub Actions workflow that publishes this story as a web page when you push",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/app",
+      "id"       : "agent.setMode",
+      "label"    : "Plan ⇄ Execute",
+      "tooltip"  : "Switch the agent between reading only and being allowed to apply edits",
+      "props": {
+        "mode": "execute"
+      },
+      "shortcut" : "Shift+Tab"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/app",
+      "id"       : "window.quit",
+      "label"    : "Quit",
+      "tooltip"  : "Close every window and quit vnstudio",
+      "shortcut" : "Ctrl+Q"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/edit",
+      "id"       : "history.move",
+      "label"    : "Undo",
+      "tooltip"  : "Put the project back the way it was before the last act",
+      "props": {
+        "to": "undo"
+      },
+      "shortcut" : "Ctrl+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/edit",
+      "id"       : "history.move",
+      "label"    : "Redo",
+      "tooltip"  : "Reapply the act that was just undone",
+      "props": {
+        "to": "redo"
+      },
+      "shortcut" : "Ctrl+Shift+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/edit",
+      "id"       : "gengraph.createGroup",
+      "label"    : "Create Group",
+      "tooltip": "Move the selected nodes of the active Gen Graph pane into a new group, and leave an instance of it in their place",
+      "supplies" : ["slug", "nodes"],
+      "shortcut" : "Ctrl+G"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/edit",
+      "id"       : "gengraph.ungroup",
+      "label"    : "Ungroup",
+      "tooltip"  : "Put a copy of each selected group’s nodes where the instance stands",
+      "supplies" : ["slug", "node"],
+      "shortcut" : "Ctrl+Alt+G"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/edit",
+      "id"       : "pane.view",
+      "label"    : "Edit Group",
+      "tooltip"  : "Open the selected group’s definition, which every instance of it follows",
+      "props": {
+        "what": "scope"
+      },
+      "on"       : "enter",
+      "shortcut" : "Tab"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/edit",
+      "id"       : "pane.view",
+      "label"    : "Exit Group",
+      "tooltip"  : "Go back up one level, to the graph the open group sits in",
+      "props": {
+        "what": "scope"
+      },
+      "on"       : "exit"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/edit",
+      "id"       : "pipeline.approveAndRun",
+      "label"    : "Approve & Generate All…",
+      "tooltip": "Approve every picture that is waiting and run the pipeline, repeatedly, until nothing is left to approve or generate. Spends real model calls.",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view",
+      "id"       : "menu.open",
+      "label"    : "Editors",
+      "tooltip"  : "Show a different editor in this pane",
+      "props": {
+        "menu": "editors"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Branches",
+      "tooltip"  : "Show the story graph as index cards in this pane",
+      "props": {
+        "editor": "branches"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Script",
+      "tooltip"  : "Show one scene's lines in this pane",
+      "props": {
+        "editor": "script"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Convo",
+      "tooltip"  : "Show the vnauthor conversation in this pane",
+      "props": {
+        "editor": "convo"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Shot Coverage",
+      "tooltip"  : "Show a scene against the shots that illustrate it in this pane",
+      "props": {
+        "editor": "timeline"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Tasks",
+      "tooltip"  : "Show the pipeline task list in this pane",
+      "props": {
+        "editor": "tasklist"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Task Graph",
+      "tooltip"  : "Show the pipeline task graph in this pane",
+      "props": {
+        "editor": "taskgraph"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Gen Graph",
+      "tooltip"  : "Show the node graph an asset is generated by in this pane",
+      "props": {
+        "editor": "gengraph"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Inspector",
+      "tooltip"  : "Show what is selected, in detail in this pane",
+      "props": {
+        "editor": "inspector"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Play",
+      "tooltip"  : "Show the runner in this pane",
+      "props": {
+        "editor": "play"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Skills",
+      "tooltip"  : "Show the playbooks the agent can follow, and can write in this pane",
+      "props": {
+        "editor": "skills"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Wiki",
+      "tooltip"  : "Show one markdown document in this pane",
+      "props": {
+        "editor": "wiki"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Documents",
+      "tooltip"  : "Show the project's documents and what links to them in this pane",
+      "props": {
+        "editor": "documents"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Asset",
+      "tooltip"  : "Show one generated asset, and the art notes behind it in this pane",
+      "props": {
+        "editor": "asset"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Project",
+      "tooltip"  : "Show project.yaml — art style, models, image params in this pane",
+      "props": {
+        "editor": "project"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view",
+      "id"       : "menu.open",
+      "label"    : "Layout",
+      "tooltip"  : "Rearrange the whole window",
+      "props": {
+        "menu": "layout"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view/layout",
+      "id"       : "view.applyLayout",
+      "label"    : "(none)",
+      "refused"  : "This project has no layouts yet"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view/layout",
+      "id"       : "view.saveLayout",
+      "label"    : "Save Current Layout As…",
+      "tooltip"  : "File the arrangement on screen in the project under a name of your own",
+      "props": {
+        "layout": "{\"vnstudio\":\"layout/1\"}"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view/layout",
+      "id"       : "view.resetLayout",
+      "label"    : "Reset View Layout…",
+      "tooltip"  : "Put the layouts that ship with the app back the way they shipped — undoable",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view",
+      "id"       : "screen.arrange",
+      "label"    : "Close Pane…",
+      "tooltip"  : "Point at a pane to close it — it is outlined and crossed out. Escape cancels.",
+      "props": {
+        "what": "close"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view",
+      "id"       : "screen.arrange",
+      "label"    : "Split Area",
+      "tooltip"  : "Drag a line across a pane to divide it in two.",
+      "props": {
+        "what": "split"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view",
+      "id"       : "window.new",
+      "label"    : "New Window",
+      "tooltip"  : "Open another window onto this project — one app, panes across two monitors",
+      "shortcut" : "Ctrl+Shift+N"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view",
+      "id"       : "window.close",
+      "label"    : "Close Window",
+      "tooltip"  : "Close this window; closing the last one quits",
+      "shortcut" : "Ctrl+W"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view",
+      "id"       : "window.new",
+      "label"    : "Move Pane to New Window",
+      "tooltip"  : "Reopen the active pane’s editor in a window of its own and close it here",
+      "props": {
+        "editor": "script"
+      },
+      "then": [
+        {
+          "id"   : "view.close",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/help",
+      "id"       : "app.checkForUpdates",
+      "label"    : "Check for Updates…",
+      "tooltip": "Ask GitHub whether a newer VN Studio has been released. Downloads nothing — if there is one, the notification takes you to the page."
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/help",
+      "id"       : "view.open",
+      "label"    : "Report a Difficult Agent…",
+      "tooltip": "Have a conversation that went wrong read by a debug agent, and draft a bug report from it. Runs on your own model key; names from your story are replaced first.",
+      "props": {
+        "editor": "report",
+        "where" : "popup"
+      },
+      "on"       : "report"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/app",
+      "id"       : "popup.open",
+      "label"    : "Command Palette…",
+      "tooltip"  : "Search every command by name and fill in its arguments",
+      "props": {
+        "popup": "palette"
+      },
+      "shortcut" : "Ctrl+Shift+P"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/app",
+      "id"       : "history.move",
+      "label"    : "Undo",
+      "tooltip"  : "Put the project back the way it was before the last act",
+      "props": {
+        "to": "undo"
+      },
+      "shortcut" : "Ctrl+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/app",
+      "id"       : "history.move",
+      "label"    : "Redo",
+      "tooltip"  : "Reapply the act that was just undone",
+      "props": {
+        "to": "redo"
+      },
+      "shortcut" : "Ctrl+Shift+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/app",
+      "id"       : "pipeline.run",
+      "label"    : "Run Pipeline",
+      "tooltip"  : "Plan and render everything that is ready, to the next gate",
+      "props": {
+        "mock": false
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/app",
+      "id"       : "pipeline.run",
+      "label"    : "Run Pipeline (adv)…",
+      "tooltip"  : "Start a run with the flags spelled out — dry run, scene filter, task limit",
+      "props": {
+        "mock": false
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/app",
+      "id"       : "workspace.create",
+      "label"    : "New Project…",
+      "tooltip"  : "Scaffold a project in a new folder and open it, closing this one",
+      "props": {
+        "newFolder": true
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/app",
+      "id"       : "workspace.pick",
+      "label"    : "Open Project…",
+      "tooltip"  : "Choose a project folder and open it, closing this one"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/app",
+      "id"       : "menu.open",
+      "label"    : "Recent Projects",
+      "tooltip"  : "Reopen a project you worked on before",
+      "props": {
+        "menu": "recent"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/app/recent",
+      "id"       : "workspace.open",
+      "label"    : "transfer ✓",
+      "props": {
+        "path": "C:/stories/transfer"
+      },
+      "refused"  : "C:/stories/transfer is the project you have open"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/app/recent",
+      "id"       : "workspace.open",
+      "label"    : "harbour",
+      "tooltip"  : "Close this project and open C:/stories/harbour",
+      "props": {
+        "path": "C:/stories/harbour"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/app",
+      "id"       : "workspace.reindex",
+      "label"    : "Reindex Project",
+      "tooltip"  : "Rebuild the map the authoring agent reads: cast, locations, story graph, bible"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/app",
+      "id"       : "view.open",
+      "label"    : "Set Up API Keys…",
+      "tooltip"  : "How to get a model key, which of yours are set, and where they are read from",
+      "props": {
+        "editor": "onboarding",
+        "where" : "elsewhere"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/app",
+      "id"       : "upload.pick",
+      "label"    : "Upload Files…",
+      "tooltip"  : "Copy files into the project archive, verbatim, under a dated folder",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/app",
+      "id"       : "project.installPages",
+      "label"    : "Update GitHub Page Builder…",
+      "tooltip": "Commit a GitHub Actions workflow that publishes this story as a web page when you push",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/app",
+      "id"       : "agent.setMode",
+      "label"    : "Plan ⇄ Execute",
+      "tooltip"  : "Switch the agent between reading only and being allowed to apply edits",
+      "props": {
+        "mode": "plan"
+      },
+      "shortcut" : "Shift+Tab"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/app",
+      "id"       : "window.quit",
+      "label"    : "Quit",
+      "tooltip"  : "Close every window and quit vnstudio",
+      "shortcut" : "Ctrl+Q"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/edit",
+      "id"       : "history.move",
+      "label"    : "Undo",
+      "tooltip"  : "Put the project back the way it was before the last act",
+      "props": {
+        "to": "undo"
+      },
+      "shortcut" : "Ctrl+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/edit",
+      "id"       : "history.move",
+      "label"    : "Redo",
+      "tooltip"  : "Reapply the act that was just undone",
+      "props": {
+        "to": "redo"
+      },
+      "shortcut" : "Ctrl+Shift+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/edit",
+      "id"       : "gengraph.createGroup",
+      "label"    : "Create Group",
+      "tooltip": "Move the selected nodes of the active Gen Graph pane into a new group, and leave an instance of it in their place",
+      "supplies" : ["slug", "nodes"],
+      "shortcut" : "Ctrl+G"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/edit",
+      "id"       : "gengraph.ungroup",
+      "label"    : "Ungroup",
+      "tooltip"  : "Put a copy of each selected group’s nodes where the instance stands",
+      "supplies" : ["slug", "node"],
+      "shortcut" : "Ctrl+Alt+G"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/edit",
+      "id"       : "pane.view",
+      "label"    : "Edit Group",
+      "tooltip"  : "Open the selected group’s definition, which every instance of it follows",
+      "props": {
+        "what": "scope"
+      },
+      "on"       : "enter",
+      "shortcut" : "Tab"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/edit",
+      "id"       : "pane.view",
+      "label"    : "Exit Group",
+      "tooltip"  : "Go back up one level, to the graph the open group sits in",
+      "props": {
+        "what": "scope"
+      },
+      "on"       : "exit"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/edit",
+      "id"       : "pipeline.approveAndRun",
+      "label"    : "Approve & Generate All…",
+      "tooltip": "Approve every picture that is waiting and run the pipeline, repeatedly, until nothing is left to approve or generate. Spends real model calls.",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view",
+      "id"       : "menu.open",
+      "label"    : "Editors",
+      "tooltip"  : "Show a different editor in this pane",
+      "props": {
+        "menu": "editors"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Branches",
+      "tooltip"  : "Show the story graph as index cards in this pane",
+      "props": {
+        "editor": "branches"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Script",
+      "tooltip"  : "Show one scene's lines in this pane",
+      "props": {
+        "editor": "script"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Convo",
+      "tooltip"  : "Show the vnauthor conversation in this pane",
+      "props": {
+        "editor": "convo"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Shot Coverage",
+      "tooltip"  : "Show a scene against the shots that illustrate it in this pane",
+      "props": {
+        "editor": "timeline"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Tasks",
+      "tooltip"  : "Show the pipeline task list in this pane",
+      "props": {
+        "editor": "tasklist"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Task Graph",
+      "tooltip"  : "Show the pipeline task graph in this pane",
+      "props": {
+        "editor": "taskgraph"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Gen Graph",
+      "tooltip"  : "Show the node graph an asset is generated by in this pane",
+      "props": {
+        "editor": "gengraph"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Inspector",
+      "tooltip"  : "Show what is selected, in detail in this pane",
+      "props": {
+        "editor": "inspector"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Play",
+      "tooltip"  : "Show the runner in this pane",
+      "props": {
+        "editor": "play"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Skills",
+      "tooltip"  : "Show the playbooks the agent can follow, and can write in this pane",
+      "props": {
+        "editor": "skills"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Wiki",
+      "tooltip"  : "Show one markdown document in this pane",
+      "props": {
+        "editor": "wiki"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Documents",
+      "tooltip"  : "Show the project's documents and what links to them in this pane",
+      "props": {
+        "editor": "documents"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Asset",
+      "tooltip"  : "Show one generated asset, and the art notes behind it in this pane",
+      "props": {
+        "editor": "asset"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Project",
+      "tooltip"  : "Show project.yaml — art style, models, image params in this pane",
+      "props": {
+        "editor": "project"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view",
+      "id"       : "menu.open",
+      "label"    : "Layout",
+      "tooltip"  : "Rearrange the whole window",
+      "props": {
+        "menu": "layout"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view/layout",
+      "id"       : "view.applyLayout",
+      "label"    : "Writing ✓",
+      "tooltip"  : "Rearrange the window: the script beside the tree, the conversation below",
+      "props": {
+        "name": "writing"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view/layout",
+      "id"       : "view.applyLayout",
+      "label"    : "Review",
+      "props": {
+        "name": "review"
+      },
+      "refused"  : "Cannot be used: it names an editor this build does not have"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view/layout",
+      "id"       : "view.saveLayout",
+      "label"    : "Save Current Layout As…",
+      "tooltip"  : "File the arrangement on screen in the project under a name of your own",
+      "props": {
+        "layout": "{\"vnstudio\":\"layout/1\"}"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view/layout",
+      "id"       : "view.resetLayout",
+      "label"    : "Reset View Layout…",
+      "tooltip"  : "Put the layouts that ship with the app back the way they shipped — undoable",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view",
+      "id"       : "screen.arrange",
+      "label"    : "Close Pane…",
+      "tooltip"  : "Point at a pane to close it — it is outlined and crossed out. Escape cancels.",
+      "props": {
+        "what": "close"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view",
+      "id"       : "screen.arrange",
+      "label"    : "Split Area",
+      "tooltip"  : "Drag a line across a pane to divide it in two.",
+      "props": {
+        "what": "split"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view",
+      "id"       : "window.new",
+      "label"    : "New Window",
+      "tooltip"  : "Open another window onto this project — one app, panes across two monitors",
+      "shortcut" : "Ctrl+Shift+N"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view",
+      "id"       : "window.close",
+      "label"    : "Close Window",
+      "tooltip"  : "Close this window; closing the last one quits",
+      "shortcut" : "Ctrl+W"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view",
+      "id"       : "window.new",
+      "label"    : "Move Pane to New Window",
+      "tooltip"  : "Reopen the active pane’s editor in a window of its own and close it here",
+      "props": {
+        "editor": "gengraph"
+      },
+      "then": [
+        {
+          "id"   : "view.close",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/help",
+      "id"       : "app.checkForUpdates",
+      "label"    : "Check for Updates…",
+      "tooltip": "Ask GitHub whether a newer VN Studio has been released. Downloads nothing — if there is one, the notification takes you to the page."
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/help",
+      "id"       : "view.open",
+      "label"    : "Report a Difficult Agent…",
+      "tooltip": "Have a conversation that went wrong read by a debug agent, and draft a bug report from it. Runs on your own model key; names from your story are replaced first.",
+      "props": {
+        "editor": "report",
+        "where" : "popup"
+      },
+      "on"       : "report"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/app",
+      "id"       : "popup.open",
+      "label"    : "Command Palette…",
+      "tooltip"  : "Search every command by name and fill in its arguments",
+      "props": {
+        "popup": "palette"
+      },
+      "shortcut" : "Ctrl+Shift+P"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/app",
+      "id"       : "history.move",
+      "label"    : "Undo",
+      "tooltip"  : "Put the project back the way it was before the last act",
+      "props": {
+        "to": "undo"
+      },
+      "shortcut" : "Ctrl+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/app",
+      "id"       : "history.move",
+      "label"    : "Redo",
+      "tooltip"  : "Reapply the act that was just undone",
+      "props": {
+        "to": "redo"
+      },
+      "shortcut" : "Ctrl+Shift+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/app",
+      "id"       : "pipeline.run",
+      "label"    : "Run Pipeline",
+      "tooltip"  : "Plan and render everything that is ready, to the next gate",
+      "refused"  : "Cannot start: a pipeline run is already in progress."
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/app",
+      "id"       : "pipeline.run",
+      "label"    : "Run Pipeline (adv)…",
+      "tooltip"  : "Start a run with the flags spelled out — dry run, scene filter, task limit",
+      "props": {
+        "mock": false
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/app",
+      "id"       : "workspace.create",
+      "label"    : "New Project…",
+      "tooltip"  : "Scaffold a project in a new folder and open it, closing this one",
+      "props": {
+        "newFolder": true
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/app",
+      "id"       : "workspace.pick",
+      "label"    : "Open Project…",
+      "tooltip"  : "Choose a project folder and open it, closing this one"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/app",
+      "id"       : "menu.open",
+      "label"    : "Recent Projects",
+      "tooltip"  : "Reopen a project you worked on before",
+      "props": {
+        "menu": "recent"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/app/recent",
+      "id"       : "workspace.open",
+      "label"    : "(none)",
+      "refused"  : "No project has been opened yet"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/app",
+      "id"       : "workspace.reindex",
+      "label"    : "Reindex Project",
+      "tooltip"  : "Rebuild the map the authoring agent reads: cast, locations, story graph, bible"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/app",
+      "id"       : "view.open",
+      "label"    : "Set Up API Keys…",
+      "tooltip"  : "How to get a model key, which of yours are set, and where they are read from",
+      "props": {
+        "editor": "onboarding",
+        "where" : "elsewhere"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/app",
+      "id"       : "upload.pick",
+      "label"    : "Upload Files…",
+      "tooltip"  : "Copy files into the project archive, verbatim, under a dated folder",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/app",
+      "id"       : "project.installPages",
+      "label"    : "Install GitHub Page Builder…",
+      "tooltip": "Commit a GitHub Actions workflow that publishes this story as a web page when you push",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/app",
+      "id"       : "agent.setMode",
+      "label"    : "Plan ⇄ Execute",
+      "tooltip"  : "Switch the agent between reading only and being allowed to apply edits",
+      "props": {
+        "mode": "execute"
+      },
+      "shortcut" : "Shift+Tab"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/app",
+      "id"       : "window.quit",
+      "label"    : "Quit",
+      "tooltip"  : "Close every window and quit vnstudio",
+      "shortcut" : "Ctrl+Q"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/edit",
+      "id"       : "history.move",
+      "label"    : "Undo",
+      "tooltip"  : "Put the project back the way it was before the last act",
+      "props": {
+        "to": "undo"
+      },
+      "shortcut" : "Ctrl+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/edit",
+      "id"       : "history.move",
+      "label"    : "Redo",
+      "tooltip"  : "Reapply the act that was just undone",
+      "props": {
+        "to": "redo"
+      },
+      "shortcut" : "Ctrl+Shift+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/edit",
+      "id"       : "gengraph.createGroup",
+      "label"    : "Create Group",
+      "tooltip": "Move the selected nodes of the active Gen Graph pane into a new group, and leave an instance of it in their place",
+      "supplies" : ["slug", "nodes"],
+      "shortcut" : "Ctrl+G"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/edit",
+      "id"       : "gengraph.ungroup",
+      "label"    : "Ungroup",
+      "tooltip"  : "Put a copy of each selected group’s nodes where the instance stands",
+      "supplies" : ["slug", "node"],
+      "shortcut" : "Ctrl+Alt+G"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/edit",
+      "id"       : "pane.view",
+      "label"    : "Edit Group",
+      "tooltip"  : "Open the selected group’s definition, which every instance of it follows",
+      "props": {
+        "what": "scope"
+      },
+      "on"       : "enter",
+      "shortcut" : "Tab"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/edit",
+      "id"       : "pane.view",
+      "label"    : "Exit Group",
+      "tooltip"  : "Go back up one level, to the graph the open group sits in",
+      "props": {
+        "what": "scope"
+      },
+      "on"       : "exit"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/edit",
+      "id"       : "pipeline.approveAndRun",
+      "label"    : "Approve & Generate All…",
+      "tooltip": "Approve every picture that is waiting and run the pipeline, repeatedly, until nothing is left to approve or generate. Spends real model calls.",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view",
+      "id"       : "menu.open",
+      "label"    : "Editors",
+      "tooltip"  : "Show a different editor in this pane",
+      "props": {
+        "menu": "editors"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Branches",
+      "tooltip"  : "Show the story graph as index cards in this pane",
+      "props": {
+        "editor": "branches"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Script",
+      "tooltip"  : "Show one scene's lines in this pane",
+      "props": {
+        "editor": "script"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Convo",
+      "tooltip"  : "Show the vnauthor conversation in this pane",
+      "props": {
+        "editor": "convo"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Shot Coverage",
+      "tooltip"  : "Show a scene against the shots that illustrate it in this pane",
+      "props": {
+        "editor": "timeline"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Tasks",
+      "tooltip"  : "Show the pipeline task list in this pane",
+      "props": {
+        "editor": "tasklist"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Task Graph",
+      "tooltip"  : "Show the pipeline task graph in this pane",
+      "props": {
+        "editor": "taskgraph"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Gen Graph",
+      "tooltip"  : "Show the node graph an asset is generated by in this pane",
+      "props": {
+        "editor": "gengraph"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Inspector",
+      "tooltip"  : "Show what is selected, in detail in this pane",
+      "props": {
+        "editor": "inspector"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Play",
+      "tooltip"  : "Show the runner in this pane",
+      "props": {
+        "editor": "play"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Skills",
+      "tooltip"  : "Show the playbooks the agent can follow, and can write in this pane",
+      "props": {
+        "editor": "skills"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Wiki",
+      "tooltip"  : "Show one markdown document in this pane",
+      "props": {
+        "editor": "wiki"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Documents",
+      "tooltip"  : "Show the project's documents and what links to them in this pane",
+      "props": {
+        "editor": "documents"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Asset",
+      "tooltip"  : "Show one generated asset, and the art notes behind it in this pane",
+      "props": {
+        "editor": "asset"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Project",
+      "tooltip"  : "Show project.yaml — art style, models, image params in this pane",
+      "props": {
+        "editor": "project"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view",
+      "id"       : "menu.open",
+      "label"    : "Layout",
+      "tooltip"  : "Rearrange the whole window",
+      "props": {
+        "menu": "layout"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view/layout",
+      "id"       : "view.applyLayout",
+      "label"    : "(none)",
+      "refused"  : "This project has no layouts yet"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view/layout",
+      "id"       : "view.saveLayout",
+      "label"    : "Save Current Layout As…",
+      "tooltip"  : "File the arrangement on screen in the project under a name of your own",
+      "props": {
+        "layout": "{\"vnstudio\":\"layout/1\"}"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view/layout",
+      "id"       : "view.resetLayout",
+      "label"    : "Reset View Layout…",
+      "tooltip"  : "Put the layouts that ship with the app back the way they shipped — undoable",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view",
+      "id"       : "screen.arrange",
+      "label"    : "Close Pane…",
+      "tooltip"  : "Point at a pane to close it — it is outlined and crossed out. Escape cancels.",
+      "props": {
+        "what": "close"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view",
+      "id"       : "screen.arrange",
+      "label"    : "Split Area",
+      "tooltip"  : "Drag a line across a pane to divide it in two.",
+      "props": {
+        "what": "split"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view",
+      "id"       : "window.new",
+      "label"    : "New Window",
+      "tooltip"  : "Open another window onto this project — one app, panes across two monitors",
+      "shortcut" : "Ctrl+Shift+N"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view",
+      "id"       : "window.close",
+      "label"    : "Close Window",
+      "tooltip"  : "Close this window; closing the last one quits",
+      "shortcut" : "Ctrl+W"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view",
+      "id"       : "window.new",
+      "label"    : "Move Pane to New Window",
+      "tooltip"  : "Reopen the active pane’s editor in a window of its own and close it here",
+      "props": {
+        "editor": "script"
+      },
+      "then": [
+        {
+          "id"   : "view.close",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/help",
+      "id"       : "app.checkForUpdates",
+      "label"    : "Check for Updates…",
+      "tooltip": "Ask GitHub whether a newer VN Studio has been released. Downloads nothing — if there is one, the notification takes you to the page."
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/help",
+      "id"       : "view.open",
+      "label"    : "Report a Difficult Agent…",
+      "tooltip": "Have a conversation that went wrong read by a debug agent, and draft a bug report from it. Runs on your own model key; names from your story are replaced first.",
+      "props": {
+        "editor": "report",
+        "where" : "popup"
+      },
+      "on"       : "report"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/app",
+      "id"       : "popup.open",
+      "label"    : "Command Palette…",
+      "tooltip"  : "Search every command by name and fill in its arguments",
+      "props": {
+        "popup": "palette"
+      },
+      "shortcut" : "Ctrl+Shift+P"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/app",
+      "id"       : "history.move",
+      "label"    : "Undo",
+      "tooltip"  : "Put the project back the way it was before the last act",
+      "props": {
+        "to": "undo"
+      },
+      "shortcut" : "Ctrl+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/app",
+      "id"       : "history.move",
+      "label"    : "Redo",
+      "tooltip"  : "Reapply the act that was just undone",
+      "props": {
+        "to": "redo"
+      },
+      "shortcut" : "Ctrl+Shift+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/app",
+      "id"       : "pipeline.run",
+      "label"    : "Run Pipeline",
+      "tooltip"  : "Plan and render everything that is ready, to the next gate",
+      "props": {
+        "mock": false
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/app",
+      "id"       : "pipeline.run",
+      "label"    : "Run Pipeline (adv)…",
+      "tooltip"  : "Start a run with the flags spelled out — dry run, scene filter, task limit",
+      "props": {
+        "mock": false
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/app",
+      "id"       : "workspace.create",
+      "label"    : "New Project…",
+      "tooltip"  : "Scaffold a project in a new folder and open it, closing this one",
+      "props": {
+        "newFolder": true
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/app",
+      "id"       : "workspace.pick",
+      "label"    : "Open Project…",
+      "tooltip"  : "Choose a project folder and open it, closing this one"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/app",
+      "id"       : "menu.open",
+      "label"    : "Recent Projects",
+      "tooltip"  : "Reopen a project you worked on before",
+      "props": {
+        "menu": "recent"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/app/recent",
+      "id"       : "workspace.open",
+      "label"    : "(none)",
+      "refused"  : "No project has been opened yet"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/app",
+      "id"       : "workspace.reindex",
+      "label"    : "Reindex Project",
+      "tooltip"  : "Rebuild the map the authoring agent reads: cast, locations, story graph, bible"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/app",
+      "id"       : "view.open",
+      "label"    : "Set Up API Keys…",
+      "tooltip"  : "How to get a model key, which of yours are set, and where they are read from",
+      "props": {
+        "editor": "onboarding",
+        "where" : "elsewhere"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/app",
+      "id"       : "upload.pick",
+      "label"    : "Upload Files…",
+      "tooltip"  : "Copy files into the project archive, verbatim, under a dated folder",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/app",
+      "id"       : "project.installPages",
+      "label"    : "Install GitHub Page Builder…",
+      "tooltip": "Commit a GitHub Actions workflow that publishes this story as a web page when you push",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/app",
+      "id"       : "agent.setMode",
+      "label"    : "Plan ⇄ Execute",
+      "tooltip"  : "Switch the agent between reading only and being allowed to apply edits",
+      "props": {
+        "mode": "execute"
+      },
+      "shortcut" : "Shift+Tab"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/app",
+      "id"       : "window.quit",
+      "label"    : "Quit",
+      "tooltip"  : "Close every window and quit vnstudio",
+      "shortcut" : "Ctrl+Q"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/edit",
+      "id"       : "history.move",
+      "label"    : "Undo",
+      "tooltip"  : "Put the project back the way it was before the last act",
+      "props": {
+        "to": "undo"
+      },
+      "shortcut" : "Ctrl+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/edit",
+      "id"       : "history.move",
+      "label"    : "Redo",
+      "tooltip"  : "Reapply the act that was just undone",
+      "props": {
+        "to": "redo"
+      },
+      "shortcut" : "Ctrl+Shift+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/edit",
+      "id"       : "gengraph.createGroup",
+      "label"    : "Create Group",
+      "tooltip": "Move the selected nodes of the active Gen Graph pane into a new group, and leave an instance of it in their place",
+      "supplies" : ["slug", "nodes"],
+      "shortcut" : "Ctrl+G"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/edit",
+      "id"       : "gengraph.ungroup",
+      "label"    : "Ungroup",
+      "tooltip"  : "Put a copy of each selected group’s nodes where the instance stands",
+      "supplies" : ["slug", "node"],
+      "shortcut" : "Ctrl+Alt+G"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/edit",
+      "id"       : "pane.view",
+      "label"    : "Edit Group",
+      "tooltip"  : "Open the selected group’s definition, which every instance of it follows",
+      "props": {
+        "what": "scope"
+      },
+      "on"       : "enter",
+      "shortcut" : "Tab"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/edit",
+      "id"       : "pane.view",
+      "label"    : "Exit Group",
+      "tooltip"  : "Go back up one level, to the graph the open group sits in",
+      "props": {
+        "what": "scope"
+      },
+      "on"       : "exit"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/edit",
+      "id"       : "pipeline.approveAndRun",
+      "label"    : "Approve & Generate All…",
+      "tooltip": "Approve every picture that is waiting and run the pipeline, repeatedly, until nothing is left to approve or generate. Spends real model calls.",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view",
+      "id"       : "menu.open",
+      "label"    : "Editors",
+      "tooltip"  : "Show a different editor in this pane",
+      "props": {
+        "menu": "editors"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Branches",
+      "tooltip"  : "Show the story graph as index cards in this pane",
+      "props": {
+        "editor": "branches"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Script",
+      "tooltip"  : "Show one scene's lines in this pane",
+      "props": {
+        "editor": "script"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Convo",
+      "tooltip"  : "Show the vnauthor conversation in this pane",
+      "props": {
+        "editor": "convo"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Shot Coverage",
+      "tooltip"  : "Show a scene against the shots that illustrate it in this pane",
+      "props": {
+        "editor": "timeline"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Tasks",
+      "tooltip"  : "Show the pipeline task list in this pane",
+      "props": {
+        "editor": "tasklist"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Task Graph",
+      "tooltip"  : "Show the pipeline task graph in this pane",
+      "props": {
+        "editor": "taskgraph"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Gen Graph",
+      "tooltip"  : "Show the node graph an asset is generated by in this pane",
+      "props": {
+        "editor": "gengraph"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Inspector",
+      "tooltip"  : "Show what is selected, in detail in this pane",
+      "props": {
+        "editor": "inspector"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Play",
+      "tooltip"  : "Show the runner in this pane",
+      "props": {
+        "editor": "play"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Skills",
+      "tooltip"  : "Show the playbooks the agent can follow, and can write in this pane",
+      "props": {
+        "editor": "skills"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Wiki",
+      "tooltip"  : "Show one markdown document in this pane",
+      "props": {
+        "editor": "wiki"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Documents",
+      "tooltip"  : "Show the project's documents and what links to them in this pane",
+      "props": {
+        "editor": "documents"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Asset",
+      "tooltip"  : "Show one generated asset, and the art notes behind it in this pane",
+      "props": {
+        "editor": "asset"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Project",
+      "tooltip"  : "Show project.yaml — art style, models, image params in this pane",
+      "props": {
+        "editor": "project"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view",
+      "id"       : "menu.open",
+      "label"    : "Layout",
+      "tooltip"  : "Rearrange the whole window",
+      "props": {
+        "menu": "layout"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view/layout",
+      "id"       : "view.applyLayout",
+      "label"    : "(none)",
+      "refused"  : "This project has no layouts yet"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view/layout",
+      "id"       : "view.saveLayout",
+      "label"    : "Save Current Layout As…",
+      "tooltip"  : "File the arrangement on screen in the project under a name of your own",
+      "refused"  : "This arrangement could not be serialized."
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view/layout",
+      "id"       : "view.resetLayout",
+      "label"    : "Reset View Layout…",
+      "tooltip"  : "Put the layouts that ship with the app back the way they shipped — undoable",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view",
+      "id"       : "screen.arrange",
+      "label"    : "Close Pane…",
+      "tooltip"  : "Point at a pane to close it — it is outlined and crossed out. Escape cancels.",
+      "props": {
+        "what": "close"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view",
+      "id"       : "screen.arrange",
+      "label"    : "Split Area",
+      "tooltip"  : "Drag a line across a pane to divide it in two.",
+      "props": {
+        "what": "split"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view",
+      "id"       : "window.new",
+      "label"    : "New Window",
+      "tooltip"  : "Open another window onto this project — one app, panes across two monitors",
+      "shortcut" : "Ctrl+Shift+N"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view",
+      "id"       : "window.close",
+      "label"    : "Close Window",
+      "tooltip"  : "Close this window; closing the last one quits",
+      "shortcut" : "Ctrl+W"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view",
+      "id"       : "window.new",
+      "label"    : "Move Pane to New Window",
+      "tooltip"  : "Reopen the active pane’s editor in a window of its own and close it here",
+      "refused"  : "There is no pane to move."
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/help",
+      "id"       : "app.checkForUpdates",
+      "label"    : "Check for Updates…",
+      "tooltip": "Ask GitHub whether a newer VN Studio has been released. Downloads nothing — if there is one, the notification takes you to the page."
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/help",
+      "id"       : "view.open",
+      "label"    : "Report a Difficult Agent…",
+      "tooltip": "Have a conversation that went wrong read by a debug agent, and draft a bug report from it. Runs on your own model key; names from your story are replaced first.",
+      "props": {
+        "editor": "report",
+        "where" : "popup"
+      },
+      "on"       : "report"
     }
   ],
   "paletteOnly": [
-    {
-      "match": "workspace.*",
-      "why": "A workspace is opened, created, indexed and imported from the menu bar, the launcher and CDP, before any editor exists."
-    },
     {
       "match": "tour.*",
       "why"  : "The tour layer advances itself; no editor draws a tour control."
@@ -14489,16 +17175,36 @@
       "why"  : "The drag layer’s own queries, answered over IPC rather than drawn."
     },
     {
-      "match": "window.new",
-      "why": "Window lifecycle belongs to the menu bar, the hotkeys and the OS rather than to a pane."
+      "match": "workspace.chooseDirectory",
+      "why": "A workspace read, or an import, that the launcher, the panes’ own fetches and CDP run; the app menu draws the rest of the namespace."
     },
     {
-      "match": "window.close",
-      "why": "Window lifecycle belongs to the menu bar, the hotkeys and the OS rather than to a pane."
+      "match": "workspace.doctree",
+      "why": "A workspace read, or an import, that the launcher, the panes’ own fetches and CDP run; the app menu draws the rest of the namespace."
     },
     {
-      "match": "window.quit",
-      "why": "Window lifecycle belongs to the menu bar, the hotkeys and the OS rather than to a pane."
+      "match": "workspace.filetree",
+      "why": "A workspace read, or an import, that the launcher, the panes’ own fetches and CDP run; the app menu draws the rest of the namespace."
+    },
+    {
+      "match": "workspace.import",
+      "why": "A workspace read, or an import, that the launcher, the panes’ own fetches and CDP run; the app menu draws the rest of the namespace."
+    },
+    {
+      "match": "workspace.index",
+      "why": "A workspace read, or an import, that the launcher, the panes’ own fetches and CDP run; the app menu draws the rest of the namespace."
+    },
+    {
+      "match": "workspace.recent",
+      "why": "A workspace read, or an import, that the launcher, the panes’ own fetches and CDP run; the app menu draws the rest of the namespace."
+    },
+    {
+      "match": "workspace.skills",
+      "why": "A workspace read, or an import, that the launcher, the panes’ own fetches and CDP run; the app menu draws the rest of the namespace."
+    },
+    {
+      "match": "workspace.skilltree",
+      "why": "A workspace read, or an import, that the launcher, the panes’ own fetches and CDP run; the app menu draws the rest of the namespace."
     },
     {
       "match": "notify.markRead",
@@ -14566,39 +17272,27 @@
     },
     {
       "match": "view.close",
-      "why": "Pane management from the View menu, the hotkeys and the docker’s own chrome; only opening and applying a layout are drawn."
+      "why": "Pane management the hotkeys, the docker’s own chrome and a menu row’s `then` list run; the View menu draws the rest of the namespace."
     },
     {
       "match": "view.focus",
-      "why": "Pane management from the View menu, the hotkeys and the docker’s own chrome; only opening and applying a layout are drawn."
+      "why": "Pane management the hotkeys, the docker’s own chrome and a menu row’s `then` list run; the View menu draws the rest of the namespace."
     },
     {
       "match": "view.layout",
-      "why": "Pane management from the View menu, the hotkeys and the docker’s own chrome; only opening and applying a layout are drawn."
+      "why": "Pane management the hotkeys, the docker’s own chrome and a menu row’s `then` list run; the View menu draws the rest of the namespace."
     },
     {
       "match": "view.layouts",
-      "why": "Pane management from the View menu, the hotkeys and the docker’s own chrome; only opening and applying a layout are drawn."
+      "why": "Pane management the hotkeys, the docker’s own chrome and a menu row’s `then` list run; the View menu draws the rest of the namespace."
     },
     {
       "match": "view.palette",
-      "why": "Pane management from the View menu, the hotkeys and the docker’s own chrome; only opening and applying a layout are drawn."
-    },
-    {
-      "match": "view.resetLayout",
-      "why": "Pane management from the View menu, the hotkeys and the docker’s own chrome; only opening and applying a layout are drawn."
-    },
-    {
-      "match": "view.saveLayout",
-      "why": "Pane management from the View menu, the hotkeys and the docker’s own chrome; only opening and applying a layout are drawn."
-    },
-    {
-      "match": "app.checkForUpdates",
-      "why"  : "Reached from the Help menu."
+      "why": "Pane management the hotkeys, the docker’s own chrome and a menu row’s `then` list run; the View menu draws the rest of the namespace."
     },
     {
       "match": "app.openReleases",
-      "why"  : "Reached from the Help menu and the update notification."
+      "why"  : "Reached from the update notification."
     },
     {
       "match": "app.keyGuide",
@@ -14685,10 +17379,6 @@
       "why": "The script column runs it from a keystroke, the cue picker or a pending scene, not from a drawn control."
     },
     {
-      "match": "story.deleteShot",
-      "why"  : "The timeline runs it from a per-shot or per-character widget outside `controls`."
-    },
-    {
       "match": "story.setSubjects",
       "why"  : "The timeline runs it from a per-shot or per-character widget outside `controls`."
     },
@@ -14754,33 +17444,42 @@
     },
     {
       "match": "agent.clear",
-      "why": "The conversation’s input line, the thread list and the script column’s line editor run it directly."
-    },
-    {
-      "match": "agent.editLine",
-      "why": "The conversation’s input line, the thread list and the script column’s line editor run it directly."
+      "why"  : "The conversation’s input line and the thread list run it directly."
     },
     {
       "match": "agent.renameThread",
-      "why": "The conversation’s input line, the thread list and the script column’s line editor run it directly."
+      "why"  : "The conversation’s input line and the thread list run it directly."
     },
     {
       "match": "upload.files",
-      "why"  : "Uploads come from the drop target and the File menu."
-    },
-    {
-      "match": "upload.pick",
-      "why"  : "Uploads come from the drop target and the File menu."
-    },
-    {
-      "match": "pipeline.approveAndRun",
-      "why"  : "A menu-bar item opened as a command dialog."
-    },
-    {
-      "match": "project.installPages",
-      "why"  : "A menu-bar item opened as a command dialog."
+      "why"  : "Uploads come from the drop target."
     }
   ],
   "shortcuts"  : [],
-  "menuExempt" : []
+  "menuExempt": [
+    {
+      "id" : "asset.accept",
+      "why": "Reversed by asset.unapprove, which confirms; accepting a picture spends nothing."
+    },
+    {
+      "id" : "story.screenplay",
+      "why": "Writes the screenplay file the author asked for by name; nothing else changes."
+    },
+    {
+      "id" : "pipeline.run",
+      "why": "The app menu asks command:check first and refuses with its sentence; the run opens the task list, where it can be stopped."
+    },
+    {
+      "id" : "workspace.open",
+      "why": "Workspace-level: it changes which project is open, and nothing in the project."
+    },
+    {
+      "id" : "workspace.pick",
+      "why": "Workspace-level: the OS chooser it opens is its own confirmation, and nothing in the project changes."
+    },
+    {
+      "id" : "workspace.reindex",
+      "why": "Workspace-level: it rebuilds a derived index, and nothing the author wrote changes."
+    }
+  ]
 }

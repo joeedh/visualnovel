@@ -8,7 +8,9 @@ import {
   grabEdge,
   grabGutter,
   grabShot,
+  noFrameYet,
   noticeOf,
+  shotMenu,
 } from '../timeline.js';
 import type { CoverageLine, CoverageShot, SceneCoverage } from '../../../../src/shared/ipc';
 
@@ -172,5 +174,30 @@ describe('what the author is told', () => {
     });
 
     expect(noticeOf({ verdict: null })).toBeNull();
+  });
+});
+
+describe('what right-clicking a bracket offers', () => {
+  test('leaves for the frame above the separator, and deletes the shot below it', () => {
+    const drawn = { ...shot('s__a', ['s:L1']), image: { hash: 'abc123', ext: 'png' } };
+    expect(shotMenu('s', drawn)).toEqual([
+      {
+        label: 'Open shot asset',
+        id   : 'view.open',
+        props: { editor: 'asset', where: 'elsewhere', subject: 'abc123' },
+      },
+      { label: '-', id: '-' },
+      { label: 'Delete this shot', id: 'story.deleteShot', props: { scene: 's', shot: 's__a' } },
+    ]);
+  });
+
+  test('refuses the frame of a shot nothing has drawn, in the strip’s own words', () => {
+    const [open] = shotMenu('s', shot('s__a', ['s:L1']));
+    expect(open).toEqual({
+      label  : 'Open shot asset',
+      id     : 'view.open',
+      refused: noFrameYet('s__a'),
+    });
+    expect(noFrameYet('s__a')).toBe('s__a has no frame yet — run the pipeline to draw one.');
   });
 });

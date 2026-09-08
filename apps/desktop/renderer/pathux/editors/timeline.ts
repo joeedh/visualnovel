@@ -44,14 +44,12 @@ import {
 import { redrawing } from '../tour/anchors.js';
 import { exec, onInvalidate } from '../app/bridge.js';
 import { gestureState } from '../interactions/gestures.js';
-import { MENU_SEP } from '../chrome/contextmenu.js';
 import type { VnContext } from '../app/context.js';
 import { openCommandDialog } from '../chrome/dialog.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { assetNode, openNode } from '../panes/open.js';
 import type { VnScreen } from '../app/screen.js';
-import { shotAssetEntry } from '../interactions/script.js';
-import { coverState } from '../interactions/timeline.js';
+import { coverState, noFrameYet, shotMenu } from '../interactions/timeline.js';
 import { showContextMenu } from '../chrome/showmenu.js';
 import {
   aimCreate,
@@ -139,11 +137,6 @@ const SURFACE_CSS = `
 }
 .tl-note .tl-door:disabled { opacity: 0.5; cursor: default; }
 `;
-
-/** Why a bracket cannot open, worded once so the double-click and the right-click refuse alike. */
-function noFrameYet(shotId: string): string {
-  return `${shotId} has no frame yet — run the pipeline to draw one.`;
-}
 
 /**
  * The coverage strip: a scene's screenplay down the page, and the shots that illustrate it as
@@ -646,15 +639,13 @@ export class TimelineEditor extends VnEditor {
     box.addEventListener('contextmenu', (event) => {
       event.preventDefault();
       event.stopPropagation();
-      void showContextMenu(this.ctx as VnContext, event.clientX, event.clientY, shotId, [
-        shotAssetEntry(shot, 'Open shot asset', noFrameYet(shot.id)),
-        { label: MENU_SEP, id: MENU_SEP },
-        {
-          label: 'Delete this shot',
-          id   : 'story.deleteShot',
-          props: { scene: this.ui.sceneId, shot: shotId },
-        },
-      ]);
+      void showContextMenu(
+        this.ctx as VnContext,
+        event.clientX,
+        event.clientY,
+        shotId,
+        shotMenu(this.ui.sceneId, shot),
+      );
     });
     return box;
   }

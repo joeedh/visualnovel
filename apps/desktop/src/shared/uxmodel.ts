@@ -71,9 +71,11 @@ const controlRecord = z
   .strict();
 
 /**
- * One entry of a menu, under `when`: the node kind a tree menu is drawn for, or
- * `header/<menu>[/<submenu>]` for the header's. `refused` is the entry's own sentence where it is
- * drawn greyed, and `then` is what follows the entry's command or effect.
+ * One entry of a menu, under `when`: the node a tree menu is drawn for, the shot, line or card a
+ * right-click names, or `header/<menu>[/<submenu>]` for the header's. `refused` is the entry's own
+ * sentence where it is drawn greyed, `then` is what follows the entry's command or effect, `on`
+ * tells two entries with one id apart, and `supplies` names the props the click reads from the
+ * pane rather than the row.
  */
 const menuRecord = z
   .object({
@@ -84,6 +86,8 @@ const menuRecord = z
     label   : z.string(),
     tooltip : z.string().optional(),
     props   : props.optional(),
+    on      : z.string().min(1).optional(),
+    supplies: z.array(z.string()).optional(),
     form    : z.boolean().optional(),
     then    : z.array(action).optional(),
     refused : z.string().min(1).optional(),

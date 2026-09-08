@@ -4,7 +4,6 @@ import { duplicateKeys, keyOf } from '../anchors.js';
 import {
   anchoredIds,
   effectsOf,
-  MENU_ROW,
   model,
   pickOffer,
   refusingVerdicts,
@@ -12,10 +11,11 @@ import {
   situationRecords,
 } from '../model.js';
 import { PALETTE_ONLY } from '../paletteonly.js';
-import { menuAnchors } from '../../pathux/doctree/doctree.js';
+import { MENU_ROWS, menuRecords } from '../menus.js';
 import { createDesktopEffects } from '../../../src/shared/effects.js';
 import {
   actionProblems,
+  actionsOf,
   paletteMatches,
   UX_MODEL,
   UX_PALETTE_ONLY,
@@ -29,11 +29,13 @@ describe('model()', () => {
     expect(() => UX_MODEL.parse(file)).not.toThrow();
   });
 
-  it('lists every module in the table, and the menu row', () => {
+  it('lists every module in both tables', () => {
     const modules = new Set(file.situations.map((s) => s.module));
     for (const row of ROWS) expect(modules.has(row.module)).toBe(true);
-    expect(modules.has(MENU_ROW.module)).toBe(true);
-    expect(file.situations.length).toBe(ROWS.reduce((n, row) => n + row.situations.length, 0) + 1);
+    for (const row of MENU_ROWS) expect(modules.has(row.module)).toBe(true);
+    const count = (rows: readonly { situations: readonly unknown[] }[]) =>
+      rows.reduce((n, row) => n + row.situations.length, 0);
+    expect(file.situations.length).toBe(count(ROWS) + count(MENU_ROWS));
   });
 
   it('gives no two records in one situation the same key', () => {
@@ -91,14 +93,8 @@ describe('model()', () => {
     }
   });
 
-  it("matches the doctree's own anchors entry for entry", () => {
-    const pair = (r: { when?: string; id: string; form?: boolean }) =>
-      `${r.when ?? ''} ${r.id}${r.form ? ' form' : ''}`;
-    const derived = file.records
-      .filter((r) => r.via === 'menu')
-      .map(pair)
-      .sort();
-    expect(derived).toEqual(menuAnchors().map(pair).sort());
+  it('lists the menu records the menu table yields, record for record', () => {
+    expect(file.records.filter((r) => r.via === 'menu')).toEqual(menuRecords());
   });
 
   it('writes what a click does as its effects, in order', () => {
@@ -131,7 +127,10 @@ describe('model()', () => {
    */
   it('names only effects the app declares, with props they accept', () => {
     const effects = createDesktopEffects();
-    const commands = new Set(anchoredIds(file));
+    // A `then` step may name a command no control reaches, which the palette-only list vouches for
+    const steps = file.records.flatMap((r) => actionsOf(r).map((step) => step.id));
+    const vouched = steps.filter((id) => PALETTE_ONLY.some((p) => paletteMatches(p.match, id)));
+    const commands = new Set([...anchoredIds(file), ...vouched]);
     expect(actionProblems(file, commands, effects)).toEqual([]);
     const record = file.records.find((r) => r.via === 'control');
     const made = {

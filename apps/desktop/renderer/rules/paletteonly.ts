@@ -11,10 +11,6 @@ export interface PaletteOnly {
 
 const NAMESPACES: readonly PaletteOnly[] = [
   {
-    match: 'workspace.*',
-    why: 'A workspace is opened, created, indexed and imported from the menu bar, the launcher and CDP, before any editor exists.',
-  },
-  {
     match: 'tour.*',
     why  : 'The tour layer advances itself; no editor draws a tour control.',
   },
@@ -28,9 +24,18 @@ const NAMESPACES: readonly PaletteOnly[] = [
   },
 ];
 
-const WINDOW = ['window.new', 'window.close', 'window.quit'].map((match) => ({
+const WORKSPACE = [
+  'workspace.chooseDirectory',
+  'workspace.doctree',
+  'workspace.filetree',
+  'workspace.import',
+  'workspace.index',
+  'workspace.recent',
+  'workspace.skills',
+  'workspace.skilltree',
+].map((match) => ({
   match,
-  why: 'Window lifecycle belongs to the menu bar, the hotkeys and the OS rather than to a pane.',
+  why: 'A workspace read, or an import, that the launcher, the panes’ own fetches and CDP run; the app menu draws the rest of the namespace.',
 }));
 
 const NOTIFY: readonly PaletteOnly[] = [
@@ -64,22 +69,15 @@ const READS = [
   why: 'A read whose answer feeds an editor or the agent; the palette and CDP run it, no control does.',
 }));
 
-const VIEW = [
-  'view.close',
-  'view.focus',
-  'view.layout',
-  'view.layouts',
-  'view.palette',
-  'view.resetLayout',
-  'view.saveLayout',
-].map((match) => ({
-  match,
-  why: 'Pane management from the View menu, the hotkeys and the docker’s own chrome; only opening and applying a layout are drawn.',
-}));
+const VIEW = ['view.close', 'view.focus', 'view.layout', 'view.layouts', 'view.palette'].map(
+  (match) => ({
+    match,
+    why: 'Pane management the hotkeys, the docker’s own chrome and a menu row’s `then` list run; the View menu draws the rest of the namespace.',
+  }),
+);
 
 const APP: readonly PaletteOnly[] = [
-  { match: 'app.checkForUpdates', why: 'Reached from the Help menu.' },
-  { match: 'app.openReleases', why: 'Reached from the Help menu and the update notification.' },
+  { match: 'app.openReleases', why: 'Reached from the update notification.' },
   {
     match: 'app.keyGuide',
     why  : 'The onboarding editor reads the guide’s text through it; no control runs it.',
@@ -113,16 +111,12 @@ const STORY: readonly PaletteOnly[] = [
     match,
     why: 'The script column runs it from a keystroke, the cue picker or a pending scene, not from a drawn control.',
   })),
-  ...[
-    'story.deleteShot',
-    'story.setSubjects',
-    'story.setVariant',
-    'story.requireCast',
-    'story.setSceneOutfit',
-  ].map((match) => ({
-    match,
-    why: 'The timeline runs it from a per-shot or per-character widget outside `controls`.',
-  })),
+  ...['story.setSubjects', 'story.setVariant', 'story.requireCast', 'story.setSceneOutfit'].map(
+    (match) => ({
+      match,
+      why: 'The timeline runs it from a per-shot or per-character widget outside `controls`.',
+    }),
+  ),
   ...['story.moveLine', 'story.moveShot'].map((match) => ({
     match,
     why: 'A drag interaction; the drag layer runs it when the drop lands.',
@@ -150,24 +144,16 @@ const CONVERSATIONS: readonly PaletteOnly[] = [
     match,
     why: 'The report conversation runs it from its input line and its preview dialog, not from `controls`.',
   })),
-  ...['agent.clear', 'agent.editLine', 'agent.renameThread'].map((match) => ({
+  ...['agent.clear', 'agent.renameThread'].map((match) => ({
     match,
-    why: 'The conversation’s input line, the thread list and the script column’s line editor run it directly.',
+    why: 'The conversation’s input line and the thread list run it directly.',
   })),
-  ...['upload.files', 'upload.pick'].map((match) => ({
-    match,
-    why: 'Uploads come from the drop target and the File menu.',
-  })),
-];
-
-const MENU_BAR: readonly PaletteOnly[] = [
-  { match: 'pipeline.approveAndRun', why: 'A menu-bar item opened as a command dialog.' },
-  { match: 'project.installPages', why: 'A menu-bar item opened as a command dialog.' },
+  { match: 'upload.files', why: 'Uploads come from the drop target.' },
 ];
 
 export const PALETTE_ONLY: readonly PaletteOnly[] = [
   ...NAMESPACES,
-  ...WINDOW,
+  ...WORKSPACE,
   ...NOTIFY,
   ...NAMES,
   ...READS,
@@ -177,5 +163,4 @@ export const PALETTE_ONLY: readonly PaletteOnly[] = [
   ...STORY,
   ...PROMPT,
   ...CONVERSATIONS,
-  ...MENU_BAR,
 ];

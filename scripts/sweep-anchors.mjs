@@ -76,8 +76,8 @@ function leavesBlank(anchor) {
 }
 if (editors.length === 0) throw new Error('view.open declares no editors — is this build current?');
 
-/** What the tree's right-click reaches. Derived from `menuFor`, so no pane has to be opened. */
-const records = await evaluate(socket, 'JSON.stringify(window.__vnAnchors.tree())').then(
+/** What every menu reaches. Derived from the menu table, so no pane has to be opened. */
+const records = await evaluate(socket, 'JSON.stringify(window.__vnAnchors.menus())').then(
   JSON.parse,
 );
 

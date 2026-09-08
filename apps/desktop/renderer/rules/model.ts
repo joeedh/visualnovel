@@ -1,7 +1,7 @@
 /**
- * The derived UX model: every rule module's `controls` run over its situations, plus the document
- * tree's menu over one node of each kind, as one file (`docs/reference/guided-tours.md`, Part
- * III). No DOM, no main process: `scripts/gen-ux-model.mjs` bundles this for node and writes
+ * The derived UX model: every rule module's `controls` run over its situations, plus every menu
+ * over its own (`rules/menus.ts`), as one file (`docs/reference/guided-tours.md`, Part III). No
+ * DOM, no main process: `scripts/gen-ux-model.mjs` bundles this for node and writes
  * `apps/desktop/ux-model.json`, and `tests/model.test.ts` compares that file against a fresh call.
  *
  * The output is a pure function of the table below. It carries no timestamp, sha or path, so the
@@ -9,19 +9,13 @@
  */
 import { keyOf, type Offer } from './anchors.js';
 import { PALETTE_ONLY } from './paletteonly.js';
+import { MENU_EXEMPT } from './menuexempt.js';
+import { MENU_ROWS, menuRecords } from './menus.js';
 import { isEffectId } from '../../src/shared/effects.js';
 import type { Situation } from './situations/situation.js';
-import { MENU_NODES, menuFor } from '../pathux/doctree/doctree.js';
-import { MENU_SEP } from '../pathux/chrome/contextmenu.js';
 import type { AnchorHome } from '../../src/shared/editors.js';
 import type { CommandCheck } from '../../src/shared/ipc.js';
-import type {
-  UxAction,
-  UxControlRecord,
-  UxMenuRecord,
-  UxModel,
-  UxOffer,
-} from '../../src/shared/uxmodel.js';
+import type { UxAction, UxControlRecord, UxModel, UxOffer } from '../../src/shared/uxmodel.js';
 import * as headerbar from './headerbar.js';
 import * as notifications from './notifications.js';
 import * as approvals from './approvals.js';
@@ -117,17 +111,6 @@ export const ROWS: readonly Row<unknown>[] = [
   row('wiki', 'wiki', WIKI, wiki.controls),
 ];
 
-/** The document tree's menu, which is data over a node rather than a module over a state. */
-export const MENU_ROW = {
-  module   : 'doctree',
-  editor   : 'documents' as const,
-  file     : 'apps/desktop/renderer/pathux/doctree/doctree.ts',
-  situation: {
-    name: 'every-kind',
-    why: 'One node of each kind the tree draws, so the menu’s coverage is total rather than a project’s.',
-  },
-};
-
 /**
  * The offer's declared fields and nothing else. A module may hand back a wider object, as the asset
  * editor's do with what the editor reads back (`act`, `note`, `variants`), and those riders are
@@ -199,29 +182,10 @@ export function situationRecords<S>(row: Row<S>, situation: Situation<S>): UxCon
   });
 }
 
-/** The tree's menu as records: one per entry, under the node kind it is drawn for. */
-export function menuRecords(): UxMenuRecord[] {
-  const records: UxMenuRecord[] = [];
-  for (const node of MENU_NODES) {
-    for (const entry of menuFor(node)) {
-      if (entry.id === MENU_SEP) continue;
-      records.push({
-        via      : 'menu',
-        editor   : MENU_ROW.editor,
-        module   : MENU_ROW.module,
-        situation: MENU_ROW.situation.name,
-        when     : node.id,
-        id       : entry.id,
-        label    : entry.label,
-        ...(entry.props === undefined ? {} : { props: { ...entry.props } }),
-        ...(entry.form ? { form: true } : {}),
-      });
-    }
-  }
-  return records;
-}
-
-/** The whole file: situations in table order, then every record, then the palette-only list. */
+/**
+ * The whole file: the control situations in table order, then the menu situations, then every
+ * record in the same order, then the palette-only and exemption lists.
+ */
 export function model(): UxModel {
   const situations: UxModel['situations'] = [];
   const records: UxModel['records'] = [];
@@ -236,19 +200,23 @@ export function model(): UxModel {
       records.push(...situationRecords(row, situation));
     }
   }
-  situations.push({
-    module: MENU_ROW.module,
-    editor: MENU_ROW.editor,
-    name  : MENU_ROW.situation.name,
-    why   : MENU_ROW.situation.why,
-  });
+  for (const row of MENU_ROWS) {
+    for (const situation of row.situations) {
+      situations.push({
+        module: row.module,
+        editor: row.editor,
+        name  : situation.name,
+        why   : situation.why,
+      });
+    }
+  }
   records.push(...menuRecords());
   return {
     situations,
     records,
     paletteOnly: PALETTE_ONLY.map((entry) => ({ ...entry })),
     shortcuts  : [],
-    menuExempt : [],
+    menuExempt : MENU_EXEMPT.map((entry) => ({ ...entry })),
   };
 }
 

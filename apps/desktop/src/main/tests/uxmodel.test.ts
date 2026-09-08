@@ -14,7 +14,8 @@ const model = UX_MODEL.parse(
   JSON.parse(readFileSync(resolve(__dirname, '../../../ux-model.json'), 'utf8')),
 );
 
-const live = createDesktopRegistry()
+const registry = createDesktopRegistry();
+const live = registry
   .list()
   .map((command) => command.id)
   .sort();
@@ -97,14 +98,39 @@ describe('ux-model.json against anchors.json', () => {
 
   it('lists the same menu entries as the sweep, entry for entry', () => {
     const pair = (r: { when?: string; id: string }) => `${r.when ?? ''} ${r.id}`;
-    const derived = model.records
-      .filter((r) => r.via === 'menu')
-      .map(pair)
-      .sort();
-    const swept = sweep.records
-      .filter((r) => r.key === undefined)
-      .map(pair)
-      .sort();
+    // One entry per (when, id): the model repeats a row per situation, the sweep records it once
+    const derived = [...new Set(model.records.filter((r) => r.via === 'menu').map(pair))].sort();
+    const swept = [...new Set(sweep.records.filter((r) => r.key === undefined).map(pair))].sort();
     expect(derived).toEqual(swept);
+  });
+});
+
+/**
+ * A mutating command reachable from a menu is undoable or confirms. A menu row runs on the click,
+ * so a command that neither undoes nor asks first is one mistaken click from an irreversible
+ * change; a row that opens the command's form is the form's to confirm. `menuExempt` lists the
+ * allowed exceptions with reasons, and an entry there that no menu row runs on the click is dead.
+ */
+describe('a mutating command reachable from a menu', () => {
+  const byId = new Map(registry.list().map((command) => [command.id, command]));
+  const clicked = new Set(
+    model.records
+      .flatMap((record) => (record.via === 'menu' && !record.form ? [record.id] : []))
+      .filter((id) => !desktopEffects.has(id)),
+  );
+  const exempt = new Set(model.menuExempt.map((entry) => entry.id));
+  const safe = (id: string) => {
+    const command = byId.get(id);
+    return !command || !command.mutating || command.undoable === true || command.confirm === true;
+  };
+
+  it('is undoable, confirms, or is exempt with a reason', () => {
+    const unguarded = [...clicked].filter((id) => !safe(id) && !exempt.has(id)).sort();
+    expect(unguarded).toEqual([]);
+  });
+
+  it('keeps no exemption a menu row does not need', () => {
+    const dead = [...exempt].filter((id) => !clicked.has(id) || safe(id)).sort();
+    expect(dead).toEqual([]);
   });
 });

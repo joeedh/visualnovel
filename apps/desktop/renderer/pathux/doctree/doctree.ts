@@ -10,7 +10,6 @@
  * What a click selects, and what a row says on hover, live in `rules/selection.ts` and
  * `rules/documents.ts`, because the row's offer is built from them there.
  */
-import type { AnchorRecord } from '../../rules/anchors.js';
 import { NEW_SKILL_PROMPT } from '../../rules/skills.js';
 import { nodeKey, splitShot, type Selection } from '../../rules/selection.js';
 import type { DocNode, DocNodeKind, EntityLinks } from '../../../src/shared/ipc.js';
@@ -490,27 +489,3 @@ export const MENU_NODES: readonly DocNode[] = [
     label: key,
   })),
 ];
-
-/**
- * Which commands the tree's right-click reaches, enumerated over every node kind. `menuFor`
- * answers from the node alone, so this half of the map needs no app, no fixtures and no CDP.
- *
- * Nothing anchors a menu, which is built on demand and gone again before a tour could point at
- * it. Every record here therefore names the palette route, and the coverage count treats these
- * commands as palette-only rather than as a gap left to close.
- */
-export function menuAnchors(): AnchorRecord[] {
-  const records: AnchorRecord[] = [];
-  for (const node of MENU_NODES) {
-    for (const entry of menuFor(node)) {
-      if (entry.id === MENU_SEP) continue;
-      records.push({
-        id    : entry.id,
-        editor: 'documents',
-        when  : node.id,
-        ...(entry.form ? { form: true } : {}),
-      });
-    }
-  }
-  return records;
-}

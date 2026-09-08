@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-08T08:47:44.631Z",
-  "gitSha"       : "555741e02140327f8798627e9846a73195068ed0",
+  "sweptAt"      : "2026-09-08T09:19:56.519Z",
+  "gitSha"       : "be3a4be3a79a4aaeb18868137501307fe6674eaf",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -182,6 +182,7 @@
   ],
   "anchored": [
     "agent.compact",
+    "agent.editLine",
     "agent.newThread",
     "agent.openThread",
     "agent.run",
@@ -189,6 +190,7 @@
     "agent.setEffort",
     "agent.setMode",
     "agent.setModel",
+    "app.checkForUpdates",
     "app.copy",
     "app.openKeyLink",
     "art.generate",
@@ -215,7 +217,9 @@
     "notify.deleteAll",
     "notify.follow",
     "notify.hide",
+    "pipeline.approveAndRun",
     "pipeline.run",
+    "project.installPages",
     "project.setArtStyle",
     "project.setKey",
     "project.testKey",
@@ -228,6 +232,7 @@
     "report.open",
     "story.assignLineIds",
     "story.deleteScene",
+    "story.deleteShot",
     "story.newScene",
     "story.newShot",
     "story.screenplay",
@@ -235,9 +240,29 @@
     "story.setHeading",
     "story.setLineText",
     "story.setOutfit",
-    "view.open"
+    "upload.pick",
+    "view.applyLayout",
+    "view.open",
+    "view.resetLayout",
+    "view.saveLayout",
+    "window.close",
+    "window.new",
+    "window.quit",
+    "workspace.create",
+    "workspace.open",
+    "workspace.pick",
+    "workspace.reindex"
   ],
-  "effects"      : ["pane.view", "popup.close", "popup.open", "tree.expand", "ui.publish"],
+  "effects": [
+    "history.move",
+    "menu.open",
+    "pane.view",
+    "popup.close",
+    "popup.open",
+    "screen.arrange",
+    "tree.expand",
+    "ui.publish"
+  ],
   "records": [
     {
       "id"    : "story.assignLineIds",
@@ -343,18 +368,6 @@
       "id"    : "view.open",
       "editor": "documents",
       "when"  : "location:sample"
-    },
-    {
-      "id"    : "doc.create",
-      "editor": "documents",
-      "when"  : "wikidir:sample",
-      "form"  : true
-    },
-    {
-      "id"    : "doc.create",
-      "editor": "documents",
-      "when"  : "wikidir:sample",
-      "form"  : true
     },
     {
       "id"    : "doc.create",
@@ -501,18 +514,6 @@
       "form"  : true
     },
     {
-      "id"    : "doc.create",
-      "editor": "documents",
-      "when"  : "branch:wiki",
-      "form"  : true
-    },
-    {
-      "id"    : "doc.create",
-      "editor": "documents",
-      "when"  : "branch:wiki",
-      "form"  : true
-    },
-    {
       "id"    : "gengraph.create",
       "editor": "documents",
       "when"  : "branch:graphs",
@@ -529,6 +530,214 @@
       "editor": "documents",
       "when"  : "branch:skills",
       "form"  : true
+    },
+    {
+      "id"    : "view.open",
+      "editor": "timeline",
+      "when"  : "shot:arrival/arrival:s1"
+    },
+    {
+      "id"    : "story.deleteShot",
+      "editor": "timeline",
+      "when"  : "shot:arrival/arrival:s1"
+    },
+    {
+      "id"    : "agent.editLine",
+      "editor": "script",
+      "when"  : "line:arrival:L1"
+    },
+    {
+      "id"    : "view.open",
+      "editor": "script",
+      "when"  : "line:arrival:L1"
+    },
+    {
+      "id"    : "agent.editLine",
+      "editor": "script",
+      "when"  : "line:arrival:L2"
+    },
+    {
+      "id"    : "view.open",
+      "editor": "script",
+      "when"  : "line:arrival:L2"
+    },
+    {
+      "id"    : "agent.editLine",
+      "editor": "script",
+      "when"  : "line:arrival:L3"
+    },
+    {
+      "id"    : "view.open",
+      "editor": "script",
+      "when"  : "line:arrival:L3"
+    },
+    {
+      "id"    : "view.open",
+      "editor": "branches",
+      "when"  : "card:arrival"
+    },
+    {
+      "id"    : "story.newScene",
+      "editor": "branches",
+      "when"  : "card:departure",
+      "form"  : true
+    },
+    {
+      "id"    : "popup.open",
+      "editor": "header",
+      "when"  : "header/app"
+    },
+    {
+      "id"    : "history.move",
+      "editor": "header",
+      "when"  : "header/app"
+    },
+    {
+      "id"    : "pipeline.run",
+      "editor": "header",
+      "when"  : "header/app"
+    },
+    {
+      "id"    : "pipeline.run",
+      "editor": "header",
+      "when"  : "header/app",
+      "form"  : true
+    },
+    {
+      "id"    : "workspace.create",
+      "editor": "header",
+      "when"  : "header/app",
+      "form"  : true
+    },
+    {
+      "id"    : "workspace.pick",
+      "editor": "header",
+      "when"  : "header/app"
+    },
+    {
+      "id"    : "menu.open",
+      "editor": "header",
+      "when"  : "header/app"
+    },
+    {
+      "id"    : "workspace.open",
+      "editor": "header",
+      "when"  : "header/app/recent"
+    },
+    {
+      "id"    : "workspace.reindex",
+      "editor": "header",
+      "when"  : "header/app"
+    },
+    {
+      "id"    : "view.open",
+      "editor": "header",
+      "when"  : "header/app"
+    },
+    {
+      "id"    : "upload.pick",
+      "editor": "header",
+      "when"  : "header/app",
+      "form"  : true
+    },
+    {
+      "id"    : "project.installPages",
+      "editor": "header",
+      "when"  : "header/app",
+      "form"  : true
+    },
+    {
+      "id"    : "agent.setMode",
+      "editor": "header",
+      "when"  : "header/app"
+    },
+    {
+      "id"    : "window.quit",
+      "editor": "header",
+      "when"  : "header/app"
+    },
+    {
+      "id"    : "history.move",
+      "editor": "header",
+      "when"  : "header/edit"
+    },
+    {
+      "id"    : "gengraph.createGroup",
+      "editor": "header",
+      "when"  : "header/edit"
+    },
+    {
+      "id"    : "gengraph.ungroup",
+      "editor": "header",
+      "when"  : "header/edit"
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "header",
+      "when"  : "header/edit"
+    },
+    {
+      "id"    : "pipeline.approveAndRun",
+      "editor": "header",
+      "when"  : "header/edit",
+      "form"  : true
+    },
+    {
+      "id"    : "menu.open",
+      "editor": "header",
+      "when"  : "header/view"
+    },
+    {
+      "id"    : "view.open",
+      "editor": "header",
+      "when"  : "header/view/editors"
+    },
+    {
+      "id"    : "view.applyLayout",
+      "editor": "header",
+      "when"  : "header/view/layout"
+    },
+    {
+      "id"    : "view.saveLayout",
+      "editor": "header",
+      "when"  : "header/view/layout",
+      "form"  : true
+    },
+    {
+      "id"    : "view.resetLayout",
+      "editor": "header",
+      "when"  : "header/view/layout",
+      "form"  : true
+    },
+    {
+      "id"    : "screen.arrange",
+      "editor": "header",
+      "when"  : "header/view"
+    },
+    {
+      "id"    : "window.new",
+      "editor": "header",
+      "when"  : "header/view"
+    },
+    {
+      "id"    : "window.close",
+      "editor": "header",
+      "when"  : "header/view"
+    },
+    {
+      "id"    : "app.checkForUpdates",
+      "editor": "header",
+      "when"  : "header/help"
+    },
+    {
+      "id"    : "view.open",
+      "editor": "header",
+      "when"  : "header/help"
+    },
+    {
+      "id"    : "view.saveLayout",
+      "editor": "header",
+      "when"  : "header/view/layout"
     },
     {
       "id"      : "story.newScene",
@@ -1421,14 +1630,14 @@
     {
       "id"      : "project.setKey",
       "editor"  : "onboarding",
-      "key"     : "cmd:project.setKey#gemini",
+      "key"     : "cmd:project.setKey#anthropic",
       "supplies": ["key"],
       "refused" : "Paste a key first"
     },
     {
       "id"      : "project.setKey",
       "editor"  : "onboarding",
-      "key"     : "cmd:project.setKey#anthropic",
+      "key"     : "cmd:project.setKey#gemini",
       "supplies": ["key"],
       "refused" : "Paste a key first"
     },

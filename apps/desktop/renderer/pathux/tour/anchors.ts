@@ -13,7 +13,7 @@
 import { composeTooltip } from 'pathux';
 import type { PropValue } from '../../../src/shared/ipc.js';
 import type { PopupHome } from '../../../src/shared/editors.js';
-import { menuAnchors } from '../doctree/doctree.js';
+import { menuRecords } from '../../rules/menus.js';
 import { hitFor, up } from '../interactions/hittest.js';
 import { centreOf } from '../../rules/ring.js';
 import {
@@ -24,6 +24,7 @@ import {
   type Anchor,
   type AnchorHome,
   type AnchorNode,
+  type AnchorRecord,
   type AnchorRect,
   type LiveAnchors,
   type Offer,
@@ -350,11 +351,34 @@ export function press(key: string): boolean {
   return true;
 }
 
+/**
+ * Every menu entry as a record, which the sweep writes beside what the panes drew. Derived from
+ * the menu table rather than from a menu on screen, so no pane has to be opened.
+ */
+export function menuAnchors(): AnchorRecord[] {
+  const seen = new Set<string>();
+  const anchors: AnchorRecord[] = [];
+  for (const record of menuRecords()) {
+    // The same row over several situations makes one anchor, since these four fields are all
+    // an anchor keeps
+    const key = `${record.editor} ${record.when} ${record.id} ${record.form ? 'form' : ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    anchors.push({
+      id    : record.id,
+      editor: record.editor as AnchorHome,
+      when  : record.when,
+      ...(record.form ? { form: true } : {}),
+    });
+  }
+  return anchors;
+}
+
 export function installAnchors(): void {
   window.__vnAnchors = {
     generation: () => generation,
     dump      : dumpAnchors,
-    tree      : menuAnchors,
+    menus     : menuAnchors,
     strays    : strayAnchors,
     press,
   };

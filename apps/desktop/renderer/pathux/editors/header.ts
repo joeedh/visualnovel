@@ -1,21 +1,7 @@
-import {
-  AreaFlags,
-  Menu,
-  createMenu,
-  type Container,
-  type Label,
-  type MenuTemplate,
-  type ScreenArea,
-} from 'pathux';
+import { AreaFlags, type Container, type Label, type MenuTemplate, type ScreenArea } from 'pathux';
 import { TEXT_MODELS } from '@vn/types';
 import { isLive } from '../../api.js';
-import {
-  EDITOR_IDS,
-  editorTitle,
-  editorTooltip,
-  OFFERED_EDITOR_IDS,
-  type EditorId,
-} from '../../../src/shared/editors.js';
+import { EDITOR_IDS, type EditorId } from '../../../src/shared/editors.js';
 import type { PropValue } from '../../../src/shared/ipc.js';
 import { busyControls, type BusyControls } from '../../rules/busy.js';
 import { HEADER } from '../../rules/anchors.js';
@@ -29,31 +15,25 @@ import {
   stopAction,
   viewActions,
 } from '../../rules/headerbar.js';
+import {
+  HEADER_MENUS,
+  type HandledKey,
+  type HeaderMenu,
+  type HeaderMenuState,
+} from '../../rules/headermenus.js';
 import { redrawing, type AnchorPass } from '../tour/anchors.js';
 import { serializeLayoutFile, type LayoutSummary } from '../../../src/shared/layouts.js';
-import {
-  check,
-  closeWindow,
-  exec,
-  move,
-  onInvalidate,
-  quit,
-  report,
-  say,
-  setMode,
-  setModel,
-  toggleMode,
-} from '../app/bridge.js';
+import { check, exec, move, onInvalidate, report, say, setMode, setModel } from '../app/bridge.js';
 import { pickPaneToClose } from '../panes/closepane.js';
 import type { VnContext } from '../app/context.js';
 import { currentLayoutFile, fetchLayouts } from '../panes/layouts.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
-import { openCommandDialog } from '../chrome/dialog.js';
 import { openDiagnostics } from '../chrome/diagnostics.js';
 import { openApprovals } from '../chrome/approvals.js';
 import { openNotifications } from '../chrome/notifications.js';
 import { rectOf } from '../chrome/popup.js';
 import { openPalette } from '../chrome/palette.js';
+import { buildMenu, type MenuHandler } from '../chrome/showmenu.js';
 import { seedReport } from '../agent/reportconvo.js';
 import { NO_PANE, paneToUse } from '../panes/panes.js';
 import { panesOf } from '../panes/view.js';
@@ -68,27 +48,10 @@ type GroupActions = Pick<
 /** The bar's fixed height. It is locked at both ends, so this is also its minimum. */
 export const HEADER_HEIGHT = 34;
 
-/** The last segment of a path. Not `node:path` — this module is in the browser bundle. */
-function projectName(path: string): string {
-  const parts = path.split(/[\\/]/).filter(Boolean);
-  return parts[parts.length - 1] ?? path;
-}
-
 /**
- * Run a menu entry and report what it answered. `report` shows only what the notification push
- * does not: an entry that opens no palette and no dialog would otherwise show nothing at all,
- * and an entry that opens a chooser needs to pass on "Cancelled.".
- */
-function act(id: string, props: Record<string, PropValue> = {}): void {
-  void exec(id, props).then(report);
-}
-
-/**
- * Start a run without a form. The app menu's entry and the header's button both come through
- * here, so an author sees the same refusal whichever they clicked, and it is the command's own.
- * `check` runs first, because a refused `exec` says nothing a surface can show before the work
- * would have started. The props come from `runAction`, so the button and the entry cannot differ
- * about what a run is.
+ * Start a run without a form. `check` runs first, because a refused `exec` says nothing a surface
+ * can show before the work would have started. The props come from `runAction`, which the app
+ * menu's Run Pipeline row reads too, so the button and the row cannot differ about what a run is.
  */
 function runPipelineNow(props: Record<string, PropValue>): void {
   void check('pipeline.run', props).then((verdict) => {
@@ -138,6 +101,23 @@ export class VnHeaderEditor extends VnEditor {
   /** Whether this project carries the GitHub page builder, which decides one menu label. */
   private pagesInstalled = false;
   private pagesFor = '\0';
+
+  /**
+   * What runs each menu row the header handles itself: the effects, and the two commands whose
+   * props the active Gen Graph pane supplies. Typed over `HANDLED`, so a row the menus add is a
+   * compile error here until it is handled.
+   */
+  private readonly handlers: Record<HandledKey, MenuHandler> = {
+    'popup.open'          : () => openPalette(),
+    'history.move'        : (props) => void move(props['to'] === 'redo' ? 'redo' : 'undo'),
+    'screen.arrange': (props) => (props['what'] === 'split' ? this.splitArea() : this.closePane()),
+    'pane.view#enter'     : () => this.withGenGraph((pane) => pane.enterGroup()),
+    'pane.view#exit'      : () => this.withGenGraph((pane) => pane.exitGroup()),
+    'gengraph.createGroup': () => this.withGenGraph((pane) => void pane.groupSelected()),
+    'gengraph.ungroup'    : () => this.withGenGraph((pane) => void pane.ungroupSelected()),
+    'view.open#report'    : () => void seedReport(),
+    'agent.setMode'       : (props) => void setMode(String(props['mode'] ?? '')),
+  };
 
   static override define() {
     return {
@@ -293,16 +273,16 @@ export class VnHeaderEditor extends VnEditor {
 
     this.bar.clear();
     this.anchors = redrawing(HEADER, 'bar');
-    this.bar.menu('VN STUDIO', this.appMenu()).description =
-      'Open, create and export a project, and everything that acts on the workspace as a whole.';
-    this.bar.menu('Edit', this.editMenu()).description =
-      'Undo and redo, and the one act that approves and renders the art in a single pass.';
     const [opens, layouts] = viewActions();
-    const view = this.bar.menu(opens.label, this.viewMenu());
-    this.anchors.record(view, opens);
-    this.anchors.record(view, layouts);
-    this.bar.menu('Help', this.helpMenu()).description =
-      'Whether there is a newer VN Studio, and what to do about an agent that misbehaved.';
+    for (const menu of HEADER_MENUS) {
+      const button = this.menuButton(menu);
+      if (menu.menu !== 'view') {
+        button.description = menu.tooltip;
+        continue;
+      }
+      this.anchors.record(button, opens);
+      this.anchors.record(button, layouts);
+    }
     this.badge(`project ${ui.projectTitle || '—'}`, true);
     this.runControls();
 
@@ -468,255 +448,6 @@ export class VnHeaderEditor extends VnEditor {
   }
 
   /**
-   * The app menu. Every entry is written in object form, because the array form has no slot for
-   * a tooltip — an entry that does not say what it does is as unfinished as a button without one,
-   * and half this menu opens a dialog the author cannot preview.
-   */
-  private appMenu(): MenuTemplate {
-    return [
-      {
-        name    : 'Command Palette…',
-        callback: () => openPalette(),
-        hotkey  : 'Ctrl+Shift+P',
-        tooltip : 'Search every command by name and fill in its arguments',
-      },
-      Menu.SEP,
-      {
-        name    : 'Undo',
-        callback: () => void move('undo'),
-        hotkey  : 'Ctrl+Z',
-        tooltip : 'Put the project back the way it was before the last act',
-      },
-      {
-        name    : 'Redo',
-        callback: () => void move('redo'),
-        hotkey  : 'Ctrl+Shift+Z',
-        tooltip : 'Reapply the act that was just undone',
-      },
-      Menu.SEP,
-      // Fired rather than formed: this entry and the header's button run the same act, and
-      // neither takes an argument. `runPipelineNow` checks first, so a refusal is shown before
-      // anything starts.
-      {
-        name    : 'Run Pipeline',
-        callback: () => {
-          const offer = runAction(this.ui.busyWhat, isLive);
-          if (offer.ok) runPipelineNow(offer.props);
-          else say(offer.refusal.reason, true);
-        },
-        tooltip : 'Plan and render everything that is ready, to the next gate',
-      },
-      // The advanced entry opens `pipeline.run`'s own form, where the flags live. `mock` is
-      // seeded from whether this is a live app — a preview has no keys, so a dry run is all it
-      // could do.
-      {
-        name    : 'Run Pipeline (adv)…',
-        callback: () => openCommandDialog('pipeline.run', { mock: !isLive }),
-        tooltip : 'Start a run with the flags spelled out — dry run, scene filter, task limit',
-      },
-      // The form takes a folder to browse for, a title, and the checkbox that turns the two into
-      // a folder the OS chooser could not have named. The checkbox is ticked here rather than in
-      // the command, whose own default has always been "the project goes here".
-      {
-        name    : 'New Project…',
-        callback: () => openCommandDialog('workspace.create', { newFolder: true }),
-        tooltip : 'Scaffold a project in a new folder and open it, closing this one',
-      },
-      // These two take no argument and ask for no confirmation, so the palette would be an empty
-      // form the author dismisses with the same click. They run, and say what they answered — the
-      // chooser `workspace.pick` opens is its own confirmation.
-      {
-        name    : 'Open Project…',
-        callback: () => act('workspace.pick'),
-        tooltip : 'Choose a project folder and open it, closing this one',
-      },
-      this.recentMenu(),
-      {
-        name    : 'Reindex Project',
-        callback: () => act('workspace.reindex'),
-        tooltip : 'Rebuild the map the authoring agent reads: cast, locations, story graph, bible',
-      },
-      // The Setup pane rather than `project.setKey`'s bare form: a box asking for a credential is
-      // no use to someone who does not yet have one, and the pane is the same box with the steps
-      // for getting there above it. The form is still in the palette for anyone who just wants it.
-      {
-        name    : 'Set Up API Keys…',
-        callback: () => act('view.open', { editor: 'onboarding', where: 'elsewhere' }),
-        tooltip : 'How to get a model key, which of yours are set, and where they are read from',
-      },
-      Menu.SEP,
-      // This is not fired from the menu either. `upload.pick` is `confirm`, so the dialog runs
-      // first and says what the command is about to do before the OS chooser takes over the
-      // screen.
-      {
-        name    : 'Upload Files…',
-        callback: () => openCommandDialog('upload.pick'),
-        tooltip : 'Copy files into the project archive, verbatim, under a dated folder',
-      },
-      // Formed rather than fired: the command is `confirm`, and its note is where the author
-      // learns which branch gets pushed and which one gets published.
-      {
-        name: this.pagesInstalled ? 'Update GitHub Page Builder…' : 'Install GitHub Page Builder…',
-        callback: () => openCommandDialog('project.installPages'),
-        tooltip:
-          'Commit a GitHub Actions workflow that publishes this story as a web page when you push',
-      },
-      Menu.SEP,
-      {
-        name    : 'Plan ⇄ Execute',
-        callback: () => void toggleMode(),
-        hotkey  : 'Shift+Tab',
-        tooltip : 'Switch the agent between reading only and being allowed to apply edits',
-      },
-      Menu.SEP,
-      {
-        name    : 'Quit',
-        callback: () => void quit(),
-        hotkey  : 'Ctrl+Q',
-        tooltip : 'Close every window and quit vnstudio',
-      },
-    ];
-  }
-
-  /**
-   * The projects this install has opened, as a submenu of `workspace.open` invocations. Built from
-   * `workspace.recent` and from nothing the renderer remembers on its own, so the menu cannot
-   * offer a project main does not know about.
-   *
-   * The open project is kept in the list, ticked and inert. Dropping it caused a bug: a list of
-   * one project then renders `(none)`, so the menu looks empty while telling the truth.
-   */
-  private recentMenu(): Menu {
-    const items: MenuTemplate = this.recents.length
-      ? this.recents.map((root) => {
-          const open = root === this.current;
-          return {
-            name    : open ? `${projectName(root)} ✓` : projectName(root),
-            callback: open ? () => {} : () => void exec('workspace.open', { path: root }),
-            tooltip: open
-              ? `${root} is the project you have open`
-              : `Close this project and open ${root}`,
-            id      : root,
-          };
-        })
-      : [{ name: '(none)', callback: () => {}, tooltip: 'No project has been opened yet' }];
-
-    return this.submenu('Recent Projects', 'Reopen a project you worked on before', items);
-  }
-
-  /**
-   * The View menu is two lists — which editor a pane shows, and how the whole window is
-   * arranged — followed by the acts that split, close and move panes and windows. Both lists are
-   * long enough to be submenus: the editor list grows with every port, and the layout list grows
-   * with whatever the author saves.
-   */
-  private viewMenu(): MenuTemplate {
-    return [
-      this.editorsMenu(),
-      this.layoutMenu(),
-      Menu.SEP,
-      // Both are gestures rather than commands: which pane, and where the line falls, are answers
-      // only a pointer can give. `view.close` still exists for the palette, the agent and CDP,
-      // where there is no pointer and the active pane is the only pane that can be meant.
-      {
-        name    : 'Close Pane…',
-        callback: () => this.closePane(),
-        tooltip : 'Point at a pane to close it — it is outlined and crossed out. Escape cancels.',
-      },
-      {
-        name    : 'Split Area',
-        callback: () => this.ctx.screen.splitTool(),
-        tooltip : 'Drag a line across a pane to divide it in two.',
-      },
-      Menu.SEP,
-      // A window is the fourth way to divide the screen, and it belongs beside the other three
-      // rather than in a menu of its own — an author reaching for "put this on the other
-      // monitor" is looking where they look for a split.
-      {
-        name    : 'New Window',
-        callback: () => void exec('window.new'),
-        hotkey  : 'Ctrl+Shift+N',
-        tooltip : 'Open another window onto this project — one app, panes across two monitors',
-      },
-      {
-        name    : 'Close Window',
-        callback: () => void closeWindow(),
-        hotkey  : 'Ctrl+W',
-        tooltip : 'Close this window; closing the last one quits',
-      },
-      {
-        name    : 'Move Pane to New Window',
-        callback: () => void this.movePaneToWindow(),
-        tooltip : 'Reopen the active pane’s editor in a window of its own and close it here',
-      },
-    ];
-  }
-
-  /**
-   * Undo, redo, the group entries, and the pass that finishes the art.
-   *
-   * Undo and redo are also on the app menu and on two buttons in this same bar — three ways to
-   * reach one act, deliberately: an author looking for undo looks under Edit, and a menu called
-   * Edit without it would read as broken. The group entries act on the Gen Graph pane that is the
-   * active one, the same pane its own keys would reach. Only `pipeline.approveAndRun` is unique to
-   * this menu, because it is the one act that changes the project wholesale rather than a piece
-   * of it.
-   */
-  private editMenu(): MenuTemplate {
-    return [
-      {
-        name    : 'Undo',
-        callback: () => void move('undo'),
-        hotkey  : 'Ctrl+Z',
-        tooltip : 'Put the project back the way it was before the last act',
-      },
-      {
-        name    : 'Redo',
-        callback: () => void move('redo'),
-        hotkey  : 'Ctrl+Shift+Z',
-        tooltip : 'Reapply the act that was just undone',
-      },
-      Menu.SEP,
-      {
-        name    : 'Create Group',
-        callback: () => this.withGenGraph((pane) => void pane.groupSelected()),
-        hotkey  : 'Ctrl+G',
-        tooltip:
-          'Move the selected nodes of the active Gen Graph pane into a new group, and leave an ' +
-          'instance of it in their place',
-      },
-      {
-        name    : 'Ungroup',
-        callback: () => this.withGenGraph((pane) => void pane.ungroupSelected()),
-        hotkey  : 'Ctrl+Alt+G',
-        tooltip : 'Put a copy of each selected group’s nodes where the instance stands',
-      },
-      {
-        name    : 'Edit Group',
-        callback: () => this.withGenGraph((pane) => pane.enterGroup()),
-        hotkey  : 'Tab',
-        tooltip : 'Open the selected group’s definition, which every instance of it follows',
-      },
-      {
-        name    : 'Exit Group',
-        callback: () => this.withGenGraph((pane) => pane.exitGroup()),
-        tooltip : 'Go back up one level, to the graph the open group sits in',
-      },
-      Menu.SEP,
-      // This opens a dialog rather than firing directly, because the command is `confirm`. The
-      // dialog says how many pictures it is about to approve and how many tasks it is about to
-      // run, which an author wants to read before an unattended pass spends real model calls.
-      {
-        name    : 'Approve & Generate All…',
-        callback: () => openCommandDialog('pipeline.approveAndRun'),
-        tooltip:
-          'Approve every picture that is waiting and run the pipeline, repeatedly, until nothing ' +
-          'is left to approve or generate. Spends real model calls.',
-      },
-    ];
-  }
-
-  /**
    * Hands the active Gen Graph pane to a group entry, or says which pane the entries act on. The
    * active pane is `paneToUse`'s: the one the pointer last entered, else the biggest.
    */
@@ -732,24 +463,6 @@ export class VnHeaderEditor extends VnEditor {
     act(area as unknown as GroupActions);
   }
 
-  /**
-   * Two invocations rather than one command, on purpose: "move" is only ever `window.new` and
-   * then `view.close`, and a third command that did both would be a third thing to keep honest.
-   * The close comes second and only if the window opened, so a refused open leaves the pane.
-   */
-  private async movePaneToWindow(): Promise<void> {
-    const screen = (this.ctx as VnContext).state.screen;
-    const pane = screen ? panesOf(screen)[paneToUse(panesOf(screen))] : undefined;
-    if (!pane || !pane.editor) {
-      say('There is no pane to move.', true);
-      return;
-    }
-
-    const opened = await exec('window.new', { editor: pane.editor });
-    report(opened);
-    if (opened.ok) report(await exec('view.close'));
-  }
-
   /** Hand the pick a live mesh, or say why there is nothing to point at. */
   private closePane(): void {
     const screen = (this.ctx as VnContext).state.screen;
@@ -760,112 +473,58 @@ export class VnHeaderEditor extends VnEditor {
     pickPaneToClose(screen, say);
   }
 
-  /**
-   * The report entry cannot be a bare `openCommandDialog`: the conversation list is this
-   * project's and the model list carries advice, so the dialog is opened by a function that
-   * fetches both first. The update check takes no arguments and answers in one sentence, so it
-   * is fired through `act`, whose `report` shows "you are up to date". This menu is the only
-   * thing that starts a check; nothing is scheduled.
-   */
-  private helpMenu(): MenuTemplate {
-    return [
-      {
-        name    : 'Check for Updates…',
-        callback: () => act('app.checkForUpdates'),
-        tooltip:
-          'Ask GitHub whether a newer VN Studio has been released. Downloads nothing — if there ' +
-          'is one, the notification takes you to the page.',
-      },
-      Menu.SEP,
-      {
-        name    : 'Report a Difficult Agent…',
-        callback: () => void seedReport(),
-        tooltip:
-          'Have a conversation that went wrong read by a debug agent, and draft a bug report ' +
-          'from it. Runs on your own model key; names from your story are replaced first.',
-      },
-    ];
+  /** The split gesture, which needs the live mesh. */
+  private splitArea(): void {
+    this.ctx.screen.splitTool();
   }
 
   /**
-   * Every editor an author browses to, each entry a `view.open`. This replaced the room nav. The
-   * list is `shared/editors.ts`, which is also what the command's props are built from, so the
-   * menu cannot offer something the command would refuse.
-   *
-   * Built from `OFFERED_EDITOR_IDS` rather than `EDITORS`, the same predicate the shell hands
-   * path.ux's own area menu: an editor reachable from one place only is listed in neither
-   * switcher. `view.open` still takes its name, so the entry that does reach it works.
+   * One bar menu, built when it is pressed rather than when the bar is: the rows read the mesh and
+   * the project as they are at that moment, and every command row is checked before it is drawn,
+   * the way a right-click menu is. `_build_menu` is what the dropbox awaits on a press.
    */
-  private editorsMenu(): Menu {
-    return this.submenu(
-      'Editors',
-      'Show a different editor in this pane',
-      OFFERED_EDITOR_IDS.map((id) => ({
-        name    : editorTitle(id),
-        callback: () => void exec('view.open', { editor: id }),
-        tooltip : editorTooltip(id),
-        id,
-      })),
-    );
+  private menuButton(menu: HeaderMenu): ReturnType<Container['menu']> {
+    const box = this.bar.menu(menu.title, []);
+    box._build_menu = async () => {
+      box._menu?.remove();
+      box._menu = await buildMenu(
+        this.ctx as VnContext,
+        menu.title,
+        menu.entries(this.menuState()),
+        this.handlers,
+      );
+    };
+    return box;
+  }
+
+  /** What the menus read, as of the press that opens one. */
+  private menuState(): HeaderMenuState {
+    const ui = this.ui;
+    const screen = (this.ctx as VnContext).state.screen;
+    const panes = screen ? panesOf(screen) : [];
+    const active = paneToUse(panes);
+    return {
+      busyWhat      : ui.busyWhat,
+      live          : isLive,
+      agentMode     : ui.agentMode,
+      recents       : this.recents,
+      current       : this.current,
+      layouts       : this.layouts,
+      activeSlug    : this.activeSlug,
+      layout        : this.serializedLayout(),
+      pagesInstalled: this.pagesInstalled,
+      activeEditor  : active === NO_PANE ? '' : (panes[active]?.editor ?? ''),
+    };
   }
 
   /**
-   * The project's named arrangements, then the two acts that maintain them. A template that
-   * cannot be applied is still offered, saying why — `view.applyLayout` refuses it with the same
-   * sentence, and an entry silently missing is worse than one that explains itself.
+   * The arrangement on screen as a layout file, for Save Current Layout As…, or `''` where the
+   * mesh cannot be serialized. Composed here because only this half can serialize one; main still
+   * owns where the file goes and what it is called. The editor list is read off the mesh here
+   * rather than in `layouts.ts`, which would have to import `view.ts` to do it, and `view.ts`
+   * imports `layouts.ts`.
    */
-  private layoutMenu(): Menu {
-    const rows = this.layouts.map((layout) => ({
-      name    : layout.slug === this.activeSlug ? `${layout.title} ✓` : layout.title,
-      callback: () => void exec('view.applyLayout', { name: layout.slug }),
-      tooltip: layout.problem
-        ? `Cannot be used: ${layout.problem}`
-        : `Rearrange the window: ${layout.description}`,
-      id      : layout.slug,
-    }));
-
-    const items = rows.length
-      ? rows
-      : [{ name: '(none)', callback: () => {}, tooltip: 'This project has no layouts yet' }];
-
-    return this.submenu('Layout', 'Rearrange the whole window', [
-      ...items,
-      Menu.SEP,
-      {
-        name    : 'Save Current Layout As…',
-        // The dialog collects the name; the mesh it saves is composed here, because only this
-        // half can serialize one.
-        callback: () => this.saveLayout(),
-        tooltip : 'File the arrangement on screen in the project under a name of your own',
-      },
-      {
-        name    : 'Reset View Layout…',
-        callback: () => openCommandDialog('view.resetLayout'),
-        tooltip : 'Put the layouts that ship with the app back the way they shipped — undoable',
-      },
-    ]);
-  }
-
-  /**
-   * A submenu row. `createMenu` files its title under the `name` attribute, but the row a parent
-   * menu draws for a submenu reads `.title` — so without setting it the entry is a blank,
-   * full-width strip.
-   */
-  private submenu(title: string, tooltip: string, items: MenuTemplate): Menu {
-    const menu = createMenu(this.ctx, title, items);
-    menu.title = title;
-    menu.tooltip = tooltip;
-    return menu;
-  }
-
-  /**
-   * Save what is on screen. The blob is serialized here and handed over as a prop, so main —
-   * which has no mesh and no renderer — still owns where the file goes and what it is called.
-   *
-   * The editor list is read off the mesh here rather than in `layouts.ts`, which would have to
-   * import `view.ts` to do it — and `view.ts` imports `layouts.ts`.
-   */
-  private saveLayout(): void {
+  private serializedLayout(): string {
     const shell = (this.ctx as VnContext).state;
     const editors = shell.screen
       ? panesOf(shell.screen)
@@ -873,13 +532,8 @@ export class VnHeaderEditor extends VnEditor {
           .map((pane) => pane.editor)
           .filter((id): id is EditorId => (EDITOR_IDS as readonly string[]).includes(id))
       : [];
-
     const file = currentLayoutFile(shell, editors);
-    if (!file) {
-      say('This arrangement could not be serialized.', true);
-      return;
-    }
-    openCommandDialog('view.saveLayout', { layout: serializeLayoutFile(file) });
+    return file ? serializeLayoutFile(file) : '';
   }
 }
 
