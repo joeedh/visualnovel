@@ -8,17 +8,11 @@
  * desktop jest project is node-only and a pane can only be checked live over CDP.
  */
 import type { Refusal } from 'pathux';
-import type { EditorId } from '../../src/shared/editors.js';
 import type { PropValue } from '../../src/shared/ipc.js';
+import { HEADER, type AnchorHome, type EditorId } from '../../src/shared/editors.js';
 
-/**
- * The app's toolbar, which is not a pane. It is drawn once at startup and cannot be closed, so it
- * never resolves to `pane-closed` and never leaves the open set.
- */
-export const HEADER = 'header';
-
-/** Where an anchor was drawn: a pane the author can close, or the toolbar that is always there. */
-export type AnchorHome = EditorId | typeof HEADER;
+// Declared beside the editor list so the derived model's schema can enumerate every home
+export { HEADER, type AnchorHome };
 
 /** What a surface can be asked to do, as data, before it is a click. */
 export interface Action {

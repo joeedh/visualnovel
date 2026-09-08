@@ -229,6 +229,19 @@ export const CLAIMS: readonly { id: EditorId; claims: EditorClaim }[] = EDITORS.
 export const EDITOR_IDS: readonly EditorId[] = EDITORS.map((editor) => editor.id);
 
 /**
+ * The app's toolbar, which is not a pane. It is drawn once at startup and cannot be closed, so an
+ * anchor there never resolves to `pane-closed` and never leaves the open set. Named beside the
+ * editors because the derived model's schema enumerates every anchor home from this file.
+ */
+export const HEADER = 'header';
+
+/** Where an anchor is drawn: a pane the author can close, or the toolbar that is always there. */
+export type AnchorHome = EditorId | typeof HEADER;
+
+/** Every anchor home, for a schema or a table that must cover them all. */
+export const ANCHOR_HOMES: readonly AnchorHome[] = [...EDITOR_IDS, HEADER];
+
+/**
  * The editors on offer: the ones the pane switcher lists and the View ▸ Editors submenu draws.
  *
  * An entry with `offered: false` is named but not listed — reachable from a menu entry, the
