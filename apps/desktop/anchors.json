@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-04T14:26:45.397Z",
-  "gitSha"       : "fe05f9e8424fd4b21f402c96b23565b41efffccd",
+  "sweptAt"      : "2026-09-08T01:52:42.141Z",
+  "gitSha"       : "c2cd59f1d472008e453801d5df0a4910fb6b1308",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -197,7 +197,7 @@
     "asset.adopt",
     "asset.export",
     "asset.regenerate",
-    "asset.replace",
+    "asset.restore",
     "asset.upload",
     "doc.create",
     "doc.write",
@@ -632,11 +632,6 @@
       "supplies": ["kind", "name"]
     },
     {
-      "id"    : "asset.replace",
-      "editor": "asset",
-      "key"   : "cmd:asset.replace"
-    },
-    {
       "id"     : "prompt.clear",
       "editor" : "asset",
       "key"    : "cmd:prompt.clear#chunks",
@@ -898,31 +893,31 @@
     {
       "id"      : "art.setSeed",
       "editor"  : "asset",
-      "key"     : "cmd:art.setSeed#location:classroom",
+      "key"     : "cmd:art.setSeed#location:rooftop",
       "supplies": ["seed"]
     },
     {
       "id"      : "art.setNotes",
       "editor"  : "asset",
-      "key"     : "cmd:art.setNotes#location:classroom",
+      "key"     : "cmd:art.setNotes#location:rooftop",
       "supplies": ["notes"]
     },
     {
       "id"      : "art.setSeed",
       "editor"  : "asset",
-      "key"     : "cmd:art.setSeed#location:classroom/day",
+      "key"     : "cmd:art.setSeed#location:rooftop/evening",
       "supplies": ["seed"]
     },
     {
       "id"      : "art.setNotes",
       "editor"  : "asset",
-      "key"     : "cmd:art.setNotes#location:classroom/day",
+      "key"     : "cmd:art.setNotes#location:rooftop/evening",
       "supplies": ["notes"]
     },
     {
-      "id"    : "asset.accept",
+      "id"    : "asset.restore",
       "editor": "asset",
-      "key"   : "cmd:asset.accept"
+      "key"   : "cmd:asset.restore"
     },
     {
       "id"    : "asset.regenerate",
@@ -991,14 +986,14 @@
     {
       "id"      : "project.setKey",
       "editor"  : "onboarding",
-      "key"     : "cmd:project.setKey#anthropic",
+      "key"     : "cmd:project.setKey#gemini",
       "supplies": ["key"],
       "refused" : "Paste a key first"
     },
     {
       "id"      : "project.setKey",
       "editor"  : "onboarding",
-      "key"     : "cmd:project.setKey#gemini",
+      "key"     : "cmd:project.setKey#anthropic",
       "supplies": ["key"],
       "refused" : "Paste a key first"
     },
@@ -1010,13 +1005,5 @@
     }
   ],
   "disagreements": [],
-  "strays": [
-    "branches cmd:story.newScene",
-    "gengraph item:gnode/0",
-    "gengraph item:gnode/1",
-    "gengraph item:gnode/2",
-    "gengraph item:gnode/4",
-    "gengraph item:gnode/5",
-    "timeline cmd:story.newShot"
-  ]
+  "strays": ["tasklist item:task/46c8a4151e3668ea8196bdf6851e0f523cbb155a46e714a9be1bec56f5baf3ed"]
 }

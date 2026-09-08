@@ -429,12 +429,15 @@ See ['docs/reference/proseStyle.md'](docs/reference/proseStyle.md).
   `stack.check`, show that sentence verbatim — a greyed control that will not say why is
   the same bug as a hidden one.
 - Tooltips are set through two mechanisms. A path.ux widget takes `.description`; a raw
-  DOM node in an `appendSurface` root takes `.title`. Command-backed controls default to
-  the registry's own text (the entry's `title`, a prop's `description`), so a command with
-  a vague description is fixed in the definition rather than papered over at the call
-  site. A pane tab uses neither mechanism: it is painted on the docker's canvas, so its
-  tooltip comes from `define().description`, which `registerEditor` splices in from
-  `EDITORS`'s `what` — the same sentence View ▸ Editors shows.
+  DOM node in an `appendSurface` root takes `.title`. A control drawn through `act()` or
+  `record()` gets its tooltip from its `Offer`, which `applyOffer` writes through those
+  two mechanisms, so a `description` or `title` written beside the call is a copy that
+  gets overwritten. Command-backed controls default to the registry's own text (the
+  entry's `title`, a prop's `description`), so a command with a vague description is fixed
+  in the definition rather than papered over at the call site. A pane tab uses neither
+  mechanism: it is painted on the docker's canvas, so its tooltip comes from
+  `define().description`, which `registerEditor` splices in from `EDITORS`'s `what` — the
+  same sentence View ▸ Editors shows.
 
 ## Euphemeral UI data (saveUIData/loadUIData)
 

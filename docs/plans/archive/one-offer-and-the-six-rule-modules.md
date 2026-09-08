@@ -1,7 +1,7 @@
 # One `Offer`, and the six rule modules unified
 
-Status: **planned**. Plan 1 of
-[`ux-behaviour-model-tasklist.md`](ux-behaviour-model-tasklist.md); depends on nothing,
+Status: **shipped** (see [As shipped](#as-shipped)). Plan 1 of
+[`ux-behaviour-model-tasklist.md`](../ux-behaviour-model-tasklist.md); depends on nothing,
 and plans 2, 3 and 4 depend on it. Pressure-tested on 2026-09-07; the findings and what
 was done with each are in [Findings](#findings).
 
@@ -9,7 +9,7 @@ was done with each are in [Findings](#findings).
 
 The anchor layer's design rule is that one object wires a control's click and records what
 the click runs, so the two cannot drift
-([`../reference/guided-tours.md#design-rule`](../reference/guided-tours.md#design-rule)).
+([`../reference/guided-tours.md#design-rule`](../../reference/guided-tours.md#design-rule)).
 That object is an `Offer`, and today it is smaller than what a control needs, so the rest
 is supplied beside it and can drift after all. Measured from the tree on 2026-09-07:
 
@@ -48,14 +48,14 @@ is supplied beside it and can drift after all. Measured from the tree on 2026-09
   `composeTooltip`, the function that orders reason, long description and the widget's own
   text, does not reach the barrel: `ui_base.ts` imports it as a namespace and re-exports
   nothing, although
-  [`menu-item-disabling.md`](../../vendor/path.ux/documentation/plans/menu-item-disabling.md)
+  [`menu-item-disabling.md`](../../../vendor/path.ux/documentation/plans/menu-item-disabling.md)
   says at one point that it joins the barrel deliberately and at another that it reaches
   no barrel.
 
 The companion report
-([`../research/formalizing-the-rules-modules.md`](../research/formalizing-the-rules-modules.md))
+([`../research/formalizing-the-rules-modules.md`](../../research/formalizing-the-rules-modules.md))
 proposes the shape this plan builds. The tasklist's
-[What refusals look like once path.ux carries them](ux-behaviour-model-tasklist.md#what-refusals-look-like-once-pathux-carries-them)
+[What refusals look like once path.ux carries them](../ux-behaviour-model-tasklist.md#what-refusals-look-like-once-pathux-carries-them)
 changes one thing in that proposal: the refused branch carries path.ux's `Refusal` rather
 than a bare `reason`.
 
@@ -342,7 +342,7 @@ anchor layer's `act()` is wrong and is corrected in stage 6. Those four controls
   `refused` is a finding, and the disagreement count must stay at zero.
 - Over CDP, the two newly greyed controls and the frozen custom box are looked at, since
   the sweep cannot.
-- [`../reference/guided-tours.md`](../reference/guided-tours.md): the `Offers` section
+- [`../reference/guided-tours.md`](../../reference/guided-tours.md): the `Offers` section
   shows the new type; the `ActOptions` table is replaced by the base fields;
   `Recording anchors` says what `act()` now applies to the node and the
   one-node-several-offers rule; the `dom`/`pick` table drops `pick()`; the `Files` table
@@ -350,10 +350,10 @@ anchor layer's `act()` is wrong and is corrected in stage 6. Those four controls
 - CLAUDE.md's tooltips convention gains one sentence: a control drawn through `act()` or
   `record()` gets its tooltip from the offer, and the two mechanisms named there are what
   `applyOffer` writes through.
-- [`ux-behaviour-model-tasklist.md`](ux-behaviour-model-tasklist.md): row 1's checkbox,
+- [`ux-behaviour-model-tasklist.md`](../ux-behaviour-model-tasklist.md): row 1's checkbox,
   and the `act()` file count in "What the numbers are today" (thirteen editors, not
   fourteen files).
-- [`index.md`](index.md): this plan's row flips to shipped and the file moves to
+- [`index.md`](../index.md): this plan's row flips to shipped and the file moves to
   `archive/`.
 - The two research reports are left as written; each states that it describes the tree at
   its own date.
@@ -456,3 +456,76 @@ here.
     `key`/`publishes` call sites, the fifteen `*_SUPPLIES` constants, and both corrections
     to the tasklist. The `index.md` row already existed, so stage 6 updates it rather than
     adding it.
+
+## As shipped
+
+Shipped 2026-09-07 on `offer-unification`, one commit per stage. `pnpm check`, `pnpm test`
+and `pnpm lint` are green at every commit. The completion greps for stage 5 (`ActOptions`,
+`about:`, `.reason`, `_SUPPLIES`, and `description =` / `title =` after an `act()` or
+`record()` call) come back empty apart from `report.ts`'s deliberate row title, which
+copies the tick's own title onto the words beside it.
+
+### Deviations
+
+- **`refuse(reason)` is exported from `rules/anchors.ts`.** A refused literal is
+  `{ ...refuse(why), id, label, tooltip }`. During stages 2 to 4 it wrote `reason` and
+  `refusal` together, so retiring `reason` in stage 5 touched one function rather than
+  every refused literal.
+- **`nothingShown` is not exported.** `approveAction` and `regenerateAction` take
+  `AssetInfo | undefined` and answer the empty pane themselves, which is also how
+  `controls(undefined)` reaches them.
+- **`GrantKind` and `GRANT_LABELS` live in `rules/reportconvo.ts`**, and `drawGrant` lost
+  its label parameter. A granted box whose verdict still says `accept` (the verdict lags
+  the grant by one round trip) is refused with its own sentence rather than left with
+  none.
+- **`DocBuffer.saveOffer` carries one tooltip for both the skills and the wiki editor.**
+  The two hand-written ones said the same thing in different words.
+- **The mode strip's tooltips say what each mode does** rather than `Run <command>`, and
+  `modeStrip`'s segment builder takes an `Action | Offer` so the Agent segment can carry
+  `condenseAction`'s own refusal.
+- **Two controls gained a tooltip the inventory did not count**: the chunk box and the
+  reference thumbnail.
+- **`rules/keysetup.ts` and `rules/doctreebar.ts` are deleted**, since their `*_SUPPLIES`
+  constants were all they held.
+- **`ChunkAct.label` and `ChunkAct.title` are gone**; the editor reads `act.offer.label`.
+  `dropRefAction` takes the chip's `pin` and `label` rather than the whole chip.
+- **The doctree's `offerOf(entry)` is deleted.** It had no caller outside its own tests,
+  and a `MenuEntry` has no tooltip to give it. The context menu draws its entries without
+  the anchor layer.
+- **`keyOf` and `duplicateKeys` take `Pick<Control, 'id' | 'on'>`**, the two fields they
+  read.
+- **The report editor's `button()` helper takes an optional tip**, and its stop sentence
+  is a module constant, since the offer now carries it.
+
+### The three behaviour changes, looked at over CDP
+
+- **The frozen custom box.** Unreachable: the asset editor returns before drawing the mode
+  row and the custom box when `view.frozen` is set (`asset.ts`, the `PROMPT · AS RECORDED`
+  branch), so `customAction`'s refused branch is data no node presents. Nothing changed on
+  screen.
+- **`+ shot` with no scene on screen.** Greyed with `No scene is on screen.` by
+  `applyOffer`, but the timeline falls back to the start scene when nothing is selected,
+  so the case arises only in a story with no scenes and the sample project has none. The
+  enabled case was checked: the widget carries the offer's tooltip and no hand-set one.
+- **Show task on a failure naming no task.** Every failure in the sample project names its
+  task, so only the enabled case was checked: the band's button carries the offer's
+  tooltip and is enabled.
+
+### The sweep
+
+Re-run against `examples/mySampleRepo` (The Transfer Student) at `c2cd59f1`. Zero
+disagreements, as before. What moved beyond `sweptAt` and `gitSha`:
+
+- **The asset pane's records changed subject**: the first asset in the tree is now
+  `location:rooftop/evening` where the 2026-09-04 sweep saw `location:classroom/day`, so
+  the rung keys under `cmd:art.setSeed#…` and `cmd:art.setNotes#…` changed with it, the
+  bar records `asset.restore` where it recorded `asset.accept`, and `asset.replace` is not
+  drawn for it. Those are the fixture's, not the plan's: no key's discriminator and no
+  refusal's wording changed.
+- **The strays list changed.** The seven strays on file since 2026-09-01 (the branch
+  editor's `story.newScene`, five gen-graph node rows and the timeline's `story.newShot`)
+  are no longer reported, and one task row in the task list is. A stray is a hit test at
+  the anchor's centre in the window the sweep ran in, and nothing in this plan touched the
+  branch editor's button placement or the gen-graph's `pickItem` rows, so the difference
+  is read as window geometry rather than as a change in the app. Worth a sweep in the
+  author's own window before the list is trusted either way.

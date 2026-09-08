@@ -39,10 +39,12 @@ anchor layer, and Part II covers the tour built on it.
 
 An anchor is registered from the same object that installs the control's click handler.
 `act()` in `renderer/pathux/tour/anchors.ts` takes one `Offer` (the command id and props
-the control runs), sets `node.onclick` from it, and records the anchor from it. A separate
+the control runs, its label, its tooltip and its refusal), sets `node.onclick` from it,
+greys the node and writes its tooltip from it, and records the anchor from it. A separate
 annotation (a `data-command` attribute, for example) would be a description of the handler
 and could drift from it when the control is rewired. Sharing one object makes drift
-impossible.
+impossible, and it makes a hand-written tooltip beside the call a second copy that
+`applyOffer` overwrites.
 
 The same principle covers refusals. When a command cannot run, the tour displays the
 reason string the command's own rule module returned. Tour code never composes a reason of
@@ -53,22 +55,42 @@ its own.
 ### Offers
 
 A rule module describes each control as an `Offer`. An `Offer` holds either the invocation
-the control runs or the reason the control is disabled.
+the control runs or the refusal that greys it, and on both branches everything the anchor
+records and the node shows (`renderer/rules/anchors.ts`):
 
 ```ts
+interface Control {
+    id: string;
+    label: string; // a button's text, a field's placeholder
+    tooltip: string; // the control's own sentence
+    on?: string; // tells twins apart: a chunk key, a task hash
+    supplies?: readonly string[]; // prop names read from the widget at commit time
+    form?: boolean; // the click opens the command's form instead of running it
+}
+
 type Offer =
-    (Action & { ok: true; label?: string }) | { ok: false; reason: string; id?: string };
+    | (Control & { ok: true; props: Record<string, PropValue> })
+    | (Control & { ok: false; refusal: Refusal });
 ```
 
-A disabled control is still registered as an anchor when its `Offer` carries a command id
-(`id` on the refusal, or `about` in `ActOptions`). The registration lets a tour highlight
-the disabled control and show the control's reason, instead of reporting that the command
+`Refusal` is path.ux's own type (`{ reason, description? }`), so an op, a widget and a
+rule module hold one shape. A refused literal is written
+`{ ...refuse(why), id, label, tooltip }`. `id` is required on both branches, so a disabled
+control is always registered as an anchor: a tour asked for that command highlights the
+greyed control and shows the refusal the rule wrote, instead of reporting that the command
 has no control.
+
+Six rule modules return offers: `headerbar`, `convobar`, `projectbar`, `reportconvo`,
+`assetview` and `promptview`. Each exports `controls(state)`, the list of every offer the
+module can produce for a state, and its test asserts that the list's keys are the union of
+the module's functions' keys and that `duplicateKeys` finds none. The other editors build
+their offers inline; giving each a module is plan 2 of
+[`../plans/ux-behaviour-model-tasklist.md`](../plans/ux-behaviour-model-tasklist.md).
 
 ### Recording anchors
 
 - `redrawing(editor, part)` starts a recording pass and returns an `AnchorPass`. Its
-  `act`, `record`, `item`, `pick` and `pickItem` methods add anchors to the pass.
+  `act`, `record`, `item` and `pickItem` methods add anchors to the pass.
 - Each pass replaces the previous pass for the same `editor/part` in full and increments a
   global generation counter. This is required because `rebuildBody()` clears the editor
   surface with `surface.textContent = ''` on every redraw, so a DOM reference from an
@@ -77,20 +99,33 @@ has no control.
 - An editor may redraw separate regions from separate places, as the asset editor redraws
   its toolbar and its body independently. `part` lets such an editor replace one region's
   anchors without discarding the other's.
-- `act(node, offer, run, opts)` sets `node.onclick` rather than calling
+- `act(node, offer, run)` sets `node.onclick` rather than calling
   `addEventListener('click')`. path.ux's `Button` invokes `onclick` directly on touch
-  input, where no DOM click event is dispatched.
+  input, where no DOM click event is dispatched. A refused offer wires no click.
+- `act()` and `record()` both present the offer on the node through `applyOffer`
+  (`renderer/rules/anchors.ts`). The node is greyed when the offer is refused. A path.ux
+  widget (told apart by `'refusalReason' in node`) is given `description` and
+  `refusalReason` separately and composes its tooltip on read; a raw DOM node gets a
+  `title` composed by path.ux's `composeTooltip`, the refusal above the tooltip. An editor
+  that needs to re-present a control between passes, because its offer changed under it,
+  calls `applyOffer` itself rather than writing `description` or `title` by hand.
+- One node may carry several offers, as the View button's menu rows run different
+  commands, only while they present the same way. A second offer on a node whose `ok` or
+  `tooltip` differs from the first makes `record()` throw, so it cannot silently overwrite
+  the first.
 
-`ActOptions` supplies facts the `Offer` does not carry:
+The fields every offer carries beyond `id` and `props`:
 
-| Option      | Meaning                                                                                                                 |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `supplies`  | Prop names whose values are read from the widget when the command runs (a textarea's text, a typed id).                 |
-| `form`      | A click opens the command's form in the palette instead of running it; every prop is entered there.                     |
-| `on`        | A discriminator appended to the key when one pane has several controls for the same command (a chunk key, a task hash). |
-| `about`     | The command id a disabled control belongs to, when the refusal `Offer` does not carry one.                              |
-| `key`       | An `item:` key, for a control that selects a subject rather than running a command.                                     |
-| `publishes` | The `ui.*` fields a selection control sets.                                                                             |
+| Field      | Meaning                                                                                                                 |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `label`    | What the control says on screen. The editor reads it rather than writing its own.                                       |
+| `tooltip`  | The control's own sentence, shown when enabled and beneath the refusal when not.                                        |
+| `supplies` | Prop names whose values are read from the widget when the command runs (a textarea's text, a typed id).                 |
+| `form`     | A click opens the command's form in the palette instead of running it; every prop is entered there.                     |
+| `on`       | A discriminator appended to the key when one pane has several controls for the same command (a chunk key, a task hash). |
+
+A control that selects a subject rather than running a command is recorded through
+`item()` or `pickItem()` with its `item:` key and the `ui.*` fields it publishes.
 
 ### Keys
 
@@ -111,7 +146,7 @@ route determines how the anchor is verified.
 |               | `dom`                           | `pick`                                             |
 | ------------- | ------------------------------- | -------------------------------------------------- |
 | Click target  | the node itself                 | the canvas beneath the node                        |
-| Registered by | `act()` / `record()`            | `pick()` / `pickItem()`                            |
+| Registered by | `act()` / `record()`            | `pickItem()`                                       |
 | Verified by   | a hit test at the node's centre | calling the canvas's `pick()` at the node's centre |
 
 The graph editors draw node boxes in a layer with `pointer-events: none`, so clicks pass
@@ -462,24 +497,24 @@ unreachable from the agent in either host.
 
 ## Files
 
-| Path                                       | Contents                                                                                                           |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| `renderer/rules/anchors.ts`                | Anchor and resolution types; `subsumes`, `resolveAnchor`, `resolveItem`, `resolveSubject`, `resolveNamed`, `mapOf` |
-| `renderer/rules/ring.ts`                   | Ring geometry: `ringRect`, `union`, `outset`, `RING_PAD`                                                           |
-| `renderer/rules/tour.ts`                   | `TourState`, `guide`, `satisfies`; pure, no DOM                                                                    |
-| `renderer/rules/anchormap.ts`              | `ANCHOR_MAP`, loaded from `anchors.json`                                                                           |
-| `renderer/rules/precheck.ts`               | `checkFor`, `askedAs`: which invocation a ringed anchor is checked with                                            |
-| `renderer/pathux/tour/anchors.ts`          | The registry: `redrawing`, `act`, `landsOn`, `strayAnchors`                                                        |
-| `renderer/pathux/interactions/hittest.ts`  | `elementsAt`, `reaches`, `hitFor`: hit testing through shadow roots                                                |
-| `renderer/pathux/tour/overlay.ts`          | The ring layer and its two timers                                                                                  |
-| `renderer/pathux/tour/tour.ts`             | The running tour; `window.__vnTour`                                                                                |
-| `renderer/pathux/interactions/gestures.ts` | Per-editor gesture state readers                                                                                   |
-| `src/shared/tours.ts`                      | `Step`, `Tour`, and the curated tours                                                                              |
-| `src/shared/tourcheck.ts`                  | `readTour`, `checkTour`                                                                                            |
-| `src/main/commands/tour.ts`                | The `tour.*` commands                                                                                              |
-| `src/main/showme.ts`                       | The `show_me` agent tool                                                                                           |
-| `apps/desktop/anchors.json`                | The measured anchor map                                                                                            |
-| `scripts/sweep-anchors.mjs`                | The sweep that writes it                                                                                           |
+| Path                                       | Contents                                                                                                                                                                      |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `renderer/rules/anchors.ts`                | `Offer`, `refuse`, `keyOf`, `duplicateKeys`, `applyOffer`; anchor and resolution types; `subsumes`, `resolveAnchor`, `resolveItem`, `resolveSubject`, `resolveNamed`, `mapOf` |
+| `renderer/rules/ring.ts`                   | Ring geometry: `ringRect`, `union`, `outset`, `RING_PAD`                                                                                                                      |
+| `renderer/rules/tour.ts`                   | `TourState`, `guide`, `satisfies`; pure, no DOM                                                                                                                               |
+| `renderer/rules/anchormap.ts`              | `ANCHOR_MAP`, loaded from `anchors.json`                                                                                                                                      |
+| `renderer/rules/precheck.ts`               | `checkFor`, `askedAs`: which invocation a ringed anchor is checked with                                                                                                       |
+| `renderer/pathux/tour/anchors.ts`          | The registry: `redrawing`, `act`, `landsOn`, `strayAnchors`                                                                                                                   |
+| `renderer/pathux/interactions/hittest.ts`  | `elementsAt`, `reaches`, `hitFor`: hit testing through shadow roots                                                                                                           |
+| `renderer/pathux/tour/overlay.ts`          | The ring layer and its two timers                                                                                                                                             |
+| `renderer/pathux/tour/tour.ts`             | The running tour; `window.__vnTour`                                                                                                                                           |
+| `renderer/pathux/interactions/gestures.ts` | Per-editor gesture state readers                                                                                                                                              |
+| `src/shared/tours.ts`                      | `Step`, `Tour`, and the curated tours                                                                                                                                         |
+| `src/shared/tourcheck.ts`                  | `readTour`, `checkTour`                                                                                                                                                       |
+| `src/main/commands/tour.ts`                | The `tour.*` commands                                                                                                                                                         |
+| `src/main/showme.ts`                       | The `show_me` agent tool                                                                                                                                                      |
+| `apps/desktop/anchors.json`                | The measured anchor map                                                                                                                                                       |
+| `scripts/sweep-anchors.mjs`                | The sweep that writes it                                                                                                                                                      |
 
 ## See also
 
