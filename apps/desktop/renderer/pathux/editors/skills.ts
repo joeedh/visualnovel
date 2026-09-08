@@ -3,7 +3,7 @@ import { api } from '../../api.js';
 import { NEW_SKILL_PROMPT, underSkills } from '../../rules/skills.js';
 import { onInvalidate, onWrote } from '../app/bridge.js';
 import { openCommandDialog } from '../chrome/dialog.js';
-import { DocBuffer, WRITE_SUPPLIES } from '../doctree/docbuffer.js';
+import { DocBuffer } from '../doctree/docbuffer.js';
 import { redrawing } from '../tour/anchors.js';
 import {
   defaultExpanded,
@@ -213,19 +213,10 @@ export class SkillsEditor extends VnEditor {
     this.pathEl.textContent = open ? this.buf.path : '';
     this.pathEl.title = this.pathEl.textContent;
     this.badge.style.display = this.buf.dirty ? 'inline-block' : 'none';
-    const save = this.buf.saveOffer;
-    this.saveBtn.disabled = !save.ok;
-    // A disabled control's tooltip is its refusal — a greyed Save that will not say why is the
-    // same bug as a hidden one.
-    this.saveBtn.description = save.ok
-      ? 'Write this skill file back to disk, and commit it'
-      : save.reason;
     // Re-recorded on every paint rather than once with the bar: the bar is built at init and
     // the offer changes with the buffer, so a record kept from init would say `Nothing to save`
     // for the life of the pane.
-    redrawing('skills', 'bar').act(this.saveBtn, save, () => void this.buf.save(), {
-      supplies: WRITE_SUPPLIES,
-    });
+    redrawing('skills', 'bar').act(this.saveBtn, this.buf.saveOffer, () => void this.buf.save());
     this.noteEl.textContent = this.buf.note;
     this.noteEl.className = this.buf.bad ? 'sk-note bad' : 'sk-note';
     this.noteEl.title = this.buf.note;

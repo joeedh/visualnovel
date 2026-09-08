@@ -25,6 +25,7 @@ import {
 } from '../doctree/selection.js';
 import { openCommandDialog } from '../chrome/dialog.js';
 import { pickOracle, redrawing, type AnchorPass } from '../tour/anchors.js';
+import { refuse } from '../../rules/anchors.js';
 import { TOKENS, alpha } from '../app/tokens.js';
 import type { EdgeRoute } from '../../graph/edges.js';
 import type { Pick as GraphPick } from '../../graph/hit.js';
@@ -575,18 +576,23 @@ export class TaskGraphEditor extends VnEditor {
         const [check, candidates] = answers[at] ?? [];
         const refusal = check?.state === 'refuse' ? check.message : undefined;
         const greyed = refusal !== undefined && (candidates?.length ?? 0) === 0;
-        cta.disabled = greyed;
         cta.style.opacity = greyed ? '0.5' : '1';
         cta.style.cursor = greyed ? 'default' : 'pointer';
-        cta.title = refusal ?? `Approve a portrait for ${character}`;
         // The hash is the author's judgement rather than the graph's, so the dialog asks for it and
         // the anchor names it as something supplied rather than carrying a wrong one.
+        const control = {
+          id      : 'gate.approve',
+          label   : cta.textContent ?? '',
+          tooltip : refusal ?? `Approve a portrait for ${character}`,
+          on      : character,
+          supplies: ['hash'],
+          form    : true,
+        };
         pass.record(
           cta,
-          greyed
-            ? { ok: false, id: 'gate.approve', reason: refusal }
-            : { ok: true, id: 'gate.approve', props: { characterId: character } },
-          { on: character, supplies: ['hash'], form: true },
+          refusal !== undefined && greyed
+            ? { ...refuse(refusal), ...control, tooltip: `Approve a portrait for ${character}` }
+            : { ok: true, props: { characterId: character }, ...control },
         );
       });
     });

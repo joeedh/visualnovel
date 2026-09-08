@@ -17,7 +17,7 @@
  * `bridge.js` reaches `window` through `api.js`.
  */
 import { touches } from '../../../src/shared/writes.js';
-import type { Offer } from '../../rules/anchors.js';
+import { refuse, type Offer } from '../../rules/anchors.js';
 import type { DocFile, DocSaveResult } from '../../../src/shared/ipc.js';
 
 /** The only two document commands a buffer needs from the app: reading and writing a file. */
@@ -76,9 +76,6 @@ if (typeof window !== 'undefined') {
   });
 }
 
-/** The text and the hash it was read at, both of which the buffer holds rather than the bar. */
-export const WRITE_SUPPLIES = ['text', 'seenHash'];
-
 export class DocBuffer {
   private shown = '';
   private buffer = '';
@@ -110,13 +107,21 @@ export class DocBuffer {
   }
 
   /**
-   * What Save would run, or the sentence for why it is greyed. The host reads this for the button's
-   * state and hands the same value to `act`, so the anchor cannot describe a save the click is not.
+   * What Save would run, or the sentence for why it is greyed. The host hands it to `act`, which
+   * greys and titles the button from it, so the anchor cannot describe a save the click is not.
+   * The text and the hash it was read at are the buffer's rather than the bar's, so the click
+   * supplies them.
    */
   get saveOffer(): Offer {
-    if (this.shown === '') return { ok: false, id: 'doc.write', reason: 'No document is open.' };
-    if (!this.isDirty) return { ok: false, id: 'doc.write', reason: 'Nothing to save' };
-    return { ok: true, id: 'doc.write', props: { path: this.shown }, label: 'Save' };
+    const control = {
+      id      : 'doc.write',
+      label   : 'Save',
+      tooltip : 'Write this file back to disk, and commit it',
+      supplies: ['text', 'seenHash'],
+    };
+    if (this.shown === '') return { ...refuse('No document is open.'), ...control };
+    if (!this.isDirty) return { ...refuse('Nothing to save'), ...control };
+    return { ok: true, props: { path: this.shown }, ...control };
   }
 
   /** Whether `note` is a refusal rather than news. The host paints the two differently. */

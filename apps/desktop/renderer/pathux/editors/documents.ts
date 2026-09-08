@@ -23,7 +23,6 @@ import {
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { VN_ICONS } from '../app/icons.js';
 import { redrawing } from '../tour/anchors.js';
-import { CREATE_SUPPLIES, RENAME_SUPPLIES } from '../../rules/doctreebar.js';
 import { assetNode, openNode } from '../panes/open.js';
 import { layoutChanged } from '../app/persist.js';
 import type { VnScreen } from '../app/screen.js';
@@ -234,10 +233,16 @@ export class DocumentsEditor extends VnEditor {
     // the kind and the name are both typed after it.
     anchors.act(
       this.bar.button('New…', () => {}),
-      { ok: true, id: 'doc.create', props: {}, label: 'New…' },
+      {
+        ok      : true,
+        id      : 'doc.create',
+        props   : {},
+        label   : 'New…',
+        tooltip : 'Add a character, location, page or skill to this project',
+        supplies: ['kind', 'name'],
+      },
       () => this.showNewRow(),
-      { supplies: CREATE_SUPPLIES },
-    ).description = 'Add a character, location, page or skill to this project';
+    );
     this.bar.button('Refresh', () => void this.load()).description =
       'Re-read the project from disk';
     // Folding the tree back up is not the same as reloading: expansion survives every refetch, so
@@ -551,15 +556,17 @@ export class DocumentsEditor extends VnEditor {
     const box = document.createElement('input');
     box.className = 'tv-rename';
     box.value = target.name;
-    box.title = 'Type the new name — Enter renames the document, Escape leaves it as it was';
     line.replaceChild(box, label);
     // Its own pass: the box appears and vanishes without the rows around it being redrawn, and a
     // detached node is dropped from the live set rather than reported as scrolled away.
-    redrawing('documents', 'rename').record(
-      box,
-      { ok: true, id: 'doc.rename', props: { path: target.path } },
-      { supplies: RENAME_SUPPLIES },
-    );
+    redrawing('documents', 'rename').record(box, {
+      ok      : true,
+      id      : 'doc.rename',
+      props   : { path: target.path },
+      label   : target.name,
+      tooltip : 'Type the new name — Enter renames the document, Escape leaves it as it was',
+      supplies: ['name'],
+    });
 
     let settled = false;
     const finish = (name?: string): void => {

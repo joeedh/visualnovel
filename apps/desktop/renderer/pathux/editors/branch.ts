@@ -31,6 +31,7 @@ import {
   type Drag,
 } from '../interactions/branch.js';
 import { pickOracle, redrawing } from '../tour/anchors.js';
+import { refuse } from '../../rules/anchors.js';
 import { gestureState } from '../interactions/gestures.js';
 import { exec, refreshWorkspace } from '../app/bridge.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
@@ -44,6 +45,9 @@ import type { LaidOutNode, Point } from '../../graph/types.js';
 import type { StoryEdge, StoryGraph, StoryScene } from '../../../src/shared/ipc.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
+
+/** What the delete button does, said before its check answers and again as its tooltip after. */
+const removes = (scene: string): string => `Remove ${scene} and the shots that illustrate it`;
 
 /**
  * The frame around `branch.css`, which is imported as-is and carries the cards, the labels and the
@@ -332,14 +336,21 @@ export class BranchEditor extends VnEditor {
       // scene starts, and both the id and the heading are typed after it.
       anchors.act(
         this.bar.button('+ scene', () => {}),
-        { ok: true, id: 'story.newScene', props: {}, label: '+ scene' },
+        {
+          ok      : true,
+          id      : 'story.newScene',
+          props   : {},
+          label   : '+ scene',
+          tooltip : 'Name a new scene and add it to the graph, unconnected',
+          supplies: ['scene', 'heading'],
+        },
         () => this.startNaming(),
-        { supplies: ['scene', 'heading'] },
-      ).description = 'Name a new scene and add it to the graph, unconnected';
+      );
       const scene = this.ui.sceneId;
       if (scene && this.sceneById.has(scene)) {
         const remove = this.bar.button(`delete ${scene}`, () => void this.deleteScene(scene));
-        remove.description = `Remove ${scene} and the shots that illustrate it`;
+        // Said now as well, since the offer below lands a round trip later
+        remove.description = removes(scene);
         // Asked as the button is drawn rather than on hover, so a scene something still points at
         // is greyed and says why in the command's own words without being reached for first.
         this.askDelete(scene, remove);
@@ -607,24 +618,28 @@ export class BranchEditor extends VnEditor {
     this.redraw();
   }
 
-  /** What removing the selected scene would cost, from `deleteScene`'s own `check`. */
+  /**
+   * What removing the selected scene would cost, from `deleteScene`'s own `check`. An accepted
+   * check's sentence — how many shots go with the scene — is the button's tooltip.
+   */
   private askDelete(scene: string, button: Button): void {
     const step = asInvocation(deleteSceneIntent(scene));
     void api.invoke('command:check', step).then((check) => {
-      const refused = check.state === 'refuse';
-      button.disabled = refused;
+      const control = { id: step.id, label: `delete ${scene}` };
       // Its own pass, keyed on the scene: the answer lands after the bar is drawn, and the anchor
       // has to carry the refusal the button ends up wearing rather than the offer it was drawn on.
       redrawing('branches', 'delete').act(
         button,
-        refused
-          ? { ok: false, id: step.id, reason: check.message }
-          : { ok: true, ...step, label: `delete ${scene}` },
+        check.state === 'refuse'
+          ? { ...refuse(check.message), ...control, tooltip: removes(scene) }
+          : {
+              ok   : true,
+              props: step.props,
+              ...control,
+              tooltip: noticeForCheck(check)?.text || removes(scene),
+            },
         () => void this.deleteScene(scene),
       );
-      const notice = noticeForCheck(check);
-      if (!notice) return;
-      button.description = notice.text;
     });
   }
 
@@ -700,12 +715,13 @@ export class BranchEditor extends VnEditor {
     });
 
     const go = el('button', 'go', 'Write it');
-    go.title = 'Create the scene file and put it on the graph, connected to nothing';
     // Its own pass: the row appears and vanishes without the bar being redrawn, and a detached
     // node is dropped from the live set rather than reported as scrolled away.
     redrawing('branches', 'naming').record(go, {
       ok: true,
       ...asInvocation(newSceneIntent(this.naming)),
+      label  : 'Write it',
+      tooltip: 'Create the scene file and put it on the graph, connected to nothing',
     });
     go.addEventListener('click', () => void this.write());
     const no = el('button', 'no', 'Cancel');

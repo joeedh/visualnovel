@@ -41,7 +41,7 @@ import {
   touchesGraph,
 } from '../../../src/shared/writes.js';
 import { api } from '../../api.js';
-import type { Offer } from '../../rules/anchors.js';
+import { refuse, type Offer } from '../../rules/anchors.js';
 import {
   commandFor,
   contestedSlots,
@@ -391,47 +391,46 @@ export class GenGraphEditor extends VnEditor {
     this.grouped = signature;
 
     const pass = redrawing('gengraph', 'groups');
-    const group = this.groupOffer(ids);
-    pass.act(this.groupButton, group, () => void this.groupSelected());
-    this.groupButton.disabled = !group.ok;
-    this.groupButton.description = group.ok ? GROUP_WHAT : group.reason;
-
-    const ungroup = this.ungroupOffer();
-    pass.act(this.ungroupButton, ungroup, () => void this.ungroupSelected());
-    this.ungroupButton.disabled = !ungroup.ok;
-    this.ungroupButton.description = ungroup.ok ? UNGROUP_WHAT : ungroup.reason;
+    pass.act(this.groupButton, this.groupOffer(ids), () => void this.groupSelected());
+    pass.act(this.ungroupButton, this.ungroupOffer(), () => void this.ungroupSelected());
   }
 
   private groupOffer(ids: GraphId[]): Offer {
-    const id = 'gengraph.createGroup';
-    if (ids.length === 0) return { ok: false, id, reason: 'Select the nodes to group first.' };
-    return this.offerOf(id, {
-      kind     : 'createGroup',
-      graphPath: this.view.currentGraphPath,
-      storePath: this.view.graphPath,
-      nodeIds  : ids,
-    });
+    const control = { id: 'gengraph.createGroup', label: 'Group', tooltip: GROUP_WHAT };
+    if (ids.length === 0) return { ...refuse('Select the nodes to group first.'), ...control };
+    return {
+      ...this.offerOf(control.id, {
+        kind     : 'createGroup',
+        graphPath: this.view.currentGraphPath,
+        storePath: this.view.graphPath,
+        nodeIds  : ids,
+      }),
+      ...control,
+    };
   }
 
   private ungroupOffer(): Offer {
-    const id = 'gengraph.ungroup';
+    const control = { id: 'gengraph.ungroup', label: 'Ungroup', tooltip: UNGROUP_WHAT };
     const groups = this.selectedGroups();
     if (groups.length === 0) {
-      return { ok: false, id, reason: 'Select a group instance to ungroup.' };
+      return { ...refuse('Select a group instance to ungroup.'), ...control };
     }
-    return this.offerOf(id, {
-      kind     : 'ungroup',
-      graphPath: this.view.currentGraphPath,
-      nodeId   : groups[0]!.id,
-    });
+    return {
+      ...this.offerOf(control.id, {
+        kind     : 'ungroup',
+        graphPath: this.view.currentGraphPath,
+        nodeId   : groups[0]!.id,
+      }),
+      ...control,
+    };
   }
 
   /** The invocation a gesture would send, weighed the way the delegate weighs it. */
   private offerOf(id: string, edit: GraphEdit): Offer {
     const target = this.target();
     const weighed = this.weigh(edit);
-    if (!weighed.ok) return { ok: false, id, reason: weighed.reason };
-    if (target === undefined) return { ok: false, id, reason: NO_LEVEL };
+    if (!weighed.ok) return { ...refuse(weighed.reason), id };
+    if (target === undefined) return { ...refuse(NO_LEVEL), id };
     return { ok: true, ...commandFor(target, weighed.edit) };
   }
 

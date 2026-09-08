@@ -34,6 +34,7 @@ import {
   type OutfitRow,
 } from '../../rules/timeline/wardrobe.js';
 import { redrawing } from '../tour/anchors.js';
+import { refuse } from '../../rules/anchors.js';
 import { exec, onInvalidate } from '../app/bridge.js';
 import { gestureState } from '../interactions/gestures.js';
 import { MENU_SEP } from '../chrome/contextmenu.js';
@@ -325,16 +326,20 @@ export class TimelineEditor extends VnEditor {
     // and a scene whose every line is covered still takes a hand-placed shot, which claims its
     // lines off the shots that hold them.
     const anchors = redrawing('timeline', 'bar');
-    const add = anchors.act(
-      this.bar.button('+ shot', () => {}),
+    const adds = {
+      id     : 'story.newShot',
+      label  : '+ shot',
+      tooltip:
+        'Place a shot by hand over lines you name — a new frame to render. Opens the command, priced before it runs.',
+      form   : true,
+    };
+    anchors.act(
+      this.bar.button(adds.label, () => {}),
       this.ui.sceneId
-        ? { ok: true, id: 'story.newShot', props: { scene: this.ui.sceneId }, label: '+ shot' }
-        : { ok: false, id: 'story.newShot', reason: 'No scene is on screen.' },
+        ? { ok: true, props: { scene: this.ui.sceneId }, ...adds }
+        : { ...refuse('No scene is on screen.'), ...adds },
       (action) => openCommandDialog(action.id, action.props as Record<string, string>),
-      { form: true },
     );
-    add.description =
-      'Place a shot by hand over lines you name — a new frame to render. Opens the command, priced before it runs.';
     const refresh = this.bar.button('Refresh', () => void this.load());
     refresh.description = 'Re-read the shots and their images from disk.';
     this.bar.flushUpdate();
@@ -452,17 +457,15 @@ export class TimelineEditor extends VnEditor {
     button.disabled = true;
     button.title = does;
     void api.invoke('command:check', { id, props }).then((check) => {
-      const refused = check.state === 'refuse';
-      // A disabled control's tooltip is its refusal — the door stays visible and says why.
-      if (refused) button.title = check.message;
-      button.disabled = refused;
       // Recorded once the verdict lands, in its own pass: a door is drawn before its answer comes
       // back, and the anchor has to carry the refusal the button ends up wearing.
+      const control = { id, label, tooltip: does, form: true };
       redrawing('timeline', `door:${id}`).act(
         button,
-        refused ? { ok: false, id, reason: check.message } : { ok: true, id, props, label },
+        check.state === 'refuse'
+          ? { ...refuse(check.message), ...control }
+          : { ok: true, props, ...control },
         (action) => openCommandDialog(action.id, action.props as Record<string, string>),
-        { form: true },
       );
     });
     return button;

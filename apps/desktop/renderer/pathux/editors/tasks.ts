@@ -198,10 +198,16 @@ export class TaskListEditor extends VnEditor {
     // confirmation rather than off a bare button — `pipeline.run` is gated on the command.
     this.anchors.act(
       low.button('▸ Run', () => {}),
-      { ok: true, id: 'pipeline.run', props: {}, label: '▸ Run' },
+      {
+        ok     : true,
+        id     : 'pipeline.run',
+        props  : {},
+        label  : '▸ Run',
+        tooltip: 'Open the run form, where the flags are spelled out before anything is spent',
+        form   : true,
+      },
       (action) => openCommandDialog(action.id),
-      { form: true },
-    ).description = 'Open the run form, where the flags are spelled out before anything is spent';
+    );
 
     const only = low.check(undefined, 'only done') as Check;
     only.checked = this.onlyDone;
