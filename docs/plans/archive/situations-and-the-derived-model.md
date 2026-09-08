@@ -1,14 +1,13 @@
 # Situations, and the derived model
 
-Status: **planned**. Plan 3 of
-[`ux-behaviour-model-tasklist.md`](ux-behaviour-model-tasklist.md), after
-[`archive/one-offer-and-the-six-rule-modules.md`](archive/one-offer-and-the-six-rule-modules.md)
-and
-[`archive/the-ten-inline-editors-get-a-rule-module.md`](archive/the-ten-inline-editors-get-a-rule-module.md).
+Status: **shipped** 2026-09-08; see [As shipped](#as-shipped). Plan 3 of
+[`../ux-behaviour-model-tasklist.md`](../ux-behaviour-model-tasklist.md), after
+[`one-offer-and-the-six-rule-modules.md`](one-offer-and-the-six-rule-modules.md) and
+[`the-ten-inline-editors-get-a-rule-module.md`](the-ten-inline-editors-get-a-rule-module.md).
 Every anchor home now answers `controls(state)` over plain data, so a driver over a list
 of states produces the model the two research reports ask for
-([`../research/ux-behaviour-model.md`](../research/ux-behaviour-model.md),
-[`../research/formalizing-the-rules-modules.md`](../research/formalizing-the-rules-modules.md))
+([`../../research/ux-behaviour-model.md`](../../research/ux-behaviour-model.md),
+[`../../research/formalizing-the-rules-modules.md`](../../research/formalizing-the-rules-modules.md))
 with no DOM, no main process and no meta tags. This plan writes the list of states, the
 driver, the schema, the committed file, and the checks the derived tier can answer on its
 own: that a refusal carries the stack's sentence, that every command has a control or is
@@ -20,8 +19,8 @@ is missing from what the modules derive.
 Measured on `master` at `21c2886f`, after plan 2.
 
 - **Seventeen modules answer `controls`.** Sixteen are the rule modules in the table in
-  [`../reference/guided-tours.md#offers`](../reference/guided-tours.md#offers), one per
-  anchor home, with the asset home served by two (`rules/assetview.ts:476`,
+  [`../../reference/guided-tours.md#offers`](../../reference/guided-tours.md#offers), one
+  per anchor home, with the asset home served by two (`rules/assetview.ts:476`,
   `rules/promptview.ts:527`). The seventeenth is the document tree's menu: `menuFor(node)`
   (`renderer/pathux/doctree/doctree.ts:341`) is data, `MENU_NODES` (`:529`) is one node of
   every kind, and `menuAnchors()` (`:571`) enumerates the two into the 52 `documents`
@@ -45,7 +44,7 @@ Measured on `master` at `21c2886f`, after plan 2.
   whose `refusal.reason` is the message verbatim, except at the task graph's gate, where a
   refusal with candidates on file keeps the button live and puts the sentence in the
   tooltip (`rules/taskGraph.ts:530`, and
-  [`../reference/guided-tours.md#cross-checks`](../reference/guided-tours.md#cross-checks)).
+  [`../../reference/guided-tours.md#cross-checks`](../../reference/guided-tours.md#cross-checks)).
   A module surfaces a verdict only under its own key: the branch editor drops the delete
   verdict when the scene is not `known` (`rules/branch/controls.ts:78`), the timeline
   drops every door verdict once the scene is decomposed (`rules/timeline/controls.ts:81`),
@@ -576,3 +575,86 @@ answered here.
     is defined and the ids needing their own line are listed; the menu comparison is a
     multiset; the tasklist's opening paragraph is on stage 6's list; the deviation from
     the research record's `situation` value is noted.
+
+## As shipped
+
+Shipped 2026-09-08 on `derived-model`, one commit per stage. `pnpm check`, `pnpm test` and
+`pnpm lint` are green at every commit. The numbers, from `apps/desktop/ux-model.json` at
+the last stage:
+
+- 69 situations over 17 modules (the sixteen rule modules and the tree's menu); 427
+  records, 375 from `controls` and 52 from the menu; 93 refused records, 5 of them stamped
+  `reasonFrom: 'stack'` (`branch/entry-scene`, `onboarding/mock`, `reportconvo/mock`,
+  `taskGraph/gate-without-candidates`, `timeline/undecomposed-asked`).
+- 66 command ids have a control; the other 104 of the registry's 170 are matched by the 75
+  palette-only entries, each of which matches at least one of them.
+- The first derivation and the last agree on every one of those numbers.
+
+### Deviations
+
+- **Two `promptview` situations were added**, `agent` and `muted-clause`: on a condensed
+  prompt the Chunks segment clears the agent part rather than the custom one, so its props
+  differ; and a muted clause refuses Mute and offers Reset, which flips two `ok` columns.
+  Neither collapses into a listed row.
+- **Stage 2's test is one file**, `rules/situations/tests/situations.test.ts`, with a row
+  per module, rather than a test beside each situation file. It asserts what the plan
+  asked of each: every state is accepted by `controls`, `duplicateKeys` finds none, and
+  every key is a `cmd:` key.
+- **`ANCHOR_HOMES` was added to `src/shared/editors.ts`** beside `HEADER`, so the schema's
+  `editor` enum is built from one list rather than spreading `EDITOR_IDS` and `HEADER` at
+  the call site.
+- **The driver's row type declares `controls` as a method**, not a function-typed field.
+  Under `strictFunctionTypes` a field makes `Row<HeaderState>` unassignable to
+  `Row<unknown>`; a method is checked bivariantly, and the table is a `Row<unknown>[]`.
+  The stage 2 test uses the same idiom.
+- **`pickOffer` copies `supplies` and `props`** into fresh arrays and objects, so the file
+  never aliases a fixture.
+- **The palette-only list is grouped differently from the sketch in stage 3.** `app.*`
+  cannot be a glob, because `app.copy` and `app.openKeyLink` are anchored, so
+  `checkForUpdates`, `openReleases` and `keyGuide` are listed by id; so are the seven
+  `view.*` beyond `open` and `applyLayout`, the three `report.*` beyond `open`, `stop` and
+  `grant`, and `agent.clear`, `agent.editLine` and `agent.renameThread`. `plugin.*` and
+  `interaction.*` are globs. `*.status` matches only `pipeline.status`, so
+  `project.keyStatus` and `project.pagesStatus` sit with the reads by id.
+  `story.deleteShot` is the timeline's per-shot widget rather than a drag, and
+  `gengraph.apply` is listed with the node operations it batches. `PaletteOnly` is an
+  exported interface, and the list is assembled from one constant per group.
+- **The equality test compares record by record** through `JSON.stringify`, naming the
+  first record that differs by module, situation and key, then compares the situation list
+  and the palette-only list whole.
+- **`src/main/tests/uxmodel.test.ts` has a fourth check**: every id the file names exists
+  in the registry, the counterpart of `anchorcoverage.test.ts`'s first check.
+- **The measured `wording` check is scoped one step further than the plan said.** The plan
+  expected the entry scene's delete to be the pair compared, because its reason came from
+  a verdict. It cannot be: a refused offer carries no props, so the sweep asks the stack
+  about `story.deleteScene` with none and the stack answers
+  `invalid props … missing required property "scene"`. The first run reported that pair
+  and the two Test key boxes as `wording` disagreements. The sweep now skips an anchor
+  that leaves a required prop blank, read from the catalog's `required` flag
+  (`leavesBlank`), and compares the rest. The one pair compared on the sample project is
+  the report's `report.open` under mock, which takes no props; the pane's sentence equals
+  the stack's. Of the five stack-worded records, the other four need a prop, are not drawn
+  for the swept project, or are drawn accepted there.
+- **The sweep says `not swept` for the header alone.** The task graph is an editor
+  `view.open` lists, so the sweep does open it; it draws no anchor for the sample project,
+  and the script reports that as before, followed by the one derived command it did not
+  draw. The per-editor line names the undrawn ids rather than giving a count alone.
+- **`FLOOR` is gone and `anchorcoverage.test.ts` keeps three checks**; its header now
+  points to `uxmodel.test.ts` for the coverage question.
+
+### The sweep
+
+Re-run against `examples/mySampleRepo` (The Transfer Student) at `003c30cf`, after the
+script changed. 51 of 170 commands, 139 records, 0 disagreements, 0 strays, 0 `wording`
+disagreements. The two Save key records (`cmd:project.setKey#gemini` and `#anthropic`)
+swapped order between this run and the last; no field of either changed, and nothing else
+in the file moved beyond `sweptAt` and `gitSha`.
+
+What the sweep did not draw, per editor, as the new line reports it: `script` 3
+(`story.mergeScene`, `story.newScene`, `story.splitScene`, the pending-edit offers),
+`convo` 2 (`agent.resumeThread`, `agent.stop`), `timeline` 1 (`story.decomposeAll`),
+`tasklist` 1 and `taskgraph` 1 (`gate.approve`), `documents` 1 (`doc.rename`), `asset` 9
+(the plate, portrait, concept, failed, superseded and stale rungs the swept asset is not),
+`report` 2 (`report.grant`, `report.stop`), and the header's 7, not swept. Each is a
+situation the sample project's one state does not reach, which is the gap plan 7's recipes
+close.

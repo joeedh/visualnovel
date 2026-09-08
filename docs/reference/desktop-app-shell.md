@@ -155,6 +155,9 @@ renderer/
   rules/                the pure cores the editors import, each with a `tests/` sibling:
                         catalog.ts · script.ts · diagnostics.ts · taskGraph.ts · attempts.ts
                         assetview.ts
+                        model.ts · paletteonly.ts (the derived UX model's driver and its
+                        palette-only list; `pnpm gen:uxmodel` writes `ux-model.json` from them)
+       …/situations/    one file per rule module: the named states `controls` is run over
        …/branch/        graph · grab · compose · tween
        …/timeline/      coverage · drift · editing · wardrobe
   styles/               index.css @imports tokens (document level; the palette crosses shadow

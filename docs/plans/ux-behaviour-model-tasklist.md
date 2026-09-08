@@ -1,8 +1,11 @@
 # A UX behaviour model — tasklist
 
-Status: **proposed**. Nothing here is scheduled. Plan 1 is written
-([`archive/one-offer-and-the-six-rule-modules.md`](archive/one-offer-and-the-six-rule-modules.md));
-the other seven are not. This file is not a plan; it proposes how the work in
+Status: **in progress**. Plans 1, 2 and 3 are shipped
+([`archive/one-offer-and-the-six-rule-modules.md`](archive/one-offer-and-the-six-rule-modules.md),
+[`archive/the-ten-inline-editors-get-a-rule-module.md`](archive/the-ten-inline-editors-get-a-rule-module.md),
+[`archive/situations-and-the-derived-model.md`](archive/situations-and-the-derived-model.md));
+the other five are not written, and nothing is scheduled. This file is not a plan; it
+proposes how the work in
 [`../research/ux-behaviour-model.md`](../research/ux-behaviour-model.md) and its companion
 [`../research/formalizing-the-rules-modules.md`](../research/formalizing-the-rules-modules.md)
 divides into plans, what order they can be taken in, and which of the two reports' open
@@ -26,7 +29,7 @@ about. Those are in
 | --- | ----------------------------------------------------------------------------------------------- | ---------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 1   | [One `Offer`, and the six rule modules unified](archive/one-offer-and-the-six-rule-modules.md)  | app              | —          | `Offer` absorbs `ActOptions`, `tooltip` becomes required, the refused branch carries a `Refusal`, the six modules gain `controls()`                    |
 | 2   | [The ten inline editors get a rule module](archive/the-ten-inline-editors-get-a-rule-module.md) | app              | 1          | `rules/<editor>.ts` extracted from each editor that computes offers beside its DOM code                                                                |
-| 3   | [Situations, and the derived model](situations-and-the-derived-model.md)                        | app              | 1, 2       | The fixture list, the headless driver, the zod schema, `ux-model.json`, and the three lint rules the derived tier answers                              |
+| 3   | [Situations, and the derived model](archive/situations-and-the-derived-model.md)                | app              | 1, 2       | The fixture list, the headless driver, the zod schema, `ux-model.json`, and the three lint rules the derived tier answers                              |
 | 4   | Pseudo-commands, and a control's list of effects                                                | app              | 1          | The closed effect vocabulary in the catalog, closures rewritten as recorded effects, and the three rules effects unlock                                |
 | 5   | Disabling menu items, and refusals that carry a reason                                          | `vendor/path.ux` | —          | **Already written and complete**, and the authority on its own scope: `menu-item-disabling.md`, stages 1-5 done, stage 6 (the native menu bar) dropped |
 | 6   | Finishing the meta-tag system                                                                   | `vendor/path.ux` | 5          | A `widgetPath` scheme, a `refusal` accessor on `StdUXMeta`, a validating deserialize, and the `toolPath` builders                                      |
@@ -171,19 +174,19 @@ a diff of the committed model can be reviewed by a person and by the agent.
 The report argues the lint use case should drive the schema, so each plan lands the rules
 its own tier makes checkable rather than deferring them to a plan of their own.
 
-| Rule                                                             | Plan | Note                                                                          |
-| ---------------------------------------------------------------- | ---- | ----------------------------------------------------------------------------- |
-| Every control carries a tooltip                                  | 1    | Enforced by the type, so no linter is needed                                  |
-| A disabled control states why, in the stack's own words          | 3    | Compares `refusal.reason`, never `refusal.description`; see the section above |
-| A command has at least one control, or is listed as palette-only | 3    | Replaces `FLOOR`, which is a count rather than a list                         |
-| The committed model was derived after the last `editors/**` edit | 3    | The staleness rule for a committed generated file                             |
-| A surface opens an editor only through the sparing rule          | 4    | Needs `effects` carrying a pane field                                         |
-| A mutating command reachable from a menu is undoable or confirms | 4    | Needs `effects` plus the catalog                                              |
-| A keyboard shortcut is bound once                                | 4    | Needs `key.bind` as a recorded effect                                         |
-| Two controls in one pane share a key only with a discriminator   | 4    | Needs `key` and `on` on the record                                            |
-| Enabled state agrees with `stack.check`                          | —    | Already checked by the sweep; plan 7 carries it across and adds wording       |
-| The ring lands on the control                                    | —    | Already checked by the sweep; plan 7 carries it across                        |
-| A bound path resolves on the api its own pane carries            | 7    | Reads `DataAPI.lastResolveError`; see the note below on taking it early       |
+| Rule                                                             | Plan | Note                                                                                                                                                                                                                                                                  |
+| ---------------------------------------------------------------- | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Every control carries a tooltip                                  | 1    | Enforced by the type, so no linter is needed                                                                                                                                                                                                                          |
+| A disabled control states why, in the stack's own words          | 3 ✔  | Compares `refusal.reason`, never `refusal.description`; see the section above                                                                                                                                                                                         |
+| A command has at least one control, or is listed as palette-only | 3 ✔  | Replaces `FLOOR`, which is a count rather than a list                                                                                                                                                                                                                 |
+| The committed model was derived after the last `editors/**` edit | 3 ✔  | Answered by construction: `ux-model.json` carries no sha, and a jest test fails until it equals a regeneration ([`archive/situations-and-the-derived-model.md#decisions-this-plan-settles`](archive/situations-and-the-derived-model.md#decisions-this-plan-settles)) |
+| A surface opens an editor only through the sparing rule          | 4    | Needs `effects` carrying a pane field                                                                                                                                                                                                                                 |
+| A mutating command reachable from a menu is undoable or confirms | 4    | Needs `effects` plus the catalog                                                                                                                                                                                                                                      |
+| A keyboard shortcut is bound once                                | 4    | Needs `key.bind` as a recorded effect                                                                                                                                                                                                                                 |
+| Two controls in one pane share a key only with a discriminator   | 4    | Needs `key` and `on` on the record                                                                                                                                                                                                                                    |
+| Enabled state agrees with `stack.check`                          | —    | Already checked by the sweep; plan 7 carries it across and adds wording                                                                                                                                                                                               |
+| The ring lands on the control                                    | —    | Already checked by the sweep; plan 7 carries it across                                                                                                                                                                                                                |
+| A bound path resolves on the api its own pane carries            | 7    | Reads `DataAPI.lastResolveError`; see the note below on taking it early                                                                                                                                                                                               |
 
 The `valuePath` rule is separable from the rest of plan 7. It needs the sweep to walk the
 screen and read `lastResolveError`, and it needs neither the derived model nor the meta
@@ -220,11 +223,15 @@ Routing the two reports' open decisions, so no plan starts by rediscovering them
 
 ## What the numbers are today
 
-Measured from the committed `apps/desktop/anchors.json` (swept 2026-09-08, after plan 2)
-and the source.
+Measured from the committed `apps/desktop/ux-model.json` and `apps/desktop/anchors.json`
+(both after plan 3, 2026-09-08) and the source.
 
-- 170 commands in the registry, 51 with a control on file, 139 records, 0 strays, 0
-  enabled-state disagreements.
+- Derived: 69 situations over 17 modules, 427 records (375 from `controls`, 52 from the
+  tree's menu), 66 commands with a control, and 75 palette-only entries covering the other
+  104 of the registry's 170. A record's `situation` is a `module` plus a name (`assetview`
+  / `portrait-unapproved`) rather than the research's `portrait:unapproved`.
+- Measured: 170 commands in the registry, 51 with a control on file, 139 records, 0
+  strays, 0 enabled-state disagreements, 0 `wording` disagreements.
 - 13 editor homes appear in the sweep. Fifteen files under `renderer/pathux/editors/` call
   the anchor layer's `act()` or `record()`. The notification popup in `chrome/` does not:
   its `act` is a local wrapper over `exec`, and its four `notify.*` controls are not
@@ -303,8 +310,8 @@ work, and the second one matters to the tooltip rule.
       [`archive/one-offer-and-the-six-rule-modules.md`](archive/one-offer-and-the-six-rule-modules.md))
 - [x] 2 — the ten inline editors get a rule module (shipped 2026-09-08:
       [`archive/the-ten-inline-editors-get-a-rule-module.md`](archive/the-ten-inline-editors-get-a-rule-module.md))
-- [ ] 3 — situations, and the derived model (written:
-      [`situations-and-the-derived-model.md`](situations-and-the-derived-model.md))
+- [x] 3 — situations, and the derived model (shipped 2026-09-08:
+      [`archive/situations-and-the-derived-model.md`](archive/situations-and-the-derived-model.md))
 - [ ] 4 — pseudo-commands, and a control's list of effects
 - [ ] 5 — disabling menu items, and refusals that carry a reason (path.ux, already
       planned)

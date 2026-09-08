@@ -7,7 +7,9 @@ that control, then moves to the next step. The tour never performs a step itself
 To highlight a control, the app needs a mapping from commands to the DOM elements that run
 them. The anchor layer holds that mapping. Every control an editor draws registers an
 anchor recording which command a click on it runs and with which props. Part I covers the
-anchor layer, and Part II covers the tour built on it.
+anchor layer, Part II covers the tour built on it, and Part III covers the derived model:
+the same offers, run over hand-written situations with no app, written to a committed
+file.
 
 <!-- toc -->
 
@@ -30,6 +32,13 @@ anchor layer, and Part II covers the tour built on it.
     - [Palette fallback](#palette-fallback)
     - [Sources of tours](#sources-of-tours)
     - [Commands](#commands)
+- [Part III — the derived model](#part-iii--the-derived-model)
+    - [The file](#the-file)
+    - [Situations](#situations)
+    - [The driver](#the-driver)
+    - [The record](#the-record)
+    - [The rules over the file](#the-rules-over-the-file)
+    - [Regenerating](#regenerating)
 - [Files](#files)
 - [See also](#see-also)
 
@@ -87,8 +96,8 @@ holds that the offer needs, converted to data. A `command:check` verdict is stat
 editor fetched and stored, keyed by everything it asked about; a widget's value is state;
 a gesture's weighing is state. The module never reads a promise or a widget. Each module's
 test asserts that the list's keys are the union of the module's functions' keys over two
-or three states and that `duplicateKeys` finds none. The table below is what plan 3's
-driver, a table from `AnchorHome` to the module's `controls`, is written from.
+or three states and that `duplicateKeys` finds none. The table below is the one the
+derived model's driver iterates (`renderer/rules/model.ts`, Part III).
 
 | Home         | Module                       | State                                           |
 | ------------ | ---------------------------- | ----------------------------------------------- |
@@ -329,10 +338,19 @@ CI has no app, no CDP port and no workspace, so the checks are split:
 
 - Blocking: `apps/desktop/src/main/tests/anchorcoverage.test.ts` reads the committed
   `anchors.json` and fails if a record names a command that no longer exists, if the
-  file's command list differs from the live registry's command list, or if the number of
-  anchored commands has dropped below `FLOOR`.
+  file's command list differs from the live registry's command list, or if the file's
+  `anchored` list disagrees with its own records.
+- Blocking: `apps/desktop/src/main/tests/uxmodel.test.ts` reads the committed
+  `ux-model.json` beside the registry and `anchors.json`. Every command is the id of some
+  derived record or matches the palette-only list, no entry matches a command a control
+  runs, no entry matches nothing, and every control the sweep drew has a derived record
+  with the same editor, id, `form` and `supplies`. Part III has the rules in full.
+- Blocking: `apps/desktop/renderer/rules/tests/model.test.ts` fails when `ux-model.json`
+  differs from a fresh derivation, when two records in one situation share a key, or when
+  a fixture's refusing verdict does not surface verbatim.
 - The sweep is advisory, is run by hand, and is the only place that reports disagreements
-  and strays.
+  and strays. A `wording` disagreement is a refused control whose derived record says the
+  sentence came from the stack, drawn with a sentence the stack did not say.
 
 ## Part II — the tour
 
@@ -522,6 +540,126 @@ file rather than from the screen.
 The agent uses `show_me` rather than these commands. A command without a tool wrapper is
 unreachable from the agent in either host.
 
+## Part III — the derived model
+
+`anchors.json` is a measurement: what one running app drew for one project in one state.
+`apps/desktop/ux-model.json` is the other half, derived with no app: every rule module's
+`controls(state)` run over a hand-written list of states, so the file describes every
+control a module can produce and the sentence each carries, whether or not the sample
+project reaches it. The two are compared where they overlap. The file is what an agent or
+a person reads to answer "which control runs this command, and when is it refused"; the
+tour does not read it, because a situation is a fixture rather than a recipe for reaching
+that state in a project.
+
+### The file
+
+`ux-model.json` is `{ situations, records, paletteOnly }`, and its schema is the zod in
+`src/shared/uxmodel.ts` (`UX_MODEL`), every object `.strict()` so a field the schema does
+not name is a parse error. The file carries no timestamp, sha or path. It is a pure
+function of the sources, so the committed copy either equals a regeneration or is stale,
+and a jest test tells the two apart. That is how the staleness rule for a committed
+generated file is answered: by construction rather than by comparing commit shas, which
+would fail on a DOM-only edit that cannot change the derivation and pass on a hand edit
+made after regenerating.
+
+### Situations
+
+A situation is a named fixture of one module's state type, `{ name, why, state }`
+(`renderer/rules/situations/situation.ts`). The lists live in
+`renderer/rules/situations/<module>.ts`, one file per rule module, each exporting
+`SITUATIONS`; the `situations(...)` helper rejects a duplicate name at construction. The
+list is the one hand-written input to the model.
+
+A situation exists where a module lists a control it lists nowhere else, refuses one it
+accepts elsewhere, refuses it with a different sentence, or offers it with different
+props. Two states that differ only in a label are one situation. A verdict a module would
+drop (an answer for a scene the selection has left, a door verdict on a decomposed scene)
+is not a situation, because the wording rule below would report the drop as a lost
+sentence. `why` is one sentence saying what the situation gates. Every `convobar` fixture
+keeps `context` and `spent` below 1000, because two of its tooltips go through
+`toLocaleString`, and a fixture above that would make the file differ by machine.
+
+### The driver
+
+`renderer/rules/model.ts` holds a table with one row per rule module: its name, its anchor
+home, its source path, its situations and its `controls`. The asset home's two modules are
+two rows. A seventeenth row is the document tree's menu: `menuFor` run over the exported
+`MENU_NODES` (`renderer/pathux/doctree/doctree.ts`), one node of each kind, under the
+situation `every-kind`. `model()` emits situations in table order and records in table
+order, then situation order, then `controls()` order, so a diff of the file reads in the
+order the app draws.
+
+`rules/` importing `doctree.ts` is the one place `rules/` reaches under `pathux/`; the
+file is pure, node-tested, and touches no DOM at load, which the driver's own test proves
+by loading it under jest.
+
+### The record
+
+A control record is
+`{ via: 'control', editor, module, situation, key, offer, reasonFrom? }`. `key` is
+`keyOf(offer)`. `offer` is the module's `Offer` projected to its declared fields by
+`pickOffer` (`ok`, `id`, `props`, `label`, `tooltip`, `on?`, `supplies?`, `form?`,
+`refusal?`): the asset editor's offers carry riders the editor reads back (`act`, `note`,
+`variants`), and those are neither what the control does nor stable across fixtures.
+`reasonFrom: 'stack'` is stamped on a refused record whose reason equals a refusing
+`command:check` verdict found anywhere in the situation's state; the driver finds verdicts
+by shape, because a verdict names no command.
+
+A menu record is
+`{ via: 'menu', editor: 'documents', module: 'doctree', situation: 'every-kind', when, id, label, props?, form? }`,
+with `when` the node id as `menuAnchors()` writes it. A menu entry carries no tooltip
+today, and the schema says so.
+
+Item anchors are not in the model: `item()` and `pickItem()` select a subject and run no
+command, and the model's vocabulary is command ids.
+
+`paletteOnly` is `renderer/rules/paletteonly.ts`: the commands no drawn control runs, each
+with a sentence saying where it is reached instead. `match` is a command id, a namespace
+(`workspace.*`) or a name (`*.list`), with one `*` at either end and nothing else, so a
+glob can only cover what its sentence covers. A namespace is a glob only where every
+command in it is palette-only for one reason; the script editor's structural `story.*`
+commands are listed by id, so a new one is reported.
+
+### The rules over the file
+
+Blocking, in jest under `@vn/desktop`:
+
+| Rule                                                                                                                       | Where                                |
+| -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| The file parses under `UX_MODEL`                                                                                           | `renderer/rules/tests/model.test.ts` |
+| The file equals a fresh `model()`; a failure names the first record that differs and says to run `pnpm gen:uxmodel`        | `renderer/rules/tests/model.test.ts` |
+| No two records in one situation share a key                                                                                | `renderer/rules/tests/model.test.ts` |
+| Every refusing verdict in a situation's state surfaces verbatim, as a refused record's reason or an accepted one's tooltip | `renderer/rules/tests/model.test.ts` |
+| The menu records equal `menuAnchors()` entry for entry                                                                     | `renderer/rules/tests/model.test.ts` |
+| Every registry command is the id of some record or matches `paletteOnly`                                                   | `src/main/tests/uxmodel.test.ts`     |
+| No `paletteOnly` entry matches a command a control runs, and none matches nothing                                          | `src/main/tests/uxmodel.test.ts`     |
+| Every control `anchors.json` drew has a derived record with the same editor, id, `form` and `supplies`                     | `src/main/tests/uxmodel.test.ts`     |
+| The menu records in `anchors.json` equal the derived ones as a multiset of `(when, id)`                                    | `src/main/tests/uxmodel.test.ts`     |
+
+The comparison against `anchors.json` runs one way. A derived control the sweep never drew
+is expected while the sweep visits one project state and the model many, so the sweep
+prints those per editor as information (`asset: 9 derived command(s) not drawn: …`), and
+`not swept` for the header, which is not an editor `view.open` can open.
+
+Advisory, in the sweep: the `wording` disagreement. The sweep reads `ux-model.json` for
+the `(editor, id)` pairs some record marks `reasonFrom: 'stack'`, and for a refused anchor
+in that set compares its reason to the stack's verdict. A refused offer carries no props,
+so an anchor whose command requires one is skipped: the stack, asked about the blank,
+answers with a coercion failure rather than the sentence the pane echoed.
+`refusal.description` is never compared, on either half.
+
+### Regenerating
+
+```bash
+pnpm gen:uxmodel
+```
+
+`scripts/gen-ux-model.mjs` bundles `renderer/rules/model-entry.ts` for node through
+`scripts/lib/load-entry.mjs`, the way the command catalog is produced, writes the file and
+formats it. Run it after touching anything under `renderer/rules/**` or a situation;
+`model.test.ts` fails until the committed file equals the regeneration. Running it twice
+produces identical bytes.
+
 ## Files
 
 | Path                                       | Contents                                                                                                                                                                      |
@@ -542,6 +680,12 @@ unreachable from the agent in either host.
 | `src/main/showme.ts`                       | The `show_me` agent tool                                                                                                                                                      |
 | `apps/desktop/anchors.json`                | The measured anchor map                                                                                                                                                       |
 | `scripts/sweep-anchors.mjs`                | The sweep that writes it                                                                                                                                                      |
+| `renderer/rules/model.ts`                  | The derived model's driver: the table, `pickOffer`, `refusingVerdicts`, `model()`                                                                                             |
+| `renderer/rules/situations/`               | `situation.ts` (`Situation`, `situations`) and one `SITUATIONS` list per rule module                                                                                          |
+| `renderer/rules/paletteonly.ts`            | `PALETTE_ONLY`: the commands no control runs, with reasons                                                                                                                    |
+| `src/shared/uxmodel.ts`                    | `UX_MODEL` and the record schemas; `paletteMatches`                                                                                                                           |
+| `apps/desktop/ux-model.json`               | The derived model                                                                                                                                                             |
+| `scripts/gen-ux-model.mjs`                 | `pnpm gen:uxmodel`, which writes it                                                                                                                                           |
 
 ## See also
 

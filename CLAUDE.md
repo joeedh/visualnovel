@@ -72,6 +72,7 @@ Run from the repo root.
 | Eslint only, no fixes        | `pnpm lint:eslint:check`                                                                |
 | Auto-format                  | `pnpm format`                                                                           |
 | Update docs TOCs             | `pnpm markdown-toc` (skips `docs/plans/**`)                                             |
+| Regenerate the UX model      | `pnpm gen:uxmodel` (writes `apps/desktop/ux-model.json`; a jest test compares it)       |
 | Check doc links              | `pnpm check:doclinks` (relative links + anchors; part of `pnpm lint`)                   |
 | Bundle everything            | `pnpm build` (turbo: `vngen`, `vnauthor`, and the desktop app)                          |
 | Run the CLI                  | `node apps/cli/dist/cli.js <cmd>` (or `pnpm vngen <cmd>`)                               |
@@ -212,7 +213,11 @@ so the two cannot drift apart. That layer is what lets the app point at itself, 
 guided tour rides on it.
 [`docs/reference/guided-tours.md`](docs/reference/guided-tours.md) covers both, including
 the committed `anchors.json` and the CDP sweep that measures it, which must be re-run
-after touching `apps/desktop/renderer/pathux/editors/**`.
+after touching `apps/desktop/renderer/pathux/editors/**`. Beside it sits the derived
+`ux-model.json`: every rule module's `controls` run over a hand-written list of
+situations, with no app. Touching `apps/desktop/renderer/rules/**` or a situation means
+running `pnpm gen:uxmodel`, and a jest test fails until the committed file equals a
+regeneration.
 
 Picking an asset out of the whole manifest — **Attach…** on a prompt clause — goes through
 path.ux's gallery popup rather than a bespoke browser.
