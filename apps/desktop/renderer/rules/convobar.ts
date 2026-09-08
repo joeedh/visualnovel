@@ -3,11 +3,12 @@
  * moving them here makes each one a value beside the invocation it refuses, which is what lets the
  * button and its anchor come from one object.
  */
+import { effortChoicesFor, effortLabel, type BudgetChoice, type EffortChoice } from '@vn/types';
 import { contextDetail, type Convo } from '../../src/shared/convo.js';
 import type { OpenedThread } from '../../src/shared/threads.js';
 import { resumeRefusal } from '../../src/shared/threads.js';
 import { refuse, type Offer } from './anchors.js';
-import { modeAction } from './headerbar.js';
+import { modeAction, modelAction } from './headerbar.js';
 
 /** What the conversation editor's bar reads when it draws. */
 export interface ConvoBarState {
@@ -16,6 +17,76 @@ export interface ConvoBarState {
   opened: OpenedThread | undefined;
   model: string;
   agentMode: string;
+  effort: EffortChoice;
+  budget: BudgetChoice;
+  /** What the turn in flight has spent against the budget, in tokens the cache did not serve. */
+  spent: number;
+}
+
+/** A token count at a glance: `842`, `12.3k`, `1.4M`. The exact figures are in the tooltip. */
+export function compact(n: number): string {
+  if (n < 1000) return String(n);
+  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}k`;
+  return `${(n / 1_000_000).toFixed(2)}M`;
+}
+
+/** The Threads button. The menu it opens picks the conversation, so the id is supplied there. */
+export function threadsAction(): Offer {
+  return {
+    ok      : true,
+    id      : 'agent.openThread',
+    props   : {},
+    label   : 'Threads',
+    tooltip:
+      'Saved conversations. Reopening one is read-only — the agent is not shown it until ' +
+      'Continue hands it back.',
+    supplies: ['id'],
+  };
+}
+
+/**
+ * The effort menu's button. A model with no thinking knob gets it greyed rather than hidden: the
+ * setting is kept across a model switch, so what the author picked is still true, only not in use.
+ */
+export function effortAction(model: string, effort: EffortChoice): Offer {
+  const control = {
+    id      : 'agent.setEffort',
+    label   : `effort: ${effortLabel(effort)}`,
+    tooltip : 'How hard the model thinks before answering. Higher costs more.',
+    supplies: ['effort'],
+  };
+  if (effortChoicesFor(model).length === 0) {
+    return { ...refuse(`${model || 'this model'} has no reasoning-effort setting.`), ...control };
+  }
+  return { ok: true, props: {}, ...control };
+}
+
+/**
+ * The budget menu's button: the ceiling, and what the turn in flight has spent against it. The
+ * label is retitled in place as the spend moves, so the bar is not rebuilt under an open menu.
+ */
+export function budgetAction(budget: BudgetChoice, spent: number): Offer {
+  const limit =
+    budget === 'unlimited'
+      ? 'This turn runs until it finishes or hits the 200-step runaway stop.'
+      : `This turn stops once it has spent ${budget}.`;
+  return {
+    ok      : true,
+    id      : 'agent.setBudget',
+    props   : {},
+    label:
+      spent === 0 || budget === 'unlimited'
+        ? `budget ${budget}`
+        : `budget ${compact(spent)}/${budget}`,
+    tooltip:
+      `What one turn may spend, counting fresh input and output but not what the cache served. ` +
+      `${limit} ` +
+      (spent === 0
+        ? 'Nothing spent on the last turn yet.'
+        : `${spent.toLocaleString()} spent on this turn so far.`) +
+      ' The setting is remembered between sessions.',
+    supplies: ['budget'],
+  };
 }
 
 /**
@@ -93,6 +164,10 @@ export function newThreadAction(): Offer {
 export function controls(state: ConvoBarState): readonly Offer[] {
   return [
     modeAction(state.agentMode),
+    modelAction(state.model),
+    effortAction(state.model, state.effort),
+    budgetAction(state.budget, state.spent),
+    threadsAction(),
     newThreadAction(),
     compactAction(state.convo, state.opened !== undefined),
     resumeAction(state.opened, state.model),

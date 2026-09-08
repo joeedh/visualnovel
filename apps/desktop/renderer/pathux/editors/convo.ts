@@ -28,7 +28,6 @@ import {
   AskCards,
   CHAT_CSS,
   ChatStage,
-  compact,
   compactionRule,
   el,
   turnRow,
@@ -45,12 +44,16 @@ import {
 } from '../../../src/shared/convo.js';
 import { redrawing, type AnchorPass } from '../tour/anchors.js';
 import { applyOffer } from '../../rules/anchors.js';
-import { modeAction } from '../../rules/headerbar.js';
+import { modeAction, modelAction } from '../../rules/headerbar.js';
 import {
+  budgetAction,
+  compact,
   compactAction,
+  effortAction,
   newThreadAction,
   resumeAction,
   stopTurnAction,
+  threadsAction,
 } from '../../rules/convobar.js';
 import type { AskForm } from '../../rules/askform.js';
 import type { ConfirmRequest, Plan, SkillEntry } from '../../../src/shared/ipc.js';
@@ -232,15 +235,8 @@ export class ConvoEditor extends VnEditor {
       `Answer with ${id} from the next turn on.`,
       id,
     ]) as MenuTemplate;
-    const modelLabel = ui.model || 'model…';
-    this.anchors.record(top.menu(modelLabel, models), {
-      ok      : true,
-      id      : 'agent.setModel',
-      props   : {},
-      label   : modelLabel,
-      tooltip : 'Which model answers. Switching takes effect on the next turn.',
-      supplies: ['modelId'],
-    });
+    const model = modelAction(ui.model);
+    this.anchors.record(top.menu(model.label, models), model);
 
     // Offers only the levels this model takes: `xhigh` is not a Sonnet 4.6 level, and Fable
     // thinks unconditionally, so it is never offered `no thinking`
@@ -253,14 +249,8 @@ export class ConvoEditor extends VnEditor {
       `Think at ${effortLabel(choice)} from the next turn on.`,
       choice,
     ]) as MenuTemplate;
-    const effort = top.menu(`effort: ${effortLabel(ui.effort)}`, efforts);
-    effort.description = 'How hard the model thinks before answering. Higher costs more.';
-    // A model with no thinking knob gets the menu greyed rather than hidden — the setting is kept
-    // across a model switch, so what the author picked is still true, it is just not in use.
-    if (offered.length === 0) {
-      effort.disabled = true;
-      effort.description = `${ui.model || 'this model'} has no reasoning-effort setting.`;
-    }
+    const effort = effortAction(ui.model, ui.effort);
+    this.anchors.record(top.menu(effort.label, efforts), effort);
 
     // The turn ceiling. Deliberately outside `stateKey`: the label is retitled in place by
     // `sayBudget`, because rebuilding the bar under an open menu closes it mid-choice.
@@ -275,6 +265,8 @@ export class ConvoEditor extends VnEditor {
       choice,
     ]) as MenuTemplate;
     this.budgetMenu = low.menu('', budgets);
+    // Recorded as it stands at paint; `sayBudget` re-presents it in place as the spend moves
+    this.anchors.record(this.budgetMenu, budgetAction(ui.budget, convo().turnSpend));
     this.sayBudget();
 
     this.tokensLbl = low.label('');
@@ -282,18 +274,10 @@ export class ConvoEditor extends VnEditor {
     this.sayTokens();
 
     // The menu picks the conversation, so its id is not a prop the bar can record
+    const threads = threadsAction();
     this.threadsBtn = this.anchors.record(
-      low.button('Threads', () => void this.showThreads()),
-      {
-        ok      : true,
-        id      : 'agent.openThread',
-        props   : {},
-        label   : 'Threads',
-        tooltip:
-          'Saved conversations. Reopening one is read-only — the agent is not shown it until ' +
-          'Continue hands it back.',
-        supplies: ['id'],
-      },
+      low.button(threads.label, () => void this.showThreads()),
+      threads,
     );
 
     // This button sits beside the Threads list rather than only inside it. Starting a fresh
@@ -339,27 +323,11 @@ export class ConvoEditor extends VnEditor {
   private sayBudget(): void {
     this.budgetKey = this.budgetSay();
     if (!this.budgetMenu) return;
-    const choice = this.ui.budget;
-    const spent = convo().turnSpend;
+    const offer = budgetAction(this.ui.budget, convo().turnSpend);
     // Through the attribute rather than a field: `updateName` is what notices the change and
     // re-measures the canvas the label is painted on.
-    this.budgetMenu.setAttribute(
-      'name',
-      spent === 0 || choice === 'unlimited'
-        ? `budget ${choice}`
-        : `budget ${compact(spent)}/${choice}`,
-    );
-    const limit =
-      choice === 'unlimited'
-        ? 'This turn runs until it finishes or hits the 200-step runaway stop.'
-        : `This turn stops once it has spent ${choice}.`;
-    this.budgetMenu.description =
-      `What one turn may spend, counting fresh input and output but not what the cache served. ` +
-      `${limit} ` +
-      (spent === 0
-        ? 'Nothing spent on the last turn yet.'
-        : `${spent.toLocaleString()} spent on this turn so far.`) +
-      ' The setting is remembered between sessions.';
+    this.budgetMenu.setAttribute('name', offer.label);
+    applyOffer(this.budgetMenu, offer, composeTooltip);
   }
 
   /**

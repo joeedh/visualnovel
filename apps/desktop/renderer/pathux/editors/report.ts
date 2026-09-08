@@ -13,9 +13,15 @@ import {
   startReport,
   threadRow,
 } from '../agent/reportconvo.js';
-import { GRANT_LABELS, grantAction, grantBox } from '../../rules/reportconvo.js';
+import {
+  GRANT_LABELS,
+  STOP_TIP,
+  grantAction,
+  grantBox,
+  startAction,
+  stopAction,
+} from '../../rules/reportconvo.js';
 import type { FiledReport, GrantKind, ReportConvo } from '../../rules/reportconvo.js';
-import { refuse, type Offer } from '../../rules/anchors.js';
 import type { CommandCheck } from '../../../src/shared/ipc.js';
 
 /**
@@ -81,7 +87,6 @@ const DETAIL_TIP =
   'When the API rejected a request by position — "messages.1.content.0" — only the request itself ' +
   'says what was at that position. They stay on this machine: they are read on your own key and ' +
   'none of what it finds there goes into the report.';
-const STOP_TIP = 'Stop the debug agent after the step it is on. What it said is kept.';
 
 export class ReportEditor extends VnEditor {
   private surface!: HTMLDivElement;
@@ -129,14 +134,7 @@ export class ReportEditor extends VnEditor {
       // Recorded once with the composer, which outlives every rebuild. The button is hidden
       // between turns, and a hidden node is dropped from the live set, so the anchor comes and
       // goes with the button without anything having to re-record it.
-      onStopButton: (button) =>
-        redrawing('report', 'composer').record(button, {
-          ok     : true,
-          id     : 'report.stop',
-          props  : {},
-          label  : 'Stop',
-          tooltip: STOP_TIP,
-        }),
+      onStopButton: (button) => redrawing('report', 'composer').record(button, stopAction()),
     });
     this.surface.appendChild(this.stage.root);
     this.appendSurface(this.surface);
@@ -297,21 +295,8 @@ export class ReportEditor extends VnEditor {
    * have given.
    */
   private startButton(state: ReportConvo): HTMLElement {
-    const control = {
-      id     : 'report.open',
-      label  : this.changing ? 'Read This One →' : 'Start →',
-      tooltip:
-        this.verdict?.state === 'accept'
-          ? this.verdict.message
-          : 'Have the debug agent read this conversation and say what went wrong.',
-    };
-    const offer: Offer =
-      this.verdict?.state === 'refuse'
-        ? { ...refuse(this.verdict.message), ...control }
-        : state.convo.busy
-          ? { ...refuse('The debug agent is still on the last turn.'), ...control }
-          : { ok: true, props: { ...state.setup, note: '' }, ...control };
-    const button = this.anchors.record(this.button(control.label, 'btn primary'), offer);
+    const offer = startAction(state, this.changing, this.verdict);
+    const button = this.anchors.record(this.button(offer.label, 'btn primary'), offer);
     button.addEventListener('click', () => {
       void startReport().then((view) => {
         if (view) this.changing = false;

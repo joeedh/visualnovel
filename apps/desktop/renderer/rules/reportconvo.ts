@@ -20,6 +20,8 @@ import { refuse, type Offer } from './anchors.js';
 /** What the dialogue box says before the analyst has been asked anything. */
 export const REPORT_OPENING = 'Pick the conversation that went wrong, then press Start.';
 
+export const STOP_TIP = 'Stop the debug agent after the step it is on. What it said is kept.';
+
 /** One report the analyst filed, and where it sits in the transcript. */
 export interface FiledReport {
   /** The feed position it was filed after, so its card is drawn where it happened. */
@@ -114,9 +116,50 @@ export function grantAction(kind: GrantKind, box: GrantBox): Offer {
   return { ok: true, props: { access: kind }, ...control };
 }
 
-/** Every offer the report pane draws from this module: the two grant boxes, as they stand. */
-export function controls(state: { boxes: Record<GrantKind, GrantBox> }): readonly Offer[] {
-  return [grantAction('source', state.boxes.source), grantAction('detail', state.boxes.detail)];
+/** The composer's Stop, shown while the debug agent is on a turn. */
+export function stopAction(): Offer {
+  return { ok: true, id: 'report.stop', props: {}, label: 'Stop', tooltip: STOP_TIP };
+}
+
+/**
+ * The setup card's Start. Refused with `report.open`'s own sentence once it has answered, so a
+ * greyed button says what the command would have; then while the analyst is still on a turn. An
+ * accepted verdict's sentence, what the read would cost, becomes the tooltip.
+ */
+export function startAction(state: ReportConvo, changing: boolean, check?: CommandCheck): Offer {
+  const control = {
+    id     : 'report.open',
+    label  : changing ? 'Read This One →' : 'Start →',
+    tooltip:
+      check?.state === 'accept'
+        ? check.message
+        : 'Have the debug agent read this conversation and say what went wrong.',
+  };
+  if (check?.state === 'refuse') return { ...refuse(check.message), ...control };
+  if (state.convo.busy) {
+    return { ...refuse('The debug agent is still on the last turn.'), ...control };
+  }
+  return { ok: true, props: { ...state.setup, note: '' }, ...control };
+}
+
+/** What the report pane reads when it draws its anchored controls. */
+export interface ReportControls {
+  state: ReportConvo;
+  /** Whether the setup card is up while a conversation is already open. */
+  changing: boolean;
+  /** `report.open`'s verdict on the setup as it stands, once it has answered. */
+  check?: CommandCheck;
+  boxes: Record<GrantKind, GrantBox>;
+}
+
+/** Every offer the report pane draws from this module: Start, Stop, and the two grant boxes. */
+export function controls(input: ReportControls): readonly Offer[] {
+  return [
+    startAction(input.state, input.changing, input.check),
+    stopAction(),
+    grantAction('source', input.boxes.source),
+    grantAction('detail', input.boxes.detail),
+  ];
 }
 
 /**

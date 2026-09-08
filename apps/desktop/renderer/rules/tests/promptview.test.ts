@@ -7,6 +7,7 @@ import type { PromptChunkInfo, PromptView } from '../../../src/shared/prompt.js'
 import {
   chunkActs,
   chunkAddress,
+  chunkBoxAction,
   chunkDropTarget,
   chunkTag,
   chunkTexture,
@@ -18,9 +19,13 @@ import {
   heldNote,
   checkAction,
   customAction,
+  customBoxAction,
   dropRefAction,
   modeStrip,
   originAction,
+  originOpenAction,
+  refOpenAction,
+  refStrip,
 } from '../promptview.js';
 import { duplicateKeys, keyOf } from '../anchors.js';
 
@@ -436,21 +441,39 @@ describe('controls', () => {
     });
 
   it('lists every control the functions produce, each key once', () => {
+    const editing = { palette: 'replace' as const };
     for (const fixture of [view(), withRefs(), withRefs({ mode: 'custom', custom: 'Aiko.' })]) {
-      const listed = controls(fixture);
+      const listed = controls(fixture, editing);
       const each = [
         ...modeStrip(fixture).map((segment) => segment.offer),
         condenseAction(fixture),
         checkAction(fixture),
         customAction(fixture),
-        ...fixture.chunks.flatMap((one) => [
-          ...chunkActs(fixture, one).map((act) => act.offer),
-          ...(one.refs ?? []).map((ref) => dropRefAction(fixture, one, ref)),
-        ]),
+        ...(fixture.mode === 'custom' ? [customBoxAction(fixture)] : []),
+        ...fixture.chunks.flatMap((one) => {
+          const how = editing[one.key as keyof typeof editing];
+          const origin = originOpenAction(one);
+          return [
+            ...chunkActs(fixture, one).map((act) => act.offer),
+            ...(how ? [chunkBoxAction(fixture, one, how)] : []),
+            ...refStrip(one).map(refOpenAction),
+            ...(one.refs ?? []).map((ref) => dropRefAction(fixture, one, ref)),
+            ...(origin ? [origin] : []),
+          ];
+        }),
       ];
       expect(new Set(listed.map(keyOf))).toEqual(new Set(each.map(keyOf)));
       expect(duplicateKeys(listed)).toEqual([]);
     }
+  });
+
+  it('lists a clause’s box only while one is open, and never on a frozen prompt', () => {
+    const keys = (fixture: PromptView, editing = {}) => controls(fixture, editing).map(keyOf);
+    expect(keys(view())).not.toContain('cmd:prompt.setChunk#palette/box');
+    expect(keys(view(), { palette: 'append' })).toContain('cmd:prompt.setChunk#palette/box');
+    expect(keys(view({ frozen: 'Held.' }), { palette: 'append' })).not.toContain(
+      'cmd:prompt.setChunk#palette/box',
+    );
   });
 
   // The strip's segment and the button beneath it run the same command, so the key tells them
@@ -461,5 +484,73 @@ describe('controls', () => {
     expect(keys).toContain('cmd:prompt.condense');
     expect(keys).toContain('cmd:prompt.setCustom#custom');
     expect(keys).toContain('cmd:prompt.setCustom');
+  });
+});
+
+describe('chunkBoxAction', () => {
+  it('commits the act its button opened, told apart by the box’s own key', () => {
+    const fixture = view();
+    const one = fixture.chunks[0]!;
+    const replace = chunkActs(fixture, one).find((act) => act.key === 'replace')!.offer;
+    expect(chunkBoxAction(fixture, one, 'replace')).toEqual({
+      ...replace,
+      on     : 'palette/box',
+      tooltip: 'Say this clause in your own words. Ctrl+S or leaving the box saves it.',
+    });
+    expect(chunkBoxAction(fixture, one, 'append')).toMatchObject({
+      id     : 'prompt.setChunk',
+      props  : { op: 'append' },
+      on     : 'palette/box',
+      tooltip: 'Add to what the builders derived. Ctrl+S or leaving the box saves it.',
+    });
+  });
+});
+
+describe('customBoxAction', () => {
+  it('is the custom prompt’s Save, told apart as its box', () => {
+    expect(customBoxAction(view())).toEqual({
+      ...customAction(view()),
+      on     : 'box',
+      tooltip: 'Say the whole prompt yourself. Ctrl+S or leaving the box saves it.',
+    });
+    expect(customBoxAction(view({ frozen: 'Held.' }))).toMatchObject({ ok: false });
+  });
+});
+
+describe('refOpenAction', () => {
+  it('opens the reference elsewhere, keyed by its pin', () => {
+    const [chip] = refStrip(chunk({ refs: [{ pin: 'pin1', ext: 'png', label: 'moodboard' }] }));
+    expect(refOpenAction(chip!)).toEqual({
+      ok     : true,
+      id     : 'view.open',
+      props  : { editor: 'asset', where: 'elsewhere', subject: 'pin1' },
+      label  : 'moodboard',
+      tooltip: `${chip!.title} · click to open it in another pane`,
+      on     : 'pin1',
+    });
+  });
+});
+
+describe('originOpenAction', () => {
+  it('opens the editor a clause came from, keyed by the clause', () => {
+    const one = chunk({
+      key   : 'subject',
+      origin: { kind: 'character', id: 'aiko', field: 'appearance' },
+    });
+    expect(originOpenAction(one)).toEqual({
+      ok     : true,
+      id     : 'view.open',
+      props  : { editor: 'wiki', where: 'elsewhere', subject: 'characters/aiko/character.md' },
+      label  : "Open aiko's sheet",
+      tooltip: "Open aiko's sheet",
+      on     : 'subject',
+    });
+  });
+
+  it('is nothing for a clause that scrolls, or that came from nowhere', () => {
+    expect(originOpenAction(chunk({ origin: { kind: 'builder' } }))).toBeUndefined();
+    const scrolls = chunk({ origin: { kind: 'art-notes', target: 'character:aiko' } });
+    expect(originAction(scrolls.origin)).toMatchObject({ kind: 'scroll' });
+    expect(originOpenAction(scrolls)).toBeUndefined();
   });
 });

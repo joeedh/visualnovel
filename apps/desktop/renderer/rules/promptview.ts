@@ -455,20 +455,96 @@ export function checkAction(view: PromptView): Offer {
 }
 
 /**
- * Every offer the prompt half draws from this module, in the order it draws them: the mode strip
- * and its two buttons, the custom prompt's Save, then each clause's five acts and the drops on its
- * references. The chunk boxes and the reference thumbnails are the editor's own.
+ * The inline box one of the two boxed acts opens. It commits the same act its button opened, so
+ * both read one offer; the box is told apart by its own key.
  */
-export function controls(view: PromptView): readonly Offer[] {
-  const chunks = view.chunks.flatMap((chunk) => [
-    ...chunkActs(view, chunk).map((act) => act.offer),
-    ...(chunk.refs ?? []).map((ref) => dropRefAction(view, chunk, ref)),
-  ]);
+export function chunkBoxAction(
+  view: PromptView,
+  chunk: PromptChunkInfo,
+  how: 'replace' | 'append',
+): Offer {
+  const offer = chunkActs(view, chunk).find((act) => act.key === how)!.offer;
+  return {
+    ...offer,
+    on     : `${chunk.key}/box`,
+    tooltip:
+      how === 'replace'
+        ? 'Say this clause in your own words. Ctrl+S or leaving the box saves it.'
+        : 'Add to what the builders derived. Ctrl+S or leaving the box saves it.',
+  };
+}
+
+/** The custom prompt's box, beside its Save. */
+export function customBoxAction(view: PromptView): Offer {
+  return {
+    ...customAction(view),
+    on     : 'box',
+    tooltip: 'Say the whole prompt yourself. Ctrl+S or leaving the box saves it.',
+  };
+}
+
+/** A reference thumbnail: opens the picture elsewhere, since this pane is showing its clause's. */
+export function refOpenAction(chip: RefChip): Offer {
+  return {
+    ok     : true,
+    id     : 'view.open',
+    props  : { editor: 'asset', where: 'elsewhere', subject: chip.pin },
+    label  : chip.label,
+    tooltip: `${chip.title} · click to open it in another pane`,
+    on     : chip.pin,
+  };
+}
+
+/**
+ * The `⇱` on a clause whose origin opens another editor. A scroll runs no command at all,
+ * and an open is a publish followed by one, so neither is wired from this offer; it is recorded
+ * as a step the tour composes. Nothing for a clause that scrolls or has no origin.
+ */
+export function originOpenAction(chunk: PromptChunkInfo): Offer | undefined {
+  const origin = originAction(chunk.origin);
+  if (!origin.ok || origin.kind !== 'open') return undefined;
+  return {
+    ok     : true,
+    id     : 'view.open',
+    props: {
+      editor: origin.editor,
+      where : 'elsewhere',
+      ...(origin.subject ? { subject: origin.subject } : {}),
+    },
+    label  : origin.label,
+    tooltip: origin.label,
+    on     : chunk.key,
+  };
+}
+
+/**
+ * Every offer the prompt half draws from this module, in the order it draws them: the mode strip
+ * and its two buttons, the custom prompt's Save and, in custom mode, its box; then each clause's
+ * five acts, the box it has open, its reference thumbnails and the drops on them, and its origin
+ * button. `editing` is which clauses have a box open and how, which the editor holds and
+ * `PromptView` does not.
+ */
+export function controls(
+  view: PromptView,
+  editing: Readonly<Record<string, 'replace' | 'append'>> = {},
+): readonly Offer[] {
+  const chunks = view.chunks.flatMap((chunk) => {
+    const how = editing[chunk.key];
+    const origin = originOpenAction(chunk);
+    return [
+      ...chunkActs(view, chunk).map((act) => act.offer),
+      ...(how && !view.frozen ? [chunkBoxAction(view, chunk, how)] : []),
+      ...refStrip(chunk).map(refOpenAction),
+      ...(chunk.refs ?? []).map((ref) => dropRefAction(view, chunk, ref)),
+      ...(origin ? [origin] : []),
+    ];
+  });
   return [
     ...modeStrip(view).map((segment) => segment.offer),
     condenseAction(view),
     checkAction(view),
     customAction(view),
+    ...(view.mode === 'custom' ? [customBoxAction(view)] : []),
     ...chunks,
   ];
 }

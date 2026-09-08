@@ -19,7 +19,13 @@ import {
 import type { PropValue } from '../../../src/shared/ipc.js';
 import { busyControls, type BusyControls } from '../../rules/busy.js';
 import { HEADER } from '../../rules/anchors.js';
-import { modeAction, runAction, stopAction } from '../../rules/headerbar.js';
+import {
+  modeAction,
+  modelAction,
+  runAction,
+  stopAction,
+  viewActions,
+} from '../../rules/headerbar.js';
 import { redrawing, type AnchorPass } from '../tour/anchors.js';
 import { serializeLayoutFile, type LayoutSummary } from '../../../src/shared/layouts.js';
 import {
@@ -288,27 +294,10 @@ export class VnHeaderEditor extends VnEditor {
       'Open, create and export a project, and everything that acts on the workspace as a whole.';
     this.bar.menu('Edit', this.editMenu()).description =
       'Undo and redo, and the one act that approves and renders the art in a single pass.';
-    const view = this.bar.menu('View', this.viewMenu());
-    // The menu button, not its rows: the rows exist only while the menu is open, and the author's
-    // choice among them is what supplies the prop. Both offers present the one button the same way.
-    const views = {
-      label  : 'View',
-      tooltip: 'Split and close panes, and switch between the saved window layouts.',
-    };
-    this.anchors.record(view, {
-      ok      : true,
-      id      : 'view.open',
-      props   : {},
-      supplies: ['editor'],
-      ...views,
-    });
-    this.anchors.record(view, {
-      ok      : true,
-      id      : 'view.applyLayout',
-      props   : {},
-      supplies: ['name'],
-      ...views,
-    });
+    const [opens, layouts] = viewActions();
+    const view = this.bar.menu(opens.label, this.viewMenu());
+    this.anchors.record(view, opens);
+    this.anchors.record(view, layouts);
     this.bar.menu('Help', this.helpMenu()).description =
       'Whether there is a newer VN Studio, and what to do about an agent that misbehaved.';
     this.badge(`project ${ui.projectTitle || '—'}`, true);
@@ -434,15 +423,8 @@ export class VnHeaderEditor extends VnEditor {
       `Answer with ${id} from the next turn on.`,
       id,
     ]) as MenuTemplate;
-    const label = this.ui.model || 'model…';
-    this.anchors.record(this.bar.menu(label, rows), {
-      ok   : true,
-      id   : 'agent.setModel',
-      props: {},
-      label,
-      tooltip : 'Which model the agent answers with. Switching takes effect next turn.',
-      supplies: ['modelId'],
-    });
+    const model = modelAction(this.ui.model);
+    this.anchors.record(this.bar.menu(model.label, rows), model);
   }
 
   /**

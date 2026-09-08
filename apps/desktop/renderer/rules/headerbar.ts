@@ -15,6 +15,36 @@ export interface HeaderState {
   /** Whether this window can call a model, as opposed to a browser preview. */
   live: boolean;
   agentMode: string;
+  /** The model the agent answers with, or an empty string before one is chosen. */
+  model: string;
+}
+
+/**
+ * The View menu's button rather than its rows: the rows exist only while the menu is open, and the
+ * author's choice among them supplies the prop. Two commands are reached from it, and both present
+ * the one button the same way.
+ */
+export function viewActions(): [Offer, Offer] {
+  const views = {
+    label  : 'View',
+    tooltip: 'Split and close panes, and switch between the saved window layouts.',
+  };
+  return [
+    { ok: true, id: 'view.open', props: {}, supplies: ['editor'], ...views },
+    { ok: true, id: 'view.applyLayout', props: {}, supplies: ['name'], ...views },
+  ];
+}
+
+/** The model menu's button. The rows supply the id; the label names the model in use. */
+export function modelAction(model: string): Offer {
+  return {
+    ok      : true,
+    id      : 'agent.setModel',
+    props   : {},
+    label   : model || 'model…',
+    tooltip : 'Which model the agent answers with. Switching takes effect next turn.',
+    supplies: ['modelId'],
+  };
 }
 
 /**
@@ -67,8 +97,10 @@ export function modeAction(mode: string): Offer {
 /** Every offer the header draws from this module, in the order it draws them. */
 export function controls(state: HeaderState): readonly Offer[] {
   return [
+    ...viewActions(),
     runAction(state.busyWhat, state.live),
     stopAction(busyControls(state.busyWhat)),
     modeAction(state.agentMode),
+    modelAction(state.model),
   ];
 }

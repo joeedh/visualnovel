@@ -5,7 +5,7 @@
  * These are pure functions so they can be tested here. The desktop jest project is node-only and
  * the pane itself can only be checked live over CDP, so the rules are kept out of the markup.
  */
-import type { AssetInfo } from '../../src/shared/ipc.js';
+import type { ArtRungInfo, AssetFailure, AssetInfo } from '../../src/shared/ipc.js';
 import { refuse, type Offer } from './anchors.js';
 
 /** The two halves of an {@link Offer}, for a control that carries more on one of them. */
@@ -365,14 +365,134 @@ export function taskAction(taskHash: string | undefined): TaskAction {
   };
 }
 
+/** Save a copy of the bytes on screen somewhere the author picks. The project is not touched. */
+export function exportAction(info: AssetInfo | undefined): Offer {
+  const control = {
+    id     : 'asset.export',
+    label  : 'Download',
+    tooltip: 'Save a copy of this picture wherever you like. The project is not touched',
+  };
+  if (!info) return { ...refuse('No picture on screen to save'), ...control };
+  return { ok: true, props: { hash: info.hash }, ...control };
+}
+
+/** Open a conversation about the failure on screen, with what it said already in the composer. */
+export function fixAction(info: AssetInfo): Offer {
+  return {
+    ok     : true,
+    id     : 'agent.fixAsset',
+    props  : { hash: info.hash },
+    label  : 'Fix with agent',
+    tooltip:
+      'Open a conversation about this failure, with what it said already in the composer. Nothing is sent',
+  };
+}
+
+/**
+ * Open the task that gave up in the inspector. The bar's Task button offers the same command on
+ * the asset's own task; this one is told apart by the task that failed, which for a re-render is
+ * a different task from the one these bytes came from.
+ */
+export function failureTaskAction(info: AssetInfo, failure: AssetFailure): Offer {
+  return {
+    ...taskAction(failure.task),
+    on     : failure.task,
+    label  : 'Show task',
+    tooltip:
+      failure.task === info.sourceTask
+        ? 'Open this task in the inspector, where its attempts are listed'
+        : 'Open the task that gave up in the inspector — a re-render, not the one these bytes came from',
+  };
+}
+
+/** One rung's art notes box. The label is the box's placeholder; the box supplies the notes. */
+export function notesAction(rung: ArtRungInfo): Offer {
+  return {
+    ok      : true,
+    id      : 'art.setNotes',
+    props   : { target: rung.target },
+    label   : 'e.g. sodium streetlight raking across the formwork',
+    tooltip: `Say how ${rung.label} should look. Appended to the prompt, so saving re-renders what this rung reaches on the next run.`,
+    on      : rung.target,
+    supplies: ['notes'],
+  };
+}
+
+/**
+ * One rung's seed box. The placeholder shows the seed that would be used instead, since an empty
+ * box is the only way to say "inherit", and the tooltip says where it comes from.
+ */
+export function seedAction(rung: ArtRungInfo, configSeed?: number): Offer {
+  return {
+    ok      : true,
+    id      : 'art.setSeed',
+    props   : { target: rung.target },
+    label   : configSeed === undefined ? 'seed' : String(configSeed),
+    tooltip:
+      `Draw ${rung.label} from this seed instead. Saving re-renders what this rung reaches on ` +
+      'the next run — same words, different picture. Empty inherits ' +
+      (configSeed === undefined
+        ? 'the wider rung, then the model’s own choice.'
+        : `${configSeed}.`),
+    on      : rung.target,
+    supplies: ['seed'],
+  };
+}
+
+/** The promote strip's variant field, beside `promoteAction`; the label is its placeholder. */
+export function promoteBox(info: AssetInfo): Offer {
+  return {
+    ...promoteAction(info),
+    on     : 'variant',
+    label  : 'variant id, e.g. dawn',
+    tooltip: 'Which variant of the location these bytes become the plate for',
+  };
+}
+
+/** The redraw strip's prompt box, beside `promptEditable`. */
+export function redrawBox(info: AssetInfo): Offer {
+  return {
+    ...promptEditable(info),
+    on     : 'prompt',
+    tooltip: 'Edit the words this sketch is drawn from. Redraw sends them.',
+  };
+}
+
+/** The redraw strip's own button, told apart from the bar's Redraw. */
+export function redrawGo(info: AssetInfo): Offer {
+  return {
+    ...promptEditable(info),
+    on     : 'go',
+    tooltip: 'Spend one image call on this prompt and file the result as a new sketch',
+  };
+}
+
 /**
  * Every offer the asset editor draws from this module, in the order it draws them: the bar's
- * three, then the body's three strips. With nothing on screen the bar's three are refusals.
+ * four, then the body's strips and their fields, the failure band's two, and each rung's two
+ * boxes. With nothing on screen the bar's four are refusals. A strip's fields are listed only
+ * while the strip is drawn, which is when its offer is accepted.
  */
 export function controls(info: AssetInfo | undefined): readonly Offer[] {
-  const bar = [approveAction(info), regenerateAction(info), taskAction(info?.sourceTask)];
+  const bar = [
+    approveAction(info),
+    regenerateAction(info),
+    taskAction(info?.sourceTask),
+    exportAction(info),
+  ];
   if (!info) return bar;
-  return [...bar, promoteAction(info), replaceAction(info), promptEditable(info)];
+  const promote = promoteAction(info);
+  const redraw = promptEditable(info);
+  return [
+    ...bar,
+    promote,
+    replaceAction(info),
+    redraw,
+    ...(promote.ok ? [promoteBox(info)] : []),
+    ...(redraw.ok ? [redrawBox(info), redrawGo(info)] : []),
+    ...(info.failure ? [failureTaskAction(info, info.failure), fixAction(info)] : []),
+    ...info.rungs.flatMap((rung) => [notesAction(rung), seedAction(rung, info.configSeed)]),
+  ];
 }
 
 /** Whether a pane follows its slot, and where to. */

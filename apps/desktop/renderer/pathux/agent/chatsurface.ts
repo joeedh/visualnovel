@@ -256,13 +256,6 @@ export function el(tag: string, className: string, text?: string): HTMLElement {
   return node;
 }
 
-/** A token count at a glance: `842`, `12.3k`, `1.4M`. The exact figures are in the tooltip. */
-export function compact(n: number): string {
-  if (n < 1000) return String(n);
-  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}k`;
-  return `${(n / 1_000_000).toFixed(2)}M`;
-}
-
 /** One row of the transcript: the author's own turn, or a line the agent said or was refused. */
 export function turnRow(item: FeedItem): HTMLElement {
   if (item.role === 'user') {

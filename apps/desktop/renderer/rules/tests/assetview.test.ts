@@ -5,13 +5,21 @@ import {
   characterOf,
   controls,
   driftNote,
+  exportAction,
   failureNote,
+  failureTaskAction,
+  fixAction,
   locationOf,
+  notesAction,
   promoteAction,
+  promoteBox,
   promptEditable,
   promptShown,
+  redrawBox,
+  redrawGo,
   regenerateAction,
   replaceAction,
+  seedAction,
   taskAction,
   watchSlot,
 } from '../assetview.js';
@@ -525,22 +533,172 @@ describe('taskAction', () => {
   });
 });
 
+describe('exportAction', () => {
+  it('saves a copy of the bytes on screen', () => {
+    expect(exportAction(info())).toEqual({
+      ok     : true,
+      id     : 'asset.export',
+      props  : { hash: 'a1b2c3d4' },
+      label  : 'Download',
+      tooltip: 'Save a copy of this picture wherever you like. The project is not touched',
+    });
+  });
+
+  it('refuses with nothing on screen', () => {
+    expect(exportAction(undefined)).toMatchObject({
+      ok     : false,
+      id     : 'asset.export',
+      refusal: { reason: 'No picture on screen to save' },
+    });
+  });
+});
+
+describe('fixAction', () => {
+  it('opens a conversation about the failure on screen', () => {
+    expect(fixAction(info())).toEqual({
+      ok     : true,
+      id     : 'agent.fixAsset',
+      props  : { hash: 'a1b2c3d4' },
+      label  : 'Fix with agent',
+      tooltip:
+        'Open a conversation about this failure, with what it said already in the composer. Nothing is sent',
+    });
+  });
+});
+
+describe('failureTaskAction', () => {
+  it('opens the task that gave up, told apart from the bar’s Task by that task', () => {
+    const shown = info({ failure: failed() });
+    expect(failureTaskAction(shown, failed())).toMatchObject({
+      ...taskAction('t1'),
+      on     : 't1',
+      label  : 'Show task',
+      tooltip: 'Open this task in the inspector, where its attempts are listed',
+    });
+    expect(keyOf(failureTaskAction(shown, failed()))).toBe('cmd:view.open#t1');
+  });
+
+  it('says when the task that gave up is a re-render rather than this one', () => {
+    expect(failureTaskAction(info(), failed({ task: 't9', later: true }))).toMatchObject({
+      on     : 't9',
+      tooltip:
+        'Open the task that gave up in the inspector — a re-render, not the one these bytes came from',
+    });
+  });
+});
+
+describe('notesAction', () => {
+  it('writes the rung’s notes from its box, keyed by the rung', () => {
+    expect(notesAction({ target: 'character:aiko', label: 'Aiko' })).toEqual({
+      ok      : true,
+      id      : 'art.setNotes',
+      props   : { target: 'character:aiko' },
+      label   : 'e.g. sodium streetlight raking across the formwork',
+      tooltip:
+        'Say how Aiko should look. Appended to the prompt, so saving re-renders what this rung reaches on the next run.',
+      on      : 'character:aiko',
+      supplies: ['notes'],
+    });
+  });
+});
+
+describe('seedAction', () => {
+  const rung = { target: 'character:aiko', label: 'Aiko' };
+
+  it('shows the inherited seed as the placeholder, and says where it comes from', () => {
+    expect(seedAction(rung, 7)).toEqual({
+      ok      : true,
+      id      : 'art.setSeed',
+      props   : { target: 'character:aiko' },
+      label   : '7',
+      tooltip:
+        'Draw Aiko from this seed instead. Saving re-renders what this rung reaches on the next ' +
+        'run — same words, different picture. Empty inherits 7.',
+      on      : 'character:aiko',
+      supplies: ['seed'],
+    });
+  });
+
+  it('falls back to the wider rung and the model when the project sets none', () => {
+    expect(seedAction(rung)).toMatchObject({
+      label  : 'seed',
+      tooltip: expect.stringContaining('the wider rung, then the model’s own choice.'),
+    });
+  });
+});
+
+describe('the strips’ fields', () => {
+  const plate = concept({ locationVariants: ['day'] });
+
+  it('are the strip’s offer told apart by the field', () => {
+    expect(promoteBox(plate)).toEqual({
+      ...promoteAction(plate),
+      on     : 'variant',
+      label  : 'variant id, e.g. dawn',
+      tooltip: 'Which variant of the location these bytes become the plate for',
+    });
+    expect(redrawBox(plate)).toEqual({
+      ...promptEditable(plate),
+      on     : 'prompt',
+      tooltip: 'Edit the words this sketch is drawn from. Redraw sends them.',
+    });
+    expect(redrawGo(plate)).toEqual({
+      ...promptEditable(plate),
+      on     : 'go',
+      tooltip: 'Spend one image call on this prompt and file the result as a new sketch',
+    });
+  });
+
+  it('are refused when their strip is', () => {
+    expect(promoteBox(info())).toMatchObject({ ok: false, on: 'variant' });
+    expect(redrawBox(info())).toMatchObject({ ok: false, on: 'prompt' });
+  });
+});
+
 describe('controls', () => {
+  const shown = [
+    undefined,
+    info(),
+    concept({ locationVariants: [], failure: failed({ task: 't9', later: true }) }),
+    portrait({ accepted: true, configSeed: 3 }),
+  ];
+
   it('lists every control the functions produce, each key once', () => {
-    for (const shown of [undefined, info(), concept(), portrait({ accepted: true })]) {
-      const listed = controls(shown);
+    for (const one of shown) {
+      const listed = controls(one);
+      const promote = one && promoteAction(one);
+      const redraw = one && promptEditable(one);
       const each = [
-        approveAction(shown),
-        regenerateAction(shown),
-        taskAction(shown?.sourceTask),
-        ...(shown ? [promoteAction(shown), replaceAction(shown), promptEditable(shown)] : []),
+        approveAction(one),
+        regenerateAction(one),
+        taskAction(one?.sourceTask),
+        exportAction(one),
+        ...(one ? [promoteAction(one), replaceAction(one), promptEditable(one)] : []),
+        ...(one && promote?.ok ? [promoteBox(one)] : []),
+        ...(one && redraw?.ok ? [redrawBox(one), redrawGo(one)] : []),
+        ...(one?.failure ? [failureTaskAction(one, one.failure), fixAction(one)] : []),
+        ...(one?.rungs ?? []).flatMap((rung) => [
+          notesAction(rung),
+          seedAction(rung, one?.configSeed),
+        ]),
       ];
       expect(new Set(listed.map(keyOf))).toEqual(new Set(each.map(keyOf)));
       expect(duplicateKeys(listed)).toEqual([]);
     }
   });
 
-  it('is the bar’s three refusals while nothing is on screen', () => {
-    expect(controls(undefined).map((offer) => offer.ok)).toEqual([false, false, false]);
+  it('is the bar’s four refusals while nothing is on screen', () => {
+    expect(controls(undefined).map((offer) => offer.ok)).toEqual([false, false, false, false]);
+  });
+
+  // A strip's field exists only while the strip is drawn, and the strip is drawn only when accepted
+  it('lists a strip’s fields only with the strip', () => {
+    const keys = controls(info()).map(keyOf);
+    expect(keys).not.toContain('cmd:art.promote#variant');
+    expect(keys).not.toContain('cmd:art.redraw#prompt');
+    const drawn = controls(concept({ locationVariants: [] })).map(keyOf);
+    expect(drawn).toContain('cmd:art.promote#variant');
+    expect(drawn).toContain('cmd:art.redraw#prompt');
+    expect(drawn).toContain('cmd:art.redraw#go');
   });
 });

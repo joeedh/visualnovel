@@ -1,11 +1,16 @@
 import {
+  budgetAction,
+  compact,
   compactAction,
   controls,
+  effortAction,
   newThreadAction,
   resumeAction,
   stopTurnAction,
+  threadsAction,
+  type ConvoBarState,
 } from '../convobar.js';
-import { modeAction } from '../headerbar.js';
+import { modeAction, modelAction } from '../headerbar.js';
 import { duplicateKeys, keyOf } from '../anchors.js';
 import { contextDetail, type Convo, type ResumeHeader } from '../../../src/shared/convo.js';
 import { NATIVE_VERSION, type OpenedThread } from '../../../src/shared/threads.js';
@@ -99,18 +104,24 @@ describe('the buttons that need no state', () => {
 });
 
 describe('controls', () => {
-  const fixtures = [
+  const fixtures: ConvoBarState[] = [
     {
       convo    : state({ feed: [said(1)] }),
       opened   : undefined,
       model    : 'claude-opus-5',
       agentMode: 'plan',
+      effort   : 'low',
+      budget   : '200k',
+      spent    : 0,
     },
     {
       convo    : state({ busy: true }),
       opened   : thread(),
       model    : 'claude-opus-5',
       agentMode: 'execute',
+      effort   : 'high',
+      budget   : 'unlimited',
+      spent    : 12,
     },
   ];
 
@@ -119,6 +130,10 @@ describe('controls', () => {
       const listed = controls(fixture);
       const each = [
         modeAction(fixture.agentMode),
+        modelAction(fixture.model),
+        effortAction(fixture.model, fixture.effort),
+        budgetAction(fixture.budget, fixture.spent),
+        threadsAction(),
         newThreadAction(),
         compactAction(fixture.convo, fixture.opened !== undefined),
         resumeAction(fixture.opened, fixture.model),
@@ -127,5 +142,78 @@ describe('controls', () => {
       expect(new Set(listed.map(keyOf))).toEqual(new Set(each.map(keyOf)));
       expect(duplicateKeys(listed)).toEqual([]);
     }
+  });
+});
+
+describe('compact', () => {
+  it('rounds a count to what fits on a button', () => {
+    expect(compact(842)).toBe('842');
+    expect(compact(12_345)).toBe('12.3k');
+    expect(compact(1_400_000)).toBe('1.40M');
+  });
+});
+
+describe('threadsAction', () => {
+  it('opens the saved conversations, with the menu supplying the id', () => {
+    expect(threadsAction()).toMatchObject({
+      ok      : true,
+      id      : 'agent.openThread',
+      props   : {},
+      label   : 'Threads',
+      supplies: ['id'],
+    });
+  });
+});
+
+describe('effortAction', () => {
+  it('names the level in use, for a model that takes one', () => {
+    expect(effortAction('claude-opus-5', 'high')).toEqual({
+      ok      : true,
+      id      : 'agent.setEffort',
+      props   : {},
+      label   : 'effort: high',
+      tooltip : 'How hard the model thinks before answering. Higher costs more.',
+      supplies: ['effort'],
+    });
+  });
+
+  // The setting is kept across a model switch, so the menu is greyed rather than hidden
+  it('greys the menu for a model with no thinking knob, keeping the level picked', () => {
+    expect(effortAction('', 'low')).toMatchObject({
+      ok     : false,
+      id     : 'agent.setEffort',
+      label  : 'effort: low',
+      refusal: { reason: 'this model has no reasoning-effort setting.' },
+    });
+  });
+});
+
+describe('budgetAction', () => {
+  it('names the ceiling alone before anything is spent', () => {
+    expect(budgetAction('200k', 0)).toEqual({
+      ok      : true,
+      id      : 'agent.setBudget',
+      props   : {},
+      label   : 'budget 200k',
+      tooltip:
+        'What one turn may spend, counting fresh input and output but not what the cache served. ' +
+        'This turn stops once it has spent 200k. Nothing spent on the last turn yet. The setting ' +
+        'is remembered between sessions.',
+      supplies: ['budget'],
+    });
+  });
+
+  it('shows the spend against the ceiling once a turn is under way', () => {
+    expect(budgetAction('200k', 12)).toMatchObject({
+      label  : 'budget 12/200k',
+      tooltip: expect.stringContaining('12 spent on this turn so far.'),
+    });
+  });
+
+  it('never shows a spend against no ceiling', () => {
+    expect(budgetAction('unlimited', 12)).toMatchObject({
+      label  : 'budget unlimited',
+      tooltip: expect.stringContaining('runs until it finishes'),
+    });
   });
 });

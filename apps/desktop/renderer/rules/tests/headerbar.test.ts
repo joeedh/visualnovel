@@ -1,4 +1,11 @@
-import { controls, modeAction, runAction, stopAction } from '../headerbar.js';
+import {
+  controls,
+  modeAction,
+  modelAction,
+  runAction,
+  stopAction,
+  viewActions,
+} from '../headerbar.js';
 import { busyControls } from '../busy.js';
 import { duplicateKeys, keyOf } from '../anchors.js';
 import { BUSY_REPORT, BUSY_RUN } from '../../../src/shared/ipc.js';
@@ -63,21 +70,54 @@ describe('modeAction', () => {
 
 describe('controls', () => {
   const states = [
-    { busyWhat: '', live: true, agentMode: 'plan' },
-    { busyWhat: BUSY_RUN, live: false, agentMode: 'execute' },
-    { busyWhat: BUSY_REPORT, live: true, agentMode: 'plan' },
+    { busyWhat: '', live: true, agentMode: 'plan', model: 'claude-opus-5' },
+    { busyWhat: BUSY_RUN, live: false, agentMode: 'execute', model: '' },
+    { busyWhat: BUSY_REPORT, live: true, agentMode: 'plan', model: 'claude-opus-5' },
   ];
 
   it('lists every control the functions produce, each key once', () => {
     for (const state of states) {
       const listed = controls(state);
       const each = [
+        ...viewActions(),
         runAction(state.busyWhat, state.live),
         stopAction(busyControls(state.busyWhat)),
         modeAction(state.agentMode),
+        modelAction(state.model),
       ];
       expect(new Set(listed.map(keyOf))).toEqual(new Set(each.map(keyOf)));
       expect(duplicateKeys(listed)).toEqual([]);
     }
+  });
+});
+
+describe('viewActions', () => {
+  it('reaches two commands from the one button, each supplied by its rows', () => {
+    const [open, layout] = viewActions();
+    expect(open).toEqual({
+      ok      : true,
+      id      : 'view.open',
+      props   : {},
+      supplies: ['editor'],
+      label   : 'View',
+      tooltip : 'Split and close panes, and switch between the saved window layouts.',
+    });
+    expect(layout).toMatchObject({ ok: true, id: 'view.applyLayout', supplies: ['name'] });
+    expect(layout.label).toBe(open.label);
+    expect(layout.tooltip).toBe(open.tooltip);
+  });
+});
+
+describe('modelAction', () => {
+  it('names the model in use, and says so when none is chosen yet', () => {
+    expect(modelAction('claude-opus-5')).toEqual({
+      ok      : true,
+      id      : 'agent.setModel',
+      props   : {},
+      label   : 'claude-opus-5',
+      tooltip : 'Which model the agent answers with. Switching takes effect next turn.',
+      supplies: ['modelId'],
+    });
+    expect(modelAction('').label).toBe('model…');
   });
 });
