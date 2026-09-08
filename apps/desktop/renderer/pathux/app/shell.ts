@@ -280,7 +280,7 @@ class Shell implements ShellApp {
       sarea.size[1] *= scale;
     }
 
-    const bar = UIBase.createElement<ScreenArea>('screenarea-x');
+    const bar = UIBase.constructElement<ScreenArea>('screenarea-x', screen.ctx);
     screen.appendChild(bar);
     bar.pos[0] = bar.pos[1] = 0;
     bar.size[0] = screen.size[0];
@@ -308,7 +308,7 @@ class Shell implements ShellApp {
    * document before the first cut.
    */
   private buildScreen(recipe: LayoutRecipe): void {
-    const screen = (this.screen = UIBase.createElement<VnScreen>('vn-screen-x'));
+    const screen = (this.screen = UIBase.constructElement<VnScreen>('vn-screen-x', this.ctx));
     screen.ctx = this.ctx as unknown as ContextLike;
 
     const root = screen.newScreenArea();

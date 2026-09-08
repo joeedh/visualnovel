@@ -150,7 +150,7 @@ export class VnEditor extends Area {
   override init() {
     super.init();
 
-    this.container = UIBase.createElement<ColumnFrame>('colframe-x');
+    this.container = UIBase.constructElement<ColumnFrame>('colframe-x', this.ctx);
     this.container.ctx = this.ctx;
     this.shadow.appendChild(this.container);
 

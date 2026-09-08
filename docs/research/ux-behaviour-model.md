@@ -451,6 +451,9 @@ numbers are recorded in
 
 ## See also
 
+- [`../plans/ux-behaviour-model-tasklist.md`](../plans/ux-behaviour-model-tasklist.md)
+  proposes how this report and its companion divide into plans, and routes the decisions
+  above to one of them each. It is a proposal; nothing there is scheduled either.
 - [`../reference/guided-tours.md`](../reference/guided-tours.md) documents the anchor
   layer and the tour as it ships.
 - [`../reference/command-system.md`](../reference/command-system.md) covers the registry

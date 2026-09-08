@@ -211,7 +211,7 @@ export class GenGraphEditor extends VnEditor {
     surface.appendChild(canvas);
     this.appendSurface(surface);
 
-    this.view = UIBase.createElement('nodegraphview-x') as NodeGraphView;
+    this.view = UIBase.constructElement<NodeGraphView>('nodegraphview-x', this.ctx);
     // prevent sliders and textboxes from updating in realtime
     this.view.inherit_packflag |= PackFlags.NO_REALTIME;
 

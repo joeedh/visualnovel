@@ -3,6 +3,10 @@ import tseslint from 'typescript-eslint';
 import importPlugin from 'eslint-plugin-import';
 import boundaries from 'eslint-plugin-boundaries';
 
+import preferConstructElement from './vendor/path.ux/buildtools/eslint-rules/prefer-construct-element.mjs';
+// import validDatapath from "path.ux/eslint/valid-datapath";
+// import validThemeKey from "path.ux/eslint/valid-theme-key";
+
 /**
  * Flat config. Type-aware linting is intentionally NOT enabled here — `tsgo` owns
  * type checking (see `pnpm check`). ESLint enforces correctness-lite rules, import
@@ -324,5 +328,38 @@ export default tseslint.config(
   {
     files: ['**/*.test.ts', '**/__fixtures__/**'],
     rules: { 'boundaries/element-types': 'off' },
+  },
+  {
+    plugins: {
+      pathux: {
+        rules: {
+          'prefer-construct-element': preferConstructElement,
+          // "valid-datapath": validDatapath,
+          // "valid-theme-key": validThemeKey,
+        },
+      },
+    },
+    rules: {
+      // Options, both optional: "suffix" is the tag suffix that marks a path.ux
+      // custom element (default "-x"), and "allow" lists tags to leave alone --
+      // one you create uninitialized on purpose and hand to something that
+      // calls checkInit() later.
+      'pathux/prefer-construct-element': ['error', { suffix: '-x', allow: [] }],
+
+      // Checks container.prop("...") strings against a catalog your app
+      // generates by walking its own defineAPI(). Point "catalogPath" at that
+      // file (or export PATHUX_DATAPATH_CATALOG); left unset it falls back to
+      // path.ux's own generated/api-paths.json, which does not know your app's
+      // paths. Best run as a warning until the catalog covers every path the
+      // app resolves.
+      // "pathux/valid-datapath": ["warn", { catalogPath: "./generated/api-paths.json" }],
+
+      // Flags literal getDefault("...") keys that are in no class of the theme
+      // catalog. It takes no options and reads path.ux's own
+      // generated/themes.json (pnpm run gen:themes, inside the library), so it
+      // catches typos in library theme keys but not in keys your own widgets
+      // add. Opt-in: the catalog is a floor, not a closed set.
+      // "pathux/valid-theme-key": "warn",
+    },
   },
 );
