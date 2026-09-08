@@ -524,9 +524,10 @@ export function menuFor(node: DocNode): MenuEntry[] {
 /**
  * One node of each kind the tree draws, and one of each branch heading, so the coverage below is
  * total rather than however much of a project happens to be on screen. Every node carries a path
- * and a hash, since several kinds offer more entries once they have one.
+ * and a hash, since several kinds offer more entries once they have one. Exported for the derived
+ * model's driver, which runs `menuFor` over the same nodes.
  */
-const MENU_NODES: readonly DocNode[] = [
+export const MENU_NODES: readonly DocNode[] = [
   ...(
     [
       'scene',
