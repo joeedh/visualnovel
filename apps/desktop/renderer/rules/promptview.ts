@@ -10,7 +10,7 @@
 import type { ChunkOrigin } from '@vn/types';
 import { TOP_CHUNK } from '../../src/shared/promptops.js';
 import type { PromptChunkInfo, PromptView } from '../../src/shared/prompt.js';
-import { refuse, type Offer } from './anchors.js';
+import { refuse, type Action, type Offer } from './anchors.js';
 
 /**
  * The hue distinguishes who wrote the words. `--sodium` means they come verbatim out of a
@@ -189,9 +189,12 @@ const MODE_SEGMENTS: Record<ModeButton['id'], { command: string; label: string; 
  */
 export function modeStrip(view: PromptView): ModeButton[] {
   const frozen = view.frozen;
-  const seg = (id: ModeButton['id'], enter: Offer): ModeButton => {
+  // Entering a mode is an action of its own, or another module's offer with its own refusal
+  const seg = (id: ModeButton['id'], enter: Action | Offer): ModeButton => {
     const { command, label, tooltip } = MODE_SEGMENTS[id];
     const control = { id: command, label, tooltip, on: id };
+    const entered: Offer =
+      'ok' in enter ? { ...enter, ...control } : { ok: true, ...enter, ...control };
     return {
       id,
       active: view.mode === id,
@@ -199,18 +202,16 @@ export function modeStrip(view: PromptView): ModeButton[] {
         ? { ...refuse(frozen), ...control }
         : view.mode === id
           ? { ...refuse(`This prompt is already in ${id} mode.`), ...control }
-          : { ...enter, ...control },
+          : entered,
     };
   };
 
   return [
     seg('chunks', {
-      ok   : true,
       id   : 'prompt.clear',
       props: { hash: view.hash, part: view.mode === 'agent' ? 'agent' : 'custom' },
     }),
     seg('custom', {
-      ok   : true,
       id   : 'prompt.setCustom',
       props: { hash: view.hash, text: view.text },
     }),
@@ -340,7 +341,11 @@ export interface ChunkAct {
  */
 export function chunkActs(view: PromptView, chunk: PromptChunkInfo): ChunkAct[] {
   const at = (key: ChunkAct['key']): string => `${chunk.key}/${key}`;
-  const setChunk = (key: ChunkAct['key'], op: string, text?: string): Offer => ({
+  const setChunk = (
+    key: ChunkAct['key'],
+    op: string,
+    text?: string,
+  ): Action & { ok: true; on: string } => ({
     ok   : true,
     id   : 'prompt.setChunk',
     props: { hash: view.hash, chunk: chunk.key, op, ...(text === undefined ? {} : { text }) },

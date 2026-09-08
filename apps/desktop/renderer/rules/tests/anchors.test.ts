@@ -6,7 +6,6 @@ import {
   itemKey,
   keyOf,
   mapOf,
-  refusalOf,
   resolveAnchor,
   resolveItem,
   resolveSubject,
@@ -80,7 +79,6 @@ describe('applyOffer', () => {
   const refused: Offer = {
     ok     : false,
     id     : 'asset.accept',
-    reason : 'No asset is on screen.',
     refusal: { reason: 'No asset is on screen.', description: 'Open one from the tree.' },
     label  : 'Accept',
     tooltip: 'Accept these bytes for use downstream',
@@ -124,12 +122,6 @@ describe('applyOffer', () => {
     const chip = { title: '' };
     applyOffer(chip, accepted, compose);
     expect(chip).toEqual({ title: 'Accept these bytes for use downstream' });
-  });
-
-  it('reads a refusal written with only a reason as one', () => {
-    const bare: Offer = { ok: false, id: 'asset.accept', reason: 'Nothing here.' };
-    expect(refusalOf(bare)).toEqual({ reason: 'Nothing here.' });
-    expect(refusalOf(accepted)).toBeUndefined();
   });
 });
 

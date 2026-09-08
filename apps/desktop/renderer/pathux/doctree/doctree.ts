@@ -7,7 +7,7 @@
  * The same functions serve both modes: a file tree is a different source, not a different kind of
  * tree, so the toggle in the header buys a second fetch and no second flattener.
  */
-import type { AnchorRecord, Offer } from '../../rules/anchors.js';
+import type { AnchorRecord } from '../../rules/anchors.js';
 import { NEW_SKILL_PROMPT } from '../../rules/skills.js';
 import type { DocNode, DocNodeKind, EntityLinks } from '../../../src/shared/ipc.js';
 import { MENU_SEP, type MenuEntry } from '../chrome/contextmenu.js';
@@ -519,18 +519,6 @@ export function menuFor(node: DocNode): MenuEntry[] {
     case 'more':
       return [];
   }
-}
-
-/**
- * One right-click entry as an offer. A menu entry already holds a command and its props rather
- * than a callback, so the two shapes say the same thing and this is a projection rather than a
- * second source of truth. A separator has no command and is filtered out before it gets here.
- */
-export function offerOf(entry: MenuEntry): Offer {
-  if (entry.refused !== undefined) {
-    return { ok: false, id: entry.id, reason: entry.refused };
-  }
-  return { ok: true, id: entry.id, props: entry.props ?? {}, label: entry.label };
 }
 
 /**

@@ -557,7 +557,7 @@ export class AssetEditor extends VnEditor {
     if (info?.kind === 'concept') {
       const offer = promptEditable(info);
       anchors.act(
-        this.bar.button(offer.label ?? '', () => {}),
+        this.bar.button(offer.label, () => {}),
         offer,
         (a) => void this.redraw(a),
       );
@@ -568,14 +568,14 @@ export class AssetEditor extends VnEditor {
     } else {
       const action = approveAction(info);
       anchors.act(
-        this.bar.button(action.label ?? '', () => {}),
+        this.bar.button(action.label, () => {}),
         action,
         (a) => void this.approve(a),
       );
 
       const regen = regenerateAction(info);
       anchors.act(
-        this.bar.button(regen.label ?? '', () => {}),
+        this.bar.button(regen.label, () => {}),
         regen,
         () => void (regen.ok && this.regenerate(regen)),
       );
@@ -583,7 +583,7 @@ export class AssetEditor extends VnEditor {
 
     const open = taskAction(info?.sourceTask);
     anchors.act(
-      this.bar.button(open.label ?? '', () => {}),
+      this.bar.button(open.label, () => {}),
       open,
       (a) => void (open.ok && this.showTask(open.publish['taskHash'] ?? '', a)),
     );
@@ -766,7 +766,7 @@ export class AssetEditor extends VnEditor {
     for (const seg of modeStrip(view)) {
       row.appendChild(
         this.drawing.act(
-          button(`as-mode${seg.active ? ' on' : ''}`, seg.offer.label ?? ''),
+          button(`as-mode${seg.active ? ' on' : ''}`, seg.offer.label),
           seg.offer,
           (a) => void this.runPrompt(a.id, a.props),
         ),
@@ -776,7 +776,7 @@ export class AssetEditor extends VnEditor {
     const condense = condenseAction(view);
     row.appendChild(
       this.drawing.act(
-        button('as-mode act', condense.label ?? ''),
+        button('as-mode act', condense.label),
         condense,
         (a) => void this.runPrompt(a.id, a.props),
       ),
@@ -784,7 +784,7 @@ export class AssetEditor extends VnEditor {
 
     const check = checkAction(view);
     row.appendChild(
-      this.drawing.act(button('as-mode', check.label ?? ''), check, (a) => void this.runCheck(a)),
+      this.drawing.act(button('as-mode', check.label), check, (a) => void this.runCheck(a)),
     );
     return row;
   }
@@ -811,7 +811,7 @@ export class AssetEditor extends VnEditor {
     };
     band.appendChild(
       this.drawing.act(
-        button('as-mode', show.label ?? ''),
+        button('as-mode', show.label),
         show,
         (a) => void (open.ok && this.showTask(open.publish['taskHash'] ?? '', a)),
       ),
@@ -828,7 +828,7 @@ export class AssetEditor extends VnEditor {
         'Open a conversation about this failure, with what it said already in the composer. Nothing is sent',
     };
     band.appendChild(
-      this.drawing.act(button('as-mode', ask.label ?? ''), ask, (a) => void this.fixWithAgent(a)),
+      this.drawing.act(button('as-mode', ask.label), ask, (a) => void this.fixWithAgent(a)),
     );
     return band;
   }
@@ -847,7 +847,7 @@ export class AssetEditor extends VnEditor {
     if (action.ok) {
       banner.appendChild(
         this.drawing.act(
-          button('as-mode', action.label ?? ''),
+          button('as-mode', action.label),
           action,
           (a) => void this.runPrompt(a.id, a.props),
         ),
@@ -951,7 +951,7 @@ export class AssetEditor extends VnEditor {
         const drop = dropRefAction(view, chunk, chip);
         item.appendChild(
           this.drawing.act(
-            button('as-ref-drop', drop.label ?? ''),
+            button('as-ref-drop', drop.label),
             drop,
             (a) => void this.runPrompt(a.id, a.props),
           ),
@@ -1017,7 +1017,7 @@ export class AssetEditor extends VnEditor {
       const opens = act.opens;
       const picks = act.picks;
       const b = this.drawing.act(
-        button('as-chunk-act', act.offer.label ?? ''),
+        button('as-chunk-act', act.offer.label),
         act.offer,
         (a) =>
           void (opens
@@ -1153,7 +1153,7 @@ export class AssetEditor extends VnEditor {
     const row = el('div', 'as-custom-row');
     row.appendChild(
       this.drawing.act(
-        button('as-mode', offer.label ?? ''),
+        button('as-mode', offer.label),
         offer,
         (a) => void this.commitCustom(a, text.value, box),
       ),
@@ -1299,7 +1299,7 @@ export class AssetEditor extends VnEditor {
 
     strip.appendChild(
       this.drawing.act(
-        el('button', 'as-promote-go', offer.label ?? ''),
+        el('button', 'as-promote-go', offer.label),
         offer,
         (a) => void this.promote(a),
       ),
@@ -1353,7 +1353,7 @@ export class AssetEditor extends VnEditor {
     const strip = el('div', 'as-replace');
     strip.appendChild(
       this.drawing.act(
-        el('button', 'as-replace-go', offer.label ?? ''),
+        el('button', 'as-replace-go', offer.label),
         offer,
         (a) => void this.replace(a),
       ),
@@ -1415,7 +1415,7 @@ export class AssetEditor extends VnEditor {
     // The bar's Redraw is the same offer; this one is told apart as the strip's own button
     row.appendChild(
       this.drawing.act(
-        el('button', 'as-redraw-go', offer.label ?? ''),
+        el('button', 'as-redraw-go', offer.label),
         {
           ...offer,
           on     : 'go',

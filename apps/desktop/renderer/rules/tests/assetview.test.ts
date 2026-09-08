@@ -319,7 +319,7 @@ describe('promptEditable', () => {
       id     : 'art.redraw',
       refusal: { reason: expect.stringContaining('a clause at a time') },
     });
-    expect(plate.ok === false && plate.refusal?.reason).toContain('location_ref');
+    expect(plate.ok === false && plate.refusal.reason).toContain('location_ref');
     expect(promptEditable(portrait())).toMatchObject({ ok: false });
   });
 });

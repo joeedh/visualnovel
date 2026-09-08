@@ -45,16 +45,6 @@ let generation = 0;
 const passes = new Map<string, Pass>();
 
 /**
- * The facts an offer carries on itself, accepted here as well until every call site writes them on
- * the offer; stage 5 of docs/plans/one-offer-and-the-six-rule-modules.md deletes this.
- */
-export interface ActOptions {
-  supplies?: readonly string[];
-  on?: string;
-  form?: boolean;
-}
-
-/**
  * Record one editor's anchors again from scratch.
  *
  * `part` separates the passes an editor makes independently — the asset editor redraws its bar and
@@ -78,19 +68,14 @@ export class AnchorPass {
    * A refused offer wires nothing: the node is greyed with the refusal above its tooltip, and a
    * control the rule turned down has nothing to run.
    */
-  act<N extends AnchorNode>(
-    node: N,
-    offer: Offer,
-    run: (action: Action) => void,
-    opts: ActOptions = {},
-  ): N {
+  act<N extends AnchorNode>(node: N, offer: Offer, run: (action: Action) => void): N {
     if (offer.ok) {
       const action: Action = { id: offer.id, props: offer.props };
       // Assigned rather than added. A path.ux `Button` calls its own `onclick` on a touch pointer,
       // where the browser dispatches no click event for a listener to hear.
       (node as { onclick?: unknown }).onclick = () => run(action);
     }
-    this.record(node, offer, opts);
+    this.record(node, offer);
     return node;
   }
 
@@ -100,18 +85,17 @@ export class AnchorPass {
    * The offer is still the one object the click reads, so naming it here is what keeps the two
    * together.
    */
-  record<N extends AnchorNode>(node: N, offer: Offer, opts: ActOptions = {}): N {
-    const supplies = offer.supplies ?? opts.supplies;
-    const on = offer.on ?? opts.on;
+  record<N extends AnchorNode>(node: N, offer: Offer): N {
+    const supplies = offer.supplies ?? [];
     this.present(node, offer);
     this.pass.anchors.push({
-      key  : keyOf({ id: offer.id, on }),
+      key  : keyOf(offer),
       id   : offer.id,
       props: offer.ok ? offer.props : {},
-      ...(supplies && supplies.length > 0 ? { supplies: [...supplies] } : {}),
-      ...((offer.form ?? opts.form) ? { form: true } : {}),
+      ...(supplies.length > 0 ? { supplies: [...supplies] } : {}),
+      ...(offer.form ? { form: true } : {}),
       enabled: offer.ok,
-      ...(offer.ok ? {} : { reason: offer.refusal?.reason ?? offer.reason }),
+      ...(offer.ok ? {} : { reason: offer.refusal.reason }),
       editor: this.pass.editor,
       via   : { kind: 'dom', node },
     });
@@ -123,9 +107,6 @@ export class AnchorPass {
    * while they present the same way, so the second one cannot silently overwrite the first.
    */
   private present(node: AnchorNode, offer: Offer): void {
-    // An offer with no tooltip is one a call site has not migrated yet, and the caller still
-    // presents it by hand
-    if (offer.tooltip === undefined) return;
     const prior = this.pass.presented.get(node);
     if (prior === undefined) {
       this.pass.presented.set(node, offer);
@@ -173,25 +154,6 @@ export class AnchorPass {
       publishes,
       editor: this.pass.editor,
       via   : { kind: 'pick', nodeId, node: box },
-    });
-  }
-
-  /**
-   * Record a graph node, whose gesture the canvas's own `pick()` dispatches. The rule survives
-   * here differently: the anchor is honest because the oracle calls the same `pick()` the pointer
-   * does, not because one object feeds both sides.
-   */
-  pick(nodeId: string, offer: Offer, rect: AnchorRect | undefined, opts: ActOptions = {}): void {
-    const supplies = offer.supplies ?? opts.supplies;
-    this.pass.anchors.push({
-      key  : keyOf({ id: offer.id, on: offer.on ?? opts.on }),
-      id   : offer.id,
-      props: offer.ok ? offer.props : {},
-      ...(supplies && supplies.length > 0 ? { supplies: [...supplies] } : {}),
-      enabled: offer.ok,
-      ...(offer.ok ? {} : { reason: offer.refusal?.reason ?? offer.reason }),
-      editor: this.pass.editor,
-      via   : { kind: 'pick', nodeId, ...(rect ? { rect } : {}) },
     });
   }
 }

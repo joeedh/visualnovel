@@ -217,7 +217,7 @@ export class ConvoEditor extends VnEditor {
     top.label('VNAUTHOR').style['padding'] = '0px 8px';
     const modeOffer = modeAction(ui.agentMode);
     this.anchors.act(
-      top.button(modeOffer.label ?? '', () => {}),
+      top.button(modeOffer.label, () => {}),
       modeOffer,
       (action) => void setMode(String(action.props['mode'] ?? '')),
     );
@@ -301,14 +301,14 @@ export class ConvoEditor extends VnEditor {
     // it one gesture instead of two.
     const fresh = newThreadAction();
     this.anchors.act(
-      low.button(fresh.label ?? '', () => {}),
+      low.button(fresh.label, () => {}),
       fresh,
       (action) => void exec(action.id, action.props),
     );
 
     const compact = compactAction(convo(), reopenedThread() !== undefined);
     this.compactBtn = this.anchors.act(
-      low.button(compact.label ?? '', () => {}),
+      low.button(compact.label, () => {}),
       compact,
       (action) => void exec(action.id, action.props).then(report),
     );
@@ -319,7 +319,7 @@ export class ConvoEditor extends VnEditor {
     if (opened) {
       const offer = resumeAction(opened, ui.model);
       this.anchors.act(
-        low.button(offer.label ?? '', () => {}),
+        low.button(offer.label, () => {}),
         offer,
         (action) => void exec(action.id, action.props).then(report),
       );

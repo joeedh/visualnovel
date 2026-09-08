@@ -348,7 +348,7 @@ export class VnHeaderEditor extends VnEditor {
     );
     const modeOffer = modeAction(ui.agentMode);
     this.anchors.act(
-      this.bar.button(modeOffer.label ?? '', () => {}),
+      this.bar.button(modeOffer.label, () => {}),
       modeOffer,
       (action) => void setMode(String(action.props['mode'] ?? '')),
     );
@@ -385,7 +385,7 @@ export class VnHeaderEditor extends VnEditor {
 
     const runOffer = runAction(busy, isLive);
     this.anchors.act(
-      this.bar.button(runOffer.label ?? '', () => {}),
+      this.bar.button(runOffer.label, () => {}),
       runOffer,
       (action) => runPipelineNow(action.props),
     );
@@ -412,7 +412,7 @@ export class VnHeaderEditor extends VnEditor {
 
     const stopOffer = stopAction(controls);
     const stop = this.anchors.act(
-      this.bar.button(stopOffer.label ?? '', () => {}),
+      this.bar.button(stopOffer.label, () => {}),
       stopOffer,
       (action) => void exec(action.id, action.props).then(report),
     );
@@ -523,7 +523,7 @@ export class VnHeaderEditor extends VnEditor {
         callback: () => {
           const offer = runAction(this.ui.busyWhat, isLive);
           if (offer.ok) runPipelineNow(offer.props);
-          else say(offer.refusal?.reason ?? offer.reason, true);
+          else say(offer.refusal.reason, true);
         },
         tooltip : 'Plan and render everything that is ready, to the next gate',
       },

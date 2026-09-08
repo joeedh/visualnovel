@@ -9,7 +9,6 @@ import {
   menuFor,
   nodeIsSelected,
   nodeKey,
-  offerOf,
   renameOf,
   rowTitle,
   publishedBy,
@@ -802,29 +801,6 @@ describe('nodeKey', () => {
   it('is everything after the kind, colons in the rest included', () => {
     expect(nodeKey(node('shot:greet/greet__s1', 'shot'))).toBe('greet/greet__s1');
     expect(nodeKey(node('more:assetkind:portrait', 'more'))).toBe('assetkind:portrait');
-  });
-});
-
-describe('offerOf', () => {
-  it('reads a menu entry as the invocation it already holds', () => {
-    expect(offerOf({ label: 'Accept', id: 'asset.accept', props: { hash: 'a1' } })).toEqual({
-      ok   : true,
-      id   : 'asset.accept',
-      props: { hash: 'a1' },
-      label: 'Accept',
-    });
-  });
-
-  it('gives an entry with no props an empty set rather than leaving it undefined', () => {
-    expect(offerOf({ label: 'Export Fountain', id: 'story.screenplay' })).toMatchObject({
-      props: {},
-    });
-  });
-
-  it('carries a declared refusal through, still naming its command', () => {
-    expect(
-      offerOf({ label: 'Open', id: 'view.open', refused: 'No shot covers this line.' }),
-    ).toEqual({ ok: false, id: 'view.open', reason: 'No shot covers this line.' });
   });
 });
 

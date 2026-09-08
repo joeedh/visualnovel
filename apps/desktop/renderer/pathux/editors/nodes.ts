@@ -41,7 +41,7 @@ import {
   touchesGraph,
 } from '../../../src/shared/writes.js';
 import { api } from '../../api.js';
-import { refuse, type Offer } from '../../rules/anchors.js';
+import { refuse, type Control, type Offer } from '../../rules/anchors.js';
 import {
   commandFor,
   contestedSlots,
@@ -398,15 +398,12 @@ export class GenGraphEditor extends VnEditor {
   private groupOffer(ids: GraphId[]): Offer {
     const control = { id: 'gengraph.createGroup', label: 'Group', tooltip: GROUP_WHAT };
     if (ids.length === 0) return { ...refuse('Select the nodes to group first.'), ...control };
-    return {
-      ...this.offerOf(control.id, {
-        kind     : 'createGroup',
-        graphPath: this.view.currentGraphPath,
-        storePath: this.view.graphPath,
-        nodeIds  : ids,
-      }),
-      ...control,
-    };
+    return this.offerOf(control, {
+      kind     : 'createGroup',
+      graphPath: this.view.currentGraphPath,
+      storePath: this.view.graphPath,
+      nodeIds  : ids,
+    });
   }
 
   private ungroupOffer(): Offer {
@@ -415,23 +412,20 @@ export class GenGraphEditor extends VnEditor {
     if (groups.length === 0) {
       return { ...refuse('Select a group instance to ungroup.'), ...control };
     }
-    return {
-      ...this.offerOf(control.id, {
-        kind     : 'ungroup',
-        graphPath: this.view.currentGraphPath,
-        nodeId   : groups[0]!.id,
-      }),
-      ...control,
-    };
+    return this.offerOf(control, {
+      kind     : 'ungroup',
+      graphPath: this.view.currentGraphPath,
+      nodeId   : groups[0]!.id,
+    });
   }
 
   /** The invocation a gesture would send, weighed the way the delegate weighs it. */
-  private offerOf(id: string, edit: GraphEdit): Offer {
+  private offerOf(control: Control, edit: GraphEdit): Offer {
     const target = this.target();
     const weighed = this.weigh(edit);
-    if (!weighed.ok) return { ...refuse(weighed.reason), id };
-    if (target === undefined) return { ...refuse(NO_LEVEL), id };
-    return { ok: true, ...commandFor(target, weighed.edit) };
+    if (!weighed.ok) return { ...refuse(weighed.reason), ...control };
+    if (target === undefined) return { ...refuse(NO_LEVEL), ...control };
+    return { ok: true, ...commandFor(target, weighed.edit), ...control };
   }
 
   /** The designer follows the level: a definition's sockets and rows, and nothing elsewhere. */

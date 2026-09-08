@@ -26,18 +26,13 @@ export interface Action {
   props: Record<string, PropValue>;
 }
 
-/**
- * What every control carries, on either branch of its {@link Offer}.
- *
- * `label` and `tooltip` are optional only until every offer in the tree writes them; stage 5 of
- * docs/plans/one-offer-and-the-six-rule-modules.md makes them required.
- */
+/** What every control carries, on either branch of its {@link Offer}. */
 export interface Control {
   id: string;
   /** What the control says on screen: a button's text, a field's placeholder. */
-  label?: string;
+  label: string;
   /** The control's own sentence, shown when enabled and beneath the refusal when not. */
-  tooltip?: string;
+  tooltip: string;
   /**
    * What tells this control apart from another running the same command on the same pane — a
    * chunk key, a task hash. Appended to the key, so re-resolving by key lands on the same control.
@@ -55,23 +50,15 @@ export interface Control {
  * A refusal names the command it is about. A greyed control is recorded as an anchor rather than
  * as an absence, so a tour asked for that command can ring the control and say the app's own
  * refusal instead of inventing one. `refusal` is path.ux's shape, so an op, a widget and a rule
- * module hold one type; `reason` stays beside it until stage 5 of the plan retires it.
+ * module hold one type.
  */
 export type Offer =
   | (Control & { ok: true; props: Record<string, PropValue> })
-  | (Control & { ok: false; reason: string; refusal?: Refusal });
+  | (Control & { ok: false; refusal: Refusal });
 
-/** The refusal a refused offer carries, whichever of its two fields it was written with. */
-export const refusalOf = (offer: Offer): Refusal | undefined =>
-  offer.ok ? undefined : (offer.refusal ?? { reason: offer.reason });
-
-/**
- * The refused half of an offer, from the sentence alone: `{ ...refuse(why), id, label, tooltip }`.
- * Writes both fields while both exist, so a caller states the sentence once.
- */
-export const refuse = (reason: string): { ok: false; reason: string; refusal: Refusal } => ({
-  ok: false,
-  reason,
+/** The refused half of an offer, from the sentence alone: `{ ...refuse(why), id, label, tooltip }`. */
+export const refuse = (reason: string): { ok: false; refusal: Refusal } => ({
+  ok     : false,
   refusal: { reason },
 });
 
@@ -98,10 +85,10 @@ export interface OfferNode {
  * also how a control is re-presented between passes when its offer changes under it.
  */
 export function applyOffer(node: OfferNode, offer: Offer, compose: Compose): void {
-  const refusal = refusalOf(offer);
+  const refusal = offer.ok ? undefined : offer.refusal;
   if ('disabled' in node) node.disabled = !offer.ok;
   if ('refusalReason' in node) {
-    if (offer.tooltip !== undefined) node.description = offer.tooltip;
+    node.description = offer.tooltip;
     node.refusalReason = refusal;
   } else {
     node.title = compose(refusal, offer.tooltip) ?? '';
@@ -201,11 +188,11 @@ export const commandKey = (id: string): string => `cmd:${id}`;
 export const itemKey = (kind: string, key: string): string => `item:${kind}/${key}`;
 
 /** The key a control is re-resolved by: `cmd:<id>`, or `cmd:<id>#<on>`. */
-export const keyOf = (control: Control): string =>
+export const keyOf = (control: Pick<Control, 'id' | 'on'>): string =>
   control.on === undefined ? commandKey(control.id) : `${commandKey(control.id)}#${control.on}`;
 
 /** The keys that appear more than once, which a `controls()` test asserts is empty. */
-export function duplicateKeys(controls: readonly Control[]): string[] {
+export function duplicateKeys(controls: readonly Pick<Control, 'id' | 'on'>[]): string[] {
   const seen = new Set<string>();
   const twice = new Set<string>();
   for (const control of controls) {

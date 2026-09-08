@@ -61,7 +61,7 @@ describe('compactAction', () => {
       ),
     ];
     for (const offer of reasons) expect(offer).toMatchObject({ ok: false, id: 'agent.compact' });
-    expect(new Set(reasons.map((offer) => (offer.ok ? '' : offer.refusal?.reason))).size).toBe(4);
+    expect(new Set(reasons.map((offer) => (offer.ok ? '' : offer.refusal.reason))).size).toBe(4);
   });
 });
 
@@ -79,7 +79,7 @@ describe('resumeAction', () => {
   it('passes on the shared refusal rather than writing one of its own', () => {
     const offer = resumeAction(thread({ resume: { damaged: true } }), 'claude-opus-5');
     expect(offer.ok).toBe(false);
-    if (!offer.ok) expect(offer.refusal?.reason).toContain('no longer intact');
+    if (!offer.ok) expect(offer.refusal.reason).toContain('no longer intact');
   });
 
   it('refuses when nothing is open for reading', () => {
