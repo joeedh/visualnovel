@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-08T01:52:42.141Z",
-  "gitSha"       : "c2cd59f1d472008e453801d5df0a4910fb6b1308",
+  "sweptAt"      : "2026-09-08T04:48:39.123Z",
+  "gitSha"       : "e56cab3f9d9293dcc90e67860c5a3997db4a5cc3",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -185,6 +185,8 @@
     "agent.newThread",
     "agent.openThread",
     "agent.run",
+    "agent.setBudget",
+    "agent.setEffort",
     "agent.setMode",
     "agent.setModel",
     "app.copy",
@@ -571,6 +573,18 @@
       "supplies": ["modelId"]
     },
     {
+      "id"      : "agent.setEffort",
+      "editor"  : "convo",
+      "key"     : "cmd:agent.setEffort",
+      "supplies": ["effort"]
+    },
+    {
+      "id"      : "agent.setBudget",
+      "editor"  : "convo",
+      "key"     : "cmd:agent.setBudget",
+      "supplies": ["budget"]
+    },
+    {
       "id"      : "agent.openThread",
       "editor"  : "convo",
       "key"     : "cmd:agent.openThread",
@@ -610,6 +624,12 @@
       "editor" : "gengraph",
       "key"    : "cmd:gengraph.ungroup",
       "refused": "Select a group instance to ungroup."
+    },
+    {
+      "id"    : "agent.run",
+      "editor": "skills",
+      "key"   : "cmd:agent.run",
+      "form"  : true
     },
     {
       "id"      : "doc.write",
@@ -986,14 +1006,14 @@
     {
       "id"      : "project.setKey",
       "editor"  : "onboarding",
-      "key"     : "cmd:project.setKey#gemini",
+      "key"     : "cmd:project.setKey#anthropic",
       "supplies": ["key"],
       "refused" : "Paste a key first"
     },
     {
       "id"      : "project.setKey",
       "editor"  : "onboarding",
-      "key"     : "cmd:project.setKey#anthropic",
+      "key"     : "cmd:project.setKey#gemini",
       "supplies": ["key"],
       "refused" : "Paste a key first"
     },
@@ -1005,5 +1025,5 @@
     }
   ],
   "disagreements": [],
-  "strays": ["tasklist item:task/46c8a4151e3668ea8196bdf6851e0f523cbb155a46e714a9be1bec56f5baf3ed"]
+  "strays"       : []
 }

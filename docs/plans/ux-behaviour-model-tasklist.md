@@ -22,16 +22,16 @@ about. Those are in
 
 ## The proposed plans
 
-| #   | Plan                                                                                           | Where            | Depends on | Covers                                                                                                                                                 |
-| --- | ---------------------------------------------------------------------------------------------- | ---------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | [One `Offer`, and the six rule modules unified](archive/one-offer-and-the-six-rule-modules.md) | app              | —          | `Offer` absorbs `ActOptions`, `tooltip` becomes required, the refused branch carries a `Refusal`, the six modules gain `controls()`                    |
-| 2   | [The ten inline editors get a rule module](the-ten-inline-editors-get-a-rule-module.md)        | app              | 1          | `rules/<editor>.ts` extracted from each editor that computes offers beside its DOM code                                                                |
-| 3   | Situations, and the derived model                                                              | app              | 1, 2       | The fixture list, the headless driver, the zod schema, `ux-model.json`, and the three lint rules the derived tier answers                              |
-| 4   | Pseudo-commands, and a control's list of effects                                               | app              | 1          | The closed effect vocabulary in the catalog, closures rewritten as recorded effects, and the three rules effects unlock                                |
-| 5   | Disabling menu items, and refusals that carry a reason                                         | `vendor/path.ux` | —          | **Already written and complete**, and the authority on its own scope: `menu-item-disabling.md`, stages 1-5 done, stage 6 (the native menu bar) dropped |
-| 6   | Finishing the meta-tag system                                                                  | `vendor/path.ux` | 5          | A `widgetPath` scheme, a `refusal` accessor on `StdUXMeta`, a validating deserialize, and the `toolPath` builders                                      |
-| 7   | The measured tier reads tags                                                                   | app              | 3, 6       | `act()` writes a `StdUXMeta`, the sweep walks widgets instead of `window.__vnAnchors`, derived compared against measured                               |
-| 8   | `affects` on every command, and the executed tier                                              | app              | —          | Each command declaring the subtrees and `ui.*` fields it may touch, verified by diffing the undo snapshot                                              |
+| #   | Plan                                                                                            | Where            | Depends on | Covers                                                                                                                                                 |
+| --- | ----------------------------------------------------------------------------------------------- | ---------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | [One `Offer`, and the six rule modules unified](archive/one-offer-and-the-six-rule-modules.md)  | app              | —          | `Offer` absorbs `ActOptions`, `tooltip` becomes required, the refused branch carries a `Refusal`, the six modules gain `controls()`                    |
+| 2   | [The ten inline editors get a rule module](archive/the-ten-inline-editors-get-a-rule-module.md) | app              | 1          | `rules/<editor>.ts` extracted from each editor that computes offers beside its DOM code                                                                |
+| 3   | Situations, and the derived model                                                               | app              | 1, 2       | The fixture list, the headless driver, the zod schema, `ux-model.json`, and the three lint rules the derived tier answers                              |
+| 4   | Pseudo-commands, and a control's list of effects                                                | app              | 1          | The closed effect vocabulary in the catalog, closures rewritten as recorded effects, and the three rules effects unlock                                |
+| 5   | Disabling menu items, and refusals that carry a reason                                          | `vendor/path.ux` | —          | **Already written and complete**, and the authority on its own scope: `menu-item-disabling.md`, stages 1-5 done, stage 6 (the native menu bar) dropped |
+| 6   | Finishing the meta-tag system                                                                   | `vendor/path.ux` | 5          | A `widgetPath` scheme, a `refusal` accessor on `StdUXMeta`, a validating deserialize, and the `toolPath` builders                                      |
+| 7   | The measured tier reads tags                                                                    | app              | 3, 6       | `act()` writes a `StdUXMeta`, the sweep walks widgets instead of `window.__vnAnchors`, derived compared against measured                               |
+| 8   | `affects` on every command, and the executed tier                                               | app              | —          | Each command declaring the subtrees and `ui.*` fields it may touch, verified by diffing the undo snapshot                                              |
 
 Plans 1, 2, 3 and 7 are the model itself. Plan 4 widens its vocabulary past commands.
 Plans 5 and 6 are submodule work committed separately, and 5 is already planned there.
@@ -220,16 +220,18 @@ Routing the two reports' open decisions, so no plan starts by rediscovering them
 
 ## What the numbers are today
 
-Measured from the committed `apps/desktop/anchors.json` (swept 2026-09-08) and the source.
+Measured from the committed `apps/desktop/anchors.json` (swept 2026-09-08, after plan 2)
+and the source.
 
-- 170 commands in the registry, 49 with a control on file, 136 records, 1 stray, 0
+- 170 commands in the registry, 51 with a control on file, 139 records, 0 strays, 0
   enabled-state disagreements.
 - 13 editor homes appear in the sweep. Fifteen files under `renderer/pathux/editors/` call
   the anchor layer's `act()` or `record()`. The notification popup in `chrome/` does not:
   its `act` is a local wrapper over `exec`, and its four `notify.*` controls are not
   anchors.
-- `renderer/rules/` holds 27 modules and about 4,200 lines. Six of them return an `Offer`,
-  serving five editors; the other ten editors compute offers inline.
+- `renderer/rules/` holds 41 modules and about 6,200 lines. Every one of the fifteen
+  anchor homes has a module that returns its offers through `controls(state)`; no editor
+  computes an offer inline.
 - 94 of the command definitions declare `mutating: true`, which is the population plan 8's
   executed-tier test runs against.
 - 16 builder sites write the `datapath` attribute. The desktop registers no path.ux
@@ -299,8 +301,8 @@ work, and the second one matters to the tooltip rule.
 
 - [x] 1 — one `Offer`, and the six rule modules unified (shipped 2026-09-07:
       [`archive/one-offer-and-the-six-rule-modules.md`](archive/one-offer-and-the-six-rule-modules.md))
-- [ ] 2 — the ten inline editors get a rule module (written:
-      [`the-ten-inline-editors-get-a-rule-module.md`](the-ten-inline-editors-get-a-rule-module.md))
+- [x] 2 — the ten inline editors get a rule module (shipped 2026-09-08:
+      [`archive/the-ten-inline-editors-get-a-rule-module.md`](archive/the-ten-inline-editors-get-a-rule-module.md))
 - [ ] 3 — situations, and the derived model
 - [ ] 4 — pseudo-commands, and a control's list of effects
 - [ ] 5 — disabling menu items, and refusals that carry a reason (path.ux, already

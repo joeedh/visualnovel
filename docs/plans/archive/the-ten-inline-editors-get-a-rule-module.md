@@ -1,8 +1,8 @@
 # The ten inline editors get a rule module
 
-Status: **planned**. Plan 2 of
-[`ux-behaviour-model-tasklist.md`](ux-behaviour-model-tasklist.md); depends on plan 1
-([`archive/one-offer-and-the-six-rule-modules.md`](archive/one-offer-and-the-six-rule-modules.md),
+Status: **shipped** 2026-09-08; see [As shipped](#as-shipped). Plan 2 of
+[`ux-behaviour-model-tasklist.md`](../ux-behaviour-model-tasklist.md); depends on plan 1
+([`archive/one-offer-and-the-six-rule-modules.md`](one-offer-and-the-six-rule-modules.md),
 shipped 2026-09-07), and plan 3 depends on it. Pressure-tested on 2026-09-07; the findings
 and what was done with each are in [Findings](#findings).
 
@@ -59,7 +59,7 @@ anchor home answers `controls(state)`. Measured from the tree on 2026-09-07, aft
   pair moves to `src/shared/` has its answer: nothing needs it there.
 
 The research report
-([`../research/formalizing-the-rules-modules.md#the-ten-inline-editors-get-a-module`](../research/formalizing-the-rules-modules.md#the-ten-inline-editors-get-a-module))
+([`../research/formalizing-the-rules-modules.md#the-ten-inline-editors-get-a-module`](../../research/formalizing-the-rules-modules.md#the-ten-inline-editors-get-a-module))
 describes the shape as "the same mechanical work that produced the six existing modules".
 The inventory says otherwise for about a third of the sites, which is why this plan spends
 its decisions on what the state of an editor is.
@@ -359,12 +359,12 @@ else, so the tree stays green, and the sweep is run once, at the end.
   swept asset already draws. Those keys are pinned by the `controls` tests instead. Any
   other change in a key, `enabled` or `refused` is a finding, and the disagreement count
   stays at zero.
-- [`../reference/guided-tours.md`](../reference/guided-tours.md): the Offers section's
+- [`../reference/guided-tours.md`](../../reference/guided-tours.md): the Offers section's
   list of modules becomes every home's module, in a table from `AnchorHome` to module and
   state type, which is also the table plan 3's driver is written from.
-- [`ux-behaviour-model-tasklist.md`](ux-behaviour-model-tasklist.md): row 2's checkbox;
+- [`ux-behaviour-model-tasklist.md`](../ux-behaviour-model-tasklist.md): row 2's checkbox;
   the line in "What the numbers are today" saying ten editors compute offers inline.
-- [`index.md`](index.md): the row flips to shipped and the file moves to `archive/`.
+- [`index.md`](../index.md): the row flips to shipped and the file moves to `archive/`.
 - An "As shipped" section in this file records every deviation.
 
 ## Testing
@@ -497,3 +497,97 @@ here.
     Risks.
 17. **No point of no return, and `anchors.json` is stale between stages.** **Answered.**
     Both are stated at the top of "What changes" and under Risks.
+
+## As shipped
+
+Shipped 2026-09-08 on `rule-modules`, one commit per stage. `pnpm check`, `pnpm test` and
+`pnpm lint` are green at every commit. The end-of-stage grep of each editor for `refuse(`
+and for `props:` beside an `id:` finds only invocations (`command:check` calls, `exec`
+calls and menu entries) and `judge()`'s `EditVerdict`.
+
+### Deviations
+
+- **`decomposeDoor()` takes no scene.** `story.decomposeAll` has no scene prop, so the
+  door is the same for every scene; the scene enters only through
+  `doorKey(sceneId, door)`, which is exported so the editor and `controls` key the verdict
+  the same way.
+- **`ungroupAction` takes `GraphId[]`**, not `string[]`: a node's id is a `GraphId`, and
+  that is what `selectedGroups()` yields.
+- **The script page's state is `ScriptPageState`.** `rules/script.ts` already imports
+  `ScriptState` from `@vn/scriptedit` for `moveStateOf`.
+- **`NO_LEVEL` moved to `rules/gengraph.ts`** with `GROUP_WHAT` and `UNGROUP_WHAT`, since
+  the module's refusal needs the sentence; `nodes.ts` imports it back for `weigh`. An
+  unweighed edit (`weighed` undefined with something selected) is refused with `NO_LEVEL`,
+  which is what `weigh` answers when the level no longer resolves.
+- **`compact` moved from `chatsurface.ts` to `rules/convobar.ts`**, since the budget label
+  is built from it and a rules module cannot import a DOM module.
+- **`saveKeyAction` and `testKeyAction` take the vendor id**, not the `KeyGuideVendor`;
+  `setKeyKey(vendor, scope)` is exported for the verdict key. `linkAction` takes the whole
+  vendor, since it reads the url.
+- **Two stale answers are now dropped** where the plan's rule said they should be and
+  today's code let them through: the onboarding `describe()` drops a `project.setKey`
+  answer once the scope box has moved on, and the branch editor's `askDelete` drops an
+  answer for a scene the selection has left, rather than replacing the live button's pass
+  with a detached node.
+- **The task graph's gate buttons are anchored twice**: once at draw, from the unanswered
+  offer (`gateApproveAction(character, undefined, undefined)`), in a `taskgraph/gate` pass
+  created with the buttons, and again from the answers in a fresh pass that replaces it.
+  The click is live before the round trip, as it was when it went through
+  `addEventListener`, and `act()` is what wires it. The `stopPropagation` listener stays,
+  because the canvas would otherwise read the click as a pick.
+- **`DocBuffer.save()` stays silent with no file open**, as before; it speaks the offer's
+  refusal (`Nothing to save`) only over an open file.
+- **`failureTaskAction` returns an `Offer`** with `taskAction`'s `publish` riding along
+  untyped; the editor passes `failure.task` to `showTask` directly rather than reading it
+  back out of the offer.
+- **`promoteStrip` and `promptStrip` take `info` as a first parameter**, so the field
+  offers are built from the same `AssetInfo` as the strip's.
+- **`reportconvo.controls` takes a `ReportControls`**
+  (`{ state, changing, check?, boxes }`) and lists Stop as well as Start and the two
+  boxes.
+- **The wiki and skills editors keep reading `DocBuffer.saveOffer`**, which is now a
+  getter over `rules/docbuffer.ts`'s `saveOffer`, rather than calling `controls()` and
+  indexing the list; `noUncheckedIndexedAccess` would make the index a possible
+  `undefined`.
+- **A reference pin attached to two clauses would collide** on `cmd:view.open#<pin>`, as
+  it did before `refOpenAction` existed. The sample project has no such prompt; plan 3's
+  comparison is where it would show.
+
+### Looked at over CDP
+
+Against `examples/mySampleRepo` in mock mode, after the sweep:
+
+- The four newly anchored controls carry their old sentences: the skills hint's button
+  (`Open the agent form with a request for a new skill…`), the effort and budget menus
+  (`How hard the model thinks…`; the three-part budget sentence, label `budget 200k`), and
+  the task list's gate bar, which the fixture does not draw and whose sentence is pinned
+  by `gateAction`'s test.
+- Typing into a Save key box enables the button and its title drops to the accepted
+  sentence; clearing it greys the button again with `Paste a key first` above it. The
+  three links carry the guide's urls; Test key is greyed with the mock refusal.
+- The branch editor's `delete arrival` is greyed with `deleteScene`'s own refusal (the
+  entry scene) above its own sentence; `+ scene`, the script heading, `+ shot`, Group and
+  Ungroup (greyed with their selection refusals), the report's Start (greyed with the mock
+  refusal) and the asset editor's seed boxes (`seed` placeholder) are unchanged.
+- **Not reproduced live**: the effort menu's refusal on a model with no thinking knob,
+  because `agent.setModel` under mock left the model as it was; and the budget tooltip
+  moving with the spend, because a mock turn spends nothing. Both are pinned by
+  `convobar.test.ts`, and `sayBudget`'s `applyOffer` path is the one `sayCompact` uses.
+
+### The sweep
+
+Re-run against `examples/mySampleRepo` (The Transfer Student) at `e56cab3f`. Zero
+disagreements, as before. What moved beyond `sweptAt` and `gitSha`, exactly as stage 6
+expected:
+
+- Two new `convo` records, `cmd:agent.setEffort` (`supplies: ['effort']`) and
+  `cmd:agent.setBudget` (`supplies: ['budget']`); both enter `anchored`, 49 to 51.
+- One new `skills` record, `cmd:agent.run` with `form: true`; `agent.run` was already in
+  `anchored` through the document tree's menu.
+- No key, `enabled` or `refused` column of any existing record changed. The door's
+  `#undecomposed` key, the task list's `gate.approve#<character>` and the asset editor's
+  strip fields beyond the swept asset's rungs do not appear, since the fixture does not
+  reach them; their keys are pinned by the `controls` tests.
+- The one stray on file since the last sweep, a task row in the task list, is no longer
+  reported. As plan 1 recorded for its own sweep, a stray is a hit test in the window the
+  sweep ran in, and nothing here moved that row.

@@ -80,12 +80,39 @@ control is always registered as an anchor: a tour asked for that command highlig
 greyed control and shows the refusal the rule wrote, instead of reporting that the command
 has no control.
 
-Six rule modules return offers: `headerbar`, `convobar`, `projectbar`, `reportconvo`,
-`assetview` and `promptview`. Each exports `controls(state)`, the list of every offer the
-module can produce for a state, and its test asserts that the list's keys are the union of
-the module's functions' keys and that `duplicateKeys` finds none. The other editors build
-their offers inline; giving each a module is plan 2 of
-[`../plans/ux-behaviour-model-tasklist.md`](../plans/ux-behaviour-model-tasklist.md).
+Every anchor home has a rule module, and the module is where its offers are built. Each
+module exports `controls(state)`, the list of every offer it can produce for a state, over
+plain data the editor assembles at draw time: a shared view type, plus whatever the editor
+holds that the offer needs, converted to data. A `command:check` verdict is state the
+editor fetched and stored, keyed by everything it asked about; a widget's value is state;
+a gesture's weighing is state. The module never reads a promise or a widget. Each module's
+test asserts that the list's keys are the union of the module's functions' keys over two
+or three states and that `duplicateKeys` finds none. The table below is what plan 3's
+driver, a table from `AnchorHome` to the module's `controls`, is written from.
+
+| Home         | Module                       | State                                           |
+| ------------ | ---------------------------- | ----------------------------------------------- |
+| `header`     | `rules/headerbar.ts`         | `HeaderState`                                   |
+| `asset`      | `rules/assetview.ts`         | `AssetInfo \| undefined`                        |
+|              | `rules/promptview.ts`        | `PromptView`, and which clauses have a box open |
+| `branches`   | `rules/branch/controls.ts`   | `BranchState`                                   |
+| `convo`      | `rules/convobar.ts`          | `ConvoBarState`                                 |
+| `documents`  | `rules/documents.ts`         | `DocumentsState`                                |
+| `gengraph`   | `rules/gengraph.ts`          | `GroupState`                                    |
+| `onboarding` | `rules/onboarding.ts`        | `OnboardingState`                               |
+| `project`    | `rules/projectbar.ts`        | `ProjectBarState`                               |
+| `report`     | `rules/reportconvo.ts`       | `ReportControls`                                |
+| `script`     | `rules/script.ts`            | `ScriptPageState`                               |
+| `skills`     | `rules/skills.ts`            | `SkillsState`                                   |
+| `taskgraph`  | `rules/taskGraph.ts`         | `GateState`                                     |
+| `tasklist`   | `rules/tasklist.ts`          | `TaskListState`                                 |
+| `timeline`   | `rules/timeline/controls.ts` | `TimelineState`                                 |
+| `wiki`       | `rules/wiki.ts`              | `WikiState`                                     |
+
+The asset home has two modules, one for the bytes and one for the prompt, and a driver
+concatenates them. The wiki and skills panes share `rules/docbuffer.ts`, whose `saveOffer`
+is what `DocBuffer.saveOffer` delegates to. A module runs under the node-only desktop jest
+project, which maps no `pathux` module, so it imports from `pathux` type-only.
 
 ### Recording anchors
 
