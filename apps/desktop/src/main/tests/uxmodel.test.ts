@@ -24,6 +24,20 @@ const anchored = new Set(
 
 const listed = (id: string) => model.paletteOnly.some((entry) => paletteMatches(entry.match, id));
 
+interface SweptRecord {
+  id: string;
+  editor: string;
+  key?: string;
+  when?: string;
+  supplies?: string[];
+  form?: boolean;
+  refused?: string;
+}
+
+const sweep = JSON.parse(readFileSync(resolve(__dirname, '../../../anchors.json'), 'utf8')) as {
+  records: SweptRecord[];
+};
+
 describe('ux-model.json against the registry', () => {
   it('names only commands that exist', () => {
     expect([...anchored].filter((id) => !live.includes(id)).sort()).toEqual([]);
@@ -44,5 +58,45 @@ describe('ux-model.json against the registry', () => {
       .filter((entry) => !live.some((id) => !anchored.has(id) && paletteMatches(entry.match, id)))
       .map((entry) => entry.match);
     expect(dead).toEqual([]);
+  });
+});
+
+/**
+ * One direction only: what the sweep drew, the situations must list. The other direction is not
+ * a rule, because a situation can describe a state the swept project never reached.
+ */
+describe('ux-model.json against anchors.json', () => {
+  const controls = model.records.filter((r) => r.via === 'control');
+  const same = (a: readonly string[] | undefined, b: readonly string[] | undefined) =>
+    JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+  it('lists every control the sweep drew, with the same form and supplies', () => {
+    const unlisted = sweep.records
+      .filter((swept) => swept.key !== undefined)
+      .filter(
+        (swept) =>
+          !controls.some(
+            (record) =>
+              record.editor === swept.editor &&
+              record.offer.id === swept.id &&
+              (swept.form === undefined || record.offer.form === swept.form) &&
+              (swept.supplies === undefined || same(record.offer.supplies, swept.supplies)),
+          ),
+      )
+      .map((swept) => `${swept.editor} ${swept.key}`);
+    expect(unlisted).toEqual([]);
+  });
+
+  it('lists the same menu entries as the sweep, entry for entry', () => {
+    const pair = (r: { when?: string; id: string }) => `${r.when ?? ''} ${r.id}`;
+    const derived = model.records
+      .filter((r) => r.via === 'menu')
+      .map(pair)
+      .sort();
+    const swept = sweep.records
+      .filter((r) => r.key === undefined)
+      .map(pair)
+      .sort();
+    expect(derived).toEqual(swept);
   });
 });

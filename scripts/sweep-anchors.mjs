@@ -23,6 +23,24 @@ import { connect, evaluate, exec, pageTarget } from './cdp.mjs';
 
 const OUT = resolve(root, 'apps/desktop/anchors.json');
 
+/**
+ * The derived model (`pnpm gen:uxmodel`), read for two things: which `(editor, id)` pairs some
+ * record marks `reasonFrom: 'stack'`, whose measured wording must then equal the stack's verdict,
+ * and how many derived command ids each editor has, so the sweep can say how much of it was drawn.
+ */
+const derived = JSON.parse(await fs.readFile(resolve(root, 'apps/desktop/ux-model.json'), 'utf8'));
+const stackWorded = new Set(
+  derived.records
+    .filter((r) => r.via === 'control' && r.reasonFrom === 'stack')
+    .map((r) => `${r.editor} ${r.offer.id}`),
+);
+const derivedIds = new Map();
+for (const record of derived.records) {
+  if (record.via !== 'control') continue;
+  if (!derivedIds.has(record.editor)) derivedIds.set(record.editor, new Set());
+  derivedIds.get(record.editor).add(record.offer.id);
+}
+
 /** How long a pane is given to load its subject and draw. Reads cross IPC and a disk read. */
 const SETTLE_MS = 700;
 
@@ -45,6 +63,12 @@ const commands = catalog.commands.map((c) => c.id).sort();
 const editors =
   catalog.commands.find((c) => c.id === 'view.open')?.props.find((p) => p.name === 'editor')
     ?.values ?? [];
+
+/** Whether the anchor omits a prop its command requires. */
+function leavesBlank(anchor) {
+  const props = catalog.commands.find((c) => c.id === anchor.id)?.props ?? [];
+  return props.some((p) => p.required && !(p.name in (anchor.props ?? {})));
+}
 if (editors.length === 0) throw new Error('view.open declares no editors — is this build current?');
 
 /** What the tree's right-click reaches. Derived from `menuFor`, so no pane has to be opened. */
@@ -129,7 +153,9 @@ for (const editor of editors) {
   const dump = JSON.parse(await evaluate(socket, 'JSON.stringify(window.__vnAnchors.dump())'));
   const mine = dump.filter((a) => a.editor === editor && a.id !== undefined);
   const items = dump.filter((a) => a.editor === editor && a.id === undefined).length;
-  drawn.push({ editor, count: mine.length, items });
+  const drawnIds = new Set(mine.map((a) => a.id));
+  const undrawn = [...(derivedIds.get(editor) ?? [])].filter((id) => !drawnIds.has(id)).sort();
+  drawn.push({ editor, count: mine.length, items, undrawn });
 
   // The second oracle. A box being where it says proves nothing about what a click there reaches:
   // a graph's node layer takes no pointer events, and a widget can be covered. The canvas's own
@@ -156,6 +182,25 @@ for (const editor of editors) {
     );
     // `undeclared` is not permission, so it is not an opinion this can disagree with either.
     if (verdict.state === 'undeclared') continue;
+    // A refusal the derived model says is worded by the stack has to carry the stack's sentence.
+    // A refused offer carries no props, so where the command requires one the stack was asked
+    // about the blank, and its answer is not the sentence the pane echoed.
+    if (
+      !anchor.enabled &&
+      verdict.state === 'refuse' &&
+      stackWorded.has(`${editor} ${anchor.id}`) &&
+      !leavesBlank(anchor) &&
+      anchor.reason !== verdict.message
+    ) {
+      disagreements.push({
+        editor,
+        key    : anchor.key,
+        pane   : `refuses it — ${anchor.reason ?? ''}`,
+        stack  : `refuses it — ${verdict.message ?? ''}`,
+        wording: true,
+      });
+      continue;
+    }
     if (anchor.enabled === (verdict.state === 'accept')) continue;
     disagreements.push({
       editor,
@@ -205,16 +250,31 @@ process.stdout.write(
   `anchors.json: ${anchored.length} of ${commands.length} commands have a UI anchor; ` +
     `the rest are palette-only. Measured against ${under.project || '(no project)'}\n`,
 );
-for (const { editor, count, items } of drawn) {
-  if (count > 0) continue;
-  const item = items > 0 ? ` (${items} subjects to click, and no command)` : '';
-  process.stdout.write(`  ${editor}: draws no command anchor yet${item}\n`);
+for (const { editor, count, items, undrawn } of drawn) {
+  if (count === 0) {
+    const item = items > 0 ? ` (${items} subjects to click, and no command)` : '';
+    process.stdout.write(`  ${editor}: draws no command anchor yet${item}\n`);
+  }
+  // Information rather than a finding: the situations list controls the swept project may not
+  // have had a subject for, and plan 7 is what closes that gap.
+  if (undrawn.length > 0) {
+    process.stdout.write(
+      `  ${editor}: ${undrawn.length} derived command(s) not drawn: ${undrawn.join(' ')}\n`,
+    );
+  }
+}
+for (const editor of [...derivedIds.keys()].sort()) {
+  if (drawn.some((d) => d.editor === editor)) continue;
+  process.stdout.write(
+    `  ${editor}: not swept (${derivedIds.get(editor).size} derived commands)\n`,
+  );
 }
 for (const stray of new Set(strays)) {
   process.stdout.write(`  ⚠ ${stray}: it is drawn, but a click in the middle of it lands elsewhere
 `);
 }
 for (const d of disagreements) {
-  process.stdout.write(`  ⚠ ${d.editor} ${d.key}: the pane ${d.pane}; the stack ${d.stack}\n`);
+  const about = d.wording ? 'the wording differs: the pane' : 'the pane';
+  process.stdout.write(`  ⚠ ${d.editor} ${d.key}: ${about} ${d.pane}; the stack ${d.stack}\n`);
 }
 process.exit(0);
