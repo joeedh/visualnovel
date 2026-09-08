@@ -26,7 +26,7 @@ import {
   type GraphControl,
   type Tool,
   type ToolContext,
-} from '../index.js';
+} from '../../index.js';
 
 const registry = createRegistry();
 function tool(name: string): Tool {
@@ -364,7 +364,7 @@ describe('edit_asset_graph with groups', () => {
 
 describe('the layer these tools sit in', () => {
   it('still imports neither the pipeline nor the scheduler', async () => {
-    const src = join(__dirname, '..');
+    const src = join(__dirname, '..', '..');
     const names = await fs.readdir(src, { recursive: true, withFileTypes: true });
     const files = names
       .filter((e) => e.isFile() && e.name.endsWith('.ts'))

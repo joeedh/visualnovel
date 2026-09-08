@@ -6,7 +6,7 @@ import {
   type HistoryMessage,
   type HistoryReader,
 } from '../history.js';
-import type { Tool, ToolContext, ToolResult } from '../tools.js';
+import type { Tool, ToolContext, ToolResult } from '../tools/core.js';
 
 const readerOf = (messages: HistoryMessage[]): HistoryReader => ({
   messages: () => Promise.resolve(messages),

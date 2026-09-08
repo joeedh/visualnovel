@@ -85,11 +85,12 @@ module.exports = {
       ...shared,
       displayName: `@vn/${name}`,
       rootDir    : __dirname,
-      // Tests live in a `tests/` subfolder beside the code they cover. No
-      // <rootDir> prefix: jest's glob path-separator conversion breaks on
-      // dot-directories in the path (e.g. .claude/worktrees). Crawling is still
+      // Tests live in a `tests/` subfolder beside the code they cover, optionally nested
+      // one level deeper to mirror a split source directory (e.g. `tests/tools/*.test.ts`
+      // beside `tools/*.ts`). No <rootDir> prefix: jest's glob path-separator conversion
+      // breaks on dot-directories in the path (e.g. .claude/worktrees). Crawling is still
       // scoped to rootDir via `roots`.
-      testMatch  : [`**/packages/${name}/**/tests/*.test.ts`],
+      testMatch  : [`**/packages/${name}/**/tests/**/*.test.ts`],
     })),
     {
       ...shared,

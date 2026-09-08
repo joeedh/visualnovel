@@ -35,7 +35,7 @@ import {
   type Tool,
   type ToolContext,
   type ToolResult,
-} from './tools.js';
+} from './tools/index.js';
 
 /** The two states of the plan/permission machine. */
 export type AgentMode = 'plan' | 'execute';

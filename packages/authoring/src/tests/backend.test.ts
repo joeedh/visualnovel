@@ -7,7 +7,7 @@ import type {
 } from '@vn/providers';
 import { z } from 'zod';
 import { ProviderError } from '@vn/util';
-import { describeToolParams, jsonSchemaOf } from '../tools.js';
+import { describeToolParams, jsonSchemaOf } from '../tools/core.js';
 import {
   NativeAgentBackend,
   StructuredAgentBackend,

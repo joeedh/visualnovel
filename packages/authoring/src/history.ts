@@ -8,7 +8,7 @@
  */
 import { z } from 'zod';
 import { messageText } from './backend.js';
-import type { Tool, ToolResult } from './tools.js';
+import type { Tool, ToolResult } from './tools/core.js';
 
 /** One message as the log kept it, before any compaction replaced it. */
 export interface HistoryMessage {
