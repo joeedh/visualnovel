@@ -13,11 +13,17 @@ import {
   selectionAfterDelete,
   type NewScene,
 } from '../../rules/branch/compose.js';
+import {
+  deleteSceneAction,
+  newSceneAction,
+  removes,
+  writeSceneAction,
+} from '../../rules/branch/controls.js';
 import { grabAt } from '../../rules/branch/grab.js';
 import { CARD, branchGraph, type BranchGraph } from '../../rules/branch/graph.js';
 import { DURATION, tweenLayout } from '../../rules/branch/tween.js';
 import { branchState, relabel, type BranchState } from '../../../src/shared/interactions.js';
-import { noticeForCheck, type Notice } from '../../../src/shared/lineedit.js';
+import type { Notice } from '../../../src/shared/lineedit.js';
 import {
   GRAB,
   aim,
@@ -31,7 +37,6 @@ import {
   type Drag,
 } from '../interactions/branch.js';
 import { pickOracle, redrawing } from '../tour/anchors.js';
-import { refuse } from '../../rules/anchors.js';
 import { gestureState } from '../interactions/gestures.js';
 import { exec, refreshWorkspace } from '../app/bridge.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
@@ -42,12 +47,9 @@ import BRANCH_CSS from '../../styles/branch.css?inline';
 import type { VnContext } from '../app/context.js';
 import type { Invocation } from '@vn/commands';
 import type { LaidOutNode, Point } from '../../graph/types.js';
-import type { StoryEdge, StoryGraph, StoryScene } from '../../../src/shared/ipc.js';
+import type { CommandCheck, StoryEdge, StoryGraph, StoryScene } from '../../../src/shared/ipc.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
-
-/** What the delete button does, said before its check answers and again as its tooltip after. */
-const removes = (scene: string): string => `Remove ${scene} and the shots that illustrate it`;
 
 /**
  * The frame around `branch.css`, which is imported as-is and carries the cards, the labels and the
@@ -136,6 +138,8 @@ export class BranchEditor extends VnEditor {
   private notice: Notice | null = null;
   /** A scene the author asked for but has not yet written; editing it changes the command's own props. */
   private naming: NewScene | null = null;
+  /** The delete button's `command:check` answer, for the scene it was asked about. */
+  private deleteVerdict: { scene: string; check: CommandCheck } | undefined;
 
   /** The open label editor, held across redraws: an `<input>` keeps its value, not its focus. */
   private editing: string | null = null;
@@ -334,16 +338,10 @@ export class BranchEditor extends VnEditor {
     if (!this.naming) {
       // The button that opens the naming row, not the row's own Write it: this is where writing a
       // scene starts, and both the id and the heading are typed after it.
+      const add = newSceneAction();
       anchors.act(
-        this.bar.button('+ scene', () => {}),
-        {
-          ok      : true,
-          id      : 'story.newScene',
-          props   : {},
-          label   : '+ scene',
-          tooltip : 'Name a new scene and add it to the graph, unconnected',
-          supplies: ['scene', 'heading'],
-        },
+        this.bar.button(add.label, () => {}),
+        add,
         () => this.startNaming(),
       );
       const scene = this.ui.sceneId;
@@ -625,19 +623,15 @@ export class BranchEditor extends VnEditor {
   private askDelete(scene: string, button: Button): void {
     const step = asInvocation(deleteSceneIntent(scene));
     void api.invoke('command:check', step).then((check) => {
-      const control = { id: step.id, label: `delete ${scene}` };
+      // An answer about a scene the selection has since left would replace the live button's
+      // pass with a detached one
+      if (this.ui.sceneId !== scene) return;
+      this.deleteVerdict = { scene, check };
       // Its own pass, keyed on the scene: the answer lands after the bar is drawn, and the anchor
       // has to carry the refusal the button ends up wearing rather than the offer it was drawn on.
       redrawing('branches', 'delete').act(
         button,
-        check.state === 'refuse'
-          ? { ...refuse(check.message), ...control, tooltip: removes(scene) }
-          : {
-              ok   : true,
-              props: step.props,
-              ...control,
-              tooltip: noticeForCheck(check)?.text || removes(scene),
-            },
+        deleteSceneAction(scene, check),
         () => void this.deleteScene(scene),
       );
     });
@@ -717,12 +711,7 @@ export class BranchEditor extends VnEditor {
     const go = el('button', 'go', 'Write it');
     // Its own pass: the row appears and vanishes without the bar being redrawn, and a detached
     // node is dropped from the live set rather than reported as scrolled away.
-    redrawing('branches', 'naming').record(go, {
-      ok: true,
-      ...asInvocation(newSceneIntent(this.naming)),
-      label  : 'Write it',
-      tooltip: 'Create the scene file and put it on the graph, connected to nothing',
-    });
+    redrawing('branches', 'naming').record(go, writeSceneAction(this.naming));
     go.addEventListener('click', () => void this.write());
     const no = el('button', 'no', 'Cancel');
     no.title = 'Abandon the new scene. Nothing is written.';

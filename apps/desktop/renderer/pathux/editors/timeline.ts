@@ -1,7 +1,7 @@
 import type { Container, MenuTemplate } from 'pathux';
 import { api } from '../../api.js';
 import { spansFor, type Edge } from '@vn/scriptedit';
-import type { Coverage, ShotSpan } from '../../../src/shared/ipc.js';
+import type { CommandCheck, Coverage, ShotSpan } from '../../../src/shared/ipc.js';
 import { commitOf, noticeForCheck, type Notice } from '../../../src/shared/lineedit.js';
 import {
   BUSY_DELAY_MS,
@@ -33,8 +33,15 @@ import {
   sourceLabel,
   type OutfitRow,
 } from '../../rules/timeline/wardrobe.js';
+import {
+  addShotAction,
+  byHandDoor,
+  decomposeDoor,
+  doorAction,
+  doorKey,
+  type Door,
+} from '../../rules/timeline/controls.js';
 import { redrawing } from '../tour/anchors.js';
-import { refuse } from '../../rules/anchors.js';
 import { exec, onInvalidate } from '../app/bridge.js';
 import { gestureState } from '../interactions/gestures.js';
 import { MENU_SEP } from '../chrome/contextmenu.js';
@@ -198,6 +205,8 @@ export class TimelineEditor extends VnEditor {
   private bands = new Map<number, HTMLElement>();
   private overlay: HTMLElement[] = [];
   private noticeEl: HTMLElement | undefined;
+  /** Each door's `command:check` answer, keyed by `doorKey`, for the doors drawn last. */
+  private verdicts: Record<string, CommandCheck> = {};
 
   static override define() {
     return {
@@ -326,18 +335,10 @@ export class TimelineEditor extends VnEditor {
     // and a scene whose every line is covered still takes a hand-placed shot, which claims its
     // lines off the shots that hold them.
     const anchors = redrawing('timeline', 'bar');
-    const adds = {
-      id     : 'story.newShot',
-      label  : '+ shot',
-      tooltip:
-        'Place a shot by hand over lines you name — a new frame to render. Opens the command, priced before it runs.',
-      form   : true,
-    };
+    const adds = addShotAction(this.ui.sceneId);
     anchors.act(
       this.bar.button(adds.label, () => {}),
-      this.ui.sceneId
-        ? { ok: true, props: { scene: this.ui.sceneId }, ...adds }
-        : { ...refuse('No scene is on screen.'), ...adds },
+      adds,
       (action) => openCommandDialog(action.id, action.props as Record<string, string>),
     );
     const refresh = this.bar.button('Refresh', () => void this.load());
@@ -372,6 +373,8 @@ export class TimelineEditor extends VnEditor {
   // -------------------------------------------------------------------------
 
   private rebuildSurface(): void {
+    // The doors are re-asked below, so an answer kept from the last draw is not this draw's
+    this.verdicts = {};
     this.surface.textContent = '';
     this.bands.clear();
     this.overlay = [];
@@ -424,48 +427,24 @@ export class TimelineEditor extends VnEditor {
     const doors = el('span', 'tl-doors');
     note.appendChild(doors);
     // The same prefill the dialog opens with, so the check's verdict is the verdict of this door.
-    const byHand = { scene: data.sceneId, lines: data.lines[0]?.id ?? '' };
-    doors.appendChild(
-      this.door(
-        'decompose',
-        'story.decomposeAll',
-        {},
-        'Ask the writing model to storyboard every scene that has none — one model call per scene, priced in the dialog before it runs.',
-      ),
-    );
-    doors.appendChild(
-      this.door(
-        'place a shot by hand',
-        'story.newShot',
-        byHand,
-        `Create the storyboard for ${data.sceneId} yourself, one shot at a time — which ends decomposition for this scene.`,
-      ),
-    );
+    doors.appendChild(this.door(data.sceneId, decomposeDoor()));
+    doors.appendChild(this.door(data.sceneId, byHandDoor(data.sceneId, data.lines[0]?.id ?? '')));
     return note;
   }
 
-  /** Renders a button over one command, checked before it is drawn. */
-  private door(
-    label: string,
-    id: string,
-    props: Record<string, string>,
-    does: string,
-  ): HTMLButtonElement {
+  /** Renders a button over one door, checked before it is drawn. */
+  private door(sceneId: string, door: Door): HTMLButtonElement {
     const button = document.createElement('button');
     button.className = 'tl-door';
-    button.textContent = label;
+    button.textContent = door.label;
     button.disabled = true;
-    button.title = does;
-    void api.invoke('command:check', { id, props }).then((check) => {
+    button.title = door.tooltip;
+    void api.invoke('command:check', { id: door.id, props: door.props }).then((check) => {
+      this.verdicts[doorKey(sceneId, door)] = check;
       // Recorded once the verdict lands, in its own pass: a door is drawn before its answer comes
       // back, and the anchor has to carry the refusal the button ends up wearing.
-      const control = { id, label, tooltip: does, form: true };
-      redrawing('timeline', `door:${id}`).act(
-        button,
-        check.state === 'refuse'
-          ? { ...refuse(check.message), ...control }
-          : { ok: true, props, ...control },
-        (action) => openCommandDialog(action.id, action.props as Record<string, string>),
+      redrawing('timeline', `door:${door.id}`).act(button, doorAction(door, check), (action) =>
+        openCommandDialog(action.id, action.props as Record<string, string>),
       );
     });
     return button;
