@@ -283,7 +283,9 @@ export class OnboardingEditor extends VnEditor {
         on      : vendor.vendor,
         supplies: ['key'],
       };
-      this.anchors.record(
+      // A pass of its own, replaced on every keystroke: a second offer on a node the page pass
+      // already presented would be refused rather than re-presented
+      redrawing('onboarding', `save:${vendor.vendor}`).record(
         save,
         reason !== ''
           ? { ...refuse(reason), ...control }

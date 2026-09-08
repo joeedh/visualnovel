@@ -497,6 +497,15 @@ copies the tick's own title onto the words beside it.
 - **The report editor's `button()` helper takes an optional tip**, and its stop sentence
   is a module constant, since the offer now carries it.
 
+### Found after shipping
+
+- **The onboarding Save key box stopped enabling.** `describe()` re-records the box into
+  the page pass on every keystroke, and `present()` refuses a second offer on a node whose
+  `ok` differs rather than re-applying it, so the button stayed greyed after a key was
+  typed. Fixed on `master` the same day by recording the box into a pass of its own,
+  `onboarding/save:<vendor>`, replaced on each call. The rule it exposes, that a control
+  re-presented between passes needs `applyOffer` or its own pass, is written into plan 2.
+
 ### The three behaviour changes, looked at over CDP
 
 - **The frozen custom box.** Unreachable: the asset editor returns before drawing the mode
