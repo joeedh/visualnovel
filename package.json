@@ -34,6 +34,7 @@
     "lint:comments:full": "pnpm exec commentlint .",
     "prose:style": "node scripts/prose-style.mjs",
     "gen:command-table": "node scripts/gen-command-table.mjs",
+    "gen:uxmodel": "node scripts/gen-ux-model.mjs",
     "format": "prettier --cache --write .",
     "format:check": "prettier --cache --check .",
     "markdown-toc": "node scripts/markdown-toc.mjs",

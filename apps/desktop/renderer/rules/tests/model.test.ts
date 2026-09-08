@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { duplicateKeys } from '../anchors.js';
 import {
   anchoredIds,
@@ -10,7 +12,12 @@ import {
 } from '../model.js';
 import { PALETTE_ONLY } from '../paletteonly.js';
 import { menuAnchors } from '../../pathux/doctree/doctree.js';
-import { paletteMatches, UX_MODEL, UX_PALETTE_ONLY } from '../../../src/shared/uxmodel.js';
+import {
+  paletteMatches,
+  UX_MODEL,
+  UX_PALETTE_ONLY,
+  type UxRecord,
+} from '../../../src/shared/uxmodel.js';
 
 const file = model();
 
@@ -89,6 +96,37 @@ describe('model()', () => {
       ok     : true,
       props  : { a: 1 },
     });
+  });
+});
+
+describe('ux-model.json', () => {
+  const committed = UX_MODEL.parse(
+    JSON.parse(readFileSync(resolve(__dirname, '../../../ux-model.json'), 'utf8')),
+  );
+
+  // Record by record rather than one deep equality, so a stale file names the first control that
+  // moved instead of printing a diff the size of the file.
+  it('equals a regeneration (run `pnpm gen:uxmodel` after touching rules/** or a situation)', () => {
+    const name = (r: UxRecord | undefined) =>
+      r === undefined
+        ? '(none)'
+        : `${r.module}/${r.situation} ${r.via === 'control' ? r.key : `${r.when} ${r.id}`}`;
+    const first = file.records.findIndex(
+      (record, i) => JSON.stringify(record) !== JSON.stringify(committed.records[i]),
+    );
+    const hint = 'differs from model(); run `pnpm gen:uxmodel`';
+    if (first >= 0) {
+      const fresh = file.records[first];
+      const stale = committed.records[first];
+      expect({ record: name(fresh), hint, committed: stale }).toEqual({
+        record: name(fresh),
+        hint,
+        committed: fresh,
+      });
+    }
+    expect(committed.records.length).toBe(file.records.length);
+    expect(committed.situations).toEqual(file.situations);
+    expect(committed.paletteOnly).toEqual(file.paletteOnly);
   });
 });
 
