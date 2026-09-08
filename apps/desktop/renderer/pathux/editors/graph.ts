@@ -6,11 +6,13 @@ import {
   BARRIER_ID,
   clusterMembers,
   clusteredGraphOf,
+  gateApproveAction,
   slotNodeIds,
   subgraphFor,
   taskGraphOf,
   type ClusterKind,
   type ClusterNodeView,
+  type GateState,
   type TaskGraphModel,
   type TaskNodeView,
 } from '../../rules/taskGraph.js';
@@ -25,7 +27,7 @@ import {
 } from '../doctree/selection.js';
 import { openCommandDialog } from '../chrome/dialog.js';
 import { pickOracle, redrawing, type AnchorPass } from '../tour/anchors.js';
-import { refuse } from '../../rules/anchors.js';
+import type { Offer } from '../../rules/anchors.js';
 import { TOKENS, alpha } from '../app/tokens.js';
 import type { EdgeRoute } from '../../graph/edges.js';
 import type { Pick as GraphPick } from '../../graph/hit.js';
@@ -96,7 +98,8 @@ export class TaskGraphEditor extends VnEditor {
   /** Fit once, when the first layout meets a sized surface; refitting later would undo panning. */
   private fitted = false;
   private drawn = '';
-  private anchors: AnchorPass = redrawing('taskgraph', 'body');
+  /** What the gate said for each pending character, once asked; cleared when re-asked. */
+  private gates: GateState['gates'] = {};
 
   static override define() {
     return {
@@ -277,7 +280,6 @@ export class TaskGraphEditor extends VnEditor {
 
   /** Recompute the derivation, then the layout, then draw. */
   private rebuild(): void {
-    this.anchors = redrawing('taskgraph', 'body');
     const status = this.status;
     if (status) {
       this.model = taskGraphOf(status, this.story);
@@ -515,11 +517,14 @@ export class TaskGraphEditor extends VnEditor {
     // The gate is an inference rather than an edge, and the node says so in place of a legend.
     box.appendChild(mono('derived', TOKENS.mistDim, 9.5));
 
+    // Anchored at once from the unanswered offer, then again from the answers: the click is live
+    // before the round trip, and a pass replaced whole is what lets a button be re-presented
+    this.gates = {};
+    const pass = redrawing('taskgraph', 'gate');
     const buttons: { character: string; cta: HTMLButtonElement }[] = [];
     for (const character of pending) {
       const cta = document.createElement('button');
-      cta.textContent = `${character} →`;
-      cta.title = `Approve a portrait for ${character}`;
+      cta.textContent = gateApproveAction(character, undefined, undefined).label;
       Object.assign(cta.style, {
         // The node layer is `pointer-events: none`, and this button is the one element that needs
         // a real DOM target.
@@ -538,10 +543,9 @@ export class TaskGraphEditor extends VnEditor {
         fontFamily   : TOKENS.mono,
         fontSize     : '11px',
       });
-      cta.addEventListener('click', (event) => {
-        event.stopPropagation();
-        this.resolve(character);
-      });
+      // Stopped before the canvas reads it as a pick; the run itself is wired by `act`
+      cta.addEventListener('click', (event) => event.stopPropagation());
+      this.anchorGate(pass, character, cta);
       box.appendChild(cta);
       buttons.push({ character, cta });
     }
@@ -574,28 +578,20 @@ export class TaskGraphEditor extends VnEditor {
       const pass = redrawing('taskgraph', 'gate');
       buttons.forEach(({ character, cta }, at) => {
         const [check, candidates] = answers[at] ?? [];
-        const refusal = check?.state === 'refuse' ? check.message : undefined;
-        const greyed = refusal !== undefined && (candidates?.length ?? 0) === 0;
-        cta.style.opacity = greyed ? '0.5' : '1';
-        cta.style.cursor = greyed ? 'default' : 'pointer';
-        // The hash is the author's judgement rather than the graph's, so the dialog asks for it and
-        // the anchor names it as something supplied rather than carrying a wrong one.
-        const control = {
-          id      : 'gate.approve',
-          label   : cta.textContent ?? '',
-          tooltip : refusal ?? `Approve a portrait for ${character}`,
-          on      : character,
-          supplies: ['hash'],
-          form    : true,
-        };
-        pass.record(
-          cta,
-          refusal !== undefined && greyed
-            ? { ...refuse(refusal), ...control, tooltip: `Approve a portrait for ${character}` }
-            : { ok: true, props: { characterId: character }, ...control },
-        );
+        this.gates[character] = { check, candidates: candidates?.length };
+        const offer = this.anchorGate(pass, character, cta);
+        cta.style.opacity = offer.ok ? '1' : '0.5';
+        cta.style.cursor = offer.ok ? 'pointer' : 'default';
       });
     });
+  }
+
+  /** Draws one gate button through `act` from what the gate has said about its character so far. */
+  private anchorGate(pass: AnchorPass, character: string, cta: HTMLButtonElement): Offer {
+    const gate = this.gates[character];
+    const offer = gateApproveAction(character, gate?.check, gate?.candidates);
+    pass.act(cta, offer, () => this.resolve(character));
+    return offer;
   }
 
   /**

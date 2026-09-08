@@ -16,7 +16,15 @@
  *    task hash, rather than drawing the same future twice — once as a promise and once as work.
  *    An unplanned slot is an addressable picture with a real name, so nothing here estimates.
  */
-import type { PipelineStatus, SlotNode, StoryGraph, Task, TaskStatus } from '../../src/shared/ipc';
+import type {
+  CommandCheck,
+  PipelineStatus,
+  SlotNode,
+  StoryGraph,
+  Task,
+  TaskStatus,
+} from '../../src/shared/ipc';
+import { refuse, type Offer } from './anchors.js';
 import type { Graph, GraphEdge, GraphNode } from '../graph/types.js';
 
 /** One size for tasks and slots, so the two never misalign within a rank. */
@@ -495,4 +503,49 @@ export function subgraphFor(model: TaskGraphModel, targetId: string): TaskGraphM
     barrier !== null &&
     (barrier.below.has(targetId) || isGateSeed(target, new Set(barrier.pending)));
   return scopedView(model, keep, concerns);
+}
+
+/** What the task graph reads when it draws the gate's buttons. */
+export interface GateState {
+  /** The characters whose portrait approval the run is waiting on. */
+  pending: string[];
+  /** What `gate.approve` and the candidate list said for each character, once asked. */
+  gates: Record<string, { check?: CommandCheck; candidates?: number }>;
+}
+
+/**
+ * The gate's one affordance: open the approval command on a character. The hash is the author's
+ * judgement rather than the graph's, so the form asks for it and the anchor names it as supplied.
+ *
+ * Two answers decide it, because the two refusals want opposite controls. With nothing on file the
+ * form cannot be completed, so the button is greyed. With candidates on file the form is where the
+ * portrait is named, so the button stays live and the check's sentence goes to the tooltip. An
+ * unanswered check accepts, and an unanswered count is none.
+ */
+export function gateApproveAction(
+  character: string,
+  check: CommandCheck | undefined,
+  candidates: number | undefined,
+): Offer {
+  const refusal = check?.state === 'refuse' ? check.message : undefined;
+  const control = {
+    id      : 'gate.approve',
+    label   : `${character} →`,
+    tooltip : refusal ?? `Approve a portrait for ${character}`,
+    on      : character,
+    supplies: ['hash'],
+    form    : true,
+  };
+  if (refusal !== undefined && (candidates ?? 0) === 0) {
+    return { ...refuse(refusal), ...control, tooltip: `Approve a portrait for ${character}` };
+  }
+  return { ok: true, props: { characterId: character }, ...control };
+}
+
+/** Every offer the task graph draws from this module: one gate button per pending character. */
+export function controls(state: GateState): readonly Offer[] {
+  return state.pending.map((character) => {
+    const gate = state.gates[character];
+    return gateApproveAction(character, gate?.check, gate?.candidates);
+  });
 }

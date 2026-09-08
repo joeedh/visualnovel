@@ -2,7 +2,13 @@ import type { Container } from 'pathux';
 import { check, exec, onInvalidate, report } from '../app/bridge.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { redrawing, type AnchorPass } from '../tour/anchors.js';
-import { refuse, type Offer } from '../../rules/anchors.js';
+import {
+  linkAction,
+  saveKeyAction,
+  setKeyKey,
+  testKeyAction,
+  type OnboardingState,
+} from '../../rules/onboarding.js';
 import ONBOARDING_CSS from '../../styles/onboarding.css?inline';
 import {
   GUIDE_URL_FIELDS,
@@ -37,6 +43,8 @@ export class OnboardingEditor extends VnEditor {
   private token = 0;
   /** The scope each vendor's box would write to, remembered across a repaint. */
   private scopes = new Map<string, KeyScope>();
+  /** What the two key commands said, keyed as they were asked; cleared when the cards are redrawn. */
+  private verdicts: OnboardingState['verdicts'] = { setKey: {}, testKey: {} };
   private unwatch: (() => void) | undefined;
 
   static override define() {
@@ -113,6 +121,7 @@ export class OnboardingEditor extends VnEditor {
 
   private paint(): void {
     this.anchors = redrawing('onboarding', 'page');
+    this.verdicts = { setKey: {}, testKey: {} };
     this.page.textContent = '';
     const guide = this.guide;
     if (!guide) {
@@ -184,31 +193,15 @@ export class OnboardingEditor extends VnEditor {
   /** The three pages the app is willing to open, which are three fields of the shipped guide. */
   private linkRow(vendor: KeyGuideVendor): HTMLElement {
     const row = el('div', 'ob-buttons');
-    const labels: Record<(typeof GUIDE_URL_FIELDS)[number], [string, string]> = {
-      console: ['Open console', 'Open the page where a key is created, in your browser'],
-      docs   : ['Provider docs', "Open the provider's own version of these steps"],
-      billing: ['Pricing', 'Open what this provider charges'],
-    };
     for (const field of GUIDE_URL_FIELDS) {
-      const url = vendor[field];
-      const [label, why] = labels[field];
-      const control = { id: 'app.openKeyLink', label, on: `${vendor.vendor}/${field}` };
-      const offer: Offer =
-        url === ''
-          ? {
-              ...refuse(`The setup guide names no ${field} page for ${vendor.vendor}.`),
-              ...control,
-              tooltip: why,
-            }
-          : {
-              ok   : true,
-              props: { provider: vendor.vendor, link: field },
-              ...control,
-              tooltip: `${why} — ${url}`,
-            };
+      const offer = linkAction(vendor, field);
       row.appendChild(
         this.anchors.act(
-          el('button', field === 'console' ? 'ob-btn go' : 'ob-btn', label) as HTMLButtonElement,
+          el(
+            'button',
+            field === 'console' ? 'ob-btn go' : 'ob-btn',
+            offer.label,
+          ) as HTMLButtonElement,
           offer,
           (action) => void exec(action.id, action.props).then(report),
         ),
@@ -267,29 +260,16 @@ export class OnboardingEditor extends VnEditor {
         key     : '',
         scope   : chosen,
       });
-      const reason =
-        verdict.state === 'refuse'
-          ? verdict.message
-          : box.value.trim() === ''
-            ? 'Paste a key first'
-            : '';
-      // Re-recorded whenever the scope changes, because the scope is a prop the anchor carries.
-      // The key is not: `project.setKey` declares it `prop.secret`, and an anchor is dumped to
-      // `window.__vnAnchors` and swept to disk, so it is named as supplied and never carried.
-      const control = {
-        id      : 'project.setKey',
-        label   : 'Save key',
-        tooltip : (verdict.state === 'accept' && verdict.message) || 'Write this key',
-        on      : vendor.vendor,
-        supplies: ['key'],
-      };
-      // A pass of its own, replaced on every keystroke: a second offer on a node the page pass
+      // An answer about a scope the author has since left would re-present the box for the wrong
+      // prop
+      if (scope.value !== chosen) return;
+      this.verdicts.setKey[setKeyKey(vendor.vendor, chosen)] = verdict;
+      // Re-recorded whenever the scope changes, because the scope is a prop the anchor carries. A
+      // pass of its own, replaced on every keystroke: a second offer on a node the page pass
       // already presented would be refused rather than re-presented
       redrawing('onboarding', `save:${vendor.vendor}`).record(
         save,
-        reason !== ''
-          ? { ...refuse(reason), ...control }
-          : { ok: true, props: { provider: vendor.vendor, scope: chosen }, ...control },
+        saveKeyAction(vendor.vendor, box.value, chosen, verdict),
       );
     };
 
@@ -329,21 +309,10 @@ export class OnboardingEditor extends VnEditor {
     // refuses when nothing resolves, and that refusal is the more useful sentence here than
     // anything this pane could work out for itself.
     void check('project.testKey', { provider: vendor.vendor }).then((verdict) => {
-      const control = {
-        id     : 'project.testKey',
-        label  : 'Test key',
-        tooltip:
-          'Make one small real call and say whether the key works. It costs a fraction of a cent.',
-        on     : vendor.vendor,
-      };
+      this.verdicts.testKey[vendor.vendor] = verdict;
       // Recorded once the verdict lands rather than beside the button: the button is drawn before
       // the answer comes back, and the anchor has to carry the refusal it ends up wearing.
-      this.anchors.record(
-        test,
-        verdict.state === 'refuse'
-          ? { ...refuse(verdict.message), ...control }
-          : { ok: true, props: { provider: vendor.vendor }, ...control },
-      );
+      this.anchors.record(test, testKeyAction(vendor.vendor, verdict));
     });
 
     return wrapEl;

@@ -9,13 +9,23 @@ import {
   clusterKeyOf,
   clusterMembers,
   clusteredGraphOf,
+  controls,
+  gateApproveAction,
   slotNodeIds,
   subgraphFor,
   subjectOf,
   taskGraphOf,
+  type GateState,
 } from '../taskGraph.js';
+import { duplicateKeys, keyOf } from '../anchors.js';
 import type { ImageParams, RefBinding } from '@vn/types';
-import type { PipelineStatus, SlotNode, StoryGraph, Task } from '../../../src/shared/ipc';
+import type {
+  CommandCheck,
+  PipelineStatus,
+  SlotNode,
+  StoryGraph,
+  Task,
+} from '../../../src/shared/ipc';
 
 const PARAMS: ImageParams = { modelId: 'mock-image' };
 
@@ -570,5 +580,73 @@ describe('subgraphFor', () => {
     // The portrait the gate is waiting for is what the gate is about, so it carries the rule too.
     expect(subgraphFor(gated, 'slot:portrait:aiko').barrier).not.toBeNull();
     expect(subgraphFor(gated, 'slot:portrait:ren').barrier).toBeNull();
+  });
+});
+
+describe('gateApproveAction', () => {
+  const REFUSE: CommandCheck = { state: 'refuse', message: 'No candidate is on file for aiko.' };
+  const ACCEPT: CommandCheck = { state: 'accept', message: 'Approves one of 2 candidates.' };
+
+  it('opens the form on the character, with the hash supplied there', () => {
+    expect(gateApproveAction('aiko', ACCEPT, 2)).toEqual({
+      ok      : true,
+      id      : 'gate.approve',
+      props   : { characterId: 'aiko' },
+      label   : 'aiko →',
+      tooltip : 'Approve a portrait for aiko',
+      on      : 'aiko',
+      supplies: ['hash'],
+      form    : true,
+    });
+  });
+
+  it('is offered before either answer is in', () => {
+    expect(gateApproveAction('aiko', undefined, undefined)).toMatchObject({ ok: true });
+  });
+
+  // The form is where the portrait is named, so a refusal about the blank hash does not grey it
+  it('stays live over a refusing check while candidates are on file, saying why', () => {
+    expect(gateApproveAction('aiko', REFUSE, 2)).toMatchObject({
+      ok     : true,
+      tooltip: REFUSE.message,
+    });
+  });
+
+  it('greys the button when the check refuses and nothing is on file', () => {
+    for (const candidates of [0, undefined]) {
+      expect(gateApproveAction('aiko', REFUSE, candidates)).toMatchObject({
+        ok     : false,
+        id     : 'gate.approve',
+        on     : 'aiko',
+        tooltip: 'Approve a portrait for aiko',
+        refusal: { reason: REFUSE.message },
+      });
+    }
+  });
+});
+
+describe('controls', () => {
+  it('lists one gate button per pending character, each key once', () => {
+    const REFUSE: CommandCheck = { state: 'refuse', message: 'Nothing on file.' };
+    const states: GateState[] = [
+      { pending: [], gates: {} },
+      { pending: ['aiko'], gates: {} },
+      {
+        pending: ['aiko', 'ren'],
+        gates  : { aiko: { check: REFUSE, candidates: 0 }, ren: { candidates: 1 } },
+      },
+    ];
+    for (const state of states) {
+      const listed = controls(state);
+      const each = state.pending.map((c) => {
+        const gate = (state.gates as Record<string, { check?: CommandCheck; candidates?: number }>)[
+          c
+        ];
+        return gateApproveAction(c, gate?.check, gate?.candidates);
+      });
+      expect(listed).toEqual(each);
+      expect(duplicateKeys(listed)).toEqual([]);
+      expect(listed.map(keyOf)).toEqual(state.pending.map((c) => `cmd:gate.approve#${c}`));
+    }
   });
 });
