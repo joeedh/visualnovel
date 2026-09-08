@@ -1,6 +1,6 @@
 import type { Button, Container } from 'pathux';
 import { api } from '../../api.js';
-import { NEW_SKILL_PROMPT, underSkills } from '../../rules/skills.js';
+import { askSkillAction, underSkills } from '../../rules/skills.js';
 import { onInvalidate, onWrote } from '../app/bridge.js';
 import { openCommandDialog } from '../chrome/dialog.js';
 import { DocBuffer } from '../doctree/docbuffer.js';
@@ -130,10 +130,12 @@ export class SkillsEditor extends VnEditor {
       el('span', 'sk-hint-text', 'A skill is a playbook the agent can follow — and can write.'),
     );
 
-    const button = el('button', 'sk-hint-button', 'Ask the agent for a skill…');
-    button.title = 'Open the agent form with a request for a new skill — you say what it should do';
-    button.addEventListener('click', () =>
-      openCommandDialog('agent.run', { input: NEW_SKILL_PROMPT }),
+    // Its own pass: the hint is built once with the pane and never redrawn, so a record in the
+    // bar's pass would be dropped by the bar's next paint
+    const ask = askSkillAction();
+    const button = el('button', 'sk-hint-button', ask.label);
+    redrawing('skills', 'hint').act(button, ask, (action) =>
+      openCommandDialog(action.id, action.props),
     );
     hint.appendChild(button);
     return hint;

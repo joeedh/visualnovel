@@ -22,6 +22,7 @@ import {
 } from '../doctree/doctree.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { VN_ICONS } from '../app/icons.js';
+import { createAction, renameAction } from '../../rules/documents.js';
 import { redrawing } from '../tour/anchors.js';
 import { assetNode, openNode } from '../panes/open.js';
 import { layoutChanged } from '../app/persist.js';
@@ -231,16 +232,10 @@ export class DocumentsEditor extends VnEditor {
     const anchors = redrawing('documents', 'bar');
     // The button rather than the row it opens: pressing it is where writing a document starts, and
     // the kind and the name are both typed after it.
+    const create = createAction();
     anchors.act(
-      this.bar.button('New…', () => {}),
-      {
-        ok      : true,
-        id      : 'doc.create',
-        props   : {},
-        label   : 'New…',
-        tooltip : 'Add a character, location, page or skill to this project',
-        supplies: ['kind', 'name'],
-      },
+      this.bar.button(create.label, () => {}),
+      create,
       () => this.showNewRow(),
     );
     this.bar.button('Refresh', () => void this.load()).description =
@@ -559,14 +554,7 @@ export class DocumentsEditor extends VnEditor {
     line.replaceChild(box, label);
     // Its own pass: the box appears and vanishes without the rows around it being redrawn, and a
     // detached node is dropped from the live set rather than reported as scrolled away.
-    redrawing('documents', 'rename').record(box, {
-      ok      : true,
-      id      : 'doc.rename',
-      props   : { path: target.path },
-      label   : target.name,
-      tooltip : 'Type the new name — Enter renames the document, Escape leaves it as it was',
-      supplies: ['name'],
-    });
+    redrawing('documents', 'rename').record(box, renameAction(target));
 
     let settled = false;
     const finish = (name?: string): void => {

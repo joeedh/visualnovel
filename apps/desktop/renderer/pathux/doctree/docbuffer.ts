@@ -17,7 +17,8 @@
  * `bridge.js` reaches `window` through `api.js`.
  */
 import { touches } from '../../../src/shared/writes.js';
-import { refuse, type Offer } from '../../rules/anchors.js';
+import type { Offer } from '../../rules/anchors.js';
+import { saveOffer } from '../../rules/docbuffer.js';
 import type { DocFile, DocSaveResult } from '../../../src/shared/ipc.js';
 
 /** The only two document commands a buffer needs from the app: reading and writing a file. */
@@ -113,15 +114,7 @@ export class DocBuffer {
    * supplies them.
    */
   get saveOffer(): Offer {
-    const control = {
-      id      : 'doc.write',
-      label   : 'Save',
-      tooltip : 'Write this file back to disk, and commit it',
-      supplies: ['text', 'seenHash'],
-    };
-    if (this.shown === '') return { ...refuse('No document is open.'), ...control };
-    if (!this.isDirty) return { ...refuse('Nothing to save'), ...control };
-    return { ok: true, props: { path: this.shown }, ...control };
+    return saveOffer(this.shown, this.isDirty);
   }
 
   /** Whether `note` is a refusal rather than news. The host paints the two differently. */
@@ -208,9 +201,10 @@ export class DocBuffer {
    * author's next act is to decide what to do about the file, not to retype it.
    */
   async save(): Promise<boolean> {
-    if (this.shown === '') return false;
-    if (!this.isDirty) {
-      this.say('no changes');
+    const offer = this.saveOffer;
+    if (!offer.ok) {
+      // Spoken only over an open file: with nothing on screen there is no document to say it about
+      if (this.shown !== '') this.say(offer.refusal.reason);
       return false;
     }
 

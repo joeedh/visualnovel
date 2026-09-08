@@ -2,7 +2,13 @@ import type { Check, Container } from 'pathux';
 import { api } from '../../api.js';
 import { exec, onBusy, onInvalidate } from '../app/bridge.js';
 import { subjectOf } from '../../rules/taskGraph.js';
-import { emptyBecause, showing, type ListFilter } from '../../rules/tasklist.js';
+import {
+  emptyBecause,
+  gateAction,
+  runAction,
+  showing,
+  type ListFilter,
+} from '../../rules/tasklist.js';
 import { card, dot, mono, note, row, stamp, statusColour, subject } from '../widgets/dom.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { openCommandDialog } from '../chrome/dialog.js';
@@ -196,16 +202,10 @@ export class TaskListEditor extends VnEditor {
 
     // A run spends money and writes assets, so it goes through the palette's form and its
     // confirmation rather than off a bare button — `pipeline.run` is gated on the command.
+    const run = runAction();
     this.anchors.act(
-      low.button('▸ Run', () => {}),
-      {
-        ok     : true,
-        id     : 'pipeline.run',
-        props  : {},
-        label  : '▸ Run',
-        tooltip: 'Open the run form, where the flags are spelled out before anything is spent',
-        form   : true,
-      },
+      low.button(run.label, () => {}),
+      run,
       (action) => openCommandDialog(action.id),
     );
 
@@ -300,9 +300,9 @@ export class TaskListEditor extends VnEditor {
     bar.appendChild(stamp('⟂ GATE', TOKENS.sodium));
     bar.appendChild(mono(`awaiting portrait approval for ${character}`, TOKENS.mist, 11));
 
+    const gate = gateAction(character);
     const cta = document.createElement('button');
-    cta.textContent = 'RESOLVE →';
-    cta.title = `Approve ${character}'s portrait, which is what the rest of the run is waiting on`;
+    cta.textContent = gate.label;
     Object.assign(cta.style, {
       marginLeft  : 'auto',
       cursor      : 'pointer',
@@ -314,10 +314,10 @@ export class TaskListEditor extends VnEditor {
       fontFamily  : TOKENS.mono,
       fontSize    : '11px',
     });
-    cta.addEventListener('click', () => {
+    this.anchors.act(cta, gate, (action) => {
       this.ui.characterId = character;
       this.announce();
-      openCommandDialog('gate.approve', { characterId: character });
+      openCommandDialog(action.id, action.props);
     });
     bar.appendChild(cta);
     return bar;

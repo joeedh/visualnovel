@@ -1,4 +1,14 @@
-import { NEW_SKILL_PROMPT, SKILLS_DIR, skillIdOf, underSkills } from '../skills.js';
+import {
+  NEW_SKILL_PROMPT,
+  SKILLS_DIR,
+  askSkillAction,
+  controls,
+  skillIdOf,
+  underSkills,
+  type SkillsState,
+} from '../skills.js';
+import { saveOffer } from '../docbuffer.js';
+import { duplicateKeys, keyOf } from '../anchors.js';
 
 describe('underSkills', () => {
   it('is true for a file inside a skill', () => {
@@ -58,5 +68,35 @@ describe('NEW_SKILL_PROMPT', () => {
   // author send a turn asking for "a skill" and nothing else
   it('ends mid-sentence, so the form opens on something to finish', () => {
     expect(NEW_SKILL_PROMPT.endsWith(': ')).toBe(true);
+  });
+});
+
+describe('askSkillAction', () => {
+  it('opens the agent form on the prompt, rather than sending it', () => {
+    expect(askSkillAction()).toEqual({
+      ok     : true,
+      id     : 'agent.run',
+      props  : { input: NEW_SKILL_PROMPT },
+      label  : 'Ask the agent for a skill…',
+      tooltip: 'Open the agent form with a request for a new skill — you say what it should do',
+      form   : true,
+    });
+  });
+});
+
+describe('controls', () => {
+  const state = (over: Partial<SkillsState> = {}): SkillsState => ({
+    path : '.aiagent/skills/continuity-pass/SKILL.md',
+    dirty: true,
+    ...over,
+  });
+
+  it('lists the save button and the hint door, each key once', () => {
+    for (const s of [state(), state({ dirty: false }), state({ path: '' })]) {
+      const listed = controls(s);
+      const each = [saveOffer(s.path, s.dirty), askSkillAction()];
+      expect(new Set(listed.map(keyOf))).toEqual(new Set(each.map(keyOf)));
+      expect(duplicateKeys(listed)).toEqual([]);
+    }
   });
 });

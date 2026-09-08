@@ -13,6 +13,8 @@
  */
 export { SKILLS_DIR, underSkills } from '../../src/shared/editors.js';
 
+import type { Offer } from './anchors.js';
+import { saveOffer } from './docbuffer.js';
 import { SKILLS_DIR, underSkills } from '../../src/shared/editors.js';
 
 /**
@@ -40,3 +42,31 @@ export function skillIdOf(path: string | undefined): string {
 export const NEW_SKILL_PROMPT =
   'Write a new skill under .aiagent/skills — a SKILL.md with name, description and when-to-use ' +
   'in its front-matter, and the procedure below it. It should: ';
+
+/** What the Skills pane reads when it draws its bar and its hint. */
+export interface SkillsState {
+  /** The open skill file's path, or the empty string with nothing open. */
+  path: string;
+  dirty: boolean;
+}
+
+/**
+ * The hint's door to the agent: opens the agent form with `NEW_SKILL_PROMPT` already typed, so
+ * the author finishes the sentence rather than sending it. `agent.run` is mutating and plan-first,
+ * so the click opens the form instead of running anything.
+ */
+export function askSkillAction(): Offer {
+  return {
+    ok     : true,
+    id     : 'agent.run',
+    props  : { input: NEW_SKILL_PROMPT },
+    label  : 'Ask the agent for a skill…',
+    tooltip: 'Open the agent form with a request for a new skill — you say what it should do',
+    form   : true,
+  };
+}
+
+/** Every offer the Skills pane draws from this module. */
+export function controls(state: SkillsState): readonly Offer[] {
+  return [saveOffer(state.path, state.dirty), askSkillAction()];
+}

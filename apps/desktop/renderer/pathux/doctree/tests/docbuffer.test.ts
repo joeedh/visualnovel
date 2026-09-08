@@ -171,7 +171,7 @@ describe('DocBuffer', () => {
 
     await buf.open(path);
     expect(await buf.save()).toBe(false);
-    expect(buf.note).toBe('no changes');
+    expect(buf.note).toBe('Nothing to save');
     expect(buf.bad).toBe(false);
   });
 

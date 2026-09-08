@@ -9,6 +9,7 @@
  * list emptied by Clear blames the filter and tells the author nothing has finished at the exact
  * moment ten things have.
  */
+import type { Offer } from './anchors.js';
 import type { Task } from '../../src/shared/ipc';
 
 /** What the four controls are set to. Held by the pane; nothing here reads the pane. */
@@ -76,4 +77,43 @@ export function emptyBecause(tasks: readonly Task[], filter: ListFilter): string
     return 'Nothing has failed or been flagged for a person — untick “only failed” to see the rest.';
   if (filter.onlyRunning) return 'Nothing is running — untick “only running” to see the rest.';
   return 'Nothing here has finished — untick “only done” to see the rest.';
+}
+
+/** What the Task List pane reads when it draws its bar and its gate bars. */
+export interface TaskListState {
+  /** The characters whose portrait approval the run is waiting on. */
+  gatePending: string[];
+}
+
+/**
+ * Start a run. A run spends money and writes assets, so it goes through the palette's form and
+ * its confirmation rather than off a bare button.
+ */
+export function runAction(): Offer {
+  return {
+    ok     : true,
+    id     : 'pipeline.run',
+    props  : {},
+    label  : '▸ Run',
+    tooltip: 'Open the run form, where the flags are spelled out before anything is spent',
+    form   : true,
+  };
+}
+
+/** The gate bar's button: open the approval form for the one character the run is waiting on. */
+export function gateAction(character: string): Offer {
+  return {
+    ok     : true,
+    id     : 'gate.approve',
+    props  : { characterId: character },
+    on     : character,
+    label  : 'RESOLVE →',
+    tooltip: `Approve ${character}'s portrait, which is what the rest of the run is waiting on`,
+    form   : true,
+  };
+}
+
+/** Every offer the Task List pane draws from this module. */
+export function controls(state: TaskListState): readonly Offer[] {
+  return [runAction(), ...state.gatePending.map(gateAction)];
 }

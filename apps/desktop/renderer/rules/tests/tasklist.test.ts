@@ -1,4 +1,12 @@
-import { emptyBecause, showing, type ListFilter } from '../tasklist.js';
+import {
+  controls,
+  emptyBecause,
+  gateAction,
+  runAction,
+  showing,
+  type ListFilter,
+} from '../tasklist.js';
+import { duplicateKeys, keyOf } from '../anchors.js';
 import type { ImageParams, TaskStatus } from '@vn/types';
 import type { Task } from '../../../src/shared/ipc';
 
@@ -110,5 +118,48 @@ describe('emptyBecause', () => {
     );
     expect(three).toContain('done and running and failed');
     expect(three).toContain('all but one of the 3');
+  });
+});
+
+describe('runAction', () => {
+  it('opens the run form rather than starting a run off the button', () => {
+    expect(runAction()).toEqual({
+      ok     : true,
+      id     : 'pipeline.run',
+      props  : {},
+      label  : '▸ Run',
+      tooltip: 'Open the run form, where the flags are spelled out before anything is spent',
+      form   : true,
+    });
+  });
+});
+
+describe('gateAction', () => {
+  it('opens the approval form on the one character the run is waiting on', () => {
+    expect(gateAction('aiko')).toEqual({
+      ok     : true,
+      id     : 'gate.approve',
+      props  : { characterId: 'aiko' },
+      on     : 'aiko',
+      label  : 'RESOLVE →',
+      tooltip: "Approve aiko's portrait, which is what the rest of the run is waiting on",
+      form   : true,
+    });
+  });
+
+  it('keys each gate bar by its character, so two bars are two anchors', () => {
+    expect(keyOf(gateAction('aiko'))).toBe('cmd:gate.approve#aiko');
+    expect(keyOf(gateAction('ren'))).toBe('cmd:gate.approve#ren');
+  });
+});
+
+describe('controls', () => {
+  it('lists the run button and one gate per pending character, each key once', () => {
+    for (const gatePending of [[], ['aiko'], ['aiko', 'ren']]) {
+      const listed = controls({ gatePending });
+      const each = [runAction(), ...gatePending.map(gateAction)];
+      expect(new Set(listed.map(keyOf))).toEqual(new Set(each.map(keyOf)));
+      expect(duplicateKeys(listed)).toEqual([]);
+    }
   });
 });
