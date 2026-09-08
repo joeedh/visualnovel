@@ -5,8 +5,6 @@
 import type { ChunkOrigin } from '@vn/types';
 import type { PromptChunkInfo, PromptView } from '../../../src/shared/prompt.js';
 import {
-  CHUNK_SUPPLIES,
-  REF_SUPPLIES,
   chunkActs,
   chunkAddress,
   chunkDropTarget,
@@ -15,6 +13,7 @@ import {
   chunkVoice,
   condenseAction,
   condenseNeedsForce,
+  controls,
   coverageMark,
   heldNote,
   checkAction,
@@ -23,6 +22,7 @@ import {
   modeStrip,
   originAction,
 } from '../promptview.js';
+import { duplicateKeys, keyOf } from '../anchors.js';
 
 const chunk = (over: Partial<PromptChunkInfo> = {}): PromptChunkInfo => ({
   key     : 'palette',
@@ -187,30 +187,36 @@ describe('modeStrip', () => {
     const strip = modeStrip(view());
     expect(strip.map((s) => s.id)).toEqual(['chunks', 'custom', 'agent']);
     expect(strip[0]!.active).toBe(true);
-    expect(strip[0]!.action).toEqual({
-      ok    : false,
-      id    : 'prompt.clear',
-      reason: 'This prompt is already in chunks mode.',
+    expect(strip[0]!.offer).toMatchObject({
+      ok     : false,
+      id     : 'prompt.clear',
+      label  : 'Chunks',
+      on     : 'chunks',
+      refusal: { reason: 'This prompt is already in chunks mode.' },
     });
   });
 
   // Nothing sets a mode field: a mode is a consequence of what is written.
   it('reaches chunks mode by clearing whichever whole-prompt text is in force', () => {
     const fromCustom = modeStrip(view({ mode: 'custom', custom: 'Just Aiko.' }))[0]!;
-    expect(fromCustom.action).toEqual({
-      ok   : true,
-      id   : 'prompt.clear',
-      props: { hash: 'abc123', part: 'custom' },
+    expect(fromCustom.offer).toEqual({
+      ok     : true,
+      id     : 'prompt.clear',
+      props  : { hash: 'abc123', part: 'custom' },
+      label  : 'Chunks',
+      tooltip: expect.stringContaining('dropping the whole-prompt text'),
+      on     : 'chunks',
     });
     const fromAgent = modeStrip(view({ mode: 'agent' }))[0]!;
-    expect(fromAgent.action).toMatchObject({ props: { part: 'agent' } });
+    expect(fromAgent.offer).toMatchObject({ props: { part: 'agent' } });
   });
 
   it('prefills a custom prompt with the composed text whole', () => {
-    expect(modeStrip(view())[1]!.action).toEqual({
+    expect(modeStrip(view())[1]!.offer).toMatchObject({
       ok   : true,
       id   : 'prompt.setCustom',
       props: { hash: 'abc123', text: 'Watercolour. Aiko.' },
+      on   : 'custom',
     });
   });
 
@@ -218,45 +224,55 @@ describe('modeStrip', () => {
     const frozen = 'A concept’s prompt is the sentence it was asked for.';
     const commands = ['prompt.clear', 'prompt.setCustom', 'prompt.condense'];
     modeStrip(view({ frozen })).forEach((segment, i) => {
-      expect(segment.action).toEqual({ ok: false, id: commands[i], reason: frozen });
+      expect(segment.offer).toMatchObject({
+        ok     : false,
+        id     : commands[i],
+        refusal: { reason: frozen },
+      });
     });
   });
 });
 
 describe('condenseAction', () => {
   it('condenses the chunks as they stand', () => {
-    expect(condenseAction(view())).toMatchObject({
-      ok   : true,
-      id   : 'prompt.condense',
-      props: { hash: 'abc123' },
-      label: 'Condense…',
+    expect(condenseAction(view())).toEqual({
+      ok     : true,
+      id     : 'prompt.condense',
+      props  : { hash: 'abc123' },
+      label  : 'Condense…',
+      tooltip: 'Rewrite the chunks into one prompt an image model handles well.',
     });
   });
 
   it('supplies force from custom mode, rather than offering to discard the text', () => {
     const action = condenseAction(view({ mode: 'custom', custom: 'Just Aiko.' }));
-    expect(action).toMatchObject({ ok: true, props: { hash: 'abc123', force: true } });
+    expect(action).toMatchObject({
+      ok     : true,
+      props  : { hash: 'abc123', force: true },
+      tooltip: expect.stringContaining('preserve'),
+    });
     // Without the flag, `prompt.condense` refuses in these same words
     expect(condenseNeedsForce('abc123')).toContain("prompt.condense(hash='abc123' force=true)");
   });
 
   it('offers to redo a held prompt in the button itself', () => {
     expect(condenseAction(view({ mode: 'agent', held: true }))).toMatchObject({
-      ok   : true,
-      label: 'Recondense',
+      ok     : true,
+      label  : 'Recondense',
+      tooltip: expect.stringContaining('replacing the held prompt'),
     });
   });
 
   it('refuses when there is nothing derived under the prompt', () => {
-    expect(condenseAction(view({ frozen: 'Authored, not derived.' }))).toEqual({
-      ok    : false,
-      id    : 'prompt.condense',
-      reason: 'Authored, not derived.',
+    expect(condenseAction(view({ frozen: 'Authored, not derived.' }))).toMatchObject({
+      ok     : false,
+      id     : 'prompt.condense',
+      refusal: { reason: 'Authored, not derived.' },
     });
-    expect(condenseAction(view({ chunks: [] }))).toEqual({
-      ok    : false,
-      id    : 'prompt.condense',
-      reason: 'There are no chunks to condense.',
+    expect(condenseAction(view({ chunks: [] }))).toMatchObject({
+      ok     : false,
+      id     : 'prompt.condense',
+      refusal: { reason: 'There are no chunks to condense.' },
     });
   });
 });
@@ -293,29 +309,38 @@ describe('coverageMark', () => {
 });
 
 describe('chunkActs', () => {
-  it('offers the same command four times, one op each', () => {
+  it('offers the same command four times, one op each, told apart by clause and act', () => {
     const acts = chunkActs(view(), chunk());
     expect(acts.map((a) => a.key)).toEqual(['mute', 'replace', 'append', 'attach', 'reset']);
-    for (const act of acts)
+    for (const act of acts) {
       expect(act.offer.id).toBe(act.key === 'attach' ? 'prompt.addRef' : 'prompt.setChunk');
+      expect(act.offer.on).toBe(`palette/${act.key}`);
+    }
     expect(acts[0]!.offer).toEqual({
-      ok   : true,
-      id   : 'prompt.setChunk',
-      props: { hash: 'abc123', chunk: 'palette', op: 'mute', text: '' },
+      ok     : true,
+      id     : 'prompt.setChunk',
+      props  : { hash: 'abc123', chunk: 'palette', op: 'mute', text: '' },
+      label  : 'Mute',
+      tooltip: 'Leave this clause out of the prompt',
+      on     : 'palette/mute',
     });
   });
 
   // The two boxed acts leave `text` out. The author has not typed it yet, so any value an anchor
-  // recorded for it would be a guess.
+  // recorded for it would be a guess, and the offer names it as what the box supplies.
   it('leaves the text off the two acts that open a box', () => {
     const acts = chunkActs(view(), chunk());
     expect(acts[1]!.opens).toBe('replace');
     expect(acts[1]!.offer).toEqual({
-      ok   : true,
-      id   : 'prompt.setChunk',
-      props: { hash: 'abc123', chunk: 'palette', op: 'replace' },
+      ok      : true,
+      id      : 'prompt.setChunk',
+      props   : { hash: 'abc123', chunk: 'palette', op: 'replace' },
+      label   : 'Replace…',
+      tooltip : 'Say this clause in your own words',
+      on      : 'palette/replace',
+      supplies: ['text'],
     });
-    expect(CHUNK_SUPPLIES).toEqual(['text']);
+    expect(acts[2]!.offer).toMatchObject({ props: { op: 'append' }, supplies: ['text'] });
   });
 
   // Attach carries no `ref` for the same reason: the gallery has not been opened yet, so the
@@ -324,63 +349,117 @@ describe('chunkActs', () => {
     const attach = chunkActs(view(), chunk())[3]!;
     expect(attach.picks).toBe(true);
     expect(attach.offer).toEqual({
-      ok   : true,
-      id   : 'prompt.addRef',
-      props: { hash: 'abc123', chunk: 'palette' },
+      ok      : true,
+      id      : 'prompt.addRef',
+      props   : { hash: 'abc123', chunk: 'palette' },
+      label   : 'Attach…',
+      tooltip : 'Send a reference image with this clause',
+      on      : 'palette/attach',
+      supplies: ['ref'],
     });
-    expect(REF_SUPPLIES).toEqual(['ref']);
   });
 
   it('refuses muting what is already muted, and resetting what nothing was done to', () => {
     const [mute] = chunkActs(view(), chunk({ muted: true }));
-    expect(mute!.offer).toEqual({
-      ok    : false,
-      id    : 'prompt.setChunk',
-      reason: 'Already muted.',
+    expect(mute!.offer).toMatchObject({
+      ok     : false,
+      id     : 'prompt.setChunk',
+      on     : 'palette/mute',
+      refusal: { reason: 'Already muted.' },
     });
     const acts = chunkActs(view(), chunk());
-    expect(acts[4]!.offer).toMatchObject({ ok: false, id: 'prompt.setChunk' });
+    expect(acts[4]!.offer).toMatchObject({
+      ok     : false,
+      id     : 'prompt.setChunk',
+      refusal: { reason: 'Nothing has been done to this clause.' },
+    });
   });
 
   it('offers Reset once anything has been done to the clause', () => {
     const edited = chunkActs(view(), chunk({ edit: 'replace', authored: 'Aiko, in green.' }));
-    expect(edited[4]!.offer).toEqual({
+    expect(edited[4]!.offer).toMatchObject({
       ok   : true,
       id   : 'prompt.setChunk',
       props: { hash: 'abc123', chunk: 'palette', op: 'clear', text: '' },
+      label: 'Reset',
     });
   });
 });
 
 describe('the rest of the prompt pane’s invocations', () => {
-  it('detaches one reference by its pin', () => {
-    expect(dropRefAction(view(), chunk(), 'pin1')).toEqual({
-      ok   : true,
-      id   : 'prompt.dropRef',
-      props: { hash: 'abc123', chunk: 'palette', ref: 'pin1' },
+  it('detaches one reference by its pin, and names the picture it stops sending', () => {
+    expect(dropRefAction(view(), chunk(), { pin: 'pin1', label: 'moodboard' })).toEqual({
+      ok     : true,
+      id     : 'prompt.dropRef',
+      props  : { hash: 'abc123', chunk: 'palette', ref: 'pin1' },
+      label  : '×',
+      tooltip: 'Stop sending moodboard with this clause',
+      on     : 'palette/pin1',
     });
   });
 
   it('leaves the custom prompt’s text to the box, and refuses on a frozen prompt', () => {
     expect(customAction(view())).toEqual({
-      ok   : true,
-      id   : 'prompt.setCustom',
-      props: { hash: 'abc123' },
-      label: 'Save',
+      ok      : true,
+      id      : 'prompt.setCustom',
+      props   : { hash: 'abc123' },
+      label   : 'Save',
+      tooltip : 'Send this prompt instead of the clauses below',
+      supplies: ['text'],
     });
-    expect(customAction(view({ frozen: 'Authored.' }))).toEqual({
-      ok    : false,
-      id    : 'prompt.setCustom',
-      reason: 'Authored.',
+    expect(customAction(view({ frozen: 'Authored.' }))).toMatchObject({
+      ok     : false,
+      id     : 'prompt.setCustom',
+      refusal: { reason: 'Authored.' },
     });
   });
 
   it('checks the prompt in force', () => {
     expect(checkAction(view())).toEqual({
-      ok   : true,
-      id   : 'prompt.check',
-      props: { hash: 'abc123' },
-      label: 'Check',
+      ok     : true,
+      id     : 'prompt.check',
+      props  : { hash: 'abc123' },
+      label  : 'Check',
+      tooltip: 'Which clauses the prompt above no longer appears to say',
     });
+  });
+});
+
+describe('controls', () => {
+  const withRefs = (over: Partial<PromptView> = {}): PromptView =>
+    view({
+      chunks: [
+        chunk({ refs: [{ pin: 'pin1', ext: 'png', label: 'moodboard' }] }),
+        chunk({ key: 'subject', category: 'subject', muted: true }),
+      ],
+      ...over,
+    });
+
+  it('lists every control the functions produce, each key once', () => {
+    for (const fixture of [view(), withRefs(), withRefs({ mode: 'custom', custom: 'Aiko.' })]) {
+      const listed = controls(fixture);
+      const each = [
+        ...modeStrip(fixture).map((segment) => segment.offer),
+        condenseAction(fixture),
+        checkAction(fixture),
+        customAction(fixture),
+        ...fixture.chunks.flatMap((one) => [
+          ...chunkActs(fixture, one).map((act) => act.offer),
+          ...(one.refs ?? []).map((ref) => dropRefAction(fixture, one, ref)),
+        ]),
+      ];
+      expect(new Set(listed.map(keyOf))).toEqual(new Set(each.map(keyOf)));
+      expect(duplicateKeys(listed)).toEqual([]);
+    }
+  });
+
+  // The strip's segment and the button beneath it run the same command, so the key tells them
+  // apart by the segment id
+  it('keeps a segment and the button that runs the same command apart', () => {
+    const keys = controls(view()).map(keyOf);
+    expect(keys).toContain('cmd:prompt.condense#agent');
+    expect(keys).toContain('cmd:prompt.condense');
+    expect(keys).toContain('cmd:prompt.setCustom#custom');
+    expect(keys).toContain('cmd:prompt.setCustom');
   });
 });

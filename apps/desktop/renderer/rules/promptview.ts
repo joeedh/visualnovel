@@ -9,9 +9,8 @@
  */
 import type { ChunkOrigin } from '@vn/types';
 import { TOP_CHUNK } from '../../src/shared/promptops.js';
-import type { PropValue } from '../../src/shared/ipc.js';
 import type { PromptChunkInfo, PromptView } from '../../src/shared/prompt.js';
-import type { Offer } from './anchors.js';
+import { refuse, type Offer } from './anchors.js';
 
 /**
  * The hue distinguishes who wrote the words. `--sodium` means they come verbatim out of a
@@ -154,63 +153,70 @@ export function originAction(origin: ChunkOrigin): OriginAction {
   }
 }
 
-/** One segment of the mode strip: what it says, whether it is on, and what a click runs. */
+/** One segment of the mode strip: whether it is on, and what a click runs. */
 export interface ModeButton {
   id: 'chunks' | 'custom' | 'agent';
-  label: string;
   active: boolean;
   /** A refusal names its command too, so a greyed segment is still an anchor rather than a gap. */
-  action:
-    | { ok: true; id: string; props: Record<string, PropValue> }
-    | { ok: false; reason: string; id: string };
+  offer: Offer;
 }
+
+/** Which command each segment runs, so a refused segment still names what it is about. */
+const MODE_SEGMENTS: Record<ModeButton['id'], { command: string; label: string; tooltip: string }> =
+  {
+    chunks: {
+      command: 'prompt.clear',
+      label  : 'Chunks',
+      tooltip: 'Send the clauses below as they stand, dropping the whole-prompt text in force',
+    },
+    custom: {
+      command: 'prompt.setCustom',
+      label  : 'Custom',
+      tooltip: 'Write the whole prompt yourself, starting from the text composed above',
+    },
+    agent: {
+      command: 'prompt.condense',
+      label  : 'Agent',
+      tooltip: 'Have a model condense the clauses into one prompt',
+    },
+  };
 
 /**
  * The three modes, as three commands. Nothing here sets a mode field, because a mode is a
  * consequence of what is written: `Chunks` clears whatever whole-prompt text is in force, `Custom`
  * writes the composed text whole (so the style preamble and the framing sentence survive the edit
- * by default), and `Agent` condenses. A disabled segment carries its refusal as its tooltip.
+ * by default), and `Agent` condenses. A disabled segment carries its refusal above its tooltip.
  */
 export function modeStrip(view: PromptView): ModeButton[] {
   const frozen = view.frozen;
-  const seg = (id: ModeButton['id'], label: string, action: ModeButton['action']): ModeButton => ({
-    id,
-    label,
-    active: view.mode === id,
-    action: frozen
-      ? { ok: false, id: commandOfMode[id], reason: frozen }
-      : view.mode === id
-        ? alreadyIn(id)
-        : action,
-  });
+  const seg = (id: ModeButton['id'], enter: Offer): ModeButton => {
+    const { command, label, tooltip } = MODE_SEGMENTS[id];
+    const control = { id: command, label, tooltip, on: id };
+    return {
+      id,
+      active: view.mode === id,
+      offer: frozen
+        ? { ...refuse(frozen), ...control }
+        : view.mode === id
+          ? { ...refuse(`This prompt is already in ${id} mode.`), ...control }
+          : { ...enter, ...control },
+    };
+  };
 
   return [
-    seg('chunks', 'Chunks', {
+    seg('chunks', {
       ok   : true,
       id   : 'prompt.clear',
       props: { hash: view.hash, part: view.mode === 'agent' ? 'agent' : 'custom' },
     }),
-    seg('custom', 'Custom', {
+    seg('custom', {
       ok   : true,
       id   : 'prompt.setCustom',
       props: { hash: view.hash, text: view.text },
     }),
-    seg('agent', 'Agent', condenseInvocation(view)),
+    seg('agent', condenseAction(view)),
   ];
 }
-
-/** Which command each segment runs, so a refused segment still names what it is about. */
-const commandOfMode: Record<ModeButton['id'], string> = {
-  chunks: 'prompt.clear',
-  custom: 'prompt.setCustom',
-  agent : 'prompt.condense',
-};
-
-const alreadyIn = (id: ModeButton['id']): { ok: false; reason: string; id: string } => ({
-  ok    : false,
-  id    : commandOfMode[id],
-  reason: `This prompt is already in ${id} mode.`,
-});
 
 /**
  * The sentence `prompt.condense`'s own check gives when it is asked to discard a custom prompt.
@@ -220,46 +226,44 @@ export const condenseNeedsForce = (hash: string): string =>
   `A custom prompt is already written. prompt.condense(hash='${hash}' force=true) reconciles it ` +
   `against the chunks instead of discarding it.`;
 
-/** The Condense control: the invocation it runs, or why there is nothing to condense. */
-export type CondenseAction =
-  | { ok: true; id: string; props: Record<string, PropValue>; label: string; note: string }
-  | { ok: false; reason: string; id: string };
-
 /**
- * Condensing from custom mode passes `force`, because refusing would leave an author who wrote a
- * custom prompt with no way back to an agent one. {@link condenseNeedsForce} is what the command
- * says when the flag is absent. The button supplies the flag and says what it will do with the
- * text it is about to reconcile.
+ * The Condense control: the invocation it runs, or why there is nothing to condense. Condensing
+ * from custom mode passes `force`, because refusing would leave an author who wrote a custom
+ * prompt with no way back to an agent one. {@link condenseNeedsForce} is what the command says
+ * when the flag is absent. The button supplies the flag and says what it will do with the text it
+ * is about to reconcile.
  */
-export function condenseAction(view: PromptView): CondenseAction {
-  if (view.frozen) return { ok: false, id: 'prompt.condense', reason: view.frozen };
+export function condenseAction(view: PromptView): Offer {
+  const id = 'prompt.condense';
+  const plain = 'Rewrite the chunks into one prompt an image model handles well.';
+  if (view.frozen) return { ...refuse(view.frozen), id, label: 'Condense…', tooltip: plain };
   if (view.chunks.length === 0) {
-    return { ok: false, id: 'prompt.condense', reason: 'There are no chunks to condense.' };
+    return {
+      ...refuse('There are no chunks to condense.'),
+      id,
+      label  : 'Condense…',
+      tooltip: plain,
+    };
   }
   if (view.mode === 'custom') {
     return {
-      ok   : true,
-      id   : 'prompt.condense',
-      props: { hash: view.hash, force: true },
-      label: 'Reconcile…',
-      note : 'Your custom prompt is handed to the model as the thing to preserve.',
+      ok: true,
+      id,
+      props  : { hash: view.hash, force: true },
+      label  : 'Reconcile…',
+      tooltip: 'Your custom prompt is handed to the model as the thing to preserve.',
     };
   }
   return {
-    ok   : true,
-    id   : 'prompt.condense',
-    props: { hash: view.hash },
-    label: view.held ? 'Recondense' : 'Condense…',
-    note: view.held
+    ok: true,
+    id,
+    props  : { hash: view.hash },
+    label  : view.held ? 'Recondense' : 'Condense…',
+    tooltip: view.held
       ? 'Condense the chunks as they stand now, replacing the held prompt.'
-      : 'Rewrite the chunks into one prompt an image model handles well.',
+      : plain,
   };
 }
-
-const condenseInvocation = (view: PromptView): ModeButton['action'] => {
-  const action = condenseAction(view);
-  return action.ok ? { ok: true, id: action.id, props: action.props } : action;
-};
 
 /**
  * The held banner, or an empty string when there is none. Like `driftNote`, the banner names what
@@ -309,12 +313,9 @@ export function refStrip(chunk: PromptChunkInfo): RefChip[] {
   }));
 }
 
-/** One act on a clause: what its button says, and the invocation a click runs. */
+/** One act on a clause: the invocation a click runs, and what the click opens on the way. */
 export interface ChunkAct {
   key: 'mute' | 'replace' | 'append' | 'attach' | 'reset';
-  label: string;
-  /** What the button says on hover. A refused act repeats its own reason here. */
-  title: string;
   offer: Offer;
   /**
    * The box this click opens instead of running the offer at once. `text` is typed into it and
@@ -324,16 +325,10 @@ export interface ChunkAct {
   opens?: 'replace' | 'append';
   /**
    * The click opens the asset gallery instead of running the offer at once. The hash the author
-   * picks arrives as the supplied `ref` prop, which is why this act records {@link REF_SUPPLIES}.
+   * picks arrives as the supplied `ref` prop, which is why this act names it in `supplies`.
    */
   picks?: true;
 }
-
-/** The prop the two boxed clause acts fill in, which is not known until it is typed. */
-export const CHUNK_SUPPLIES = ['text'];
-
-/** The prop Attach fills in, which is not known until the author picks a picture. */
-export const REF_SUPPLIES = ['ref'];
 
 /**
  * The five acts on one clause. `Reset` is also how a mute comes off — `prompt.setChunk(op=clear)`
@@ -344,77 +339,133 @@ export const REF_SUPPLIES = ['ref'];
  * it. Attach is the exception: a different command, and one whose `ref` the gallery supplies.
  */
 export function chunkActs(view: PromptView, chunk: PromptChunkInfo): ChunkAct[] {
-  const setChunk = (op: string, text?: string): Offer => ({
+  const at = (key: ChunkAct['key']): string => `${chunk.key}/${key}`;
+  const setChunk = (key: ChunkAct['key'], op: string, text?: string): Offer => ({
     ok   : true,
     id   : 'prompt.setChunk',
     props: { hash: view.hash, chunk: chunk.key, op, ...(text === undefined ? {} : { text }) },
+    on   : at(key),
   });
   const nothingDone = !chunk.muted && !chunk.edit;
 
   return [
     {
       key  : 'mute',
-      label: 'Mute',
-      title: chunk.muted ? 'Already muted.' : 'Leave this clause out of the prompt',
-      offer: chunk.muted
-        ? { ok: false, id: 'prompt.setChunk', reason: 'Already muted.' }
-        : setChunk('mute', ''),
+      offer: {
+        ...(chunk.muted ? refuse('Already muted.') : setChunk('mute', 'mute', '')),
+        id     : 'prompt.setChunk',
+        label  : 'Mute',
+        tooltip: 'Leave this clause out of the prompt',
+        on     : at('mute'),
+      },
     },
     {
       key  : 'replace',
-      label: 'Replace…',
-      title: 'Say this clause in your own words',
-      offer: setChunk('replace'),
+      offer: {
+        ...setChunk('replace', 'replace'),
+        label   : 'Replace…',
+        tooltip : 'Say this clause in your own words',
+        supplies: ['text'],
+      },
       opens: 'replace',
     },
     {
       key  : 'append',
-      label: 'Append…',
-      title: 'Add to what the builders derived, keeping it',
-      offer: setChunk('append'),
+      offer: {
+        ...setChunk('append', 'append'),
+        label   : 'Append…',
+        tooltip : 'Add to what the builders derived, keeping it',
+        supplies: ['text'],
+      },
       opens: 'append',
     },
     {
       key  : 'attach',
-      label: 'Attach…',
-      title: 'Send a reference image with this clause',
-      offer: { ok: true, id: 'prompt.addRef', props: { hash: view.hash, chunk: chunk.key } },
+      offer: {
+        ok      : true,
+        id      : 'prompt.addRef',
+        props   : { hash: view.hash, chunk: chunk.key },
+        label   : 'Attach…',
+        tooltip : 'Send a reference image with this clause',
+        on      : at('attach'),
+        supplies: ['ref'],
+      },
       picks: true,
     },
     {
       key  : 'reset',
-      label: 'Reset',
-      title: nothingDone
-        ? 'Nothing has been done to this clause.'
-        : 'Go back to the words the builders derived',
-      offer: nothingDone
-        ? { ok: false, id: 'prompt.setChunk', reason: 'Nothing has been done to this clause.' }
-        : setChunk('clear', ''),
+      offer: {
+        ...(nothingDone
+          ? refuse('Nothing has been done to this clause.')
+          : setChunk('reset', 'clear', '')),
+        id     : 'prompt.setChunk',
+        label  : 'Reset',
+        tooltip: 'Go back to the words the builders derived',
+        on     : at('reset'),
+      },
     },
   ];
 }
 
 /** Detach one reference image from a clause. Its own function so the strip records what it runs. */
-export function dropRefAction(view: PromptView, chunk: PromptChunkInfo, pin: string): Offer {
+export function dropRefAction(
+  view: PromptView,
+  chunk: PromptChunkInfo,
+  ref: Pick<RefChip, 'pin' | 'label'>,
+): Offer {
   return {
-    ok   : true,
-    id   : 'prompt.dropRef',
-    props: { hash: view.hash, chunk: chunk.key, ref: pin },
+    ok     : true,
+    id     : 'prompt.dropRef',
+    props  : { hash: view.hash, chunk: chunk.key, ref: ref.pin },
+    label  : '×',
+    tooltip: `Stop sending ${ref.label} with this clause`,
+    on     : `${chunk.key}/${ref.pin}`,
   };
 }
 
 /**
  * The whole prompt, written by hand. The text is supplied by the box, so the offer carries only
- * the subject and {@link CHUNK_SUPPLIES} names what is still owed.
+ * the subject and names the text as what is still owed.
  */
 export function customAction(view: PromptView): Offer {
-  if (view.frozen) return { ok: false, id: 'prompt.setCustom', reason: view.frozen };
-  return { ok: true, id: 'prompt.setCustom', props: { hash: view.hash }, label: 'Save' };
+  const control = {
+    id      : 'prompt.setCustom',
+    label   : 'Save',
+    tooltip : 'Send this prompt instead of the clauses below',
+    supplies: ['text'],
+  };
+  if (view.frozen) return { ...refuse(view.frozen), ...control };
+  return { ok: true, props: { hash: view.hash }, ...control };
 }
 
 /** Which clauses the prompt in force no longer appears to say. Reads; writes nothing. */
 export function checkAction(view: PromptView): Offer {
-  return { ok: true, id: 'prompt.check', props: { hash: view.hash }, label: 'Check' };
+  return {
+    ok     : true,
+    id     : 'prompt.check',
+    props  : { hash: view.hash },
+    label  : 'Check',
+    tooltip: 'Which clauses the prompt above no longer appears to say',
+  };
+}
+
+/**
+ * Every offer the prompt half draws from this module, in the order it draws them: the mode strip
+ * and its two buttons, the custom prompt's Save, then each clause's five acts and the drops on its
+ * references. The chunk boxes and the reference thumbnails are the editor's own.
+ */
+export function controls(view: PromptView): readonly Offer[] {
+  const chunks = view.chunks.flatMap((chunk) => [
+    ...chunkActs(view, chunk).map((act) => act.offer),
+    ...(chunk.refs ?? []).map((ref) => dropRefAction(view, chunk, ref)),
+  ]);
+  return [
+    ...modeStrip(view).map((segment) => segment.offer),
+    condenseAction(view),
+    checkAction(view),
+    customAction(view),
+    ...chunks,
+  ];
 }
 
 /** One card's vertical extent on screen, which is all the drop geometry reads. */

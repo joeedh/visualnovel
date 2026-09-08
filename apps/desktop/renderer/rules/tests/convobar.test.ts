@@ -1,5 +1,13 @@
-import { compactAction, newThreadAction, resumeAction, stopTurnAction } from '../convobar.js';
-import type { Convo, ResumeHeader } from '../../../src/shared/convo.js';
+import {
+  compactAction,
+  controls,
+  newThreadAction,
+  resumeAction,
+  stopTurnAction,
+} from '../convobar.js';
+import { modeAction } from '../headerbar.js';
+import { duplicateKeys, keyOf } from '../anchors.js';
+import { contextDetail, type Convo, type ResumeHeader } from '../../../src/shared/convo.js';
 import { NATIVE_VERSION, type OpenedThread } from '../../../src/shared/threads.js';
 
 const state = (over: Partial<Convo> = {}): Convo =>
@@ -31,10 +39,14 @@ const thread = (over: Partial<OpenedThread> = {}): OpenedThread =>
   ({ id: 't1', title: 'Casting', resume: { header }, ...over }) as OpenedThread;
 
 describe('compactAction', () => {
-  it('folds a conversation that has something new in it', () => {
-    expect(compactAction(state({ feed: [said(1)] }), false)).toMatchObject({
-      ok: true,
-      id: 'agent.compact',
+  it('folds a conversation that has something new in it, saying how much there is', () => {
+    const convo = state({ feed: [said(1)], context: 41_208 });
+    expect(compactAction(convo, false)).toEqual({
+      ok     : true,
+      id     : 'agent.compact',
+      props  : {},
+      label  : 'Compact',
+      tooltip: contextDetail(convo),
     });
   });
 
@@ -49,23 +61,25 @@ describe('compactAction', () => {
       ),
     ];
     for (const offer of reasons) expect(offer).toMatchObject({ ok: false, id: 'agent.compact' });
-    expect(new Set(reasons.map((offer) => (offer.ok ? '' : offer.reason))).size).toBe(4);
+    expect(new Set(reasons.map((offer) => (offer.ok ? '' : offer.refusal?.reason))).size).toBe(4);
   });
 });
 
 describe('resumeAction', () => {
   it('continues a thread the bound model recorded', () => {
-    expect(resumeAction(thread(), 'claude-opus-5')).toMatchObject({
-      ok   : true,
-      id   : 'agent.resumeThread',
-      props: { id: 't1' },
+    expect(resumeAction(thread(), 'claude-opus-5')).toEqual({
+      ok     : true,
+      id     : 'agent.resumeThread',
+      props  : { id: 't1' },
+      label  : 'Continue',
+      tooltip: 'Continue this conversation — the agent is shown everything above.',
     });
   });
 
   it('passes on the shared refusal rather than writing one of its own', () => {
     const offer = resumeAction(thread({ resume: { damaged: true } }), 'claude-opus-5');
     expect(offer.ok).toBe(false);
-    if (!offer.ok) expect(offer.reason).toContain('no longer intact');
+    if (!offer.ok) expect(offer.refusal?.reason).toContain('no longer intact');
   });
 
   it('refuses when nothing is open for reading', () => {
@@ -75,11 +89,43 @@ describe('resumeAction', () => {
 
 describe('the buttons that need no state', () => {
   it('stops only a turn that is running', () => {
-    expect(stopTurnAction(true)).toMatchObject({ ok: true, id: 'agent.stop' });
+    expect(stopTurnAction(true)).toMatchObject({ ok: true, id: 'agent.stop', label: 'Stop' });
     expect(stopTurnAction(false)).toMatchObject({ ok: false, id: 'agent.stop' });
   });
 
   it('always offers a fresh conversation', () => {
-    expect(newThreadAction()).toMatchObject({ ok: true, id: 'agent.newThread' });
+    expect(newThreadAction()).toMatchObject({ ok: true, id: 'agent.newThread', label: 'New' });
+  });
+});
+
+describe('controls', () => {
+  const fixtures = [
+    {
+      convo    : state({ feed: [said(1)] }),
+      opened   : undefined,
+      model    : 'claude-opus-5',
+      agentMode: 'plan',
+    },
+    {
+      convo    : state({ busy: true }),
+      opened   : thread(),
+      model    : 'claude-opus-5',
+      agentMode: 'execute',
+    },
+  ];
+
+  it('lists every control the functions produce, each key once', () => {
+    for (const fixture of fixtures) {
+      const listed = controls(fixture);
+      const each = [
+        modeAction(fixture.agentMode),
+        newThreadAction(),
+        compactAction(fixture.convo, fixture.opened !== undefined),
+        resumeAction(fixture.opened, fixture.model),
+        stopTurnAction(fixture.convo.busy),
+      ];
+      expect(new Set(listed.map(keyOf))).toEqual(new Set(each.map(keyOf)));
+      expect(duplicateKeys(listed)).toEqual([]);
+    }
   });
 });

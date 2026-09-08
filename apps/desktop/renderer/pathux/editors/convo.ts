@@ -1,4 +1,4 @@
-import { Menu, createMenu, startMenu } from 'pathux';
+import { Menu, composeTooltip, createMenu, startMenu } from 'pathux';
 import type { Button, Container, DropBox, Label, MenuTemplate, MenuTemplateCustom } from 'pathux';
 import { BUDGET_CHOICES, TEXT_MODELS, budgetLabel, effortChoicesFor, effortLabel } from '@vn/types';
 import {
@@ -37,7 +37,6 @@ import {
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { openPalette } from '../chrome/palette.js';
 import {
-  contextDetail,
   threadDetail,
   threadLabel,
   tokensDetail,
@@ -45,9 +44,9 @@ import {
   type ThreadHeader,
 } from '../../../src/shared/convo.js';
 import { redrawing, type AnchorPass } from '../tour/anchors.js';
-import { modeAction, MODEL_SUPPLIES } from '../../rules/headerbar.js';
+import { applyOffer } from '../../rules/anchors.js';
+import { modeAction } from '../../rules/headerbar.js';
 import {
-  THREAD_SUPPLIES,
   compactAction,
   newThreadAction,
   resumeAction,
@@ -216,15 +215,12 @@ export class ConvoEditor extends VnEditor {
     const low = this.bar.row();
 
     top.label('VNAUTHOR').style['padding'] = '0px 8px';
-    const mode = this.anchors.act(
-      top.button(ui.agentMode === 'plan' ? 'PLAN' : 'EXECUTE', () => {}),
-      modeAction(ui.agentMode),
+    const modeOffer = modeAction(ui.agentMode);
+    this.anchors.act(
+      top.button(modeOffer.label ?? '', () => {}),
+      modeOffer,
       (action) => void setMode(String(action.props['mode'] ?? '')),
     );
-    mode.description =
-      ui.agentMode === 'plan'
-        ? 'Plan mode: the agent reads and proposes, and edits nothing. Click to let it edit.'
-        : 'Execute mode: the agent edits files. Click to go back to reading only.';
 
     // Rows carry their own tooltip, so the last slot has to be an explicit id: `createMenu` reads
     // `item[5]` for any row longer than four and would otherwise file the callback under undefined.
@@ -236,13 +232,15 @@ export class ConvoEditor extends VnEditor {
       `Answer with ${id} from the next turn on.`,
       id,
     ]) as MenuTemplate;
-    const model = top.menu(ui.model || 'model…', models);
-    model.description = 'Which model answers. Switching takes effect on the next turn.';
-    this.anchors.record(
-      model,
-      { ok: true, id: 'agent.setModel', props: {} },
-      { supplies: MODEL_SUPPLIES },
-    );
+    const modelLabel = ui.model || 'model…';
+    this.anchors.record(top.menu(modelLabel, models), {
+      ok      : true,
+      id      : 'agent.setModel',
+      props   : {},
+      label   : modelLabel,
+      tooltip : 'Which model answers. Switching takes effect on the next turn.',
+      supplies: ['modelId'],
+    });
 
     // Offers only the levels this model takes: `xhigh` is not a Sonnet 4.6 level, and Fable
     // thinks unconditionally, so it is never offered `no thinking`
@@ -283,48 +281,48 @@ export class ConvoEditor extends VnEditor {
     this.tokensLbl.setCSSAfter(() => (this.tokensLbl!.style['padding'] = '0px 8px'));
     this.sayTokens();
 
+    // The menu picks the conversation, so its id is not a prop the bar can record
     this.threadsBtn = this.anchors.record(
       low.button('Threads', () => void this.showThreads()),
-      { ok: true, id: 'agent.openThread', props: {} },
-      { supplies: THREAD_SUPPLIES },
+      {
+        ok      : true,
+        id      : 'agent.openThread',
+        props   : {},
+        label   : 'Threads',
+        tooltip:
+          'Saved conversations. Reopening one is read-only — the agent is not shown it until ' +
+          'Continue hands it back.',
+        supplies: ['id'],
+      },
     );
-    this.threadsBtn.description =
-      'Saved conversations. Reopening one is read-only — the agent is not shown it until ' +
-      'Continue hands it back.';
 
     // This button sits beside the Threads list rather than only inside it. Starting a fresh
     // conversation is the commonest thing anyone opens that menu for, and putting it here makes
     // it one gesture instead of two.
-    const fresh = this.anchors.act(
-      low.button('New', () => {}),
-      newThreadAction(),
+    const fresh = newThreadAction();
+    this.anchors.act(
+      low.button(fresh.label ?? '', () => {}),
+      fresh,
       (action) => void exec(action.id, action.props),
     );
-    fresh.description =
-      'Save this conversation and start a fresh one in plan mode. Nothing is lost — the old one ' +
-      'stays under Threads.';
 
+    const compact = compactAction(convo(), reopenedThread() !== undefined);
     this.compactBtn = this.anchors.act(
-      low.button('Compact', () => {}),
-      compactAction(convo(), reopenedThread() !== undefined),
+      low.button(compact.label ?? '', () => {}),
+      compact,
       (action) => void exec(action.id, action.props).then(report),
     );
-    this.sayCompact();
 
     // Drawn only while a saved conversation is on screen, because there is nothing to continue
     // while the live one is.
     const opened = reopenedThread();
     if (opened) {
       const offer = resumeAction(opened, ui.model);
-      const cont = this.anchors.act(
-        low.button('Continue', () => {}),
+      this.anchors.act(
+        low.button(offer.label ?? '', () => {}),
         offer,
         (action) => void exec(action.id, action.props).then(report),
       );
-      cont.description = offer.ok
-        ? 'Continue this conversation — the agent is shown everything above.'
-        : offer.reason;
-      cont.disabled = !offer.ok;
     }
 
     this.bar.flushUpdate();
@@ -387,16 +385,17 @@ export class ConvoEditor extends VnEditor {
    * click later. Main's check stays the authority and answers the rest on the click.
    */
   /**
-   * The Compact button, retitled in place for the reason the token counter is: what it says changes
-   * on every step of a turn, and rebuilding the bar closes a menu open over it. Past
+   * The Compact button, re-presented in place for the reason the token counter is: what it offers
+   * changes on every step of a turn, and rebuilding the bar closes a menu open over it. Past
    * `COMPACT_HINT_TOKENS` the tooltip says the conversation is large enough to be worth compacting.
    */
   private sayCompact(): void {
     if (!this.compactBtn) return;
-    const state = convo();
-    const offer = compactAction(state, reopenedThread() !== undefined);
-    this.compactBtn.disabled = !offer.ok;
-    this.compactBtn.description = offer.ok ? contextDetail(state) : offer.reason;
+    applyOffer(
+      this.compactBtn,
+      compactAction(convo(), reopenedThread() !== undefined),
+      composeTooltip,
+    );
   }
 
   /**

@@ -4,13 +4,18 @@
  * same conversation a pane that was there all along has.
  */
 import {
+  GRANT_LABELS,
   REPORT_OPENING,
+  controls,
   emptyReport,
   fromState,
+  grantAction,
   grantBox,
   reduceRow,
+  type GrantBox,
   type ReportConvo,
 } from '../reportconvo.js';
+import { duplicateKeys, keyOf } from '../anchors.js';
 import type { Report } from '@vn/agentreport';
 import type { ReportRow, ReportStateView } from '../../../src/shared/ipc.js';
 
@@ -149,7 +154,8 @@ describe('a grant box', () => {
     expect(grantBox(true, refuse, OFFER)).toEqual({
       checked : true,
       disabled: true,
-      tooltip : 'The debug agent has already been shown the source.',
+      tooltip : OFFER,
+      refusal : { reason: 'The debug agent has already been shown the source.' },
     });
   });
 
@@ -158,13 +164,47 @@ describe('a grant box', () => {
     expect(grantBox(false, refuse, OFFER)).toEqual({
       checked : false,
       disabled: true,
-      tooltip : 'Nothing was sent to the model API.',
+      tooltip : OFFER,
+      refusal : { reason: 'Nothing was sent to the model API.' },
     });
   });
 
   /** A verdict lags a grant by one round trip, and the tick is what already happened. */
-  it('stays ticked while the stale verdict still says yes', () => {
+  it('stays ticked while the stale verdict still says yes, and says why it is greyed', () => {
     const accept = { state: 'accept' as const, message: 'The debug agent gets the source.' };
-    expect(grantBox(true, accept, OFFER).disabled).toBe(true);
+    const box = grantBox(true, accept, OFFER);
+    expect(box.disabled).toBe(true);
+    expect(box.refusal?.reason).toContain('already been granted');
+  });
+
+  it('is offered as the command it runs, told apart by the access it grants', () => {
+    const open = grantBox(false, undefined, OFFER);
+    expect(grantAction('detail', open)).toEqual({
+      ok     : true,
+      id     : 'report.grant',
+      props  : { access: 'detail' },
+      label  : GRANT_LABELS.detail,
+      tooltip: OFFER,
+      on     : 'detail',
+    });
+    const spent = grantBox(true, undefined, OFFER);
+    expect(grantAction('source', spent)).toMatchObject({
+      ok     : false,
+      on     : 'source',
+      refusal: spent.refusal,
+    });
+  });
+});
+
+describe('controls', () => {
+  it('lists both boxes, each key once', () => {
+    const boxes: Record<'source' | 'detail', GrantBox> = {
+      source: grantBox(true, undefined, 'source'),
+      detail: grantBox(false, undefined, 'detail'),
+    };
+    const listed = controls({ boxes });
+    const each = [grantAction('source', boxes.source), grantAction('detail', boxes.detail)];
+    expect(new Set(listed.map(keyOf))).toEqual(new Set(each.map(keyOf)));
+    expect(duplicateKeys(listed)).toEqual([]);
   });
 });

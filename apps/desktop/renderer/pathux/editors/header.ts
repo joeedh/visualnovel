@@ -19,14 +19,7 @@ import {
 import type { PropValue } from '../../../src/shared/ipc.js';
 import { busyControls, type BusyControls } from '../../rules/busy.js';
 import { HEADER } from '../../rules/anchors.js';
-import {
-  EDITOR_SUPPLIES,
-  LAYOUT_SUPPLIES,
-  MODEL_SUPPLIES,
-  modeAction,
-  runAction,
-  stopAction,
-} from '../../rules/headerbar.js';
+import { modeAction, runAction, stopAction } from '../../rules/headerbar.js';
 import { redrawing, type AnchorPass } from '../tour/anchors.js';
 import { serializeLayoutFile, type LayoutSummary } from '../../../src/shared/layouts.js';
 import {
@@ -296,19 +289,26 @@ export class VnHeaderEditor extends VnEditor {
     this.bar.menu('Edit', this.editMenu()).description =
       'Undo and redo, and the one act that approves and renders the art in a single pass.';
     const view = this.bar.menu('View', this.viewMenu());
-    view.description = 'Split and close panes, and switch between the saved window layouts.';
     // The menu button, not its rows: the rows exist only while the menu is open, and the author's
-    // choice among them is what supplies the prop.
-    this.anchors.record(
-      view,
-      { ok: true, id: 'view.open', props: {} },
-      { supplies: EDITOR_SUPPLIES },
-    );
-    this.anchors.record(
-      view,
-      { ok: true, id: 'view.applyLayout', props: {} },
-      { supplies: LAYOUT_SUPPLIES },
-    );
+    // choice among them is what supplies the prop. Both offers present the one button the same way.
+    const views = {
+      label  : 'View',
+      tooltip: 'Split and close panes, and switch between the saved window layouts.',
+    };
+    this.anchors.record(view, {
+      ok      : true,
+      id      : 'view.open',
+      props   : {},
+      supplies: ['editor'],
+      ...views,
+    });
+    this.anchors.record(view, {
+      ok      : true,
+      id      : 'view.applyLayout',
+      props   : {},
+      supplies: ['name'],
+      ...views,
+    });
     this.bar.menu('Help', this.helpMenu()).description =
       'Whether there is a newer VN Studio, and what to do about an agent that misbehaved.';
     this.badge(`project ${ui.projectTitle || '—'}`, true);
@@ -347,15 +347,11 @@ export class VnHeaderEditor extends VnEditor {
         : 'A browser preview: every run is a dry run, and no model is called',
     );
     const modeOffer = modeAction(ui.agentMode);
-    const mode = this.anchors.act(
-      this.bar.button(modeOffer.ok ? (modeOffer.label ?? '') : 'PLAN', () => {}),
+    this.anchors.act(
+      this.bar.button(modeOffer.label ?? '', () => {}),
       modeOffer,
       (action) => void setMode(String(action.props['mode'] ?? '')),
     );
-    mode.description =
-      ui.agentMode === 'plan'
-        ? 'Plan mode: the agent reads but never writes. Click to let it apply edits.'
-        : 'Execute mode: the agent may apply edits. Click to make it read-only again.';
 
     // The rect is read inside the callback, not here. The bar is still being built at this point
     // and the button has not been laid out yet, so a rect taken now would be the zero one.
@@ -388,17 +384,11 @@ export class VnHeaderEditor extends VnEditor {
     const busy = this.ui.busyWhat;
 
     const runOffer = runAction(busy, isLive);
-    const run = this.anchors.act(
-      this.bar.button('▶ Run', () => {}),
+    this.anchors.act(
+      this.bar.button(runOffer.label ?? '', () => {}),
       runOffer,
       (action) => runPipelineNow(action.props),
     );
-    run.disabled = !runOffer.ok;
-    run.description = busy
-      ? `Cannot start: ${busy} is already in progress.`
-      : isLive
-        ? 'Plan and render everything that is ready, to the next gate'
-        : 'Preview what a run would do. This window cannot call a model.';
 
     this.spinner = undefined;
     const controls = busyControls(busy);
@@ -420,12 +410,12 @@ export class VnHeaderEditor extends VnEditor {
       iterations: Infinity,
     });
 
+    const stopOffer = stopAction(controls);
     const stop = this.anchors.act(
-      this.bar.button('■', () => {}),
-      stopAction(controls),
+      this.bar.button(stopOffer.label ?? '', () => {}),
+      stopOffer,
       (action) => void exec(action.id, action.props).then(report),
     );
-    stop.description = controls.stops;
     stop.setCSSAfter(() => (stop.style['color'] = 'var(--vermilion, #e5534b)'));
   }
 
@@ -444,13 +434,15 @@ export class VnHeaderEditor extends VnEditor {
       `Answer with ${id} from the next turn on.`,
       id,
     ]) as MenuTemplate;
-    const menu = this.bar.menu(this.ui.model || 'model…', rows);
-    menu.description = 'Which model the agent answers with. Switching takes effect next turn.';
-    this.anchors.record(
-      menu,
-      { ok: true, id: 'agent.setModel', props: {} },
-      { supplies: MODEL_SUPPLIES },
-    );
+    const label = this.ui.model || 'model…';
+    this.anchors.record(this.bar.menu(label, rows), {
+      ok   : true,
+      id   : 'agent.setModel',
+      props: {},
+      label,
+      tooltip : 'Which model the agent answers with. Switching takes effect next turn.',
+      supplies: ['modelId'],
+    });
   }
 
   /**
@@ -531,7 +523,7 @@ export class VnHeaderEditor extends VnEditor {
         callback: () => {
           const offer = runAction(this.ui.busyWhat, isLive);
           if (offer.ok) runPipelineNow(offer.props);
-          else say(offer.reason, true);
+          else say(offer.refusal?.reason ?? offer.reason, true);
         },
         tooltip : 'Plan and render everything that is ready, to the next gate',
       },

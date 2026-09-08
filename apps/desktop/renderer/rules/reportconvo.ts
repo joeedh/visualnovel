@@ -14,7 +14,8 @@ import {
   type ThreadHeader,
 } from '../../src/shared/convo.js';
 import type { CommandCheck, ReportRow, ReportStateView } from '../../src/shared/ipc.js';
-import type { Offer } from './anchors.js';
+import type { Refusal } from 'pathux';
+import { refuse, type Offer } from './anchors.js';
 
 /** What the dialogue box says before the analyst has been asked anything. */
 export const REPORT_OPENING = 'Pick the conversation that went wrong, then press Start.';
@@ -63,34 +64,59 @@ export function emptyReport(): ReportConvo {
   };
 }
 
+/** The two accesses a debug conversation can be given. */
+export type GrantKind = keyof ReportConvo['granted'];
+
+/** What each grant box says beside its tick, on the setup card and the opened card alike. */
+export const GRANT_LABELS: Record<GrantKind, string> = {
+  source: 'Read the source code',
+  detail: 'Read the requests this app sent',
+};
+
 /** How one of the two grant boxes draws. */
 export interface GrantBox {
   checked: boolean;
   disabled: boolean;
+  /** What the access buys, or the command's own acceptance once it has said so. */
   tooltip: string;
+  /** Why the box is greyed, composed above the tooltip. */
+  refusal?: Refusal;
 }
 
 /**
  * One grant box, from what has been granted and what `report.grant` said about granting it. A grant
- * does not come back off, so a ticked box is disabled and reads the command's refusal rather than
- * the offer it was ticked from. `offer` stands in until a verdict arrives.
+ * does not come back off, so a ticked box is disabled and carries the command's refusal to repeat
+ * it. `offer` stands in until a verdict arrives.
  */
 export function grantBox(
   granted: boolean,
   verdict: CommandCheck | undefined,
   offer: string,
 ): GrantBox {
+  const refusal =
+    verdict?.state === 'refuse'
+      ? { reason: verdict.message }
+      : granted
+        ? { reason: 'This access has already been granted, and a grant does not come back off.' }
+        : undefined;
   return {
     checked : granted,
-    disabled: granted || verdict?.state === 'refuse',
-    tooltip : verdict?.message || offer,
+    disabled: refusal !== undefined,
+    tooltip : verdict?.state === 'accept' ? verdict.message : offer,
+    ...(refusal ? { refusal } : {}),
   };
 }
 
 /** Grant the open conversation one access, as the box `grantBox` just described would run it. */
-export function grantAction(kind: string, box: GrantBox): Offer {
-  if (box.disabled) return { ok: false, id: 'report.grant', reason: box.tooltip };
-  return { ok: true, id: 'report.grant', props: { access: kind } };
+export function grantAction(kind: GrantKind, box: GrantBox): Offer {
+  const control = { id: 'report.grant', label: GRANT_LABELS[kind], tooltip: box.tooltip, on: kind };
+  if (box.refusal) return { ...refuse(box.refusal.reason), ...control };
+  return { ok: true, props: { access: kind }, ...control };
+}
+
+/** Every offer the report pane draws from this module: the two grant boxes, as they stand. */
+export function controls(state: { boxes: Record<GrantKind, GrantBox> }): readonly Offer[] {
+  return [grantAction('source', state.boxes.source), grantAction('detail', state.boxes.detail)];
 }
 
 /**

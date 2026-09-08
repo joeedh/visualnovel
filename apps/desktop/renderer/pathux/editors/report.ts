@@ -13,8 +13,9 @@ import {
   startReport,
   threadRow,
 } from '../agent/reportconvo.js';
-import { grantAction, grantBox } from '../../rules/reportconvo.js';
-import type { FiledReport, ReportConvo } from '../../rules/reportconvo.js';
+import { GRANT_LABELS, grantAction, grantBox } from '../../rules/reportconvo.js';
+import type { FiledReport, GrantKind, ReportConvo } from '../../rules/reportconvo.js';
+import { refuse, type Offer } from '../../rules/anchors.js';
 import type { CommandCheck } from '../../../src/shared/ipc.js';
 
 /**
@@ -70,8 +71,6 @@ const REPORT_CSS = `
 `;
 
 /** One of the two accesses `report.grant` hands over. */
-type GrantKind = keyof ReportConvo['granted'];
-
 // What each access buys, worded once: the setup card offers the two before the conversation starts
 // and the opened card offers the same two after it has, and a reader who ticks one late should read
 // the sentence they read early.
@@ -82,6 +81,7 @@ const DETAIL_TIP =
   'When the API rejected a request by position — "messages.1.content.0" — only the request itself ' +
   'says what was at that position. They stay on this machine: they are read on your own key and ' +
   'none of what it finds there goes into the report.';
+const STOP_TIP = 'Stop the debug agent after the step it is on. What it said is kept.';
 
 export class ReportEditor extends VnEditor {
   private surface!: HTMLDivElement;
@@ -123,7 +123,7 @@ export class ReportEditor extends VnEditor {
         'Say what went wrong, or answer what the debug agent asked. Enter sends it. It runs on ' +
         'your own model key, and names from your story are replaced before it sees them.',
       sendTitle   : 'Send what is in the box to the debug agent',
-      stopTitle   : 'Stop the debug agent after the step it is on. What it said is kept.',
+      stopTitle   : STOP_TIP,
       onSend      : (text) => void sayToReport(text),
       onStop      : () => void exec('report.stop').then(report),
       // Recorded once with the composer, which outlives every rebuild. The button is hidden
@@ -131,9 +131,11 @@ export class ReportEditor extends VnEditor {
       // goes with the button without anything having to re-record it.
       onStopButton: (button) =>
         redrawing('report', 'composer').record(button, {
-          ok   : true,
-          id   : 'report.stop',
-          props: {},
+          ok     : true,
+          id     : 'report.stop',
+          props  : {},
+          label  : 'Stop',
+          tooltip: STOP_TIP,
         }),
     });
     this.surface.appendChild(this.stage.root);
@@ -295,26 +297,21 @@ export class ReportEditor extends VnEditor {
    * have given.
    */
   private startButton(state: ReportConvo): HTMLElement {
-    const refused = this.verdict?.state === 'refuse';
-    const busy = state.convo.busy;
-    const button = this.button(
-      this.changing ? 'Read This One →' : 'Start →',
-      'btn primary',
-      refused
-        ? (this.verdict?.message ?? '')
-        : busy
-          ? 'The debug agent is still on the last turn.'
-          : this.verdict?.state === 'accept'
-            ? this.verdict.message
-            : 'Have the debug agent read this conversation and say what went wrong.',
-    );
-    (button as HTMLButtonElement).disabled = refused || busy;
-    this.anchors.record(
-      button,
-      (button as HTMLButtonElement).disabled
-        ? { ok: false, id: 'report.open', reason: button.title }
-        : { ok: true, id: 'report.open', props: { ...state.setup, note: '' } },
-    );
+    const control = {
+      id     : 'report.open',
+      label  : this.changing ? 'Read This One →' : 'Start →',
+      tooltip:
+        this.verdict?.state === 'accept'
+          ? this.verdict.message
+          : 'Have the debug agent read this conversation and say what went wrong.',
+    };
+    const offer: Offer =
+      this.verdict?.state === 'refuse'
+        ? { ...refuse(this.verdict.message), ...control }
+        : state.convo.busy
+          ? { ...refuse('The debug agent is still on the last turn.'), ...control }
+          : { ok: true, props: { ...state.setup, note: '' }, ...control };
+    const button = this.anchors.record(this.button(control.label, 'btn primary'), offer);
     button.addEventListener('click', () => {
       void startReport().then((view) => {
         if (view) this.changing = false;
@@ -336,8 +333,8 @@ export class ReportEditor extends VnEditor {
     // next message rather than on the turn in flight, so ticking one while the debug agent is
     // answering is accepted.
     const fields = el('div', 'setup grants');
-    fields.appendChild(this.drawGrant('source', 'Read the source code', SOURCE_TIP));
-    fields.appendChild(this.drawGrant('detail', 'Read the requests this app sent', DETAIL_TIP));
+    fields.appendChild(this.drawGrant('source', SOURCE_TIP));
+    fields.appendChild(this.drawGrant('detail', DETAIL_TIP));
     body.appendChild(fields);
 
     const acts = el('div', 'plan-acts');
@@ -421,18 +418,17 @@ export class ReportEditor extends VnEditor {
   }
 
   /** One access the open conversation can still be given, drawn as `grantBox` decided it. */
-  private drawGrant(kind: GrantKind, label: string, offer: string): HTMLElement {
+  private drawGrant(kind: GrantKind, offer: string): HTMLElement {
     const box = grantBox(reportConvo().granted[kind], this.grants[kind], offer);
 
     const row = el('label', box.disabled ? 'setup-check spent' : 'setup-check');
-    row.title = box.tooltip;
 
     const input = document.createElement('input');
     input.type = 'checkbox';
     input.checked = box.checked;
-    input.disabled = box.disabled;
-    input.title = box.tooltip;
-    this.anchors.record(input, grantAction(kind, box), { on: kind });
+    this.anchors.record(input, grantAction(kind, box));
+    // Hovering the words beside the tick shows the tick's own tooltip
+    row.title = input.title;
     input.addEventListener('change', () => {
       // Disabled before the answer lands, because a second press could only ask for what the first
       // press already asked for.
@@ -441,7 +437,7 @@ export class ReportEditor extends VnEditor {
     });
 
     row.appendChild(input);
-    row.appendChild(el('span', '', label));
+    row.appendChild(el('span', '', GRANT_LABELS[kind]));
     return row;
   }
 
@@ -463,11 +459,12 @@ export class ReportEditor extends VnEditor {
     return row;
   }
 
-  private button(label: string, className: string, tip: string): HTMLElement {
+  /** A raw button. One recorded through `act` or `record` is titled from its offer instead. */
+  private button(label: string, className: string, tip?: string): HTMLElement {
     const button = document.createElement('button');
     button.className = className;
     button.textContent = label;
-    button.title = tip;
+    if (tip !== undefined) button.title = tip;
     return button;
   }
 }

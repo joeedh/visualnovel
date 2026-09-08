@@ -65,6 +65,16 @@ export type Offer =
 export const refusalOf = (offer: Offer): Refusal | undefined =>
   offer.ok ? undefined : (offer.refusal ?? { reason: offer.reason });
 
+/**
+ * The refused half of an offer, from the sentence alone: `{ ...refuse(why), id, label, tooltip }`.
+ * Writes both fields while both exist, so a caller states the sentence once.
+ */
+export const refuse = (reason: string): { ok: false; reason: string; refusal: Refusal } => ({
+  ok: false,
+  reason,
+  refusal: { reason },
+});
+
 /** How a refusal and a description become one tooltip string; path.ux's `composeTooltip`. */
 export type Compose = (
   refusal: Refusal | undefined,

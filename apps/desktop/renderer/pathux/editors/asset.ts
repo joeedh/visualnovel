@@ -10,11 +10,7 @@ import { openCommandDialog } from '../chrome/dialog.js';
 import { showContextMenu } from '../chrome/showmenu.js';
 import { TOKENS } from '../app/tokens.js';
 import {
-  NOTES_SUPPLIES,
-  PROMOTE_SUPPLIES,
-  REDRAW_SUPPLIES,
   REQUEST_ANCHOR,
-  SEED_SUPPLIES,
   approveAction,
   badgesOf,
   blockedNote,
@@ -33,8 +29,6 @@ import {
   type ReplaceAction,
 } from '../../rules/assetview.js';
 import {
-  CHUNK_SUPPLIES,
-  REF_SUPPLIES,
   checkAction,
   chunkActs,
   chunkAddress,
@@ -53,7 +47,7 @@ import {
   type OriginAction,
   type RefChip,
 } from '../../rules/promptview.js';
-import type { Action, Offer } from '../../rules/anchors.js';
+import { refuse, type Action, type Offer } from '../../rules/anchors.js';
 import { promptReorder, type PromptDragState } from '../../../src/shared/interactions.js';
 import { TOP_CHUNK } from '../../../src/shared/promptops.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
@@ -244,7 +238,7 @@ export class AssetEditor extends VnEditor {
    * refuses one. The button offers the run that would draw it instead, as `pipeline.run`'s own
    * dialog, so what the author confirms is the work and its cost rather than a refusal.
    */
-  private async regenerate(action: RegenerateAction): Promise<void> {
+  private async regenerate(action: RegenerateAction & { ok: true }): Promise<void> {
     if (action.act === 'pipeline') {
       openCommandDialog(action.id, action.props, undefined, action.note);
       return;
@@ -551,7 +545,6 @@ export class AssetEditor extends VnEditor {
 
   private rebuildBar(): void {
     const info = this.info;
-    const action = info ? approveAction(info) : nothingShown('asset.accept');
     const anchors = redrawing('asset', 'bar');
 
     this.bar.clear();
@@ -563,56 +556,37 @@ export class AssetEditor extends VnEditor {
     // asset actually has, and the body carries the rest — the prompt box, its hint, and Promote.
     if (info?.kind === 'concept') {
       const offer = promptEditable(info);
-      const draw = anchors.act(
-        this.bar.button('Redraw', () => {}),
+      anchors.act(
+        this.bar.button(offer.label ?? '', () => {}),
         offer,
         (a) => void this.redraw(a),
-        { supplies: REDRAW_SUPPLIES },
       );
-      draw.description = 'Draw this sketch again from the prompt below, as a new one beside it';
     } else if (info?.kind === 'reference') {
       // An upload has neither act, because nothing generated it: there is no output to approve
       // and no task to requeue. It takes part by being pointed at from a prompt clause
       this.bar.label('uploaded').style['padding'] = '0px 8px';
     } else {
-      const approve = anchors.act(
-        this.bar.button(action.ok ? (action.label ?? 'Approve') : 'Approve', () => {}),
+      const action = approveAction(info);
+      anchors.act(
+        this.bar.button(action.label ?? '', () => {}),
         action,
         (a) => void this.approve(a),
       );
-      approve.disabled = !action.ok;
-      // A disabled button with no reason reads as a bug; `approveAction` wrote the sentence.
-      approve.description = !action.ok
-        ? action.reason
-        : action.id === 'asset.unapprove'
-          ? 'Take approval back off these bytes, leaving what they answered unanswered again'
-          : action.id === 'asset.restore'
-            ? 'Put this take back in its slot and accept it, superseding the one that replaced it'
-            : 'Accept these bytes for use downstream';
 
-      const requeue = info ? regenerateAction(info) : undefined;
-      const regen = anchors.act(
-        this.bar.button('Regenerate', () => {}),
-        requeue ? { ok: true, ...requeue } : nothingShown('asset.regenerate'),
-        () => void (requeue && this.regenerate(requeue)),
+      const regen = regenerateAction(info);
+      anchors.act(
+        this.bar.button(regen.label ?? '', () => {}),
+        regen,
+        () => void (regen.ok && this.regenerate(regen)),
       );
-      regen.disabled = !requeue;
-      // Two different acts under one label, so the tooltip is the only place the author can find
-      // out which one this click is before making it.
-      regen.description =
-        requeue?.hint ?? 'Requeue the task behind these bytes and run the pipeline';
     }
 
     const open = taskAction(info?.sourceTask);
-    const task = anchors.act(
-      this.bar.button('Task', () => {}),
+    anchors.act(
+      this.bar.button(open.label ?? '', () => {}),
       open,
       (a) => void (open.ok && this.showTask(open.publish['taskHash'] ?? '', a)),
     );
-    task.disabled = !open.ok;
-    task.description = open.ok
-      ? 'Show the task that produced this asset in the inspector'
-      : open.reason;
 
     // Beside Task rather than in the body, because the band that says the same thing is below the
     // picture and a tall asset pushes it off screen.
@@ -627,18 +601,19 @@ export class AssetEditor extends VnEditor {
       });
     }
 
+    const saves = {
+      id     : 'asset.export',
+      label  : 'Download',
+      tooltip: 'Save a copy of this picture wherever you like. The project is not touched',
+    };
     const download: Offer = info
-      ? { ok: true, id: 'asset.export', props: { hash: info.hash }, label: 'Download' }
-      : { ok: false, id: 'asset.export', reason: 'No picture on screen to save' };
-    const save = anchors.act(
-      this.bar.button('Download', () => {}),
+      ? { ok: true, props: { hash: info.hash }, ...saves }
+      : { ...refuse('No picture on screen to save'), ...saves };
+    anchors.act(
+      this.bar.button(saves.label, () => {}),
       download,
       (a) => void this.download(a),
     );
-    save.disabled = !download.ok;
-    save.description = download.ok
-      ? 'Save a copy of this picture wherever you like. The project is not touched'
-      : download.reason;
 
     // The same entries the tree's right-click offers, raised from the pane already showing the
     // asset — which is also the check that `menuFor` is node-shaped rather than tree-shaped. The
@@ -789,31 +764,28 @@ export class AssetEditor extends VnEditor {
   private modeRow(view: PromptView): HTMLElement {
     const row = el('div', 'as-modes');
     for (const seg of modeStrip(view)) {
-      const b = this.drawing.act(
-        button(`as-mode${seg.active ? ' on' : ''}`, seg.label),
-        seg.action,
-        (a) => void this.runPrompt(a.id, a.props),
-        { on: seg.id },
+      row.appendChild(
+        this.drawing.act(
+          button(`as-mode${seg.active ? ' on' : ''}`, seg.offer.label ?? ''),
+          seg.offer,
+          (a) => void this.runPrompt(a.id, a.props),
+        ),
       );
-      b.disabled = !seg.action.ok;
-      b.title = seg.action.ok ? `Run ${seg.action.id}` : seg.action.reason;
-      row.appendChild(b);
     }
 
     const condense = condenseAction(view);
-    const act = this.drawing.act(
-      button('as-mode act', condense.ok ? condense.label : 'Condense…'),
-      condense,
-      (a) => void this.runPrompt(a.id, a.props),
+    row.appendChild(
+      this.drawing.act(
+        button('as-mode act', condense.label ?? ''),
+        condense,
+        (a) => void this.runPrompt(a.id, a.props),
+      ),
     );
-    act.disabled = !condense.ok;
-    act.title = condense.ok ? condense.note : condense.reason;
-    row.appendChild(act);
 
     const check = checkAction(view);
-    const ask = this.drawing.act(button('as-mode', 'Check'), check, (a) => void this.runCheck(a));
-    ask.title = 'Which clauses the prompt above no longer appears to say';
-    row.appendChild(ask);
+    row.appendChild(
+      this.drawing.act(button('as-mode', check.label ?? ''), check, (a) => void this.runCheck(a)),
+    );
     return row;
   }
 
@@ -826,29 +798,38 @@ export class AssetEditor extends VnEditor {
   private failureBand(info: AssetInfo, failure: AssetFailure): HTMLElement {
     const band = el('div', 'as-failed', failureNote(info));
     const open = taskAction(failure.task);
-    const b = this.drawing.act(
-      button('as-mode', 'Show task'),
-      open,
-      (a) => void (open.ok && this.showTask(open.publish['taskHash'] ?? '', a)),
-      { on: failure.task },
+    // The bar's Task button offers the same command on the asset's own task; this one is told
+    // apart by the task that gave up
+    const show: Offer = {
+      ...open,
+      on     : failure.task,
+      label  : 'Show task',
+      tooltip:
+        failure.task === info.sourceTask
+          ? 'Open this task in the inspector, where its attempts are listed'
+          : 'Open the task that gave up in the inspector — a re-render, not the one these bytes came from',
+    };
+    band.appendChild(
+      this.drawing.act(
+        button('as-mode', show.label ?? ''),
+        show,
+        (a) => void (open.ok && this.showTask(open.publish['taskHash'] ?? '', a)),
+      ),
     );
-    b.title =
-      failure.task === info.sourceTask
-        ? 'Open this task in the inspector, where its attempts are listed'
-        : 'Open the task that gave up in the inspector — a re-render, not the one these bytes came from';
-    band.appendChild(b);
 
     // Placed on the band rather than the bar, because the offer exists only while there is a
     // failure here for the author to read.
-    const ask: Offer = { ok: true, id: 'agent.fixAsset', props: { hash: info.hash } };
-    const fix = this.drawing.act(
-      button('as-mode', 'Fix with agent'),
-      ask,
-      (a) => void this.fixWithAgent(a),
+    const ask: Offer = {
+      ok     : true,
+      id     : 'agent.fixAsset',
+      props  : { hash: info.hash },
+      label  : 'Fix with agent',
+      tooltip:
+        'Open a conversation about this failure, with what it said already in the composer. Nothing is sent',
+    };
+    band.appendChild(
+      this.drawing.act(button('as-mode', ask.label ?? ''), ask, (a) => void this.fixWithAgent(a)),
     );
-    fix.title =
-      'Open a conversation about this failure, with what it said already in the composer. Nothing is sent';
-    band.appendChild(fix);
     return band;
   }
 
@@ -864,13 +845,13 @@ export class AssetEditor extends VnEditor {
     const banner = el('div', 'as-held', heldNote(view));
     const action = condenseAction(view);
     if (action.ok) {
-      const b = this.drawing.act(
-        button('as-mode', action.label),
-        action,
-        (a) => void this.runPrompt(a.id, a.props),
+      banner.appendChild(
+        this.drawing.act(
+          button('as-mode', action.label ?? ''),
+          action,
+          (a) => void this.runPrompt(a.id, a.props),
+        ),
       );
-      b.title = action.note;
-      banner.appendChild(b);
     }
     return banner;
   }
@@ -954,25 +935,27 @@ export class AssetEditor extends VnEditor {
       this.drawing.act(
         thumb,
         {
-          ok   : true,
-          id   : 'view.open',
-          props: { editor: 'asset', where: 'elsewhere', subject: chip.pin },
+          ok     : true,
+          id     : 'view.open',
+          props  : { editor: 'asset', where: 'elsewhere', subject: chip.pin },
+          label  : chip.label,
+          tooltip: `${chip.title} · click to open it in another pane`,
+          on     : chip.pin,
         },
         (a) => void exec(a.id, a.props),
-        { on: chip.pin },
       );
       item.appendChild(thumb);
       item.appendChild(el('span', 'as-ref-name', chip.label));
 
       if (!view.frozen) {
-        const drop = this.drawing.act(
-          button('as-ref-drop', '×'),
-          dropRefAction(view, chunk, chip.pin),
-          (a) => void this.runPrompt(a.id, a.props),
-          { on: `${chunk.key}/${chip.pin}` },
+        const drop = dropRefAction(view, chunk, chip);
+        item.appendChild(
+          this.drawing.act(
+            button('as-ref-drop', drop.label ?? ''),
+            drop,
+            (a) => void this.runPrompt(a.id, a.props),
+          ),
         );
-        drop.title = `Stop sending ${chip.label} with this clause`;
-        item.appendChild(drop);
       }
       strip.appendChild(item);
     }
@@ -991,19 +974,18 @@ export class AssetEditor extends VnEditor {
       // A scroll runs no command at all, and an open is a publish followed by one, so neither is
       // wired from an offer here. Both are recorded as steps the tour composes instead.
       if (origin.kind === 'open') {
-        this.drawing.record(
-          open,
-          {
-            ok   : true,
-            id   : 'view.open',
-            props: {
-              editor: origin.editor,
-              where : 'elsewhere',
-              ...(origin.subject ? { subject: origin.subject } : {}),
-            },
+        this.drawing.record(open, {
+          ok     : true,
+          id     : 'view.open',
+          props: {
+            editor: origin.editor,
+            where : 'elsewhere',
+            ...(origin.subject ? { subject: origin.subject } : {}),
           },
-          { on: chunk.key },
-        );
+          label  : origin.label,
+          tooltip: origin.label,
+          on     : chunk.key,
+        });
       }
       open.addEventListener('click', () => void this.openOrigin(origin));
       tags.appendChild(open);
@@ -1035,7 +1017,7 @@ export class AssetEditor extends VnEditor {
       const opens = act.opens;
       const picks = act.picks;
       const b = this.drawing.act(
-        button('as-chunk-act', act.label),
+        button('as-chunk-act', act.offer.label ?? ''),
         act.offer,
         (a) =>
           void (opens
@@ -1043,14 +1025,7 @@ export class AssetEditor extends VnEditor {
             : picks
               ? this.pickRef(chunk.key, a, b)
               : this.runChunk(chunk.key, a)),
-        {
-          on: `${chunk.key}/${act.key}`,
-          ...(opens ? { supplies: CHUNK_SUPPLIES } : {}),
-          ...(picks ? { supplies: REF_SUPPLIES } : {}),
-        },
       );
-      b.disabled = !act.offer.ok;
-      b.title = act.title;
       acts.appendChild(b);
     }
 
@@ -1107,7 +1082,14 @@ export class AssetEditor extends VnEditor {
     const action: Action = offer.ok ? offer : { id: 'prompt.setChunk', props: {} };
     const text = document.createElement('textarea');
     text.className = 'as-chunk-box';
-    this.drawing.record(text, offer, { on: `${chunk.key}/box`, supplies: CHUNK_SUPPLIES });
+    this.drawing.record(text, {
+      ...offer,
+      on     : `${chunk.key}/box`,
+      tooltip:
+        how === 'replace'
+          ? 'Say this clause in your own words. Ctrl+S or leaving the box saves it.'
+          : 'Add to what the builders derived. Ctrl+S or leaving the box saves it.',
+    });
     text.spellcheck = false;
     text.setAttribute('aria-label', `${how} the ${chunk.key} clause`);
     text.placeholder =
@@ -1145,9 +1127,12 @@ export class AssetEditor extends VnEditor {
     const text = document.createElement('textarea');
     text.spellcheck = false;
     text.setAttribute('aria-label', 'The prompt this asset is generated from');
-    text.title = 'Say the whole prompt yourself. Ctrl+S or leaving the box saves it.';
     text.value = this.customDraft ?? view.custom ?? view.text;
-    this.drawing.record(text, offer, { on: 'box', supplies: CHUNK_SUPPLIES });
+    this.drawing.record(text, {
+      ...offer,
+      on     : 'box',
+      tooltip: 'Say the whole prompt yourself. Ctrl+S or leaving the box saves it.',
+    });
     text.addEventListener('input', () => {
       this.customDraft = text.value;
       this.dirty.add('custom');
@@ -1166,14 +1151,13 @@ export class AssetEditor extends VnEditor {
     box.appendChild(text);
 
     const row = el('div', 'as-custom-row');
-    const save = this.drawing.act(
-      button('as-mode', 'Save'),
-      offer,
-      (a) => void this.commitCustom(a, text.value, box),
-      { supplies: CHUNK_SUPPLIES },
+    row.appendChild(
+      this.drawing.act(
+        button('as-mode', offer.label ?? ''),
+        offer,
+        (a) => void this.commitCustom(a, text.value, box),
+      ),
     );
-    save.title = 'Send this prompt instead of the clauses below';
-    row.appendChild(save);
     row.appendChild(
       el('div', 'as-hint', 'Ctrl+S or leaving the box saves. Chunks goes back to the derivation.'),
     );
@@ -1287,10 +1271,14 @@ export class AssetEditor extends VnEditor {
     const input = document.createElement('input');
     input.className = 'as-promote-id';
     input.setAttribute('aria-label', 'The variant id this becomes the plate for');
-    input.title = 'Which variant of the location these bytes become the plate for';
     input.placeholder = 'variant id, e.g. dawn';
     input.value = this.variant;
-    this.drawing.record(input, offer, { on: 'variant', supplies: PROMOTE_SUPPLIES });
+    this.drawing.record(input, {
+      ...offer,
+      on     : 'variant',
+      label  : input.placeholder,
+      tooltip: 'Which variant of the location these bytes become the plate for',
+    });
     input.addEventListener('input', () => {
       this.variant = input.value;
       // Typing the name of a variant that exists is the same choice the picker makes, so the two
@@ -1309,14 +1297,13 @@ export class AssetEditor extends VnEditor {
       strip.appendChild(picker);
     }
 
-    const go = this.drawing.act(
-      el('button', 'as-promote-go', 'Promote'),
-      offer,
-      (a) => void this.promote(a),
-      { supplies: PROMOTE_SUPPLIES },
+    strip.appendChild(
+      this.drawing.act(
+        el('button', 'as-promote-go', offer.label ?? ''),
+        offer,
+        (a) => void this.promote(a),
+      ),
     );
-    go.title = 'Make this sketch the plate for that variant, so the next run adopts it';
-    strip.appendChild(go);
 
     strip.appendChild(
       el(
@@ -1364,13 +1351,13 @@ export class AssetEditor extends VnEditor {
    */
   private replaceStrip(offer: ReplaceAction & { ok: true }): HTMLElement {
     const strip = el('div', 'as-replace');
-    const go = this.drawing.act(
-      el('button', 'as-replace-go', 'Replace with a file…'),
-      offer,
-      (a) => void this.replace(a),
+    strip.appendChild(
+      this.drawing.act(
+        el('button', 'as-replace-go', offer.label ?? ''),
+        offer,
+        (a) => void this.replace(a),
+      ),
     );
-    go.title = `Choose a file and let it stand in for ${offer.slot} from now on`;
-    strip.appendChild(go);
     strip.appendChild(el('span', 'as-replace-what', offer.slot));
     strip.appendChild(
       el(
@@ -1397,8 +1384,11 @@ export class AssetEditor extends VnEditor {
     text.value = this.draft;
     text.spellcheck = false;
     text.setAttribute('aria-label', 'The prompt this concept is drawn from');
-    text.title = 'Edit the words this sketch is drawn from. Redraw sends them.';
-    this.drawing.record(text, offer, { on: 'prompt', supplies: REDRAW_SUPPLIES });
+    this.drawing.record(text, {
+      ...offer,
+      on     : 'prompt',
+      tooltip: 'Edit the words this sketch is drawn from. Redraw sends them.',
+    });
     text.addEventListener('input', () => {
       this.draft = text.value;
       this.promptDirty = true;
@@ -1422,14 +1412,18 @@ export class AssetEditor extends VnEditor {
     });
     row.appendChild(name);
 
-    const go = this.drawing.act(
-      el('button', 'as-redraw-go', 'Redraw'),
-      offer,
-      (a) => void this.redraw(a),
-      { on: 'go', supplies: REDRAW_SUPPLIES },
+    // The bar's Redraw is the same offer; this one is told apart as the strip's own button
+    row.appendChild(
+      this.drawing.act(
+        el('button', 'as-redraw-go', offer.label ?? ''),
+        {
+          ...offer,
+          on     : 'go',
+          tooltip: 'Spend one image call on this prompt and file the result as a new sketch',
+        },
+        (a) => void this.redraw(a),
+      ),
     );
-    go.title = 'Spend one image call on this prompt and file the result as a new sketch';
-    row.appendChild(go);
     strip.appendChild(row);
 
     strip.appendChild(
@@ -1457,13 +1451,16 @@ export class AssetEditor extends VnEditor {
     const text = document.createElement('textarea');
     text.value = rung.notes ?? '';
     text.spellcheck = false;
-    text.title = `Say how ${rung.label} should look. Appended to the prompt, so saving re-renders what this rung reaches on the next run.`;
     text.placeholder = 'e.g. sodium streetlight raking across the formwork';
-    this.drawing.record(
-      text,
-      { ok: true, id: 'art.setNotes', props: { target: rung.target } },
-      { on: rung.target, supplies: NOTES_SUPPLIES },
-    );
+    this.drawing.record(text, {
+      ok      : true,
+      id      : 'art.setNotes',
+      props   : { target: rung.target },
+      label   : text.placeholder,
+      tooltip: `Say how ${rung.label} should look. Appended to the prompt, so saving re-renders what this rung reaches on the next run.`,
+      on      : rung.target,
+      supplies: ['notes'],
+    });
     text.addEventListener('input', () => {
       this.dirty.add(rung.target);
       box.classList.add('dirty');
@@ -1502,17 +1499,22 @@ export class AssetEditor extends VnEditor {
     field.value = rung.seed === undefined ? '' : String(rung.seed);
     field.placeholder = inherited === undefined ? 'seed' : String(inherited);
     field.setAttribute('aria-label', `Image seed for ${rung.label}`);
-    field.title =
-      `Draw ${rung.label} from this seed instead. Saving re-renders what this rung reaches on ` +
-      'the next run — same words, different picture. Empty inherits ' +
-      (inherited === undefined ? 'the wider rung, then the model’s own choice.' : `${inherited}.`);
 
     const key = `seed:${rung.target}`;
-    this.drawing.record(
-      field,
-      { ok: true, id: 'art.setSeed', props: { target: rung.target } },
-      { on: rung.target, supplies: SEED_SUPPLIES },
-    );
+    this.drawing.record(field, {
+      ok      : true,
+      id      : 'art.setSeed',
+      props   : { target: rung.target },
+      label   : field.placeholder,
+      tooltip:
+        `Draw ${rung.label} from this seed instead. Saving re-renders what this rung reaches on ` +
+        'the next run — same words, different picture. Empty inherits ' +
+        (inherited === undefined
+          ? 'the wider rung, then the model’s own choice.'
+          : `${inherited}.`),
+      on      : rung.target,
+      supplies: ['seed'],
+    });
     field.addEventListener('input', () => {
       this.dirty.add(key);
       field.classList.add('dirty');
@@ -1568,9 +1570,6 @@ function el(tag: string, className: string, text?: string): HTMLElement {
   if (text !== undefined) node.textContent = text;
   return node;
 }
-
-/** The refusal a control carries while no asset is on screen, still naming what it would run. */
-const nothingShown = (id: string): Offer => ({ ok: false, id, reason: 'No asset is on screen.' });
 
 /** A real `<button>`, because half of these are disabled and carry their refusal as the tooltip. */
 function button(className: string, text: string): HTMLButtonElement {

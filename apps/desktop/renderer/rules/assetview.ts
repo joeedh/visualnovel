@@ -5,7 +5,18 @@
  * These are pure functions so they can be tested here. The desktop jest project is node-only and
  * the pane itself can only be checked live over CDP, so the rules are kept out of the markup.
  */
-import type { AssetInfo, PropValue } from '../../src/shared/ipc.js';
+import type { AssetInfo } from '../../src/shared/ipc.js';
+import { refuse, type Offer } from './anchors.js';
+
+/** The two halves of an {@link Offer}, for a control that carries more on one of them. */
+type Accepted = Extract<Offer, { ok: true }>;
+type Refused = Extract<Offer, { ok: false }>;
+
+/** The refusal a bar control carries while no asset is on screen, still naming what it would run. */
+const nothingShown = (control: Pick<Offer, 'id' | 'label' | 'tooltip'>): Refused => ({
+  ...refuse('No asset is on screen.'),
+  ...control,
+});
 
 /** The character an entity-level rung names — `character:aiko/gala` → `aiko`. */
 export function characterOf(info: AssetInfo): string {
@@ -33,16 +44,23 @@ export function locationOf(info: AssetInfo): string {
   return '';
 }
 
+/** What accepting says, by the command it runs. The gate's sentence names what the gate writes. */
+const APPROVE_TOOLTIPS = {
+  'asset.accept'   : 'Accept these bytes for use downstream',
+  'gate.approve'   : 'Approve this look at the gate, which is what clears the character',
+  'asset.unapprove':
+    'Take approval back off these bytes, leaving what they answered unanswered again',
+  'asset.restore':
+    'Put this take back in its slot and accept it, superseding the one that replaced it',
+} as const;
+
+type ApproveId = keyof typeof APPROVE_TOOLTIPS;
+
 /**
  * The approve button: which command it runs, or why there is nothing for it to run. A refusal
  * still names the command it is about, so a tour asked for that command can ring the greyed
  * button and say this sentence rather than reporting the button as missing.
- */
-export type ApproveAction =
-  | { ok: true; id: string; props: Record<string, string>; label: string }
-  | { ok: false; reason: string; id: string };
-
-/**
+ *
  * A portrait is approved through the gate and nothing else. `gate.approve` also writes
  * `character.md` and `approved.png`, which is what clears the character, so the pane offers that
  * command rather than the generic `asset.accept` the command itself would refuse. A concept and an
@@ -56,70 +74,59 @@ export type ApproveAction =
  * the manifest already says, so the one act left on it is taking that approval back — and the
  * upstream refusal is not consulted for it, since nothing upstream is at stake in undoing one.
  */
-export function approveAction(info: AssetInfo): ApproveAction {
+export function approveAction(info: AssetInfo | undefined): Offer {
+  if (!info) {
+    return nothingShown({
+      id     : 'asset.accept',
+      label  : 'Approve',
+      tooltip: APPROVE_TOOLTIPS['asset.accept'],
+    });
+  }
   // Which command a refusal below is about: a look goes through the gate, everything else is
   // accepted directly.
-  const approving = info.kind === 'portrait' ? 'gate.approve' : 'asset.accept';
+  const approving: ApproveId = info.kind === 'portrait' ? 'gate.approve' : 'asset.accept';
+  const no = (reason: string): Offer => ({
+    ...refuse(reason),
+    id     : approving,
+    label  : 'Approve',
+    tooltip: APPROVE_TOOLTIPS[approving],
+  });
+  const yes = (id: ApproveId, label: string, props: Record<string, string>): Offer => ({
+    ok: true,
+    id,
+    props,
+    label,
+    tooltip: APPROVE_TOOLTIPS[id],
+  });
   if (info.kind === 'concept') {
-    return {
-      ok    : false,
-      id    : approving,
-      reason: 'A concept is a sketch — nothing downstream consumes one. Promote it to a plate.',
-    };
+    return no('A concept is a sketch — nothing downstream consumes one. Promote it to a plate.');
   }
   if (info.kind === 'reference') {
-    return {
-      ok    : false,
-      id    : approving,
-      reason:
-        'An upload is not generated art — it counts by being pointed at, not by being blessed.',
-    };
+    return no(
+      'An upload is not generated art — it counts by being pointed at, not by being blessed.',
+    );
   }
-  if (info.accepted) {
-    return {
-      ok   : true,
-      id   : 'asset.unapprove',
-      props: { hash: info.hash },
-      label: 'Un-approve',
-    };
-  }
-  if (info.unapproved) return { ok: false, id: approving, reason: info.unapproved };
+  if (info.accepted) return yes('asset.unapprove', 'Un-approve', { hash: info.hash });
+  if (info.unapproved) return no(info.unapproved);
   // An older take, which a later render pushed out of its slot. Accepting one has to put it back
   // as well: the flag alone would leave the slot naming the later render, so the runner and the
   // exporter would go on using it and the click would appear to do nothing. A portrait is left
   // out for the reason it is left out below — an earlier look goes back through the gate.
   if (info.newerTake !== undefined && info.kind !== 'portrait') {
-    return { ok: true, id: 'asset.restore', props: { hash: info.hash }, label: 'Accept' };
+    return yes('asset.restore', 'Accept', { hash: info.hash });
   }
-  if (info.kind !== 'portrait') {
-    return { ok: true, id: 'asset.accept', props: { hash: info.hash }, label: 'Accept' };
-  }
+  if (info.kind !== 'portrait') return yes('asset.accept', 'Accept', { hash: info.hash });
   const characterId = characterOf(info);
-  if (characterId === '') {
-    return {
-      ok    : false,
-      id    : approving,
-      reason: 'This portrait names no character — approve it from the gate.',
-    };
-  }
-  return {
-    ok   : true,
-    id   : 'gate.approve',
-    props: { characterId, hash: info.hash },
-    label: 'Approve',
-  };
+  if (characterId === '') return no('This portrait names no character — approve it from the gate.');
+  return yes('gate.approve', 'Approve', { characterId, hash: info.hash });
 }
 
 /**
  * The promote control: `art.promote` on this concept, or why it cannot run. The variant id is not
- * here because it is not known until it is typed — the strip records it as a supplied prop.
+ * here because it is not known until it is typed — the strip's field supplies it.
  */
 export type PromoteAction =
-  | {
-      ok: true;
-      id: string;
-      props: Record<string, PropValue>;
-      label: string;
+  | (Accepted & {
       /** The place the plate is for, which is what the strip says above its field. */
       locationId: string;
       /**
@@ -128,53 +135,49 @@ export type PromoteAction =
        * does. Empty when the location has no variants, and then no picker is drawn.
        */
       variants: string[];
-    }
-  | { ok: false; reason: string; id: string };
+    })
+  | Refused;
 
 /**
  * Only a concept is promotable, and only one bound to a location. Promoting a character concept
  * would bypass the approval gate, which owns `character.md` and `approved.png`.
  */
 export function promoteAction(info: AssetInfo): PromoteAction {
+  const control = {
+    id      : 'art.promote',
+    label   : 'Promote',
+    tooltip : 'Make this sketch the plate for that variant, so the next run adopts it',
+    supplies: ['variant'],
+  };
   if (info.kind !== 'concept') {
     return {
-      ok    : false,
-      id    : 'art.promote',
-      reason: `A ${info.kind} is already what it is — only a concept promotes.`,
+      ...refuse(`A ${info.kind} is already what it is — only a concept promotes.`),
+      ...control,
     };
   }
   if (characterOf(info) !== '') {
     return {
-      ok    : false,
-      id    : 'art.promote',
-      reason:
+      ...refuse(
         "That is a concept of a character, and a character's look goes through the approval gate.",
+      ),
+      ...control,
     };
   }
   const locationId = locationOf(info);
   if (locationId === '') {
     return {
-      ok    : false,
-      id    : 'art.promote',
-      reason: 'This concept names no location, so there is no sheet to write to.',
+      ...refuse('This concept names no location, so there is no sheet to write to.'),
+      ...control,
     };
   }
   return {
     ok   : true,
-    id   : 'art.promote',
     props: { hash: info.hash },
-    label: 'Promote',
+    ...control,
     locationId,
     variants: info.locationVariants ?? [],
   };
 }
-
-/** The prop the promote strip's field fills in, which is not known until it is typed. */
-export const PROMOTE_SUPPLIES = ['variant'];
-
-/** The props the two boxes in a rung fill in — the art direction, and the seed to draw it from. */
-export const NOTES_SUPPLIES = ['notes'];
-export const SEED_SUPPLIES = ['seed'];
 
 /**
  * The `data-anchor` on the concept prompt box, which the `⇱` of a `request` chunk scrolls to.
@@ -184,15 +187,11 @@ export const REQUEST_ANCHOR = 'request/prompt';
 
 /** The replace strip: the slot a chosen file would fill, or why these bytes have none. */
 export type ReplaceAction =
-  | {
-      ok: true;
-      id: string;
-      props: Record<string, PropValue>;
-      label: string;
+  | (Accepted & {
       /** The slot the file stands in for, which the strip names beside its button. */
       slot: string;
-    }
-  | { ok: false; reason: string; id: string };
+    })
+  | Refused;
 
 /**
  * A file can only stand in for a picture the project actually planned, and only while the asset on
@@ -201,27 +200,34 @@ export type ReplaceAction =
  * is approving one and approval belongs to the gate. Both refusals restate `adoptionForSlot`'s.
  */
 export function replaceAction(info: AssetInfo): ReplaceAction {
+  const label = 'Replace with a file…';
   if (info.slot === undefined) {
     return {
-      ok    : false,
-      id    : 'asset.replace',
-      reason: `A ${info.kind} fills no slot — nothing planned it, or a newer render holds the slot now.`,
+      ...refuse(
+        `A ${info.kind} fills no slot — nothing planned it, or a newer render holds the slot now.`,
+      ),
+      id: 'asset.replace',
+      label,
+      tooltip: 'Choose a file and let it stand in for this picture from now on',
     };
   }
   if (info.slot.startsWith('portrait:')) {
     return {
-      ok    : false,
-      id    : 'asset.replace',
-      reason:
+      ...refuse(
         'A portrait is the look the gate owns — upload the file, then approve it with gate.approve.',
+      ),
+      id: 'asset.replace',
+      label,
+      tooltip: `Choose a file and let it stand in for ${info.slot} from now on`,
     };
   }
   return {
     ok   : true,
     id   : 'asset.replace',
     props: { hash: info.hash },
-    label: 'Replace with a file…',
-    slot : info.slot,
+    label,
+    tooltip: `Choose a file and let it stand in for ${info.slot} from now on`,
+    slot   : info.slot,
   };
 }
 
@@ -230,16 +236,12 @@ export function replaceAction(info: AssetInfo): ReplaceAction {
  * words themselves are supplied by the boxes at commit time, so `props` carries only the subject.
  */
 export type RedrawAction =
-  | {
-      ok: true;
-      id: string;
-      props: Record<string, PropValue>;
-      label: string;
+  | (Accepted & {
       /** What the two boxes are prefilled with. */
       prompt: string;
       title: string;
-    }
-  | { ok: false; reason: string; id: string };
+    })
+  | Refused;
 
 /**
  * A concept is the one asset whose prompt is authored: nothing derives it, so nothing rewrites it
@@ -250,41 +252,43 @@ export type RedrawAction =
  * framing sentence survive an edit by default.
  */
 export function promptEditable(info: AssetInfo): RedrawAction {
+  const control = {
+    id      : 'art.redraw',
+    label   : 'Redraw',
+    tooltip : 'Draw this sketch again from the prompt below, as a new one beside it',
+    supplies: ['prompt', 'title'],
+  };
   if (info.kind !== 'concept') {
     return {
-      ok    : false,
-      id    : 'art.redraw',
-      reason: `A ${info.kind}'s prompt is composed from the project on every planning pass — edit it a clause at a time below, not as one string.`,
+      ...refuse(
+        `A ${info.kind}'s prompt is composed from the project on every planning pass — edit it a clause at a time below, not as one string.`,
+      ),
+      ...control,
     };
   }
   return {
-    ok    : true,
-    id    : 'art.redraw',
-    props : { hash: info.hash },
-    label : 'Redraw',
+    ok   : true,
+    props: { hash: info.hash },
+    ...control,
     prompt: info.prompt ?? '',
     title : info.title ?? '',
   };
 }
 
-/** The prop names the redraw boxes fill in, which no anchor can record before they are typed. */
-export const REDRAW_SUPPLIES = ['prompt', 'title'];
-
 /**
  * The Regenerate button: requeue this asset's own task, or offer to run the pipeline instead.
  * Both carry the invocation, so the button and the anchor read the same object; the `pipeline`
  * act reaches it through a form, because what the author confirms there is the work and its cost.
+ * The tooltip is the only place the author can find out which of the two a click is.
  */
 export type RegenerateAction =
-  | { act: 'requeue'; id: string; props: Record<string, PropValue>; label: string; hint: string }
-  | {
+  | (Accepted & { act: 'requeue' })
+  | (Accepted & {
       act: 'pipeline';
-      id: string;
-      props: Record<string, PropValue>;
-      label: string;
-      hint: string;
+      /** What the run's form opens saying, so the author confirms the work rather than a refusal. */
       note: string;
-    };
+    })
+  | Refused;
 
 /**
  * Which of the two acts Regenerate performs. A stale asset's own task is an orphan — the prompt
@@ -298,22 +302,28 @@ export type RegenerateAction =
  * Refusals that need the graph (an asset recording no task, unavailable base assets) are left to
  * the command, which is the only side that can see one.
  */
-export function regenerateAction(info: AssetInfo): RegenerateAction {
+export function regenerateAction(info: AssetInfo | undefined): RegenerateAction {
+  const label = 'Regenerate';
+  const requeues = 'Requeue the task behind these bytes and run the pipeline';
+  if (!info) return nothingShown({ id: 'asset.regenerate', label, tooltip: requeues });
   const requeue = {
+    ok   : true,
     act  : 'requeue',
     id   : 'asset.regenerate',
     props: { hash: info.hash, run: true },
-    label: 'Regenerate',
-    hint : 'Requeue the task behind these bytes and run the pipeline',
+    label,
+    tooltip: requeues,
   } as const;
   if (info.failure?.later) return requeue;
   if (!info.stale) return requeue;
   return {
+    ok   : true,
     act  : 'pipeline',
     id   : 'pipeline.run',
     props: { mock: false },
-    label: 'Regenerate',
-    hint: 'Offer a pipeline run: this picture is behind the project, and the task that catches it up is already planned',
+    label,
+    tooltip:
+      'Offer a pipeline run: this picture is behind the project, and the task that catches it up is already planned',
     note:
       `${info.label} was rendered from a prompt the project has since changed, so re-running its own ` +
       'task would draw the picture you edited away from. A fresh task is already planned for it, and ' +
@@ -324,18 +334,14 @@ export function regenerateAction(info: AssetInfo): RegenerateAction {
 
 /** The Task button: hand a task to the inspector, or say there is no task to hand over. */
 export type TaskAction =
-  | {
-      ok: true;
-      id: string;
-      props: Record<string, PropValue>;
-      label: string;
+  | (Accepted & {
       /**
        * `ShellState` fields to publish before the pane opens. The ordering is load-bearing for the
        * reason `originAction`'s is: the new pane reads the selection on its first `update()`.
        */
       publish: Record<string, string>;
-    }
-  | { ok: false; reason: string; id: string };
+    })
+  | Refused;
 
 /**
  * The inspector is the pane that reads attempts, and `view.open` has one `subject` while this
@@ -343,20 +349,30 @@ export type TaskAction =
  * command carrying both.
  */
 export function taskAction(taskHash: string | undefined): TaskAction {
+  const control = {
+    id     : 'view.open',
+    label  : 'Task',
+    tooltip: 'Show the task that produced this asset in the inspector',
+  };
   if (taskHash === undefined || taskHash === '') {
-    return {
-      ok    : false,
-      id    : 'view.open',
-      reason: 'The manifest records no task for this asset.',
-    };
+    return { ...refuse('The manifest records no task for this asset.'), ...control };
   }
   return {
-    ok     : true,
-    id     : 'view.open',
-    props  : { editor: 'inspector', where: 'elsewhere' },
-    label  : 'Task',
+    ok   : true,
+    props: { editor: 'inspector', where: 'elsewhere' },
+    ...control,
     publish: { taskHash },
   };
+}
+
+/**
+ * Every offer the asset editor draws from this module, in the order it draws them: the bar's
+ * three, then the body's three strips. With nothing on screen the bar's three are refusals.
+ */
+export function controls(info: AssetInfo | undefined): readonly Offer[] {
+  const bar = [approveAction(info), regenerateAction(info), taskAction(info?.sourceTask)];
+  if (!info) return bar;
+  return [...bar, promoteAction(info), replaceAction(info), promptEditable(info)];
 }
 
 /** Whether a pane follows its slot, and where to. */
