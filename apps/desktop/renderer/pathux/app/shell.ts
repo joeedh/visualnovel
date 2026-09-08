@@ -34,7 +34,7 @@ import { editorClass, switchableAreaNames } from './editor.js';
 import { registerCustomIcons } from './icons.js';
 // Importing an editor is what registers it, and registration is what puts it in the area
 // switcher — so every ported editor is listed here whether or not a default screen uses it.
-import '../editors/asset.js';
+import '../editors/asset/index.js';
 import '../editors/branch.js';
 import '../editors/convo.js';
 import '../editors/documents.js';
