@@ -1,15 +1,21 @@
 import {
   HEADER,
+  applyOffer,
   commandKey,
+  duplicateKeys,
   itemKey,
+  keyOf,
   mapOf,
+  refusalOf,
   resolveAnchor,
   resolveItem,
   resolveSubject,
   subsumes,
   type Anchor,
   type AnchorMap,
+  type Compose,
   type LiveAnchors,
+  type Offer,
 } from '../anchors.js';
 import type { EditorId } from '../../../src/shared/editors.js';
 
@@ -39,6 +45,91 @@ describe('keys', () => {
   it('names a command and a thing differently', () => {
     expect(commandKey('asset.regenerate')).toBe('cmd:asset.regenerate');
     expect(itemKey('asset', 'a1b2')).toBe('item:asset/a1b2');
+  });
+
+  it('derives a control’s key from its id, with `on` telling twins apart', () => {
+    expect(keyOf({ id: 'prompt.setChunk' })).toBe('cmd:prompt.setChunk');
+    expect(keyOf({ id: 'prompt.setChunk', on: 'style/mute' })).toBe(
+      'cmd:prompt.setChunk#style/mute',
+    );
+  });
+
+  it('reports each key that a list of controls repeats, once', () => {
+    expect(
+      duplicateKeys([
+        { id: 'a' },
+        { id: 'b', on: 'x' },
+        { id: 'a' },
+        { id: 'b', on: 'x' },
+        { id: 'a' },
+        { id: 'b', on: 'y' },
+      ]),
+    ).toEqual(['cmd:a', 'cmd:b#x']);
+    expect(duplicateKeys([{ id: 'a' }, { id: 'a', on: 'x' }])).toEqual([]);
+  });
+});
+
+describe('applyOffer', () => {
+  const accepted: Offer = {
+    ok     : true,
+    id     : 'asset.accept',
+    props  : { hash: 'a1' },
+    label  : 'Accept',
+    tooltip: 'Accept these bytes for use downstream',
+  };
+  const refused: Offer = {
+    ok     : false,
+    id     : 'asset.accept',
+    reason : 'No asset is on screen.',
+    refusal: { reason: 'No asset is on screen.', description: 'Open one from the tree.' },
+    label  : 'Accept',
+    tooltip: 'Accept these bytes for use downstream',
+  };
+  const compose: Compose = (refusal, description) =>
+    refusal ? `${refusal.reason} | ${description}` : description;
+
+  /** Stands in for a path.ux widget, which composes its own tooltip from these two fields. */
+  const widget = () => ({ disabled: false, description: '', refusalReason: undefined as unknown });
+  /** Stands in for a raw `<button>`, which has only `title`. */
+  const dom = () => ({ disabled: false, title: '' });
+
+  it('hands a widget the two halves and leaves the composition to it', () => {
+    const node = widget();
+    applyOffer(node, refused, compose);
+    expect(node).toEqual({
+      disabled     : true,
+      description  : 'Accept these bytes for use downstream',
+      refusalReason: refused.ok ? undefined : refused.refusal,
+    });
+    applyOffer(node, accepted, compose);
+    expect(node).toEqual({
+      disabled     : false,
+      description  : 'Accept these bytes for use downstream',
+      refusalReason: undefined,
+    });
+  });
+
+  it('composes the title itself for a raw DOM node', () => {
+    const node = dom();
+    applyOffer(node, refused, compose);
+    expect(node).toEqual({
+      disabled: true,
+      title   : 'No asset is on screen. | Accept these bytes for use downstream',
+    });
+    applyOffer(node, accepted, compose);
+    expect(node).toEqual({ disabled: false, title: 'Accept these bytes for use downstream' });
+  });
+
+  it('leaves alone an enabled state the node does not have', () => {
+    const chip = { title: '' };
+    applyOffer(chip, accepted, compose);
+    expect(chip).toEqual({ title: 'Accept these bytes for use downstream' });
+  });
+
+  it('reads a refusal written with only a reason as one', () => {
+    const bare: Offer = { ok: false, id: 'asset.accept', reason: 'Nothing here.' };
+    expect(refusalOf(bare)).toEqual({ reason: 'Nothing here.' });
+    expect(refusalOf(accepted)).toBeUndefined();
   });
 });
 

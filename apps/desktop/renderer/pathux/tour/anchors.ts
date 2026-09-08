@@ -10,14 +10,16 @@
  * Exposed as `window.__vnAnchors` for the sweep and for DevTools. Unlike `window.__vnDebug` this
  * ships in production, because the tour reads it at runtime.
  */
+import { composeTooltip } from 'pathux';
 import type { PropValue } from '../../../src/shared/ipc.js';
 import { menuAnchors } from '../doctree/doctree.js';
 import { hitFor } from '../interactions/hittest.js';
 import { centreOf } from '../../rules/ring.js';
 import {
   HEADER,
-  commandKey,
+  applyOffer,
   itemKey,
+  keyOf,
   type Action,
   type Anchor,
   type AnchorHome,
@@ -25,6 +27,7 @@ import {
   type AnchorRect,
   type LiveAnchors,
   type Offer,
+  type OfferNode,
 } from '../../rules/anchors.js';
 
 /** What one redraw of one part of one editor laid down. */
@@ -32,6 +35,8 @@ interface Pass {
   editor: AnchorHome;
   generation: number;
   anchors: Anchor[];
+  /** The first offer presented on each node, so a second one on the same node must agree with it. */
+  presented: Map<AnchorNode, Offer>;
 }
 
 /** Rising with every pass, so a caller can tell a redraw from a repaint of the same widgets. */
@@ -39,26 +44,14 @@ let generation = 0;
 
 const passes = new Map<string, Pass>();
 
-/** Extra facts about an anchor that the offer itself cannot carry. */
+/**
+ * The facts an offer carries on itself, accepted here as well until every call site writes them on
+ * the offer; stage 5 of docs/plans/one-offer-and-the-six-rule-modules.md deletes this.
+ */
 export interface ActOptions {
-  /**
-   * The command a refused offer is about, where the rule's refusal names none. Ignored for an
-   * offer that carries its own id.
-   */
-  about?: string;
-  /** Prop names the click reads from the widget at commit time — a textarea, a typed id. */
-  supplies?: string[];
-  /**
-   * What tells this control apart from another running the same command on the same pane — a
-   * chunk key, a task hash. Appended to the key, so re-resolving by key lands on the same control.
-   */
+  supplies?: readonly string[];
   on?: string;
-  /** The click opens the command's own form rather than running it, so every prop is typed there. */
   form?: boolean;
-  /** An `item:` key, for a control whose click publishes a selection rather than running a command. */
-  key?: string;
-  /** The `ui.*` fields an `item:` anchor's click publishes. */
-  publishes?: Record<string, string>;
 }
 
 /**
@@ -69,7 +62,7 @@ export interface ActOptions {
  */
 export function redrawing(editor: AnchorHome, part: string): AnchorPass {
   const id = `${editor}/${part}`;
-  const pass: Pass = { editor, generation: ++generation, anchors: [] };
+  const pass: Pass = { editor, generation: ++generation, anchors: [], presented: new Map() };
   passes.set(id, pass);
   return new AnchorPass(pass);
 }
@@ -79,11 +72,11 @@ export class AnchorPass {
   constructor(private readonly pass: Pass) {}
 
   /**
-   * Wire the click and record the anchor from one object, so the two cannot disagree. Returns the
-   * node, so it still reads as a builder call.
+   * Wire the click, present the offer on the node and record the anchor from one object, so the
+   * three cannot disagree. Returns the node, so it still reads as a builder call.
    *
-   * The node is left alone for a refused offer: a control the rule turned down has nothing to run,
-   * and the caller greys it and shows `reason` as it already does.
+   * A refused offer wires nothing: the node is greyed with the refusal above its tooltip, and a
+   * control the rule turned down has nothing to run.
    */
   act<N extends AnchorNode>(
     node: N,
@@ -102,25 +95,48 @@ export class AnchorPass {
   }
 
   /**
-   * Record an anchor without wiring anything, for a control whose click the caller installs for
-   * reasons of its own — a box committed on blur, a field committed on Enter. The offer is still
-   * the one object the click reads, so naming it here is what keeps the two together.
+   * Present the offer and record the anchor without wiring a click, for a control whose click the
+   * caller installs for reasons of its own — a box committed on blur, a field committed on Enter.
+   * The offer is still the one object the click reads, so naming it here is what keeps the two
+   * together.
    */
   record<N extends AnchorNode>(node: N, offer: Offer, opts: ActOptions = {}): N {
-    const id = offer.ok ? offer.id : (offer.id ?? opts.about);
+    const supplies = offer.supplies ?? opts.supplies;
+    const on = offer.on ?? opts.on;
+    this.present(node, offer);
     this.pass.anchors.push({
-      key: opts.key ?? keyFor(id, opts.on),
-      ...(id === undefined ? {} : { id }),
+      key  : keyOf({ id: offer.id, on }),
+      id   : offer.id,
       props: offer.ok ? offer.props : {},
-      ...(opts.supplies && opts.supplies.length > 0 ? { supplies: opts.supplies } : {}),
-      ...(opts.form ? { form: true } : {}),
+      ...(supplies && supplies.length > 0 ? { supplies: [...supplies] } : {}),
+      ...((offer.form ?? opts.form) ? { form: true } : {}),
       enabled: offer.ok,
-      ...(offer.ok ? {} : { reason: offer.reason }),
-      ...(opts.publishes ? { publishes: opts.publishes } : {}),
+      ...(offer.ok ? {} : { reason: offer.refusal?.reason ?? offer.reason }),
       editor: this.pass.editor,
       via   : { kind: 'dom', node },
     });
     return node;
+  }
+
+  /**
+   * A node may carry several offers — a menu button whose rows run different commands — only
+   * while they present the same way, so the second one cannot silently overwrite the first.
+   */
+  private present(node: AnchorNode, offer: Offer): void {
+    // An offer with no tooltip is one a call site has not migrated yet, and the caller still
+    // presents it by hand
+    if (offer.tooltip === undefined) return;
+    const prior = this.pass.presented.get(node);
+    if (prior === undefined) {
+      this.pass.presented.set(node, offer);
+      applyOffer(node as unknown as OfferNode, offer, composeTooltip);
+      return;
+    }
+    if (prior.ok !== offer.ok || prior.tooltip !== offer.tooltip) {
+      throw new Error(
+        `${keyOf(offer)} shares a node with ${keyOf(prior)} and would present it differently`,
+      );
+    }
   }
 
   /**
@@ -166,29 +182,18 @@ export class AnchorPass {
    * does, not because one object feeds both sides.
    */
   pick(nodeId: string, offer: Offer, rect: AnchorRect | undefined, opts: ActOptions = {}): void {
-    const id = offer.ok ? offer.id : (offer.id ?? opts.about);
+    const supplies = offer.supplies ?? opts.supplies;
     this.pass.anchors.push({
-      key: opts.key ?? keyFor(id, opts.on),
-      ...(id === undefined ? {} : { id }),
+      key  : keyOf({ id: offer.id, on: offer.on ?? opts.on }),
+      id   : offer.id,
       props: offer.ok ? offer.props : {},
-      ...(opts.supplies && opts.supplies.length > 0 ? { supplies: opts.supplies } : {}),
+      ...(supplies && supplies.length > 0 ? { supplies: [...supplies] } : {}),
       enabled: offer.ok,
-      ...(offer.ok ? {} : { reason: offer.reason }),
+      ...(offer.ok ? {} : { reason: offer.refusal?.reason ?? offer.reason }),
       editor: this.pass.editor,
       via   : { kind: 'pick', nodeId, ...(rect ? { rect } : {}) },
     });
   }
-}
-
-let anonymous = 0;
-
-/**
- * The key an anchor is re-resolved by. A control naming no command gets a fresh one, so two of
- * them never collide; two controls running the same command are told apart by `on`.
- */
-function keyFor(id: string | undefined, on: string | undefined): string {
-  if (id === undefined) return `anon:${++anonymous}`;
-  return on === undefined ? commandKey(id) : `${commandKey(id)}#${on}`;
 }
 
 /** Every anchor drawn right now, in the order the passes laid them down. */

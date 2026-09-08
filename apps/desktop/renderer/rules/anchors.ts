@@ -7,6 +7,7 @@
  * module is the shapes it records and the pure resolution over them, kept here because the
  * desktop jest project is node-only and a pane can only be checked live over CDP.
  */
+import type { Refusal } from 'pathux';
 import type { EditorId } from '../../src/shared/editors.js';
 import type { PropValue } from '../../src/shared/ipc.js';
 
@@ -26,15 +27,76 @@ export interface Action {
 }
 
 /**
+ * What every control carries, on either branch of its {@link Offer}.
+ *
+ * `label` and `tooltip` are optional only until every offer in the tree writes them; stage 5 of
+ * docs/plans/one-offer-and-the-six-rule-modules.md makes them required.
+ */
+export interface Control {
+  id: string;
+  /** What the control says on screen: a button's text, a field's placeholder. */
+  label?: string;
+  /** The control's own sentence, shown when enabled and beneath the refusal when not. */
+  tooltip?: string;
+  /**
+   * What tells this control apart from another running the same command on the same pane — a
+   * chunk key, a task hash. Appended to the key, so re-resolving by key lands on the same control.
+   */
+  on?: string;
+  /** Prop names the click reads from the widget at commit time — a textarea, a typed id. */
+  supplies?: readonly string[];
+  /** The click opens the command's own form rather than running it, so every prop is typed there. */
+  form?: boolean;
+}
+
+/**
  * An invocation a surface is offering, or the surface's own sentence for why it is not.
  *
- * A refusal may still name the command it is about. A greyed control is recorded as an anchor
- * rather than as an absence, so a tour asked for that command can ring the control and say the
- * app's own refusal instead of inventing one — which it can only do if the refusal is findable
- * by the id the step names.
+ * A refusal names the command it is about. A greyed control is recorded as an anchor rather than
+ * as an absence, so a tour asked for that command can ring the control and say the app's own
+ * refusal instead of inventing one. `refusal` is path.ux's shape, so an op, a widget and a rule
+ * module hold one type; `reason` stays beside it until stage 5 of the plan retires it.
  */
 export type Offer =
-  (Action & { ok: true; label?: string }) | { ok: false; reason: string; id?: string };
+  | (Control & { ok: true; props: Record<string, PropValue> })
+  | (Control & { ok: false; reason: string; refusal?: Refusal });
+
+/** The refusal a refused offer carries, whichever of its two fields it was written with. */
+export const refusalOf = (offer: Offer): Refusal | undefined =>
+  offer.ok ? undefined : (offer.refusal ?? { reason: offer.reason });
+
+/** How a refusal and a description become one tooltip string; path.ux's `composeTooltip`. */
+export type Compose = (
+  refusal: Refusal | undefined,
+  description: string | undefined,
+) => string | undefined;
+
+/**
+ * What {@link applyOffer} writes to. A path.ux widget has `refusalReason` and composes its own
+ * tooltip on read; a raw DOM node has only `title`, so the composition is done for it.
+ */
+export interface OfferNode {
+  disabled?: boolean;
+  description?: string;
+  refusalReason?: unknown;
+  title?: string;
+}
+
+/**
+ * Presents an offer on its node: greyed when refused, with the offer's sentence as the tooltip
+ * and the refusal composed above it. The click is `act()`'s to wire; this is the rest, and it is
+ * also how a control is re-presented between passes when its offer changes under it.
+ */
+export function applyOffer(node: OfferNode, offer: Offer, compose: Compose): void {
+  const refusal = refusalOf(offer);
+  if ('disabled' in node) node.disabled = !offer.ok;
+  if ('refusalReason' in node) {
+    if (offer.tooltip !== undefined) node.description = offer.tooltip;
+    node.refusalReason = refusal;
+  } else {
+    node.title = compose(refusal, offer.tooltip) ?? '';
+  }
+}
 
 /** The part of a `DOMRect` the overlay reads. Typed structurally so a test needs no DOM. */
 export interface AnchorRect {
@@ -127,6 +189,22 @@ export const commandKey = (id: string): string => `cmd:${id}`;
  * labels carry a disambiguating suffix only on collision.
  */
 export const itemKey = (kind: string, key: string): string => `item:${kind}/${key}`;
+
+/** The key a control is re-resolved by: `cmd:<id>`, or `cmd:<id>#<on>`. */
+export const keyOf = (control: Control): string =>
+  control.on === undefined ? commandKey(control.id) : `${commandKey(control.id)}#${control.on}`;
+
+/** The keys that appear more than once, which a `controls()` test asserts is empty. */
+export function duplicateKeys(controls: readonly Control[]): string[] {
+  const seen = new Set<string>();
+  const twice = new Set<string>();
+  for (const control of controls) {
+    const key = keyOf(control);
+    if (seen.has(key)) twice.add(key);
+    seen.add(key);
+  }
+  return [...twice];
+}
 
 /** How an anchor's partial props stand against the ones a step names. */
 export type Subsumption =
