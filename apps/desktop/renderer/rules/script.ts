@@ -13,6 +13,7 @@ import type { ScriptState } from '@vn/scriptedit';
 import type { Scene } from '@vn/types';
 import { TOP } from '../../src/shared/interactions.js';
 import { commitOf, lineOf } from '../../src/shared/lineedit.js';
+import type { Offer } from './anchors.js';
 import type { CharacterEntry, CoverageLine, SceneCoverage, StoryGraph } from '../../src/shared/ipc';
 
 /**
@@ -490,4 +491,84 @@ export function stepsOf(pending: Pending, scene: string): Invocation[] {
  */
 export function checkOf(pending: Pending, scene: string): Invocation {
   return stepsOf(pending, scene)[0] as Invocation;
+}
+
+/**
+ * What the script page reads when it draws its anchored controls. Named apart from
+ * `@vn/scriptedit`'s `ScriptState`, which this module also imports.
+ */
+export interface ScriptPageState {
+  /** The scene on the page, once loaded. */
+  shown?: { sceneId: string; heading: string; lines: { id: string; text: string }[] };
+  /** The line whose text box is open, which replaces that line's control. */
+  editingLine: string | null;
+  pending: Pending | null;
+  /** The selected scene, or the empty string with none. */
+  sceneId: string;
+}
+
+/**
+ * The heading as the scene's own slugline, and where the scene is moved from, because the heading
+ * gives the location. Opens the dialog, which rechecks on every keystroke, so the price of the
+ * move is on screen before it is made.
+ */
+export function headingAction(shown: { sceneId: string; heading: string }): Offer {
+  return {
+    ok     : true,
+    id     : 'story.setHeading',
+    props  : { scene: shown.sceneId, heading: shown.heading },
+    label  : shown.heading,
+    tooltip:
+      'Move this scene somewhere else by rewriting its heading. Its rendered shots are drawn ' +
+      'again — the dialog says how many — and the prose is left describing the old place.',
+    form   : true,
+  };
+}
+
+/**
+ * One line's text. The click opens a box rather than writing anything, so the new text is what
+ * the widget supplies. The line is named by its own id, which survives every re-sort of the scene.
+ */
+export function lineTextAction(line: { id: string; text: string }): Offer {
+  return {
+    ok      : true,
+    id      : 'story.setLineText',
+    props   : { line: line.id },
+    label   : line.text,
+    tooltip : 'Click to retype this line',
+    on      : line.id,
+    supplies: ['text'],
+  };
+}
+
+/**
+ * The strip's confirming button: the first step of the pending act, which is the one that
+ * carries the cost. A new scene's second step, `story.setNext`, is run but not anchored.
+ */
+export function pendingAction(pending: Pending, sceneId: string): Offer {
+  const step = checkOf(pending, sceneId);
+  const label = pending.act === 'split' ? 'Split' : pending.act === 'merge' ? 'Merge' : 'Write it';
+  const tooltip =
+    pending.act === 'split'
+      ? 'Cut the scene here and write the tail as its own file'
+      : pending.act === 'merge'
+        ? 'Fold that scene into this one and delete the file it came from'
+        : 'Write the new scene and point this one at it';
+  return { ok: true, id: step.id, props: step.props, label, tooltip };
+}
+
+/**
+ * Every offer the script page draws from this module: the heading, one control per line whose
+ * box is not open, and the strip's button while an act is pending over a scene.
+ */
+export function controls(state: ScriptPageState): readonly Offer[] {
+  const list: Offer[] = [];
+  if (state.shown) {
+    list.push(headingAction(state.shown));
+    for (const line of state.shown.lines) {
+      if (line.id !== state.editingLine) list.push(lineTextAction(line));
+    }
+  }
+  if (state.pending && state.sceneId) list.push(pendingAction(state.pending, state.sceneId));
+  return list;
 }

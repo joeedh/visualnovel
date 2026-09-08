@@ -6,23 +6,33 @@ import {
   GroupNode,
   createGroup,
   registerGenNodes,
+  type GenEdit,
   type NodePropName,
 } from '@vn/gengraph';
 import type { GraphEdit } from 'pathux';
 
+import { duplicateKeys, keyOf as anchorKeyOf } from '../anchors.js';
 import {
+  GROUP_WHAT,
+  NO_LEVEL,
+  UNGROUP_WHAT,
   commandFor,
   contestedSlots,
+  controls,
   docPathFor,
   drawnSlot,
   genEditFor,
+  groupAction,
   keyOf,
   newDocSync,
   noActiveOutput,
   reloadsOnAck,
   shouldReload,
   targetFor,
+  ungroupAction,
   type DocSync,
+  type GenEditFor,
+  type GroupState,
   type EditTarget,
 } from '../gengraph.js';
 
@@ -531,5 +541,100 @@ describe('the slot a graph draws', () => {
     expect(drawnSlot(graphOf([{ slot: 'portrait:aiko', active: false }]))).toBe('');
     expect(drawnSlot(graphOf([{ slot: '' }]))).toBe('');
     expect(drawnSlot(new Graph())).toBe('');
+  });
+});
+
+describe('groupAction', () => {
+  const target = { slug: 'plates', group: '', prefix: [] };
+  const weighed: GenEditFor = {
+    ok  : true,
+    edit: { op: 'createGroup', nodes: [1, 2] } as GenEdit,
+  };
+
+  it('runs the weighed edit as its command at the level on screen', () => {
+    expect(groupAction([1, 2], weighed, target)).toEqual({
+      ok: true,
+      ...commandFor(target, weighed.edit),
+      id     : 'gengraph.createGroup',
+      label  : 'Group',
+      tooltip: GROUP_WHAT,
+    });
+  });
+
+  it('refuses with nothing selected, before anything is weighed', () => {
+    expect(groupAction([], { ok: false, reason: 'unweighed' }, undefined)).toMatchObject({
+      ok     : false,
+      id     : 'gengraph.createGroup',
+      refusal: { reason: 'Select the nodes to group first.' },
+    });
+  });
+
+  it('refuses with the weighing’s own reason, then with the missing level', () => {
+    expect(groupAction([1], { ok: false, reason: 'nope' }, target)).toMatchObject({
+      ok     : false,
+      refusal: { reason: 'nope' },
+    });
+    expect(groupAction([1], { ok: false, reason: 'nope' }, undefined)).toMatchObject({
+      refusal: { reason: 'nope' },
+    });
+    expect(groupAction([1], weighed, undefined)).toMatchObject({
+      refusal: { reason: NO_LEVEL },
+    });
+    expect(groupAction([1], undefined, undefined)).toMatchObject({
+      refusal: { reason: NO_LEVEL },
+    });
+  });
+});
+
+describe('ungroupAction', () => {
+  const target = { slug: 'plates', group: '', prefix: [] };
+  const weighed: GenEditFor = {
+    ok  : true,
+    edit: { op: 'ungroup', node: 4 } as GenEdit,
+  };
+
+  it('runs the weighed edit as its command', () => {
+    expect(ungroupAction([4], weighed, target)).toEqual({
+      ok: true,
+      ...commandFor(target, weighed.edit),
+      id     : 'gengraph.ungroup',
+      label  : 'Ungroup',
+      tooltip: UNGROUP_WHAT,
+    });
+  });
+
+  it('refuses with no group instance selected, before anything is weighed', () => {
+    expect(ungroupAction([], weighed, target)).toMatchObject({
+      ok     : false,
+      id     : 'gengraph.ungroup',
+      refusal: { reason: 'Select a group instance to ungroup.' },
+    });
+  });
+});
+
+describe('controls', () => {
+  it('lists the two buttons, each key once', () => {
+    const target = { slug: 'plates', group: '', prefix: [] };
+    const states: GroupState[] = [
+      { selected: [], groups: [], weighed: {}, target },
+      { selected: [1], groups: [], weighed: { group: { ok: false, reason: 'nope' } }, target },
+      {
+        selected: [1],
+        groups  : [1],
+        weighed : { group: { ok: false, reason: 'a' }, ungroup: { ok: false, reason: 'b' } },
+      },
+    ];
+    for (const state of states) {
+      const listed = controls(state);
+      const each = [
+        groupAction(state.selected, state.weighed.group, state.target),
+        ungroupAction(state.groups, state.weighed.ungroup, state.target),
+      ];
+      expect(listed).toEqual(each);
+      expect(new Set(listed.map(anchorKeyOf))).toEqual(
+        new Set(['cmd:gengraph.createGroup', 'cmd:gengraph.ungroup']),
+      );
+      expect(duplicateKeys(listed)).toEqual([]);
+    }
   });
 });

@@ -8,19 +8,23 @@ import {
   castFor,
   checkOf,
   composedCueText,
+  controls,
   continueFrom,
   cueChoices,
   cueFor,
   cueLabel,
   cueSlotText,
   dropTarget,
+  headingAction,
   insertOf,
   insertedAfter,
   keyAct,
+  lineTextAction,
   localLineId,
   mergeTarget,
   moveStateOf,
   nextEditing,
+  pendingAction,
   proposeSceneId,
   scriptRows,
   setSpeakerOf,
@@ -28,8 +32,10 @@ import {
   stepsOf,
   type CastMember,
   type Draft,
+  type ScriptPageState,
   type Pending,
 } from '../script.js';
+import { duplicateKeys, keyOf } from '../anchors.js';
 import type { Invocation } from '@vn/commands';
 import type { CoverageLine, SceneCoverage, StoryEdge, StoryGraph } from '../../../src/shared/ipc';
 
@@ -584,5 +590,116 @@ describe('checkOf', () => {
     const pending: Pending = { act: 'scene', scene: 'b', heading: 'INT. HALL - DAY' };
     expect(checkOf(pending, 'a')).toEqual(stepsOf(pending, 'a')[0]);
     expect(checkOf({ act: 'merge', absorbed: 'b' }, 'a').id).toBe('story.mergeScene');
+  });
+});
+
+describe('headingAction', () => {
+  it('opens the move dialog on the scene, prefilled with its heading', () => {
+    expect(headingAction({ sceneId: 'a', heading: 'INT. HALL - DAY' })).toEqual({
+      ok     : true,
+      id     : 'story.setHeading',
+      props  : { scene: 'a', heading: 'INT. HALL - DAY' },
+      label  : 'INT. HALL - DAY',
+      tooltip:
+        'Move this scene somewhere else by rewriting its heading. Its rendered shots are drawn ' +
+        'again — the dialog says how many — and the prose is left describing the old place.',
+      form   : true,
+    });
+  });
+});
+
+describe('lineTextAction', () => {
+  it('names the line by id and lets the box supply the text', () => {
+    expect(lineTextAction({ id: 'a:L2', text: 'She turns.' })).toEqual({
+      ok      : true,
+      id      : 'story.setLineText',
+      props   : { line: 'a:L2' },
+      label   : 'She turns.',
+      tooltip : 'Click to retype this line',
+      on      : 'a:L2',
+      supplies: ['text'],
+    });
+    expect(keyOf(lineTextAction({ id: 'a:L2', text: '' }))).toBe('cmd:story.setLineText#a:L2');
+  });
+});
+
+describe('pendingAction', () => {
+  it('records the first step of each act, with its own label and sentence', () => {
+    const split: Pending = { act: 'split', at: 'a:L3', into: 'a_2' };
+    expect(pendingAction(split, 'a')).toEqual({
+      ok: true,
+      ...checkOf(split, 'a'),
+      label  : 'Split',
+      tooltip: 'Cut the scene here and write the tail as its own file',
+    });
+    expect(pendingAction({ act: 'merge', absorbed: 'b' }, 'a')).toMatchObject({
+      id     : 'story.mergeScene',
+      label  : 'Merge',
+      tooltip: 'Fold that scene into this one and delete the file it came from',
+    });
+    expect(
+      pendingAction({ act: 'scene', scene: 'b', heading: 'INT. HALL - DAY' }, 'a'),
+    ).toMatchObject({
+      id     : 'story.newScene',
+      label  : 'Write it',
+      tooltip: 'Write the new scene and point this one at it',
+    });
+  });
+});
+
+describe('controls', () => {
+  const shown = {
+    sceneId: 'a',
+    heading: 'INT. HALL - DAY',
+    lines: [
+      { id: 'a:L1', text: 'One.' },
+      { id: 'a:L2', text: 'Two.' },
+    ],
+  };
+  const state = (over: Partial<ScriptPageState> = {}): ScriptPageState => ({
+    shown,
+    editingLine: null,
+    pending    : null,
+    sceneId    : 'a',
+    ...over,
+  });
+
+  it('is nothing before the scene loads, other than a pending strip', () => {
+    expect(controls(state({ shown: undefined }))).toEqual([]);
+  });
+
+  it('leaves out the line whose box is open', () => {
+    expect(controls(state({ editingLine: 'a:L1' })).map(keyOf)).toEqual([
+      'cmd:story.setHeading',
+      'cmd:story.setLineText#a:L2',
+    ]);
+  });
+
+  it('adds the strip’s button only over a scene', () => {
+    const pending: Pending = { act: 'merge', absorbed: 'b' };
+    expect(controls(state({ pending })).map(keyOf)).toContain('cmd:story.mergeScene');
+    expect(controls(state({ pending, sceneId: '' })).map(keyOf)).not.toContain(
+      'cmd:story.mergeScene',
+    );
+  });
+
+  it('lists every control the page draws, each key once', () => {
+    const pending: Pending = { act: 'split', at: 'a:L2', into: 'a_2' };
+    for (const s of [
+      state(),
+      state({ editingLine: 'a:L2', pending }),
+      state({ shown: undefined }),
+    ]) {
+      const listed = controls(s);
+      const each = s.shown
+        ? [
+            headingAction(s.shown),
+            ...s.shown.lines.filter((l) => l.id !== s.editingLine).map(lineTextAction),
+          ]
+        : [];
+      if (s.pending && s.sceneId) each.push(pendingAction(s.pending, s.sceneId));
+      expect(new Set(listed.map(keyOf))).toEqual(new Set(each.map(keyOf)));
+      expect(duplicateKeys(listed)).toEqual([]);
+    }
   });
 });

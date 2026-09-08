@@ -41,13 +41,14 @@ import {
   touchesGraph,
 } from '../../../src/shared/writes.js';
 import { api } from '../../api.js';
-import { refuse, type Control, type Offer } from '../../rules/anchors.js';
 import {
+  NO_LEVEL,
   commandFor,
   contestedSlots,
   docPathFor,
   drawnSlot,
   genEditFor,
+  groupAction,
   newDocSync,
   noActiveOutput,
   reloadsOnAck,
@@ -55,6 +56,7 @@ import {
   targetFor,
   type DocSync,
   type EditTarget,
+  ungroupAction,
 } from '../../rules/gengraph.js';
 import GENGRAPH_CSS from '../../styles/gengraph.css?inline';
 import { defineGraphApi } from '../app/api.js';
@@ -390,42 +392,36 @@ export class GenGraphEditor extends VnEditor {
     if (signature === this.grouped) return;
     this.grouped = signature;
 
-    const pass = redrawing('gengraph', 'groups');
-    pass.act(this.groupButton, this.groupOffer(ids), () => void this.groupSelected());
-    pass.act(this.ungroupButton, this.ungroupOffer(), () => void this.ungroupSelected());
-  }
-
-  private groupOffer(ids: GraphId[]): Offer {
-    const control = { id: 'gengraph.createGroup', label: 'Group', tooltip: GROUP_WHAT };
-    if (ids.length === 0) return { ...refuse('Select the nodes to group first.'), ...control };
-    return this.offerOf(control, {
-      kind     : 'createGroup',
-      graphPath: this.view.currentGraphPath,
-      storePath: this.view.graphPath,
-      nodeIds  : ids,
-    });
-  }
-
-  private ungroupOffer(): Offer {
-    const control = { id: 'gengraph.ungroup', label: 'Ungroup', tooltip: UNGROUP_WHAT };
+    // The two edits are weighed the way the delegate weighs a gesture, against the live graph;
+    // the module orders the refusals and names the command
     const groups = this.selectedGroups();
-    if (groups.length === 0) {
-      return { ...refuse('Select a group instance to ungroup.'), ...control };
-    }
-    return this.offerOf(control, {
-      kind     : 'ungroup',
-      graphPath: this.view.currentGraphPath,
-      nodeId   : groups[0]!.id,
-    });
-  }
-
-  /** The invocation a gesture would send, weighed the way the delegate weighs it. */
-  private offerOf(control: Control, edit: GraphEdit): Offer {
+    const graphPath = this.view.currentGraphPath;
     const target = this.target();
-    const weighed = this.weigh(edit);
-    if (!weighed.ok) return { ...refuse(weighed.reason), ...control };
-    if (target === undefined) return { ...refuse(NO_LEVEL), ...control };
-    return { ok: true, ...commandFor(target, weighed.edit), ...control };
+    const group =
+      ids.length === 0
+        ? undefined
+        : this.weigh({
+            kind: 'createGroup',
+            graphPath,
+            storePath: this.view.graphPath,
+            nodeIds  : ids,
+          });
+    const ungroup =
+      groups.length === 0
+        ? undefined
+        : this.weigh({ kind: 'ungroup', graphPath, nodeId: groups[0]!.id });
+
+    const pass = redrawing('gengraph', 'groups');
+    pass.act(this.groupButton, groupAction(ids, group, target), () => void this.groupSelected());
+    pass.act(
+      this.ungroupButton,
+      ungroupAction(
+        groups.map((node) => node.id),
+        ungroup,
+        target,
+      ),
+      () => void this.ungroupSelected(),
+    );
   }
 
   /** The designer follows the level: a definition's sockets and rows, and nothing elsewhere. */
@@ -906,15 +902,6 @@ const DELETE_WHAT = 'Remove the selected nodes and sever the selected links';
 
 /** What duplicating does, shared by the header button and the key that does the same thing. */
 const DUPLICATE_WHAT = 'Add a copy of each selected node, carrying over the values it authored';
-
-const GROUP_WHAT =
-  'Move the selected nodes into a new group, and leave an instance of it in their place (Ctrl+G)';
-
-const UNGROUP_WHAT =
-  'Put a copy of each selected group’s nodes where the instance stands, values included (Ctrl+Alt+G)';
-
-/** Said where the view's level no longer resolves, which undo and delete can bring about. */
-const NO_LEVEL = 'this level of the graph is no longer there; go back up';
 
 function describe(button: { description?: string }, description: string): void {
   button.description = description;

@@ -11,11 +11,14 @@ import {
   cueChoices,
   cueSlotText,
   dropTarget,
+  headingAction,
   insertOf,
   keyAct,
+  lineTextAction,
   localLineId,
   mergeTarget,
   nextEditing,
+  pendingAction,
   proposeSceneId,
   scriptRows,
   setSpeakerOf,
@@ -434,20 +437,10 @@ export class ScriptEditor extends VnEditor {
     // as a list that happens to be in order. It is also where the scene is moved from, because the
     // heading gives the location. The dialog rechecks on every keystroke, so the price of the move
     // is on screen before it is made.
+    const heading = headingAction(shown);
     page.appendChild(
-      this.anchors.act(
-        el('button', 'sc-heading', shown.heading),
-        {
-          ok     : true,
-          id     : 'story.setHeading',
-          props  : { scene: shown.sceneId, heading: shown.heading },
-          label  : shown.heading,
-          tooltip:
-            'Move this scene somewhere else by rewriting its heading. Its rendered shots are drawn ' +
-            'again — the dialog says how many — and the prose is left describing the old place.',
-          form   : true,
-        },
-        (action) => openCommandDialog(action.id, action.props as Record<string, string>),
+      this.anchors.act(el('button', 'sc-heading', heading.label), heading, (action) =>
+        openCommandDialog(action.id, action.props as Record<string, string>),
       ),
     );
 
@@ -555,18 +548,9 @@ export class ScriptEditor extends VnEditor {
     if (editing?.row === 'line' && editing.line.id === line.id) {
       body.appendChild(this.lineEditor(editing, `Retype ${line.id}`));
     } else {
-      const text = el('div', 'text', line.text);
-      // The click opens a box rather than writing anything, so the new text is what the widget
-      // supplies. The line is named by its own id, which survives every re-sort of the scene.
-      this.anchors.record(text, {
-        ok      : true,
-        id      : 'story.setLineText',
-        props   : { line: line.id },
-        label   : line.text,
-        tooltip : 'Click to retype this line',
-        on      : line.id,
-        supplies: ['text'],
-      });
+      const retype = lineTextAction(line);
+      const text = el('div', 'text', retype.label);
+      this.anchors.record(text, retype);
       text.addEventListener('click', () => this.openLine(line));
       body.appendChild(text);
     }
@@ -782,21 +766,11 @@ export class ScriptEditor extends VnEditor {
       prop("The new scene's heading", pending.heading, true, (v) => (pending.heading = v));
     }
 
-    const label =
-      pending.act === 'split' ? 'Split' : pending.act === 'merge' ? 'Merge' : 'Write it';
-    const tooltip =
-      pending.act === 'split'
-        ? 'Cut the scene here and write the tail as its own file'
-        : pending.act === 'merge'
-          ? 'Fold that scene into this one and delete the file it came from'
-          : 'Write the new scene and point this one at it';
-    const go = el('button', 'go', label);
-    go.title = tooltip;
     const sceneId = this.ui.sceneId;
-    if (this.pending && sceneId) {
-      const step = checkOf(this.pending, sceneId);
-      this.anchors.record(go, { ok: true, id: step.id, props: step.props, label, tooltip });
-    }
+    const confirm = pendingAction(pending, sceneId);
+    const go = el('button', 'go', confirm.label);
+    go.title = confirm.tooltip;
+    if (this.pending && sceneId) this.anchors.record(go, confirm);
     go.addEventListener('click', () => void this.confirm());
     box.appendChild(go);
 

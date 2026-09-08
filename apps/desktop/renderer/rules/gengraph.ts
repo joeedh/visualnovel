@@ -23,6 +23,7 @@ import {
 import type { DescentEntry, GraphEdit } from 'pathux';
 
 import { graphDocPath, graphGroupPath } from '../../src/shared/writes.js';
+import { refuse, type Control, type Offer } from './anchors.js';
 
 /** One `gengraph.*` invocation, in the shape `exec` takes. */
 export interface GenCommand {
@@ -396,4 +397,67 @@ export function commandFor(target: EditTarget, edit: GenEdit): GenCommand {
     case 'removeBoundary':
       return { id: 'gengraph.removeBoundary', props: { group, dir: edit.dir, key: edit.key } };
   }
+}
+
+/** What the Gen Graph pane reads when it draws its Group and Ungroup buttons. */
+export interface GroupState {
+  selected: GraphId[];
+  /** The group instances among the selection, by id. */
+  groups: GraphId[];
+  /** How the pane weighed each button's edit against the live graph, where it had one to weigh. */
+  weighed: { group?: GenEditFor; ungroup?: GenEditFor };
+  /** Where an edit at the level on screen is written; none when the level no longer resolves. */
+  target?: EditTarget;
+}
+
+export const GROUP_WHAT =
+  'Move the selected nodes into a new group, and leave an instance of it in their place (Ctrl+G)';
+
+export const UNGROUP_WHAT =
+  'Put a copy of each selected group’s nodes where the instance stands, values included (Ctrl+Alt+G)';
+
+/** Said where the view's level no longer resolves, which undo and delete can bring about. */
+export const NO_LEVEL = 'this level of the graph is no longer there; go back up';
+
+/** The invocation a weighed gesture would send, or why it is refused: the weighing first, then the level. */
+function judged(
+  control: Control,
+  weighed: GenEditFor | undefined,
+  target: EditTarget | undefined,
+): Offer {
+  if (weighed === undefined || !weighed.ok) {
+    return { ...refuse(weighed?.reason ?? NO_LEVEL), ...control };
+  }
+  if (target === undefined) return { ...refuse(NO_LEVEL), ...control };
+  return { ok: true, ...commandFor(target, weighed.edit), ...control };
+}
+
+/** Group the selection, refused first with nothing selected. */
+export function groupAction(
+  selected: GraphId[],
+  weighed: GenEditFor | undefined,
+  target: EditTarget | undefined,
+): Offer {
+  const control = { id: 'gengraph.createGroup', label: 'Group', tooltip: GROUP_WHAT };
+  if (selected.length === 0) return { ...refuse('Select the nodes to group first.'), ...control };
+  return judged(control, weighed, target);
+}
+
+/** Ungroup the first selected group instance, refused first with none selected. */
+export function ungroupAction(
+  groups: GraphId[],
+  weighed: GenEditFor | undefined,
+  target: EditTarget | undefined,
+): Offer {
+  const control = { id: 'gengraph.ungroup', label: 'Ungroup', tooltip: UNGROUP_WHAT };
+  if (groups.length === 0) return { ...refuse('Select a group instance to ungroup.'), ...control };
+  return judged(control, weighed, target);
+}
+
+/** Every offer the Gen Graph pane draws from this module: the two group buttons. */
+export function controls(state: GroupState): readonly Offer[] {
+  return [
+    groupAction(state.selected, state.weighed.group, state.target),
+    ungroupAction(state.groups, state.weighed.ungroup, state.target),
+  ];
 }
