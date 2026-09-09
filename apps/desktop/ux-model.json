@@ -388,19 +388,37 @@
       "module": "script",
       "editor": "script",
       "name"  : "no-scene",
-      "why"   : "No scene is loaded, so nothing is drawn."
+      "why"   : "No scene is loaded, so only the bar is drawn: the scene picker and reload."
     },
     {
       "module": "script",
       "editor": "script",
       "name"  : "scene",
-      "why": "A scene is on the page: its heading opens the move dialog, the spoken line has a cue slot, and each line opens a text box."
+      "why": "A scene is on the page: its heading opens the move dialog, each line has a drag handle and opens a text box, the spoken line has a cue slot, the second line offers a split, and the structure buttons add a line, merge the next scene in, or continue to a new one."
+    },
+    {
+      "module": "script",
+      "editor": "script",
+      "name"  : "empty-scene",
+      "why"   : "A scene with no lines invites the first one and offers nothing to split or add to."
     },
     {
       "module": "script",
       "editor": "script",
       "name"  : "editing-a-line",
-      "why"   : "One line’s box is open, so that line’s control is left out."
+      "why"   : "One line’s box is open, so its box stands in for that line’s control."
+    },
+    {
+      "module": "script",
+      "editor": "script",
+      "name"  : "composing",
+      "why": "A composer is open under the last line, so its box offers the insert it would commit."
+    },
+    {
+      "module": "script",
+      "editor": "script",
+      "name"  : "with-frames",
+      "why": "Two frames were drawn from this scene, so the strip under the page opens each in the asset editor."
     },
     {
       "module": "script",
@@ -412,19 +430,19 @@
       "module": "script",
       "editor": "script",
       "name"  : "pending-merge",
-      "why"   : "A merge is pending, so the strip’s button offers story.mergeScene."
+      "why": "A merge is pending, so the strip’s button offers story.mergeScene, Cancel closes it, and no split is offered."
     },
     {
       "module": "script",
       "editor": "script",
       "name"  : "pending-split",
-      "why"   : "A split is pending, so the strip’s button offers story.splitScene."
+      "why"   : "A split is pending, so the strip’s id field and button offer story.splitScene."
     },
     {
       "module": "script",
       "editor": "script",
       "name"  : "pending-scene",
-      "why"   : "A new scene is pending, so the strip’s button offers story.newScene."
+      "why": "A new scene is pending, so the strip’s id and heading fields and its button offer story.newScene."
     },
     {
       "module": "skills",
@@ -15436,6 +15454,104 @@
       "via"      : "control",
       "editor"   : "script",
       "module"   : "script",
+      "situation": "no-scene",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "scene…",
+        "tooltip": "Which scene this editor shows. Every pane follows the choice.",
+        "ok"     : true,
+        "props": {
+          "menu": "scenes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "scenes"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "no-scene",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this scene from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "scene",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "arrival",
+        "tooltip": "Which scene this editor shows. Every pane follows the choice.",
+        "ok"     : true,
+        "props": {
+          "menu": "scenes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "scenes"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "scene",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this scene from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
       "situation": "scene",
       "key"      : "cmd:story.setHeading",
       "offer": {
@@ -15464,6 +15580,31 @@
       "editor"   : "script",
       "module"   : "script",
       "situation": "scene",
+      "key"      : "fx:drag.start#line/arrival:L1",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "1",
+        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it",
+        "on"     : "line/arrival:L1",
+        "ok"     : true,
+        "props": {
+          "interaction": "script.moveLine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "script.moveLine"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "scene",
       "key"      : "cmd:story.setLineText#arrival:L1",
       "offer": {
         "id"      : "story.setLineText",
@@ -15481,6 +15622,31 @@
           "id"   : "story.setLineText",
           "props": {
             "line": "arrival:L1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "scene",
+      "key"      : "fx:drag.start#line/arrival:L2",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "2",
+        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it",
+        "on"     : "line/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "interaction": "script.moveLine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "script.moveLine"
           }
         }
       ]
@@ -15541,6 +15707,306 @@
       "via"      : "control",
       "editor"   : "script",
       "module"   : "script",
+      "situation": "scene",
+      "key"      : "fx:popup.open#split/arrival:L2",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "split here",
+        "tooltip": "Start a second scene at this line, and name it before anything is written",
+        "on"     : "split/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "scene",
+      "key"      : "fx:popup.open#compose/arrival:L2",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ line",
+        "tooltip": "Write another line at the end of this scene",
+        "on"     : "compose/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "scene",
+      "key"      : "fx:popup.open#merge/departure",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "merge departure in",
+        "tooltip": "Take departure's lines into this scene and delete its file",
+        "on"     : "merge/departure",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "scene",
+      "key"      : "fx:popup.open#continue",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ scene after this one",
+        "tooltip": "Write a new scene and make this one continue into it",
+        "on"     : "continue",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "empty-scene",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "arrival",
+        "tooltip": "Which scene this editor shows. Every pane follows the choice.",
+        "ok"     : true,
+        "props": {
+          "menu": "scenes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "scenes"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "empty-scene",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this scene from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "empty-scene",
+      "key"      : "cmd:story.setHeading",
+      "offer": {
+        "id"     : "story.setHeading",
+        "label"  : "EXT. SCHOOL GATE - MORNING",
+        "tooltip": "Move this scene somewhere else by rewriting its heading. Its rendered shots are drawn again — the dialog says how many — and the prose is left describing the old place.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "scene"  : "arrival",
+          "heading": "EXT. SCHOOL GATE - MORNING"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setHeading",
+          "props": {
+            "scene"  : "arrival",
+            "heading": "EXT. SCHOOL GATE - MORNING"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "empty-scene",
+      "key"      : "fx:popup.open#compose/first",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "arrival has no lines yet — write the first one.",
+        "tooltip": "Open a box and write the first line of this scene",
+        "on"     : "compose/first",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "empty-scene",
+      "key"      : "fx:popup.open#merge/departure",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "merge departure in",
+        "tooltip": "Take departure's lines into this scene and delete its file",
+        "on"     : "merge/departure",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "empty-scene",
+      "key"      : "fx:popup.open#continue",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ scene after this one",
+        "tooltip": "Write a new scene and make this one continue into it",
+        "on"     : "continue",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "editing-a-line",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "arrival",
+        "tooltip": "Which scene this editor shows. Every pane follows the choice.",
+        "ok"     : true,
+        "props": {
+          "menu": "scenes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "scenes"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "editing-a-line",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this scene from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
       "situation": "editing-a-line",
       "key"      : "cmd:story.setHeading",
       "offer": {
@@ -15560,6 +16026,82 @@
           "props": {
             "scene"  : "arrival",
             "heading": "EXT. SCHOOL GATE - MORNING"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "editing-a-line",
+      "key"      : "fx:drag.start#line/arrival:L1",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "1",
+        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it",
+        "on"     : "line/arrival:L1",
+        "ok"     : true,
+        "props": {
+          "interaction": "script.moveLine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "script.moveLine"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "editing-a-line",
+      "key"      : "cmd:story.setLineText#arrival:L1/box",
+      "offer": {
+        "id"      : "story.setLineText",
+        "label"   : "Retype arrival:L1",
+        "tooltip" : "Retype arrival:L1 — Enter writes it, Escape leaves the line alone",
+        "on"      : "arrival:L1/box",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "editing-a-line",
+      "key"      : "fx:drag.start#line/arrival:L2",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "2",
+        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it",
+        "on"     : "line/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "interaction": "script.moveLine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "script.moveLine"
           }
         }
       ]
@@ -15620,6 +16162,877 @@
       "via"      : "control",
       "editor"   : "script",
       "module"   : "script",
+      "situation": "editing-a-line",
+      "key"      : "fx:popup.open#split/arrival:L2",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "split here",
+        "tooltip": "Start a second scene at this line, and name it before anything is written",
+        "on"     : "split/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "editing-a-line",
+      "key"      : "fx:popup.open#compose/arrival:L2",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ line",
+        "tooltip": "Write another line at the end of this scene",
+        "on"     : "compose/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "editing-a-line",
+      "key"      : "fx:popup.open#merge/departure",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "merge departure in",
+        "tooltip": "Take departure's lines into this scene and delete its file",
+        "on"     : "merge/departure",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "editing-a-line",
+      "key"      : "fx:popup.open#continue",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ scene after this one",
+        "tooltip": "Write a new scene and make this one continue into it",
+        "on"     : "continue",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "composing",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "arrival",
+        "tooltip": "Which scene this editor shows. Every pane follows the choice.",
+        "ok"     : true,
+        "props": {
+          "menu": "scenes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "scenes"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "composing",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this scene from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "composing",
+      "key"      : "cmd:story.setHeading",
+      "offer": {
+        "id"     : "story.setHeading",
+        "label"  : "EXT. SCHOOL GATE - MORNING",
+        "tooltip": "Move this scene somewhere else by rewriting its heading. Its rendered shots are drawn again — the dialog says how many — and the prose is left describing the old place.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "scene"  : "arrival",
+          "heading": "EXT. SCHOOL GATE - MORNING"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setHeading",
+          "props": {
+            "scene"  : "arrival",
+            "heading": "EXT. SCHOOL GATE - MORNING"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "composing",
+      "key"      : "fx:drag.start#line/arrival:L1",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "1",
+        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it",
+        "on"     : "line/arrival:L1",
+        "ok"     : true,
+        "props": {
+          "interaction": "script.moveLine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "script.moveLine"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "composing",
+      "key"      : "cmd:story.setLineText#arrival:L1",
+      "offer": {
+        "id"      : "story.setLineText",
+        "label"   : "Aiko stops at the gate.",
+        "tooltip" : "Click to retype this line",
+        "on"      : "arrival:L1",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "composing",
+      "key"      : "fx:drag.start#line/arrival:L2",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "2",
+        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it",
+        "on"     : "line/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "interaction": "script.moveLine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "script.moveLine"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "composing",
+      "key"      : "cmd:story.setSpeaker#arrival:L2",
+      "offer": {
+        "id"      : "story.setSpeaker",
+        "label"   : "Aiko",
+        "tooltip" : "Aiko says this line — click to change who does",
+        "on"      : "arrival:L2",
+        "supplies": ["speaker"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setSpeaker",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "composing",
+      "key"      : "cmd:story.setLineText#arrival:L2",
+      "offer": {
+        "id"      : "story.setLineText",
+        "label"   : "AIKO: Is this the place?",
+        "tooltip" : "Click to retype this line",
+        "on"      : "arrival:L2",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "composing",
+      "key"      : "fx:popup.open#split/arrival:L2",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "split here",
+        "tooltip": "Start a second scene at this line, and name it before anything is written",
+        "on"     : "split/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "composing",
+      "key"      : "cmd:story.insertLine#compose/arrival:L2",
+      "offer": {
+        "id"      : "story.insertLine",
+        "label"   : "Write the line, then Enter",
+        "tooltip" : "Write a new line — Enter writes it, Escape leaves the scene alone",
+        "on"      : "compose/arrival:L2",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "scene": "arrival",
+          "after": "arrival:L2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.insertLine",
+          "props": {
+            "scene": "arrival",
+            "after": "arrival:L2"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "composing",
+      "key"      : "fx:popup.open#compose/arrival:L2",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ line",
+        "tooltip": "Write another line at the end of this scene",
+        "on"     : "compose/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "composing",
+      "key"      : "fx:popup.open#merge/departure",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "merge departure in",
+        "tooltip": "Take departure's lines into this scene and delete its file",
+        "on"     : "merge/departure",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "composing",
+      "key"      : "fx:popup.open#continue",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ scene after this one",
+        "tooltip": "Write a new scene and make this one continue into it",
+        "on"     : "continue",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "with-frames",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "arrival",
+        "tooltip": "Which scene this editor shows. Every pane follows the choice.",
+        "ok"     : true,
+        "props": {
+          "menu": "scenes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "scenes"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "with-frames",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this scene from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "with-frames",
+      "key"      : "cmd:story.setHeading",
+      "offer": {
+        "id"     : "story.setHeading",
+        "label"  : "EXT. SCHOOL GATE - MORNING",
+        "tooltip": "Move this scene somewhere else by rewriting its heading. Its rendered shots are drawn again — the dialog says how many — and the prose is left describing the old place.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "scene"  : "arrival",
+          "heading": "EXT. SCHOOL GATE - MORNING"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setHeading",
+          "props": {
+            "scene"  : "arrival",
+            "heading": "EXT. SCHOOL GATE - MORNING"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "with-frames",
+      "key"      : "fx:drag.start#line/arrival:L1",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "1",
+        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it",
+        "on"     : "line/arrival:L1",
+        "ok"     : true,
+        "props": {
+          "interaction": "script.moveLine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "script.moveLine"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "with-frames",
+      "key"      : "cmd:story.setLineText#arrival:L1",
+      "offer": {
+        "id"      : "story.setLineText",
+        "label"   : "Aiko stops at the gate.",
+        "tooltip" : "Click to retype this line",
+        "on"      : "arrival:L1",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "with-frames",
+      "key"      : "fx:drag.start#line/arrival:L2",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "2",
+        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it",
+        "on"     : "line/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "interaction": "script.moveLine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "script.moveLine"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "with-frames",
+      "key"      : "cmd:story.setSpeaker#arrival:L2",
+      "offer": {
+        "id"      : "story.setSpeaker",
+        "label"   : "Aiko",
+        "tooltip" : "Aiko says this line — click to change who does",
+        "on"      : "arrival:L2",
+        "supplies": ["speaker"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setSpeaker",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "with-frames",
+      "key"      : "cmd:story.setLineText#arrival:L2",
+      "offer": {
+        "id"      : "story.setLineText",
+        "label"   : "AIKO: Is this the place?",
+        "tooltip" : "Click to retype this line",
+        "on"      : "arrival:L2",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "with-frames",
+      "key"      : "fx:popup.open#split/arrival:L2",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "split here",
+        "tooltip": "Start a second scene at this line, and name it before anything is written",
+        "on"     : "split/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "with-frames",
+      "key"      : "fx:popup.open#compose/arrival:L2",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ line",
+        "tooltip": "Write another line at the end of this scene",
+        "on"     : "compose/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "with-frames",
+      "key"      : "fx:popup.open#merge/departure",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "merge departure in",
+        "tooltip": "Take departure's lines into this scene and delete its file",
+        "on"     : "merge/departure",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "with-frames",
+      "key"      : "fx:popup.open#continue",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ scene after this one",
+        "tooltip": "Write a new scene and make this one continue into it",
+        "on"     : "continue",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "with-frames",
+      "key"      : "item:link/asset/a1b2c3d4",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "arrival__s1",
+        "tooltip": "arrival__s1 · accepted — open it in the asset editor",
+        "on"     : "link/asset/a1b2c3d4",
+        "ok"     : true,
+        "props": {
+          "assetHash": "a1b2c3d4"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "asset",
+              "where"  : "elsewhere",
+              "subject": "a1b2c3d4"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "assetHash": "a1b2c3d4"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "a1b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "with-frames",
+      "key"      : "item:link/asset/b2c3d4e5",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "arrival__s2",
+        "tooltip": "arrival__s2 — open it in the asset editor",
+        "on"     : "link/asset/b2c3d4e5",
+        "ok"     : true,
+        "props": {
+          "assetHash": "b2c3d4e5"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "asset",
+              "where"  : "elsewhere",
+              "subject": "b2c3d4e5"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "assetHash": "b2c3d4e5"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "b2c3d4e5"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "picking-a-speaker",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "arrival",
+        "tooltip": "Which scene this editor shows. Every pane follows the choice.",
+        "ok"     : true,
+        "props": {
+          "menu": "scenes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "scenes"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "picking-a-speaker",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this scene from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
       "situation": "picking-a-speaker",
       "key"      : "cmd:story.setHeading",
       "offer": {
@@ -15648,6 +17061,31 @@
       "editor"   : "script",
       "module"   : "script",
       "situation": "picking-a-speaker",
+      "key"      : "fx:drag.start#line/arrival:L1",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "1",
+        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it",
+        "on"     : "line/arrival:L1",
+        "ok"     : true,
+        "props": {
+          "interaction": "script.moveLine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "script.moveLine"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "picking-a-speaker",
       "key"      : "cmd:story.setLineText#arrival:L1",
       "offer": {
         "id"      : "story.setLineText",
@@ -15665,6 +17103,31 @@
           "id"   : "story.setLineText",
           "props": {
             "line": "arrival:L1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "picking-a-speaker",
+      "key"      : "fx:drag.start#line/arrival:L2",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "2",
+        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it",
+        "on"     : "line/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "interaction": "script.moveLine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "script.moveLine"
           }
         }
       ]
@@ -15725,6 +17188,155 @@
       "via"      : "control",
       "editor"   : "script",
       "module"   : "script",
+      "situation": "picking-a-speaker",
+      "key"      : "fx:popup.open#split/arrival:L2",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "split here",
+        "tooltip": "Start a second scene at this line, and name it before anything is written",
+        "on"     : "split/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "picking-a-speaker",
+      "key"      : "fx:popup.open#compose/arrival:L2",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ line",
+        "tooltip": "Write another line at the end of this scene",
+        "on"     : "compose/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "picking-a-speaker",
+      "key"      : "fx:popup.open#merge/departure",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "merge departure in",
+        "tooltip": "Take departure's lines into this scene and delete its file",
+        "on"     : "merge/departure",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "picking-a-speaker",
+      "key"      : "fx:popup.open#continue",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ scene after this one",
+        "tooltip": "Write a new scene and make this one continue into it",
+        "on"     : "continue",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-merge",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "arrival",
+        "tooltip": "Which scene this editor shows. Every pane follows the choice.",
+        "ok"     : true,
+        "props": {
+          "menu": "scenes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "scenes"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-merge",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this scene from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
       "situation": "pending-merge",
       "key"      : "cmd:story.setHeading",
       "offer": {
@@ -15753,6 +17365,31 @@
       "editor"   : "script",
       "module"   : "script",
       "situation": "pending-merge",
+      "key"      : "fx:drag.start#line/arrival:L1",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "1",
+        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it",
+        "on"     : "line/arrival:L1",
+        "ok"     : true,
+        "props": {
+          "interaction": "script.moveLine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "script.moveLine"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-merge",
       "key"      : "cmd:story.setLineText#arrival:L1",
       "offer": {
         "id"      : "story.setLineText",
@@ -15770,6 +17407,31 @@
           "id"   : "story.setLineText",
           "props": {
             "line": "arrival:L1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-merge",
+      "key"      : "fx:drag.start#line/arrival:L2",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "2",
+        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it",
+        "on"     : "line/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "interaction": "script.moveLine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "script.moveLine"
           }
         }
       ]
@@ -15822,6 +17484,81 @@
           "id"   : "story.setLineText",
           "props": {
             "line": "arrival:L2"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-merge",
+      "key"      : "fx:popup.open#compose/arrival:L2",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ line",
+        "tooltip": "Write another line at the end of this scene",
+        "on"     : "compose/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-merge",
+      "key"      : "fx:popup.open#merge/departure",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "merge departure in",
+        "tooltip": "Take departure's lines into this scene and delete its file",
+        "on"     : "merge/departure",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-merge",
+      "key"      : "fx:popup.open#continue",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ scene after this one",
+        "tooltip": "Write a new scene and make this one continue into it",
+        "on"     : "continue",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
           }
         }
       ]
@@ -15856,6 +17593,80 @@
       "via"      : "control",
       "editor"   : "script",
       "module"   : "script",
+      "situation": "pending-merge",
+      "key"      : "fx:popup.close#cancel",
+      "offer": {
+        "id"     : "popup.close",
+        "label"  : "Cancel",
+        "tooltip": "Abandon this act. Nothing is written.",
+        "on"     : "cancel",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.close",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-split",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "arrival",
+        "tooltip": "Which scene this editor shows. Every pane follows the choice.",
+        "ok"     : true,
+        "props": {
+          "menu": "scenes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "scenes"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-split",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this scene from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
       "situation": "pending-split",
       "key"      : "cmd:story.setHeading",
       "offer": {
@@ -15884,6 +17695,31 @@
       "editor"   : "script",
       "module"   : "script",
       "situation": "pending-split",
+      "key"      : "fx:drag.start#line/arrival:L1",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "1",
+        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it",
+        "on"     : "line/arrival:L1",
+        "ok"     : true,
+        "props": {
+          "interaction": "script.moveLine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "script.moveLine"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-split",
       "key"      : "cmd:story.setLineText#arrival:L1",
       "offer": {
         "id"      : "story.setLineText",
@@ -15901,6 +17737,31 @@
           "id"   : "story.setLineText",
           "props": {
             "line": "arrival:L1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-split",
+      "key"      : "fx:drag.start#line/arrival:L2",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "2",
+        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it",
+        "on"     : "line/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "interaction": "script.moveLine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "script.moveLine"
           }
         }
       ]
@@ -15953,6 +17814,110 @@
           "id"   : "story.setLineText",
           "props": {
             "line": "arrival:L2"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-split",
+      "key"      : "fx:popup.open#compose/arrival:L2",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ line",
+        "tooltip": "Write another line at the end of this scene",
+        "on"     : "compose/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-split",
+      "key"      : "fx:popup.open#merge/departure",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "merge departure in",
+        "tooltip": "Take departure's lines into this scene and delete its file",
+        "on"     : "merge/departure",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-split",
+      "key"      : "fx:popup.open#continue",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ scene after this one",
+        "tooltip": "Write a new scene and make this one continue into it",
+        "on"     : "continue",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-split",
+      "key"      : "cmd:story.splitScene#into",
+      "offer": {
+        "id"     : "story.splitScene",
+        "label"  : "The new scene's id",
+        "tooltip": "The new scene's id. Enter confirms the act, Escape abandons it.",
+        "on"     : "into",
+        "ok"     : true,
+        "props": {
+          "scene": "arrival",
+          "at"   : "arrival:L2",
+          "into" : "arrival_2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.splitScene",
+          "props": {
+            "scene": "arrival",
+            "at"   : "arrival:L2",
+            "into" : "arrival_2"
           }
         }
       ]
@@ -15989,6 +17954,80 @@
       "via"      : "control",
       "editor"   : "script",
       "module"   : "script",
+      "situation": "pending-split",
+      "key"      : "fx:popup.close#cancel",
+      "offer": {
+        "id"     : "popup.close",
+        "label"  : "Cancel",
+        "tooltip": "Abandon this act. Nothing is written.",
+        "on"     : "cancel",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.close",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-scene",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "arrival",
+        "tooltip": "Which scene this editor shows. Every pane follows the choice.",
+        "ok"     : true,
+        "props": {
+          "menu": "scenes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "scenes"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-scene",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this scene from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
       "situation": "pending-scene",
       "key"      : "cmd:story.setHeading",
       "offer": {
@@ -16017,6 +18056,31 @@
       "editor"   : "script",
       "module"   : "script",
       "situation": "pending-scene",
+      "key"      : "fx:drag.start#line/arrival:L1",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "1",
+        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it",
+        "on"     : "line/arrival:L1",
+        "ok"     : true,
+        "props": {
+          "interaction": "script.moveLine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "script.moveLine"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-scene",
       "key"      : "cmd:story.setLineText#arrival:L1",
       "offer": {
         "id"      : "story.setLineText",
@@ -16034,6 +18098,31 @@
           "id"   : "story.setLineText",
           "props": {
             "line": "arrival:L1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-scene",
+      "key"      : "fx:drag.start#line/arrival:L2",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "2",
+        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it",
+        "on"     : "line/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "interaction": "script.moveLine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "script.moveLine"
           }
         }
       ]
@@ -16095,6 +18184,135 @@
       "editor"   : "script",
       "module"   : "script",
       "situation": "pending-scene",
+      "key"      : "fx:popup.open#compose/arrival:L2",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ line",
+        "tooltip": "Write another line at the end of this scene",
+        "on"     : "compose/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-scene",
+      "key"      : "fx:popup.open#merge/departure",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "merge departure in",
+        "tooltip": "Take departure's lines into this scene and delete its file",
+        "on"     : "merge/departure",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-scene",
+      "key"      : "fx:popup.open#continue",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ scene after this one",
+        "tooltip": "Write a new scene and make this one continue into it",
+        "on"     : "continue",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-scene",
+      "key"      : "cmd:story.newScene#scene",
+      "offer": {
+        "id"     : "story.newScene",
+        "label"  : "The new scene's id",
+        "tooltip": "The new scene's id. Enter confirms the act, Escape abandons it.",
+        "on"     : "scene",
+        "ok"     : true,
+        "props": {
+          "scene"  : "scene_2",
+          "heading": "INT. HALL - DAY"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.newScene",
+          "props": {
+            "scene"  : "scene_2",
+            "heading": "INT. HALL - DAY"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-scene",
+      "key"      : "cmd:story.newScene#heading",
+      "offer": {
+        "id"     : "story.newScene",
+        "label"  : "The new scene's heading",
+        "tooltip": "The new scene's heading. Enter confirms the act, Escape abandons it.",
+        "on"     : "heading",
+        "ok"     : true,
+        "props": {
+          "scene"  : "scene_2",
+          "heading": "INT. HALL - DAY"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.newScene",
+          "props": {
+            "scene"  : "scene_2",
+            "heading": "INT. HALL - DAY"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-scene",
       "key"      : "cmd:story.newScene",
       "offer": {
         "id"     : "story.newScene",
@@ -16112,6 +18330,31 @@
           "props": {
             "scene"  : "scene_2",
             "heading": "INT. HALL - DAY"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-scene",
+      "key"      : "fx:popup.close#cancel",
+      "offer": {
+        "id"     : "popup.close",
+        "label"  : "Cancel",
+        "tooltip": "Abandon this act. Nothing is written.",
+        "on"     : "cancel",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.close",
+          "props": {
+            "popup": "box"
           }
         }
       ]
@@ -21573,10 +23816,6 @@
     {
       "match": "gengraph.unlink",
       "why": "An edit the graph canvas makes through its node widgets, sockets and drags, outside `controls`."
-    },
-    {
-      "match": "story.insertLine",
-      "why": "The script column runs it from a keystroke or a pending scene, not from a drawn control."
     },
     {
       "match": "story.deleteLine",

@@ -4,9 +4,13 @@ import { api } from '../../api.js';
 import { commitOf, noticeForCheck, type Notice } from '../../../src/shared/lineedit.js';
 import { TOP } from '../../../src/shared/interactions.js';
 import {
+  addLineAction,
   canContinue,
+  cancelAction,
   checkOf,
+  composeBox,
   composedCueText,
+  continueAction,
   continueFrom,
   cueChoices,
   speakerAction,
@@ -14,24 +18,36 @@ import {
   headingAction,
   insertOf,
   keyAct,
+  lidAction,
+  lineBox,
   lineTextAction,
   localLineId,
+  mergeAction,
   mergeTarget,
   nextEditing,
   pendingAction,
+  pendingBox,
+  pickerAction,
   proposeSceneId,
+  reloadAction,
   scriptRows,
   setSpeakerOf,
+  splitAction,
   splitBoundaries,
+  startAction,
   stepsOf,
   type CastMember,
+  type PendingField,
   type Continue,
   type CueChoice,
   type Editing,
   type Pending,
   type RowBox,
 } from '../../rules/script.js';
+import { cellAction } from '../../rules/assetstrip.js';
 import { ASSETSTRIP_CSS, renderAssetStrip } from '../assets/assetstrip.js';
+import { visibleEditors } from '../panes/route.js';
+import { panesOf } from '../panes/view.js';
 import { shotGroups } from '../doctree/doctree.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { openCommandDialog } from '../chrome/dialog.js';
@@ -374,8 +390,10 @@ export class ScriptEditor extends VnEditor {
       `Edit ${s.id}, set in ${s.location}.`,
       s.id,
     ]) as MenuTemplate;
-    const picker = this.bar.menu(this.ui.sceneId || 'scene…', menu);
-    picker.description = 'Which scene this editor shows. Every pane follows the choice.';
+    const bar = redrawing('script', 'bar');
+    const pick = pickerAction(this.ui.sceneId);
+    // Recorded rather than acted: the drop-down opens through path.ux's own handler
+    bar.record(this.bar.menu(pick.label, menu), pick);
     this.pinToggle(this.bar);
 
     const shown = this.shown;
@@ -384,8 +402,12 @@ export class ScriptEditor extends VnEditor {
     count.description = this.failure
       ? 'Why this scene could not be read.'
       : 'How many lines this scene has, headings and blank lines included.';
-    const reload = this.bar.button('⟳', () => void this.load());
-    reload.description = 'Re-read this scene from disk';
+    const reload = reloadAction();
+    bar.act(
+      this.bar.button(reload.label, () => {}),
+      reload,
+      () => void this.load(),
+    );
     this.bar.flushUpdate();
   }
 
@@ -445,14 +467,10 @@ export class ScriptEditor extends VnEditor {
     );
 
     if (shown.lines.length === 0 && this.editing === null) {
-      const start = el(
-        'button',
-        'sc-start',
-        `${shown.sceneId} has no lines yet — write the first one.`,
+      const start = startAction(shown.sceneId);
+      page.appendChild(
+        this.anchors.act(el('button', 'sc-start', start.label), start, () => this.compose('')),
       );
-      start.title = 'Open a box and write the first line of this scene';
-      start.addEventListener('click', () => this.compose(''));
-      page.appendChild(start);
     }
 
     const cuts = new Set(splitBoundaries(shown.lines));
@@ -506,8 +524,12 @@ export class ScriptEditor extends VnEditor {
     // `rebuildSurface` is what puts the row back when there is one again.
     if (this.frames.parentNode !== this.surface) return;
     const links = this.tree?.backlinks[`scene:${this.ui.sceneId}`];
+    const screen = this.ctx?.screen as VnScreen | undefined;
+    const visible = visibleEditors(screen ? panesOf(screen) : []);
+    const anchors = redrawing('script', 'frames');
     renderAssetStrip(this.frames, links ? shotGroups(links, this.ui.sceneId) : [], EMPTY, {
       onPick: (hash) => this.openAsset(hash),
+      anchor: (box, asset, run) => anchors.act(box, cellAction(asset, visible), run),
     });
   }
 
@@ -535,8 +557,8 @@ export class ScriptEditor extends VnEditor {
     // The gutter numbers the page the way an author reads it back, counting from the heading. The
     // stable id is in the tooltip instead: it is what a refusal names, but it stops matching the
     // count as soon as a line is inserted, so it cannot be the number on screen.
-    const lid = el('span', 'lid', String(at));
-    lid.title = `Line ${at} of this scene, ${line.id} — drag this handle to move it`;
+    // Recorded rather than acted: the handle is grabbed on `pointerdown`, not clicked
+    const lid = this.anchors.record(el('span', 'lid', String(at)), lidAction(line, at));
     lid.addEventListener('pointerdown', (event) => this.grab(scene, line, event));
     box.appendChild(lid);
 
@@ -559,19 +581,19 @@ export class ScriptEditor extends VnEditor {
     // A boundary is a property of the row below it, so the button sits on the row rather than
     // between rows, marking where the second half starts.
     if (cut && this.pending === null) {
-      const split = el('button', 'sc-cut', 'split here');
-      split.title = 'Start a second scene at this line, and name it before anything is written';
-      split.addEventListener('click', () =>
-        this.propose({
-          act : 'split',
-          at  : line.id,
-          into: proposeSceneId(
-            scene.sceneId,
-            (this.story?.scenes ?? []).map((s) => s.id),
-          ),
-        }),
+      const split = splitAction(line.id);
+      box.appendChild(
+        this.anchors.act(el('button', 'sc-cut', split.label), split, () =>
+          this.propose({
+            act : 'split',
+            at  : line.id,
+            into: proposeSceneId(
+              scene.sceneId,
+              (this.story?.scenes ?? []).map((s) => s.id),
+            ),
+          }),
+        ),
       );
-      box.appendChild(split);
     }
     return box;
   }
@@ -635,10 +657,11 @@ export class ScriptEditor extends VnEditor {
     input.value = this.draft;
     input.spellcheck = true;
     input.setAttribute('aria-label', label);
-    input.title = `${label} — Enter writes it, Escape leaves the line alone`;
+    const box = row.row === 'new' ? composeBox(this.ui.sceneId, row.after) : lineBox(row.line);
+    this.anchors.record(input, box);
     // Without a placeholder an empty composer is an empty row, and nothing on screen says a line
     // is being written.
-    if (row.row === 'new') input.placeholder = 'Write the line, then Enter';
+    if (row.row === 'new') input.placeholder = box.label;
     input.addEventListener('input', () => {
       this.draft = input.value;
       sizer.dataset['value'] = this.draft;
@@ -683,36 +706,38 @@ export class ScriptEditor extends VnEditor {
     const scenes = this.story?.scenes ?? [];
 
     if (scene.lines.length > 0) {
-      const add = el('button', 'sc-add', '+ line');
-      add.title = 'Write another line at the end of this scene';
       const last = scene.lines[scene.lines.length - 1]?.id ?? '';
-      add.addEventListener('click', () => this.compose(last));
-      box.appendChild(add);
+      const add = addLineAction(last);
+      box.appendChild(
+        this.anchors.act(el('button', 'sc-add', add.label), add, () => this.compose(last)),
+      );
     }
 
     // Each of these is its command's own rule read ahead of time — the pane doesn't put a button
     // where the command would only refuse.
     const absorb = this.story ? mergeTarget(this.story, scene.sceneId) : null;
     if (absorb) {
-      const merge = el('button', 'sc-add', `merge ${absorb} in`);
-      merge.title = `Take ${absorb}'s lines into this scene and delete its file`;
-      merge.addEventListener('click', () => this.propose({ act: 'merge', absorbed: absorb }));
-      box.appendChild(merge);
+      const merge = mergeAction(absorb);
+      box.appendChild(
+        this.anchors.act(el('button', 'sc-add', merge.label), merge, () =>
+          this.propose({ act: 'merge', absorbed: absorb }),
+        ),
+      );
     }
 
     if (this.story && canContinue(this.story, scene.sceneId)) {
-      const cont = el('button', 'sc-add', '+ scene after this one');
-      cont.title = 'Write a new scene and make this one continue into it';
-      cont.addEventListener('click', () =>
-        this.propose(
-          continueFrom(
-            scene.sceneId,
-            scene.location,
-            scenes.map((s) => s.id),
+      const cont = continueAction();
+      box.appendChild(
+        this.anchors.act(el('button', 'sc-add', cont.label), cont, () =>
+          this.propose(
+            continueFrom(
+              scene.sceneId,
+              scene.location,
+              scenes.map((s) => s.id),
+            ),
           ),
         ),
       );
-      box.appendChild(cont);
     }
     return box;
   }
@@ -731,11 +756,13 @@ export class ScriptEditor extends VnEditor {
     };
     // The strip's own props: typed into without a rebuild, so the field keeps the caret. `stateKey`
     // deliberately does not read them.
-    const prop = (label: string, value: string, wide: boolean, set: (v: string) => void) => {
+    const sceneId = this.ui.sceneId;
+    const prop = (field: PendingField, value: string, wide: boolean, set: (v: string) => void) => {
+      const offer = pendingBox(pending, sceneId, field);
       const input = document.createElement('input');
       input.className = `sc-prop${wide ? ' wide' : ''}`;
-      input.setAttribute('aria-label', label);
-      input.title = `${label}. Enter confirms the act, Escape abandons it.`;
+      input.setAttribute('aria-label', offer.label);
+      this.anchors.record(input, offer);
       input.value = value;
       input.addEventListener('input', () => {
         set(input.value);
@@ -751,7 +778,7 @@ export class ScriptEditor extends VnEditor {
       box.appendChild(
         el('span', 'what', `Split at ${localLineId(pending.at)} — that line and the rest become`),
       );
-      focus = prop("The new scene's id", pending.into, false, (v) => (pending.into = v));
+      focus = prop('into', pending.into, false, (v) => (pending.into = v));
     } else if (pending.act === 'merge') {
       box.appendChild(
         el(
@@ -762,11 +789,10 @@ export class ScriptEditor extends VnEditor {
       );
     } else {
       box.appendChild(el('span', 'what', `New scene, continued to from ${scene.sceneId}:`));
-      focus = prop("The new scene's id", pending.scene, false, (v) => (pending.scene = v));
-      prop("The new scene's heading", pending.heading, true, (v) => (pending.heading = v));
+      focus = prop('scene', pending.scene, false, (v) => (pending.scene = v));
+      prop('heading', pending.heading, true, (v) => (pending.heading = v));
     }
 
-    const sceneId = this.ui.sceneId;
     const confirm = pendingAction(pending, sceneId);
     const go = el('button', 'go', confirm.label);
     go.title = confirm.tooltip;
@@ -774,10 +800,10 @@ export class ScriptEditor extends VnEditor {
     go.addEventListener('click', () => void this.confirm());
     box.appendChild(go);
 
-    const no = el('button', 'no', 'Cancel');
-    no.title = 'Abandon this act. Nothing is written.';
-    no.addEventListener('click', () => this.cancel());
-    box.appendChild(no);
+    const cancel = cancelAction();
+    box.appendChild(
+      this.anchors.act(el('button', 'no', cancel.label), cancel, () => this.cancel()),
+    );
 
     if (focus) queueMicrotask(() => focus.focus());
     return box;

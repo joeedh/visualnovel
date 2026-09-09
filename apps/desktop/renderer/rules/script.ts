@@ -14,6 +14,9 @@ import type { Scene } from '@vn/types';
 import { TOP } from '../../src/shared/interactions.js';
 import { commitOf, lineOf } from '../../src/shared/lineedit.js';
 import type { Offer } from './anchors.js';
+import { cellAction, type StripAsset } from './assetstrip.js';
+import { closePopup, openMenu, openPopup, startDrag, view } from './effects.js';
+import type { EditorId } from '../../src/shared/editors.js';
 import type { CharacterEntry, CoverageLine, SceneCoverage, StoryGraph } from '../../src/shared/ipc';
 
 /**
@@ -526,8 +529,10 @@ export interface ScriptPageState {
     heading: string;
     lines: { id: string; text: string; kind?: CoverageLine['kind']; speaker?: string }[];
   };
-  /** The line whose text box is open, which replaces that line's control. */
+  /** The line whose text box is open, which replaces that line's control with the box. */
   editingLine: string | null;
+  /** The line a composer is open under, `''` for one at the head of the scene; none when unset. */
+  composing?: string;
   /** The line whose cue picker is open, which changes that slot's tooltip. */
   attributing?: string | null;
   /** The project's cast, which the cue slots name. */
@@ -535,6 +540,165 @@ export interface ScriptPageState {
   pending: Pending | null;
   /** The selected scene, or the empty string with none. */
   sceneId: string;
+  /** The scene this one continues to, when `story.mergeScene` would take it; none otherwise. */
+  absorb?: string;
+  /** Whether a new scene can be written after this one. */
+  continues?: boolean;
+  /** The frames drawn from this scene, and the editors some pane shows, which routes a pick. */
+  frames?: { assets: readonly StripAsset[]; visible: readonly EditorId[] };
+}
+
+/** The bar's scene picker, a drop-down of every scene in the story. */
+export function pickerAction(sceneId: string): Offer {
+  return {
+    ok: true,
+    ...openMenu('scenes'),
+    label  : sceneId || 'scene…',
+    tooltip: 'Which scene this editor shows. Every pane follows the choice.',
+  };
+}
+
+/** The bar's `⟳`. */
+export function reloadAction(): Offer {
+  return {
+    ok: true,
+    ...view('reload'),
+    on     : 'reload',
+    label  : '⟳',
+    tooltip: 'Re-read this scene from disk',
+  };
+}
+
+/** The composer key for a row under `after`; `''` is the head of the scene. */
+const composeKey = (after: string): string => `compose/${after || 'first'}`;
+
+/** The invitation an empty scene draws, which opens a composer at its head. */
+export function startAction(sceneId: string): Offer {
+  return {
+    ok: true,
+    ...openPopup('box'),
+    on     : composeKey(''),
+    label  : `${sceneId} has no lines yet — write the first one.`,
+    tooltip: 'Open a box and write the first line of this scene',
+  };
+}
+
+/** `+ line`, which opens a composer under the last line. */
+export function addLineAction(last: string): Offer {
+  return {
+    ok: true,
+    ...openPopup('box'),
+    on     : composeKey(last),
+    label  : '+ line',
+    tooltip: 'Write another line at the end of this scene',
+  };
+}
+
+/**
+ * The composer's box: the insert it commits, with the text as what the box supplies. The kind
+ * and the speaker are derived from the line above at commit time, so the offer names neither.
+ */
+export function composeBox(sceneId: string, after: string): Offer {
+  return {
+    ok      : true,
+    id      : 'story.insertLine',
+    props   : { scene: sceneId, after },
+    on      : composeKey(after),
+    label   : 'Write the line, then Enter',
+    tooltip : 'Write a new line — Enter writes it, Escape leaves the scene alone',
+    supplies: ['text'],
+  };
+}
+
+/** The box a line's text is retyped in, drawn in place of the line while it is open. */
+export function lineBox(line: { id: string; text: string }): Offer {
+  return {
+    ...lineTextAction(line),
+    on     : `${line.id}/box`,
+    label  : `Retype ${line.id}`,
+    tooltip: `Retype ${line.id} — Enter writes it, Escape leaves the line alone`,
+  };
+}
+
+/** The gutter number, which is also the handle a line is dragged by. */
+export function lidAction(line: { id: string }, at: number): Offer {
+  return {
+    ok: true,
+    ...startDrag('script.moveLine'),
+    on     : `line/${line.id}`,
+    label  : String(at),
+    tooltip: `Line ${at} of this scene, ${line.id} — drag this handle to move it`,
+  };
+}
+
+/** `split here`, drawn on a row a split may start at while no act is pending. */
+export function splitAction(lineId: string): Offer {
+  return {
+    ok: true,
+    ...openPopup('box'),
+    on     : `split/${lineId}`,
+    label  : 'split here',
+    tooltip: 'Start a second scene at this line, and name it before anything is written',
+  };
+}
+
+/** `merge <scene> in`, drawn while `mergeTarget` names a scene. */
+export function mergeAction(absorb: string): Offer {
+  return {
+    ok: true,
+    ...openPopup('box'),
+    on     : `merge/${absorb}`,
+    label  : `merge ${absorb} in`,
+    tooltip: `Take ${absorb}'s lines into this scene and delete its file`,
+  };
+}
+
+/** `+ scene after this one`, drawn while `canContinue` allows it. */
+export function continueAction(): Offer {
+  return {
+    ok: true,
+    ...openPopup('box'),
+    on     : 'continue',
+    label  : '+ scene after this one',
+    tooltip: 'Write a new scene and make this one continue into it',
+  };
+}
+
+/** The pending strip's typed fields, by the prop each one fills. */
+export type PendingField = 'into' | 'scene' | 'heading';
+
+const FIELD_LABEL: Record<PendingField, string> = {
+  into   : "The new scene's id",
+  scene  : "The new scene's id",
+  heading: "The new scene's heading",
+};
+
+/** One field of the pending strip, beside `pendingAction`. */
+export function pendingBox(pending: Pending, sceneId: string, field: PendingField): Offer {
+  return {
+    ...pendingAction(pending, sceneId),
+    on     : field,
+    label  : FIELD_LABEL[field],
+    tooltip: `${FIELD_LABEL[field]}. Enter confirms the act, Escape abandons it.`,
+  };
+}
+
+/** The fields a pending act types into, in strip order. */
+export function pendingFields(pending: Pending): PendingField[] {
+  if (pending.act === 'split') return ['into'];
+  if (pending.act === 'merge') return [];
+  return ['scene', 'heading'];
+}
+
+/** The pending strip's Cancel. */
+export function cancelAction(): Offer {
+  return {
+    ok: true,
+    ...closePopup('box'),
+    on     : 'cancel',
+    label  : 'Cancel',
+    tooltip: 'Abandon this act. Nothing is written.',
+  };
 }
 
 /**
@@ -588,21 +752,45 @@ export function pendingAction(pending: Pending, sceneId: string): Offer {
 }
 
 /**
- * Every offer the script page draws from this module: the heading, a cue slot and a text control
- * per line (the text control left out while the line's box is open), and the strip's button while
- * an act is pending over a scene.
+ * Every offer the script page draws from this module, in page order: the bar's picker and
+ * reload; the heading; the invitation of an empty scene; per line its drag handle, its cue slot,
+ * its text control or the box that replaces it while open, and `split here` where a split may
+ * start; the composer's box while one is open; the structure buttons; the pending strip's
+ * fields, button and Cancel while an act is pending over a scene; and the frames drawn from the
+ * scene.
  */
 export function controls(state: ScriptPageState): readonly Offer[] {
-  const list: Offer[] = [];
-  if (state.shown) {
-    list.push(headingAction(state.shown));
-    for (const line of state.shown.lines) {
+  const list: Offer[] = [pickerAction(state.sceneId), reloadAction()];
+  const shown = state.shown;
+  if (shown) {
+    list.push(headingAction(shown));
+    if (shown.lines.length === 0 && state.composing === undefined) {
+      list.push(startAction(shown.sceneId));
+    }
+    if (state.composing === '') list.push(composeBox(shown.sceneId, ''));
+    const cuts = new Set(splitBoundaries(shown.lines as CoverageLine[]));
+    shown.lines.forEach((line, i) => {
+      list.push(lidAction(line, i + 1));
       if (isSpeakable(line.kind ?? 'dialogue')) {
         list.push(speakerAction(line, state.cast ?? [], state.attributing === line.id));
       }
-      if (line.id !== state.editingLine) list.push(lineTextAction(line));
-    }
+      list.push(line.id === state.editingLine ? lineBox(line) : lineTextAction(line));
+      if (cuts.has(line.id) && state.pending === null) list.push(splitAction(line.id));
+      if (state.composing === line.id) list.push(composeBox(shown.sceneId, line.id));
+    });
+    const last = shown.lines[shown.lines.length - 1];
+    if (last) list.push(addLineAction(last.id));
+    if (state.absorb) list.push(mergeAction(state.absorb));
+    if (state.continues) list.push(continueAction());
   }
-  if (state.pending && state.sceneId) list.push(pendingAction(state.pending, state.sceneId));
+  if (state.pending && state.sceneId) {
+    const pending = state.pending;
+    list.push(...pendingFields(pending).map((field) => pendingBox(pending, state.sceneId, field)));
+    list.push(pendingAction(pending, state.sceneId), cancelAction());
+  }
+  if (state.frames) {
+    const visible = state.frames.visible;
+    list.push(...state.frames.assets.map((asset) => cellAction(asset, visible)));
+  }
   return list;
 }

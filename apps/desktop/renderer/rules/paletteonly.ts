@@ -105,7 +105,7 @@ const GENGRAPH_NODES = [
 }));
 
 const STORY: readonly PaletteOnly[] = [
-  ...['story.insertLine', 'story.deleteLine', 'story.setNext'].map((match) => ({
+  ...['story.deleteLine', 'story.setNext'].map((match) => ({
     match,
     why: 'The script column runs it from a keystroke or a pending scene, not from a drawn control.',
   })),

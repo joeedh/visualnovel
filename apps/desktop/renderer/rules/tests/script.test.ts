@@ -1,6 +1,19 @@
 import { isSpeakable } from '@vn/scriptedit';
 import { TOP, scriptMoveLine } from '../../../src/shared/interactions.js';
 import {
+  startAction,
+  splitAction,
+  reloadAction,
+  pickerAction,
+  pendingFields,
+  pendingBox,
+  mergeAction,
+  lineBox,
+  lidAction,
+  continueAction,
+  composeBox,
+  cancelAction,
+  addLineAction,
   speakerAction,
   COMPOSED,
   NARRATOR,
@@ -665,17 +678,103 @@ describe('controls', () => {
     ...over,
   });
 
-  it('is nothing before the scene loads, other than a pending strip', () => {
-    expect(controls(state({ shown: undefined }))).toEqual([]);
+  it('is the bar alone before the scene loads', () => {
+    expect(controls(state({ shown: undefined, sceneId: '' })).map(keyOf)).toEqual([
+      'fx:menu.open',
+      'fx:pane.view#reload',
+    ]);
+    expect(pickerAction('')).toMatchObject({ props: { menu: 'scenes' }, label: 'scene…' });
+    expect(pickerAction('a').label).toBe('a');
+    expect(reloadAction()).toMatchObject({ props: { what: 'reload' }, on: 'reload', label: '⟳' });
   });
 
-  it('leaves out the line whose box is open, and keeps its cue slot', () => {
-    expect(controls(state({ editingLine: 'a:L1' })).map(keyOf)).toEqual([
+  it('draws a scene as its heading, then per line a handle, a cue slot and its text', () => {
+    expect(controls(state()).map(keyOf)).toEqual([
+      'fx:menu.open',
+      'fx:pane.view#reload',
       'cmd:story.setHeading',
+      'fx:drag.start#line/a:L1',
       'cmd:story.setSpeaker#a:L1',
+      'cmd:story.setLineText#a:L1',
+      'fx:drag.start#line/a:L2',
       'cmd:story.setSpeaker#a:L2',
       'cmd:story.setLineText#a:L2',
+      'fx:popup.open#split/a:L2',
+      'fx:popup.open#compose/a:L2',
     ]);
+    expect(lidAction({ id: 'a:L2' }, 2)).toMatchObject({
+      props  : { interaction: 'script.moveLine' },
+      label  : '2',
+      tooltip: 'Line 2 of this scene, a:L2 — drag this handle to move it',
+    });
+  });
+
+  it('stands a box in for the line whose text is open, and keeps its cue slot', () => {
+    const keys = controls(state({ editingLine: 'a:L1' })).map(keyOf);
+    expect(keys).not.toContain('cmd:story.setLineText#a:L1');
+    expect(keys).toContain('cmd:story.setLineText#a:L1/box');
+    expect(keys).toContain('cmd:story.setSpeaker#a:L1');
+    expect(lineBox({ id: 'a:L1', text: 'One.' })).toMatchObject({
+      id      : 'story.setLineText',
+      props   : { line: 'a:L1' },
+      label   : 'Retype a:L1',
+      supplies: ['text'],
+    });
+  });
+
+  it('invites the first line of an empty scene, and offers the composer’s box while one is open', () => {
+    const empty = { ...shown, lines: [] };
+    expect(controls(state({ shown: empty })).map(keyOf)).toEqual([
+      'fx:menu.open',
+      'fx:pane.view#reload',
+      'cmd:story.setHeading',
+      'fx:popup.open#compose/first',
+    ]);
+    expect(startAction('a').label).toBe('a has no lines yet — write the first one.');
+    expect(controls(state({ shown: empty, composing: '' })).map(keyOf)).toEqual([
+      'fx:menu.open',
+      'fx:pane.view#reload',
+      'cmd:story.setHeading',
+      'cmd:story.insertLine#compose/first',
+    ]);
+    expect(composeBox('a', 'a:L2')).toEqual({
+      ok      : true,
+      id      : 'story.insertLine',
+      props   : { scene: 'a', after: 'a:L2' },
+      on      : 'compose/a:L2',
+      label   : 'Write the line, then Enter',
+      tooltip : 'Write a new line — Enter writes it, Escape leaves the scene alone',
+      supplies: ['text'],
+    });
+    const keys = controls(state({ composing: 'a:L2' })).map(keyOf);
+    expect(keys.indexOf('cmd:story.insertLine#compose/a:L2')).toBe(
+      keys.indexOf('fx:popup.open#split/a:L2') + 1,
+    );
+  });
+
+  it('offers the structure acts the story allows', () => {
+    const keys = controls(state({ absorb: 'b', continues: true })).map(keyOf);
+    expect(keys.slice(-3)).toEqual([
+      'fx:popup.open#compose/a:L2',
+      'fx:popup.open#merge/b',
+      'fx:popup.open#continue',
+    ]);
+    expect(addLineAction('a:L2')).toMatchObject({ props: { popup: 'box' }, label: '+ line' });
+    expect(mergeAction('b')).toMatchObject({
+      label  : 'merge b in',
+      tooltip: "Take b's lines into this scene and delete its file",
+    });
+    expect(continueAction().label).toBe('+ scene after this one');
+    expect(splitAction('a:L2')).toMatchObject({ on: 'split/a:L2', label: 'split here' });
+  });
+
+  it('lists the frames drawn from the scene after everything else', () => {
+    const frames = {
+      assets : [{ hash: 'a1b2c3d4', label: 'a__s1', accepted: true }],
+      visible: ['script' as const],
+    };
+    const keys = controls(state({ frames })).map(keyOf);
+    expect(keys[keys.length - 1]).toBe('item:link/asset/a1b2c3d4');
   });
 
   it('gives a cue slot only to a line a speaker can be given', () => {
@@ -709,12 +808,33 @@ describe('controls', () => {
     });
   });
 
-  it('adds the strip’s button only over a scene', () => {
+  it('adds the strip’s fields, button and Cancel only over a scene, and withholds the splits', () => {
     const pending: Pending = { act: 'merge', absorbed: 'b' };
-    expect(controls(state({ pending })).map(keyOf)).toContain('cmd:story.mergeScene');
+    const keys = controls(state({ pending })).map(keyOf);
+    expect(keys.slice(-2)).toEqual(['cmd:story.mergeScene', 'fx:popup.close#cancel']);
+    expect(keys).not.toContain('fx:popup.open#split/a:L2');
     expect(controls(state({ pending, sceneId: '' })).map(keyOf)).not.toContain(
       'cmd:story.mergeScene',
     );
+    const scene: Pending = { act: 'scene', scene: 'a_2', heading: 'INT. HALL - DAY' };
+    expect(
+      controls(state({ pending: scene }))
+        .map(keyOf)
+        .slice(-4),
+    ).toEqual([
+      'cmd:story.newScene#scene',
+      'cmd:story.newScene#heading',
+      'cmd:story.newScene',
+      'fx:popup.close#cancel',
+    ]);
+    expect(pendingFields({ act: 'split', at: 'a:L2', into: 'a_2' })).toEqual(['into']);
+    expect(pendingBox(scene, 'a', 'heading')).toMatchObject({
+      id     : 'story.newScene',
+      props  : { scene: 'a_2', heading: 'INT. HALL - DAY' },
+      label  : "The new scene's heading",
+      tooltip: "The new scene's heading. Enter confirms the act, Escape abandons it.",
+    });
+    expect(cancelAction()).toMatchObject({ props: { popup: 'box' }, label: 'Cancel' });
   });
 
   it('lists every control the page draws, each key once', () => {
@@ -725,16 +845,28 @@ describe('controls', () => {
       state({ shown: undefined }),
     ]) {
       const listed = controls(s);
-      const each = s.shown
-        ? [
-            headingAction(s.shown),
-            ...s.shown.lines.flatMap((l) => [
-              speakerAction(l, [], false),
-              ...(l.id === s.editingLine ? [] : [lineTextAction(l)]),
-            ]),
-          ]
-        : [];
-      if (s.pending && s.sceneId) each.push(pendingAction(s.pending, s.sceneId));
+      const each = [pickerAction(s.sceneId), reloadAction()];
+      if (s.shown) {
+        const last = s.shown.lines[s.shown.lines.length - 1];
+        each.push(
+          headingAction(s.shown),
+          ...s.shown.lines.flatMap((l, i) => [
+            lidAction(l, i + 1),
+            speakerAction(l, [], false),
+            l.id === s.editingLine ? lineBox(l) : lineTextAction(l),
+            ...(i > 0 && s.pending === null ? [splitAction(l.id)] : []),
+          ]),
+          ...(last ? [addLineAction(last.id)] : []),
+        );
+      }
+      if (s.pending && s.sceneId) {
+        const pending = s.pending;
+        each.push(
+          ...pendingFields(pending).map((f) => pendingBox(pending, s.sceneId, f)),
+          pendingAction(pending, s.sceneId),
+          cancelAction(),
+        );
+      }
       expect(new Set(listed.map(keyOf))).toEqual(new Set(each.map(keyOf)));
       expect(duplicateKeys(listed)).toEqual([]);
     }
