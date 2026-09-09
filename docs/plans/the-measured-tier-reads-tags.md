@@ -251,7 +251,7 @@ it.
 
 ### Stage 1 — the two re-presented controls record through a pass
 
-A live defect the tag would otherwise triple.
+**Done.** A live defect the tag would otherwise triple.
 
 `editors/convo.ts:329` and `:361` call `applyOffer` directly on `budgetMenu` and
 `compactBtn`, both of which were anchored earlier through `anchors.record` / `anchors.act`
@@ -263,6 +263,19 @@ most often.
 Both sites re-record through a fresh pass, the way `app/editor.ts` does for the pin
 toggle. Test: after a budget change, the anchor's `enabled` and `reason` match the
 presented offer.
+
+As shipped:
+
+- Each control anchors **only** through its own pass — `convo/budget` and `convo/compact`
+  — and the bar's pass records neither. Leaving the bar's record in place would have
+  shadowed the fresh one: `liveAnchors()` flattens passes in insertion order and
+  `anchorFor` takes the first match, and the bar's pass is created first.
+- The test is a source scan rather than the behavioural one described.
+  `pathux/tour/anchors.ts` imports the widget barrel, which assigns `window.DEBUG` at
+  module scope, so node-only jest can construct neither the editor nor a pass.
+  `rules/tests/anchors.test.ts` asserts instead that `tour/anchors.ts` is the only file
+  under `renderer/pathux/**` that calls `applyOffer` — the invariant the two fixes
+  restore, and the one a later editor would break.
 
 ### Stage 2 — the alias, and `VnToolMeta`
 

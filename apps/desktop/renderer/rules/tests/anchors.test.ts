@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, relative, resolve } from 'node:path';
 import {
   HEADER,
   applyOffer,
@@ -436,5 +438,36 @@ describe('mapOf', () => {
       { id: 'asset.accept', editor: 'asset' as EditorId, when: 'kind=portrait' },
     ]);
     expect(built.editorsFor['asset.accept']).toEqual(['asset', 'documents']);
+  });
+});
+
+/**
+ * A control is presented through a pass, so the offer it shows and the offer it records are the
+ * same object. `applyOffer` called from an editor presents without recording, which leaves the
+ * anchor's `enabled` and `reason` behind whatever the control now says — the defect that stood on
+ * the conversation bar's budget menu and Compact button.
+ *
+ * Source rather than behaviour: `pathux/tour/anchors.ts` imports the widget barrel, which assigns
+ * `window.DEBUG` at module scope, and the desktop jest project is node-only.
+ */
+describe('presenting an offer, over renderer/pathux', () => {
+  const root = resolve(__dirname, '../../pathux');
+
+  const sources = function* (dir: string): Generator<string> {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== 'tests') yield* sources(path);
+      } else if (entry.name.endsWith('.ts')) {
+        yield path;
+      }
+    }
+  };
+
+  it('happens inside an anchor pass and nowhere else', () => {
+    const callers = [...sources(root)]
+      .filter((path) => /\bapplyOffer\s*\(/.test(readFileSync(path, 'utf8')))
+      .map((path) => relative(root, path));
+    expect(callers).toEqual([join('tour', 'anchors.ts')]);
   });
 });

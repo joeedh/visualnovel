@@ -1,4 +1,3 @@
-import { composeTooltip } from 'pathux';
 import type { Button, Container, DropBox, Label, MenuTemplate } from 'pathux';
 import { showContextMenu } from '../chrome/showmenu.js';
 import type { VnContext } from '../app/context.js';
@@ -39,7 +38,6 @@ import { VnEditor, registerEditor } from '../app/editor.js';
 import { openPalette } from '../chrome/palette.js';
 import { tokensDetail, uncachedTokens, type ThreadHeader } from '../../../src/shared/convo.js';
 import { redrawing, type AnchorPass } from '../tour/anchors.js';
-import { applyOffer } from '../../rules/anchors.js';
 import { modeAction, modelAction } from '../../rules/headerbar.js';
 import {
   decideAction,
@@ -86,7 +84,7 @@ export class ConvoEditor extends VnEditor {
    * finishing would otherwise rebuild the whole bar mid-turn, closing any menu open over it.
    */
   private tokensLbl?: Label;
-  /** Retitled and greyed in place, for the reason {@link tokensLbl} is retitled in place. */
+  /** Re-anchored in place, for the reason {@link tokensLbl} is retitled in place. */
   private compactBtn?: Button;
   private budgetMenu?: DropBox;
   private drawn = -1;
@@ -264,8 +262,7 @@ export class ConvoEditor extends VnEditor {
       choice,
     ]) as MenuTemplate;
     this.budgetMenu = low.menu('', budgets);
-    // Recorded as it stands at paint; `sayBudget` re-presents it in place as the spend moves
-    this.anchors.record(this.budgetMenu, budgetAction(ui.budget, convo().turnSpend));
+    // Anchored by `sayBudget` rather than by the bar's pass, since the spend moves under it
     this.sayBudget();
 
     this.tokensLbl = low.label('');
@@ -289,12 +286,12 @@ export class ConvoEditor extends VnEditor {
       (action) => void exec(action.id, action.props),
     );
 
-    const compact = compactAction(convo(), reopenedThread() !== undefined);
-    this.compactBtn = this.anchors.act(
-      low.button(compact.label, () => {}),
-      compact,
-      (action) => void exec(action.id, action.props).then(report),
+    // Anchored by `sayCompact` rather than by the bar's pass, for the reason the budget menu is
+    this.compactBtn = low.button(
+      compactAction(convo(), reopenedThread() !== undefined).label,
+      () => {},
     );
+    this.sayCompact();
 
     // Drawn only while a saved conversation is on screen, because there is nothing to continue
     // while the live one is.
@@ -326,7 +323,7 @@ export class ConvoEditor extends VnEditor {
     // Through the attribute rather than a field: `updateName` is what notices the change and
     // re-measures the canvas the label is painted on.
     this.budgetMenu.setAttribute('name', offer.label);
-    applyOffer(this.budgetMenu, offer, composeTooltip);
+    redrawing('convo', 'budget').record(this.budgetMenu, offer);
   }
 
   /**
@@ -347,21 +344,17 @@ export class ConvoEditor extends VnEditor {
   }
 
   /**
-   * Why compacting is refused here, or `undefined`. Three of main's own refusals, restated against
-   * what the renderer can see, so the button is greyed with a sentence rather than reporting one a
-   * click later. Main's check stays the authority and answers the rest on the click.
-   */
-  /**
-   * The Compact button, re-presented in place for the reason the token counter is: what it offers
-   * changes on every step of a turn, and rebuilding the bar closes a menu open over it. Past
-   * `COMPACT_HINT_TOKENS` the tooltip says the conversation is large enough to be worth compacting.
+   * The Compact button, re-anchored in place for the reason the token counter is retitled in
+   * place: what it offers changes on every step of a turn, and rebuilding the bar closes a menu
+   * open over it. Past `COMPACT_HINT_TOKENS` the tooltip says the conversation is large enough to
+   * be worth compacting.
    */
   private sayCompact(): void {
     if (!this.compactBtn) return;
-    applyOffer(
+    redrawing('convo', 'compact').act(
       this.compactBtn,
       compactAction(convo(), reopenedThread() !== undefined),
-      composeTooltip,
+      (action) => void exec(action.id, action.props).then(report),
     );
   }
 
