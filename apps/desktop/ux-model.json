@@ -100,7 +100,13 @@
       "module": "assetview",
       "editor": "asset",
       "name"  : "nothing",
-      "why": "No asset is on screen, so the bar’s four buttons are refused and nothing else is drawn."
+      "why": "No asset is on screen, so the bar’s buttons other than reload are refused and nothing else is drawn."
+    },
+    {
+      "module": "assetview",
+      "editor": "asset",
+      "name"  : "back",
+      "why": "The pane was retargeted by a prerequisite row, so DRAWN FROM offers ← back to the picture it came from."
     },
     {
       "module": "assetview",
@@ -4648,6 +4654,368 @@
       "via"      : "control",
       "editor"   : "asset",
       "module"   : "assetview",
+      "situation": "nothing",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "⋯",
+        "tooltip": "Everything this asset can be told to do",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No asset is on screen, so there is nothing for the menu to act on."
+        }
+      },
+      "effects": [
+        {
+          "id": "menu.open"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "nothing",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this asset from the manifest",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "back",
+      "key"      : "cmd:asset.accept",
+      "offer": {
+        "id"     : "asset.accept",
+        "label"  : "Accept",
+        "tooltip": "Accept these bytes for use downstream",
+        "ok"     : true,
+        "props": {
+          "hash": "a1b2c3d4"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "asset.accept",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "back",
+      "key"      : "cmd:asset.regenerate",
+      "offer": {
+        "id"     : "asset.regenerate",
+        "label"  : "Regenerate",
+        "tooltip": "Requeue the task behind these bytes and run the pipeline",
+        "ok"     : true,
+        "props": {
+          "hash": "a1b2c3d4",
+          "run" : true
+        }
+      },
+      "effects": [
+        {
+          "id"   : "asset.regenerate",
+          "props": {
+            "hash": "a1b2c3d4",
+            "run" : true
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "back",
+      "key"      : "cmd:view.open",
+      "offer": {
+        "id"     : "view.open",
+        "label"  : "Task",
+        "tooltip": "Show the task that produced this asset in the inspector",
+        "ok"     : true,
+        "props": {
+          "editor": "inspector",
+          "where" : "elsewhere"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor": "inspector",
+            "where" : "elsewhere"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "back",
+      "key"      : "cmd:asset.export",
+      "offer": {
+        "id"     : "asset.export",
+        "label"  : "Download",
+        "tooltip": "Save a copy of this picture wherever you like. The project is not touched",
+        "ok"     : true,
+        "props": {
+          "hash": "a1b2c3d4"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "asset.export",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "back",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "⋯",
+        "tooltip": "Everything this asset can be told to do",
+        "ok"     : true,
+        "props": {
+          "menu": "tree"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "tree"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "back",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this asset from the manifest",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "back",
+      "key"      : "cmd:art.promote",
+      "offer": {
+        "id"      : "art.promote",
+        "label"   : "Promote",
+        "tooltip" : "Make this sketch the plate for that variant, so the next run adopts it",
+        "supplies": ["variant"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "A location_ref is already what it is — only a concept promotes."
+        }
+      },
+      "effects": [
+        {
+          "id": "art.promote"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "back",
+      "key"      : "cmd:asset.replace",
+      "offer": {
+        "id"     : "asset.replace",
+        "label"  : "Replace with a file…",
+        "tooltip": "Choose a file and let it stand in for this picture from now on",
+        "ok"     : false,
+        "refusal": {
+          "reason": "A location_ref fills no slot — nothing planned it, or a newer render holds the slot now."
+        }
+      },
+      "effects": [
+        {
+          "id": "asset.replace"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "back",
+      "key"      : "cmd:art.redraw",
+      "offer": {
+        "id"      : "art.redraw",
+        "label"   : "Redraw",
+        "tooltip" : "Draw this sketch again from the prompt below, as a new one beside it",
+        "supplies": ["prompt", "title"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "A location_ref's prompt is composed from the project on every planning pass — edit it a clause at a time below, not as one string."
+        }
+      },
+      "effects": [
+        {
+          "id": "art.redraw"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "back",
+      "key"      : "cmd:art.setNotes#location:cafe",
+      "offer": {
+        "id"      : "art.setNotes",
+        "label"   : "e.g. sodium streetlight raking across the formwork",
+        "tooltip": "Say how Café Mori should look. Appended to the prompt, so saving re-renders what this rung reaches on the next run.",
+        "on"      : "location:cafe",
+        "supplies": ["notes"],
+        "ok"      : true,
+        "props": {
+          "target": "location:cafe"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "art.setNotes",
+          "props": {
+            "target": "location:cafe"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "back",
+      "key"      : "cmd:art.setSeed#location:cafe",
+      "offer": {
+        "id"      : "art.setSeed",
+        "label"   : "seed",
+        "tooltip": "Draw Café Mori from this seed instead. Saving re-renders what this rung reaches on the next run — same words, different picture. Empty inherits the wider rung, then the model’s own choice.",
+        "on"      : "location:cafe",
+        "supplies": ["seed"],
+        "ok"      : true,
+        "props": {
+          "target": "location:cafe"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "art.setSeed",
+          "props": {
+            "target": "location:cafe"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "back",
+      "key"      : "item:back",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "← back",
+        "tooltip": "Back to the picture you came here from",
+        "on"     : "back",
+        "ok"     : true,
+        "props": {
+          "assetHash": "e5f6a7b8"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "assetHash": "e5f6a7b8"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "back",
+      "key"      : "item:asset/b2c3d4e5",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "cafe — concept",
+        "tooltip": "A concept needs no approval. Click to open cafe — concept in this pane.",
+        "on"     : "asset/b2c3d4e5",
+        "ok"     : true,
+        "props": {
+          "assetHash": "b2c3d4e5"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "assetHash": "b2c3d4e5"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
       "situation": "plate",
       "key"      : "cmd:asset.unapprove",
       "offer": {
@@ -4740,6 +5108,55 @@
           "id"   : "asset.export",
           "props": {
             "hash": "a1b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "plate",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "⋯",
+        "tooltip": "Everything this asset can be told to do",
+        "ok"     : true,
+        "props": {
+          "menu": "tree"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "tree"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "plate",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this asset from the manifest",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
           }
         }
       ]
@@ -5016,6 +5433,55 @@
       "editor"   : "asset",
       "module"   : "assetview",
       "situation": "plate-unaccepted",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "⋯",
+        "tooltip": "Everything this asset can be told to do",
+        "ok"     : true,
+        "props": {
+          "menu": "tree"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "tree"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "plate-unaccepted",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this asset from the manifest",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "plate-unaccepted",
       "key"      : "cmd:art.promote",
       "offer": {
         "id"      : "art.promote",
@@ -5238,6 +5704,55 @@
       "editor"   : "asset",
       "module"   : "assetview",
       "situation": "portrait-unapproved",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "⋯",
+        "tooltip": "Everything this asset can be told to do",
+        "ok"     : true,
+        "props": {
+          "menu": "tree"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "tree"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "portrait-unapproved",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this asset from the manifest",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "portrait-unapproved",
       "key"      : "cmd:art.promote",
       "offer": {
         "id"      : "art.promote",
@@ -5443,6 +5958,55 @@
           "id"   : "asset.export",
           "props": {
             "hash": "a1b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "concept",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "⋯",
+        "tooltip": "Everything this asset can be told to do",
+        "ok"     : true,
+        "props": {
+          "menu": "tree"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "tree"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "concept",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this asset from the manifest",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
           }
         }
       ]
@@ -5753,6 +6317,55 @@
       "editor"   : "asset",
       "module"   : "assetview",
       "situation": "failed",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "⋯",
+        "tooltip": "Everything this asset can be told to do",
+        "ok"     : true,
+        "props": {
+          "menu": "tree"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "tree"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "failed",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this asset from the manifest",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "failed",
       "key"      : "cmd:art.promote",
       "offer": {
         "id"      : "art.promote",
@@ -6024,6 +6637,55 @@
       "editor"   : "asset",
       "module"   : "assetview",
       "situation": "superseded",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "⋯",
+        "tooltip": "Everything this asset can be told to do",
+        "ok"     : true,
+        "props": {
+          "menu": "tree"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "tree"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "superseded",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this asset from the manifest",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "superseded",
       "key"      : "cmd:art.promote",
       "offer": {
         "id"      : "art.promote",
@@ -6230,6 +6892,55 @@
           "id"   : "asset.export",
           "props": {
             "hash": "a1b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "stale",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "⋯",
+        "tooltip": "Everything this asset can be told to do",
+        "ok"     : true,
+        "props": {
+          "menu": "tree"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "tree"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "stale",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this asset from the manifest",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
           }
         }
       ]
@@ -6451,6 +7162,55 @@
       "editor"   : "asset",
       "module"   : "assetview",
       "situation": "upload",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "⋯",
+        "tooltip": "Everything this asset can be told to do",
+        "ok"     : true,
+        "props": {
+          "menu": "tree"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "tree"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "upload",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this asset from the manifest",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "assetview",
+      "situation": "upload",
       "key"      : "cmd:art.promote",
       "offer": {
         "id"      : "art.promote",
@@ -6663,6 +7423,31 @@
       "editor"   : "asset",
       "module"   : "promptview",
       "situation": "chunks",
+      "key"      : "fx:drag.start#subject",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "⋮",
+        "tooltip": "Drag to say this clause somewhere else in the prompt",
+        "on"     : "subject",
+        "ok"     : true,
+        "props": {
+          "interaction": "prompt.reorder"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "prompt.reorder"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "chunks",
       "key"      : "cmd:prompt.setChunk#subject/mute",
       "offer": {
         "id"     : "prompt.setChunk",
@@ -6824,6 +7609,31 @@
             "editor" : "wiki",
             "where"  : "elsewhere",
             "subject": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "chunks",
+      "key"      : "fx:drag.start#palette",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "⋮",
+        "tooltip": "Drag to say this clause somewhere else in the prompt",
+        "on"     : "palette",
+        "ok"     : true,
+        "props": {
+          "interaction": "prompt.reorder"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "prompt.reorder"
           }
         }
       ]
@@ -7151,6 +7961,31 @@
       "editor"   : "asset",
       "module"   : "promptview",
       "situation": "custom",
+      "key"      : "fx:drag.start#subject",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "⋮",
+        "tooltip": "Drag to say this clause somewhere else in the prompt",
+        "on"     : "subject",
+        "ok"     : true,
+        "props": {
+          "interaction": "prompt.reorder"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "prompt.reorder"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "custom",
       "key"      : "cmd:prompt.setChunk#subject/mute",
       "offer": {
         "id"     : "prompt.setChunk",
@@ -7312,6 +8147,31 @@
             "editor" : "wiki",
             "where"  : "elsewhere",
             "subject": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "custom",
+      "key"      : "fx:drag.start#palette",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "⋮",
+        "tooltip": "Drag to say this clause somewhere else in the prompt",
+        "on"     : "palette",
+        "ok"     : true,
+        "props": {
+          "interaction": "prompt.reorder"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "prompt.reorder"
           }
         }
       ]
@@ -7611,6 +8471,31 @@
       "editor"   : "asset",
       "module"   : "promptview",
       "situation": "agent",
+      "key"      : "fx:drag.start#subject",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "⋮",
+        "tooltip": "Drag to say this clause somewhere else in the prompt",
+        "on"     : "subject",
+        "ok"     : true,
+        "props": {
+          "interaction": "prompt.reorder"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "prompt.reorder"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "agent",
       "key"      : "cmd:prompt.setChunk#subject/mute",
       "offer": {
         "id"     : "prompt.setChunk",
@@ -7772,6 +8657,31 @@
             "editor" : "wiki",
             "where"  : "elsewhere",
             "subject": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "agent",
+      "key"      : "fx:drag.start#palette",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "⋮",
+        "tooltip": "Drag to say this clause somewhere else in the prompt",
+        "on"     : "palette",
+        "ok"     : true,
+        "props": {
+          "interaction": "prompt.reorder"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "prompt.reorder"
           }
         }
       ]
@@ -8513,6 +9423,31 @@
       "editor"   : "asset",
       "module"   : "promptview",
       "situation": "editing-a-clause",
+      "key"      : "fx:drag.start#subject",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "⋮",
+        "tooltip": "Drag to say this clause somewhere else in the prompt",
+        "on"     : "subject",
+        "ok"     : true,
+        "props": {
+          "interaction": "prompt.reorder"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "prompt.reorder"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "editing-a-clause",
       "key"      : "cmd:prompt.setChunk#subject/mute",
       "offer": {
         "id"     : "prompt.setChunk",
@@ -8713,6 +9648,31 @@
       "editor"   : "asset",
       "module"   : "promptview",
       "situation": "editing-a-clause",
+      "key"      : "fx:drag.start#palette",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "⋮",
+        "tooltip": "Drag to say this clause somewhere else in the prompt",
+        "on"     : "palette",
+        "ok"     : true,
+        "props": {
+          "interaction": "prompt.reorder"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "prompt.reorder"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "editing-a-clause",
       "key"      : "cmd:prompt.setChunk#palette/mute",
       "offer": {
         "id"     : "prompt.setChunk",
@@ -8992,6 +9952,31 @@
           "id"   : "prompt.setCustom",
           "props": {
             "hash": "a1b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "muted-clause",
+      "key"      : "fx:drag.start#subject",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "⋮",
+        "tooltip": "Drag to say this clause somewhere else in the prompt",
+        "on"     : "subject",
+        "ok"     : true,
+        "props": {
+          "interaction": "prompt.reorder"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "prompt.reorder"
           }
         }
       ]
@@ -9171,6 +10156,31 @@
       "editor"   : "asset",
       "module"   : "promptview",
       "situation": "muted-clause",
+      "key"      : "fx:drag.start#palette",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "⋮",
+        "tooltip": "Drag to say this clause somewhere else in the prompt",
+        "on"     : "palette",
+        "ok"     : true,
+        "props": {
+          "interaction": "prompt.reorder"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "prompt.reorder"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "muted-clause",
       "key"      : "cmd:prompt.setChunk#palette/mute",
       "offer": {
         "id"     : "prompt.setChunk",
@@ -9450,6 +10460,31 @@
           "id"   : "prompt.setCustom",
           "props": {
             "hash": "a1b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "with-refs",
+      "key"      : "fx:drag.start#subject",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "⋮",
+        "tooltip": "Drag to say this clause somewhere else in the prompt",
+        "on"     : "subject",
+        "ok"     : true,
+        "props": {
+          "interaction": "prompt.reorder"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "prompt.reorder"
           }
         }
       ]
@@ -9736,6 +10771,31 @@
             "editor" : "wiki",
             "where"  : "elsewhere",
             "subject": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "with-refs",
+      "key"      : "fx:drag.start#palette",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "⋮",
+        "tooltip": "Drag to say this clause somewhere else in the prompt",
+        "on"     : "palette",
+        "ok"     : true,
+        "props": {
+          "interaction": "prompt.reorder"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "prompt.reorder"
           }
         }
       ]

@@ -13,9 +13,11 @@ import {
   blockedNote,
   driftNote,
   exportAction,
+  menuAction,
   promoteAction,
   promptEditable,
   regenerateAction,
+  reloadAction,
   replaceAction,
   taskAction,
   watchSlot,
@@ -449,21 +451,28 @@ export class AssetEditor extends VnEditor {
     // asset — which is also the check that `menuFor` is node-shaped rather than tree-shaped. The
     // slot travels with the node, or the entries that need one would be missing here alone.
     const node = { ...assetNode(this.shown), ...(info?.slot ? { slot: info.slot } : {}) };
-    const acts = this.bar.button('⋯', () => {
-      const box = acts.getBoundingClientRect();
-      void showContextMenu(
-        this.ctx as VnContext,
-        box.left,
-        box.bottom,
-        info?.hash ?? '',
-        menuFor(node),
-      );
-    });
-    acts.disabled = !info;
-    acts.description = 'Everything this asset can be told to do';
+    const menu = menuAction(info);
+    const acts = anchors.act(
+      this.bar.button(menu.label, () => {}),
+      menu,
+      () => {
+        const box = acts.getBoundingClientRect();
+        void showContextMenu(
+          this.ctx as VnContext,
+          box.left,
+          box.bottom,
+          info?.hash ?? '',
+          menuFor(node),
+        );
+      },
+    );
 
-    this.bar.button('⟳', () => void this.load(this.shown)).description =
-      'Re-read this asset from the manifest';
+    const reload = reloadAction();
+    anchors.act(
+      this.bar.button(reload.label, () => {}),
+      reload,
+      () => void this.load(this.shown),
+    );
     this.bar.flushUpdate();
   }
 

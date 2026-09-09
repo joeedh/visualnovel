@@ -5,6 +5,7 @@
 import type { ChunkOrigin } from '@vn/types';
 import type { PromptChunkInfo, PromptView } from '../../../src/shared/prompt.js';
 import {
+  railAction,
   chunkActs,
   chunkAddress,
   chunkBoxAction,
@@ -454,6 +455,7 @@ describe('controls', () => {
           const how = editing[one.key as keyof typeof editing];
           const origin = originOpenAction(one);
           return [
+            railAction(one),
             ...chunkActs(fixture, one).map((act) => act.offer),
             ...(how ? [chunkBoxAction(fixture, one, how)] : []),
             ...refStrip(one).map(refOpenAction),
@@ -465,6 +467,21 @@ describe('controls', () => {
       expect(new Set(listed.map(keyOf))).toEqual(new Set(each.map(keyOf)));
       expect(duplicateKeys(listed)).toEqual([]);
     }
+  });
+
+  it('lists a clause’s drag rail unless the prompt is frozen', () => {
+    expect(railAction(chunk())).toEqual({
+      ok     : true,
+      id     : 'drag.start',
+      props  : { interaction: 'prompt.reorder' },
+      on     : 'palette',
+      label  : '⋮',
+      tooltip: 'Drag to say this clause somewhere else in the prompt',
+    });
+    expect(controls(view()).map(keyOf)).toContain('fx:drag.start#palette');
+    expect(controls(view({ frozen: 'Authored.' })).map(keyOf)).not.toContain(
+      'fx:drag.start#palette',
+    );
   });
 
   it('lists a clause’s box only while one is open, and never on a frozen prompt', () => {

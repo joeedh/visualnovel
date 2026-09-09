@@ -53,7 +53,7 @@ const row = <S>(
 const ROWS: Row<unknown>[] = [
   row('headerbar', headerbar, headerbarRules.controls),
   row('convobar', convobar, convobarRules.controls),
-  row('assetview', assetview, assetviewRules.controls),
+  row('assetview', assetview, ({ info, back }) => assetviewRules.controls(info, back)),
   row('promptview', promptview, ({ view, editing }) => promptviewRules.controls(view, editing)),
   row('branch', branch, branchRules.controls),
   row('documents', documents, documentsRules.controls),

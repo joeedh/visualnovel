@@ -1,4 +1,7 @@
 import {
+  reloadAction,
+  menuAction,
+  backAction,
   approveAction,
   badgesOf,
   blockedNote,
@@ -694,6 +697,33 @@ describe('prereqAction', () => {
   });
 });
 
+describe('the bar’s menu and reload, and the back chip', () => {
+  it('drops the tree’s menu for the shown asset and refuses it with none', () => {
+    expect(menuAction(info())).toMatchObject({
+      ok   : true,
+      id   : 'menu.open',
+      props: { menu: 'tree' },
+      label: '⋯',
+    });
+    expect(menuAction(undefined)).toMatchObject({
+      ok     : false,
+      refusal: { reason: 'No asset is on screen, so there is nothing for the menu to act on.' },
+    });
+  });
+
+  it('reloads as a view effect and goes back by publishing the hash it came from', () => {
+    expect(reloadAction()).toMatchObject({ props: { what: 'reload' }, on: 'reload', label: '⟳' });
+    expect(backAction('e5f6a7b8')).toEqual({
+      ok     : true,
+      id     : 'ui.publish',
+      props  : { assetHash: 'e5f6a7b8' },
+      on     : 'back',
+      label  : '← back',
+      tooltip: 'Back to the picture you came here from',
+    });
+  });
+});
+
 describe('controls', () => {
   const shown = [
     undefined,
@@ -716,6 +746,8 @@ describe('controls', () => {
         regenerateAction(one),
         taskAction(one?.sourceTask),
         exportAction(one),
+        menuAction(one),
+        reloadAction(),
         ...(one ? [promoteAction(one), replaceAction(one), promptEditable(one)] : []),
         ...(one && promote?.ok ? [promoteBox(one)] : []),
         ...(one && redraw?.ok ? [redrawBox(one), redrawGo(one)] : []),
@@ -731,8 +763,26 @@ describe('controls', () => {
     }
   });
 
-  it('is the bar’s four refusals while nothing is on screen', () => {
-    expect(controls(undefined).map((offer) => offer.ok)).toEqual([false, false, false, false]);
+  it('is the bar’s five refusals and a live reload while nothing is on screen', () => {
+    expect(controls(undefined).map((offer) => offer.ok)).toEqual([
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+    ]);
+  });
+
+  it('lists the back chip before the prerequisites only while there is a hop to undo', () => {
+    const one = info({
+      prereqs: [
+        { hash: 'b2c3d4e5', label: 'cafe — night plate', approved: true, note: 'Approved.' },
+      ],
+    });
+    expect(controls(one).map(keyOf)).not.toContain('item:back');
+    const keys = controls(one, 'e5f6a7b8').map(keyOf);
+    expect(keys.indexOf('item:back')).toBe(keys.indexOf('item:asset/b2c3d4e5') - 1);
   });
 
   // A strip's field exists only while the strip is drawn, and the strip is drawn only when accepted

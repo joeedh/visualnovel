@@ -83,7 +83,7 @@ export const ROWS: readonly Row<unknown>[] = [
   row('notifications', 'notifications', NOTIFICATIONS, notifications.controls),
   row('approvals', 'approvals', APPROVALS, approvals.controls),
   row('diagnostics', 'diagnostics', DIAGNOSTICS, diagnostics.controls),
-  row('assetview', 'asset', ASSETVIEW, assetview.controls),
+  row('assetview', 'asset', ASSETVIEW, ({ info, back }) => assetview.controls(info, back)),
   row('promptview', 'asset', PROMPTVIEW, ({ view, editing }) => promptview.controls(view, editing)),
   row(
     'branch',

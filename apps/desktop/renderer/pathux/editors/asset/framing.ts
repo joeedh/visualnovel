@@ -1,6 +1,7 @@
 import { exec, report } from '../../app/bridge.js';
 import {
   REQUEST_ANCHOR,
+  backAction,
   badgesOf,
   notesAction,
   prereqAction,
@@ -73,10 +74,12 @@ export class AssetFraming {
     // The chip clears itself: changing the subject some other way leaves `backFor` naming a
     // picture no longer on screen, so the chip is offered only on the hop it can undo.
     if (this.editor.back !== '' && this.editor.backFor === info.hash) {
-      const back = button('as-from-back', '← back');
-      back.title = 'Back to the picture you came here from';
-      back.addEventListener('click', () => this.showPrereq(this.editor.back, ''));
-      head.appendChild(back);
+      const back = backAction(this.editor.back);
+      head.appendChild(
+        this.editor.drawing.act(button('as-from-back', back.label), back, () =>
+          this.showPrereq(this.editor.back, ''),
+        ),
+      );
     }
     strip.appendChild(head);
 

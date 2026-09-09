@@ -7,7 +7,7 @@
  */
 import type { ArtRungInfo, AssetFailure, AssetInfo, Prereq } from '../../src/shared/ipc.js';
 import { refuse, type Offer } from './anchors.js';
-import { publish } from './effects.js';
+import { openMenu, publish, view } from './effects.js';
 
 /** The two halves of an {@link Offer}, for a control that carries more on one of them. */
 type Accepted = Extract<Offer, { ok: true }>;
@@ -487,17 +487,62 @@ export function prereqAction(p: Prereq): Offer {
 }
 
 /**
- * Every offer the asset editor draws from this module, in the order it draws them: the bar's
- * four, then the body's strips and their fields, the failure band's two, each rung's two
- * boxes, and one row per prerequisite. With nothing on screen the bar's four are refusals. A strip's fields are listed only
- * while the strip is drawn, which is when its offer is accepted.
+ * The bar's `⋯`, which drops down the same menu the tree's right-click gives this asset. Refused
+ * while nothing is on screen, since the menu is built from the shown asset.
  */
-export function controls(info: AssetInfo | undefined): readonly Offer[] {
+export function menuAction(info: AssetInfo | undefined): Offer {
+  const control = { ...openMenu('tree'), label: '⋯' };
+  if (!info) {
+    return {
+      ...refuse('No asset is on screen, so there is nothing for the menu to act on.'),
+      ...control,
+      tooltip: 'Everything this asset can be told to do',
+    };
+  }
+  return { ok: true, ...control, tooltip: 'Everything this asset can be told to do' };
+}
+
+/** The bar's `⟳`. */
+export function reloadAction(): Offer {
+  return {
+    ok: true,
+    ...view('reload'),
+    on     : 'reload',
+    label  : '⟳',
+    tooltip: 'Re-read this asset from the manifest',
+  };
+}
+
+/**
+ * The `← back` chip at the head of DRAWN FROM, drawn on the one hop a prerequisite row made.
+ * `hash` is the picture the pane came from, and the chip retargets the pane on it.
+ */
+export function backAction(hash: string): Offer {
+  return {
+    ok: true,
+    ...publish({ assetHash: hash }),
+    on     : 'back',
+    label  : '← back',
+    tooltip: 'Back to the picture you came here from',
+  };
+}
+
+/**
+ * Every offer the asset editor draws from this module, in the order it draws them: the bar's
+ * six, then the body's strips and their fields, the failure band's two, each rung's two boxes,
+ * the back chip while there is a hop to undo, and one row per prerequisite. With nothing on
+ * screen the bar's buttons other than `⟳` are refusals. A strip's fields are listed only while the
+ * strip is drawn, which is when its offer is accepted. `back` is the hash of the picture the
+ * pane came from, or `''` when it came from nowhere.
+ */
+export function controls(info: AssetInfo | undefined, back = ''): readonly Offer[] {
   const bar = [
     approveAction(info),
     regenerateAction(info),
     taskAction(info?.sourceTask),
     exportAction(info),
+    menuAction(info),
+    reloadAction(),
   ];
   if (!info) return bar;
   const promote = promoteAction(info);
@@ -511,6 +556,7 @@ export function controls(info: AssetInfo | undefined): readonly Offer[] {
     ...(redraw.ok ? [redrawBox(info), redrawGo(info)] : []),
     ...(info.failure ? [failureTaskAction(info, info.failure), fixAction(info)] : []),
     ...info.rungs.flatMap((rung) => [notesAction(rung), seedAction(rung, info.configSeed)]),
+    ...(back === '' ? [] : [backAction(back)]),
     ...info.prereqs.map(prereqAction),
   ];
 }

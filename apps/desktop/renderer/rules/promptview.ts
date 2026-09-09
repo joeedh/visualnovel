@@ -11,6 +11,7 @@ import type { ChunkOrigin } from '@vn/types';
 import { TOP_CHUNK } from '../../src/shared/promptops.js';
 import type { PromptChunkInfo, PromptView } from '../../src/shared/prompt.js';
 import { refuse, type Action, type Offer } from './anchors.js';
+import { startDrag } from './effects.js';
 
 /**
  * The hue distinguishes who wrote the words. `--sodium` means they come verbatim out of a
@@ -517,12 +518,23 @@ export function originOpenAction(chunk: PromptChunkInfo): Offer | undefined {
   };
 }
 
+/** The rail down a clause's left edge, which drags the clause to another place in the prompt. */
+export function railAction(chunk: PromptChunkInfo): Offer {
+  return {
+    ok: true,
+    ...startDrag('prompt.reorder'),
+    on     : chunk.key,
+    label  : '⋮',
+    tooltip: 'Drag to say this clause somewhere else in the prompt',
+  };
+}
+
 /**
  * Every offer the prompt half draws from this module, in the order it draws them: the mode strip
  * and its two buttons, the custom prompt's Save and, in custom mode, its box; then each clause's
- * five acts, the box it has open, its reference thumbnails and the drops on them, and its origin
- * button. `editing` is which clauses have a box open and how, which the editor holds and
- * `PromptView` does not.
+ * drag rail unless the prompt is frozen, its five acts, the box it has open, its reference
+ * thumbnails and the drops on them, and its origin button. `editing` is which clauses have a box
+ * open and how, which the editor holds and `PromptView` does not.
  */
 export function controls(
   view: PromptView,
@@ -532,6 +544,7 @@ export function controls(
     const how = editing[chunk.key];
     const origin = originOpenAction(chunk);
     return [
+      ...(view.frozen ? [] : [railAction(chunk)]),
       ...chunkActs(view, chunk).map((act) => act.offer),
       ...(how && !view.frozen ? [chunkBoxAction(view, chunk, how)] : []),
       ...refStrip(chunk).map(refOpenAction),

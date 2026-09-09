@@ -24,6 +24,7 @@ import {
   modeStrip,
   originAction,
   originOpenAction,
+  railAction,
   refOpenAction,
   refStrip,
   type RefChip,
@@ -208,7 +209,8 @@ export class PromptChunkView {
 
     const rail = el('div', 'as-chunk-rail');
     if (!view.frozen) {
-      rail.title = 'Drag to say this clause somewhere else in the prompt';
+      // Recorded rather than acted: the rail is grabbed on `pointerdown`, not clicked
+      this.editor.drawing.record(rail, railAction(chunk));
       rail.addEventListener('pointerdown', (event) =>
         this.editor.chunkDrag.grabChunk(view, chunk.key, rail, event as PointerEvent),
       );
