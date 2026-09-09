@@ -1,6 +1,7 @@
 # Pseudo-commands, and a control's list of effects
 
-Status: **planned**. Plan 4 of
+Status: **in progress**, stages 1 to 4 of 8 committed on branch `effects`; see
+[Progress](#progress). Plan 4 of
 [`ux-behaviour-model-tasklist.md`](ux-behaviour-model-tasklist.md), after
 [`archive/situations-and-the-derived-model.md`](archive/situations-and-the-derived-model.md).
 The derived model names every control that runs a command. This plan names the rest: a
@@ -18,11 +19,44 @@ This is the largest plan of the batch, as the research report said it would be
 It is staged so that each rule lands with the stage that makes it checkable, and so that
 the first three stages are worth taking on their own.
 
+## Progress
+
+Branch `effects`, off `master` at `a41360a3`. Stages 1 to 4 are committed and were green
+under `pnpm check`, `pnpm test` and `pnpm lint` when made; the sweep after stage 4 gave 0
+strays and 0 disagreements. Stage 5 was begun and not committed, and its edit was lost
+when the branch was used for other work, so stage 5 starts from the stage-4 commit. The
+branch head (`b3e455c2`) passes `pnpm check` and `pnpm test`, verified 2026-09-08.
+
+| Stage | Commit     | As shipped                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ----- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | `7cb1d368` | As planned.                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 2     | `e40b7e08` | As planned, and `Anchor.id` became required. `documents.rowAction` gives `tree.expand` for a row naming nothing; `assetview.prereqAction` refuses with the manifest's note where the bytes are missing.                                                                                                                                                                                                                                                       |
+| 3     | `555741e0` | `POPUP_HOMES` beside `ANCHOR_HOMES`; the header's three openers are `popup.open` offers from `rules/headerbar.ts`, keyed by the popup, and the sweep presses them through `window.__vnAnchors.press`. `rules/approvals.ts` and `rules/diagnostics.ts` exist as modules. `notify.markRead` stays palette-only with a reason. A `fixup!` (`be3a4be3`) is still to be squashed into this commit before landing.                                                  |
+| 4     | `76a7b12d` | The builder is `buildMenu` in `chrome/showmenu.ts`; the header builds a `DropBox` per press instead of `bar.menu`. `rules/menus.ts` is a menu table the model files as menu records and the sweep reads through `window.__vnAnchors.menus()` instead of opening each menu. Handlers are keyed by `entryKey`. `hidden()` treats an anchor clipped by a scrolling ancestor as offscreen. Sweep: 71 of 170 commands, 8 of 12 effects, 333 records, 88 menu rows. |
+| 5–8   |            | Not started.                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+
+Six commits from another piece of work sit on the branch above stage 4
+(`f47e1d02`..`b3e455c2`): `apps/desktop/src/main` was split into `bootstrap/`, `runtime/`,
+`workspace/`, `doctree/`, `assets/`, `agent/`, `notify/`, `distribution/` and `session/`,
+and `editors/asset.ts` into `editors/asset/`
+([`split-largest-source-files.md`](split-largest-source-files.md)). They land with the
+branch. Paths this plan cites that moved:
+
+- `src/main/index.ts:1111` (F12 and Ctrl+I) is `src/main/runtime/windowmanager.ts:171`;
+  `:1160` (no Electron menu) is `src/main/bootstrap/bootstrap.ts:53`.
+- `showme.ts` is `src/main/agent/showme.ts`; `src/main/commands/**` and
+  `src/main/tests/uxmodel.test.ts` did not move.
+- `editors/asset.ts` is `editors/asset/index.ts` and its delegates; the prerequisite row
+  is recorded at `editors/asset/framing.ts:98`.
+
+Stages 5 to 8 pick up the plan as written, with the stage-4 shapes above (`buildMenu`,
+`rules/menus.ts`, `headerbar.ts`) in place of the names the plan used.
+
 ## Context
 
-Measured on `master` at `9ba8a806`, after plan 3. The counts come from reading every
-handler in `apps/desktop/renderer/pathux/**`; the classification is the research report's
-vocabulary plus what did not fit it.
+Measured on `master` at `9ba8a806`, after plan 3, before the moves listed under Progress.
+The counts come from reading every handler in `apps/desktop/renderer/pathux/**`; the
+classification is the research report's vocabulary plus what did not fit it.
 
 - **About 200 handlers run without an anchor.** Grouped by what they do: 51 hold a draft,
   open or close an inline box, or swallow an event; 33 change what a pane shows without
@@ -400,7 +434,7 @@ Eight stages, one green commit each, on a branch `effects`. Every stage leaves
 `renderer/rules/**` regenerates `ux-model.json` and edits the palette-only list as the
 test demands.
 
-### Stage 1 — the vocabulary, the offer, and the schema
+### Stage 1 — the vocabulary, the offer, and the schema (done)
 
 - `packages/commands/src/effect.ts`: `Effect`, `EffectRegistry` (`define`, `get`, `list`,
   `verify`), `toEffectCatalog`; `CommandCatalog.effects?`; `toCatalog` gains a fourth
@@ -422,7 +456,7 @@ test demands.
   `desktopEffects`, its props coerce under the effect's `PropSpecMap`, and an id in
   neither registry fails.
 
-### Stage 2 — item anchors become `ui.publish`
+### Stage 2 — item anchors become `ui.publish` (done)
 
 - `rules/selection.ts` and `rules/route.ts`, moved from `doctree/` and `panes/`, with
   their tests; `rowTitle` into `rules/documents.ts`.
@@ -436,7 +470,7 @@ test demands.
 - `anchorcoverage.test.ts` and the sweep learn the `effects` list. The cross-module key
   test in `model.test.ts`.
 
-### Stage 3 — the three popup homes
+### Stage 3 — the three popup homes (done)
 
 - `ANCHOR_HOMES` gains the three; `anchorSnapshot`, `Resolution`, the tour's overlay and
   `resolveAnchor` learn `popup-closed`; the sweep opens each popup through its header
@@ -447,7 +481,7 @@ test demands.
   then close) get a module row each.
 - The palette-only list loses `notify.*`.
 
-### Stage 4 — menus as data, and the menu rule
+### Stage 4 — menus as data, and the menu rule (done)
 
 - `MenuEntry` gains its four fields; `rules/headermenus.ts`; `showmenu.ts` splits into
   `menuTemplate` and `showContextMenu`, building object-form rows; `header.ts` supplies
