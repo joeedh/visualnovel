@@ -132,6 +132,8 @@ describe('model()', () => {
       'gengraph cmd:gengraph.removeNode Delete',
       'gengraph cmd:gengraph.ungroup Ctrl+Alt+G',
       'header cmd:agent.setMode Shift+Tab',
+      'header fx:history.move#redo Ctrl+Shift+Z',
+      'header fx:history.move#undo Ctrl+Z',
       'play fx:pane.view#back Left',
       'play fx:pane.view#forward Space',
     ]);

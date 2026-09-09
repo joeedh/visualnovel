@@ -1,12 +1,16 @@
 import {
+  MENU_BUTTONS,
   approvalsAction,
   controls,
+  menuAction,
   modeAction,
   modelAction,
   notificationsAction,
   problemsAction,
+  redoAction,
   runAction,
   stopAction,
+  undoAction,
   viewActions,
   type HeaderState,
 } from '../headerbar.js';
@@ -115,8 +119,40 @@ describe('the popup openers', () => {
   });
 });
 
+describe('the menu buttons and the arrows', () => {
+  it('drop each menu down, keyed by its name', () => {
+    expect(MENU_BUTTONS.map((button) => button.menu)).toEqual(['app', 'edit', 'view', 'help']);
+    expect(menuAction(MENU_BUTTONS[1]!)).toEqual({
+      ok     : true,
+      id     : 'menu.open',
+      props  : { menu: 'edit' },
+      on     : 'edit',
+      label  : 'Edit',
+      tooltip: 'Undo and redo, and the one act that approves and renders the art in a single pass.',
+    });
+  });
+
+  it('move through the history, refused with nothing to move to', () => {
+    expect(undoAction('set speaker')).toEqual({
+      ok     : true,
+      id     : 'history.move',
+      props  : { to: 'undo' },
+      on     : 'undo',
+      label  : '⟲',
+      tooltip: 'Undo set speaker',
+    });
+    expect(undoAction(null)).toMatchObject({ ok: false, refusal: { reason: 'Nothing to undo' } });
+    expect(redoAction('retype line')).toMatchObject({
+      props  : { to: 'redo' },
+      tooltip: 'Redo retype line',
+    });
+    expect(redoAction('')).toMatchObject({ ok: true, tooltip: 'Redo' });
+    expect(redoAction(null)).toMatchObject({ ok: false, refusal: { reason: 'Nothing to redo' } });
+  });
+});
+
 describe('controls', () => {
-  const counts = { errors: 0, warnings: 0, needsApproval: 0, unread: 0 };
+  const counts = { errors: 0, warnings: 0, needsApproval: 0, unread: 0, undo: null, redo: null };
   const states: HeaderState[] = [
     { busyWhat: '', live: true, agentMode: 'plan', model: 'claude-opus-5', ...counts },
     { busyWhat: BUSY_RUN, live: false, agentMode: 'execute', model: '', ...counts },
@@ -128,10 +164,13 @@ describe('controls', () => {
     for (const state of states) {
       const listed = controls(state);
       const each = [
+        ...MENU_BUTTONS.map(menuAction),
         ...viewActions(),
         runAction(state.busyWhat, state.live),
         stopAction(busyControls(state.busyWhat)),
         ...(state.errors || state.warnings ? [problemsAction(state.errors, state.warnings)] : []),
+        undoAction(state.undo),
+        redoAction(state.redo),
         modeAction(state.agentMode),
         modelAction(state.model),
         approvalsAction(state.needsApproval),

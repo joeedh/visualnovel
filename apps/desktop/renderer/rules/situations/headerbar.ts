@@ -4,6 +4,8 @@ import type { HeaderState } from '../headerbar.js';
 import { BUSY_AGENT, BUSY_REPORT, BUSY_RUN } from '../../../src/shared/ipc.js';
 
 const idle: HeaderState = {
+  undo         : null,
+  redo         : null,
   busyWhat     : '',
   live         : true,
   agentMode    : 'plan',
@@ -49,5 +51,10 @@ export const SITUATIONS = situations<HeaderState>(
     name : 'warnings',
     why  : 'Only warnings were found, so the problem button counts those.',
     state: { ...idle, warnings: 2 },
+  },
+  {
+    name : 'history',
+    why: 'A change was made and one was undone, so both arrows are offered naming what each moves.',
+    state: { ...idle, undo: 'set speaker', redo: 'retype line' },
   },
 );

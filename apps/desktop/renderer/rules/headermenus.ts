@@ -17,7 +17,7 @@ import {
 import type { MenuName } from '../../src/shared/effects.js';
 import { MENU_SEP, SEPARATOR, type MenuEntry } from '../pathux/chrome/contextmenu.js';
 import { arrange, move, openMenu, openPopup, view } from './effects.js';
-import { runAction } from './headerbar.js';
+import { MENU_BUTTONS, runAction, type MenuButton } from './headerbar.js';
 import { shortcutOf } from './shortcuts.js';
 
 /** What the header reads when it builds its menus, assembled when a menu is opened. */
@@ -403,42 +403,20 @@ export function helpMenu(): MenuEntry[] {
   ];
 }
 
-/** One bar menu: its name in the effect vocabulary, its button, and its rows over a state. */
-export interface HeaderMenu {
-  menu: MenuName;
-  title: string;
-  /** The button's tooltip. The View button's comes from `viewActions` instead. */
-  tooltip: string;
+/** One bar menu: its button, and its rows over a state. */
+export interface HeaderMenu extends MenuButton {
   entries(state: HeaderMenuState): MenuEntry[];
 }
 
+const buttonOf = (menu: MenuName): MenuButton =>
+  MENU_BUTTONS.find((button) => button.menu === menu) as MenuButton;
+
 /** The four menus, in bar order. */
 export const HEADER_MENUS: readonly HeaderMenu[] = [
-  {
-    menu   : 'app',
-    title  : 'VN STUDIO',
-    tooltip:
-      'Open, create and export a project, and everything that acts on the workspace as a whole.',
-    entries: appMenu,
-  },
-  {
-    menu   : 'edit',
-    title  : 'Edit',
-    tooltip: 'Undo and redo, and the one act that approves and renders the art in a single pass.',
-    entries: () => editMenu(),
-  },
-  {
-    menu   : 'view',
-    title  : 'View',
-    tooltip: 'Split and close panes, and switch between the saved window layouts.',
-    entries: viewMenu,
-  },
-  {
-    menu   : 'help',
-    title  : 'Help',
-    tooltip: 'Whether there is a newer VN Studio, and what to do about an agent that misbehaved.',
-    entries: () => helpMenu(),
-  },
+  { ...buttonOf('app'), entries: appMenu },
+  { ...buttonOf('edit'), entries: () => editMenu() },
+  { ...buttonOf('view'), entries: viewMenu },
+  { ...buttonOf('help'), entries: () => helpMenu() },
 ];
 
 /** The four menus built over a state, each under `header/<menu>`, which is how the model files them. */

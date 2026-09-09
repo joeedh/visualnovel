@@ -43,6 +43,12 @@
       "why"   : "Only warnings were found, so the problem button counts those."
     },
     {
+      "module": "headerbar",
+      "editor": "header",
+      "name"  : "history",
+      "why": "A change was made and one was undone, so both arrows are offered naming what each moves."
+    },
+    {
       "module": "notifications",
       "editor": "notifications",
       "name"  : "empty",
@@ -733,6 +739,106 @@
       "editor"   : "header",
       "module"   : "headerbar",
       "situation": "idle",
+      "key"      : "fx:menu.open#app",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "VN STUDIO",
+        "tooltip": "Open, create and export a project, and everything that acts on the workspace as a whole.",
+        "on"     : "app",
+        "ok"     : true,
+        "props": {
+          "menu": "app"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "app"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "idle",
+      "key"      : "fx:menu.open#edit",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Edit",
+        "tooltip": "Undo and redo, and the one act that approves and renders the art in a single pass.",
+        "on"     : "edit",
+        "ok"     : true,
+        "props": {
+          "menu": "edit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "edit"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "idle",
+      "key"      : "fx:menu.open#view",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "View",
+        "tooltip": "Split and close panes, and switch between the saved window layouts.",
+        "on"     : "view",
+        "ok"     : true,
+        "props": {
+          "menu": "view"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "view"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "idle",
+      "key"      : "fx:menu.open#help",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Help",
+        "tooltip": "Whether there is a newer VN Studio, and what to do about an agent that misbehaved.",
+        "on"     : "help",
+        "ok"     : true,
+        "props": {
+          "menu": "help"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "help"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "idle",
       "key"      : "cmd:view.open",
       "offer": {
         "id"      : "view.open",
@@ -812,6 +918,50 @@
       "effects": [
         {
           "id": "pipeline.stop"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "idle",
+      "key"      : "fx:history.move#undo",
+      "offer": {
+        "id"     : "history.move",
+        "label"  : "⟲",
+        "tooltip": "Undo",
+        "on"     : "undo",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing to undo"
+        }
+      },
+      "effects": [
+        {
+          "id": "history.move"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "idle",
+      "key"      : "fx:history.move#redo",
+      "offer": {
+        "id"     : "history.move",
+        "label"  : "⟳",
+        "tooltip": "Redo",
+        "on"     : "redo",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing to redo"
+        }
+      },
+      "effects": [
+        {
+          "id": "history.move"
         }
       ]
     },
@@ -907,6 +1057,106 @@
           "id"   : "popup.open",
           "props": {
             "popup": "notifications"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "preview",
+      "key"      : "fx:menu.open#app",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "VN STUDIO",
+        "tooltip": "Open, create and export a project, and everything that acts on the workspace as a whole.",
+        "on"     : "app",
+        "ok"     : true,
+        "props": {
+          "menu": "app"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "app"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "preview",
+      "key"      : "fx:menu.open#edit",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Edit",
+        "tooltip": "Undo and redo, and the one act that approves and renders the art in a single pass.",
+        "on"     : "edit",
+        "ok"     : true,
+        "props": {
+          "menu": "edit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "edit"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "preview",
+      "key"      : "fx:menu.open#view",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "View",
+        "tooltip": "Split and close panes, and switch between the saved window layouts.",
+        "on"     : "view",
+        "ok"     : true,
+        "props": {
+          "menu": "view"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "view"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "preview",
+      "key"      : "fx:menu.open#help",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Help",
+        "tooltip": "Whether there is a newer VN Studio, and what to do about an agent that misbehaved.",
+        "on"     : "help",
+        "ok"     : true,
+        "props": {
+          "menu": "help"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "help"
           }
         }
       ]
@@ -1003,6 +1253,50 @@
       "editor"   : "header",
       "module"   : "headerbar",
       "situation": "preview",
+      "key"      : "fx:history.move#undo",
+      "offer": {
+        "id"     : "history.move",
+        "label"  : "⟲",
+        "tooltip": "Undo",
+        "on"     : "undo",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing to undo"
+        }
+      },
+      "effects": [
+        {
+          "id": "history.move"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "preview",
+      "key"      : "fx:history.move#redo",
+      "offer": {
+        "id"     : "history.move",
+        "label"  : "⟳",
+        "tooltip": "Redo",
+        "on"     : "redo",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing to redo"
+        }
+      },
+      "effects": [
+        {
+          "id": "history.move"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "preview",
       "key"      : "cmd:agent.setMode",
       "offer": {
         "id"     : "agent.setMode",
@@ -1090,6 +1384,106 @@
           "id"   : "popup.open",
           "props": {
             "popup": "notifications"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "running",
+      "key"      : "fx:menu.open#app",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "VN STUDIO",
+        "tooltip": "Open, create and export a project, and everything that acts on the workspace as a whole.",
+        "on"     : "app",
+        "ok"     : true,
+        "props": {
+          "menu": "app"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "app"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "running",
+      "key"      : "fx:menu.open#edit",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Edit",
+        "tooltip": "Undo and redo, and the one act that approves and renders the art in a single pass.",
+        "on"     : "edit",
+        "ok"     : true,
+        "props": {
+          "menu": "edit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "edit"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "running",
+      "key"      : "fx:menu.open#view",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "View",
+        "tooltip": "Split and close panes, and switch between the saved window layouts.",
+        "on"     : "view",
+        "ok"     : true,
+        "props": {
+          "menu": "view"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "view"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "running",
+      "key"      : "fx:menu.open#help",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Help",
+        "tooltip": "Whether there is a newer VN Studio, and what to do about an agent that misbehaved.",
+        "on"     : "help",
+        "ok"     : true,
+        "props": {
+          "menu": "help"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "help"
           }
         }
       ]
@@ -1182,6 +1576,50 @@
       "editor"   : "header",
       "module"   : "headerbar",
       "situation": "running",
+      "key"      : "fx:history.move#undo",
+      "offer": {
+        "id"     : "history.move",
+        "label"  : "⟲",
+        "tooltip": "Undo",
+        "on"     : "undo",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing to undo"
+        }
+      },
+      "effects": [
+        {
+          "id": "history.move"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "running",
+      "key"      : "fx:history.move#redo",
+      "offer": {
+        "id"     : "history.move",
+        "label"  : "⟳",
+        "tooltip": "Redo",
+        "on"     : "redo",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing to redo"
+        }
+      },
+      "effects": [
+        {
+          "id": "history.move"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "running",
       "key"      : "cmd:agent.setMode",
       "offer": {
         "id"     : "agent.setMode",
@@ -1278,6 +1716,106 @@
       "editor"   : "header",
       "module"   : "headerbar",
       "situation": "reporting",
+      "key"      : "fx:menu.open#app",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "VN STUDIO",
+        "tooltip": "Open, create and export a project, and everything that acts on the workspace as a whole.",
+        "on"     : "app",
+        "ok"     : true,
+        "props": {
+          "menu": "app"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "app"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "reporting",
+      "key"      : "fx:menu.open#edit",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Edit",
+        "tooltip": "Undo and redo, and the one act that approves and renders the art in a single pass.",
+        "on"     : "edit",
+        "ok"     : true,
+        "props": {
+          "menu": "edit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "edit"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "reporting",
+      "key"      : "fx:menu.open#view",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "View",
+        "tooltip": "Split and close panes, and switch between the saved window layouts.",
+        "on"     : "view",
+        "ok"     : true,
+        "props": {
+          "menu": "view"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "view"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "reporting",
+      "key"      : "fx:menu.open#help",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Help",
+        "tooltip": "Whether there is a newer VN Studio, and what to do about an agent that misbehaved.",
+        "on"     : "help",
+        "ok"     : true,
+        "props": {
+          "menu": "help"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "help"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "reporting",
       "key"      : "cmd:view.open",
       "offer": {
         "id"      : "view.open",
@@ -1353,6 +1891,50 @@
         {
           "id"   : "report.stop",
           "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "reporting",
+      "key"      : "fx:history.move#undo",
+      "offer": {
+        "id"     : "history.move",
+        "label"  : "⟲",
+        "tooltip": "Undo",
+        "on"     : "undo",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing to undo"
+        }
+      },
+      "effects": [
+        {
+          "id": "history.move"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "reporting",
+      "key"      : "fx:history.move#redo",
+      "offer": {
+        "id"     : "history.move",
+        "label"  : "⟳",
+        "tooltip": "Redo",
+        "on"     : "redo",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing to redo"
+        }
+      },
+      "effects": [
+        {
+          "id": "history.move"
         }
       ]
     },
@@ -1457,6 +2039,106 @@
       "editor"   : "header",
       "module"   : "headerbar",
       "situation": "agent-turn",
+      "key"      : "fx:menu.open#app",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "VN STUDIO",
+        "tooltip": "Open, create and export a project, and everything that acts on the workspace as a whole.",
+        "on"     : "app",
+        "ok"     : true,
+        "props": {
+          "menu": "app"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "app"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "agent-turn",
+      "key"      : "fx:menu.open#edit",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Edit",
+        "tooltip": "Undo and redo, and the one act that approves and renders the art in a single pass.",
+        "on"     : "edit",
+        "ok"     : true,
+        "props": {
+          "menu": "edit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "edit"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "agent-turn",
+      "key"      : "fx:menu.open#view",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "View",
+        "tooltip": "Split and close panes, and switch between the saved window layouts.",
+        "on"     : "view",
+        "ok"     : true,
+        "props": {
+          "menu": "view"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "view"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "agent-turn",
+      "key"      : "fx:menu.open#help",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Help",
+        "tooltip": "Whether there is a newer VN Studio, and what to do about an agent that misbehaved.",
+        "on"     : "help",
+        "ok"     : true,
+        "props": {
+          "menu": "help"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "help"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "agent-turn",
       "key"      : "cmd:view.open",
       "offer": {
         "id"      : "view.open",
@@ -1533,6 +2215,50 @@
       "effects": [
         {
           "id": "pipeline.stop"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "agent-turn",
+      "key"      : "fx:history.move#undo",
+      "offer": {
+        "id"     : "history.move",
+        "label"  : "⟲",
+        "tooltip": "Undo",
+        "on"     : "undo",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing to undo"
+        }
+      },
+      "effects": [
+        {
+          "id": "history.move"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "agent-turn",
+      "key"      : "fx:history.move#redo",
+      "offer": {
+        "id"     : "history.move",
+        "label"  : "⟳",
+        "tooltip": "Redo",
+        "on"     : "redo",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing to redo"
+        }
+      },
+      "effects": [
+        {
+          "id": "history.move"
         }
       ]
     },
@@ -1628,6 +2354,106 @@
           "id"   : "popup.open",
           "props": {
             "popup": "notifications"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "counts",
+      "key"      : "fx:menu.open#app",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "VN STUDIO",
+        "tooltip": "Open, create and export a project, and everything that acts on the workspace as a whole.",
+        "on"     : "app",
+        "ok"     : true,
+        "props": {
+          "menu": "app"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "app"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "counts",
+      "key"      : "fx:menu.open#edit",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Edit",
+        "tooltip": "Undo and redo, and the one act that approves and renders the art in a single pass.",
+        "on"     : "edit",
+        "ok"     : true,
+        "props": {
+          "menu": "edit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "edit"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "counts",
+      "key"      : "fx:menu.open#view",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "View",
+        "tooltip": "Split and close panes, and switch between the saved window layouts.",
+        "on"     : "view",
+        "ok"     : true,
+        "props": {
+          "menu": "view"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "view"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "counts",
+      "key"      : "fx:menu.open#help",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Help",
+        "tooltip": "Whether there is a newer VN Studio, and what to do about an agent that misbehaved.",
+        "on"     : "help",
+        "ok"     : true,
+        "props": {
+          "menu": "help"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "help"
           }
         }
       ]
@@ -1749,6 +2575,50 @@
       "editor"   : "header",
       "module"   : "headerbar",
       "situation": "counts",
+      "key"      : "fx:history.move#undo",
+      "offer": {
+        "id"     : "history.move",
+        "label"  : "⟲",
+        "tooltip": "Undo",
+        "on"     : "undo",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing to undo"
+        }
+      },
+      "effects": [
+        {
+          "id": "history.move"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "counts",
+      "key"      : "fx:history.move#redo",
+      "offer": {
+        "id"     : "history.move",
+        "label"  : "⟳",
+        "tooltip": "Redo",
+        "on"     : "redo",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing to redo"
+        }
+      },
+      "effects": [
+        {
+          "id": "history.move"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "counts",
       "key"      : "cmd:agent.setMode",
       "offer": {
         "id"     : "agent.setMode",
@@ -1836,6 +2706,106 @@
           "id"   : "popup.open",
           "props": {
             "popup": "notifications"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "warnings",
+      "key"      : "fx:menu.open#app",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "VN STUDIO",
+        "tooltip": "Open, create and export a project, and everything that acts on the workspace as a whole.",
+        "on"     : "app",
+        "ok"     : true,
+        "props": {
+          "menu": "app"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "app"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "warnings",
+      "key"      : "fx:menu.open#edit",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Edit",
+        "tooltip": "Undo and redo, and the one act that approves and renders the art in a single pass.",
+        "on"     : "edit",
+        "ok"     : true,
+        "props": {
+          "menu": "edit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "edit"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "warnings",
+      "key"      : "fx:menu.open#view",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "View",
+        "tooltip": "Split and close panes, and switch between the saved window layouts.",
+        "on"     : "view",
+        "ok"     : true,
+        "props": {
+          "menu": "view"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "view"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "warnings",
+      "key"      : "fx:menu.open#help",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Help",
+        "tooltip": "Whether there is a newer VN Studio, and what to do about an agent that misbehaved.",
+        "on"     : "help",
+        "ok"     : true,
+        "props": {
+          "menu": "help"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "help"
           }
         }
       ]
@@ -1957,6 +2927,50 @@
       "editor"   : "header",
       "module"   : "headerbar",
       "situation": "warnings",
+      "key"      : "fx:history.move#undo",
+      "offer": {
+        "id"     : "history.move",
+        "label"  : "⟲",
+        "tooltip": "Undo",
+        "on"     : "undo",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing to undo"
+        }
+      },
+      "effects": [
+        {
+          "id": "history.move"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "warnings",
+      "key"      : "fx:history.move#redo",
+      "offer": {
+        "id"     : "history.move",
+        "label"  : "⟳",
+        "tooltip": "Redo",
+        "on"     : "redo",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing to redo"
+        }
+      },
+      "effects": [
+        {
+          "id": "history.move"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "warnings",
       "key"      : "cmd:agent.setMode",
       "offer": {
         "id"     : "agent.setMode",
@@ -2028,6 +3042,341 @@
       "editor"   : "header",
       "module"   : "headerbar",
       "situation": "warnings",
+      "key"      : "fx:popup.open#notifications",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "🔔",
+        "tooltip": "Show notifications",
+        "on"     : "notifications",
+        "ok"     : true,
+        "props": {
+          "popup": "notifications"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "notifications"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "history",
+      "key"      : "fx:menu.open#app",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "VN STUDIO",
+        "tooltip": "Open, create and export a project, and everything that acts on the workspace as a whole.",
+        "on"     : "app",
+        "ok"     : true,
+        "props": {
+          "menu": "app"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "app"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "history",
+      "key"      : "fx:menu.open#edit",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Edit",
+        "tooltip": "Undo and redo, and the one act that approves and renders the art in a single pass.",
+        "on"     : "edit",
+        "ok"     : true,
+        "props": {
+          "menu": "edit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "edit"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "history",
+      "key"      : "fx:menu.open#view",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "View",
+        "tooltip": "Split and close panes, and switch between the saved window layouts.",
+        "on"     : "view",
+        "ok"     : true,
+        "props": {
+          "menu": "view"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "view"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "history",
+      "key"      : "fx:menu.open#help",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Help",
+        "tooltip": "Whether there is a newer VN Studio, and what to do about an agent that misbehaved.",
+        "on"     : "help",
+        "ok"     : true,
+        "props": {
+          "menu": "help"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "help"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "history",
+      "key"      : "cmd:view.open",
+      "offer": {
+        "id"      : "view.open",
+        "label"   : "View",
+        "tooltip" : "Split and close panes, and switch between the saved window layouts.",
+        "supplies": ["editor"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "history",
+      "key"      : "cmd:view.applyLayout",
+      "offer": {
+        "id"      : "view.applyLayout",
+        "label"   : "View",
+        "tooltip" : "Split and close panes, and switch between the saved window layouts.",
+        "supplies": ["name"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "view.applyLayout",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "history",
+      "key"      : "cmd:pipeline.run",
+      "offer": {
+        "id"     : "pipeline.run",
+        "label"  : "▶ Run",
+        "tooltip": "Plan and render everything that is ready, to the next gate",
+        "ok"     : true,
+        "props": {
+          "mock": false
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pipeline.run",
+          "props": {
+            "mock": false
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "history",
+      "key"      : "cmd:pipeline.stop",
+      "offer": {
+        "id"     : "pipeline.stop",
+        "label"  : "■",
+        "tooltip": "Stop the work in progress after the step it is on",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing is running."
+        }
+      },
+      "effects": [
+        {
+          "id": "pipeline.stop"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "history",
+      "key"      : "fx:history.move#undo",
+      "offer": {
+        "id"     : "history.move",
+        "label"  : "⟲",
+        "tooltip": "Undo set speaker",
+        "on"     : "undo",
+        "ok"     : true,
+        "props": {
+          "to": "undo"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "history.move",
+          "props": {
+            "to": "undo"
+          }
+        }
+      ],
+      "shortcut" : "Ctrl+Z"
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "history",
+      "key"      : "fx:history.move#redo",
+      "offer": {
+        "id"     : "history.move",
+        "label"  : "⟳",
+        "tooltip": "Redo retype line",
+        "on"     : "redo",
+        "ok"     : true,
+        "props": {
+          "to": "redo"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "history.move",
+          "props": {
+            "to": "redo"
+          }
+        }
+      ],
+      "shortcut" : "Ctrl+Shift+Z"
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "history",
+      "key"      : "cmd:agent.setMode",
+      "offer": {
+        "id"     : "agent.setMode",
+        "label"  : "PLAN",
+        "tooltip": "Plan mode: the agent reads but never writes. Click to let it apply edits.",
+        "ok"     : true,
+        "props": {
+          "mode": "execute"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setMode",
+          "props": {
+            "mode": "execute"
+          }
+        }
+      ],
+      "shortcut" : "Shift+Tab"
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "history",
+      "key"      : "cmd:agent.setModel",
+      "offer": {
+        "id"      : "agent.setModel",
+        "label"   : "claude-opus-5",
+        "tooltip" : "Which model the agent answers with. Switching takes effect next turn.",
+        "supplies": ["modelId"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "agent.setModel",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "history",
+      "key"      : "fx:popup.open#approvals",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "🎨",
+        "tooltip": "No art is waiting on approval",
+        "on"     : "approvals",
+        "ok"     : true,
+        "props": {
+          "popup": "approvals"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "approvals"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "header",
+      "module"   : "headerbar",
+      "situation": "history",
       "key"      : "fx:popup.open#notifications",
       "offer": {
         "id"     : "popup.open",

@@ -7,12 +7,15 @@ import { busyControls, type BusyControls } from '../../rules/busy.js';
 import { HEADER } from '../../rules/anchors.js';
 import {
   approvalsAction,
+  menuAction,
   modeAction,
   modelAction,
   notificationsAction,
   problemsAction,
+  redoAction,
   runAction,
   stopAction,
+  undoAction,
   viewActions,
 } from '../../rules/headerbar.js';
 import {
@@ -275,24 +278,28 @@ export class VnHeaderEditor extends VnEditor {
     this.anchors = redrawing(HEADER, 'bar');
     const [opens, layouts] = viewActions();
     for (const menu of HEADER_MENUS) {
-      const button = this.menuButton(menu);
-      if (menu.menu !== 'view') {
-        button.description = menu.tooltip;
-        continue;
-      }
+      // Recorded rather than acted: the drop-down opens through path.ux's own press handler. The
+      // View button also records the two commands its rows supply.
+      const button = this.anchors.record(this.menuButton(menu), menuAction(menu));
+      if (menu.menu !== 'view') continue;
       this.anchors.record(button, opens);
       this.anchors.record(button, layouts);
     }
     this.badge(`project ${ui.projectTitle || '—'}`, true);
     this.runControls();
 
-    const undo = this.bar.button('⟲', () => void move('undo'));
-    undo.description = ui.undoLabel ? `Undo ${ui.undoLabel}` : 'Nothing to undo';
-    undo.disabled = !ui.canUndo;
-
-    const redo = this.bar.button('⟳', () => void move('redo'));
-    redo.description = ui.redoLabel ? `Redo ${ui.redoLabel}` : 'Nothing to redo';
-    redo.disabled = !ui.canRedo;
+    const undo = undoAction(ui.canUndo ? ui.undoLabel : null);
+    this.anchors.act(
+      this.bar.button(undo.label, () => {}),
+      undo,
+      () => void move('undo'),
+    );
+    const redo = redoAction(ui.canRedo ? ui.redoLabel : null);
+    this.anchors.act(
+      this.bar.button(redo.label, () => {}),
+      redo,
+      () => void move('redo'),
+    );
 
     if (ui.errors || ui.warnings) {
       const problems = problemsAction(ui.errors, ui.warnings);

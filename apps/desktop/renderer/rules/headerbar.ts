@@ -2,15 +2,63 @@
  * What the header's own buttons offer. Split out of the editor so the invocation each one runs is
  * a value a test can read, which is what lets the anchor and the click come from one object.
  *
- * Undo and redo are absent on purpose: they go through `command:undo` and `command:redo` rather
- * than through the registry, so there is no id for a tour step to name.
+ * Undo and redo are `history.move` effects: they go through `command:undo` and `command:redo`
+ * rather than through the registry, so a step names the effect rather than a command.
  */
+import type { MenuName } from '../../src/shared/effects.js';
 import { refuse, type Offer } from './anchors.js';
 import { busyControls, type BusyControls } from './busy.js';
-import { openPopup } from './effects.js';
+import { move, openMenu, openPopup } from './effects.js';
+
+/** One bar menu's button: its name in the effect vocabulary, and what the button says. */
+export interface MenuButton {
+  menu: MenuName;
+  title: string;
+  tooltip: string;
+}
+
+/** The four bar menus' buttons, in bar order; `headermenus.ts` hangs each menu's rows on one. */
+export const MENU_BUTTONS: readonly MenuButton[] = [
+  {
+    menu   : 'app',
+    title  : 'VN STUDIO',
+    tooltip:
+      'Open, create and export a project, and everything that acts on the workspace as a whole.',
+  },
+  {
+    menu   : 'edit',
+    title  : 'Edit',
+    tooltip: 'Undo and redo, and the one act that approves and renders the art in a single pass.',
+  },
+  {
+    menu   : 'view',
+    title  : 'View',
+    tooltip: 'Split and close panes, and switch between the saved window layouts.',
+  },
+  {
+    menu   : 'help',
+    title  : 'Help',
+    tooltip: 'Whether there is a newer VN Studio, and what to do about an agent that misbehaved.',
+  },
+];
+
+/** One bar menu's button, which drops the menu down. */
+export function menuAction(button: MenuButton): Offer {
+  return {
+    ok: true,
+    ...openMenu(button.menu),
+    on     : button.menu,
+    label  : button.title,
+    tooltip: button.tooltip,
+  };
+}
 
 /** What the header reads when it draws its command buttons and its three popup openers. */
 export interface HeaderState {
+  /** What Undo would take back, or `null` while there is nothing to undo. */
+  undo: string | null;
+  /** What Redo would put back, or `null` while there is nothing to redo. */
+  redo: string | null;
   /** Which long-running work is in flight, or an empty string. */
   busyWhat: string;
   /** Whether this window can call a model, as opposed to a browser preview. */
@@ -144,13 +192,34 @@ export function modeAction(mode: string): Offer {
   };
 }
 
-/** Every offer the header draws from this module, in the order it draws them. */
+/** The `⟲` arrow, refused with nothing to undo. */
+export function undoAction(undo: string | null): Offer {
+  const control = { ...move('undo'), on: 'undo', label: '⟲' };
+  if (undo === null) return { ...refuse('Nothing to undo'), ...control, tooltip: 'Undo' };
+  return { ok: true, ...control, tooltip: undo ? `Undo ${undo}` : 'Undo' };
+}
+
+/** The `⟳` arrow, refused with nothing to redo. */
+export function redoAction(redo: string | null): Offer {
+  const control = { ...move('redo'), on: 'redo', label: '⟳' };
+  if (redo === null) return { ...refuse('Nothing to redo'), ...control, tooltip: 'Redo' };
+  return { ok: true, ...control, tooltip: redo ? `Redo ${redo}` : 'Redo' };
+}
+
+/**
+ * Every offer the header draws from this module, in the order it draws them: the four menu
+ * buttons, the View button's two commands, Run and Stop, the problem count, the two arrows, the
+ * mode and model buttons, and the two badges.
+ */
 export function controls(state: HeaderState): readonly Offer[] {
   return [
+    ...MENU_BUTTONS.map(menuAction),
     ...viewActions(),
     runAction(state.busyWhat, state.live),
     stopAction(busyControls(state.busyWhat)),
     ...(state.errors || state.warnings ? [problemsAction(state.errors, state.warnings)] : []),
+    undoAction(state.undo),
+    redoAction(state.redo),
     modeAction(state.agentMode),
     modelAction(state.model),
     approvalsAction(state.needsApproval),
