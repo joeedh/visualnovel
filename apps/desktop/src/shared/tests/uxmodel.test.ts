@@ -46,6 +46,7 @@ describe('the derived model schema', () => {
       ...situated,
       via       : 'control',
       key       : 'cmd:story.deleteScene',
+      widgetPath: 'documents/story-deletescene~a1b2c3d4',
       offer     : refused,
       effects   : [{ id: 'story.deleteScene' }],
       reasonFrom: 'stack',
@@ -77,8 +78,9 @@ describe('the derived model schema', () => {
     };
     const control = {
       ...situated,
-      via: 'control',
-      key: 'item:scene/arrival',
+      via       : 'control',
+      key       : 'item:scene/arrival',
+      widgetPath: 'script/ui-publish~a1b2c3d4',
       offer,
       effects : [{ id: 'ui.publish', props: { sceneId: 'arrival' } }, ...then],
       shortcut: 'Ctrl+Z',

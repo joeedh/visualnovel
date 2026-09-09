@@ -57,12 +57,17 @@ const situated = {
  * a refused control whose reason is the message of a `command:check` verdict in the situation's
  * state, which is what the sweep's wording comparison is scoped to. `shortcut` is the key
  * combination bound to the first effect, from the shortcut table.
+ *
+ * `widgetPath` is the path.ux meta tag's own name for the control, `<editor>/<stem>~<hash>`. It
+ * is what a swept record is keyed against, since it is the one name both tiers compute the same
+ * way; the key is not, because a live pane cannot say which situation it is in.
  */
 const controlRecord = z
   .object({
     ...situated,
     via       : z.literal('control'),
     key       : z.string().min(1),
+    widgetPath: z.string().min(1),
     offer     : UX_OFFER,
     effects   : z.array(action).min(1),
     reasonFrom: z.literal('stack').optional(),

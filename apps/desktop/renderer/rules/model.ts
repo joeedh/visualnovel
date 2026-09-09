@@ -7,7 +7,7 @@
  * The output is a pure function of the table below. It carries no timestamp, sha or path, so the
  * committed file either equals a regeneration or is stale, with nothing in between.
  */
-import { keyOf, type Offer } from './anchors.js';
+import { keyOf, tagOf, type Offer } from './anchors.js';
 import { PALETTE_ONLY } from './paletteonly.js';
 import { MENU_EXEMPT } from './menuexempt.js';
 import { MENU_ROWS, menuRecords } from './menus.js';
@@ -191,12 +191,13 @@ export function situationRecords<S>(row: Row<S>, situation: Situation<S>): UxCon
     const effects = effectsOf(picked);
     const bound = findShortcut(effects[0]!, picked.on, row.editor);
     return {
-      via      : 'control',
-      editor   : row.editor,
-      module   : row.module,
-      situation: situation.name,
-      key      : keyOf(offer),
-      offer    : picked,
+      via       : 'control',
+      editor    : row.editor,
+      module    : row.module,
+      situation : situation.name,
+      key       : keyOf(offer),
+      widgetPath: tagOf(offer, row.editor).widgetPath!,
+      offer     : picked,
       effects,
       ...(fromStack ? { reasonFrom: 'stack' } : {}),
       ...(bound === undefined ? {} : { shortcut: comboOf(bound) }),

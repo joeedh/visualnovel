@@ -47,6 +47,21 @@ describe('model()', () => {
     }
   });
 
+  /**
+   * A repeat here can only be an FNV-1a collision: no two controls in one situation share a key,
+   * and `VnToolMeta.identity()` reads a strict superset of what `keyOf` reads. Eight hex digits
+   * over some three hundred segments per scope is close enough to the birthday bound to be worth
+   * asserting, since a collision would silently merge two controls in `uxmodel.test.ts`.
+   */
+  it('gives no two records in one situation the same widgetPath', () => {
+    for (const row of ROWS) {
+      for (const situation of row.situations) {
+        const paths = situationRecords(row, situation).map((record) => record.widgetPath);
+        expect(paths.filter((path, at) => paths.indexOf(path) !== at)).toEqual([]);
+      }
+    }
+  });
+
   // Two modules of one home (the asset editor's bar and its prompt) are re-resolved by key on the
   // same pane, so a key both produce would ring whichever was recorded last.
   it('gives no key to two modules of one home, over every situation', () => {

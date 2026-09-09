@@ -8,7 +8,9 @@
  * desktop jest project is node-only and a pane can only be checked live over CDP.
  */
 import type { Refusal } from 'pathux';
+import { StdUXMeta, widgetSegment } from 'pathux-meta';
 import type { PropValue } from '../../src/shared/ipc.js';
+import { VnToolMeta } from './toolmeta.js';
 import {
   HEADER,
   isPopupHome,
@@ -102,6 +104,32 @@ export function applyOffer(node: OfferNode, offer: Offer, compose: Compose): voi
   } else {
     node.title = compose(refusal, offer.tooltip) ?? '';
   }
+}
+
+/** The tool an offer runs, which is the half of {@link tagOf} a live widget's tag appends. */
+export const toolOf = (offer: Offer): VnToolMeta =>
+  new VnToolMeta({
+    id: offer.id,
+    ...(offer.on === undefined ? {} : { on: offer.on }),
+    ...(offer.supplies === undefined ? {} : { supplies: offer.supplies }),
+    ...(offer.form === undefined ? {} : { form: offer.form }),
+    ...(offer.ok ? { props: offer.props } : {}),
+    ...(offer.ok && offer.then !== undefined ? { then: offer.then } : {}),
+  });
+
+/**
+ * One offer as a path.ux meta tag, named `<scope>/<segment>` within its home.
+ *
+ * The one converter both tiers use: `AnchorPass` writes it onto the widget it wired, and the
+ * model driver builds it with no owner at all. Two spellings of the tag would make the
+ * comparison in `uxmodel.test.ts` a comparison of the two spellings.
+ */
+export function tagOf(offer: Offer, scope: AnchorHome): StdUXMeta<VnToolMeta> {
+  const tag = new StdUXMeta<VnToolMeta>({ description: offer.tooltip, tools: [toolOf(offer)] });
+  tag.enabled = offer.ok;
+  tag.refusal = offer.ok ? undefined : offer.refusal;
+  tag.widgetPath = `${scope}/${widgetSegment(tag)}`;
+  return tag;
 }
 
 /** The part of a `DOMRect` the overlay reads. Typed structurally so a test needs no DOM. */

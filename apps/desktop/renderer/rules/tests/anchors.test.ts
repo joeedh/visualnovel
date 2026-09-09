@@ -13,6 +13,7 @@ import {
   resolveItem,
   resolveSubject,
   subsumes,
+  tagOf,
   type Anchor,
   type AnchorMap,
   type Compose,
@@ -71,21 +72,23 @@ describe('keys', () => {
   });
 });
 
+const accepted: Offer = {
+  ok     : true,
+  id     : 'asset.accept',
+  props  : { hash: 'a1' },
+  label  : 'Accept',
+  tooltip: 'Accept these bytes for use downstream',
+};
+
+const refused: Offer = {
+  ok     : false,
+  id     : 'asset.accept',
+  refusal: { reason: 'No asset is on screen.', description: 'Open one from the tree.' },
+  label  : 'Accept',
+  tooltip: 'Accept these bytes for use downstream',
+};
+
 describe('applyOffer', () => {
-  const accepted: Offer = {
-    ok     : true,
-    id     : 'asset.accept',
-    props  : { hash: 'a1' },
-    label  : 'Accept',
-    tooltip: 'Accept these bytes for use downstream',
-  };
-  const refused: Offer = {
-    ok     : false,
-    id     : 'asset.accept',
-    refusal: { reason: 'No asset is on screen.', description: 'Open one from the tree.' },
-    label  : 'Accept',
-    tooltip: 'Accept these bytes for use downstream',
-  };
   const compose: Compose = (refusal, description) =>
     refusal ? `${refusal.reason} | ${description}` : description;
 
@@ -125,6 +128,29 @@ describe('applyOffer', () => {
     const chip = { title: '' };
     applyOffer(chip, accepted, compose);
     expect(chip).toEqual({ title: 'Accept these bytes for use downstream' });
+  });
+});
+
+describe('tagOf', () => {
+  it('names the control after its home and the command it runs', () => {
+    const tag = tagOf(accepted, 'asset');
+    expect(tag.widgetPath).toMatch(/^asset\/asset-accept~[0-9a-f]{8}$/);
+    expect(tag.description).toBe(accepted.tooltip);
+    expect(tag.enabled).toBe(true);
+    expect(tag.refusal).toBeUndefined();
+  });
+
+  it('carries a refusal, and gives it the same name as the accepted offer', () => {
+    const tag = tagOf(refused, 'asset');
+    expect(tag.enabled).toBe(false);
+    expect(tag.refusal).toEqual(refused.ok ? undefined : refused.refusal);
+    // Whether a control accepts a press changes under it; what it runs does not, so only the
+    // second half enters the name
+    expect(tag.widgetPath).toBe(tagOf(accepted, 'asset').widgetPath);
+  });
+
+  it('names the same control differently in two homes', () => {
+    expect(tagOf(accepted, 'asset').widgetPath).not.toBe(tagOf(accepted, 'documents').widgetPath);
   });
 });
 

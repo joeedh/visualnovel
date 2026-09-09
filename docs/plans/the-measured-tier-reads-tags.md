@@ -305,7 +305,7 @@ As shipped:
 
 ### Stage 3 — `tagOf`, and the derived tier writes `widgetPath`
 
-`tagOf` in `rules/anchors.ts`; the model driver calls it per control record;
+**Done.** `tagOf` in `rules/anchors.ts`; the model driver calls it per control record;
 `ux-model.json` gains `widgetPath` on control records, with the schema in
 `src/shared/uxmodel.ts`; `pnpm gen:uxmodel`.
 
@@ -314,6 +314,19 @@ already asserts `duplicateKeys` over `keyOf` (id plus `on`), and `identity()` is
 superset of those inputs, so this can only fire on an FNV-1a collision. That is what it is
 for: the digest is 8 hex digits over roughly 300 segments per scope, and a collision would
 silently merge two controls in stage 6.
+
+As shipped:
+
+- `tagOf(offer, scope)` fills `widgetPath` itself, since it is given the scope;
+  `widgetPathOf` from `ui_meta_walk.ts` is not used, because it needs an owner and the
+  driver has none. A sibling `toolOf(offer)` builds the tool alone, which is what stage 4
+  appends on a second presentation of one node.
+- `widgetPath` is required in `UX_RECORD`'s control branch and sits directly after `key`.
+  The two hand-written fixtures in `src/shared/tests/uxmodel.test.ts` gain one.
+- **981 control records collapse to 302 `(editor, widgetPath)` pairs, against 300
+  `(editor, key)` pairs.** `supplies` and `form` enter `identity()` and not `keyOf`, so a
+  control offered with and without a supplied prop is two names and one key. Stage 6 keys
+  on the finer of the two.
 
 ### Stage 4 — the pass writes the tag, and the sweep reads it
 
