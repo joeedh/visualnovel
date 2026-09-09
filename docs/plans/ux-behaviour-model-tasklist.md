@@ -25,16 +25,16 @@ about. Those are in
 
 ## The proposed plans
 
-| #   | Plan                                                                                            | Where            | Depends on | Covers                                                                                                                                                 |
-| --- | ----------------------------------------------------------------------------------------------- | ---------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | [One `Offer`, and the six rule modules unified](archive/one-offer-and-the-six-rule-modules.md)  | app              | —          | `Offer` absorbs `ActOptions`, `tooltip` becomes required, the refused branch carries a `Refusal`, the six modules gain `controls()`                    |
-| 2   | [The ten inline editors get a rule module](archive/the-ten-inline-editors-get-a-rule-module.md) | app              | 1          | `rules/<editor>.ts` extracted from each editor that computes offers beside its DOM code                                                                |
-| 3   | [Situations, and the derived model](archive/situations-and-the-derived-model.md)                | app              | 1, 2       | The fixture list, the headless driver, the zod schema, `ux-model.json`, and the three lint rules the derived tier answers                              |
-| 4   | [Pseudo-commands, and a control's list of effects](pseudo-commands-and-a-controls-effects.md)   | app              | 1          | The closed effect vocabulary in the catalog, closures rewritten as recorded effects, and the three rules effects unlock                                |
-| 5   | Disabling menu items, and refusals that carry a reason                                          | `vendor/path.ux` | —          | **Already written and complete**, and the authority on its own scope: `menu-item-disabling.md`, stages 1-5 done, stage 6 (the native menu bar) dropped |
-| 6   | Finishing the meta-tag system                                                                   | `vendor/path.ux` | 5          | A `widgetPath` scheme, a `refusal` accessor on `StdUXMeta`, a validating deserialize, and the `toolPath` builders                                      |
-| 7   | The measured tier reads tags                                                                    | app              | 3, 6       | `act()` writes a `StdUXMeta`, the sweep walks widgets instead of `window.__vnAnchors`, derived compared against measured                               |
-| 8   | `affects` on every command, and the executed tier                                               | app              | —          | Each command declaring the subtrees and `ui.*` fields it may touch, verified by diffing the undo snapshot                                              |
+| #   | Plan                                                                                                  | Where            | Depends on | Covers                                                                                                                                                 |
+| --- | ----------------------------------------------------------------------------------------------------- | ---------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | [One `Offer`, and the six rule modules unified](archive/one-offer-and-the-six-rule-modules.md)        | app              | —          | `Offer` absorbs `ActOptions`, `tooltip` becomes required, the refused branch carries a `Refusal`, the six modules gain `controls()`                    |
+| 2   | [The ten inline editors get a rule module](archive/the-ten-inline-editors-get-a-rule-module.md)       | app              | 1          | `rules/<editor>.ts` extracted from each editor that computes offers beside its DOM code                                                                |
+| 3   | [Situations, and the derived model](archive/situations-and-the-derived-model.md)                      | app              | 1, 2       | The fixture list, the headless driver, the zod schema, `ux-model.json`, and the three lint rules the derived tier answers                              |
+| 4   | [Pseudo-commands, and a control's list of effects](archive/pseudo-commands-and-a-controls-effects.md) | app              | 1          | The closed effect vocabulary in the catalog, closures rewritten as recorded effects, and the four rules effects unlock                                 |
+| 5   | Disabling menu items, and refusals that carry a reason                                                | `vendor/path.ux` | —          | **Already written and complete**, and the authority on its own scope: `menu-item-disabling.md`, stages 1-5 done, stage 6 (the native menu bar) dropped |
+| 6   | Finishing the meta-tag system                                                                         | `vendor/path.ux` | 5          | A `widgetPath` scheme, a `refusal` accessor on `StdUXMeta`, a validating deserialize, and the `toolPath` builders                                      |
+| 7   | The measured tier reads tags                                                                          | app              | 3, 6       | `act()` writes a `StdUXMeta`, the sweep walks widgets instead of `window.__vnAnchors`, derived compared against measured                               |
+| 8   | `affects` on every command, and the executed tier                                                     | app              | —          | Each command declaring the subtrees and `ui.*` fields it may touch, verified by diffing the undo snapshot                                              |
 
 Plans 1, 2, 3 and 7 are the model itself. Plan 4 widens its vocabulary past commands.
 Plans 5 and 6 are submodule work committed separately, and 5 is already planned there.
@@ -180,10 +180,10 @@ its own tier makes checkable rather than deferring them to a plan of their own.
 | A disabled control states why, in the stack's own words          | 3 ✔  | Compares `refusal.reason`, never `refusal.description`; see the section above                                                                                                                                                                                         |
 | A command has at least one control, or is listed as palette-only | 3 ✔  | Replaces `FLOOR`, which is a count rather than a list                                                                                                                                                                                                                 |
 | The committed model was derived after the last `editors/**` edit | 3 ✔  | Answered by construction: `ux-model.json` carries no sha, and a jest test fails until it equals a regeneration ([`archive/situations-and-the-derived-model.md#decisions-this-plan-settles`](archive/situations-and-the-derived-model.md#decisions-this-plan-settles)) |
-| A surface opens an editor only through the sparing rule          | 4    | Needs `effects` carrying a pane field                                                                                                                                                                                                                                 |
-| A mutating command reachable from a menu is undoable or confirms | 4    | Needs `effects` plus the catalog                                                                                                                                                                                                                                      |
-| A keyboard shortcut is bound once                                | 4    | Needs `key.bind` as a recorded effect                                                                                                                                                                                                                                 |
-| Two controls in one pane share a key only with a discriminator   | 4    | Needs `key` and `on` on the record                                                                                                                                                                                                                                    |
+| A surface opens an editor only through the sparing rule          | 4 ✔  | Over every `view.open` in the model: no `where` or `elsewhere`; `here` only on a row `routeFor` placed; `popup` only for the agent report; nothing splits (`src/main/tests/uxmodel.test.ts`)                                                                          |
+| A mutating command reachable from a menu is undoable or confirms | 4 ✔  | Over every menu record run on the click, against the registry's `mutating`, `undoable` and `confirm`; `rules/menuexempt.ts` lists the six allowed exceptions with reasons, and a dead exemption fails                                                                 |
+| A keyboard shortcut is bound once                                | 4 ✔  | `key.bind` is a property, not an effect: `rules/shortcuts.ts` is the one table, a combination appears once per scope, and an editor takes a shell combination only with `shadows: true`                                                                               |
+| Two controls in one pane share a key only with a discriminator   | 4 ✔  | `keyOf` gives `cmd:`, `item:` and `fx:` keys with `#<on>`; `duplicateKeys` per situation, and no key from two modules of one home                                                                                                                                     |
 | Enabled state agrees with `stack.check`                          | —    | Already checked by the sweep; plan 7 carries it across and adds wording                                                                                                                                                                                               |
 | The ring lands on the control                                    | —    | Already checked by the sweep; plan 7 carries it across                                                                                                                                                                                                                |
 | A bound path resolves on the api its own pane carries            | 7    | Reads `DataAPI.lastResolveError`; see the note below on taking it early                                                                                                                                                                                               |
@@ -208,8 +208,10 @@ Routing the two reports' open decisions, so no plan starts by rediscovering them
   them too).
 - **Plan 3** — whether the model is committed or generated in CI and compared, and where
   it lives; the situation list itself; which rules block CI and which are advisory.
-- **Plan 4** — the exact pseudo-command vocabulary, and whether `key.bind` is an effect or
-  a property of a control.
+- **Plan 4** (answered) — twelve effects, listed in
+  [`archive/pseudo-commands-and-a-controls-effects.md#decisions-this-plan-settles`](archive/pseudo-commands-and-a-controls-effects.md#decisions-this-plan-settles);
+  `key.bind` is a property of the control it duplicates, held in `rules/shortcuts.ts` and
+  stamped on the record as `shortcut`.
 - **Plan 5** — the tooltip expander the long form is written for, which `tooltipText`
   appends in the meantime. Whether a refusal disables a control is already answered: it
   does not, and a refusal on an enabled control is not shown at all.
@@ -224,21 +226,28 @@ Routing the two reports' open decisions, so no plan starts by rediscovering them
 ## What the numbers are today
 
 Measured from the committed `apps/desktop/ux-model.json` and `apps/desktop/anchors.json`
-(both after plan 3, 2026-09-08) and the source.
+(both after plan 4, 2026-09-08) and the source.
 
-- Derived: 69 situations over 17 modules, 427 records (375 from `controls`, 52 from the
-  tree's menu), 66 commands with a control, and 75 palette-only entries covering the other
-  104 of the registry's 170. A record's `situation` is a `module` plus a name (`assetview`
-  / `portrait-unapproved`) rather than the research's `portrait:unapproved`.
-- Measured: 170 commands in the registry, 51 with a control on file, 139 records, 0
-  strays, 0 enabled-state disagreements, 0 `wording` disagreements.
-- 13 editor homes appear in the sweep. Fifteen files under `renderer/pathux/editors/` call
-  the anchor layer's `act()` or `record()`. The notification popup in `chrome/` does not:
-  its `act` is a local wrapper over `exec`, and its four `notify.*` controls are not
-  anchors.
-- `renderer/rules/` holds 41 modules and about 6,200 lines. Every one of the fifteen
-  anchor homes has a module that returns its offers through `controls(state)`; no editor
-  computes an offer inline.
+- Derived: 135 situations over 29 modules (23 rule modules, the pin toggle counted once,
+  and six menu sources), 1244 records (981 from `controls`, 263 from the menus), 95
+  commands with a control, 12 of the twelve effects offered, 64 palette-only entries
+  covering the other 75 of the registry's 170, 20 shortcuts and 6 menu exemptions. 139
+  control records are refused, 5 of them worded by the stack, and 41 carry a `shortcut`. A
+  record's `situation` is a `module` plus a name (`assetview` / `portrait-unapproved`)
+  rather than the research's `portrait:unapproved`.
+- Measured: 170 commands in the registry, 78 with a control on file and 10 of the twelve
+  effects drawn, 429 records (339 controls, 90 menu entries), 0 strays, 0 enabled-state
+  disagreements, 0 `wording` disagreements, and every live keymap agreeing with the
+  shortcut table.
+- 20 homes appear in the sweep: the editors, the onboarding pane and the three toolbar
+  popups, opened by pressing their header controls. The header's own anchors are live in
+  every dump. Every file under `renderer/pathux/editors/` and the three popups in
+  `chrome/` draw through `act()`, `record()` or `pick()`; the notification popup's five
+  `notify.*` controls are anchors like any other.
+- `renderer/rules/` holds the rule modules, the menu table, the shortcut table and the
+  effect helpers. Every anchor home has a module that returns its offers through
+  `controls(state)`; no editor computes an offer inline, and no editor runs a closure with
+  no record.
 - 94 of the command definitions declare `mutating: true`, which is the population plan 8's
   executed-tier test runs against.
 - 16 builder sites write the `datapath` attribute. The desktop registers no path.ux
@@ -312,8 +321,8 @@ work, and the second one matters to the tooltip rule.
       [`archive/the-ten-inline-editors-get-a-rule-module.md`](archive/the-ten-inline-editors-get-a-rule-module.md))
 - [x] 3 — situations, and the derived model (shipped 2026-09-08:
       [`archive/situations-and-the-derived-model.md`](archive/situations-and-the-derived-model.md))
-- [ ] 4 — pseudo-commands, and a control's list of effects (written:
-      [`pseudo-commands-and-a-controls-effects.md`](pseudo-commands-and-a-controls-effects.md))
+- [x] 4 — pseudo-commands, and a control's list of effects (shipped 2026-09-08:
+      [`archive/pseudo-commands-and-a-controls-effects.md`](archive/pseudo-commands-and-a-controls-effects.md))
 - [ ] 5 — disabling menu items, and refusals that carry a reason (path.ux, already
       planned)
 - [ ] 6 — finishing the meta-tag system (path.ux)

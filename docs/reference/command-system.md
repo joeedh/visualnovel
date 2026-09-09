@@ -18,6 +18,7 @@
     - [The `doc.` namespace](#the-doc-namespace)
     - [The `prompt.` namespace](#the-prompt-namespace)
     - [Interactions: the gesture surface](#interactions-the-gesture-surface)
+    - [Effects: what a surface does to itself](#effects-what-a-surface-does-to-itself)
     - [Preconditions: asking before acting](#preconditions-asking-before-acting)
 - [Reaching the commands](#reaching-the-commands)
     - [From the renderer](#from-the-renderer)
@@ -689,6 +690,32 @@ gesture receives the branch graph. The registry is untyped in its state
 (`InteractionRegistry`, `State = any`) for the same reason. The carried value is always a
 string. An interaction with structure encodes it (`arrival__beat1#end`) and parses it in
 `targets`, refusing a token that names nothing against the `UNRESOLVED` target.
+
+### Effects: what a surface does to itself
+
+A command names something the app does to the project. Most of what a pane's controls do
+is not that: a row selects a scene, a twisty opens a tree node, a button drops a menu or
+reloads a pane, a handle arms a drag, an arrow undoes. Those were closures with no name,
+so the derived UX model could not list them and no rule could read them.
+
+An effect is a registered name for one of those. Twelve are declared in
+`apps/desktop/src/shared/effects.ts` (`ui.publish`, `tree.expand`, `menu.open`,
+`popup.open`, `popup.close`, `pane.view`, `pane.scroll`, `pane.pin`, `screen.arrange`,
+`drag.start`, `history.move`, `agent.answer`), each with a title, a description and typed
+props whose closed values are `prop.oneOf` lists. `EffectRegistry` in `@vn/commands` holds
+them beside the commands, and its `verify` fails the build if an effect id is also a
+command id or a `drag.start` value names no interaction. `catalogOf` projects them into
+`commands.json` under `effects`, additive like `interactions`, so a consumer that knows
+only commands reads the file unchanged.
+
+An effect has no `run`, no `check` and no provenance. Its handler stays a closure in the
+renderer, given to `act()` beside the offer that names it, and the palette, the DSL and
+CDP cannot run one: `vn.exec('pane.view(what=reload)')` is not a thing. A control's offer
+lists what its click does in order, a command or an effect first and a `then` list after,
+and the anchor layer and `ux-model.json` record the list as written
+([`guided-tours.md#offers`](guided-tours.md#offers)). That is the one place the "every
+desktop action is a registered command" rule bends: an effect is registered and named, but
+only a click reaches it.
 
 ### Preconditions: asking before acting
 

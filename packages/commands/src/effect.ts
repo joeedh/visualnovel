@@ -5,7 +5,7 @@
  * to itself: publish a selection, expand a tree node, open a menu, change what a pane shows, arm a
  * drag. It adds naming and typed props and nothing else. It has no `run`, no `check` and no
  * provenance, because the handler stays a closure beside the record that names it, and the model
- * reads the record. See `docs/plans/archive/INDEX.md#pseudo-commands-and-a-controls-effects`.
+ * reads the record. See `docs/plans/archive/pseudo-commands-and-a-controls-effects.md`.
  *
  * The load-bearing rule is that an effect id and a command id never coincide, so a record's `id`
  * names one thing in one registry. `verify` is what enforces it, at build time.

@@ -6,10 +6,10 @@ that control, then moves to the next step. The tour never performs a step itself
 
 To highlight a control, the app needs a mapping from commands to the DOM elements that run
 them. The anchor layer holds that mapping. Every control an editor draws registers an
-anchor recording which command a click on it runs and with which props. Part I covers the
-anchor layer, Part II covers the tour built on it, and Part III covers the derived model:
-the same offers, run over hand-written situations with no app, written to a committed
-file.
+anchor recording which command or effect a click on it runs, with which props, and what
+follows. Part I covers the anchor layer, Part II covers the tour built on it, and Part III
+covers the derived model: the same offers, run over hand-written situations with no app,
+written to a committed file.
 
 <!-- toc -->
 
@@ -47,12 +47,12 @@ file.
 ## Design rule
 
 An anchor is registered from the same object that installs the control's click handler.
-`act()` in `renderer/pathux/tour/anchors.ts` takes one `Offer` (the command id and props
-the control runs, its label, its tooltip and its refusal), sets `node.onclick` from it,
-greys the node and writes its tooltip from it, and records the anchor from it. A separate
-annotation (a `data-command` attribute, for example) would be a description of the handler
-and could drift from it when the control is rewired. Sharing one object makes drift
-impossible, and it makes a hand-written tooltip beside the call a second copy that
+`act()` in `renderer/pathux/tour/anchors.ts` takes one `Offer` (the command or effect the
+control runs and its props, its label, its tooltip and its refusal), sets `node.onclick`
+from it, greys the node and writes its tooltip from it, and records the anchor from it. A
+separate annotation (a `data-command` attribute, for example) would be a description of
+the handler and could drift from it when the control is rewired. Sharing one object makes
+drift impossible, and it makes a hand-written tooltip beside the call a second copy that
 `applyOffer` overwrites.
 
 The same principle covers refusals. When a command cannot run, the tour displays the
@@ -68,8 +68,13 @@ the control runs or the refusal that greys it, and on both branches everything t
 records and the node shows (`renderer/rules/anchors.ts`):
 
 ```ts
+interface Action {
+    id: string; // a command id, or an effect id
+    props: Record<string, PropValue>;
+}
+
 interface Control {
-    id: string;
+    id: string; // a command id, or an effect id
     label: string; // a button's text, a field's placeholder
     tooltip: string; // the control's own sentence
     on?: string; // tells twins apart: a chunk key, a task hash
@@ -78,7 +83,7 @@ interface Control {
 }
 
 type Offer =
-    | (Control & { ok: true; props: Record<string, PropValue> })
+    | (Control & { ok: true; props: Record<string, PropValue>; then?: readonly Action[] })
     | (Control & { ok: false; refusal: Refusal });
 ```
 
@@ -88,6 +93,37 @@ rule module hold one shape. A refused literal is written
 control is always registered as an anchor: a tour asked for that command highlights the
 greyed control and shows the refusal the rule wrote, instead of reporting that the command
 has no control.
+
+An offer's `id` names a command, which main runs, or an effect: a name for what a control
+does to its own surface without a command. The twelve effects are declared in
+`src/shared/effects.ts` and registered in `@vn/commands`' `EffectRegistry` beside the
+commands. `verify` refuses an id both registries hold and a `drag.start` value no
+interaction declares, and `commands.json` carries them under `effects`. An effect has no
+`run`, no `check` and no provenance. Its handler is the closure `act()` is given, and the
+palette and CDP cannot run one. `rules/effects.ts` exports one typed helper per effect
+(`publish`, `expand`, `openMenu`, `openPopup`, `closePopup`, `view`, `scrollTo`, `pin`,
+`arrange`, `startDrag`, `move`, `answer`), each returning an `Action`, so a misspelt value
+is a compile error there and a parse error in the driver's test.
+
+| Effect           | Props                                         | What it names                                                                                   |
+| ---------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `ui.publish`     | the `ui.*` fields it sets                     | A click that selects a subject: a tree row, a card, a thumbnail.                                |
+| `tree.expand`    | `node`, or `*` for all                        | Opening or closing a tree node, or every node at once.                                          |
+| `menu.open`      | `menu`, from `MENUS`                          | Dropping a menu, each entry of which is a command or an effect of its own.                      |
+| `popup.open`     | `popup`, from `POPUPS`                        | Opening the palette, the picker, a toolbar popup, the report preview, or an inline box (`box`). |
+| `popup.close`    | `popup`                                       | A Cancel or Close on a popup or an inline box.                                                  |
+| `pane.view`      | `what`, from `VIEWS`                          | Changing what a pane shows: reload, fit, tidy, filter, scope, mode, page, step, mark.           |
+| `pane.scroll`    | `to`                                          | Bringing something already on the pane into view.                                               |
+| `pane.pin`       | `pinned`                                      | The pin toggle in a pinnable pane's header.                                                     |
+| `screen.arrange` | `what: 'split' \| 'close'`                    | The View menu's Split Area and Close Pane… gestures.                                            |
+| `drag.start`     | `interaction`, an id the interactions declare | Arming a gesture: a rail, a handle, a bracket, a line's grip.                                   |
+| `history.move`   | `to: 'undo' \| 'redo'`                        | The header's arrows, the Edit menu's rows and the shell's keys.                                 |
+| `agent.answer`   | `to`, `answer`                                | Approving or rejecting a plan, allowing or denying a confirm, replying to a question.           |
+
+`then` is what the click does after the first action, in order. A document-tree row is
+`{ id: 'ui.publish', props: { sceneId }, then: [{ id: 'view.open', props: route }] }`: it
+selects, then opens the editor `routeFor` picked. The anchor and the model record the list
+unchanged.
 
 Every anchor home has a rule module, and the module is where its offers are built. Each
 module exports `controls(state)`, the list of every offer it can produce for a state, over
@@ -99,34 +135,45 @@ test asserts that the list's keys are the union of the module's functions' keys 
 or three states and that `duplicateKeys` finds none. The table below is the one the
 derived model's driver iterates (`renderer/rules/model.ts`, Part III).
 
-| Home         | Module                       | State                                           |
-| ------------ | ---------------------------- | ----------------------------------------------- |
-| `header`     | `rules/headerbar.ts`         | `HeaderState`                                   |
-| `asset`      | `rules/assetview.ts`         | `AssetInfo \| undefined`                        |
-|              | `rules/promptview.ts`        | `PromptView`, and which clauses have a box open |
-| `branches`   | `rules/branch/controls.ts`   | `BranchState`                                   |
-| `convo`      | `rules/convobar.ts`          | `ConvoBarState`                                 |
-| `documents`  | `rules/documents.ts`         | `DocumentsState`                                |
-| `gengraph`   | `rules/gengraph.ts`          | `GroupState`                                    |
-| `onboarding` | `rules/onboarding.ts`        | `OnboardingState`                               |
-| `project`    | `rules/projectbar.ts`        | `ProjectBarState`                               |
-| `report`     | `rules/reportconvo.ts`       | `ReportControls`                                |
-| `script`     | `rules/script.ts`            | `ScriptPageState`                               |
-| `skills`     | `rules/skills.ts`            | `SkillsState`                                   |
-| `taskgraph`  | `rules/taskGraph.ts`         | `GateState`                                     |
-| `tasklist`   | `rules/tasklist.ts`          | `TaskListState`                                 |
-| `timeline`   | `rules/timeline/controls.ts` | `TimelineState`                                 |
-| `wiki`       | `rules/wiki.ts`              | `WikiState`                                     |
+| Home                | Module                       | State                                             |
+| ------------------- | ---------------------------- | ------------------------------------------------- |
+| `header`            | `rules/headerbar.ts`         | `HeaderState`                                     |
+| `notifications`     | `rules/notifications.ts`     | `NotificationsState`                              |
+| `approvals`         | `rules/approvals.ts`         | `ApprovalsState`                                  |
+| `diagnostics`       | `rules/diagnostics.ts`       | `DiagnosticsState`                                |
+| `asset`             | `rules/assetview.ts`         | `AssetInfo \| undefined`, and the chip to go back |
+|                     | `rules/promptview.ts`        | `PromptView`, and which clauses have a box open   |
+| `branches`          | `rules/branch/controls.ts`   | `BranchState`                                     |
+| `convo`             | `rules/convobar.ts`          | `ConvoBarState`                                   |
+| `documents`         | `rules/documents.ts`         | `DocumentsState`                                  |
+| `gengraph`          | `rules/gengraph.ts`          | `GroupState`                                      |
+| `inspector`         | `rules/inspector.ts`         | `InspectorState`                                  |
+| `onboarding`        | `rules/onboarding.ts`        | `OnboardingState`                                 |
+| `play`              | `rules/play.ts`              | `PlayState`                                       |
+| `project`           | `rules/projectbar.ts`        | `ProjectBarState`                                 |
+| `report`            | `rules/reportconvo.ts`       | `ReportControls`                                  |
+| `script`            | `rules/script.ts`            | `ScriptPageState`                                 |
+| `skills`            | `rules/skills.ts`            | `SkillsState`                                     |
+| `systemprompt`      | `rules/systemprompt.ts`      | `SystemPromptState`                               |
+| `taskgraph`         | `rules/taskGraph.ts`         | `GateState`                                       |
+| `tasklist`          | `rules/tasklist.ts`          | `TaskListState`                                   |
+| `timeline`          | `rules/timeline/controls.ts` | `TimelineState`                                   |
+| `wiki`              | `rules/wiki.ts`              | `WikiState`                                       |
+| every pinnable pane | `rules/pin.ts`               | `PinState`, over the pane's `PinField`            |
 
-The asset home has two modules, one for the bytes and one for the prompt, and a driver
-concatenates them. The wiki and skills panes share `rules/docbuffer.ts`, whose `saveOffer`
-is what `DocBuffer.saveOffer` delegates to. A module runs under the node-only desktop jest
-project, which maps no `pathux` module, so it imports from `pathux` type-only.
+The three toolbar popups are homes like the header: present whenever the app is, drawn
+under a pass that is replaced on render, and swept by pressing the toolbar control that
+opens each. The asset home has two modules, one for the bytes and one for the prompt, and
+a driver concatenates them. The pin toggle is one module drawn by the base editor in each
+of the six panes that declare `pins`. The wiki and skills panes share
+`rules/docbuffer.ts`, whose `saveOffer` is what `DocBuffer.saveOffer` delegates to. A
+module runs under the node-only desktop jest project, which maps no `pathux` module, so it
+imports from `pathux` type-only.
 
 ### Recording anchors
 
 - `redrawing(editor, part)` starts a recording pass and returns an `AnchorPass`. Its
-  `act`, `record`, `item` and `pickItem` methods add anchors to the pass.
+  `act`, `record` and `pick` methods add anchors to the pass.
 - Each pass replaces the previous pass for the same `editor/part` in full and increments a
   global generation counter. This is required because `rebuildBody()` clears the editor
   surface with `surface.textContent = ''` on every redraw, so a DOM reference from an
@@ -159,17 +206,26 @@ The fields every offer carries beyond `id` and `props`:
 | `supplies` | Prop names whose values are read from the widget when the command runs (a textarea's text, a typed id).                 |
 | `form`     | A click opens the command's form in the palette instead of running it; every prop is entered there.                     |
 | `on`       | A discriminator appended to the key when one pane has several controls for the same command (a chunk key, a task hash). |
+| `then`     | What the click does after the first action, in order: a row that selects and then opens an editor.                      |
 
-A control that selects a subject rather than running a command is recorded through
-`item()` or `pickItem()` with its `item:` key and the `ui.*` fields it publishes.
+A control that selects a subject is a `ui.publish` offer from its module, with the `ui.*`
+fields it publishes as props and `on` set to `<kind>/<key>`. It is recorded rather than
+acted, because none of those sites installs its click through the anchor: `record()` for a
+DOM row, `pick()` for a graph card. A control whose click path.ux owns (a checkbox's
+`on_change`, a handle's `pointerdown`, a box committed on blur) is recorded the same way.
 
 ### Keys
 
-- Command anchors take the form `cmd:<id>`, or `cmd:<id>#<on>` when `on` is given.
-- An item anchor is written `item:<kind>/<key>` and marks a control that selects something
-  (a scene row, an asset thumbnail). `<key>` must be a domain id, never an index, a
-  position or a label. An index changes on re-sort, and tree labels are only made unique
-  when two of them collide.
+- `keyOf(offer)` gives one of three prefixes. A command anchor is `cmd:<id>`, or
+  `cmd:<id>#<on>` when `on` is given.
+- A `ui.publish` offer is `item:<on>`, where `on` is `<kind>/<key>` and is required, so a
+  row that selects something (a scene row, an asset thumbnail) keeps the key a tour's
+  `select` step names. `<key>` must be a domain id, never an index, a position or a label.
+  An index changes on re-sort, and tree labels are only made unique when two of them
+  collide.
+- Any other effect is `fx:<id>`, or `fx:<id>#<on>`: `fx:pane.view#reload`,
+  `fx:popup.open#notifications`. `openerKey(popup)` is the key of the toolbar control that
+  opens a popup, which a `popup-closed` resolution rings.
 - Every document-tree row also has a `data-anchor="<kind>/<key>"` attribute. The sweep
   script (below) uses it to click a row and select a subject without depending on the
   tree's DOM structure.
@@ -182,7 +238,7 @@ route determines how the anchor is verified.
 |               | `dom`                           | `pick`                                             |
 | ------------- | ------------------------------- | -------------------------------------------------- |
 | Click target  | the node itself                 | the canvas beneath the node                        |
-| Registered by | `act()` / `record()`            | `pickItem()`                                       |
+| Registered by | `act()` / `record()`            | `pick()`                                           |
 | Verified by   | a hit test at the node's centre | calling the canvas's `pick()` at the node's centre |
 
 The graph editors draw node boxes in a layer with `pointer-events: none`, so clicks pass
@@ -192,12 +248,17 @@ a rect copied at draw time would be stale by the next frame.
 
 ### The registry
 
-- `window.__vnAnchors` exposes `generation()`, `dump()`, `tree()` and `strays()`. It is
-  present in production builds, unlike `window.__vnDebug`, because the tour uses it at
-  runtime.
+- `window.__vnAnchors` exposes `generation()`, `dump()`, `menus()`, `strays()`,
+  `shortcuts()` and `press(key)`. `menus()` lists every menu entry from the menu table,
+  `shortcuts()` compares each live keymap with the shortcut table, and `press` clicks the
+  control an anchor names, which is how the sweep opens each toolbar popup. It is present
+  in production builds, unlike `window.__vnDebug`, because the tour uses it at runtime.
 - `anchorSnapshot(open)` produces the `LiveAnchors` object the resolver reads. The caller
-  passes the list of open panes, because only the pane mesh holds that list. The registry
-  itself computes which anchors are offscreen from their rects.
+  passes the list of open panes, because only the pane mesh holds that list. The header is
+  always in the snapshot, and so is each toolbar popup (`notifications`, `approvals`,
+  `diagnostics`) while it is open; `popupOpened` and `popupClosed` tell the registry
+  which. The registry itself computes which anchors are offscreen from their rects,
+  counting one whose middle a scrolling ancestor clips.
 - Anchors for a pane that is not open stay in the registry but are excluded from the
   snapshot. path.ux detaches an area on a tab switch and does not redraw it when the tab
   returns, so the anchor records cannot be dropped when the pane closes.
@@ -208,12 +269,15 @@ Before any pane is open, the tour must determine which editors draw a control fo
 command (which pane has the `prompt.condense` button?). The anchor map (`ANCHOR_MAP`)
 lists the editors that draw a control for each command, and it comes from two sources:
 
-- The document tree's right-click menu is derived from `menuFor`, which is plain data, so
-  `window.__vnAnchors.tree()` enumerates those entries without opening a pane.
+- Every menu is data (`rules/menus.ts`), so `window.__vnAnchors.menus()` lists the tree's,
+  the shot, line and card menus', the Threads menu's and the header's entries without
+  opening one.
 - `scripts/sweep-anchors.mjs` takes the measurement. It connects to a running app over
-  CDP, opens each editor in turn, dumps the anchors, and writes
-  `apps/desktop/anchors.json`. The file is committed at the app root (rather than under
-  the gitignored `dist/`) so that a change in coverage appears in review as a diff.
+  CDP, opens each editor in turn, dumps the anchors, presses the opener of each toolbar
+  popup and dumps that too, reads each live keymap against the shortcut table, and writes
+  `apps/desktop/anchors.json`. It asks `stack.check` about command anchors only, since the
+  stack knows no effect. The file is committed at the app root (rather than under the
+  gitignored `dist/`) so that a change in coverage appears in review as a diff.
 
 `anchors.json` records the project title along with the scene and shot that were selected
 when the anchors were measured, because many controls are only drawn when a subject is
@@ -233,9 +297,11 @@ node scripts/sweep-anchors.mjs          # second shell, VN_CDP_PORT set to that 
 `scripts/cdp.mjs` defaults to 9222, so set `VN_CDP_PORT` in the second shell if the
 launcher printed a different port.
 
-The sweep formats what it writes, since `pnpm lint` checks `anchors.json` like any other
-file. Revert a run that changes nothing but the `sweptAt` and `gitSha` lines rather than
-committing it, because the file exists to record coverage.
+The sweep's summary line says how many commands have an anchor and how many of the twelve
+effects are drawn, and it lists per editor the derived commands the swept project never
+showed. The sweep formats what it writes, since `pnpm lint` checks `anchors.json` like any
+other file. Revert a run that changes nothing but the `sweptAt` and `gitSha` lines rather
+than committing it, because the file exists to record coverage.
 
 ### Resolution
 
@@ -251,12 +317,14 @@ tests. It returns one of:
 | `offscreen`     | The matching anchor is scrolled out of the window.                                | Scroll it into view and resolve again.       |
 | `wrong-subject` | Anchors exist for the command id, but their props conflict with the step's.       | Ring the row that selects the right subject. |
 | `pane-closed`   | The map lists editors for this command, and none of them is open.                 | Say which pane to open.                      |
+| `popup-closed`  | The map lists only a toolbar popup for this command, and it is shut.              | Ring the toolbar control that opens it.      |
 | `absent`        | An editor the map lists is open, but it is not drawing the control now.           | Fall back to the palette.                    |
 | `unanchored`    | The map lists no editor for this command.                                         | Fall back to the palette.                    |
 
-An anchor is a candidate only if it carries a command id. An `item:` anchor carries none.
-A step whose own id is missing (a malformed step read from JSON that was not an object)
-therefore matches nothing rather than every row on screen.
+A candidate is an anchor whose `id` equals the step's. A row that selects a subject has
+the id `ui.publish`, so a step naming a command never lands on a row, and a step whose own
+id is missing (a malformed step read from JSON that was not an object) matches nothing
+rather than every anchor on screen.
 
 `absent` and `unanchored` are kept distinct, for the same reason that
 `Interaction.targets` distinguishes an empty target list from `UNRESOLVED`. `absent`
@@ -282,7 +350,7 @@ nor supplies (free text, a flag, a step naming a prop this control does not take
 name nothing the author could select. Keeping the two apart makes the search below sound.
 
 `resolveSubject` runs that search. It looks at the held props' string values and finds an
-anchor that selects one of them two ways: an item anchor whose click `publishes` that
+anchor that selects one of them two ways: a `ui.publish` anchor whose props carry that
 value (an asset hash, a `sceneId`), or one whose item key is that value read as a kind and
 a key (`character:aiko` → `item:character/aiko`). The pane that gave the mismatch is
 preferred, so the pane the author is already looking at retargets. Empty values are
@@ -291,9 +359,9 @@ skipped, since a click that clears a field publishes `''`.
 Two cases do not resolve. Both are handled explicitly rather than ignored:
 
 - A rung below the entity (`character:aiko/gala`, `shot:greet/s2`) has no document-tree
-  node and no `publishes` record, so the step is `blocked` and names the subject. Blocking
-  is the right outcome, because otherwise the author's art note would be written onto
-  whichever rung the pane was showing.
+  node and no `ui.publish` anchor, so the step is `blocked` and names the subject.
+  Blocking is the right outcome, because otherwise the author's art note would be written
+  onto whichever rung the pane was showing.
 - If the held props name nothing, the control supplies the answer itself. The answer is
   the ring as before, unless the control is greyed, in which case the answer is the
   control's refusal. A refused offer is recorded with no props at all, so a greyed control
@@ -304,10 +372,11 @@ Two cases do not resolve. Both are handled explicitly rather than ignored:
 Both halves of the layer are checked against an independent source:
 
 - Checks enabled state against `stack.check`. The sweep calls `stack.check` for every
-  anchor it records and reports (without fixing) each case where the control's enabled
-  state disagrees with the stack's verdict. This caught the branch editor drawing
-  `delete <scene>` enabled for the entry scene, which main refuses to delete. The editor
-  was calling `stack.check` only on hover, and now calls it when the button is drawn.
+  command anchor it records (an effect is not the stack's to judge) and reports (without
+  fixing) each case where the control's enabled state disagrees with the stack's verdict.
+  This caught the branch editor drawing `delete <scene>` enabled for the entry scene,
+  which main refuses to delete. The editor was calling `stack.check` only on hover, and
+  now calls it when the button is drawn.
 
     Anchors with `supplies` or `form` are exempt, because their props are deliberately
     incomplete and the verdict would be about the blank rather than about the project.
@@ -337,17 +406,24 @@ the ring is enlarged to include the hit element's rect.
 CI has no app, no CDP port and no workspace, so the checks are split:
 
 - Blocking: `apps/desktop/src/main/tests/anchorcoverage.test.ts` reads the committed
-  `anchors.json` and fails if a record names a command that no longer exists, if the
-  file's command list differs from the live registry's command list, or if the file's
-  `anchored` list disagrees with its own records.
+  `anchors.json` and fails if a record names a command or an effect that no longer exists
+  (each checked against its own registry), if the file's command list differs from the
+  live registry's command list, or if the file's `anchored` and `effects` lists disagree
+  with its own records.
 - Blocking: `apps/desktop/src/main/tests/uxmodel.test.ts` reads the committed
-  `ux-model.json` beside the registry and `anchors.json`. Every command is the id of some
-  derived record or matches the palette-only list, no entry matches a command a control
-  runs, no entry matches nothing, and every control the sweep drew has a derived record
-  with the same editor, id, `form` and `supplies`. Part III has the rules in full.
+  `ux-model.json` beside the two registries and `anchors.json`. Every command is the id of
+  some derived record or matches the palette-only list, no entry matches a command a
+  control runs, no entry matches nothing, every action names a command or an effect with
+  props the effect accepts, every shortcut binds one of the two, every control the sweep
+  drew has a derived record with the same editor, id, `form` and `supplies`, the menu
+  records agree entry for entry, every `view.open` leaves the pane to the router, and a
+  mutating command a menu runs on the click is undoable, confirms or is exempt with a
+  reason. Part III has the rules in full.
 - Blocking: `apps/desktop/renderer/rules/tests/model.test.ts` fails when `ux-model.json`
-  differs from a fresh derivation, when two records in one situation share a key, or when
-  a fixture's refusing verdict does not surface verbatim.
+  differs from a fresh derivation, when two records in one situation share a key, when a
+  fixture's refusing verdict does not surface verbatim, when an action names an effect the
+  app does not declare or gives it a value its spec refuses, when a declared effect is
+  offered nowhere, or when the shortcut section differs from the table.
 - The sweep is advisory, is run by hand, and is the only place that reports disagreements
   and strays. A `wording` disagreement is a refused control whose derived record says the
   sentence came from the stack, drawn with a sentence the stack did not say.
@@ -553,14 +629,14 @@ that state in a project.
 
 ### The file
 
-`ux-model.json` is `{ situations, records, paletteOnly }`, and its schema is the zod in
-`src/shared/uxmodel.ts` (`UX_MODEL`), every object `.strict()` so a field the schema does
-not name is a parse error. The file carries no timestamp, sha or path. It is a pure
-function of the sources, so the committed copy either equals a regeneration or is stale,
-and a jest test tells the two apart. That is how the staleness rule for a committed
-generated file is answered: by construction rather than by comparing commit shas, which
-would fail on a DOM-only edit that cannot change the derivation and pass on a hand edit
-made after regenerating.
+`ux-model.json` is `{ situations, records, paletteOnly, shortcuts, menuExempt }`, and its
+schema is the zod in `src/shared/uxmodel.ts` (`UX_MODEL`), every object `.strict()` so a
+field the schema does not name is a parse error. The file carries no timestamp, sha or
+path. It is a pure function of the sources, so the committed copy either equals a
+regeneration or is stale, and a jest test tells the two apart. That is how the staleness
+rule for a committed generated file is answered: by construction rather than by comparing
+commit shas, which would fail on a DOM-only edit that cannot change the derivation and
+pass on a hand edit made after regenerating.
 
 ### Situations
 
@@ -581,13 +657,17 @@ keeps `context` and `spent` below 1000, because two of its tooltips go through
 
 ### The driver
 
-`renderer/rules/model.ts` holds a table with one row per rule module: its name, its anchor
-home, its source path, its situations and its `controls`. The asset home's two modules are
-two rows. A seventeenth row is the document tree's menu: `menuFor` run over the exported
-`MENU_NODES` (`renderer/pathux/doctree/doctree.ts`), one node of each kind, under the
-situation `every-kind`. `model()` emits situations in table order and records in table
-order, then situation order, then `controls()` order, so a diff of the file reads in the
-order the app draws.
+`renderer/rules/model.ts` holds a table (`ROWS`) with one row per rule module: its name,
+its anchor home, its source path, its situations and its `controls`. The asset home's two
+modules are two rows, and the pin toggle is one module, `rules/pin.ts`, with a row per
+pinnable pane. A second table, `MENU_ROWS` in `rules/menus.ts`, holds the menus: the
+document tree's right-click over the exported `MENU_NODES`
+(`renderer/pathux/doctree/doctree.ts`, one node of each kind, under the situation
+`every-kind`), the shot, line and card menus over a fixture each, the conversation bar's
+Threads menu, and the header's four menus from `rules/headermenus.ts`. `model()` emits
+situations in table order and records in table order, then situation order, then
+`controls()` order, then the menu records, so a diff of the file reads in the order the
+app draws.
 
 `rules/` importing `doctree.ts` is the one place `rules/` reaches under `pathux/`; the
 file is pure, node-tested, and touches no DOM at load, which the driver's own test proves
@@ -596,22 +676,30 @@ by loading it under jest.
 ### The record
 
 A control record is
-`{ via: 'control', editor, module, situation, key, offer, reasonFrom? }`. `key` is
-`keyOf(offer)`. `offer` is the module's `Offer` projected to its declared fields by
-`pickOffer` (`ok`, `id`, `props`, `label`, `tooltip`, `on?`, `supplies?`, `form?`,
+`{ via: 'control', editor, module, situation, key, offer, effects, reasonFrom?, shortcut? }`.
+`key` is `keyOf(offer)`. `offer` is the module's `Offer` projected to its declared fields
+by `pickOffer` (`ok`, `id`, `props`, `label`, `tooltip`, `on?`, `supplies?`, `form?`,
 `refusal?`): the asset editor's offers carry riders the editor reads back (`act`, `note`,
 `variants`), and those are neither what the control does nor stable across fixtures.
 `reasonFrom: 'stack'` is stamped on a refused record whose reason equals a refusing
 `command:check` verdict found anywhere in the situation's state; the driver finds verdicts
-by shape, because a verdict names no command.
+by shape, because a verdict names no command. `effects` is what the click does, in order:
+`[{ id, props }, ...then]` for an accepted offer and `[{ id }]` for a refused one.
+`shortcut` is stamped where a binding in the editor's scope or the shell's matches the
+first effect by id, `on` and the props the entry names.
 
 A menu record is
-`{ via: 'menu', editor: 'documents', module: 'doctree', situation: 'every-kind', when, id, label, props?, form? }`,
-with `when` the node id as `menuAnchors()` writes it. A menu entry carries no tooltip
-today, and the schema says so.
+`{ via: 'menu', editor, module, situation, when, id, label, tooltip?, props?, on?, supplies?, form?, then?, refused?, shortcut? }`.
+`when` is what the menu was drawn for: the node id for the tree, `shot:<scene>/<id>`,
+`line:<id>` or `card:<id>` for a right-click, `threads` for the conversation bar, and
+`header/<menu>` for the header's, with a submenu's rows under `header/<menu>/<submenu>`.
+`refused` is the entry's own sentence where it is drawn greyed, and a submenu entry is
+recorded as the `menu.open` effect it is.
 
-Item anchors are not in the model: `item()` and `pickItem()` select a subject and run no
-command, and the model's vocabulary is command ids.
+A row that selects a subject is in the model as a `ui.publish` record, keyed
+`item:<kind>/<key>`, whose `then` carries the `view.open` the route opens with. The two
+answers `routeFor` can give (`here` with the claimant visible, `elsewhere` without) are
+two situations each of `documents`, `script` and `wiki`.
 
 `paletteOnly` is `renderer/rules/paletteonly.ts`: the commands no drawn control runs, each
 with a sentence saying where it is reached instead. `match` is a command id, a namespace
@@ -620,21 +708,40 @@ glob can only cover what its sentence covers. A namespace is a glob only where e
 command in it is palette-only for one reason; the script editor's structural `story.*`
 commands are listed by id, so a new one is reported.
 
+`shortcuts` is `renderer/rules/shortcuts.ts` written out: every key binding as
+`{ scope, key, mods, label, runs, on?, shadows?, from? }`, where `scope` is `global`, an
+editor id or `main`, `runs` is the action the key performs, `shadows` marks an editor
+binding that takes a combination the shell also binds, and `from: 'pathux'` marks the Gen
+Graph pane's five, copied from path.ux's node editor. The shell keymap and the Play pane
+build their `HotKey`s from the table through `bindings()`, and the header's menu rows, the
+Gen Graph tooltips and the palette button read `shortcutOf` for their labels, so a binding
+is spelled once. A shortcut is a property of the control it duplicates rather than an
+effect.
+
+`menuExempt` is `renderer/rules/menuexempt.ts`: the mutating commands a menu runs on the
+click that neither undo nor confirm, each with the reason it is allowed to.
+
 ### The rules over the file
 
 Blocking, in jest under `@vn/desktop`:
 
-| Rule                                                                                                                       | Where                                |
-| -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| The file parses under `UX_MODEL`                                                                                           | `renderer/rules/tests/model.test.ts` |
-| The file equals a fresh `model()`; a failure names the first record that differs and says to run `pnpm gen:uxmodel`        | `renderer/rules/tests/model.test.ts` |
-| No two records in one situation share a key                                                                                | `renderer/rules/tests/model.test.ts` |
-| Every refusing verdict in a situation's state surfaces verbatim, as a refused record's reason or an accepted one's tooltip | `renderer/rules/tests/model.test.ts` |
-| The menu records equal `menuAnchors()` entry for entry                                                                     | `renderer/rules/tests/model.test.ts` |
-| Every registry command is the id of some record or matches `paletteOnly`                                                   | `src/main/tests/uxmodel.test.ts`     |
-| No `paletteOnly` entry matches a command a control runs, and none matches nothing                                          | `src/main/tests/uxmodel.test.ts`     |
-| Every control `anchors.json` drew has a derived record with the same editor, id, `form` and `supplies`                     | `src/main/tests/uxmodel.test.ts`     |
-| The menu records in `anchors.json` equal the derived ones as a multiset of `(when, id)`                                    | `src/main/tests/uxmodel.test.ts`     |
+| Rule                                                                                                                                                 | Where                                                                         |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| The file parses under `UX_MODEL`                                                                                                                     | `renderer/rules/tests/model.test.ts`                                          |
+| The file equals a fresh `model()`; a failure names the first record that differs and says to run `pnpm gen:uxmodel`                                  | `renderer/rules/tests/model.test.ts`                                          |
+| No two records in one situation share a key                                                                                                          | `renderer/rules/tests/model.test.ts`                                          |
+| Every refusing verdict in a situation's state surfaces verbatim, as a refused record's reason or an accepted one's tooltip                           | `renderer/rules/tests/model.test.ts`                                          |
+| No key is produced by two modules of one home, over every situation                                                                                  | `renderer/rules/tests/model.test.ts`                                          |
+| The menu records equal `menuRecords()` entry for entry, and the `shortcuts` section equals the table                                                 | `renderer/rules/tests/model.test.ts`                                          |
+| Every action names a command or an effect the app declares, with props the effect accepts; every declared effect is offered                          | `renderer/rules/tests/model.test.ts` and `src/main/tests/uxmodel.test.ts`     |
+| A control whose first effect a binding in its editor's scope or the shell's matches carries that `shortcut`                                          | `renderer/rules/tests/model.test.ts`                                          |
+| Every registry command is the id of some record or matches `paletteOnly`                                                                             | `src/main/tests/uxmodel.test.ts`                                              |
+| No `paletteOnly` entry matches a command a control runs, and none matches nothing                                                                    | `src/main/tests/uxmodel.test.ts`                                              |
+| Every control `anchors.json` drew has a derived record with the same editor, id, `form` and `supplies`                                               | `src/main/tests/uxmodel.test.ts`                                              |
+| The menu records in `anchors.json` equal the derived ones as a set of `(when, id)`                                                                   | `src/main/tests/uxmodel.test.ts`                                              |
+| Every `view.open` leaves the pane to the router: no `where` or `elsewhere`; `here` only on a routed row; `popup` only for the report; nothing splits | `src/main/tests/uxmodel.test.ts`                                              |
+| A mutating command a menu runs on the click is undoable, confirms, or is in `menuExempt` with a reason; no exemption is dead                         | `src/main/tests/uxmodel.test.ts`                                              |
+| A shortcut binds a command or an effect; in one scope a combination is bound once, and an editor takes a shell combination only with `shadows`       | `src/main/tests/uxmodel.test.ts` and `renderer/rules/tests/shortcuts.test.ts` |
 
 The comparison against `anchors.json` runs one way. A derived control the sweep never drew
 is expected while the sweep visits one project state and the model many, so the sweep
@@ -646,7 +753,9 @@ the `(editor, id)` pairs some record marks `reasonFrom: 'stack'`, and for a refu
 in that set compares its reason to the stack's verdict. A refused offer carries no props,
 so an anchor whose command requires one is skipped: the stack, asked about the blank,
 answers with a coercion failure rather than the sentence the pane echoed.
-`refusal.description` is never compared, on either half.
+`refusal.description` is never compared, on either half. Two more advisory reports come
+from the sweep: each live keymap against the shortcut table, by scope, and a toolbar popup
+the header drew no opener for.
 
 ### Regenerating
 
@@ -662,30 +771,41 @@ produces identical bytes.
 
 ## Files
 
-| Path                                       | Contents                                                                                                                                                                      |
-| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `renderer/rules/anchors.ts`                | `Offer`, `refuse`, `keyOf`, `duplicateKeys`, `applyOffer`; anchor and resolution types; `subsumes`, `resolveAnchor`, `resolveItem`, `resolveSubject`, `resolveNamed`, `mapOf` |
-| `renderer/rules/ring.ts`                   | Ring geometry: `ringRect`, `union`, `outset`, `RING_PAD`                                                                                                                      |
-| `renderer/rules/tour.ts`                   | `TourState`, `guide`, `satisfies`; pure, no DOM                                                                                                                               |
-| `renderer/rules/anchormap.ts`              | `ANCHOR_MAP`, loaded from `anchors.json`                                                                                                                                      |
-| `renderer/rules/precheck.ts`               | `checkFor`, `askedAs`: which invocation a ringed anchor is checked with                                                                                                       |
-| `renderer/pathux/tour/anchors.ts`          | The registry: `redrawing`, `act`, `landsOn`, `strayAnchors`                                                                                                                   |
-| `renderer/pathux/interactions/hittest.ts`  | `elementsAt`, `reaches`, `hitFor`: hit testing through shadow roots                                                                                                           |
-| `renderer/pathux/tour/overlay.ts`          | The ring layer and its two timers                                                                                                                                             |
-| `renderer/pathux/tour/tour.ts`             | The running tour; `window.__vnTour`                                                                                                                                           |
-| `renderer/pathux/interactions/gestures.ts` | Per-editor gesture state readers                                                                                                                                              |
-| `src/shared/tours.ts`                      | `Step`, `Tour`, and the curated tours                                                                                                                                         |
-| `src/shared/tourcheck.ts`                  | `readTour`, `checkTour`                                                                                                                                                       |
-| `src/main/commands/tour.ts`                | The `tour.*` commands                                                                                                                                                         |
-| `src/main/agent/showme.ts`                 | The `show_me` agent tool                                                                                                                                                      |
-| `apps/desktop/anchors.json`                | The measured anchor map                                                                                                                                                       |
-| `scripts/sweep-anchors.mjs`                | The sweep that writes it                                                                                                                                                      |
-| `renderer/rules/model.ts`                  | The derived model's driver: the table, `pickOffer`, `refusingVerdicts`, `model()`                                                                                             |
-| `renderer/rules/situations/`               | `situation.ts` (`Situation`, `situations`) and one `SITUATIONS` list per rule module                                                                                          |
-| `renderer/rules/paletteonly.ts`            | `PALETTE_ONLY`: the commands no control runs, with reasons                                                                                                                    |
-| `src/shared/uxmodel.ts`                    | `UX_MODEL` and the record schemas; `paletteMatches`                                                                                                                           |
-| `apps/desktop/ux-model.json`               | The derived model                                                                                                                                                             |
-| `scripts/gen-ux-model.mjs`                 | `pnpm gen:uxmodel`, which writes it                                                                                                                                           |
+| Path                                       | Contents                                                                                                                                                                                                          |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/commands/src/effect.ts`          | `Effect`, `defineEffect`, `EffectRegistry` and its `verify`                                                                                                                                                       |
+| `apps/desktop/src/shared/effects.ts`       | The twelve effects and their value lists (`MENUS`, `POPUPS`, `VIEWS`, …); `isEffectId`, `createDesktopEffects`                                                                                                    |
+| `renderer/rules/effects.ts`                | One typed helper per effect, each returning an `Action`                                                                                                                                                           |
+| `renderer/rules/anchors.ts`                | `Action`, `Offer`, `refuse`, `keyOf`, `effectKey`, `openerKey`, `duplicateKeys`, `applyOffer`; anchor and resolution types; `subsumes`, `resolveAnchor`, `resolveItem`, `resolveSubject`, `resolveNamed`, `mapOf` |
+| `renderer/rules/ring.ts`                   | Ring geometry: `ringRect`, `union`, `outset`, `RING_PAD`                                                                                                                                                          |
+| `renderer/rules/tour.ts`                   | `TourState`, `guide`, `satisfies`; pure, no DOM                                                                                                                                                                   |
+| `renderer/rules/anchormap.ts`              | `ANCHOR_MAP`, loaded from `anchors.json`                                                                                                                                                                          |
+| `renderer/rules/precheck.ts`               | `checkFor`, `askedAs`: which invocation a ringed anchor is checked with                                                                                                                                           |
+| `renderer/pathux/tour/anchors.ts`          | The registry: `redrawing`, `AnchorPass` (`act`, `record`, `pick`), `anchorSnapshot`, `landsOn`, `strayAnchors`, `press`, `menuAnchors`, `shortcutReport`, `popupOpened`, `popupClosed`                            |
+| `renderer/pathux/chrome/showmenu.ts`       | `menuTemplate` and `showContextMenu`: the one menu builder the header and the right-click menus share                                                                                                             |
+| `renderer/pathux/interactions/hittest.ts`  | `elementsAt`, `reaches`, `hitFor`: hit testing through shadow roots                                                                                                                                               |
+| `renderer/pathux/tour/overlay.ts`          | The ring layer and its two timers                                                                                                                                                                                 |
+| `renderer/pathux/tour/tour.ts`             | The running tour; `window.__vnTour`                                                                                                                                                                               |
+| `renderer/pathux/interactions/gestures.ts` | Per-editor gesture state readers                                                                                                                                                                                  |
+| `src/shared/tours.ts`                      | `Step`, `Tour`, and the curated tours                                                                                                                                                                             |
+| `src/shared/tourcheck.ts`                  | `readTour`, `checkTour`                                                                                                                                                                                           |
+| `src/main/commands/tour.ts`                | The `tour.*` commands                                                                                                                                                                                             |
+| `src/main/agent/showme.ts`                 | The `show_me` agent tool                                                                                                                                                                                          |
+| `apps/desktop/anchors.json`                | The measured anchor map                                                                                                                                                                                           |
+| `scripts/sweep-anchors.mjs`                | The sweep that writes it                                                                                                                                                                                          |
+| `renderer/rules/model.ts`                  | The derived model's driver: `ROWS`, `pickOffer`, `refusingVerdicts`, `effectsOf`, `situationRecords`, `model()`                                                                                                   |
+| `renderer/rules/menus.ts`                  | `MENU_ROWS` and `menuRecords`: every menu as data                                                                                                                                                                 |
+| `renderer/rules/headermenus.ts`            | The header's four menus over `HeaderMenuState`                                                                                                                                                                    |
+| `renderer/rules/shortcuts.ts`              | `SHORTCUTS`, `comboOf`, `shortcutOf`, `findShortcut`, `bindings`, `shortcutRecords`                                                                                                                               |
+| `renderer/rules/menuexempt.ts`             | `MENU_EXEMPT`: the mutating menu entries allowed to neither undo nor confirm, with reasons                                                                                                                        |
+| `renderer/rules/route.ts`                  | `routeFor` and `openOf`: which pane a click opens, and the `view.open` a row records                                                                                                                              |
+| `renderer/rules/selection.ts`              | `selectionForNode`, `publishedBy`, `taskPublishes`: what a row publishes                                                                                                                                          |
+| `renderer/rules/pin.ts`                    | `PINNABLE`, `pinAction`: the pin toggle's offer for every pinnable pane                                                                                                                                           |
+| `renderer/rules/situations/`               | `situation.ts` (`Situation`, `situations`), one `SITUATIONS` list per rule module, and `pin.ts`'s `pinSituations(field)`                                                                                          |
+| `renderer/rules/paletteonly.ts`            | `PALETTE_ONLY`: the commands no control runs, with reasons                                                                                                                                                        |
+| `src/shared/uxmodel.ts`                    | `UX_MODEL` and the record schemas; `actionsOf`, `actionProblems`, `paletteMatches`                                                                                                                                |
+| `apps/desktop/ux-model.json`               | The derived model                                                                                                                                                                                                 |
+| `scripts/gen-ux-model.mjs`                 | `pnpm gen:uxmodel`, which writes it                                                                                                                                                                               |
 
 ## See also
 

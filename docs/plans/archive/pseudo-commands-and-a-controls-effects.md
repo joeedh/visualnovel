@@ -1,56 +1,126 @@
 # Pseudo-commands, and a control's list of effects
 
-Status: **in progress**, stages 1 to 4 of 8 committed on branch `effects`; see
-[Progress](#progress). Plan 4 of
-[`ux-behaviour-model-tasklist.md`](ux-behaviour-model-tasklist.md), after
-[`archive/situations-and-the-derived-model.md`](archive/situations-and-the-derived-model.md).
-The derived model names every control that runs a command. This plan names the rest: a
-click that publishes a selection, expands a tree node, opens a menu or a popup, scrolls a
-pane, arms a drag, undoes, or answers the agent. Each becomes an entry in a closed
-vocabulary registered beside the commands, recorded from the same object that installs its
-handler, so the model reads it the way it reads a command. Four lint rules the tasklist
-routes here become checkable once it does: a surface opens an editor only through the
-sparing rule, a mutating command reached from a menu is undoable or confirms, a keyboard
-shortcut is bound once, and two controls in one pane share a key only with a
-discriminator.
+Status: **shipped** 2026-09-08; see [As shipped](#as-shipped). Plan 4 of
+[`../ux-behaviour-model-tasklist.md`](../ux-behaviour-model-tasklist.md), after
+[`situations-and-the-derived-model.md`](situations-and-the-derived-model.md). The derived
+model names every control that runs a command. This plan names the rest: a click that
+publishes a selection, expands a tree node, opens a menu or a popup, scrolls a pane, arms
+a drag, undoes, or answers the agent. Each becomes an entry in a closed vocabulary
+registered beside the commands, recorded from the same object that installs its handler,
+so the model reads it the way it reads a command. Four lint rules the tasklist routes here
+become checkable once it does: a surface opens an editor only through the sparing rule, a
+mutating command reached from a menu is undoable or confirms, a keyboard shortcut is bound
+once, and two controls in one pane share a key only with a discriminator.
 
 This is the largest plan of the batch, as the research report said it would be
-([`../research/ux-behaviour-model.md#pseudo-commands`](../research/ux-behaviour-model.md#pseudo-commands)).
+([`../research/ux-behaviour-model.md#pseudo-commands`](../../research/ux-behaviour-model.md#pseudo-commands)).
 It is staged so that each rule lands with the stage that makes it checkable, and so that
 the first three stages are worth taking on their own.
 
-## Progress
+## As shipped
 
-Branch `effects`, off `master` at `a41360a3`. Stages 1 to 4 are committed and were green
-under `pnpm check`, `pnpm test` and `pnpm lint` when made; the sweep after stage 4 gave 0
-strays and 0 disagreements. Stage 5 was begun and not committed, and its edit was lost
-when the branch was used for other work, so stage 5 starts from the stage-4 commit. The
-branch head (`b3e455c2`) passes `pnpm check` and `pnpm test`, verified 2026-09-08.
+Shipped 2026-09-08 on `effects`, off `master` at `a41360a3`: one commit per stage, and one
+per editor or chrome file in stage 7. `pnpm check`, `pnpm test` and `pnpm lint` are green
+at every commit; every commit touching `renderer/rules/**` or a situation regenerated
+`ux-model.json`, and the palette-only list was edited where its test demanded. Six commits
+from another piece of work sit on the branch between stages 4 and 5 and land with it:
+`apps/desktop/src/main` was split into `bootstrap/`, `runtime/`, `workspace/`, `doctree/`,
+`assets/`, `agent/`, `notify/`, `distribution/` and `session/`, and `editors/asset.ts`
+into `editors/asset/`
+([`../split-largest-source-files.md`](../split-largest-source-files.md);
+`0a73370e`..`8036469f`). Paths this plan cites that moved: `src/main/index.ts:1111` (F12
+and Ctrl+I) is `src/main/runtime/windowmanager.ts:171`; `:1160` (no Electron menu) is
+`src/main/bootstrap/bootstrap.ts:53`; `showme.ts` is `src/main/agent/showme.ts`;
+`editors/asset.ts` is `editors/asset/index.ts` and its delegates.
 
-| Stage | Commit     | As shipped                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| ----- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | `7cb1d368` | As planned.                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| 2     | `e40b7e08` | As planned, and `Anchor.id` became required. `documents.rowAction` gives `tree.expand` for a row naming nothing; `assetview.prereqAction` refuses with the manifest's note where the bytes are missing.                                                                                                                                                                                                                                                       |
-| 3     | `555741e0` | `POPUP_HOMES` beside `ANCHOR_HOMES`; the header's three openers are `popup.open` offers from `rules/headerbar.ts`, keyed by the popup, and the sweep presses them through `window.__vnAnchors.press`. `rules/approvals.ts` and `rules/diagnostics.ts` exist as modules. `notify.markRead` stays palette-only with a reason. A `fixup!` (`be3a4be3`) is still to be squashed into this commit before landing.                                                  |
-| 4     | `76a7b12d` | The builder is `buildMenu` in `chrome/showmenu.ts`; the header builds a `DropBox` per press instead of `bar.menu`. `rules/menus.ts` is a menu table the model files as menu records and the sweep reads through `window.__vnAnchors.menus()` instead of opening each menu. Handlers are keyed by `entryKey`. `hidden()` treats an anchor clipped by a scrolling ancestor as offscreen. Sweep: 71 of 170 commands, 8 of 12 effects, 333 records, 88 menu rows. |
-| 5–8   |            | Not started.                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+The numbers, from the two committed files at the last commit:
 
-Six commits from another piece of work sit on the branch above stage 4
-(`f47e1d02`..`b3e455c2`): `apps/desktop/src/main` was split into `bootstrap/`, `runtime/`,
-`workspace/`, `doctree/`, `assets/`, `agent/`, `notify/`, `distribution/` and `session/`,
-and `editors/asset.ts` into `editors/asset/`
-([`split-largest-source-files.md`](split-largest-source-files.md)). They land with the
-branch. Paths this plan cites that moved:
+- `ux-model.json`: 135 situations over 29 modules (23 rule modules, the pin toggle counted
+  once, and six menu sources); 1244 records, 981 from `controls` and 263 from the menus;
+  95 command ids and 12 of the twelve effect ids have a control; 64 palette-only entries
+  cover the other 75 of the registry's 170; 20 shortcuts; 6 menu exemptions. 139 control
+  records are refused, 5 of them worded by the stack, and 41 carry a `shortcut`.
+- `anchors.json` (sha `fb537219`, against the sample project): 78 of 170 commands have an
+  anchor and 10 of 12 effects are drawn; 429 records (339 controls, 90 menu entries) over
+  20 homes, the three toolbar popups among them; 0 strays, 0 enabled-state disagreements,
+  0 `wording` disagreements; the `gengraph`, `global` and `play` keymaps agree with the
+  table. `agent.answer` and `pane.scroll` are offered but not drawn, since the swept
+  project has no plan awaiting an answer and the swept asset no art-notes clause.
 
-- `src/main/index.ts:1111` (F12 and Ctrl+I) is `src/main/runtime/windowmanager.ts:171`;
-  `:1160` (no Electron menu) is `src/main/bootstrap/bootstrap.ts:53`.
-- `showme.ts` is `src/main/agent/showme.ts`; `src/main/commands/**` and
-  `src/main/tests/uxmodel.test.ts` did not move.
-- `editors/asset.ts` is `editors/asset/index.ts` and its delegates; the prerequisite row
-  is recorded at `editors/asset/framing.ts:98`.
+| Stage | As shipped                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1     | As planned (`7cb1d368`).                                                                                                                                                                                                                                                                                                                                                                                     |
+| 2     | As planned, and `Anchor.id` became required. `documents.rowAction` gives `tree.expand` for a row naming nothing; `assetview.prereqAction` refuses with the manifest's note where the bytes are missing (`e40b7e08`).                                                                                                                                                                                         |
+| 3     | `POPUP_HOMES` beside `ANCHOR_HOMES`; the header's three openers are `popup.open` offers from `rules/headerbar.ts`, keyed by the popup, and the sweep presses them through `window.__vnAnchors.press`. `rules/approvals.ts` and `rules/diagnostics.ts` exist as modules. `notify.markRead` stays palette-only with a reason (`60760d05`).                                                                     |
+| 4     | The builder is `menuTemplate` in `chrome/showmenu.ts`, and the header builds a `DropBox` per press instead of `bar.menu`. `rules/menus.ts` is a menu table the model files as menu records and the sweep reads through `window.__vnAnchors.menus()` instead of opening each menu. Handlers are keyed by `entryKey`. `hidden()` treats an anchor clipped by a scrolling ancestor as offscreen (`16ce1a11`).   |
+| 5     | As planned: the seven widgets recorded in passes of their own, the Threads rows as a menu source, Delete and Duplicate from `rules/gengraph.ts` over the weighed edits (`62d72b70`).                                                                                                                                                                                                                         |
+| 6     | `rules/shortcuts.ts` as planned, with two additions the plan did not name: an entry carries `label` (the `HotKey`'s name and the handler's key) and `on`; matching is by id, `on` and the props the entry names; `bindings()` pairs entries with handlers at install time and throws on a missing or a spare handler. Main's DevTools rows are listed under `main` with the id `main.devtools` (`5b3eac3a`). |
+| 7     | Nineteen commits, one per editor or chrome file, listed below.                                                                                                                                                                                                                                                                                                                                               |
+| 8     | The sweep needed nothing new: the popup homes, the `effects` list and the shortcut scopes had landed with stages 3, 4 and 6. The docs as listed, and this section.                                                                                                                                                                                                                                           |
 
-Stages 5 to 8 pick up the plan as written, with the stage-4 shapes above (`buildMenu`,
-`rules/menus.ts`, `headerbar.ts`) in place of the names the plan used.
+### Stage 7, commit by commit
+
+`documents`, `tasklist`, `taskgraph`, `gengraph`, `asset`, `script`, `timeline`, `branch`,
+`convo`, `wiki`, `skills`, `project`, `play`, `systemprompt`, `inspector`, `header`, the
+pin toggle, the sparing test, and the prompt's origin button. Conventions that held across
+them:
+
+- A `pane.view` offer carries `on` as its discriminator: `reload`, `fit`, `tidy`, a
+  filter's name, `slot/<key>`, `overview`, `arrange`, and the Play pane's `forward`,
+  `back`, `save`, `load`, `reset`, `choose/<goto>`, `continue`.
+- An inline editor's opener is `popup.open('box')` keyed by what it opens
+  (`compose/<after>`, `split/<line>`, `merge/<scene>`, `continue`, `label/<edge>`); its
+  Cancel is `popup.close('box')` on `cancel`.
+- A drag handle is `startDrag(<interaction>)`, recorded because the grab is a
+  `pointerdown`: `line/<id>`, `shot/<id>/start|end`, a chunk key, a bracket that publishes
+  the shot and then arms the reorder.
+- A typed box is the command's own offer with `on` set to the prop it supplies (`text`,
+  `style`, `<id>/box`), so the box and the button beside it are one command with two keys.
+- A static bar button built once with the pane gets a pass of its own
+  (`redrawing(editor, 'reload')`), because the bar's pass is re-created on every paint and
+  would drop it.
+- A control whose click path.ux owns (a checkbox, a menu button, a handle) is
+  `record()`ed, with the comment "Recorded rather than acted".
+
+### Deviations
+
+- **`app.copy` is the existing command, not a new effect.** The plan's "Copy becomes
+  `app.copy`" reads as an effect; `app.copy` was already a command with `text` and `what`,
+  and an effect of that id fails `verify`. The system-prompt viewer's Copy is the
+  command's offer, supplying `text`, run through `exec`.
+- **`MENUS` gained `nodes` and `scenes`**, the script page's two pickers, which the plan's
+  list did not have.
+- **The Gen Graph bar's Asset button is `ui.publish`** supplying `assetHash`, rather than
+  a `view.open`: it selects the asset, and the asset pane follows.
+- **The asset home's situations are `{ info, back }`** rather than
+  `AssetInfo | undefined`, because the back chip (a `ui.publish` of the previous hash) is
+  a control the plan did not list.
+- **The pin toggle is one module with a row per pinnable pane.** `rules/pin.ts` answers
+  for the six panes that declare `pins`; `rules/model.ts` and the situations test spread
+  `PINNABLE` into rows, so the model lists the toggle under each pane's home.
+- **The header's View button keeps its two command records** (`view.open` and
+  `view.applyLayout`, supplying the editor and the layout) beside the `menu.open` record
+  the four buttons share.
+- **`pane.scroll` had no site until the last commit.** The prompt's origin button was
+  recorded only where it opened another editor; its scroll kind now records `pane.scroll`,
+  and `model.test.ts` asks that every declared effect is offered somewhere, which is the
+  test the plan promised for a dead entry.
+- **Two controls stay unrecorded**, and are listed here rather than modelled: the branch
+  editor's stub card, which answers a right-click only, and the conversation's question
+  card, whose reply box is built by `asks.cardFor` and closes over the question. Both are
+  follow-ups.
+- **The sparing rule's `here` set is the routed modules** (`documents`, `diagnostics`,
+  `script`, `wiki`), whose rows come from `openOf(routeFor(...))`. The plan also allowed
+  `here` on the header's Editors rows; those rows carry no `where`, so the rule does not
+  need the allowance.
+- **The sweep found one stray on the way**, the timeline's end handle where two shots
+  meet: each handle hung 4px past its bracket into a 2px gap, and the later bracket
+  painted over the earlier handle. The handles now overhang by the row gap, and the sweep
+  is clean.
+- **The autosquash rewrote the split plan's shas.** `fixup!` commits for stages 3 and for
+  the split plan's outcome note were folded before landing, so the shas
+  [`../split-largest-source-files.md`](../split-largest-source-files.md) cites were
+  updated with this stage.
 
 ## Context
 
@@ -117,13 +187,13 @@ classification is the research report's vocabulary plus what did not fit it.
   the one file under `pathux/` the rules import.
 - **Every `view.open` a surface issues today passes `elsewhere`, `here` or nothing.** No
   surface passes `left`, `right`, `above` or `below`, the values
-  [`../guides/showEditorPaneGuide.md`](../guides/showEditorPaneGuide.md) forbids because
-  they always split and never spare a conversation pane. `here` is the command's default
-  (`src/main/commands/view.ts:71`), and the guide reserves `popup` for something the app
-  decided to show. The header's Editors submenu omits `where` (`header.ts:808`); `popup`
-  is used by main (`src/main/commands/pipeline.ts:70`, `report.ts:90`) and by `seedReport`
-  (`renderer/pathux/agent/reportconvo.ts:112`). `view.focus` is never issued by a surface.
-  So the sparing rule holds today and nothing checks it.
+  [`../guides/showEditorPaneGuide.md`](../../guides/showEditorPaneGuide.md) forbids
+  because they always split and never spare a conversation pane. `here` is the command's
+  default (`src/main/commands/view.ts:71`), and the guide reserves `popup` for something
+  the app decided to show. The header's Editors submenu omits `where` (`header.ts:808`);
+  `popup` is used by main (`src/main/commands/pipeline.ts:70`, `report.ts:90`) and by
+  `seedReport` (`renderer/pathux/agent/reportconvo.ts:112`). `view.focus` is never issued
+  by a surface. So the sparing rule holds today and nothing checks it.
 - **Context menus are data run through one path; the header's menus are path.ux
   object-form templates.** The document tree's menu is `menuFor`
   (`doctree/doctree.ts:341`), run through `showContextMenu` (`chrome/showmenu.ts:56`),
@@ -137,7 +207,7 @@ classification is the research report's vocabulary plus what did not fit it.
   the path does not do: it passes no hotkey label, it builds no submenu, and it marks a
   refused row with the `⃠ ` prefix and leaves it clickable rather than greying it through
   `setItemDisabled`, which path.ux's object form reaches through `disabled` and `validate`
-  ([`menu-item-disabling.md`](../../vendor/path.ux/documentation/plans/menu-item-disabling.md),
+  ([`menu-item-disabling.md`](../../../vendor/path.ux/documentation/plans/menu-item-disabling.md),
   complete; the comment at `contextmenu.ts:69` saying the template has no per-item
   disabled state predates it). The shot menu (`editors/timeline.ts:649`), the line menu
   (`renderer/pathux/interactions/script.ts:98`) and the card menu

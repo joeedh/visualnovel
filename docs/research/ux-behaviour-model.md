@@ -294,17 +294,17 @@ The phrase covers two different things, and each needs a different treatment.
   pseudo, so a reader sees one file and a `checkTour`-style validation can reject an
   unknown id. The initial list is:
 
-    | Pseudo-command | Effect                                             |
-    | -------------- | -------------------------------------------------- |
-    | `ui.publish`   | Sets a `ui.*` field (a selection).                 |
-    | `tree.expand`  | Expands or collapses a document-tree node.         |
-    | `menu.open`    | Opens a context menu for a subject.                |
-    | `popup.open`   | Opens a floating widget (the asset picker).        |
-    | `pane.focus`   | Makes a pane active without moving anything.       |
-    | `pane.scroll`  | Scrolls a surface to bring something into view.    |
-    | `drag.start`   | Arms an interaction with a carried subject.        |
-    | `drag.accept`  | A drop target that would accept a carried subject. |
-    | `key.bind`     | A keyboard shortcut bound to another effect.       |
+    | Pseudo-command | Effect                                                                                                                                                                                                                                                                  |
+    | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+    | `ui.publish`   | Sets a `ui.*` field (a selection).                                                                                                                                                                                                                                      |
+    | `tree.expand`  | Expands or collapses a document-tree node.                                                                                                                                                                                                                              |
+    | `menu.open`    | Opens a context menu for a subject.                                                                                                                                                                                                                                     |
+    | `popup.open`   | Opens a floating widget (the asset picker).                                                                                                                                                                                                                             |
+    | `pane.focus`   | Makes a pane active without moving anything. Not adopted: nothing in the app focuses a pane without opening one ([plan 4](../plans/archive/pseudo-commands-and-a-controls-effects.md#decisions-this-plan-settles)).                                                     |
+    | `pane.scroll`  | Scrolls a surface to bring something into view.                                                                                                                                                                                                                         |
+    | `drag.start`   | Arms an interaction with a carried subject.                                                                                                                                                                                                                             |
+    | `drag.accept`  | A drop target that would accept a carried subject. Not adopted: a drop target is not a control, and the interaction's `targets` already describes it in the catalog ([plan 4](../plans/archive/pseudo-commands-and-a-controls-effects.md#decisions-this-plan-settles)). |
+    | `key.bind`     | A keyboard shortcut bound to another effect. Shipped as a property rather than an effect: `rules/shortcuts.ts` is the table, and a record carries `shortcut` (plan 4).                                                                                                  |
 
 - **A control records a list of effects, not one.** A double-click on a shot in Shot
   Coverage publishes a selection and then opens an editor in the sparing pane. Recording

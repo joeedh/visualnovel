@@ -209,8 +209,11 @@ pick a pane of its own.
 
 Every control an editor draws also records what pressing it would run, through `act()` in
 `renderer/pathux/tour/anchors.ts` — one `Offer` wires the click and the record together,
-so the two cannot drift apart. That layer is what lets the app point at itself, and a
-guided tour rides on it.
+so the two cannot drift apart. What it records is a command or one of the twelve effects
+(`src/shared/effects.ts`: selecting, expanding a tree node, opening a menu or a popup,
+reloading a pane, pinning, arming a drag, undo, answering the agent), and a row that
+selects and then opens records both, in order. That layer is what lets the app point at
+itself, and a guided tour rides on it.
 [`docs/reference/guided-tours.md`](docs/reference/guided-tours.md) covers both, including
 the committed `anchors.json` and the CDP sweep that measures it, which must be re-run
 after touching `apps/desktop/renderer/pathux/editors/**`. Beside it sits the derived
@@ -231,7 +234,11 @@ widget itself is documented in path.ux, at
 
 Every desktop action is a registered command rather than a bespoke IPC channel. A command
 has typed properties, a string DSL (`namespace.command(a='x' b=1)`), git-stamped
-provenance, and one JSON catalog.
+provenance, and one JSON catalog. What a control does to its own surface without a command
+— select, expand, open a menu, reload, pin, arm a drag, undo — is a registered _effect_
+(`apps/desktop/src/shared/effects.ts`, twelve of them, in the same catalog): a name for a
+renderer-local closure, which the palette and CDP cannot run
+([`docs/reference/command-system.md#effects-what-a-surface-does-to-itself`](docs/reference/command-system.md#effects-what-a-surface-does-to-itself)).
 [`docs/reference/command-system.md`](docs/reference/command-system.md) is the full
 write-up.
 
@@ -434,15 +441,16 @@ See ['docs/reference/proseStyle.md'](docs/reference/proseStyle.md).
   `stack.check`, show that sentence verbatim — a greyed control that will not say why is
   the same bug as a hidden one.
 - Tooltips are set through two mechanisms. A path.ux widget takes `.description`; a raw
-  DOM node in an `appendSurface` root takes `.title`. A control drawn through `act()` or
-  `record()` gets its tooltip from its `Offer`, which `applyOffer` writes through those
-  two mechanisms, so a `description` or `title` written beside the call is a copy that
-  gets overwritten. Command-backed controls default to the registry's own text (the
-  entry's `title`, a prop's `description`), so a command with a vague description is fixed
-  in the definition rather than papered over at the call site. A pane tab uses neither
-  mechanism: it is painted on the docker's canvas, so its tooltip comes from
-  `define().description`, which `registerEditor` splices in from `EDITORS`'s `what` — the
-  same sentence View ▸ Editors shows.
+  DOM node in an `appendSurface` root takes `.title`. Every control is drawn through
+  `act()`, `record()` or `pick()`, whether it runs a command or an effect, so its tooltip
+  comes from its `Offer`, which `applyOffer` writes through those two mechanisms; a
+  `description` or `title` written beside the call is a copy that gets overwritten.
+  Command-backed controls default to the registry's own text (the entry's `title`, a
+  prop's `description`), so a command with a vague description is fixed in the definition
+  rather than papered over at the call site. A pane tab uses neither mechanism: it is
+  painted on the docker's canvas, so its tooltip comes from `define().description`, which
+  `registerEditor` splices in from `EDITORS`'s `what` — the same sentence View ▸ Editors
+  shows.
 
 ## Euphemeral UI data (saveUIData/loadUIData)
 

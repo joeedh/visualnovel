@@ -1,7 +1,7 @@
 # Split the largest source files
 
-**Done.** All four steps landed on `effects`: `f47e1d02` (index.ts), `cedda3b4`
-(tools.ts), `6171eca1` (asset.ts), `bc842dd7` (session.ts). Whole-repo `pnpm check` /
+**Done.** All four steps landed on `effects`: `0a73370e` (index.ts), `c2f8b28c`
+(tools.ts), `41533a7a` (asset.ts), `ac3f00d8` (session.ts). Whole-repo `pnpm check` /
 `pnpm test` (287 suites, 4160 tests) / `pnpm lint` all green after the last commit.
 Deviations from the plan as written, discovered during execution:
 

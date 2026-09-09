@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-09T02:14:13.243Z",
-  "gitSha"       : "411de1c07e152becc98af57a46dc2444980e1f7b",
+  "sweptAt"      : "2026-09-09T04:12:36.396Z",
+  "gitSha"       : "fb5372199848fed80dbd54dccbec7b25e1742122",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -261,8 +261,10 @@
     "workspace.reindex"
   ],
   "effects": [
+    "drag.start",
     "history.move",
     "menu.open",
+    "pane.pin",
     "pane.view",
     "popup.close",
     "popup.open",
@@ -757,10 +759,30 @@
       "when"  : "header/view/layout"
     },
     {
+      "id"    : "popup.open",
+      "editor": "branches",
+      "key"   : "fx:popup.open#label/arrival#choice:0"
+    },
+    {
+      "id"    : "popup.open",
+      "editor": "branches",
+      "key"   : "fx:popup.open#label/arrival#choice:1"
+    },
+    {
       "id"      : "story.newScene",
       "editor"  : "branches",
       "key"     : "cmd:story.newScene",
       "supplies": ["scene", "heading"]
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "branches",
+      "key"   : "fx:pane.view#fit"
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "branches",
+      "key"   : "fx:pane.view#reload"
     },
     {
       "id"    : "ui.publish",
@@ -815,6 +837,11 @@
       "form"  : true
     },
     {
+      "id"    : "drag.start",
+      "editor": "script",
+      "key"   : "fx:drag.start#line/arrival:L2"
+    },
+    {
       "id"      : "story.setSpeaker",
       "editor"  : "script",
       "key"     : "cmd:story.setSpeaker#arrival:L2",
@@ -825,6 +852,11 @@
       "editor"  : "script",
       "key"     : "cmd:story.setLineText#arrival:L2",
       "supplies": ["text"]
+    },
+    {
+      "id"    : "drag.start",
+      "editor": "script",
+      "key"   : "fx:drag.start#line/arrival:L3"
     },
     {
       "id"      : "story.setSpeaker",
@@ -839,6 +871,16 @@
       "supplies": ["text"]
     },
     {
+      "id"    : "popup.open",
+      "editor": "script",
+      "key"   : "fx:popup.open#split/arrival:L3"
+    },
+    {
+      "id"    : "drag.start",
+      "editor": "script",
+      "key"   : "fx:drag.start#line/arrival:L1"
+    },
+    {
       "id"      : "story.setSpeaker",
       "editor"  : "script",
       "key"     : "cmd:story.setSpeaker#arrival:L1",
@@ -849,6 +891,76 @@
       "editor"  : "script",
       "key"     : "cmd:story.setLineText#arrival:L1",
       "supplies": ["text"]
+    },
+    {
+      "id"    : "popup.open",
+      "editor": "script",
+      "key"   : "fx:popup.open#split/arrival:L1"
+    },
+    {
+      "id"    : "popup.open",
+      "editor": "script",
+      "key"   : "fx:popup.open#compose/arrival:L1"
+    },
+    {
+      "id"    : "menu.open",
+      "editor": "script",
+      "key"   : "fx:menu.open"
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "script",
+      "key"   : "fx:pane.view#reload"
+    },
+    {
+      "id"    : "pane.pin",
+      "editor": "script",
+      "key"   : "fx:pane.pin"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "script",
+      "key"   : "item:link/asset/0ecfeacfe59a7f7f71eefe402342216597f4ad4d9063be6e40e8bdf11389d2d3"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "script",
+      "key"   : "item:link/asset/1ce8ffe13288f7a50cf46e7520ba6cc393cc0d284485c903114e99c7689f4a94"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "script",
+      "key"   : "item:link/asset/5d888bf1a7976857b461b9a849a0dbfd5833ecd19b7a7f8ecc036b4a328d4178"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "script",
+      "key"   : "item:link/asset/9a410851f3c5d5df8f3548ce1cd7102a0cbeb728d69ce63e730b3e39059ec534"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "script",
+      "key"   : "item:link/asset/f73e12779d1ca6b1e29c156049c5e5ff579d7440e96838da3f695f8ce96bbf45"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "script",
+      "key"   : "item:link/asset/163ad341aabf3b76d51a763839b64a7624ce689dfde60f115f178bc8d76762fd"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "script",
+      "key"   : "item:link/asset/9b979b83f3f40a0b6678c24c29824f73f7b3454c3af70bb1f224cd029e09b0c0"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "script",
+      "key"   : "item:link/asset/e0205990dce5fe0ae048375704d3ce65d5062be5afb56f5bf28ce32093413cfa"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "script",
+      "key"   : "item:link/asset/ecb9bbcf9145c5f6873ed496880d84da77bd886846cb6baafbd801f2643990ff"
     },
     {
       "id"    : "agent.setMode",
@@ -891,6 +1003,69 @@
       "refused": "This conversation is open for reading. Continue it before compacting it."
     },
     {
+      "id"    : "drag.start",
+      "editor": "timeline",
+      "key"   : "fx:drag.start#line/arrival:L2"
+    },
+    {
+      "id"      : "story.setLineText",
+      "editor"  : "timeline",
+      "key"     : "cmd:story.setLineText#arrival:L2",
+      "supplies": ["text"]
+    },
+    {
+      "id"    : "drag.start",
+      "editor": "timeline",
+      "key"   : "fx:drag.start#line/arrival:L3"
+    },
+    {
+      "id"      : "story.setLineText",
+      "editor"  : "timeline",
+      "key"     : "cmd:story.setLineText#arrival:L3",
+      "supplies": ["text"]
+    },
+    {
+      "id"    : "drag.start",
+      "editor": "timeline",
+      "key"   : "fx:drag.start#line/arrival:L1"
+    },
+    {
+      "id"      : "story.setLineText",
+      "editor"  : "timeline",
+      "key"     : "cmd:story.setLineText#arrival:L1",
+      "supplies": ["text"]
+    },
+    {
+      "id"    : "drag.start",
+      "editor": "timeline",
+      "key"   : "fx:drag.start#shot/arrival__beat1/start"
+    },
+    {
+      "id"    : "drag.start",
+      "editor": "timeline",
+      "key"   : "fx:drag.start#shot/arrival__beat1/end"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "timeline",
+      "key"   : "item:shot/arrival__beat1"
+    },
+    {
+      "id"    : "drag.start",
+      "editor": "timeline",
+      "key"   : "fx:drag.start#shot/arrival__shot1/start"
+    },
+    {
+      "id"    : "drag.start",
+      "editor": "timeline",
+      "key"   : "fx:drag.start#shot/arrival__shot1/end"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "timeline",
+      "key"   : "item:shot/arrival__shot1"
+    },
+    {
       "id"      : "story.setSceneOutfit",
       "editor"  : "timeline",
       "key"     : "cmd:story.setSceneOutfit#scene/aiko",
@@ -925,16 +1100,56 @@
       "key"   : "cmd:story.requireCast"
     },
     {
+      "id"    : "menu.open",
+      "editor": "timeline",
+      "key"   : "fx:menu.open"
+    },
+    {
       "id"    : "story.newShot",
       "editor": "timeline",
       "key"   : "cmd:story.newShot",
       "form"  : true
     },
     {
+      "id"    : "pane.view",
+      "editor": "timeline",
+      "key"   : "fx:pane.view#reload"
+    },
+    {
+      "id"    : "pane.pin",
+      "editor": "timeline",
+      "key"   : "fx:pane.pin"
+    },
+    {
       "id"    : "pipeline.run",
       "editor": "tasklist",
       "key"   : "cmd:pipeline.run",
       "form"  : true
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "tasklist",
+      "key"   : "fx:pane.view#done"
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "tasklist",
+      "key"   : "fx:pane.view#running"
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "tasklist",
+      "key"   : "fx:pane.view#failed"
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "tasklist",
+      "key"   : "fx:pane.view#clear"
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "tasklist",
+      "key"   : "fx:pane.view#reload"
     },
     {
       "id"    : "ui.publish",
@@ -1147,6 +1362,41 @@
       "key"   : "item:task/4553c7bb2ed3cc7f136081c071cfeb877d50b7b3f46b33c5c4f6883bfdfaf460"
     },
     {
+      "id"    : "pane.view",
+      "editor": "taskgraph",
+      "key"   : "fx:pane.view#tidy"
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "taskgraph",
+      "key"   : "fx:pane.view#fit"
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "taskgraph",
+      "key"   : "fx:pane.view#reload"
+    },
+    {
+      "id"    : "pane.pin",
+      "editor": "gengraph",
+      "key"   : "fx:pane.pin"
+    },
+    {
+      "id"    : "menu.open",
+      "editor": "gengraph",
+      "key"   : "fx:menu.open"
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "gengraph",
+      "key"   : "fx:pane.view#arrange"
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "gengraph",
+      "key"   : "fx:pane.view#reload"
+    },
+    {
       "id"     : "gengraph.removeNode",
       "editor" : "gengraph",
       "key"    : "cmd:gengraph.removeNode",
@@ -1171,6 +1421,53 @@
       "refused": "Select a group instance to ungroup."
     },
     {
+      "id"      : "ui.publish",
+      "editor"  : "gengraph",
+      "key"     : "item:link/asset",
+      "supplies": ["assetHash"]
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "inspector",
+      "key"   : "fx:pane.view#reload"
+    },
+    {
+      "id"    : "pane.pin",
+      "editor": "inspector",
+      "key"   : "fx:pane.pin"
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "play",
+      "key"   : "fx:pane.view#forward"
+    },
+    {
+      "id"     : "pane.view",
+      "editor" : "play",
+      "key"    : "fx:pane.view#back",
+      "refused": "You are at the beginning; there is nothing to step back to."
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "play",
+      "key"   : "fx:pane.view#save"
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "play",
+      "key"   : "fx:pane.view#load"
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "play",
+      "key"   : "fx:pane.view#reset"
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "skills",
+      "key"   : "fx:pane.view#reload"
+    },
+    {
       "id"    : "agent.run",
       "editor": "skills",
       "key"   : "cmd:agent.run",
@@ -1185,16 +1482,74 @@
     },
     {
       "id"      : "doc.write",
+      "editor"  : "skills",
+      "key"     : "cmd:doc.write#text",
+      "supplies": ["text", "seenHash"],
+      "refused" : "No document is open."
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "wiki",
+      "key"   : "fx:pane.view#reload"
+    },
+    {
+      "id"    : "pane.pin",
+      "editor": "wiki",
+      "key"   : "fx:pane.pin"
+    },
+    {
+      "id"      : "doc.write",
       "editor"  : "wiki",
       "key"     : "cmd:doc.write",
       "supplies": ["text", "seenHash"],
       "refused" : "Nothing to save"
     },
     {
+      "id"      : "doc.write",
+      "editor"  : "wiki",
+      "key"     : "cmd:doc.write#text",
+      "supplies": ["text", "seenHash"]
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "wiki",
+      "key"   : "item:link/asset/43cfb9ffc189d3cf3fe8cdf326f1e6dec8683c59d74b308e95dd53a3543cd5fc"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "wiki",
+      "key"   : "item:link/asset/6b956e77272d2666585df48cb5983f42978b0f04ded4c358761fe17037d6d9c9"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "wiki",
+      "key"   : "item:link/asset/d6c366006abee34ea5315527ea02fd592128fb0514c0e58c911ad8201b76754c"
+    },
+    {
+      "id"    : "ui.publish",
+      "editor": "wiki",
+      "key"   : "item:link/asset/6f41ba9a6ea0b96fff77ed13bf2473174b91986da3b87791f0260b7da829947d"
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "documents",
+      "key"   : "fx:pane.view#mode"
+    },
+    {
       "id"      : "doc.create",
       "editor"  : "documents",
       "key"     : "cmd:doc.create",
       "supplies": ["kind", "name"]
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "documents",
+      "key"   : "fx:pane.view#reload"
+    },
+    {
+      "id"    : "tree.expand",
+      "editor": "documents",
+      "key"   : "fx:tree.expand#all"
     },
     {
       "id"    : "tree.expand",
@@ -1383,6 +1738,11 @@
       "key"   : "cmd:prompt.check"
     },
     {
+      "id"    : "drag.start",
+      "editor": "asset",
+      "key"   : "fx:drag.start#style"
+    },
+    {
       "id"    : "view.open",
       "editor": "asset",
       "key"   : "cmd:view.open#style"
@@ -1415,6 +1775,11 @@
       "editor" : "asset",
       "key"    : "cmd:prompt.setChunk#style/reset",
       "refused": "Nothing has been done to this clause."
+    },
+    {
+      "id"    : "drag.start",
+      "editor": "asset",
+      "key"   : "fx:drag.start#subject"
     },
     {
       "id"    : "view.open",
@@ -1451,6 +1816,11 @@
       "refused": "Nothing has been done to this clause."
     },
     {
+      "id"    : "drag.start",
+      "editor": "asset",
+      "key"   : "fx:drag.start#description"
+    },
+    {
       "id"    : "view.open",
       "editor": "asset",
       "key"   : "cmd:view.open#description"
@@ -1483,6 +1853,11 @@
       "editor" : "asset",
       "key"    : "cmd:prompt.setChunk#description/reset",
       "refused": "Nothing has been done to this clause."
+    },
+    {
+      "id"    : "drag.start",
+      "editor": "asset",
+      "key"   : "fx:drag.start#mood"
     },
     {
       "id"    : "view.open",
@@ -1519,6 +1894,11 @@
       "refused": "Nothing has been done to this clause."
     },
     {
+      "id"    : "drag.start",
+      "editor": "asset",
+      "key"   : "fx:drag.start#variant"
+    },
+    {
       "id"    : "view.open",
       "editor": "asset",
       "key"   : "cmd:view.open#variant"
@@ -1553,6 +1933,11 @@
       "refused": "Nothing has been done to this clause."
     },
     {
+      "id"    : "drag.start",
+      "editor": "asset",
+      "key"   : "fx:drag.start#palette"
+    },
+    {
       "id"    : "view.open",
       "editor": "asset",
       "key"   : "cmd:view.open#palette"
@@ -1585,6 +1970,11 @@
       "editor" : "asset",
       "key"    : "cmd:prompt.setChunk#palette/reset",
       "refused": "Nothing has been done to this clause."
+    },
+    {
+      "id"    : "drag.start",
+      "editor": "asset",
+      "key"   : "fx:drag.start#scaffolding"
     },
     {
       "id"    : "prompt.setChunk",
@@ -1660,11 +2050,48 @@
       "key"   : "cmd:asset.export"
     },
     {
+      "id"    : "menu.open",
+      "editor": "asset",
+      "key"   : "fx:menu.open"
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "asset",
+      "key"   : "fx:pane.view#reload"
+    },
+    {
+      "id"    : "pane.pin",
+      "editor": "asset",
+      "key"   : "fx:pane.pin"
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "project",
+      "key"   : "fx:pane.view#reload"
+    },
+    {
       "id"      : "project.setArtStyle",
       "editor"  : "project",
       "key"     : "cmd:project.setArtStyle",
       "supplies": ["style"],
       "refused" : "No changes"
+    },
+    {
+      "id"      : "project.setArtStyle",
+      "editor"  : "project",
+      "key"     : "cmd:project.setArtStyle#style",
+      "supplies": ["style"]
+    },
+    {
+      "id"    : "pane.view",
+      "editor": "systemprompt",
+      "key"   : "fx:pane.view#reload"
+    },
+    {
+      "id"      : "app.copy",
+      "editor"  : "systemprompt",
+      "key"     : "cmd:app.copy",
+      "supplies": ["text"]
     },
     {
       "id"    : "app.openKeyLink",
@@ -1711,14 +2138,14 @@
     {
       "id"      : "project.setKey",
       "editor"  : "onboarding",
-      "key"     : "cmd:project.setKey#anthropic",
+      "key"     : "cmd:project.setKey#gemini",
       "supplies": ["key"],
       "refused" : "Paste a key first"
     },
     {
       "id"      : "project.setKey",
       "editor"  : "onboarding",
-      "key"     : "cmd:project.setKey#gemini",
+      "key"     : "cmd:project.setKey#anthropic",
       "supplies": ["key"],
       "refused" : "Paste a key first"
     },
