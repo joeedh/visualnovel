@@ -28,7 +28,11 @@ const TASKS: readonly Task[] = [
 ];
 
 export const SITUATIONS = situations<TaskListState>(
-  { name: 'idle', why: 'Only the Run button is drawn.', state: { gatePending: [] } },
+  {
+    name : 'idle',
+    why: 'Only the bar is drawn: Run, the three status ticks, Clear finished refused with nothing to clear, and Refresh.',
+    state: { gatePending: [] },
+  },
   {
     name : 'gate-pending',
     why  : 'A run is waiting on a portrait, so the gate bar offers approval for that character.',
@@ -36,9 +40,10 @@ export const SITUATIONS = situations<TaskListState>(
   },
   {
     name : 'cards',
-    why: 'Two cards are drawn: a shot that rendered a frame opens it elsewhere after the pick, a task that drew nothing only publishes.',
+    why: 'Two cards are drawn: a shot that rendered a frame opens it elsewhere after the pick, a task that drew nothing only publishes. One is done, so Clear finished is offered.',
     state: {
       gatePending: [],
+      clearable  : true,
       cards: {
         tasks    : TASKS,
         selection: {

@@ -1,10 +1,13 @@
 import {
   cardAction,
+  clearAction,
   controls,
   emptyBecause,
   gateAction,
+  reloadAction,
   runAction,
   showing,
+  tickAction,
   type ListFilter,
 } from '../tasklist.js';
 import { duplicateKeys, keyOf } from '../anchors.js';
@@ -210,6 +213,37 @@ describe('cardAction', () => {
   });
 });
 
+describe('the bar’s view controls', () => {
+  it('keys each status tick by the status it keeps', () => {
+    expect(tickAction('done')).toMatchObject({
+      id   : 'pane.view',
+      props: { what: 'filter' },
+      on   : 'done',
+      label: 'only done',
+    });
+    expect(tickAction('failed').tooltip).toMatch(/needs_human/);
+  });
+
+  it('refuses Clear finished with nothing to clear, and says what it does otherwise', () => {
+    expect(clearAction(false)).toMatchObject({
+      ok     : false,
+      refusal: { reason: 'Nothing finished is left in the list to take out of it.' },
+      on     : 'clear',
+    });
+    expect(clearAction(true)).toMatchObject({ ok: true, props: { what: 'filter' } });
+    expect(clearAction(true).tooltip).toMatch(/Refresh brings them back/);
+    expect(reloadAction()).toMatchObject({ props: { what: 'reload' }, on: 'reload' });
+  });
+});
+
+const BAR = [
+  'fx:pane.view#done',
+  'fx:pane.view#running',
+  'fx:pane.view#failed',
+  'fx:pane.view#clear',
+  'fx:pane.view#reload',
+];
+
 describe('controls', () => {
   it('lists the cards after the bar', () => {
     const NONE: Selection = {
@@ -223,16 +257,28 @@ describe('controls', () => {
     const listed = controls({ gatePending: [], cards: { tasks: TASKS, selection: NONE } });
     expect(listed.map(keyOf)).toEqual([
       'cmd:pipeline.run',
+      ...BAR,
       ...TASKS.map((t) => `item:task/${t.hash}`),
     ]);
   });
 
-  it('lists the run button and one gate per pending character, each key once', () => {
+  it('lists the run button, one gate per pending character and the bar, each key once', () => {
     for (const gatePending of [[], ['aiko'], ['aiko', 'ren']]) {
       const listed = controls({ gatePending });
-      const each = [runAction(), ...gatePending.map(gateAction)];
-      expect(new Set(listed.map(keyOf))).toEqual(new Set(each.map(keyOf)));
+      const each = [
+        runAction(),
+        ...gatePending.map(gateAction),
+        tickAction('done'),
+        tickAction('running'),
+        tickAction('failed'),
+        clearAction(false),
+        reloadAction(),
+      ];
+      expect(listed.map(keyOf)).toEqual(each.map(keyOf));
       expect(duplicateKeys(listed)).toEqual([]);
     }
+    expect(controls({ gatePending: [], clearable: true }).find((o) => o.on === 'clear')?.ok).toBe(
+      true,
+    );
   });
 });

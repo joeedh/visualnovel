@@ -472,7 +472,7 @@
       "module": "tasklist",
       "editor": "tasklist",
       "name"  : "idle",
-      "why"   : "Only the Run button is drawn."
+      "why": "Only the bar is drawn: Run, the three status ticks, Clear finished refused with nothing to clear, and Refresh."
     },
     {
       "module": "tasklist",
@@ -484,7 +484,7 @@
       "module": "tasklist",
       "editor": "tasklist",
       "name"  : "cards",
-      "why": "Two cards are drawn: a shot that rendered a frame opens it elsewhere after the pick, a task that drew nothing only publishes."
+      "why": "Two cards are drawn: a shot that rendered a frame opens it elsewhere after the pick, a task that drew nothing only publishes. One is done, so Clear finished is offered."
     },
     {
       "module": "timeline",
@@ -14970,6 +14970,128 @@
       "via"      : "control",
       "editor"   : "tasklist",
       "module"   : "tasklist",
+      "situation": "idle",
+      "key"      : "fx:pane.view#done",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "only done",
+        "tooltip": "Narrow the list to the tasks that finished successfully.",
+        "on"     : "done",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "tasklist",
+      "module"   : "tasklist",
+      "situation": "idle",
+      "key"      : "fx:pane.view#running",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "only running",
+        "tooltip": "Narrow the list to the tasks a wave is working on right now.",
+        "on"     : "running",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "tasklist",
+      "module"   : "tasklist",
+      "situation": "idle",
+      "key"      : "fx:pane.view#failed",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "only failed",
+        "tooltip": "Narrow the list to what stopped and wants a person — failed tasks and shots flagged needs_human.",
+        "on"     : "failed",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "tasklist",
+      "module"   : "tasklist",
+      "situation": "idle",
+      "key"      : "fx:pane.view#clear",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Clear finished",
+        "tooltip": "Take everything already finished out of this list.",
+        "on"     : "clear",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing finished is left in the list to take out of it."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "tasklist",
+      "module"   : "tasklist",
+      "situation": "idle",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read what has run, what is running and what is ready, and undo Clear finished",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "tasklist",
+      "module"   : "tasklist",
       "situation": "gate-pending",
       "key"      : "cmd:pipeline.run",
       "offer": {
@@ -15017,6 +15139,128 @@
       "via"      : "control",
       "editor"   : "tasklist",
       "module"   : "tasklist",
+      "situation": "gate-pending",
+      "key"      : "fx:pane.view#done",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "only done",
+        "tooltip": "Narrow the list to the tasks that finished successfully.",
+        "on"     : "done",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "tasklist",
+      "module"   : "tasklist",
+      "situation": "gate-pending",
+      "key"      : "fx:pane.view#running",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "only running",
+        "tooltip": "Narrow the list to the tasks a wave is working on right now.",
+        "on"     : "running",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "tasklist",
+      "module"   : "tasklist",
+      "situation": "gate-pending",
+      "key"      : "fx:pane.view#failed",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "only failed",
+        "tooltip": "Narrow the list to what stopped and wants a person — failed tasks and shots flagged needs_human.",
+        "on"     : "failed",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "tasklist",
+      "module"   : "tasklist",
+      "situation": "gate-pending",
+      "key"      : "fx:pane.view#clear",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Clear finished",
+        "tooltip": "Take everything already finished out of this list.",
+        "on"     : "clear",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing finished is left in the list to take out of it."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "tasklist",
+      "module"   : "tasklist",
+      "situation": "gate-pending",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read what has run, what is running and what is ready, and undo Clear finished",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "tasklist",
+      "module"   : "tasklist",
       "situation": "cards",
       "key"      : "cmd:pipeline.run",
       "offer": {
@@ -15031,6 +15275,131 @@
         {
           "id"   : "pipeline.run",
           "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "tasklist",
+      "module"   : "tasklist",
+      "situation": "cards",
+      "key"      : "fx:pane.view#done",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "only done",
+        "tooltip": "Narrow the list to the tasks that finished successfully.",
+        "on"     : "done",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "tasklist",
+      "module"   : "tasklist",
+      "situation": "cards",
+      "key"      : "fx:pane.view#running",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "only running",
+        "tooltip": "Narrow the list to the tasks a wave is working on right now.",
+        "on"     : "running",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "tasklist",
+      "module"   : "tasklist",
+      "situation": "cards",
+      "key"      : "fx:pane.view#failed",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "only failed",
+        "tooltip": "Narrow the list to what stopped and wants a person — failed tasks and shots flagged needs_human.",
+        "on"     : "failed",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "tasklist",
+      "module"   : "tasklist",
+      "situation": "cards",
+      "key"      : "fx:pane.view#clear",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Clear finished",
+        "tooltip": "Take everything already finished out of this list. Nothing is deleted — those records are what make a run resumable — and Refresh brings them back.",
+        "on"     : "clear",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "tasklist",
+      "module"   : "tasklist",
+      "situation": "cards",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read what has run, what is running and what is ready, and undo Clear finished",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
         }
       ]
     },

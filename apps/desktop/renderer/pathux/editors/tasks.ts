@@ -3,6 +3,9 @@ import { api } from '../../api.js';
 import { exec, onBusy, onInvalidate } from '../app/bridge.js';
 import { subjectOf } from '../../rules/taskGraph.js';
 import {
+  tickAction,
+  reloadAction,
+  clearAction,
   cardAction,
   drewAsset,
   emptyBecause,
@@ -206,10 +209,13 @@ export class TaskListEditor extends VnEditor {
       (action) => openCommandDialog(action.id),
     );
 
-    const only = low.check(undefined, 'only done') as Check;
+    // Recorded rather than acted: a tick's flip arrives through `on_change`, path.ux's own hook,
+    // and a DOM-shaped `onclick` is never called on it
+    const only = this.anchors.record(
+      low.check(undefined, 'only done') as Check,
+      tickAction('done'),
+    );
     only.checked = this.onlyDone;
-    only.description = 'Narrow the list to the tasks that finished successfully.';
-    // `on_change`, not `onchange` — path.ux's own hook. A DOM-shaped name is never called.
     only.on_change = (next: unknown) => {
       this.onlyDone = next === true;
       layoutChanged();
@@ -219,9 +225,11 @@ export class TaskListEditor extends VnEditor {
     // Its own tick rather than a third state of `only done`: the two sets are disjoint, so an
     // author watching a wave wants the running half without leaving the mode they set. Ticking
     // both shows nothing, and `emptyBecause` says so by name.
-    const moving = low.check(undefined, 'only running') as Check;
+    const moving = this.anchors.record(
+      low.check(undefined, 'only running') as Check,
+      tickAction('running'),
+    );
     moving.checked = this.onlyRunning;
-    moving.description = 'Narrow the list to the tasks a wave is working on right now.';
     moving.on_change = (next: unknown) => {
       this.onlyRunning = next === true;
       layoutChanged();
@@ -231,35 +239,37 @@ export class TaskListEditor extends VnEditor {
     // The list is where an author goes when a run did not produce what they expected, and a
     // failure is a needle in a column of hundreds of `done` cards. This tick also keeps
     // `needs_human` (see `ListFilter.onlyFailed`).
-    const broke = low.check(undefined, 'only failed') as Check;
+    const broke = this.anchors.record(
+      low.check(undefined, 'only failed') as Check,
+      tickAction('failed'),
+    );
     broke.checked = this.onlyFailed;
-    broke.description =
-      'Narrow the list to what stopped and wants a person — failed tasks and shots flagged ' +
-      'needs_human.';
     broke.on_change = (next: unknown) => {
       this.onlyFailed = next === true;
       layoutChanged();
       this.rebuild();
     };
 
-    const clear = low.button('Clear finished', () => {
-      for (const task of tasks) if (TaskListEditor.finished(task)) this.cleared.add(task.hash);
-      this.rebuild();
-    });
-    // A greyed control that will not say why is the same bug as a hidden one, so the two
-    // sentences are chosen together: what it would do, or why it cannot.
-    clear.disabled = !tasks.some((t) => TaskListEditor.finished(t) && !this.cleared.has(t.hash));
-    clear.description = clear.disabled
-      ? 'Nothing finished is left in the list to take out of it.'
-      : 'Take everything already finished out of this list. Nothing is deleted — those records ' +
-        'are what make a run resumable — and Refresh brings them back.';
+    const clearable = tasks.some((t) => TaskListEditor.finished(t) && !this.cleared.has(t.hash));
+    const clear = clearAction(clearable);
+    this.anchors.act(
+      low.button(clear.label, () => {}),
+      clear,
+      () => {
+        for (const task of tasks) if (TaskListEditor.finished(task)) this.cleared.add(task.hash);
+        this.rebuild();
+      },
+    );
 
-    const refresh = low.button('Refresh', () => {
-      this.cleared.clear();
-      void this.load();
-    });
-    refresh.description =
-      'Re-read what has run, what is running and what is ready, and undo Clear finished';
+    const refresh = reloadAction();
+    this.anchors.act(
+      low.button(refresh.label, () => {}),
+      refresh,
+      () => {
+        this.cleared.clear();
+        void this.load();
+      },
+    );
     this.bar.flushUpdate();
   }
 

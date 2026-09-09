@@ -9,8 +9,8 @@
  * list emptied by Clear blames the filter and tells the author nothing has finished at the exact
  * moment ten things have.
  */
-import type { Offer } from './anchors.js';
-import { publish, type Publishes } from './effects.js';
+import { refuse, type Offer } from './anchors.js';
+import { publish, view, type Publishes } from './effects.js';
 import { taskPublishes, type Selection } from './selection.js';
 import type { Task } from '../../src/shared/ipc';
 
@@ -85,8 +85,65 @@ export function emptyBecause(tasks: readonly Task[], filter: ListFilter): string
 export interface TaskListState {
   /** The characters whose portrait approval the run is waiting on. */
   gatePending: string[];
+  /** Whether a finished task is still in the list for Clear finished to take out; none when unset. */
+  clearable?: boolean;
   /** The cards on screen, and the selection they are drawn against. */
   cards?: { tasks: readonly Task[]; selection: Selection };
+}
+
+/** The three status ticks, by the status each keeps. */
+export type StatusTick = 'done' | 'running' | 'failed';
+
+const TICK_SAYS: Record<StatusTick, string> = {
+  done   : 'Narrow the list to the tasks that finished successfully.',
+  running: 'Narrow the list to the tasks a wave is working on right now.',
+  failed:
+    'Narrow the list to what stopped and wants a person — failed tasks and shots flagged ' +
+    'needs_human.',
+};
+
+/** One status tick. The filter is the pane's own, so flipping it is a view change. */
+export function tickAction(tick: StatusTick): Offer {
+  return {
+    ok: true,
+    ...view('filter'),
+    on     : tick,
+    label  : `only ${tick}`,
+    tooltip: TICK_SAYS[tick],
+  };
+}
+
+/**
+ * Clear finished. Refused while nothing finished is left to take out, with the reason as its
+ * sentence, since a greyed control that will not say why is the same bug as a hidden one.
+ */
+export function clearAction(clearable: boolean): Offer {
+  const control = { ...view('filter'), on: 'clear', label: 'Clear finished' };
+  if (!clearable) {
+    return {
+      ...refuse('Nothing finished is left in the list to take out of it.'),
+      ...control,
+      tooltip: 'Take everything already finished out of this list.',
+    };
+  }
+  return {
+    ok: true,
+    ...control,
+    tooltip:
+      'Take everything already finished out of this list. Nothing is deleted — those records ' +
+      'are what make a run resumable — and Refresh brings them back.',
+  };
+}
+
+/** Refresh, which also undoes Clear finished. */
+export function reloadAction(): Offer {
+  return {
+    ok: true,
+    ...view('reload'),
+    on     : 'reload',
+    label  : 'Refresh',
+    tooltip: 'Re-read what has run, what is running and what is ready, and undo Clear finished',
+  };
 }
 
 /**
@@ -167,6 +224,11 @@ export function controls(state: TaskListState): readonly Offer[] {
   return [
     runAction(),
     ...state.gatePending.map(gateAction),
+    tickAction('done'),
+    tickAction('running'),
+    tickAction('failed'),
+    clearAction(state.clearable ?? false),
+    reloadAction(),
     ...(cards ? cards.tasks.map((task) => cardAction(task, cards.selection)) : []),
   ];
 }
