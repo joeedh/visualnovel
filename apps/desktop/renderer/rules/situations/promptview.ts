@@ -76,6 +76,23 @@ export const SITUATIONS = situations<PromptSituation>(
     state: plain(view({ chunks: [subject({ muted: true }), chunk()] })),
   },
   {
+    name : 'notes-clause',
+    why: 'A clause written as art notes: its origin button scrolls to the notes on this pane rather than opening another editor.',
+    state: plain(
+      view({
+        chunks: [
+          subject(),
+          chunk({
+            key    : 'notes',
+            origin : { kind: 'art-notes', target: 'character:aiko/gala' },
+            text   : 'Gold trim on the gala dress.',
+            derived: 'Gold trim on the gala dress.',
+          }),
+        ],
+      }),
+    ),
+  },
+  {
     name : 'with-refs',
     why: 'A clause carries reference images, one of them drifted, so each is offered to open and to drop.',
     state: plain(

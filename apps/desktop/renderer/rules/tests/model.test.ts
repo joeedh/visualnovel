@@ -13,7 +13,7 @@ import {
 import { PALETTE_ONLY } from '../paletteonly.js';
 import { MENU_ROWS, menuRecords } from '../menus.js';
 import { SHORTCUTS, comboOf, findShortcut, shortcutRecords } from '../shortcuts.js';
-import { createDesktopEffects } from '../../../src/shared/effects.js';
+import { EFFECT_IDS, createDesktopEffects } from '../../../src/shared/effects.js';
 import {
   actionProblems,
   actionsOf,
@@ -186,6 +186,11 @@ describe('model()', () => {
     expect(problems).toHaveLength(2);
     expect(problems[0]).toMatch(/unknown id pane.vanish/);
     expect(problems[1]).toMatch(/must be one of/);
+  });
+
+  it('offers every effect the app declares, so the vocabulary carries no dead entry', () => {
+    const offered = new Set(file.records.flatMap((r) => actionsOf(r).map((step) => step.id)));
+    expect(EFFECT_IDS.filter((id) => !offered.has(id))).toEqual([]);
   });
 
   it('records no field an Offer does not declare', () => {

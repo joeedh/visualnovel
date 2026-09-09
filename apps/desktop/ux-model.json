@@ -201,6 +201,12 @@
     {
       "module": "promptview",
       "editor": "asset",
+      "name"  : "notes-clause",
+      "why": "A clause written as art notes: its origin button scrolls to the notes on this pane rather than opening another editor."
+    },
+    {
+      "module": "promptview",
+      "editor": "asset",
       "name"  : "with-refs",
       "why": "A clause carries reference images, one of them drifted, so each is offered to open and to drop."
     },
@@ -11825,6 +11831,539 @@
       "effects": [
         {
           "id": "prompt.setChunk"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "notes-clause",
+      "key"      : "cmd:prompt.clear#chunks",
+      "offer": {
+        "id"     : "prompt.clear",
+        "label"  : "Chunks",
+        "tooltip": "Send the clauses below as they stand, dropping the whole-prompt text in force",
+        "on"     : "chunks",
+        "ok"     : false,
+        "refusal": {
+          "reason": "This prompt is already in chunks mode."
+        }
+      },
+      "effects": [
+        {
+          "id": "prompt.clear"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "notes-clause",
+      "key"      : "cmd:prompt.setCustom#custom",
+      "offer": {
+        "id"     : "prompt.setCustom",
+        "label"  : "Custom",
+        "tooltip": "Write the whole prompt yourself, starting from the text composed above",
+        "on"     : "custom",
+        "ok"     : true,
+        "props": {
+          "hash": "a1b2c3d4",
+          "text": "Aiko, a transfer student. Palette: #112233."
+        }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setCustom",
+          "props": {
+            "hash": "a1b2c3d4",
+            "text": "Aiko, a transfer student. Palette: #112233."
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "notes-clause",
+      "key"      : "cmd:prompt.condense#agent",
+      "offer": {
+        "id"     : "prompt.condense",
+        "label"  : "Agent",
+        "tooltip": "Have a model condense the clauses into one prompt",
+        "on"     : "agent",
+        "ok"     : true,
+        "props": {
+          "hash": "a1b2c3d4"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.condense",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "notes-clause",
+      "key"      : "cmd:prompt.condense",
+      "offer": {
+        "id"     : "prompt.condense",
+        "label"  : "Condense…",
+        "tooltip": "Rewrite the chunks into one prompt an image model handles well.",
+        "ok"     : true,
+        "props": {
+          "hash": "a1b2c3d4"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.condense",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "notes-clause",
+      "key"      : "cmd:prompt.check",
+      "offer": {
+        "id"     : "prompt.check",
+        "label"  : "Check",
+        "tooltip": "Which clauses the prompt above no longer appears to say",
+        "ok"     : true,
+        "props": {
+          "hash": "a1b2c3d4"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.check",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "notes-clause",
+      "key"      : "cmd:prompt.setCustom",
+      "offer": {
+        "id"      : "prompt.setCustom",
+        "label"   : "Save",
+        "tooltip" : "Send this prompt instead of the clauses below",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "hash": "a1b2c3d4"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setCustom",
+          "props": {
+            "hash": "a1b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "notes-clause",
+      "key"      : "fx:drag.start#subject",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "⋮",
+        "tooltip": "Drag to say this clause somewhere else in the prompt",
+        "on"     : "subject",
+        "ok"     : true,
+        "props": {
+          "interaction": "prompt.reorder"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "prompt.reorder"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "notes-clause",
+      "key"      : "cmd:prompt.setChunk#subject/mute",
+      "offer": {
+        "id"     : "prompt.setChunk",
+        "label"  : "Mute",
+        "tooltip": "Leave this clause out of the prompt",
+        "on"     : "subject/mute",
+        "ok"     : true,
+        "props": {
+          "hash" : "a1b2c3d4",
+          "chunk": "subject",
+          "op"   : "mute",
+          "text" : ""
+        }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "mute",
+            "text" : ""
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "notes-clause",
+      "key"      : "cmd:prompt.setChunk#subject/replace",
+      "offer": {
+        "id"      : "prompt.setChunk",
+        "label"   : "Replace…",
+        "tooltip" : "Say this clause in your own words",
+        "on"      : "subject/replace",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "hash" : "a1b2c3d4",
+          "chunk": "subject",
+          "op"   : "replace"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "replace"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "notes-clause",
+      "key"      : "cmd:prompt.setChunk#subject/append",
+      "offer": {
+        "id"      : "prompt.setChunk",
+        "label"   : "Append…",
+        "tooltip" : "Add to what the builders derived, keeping it",
+        "on"      : "subject/append",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "hash" : "a1b2c3d4",
+          "chunk": "subject",
+          "op"   : "append"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject",
+            "op"   : "append"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "notes-clause",
+      "key"      : "cmd:prompt.addRef#subject/attach",
+      "offer": {
+        "id"      : "prompt.addRef",
+        "label"   : "Attach…",
+        "tooltip" : "Send a reference image with this clause",
+        "on"      : "subject/attach",
+        "supplies": ["ref"],
+        "ok"      : true,
+        "props": {
+          "hash" : "a1b2c3d4",
+          "chunk": "subject"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.addRef",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "subject"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "notes-clause",
+      "key"      : "cmd:prompt.setChunk#subject/reset",
+      "offer": {
+        "id"     : "prompt.setChunk",
+        "label"  : "Reset",
+        "tooltip": "Go back to the words the builders derived",
+        "on"     : "subject/reset",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing has been done to this clause."
+        }
+      },
+      "effects": [
+        {
+          "id": "prompt.setChunk"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "notes-clause",
+      "key"      : "cmd:view.open#subject",
+      "offer": {
+        "id"     : "view.open",
+        "label"  : "Open aiko's sheet",
+        "tooltip": "Open aiko's sheet",
+        "on"     : "subject",
+        "ok"     : true,
+        "props": {
+          "editor" : "wiki",
+          "where"  : "elsewhere",
+          "subject": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "wiki",
+            "where"  : "elsewhere",
+            "subject": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "notes-clause",
+      "key"      : "fx:drag.start#notes",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "⋮",
+        "tooltip": "Drag to say this clause somewhere else in the prompt",
+        "on"     : "notes",
+        "ok"     : true,
+        "props": {
+          "interaction": "prompt.reorder"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "prompt.reorder"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "notes-clause",
+      "key"      : "cmd:prompt.setChunk#notes/mute",
+      "offer": {
+        "id"     : "prompt.setChunk",
+        "label"  : "Mute",
+        "tooltip": "Leave this clause out of the prompt",
+        "on"     : "notes/mute",
+        "ok"     : true,
+        "props": {
+          "hash" : "a1b2c3d4",
+          "chunk": "notes",
+          "op"   : "mute",
+          "text" : ""
+        }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "notes",
+            "op"   : "mute",
+            "text" : ""
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "notes-clause",
+      "key"      : "cmd:prompt.setChunk#notes/replace",
+      "offer": {
+        "id"      : "prompt.setChunk",
+        "label"   : "Replace…",
+        "tooltip" : "Say this clause in your own words",
+        "on"      : "notes/replace",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "hash" : "a1b2c3d4",
+          "chunk": "notes",
+          "op"   : "replace"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "notes",
+            "op"   : "replace"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "notes-clause",
+      "key"      : "cmd:prompt.setChunk#notes/append",
+      "offer": {
+        "id"      : "prompt.setChunk",
+        "label"   : "Append…",
+        "tooltip" : "Add to what the builders derived, keeping it",
+        "on"      : "notes/append",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "hash" : "a1b2c3d4",
+          "chunk": "notes",
+          "op"   : "append"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.setChunk",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "notes",
+            "op"   : "append"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "notes-clause",
+      "key"      : "cmd:prompt.addRef#notes/attach",
+      "offer": {
+        "id"      : "prompt.addRef",
+        "label"   : "Attach…",
+        "tooltip" : "Send a reference image with this clause",
+        "on"      : "notes/attach",
+        "supplies": ["ref"],
+        "ok"      : true,
+        "props": {
+          "hash" : "a1b2c3d4",
+          "chunk": "notes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "prompt.addRef",
+          "props": {
+            "hash" : "a1b2c3d4",
+            "chunk": "notes"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "notes-clause",
+      "key"      : "cmd:prompt.setChunk#notes/reset",
+      "offer": {
+        "id"     : "prompt.setChunk",
+        "label"  : "Reset",
+        "tooltip": "Go back to the words the builders derived",
+        "on"     : "notes/reset",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing has been done to this clause."
+        }
+      },
+      "effects": [
+        {
+          "id": "prompt.setChunk"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "promptview",
+      "situation": "notes-clause",
+      "key"      : "fx:pane.scroll#notes",
+      "offer": {
+        "id"     : "pane.scroll",
+        "label"  : "Edit these art notes",
+        "tooltip": "Edit these art notes",
+        "on"     : "notes",
+        "ok"     : true,
+        "props": {
+          "to": "character:aiko/gala"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.scroll",
+          "props": {
+            "to": "character:aiko/gala"
+          }
         }
       ]
     },

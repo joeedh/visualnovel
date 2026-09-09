@@ -23,7 +23,7 @@ import {
   heldNote,
   modeStrip,
   originAction,
-  originOpenAction,
+  originButton,
   railAction,
   refOpenAction,
   refStrip,
@@ -295,11 +295,10 @@ export class PromptChunkView {
     const origin = originAction(chunk.origin);
     if (origin.ok) {
       const open = button('as-chunk-open', '⇱');
-      open.title = origin.label;
-      // A scroll runs no command at all, and an open is a publish followed by one, so neither is
-      // wired from an offer here. Both are recorded as steps the tour composes instead.
-      const opens = originOpenAction(chunk);
-      if (opens) this.editor.drawing.record(open, opens);
+      // Recorded rather than acted: an open is a publish followed by the open, and a scroll is the
+      // pane's own, so the click stays below and the offer says what it does
+      const offer = originButton(chunk);
+      if (offer) this.editor.drawing.record(open, offer);
       open.addEventListener('click', () => void this.editor.openOrigin(origin));
       tags.appendChild(open);
     }

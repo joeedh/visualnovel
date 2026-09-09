@@ -24,7 +24,7 @@ import {
   dropRefAction,
   modeStrip,
   originAction,
-  originOpenAction,
+  originButton,
   refOpenAction,
   refStrip,
 } from '../promptview.js';
@@ -453,7 +453,7 @@ describe('controls', () => {
         ...(fixture.mode === 'custom' ? [customBoxAction(fixture)] : []),
         ...fixture.chunks.flatMap((one) => {
           const how = editing[one.key as keyof typeof editing];
-          const origin = originOpenAction(one);
+          const origin = originButton(one);
           return [
             railAction(one),
             ...chunkActs(fixture, one).map((act) => act.offer),
@@ -548,13 +548,13 @@ describe('refOpenAction', () => {
   });
 });
 
-describe('originOpenAction', () => {
+describe('originButton', () => {
   it('opens the editor a clause came from, keyed by the clause', () => {
     const one = chunk({
       key   : 'subject',
       origin: { kind: 'character', id: 'aiko', field: 'appearance' },
     });
-    expect(originOpenAction(one)).toEqual({
+    expect(originButton(one)).toEqual({
       ok     : true,
       id     : 'view.open',
       props  : { editor: 'wiki', where: 'elsewhere', subject: 'characters/aiko/character.md' },
@@ -564,10 +564,24 @@ describe('originOpenAction', () => {
     });
   });
 
-  it('is nothing for a clause that scrolls, or that came from nowhere', () => {
-    expect(originOpenAction(chunk({ origin: { kind: 'builder' } }))).toBeUndefined();
-    const scrolls = chunk({ origin: { kind: 'art-notes', target: 'character:aiko' } });
+  it('scrolls to the words a clause came from when they are on this pane', () => {
+    const scrolls = chunk({
+      key   : 'notes',
+      origin: { kind: 'art-notes', target: 'character:aiko' },
+    });
     expect(originAction(scrolls.origin)).toMatchObject({ kind: 'scroll' });
-    expect(originOpenAction(scrolls)).toBeUndefined();
+    expect(originButton(scrolls)).toEqual({
+      ok     : true,
+      id     : 'pane.scroll',
+      props  : { to: 'character:aiko' },
+      label  : 'Edit these art notes',
+      tooltip: 'Edit these art notes',
+      on     : 'notes',
+    });
+    expect(keyOf(originButton(scrolls)!)).toBe('fx:pane.scroll#notes');
+  });
+
+  it('is nothing for a clause that came from nowhere', () => {
+    expect(originButton(chunk({ origin: { kind: 'builder' } }))).toBeUndefined();
   });
 });

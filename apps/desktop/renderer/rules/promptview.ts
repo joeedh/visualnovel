@@ -11,7 +11,7 @@ import type { ChunkOrigin } from '@vn/types';
 import { TOP_CHUNK } from '../../src/shared/promptops.js';
 import type { PromptChunkInfo, PromptView } from '../../src/shared/prompt.js';
 import { refuse, type Action, type Offer } from './anchors.js';
-import { startDrag } from './effects.js';
+import { scrollTo, startDrag } from './effects.js';
 
 /**
  * The hue distinguishes who wrote the words. `--sodium` means they come verbatim out of a
@@ -497,13 +497,23 @@ export function refOpenAction(chip: RefChip): Offer {
 }
 
 /**
- * The `⇱` on a clause whose origin opens another editor. A scroll runs no command at all,
- * and an open is a publish followed by one, so neither is wired from this offer; it is recorded
- * as a step the tour composes. Nothing for a clause that scrolls or has no origin.
+ * The `⇱` on a clause: a `pane.scroll` where the words are further down this pane, and a
+ * `view.open` where they are in another editor. An open is a publish followed by the open, so
+ * neither is wired from this offer; both are recorded, and the tour composes the step. Nothing
+ * for a clause that has no origin.
  */
-export function originOpenAction(chunk: PromptChunkInfo): Offer | undefined {
+export function originButton(chunk: PromptChunkInfo): Offer | undefined {
   const origin = originAction(chunk.origin);
-  if (!origin.ok || origin.kind !== 'open') return undefined;
+  if (!origin.ok) return undefined;
+  if (origin.kind === 'scroll') {
+    return {
+      ok: true,
+      ...scrollTo(origin.to),
+      label  : origin.label,
+      tooltip: origin.label,
+      on     : chunk.key,
+    };
+  }
   return {
     ok     : true,
     id     : 'view.open',
@@ -542,7 +552,7 @@ export function controls(
 ): readonly Offer[] {
   const chunks = view.chunks.flatMap((chunk) => {
     const how = editing[chunk.key];
-    const origin = originOpenAction(chunk);
+    const origin = originButton(chunk);
     return [
       ...(view.frozen ? [] : [railAction(chunk)]),
       ...chunkActs(view, chunk).map((act) => act.offer),
