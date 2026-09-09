@@ -1,5 +1,7 @@
-import { Menu, composeTooltip, createMenu, startMenu } from 'pathux';
-import type { Button, Container, DropBox, Label, MenuTemplate, MenuTemplateCustom } from 'pathux';
+import { composeTooltip } from 'pathux';
+import type { Button, Container, DropBox, Label, MenuTemplate } from 'pathux';
+import { showContextMenu } from '../chrome/showmenu.js';
+import type { VnContext } from '../app/context.js';
 import { BUDGET_CHOICES, TEXT_MODELS, budgetLabel, effortChoicesFor, effortLabel } from '@vn/types';
 import {
   allow,
@@ -35,13 +37,7 @@ import {
 } from '../agent/chatsurface.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { openPalette } from '../chrome/palette.js';
-import {
-  threadDetail,
-  threadLabel,
-  tokensDetail,
-  uncachedTokens,
-  type ThreadHeader,
-} from '../../../src/shared/convo.js';
+import { tokensDetail, uncachedTokens, type ThreadHeader } from '../../../src/shared/convo.js';
 import { redrawing, type AnchorPass } from '../tour/anchors.js';
 import { applyOffer } from '../../rules/anchors.js';
 import { modeAction, modelAction } from '../../rules/headerbar.js';
@@ -54,6 +50,7 @@ import {
   resumeAction,
   stopTurnAction,
   threadsAction,
+  threadsMenu,
 } from '../../rules/convobar.js';
 import type { AskForm } from '../../rules/askform.js';
 import type { ConfirmRequest, Plan, SkillEntry } from '../../../src/shared/ipc.js';
@@ -366,57 +363,19 @@ export class ConvoEditor extends VnEditor {
     );
   }
 
-  /**
-   * The saved conversations, drawn as path.ux's searchable menu, which is what a list that only
-   * grows needs.
-   *
-   * The list is fetched on the click rather than held on the pane: threads are written by main as
-   * a turn runs, so anything cached here would be a menu that does not list the conversation the
-   * author is having.
-   *
-   * Every row carries an explicit id in the last slot. `createMenu` reads `item[5]` for a row
-   * longer than four, so a row with a tooltip and no id is registered under `undefined` and its
-   * callback is never found: the click lands, the menu closes, and nothing happens.
-   */
+  /** The saved conversations, as the menu table lists them, dropped below the Threads button. */
   private async showThreads(): Promise<void> {
     const outcome = await exec('agent.threads');
     if (!outcome.ok) return;
     const { threads, active } = outcome.data as { threads: ThreadHeader[]; active?: string };
-
-    const rows: MenuTemplateCustom[] = threads.map((thread) => [
-      `${thread.id === active ? '• ' : ''}${threadLabel(thread)}`,
-      () => void exec('agent.openThread', { id: thread.id }),
-      undefined,
-      undefined,
-      threadDetail(thread),
-      thread.id,
-    ]);
-    if (rows.length === 0)
-      rows.push([
-        '(nothing saved yet)',
-        () => {},
-        undefined,
-        undefined,
-        'A conversation is saved once you have said something in it.',
-        'none',
-      ]);
-
-    const templ: MenuTemplate = [
-      ...rows,
-      Menu.SEP,
-      [
-        'New conversation',
-        () => void exec('agent.newThread'),
-        undefined,
-        undefined,
-        'Save this one and start again.',
-        'new',
-      ] as MenuTemplateCustom,
-    ];
-
-    const menu = createMenu(this.ctx, 'Conversations', templ);
     const rect = this.threadsBtn.getBoundingClientRect();
-    startMenu(menu, rect.x, rect.y + rect.height, true, 0);
+    await showContextMenu(
+      this.ctx as VnContext,
+      rect.x,
+      rect.y + rect.height,
+      'Conversations',
+      threadsMenu({ threads, ...(active === undefined ? {} : { active }) }),
+    );
   }
 
   // -------------------------------------------------------------------------

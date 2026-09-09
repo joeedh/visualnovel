@@ -1,4 +1,12 @@
-import { INHERIT, outfitInvocation, outfitRows, shadowedMarker, sourceLabel } from '../wardrobe.js';
+import {
+  INHERIT,
+  outfitAction,
+  outfitInvocation,
+  outfitRows,
+  shadowedMarker,
+  sourceLabel,
+  type OutfitRow,
+} from '../wardrobe.js';
 import type { CoverageCast, CoverageShot, SceneCoverage } from '../../../../src/shared/ipc';
 
 const AIKO: CoverageCast = { id: 'aiko', outfits: ['uniform', 'track'], defaultOutfit: 'uniform' };
@@ -136,5 +144,35 @@ describe('sourceLabel', () => {
     expect(sourceLabel({ id: 'track', origin: 'shot' })).toBe('"track" (this shot)');
     expect(sourceLabel({ id: 'track', origin: 'scene' })).toBe('"track" (scene marker)');
     expect(sourceLabel({ id: 'uniform', origin: 'default' })).toBe('"uniform" (character sheet)');
+  });
+});
+
+describe('outfitAction', () => {
+  const sheet = { id: 'uniform', origin: 'default' } as const;
+
+  it('names the row’s level and character, leaving the outfit to the select', () => {
+    const scene: OutfitRow = {
+      level    : 'scene',
+      scene    : 'arrival',
+      character: 'aiko',
+      outfits  : ['uniform'],
+      value    : '',
+      effective: sheet,
+      inherits : sheet,
+    };
+    expect(outfitAction(scene)).toEqual({
+      ok      : true,
+      id      : 'story.setSceneOutfit',
+      props   : { scene: 'arrival', character: 'aiko' },
+      on      : 'scene/aiko',
+      label   : 'aiko',
+      tooltip : 'Dress aiko in the scene. Every frame they appear in is drawn again.',
+      supplies: ['outfit'],
+    });
+    expect(outfitAction({ ...scene, level: 'shot', shot: 'arrival__s1' })).toMatchObject({
+      id   : 'story.setOutfit',
+      props: { scene: 'arrival', shot: 'arrival__s1', character: 'aiko' },
+      on   : 'shot/aiko',
+    });
   });
 });

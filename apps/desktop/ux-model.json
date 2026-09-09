@@ -219,6 +219,12 @@
     {
       "module": "branch",
       "editor": "branches",
+      "name"  : "labelling",
+      "why": "A choice’s label box is open, so the box offers story.setChoice with the text typed after."
+    },
+    {
+      "module": "branch",
+      "editor": "branches",
       "name"  : "cards",
       "why": "Two cards are drawn while a shot of the first is selected, so pressing the second clears the shot and pressing the first keeps it; nothing reaches the second."
     },
@@ -286,13 +292,13 @@
       "module": "gengraph",
       "editor": "gengraph",
       "name"  : "nothing-selected",
-      "why"   : "Nothing is selected, so Group and Ungroup are refused before anything is weighed."
+      "why"   : "Nothing is selected, so all four buttons are refused before anything is weighed."
     },
     {
       "module": "gengraph",
       "editor": "gengraph",
       "name"  : "nodes-selected",
-      "why"   : "Plain nodes are selected and weighed, so Group is offered and Ungroup is refused."
+      "why": "Plain nodes are selected and weighed, so Delete, Duplicate and Group are offered and Ungroup is refused."
     },
     {
       "module": "gengraph",
@@ -304,7 +310,7 @@
       "module": "gengraph",
       "editor": "gengraph",
       "name"  : "no-level",
-      "why": "Nodes are selected but the level on screen no longer resolves, so both are refused with NO_LEVEL."
+      "why": "Nodes are selected but the level on screen no longer resolves, so every button is refused with NO_LEVEL."
     },
     {
       "module": "onboarding",
@@ -370,13 +376,19 @@
       "module": "script",
       "editor": "script",
       "name"  : "scene",
-      "why": "A scene is on the page: its heading opens the move dialog and each line opens a text box."
+      "why": "A scene is on the page: its heading opens the move dialog, the spoken line has a cue slot, and each line opens a text box."
     },
     {
       "module": "script",
       "editor": "script",
       "name"  : "editing-a-line",
       "why"   : "One line’s box is open, so that line’s control is left out."
+    },
+    {
+      "module": "script",
+      "editor": "script",
+      "name"  : "picking-a-speaker",
+      "why"   : "One line’s cue picker is open, so that slot says what picking does."
     },
     {
       "module": "script",
@@ -487,6 +499,18 @@
       "why": "Both doors have answered: decompose is priced and offered, placing by hand is refused with the stack’s sentence."
     },
     {
+      "module": "timeline",
+      "editor": "timeline",
+      "name"  : "shot-selected",
+      "why": "A shot framing one of two characters is selected, so the strip offers the scene rows, the variant, the shot row with its remove button, the add select and the checkbox."
+    },
+    {
+      "module": "timeline",
+      "editor": "timeline",
+      "name"  : "shot-frames-nobody",
+      "why": "The selected shot frames nobody, so there is no shot row or remove button, and the checkbox is refused."
+    },
+    {
       "module": "wiki",
       "editor": "wiki",
       "name"  : "none-open",
@@ -551,6 +575,18 @@
       "editor": "branches",
       "name"  : "stub",
       "why"   : "A stub has no script, so the one act it has is writing the scene, as a form."
+    },
+    {
+      "module": "threadsmenu",
+      "editor": "convo",
+      "name"  : "nothing-saved",
+      "why"   : "No conversation has been saved, so the one row is refused and says why."
+    },
+    {
+      "module": "threadsmenu",
+      "editor": "convo",
+      "name"  : "two-saved",
+      "why"   : "Two conversations are saved and the second is open, so its row is marked."
     },
     {
       "module": "headermenus",
@@ -9959,6 +9995,57 @@
       "via"      : "control",
       "editor"   : "branches",
       "module"   : "branch",
+      "situation": "labelling",
+      "key"      : "cmd:story.newScene",
+      "offer": {
+        "id"      : "story.newScene",
+        "label"   : "+ scene",
+        "tooltip" : "Name a new scene and add it to the graph, unconnected",
+        "supplies": ["scene", "heading"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "story.newScene",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
+      "situation": "labelling",
+      "key"      : "cmd:story.setChoice#edge/e1",
+      "offer": {
+        "id"      : "story.setChoice",
+        "label"   : "Go in",
+        "tooltip" : "What this choice reads as in the game. Enter renames it, Escape leaves it.",
+        "on"      : "edge/e1",
+        "supplies": ["label"],
+        "ok"      : true,
+        "props": {
+          "scene": "arrival",
+          "goto" : "cafe",
+          "index": 0
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setChoice",
+          "props": {
+            "scene": "arrival",
+            "goto" : "cafe",
+            "index": 0
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
       "situation": "cards",
       "key"      : "cmd:story.newScene",
       "offer": {
@@ -11798,6 +11885,48 @@
       "editor"   : "gengraph",
       "module"   : "gengraph",
       "situation": "nothing-selected",
+      "key"      : "cmd:gengraph.removeNode",
+      "offer": {
+        "id"     : "gengraph.removeNode",
+        "label"  : "Delete",
+        "tooltip": "Remove the selected nodes and sever the selected links",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Select the nodes to delete first."
+        }
+      },
+      "effects": [
+        {
+          "id": "gengraph.removeNode"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "nothing-selected",
+      "key"      : "cmd:gengraph.duplicateNode",
+      "offer": {
+        "id"     : "gengraph.duplicateNode",
+        "label"  : "Duplicate",
+        "tooltip": "Add a copy of each selected node, carrying over the values it authored",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Select the nodes to duplicate first."
+        }
+      },
+      "effects": [
+        {
+          "id": "gengraph.duplicateNode"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "nothing-selected",
       "key"      : "cmd:gengraph.createGroup",
       "offer": {
         "id"     : "gengraph.createGroup",
@@ -11832,6 +11961,62 @@
       "effects": [
         {
           "id": "gengraph.ungroup"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "nodes-selected",
+      "key"      : "cmd:gengraph.removeNode",
+      "offer": {
+        "id"     : "gengraph.removeNode",
+        "label"  : "Delete",
+        "tooltip": "Remove the selected nodes and sever the selected links",
+        "ok"     : true,
+        "props": {
+          "slug": "plates",
+          "node": "1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "gengraph.removeNode",
+          "props": {
+            "slug": "plates",
+            "node": "1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "nodes-selected",
+      "key"      : "cmd:gengraph.duplicateNode",
+      "offer": {
+        "id"     : "gengraph.duplicateNode",
+        "label"  : "Duplicate",
+        "tooltip": "Add a copy of each selected node, carrying over the values it authored",
+        "ok"     : true,
+        "props": {
+          "slug": "plates",
+          "node": "1",
+          "x"   : 120,
+          "y"   : 60
+        }
+      },
+      "effects": [
+        {
+          "id"   : "gengraph.duplicateNode",
+          "props": {
+            "slug": "plates",
+            "node": "1",
+            "x"   : 120,
+            "y"   : 60
+          }
         }
       ]
     },
@@ -11889,6 +12074,62 @@
       "editor"   : "gengraph",
       "module"   : "gengraph",
       "situation": "group-selected",
+      "key"      : "cmd:gengraph.removeNode",
+      "offer": {
+        "id"     : "gengraph.removeNode",
+        "label"  : "Delete",
+        "tooltip": "Remove the selected nodes and sever the selected links",
+        "ok"     : true,
+        "props": {
+          "slug": "plates",
+          "node": "4"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "gengraph.removeNode",
+          "props": {
+            "slug": "plates",
+            "node": "4"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "group-selected",
+      "key"      : "cmd:gengraph.duplicateNode",
+      "offer": {
+        "id"     : "gengraph.duplicateNode",
+        "label"  : "Duplicate",
+        "tooltip": "Add a copy of each selected node, carrying over the values it authored",
+        "ok"     : true,
+        "props": {
+          "slug": "plates",
+          "node": "4",
+          "x"   : 20,
+          "y"   : 20
+        }
+      },
+      "effects": [
+        {
+          "id"   : "gengraph.duplicateNode",
+          "props": {
+            "slug": "plates",
+            "node": "4",
+            "x"   : 20,
+            "y"   : 20
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "group-selected",
       "key"      : "cmd:gengraph.createGroup",
       "offer": {
         "id"     : "gengraph.createGroup",
@@ -11928,6 +12169,48 @@
             "slug": "plates",
             "node": "4"
           }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "no-level",
+      "key"      : "cmd:gengraph.removeNode",
+      "offer": {
+        "id"     : "gengraph.removeNode",
+        "label"  : "Delete",
+        "tooltip": "Remove the selected nodes and sever the selected links",
+        "ok"     : false,
+        "refusal": {
+          "reason": "this level of the graph is no longer there; go back up"
+        }
+      },
+      "effects": [
+        {
+          "id": "gengraph.removeNode"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "no-level",
+      "key"      : "cmd:gengraph.duplicateNode",
+      "offer": {
+        "id"     : "gengraph.duplicateNode",
+        "label"  : "Duplicate",
+        "tooltip": "Add a copy of each selected node, carrying over the values it authored",
+        "ok"     : false,
+        "refusal": {
+          "reason": "this level of the graph is no longer there; go back up"
+        }
+      },
+      "effects": [
+        {
+          "id": "gengraph.duplicateNode"
         }
       ]
     },
@@ -12837,6 +13120,32 @@
       "editor"   : "script",
       "module"   : "script",
       "situation": "scene",
+      "key"      : "cmd:story.setSpeaker#arrival:L2",
+      "offer": {
+        "id"      : "story.setSpeaker",
+        "label"   : "Aiko",
+        "tooltip" : "Aiko says this line — click to change who does",
+        "on"      : "arrival:L2",
+        "supplies": ["speaker"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setSpeaker",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "scene",
       "key"      : "cmd:story.setLineText#arrival:L2",
       "offer": {
         "id"      : "story.setLineText",
@@ -12890,6 +13199,137 @@
       "editor"   : "script",
       "module"   : "script",
       "situation": "editing-a-line",
+      "key"      : "cmd:story.setSpeaker#arrival:L2",
+      "offer": {
+        "id"      : "story.setSpeaker",
+        "label"   : "Aiko",
+        "tooltip" : "Aiko says this line — click to change who does",
+        "on"      : "arrival:L2",
+        "supplies": ["speaker"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setSpeaker",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "editing-a-line",
+      "key"      : "cmd:story.setLineText#arrival:L2",
+      "offer": {
+        "id"      : "story.setLineText",
+        "label"   : "AIKO: Is this the place?",
+        "tooltip" : "Click to retype this line",
+        "on"      : "arrival:L2",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "picking-a-speaker",
+      "key"      : "cmd:story.setHeading",
+      "offer": {
+        "id"     : "story.setHeading",
+        "label"  : "EXT. SCHOOL GATE - MORNING",
+        "tooltip": "Move this scene somewhere else by rewriting its heading. Its rendered shots are drawn again — the dialog says how many — and the prose is left describing the old place.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "scene"  : "arrival",
+          "heading": "EXT. SCHOOL GATE - MORNING"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setHeading",
+          "props": {
+            "scene"  : "arrival",
+            "heading": "EXT. SCHOOL GATE - MORNING"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "picking-a-speaker",
+      "key"      : "cmd:story.setLineText#arrival:L1",
+      "offer": {
+        "id"      : "story.setLineText",
+        "label"   : "Aiko stops at the gate.",
+        "tooltip" : "Click to retype this line",
+        "on"      : "arrival:L1",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "picking-a-speaker",
+      "key"      : "cmd:story.setSpeaker#arrival:L2",
+      "offer": {
+        "id"      : "story.setSpeaker",
+        "label"   : "Aiko",
+        "tooltip" : "Who says this line — picking nobody makes it narration",
+        "on"      : "arrival:L2",
+        "supplies": ["speaker"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setSpeaker",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "picking-a-speaker",
       "key"      : "cmd:story.setLineText#arrival:L2",
       "offer": {
         "id"      : "story.setLineText",
@@ -12960,6 +13400,32 @@
           "id"   : "story.setLineText",
           "props": {
             "line": "arrival:L1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-merge",
+      "key"      : "cmd:story.setSpeaker#arrival:L2",
+      "offer": {
+        "id"      : "story.setSpeaker",
+        "label"   : "Aiko",
+        "tooltip" : "Aiko says this line — click to change who does",
+        "on"      : "arrival:L2",
+        "supplies": ["speaker"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setSpeaker",
+          "props": {
+            "line": "arrival:L2"
           }
         }
       ]
@@ -13074,6 +13540,32 @@
       "editor"   : "script",
       "module"   : "script",
       "situation": "pending-split",
+      "key"      : "cmd:story.setSpeaker#arrival:L2",
+      "offer": {
+        "id"      : "story.setSpeaker",
+        "label"   : "Aiko",
+        "tooltip" : "Aiko says this line — click to change who does",
+        "on"      : "arrival:L2",
+        "supplies": ["speaker"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setSpeaker",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-split",
       "key"      : "cmd:story.setLineText#arrival:L2",
       "offer": {
         "id"      : "story.setLineText",
@@ -13172,6 +13664,32 @@
           "id"   : "story.setLineText",
           "props": {
             "line": "arrival:L1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "script",
+      "situation": "pending-scene",
+      "key"      : "cmd:story.setSpeaker#arrival:L2",
+      "offer": {
+        "id"      : "story.setSpeaker",
+        "label"   : "Aiko",
+        "tooltip" : "Aiko says this line — click to change who does",
+        "on"      : "arrival:L2",
+        "supplies": ["speaker"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setSpeaker",
+          "props": {
+            "line": "arrival:L2"
           }
         }
       ]
@@ -13809,6 +14327,386 @@
         }
       ],
       "reasonFrom": "stack"
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "shot-selected",
+      "key"      : "cmd:story.newShot",
+      "offer": {
+        "id"     : "story.newShot",
+        "label"  : "+ shot",
+        "tooltip": "Place a shot by hand over lines you name — a new frame to render. Opens the command, priced before it runs.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "scene": "arrival"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.newShot",
+          "props": {
+            "scene": "arrival"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "shot-selected",
+      "key"      : "cmd:story.setSceneOutfit#scene/aiko",
+      "offer": {
+        "id"      : "story.setSceneOutfit",
+        "label"   : "aiko",
+        "tooltip" : "Dress aiko in the scene. Every frame they appear in is drawn again.",
+        "on"      : "scene/aiko",
+        "supplies": ["outfit"],
+        "ok"      : true,
+        "props": {
+          "scene"    : "arrival",
+          "character": "aiko"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setSceneOutfit",
+          "props": {
+            "scene"    : "arrival",
+            "character": "aiko"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "shot-selected",
+      "key"      : "cmd:story.setSceneOutfit#scene/ren",
+      "offer": {
+        "id"      : "story.setSceneOutfit",
+        "label"   : "ren",
+        "tooltip" : "Dress ren in the scene. Every frame they appear in is drawn again.",
+        "on"      : "scene/ren",
+        "supplies": ["outfit"],
+        "ok"      : true,
+        "props": {
+          "scene"    : "arrival",
+          "character": "ren"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setSceneOutfit",
+          "props": {
+            "scene"    : "arrival",
+            "character": "ren"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "shot-selected",
+      "key"      : "cmd:story.setVariant",
+      "offer": {
+        "id"      : "story.setVariant",
+        "label"   : "set in",
+        "tooltip": "Draw this shot against another variant of the location. That is the plate behind it, so the frame is drawn again.",
+        "supplies": ["variant"],
+        "ok"      : true,
+        "props": {
+          "scene": "arrival",
+          "shot" : "arrival__s1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setVariant",
+          "props": {
+            "scene": "arrival",
+            "shot" : "arrival__s1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "shot-selected",
+      "key"      : "cmd:story.setOutfit#shot/aiko",
+      "offer": {
+        "id"      : "story.setOutfit",
+        "label"   : "aiko",
+        "tooltip" : "Dress aiko in this shot. Every frame they appear in is drawn again.",
+        "on"      : "shot/aiko",
+        "supplies": ["outfit"],
+        "ok"      : true,
+        "props": {
+          "scene"    : "arrival",
+          "shot"     : "arrival__s1",
+          "character": "aiko"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setOutfit",
+          "props": {
+            "scene"    : "arrival",
+            "shot"     : "arrival__s1",
+            "character": "aiko"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "shot-selected",
+      "key"      : "cmd:story.setSubjects#drop/aiko",
+      "offer": {
+        "id"     : "story.setSubjects",
+        "label"  : "×",
+        "tooltip": "Take aiko out of this shot. Their sheet stops being one of the references the frame is drawn from, and their outfit override goes with them.",
+        "on"     : "drop/aiko",
+        "ok"     : true,
+        "props": {
+          "scene"   : "arrival",
+          "shot"    : "arrival__s1",
+          "subjects": ""
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setSubjects",
+          "props": {
+            "scene"   : "arrival",
+            "shot"    : "arrival__s1",
+            "subjects": ""
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "shot-selected",
+      "key"      : "cmd:story.setSubjects#add",
+      "offer": {
+        "id"      : "story.setSubjects",
+        "label"   : "add",
+        "tooltip": "Put another character in this shot. Their sheet becomes one of the references the frame is drawn from, so the frame is drawn again.",
+        "on"      : "add",
+        "supplies": ["subjects"],
+        "ok"      : true,
+        "props": {
+          "scene": "arrival",
+          "shot" : "arrival__s1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setSubjects",
+          "props": {
+            "scene": "arrival",
+            "shot" : "arrival__s1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "shot-selected",
+      "key"      : "cmd:story.requireCast",
+      "offer": {
+        "id"     : "story.requireCast",
+        "label"  : "must appear in the frame",
+        "tooltip": "Clear this to stop the reviewer calling aiko missing from this frame. Their sheets still reach the generator, so the frame is drawn from them either way.",
+        "ok"     : true,
+        "props": {
+          "scene"   : "arrival",
+          "shot"    : "arrival__s1",
+          "required": false
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.requireCast",
+          "props": {
+            "scene"   : "arrival",
+            "shot"    : "arrival__s1",
+            "required": false
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "shot-frames-nobody",
+      "key"      : "cmd:story.newShot",
+      "offer": {
+        "id"     : "story.newShot",
+        "label"  : "+ shot",
+        "tooltip": "Place a shot by hand over lines you name — a new frame to render. Opens the command, priced before it runs.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "scene": "arrival"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.newShot",
+          "props": {
+            "scene": "arrival"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "shot-frames-nobody",
+      "key"      : "cmd:story.setSceneOutfit#scene/aiko",
+      "offer": {
+        "id"      : "story.setSceneOutfit",
+        "label"   : "aiko",
+        "tooltip" : "Dress aiko in the scene. Every frame they appear in is drawn again.",
+        "on"      : "scene/aiko",
+        "supplies": ["outfit"],
+        "ok"      : true,
+        "props": {
+          "scene"    : "arrival",
+          "character": "aiko"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setSceneOutfit",
+          "props": {
+            "scene"    : "arrival",
+            "character": "aiko"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "shot-frames-nobody",
+      "key"      : "cmd:story.setSceneOutfit#scene/ren",
+      "offer": {
+        "id"      : "story.setSceneOutfit",
+        "label"   : "ren",
+        "tooltip" : "Dress ren in the scene. Every frame they appear in is drawn again.",
+        "on"      : "scene/ren",
+        "supplies": ["outfit"],
+        "ok"      : true,
+        "props": {
+          "scene"    : "arrival",
+          "character": "ren"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setSceneOutfit",
+          "props": {
+            "scene"    : "arrival",
+            "character": "ren"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "shot-frames-nobody",
+      "key"      : "cmd:story.setVariant",
+      "offer": {
+        "id"      : "story.setVariant",
+        "label"   : "set in",
+        "tooltip": "Draw this shot against another variant of the location. That is the plate behind it, so the frame is drawn again.",
+        "supplies": ["variant"],
+        "ok"      : true,
+        "props": {
+          "scene": "arrival",
+          "shot" : "arrival__s1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setVariant",
+          "props": {
+            "scene": "arrival",
+            "shot" : "arrival__s1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "shot-frames-nobody",
+      "key"      : "cmd:story.setSubjects#add",
+      "offer": {
+        "id"      : "story.setSubjects",
+        "label"   : "add",
+        "tooltip": "Put another character in this shot. Their sheet becomes one of the references the frame is drawn from, so the frame is drawn again.",
+        "on"      : "add",
+        "supplies": ["subjects"],
+        "ok"      : true,
+        "props": {
+          "scene": "arrival",
+          "shot" : "arrival__s1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setSubjects",
+          "props": {
+            "scene": "arrival",
+            "shot" : "arrival__s1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "shot-frames-nobody",
+      "key"      : "cmd:story.requireCast",
+      "offer": {
+        "id"     : "story.requireCast",
+        "label"  : "must appear in the frame",
+        "tooltip": "Nobody is in this shot, so there is nothing it could be made to show.",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nobody is in this shot, so there is nothing it could be made to show."
+        }
+      },
+      "effects": [
+        {
+          "id": "story.requireCast"
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -14684,6 +15582,64 @@
         "scene": "departure"
       },
       "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "convo",
+      "module"   : "threadsmenu",
+      "situation": "nothing-saved",
+      "when"     : "threads",
+      "id"       : "agent.openThread",
+      "label"    : "(nothing saved yet)",
+      "refused"  : "A conversation is saved once you have said something in it."
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "convo",
+      "module"   : "threadsmenu",
+      "situation": "nothing-saved",
+      "when"     : "threads",
+      "id"       : "agent.newThread",
+      "label"    : "New conversation",
+      "tooltip"  : "Save this one and start again."
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "convo",
+      "module"   : "threadsmenu",
+      "situation": "two-saved",
+      "when"     : "threads",
+      "id"       : "agent.openThread",
+      "label"    : "Casting",
+      "tooltip"  : "earlier · claude-opus-5",
+      "props": {
+        "id": "t1"
+      },
+      "on"       : "t1"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "convo",
+      "module"   : "threadsmenu",
+      "situation": "two-saved",
+      "when"     : "threads",
+      "id"       : "agent.openThread",
+      "label"    : "• Wardrobe",
+      "tooltip"  : "earlier · claude-opus-5",
+      "props": {
+        "id": "t2"
+      },
+      "on"       : "t2"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "convo",
+      "module"   : "threadsmenu",
+      "situation": "two-saved",
+      "when"     : "threads",
+      "id"       : "agent.newThread",
+      "label"    : "New conversation",
+      "tooltip"  : "Save this one and start again."
     },
     {
       "via"      : "menu",
@@ -17315,10 +18271,6 @@
       "why": "An edit the graph canvas makes through its node widgets, sockets and drags, outside `controls`."
     },
     {
-      "match": "gengraph.duplicateNode",
-      "why": "An edit the graph canvas makes through its node widgets, sockets and drags, outside `controls`."
-    },
-    {
       "match": "gengraph.expose",
       "why": "An edit the graph canvas makes through its node widgets, sockets and drags, outside `controls`."
     },
@@ -17332,10 +18284,6 @@
     },
     {
       "match": "gengraph.removeBoundary",
-      "why": "An edit the graph canvas makes through its node widgets, sockets and drags, outside `controls`."
-    },
-    {
-      "match": "gengraph.removeNode",
       "why": "An edit the graph canvas makes through its node widgets, sockets and drags, outside `controls`."
     },
     {
@@ -17364,35 +18312,15 @@
     },
     {
       "match": "story.insertLine",
-      "why": "The script column runs it from a keystroke, the cue picker or a pending scene, not from a drawn control."
+      "why": "The script column runs it from a keystroke or a pending scene, not from a drawn control."
     },
     {
       "match": "story.deleteLine",
-      "why": "The script column runs it from a keystroke, the cue picker or a pending scene, not from a drawn control."
-    },
-    {
-      "match": "story.setSpeaker",
-      "why": "The script column runs it from a keystroke, the cue picker or a pending scene, not from a drawn control."
+      "why": "The script column runs it from a keystroke or a pending scene, not from a drawn control."
     },
     {
       "match": "story.setNext",
-      "why": "The script column runs it from a keystroke, the cue picker or a pending scene, not from a drawn control."
-    },
-    {
-      "match": "story.setSubjects",
-      "why"  : "The timeline runs it from a per-shot or per-character widget outside `controls`."
-    },
-    {
-      "match": "story.setVariant",
-      "why"  : "The timeline runs it from a per-shot or per-character widget outside `controls`."
-    },
-    {
-      "match": "story.requireCast",
-      "why"  : "The timeline runs it from a per-shot or per-character widget outside `controls`."
-    },
-    {
-      "match": "story.setSceneOutfit",
-      "why"  : "The timeline runs it from a per-shot or per-character widget outside `controls`."
+      "why": "The script column runs it from a keystroke or a pending scene, not from a drawn control."
     },
     {
       "match": "story.moveLine",
@@ -17401,10 +18329,6 @@
     {
       "match": "story.moveShot",
       "why"  : "A drag interaction; the drag layer runs it when the drop lands."
-    },
-    {
-      "match": "story.setChoice",
-      "why"  : "A branch-structure edit no editor draws yet; the palette and the agent reach it."
     },
     {
       "match": "story.removeChoice",

@@ -9,6 +9,7 @@
  */
 import { outfitFor, type ResolvedOutfit } from '@vn/model';
 import type { CoverageCast, SceneCoverage } from '../../../src/shared/ipc';
+import type { Offer } from '../anchors.js';
 
 /** A select's value for setting nothing at this level. Both commands clear with an empty outfit. */
 export const INHERIT = '';
@@ -102,6 +103,25 @@ export function outfitInvocation(
         id   : 'story.setOutfit',
         props: { scene: row.scene, shot: row.shot ?? '', character: row.character, outfit },
       };
+}
+
+/**
+ * A row's select. The outfit is what the widget supplies; the row is keyed by its level and its
+ * character, since a character framed by the selected shot has a row at both levels.
+ */
+export function outfitAction(row: OutfitRow): Offer {
+  const { id, props } = outfitInvocation(row, INHERIT);
+  const { outfit: _cleared, ...named } = props;
+  const where = row.level === 'scene' ? 'in the scene' : 'in this shot';
+  return {
+    ok: true,
+    id,
+    props   : named,
+    on      : `${row.level}/${row.character}`,
+    label   : row.character,
+    tooltip : `Dress ${row.character} ${where}. Every frame they appear in is drawn again.`,
+    supplies: ['outfit'],
+  };
 }
 
 /** How a resolved outfit reads in a control: `"uniform" (character sheet)`. */

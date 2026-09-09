@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-08T09:19:56.519Z",
-  "gitSha"       : "be3a4be3a79a4aaeb18868137501307fe6674eaf",
+  "sweptAt"      : "2026-09-09T01:49:42.384Z",
+  "gitSha"       : "3fc5ccb79e4a2f14d49185a4e07613d42239554a",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -210,7 +210,9 @@
     "gengraph.createForSlot",
     "gengraph.createGroup",
     "gengraph.delete",
+    "gengraph.duplicateNode",
     "gengraph.estimate",
+    "gengraph.removeNode",
     "gengraph.run",
     "gengraph.ungroup",
     "notify.clear",
@@ -235,11 +237,16 @@
     "story.deleteShot",
     "story.newScene",
     "story.newShot",
+    "story.requireCast",
     "story.screenplay",
     "story.setCoverage",
     "story.setHeading",
     "story.setLineText",
     "story.setOutfit",
+    "story.setSceneOutfit",
+    "story.setSpeaker",
+    "story.setSubjects",
+    "story.setVariant",
     "upload.pick",
     "view.applyLayout",
     "view.open",
@@ -583,6 +590,16 @@
       "form"  : true
     },
     {
+      "id"    : "agent.openThread",
+      "editor": "convo",
+      "when"  : "threads"
+    },
+    {
+      "id"    : "agent.newThread",
+      "editor": "convo",
+      "when"  : "threads"
+    },
+    {
       "id"    : "popup.open",
       "editor": "header",
       "when"  : "header/app"
@@ -798,16 +815,34 @@
       "form"  : true
     },
     {
+      "id"      : "story.setSpeaker",
+      "editor"  : "script",
+      "key"     : "cmd:story.setSpeaker#arrival:L2",
+      "supplies": ["speaker"]
+    },
+    {
       "id"      : "story.setLineText",
       "editor"  : "script",
       "key"     : "cmd:story.setLineText#arrival:L2",
       "supplies": ["text"]
     },
     {
+      "id"      : "story.setSpeaker",
+      "editor"  : "script",
+      "key"     : "cmd:story.setSpeaker#arrival:L3",
+      "supplies": ["speaker"]
+    },
+    {
       "id"      : "story.setLineText",
       "editor"  : "script",
       "key"     : "cmd:story.setLineText#arrival:L3",
       "supplies": ["text"]
+    },
+    {
+      "id"      : "story.setSpeaker",
+      "editor"  : "script",
+      "key"     : "cmd:story.setSpeaker#arrival:L1",
+      "supplies": ["speaker"]
     },
     {
       "id"      : "story.setLineText",
@@ -854,6 +889,40 @@
       "editor" : "convo",
       "key"    : "cmd:agent.compact",
       "refused": "This conversation is open for reading. Continue it before compacting it."
+    },
+    {
+      "id"      : "story.setSceneOutfit",
+      "editor"  : "timeline",
+      "key"     : "cmd:story.setSceneOutfit#scene/aiko",
+      "supplies": ["outfit"]
+    },
+    {
+      "id"      : "story.setVariant",
+      "editor"  : "timeline",
+      "key"     : "cmd:story.setVariant",
+      "supplies": ["variant"]
+    },
+    {
+      "id"      : "story.setOutfit",
+      "editor"  : "timeline",
+      "key"     : "cmd:story.setOutfit#shot/aiko",
+      "supplies": ["outfit"]
+    },
+    {
+      "id"    : "story.setSubjects",
+      "editor": "timeline",
+      "key"   : "cmd:story.setSubjects#drop/aiko"
+    },
+    {
+      "id"      : "story.setSubjects",
+      "editor"  : "timeline",
+      "key"     : "cmd:story.setSubjects#add",
+      "supplies": ["subjects"]
+    },
+    {
+      "id"    : "story.requireCast",
+      "editor": "timeline",
+      "key"   : "cmd:story.requireCast"
     },
     {
       "id"    : "story.newShot",
@@ -1076,6 +1145,18 @@
       "id"    : "ui.publish",
       "editor": "tasklist",
       "key"   : "item:task/4553c7bb2ed3cc7f136081c071cfeb877d50b7b3f46b33c5c4f6883bfdfaf460"
+    },
+    {
+      "id"     : "gengraph.removeNode",
+      "editor" : "gengraph",
+      "key"    : "cmd:gengraph.removeNode",
+      "refused": "Select the nodes to delete first."
+    },
+    {
+      "id"     : "gengraph.duplicateNode",
+      "editor" : "gengraph",
+      "key"    : "cmd:gengraph.duplicateNode",
+      "refused": "Select the nodes to duplicate first."
     },
     {
       "id"     : "gengraph.createGroup",
@@ -1630,14 +1711,14 @@
     {
       "id"      : "project.setKey",
       "editor"  : "onboarding",
-      "key"     : "cmd:project.setKey#anthropic",
+      "key"     : "cmd:project.setKey#gemini",
       "supplies": ["key"],
       "refused" : "Paste a key first"
     },
     {
       "id"      : "project.setKey",
       "editor"  : "onboarding",
-      "key"     : "cmd:project.setKey#gemini",
+      "key"     : "cmd:project.setKey#anthropic",
       "supplies": ["key"],
       "refused" : "Paste a key first"
     },

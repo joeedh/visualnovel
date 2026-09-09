@@ -41,6 +41,21 @@ export const SITUATIONS = situations<BranchState>(
     state: { ...base, naming: { scene: 'scene_2', heading: 'INT. HALL - DAY' } },
   },
   {
+    name : 'labelling',
+    why: 'A choice’s label box is open, so the box offers story.setChoice with the text typed after.',
+    state: {
+      ...base,
+      labelling: {
+        id   : 'e1',
+        from : 'arrival',
+        to   : 'cafe',
+        kind : 'choice',
+        index: 0,
+        label: 'Go in',
+      },
+    },
+  },
+  {
     name : 'cards',
     why: 'Two cards are drawn while a shot of the first is selected, so pressing the second clears the shot and pressing the first keeps it; nothing reaches the second.',
     state: {

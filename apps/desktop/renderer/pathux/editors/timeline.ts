@@ -13,10 +13,13 @@ import {
   type Busy,
 } from '../../rules/timeline/busy.js';
 import {
+  addCastAction,
+  removeCastAction,
+  requireCastAction,
   requireCastInvocation,
-  requireCastTitle,
   shotCast,
   subjectsInvocation,
+  variantAction,
   variantInvocation,
   withCharacter,
   withoutCharacter,
@@ -27,6 +30,7 @@ import { driftTag, staleCount } from '../../rules/timeline/drift.js';
 import { canEdit, canGrab, canReread, grabRefusal } from '../../rules/timeline/editing.js';
 import {
   INHERIT,
+  outfitAction,
   outfitInvocation,
   outfitRows,
   shadowedMarker,
@@ -41,7 +45,7 @@ import {
   doorKey,
   type Door,
 } from '../../rules/timeline/controls.js';
-import { redrawing } from '../tour/anchors.js';
+import { redrawing, type AnchorPass } from '../tour/anchors.js';
 import { exec, onInvalidate } from '../app/bridge.js';
 import { gestureState } from '../interactions/gestures.js';
 import type { VnContext } from '../app/context.js';
@@ -667,8 +671,15 @@ export class TimelineEditor extends VnEditor {
     return button;
   }
 
+  /**
+   * The strip's own pass, replaced with the strip: its selects and buttons are recorded here so
+   * a rebuild that draws a different shot's rows drops the old ones whole.
+   */
+  private wardrobePass: AnchorPass = redrawing('timeline', 'wardrobe');
+
   private wardrobe(data: SceneCoverage): HTMLElement {
     const box = el('div', 'tl-wardrobe');
+    this.wardrobePass = redrawing('timeline', 'wardrobe');
     const shotId = this.ui.shotId;
     const rows = outfitRows(data, shotId || null);
     if (rows.length === 0) return box;
@@ -728,9 +739,7 @@ export class TimelineEditor extends VnEditor {
     const select = document.createElement('select');
     select.className = 'wd-pick';
     select.setAttribute('aria-label', `Which variant ${cast.shot} is drawn against`);
-    select.title =
-      'Draw this shot against another variant of the location. That is the plate behind it, ' +
-      'so the frame is drawn again.';
+    this.wardrobePass.record(select, variantAction(cast));
     for (const variant of cast.variants) select.appendChild(option(variant, variant));
     // A shot set in a variant the location has since dropped would otherwise show the first
     // option, which is a value the author never chose.
@@ -754,9 +763,7 @@ export class TimelineEditor extends VnEditor {
     const select = document.createElement('select');
     select.className = 'wd-pick';
     select.setAttribute('aria-label', `Put another character in ${cast.shot}`);
-    select.title =
-      'Put another character in this shot. Their sheet becomes one of the references the ' +
-      'frame is drawn from, so the frame is drawn again.';
+    this.wardrobePass.record(select, addCastAction(cast));
     select.appendChild(option('', 'nobody else'));
     for (const id of cast.spare) select.appendChild(option(id, id));
     select.value = '';
@@ -769,18 +776,18 @@ export class TimelineEditor extends VnEditor {
     return line;
   }
 
-  /** The checkbox behind `story.requireCast`. */
+  /** The checkbox behind `story.requireCast`, refused by the offer while nobody is framed. */
   private requireCastRow(cast: ShotCast): HTMLElement {
     const line = el('div', 'wd-row');
     const label = document.createElement('label');
     label.className = 'wd-toggle';
-    label.title = requireCastTitle(cast);
+    const offer = requireCastAction(cast);
+    label.title = offer.tooltip;
 
     const box = document.createElement('input');
     box.type = 'checkbox';
     box.checked = cast.required;
-    box.disabled = cast.framed.length === 0;
-    box.title = label.title;
+    this.wardrobePass.record(box, offer);
     box.addEventListener(
       'change',
       () =>
@@ -812,8 +819,7 @@ export class TimelineEditor extends VnEditor {
     select.className = 'wd-pick';
     const where = row.level === 'scene' ? 'in the scene' : 'in this shot';
     select.setAttribute('aria-label', `What ${row.character} wears ${where}`);
-    // Changing the outfit re-renders: the outfit is in the shot prompt, unlike other scene edits.
-    select.title = `Dress ${row.character} ${where}. Every frame they appear in is drawn again.`;
+    this.wardrobePass.record(select, outfitAction(row));
     // The fallback is named in the option itself: "inherit" alone makes the author open the
     // other level to find out what they would be inheriting.
     select.appendChild(option(INHERIT, `inherit — ${sourceLabel(row.inherits)}`));
@@ -842,9 +848,7 @@ export class TimelineEditor extends VnEditor {
     button.className = 'wd-drop';
     button.textContent = '\u00d7';
     button.setAttribute('aria-label', `Take ${character} out of ${cast.shot}`);
-    button.title =
-      `Take ${character} out of this shot. Their sheet stops being one of the references the ` +
-      'frame is drawn from, and their outfit override goes with them.';
+    this.wardrobePass.record(button, removeCastAction(cast, character));
     button.addEventListener(
       'click',
       () =>

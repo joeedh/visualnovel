@@ -1,5 +1,10 @@
 import type { CoverageShot, SceneCoverage } from '../../../../src/shared/ipc';
 import {
+  addCastAction,
+  removeCastAction,
+  requireCastAction,
+  variantAction,
+  type ShotCast,
   requireCastInvocation,
   requireCastTitle,
   shotCast,
@@ -118,5 +123,59 @@ describe('requireCastTitle', () => {
   it('says why it is pointless on a shot that frames nobody', () => {
     const cast = shotCast(coverage([shot('club__beat1', [])]), 'club__beat1')!;
     expect(requireCastTitle(cast)).toContain('Nobody is in this shot');
+  });
+});
+
+describe('the strip’s offers', () => {
+  const cast: ShotCast = {
+    scene   : 'arrival',
+    shot    : 'arrival__s1',
+    framed  : ['aiko'],
+    spare   : ['ren'],
+    required: true,
+    variant : 'day',
+    variants: ['day', 'night'],
+  };
+
+  it('name the shot and leave the value to the widget', () => {
+    expect(variantAction(cast)).toMatchObject({
+      ok      : true,
+      id      : 'story.setVariant',
+      props   : { scene: 'arrival', shot: 'arrival__s1' },
+      supplies: ['variant'],
+    });
+    expect(addCastAction(cast)).toMatchObject({
+      ok      : true,
+      id      : 'story.setSubjects',
+      props   : { scene: 'arrival', shot: 'arrival__s1' },
+      on      : 'add',
+      supplies: ['subjects'],
+    });
+  });
+
+  it('write the cast without the character a row button drops', () => {
+    expect(removeCastAction(cast, 'aiko')).toMatchObject({
+      ok   : true,
+      id   : 'story.setSubjects',
+      props: { scene: 'arrival', shot: 'arrival__s1', subjects: '' },
+      on   : 'drop/aiko',
+    });
+  });
+
+  it('flip the cast rule, and refuse it with nobody framed', () => {
+    expect(requireCastAction(cast)).toMatchObject({
+      ok     : true,
+      id     : 'story.requireCast',
+      props  : { scene: 'arrival', shot: 'arrival__s1', required: false },
+      tooltip: requireCastTitle(cast),
+    });
+    const empty = { ...cast, framed: [] };
+    expect(requireCastAction(empty)).toEqual({
+      ok     : false,
+      refusal: { reason: requireCastTitle(empty) },
+      id     : 'story.requireCast',
+      label  : 'must appear in the frame',
+      tooltip: requireCastTitle(empty),
+    });
   });
 });

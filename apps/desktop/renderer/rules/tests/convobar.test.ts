@@ -8,11 +8,17 @@ import {
   resumeAction,
   stopTurnAction,
   threadsAction,
+  threadsMenu,
   type ConvoBarState,
 } from '../convobar.js';
 import { modeAction, modelAction } from '../headerbar.js';
 import { duplicateKeys, keyOf } from '../anchors.js';
-import { contextDetail, type Convo, type ResumeHeader } from '../../../src/shared/convo.js';
+import {
+  contextDetail,
+  type Convo,
+  type ResumeHeader,
+  type ThreadHeader,
+} from '../../../src/shared/convo.js';
 import { NATIVE_VERSION, type OpenedThread } from '../../../src/shared/threads.js';
 
 const state = (over: Partial<Convo> = {}): Convo =>
@@ -214,6 +220,33 @@ describe('budgetAction', () => {
     expect(budgetAction('unlimited', 12)).toMatchObject({
       label  : 'budget unlimited',
       tooltip: expect.stringContaining('runs until it finishes'),
+    });
+  });
+});
+
+describe('threadsMenu', () => {
+  const thread = (id: string, title: string) =>
+    ({ id, title, startedAt: 'earlier', model: 'claude-opus-5' }) as ThreadHeader;
+
+  it('lists one row per saved conversation, the open one marked, then a fresh start', () => {
+    const rows = threadsMenu({
+      threads: [thread('t1', 'Casting'), thread('t2', 'Wardrobe')],
+      active : 't2',
+    });
+    expect(rows.map((row) => [row.id, row.label, row.on])).toEqual([
+      ['agent.openThread', 'Casting', 't1'],
+      ['agent.openThread', '• Wardrobe', 't2'],
+      ['-', '-', undefined],
+      ['agent.newThread', 'New conversation', undefined],
+    ]);
+    expect(rows[0]).toMatchObject({ props: { id: 't1' }, tooltip: 'earlier · claude-opus-5' });
+  });
+
+  it('says why with nothing saved, in one refused row', () => {
+    expect(threadsMenu({ threads: [] })[0]).toEqual({
+      label  : '(nothing saved yet)',
+      id     : 'agent.openThread',
+      refused: 'A conversation is saved once you have said something in it.',
     });
   });
 });

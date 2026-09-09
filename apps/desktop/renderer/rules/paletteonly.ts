@@ -89,12 +89,10 @@ const GENGRAPH_NODES = [
   'gengraph.addGroup',
   'gengraph.addNode',
   'gengraph.apply',
-  'gengraph.duplicateNode',
   'gengraph.expose',
   'gengraph.link',
   'gengraph.moveNodes',
   'gengraph.removeBoundary',
-  'gengraph.removeNode',
   'gengraph.reorderExposed',
   'gengraph.repointExposed',
   'gengraph.setActiveOutput',
@@ -107,21 +105,15 @@ const GENGRAPH_NODES = [
 }));
 
 const STORY: readonly PaletteOnly[] = [
-  ...['story.insertLine', 'story.deleteLine', 'story.setSpeaker', 'story.setNext'].map((match) => ({
+  ...['story.insertLine', 'story.deleteLine', 'story.setNext'].map((match) => ({
     match,
-    why: 'The script column runs it from a keystroke, the cue picker or a pending scene, not from a drawn control.',
+    why: 'The script column runs it from a keystroke or a pending scene, not from a drawn control.',
   })),
-  ...['story.setSubjects', 'story.setVariant', 'story.requireCast', 'story.setSceneOutfit'].map(
-    (match) => ({
-      match,
-      why: 'The timeline runs it from a per-shot or per-character widget outside `controls`.',
-    }),
-  ),
   ...['story.moveLine', 'story.moveShot'].map((match) => ({
     match,
     why: 'A drag interaction; the drag layer runs it when the drop lands.',
   })),
-  ...['story.setChoice', 'story.removeChoice', 'story.spliceScene'].map((match) => ({
+  ...['story.removeChoice', 'story.spliceScene'].map((match) => ({
     match,
     why: 'A branch-structure edit no editor draws yet; the palette and the agent reach it.',
   })),

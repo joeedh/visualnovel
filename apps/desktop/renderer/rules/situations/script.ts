@@ -6,12 +6,25 @@ const shown = {
   sceneId: 'arrival',
   heading: 'EXT. SCHOOL GATE - MORNING',
   lines: [
-    { id: 'arrival:L1', text: 'Aiko stops at the gate.' },
-    { id: 'arrival:L2', text: 'AIKO: Is this the place?' },
+    { id: 'arrival:L1', text: 'Aiko stops at the gate.', kind: 'transition' as const },
+    {
+      id     : 'arrival:L2',
+      text   : 'AIKO: Is this the place?',
+      kind   : 'dialogue' as const,
+      speaker: 'AIKO',
+    },
   ],
 };
 
-const base: ScriptPageState = { shown, editingLine: null, pending: null, sceneId: 'arrival' };
+const cast = [{ id: 'aiko', name: 'Aiko' }];
+
+const base: ScriptPageState = {
+  shown,
+  editingLine: null,
+  pending    : null,
+  sceneId    : 'arrival',
+  cast,
+};
 
 export const SITUATIONS = situations<ScriptPageState>(
   {
@@ -21,13 +34,18 @@ export const SITUATIONS = situations<ScriptPageState>(
   },
   {
     name : 'scene',
-    why: 'A scene is on the page: its heading opens the move dialog and each line opens a text box.',
+    why: 'A scene is on the page: its heading opens the move dialog, the spoken line has a cue slot, and each line opens a text box.',
     state: base,
   },
   {
     name : 'editing-a-line',
     why  : 'One line’s box is open, so that line’s control is left out.',
     state: { ...base, editingLine: 'arrival:L1' },
+  },
+  {
+    name : 'picking-a-speaker',
+    why  : 'One line’s cue picker is open, so that slot says what picking does.',
+    state: { ...base, attributing: 'arrival:L2' },
   },
   {
     name : 'pending-merge',

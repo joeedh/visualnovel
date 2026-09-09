@@ -399,16 +399,29 @@ export function commandFor(target: EditTarget, edit: GenEdit): GenCommand {
   }
 }
 
-/** What the Gen Graph pane reads when it draws its Group and Ungroup buttons. */
+/** What the Gen Graph pane reads when it draws its Delete, Duplicate, Group and Ungroup buttons. */
 export interface GroupState {
   selected: GraphId[];
   /** The group instances among the selection, by id. */
   groups: GraphId[];
-  /** How the pane weighed each button's edit against the live graph, where it had one to weigh. */
-  weighed: { group?: GenEditFor; ungroup?: GenEditFor };
+  /**
+   * How the pane weighed each button's edit against the live graph, where it had one to weigh.
+   * Delete and Duplicate act on every selected node in turn; the first is what is weighed.
+   */
+  weighed: {
+    delete?: GenEditFor;
+    duplicate?: GenEditFor;
+    group?: GenEditFor;
+    ungroup?: GenEditFor;
+  };
   /** Where an edit at the level on screen is written; none when the level no longer resolves. */
   target?: EditTarget;
 }
+
+export const DELETE_WHAT = 'Remove the selected nodes and sever the selected links';
+
+export const DUPLICATE_WHAT =
+  'Add a copy of each selected node, carrying over the values it authored';
 
 export const GROUP_WHAT =
   'Move the selected nodes into a new group, and leave an instance of it in their place (Ctrl+G)';
@@ -430,6 +443,30 @@ function judged(
   }
   if (target === undefined) return { ...refuse(NO_LEVEL), ...control };
   return { ok: true, ...commandFor(target, weighed.edit), ...control };
+}
+
+/** Remove the selection, refused first with nothing selected. */
+export function deleteAction(
+  selected: GraphId[],
+  weighed: GenEditFor | undefined,
+  target: EditTarget | undefined,
+): Offer {
+  const control = { id: 'gengraph.removeNode', label: 'Delete', tooltip: DELETE_WHAT };
+  if (selected.length === 0) return { ...refuse('Select the nodes to delete first.'), ...control };
+  return judged(control, weighed, target);
+}
+
+/** Copy the selection, refused first with nothing selected. */
+export function duplicateAction(
+  selected: GraphId[],
+  weighed: GenEditFor | undefined,
+  target: EditTarget | undefined,
+): Offer {
+  const control = { id: 'gengraph.duplicateNode', label: 'Duplicate', tooltip: DUPLICATE_WHAT };
+  if (selected.length === 0) {
+    return { ...refuse('Select the nodes to duplicate first.'), ...control };
+  }
+  return judged(control, weighed, target);
 }
 
 /** Group the selection, refused first with nothing selected. */
@@ -454,9 +491,11 @@ export function ungroupAction(
   return judged(control, weighed, target);
 }
 
-/** Every offer the Gen Graph pane draws from this module: the two group buttons. */
+/** Every offer the Gen Graph pane draws from this module: the four selection buttons, in bar order. */
 export function controls(state: GroupState): readonly Offer[] {
   return [
+    deleteAction(state.selected, state.weighed.delete, state.target),
+    duplicateAction(state.selected, state.weighed.duplicate, state.target),
     groupAction(state.selected, state.weighed.group, state.target),
     ungroupAction(state.groups, state.weighed.ungroup, state.target),
   ];

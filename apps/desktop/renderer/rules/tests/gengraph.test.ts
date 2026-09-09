@@ -13,14 +13,18 @@ import type { GraphEdit } from 'pathux';
 
 import { duplicateKeys, keyOf as anchorKeyOf } from '../anchors.js';
 import {
+  DELETE_WHAT,
+  DUPLICATE_WHAT,
   GROUP_WHAT,
   NO_LEVEL,
   UNGROUP_WHAT,
   commandFor,
   contestedSlots,
   controls,
+  deleteAction,
   docPathFor,
   drawnSlot,
+  duplicateAction,
   genEditFor,
   groupAction,
   keyOf,
@@ -612,8 +616,57 @@ describe('ungroupAction', () => {
   });
 });
 
+describe('deleteAction and duplicateAction', () => {
+  const target: EditTarget = { slug: 'plates', group: '', prefix: [] };
+
+  it('run the weighed edit on the first selected node as its command', () => {
+    expect(deleteAction([3, 4], { ok: true, edit: { op: 'removeNode', node: 3 } }, target)).toEqual(
+      {
+        ok     : true,
+        id     : 'gengraph.removeNode',
+        props  : { slug: 'plates', node: '3' },
+        label  : 'Delete',
+        tooltip: DELETE_WHAT,
+      },
+    );
+    expect(
+      duplicateAction(
+        [3, 4],
+        { ok: true, edit: { op: 'duplicateNode', node: 3, pos: [20, 40] } },
+        target,
+      ),
+    ).toEqual({
+      ok     : true,
+      id     : 'gengraph.duplicateNode',
+      props  : { slug: 'plates', node: '3', x: 20, y: 40 },
+      label  : 'Duplicate',
+      tooltip: DUPLICATE_WHAT,
+    });
+  });
+
+  it('refuse with nothing selected, before anything is weighed', () => {
+    expect(deleteAction([], undefined, target)).toMatchObject({
+      ok     : false,
+      refusal: { reason: 'Select the nodes to delete first.' },
+    });
+    expect(duplicateAction([], undefined, target)).toMatchObject({
+      ok     : false,
+      refusal: { reason: 'Select the nodes to duplicate first.' },
+    });
+  });
+
+  it('refuse with the weighing’s reason, then with the missing level', () => {
+    expect(deleteAction([3], { ok: false, reason: 'held' }, target)).toMatchObject({
+      refusal: { reason: 'held' },
+    });
+    expect(
+      duplicateAction([3], { ok: true, edit: { op: 'duplicateNode', node: 3 } }, undefined),
+    ).toMatchObject({ refusal: { reason: NO_LEVEL } });
+  });
+});
+
 describe('controls', () => {
-  it('lists the two buttons, each key once', () => {
+  it('lists the four buttons in bar order, each key once', () => {
     const target = { slug: 'plates', group: '', prefix: [] };
     const states: GroupState[] = [
       { selected: [], groups: [], weighed: {}, target },
@@ -627,12 +680,19 @@ describe('controls', () => {
     for (const state of states) {
       const listed = controls(state);
       const each = [
+        deleteAction(state.selected, state.weighed.delete, state.target),
+        duplicateAction(state.selected, state.weighed.duplicate, state.target),
         groupAction(state.selected, state.weighed.group, state.target),
         ungroupAction(state.groups, state.weighed.ungroup, state.target),
       ];
       expect(listed).toEqual(each);
       expect(new Set(listed.map(anchorKeyOf))).toEqual(
-        new Set(['cmd:gengraph.createGroup', 'cmd:gengraph.ungroup']),
+        new Set([
+          'cmd:gengraph.removeNode',
+          'cmd:gengraph.duplicateNode',
+          'cmd:gengraph.createGroup',
+          'cmd:gengraph.ungroup',
+        ]),
       );
       expect(duplicateKeys(listed)).toEqual([]);
     }

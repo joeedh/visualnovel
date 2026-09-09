@@ -7,6 +7,7 @@
  * refusals come back from `check` the way every other control's do.
  */
 import type { SceneCoverage } from '../../../src/shared/ipc';
+import { refuse, type Offer } from '../anchors.js';
 
 /** The selected shot's cast, as its controls need it. */
 export interface ShotCast {
@@ -100,4 +101,67 @@ export function requireCastTitle(cast: ShotCast): string {
     ? `Clear this to stop the reviewer calling ${named} missing from this frame. Their sheets ` +
         'still reach the generator, so the frame is drawn from them either way.'
     : `Set this to have the reviewer treat ${named} as missing when the frame does not show them.`;
+}
+
+/**
+ * The variant select. The chosen variant is what the widget supplies, so the offer names the shot
+ * and leaves the value to the select.
+ */
+export function variantAction(cast: ShotCast): Offer {
+  return {
+    ok      : true,
+    id      : 'story.setVariant',
+    props   : { scene: cast.scene, shot: cast.shot },
+    label   : 'set in',
+    tooltip:
+      'Draw this shot against another variant of the location. That is the plate behind it, ' +
+      'so the frame is drawn again.',
+    supplies: ['variant'],
+  };
+}
+
+/**
+ * The select that puts one more character in the shot. Keyed apart from the row buttons that take
+ * one out, since all of them write the same cast list.
+ */
+export function addCastAction(cast: ShotCast): Offer {
+  return {
+    ok      : true,
+    id      : 'story.setSubjects',
+    props   : { scene: cast.scene, shot: cast.shot },
+    on      : 'add',
+    label   : 'add',
+    tooltip:
+      'Put another character in this shot. Their sheet becomes one of the references the ' +
+      'frame is drawn from, so the frame is drawn again.',
+    supplies: ['subjects'],
+  };
+}
+
+/** The button on a wardrobe row that takes its character out of the shot. */
+export function removeCastAction(cast: ShotCast, character: string): Offer {
+  return {
+    ok: true,
+    ...subjectsInvocation(cast, withoutCharacter(cast, character)),
+    on     : `drop/${character}`,
+    label  : '×',
+    tooltip:
+      `Take ${character} out of this shot. Their sheet stops being one of the references the ` +
+      'frame is drawn from, and their outfit override goes with them.',
+  };
+}
+
+/**
+ * The "must appear" checkbox. The click flips the flag, so the offer carries the value a click
+ * would write; with nobody framed there is nothing to require, and the box is refused with the
+ * sentence the tooltip already gives.
+ */
+export function requireCastAction(cast: ShotCast): Offer {
+  const control = {
+    id     : 'story.requireCast',
+    label  : 'must appear in the frame',
+    tooltip: requireCastTitle(cast),
+  };
+  if (cast.framed.length === 0) return { ...refuse(control.tooltip), ...control };
+  return { ok: true, ...control, props: requireCastInvocation(cast, !cast.required).props };
 }

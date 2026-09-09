@@ -2,7 +2,7 @@
  * What the branch editor's bar and naming row offer. The delete button is anchored only once its
  * `command:check` answers, so its verdict reaches this module as state rather than as a promise.
  */
-import type { CommandCheck } from '../../../src/shared/ipc.js';
+import type { CommandCheck, StoryEdge } from '../../../src/shared/ipc.js';
 import { noticeForCheck } from '../../../src/shared/lineedit.js';
 import { refuse, type Offer } from '../anchors.js';
 import { publish, startDrag } from '../effects.js';
@@ -20,7 +20,12 @@ export interface BranchState {
   deleteVerdict?: { scene: string; check: CommandCheck };
   /** The scene cards on the canvas, and the shot selected while they are drawn. */
   cards?: { scenes: readonly SceneCard[]; shotId: string };
+  /** The edge whose label box is open, while one is. */
+  labelling?: LabelledEdge;
 }
+
+/** What the label box needs of its edge. */
+export type LabelledEdge = Pick<StoryEdge, 'id' | 'from' | 'to' | 'kind' | 'index' | 'label'>;
 
 /** What a card says of its scene. Unreachable is drawn greyed and said in the tooltip. */
 export interface SceneCard {
@@ -45,6 +50,29 @@ export function cardAction(card: SceneCard, shotId: string): Offer {
       ? `${scene} — ${acts}`
       : `${scene} — nothing reaches this scene; ${acts}`,
     then   : [startDrag('branch.splice')],
+  };
+}
+
+/**
+ * The box a choice's label is retyped in. The text is what the box supplies; the edge names the
+ * scene, the target and the choice's place in the list. A `next` edge carries no label, so its
+ * box is refused with the sentence `relabel` gives.
+ */
+export function labelAction(edge: LabelledEdge): Offer {
+  const control = {
+    id     : 'story.setChoice',
+    on     : `edge/${edge.id}`,
+    label  : edge.label ?? '',
+    tooltip: 'What this choice reads as in the game. Enter renames it, Escape leaves it.',
+  };
+  if (edge.kind !== 'choice' || edge.index === undefined) {
+    return { ...refuse('Only a choice carries a label.'), ...control };
+  }
+  return {
+    ok: true,
+    ...control,
+    props   : { scene: edge.from, goto: edge.to, index: edge.index },
+    supplies: ['label'],
   };
 }
 
@@ -103,6 +131,7 @@ export function writeSceneAction(naming: NewScene): Offer {
 export function controls(state: BranchState): readonly Offer[] {
   const cards = state.cards;
   const drawn = cards ? cards.scenes.map((scene) => cardAction(scene, cards.shotId)) : [];
+  if (state.labelling) drawn.unshift(labelAction(state.labelling));
   if (state.naming) return [writeSceneAction(state.naming), ...drawn];
   const list: Offer[] = [newSceneAction()];
   const verdict = state.deleteVerdict;

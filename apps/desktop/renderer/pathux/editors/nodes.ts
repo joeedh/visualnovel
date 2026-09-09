@@ -42,6 +42,8 @@ import {
 } from '../../../src/shared/writes.js';
 import { api } from '../../api.js';
 import {
+  deleteAction,
+  duplicateAction,
   NO_LEVEL,
   commandFor,
   contestedSlots,
@@ -113,6 +115,8 @@ export class GenGraphEditor extends VnEditor {
   private designerEl!: HTMLDivElement;
   /** Opens the picture this graph drew. Repainted with the graph, since the slot moves with it. */
   private assetButton!: Button;
+  private deleteButton!: Button;
+  private duplicateButton!: Button;
   private groupButton!: Button;
   private ungroupButton!: Button;
 
@@ -177,15 +181,9 @@ export class GenGraphEditor extends VnEditor {
       bar.button('Arrange', () => void this.view.arrangeNodes()),
       'Lay the whole graph out again, left to right',
     );
-    describe(
-      bar.button('Delete', () => void this.view.deleteSelected()),
-      DELETE_WHAT,
-    );
-    describe(
-      bar.button('Duplicate', () => void this.view.duplicateSelected()),
-      DUPLICATE_WHAT,
-    );
     // Wired by `paintGroupButtons`, which records what each would run against the selection.
+    this.deleteButton = bar.button('Delete', () => {});
+    this.duplicateButton = bar.button('Duplicate', () => {});
     this.groupButton = bar.button('Group', () => {});
     this.ungroupButton = bar.button('Ungroup', () => {});
     this.assetButton = bar.button('Asset', () => void this.showAsset());
@@ -361,8 +359,9 @@ export class GenGraphEditor extends VnEditor {
   }
 
   /**
-   * Records what Group and Ungroup would run against the selection, and says why either is
-   * refused. Redrawn when the selection or the level changes, since the offer is theirs.
+   * Records what Delete, Duplicate, Group and Ungroup would run against the selection, and says
+   * why each is refused. Redrawn when the selection or the level changes, since the offer is
+   * theirs. Delete and Duplicate act on every selected node; the first is what is weighed.
    */
   private paintGroupButtons(): void {
     const ids = [...this.view.selection];
@@ -388,8 +387,34 @@ export class GenGraphEditor extends VnEditor {
       groups.length === 0
         ? undefined
         : this.weigh({ kind: 'ungroup', graphPath, nodeId: groups[0]!.id });
+    const first = ids[0] === undefined ? undefined : this.view.currentGraph?.nodeIdMap.get(ids[0]);
+    const remove =
+      ids[0] === undefined
+        ? undefined
+        : this.weigh({ kind: 'deleteNode', graphPath, nodeId: ids[0] });
+    // The same offset `duplicateSelected` places a copy at
+    const duplicate =
+      ids[0] === undefined || first === undefined
+        ? undefined
+        : this.weigh({
+            kind: 'duplicateNode',
+            graphPath,
+            nodeId: ids[0],
+            x     : first.pos[0] + 20,
+            y     : first.pos[1] + 20,
+          });
 
     const pass = redrawing('gengraph', 'groups');
+    pass.act(
+      this.deleteButton,
+      deleteAction(ids, remove, target),
+      () => void this.view.deleteSelected(),
+    );
+    pass.act(
+      this.duplicateButton,
+      duplicateAction(ids, duplicate, target),
+      () => void this.view.duplicateSelected(),
+    );
     pass.act(this.groupButton, groupAction(ids, group, target), () => void this.groupSelected());
     pass.act(
       this.ungroupButton,
@@ -876,10 +901,8 @@ export class GenGraphEditor extends VnEditor {
 const ADD_MENU_AT: readonly [number, number] = [40, 40];
 
 /** What deleting does, shared by the header button and the key that does the same thing. */
-const DELETE_WHAT = 'Remove the selected nodes and sever the selected links';
 
 /** What duplicating does, shared by the header button and the key that does the same thing. */
-const DUPLICATE_WHAT = 'Add a copy of each selected node, carrying over the values it authored';
 
 function describe(button: { description?: string }, description: string): void {
   button.description = description;

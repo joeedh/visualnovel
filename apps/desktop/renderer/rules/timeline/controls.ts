@@ -5,6 +5,14 @@
  */
 import type { CommandCheck, PropValue } from '../../../src/shared/ipc.js';
 import { keyOf, refuse, type Control, type Offer } from '../anchors.js';
+import {
+  addCastAction,
+  removeCastAction,
+  requireCastAction,
+  variantAction,
+  type ShotCast,
+} from './cast.js';
+import { outfitAction, type OutfitRow } from './wardrobe.js';
 
 /** A door: a control together with the props the dialog opens on, before its verdict is known. */
 export interface Door extends Control {
@@ -19,6 +27,10 @@ export interface TimelineState {
   undecomposed?: { sceneId: string; firstLine: string };
   /** Each door's verdict, keyed by {@link doorKey}, cleared when the doors are re-asked. */
   verdicts: Record<string, CommandCheck>;
+  /** The wardrobe strip's rows, scene level first, as `outfitRows` lists them. */
+  wardrobe?: readonly OutfitRow[];
+  /** The selected shot's cast, while a shot is selected. */
+  cast?: ShotCast | null;
 }
 
 /**
@@ -75,14 +87,37 @@ export function doorAction(door: Door, check: CommandCheck): Offer {
   return { ok: true, props, ...control };
 }
 
-/** Every offer the timeline draws from this module: the add button, then each answered door. */
+/**
+ * The wardrobe strip's offers in draw order: the scene rows, then the selected shot's variant,
+ * its rows with their remove buttons, the add select while someone is left to add, and the
+ * checkbox.
+ */
+export function wardrobeControls(rows: readonly OutfitRow[], cast: ShotCast | null): Offer[] {
+  if (rows.length === 0) return [];
+  const list: Offer[] = rows.filter((row) => row.level === 'scene').map(outfitAction);
+  if (!cast) return list;
+  list.push(variantAction(cast));
+  for (const row of rows.filter((row) => row.level === 'shot')) {
+    list.push(outfitAction(row), removeCastAction(cast, row.character));
+  }
+  if (cast.spare.length > 0) list.push(addCastAction(cast));
+  list.push(requireCastAction(cast));
+  return list;
+}
+
+/**
+ * Every offer the timeline draws from this module: the add button, each answered door, then the
+ * wardrobe strip.
+ */
 export function controls(state: TimelineState): readonly Offer[] {
   const list: Offer[] = [addShotAction(state.sceneId)];
   const scene = state.undecomposed;
-  if (!scene) return list;
-  for (const door of [decomposeDoor(), byHandDoor(scene.sceneId, scene.firstLine)]) {
-    const check = state.verdicts[doorKey(scene.sceneId, door)];
-    if (check) list.push(doorAction(door, check));
+  if (scene) {
+    for (const door of [decomposeDoor(), byHandDoor(scene.sceneId, scene.firstLine)]) {
+      const check = state.verdicts[doorKey(scene.sceneId, door)];
+      if (check) list.push(doorAction(door, check));
+    }
   }
+  list.push(...wardrobeControls(state.wardrobe ?? [], state.cast ?? null));
   return list;
 }

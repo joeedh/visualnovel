@@ -4,11 +4,13 @@
  * button and its anchor come from one object.
  */
 import { effortChoicesFor, effortLabel, type BudgetChoice, type EffortChoice } from '@vn/types';
-import { contextDetail, type Convo } from '../../src/shared/convo.js';
+import { contextDetail, threadDetail, threadLabel, type Convo } from '../../src/shared/convo.js';
+import type { ThreadHeader } from '../../src/shared/convo.js';
 import type { OpenedThread } from '../../src/shared/threads.js';
 import { resumeRefusal } from '../../src/shared/threads.js';
 import { refuse, type Offer } from './anchors.js';
 import { modeAction, modelAction } from './headerbar.js';
+import { SEPARATOR, type MenuEntry } from '../pathux/chrome/contextmenu.js';
 
 /** What the conversation editor's bar reads when it draws. */
 export interface ConvoBarState {
@@ -155,6 +157,41 @@ export function newThreadAction(): Offer {
       'Save this conversation and start a fresh one in plan mode. Nothing is lost — the old one ' +
       'stays under Threads.',
   };
+}
+
+/** What the Threads menu is built over: the saved conversations, and the one that is open. */
+export interface ThreadsMenuState {
+  threads: readonly ThreadHeader[];
+  active?: string;
+}
+
+/**
+ * The Threads menu: one `agent.openThread` row per saved conversation, the open one marked, then
+ * the same fresh start the bar's New button offers. With nothing saved, one refused row says so
+ * rather than the menu opening empty.
+ */
+export function threadsMenu(state: ThreadsMenuState): MenuEntry[] {
+  const rows: MenuEntry[] =
+    state.threads.length === 0
+      ? [
+          {
+            label  : '(nothing saved yet)',
+            id     : 'agent.openThread',
+            refused: 'A conversation is saved once you have said something in it.',
+          },
+        ]
+      : state.threads.map((thread) => ({
+          label  : `${thread.id === state.active ? '• ' : ''}${threadLabel(thread)}`,
+          id     : 'agent.openThread',
+          props  : { id: thread.id },
+          on     : thread.id,
+          tooltip: threadDetail(thread),
+        }));
+  return [
+    ...rows,
+    SEPARATOR,
+    { label: 'New conversation', id: 'agent.newThread', tooltip: 'Save this one and start again.' },
+  ];
 }
 
 /**

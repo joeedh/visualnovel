@@ -1,7 +1,7 @@
 /**
  * Every menu the app draws, as data over a state: the document tree's right-click over one node
- * of each kind, the shot, line and card menus over a fixture each, and the header's four menus
- * over `HeaderMenuState`. The derived model's driver reads the table, and the sweep reads the same
+ * of each kind, the shot, line and card menus over a fixture each, the conversation bar's Threads
+ * menu over a saved list, and the header's four menus over `HeaderMenuState`. The derived model's driver reads the table, and the sweep reads the same
  * records through `window.__vnAnchors.menus()`, so no pane has to be opened to list a menu.
  *
  * A menu is built on demand and gone again before a tour could point at it, so nothing anchors
@@ -14,11 +14,13 @@ import { cardMenu } from '../pathux/interactions/branch.js';
 import { lineMenu } from '../pathux/interactions/script.js';
 import { shotMenu } from '../pathux/interactions/timeline.js';
 import { headerMenus, type HeaderMenuState } from './headermenus.js';
+import { threadsMenu, type ThreadsMenuState } from './convobar.js';
 import type { Situation } from './situations/situation.js';
 import { SITUATIONS as CARDMENU, type CardMenuState } from './situations/cardmenu.js';
 import { SITUATIONS as HEADERMENUS } from './situations/headermenus.js';
 import { SITUATIONS as LINEMENU, type LineMenuState } from './situations/linemenu.js';
 import { SITUATIONS as SHOTMENU, type ShotMenuState } from './situations/shotmenu.js';
+import { SITUATIONS as THREADSMENU } from './situations/threadsmenu.js';
 import type { AnchorHome } from '../../src/shared/editors.js';
 import type { DocNode } from '../../src/shared/ipc.js';
 import type { UxMenuRecord } from '../../src/shared/uxmodel.js';
@@ -87,6 +89,13 @@ export const MENU_ROWS: readonly MenuRow<unknown>[] = [
     'apps/desktop/renderer/pathux/interactions/branch.ts',
     CARDMENU,
     ({ id, stub }: CardMenuState) => [{ when: `card:${id}`, entries: cardMenu(id, stub) }],
+  ),
+  row(
+    'threadsmenu',
+    'convo',
+    'apps/desktop/renderer/rules/convobar.ts',
+    THREADSMENU,
+    (state: ThreadsMenuState) => [{ when: 'threads', entries: threadsMenu(state) }],
   ),
   row(
     'headermenus',

@@ -14,6 +14,7 @@ import {
   type NewScene,
 } from '../../rules/branch/compose.js';
 import {
+  labelAction,
   cardAction,
   deleteSceneAction,
   newSceneAction,
@@ -737,7 +738,7 @@ export class BranchEditor extends VnEditor {
     this.selected = edge.id;
 
     const input = el('input', 'edge-input') as HTMLInputElement;
-    input.title = 'What this choice reads as in the game. Enter renames it, Escape leaves it.';
+    redrawing('branches', 'label').record(input, labelAction(edge));
     input.value = edge.label ?? '';
     input.addEventListener('pointerdown', (event) => event.stopPropagation());
     // Enter and Escape finish the edit themselves; `blur()` does nothing when the input is not the
@@ -768,6 +769,8 @@ export class BranchEditor extends VnEditor {
     this.settled = true;
     this.editing = null;
     this.labelInput = undefined;
+    // The box is gone, and so is its record
+    redrawing('branches', 'label');
     this.redraw();
   }
 

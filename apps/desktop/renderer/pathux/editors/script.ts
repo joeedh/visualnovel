@@ -9,7 +9,7 @@ import {
   composedCueText,
   continueFrom,
   cueChoices,
-  cueSlotText,
+  speakerAction,
   dropTarget,
   headingAction,
   insertOf,
@@ -585,9 +585,9 @@ export class ScriptEditor extends VnEditor {
 
     if (this.attributing !== line.id) {
       const button = el('button', `who${line.speaker ? '' : ' none'}`);
-      const { label, title } = cueSlotText(this.cast, line.speaker);
-      button.textContent = label;
-      button.title = title;
+      const slot = speakerAction(line, this.cast, false);
+      button.textContent = slot.label;
+      this.anchors.record(button, slot);
       button.addEventListener('click', () => {
         this.attributing = line.id;
         this.notice = null;
@@ -600,7 +600,7 @@ export class ScriptEditor extends VnEditor {
     const select = document.createElement('select');
     select.className = 'who picking';
     select.setAttribute('aria-label', `Who says ${line.id}`);
-    select.title = 'Who says this line — picking nobody makes it narration';
+    this.anchors.record(select, speakerAction(line, this.cast, true));
     for (const [i, choice] of choices.entries()) {
       const option = document.createElement('option');
       option.value = choice.cue;

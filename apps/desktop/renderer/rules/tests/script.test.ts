@@ -1,6 +1,7 @@
 import { isSpeakable } from '@vn/scriptedit';
 import { TOP, scriptMoveLine } from '../../../src/shared/interactions.js';
 import {
+  speakerAction,
   COMPOSED,
   NARRATOR,
   attributionAfter,
@@ -668,11 +669,44 @@ describe('controls', () => {
     expect(controls(state({ shown: undefined }))).toEqual([]);
   });
 
-  it('leaves out the line whose box is open', () => {
+  it('leaves out the line whose box is open, and keeps its cue slot', () => {
     expect(controls(state({ editingLine: 'a:L1' })).map(keyOf)).toEqual([
       'cmd:story.setHeading',
+      'cmd:story.setSpeaker#a:L1',
+      'cmd:story.setSpeaker#a:L2',
       'cmd:story.setLineText#a:L2',
     ]);
+  });
+
+  it('gives a cue slot only to a line a speaker can be given', () => {
+    const lines = [
+      { id: 'a:L1', text: 'CUT TO:', kind: 'transition' as const },
+      { id: 'a:L2', text: 'Hello.', kind: 'dialogue' as const, speaker: 'AIKO' },
+    ];
+    const keys = controls(state({ shown: { ...shown, lines } })).map(keyOf);
+    expect(keys).not.toContain('cmd:story.setSpeaker#a:L1');
+    expect(keys).toContain('cmd:story.setSpeaker#a:L2');
+  });
+
+  it('says what picking does on the slot whose picker is open', () => {
+    const cast = [{ id: 'aiko', name: 'Aiko' }];
+    const closed = speakerAction({ id: 'a:L2', speaker: 'AIKO' }, cast, false);
+    expect(closed).toEqual({
+      ok      : true,
+      id      : 'story.setSpeaker',
+      props   : { line: 'a:L2' },
+      on      : 'a:L2',
+      label   : 'Aiko',
+      tooltip : 'Aiko says this line — click to change who does',
+      supplies: ['speaker'],
+    });
+    expect(speakerAction({ id: 'a:L2', speaker: 'AIKO' }, cast, true).tooltip).toBe(
+      'Who says this line — picking nobody makes it narration',
+    );
+    expect(speakerAction({ id: 'a:L1' }, cast, false)).toMatchObject({
+      label  : 'narrator',
+      tooltip: 'Nobody says this line — click to give it a speaker',
+    });
   });
 
   it('adds the strip’s button only over a scene', () => {
@@ -694,7 +728,10 @@ describe('controls', () => {
       const each = s.shown
         ? [
             headingAction(s.shown),
-            ...s.shown.lines.filter((l) => l.id !== s.editingLine).map(lineTextAction),
+            ...s.shown.lines.flatMap((l) => [
+              speakerAction(l, [], false),
+              ...(l.id === s.editingLine ? [] : [lineTextAction(l)]),
+            ]),
           ]
         : [];
       if (s.pending && s.sceneId) each.push(pendingAction(s.pending, s.sceneId));

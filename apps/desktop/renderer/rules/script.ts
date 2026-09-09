@@ -9,7 +9,7 @@
  * command an act asks for, and whether an act happened at all.
  */
 import type { Invocation } from '@vn/commands';
-import type { ScriptState } from '@vn/scriptedit';
+import { isSpeakable, type ScriptState } from '@vn/scriptedit';
 import type { Scene } from '@vn/types';
 import { TOP } from '../../src/shared/interactions.js';
 import { commitOf, lineOf } from '../../src/shared/lineedit.js';
@@ -327,6 +327,28 @@ export const setSpeakerOf = (line: string, cue: string): Invocation => ({
   props: { line, speaker: cue },
 });
 
+/**
+ * A line's cue slot: the button that names who says it, or the picker while it is open. The cue
+ * is what the picker supplies, so the offer names the line alone. Keyed by the line, since the
+ * page draws one slot per line beside one text control per line.
+ */
+export function speakerAction(
+  line: Pick<CoverageLine, 'id' | 'speaker'>,
+  cast: readonly CastMember[],
+  picking: boolean,
+): Offer {
+  const { label, title } = cueSlotText(cast, line.speaker);
+  return {
+    ok   : true,
+    id   : 'story.setSpeaker',
+    props: { line: line.id },
+    on   : line.id,
+    label,
+    tooltip : picking ? 'Who says this line — picking nobody makes it narration' : title,
+    supplies: ['speaker'],
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Dragging a line: where a drop lands, and the state `script.moveLine` is judged against.
 // ---------------------------------------------------------------------------
@@ -498,10 +520,18 @@ export function checkOf(pending: Pending, scene: string): Invocation {
  * `@vn/scriptedit`'s `ScriptState`, which this module also imports.
  */
 export interface ScriptPageState {
-  /** The scene on the page, once loaded. */
-  shown?: { sceneId: string; heading: string; lines: { id: string; text: string }[] };
+  /** The scene on the page, once loaded. A line with no `kind` is read as dialogue. */
+  shown?: {
+    sceneId: string;
+    heading: string;
+    lines: { id: string; text: string; kind?: CoverageLine['kind']; speaker?: string }[];
+  };
   /** The line whose text box is open, which replaces that line's control. */
   editingLine: string | null;
+  /** The line whose cue picker is open, which changes that slot's tooltip. */
+  attributing?: string | null;
+  /** The project's cast, which the cue slots name. */
+  cast?: readonly CastMember[];
   pending: Pending | null;
   /** The selected scene, or the empty string with none. */
   sceneId: string;
@@ -558,14 +588,18 @@ export function pendingAction(pending: Pending, sceneId: string): Offer {
 }
 
 /**
- * Every offer the script page draws from this module: the heading, one control per line whose
- * box is not open, and the strip's button while an act is pending over a scene.
+ * Every offer the script page draws from this module: the heading, a cue slot and a text control
+ * per line (the text control left out while the line's box is open), and the strip's button while
+ * an act is pending over a scene.
  */
 export function controls(state: ScriptPageState): readonly Offer[] {
   const list: Offer[] = [];
   if (state.shown) {
     list.push(headingAction(state.shown));
     for (const line of state.shown.lines) {
+      if (isSpeakable(line.kind ?? 'dialogue')) {
+        list.push(speakerAction(line, state.cast ?? [], state.attributing === line.id));
+      }
       if (line.id !== state.editingLine) list.push(lineTextAction(line));
     }
   }

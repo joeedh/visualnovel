@@ -1,4 +1,5 @@
 import {
+  labelAction,
   cardAction,
   controls,
   deleteSceneAction,
@@ -157,5 +158,41 @@ describe('controls', () => {
       expect(new Set(listed.map(keyOf))).toEqual(new Set(each.map(keyOf)));
       expect(duplicateKeys(listed)).toEqual([]);
     }
+  });
+});
+
+describe('labelAction', () => {
+  it('names the choice and leaves the text to the box', () => {
+    expect(
+      labelAction({ id: 'e1', from: 'a', to: 'b', kind: 'choice', index: 1, label: 'Go' }),
+    ).toEqual({
+      ok      : true,
+      id      : 'story.setChoice',
+      on      : 'edge/e1',
+      label   : 'Go',
+      tooltip : 'What this choice reads as in the game. Enter renames it, Escape leaves it.',
+      props   : { scene: 'a', goto: 'b', index: 1 },
+      supplies: ['label'],
+    });
+  });
+
+  it('refuses a next edge, which carries no label', () => {
+    expect(labelAction({ id: 'e2', from: 'a', to: 'b', kind: 'next' })).toMatchObject({
+      ok     : false,
+      refusal: { reason: 'Only a choice carries a label.' },
+      label  : '',
+    });
+  });
+
+  it('is listed first while the box is open, beside the bar or the naming row', () => {
+    const labelling = { id: 'e1', from: 'a', to: 'b', kind: 'choice' as const, index: 0 };
+    const base = { sceneId: '', known: false, naming: null };
+    expect(controls({ ...base, labelling }).map(keyOf)).toEqual([
+      'cmd:story.newScene',
+      'cmd:story.setChoice#edge/e1',
+    ]);
+    expect(
+      controls({ ...base, labelling, naming: { scene: 's', heading: 'INT. X - DAY' } }).map(keyOf),
+    ).toEqual(['cmd:story.newScene', 'cmd:story.setChoice#edge/e1']);
   });
 });

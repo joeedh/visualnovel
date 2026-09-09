@@ -5,8 +5,11 @@ import {
   decomposeDoor,
   doorAction,
   doorKey,
+  wardrobeControls,
   type TimelineState,
 } from '../controls.js';
+import type { ShotCast } from '../cast.js';
+import type { OutfitRow } from '../wardrobe.js';
 import { duplicateKeys, keyOf } from '../../anchors.js';
 import type { CommandCheck } from '../../../../src/shared/ipc';
 
@@ -152,5 +155,63 @@ describe('controls', () => {
       expect(new Set(listed.map(keyOf))).toEqual(new Set(each.map(keyOf)));
       expect(duplicateKeys(listed)).toEqual([]);
     }
+  });
+});
+
+describe('wardrobeControls', () => {
+  const sheet = { id: 'uniform', origin: 'default' } as const;
+  const row = (level: 'scene' | 'shot', character: string): OutfitRow => ({
+    level,
+    scene: 'intro',
+    ...(level === 'shot' ? { shot: 'intro__s1' } : {}),
+    character,
+    outfits  : ['uniform'],
+    value    : '',
+    effective: sheet,
+    inherits : sheet,
+  });
+  const cast: ShotCast = {
+    scene   : 'intro',
+    shot    : 'intro__s1',
+    framed  : ['aiko'],
+    spare   : ['ren'],
+    required: true,
+    variant : 'day',
+    variants: ['day'],
+  };
+
+  it('lists the strip in draw order, each key once', () => {
+    const rows = [row('scene', 'aiko'), row('scene', 'ren'), row('shot', 'aiko')];
+    expect(wardrobeControls(rows, cast).map(keyOf)).toEqual([
+      'cmd:story.setSceneOutfit#scene/aiko',
+      'cmd:story.setSceneOutfit#scene/ren',
+      'cmd:story.setVariant',
+      'cmd:story.setOutfit#shot/aiko',
+      'cmd:story.setSubjects#drop/aiko',
+      'cmd:story.setSubjects#add',
+      'cmd:story.requireCast',
+    ]);
+    expect(duplicateKeys(wardrobeControls(rows, cast))).toEqual([]);
+  });
+
+  it('leaves out the add select once everyone is framed, and the shot half with no shot', () => {
+    const rows = [row('scene', 'aiko'), row('shot', 'aiko')];
+    const keys = wardrobeControls(rows, { ...cast, spare: [] }).map(keyOf);
+    expect(keys).not.toContain('cmd:story.setSubjects#add');
+    expect(wardrobeControls([row('scene', 'aiko')], null).map(keyOf)).toEqual([
+      'cmd:story.setSceneOutfit#scene/aiko',
+    ]);
+    expect(wardrobeControls([], cast)).toEqual([]);
+  });
+
+  it('is listed by controls after the bar and the doors', () => {
+    const listed = controls(state({ wardrobe: [row('scene', 'aiko')], cast }));
+    expect(listed.map(keyOf)).toEqual([
+      'cmd:story.newShot',
+      'cmd:story.setSceneOutfit#scene/aiko',
+      'cmd:story.setVariant',
+      'cmd:story.setSubjects#add',
+      'cmd:story.requireCast',
+    ]);
   });
 });
