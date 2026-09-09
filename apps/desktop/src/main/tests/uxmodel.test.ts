@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { desktopEffects } from '../commands/catalog-entry.js';
 import { createDesktopRegistry } from '../commands/index.js';
-import { actionProblems, paletteMatches, UX_MODEL } from '../../shared/uxmodel.js';
+import { actionProblems, actionsOf, paletteMatches, UX_MODEL } from '../../shared/uxmodel.js';
 
 const model = UX_MODEL.parse(
   JSON.parse(readFileSync(resolve(__dirname, '../../../ux-model.json'), 'utf8')),
@@ -141,5 +141,43 @@ describe('a mutating command reachable from a menu', () => {
   it('keeps no exemption a menu row does not need', () => {
     const dead = [...exempt].filter((id) => !clicked.has(id) || safe(id)).sort();
     expect(dead).toEqual([]);
+  });
+});
+
+/**
+ * The sparing rule (`docs/reference/swappingPaneEditors.md`): an editor the app decides to show lands in a
+ * pane the router picks, never one a surface chose for itself. In the model that reads as a
+ * `view.open` naming no `where`, or `elsewhere`, with two exceptions: `here` from a routed row,
+ * whose placement `routeFor` decided from what is visible, and `popup` for the one entry that
+ * opens the agent report as a floating window. No control or menu row splits a pane.
+ */
+describe('every view.open in the model', () => {
+  // The modules whose rows come from `openOf(routeFor(...))`, and so may say `here`
+  const routed = new Set(['documents', 'diagnostics', 'script', 'wiki']);
+  const opens = model.records.flatMap((record) =>
+    actionsOf(record)
+      .filter((action) => action.id === 'view.open')
+      .map((action) => ({ record, where: action.props?.['where'] })),
+  );
+
+  it('exists', () => {
+    expect(opens.length).toBeGreaterThan(0);
+  });
+
+  it('leaves the pane to the router, apart from a routed here and the report popup', () => {
+    const chosen = opens
+      .filter(({ record, where }) => {
+        if (where === undefined || where === 'elsewhere') return false;
+        if (where === 'here') return !routed.has(record.module);
+        if (where === 'popup')
+          return !(
+            record.via === 'menu' &&
+            record.module === 'headermenus' &&
+            record.on === 'report'
+          );
+        return true;
+      })
+      .map(({ record, where }) => `${record.module}/${record.situation} ${String(where)}`);
+    expect(chosen).toEqual([]);
   });
 });
