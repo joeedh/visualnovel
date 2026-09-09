@@ -28,6 +28,7 @@ import * as branch from './branch/controls.js';
 import * as documents from './documents.js';
 import * as gengraph from './gengraph.js';
 import * as onboarding from './onboarding.js';
+import * as play from './play.js';
 import * as projectbar from './projectbar.js';
 import * as reportconvo from './reportconvo.js';
 import * as script from './script.js';
@@ -47,6 +48,7 @@ import { SITUATIONS as BRANCH } from './situations/branch.js';
 import { SITUATIONS as DOCUMENTS } from './situations/documents.js';
 import { SITUATIONS as GENGRAPH } from './situations/gengraph.js';
 import { SITUATIONS as ONBOARDING } from './situations/onboarding.js';
+import { SITUATIONS as PLAY } from './situations/play.js';
 import { SITUATIONS as PROJECTBAR } from './situations/projectbar.js';
 import { SITUATIONS as REPORTCONVO } from './situations/reportconvo.js';
 import { SITUATIONS as SCRIPT } from './situations/script.js';
@@ -96,6 +98,7 @@ export const ROWS: readonly Row<unknown>[] = [
   row('documents', 'documents', DOCUMENTS, documents.controls),
   row('gengraph', 'gengraph', GENGRAPH, gengraph.controls),
   row('onboarding', 'onboarding', ONBOARDING, onboarding.controls),
+  row('play', 'play', PLAY, play.controls),
   row('projectbar', 'project', PROJECTBAR, projectbar.controls),
   row('reportconvo', 'report', REPORTCONVO, reportconvo.controls),
   row('script', 'script', SCRIPT, script.controls),

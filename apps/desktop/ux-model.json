@@ -367,6 +367,30 @@
       "why": "The guide names no pricing page for this vendor, so that link is refused; the verdicts are not in yet."
     },
     {
+      "module": "play",
+      "editor": "play",
+      "name"  : "start",
+      "why"   : "The story is at its first scene, so Back is refused with the reason."
+    },
+    {
+      "module": "play",
+      "editor": "play",
+      "name"  : "mid-story",
+      "why"   : "A scene has been played, so Back is offered."
+    },
+    {
+      "module": "play",
+      "editor": "play",
+      "name"  : "choice",
+      "why"   : "The scene ends in two choices, so the panel offers each branch by its label."
+    },
+    {
+      "module": "play",
+      "editor": "play",
+      "name"  : "scene-end",
+      "why"   : "The scene leads on to one more, so the panel offers Continue."
+    },
+    {
       "module": "projectbar",
       "editor": "project",
       "name"  : "clean",
@@ -16025,6 +16049,585 @@
       "effects": [
         {
           "id": "app.openKeyLink"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "start",
+      "key"      : "fx:pane.view#forward",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Stage",
+        "tooltip": "Click anywhere to advance to the next line",
+        "on"     : "forward",
+        "ok"     : true,
+        "props": {
+          "what": "step"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "step"
+          }
+        }
+      ],
+      "shortcut" : "Space"
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "start",
+      "key"      : "fx:pane.view#back",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "◂ Back",
+        "tooltip": "Step back to the scene before this one",
+        "on"     : "back",
+        "ok"     : false,
+        "refusal": {
+          "reason": "You are at the beginning; there is nothing to step back to."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "start",
+      "key"      : "fx:pane.view#save",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Save",
+        "tooltip": "Remember where you are, so Load comes back here",
+        "on"     : "save",
+        "ok"     : true,
+        "props": {
+          "what": "mark"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "start",
+      "key"      : "fx:pane.view#load",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Load",
+        "tooltip": "Jump back to where Save left off",
+        "on"     : "load",
+        "ok"     : true,
+        "props": {
+          "what": "mark"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "start",
+      "key"      : "fx:pane.view#reset",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Reset",
+        "tooltip": "Start the story again from its first scene",
+        "on"     : "reset",
+        "ok"     : true,
+        "props": {
+          "what": "page"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "page"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "mid-story",
+      "key"      : "fx:pane.view#forward",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Stage",
+        "tooltip": "Click anywhere to advance to the next line",
+        "on"     : "forward",
+        "ok"     : true,
+        "props": {
+          "what": "step"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "step"
+          }
+        }
+      ],
+      "shortcut" : "Space"
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "mid-story",
+      "key"      : "fx:pane.view#back",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "◂ Back",
+        "tooltip": "Step back to the scene before this one",
+        "on"     : "back",
+        "ok"     : true,
+        "props": {
+          "what": "step"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "step"
+          }
+        }
+      ],
+      "shortcut" : "Left"
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "mid-story",
+      "key"      : "fx:pane.view#save",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Save",
+        "tooltip": "Remember where you are, so Load comes back here",
+        "on"     : "save",
+        "ok"     : true,
+        "props": {
+          "what": "mark"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "mid-story",
+      "key"      : "fx:pane.view#load",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Load",
+        "tooltip": "Jump back to where Save left off",
+        "on"     : "load",
+        "ok"     : true,
+        "props": {
+          "what": "mark"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "mid-story",
+      "key"      : "fx:pane.view#reset",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Reset",
+        "tooltip": "Start the story again from its first scene",
+        "on"     : "reset",
+        "ok"     : true,
+        "props": {
+          "what": "page"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "page"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "choice",
+      "key"      : "fx:pane.view#forward",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Stage",
+        "tooltip": "Click anywhere to advance to the next line",
+        "on"     : "forward",
+        "ok"     : true,
+        "props": {
+          "what": "step"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "step"
+          }
+        }
+      ],
+      "shortcut" : "Space"
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "choice",
+      "key"      : "fx:pane.view#back",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "◂ Back",
+        "tooltip": "Step back to the scene before this one",
+        "on"     : "back",
+        "ok"     : true,
+        "props": {
+          "what": "step"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "step"
+          }
+        }
+      ],
+      "shortcut" : "Left"
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "choice",
+      "key"      : "fx:pane.view#save",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Save",
+        "tooltip": "Remember where you are, so Load comes back here",
+        "on"     : "save",
+        "ok"     : true,
+        "props": {
+          "what": "mark"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "choice",
+      "key"      : "fx:pane.view#load",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Load",
+        "tooltip": "Jump back to where Save left off",
+        "on"     : "load",
+        "ok"     : true,
+        "props": {
+          "what": "mark"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "choice",
+      "key"      : "fx:pane.view#reset",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Reset",
+        "tooltip": "Start the story again from its first scene",
+        "on"     : "reset",
+        "ok"     : true,
+        "props": {
+          "what": "page"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "page"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "choice",
+      "key"      : "fx:pane.view#choose/cafe",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Go in",
+        "tooltip": "Take this branch — the story goes on at cafe",
+        "on"     : "choose/cafe",
+        "ok"     : true,
+        "props": {
+          "what": "step"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "step"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "choice",
+      "key"      : "fx:pane.view#choose/street",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Walk on",
+        "tooltip": "Take this branch — the story goes on at street",
+        "on"     : "choose/street",
+        "ok"     : true,
+        "props": {
+          "what": "step"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "step"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "scene-end",
+      "key"      : "fx:pane.view#forward",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Stage",
+        "tooltip": "Click anywhere to advance to the next line",
+        "on"     : "forward",
+        "ok"     : true,
+        "props": {
+          "what": "step"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "step"
+          }
+        }
+      ],
+      "shortcut" : "Space"
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "scene-end",
+      "key"      : "fx:pane.view#back",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "◂ Back",
+        "tooltip": "Step back to the scene before this one",
+        "on"     : "back",
+        "ok"     : true,
+        "props": {
+          "what": "step"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "step"
+          }
+        }
+      ],
+      "shortcut" : "Left"
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "scene-end",
+      "key"      : "fx:pane.view#save",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Save",
+        "tooltip": "Remember where you are, so Load comes back here",
+        "on"     : "save",
+        "ok"     : true,
+        "props": {
+          "what": "mark"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "scene-end",
+      "key"      : "fx:pane.view#load",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Load",
+        "tooltip": "Jump back to where Save left off",
+        "on"     : "load",
+        "ok"     : true,
+        "props": {
+          "what": "mark"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "scene-end",
+      "key"      : "fx:pane.view#reset",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Reset",
+        "tooltip": "Start the story again from its first scene",
+        "on"     : "reset",
+        "ok"     : true,
+        "props": {
+          "what": "page"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "page"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "play",
+      "module"   : "play",
+      "situation": "scene-end",
+      "key"      : "fx:pane.view#continue",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Continue ▸",
+        "tooltip": "Play on to the scene this one leads to",
+        "on"     : "continue",
+        "ok"     : true,
+        "props": {
+          "what": "step"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "step"
+          }
         }
       ]
     },

@@ -1,11 +1,21 @@
 import { KeyMap, type Container } from 'pathux';
 import { api } from '../../api.js';
 import type { Playable, PlayableScene } from '../../../src/shared/ipc.js';
+import type { Offer } from '../../rules/anchors.js';
 import { notify, onInvalidate } from '../app/bridge.js';
 import { centered } from '../widgets/dom.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { hotkeys } from '../app/keymap.js';
-import { watchKeymap } from '../tour/anchors.js';
+import { redrawing, watchKeymap, type AnchorPass } from '../tour/anchors.js';
+import {
+  backAction,
+  choiceAction,
+  continueAction,
+  loadAction,
+  resetAction,
+  saveAction,
+  stageAction,
+} from '../../rules/play.js';
 import {
   advance,
   assetUrl,
@@ -77,8 +87,8 @@ export class PlayEditor extends VnEditor {
       fontFamily: TOKENS.sans,
       color     : TOKENS.paper,
     });
-    this.stage.title = 'Click anywhere to advance to the next line';
-    this.stage.addEventListener('click', () => this.stepForward());
+    // Its own pass: the stage is built once with the pane and never redrawn
+    redrawing('play', 'stage').act(this.stage, stageAction(), () => this.stepForward());
     this.appendSurface(this.stage);
 
     // This keymap runs ahead of the screen keymap, and path.ux already declines to route a
@@ -264,22 +274,36 @@ export class PlayEditor extends VnEditor {
     if (cur) this.bar.label(cur.sceneId).style['padding'] = '0px 8px';
     if (this.notice) this.bar.label(this.notice).style['padding'] = '0px 8px';
 
-    const backBtn = this.bar.button('◂ Back', () => this.go(back(this.history)));
-    backBtn.disabled = this.history.length < 2;
-    backBtn.description =
-      this.history.length < 2
-        ? 'You are at the beginning; there is nothing to step back to.'
-        : 'Step back to the scene before this one';
-
-    this.bar.button('Save', () => this.save()).description =
-      'Remember where you are, so Load comes back here';
-    this.bar.button('Load', () => this.load()).description = 'Jump back to where Save left off';
-    this.bar.button('Reset', () => {
-      if (!this.play) return;
-      this.history = startOf(this.play);
-      this.notice = 'Restarted from the beginning.';
-      this.rebuild();
-    }).description = 'Start the story again from its first scene';
+    const anchors = redrawing('play', 'bar');
+    const backOffer = backAction(this.history.length >= 2);
+    anchors.act(
+      this.bar.button(backOffer.label, () => {}),
+      backOffer,
+      () => this.go(back(this.history)),
+    );
+    const save = saveAction();
+    anchors.act(
+      this.bar.button(save.label, () => {}),
+      save,
+      () => this.save(),
+    );
+    const load = loadAction();
+    anchors.act(
+      this.bar.button(load.label, () => {}),
+      load,
+      () => this.load(),
+    );
+    const reset = resetAction();
+    anchors.act(
+      this.bar.button(reset.label, () => {}),
+      reset,
+      () => {
+        if (!this.play) return;
+        this.history = startOf(this.play);
+        this.notice = 'Restarted from the beginning.';
+        this.rebuild();
+      },
+    );
 
     this.bar.flushUpdate();
   }
@@ -437,8 +461,15 @@ export class PlayEditor extends VnEditor {
   }
 
   /** The end-of-scene panel: the choices, the linear continuation, or the end of the story. */
+  /** The end panel's own pass, replaced with the panel, so a redraw drops the old buttons whole. */
+  private endPass: AnchorPass = redrawing('play', 'end');
+
   private sceneEnd(scene: PlayableScene): HTMLElement {
+    this.endPass = redrawing('play', 'end');
     const panel = document.createElement('div');
+    // The panel stops the click, so a choice is the only way on. A click that reached the
+    // stage would advance instead.
+    panel.addEventListener('click', (e) => e.stopPropagation());
     Object.assign(panel.style, {
       position      : 'absolute',
       inset         : '0',
@@ -451,9 +482,6 @@ export class PlayEditor extends VnEditor {
     });
 
     if (scene.choices.length) {
-      // The panel stops the click, so a choice is the only way on. A click that reached the
-      // stage would advance instead.
-      panel.addEventListener('click', (e) => e.stopPropagation());
       const prompt = document.createElement('div');
       prompt.textContent = 'What do you do?';
       Object.assign(prompt.style, {
@@ -467,11 +495,7 @@ export class PlayEditor extends VnEditor {
 
       for (const choice of scene.choices) {
         panel.appendChild(
-          this.choiceButton(
-            choice.label,
-            `Take this branch — the story goes on at ${choice.goto}`,
-            () => this.go(choose(this.history, choice.goto)),
-          ),
+          this.choiceButton(choiceAction(choice), () => this.go(choose(this.history, choice.goto))),
         );
       }
       return panel;
@@ -479,14 +503,13 @@ export class PlayEditor extends VnEditor {
 
     if (scene.next) {
       panel.appendChild(
-        this.choiceButton('Continue ▸', 'Play on to the scene this one leads to', () =>
+        this.choiceButton(continueAction(), () =>
           this.go(advance(this.play as Playable, this.history)),
         ),
       );
       return panel;
     }
 
-    panel.addEventListener('click', (e) => e.stopPropagation());
     const end = document.createElement('div');
     end.textContent = 'The End';
     Object.assign(end.style, {
@@ -499,10 +522,9 @@ export class PlayEditor extends VnEditor {
     return panel;
   }
 
-  private choiceButton(label: string, tip: string, onClick: () => void): HTMLElement {
+  private choiceButton(offer: Offer, onClick: () => void): HTMLElement {
     const btn = document.createElement('button');
-    btn.textContent = label;
-    btn.title = tip;
+    btn.textContent = offer.label;
     Object.assign(btn.style, {
       padding     : '8px 18px',
       minWidth    : '180px',
@@ -514,11 +536,7 @@ export class PlayEditor extends VnEditor {
       fontFamily  : TOKENS.sans,
       fontSize    : '14px',
     });
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      onClick();
-    });
-    return btn;
+    return this.endPass.act(btn, offer, onClick);
   }
 }
 

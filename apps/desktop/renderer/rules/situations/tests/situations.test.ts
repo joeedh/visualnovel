@@ -8,6 +8,7 @@ import { SITUATIONS as branch } from '../branch.js';
 import { SITUATIONS as documents } from '../documents.js';
 import { SITUATIONS as gengraph } from '../gengraph.js';
 import { SITUATIONS as onboarding } from '../onboarding.js';
+import { SITUATIONS as play } from '../play.js';
 import { SITUATIONS as projectbar } from '../projectbar.js';
 import { SITUATIONS as reportconvo } from '../reportconvo.js';
 import { SITUATIONS as script } from '../script.js';
@@ -24,6 +25,7 @@ import * as branchRules from '../../branch/controls.js';
 import * as documentsRules from '../../documents.js';
 import * as gengraphRules from '../../gengraph.js';
 import * as onboardingRules from '../../onboarding.js';
+import * as playRules from '../../play.js';
 import * as projectbarRules from '../../projectbar.js';
 import * as reportconvoRules from '../../reportconvo.js';
 import * as scriptRules from '../../script.js';
@@ -59,6 +61,7 @@ const ROWS: Row<unknown>[] = [
   row('documents', documents, documentsRules.controls),
   row('gengraph', gengraph, gengraphRules.controls),
   row('onboarding', onboarding, onboardingRules.controls),
+  row('play', play, playRules.controls),
   row('projectbar', projectbar, projectbarRules.controls),
   row('reportconvo', reportconvo, reportconvoRules.controls),
   row('script', script, scriptRules.controls),
