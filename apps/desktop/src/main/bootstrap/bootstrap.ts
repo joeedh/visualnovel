@@ -4,18 +4,18 @@
  * ordering constraints between the steps.
  */
 import { app, Menu, nativeTheme } from 'electron';
-import type { AppContext } from './context.js';
+import type { AppContext } from '../runtime/context.js';
 import { cliArgs } from './cliargs.js';
 import { checkGit, gitHealth, noteGitHealth } from './doctor.js';
 import { describeVersion, shortSha } from './version.js';
 import { activatePlugins, pointAtUnpackedBinary } from './plugins.js';
-import { formatSmoke, runSmoke } from './smoke.js';
+import { formatSmoke, runSmoke } from '../distribution/smoke.js';
 import { acquireWorkspace, focusOwner } from './instancelock.js';
-import { inspectWorkspace, rememberWorkspace } from './workspace.js';
-import { askAboutGit, openRepos, resolveWorkspace } from './workspacelifecycle.js';
-import { registerAssetProtocol } from './assetprotocol.js';
-import { registerIpc } from './ipc.js';
-import { openSessionStore } from './sessionaccess.js';
+import { inspectWorkspace, rememberWorkspace } from '../workspace/workspace.js';
+import { askAboutGit, openRepos, resolveWorkspace } from '../runtime/workspacelifecycle.js';
+import { registerAssetProtocol } from '../assets/assetprotocol.js';
+import { registerIpc } from '../runtime/ipc.js';
+import { openSessionStore } from '../runtime/sessionaccess.js';
 import {
   createWindow,
   focusFrontWindow,
@@ -23,7 +23,7 @@ import {
   liveWindows,
   nameWindows,
   rememberedWindows,
-} from './windowmanager.js';
+} from '../runtime/windowmanager.js';
 
 /** Quitting is synchronous, so this holds it open for the two writes that may still be owed. */
 const QUIT_FLUSH_MS = 2000;

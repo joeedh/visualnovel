@@ -80,7 +80,7 @@ window runs from the thread's start to its last stamped line, not to now, becaus
 stays open while the author keeps working and those later acts are not the agent's. Acts
 the author performed by hand are deliberately included, because what happened in the
 project while the conversation was open is the evidence.
-`apps/desktop/src/main/commandlog.ts` reads the log back, and
+`apps/desktop/src/main/agent/commandlog.ts` reads the log back, and
 `evidenceFor(paths, threadId, context)` is the one seam that touches disk.
 
 A thread recorded before the detailed format (tool args, results, untruncated text — the

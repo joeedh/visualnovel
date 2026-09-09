@@ -3,7 +3,7 @@
  * popup that lists it.
  *
  * Nothing here decides what is waiting or which order it is read in. That is
- * `WorkspaceSession.approvable()` and `src/main/approvals.ts`, both of which the node-only jest
+ * `WorkspaceSession.approvable()` and `src/main/workspace/approvals.ts`, both of which the node-only jest
  * project can test. This file holds one fetch, one cached list, and the widgets over it.
  *
  * Approving is not done from here. A row opens the Asset editor, which is where an author sees

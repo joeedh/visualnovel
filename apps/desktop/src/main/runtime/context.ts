@@ -12,15 +12,15 @@
 import type { BrowserWindow } from 'electron';
 import { Committer, type CommandStack } from '@vn/commands';
 import type { Git } from '@vn/git';
-import type { CommandHost } from './commands/index.js';
-import { createDesktopRegistry } from './commands/index.js';
-import type { WorkspaceSession } from './session.js';
-import type { SessionState } from './sessionstate.js';
-import type { InstanceLock } from './instancelock.js';
+import type { CommandHost } from '../commands/index.js';
+import { createDesktopRegistry } from '../commands/index.js';
+import type { WorkspaceSession } from '../session.js';
+import type { SessionState } from '../workspace/sessionstate.js';
+import type { InstanceLock } from '../bootstrap/instancelock.js';
 import { Pending, Windows, type WindowId, type WindowList } from './windows.js';
-import { workspaceScope } from '../shared/sessionkeys.js';
-import type { EventChannel, EventChannels, PlanDecision, DocVersions } from '../shared/ipc.js';
-import { liveDocs } from './livedocs.js';
+import { workspaceScope } from '../../shared/sessionkeys.js';
+import type { EventChannel, EventChannels, PlanDecision, DocVersions } from '../../shared/ipc.js';
+import { liveDocs } from '../workspace/livedocs.js';
 
 export class AppContext {
   /**

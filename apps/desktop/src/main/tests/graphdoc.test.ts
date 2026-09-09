@@ -7,7 +7,7 @@ import { mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Graph, GenTemplate, GroupNode, createGroup } from '@vn/gengraph';
-import { writeGraph, writeGroupDef } from '../graphs.js';
+import { writeGraph, writeGroupDef } from '../doctree/graphs.js';
 import { WorkspaceSession, type SessionDeps } from '../session.js';
 
 const deps: SessionDeps = {

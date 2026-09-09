@@ -13,8 +13,8 @@ import { UndoJournal } from '@vn/commands/snapshot';
 import { GroupNode, bindSlots } from '@vn/gengraph';
 import { openGit } from '@vn/git';
 import type { UiEffect } from '../../../shared/ipc.js';
-import { readGraph, readGroupDoc } from '../../graphs.js';
-import { UNDO_EXCLUDES } from '../../workspace.js';
+import { readGraph, readGroupDoc } from '../../doctree/graphs.js';
+import { UNDO_EXCLUDES } from '../../workspace/workspace.js';
 import {
   gengraphAddBoundary,
   gengraphAddGroup,

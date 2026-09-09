@@ -1,8 +1,8 @@
 import type { WorkspaceSession } from '../session.js';
-import type { SessionAccess } from '../sessionstate.js';
+import type { SessionAccess } from '../workspace/sessionstate.js';
 import type { UiEffect } from '../../shared/ipc.js';
 import type { Known } from '../../shared/tourcheck.js';
-import type { WindowId } from '../windows.js';
+import type { WindowId } from '../runtime/windows.js';
 
 /** Presentation of a file chooser. Everything is optional; the defaults are the document upload. */
 export interface FilePickOptions {

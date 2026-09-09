@@ -9,8 +9,8 @@
 import { defineFor, prop } from '@vn/commands';
 import { KEY_VENDORS } from '@vn/config';
 import { GUIDE_URL_FIELDS, keyGuideProblems } from '../../shared/apikeys.js';
-import { notify } from '../notifications.js';
-import { announcementFor } from '../updates.js';
+import { notify } from '../notify/notifications.js';
+import { announcementFor } from '../distribution/updates.js';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();

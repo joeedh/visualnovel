@@ -14,9 +14,9 @@ remembers between runs, which project opens at launch, and the seeded sample wor
 ## Remembered UI state (two `session.json` files)
 
 The state the shell persists lives in flat key/value files owned by the main process
-(`apps/desktop/src/main/sessionstore.ts`), split by what each piece of state describes.
-One `SessionState` (`sessionstate.ts`) routes every read and write, and `isProjectKey`
-alone decides which file a key is stored in. The full write-up is in
+(`apps/desktop/src/main/workspace/sessionstore.ts`), split by what each piece of state
+describes. One `SessionState` (`sessionstate.ts`) routes every read and write, and
+`isProjectKey` alone decides which file a key is stored in. The full write-up is in
 [`desktopAppState.md`](desktopAppState.md).
 
 - **The project's own file** is `<root>/.vnstudio/session.json`, which holds every
@@ -173,7 +173,7 @@ install rather than per project.
 ## Seeded workspace (`examples/mySampleRepo`)
 
 When no project is stored and `VN_PROJECT` is unset, the app seeds `examples/mySampleRepo`
-from `templates/basic` (apps/desktop/src/main/workspace.ts).
+from `templates/basic` (apps/desktop/src/main/workspace/workspace.ts).
 
 - **Why**: a real run writes ~100 MB into `vngen/`, and doing that in the source tree
   floods `git status` and makes it hard to tell the sample we ship from the copy you have

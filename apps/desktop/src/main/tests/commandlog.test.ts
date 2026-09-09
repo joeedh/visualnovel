@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import type { CommandRecord } from '@vn/commands';
 import { ProjectPaths } from '@vn/store';
 import { ensureDir } from '@vn/util';
-import { evidenceFor, readCommandLog } from '../commandlog.js';
-import { appendItem, openThread } from '../threads.js';
+import { evidenceFor, readCommandLog } from '../agent/commandlog.js';
+import { appendItem, openThread } from '../notify/threads.js';
 
 const record = (seq: number, over: Partial<CommandRecord> = {}): CommandRecord => ({
   seq,

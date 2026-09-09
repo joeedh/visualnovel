@@ -15,7 +15,7 @@ import {
   fileTree,
   type DocTreeInput,
   type SkillEntry,
-} from '../doctree.js';
+} from '../doctree/doctree.js';
 import { WorkspaceSession, type SessionDeps } from '../session.js';
 
 const deps: SessionDeps = {

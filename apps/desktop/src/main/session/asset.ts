@@ -38,9 +38,9 @@ import {
 } from '@vn/artgen';
 import type { AnyTask, RefBinding } from '@vn/types';
 import type { AssetInfo, AssetListing } from '../../shared/ipc.js';
-import { graphSlugs, readGraph } from '../graphs.js';
-import { labelAssets, labelContext } from '../assetlabel.js';
-import { derivePrompt } from '../assetprompt.js';
+import { graphSlugs, readGraph } from '../doctree/graphs.js';
+import { labelAssets, labelContext } from '../assets/assetlabel.js';
+import { derivePrompt } from '../assets/assetprompt.js';
 import type { WorkspaceSession, LoadedProject } from './core.js';
 import {
   relPath,

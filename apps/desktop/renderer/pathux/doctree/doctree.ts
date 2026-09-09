@@ -1,6 +1,6 @@
 /**
  * How the documents editor draws a tree, and what clicking one of its nodes means. Pure: main
- * builds the shape (`src/main/doctree.ts`), and everything the pane decides on top of it — which
+ * builds the shape (`src/main/doctree/doctree.ts`), and everything the pane decides on top of it — which
  * rows are visible, what a twisty does, which of the four selection fields a node names — is here
  * where it can be tested without a DOM.
  *

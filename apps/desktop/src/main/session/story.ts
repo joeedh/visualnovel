@@ -12,7 +12,7 @@ import {
   writeShots,
 } from '@vn/store';
 import { exists, readText } from '@vn/util';
-import { fileCache } from '../filecache.js';
+import { fileCache } from '../workspace/filecache.js';
 import { driftOf } from '@vn/pipeline';
 import {
   deleteShot as planDeleteShot,
@@ -50,7 +50,7 @@ import type {
   SceneEditResult,
   StoryGraph,
 } from '../../shared/ipc.js';
-import { storyGraphOf } from '../storygraph.js';
+import { storyGraphOf } from '../doctree/storygraph.js';
 import type { WorkspaceSession, LoadedProject } from './core.js';
 import { editInputOf, relPath, loadProject } from './core.js';
 

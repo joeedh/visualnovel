@@ -78,7 +78,7 @@ Pos[]  // e.g. [{ sceneId: "arrival", frameIndex: 0 }, { sceneId: "greet", frame
 **Holds the pane arrangement and selection the user left in the project.**
 
 Storage uses two `SessionStore` files (flat key/value stores in
-`src/main/sessionstore.ts`):
+`src/main/workspace/sessionstore.ts`):
 
 | File                                     | Holds                                                          | Scope                                                                                         |
 | ---------------------------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
@@ -212,7 +212,7 @@ Storage uses two `SessionStore` files (flat key/value stores in
 - **Lost when:** the file is deleted, or the project is cloned elsewhere (git does not
   carry it)
 
-**Code:** `src/main/sessionstate.ts`, `src/main/sessionstore.ts`,
+**Code:** `src/main/workspace/sessionstate.ts`, `src/main/workspace/sessionstore.ts`,
 `src/shared/sessionkeys.ts`, `renderer/pathux/app/persist.ts`, `renderer/rules/uistate.ts`
 
 ---
@@ -652,13 +652,14 @@ renders a default layout and then jumps. The channel returns the two session fil
 map, so the renderer reads a flat key/value store and never learns which file a key came
 from. The two key sets are disjoint, so the merge has nothing to resolve.
 
-`pipeline:status` returns tasks that main narrows at the boundary (`src/main/reviews.ts`),
-not raw pipeline tasks. `TaskAttempt.reviews` is `unknown[]` in `@vn/types` because it is
-read back from `tasks.jsonl` as JSON; main parses each entry with `defectReportSchema` and
-drops the ones that fail, so the renderer's `Task` can promise `reviews: DefectReport[]`.
-Main also stamps `outputExt` by looking the attempt's output hash up in the manifest. An
-attempt records only the hash, and the Inspector editor needs both the hash and the
-extension to build a `vnasset://<hash>.<ext>` url.
+`pipeline:status` returns tasks that main narrows at the boundary
+(`src/main/agent/reviews.ts`), not raw pipeline tasks. `TaskAttempt.reviews` is
+`unknown[]` in `@vn/types` because it is read back from `tasks.jsonl` as JSON; main parses
+each entry with `defectReportSchema` and drops the ones that fail, so the renderer's
+`Task` can promise `reviews: DefectReport[]`. Main also stamps `outputExt` by looking the
+attempt's output hash up in the manifest. An attempt records only the hash, and the
+Inspector editor needs both the hash and the extension to build a `vnasset://<hash>.<ext>`
+url.
 
 **Main pushes these to renderer:**
 
@@ -760,8 +761,8 @@ extension to build a `vnasset://<hash>.<ext>` url.
 - **localStorage:** Shared by origin, so playthrough saves still clobber one another and
   the last window to write wins. That behavior is unchanged, because localStorage is the
   renderer's own store.
-- **One instance per workspace, enforced via `src/main/instancelock.ts`:** Opens a
-  listening socket keyed by the resolved root digest.
+- **One instance per workspace, enforced via `src/main/bootstrap/instancelock.ts`:** Opens
+  a listening socket keyed by the resolved root digest.
     - Binding performs the acquisition, and the endpoint is released when the process
       exits.
     - Launching on an owned root hands off, telling the owner to come forward and exiting

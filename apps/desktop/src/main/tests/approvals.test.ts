@@ -1,5 +1,5 @@
 import type { Approvable } from '@vn/authoring';
-import { reorderApprovals, sameApprovals } from '../approvals.js';
+import { reorderApprovals, sameApprovals } from '../workspace/approvals.js';
 
 const item = (hash: string): Approvable => ({
   hash,

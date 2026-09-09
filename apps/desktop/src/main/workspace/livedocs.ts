@@ -13,7 +13,7 @@
  * Versions are session-lived and mean nothing across a restart. Nothing persists them, and
  * nothing may: they describe how far one process's windows have been told, not the file.
  */
-import type { DocVersions } from '../shared/ipc.js';
+import type { DocVersions } from '../../shared/ipc.js';
 
 export class LiveDocs {
   private readonly versions = new Map<string, number>();

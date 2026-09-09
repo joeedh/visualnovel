@@ -15,8 +15,8 @@ import { TRIAGE_MODEL, type Approvable } from '@vn/authoring';
 import type { RefBinding, Shot } from '@vn/types';
 import { bindsTo } from '@vn/types';
 import type { ApproveResult, AssetFailure, GateCandidate } from '../../shared/ipc.js';
-import { reorderApprovals, type ApprovalQueue } from '../approvals.js';
-import { labelAssets, labelContext } from '../assetlabel.js';
+import { reorderApprovals, type ApprovalQueue } from '../workspace/approvals.js';
+import { labelAssets, labelContext } from '../assets/assetlabel.js';
 import type { WorkspaceSession, LoadedProject } from './core.js';
 import { suspensionsOf, driftedFrames, readAllShots, loadProject } from './core.js';
 

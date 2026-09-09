@@ -17,7 +17,7 @@ import {
   renderReview,
   unreadable,
   type VendorReview,
-} from '../keyaudit.js';
+} from '../distribution/keyaudit.js';
 
 const PAGE = `<html><head><style>.a{color:red}</style><script>var x = "<p>lie</p>";</script></head>
 <body><h1>Get an API key</h1><ol><li>Open the console.</li><li>Click <b>Create key</b>.</li></ol>

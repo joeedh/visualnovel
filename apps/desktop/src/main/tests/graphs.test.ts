@@ -19,7 +19,13 @@ import { graphGroupFile } from '@vn/gengraph/state';
 import { ProjectPaths } from '@vn/store';
 import { exists } from '@vn/util';
 
-import { graphSlugs, readGraph, readGroupDef, writeGraph, writeGroupDef } from '../graphs.js';
+import {
+  graphSlugs,
+  readGraph,
+  readGroupDef,
+  writeGraph,
+  writeGroupDef,
+} from '../doctree/graphs.js';
 
 let root: string;
 

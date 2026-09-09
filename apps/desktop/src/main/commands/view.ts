@@ -16,7 +16,7 @@ import {
   parseLayoutFile,
   type LayoutFile,
 } from '../../shared/layouts.js';
-import { listLayouts, readLayout, resetLayouts, writeLayout } from '../layouts.js';
+import { listLayouts, readLayout, resetLayouts, writeLayout } from '../workspace/layouts.js';
 import type { CommandHost } from './host.js';
 import { templateKey } from '../../shared/sessionkeys.js';
 

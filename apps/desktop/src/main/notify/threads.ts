@@ -25,12 +25,12 @@ import type {
   ThreadRecord,
   ThreadUsage,
   ToolDetail,
-} from '../shared/convo.js';
+} from '../../shared/convo.js';
 
 export type { CompactionMark, ResumeHeader, ThreadArchive, ThreadHeader, ThreadRecord };
 // Re-exported so a reader of the native log finds the version beside the writer of it. The
 // declaration is in `shared/` because the resume check compares against it from both processes.
-export { NATIVE_VERSION } from '../shared/threads.js';
+export { NATIVE_VERSION } from '../../shared/threads.js';
 
 /** The title a thread is created with, before a first turn names it. */
 export const NEW_THREAD_TITLE = 'New conversation';

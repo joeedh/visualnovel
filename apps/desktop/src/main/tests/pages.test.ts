@@ -8,7 +8,7 @@ import {
   pagesState,
   sitebuilderPath,
   workflowYaml,
-} from '../pages.js';
+} from '../distribution/pages.js';
 
 const scratch = (): string => mkdtempSync(join(tmpdir(), 'vn-pages-'));
 

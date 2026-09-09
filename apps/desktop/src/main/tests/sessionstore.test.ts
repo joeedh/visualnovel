@@ -8,7 +8,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { userConfigDir } from '@vn/config';
-import { SessionStore, resolveSessionDir } from '../sessionstore.js';
+import { SessionStore, resolveSessionDir } from '../workspace/sessionstore.js';
 
 let dir: string;
 

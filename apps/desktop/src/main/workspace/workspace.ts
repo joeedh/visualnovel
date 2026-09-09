@@ -12,8 +12,8 @@ import { CONFIG_FILENAME, loadConfig } from '@vn/config';
 import { openGit, type Git } from '@vn/git';
 import { slug } from '@vn/model';
 import { writeFileAtomic } from '@vn/util';
-import { LAYOUT_ATTRIBUTES_BLOCK, shippedLayoutFiles } from '../shared/layouts.js';
-import { gitHealth } from './doctor.js';
+import { LAYOUT_ATTRIBUTES_BLOCK, shippedLayoutFiles } from '../../shared/layouts.js';
+import { gitHealth } from '../bootstrap/doctor.js';
 import { ensureLayouts } from './layouts.js';
 
 /**

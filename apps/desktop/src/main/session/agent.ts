@@ -53,7 +53,7 @@ import {
   type NativeLog,
   type ThreadHeader,
   type ThreadRecord,
-} from '../threads.js';
+} from '../notify/threads.js';
 import { resumeRefusal, type OpenedThread, type ResumeState } from '../../shared/threads.js';
 import type { WorkspaceSession } from './core.js';
 import { wroteAuthoredInput, resumedNote } from './core.js';

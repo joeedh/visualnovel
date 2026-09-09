@@ -17,7 +17,7 @@ import {
   readTranscript,
   transcriptBody,
   transcriptsDir,
-} from '../agentreport.js';
+} from '../agent/agentreport.js';
 import type { Report } from '@vn/agentreport';
 import type { ReportRow } from '../../shared/ipc.js';
 

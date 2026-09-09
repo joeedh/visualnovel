@@ -4,7 +4,7 @@
  * attempt's reviews may be any shape by the time the inspector reads them.
  */
 import type { AnyTask, DefectReport } from '@vn/types';
-import { narrowTask } from '../reviews.js';
+import { narrowTask } from '../agent/reviews.js';
 
 const report = (reviewer: string, severity: 'blocking' | 'major' | 'minor'): DefectReport => ({
   reviewer,

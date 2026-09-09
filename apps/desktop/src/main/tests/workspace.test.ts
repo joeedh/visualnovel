@@ -6,7 +6,7 @@ import { UndoJournal } from '@vn/commands/snapshot';
 import { loadConfig } from '@vn/config';
 import { modelFromInputs } from '@vn/model';
 import { ProjectPaths, loadInputs } from '@vn/store';
-import { noteGitHealth } from '../doctor.js';
+import { noteGitHealth } from '../bootstrap/doctor.js';
 import {
   RECENT_KEY,
   RECENT_MAX,
@@ -26,7 +26,7 @@ import {
   UNDO_EXCLUDES,
   writeScaffolding,
   type RecentStore,
-} from '../workspace.js';
+} from '../workspace/workspace.js';
 
 /** A template shaped like `templates/basic`: authored inputs plus a previous run's output. */
 async function makeTemplate(dir: string): Promise<void> {

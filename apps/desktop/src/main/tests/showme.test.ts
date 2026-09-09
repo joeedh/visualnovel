@@ -7,7 +7,7 @@
  */
 import { coerceProps, prop } from '@vn/commands';
 import { checkTour, readTour, type Known } from '../../shared/tourcheck.js';
-import { showMeTool } from '../showme.js';
+import { showMeTool } from '../agent/showme.js';
 import type { Step, Tour } from '../../shared/tours.js';
 
 const specs = {

@@ -1,5 +1,10 @@
 import type { AnyTask, Asset, ProjectModel } from '@vn/types';
-import { assetLabel, labelAssets, labelContext, type AssetLabelContext } from '../assetlabel.js';
+import {
+  assetLabel,
+  labelAssets,
+  labelContext,
+  type AssetLabelContext,
+} from '../assets/assetlabel.js';
 
 const model = {
   characters: new Map([['aiko', { id: 'aiko', name: 'Aiko' }]]),

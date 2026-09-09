@@ -3,7 +3,7 @@
  * around it are both testable without a workspace.
  */
 import { parseFrontMatter } from '@vn/parse';
-import { renameInText } from '../rename.js';
+import { renameInText } from '../doctree/rename.js';
 
 /** The renamed text. Throws when the rename was refused, so a refusing case fails loudly. */
 function renamed(path: string, text: string, name: string): string {

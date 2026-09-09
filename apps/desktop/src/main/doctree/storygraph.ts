@@ -4,7 +4,7 @@
  * enough of a card face to recognise a scene, not the screenplay text.
  */
 import type { ProjectModel } from '@vn/types';
-import type { StoryEdge, StoryGraph, StoryScene } from '../shared/ipc.js';
+import type { StoryEdge, StoryGraph, StoryScene } from '../../shared/ipc.js';
 
 /**
  * Edge ids are `<from>#choice:<index>` / `<from>#next`. They are stable across reloads, so a

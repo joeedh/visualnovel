@@ -9,7 +9,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { WorkspaceSession, type SessionDeps } from '../session.js';
-import { seedWorkspace } from '../workspace.js';
+import { seedWorkspace } from '../workspace/workspace.js';
 import { setNext } from '@vn/scriptedit';
 
 const TEMPLATE = resolve(__dirname, '../../../../../templates/basic');

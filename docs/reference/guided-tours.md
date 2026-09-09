@@ -505,8 +505,8 @@ fault, only later.
 - Curated tours are hard-coded in `apps/desktop/src/shared/tours.ts` (three at present).
   `main/tests/tours.test.ts` checks each step against the live registry. No step uses
   `gesture`, because a gesture step needs a scene or shot id from a specific project.
-- Agent-written tours come from the `show_me` tool (`src/main/showme.ts`), which the agent
-  uses for anything the curated tours do not cover.
+- Agent-written tours come from the `show_me` tool (`src/main/agent/showme.ts`), which the
+  agent uses for anything the curated tours do not cover.
 
 `show_me` exists only in the desktop app. It needs a window to display in, and `vnauthor`
 has none, so the window push is a session dependency, and the tool returns an error when
@@ -677,7 +677,7 @@ produces identical bytes.
 | `src/shared/tours.ts`                      | `Step`, `Tour`, and the curated tours                                                                                                                                         |
 | `src/shared/tourcheck.ts`                  | `readTour`, `checkTour`                                                                                                                                                       |
 | `src/main/commands/tour.ts`                | The `tour.*` commands                                                                                                                                                         |
-| `src/main/showme.ts`                       | The `show_me` agent tool                                                                                                                                                      |
+| `src/main/agent/showme.ts`                 | The `show_me` agent tool                                                                                                                                                      |
 | `apps/desktop/anchors.json`                | The measured anchor map                                                                                                                                                       |
 | `scripts/sweep-anchors.mjs`                | The sweep that writes it                                                                                                                                                      |
 | `renderer/rules/model.ts`                  | The derived model's driver: the table, `pickOffer`, `refusingVerdicts`, `model()`                                                                                             |

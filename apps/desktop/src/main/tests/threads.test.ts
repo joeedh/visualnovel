@@ -25,7 +25,7 @@ import {
   threadsDir,
   titleFrom,
   type NativeLine,
-} from '../threads.js';
+} from '../notify/threads.js';
 
 const item = (id: number, role: FeedItem['role'], text: string): FeedItem => ({ id, role, text });
 

@@ -6,7 +6,7 @@
  */
 import { join } from 'node:path';
 import { READABLE } from '@vn/agentreport';
-import { formatSmoke, missingRoots, runSmoke, SMOKE_PREFIX } from '../smoke.js';
+import { formatSmoke, missingRoots, runSmoke, SMOKE_PREFIX } from '../distribution/smoke.js';
 
 class Fake {
   constructor(readonly opts: { apiKey: string }) {}

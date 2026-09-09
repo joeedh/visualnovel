@@ -8,8 +8,8 @@ import { BrowserWindow, dialog, screen } from 'electron';
 import { join } from 'node:path';
 import type { AppContext } from './context.js';
 import { clampBounds, WindowList, type RememberedWindow, type WindowId } from './windows.js';
-import { WINDOWS_KEY } from '../shared/sessionkeys.js';
-import type { SessionValue } from '../shared/ipc.js';
+import { WINDOWS_KEY } from '../../shared/sessionkeys.js';
+import type { SessionValue } from '../../shared/ipc.js';
 
 const DEV_URL = process.env.VITE_DEV_SERVER_URL;
 

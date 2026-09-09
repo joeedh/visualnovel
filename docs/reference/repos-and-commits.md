@@ -191,11 +191,11 @@ own every act.
 
 ## Bootstrap
 
-`ensureRepo(root)` (`apps/desktop/src/main/workspace.ts`) handles half of project
-bootstrap by initializing a git repository if necessary and committing existing files
-automatically. It is idempotent. A directory already inside a work tree is left alone
-(whether or not it is that tree's root). Otherwise it runs `git init`, fills in a fallback
-identity only when git does not already have a committer identity, sets
+`ensureRepo(root)` (`apps/desktop/src/main/workspace/workspace.ts`) handles half of
+project bootstrap by initializing a git repository if necessary and committing existing
+files automatically. It is idempotent. A directory already inside a work tree is left
+alone (whether or not it is that tree's root). Otherwise it runs `git init`, fills in a
+fallback identity only when git does not already have a committer identity, sets
 `core.autocrlf false` (scene prose is patched byte-exactly), and commits the files already
 present.
 

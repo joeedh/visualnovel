@@ -13,7 +13,7 @@ import { readFile } from 'node:fs/promises';
 import type { CommandRecord } from '@vn/commands';
 import type { ProjectPaths } from '@vn/store';
 import { assemble, type Evidence, type ReportContext } from '@vn/agentreport';
-import { readThread } from './threads.js';
+import { readThread } from '../notify/threads.js';
 
 /**
  * Every record the log holds that parses, in the order it was written.

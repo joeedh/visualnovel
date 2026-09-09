@@ -1,6 +1,6 @@
 import { applyCharacterEdit, applyLocationEdit, docToMarkdown } from '@vn/model';
 import { entityDoc, readShots, writeShots } from '@vn/store';
-import { fileCache } from '../filecache.js';
+import { fileCache } from '../workspace/filecache.js';
 import {
   adopt,
   adoptionOf,
@@ -24,9 +24,9 @@ import {
 } from '@vn/artgen';
 import type { PromptChunk, PromptOverride, TaskInputs } from '@vn/types';
 import { type TaskKind } from '@vn/types';
-import { labelAssets, labelContext } from '../assetlabel.js';
-import { deriveChunks } from '../assetprompt.js';
-import { applyPromptEdit, type PromptEdit } from '../promptedit.js';
+import { labelAssets, labelContext } from '../assets/assetlabel.js';
+import { deriveChunks } from '../assets/assetprompt.js';
+import { applyPromptEdit, type PromptEdit } from '../agent/promptedit.js';
 import type { ChunkRefInfo, PromptView } from '../../shared/prompt.js';
 import type {
   WorkspaceSession,

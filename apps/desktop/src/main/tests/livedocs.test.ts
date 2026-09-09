@@ -1,4 +1,4 @@
-import { LiveDocs } from '../livedocs.js';
+import { LiveDocs } from '../workspace/livedocs.js';
 
 const GRAPH = 'vngen/work/graphs/plates.json';
 const SCENE = 'scenes/rooftop.md';

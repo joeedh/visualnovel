@@ -6,10 +6,10 @@ import { BrowserWindow, ipcMain } from 'electron';
 import type { AppContext } from './context.js';
 import { getSession } from './sessionaccess.js';
 import { getStack, withVersions } from './stack.js';
-import { catalogOf } from './commands/catalog-entry.js';
-import { notifications } from './notifications.js';
-import { APPROVAL_ORDER_KEY } from '../shared/sessionkeys.js';
-import type { InvokeChannel, InvokeChannels } from '../shared/ipc.js';
+import { catalogOf } from '../commands/catalog-entry.js';
+import { notifications } from '../notify/notifications.js';
+import { APPROVAL_ORDER_KEY } from '../../shared/sessionkeys.js';
+import type { InvokeChannel, InvokeChannels } from '../../shared/ipc.js';
 import type { WindowId } from './windows.js';
 
 /**

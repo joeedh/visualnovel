@@ -4,13 +4,13 @@
  */
 import { app, clipboard, shell } from 'electron';
 import { DEFAULT_BUDGET, type BudgetChoice } from '@vn/types';
-import { BUDGET_KEY } from './commands/agent.js';
+import { BUDGET_KEY } from '../commands/agent.js';
 import type { AppContext } from './context.js';
-import { WorkspaceSession, type SessionDeps } from './session.js';
-import { SessionStore } from './sessionstore.js';
-import { SessionState } from './sessionstate.js';
-import { MOCK } from './cliargs.js';
-import type { AskRequest, ConfirmRequest, PlanRequest, SessionValue } from '../shared/ipc.js';
+import { WorkspaceSession, type SessionDeps } from '../session.js';
+import { SessionStore } from '../workspace/sessionstore.js';
+import { SessionState } from '../workspace/sessionstate.js';
+import { MOCK } from '../bootstrap/cliargs.js';
+import type { AskRequest, ConfirmRequest, PlanRequest, SessionValue } from '../../shared/ipc.js';
 
 function buildDeps(ctx: AppContext): SessionDeps {
   return {

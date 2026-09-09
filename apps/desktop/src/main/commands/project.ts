@@ -14,8 +14,8 @@
 import { defineFor, prop, type CheckResult } from '@vn/commands';
 import { KEY_VENDORS } from '@vn/config';
 import { openGit } from '@vn/git';
-import { notify } from '../notifications.js';
-import { installPages, pagesState } from '../pages.js';
+import { notify } from '../notify/notifications.js';
+import { installPages, pagesState } from '../distribution/pages.js';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();

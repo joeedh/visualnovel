@@ -1,6 +1,6 @@
 /**
  * Layout and selection, remembered across launches. Both land in the project's own
- * `.vnstudio/session.json` (`../../src/main/sessionstate.ts` routes them there), under one key
+ * `.vnstudio/session.json` (`../../src/main/workspace/sessionstate.ts` routes them there), under one key
  * per window, because a mesh is the one thing every window has its own of.
  *
  * Which window this is arrives on the url rather than over IPC: restoring happens before the

@@ -41,8 +41,8 @@ import {
   readGroupLibrary,
   writeGraph,
   writeGroupDef,
-} from '../graphs.js';
-import type { GraphSlug } from '../graphs.js';
+} from '../doctree/graphs.js';
+import type { GraphSlug } from '../doctree/graphs.js';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();

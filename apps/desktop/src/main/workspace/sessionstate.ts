@@ -15,7 +15,7 @@
  */
 import { join } from 'node:path';
 import { createLogger } from '@vn/util';
-import { isProjectKey, scopedWindowKeys, workspaceScope } from '../shared/sessionkeys.js';
+import { isProjectKey, scopedWindowKeys, workspaceScope } from '../../shared/sessionkeys.js';
 import { SessionStore, type SessionListener, type SessionValue } from './sessionstore.js';
 
 const log = createLogger().child({ mod: 'sessionstate' });

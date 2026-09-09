@@ -11,7 +11,7 @@ import {
 } from '@vn/store';
 import { bindSlots, registerGenRuntimes, type Graph as GenGraph } from '@vn/gengraph';
 import { exists } from '@vn/util';
-import { fileCache } from '../filecache.js';
+import { fileCache } from '../workspace/filecache.js';
 import { buildSlotGraph } from '@vn/artgen';
 import {
   PROJECT_SKILLS_DIR,
@@ -21,16 +21,16 @@ import {
   skillRoots,
 } from '@vn/authoring';
 import type { DocNode, DocSaveResult, DocTree } from '../../shared/ipc.js';
-import { graphPath, graphSlugs, readGraph } from '../graphs.js';
-import { labelAssets, labelContext } from '../assetlabel.js';
+import { graphPath, graphSlugs, readGraph } from '../doctree/graphs.js';
+import { labelAssets, labelContext } from '../assets/assetlabel.js';
 import {
   DEFAULT_CAP,
   buildDocTree,
   fileTree,
   type GraphEntry,
   type SkillEntry,
-} from '../doctree.js';
-import { renameInText } from '../rename.js';
+} from '../doctree/doctree.js';
+import { renameInText } from '../doctree/rename.js';
 import type { WorkspaceSession, NewDocKind } from './core.js';
 import {
   relPath,

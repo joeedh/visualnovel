@@ -36,7 +36,7 @@ The picker takes a snapshot of the manifest when it opens, in one command round 
 - `asset.list` (`apps/desktop/src/main/commands/asset.ts`) is read-only and takes no
   props. It returns the whole manifest as `AssetListing[]`.
 - `WorkspaceSession.assetLibrary` builds those rows. `labelAssets`
-  (`apps/desktop/src/main/assetlabel.ts`) resolves the display name over the whole
+  (`apps/desktop/src/main/assets/assetlabel.ts`) resolves the display name over the whole
   manifest at once. The document tree draws those same names, so the picker shows a
   picture under the name the rest of the app uses.
 - `AssetListing` (`apps/desktop/src/shared/ipc.ts`) carries only `hash`, `ext`, `kind`,

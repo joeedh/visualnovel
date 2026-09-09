@@ -127,8 +127,8 @@ Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
   row opens on `SlotNode.hash` where the slot resolved, and on the newest candidate where
   it
 - **An asset gets a display name, and colliding names get a hash suffix.** `labelAssets`
-  (`apps/desktop/src/main/assetlabel.ts`, a pure function) turns the manifest's bindings
-  into display names — `Aiko`, `Aiko — uniform / front`, `Café Mori — night`,
+  (`apps/desktop/src/main/assets/assetlabel.ts`, a pure function) turns the manifest's
+  bindings into display names — `Aiko`, `Aiko — uniform / front`, `Café Mori — night`,
   `greet · s2`. The angle on a model sheet comes from the task, not the binding
   (`satisfies` binds only `{characterId, outfit}`, which four sheets share). If two assets
   land on the same words, each keeps a `(hash8)` suffix, so every ambiguous label carries
@@ -242,8 +242,8 @@ skills directory at all, and every new project starts in that state.
 | Piece                                                                                           | Where                                                                                     |
 | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | Shapes (`DocNode`, `EntityLinks`, `DocTree`)                                                    | `apps/desktop/src/shared/ipc.ts`                                                          |
-| The projection (`buildDocTree`, `fileTree`) — pure                                              | `apps/desktop/src/main/doctree.ts`                                                        |
-| Asset display names (`assetLabel`, `labelAssets`) — pure                                        | `apps/desktop/src/main/assetlabel.ts`                                                     |
+| The projection (`buildDocTree`, `fileTree`) — pure                                              | `apps/desktop/src/main/doctree/doctree.ts`                                                |
+| Asset display names (`assetLabel`, `labelAssets`) — pure                                        | `apps/desktop/src/main/assets/assetlabel.ts`                                              |
 | The reads (one `loadProject`, one `readShots` per scene, `bible.files()`, one `discoverSkills`) | `WorkspaceSession.docTree()` / `.fileTree()`                                              |
 | The skills walk (`walkFiles` under `.aiagent/skills`)                                           | `WorkspaceSession.skillTree()`                                                            |
 | Channels                                                                                        | `workspace:doctree`, `workspace:filetree`, `workspace:skilltree`                          |
@@ -378,11 +378,11 @@ Two things underlie the gesture:
   double click, and the row is found again by `data-id`.
 - **Renaming runs as an ordinary command.** `doc.rename` is `mutating` and `undoable`, so
   it commits, records and undoes through the same journal as `doc.write`. `renameInText`
-  in `src/main/rename.ts` decides where the new name is written. A sheet keeps its name in
-  `name:`. Anything else keeps it wherever the title was read from, which is front-matter
-  `title:` if present and otherwise the first H1; if neither is present, a heading is
-  added. Writing anywhere else would leave the tree showing the old name. The file never
-  moves, because the id is derived from a name once, at creation.
+  in `src/main/doctree/rename.ts` decides where the new name is written. A sheet keeps its
+  name in `name:`. Anything else keeps it wherever the title was read from, which is
+  front-matter `title:` if present and otherwise the first H1; if neither is present, a
+  heading is added. Writing anywhere else would leave the tree showing the old name. The
+  file never moves, because the id is derived from a name once, at creation.
 
 ## Opening a shot's frame
 

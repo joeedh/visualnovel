@@ -3,7 +3,13 @@
  * `src/main/windows.ts` knows, verified without an Electron in sight, which is the whole reason
  * that module is generic over an opaque handle.
  */
-import { Pending, WindowList, Windows, clampBounds, type RememberedWindow } from '../windows.js';
+import {
+  Pending,
+  WindowList,
+  Windows,
+  clampBounds,
+  type RememberedWindow,
+} from '../runtime/windows.js';
 
 /** A stand-in for a `BrowserWindow`: identity is all the registry ever asks of one. */
 const handle = (name: string): { name: string } => ({ name });

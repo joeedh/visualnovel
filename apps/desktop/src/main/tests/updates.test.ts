@@ -13,7 +13,7 @@ import {
   parseVersion,
   runningVersion,
   unreachable,
-} from '../updates.js';
+} from '../distribution/updates.js';
 import { LINK_COMMANDS, linkCommand } from '../../shared/notify.js';
 import { NotificationLinkSchema, type Notification } from '@vn/types';
 

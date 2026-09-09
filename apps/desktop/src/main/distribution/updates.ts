@@ -13,7 +13,7 @@
 import { ISSUE_REPO } from '@vn/agentreport';
 import type { NotificationInput } from '@vn/types';
 import { z } from 'zod';
-import { LINK_COMMANDS } from '../shared/notify.js';
+import { LINK_COMMANDS } from '../../shared/notify.js';
 
 /**
  * `releases/latest` rather than a listing of releases, because it already excludes prereleases

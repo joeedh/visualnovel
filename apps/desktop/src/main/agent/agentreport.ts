@@ -34,8 +34,8 @@ import {
   type ToolSummary,
 } from '@vn/agentreport';
 import { captureSnapshot, type CaptureSnapshot } from '@vn/providers';
-import { asked, emptyConvo, received, type FeedItem } from '../shared/convo.js';
-import type { ReportRow } from '../shared/ipc.js';
+import { asked, emptyConvo, received, type FeedItem } from '../../shared/convo.js';
+import type { ReportRow } from '../../shared/ipc.js';
 import { evidenceFor } from './commandlog.js';
 
 export interface AnalysisRequest {

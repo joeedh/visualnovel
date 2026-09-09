@@ -10,7 +10,7 @@
  */
 import { defineFor, prop } from '@vn/commands';
 import { LINK_COMMANDS, linkCommand, linkTarget } from '../../shared/notify.js';
-import { notifications } from '../notifications.js';
+import { notifications } from '../notify/notifications.js';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();

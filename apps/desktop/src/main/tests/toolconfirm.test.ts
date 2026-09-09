@@ -3,7 +3,7 @@
  * away, and the sentence is the whole safeguard: a card reading `{"hash":"a1b2…"}` is one the
  * author clicks through without reading.
  */
-import { confirmDetail } from '../toolconfirm.js';
+import { confirmDetail } from '../agent/toolconfirm.js';
 
 describe('confirmDetail', () => {
   it('names the sentence a concept will be drawn from, and the cost', () => {

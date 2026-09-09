@@ -4,8 +4,8 @@
  */
 import { protocol } from 'electron';
 import { ProjectPaths } from '@vn/store';
-import type { AppContext } from './context.js';
-import { fileCache } from './filecache.js';
+import type { AppContext } from '../runtime/context.js';
+import { fileCache } from '../workspace/filecache.js';
 
 /**
  * Serve stored asset bytes to the renderer over `vnasset://<hash>.<ext>` — the app's only

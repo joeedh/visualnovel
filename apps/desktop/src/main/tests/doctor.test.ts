@@ -2,8 +2,8 @@
  * The startup doctor, and how a version is written down. Both are pure given their probe, which
  * is why the probe is a parameter.
  */
-import { checkGit, gitHealth, gitVersionOf, noteGitHealth } from '../doctor.js';
-import { describeVersion } from '../version.js';
+import { checkGit, gitHealth, gitVersionOf, noteGitHealth } from '../bootstrap/doctor.js';
+import { describeVersion } from '../bootstrap/version.js';
 
 describe('checkGit', () => {
   it('reads the number out of what git printed', async () => {

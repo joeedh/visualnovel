@@ -18,7 +18,7 @@ import { chatBackendFor, chatVendorFor, createMockProviders } from '@vn/provider
 import type { TextLLM } from '@vn/types';
 import type { KeyScope, KeyStatusView, ProjectView } from '../../shared/ipc.js';
 import { parseKeyGuide, type GuideUrlField, type KeyGuide } from '../../shared/apikeys.js';
-import { readResource } from '../resources.js';
+import { readResource } from '../distribution/resources.js';
 import {
   CHECK_TIMEOUT_MS,
   RELEASES_API,
@@ -27,8 +27,8 @@ import {
   runningVersion,
   unreachable,
   type UpdateCheck,
-} from '../updates.js';
-import { ensureIgnored } from '../workspace.js';
+} from '../distribution/updates.js';
+import { ensureIgnored } from '../workspace/workspace.js';
 import type { WorkspaceSession, LoadedProject, PromptResult, PromptWriteResult } from './core.js';
 import { IMAGE_KINDS, relPath, describeKeySource, loadProject, buildProviders } from './core.js';
 

@@ -13,7 +13,7 @@ import {
   serializeLayoutFile,
   shippedLayoutFile,
   shippedLayoutFiles,
-} from '../shared/layouts.js';
+} from '../../shared/layouts.js';
 
 /**
  * Reading and writing `.vnstudio/layouts/`. The format itself lives in `shared/layouts.ts`

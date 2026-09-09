@@ -12,8 +12,8 @@
 import { z } from 'zod';
 import type { Tool } from '@vn/authoring';
 import { coerceProps, type PropSpecMap } from '@vn/commands';
-import { checkTour, type Known } from '../shared/tourcheck.js';
-import type { Step, Tour } from '../shared/tours.js';
+import { checkTour, type Known } from '../../shared/tourcheck.js';
+import type { Step, Tour } from '../../shared/tours.js';
 
 /** How the tool is described to the model, including what a step may be. */
 const DESCRIPTION = [

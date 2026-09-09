@@ -9,10 +9,10 @@ import { join, resolve as resolvePath } from 'node:path';
 import { openGit } from '@vn/git';
 import { ProjectPaths } from '@vn/store';
 import { Workspace } from '@vn/authoring';
-import { installNotifications, notifications } from './notifications.js';
-import { gitHealth, GIT_DOWNLOAD_URL, GIT_MISSING_MESSAGE } from './doctor.js';
-import { sameApprovals } from './approvals.js';
-import { acquireWorkspace, focusOwner } from './instancelock.js';
+import { installNotifications, notifications } from '../notify/notifications.js';
+import { gitHealth, GIT_DOWNLOAD_URL, GIT_MISSING_MESSAGE } from '../bootstrap/doctor.js';
+import { sameApprovals } from '../workspace/approvals.js';
+import { acquireWorkspace, focusOwner } from '../bootstrap/instancelock.js';
 import {
   commitScaffolding,
   ensureRepo,
@@ -21,14 +21,14 @@ import {
   rememberWorkspace,
   seedWorkspace,
   writeScaffolding,
-} from './workspace.js';
-import { forgetFiles } from './filecache.js';
-import { liveDocs } from './livedocs.js';
+} from '../workspace/workspace.js';
+import { forgetFiles } from '../workspace/filecache.js';
+import { liveDocs } from '../workspace/livedocs.js';
 import type { AppContext } from './context.js';
-import { cliArgs, MOCK } from './cliargs.js';
+import { cliArgs, MOCK } from '../bootstrap/cliargs.js';
 import { getSession } from './sessionaccess.js';
 import { focusFrontWindow, loadWindow, nameWindows } from './windowmanager.js';
-import { APPROVAL_ORDER_KEY } from '../shared/sessionkeys.js';
+import { APPROVAL_ORDER_KEY } from '../../shared/sessionkeys.js';
 
 /**
  * Installs the notification hub. Dormant until `openRepos` opens it, so nothing reaches

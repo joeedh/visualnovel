@@ -43,8 +43,8 @@ import {
   readGraph,
   readGroupDoc,
   type GraphSlug,
-} from '../graphs.js';
-import { notify } from '../notifications.js';
+} from '../doctree/graphs.js';
+import { notify } from '../notify/notifications.js';
 import type { WorkspaceSession, LoadedProject, LoadedGraphDoc, GenDeps } from './core.js';
 import {
   relPath,

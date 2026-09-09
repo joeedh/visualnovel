@@ -12,7 +12,7 @@ import type { GenEsbuild, GenPluginBundler, GenPluginManifest } from '@vn/gengra
 import { app } from 'electron';
 import { join } from 'node:path';
 
-import { notify } from './notifications.js';
+import { notify } from '../notify/notifications.js';
 
 let esbuildPromise: Promise<GenEsbuild> | undefined;
 

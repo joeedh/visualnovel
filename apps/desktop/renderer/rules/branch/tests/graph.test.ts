@@ -1,4 +1,4 @@
-import { storyGraphOf } from '../../../../src/main/storygraph.js';
+import { storyGraphOf } from '../../../../src/main/doctree/storygraph.js';
 import { edgeTarget, scenesOf } from '../../../../src/shared/interactions.js';
 import { branchGraph, CARD, STUB } from '../graph.js';
 import type { ProjectModel, Scene } from '@vn/types';

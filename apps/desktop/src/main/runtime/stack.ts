@@ -9,20 +9,20 @@ import { openGit } from '@vn/git';
 import { appendJsonl } from '@vn/util';
 import { CommandStack, coerceProps, seqRanges } from '@vn/commands';
 import { UndoJournal } from '@vn/commands/snapshot';
-import type { CommandHost } from './commands/index.js';
-import { desktopInteractions } from './commands/interaction.js';
+import type { CommandHost } from '../commands/index.js';
+import { desktopInteractions } from '../commands/interaction.js';
 import type { AppContext } from './context.js';
 import { getSession } from './sessionaccess.js';
 import { createWindow } from './windowmanager.js';
 import { scheduleApprovals, switchWorkspace } from './workspacelifecycle.js';
-import { snapshotStore } from './filecache.js';
-import { UNDO_EXCLUDES } from './workspace.js';
-import { notify } from './notifications.js';
-import { categoryOfCommand, shouldFileCommand } from '../shared/notify.js';
-import { workspaceIsTaken } from './instancelock.js';
-import type { ExecOutcome, UiEffect } from '../shared/ipc.js';
+import { snapshotStore } from '../workspace/filecache.js';
+import { UNDO_EXCLUDES } from '../workspace/workspace.js';
+import { notify } from '../notify/notifications.js';
+import { categoryOfCommand, shouldFileCommand } from '../../shared/notify.js';
+import { workspaceIsTaken } from '../bootstrap/instancelock.js';
+import type { ExecOutcome, UiEffect } from '../../shared/ipc.js';
 import type { WindowId } from './windows.js';
-import { liveDocs } from './livedocs.js';
+import { liveDocs } from '../workspace/livedocs.js';
 
 export function getStack(ctx: AppContext): CommandStack<CommandHost> {
   if (!ctx.stack) {

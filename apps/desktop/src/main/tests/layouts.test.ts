@@ -11,7 +11,7 @@ import {
   readLayout,
   resetLayouts,
   writeLayout,
-} from '../layouts.js';
+} from '../workspace/layouts.js';
 
 let root: string;
 

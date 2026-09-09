@@ -13,7 +13,7 @@ import {
   lockAddress,
   workspaceIsTaken,
   type LockIo,
-} from '../instancelock.js';
+} from '../bootstrap/instancelock.js';
 
 const root = (): Promise<string> => mkdtemp(join(tmpdir(), 'vn-lock-'));
 

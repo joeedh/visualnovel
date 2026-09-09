@@ -19,7 +19,7 @@ import {
   type PromptOverride,
 } from '@vn/types';
 import { sha256 } from '@vn/util';
-import { moveChunk } from '../shared/promptops.js';
+import { moveChunk } from '../../shared/promptops.js';
 
 /** One authorial act on a prompt. The commands resolve their props into this shape first. */
 export type PromptEdit =

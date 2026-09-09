@@ -144,12 +144,12 @@ This section lists four things about how it fits the rest of the toolchain:
   an app that installs, opens, and opens a project, then throws `Cannot find module` at
   the first agent turn. Any check that only waits for a window passes such a build.
   `scripts/smoke.desktop.mjs` launches the built binary with `--smoke`, which forces one
-  import of each and exits; `src/main/smoke.ts` holds the logic and its tests. It runs
-  with the vendor key variables blanked, so the result never depends on the developer's
-  key. The same run checks the shipped source, which fails just as silently: the app stays
-  usable and only the debug agent's source box fails. It checks every root of `READABLE`
-  rather than only that `sourceRoot()` returned a path, because `CLAUDE.md` and
-  `packages/` alone satisfy that lookup — a snapshot missing `docs/` or `apps/` would
+  import of each and exits; `src/main/distribution/smoke.ts` holds the logic and its
+  tests. It runs with the vendor key variables blanked, so the result never depends on the
+  developer's key. The same run checks the shipped source, which fails just as silently:
+  the app stays usable and only the debug agent's source box fails. It checks every root
+  of `READABLE` rather than only that `sourceRoot()` returned a path, because `CLAUDE.md`
+  and `packages/` alone satisfy that lookup — a snapshot missing `docs/` or `apps/` would
   resolve, and the analyst would then read a build it cannot see half of. The release
   workflow runs `pnpm smoke` between `pnpm package` and the artifact upload, so none of
   these reaches a draft release.
@@ -165,15 +165,16 @@ This section lists four things about how it fits the rest of the toolchain:
   package stay at `0.0.0`, since they are private and unpublished and a version number on
   them serves no purpose. A release tag is asserted against that field rather than written
   into it, and a build made between releases reports `0.1.0 (dev <sha>)` via
-  `src/main/version.ts`. Cutting a release takes two steps in order: bump that field in an
-  ordinary reviewed commit, then tag it `v<version>`. `release.yml`'s `version` job fails
-  by name if the two disagree.
+  `src/main/bootstrap/version.ts`. Cutting a release takes two steps in order: bump that
+  field in an ordinary reviewed commit, then tag it `v<version>`. `release.yml`'s
+  `version` job fails by name if the two disagree.
 
 Two paths inside a packaged app differ from what a checkout would suggest, and both cost
 an evening once. `__dirname` resolves inside `app.asar`, which is a file, so anything
 derived from it and then written to fails with `ENOTDIR` (the session store lives under
 `userConfigDir()` for this reason). `docs/api-keys.md` arrives as `extraResources` under
-`process.resourcesPath`, which is what `src/main/resources.ts` looks at first.
+`process.resourcesPath`, which is what `src/main/distribution/resources.ts` looks at
+first.
 
 ## Adding a package
 

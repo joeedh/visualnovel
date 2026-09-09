@@ -5,7 +5,7 @@
  * dropped rather than throwing, and the inspector shows "no critique recorded".
  */
 import { defectReportSchema, type DefectReport, type Task as PipelineTask } from '@vn/types';
-import type { Task } from '../shared/ipc.js';
+import type { Task } from '../../shared/ipc.js';
 
 /** Keep only the entries that parse, so a bad entry costs its own review rather than the attempt. */
 function narrowReviews(reviews: unknown[] | undefined): DefectReport[] {

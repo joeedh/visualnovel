@@ -27,7 +27,7 @@ import {
 import { openGit } from '@vn/git';
 import { ProjectPaths, readShots, writeShots } from '@vn/store';
 import type { Shot } from '@vn/types';
-import { nativeFile, readNative } from '../threads.js';
+import { nativeFile, readNative } from '../notify/threads.js';
 import type { AskQuestion, Plan, PlanDecision } from '../../shared/ipc.js';
 import { WorkspaceSession, type SessionDeps } from '../session.js';
 import { setChoice, setNext, spliceScene } from '@vn/scriptedit';

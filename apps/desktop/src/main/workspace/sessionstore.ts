@@ -15,9 +15,9 @@ import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { userConfigDir } from '@vn/config';
 import { createLogger, retry, writeFileAtomic } from '@vn/util';
-import type { SessionValue } from '../shared/ipc.js';
+import type { SessionValue } from '../../shared/ipc.js';
 
-export type { SessionValue } from '../shared/ipc.js';
+export type { SessionValue } from '../../shared/ipc.js';
 
 /** Notified on every `set`, whatever wrote it. */
 export type SessionListener = (key: string, value: SessionValue) => void;

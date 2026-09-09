@@ -20,7 +20,7 @@ import {
   inspectCreate,
   inspectWorkspace,
   liveWorkspaces,
-} from '../workspace.js';
+} from '../workspace/workspace.js';
 
 const define = defineFor<CommandHost>();
 

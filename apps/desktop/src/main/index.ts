@@ -16,9 +16,9 @@
  * and `./bootstrap.ts` — this file only wires them together in the order Electron requires.
  */
 import { app, protocol } from 'electron';
-import { AppContext } from './context.js';
-import { installAppNotifications } from './workspacelifecycle.js';
-import { wireLifecycle } from './bootstrap.js';
+import { AppContext } from './runtime/context.js';
+import { installAppNotifications } from './runtime/workspacelifecycle.js';
+import { wireLifecycle } from './bootstrap/bootstrap.js';
 
 /**
  * Opt-in, off by default: the remote-debugging port grants full control of the renderer, so

@@ -9,7 +9,7 @@ import {
   readNotifications,
   setNotificationFlags,
   truncateNotifications,
-} from '../notifications.js';
+} from '../notify/notifications.js';
 
 const input = (over: Partial<NotificationInput> = {}): NotificationInput => ({
   category: 'command',

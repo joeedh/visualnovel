@@ -1,14 +1,14 @@
 import { join } from 'node:path';
 import { scriptFromScenes } from '@vn/model';
 import { writeFileAtomic } from '@vn/util';
-import { fileCache } from '../filecache.js';
+import { fileCache } from '../workspace/filecache.js';
 import { gateStatus } from '@vn/pipeline';
 import { buildSlotGraph } from '@vn/artgen';
 import { buildPlayable, loadSceneShots } from '@vn/export';
 import type { Playable } from '@vn/types';
 import type { PipelineStatus } from '../../shared/ipc.js';
-import { narrowTask } from '../reviews.js';
-import { labelContext } from '../assetlabel.js';
+import { narrowTask } from '../agent/reviews.js';
+import { labelContext } from '../assets/assetlabel.js';
 import type { WorkspaceSession } from './core.js';
 import { relPath, readAllShots, loadProject } from './core.js';
 

@@ -18,7 +18,7 @@ import {
   removeGenPlugin,
   userPriceFile,
 } from '@vn/gengraph/state';
-import { pluginBundler } from '../plugins.js';
+import { pluginBundler } from '../bootstrap/plugins.js';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();

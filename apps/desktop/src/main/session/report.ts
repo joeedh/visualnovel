@@ -17,7 +17,7 @@ import {
 } from '@vn/agentreport';
 import { BUSY_REPORT } from '../../shared/ipc.js';
 import type { ReportRow, ReportStateView } from '../../shared/ipc.js';
-import { type ThreadHeader } from '../threads.js';
+import { type ThreadHeader } from '../notify/threads.js';
 import { adviseRun, analysisEffort } from '../../shared/advice.js';
 import {
   NO_SOURCE,
@@ -30,7 +30,7 @@ import {
   sourceGrant,
   type AnalysisRequest,
   type Transcript,
-} from '../agentreport.js';
+} from '../agent/agentreport.js';
 import type {
   WorkspaceSession,
   PromptResult,

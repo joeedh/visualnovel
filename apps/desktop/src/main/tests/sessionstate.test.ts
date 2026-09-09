@@ -1,8 +1,8 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { PROJECT_STATE_DIR, SessionState } from '../sessionstate.js';
-import { SessionStore } from '../sessionstore.js';
+import { PROJECT_STATE_DIR, SessionState } from '../workspace/sessionstate.js';
+import { SessionStore } from '../workspace/sessionstore.js';
 import {
   layoutKey,
   workspaceScope,

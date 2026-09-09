@@ -152,14 +152,14 @@ import type {
   StoryGraph,
 } from '../../shared/ipc.js';
 import { type GuideUrlField, type KeyGuide } from '../../shared/apikeys.js';
-import { type ApprovalQueue } from '../approvals.js';
-import { type GraphSlug } from '../graphs.js';
-import { notify } from '../notifications.js';
-import { type UpdateCheck } from '../updates.js';
-import { labelContext } from '../assetlabel.js';
-import { type SkillEntry } from '../doctree.js';
-import { confirmDetail } from '../toolconfirm.js';
-import { showMeTool } from '../showme.js';
+import { type ApprovalQueue } from '../workspace/approvals.js';
+import { type GraphSlug } from '../doctree/graphs.js';
+import { notify } from '../notify/notifications.js';
+import { type UpdateCheck } from '../distribution/updates.js';
+import { labelContext } from '../assets/assetlabel.js';
+import { type SkillEntry } from '../doctree/doctree.js';
+import { confirmDetail } from '../agent/toolconfirm.js';
+import { showMeTool } from '../agent/showme.js';
 import { createDesktopInteractions } from '../../shared/interactions.js';
 import { createDesktopRegistry } from '../commands/index.js';
 import type { Tour } from '../../shared/tours.js';
@@ -183,10 +183,10 @@ import {
   type NativeLine,
   type ThreadHeader,
   type ThreadRecord,
-} from '../threads.js';
+} from '../notify/threads.js';
 import { type OpenedThread } from '../../shared/threads.js';
 import type { PromptView } from '../../shared/prompt.js';
-import { type AnalysisParts, type AnalysisRequest, type Transcript } from '../agentreport.js';
+import { type AnalysisParts, type AnalysisRequest, type Transcript } from '../agent/agentreport.js';
 
 /** A backend that does no LLM work — lets the app run offline (mirrors the REPL's --mock). */
 export class MockAgentBackend implements AgentBackend {

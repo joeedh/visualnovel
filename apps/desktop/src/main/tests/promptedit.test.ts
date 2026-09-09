@@ -1,7 +1,7 @@
 import type { PromptChunk, PromptOverride } from '@vn/types';
 import { chunkFingerprint } from '@vn/artgen';
 import { sha256 } from '@vn/util';
-import { applyPromptEdit } from '../promptedit.js';
+import { applyPromptEdit } from '../agent/promptedit.js';
 
 const chunks: PromptChunk[] = [
   {
