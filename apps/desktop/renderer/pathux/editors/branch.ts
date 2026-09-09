@@ -15,9 +15,14 @@ import {
 } from '../../rules/branch/compose.js';
 import {
   labelAction,
+  cancelAction,
   cardAction,
   deleteSceneAction,
+  fitAction,
+  labelOpenAction,
+  namingBox,
   newSceneAction,
+  reloadAction,
   removes,
   writeSceneAction,
 } from '../../rules/branch/controls.js';
@@ -38,7 +43,7 @@ import {
   noticeOf,
   type Drag,
 } from '../interactions/branch.js';
-import { pickOracle, redrawing } from '../tour/anchors.js';
+import { pickOracle, redrawing, type AnchorPass } from '../tour/anchors.js';
 import { gestureState } from '../interactions/gestures.js';
 import { exec, refreshWorkspace } from '../app/bridge.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
@@ -303,6 +308,7 @@ export class BranchEditor extends VnEditor {
     this.repainting = true;
     this.paintOverlay();
     const nodes = redrawing('branches', 'nodes');
+    this.labelPass = redrawing('branches', 'labels');
     this.canvas.setContent({
       layout     : this.layout,
       edges      : this.edges,
@@ -360,12 +366,21 @@ export class BranchEditor extends VnEditor {
       }
     }
 
-    this.bar.button('Fit', () => {
-      this.fitted = false;
-      this.fitOnce();
-    }).description = 'Zoom out until the whole graph is on screen';
-    this.bar.button('Refresh', () => void this.load()).description =
-      'Re-read the scenes and their connections from disk';
+    const fit = fitAction();
+    anchors.act(
+      this.bar.button(fit.label, () => {}),
+      fit,
+      () => {
+        this.fitted = false;
+        this.fitOnce();
+      },
+    );
+    const reload = reloadAction();
+    anchors.act(
+      this.bar.button(reload.label, () => {}),
+      reload,
+      () => void this.load(),
+    );
     this.bar.flushUpdate();
   }
 
@@ -380,16 +395,22 @@ export class BranchEditor extends VnEditor {
     );
   }
 
+  /** The labels' own pass, replaced with the canvas, so a redraw drops the old labels' records. */
+  private labelPass: AnchorPass = redrawing('branches', 'labels');
+
   private renderLabel(route: EdgeRoute): HTMLElement | null {
     const edge = this.edgeById.get(route.id);
     if (!edge) return null;
     if (this.editing === edge.id) return this.labelInput ?? null;
     if (!edge.label) return null;
 
-    const label = el('button', `edge-label${edge.id === this.selected ? ' sel' : ''}`, edge.label);
-    label.title = 'Rename this choice';
-    // Listens on `pointerdown` rather than `click` and stops it before the canvas picks: a redraw
-    // between down and up would take the click with it
+    const open = labelOpenAction(edge);
+    const label = this.labelPass.record(
+      el('button', `edge-label${edge.id === this.selected ? ' sel' : ''}`, open.label),
+      open,
+    );
+    // Recorded rather than acted: it listens on `pointerdown` rather than `click` and stops it
+    // before the canvas picks, since a redraw between down and up would take the click with it
     label.addEventListener('pointerdown', (event) => {
       event.stopPropagation();
       this.openLabel(edge);
@@ -696,31 +717,33 @@ export class BranchEditor extends VnEditor {
         this.redraw();
       }
     };
-    const field = (className: string, label: string, value: string, set: (v: string) => void) => {
+    // Its own pass: the row appears and vanishes without the bar being redrawn, and a detached
+    // node is dropped from the live set rather than reported as scrolled away.
+    const anchors = redrawing('branches', 'naming');
+    const naming = this.naming;
+    const field = (className: string, key: 'scene' | 'heading', set: (v: string) => void) => {
+      const offer = namingBox(naming, key);
       const input = el('input', className) as HTMLInputElement;
-      input.setAttribute('aria-label', label);
-      input.title = `${label}. Enter writes the scene, Escape gives up.`;
-      input.value = value;
+      input.setAttribute('aria-label', offer.label);
+      anchors.record(input, offer);
+      input.value = naming[key];
       input.addEventListener('input', () => set(input.value));
       input.addEventListener('keydown', keys);
       box.appendChild(input);
     };
 
-    field('np', "The new scene's id", this.naming.scene, (v) => {
+    field('np', 'scene', (v) => {
       if (this.naming) this.naming.scene = v;
     });
-    field('np wide', "The new scene's heading", this.naming.heading, (v) => {
+    field('np wide', 'heading', (v) => {
       if (this.naming) this.naming.heading = v;
     });
 
     const go = el('button', 'go', 'Write it');
-    // Its own pass: the row appears and vanishes without the bar being redrawn, and a detached
-    // node is dropped from the live set rather than reported as scrolled away.
-    redrawing('branches', 'naming').record(go, writeSceneAction(this.naming));
+    anchors.record(go, writeSceneAction(naming));
     go.addEventListener('click', () => void this.write());
-    const no = el('button', 'no', 'Cancel');
-    no.title = 'Abandon the new scene. Nothing is written.';
-    no.addEventListener('click', () => {
+    const cancel = cancelAction();
+    const no = anchors.act(el('button', 'no', cancel.label), cancel, () => {
       this.naming = null;
       this.redraw();
     });

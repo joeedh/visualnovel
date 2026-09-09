@@ -1,4 +1,9 @@
 import {
+  reloadAction,
+  namingBox,
+  labelOpenAction,
+  fitAction,
+  cancelAction,
   labelAction,
   cardAction,
   controls,
@@ -104,11 +109,16 @@ describe('cardAction', () => {
     const cards = { scenes: [{ id: 'intro', reachable: true }], shotId: '' };
     expect(controls(state({ cards })).map(keyOf)).toEqual([
       'cmd:story.newScene',
+      'fx:pane.view#fit',
+      'fx:pane.view#reload',
       'item:scene/intro',
     ]);
     const naming = { scene: 'scene_2', heading: 'INT. HALL - DAY' };
-    expect(controls(state({ cards, naming }))).toEqual([
+    expect(controls(state({ cards, naming })).slice(2)).toEqual([
       writeSceneAction(naming),
+      cancelAction(),
+      fitAction(),
+      reloadAction(),
       cardAction({ id: 'intro', reachable: true }, ''),
     ]);
   });
@@ -117,32 +127,65 @@ describe('cardAction', () => {
 describe('controls', () => {
   const naming = { scene: 'scene_2', heading: 'INT. HALL - DAY' };
 
-  it('is the add button alone until the delete verdict is in', () => {
-    expect(controls(state()).map(keyOf)).toEqual(['cmd:story.newScene']);
+  const BAR = ['fx:pane.view#fit', 'fx:pane.view#reload'];
+
+  it('is the add button and the view buttons until the delete verdict is in', () => {
+    expect(controls(state()).map(keyOf)).toEqual(['cmd:story.newScene', ...BAR]);
+    expect(fitAction()).toMatchObject({ props: { what: 'fit' }, label: 'Fit' });
+    expect(reloadAction()).toMatchObject({ props: { what: 'reload' }, label: 'Refresh' });
   });
 
   it('adds the delete button once its verdict is in for the scene on screen', () => {
     const answered = state({ deleteVerdict: { scene: 'intro', check: ACCEPT } });
-    expect(controls(answered).map(keyOf)).toEqual(['cmd:story.newScene', 'cmd:story.deleteScene']);
+    expect(controls(answered).map(keyOf)).toEqual([
+      'cmd:story.newScene',
+      'cmd:story.deleteScene',
+      ...BAR,
+    ]);
   });
 
   it('leaves the delete button out for an unknown scene, and for a verdict about another', () => {
     const verdict = { scene: 'intro', check: ACCEPT };
-    expect(controls(state({ known: false, deleteVerdict: verdict })).map(keyOf)).toEqual([
-      'cmd:story.newScene',
-    ]);
-    expect(controls(state({ sceneId: 'outro', deleteVerdict: verdict })).map(keyOf)).toEqual([
-      'cmd:story.newScene',
-    ]);
-    expect(controls(state({ sceneId: '', known: false })).map(keyOf)).toEqual([
-      'cmd:story.newScene',
-    ]);
+    const bare = ['cmd:story.newScene', ...BAR];
+    expect(controls(state({ known: false, deleteVerdict: verdict })).map(keyOf)).toEqual(bare);
+    expect(controls(state({ sceneId: 'outro', deleteVerdict: verdict })).map(keyOf)).toEqual(bare);
+    expect(controls(state({ sceneId: '', known: false })).map(keyOf)).toEqual(bare);
   });
 
-  // The bar hides its two buttons while the row is open, and the row's Write it takes their place
-  it('is the naming row’s Write it alone while a scene is being named', () => {
+  // The bar hides its two buttons while the row is open, and the row takes their place
+  it('is the naming row’s fields, Write it and Cancel while a scene is being named', () => {
     const open = state({ naming, deleteVerdict: { scene: 'intro', check: ACCEPT } });
-    expect(controls(open)).toEqual([writeSceneAction(naming)]);
+    expect(controls(open)).toEqual([
+      namingBox(naming, 'scene'),
+      namingBox(naming, 'heading'),
+      writeSceneAction(naming),
+      cancelAction(),
+      fitAction(),
+      reloadAction(),
+    ]);
+    expect(namingBox(naming, 'heading')).toMatchObject({
+      id     : 'story.newScene',
+      on     : 'heading',
+      label  : "The new scene's heading",
+      tooltip: "The new scene's heading. Enter writes the scene, Escape gives up.",
+    });
+    expect(cancelAction()).toMatchObject({ props: { popup: 'box' }, on: 'cancel' });
+  });
+
+  it('offers each labelled edge’s box opener, except the one whose box is open', () => {
+    const edge = { id: 'e1', from: 'a', to: 'b', kind: 'choice' as const, index: 0, label: 'Go' };
+    const next = { ...edge, id: 'e2', kind: 'next' as const, label: undefined };
+    expect(controls(state({ edges: [edge, next] })).map(keyOf)).toEqual([
+      'cmd:story.newScene',
+      ...BAR,
+      'fx:popup.open#label/e1',
+    ]);
+    expect(
+      controls(state({ edges: [edge], labelling: edge }))
+        .map(keyOf)
+        .slice(-1),
+    ).toEqual(['cmd:story.setChoice#edge/e1']);
+    expect(labelOpenAction(edge)).toMatchObject({ label: 'Go', tooltip: 'Rename this choice' });
   });
 
   it('lists every control the editor draws, each key once', () => {
@@ -152,9 +195,17 @@ describe('controls', () => {
       state({ naming }),
     ]) {
       const listed = controls(s);
-      const each = s.naming ? [writeSceneAction(s.naming)] : [newSceneAction()];
+      const each = s.naming
+        ? [
+            namingBox(s.naming, 'scene'),
+            namingBox(s.naming, 'heading'),
+            writeSceneAction(s.naming),
+            cancelAction(),
+          ]
+        : [newSceneAction()];
       if (!s.naming && s.deleteVerdict)
         each.push(deleteSceneAction(s.sceneId, s.deleteVerdict.check));
+      each.push(fitAction(), reloadAction());
       expect(new Set(listed.map(keyOf))).toEqual(new Set(each.map(keyOf)));
       expect(duplicateKeys(listed)).toEqual([]);
     }
@@ -189,10 +240,14 @@ describe('labelAction', () => {
     const base = { sceneId: '', known: false, naming: null };
     expect(controls({ ...base, labelling }).map(keyOf)).toEqual([
       'cmd:story.newScene',
+      'fx:pane.view#fit',
+      'fx:pane.view#reload',
       'cmd:story.setChoice#edge/e1',
     ]);
     expect(
-      controls({ ...base, labelling, naming: { scene: 's', heading: 'INT. X - DAY' } }).map(keyOf),
-    ).toEqual(['cmd:story.newScene', 'cmd:story.setChoice#edge/e1']);
+      controls({ ...base, labelling, naming: { scene: 's', heading: 'INT. X - DAY' } })
+        .map(keyOf)
+        .slice(-1),
+    ).toEqual(['cmd:story.setChoice#edge/e1']);
   });
 });

@@ -4,10 +4,19 @@ import type { BranchState } from '../branch/controls.js';
 
 const base: BranchState = { sceneId: 'arrival', known: true, naming: null };
 
+const edge = {
+  id   : 'e1',
+  from : 'arrival',
+  to   : 'cafe',
+  kind : 'choice' as const,
+  index: 0,
+  label: 'Go in',
+};
+
 export const SITUATIONS = situations<BranchState>(
   {
     name : 'no-scene',
-    why  : 'Nothing is selected, so only + scene is offered.',
+    why  : 'Nothing is selected, so the bar offers + scene, Fit and Refresh and nothing else.',
     state: { ...base, sceneId: '', known: false },
   },
   {
@@ -37,31 +46,22 @@ export const SITUATIONS = situations<BranchState>(
   },
   {
     name : 'naming',
-    why  : 'The naming row is open, so Write it stands in for the bar’s buttons.',
+    why: 'The naming row is open, so its two fields, Write it and Cancel stand in for + scene and delete.',
     state: { ...base, naming: { scene: 'scene_2', heading: 'INT. HALL - DAY' } },
   },
   {
     name : 'labelling',
-    why: 'A choice’s label box is open, so the box offers story.setChoice with the text typed after.',
-    state: {
-      ...base,
-      labelling: {
-        id   : 'e1',
-        from : 'arrival',
-        to   : 'cafe',
-        kind : 'choice',
-        index: 0,
-        label: 'Go in',
-      },
-    },
+    why: 'A choice’s label box is open, so the box offers story.setChoice with the text typed after, and stands in for the label that opened it.',
+    state: { ...base, labelling: edge, edges: [edge] },
   },
   {
     name : 'cards',
-    why: 'Two cards are drawn while a shot of the first is selected, so pressing the second clears the shot and pressing the first keeps it; nothing reaches the second.',
+    why: 'Two cards are drawn while a shot of the first is selected, so pressing the second clears the shot and pressing the first keeps it; nothing reaches the second. The choice between them has a label that opens its box.',
     state: {
       ...base,
       sceneId: '',
       known  : false,
+      edges  : [edge],
       cards: {
         scenes: [
           { id: 'arrival', reachable: true },

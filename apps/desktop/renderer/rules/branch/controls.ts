@@ -5,7 +5,7 @@
 import type { CommandCheck, StoryEdge } from '../../../src/shared/ipc.js';
 import { noticeForCheck } from '../../../src/shared/lineedit.js';
 import { refuse, type Offer } from '../anchors.js';
-import { publish, startDrag } from '../effects.js';
+import { closePopup, openPopup, publish, startDrag, view } from '../effects.js';
 import { asInvocation, deleteSceneIntent, newSceneIntent, type NewScene } from './compose.js';
 
 /** What the branch editor reads when it draws its bar and its naming row. */
@@ -22,6 +22,68 @@ export interface BranchState {
   cards?: { scenes: readonly SceneCard[]; shotId: string };
   /** The edge whose label box is open, while one is. */
   labelling?: LabelledEdge;
+  /** The edges drawn on the canvas; each labelled one is a button that opens its label box. */
+  edges?: readonly LabelledEdge[];
+}
+
+export function fitAction(): Offer {
+  return {
+    ok: true,
+    ...view('fit'),
+    on     : 'fit',
+    label  : 'Fit',
+    tooltip: 'Zoom out until the whole graph is on screen',
+  };
+}
+
+export function reloadAction(): Offer {
+  return {
+    ok: true,
+    ...view('reload'),
+    on     : 'reload',
+    label  : 'Refresh',
+    tooltip: 'Re-read the scenes and their connections from disk',
+  };
+}
+
+/** A choice's label on the canvas, which opens the box it is retyped in. */
+export function labelOpenAction(edge: LabelledEdge): Offer {
+  return {
+    ok: true,
+    ...openPopup('box'),
+    on     : `label/${edge.id}`,
+    label  : edge.label ?? '',
+    tooltip: 'Rename this choice',
+  };
+}
+
+/** The naming row's typed fields, by the prop each fills. */
+export type NamingField = 'scene' | 'heading';
+
+const NAMING_LABEL: Record<NamingField, string> = {
+  scene  : "The new scene's id",
+  heading: "The new scene's heading",
+};
+
+/** One field of the naming row, beside `writeSceneAction`. */
+export function namingBox(naming: NewScene, field: NamingField): Offer {
+  return {
+    ...writeSceneAction(naming),
+    on     : field,
+    label  : NAMING_LABEL[field],
+    tooltip: `${NAMING_LABEL[field]}. Enter writes the scene, Escape gives up.`,
+  };
+}
+
+/** The naming row's Cancel. */
+export function cancelAction(): Offer {
+  return {
+    ok: true,
+    ...closePopup('box'),
+    on     : 'cancel',
+    label  : 'Cancel',
+    tooltip: 'Abandon the new scene. Nothing is written.',
+  };
 }
 
 /** What the label box needs of its edge. */
@@ -124,20 +186,36 @@ export function writeSceneAction(naming: NewScene): Offer {
 }
 
 /**
- * Every offer the branch editor draws from this module. The bar's two buttons give way to the
- * naming row's Write it while a scene is being named, and the delete button is listed only once
- * its verdict is in for the scene on screen.
+ * Every offer the branch editor draws from this module. The bar's + scene and delete give way to
+ * the naming row's fields, Write it and Cancel while a scene is being named, and the delete button
+ * is listed only once its verdict is in for the scene on screen. Fit and Refresh follow; then each
+ * labelled edge, the open label box standing in for its edge, and the cards.
  */
 export function controls(state: BranchState): readonly Offer[] {
   const cards = state.cards;
   const drawn = cards ? cards.scenes.map((scene) => cardAction(scene, cards.shotId)) : [];
-  if (state.labelling) drawn.unshift(labelAction(state.labelling));
-  if (state.naming) return [writeSceneAction(state.naming), ...drawn];
+  const labelling = state.labelling;
+  for (const edge of state.edges ?? []) {
+    if (edge.label && edge.id !== labelling?.id) drawn.unshift(labelOpenAction(edge));
+  }
+  if (labelling) drawn.unshift(labelAction(labelling));
+  const bar = [fitAction(), reloadAction()];
+  if (state.naming) {
+    const naming = state.naming;
+    return [
+      namingBox(naming, 'scene'),
+      namingBox(naming, 'heading'),
+      writeSceneAction(naming),
+      cancelAction(),
+      ...bar,
+      ...drawn,
+    ];
+  }
   const list: Offer[] = [newSceneAction()];
   const verdict = state.deleteVerdict;
   if (state.sceneId && state.known && verdict?.scene === state.sceneId) {
     list.push(deleteSceneAction(state.sceneId, verdict.check));
   }
-  list.push(...drawn);
+  list.push(...bar, ...drawn);
   return list;
 }

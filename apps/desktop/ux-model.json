@@ -202,7 +202,7 @@
       "module": "branch",
       "editor": "branches",
       "name"  : "no-scene",
-      "why"   : "Nothing is selected, so only + scene is offered."
+      "why"   : "Nothing is selected, so the bar offers + scene, Fit and Refresh and nothing else."
     },
     {
       "module": "branch",
@@ -220,19 +220,19 @@
       "module": "branch",
       "editor": "branches",
       "name"  : "naming",
-      "why"   : "The naming row is open, so Write it stands in for the bar’s buttons."
+      "why": "The naming row is open, so its two fields, Write it and Cancel stand in for + scene and delete."
     },
     {
       "module": "branch",
       "editor": "branches",
       "name"  : "labelling",
-      "why": "A choice’s label box is open, so the box offers story.setChoice with the text typed after."
+      "why": "A choice’s label box is open, so the box offers story.setChoice with the text typed after, and stands in for the label that opened it."
     },
     {
       "module": "branch",
       "editor": "branches",
       "name"  : "cards",
-      "why": "Two cards are drawn while a shot of the first is selected, so pressing the second clears the shot and pressing the first keeps it; nothing reaches the second."
+      "why": "Two cards are drawn while a shot of the first is selected, so pressing the second clears the shot and pressing the first keeps it; nothing reaches the second. The choice between them has a label that opens its box."
     },
     {
       "module": "convobar",
@@ -10990,6 +10990,56 @@
       "via"      : "control",
       "editor"   : "branches",
       "module"   : "branch",
+      "situation": "no-scene",
+      "key"      : "fx:pane.view#fit",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Fit",
+        "tooltip": "Zoom out until the whole graph is on screen",
+        "on"     : "fit",
+        "ok"     : true,
+        "props": {
+          "what": "fit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "fit"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
+      "situation": "no-scene",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read the scenes and their connections from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
       "situation": "scene",
       "key"      : "cmd:story.newScene",
       "offer": {
@@ -11027,6 +11077,56 @@
           "id"   : "story.deleteScene",
           "props": {
             "scene": "arrival"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
+      "situation": "scene",
+      "key"      : "fx:pane.view#fit",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Fit",
+        "tooltip": "Zoom out until the whole graph is on screen",
+        "on"     : "fit",
+        "ok"     : true,
+        "props": {
+          "what": "fit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "fit"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
+      "situation": "scene",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read the scenes and their connections from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
           }
         }
       ]
@@ -11078,6 +11178,110 @@
       "via"      : "control",
       "editor"   : "branches",
       "module"   : "branch",
+      "situation": "entry-scene",
+      "key"      : "fx:pane.view#fit",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Fit",
+        "tooltip": "Zoom out until the whole graph is on screen",
+        "on"     : "fit",
+        "ok"     : true,
+        "props": {
+          "what": "fit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "fit"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
+      "situation": "entry-scene",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read the scenes and their connections from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
+      "situation": "naming",
+      "key"      : "cmd:story.newScene#scene",
+      "offer": {
+        "id"     : "story.newScene",
+        "label"  : "The new scene's id",
+        "tooltip": "The new scene's id. Enter writes the scene, Escape gives up.",
+        "on"     : "scene",
+        "ok"     : true,
+        "props": {
+          "scene"  : "scene_2",
+          "heading": "INT. HALL - DAY"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.newScene",
+          "props": {
+            "scene"  : "scene_2",
+            "heading": "INT. HALL - DAY"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
+      "situation": "naming",
+      "key"      : "cmd:story.newScene#heading",
+      "offer": {
+        "id"     : "story.newScene",
+        "label"  : "The new scene's heading",
+        "tooltip": "The new scene's heading. Enter writes the scene, Escape gives up.",
+        "on"     : "heading",
+        "ok"     : true,
+        "props": {
+          "scene"  : "scene_2",
+          "heading": "INT. HALL - DAY"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.newScene",
+          "props": {
+            "scene"  : "scene_2",
+            "heading": "INT. HALL - DAY"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
       "situation": "naming",
       "key"      : "cmd:story.newScene",
       "offer": {
@@ -11104,6 +11308,81 @@
       "via"      : "control",
       "editor"   : "branches",
       "module"   : "branch",
+      "situation": "naming",
+      "key"      : "fx:popup.close#cancel",
+      "offer": {
+        "id"     : "popup.close",
+        "label"  : "Cancel",
+        "tooltip": "Abandon the new scene. Nothing is written.",
+        "on"     : "cancel",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.close",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
+      "situation": "naming",
+      "key"      : "fx:pane.view#fit",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Fit",
+        "tooltip": "Zoom out until the whole graph is on screen",
+        "on"     : "fit",
+        "ok"     : true,
+        "props": {
+          "what": "fit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "fit"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
+      "situation": "naming",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read the scenes and their connections from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
       "situation": "labelling",
       "key"      : "cmd:story.newScene",
       "offer": {
@@ -11118,6 +11397,56 @@
         {
           "id"   : "story.newScene",
           "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
+      "situation": "labelling",
+      "key"      : "fx:pane.view#fit",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Fit",
+        "tooltip": "Zoom out until the whole graph is on screen",
+        "on"     : "fit",
+        "ok"     : true,
+        "props": {
+          "what": "fit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "fit"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
+      "situation": "labelling",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read the scenes and their connections from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
         }
       ]
     },
@@ -11169,6 +11498,81 @@
         {
           "id"   : "story.newScene",
           "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
+      "situation": "cards",
+      "key"      : "fx:pane.view#fit",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Fit",
+        "tooltip": "Zoom out until the whole graph is on screen",
+        "on"     : "fit",
+        "ok"     : true,
+        "props": {
+          "what": "fit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "fit"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
+      "situation": "cards",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read the scenes and their connections from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "branches",
+      "module"   : "branch",
+      "situation": "cards",
+      "key"      : "fx:popup.open#label/e1",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "Go in",
+        "tooltip": "Rename this choice",
+        "on"     : "label/e1",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
         }
       ]
     },
