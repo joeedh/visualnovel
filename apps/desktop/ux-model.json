@@ -370,13 +370,19 @@
       "module": "projectbar",
       "editor": "project",
       "name"  : "clean",
-      "why"   : "The box matches the file, so Apply is refused with No changes."
+      "why": "The box matches the file, so Apply is refused with No changes; the box and reload stay offered."
     },
     {
       "module": "projectbar",
       "editor": "project",
       "name"  : "dirty",
       "why"   : "The box holds something the file does not, so Apply is offered."
+    },
+    {
+      "module": "projectbar",
+      "editor": "project",
+      "name"  : "no-project",
+      "why"   : "No project is open, so Apply and the box are refused."
     },
     {
       "module": "reportconvo",
@@ -16048,6 +16054,53 @@
       "via"      : "control",
       "editor"   : "project",
       "module"   : "projectbar",
+      "situation": "clean",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read project.yaml (discards an unapplied edit)",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "project",
+      "module"   : "projectbar",
+      "situation": "clean",
+      "key"      : "cmd:project.setArtStyle#style",
+      "offer": {
+        "id"      : "project.setArtStyle",
+        "label"   : "Art style",
+        "tooltip": "The sentence every image prompt opens with. Applying it re-keys every image task.",
+        "on"      : "style",
+        "supplies": ["style"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "project.setArtStyle",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "project",
+      "module"   : "projectbar",
       "situation": "dirty",
       "key"      : "cmd:project.setArtStyle",
       "offer": {
@@ -16062,6 +16115,123 @@
         {
           "id"   : "project.setArtStyle",
           "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "project",
+      "module"   : "projectbar",
+      "situation": "dirty",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read project.yaml (discards an unapplied edit)",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "project",
+      "module"   : "projectbar",
+      "situation": "dirty",
+      "key"      : "cmd:project.setArtStyle#style",
+      "offer": {
+        "id"      : "project.setArtStyle",
+        "label"   : "Art style",
+        "tooltip": "The sentence every image prompt opens with. Applying it re-keys every image task.",
+        "on"      : "style",
+        "supplies": ["style"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "project.setArtStyle",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "project",
+      "module"   : "projectbar",
+      "situation": "no-project",
+      "key"      : "cmd:project.setArtStyle",
+      "offer": {
+        "id"      : "project.setArtStyle",
+        "label"   : "Apply",
+        "tooltip" : "Write these settings back to project.yaml",
+        "supplies": ["style"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "No project is open."
+        }
+      },
+      "effects": [
+        {
+          "id": "project.setArtStyle"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "project",
+      "module"   : "projectbar",
+      "situation": "no-project",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read project.yaml (discards an unapplied edit)",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "project",
+      "module"   : "projectbar",
+      "situation": "no-project",
+      "key"      : "cmd:project.setArtStyle#style",
+      "offer": {
+        "id"      : "project.setArtStyle",
+        "label"   : "Art style",
+        "tooltip": "The sentence every image prompt opens with. Applying it re-keys every image task.",
+        "on"      : "style",
+        "supplies": ["style"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "No project is open."
+        }
+      },
+      "effects": [
+        {
+          "id": "project.setArtStyle"
         }
       ]
     },

@@ -2,7 +2,7 @@ import type { Button, Container } from 'pathux';
 import { exec, onInvalidate, report } from '../app/bridge.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { redrawing } from '../tour/anchors.js';
-import { applyStyleAction } from '../../rules/projectbar.js';
+import { applyStyleAction, reloadAction, styleBox } from '../../rules/projectbar.js';
 import PROJECT_CSS from '../../styles/project.css?inline';
 import type { ProjectView } from '../../../src/shared/ipc.js';
 
@@ -47,8 +47,14 @@ export class ProjectEditor extends VnEditor {
     bar.label('PROJECT').style['padding'] = '0px 8px';
     // Presented by `paint`, which every load ends in
     this.applyBtn = bar.button('Apply', () => void this.apply());
-    const reload = bar.button('⟳', () => void this.load());
-    reload.description = 'Re-read project.yaml (discards an unapplied edit)';
+    // Its own pass: the button is built once with the pane, so a record in the bar's pass would be
+    // dropped by the bar's next paint
+    const reload = reloadAction();
+    redrawing('project', 'reload').act(
+      bar.button(reload.label, () => {}),
+      reload,
+      () => void this.load(),
+    );
     bar.flushUpdate();
 
     this.adoptStyle(PROJECT_CSS);
@@ -65,8 +71,6 @@ export class ProjectEditor extends VnEditor {
     this.styleBox.className = 'pj-style';
     this.styleBox.spellcheck = false;
     this.styleBox.placeholder = 'e.g. soft anime, cel shaded, warm palette';
-    this.styleBox.title =
-      'The sentence every image prompt opens with. Applying it re-keys every image task.';
     this.styleBox.addEventListener('input', () => this.touched());
     // The screen keymap is a bubble-phase window listener, so a box that does not stop its own
     // keys hands Ctrl+Z and the shell's other gestures away mid-edit.
@@ -153,11 +157,13 @@ export class ProjectEditor extends VnEditor {
     const view = this.view;
     // Re-recorded on every paint: the bar is built once at init, and what Apply offers follows the
     // box the author is typing in.
-    redrawing('project', 'bar').act(
+    const anchors = redrawing('project', 'bar');
+    anchors.act(
       this.applyBtn,
       applyStyleAction(view !== undefined, this.dirty),
       () => void this.apply(),
     );
+    anchors.record(this.styleBox, styleBox(view !== undefined));
     this.titleEl.textContent = view?.title ?? 'No project open';
     this.rootEl.textContent = view?.root ?? '';
     this.warn.textContent =

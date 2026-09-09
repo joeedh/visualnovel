@@ -1,5 +1,6 @@
-/** What the Project pane's one write offers, and the refusals it draws Apply greyed for. */
+/** What the Project pane offers: its one write, the box it is typed in, and reload. */
 import { refuse, type Offer } from './anchors.js';
+import { view } from './effects.js';
 
 /** What the Project pane reads when it draws its bar. */
 export interface ProjectBarState {
@@ -25,7 +26,30 @@ export function applyStyleAction(opened: boolean, dirty: boolean): Offer {
   return { ok: true, props: {}, ...control };
 }
 
-/** Every offer the Project pane draws from this module. */
+export function reloadAction(): Offer {
+  return {
+    ok: true,
+    ...view('reload'),
+    on     : 'reload',
+    label  : '⟳',
+    tooltip: 'Re-read project.yaml (discards an unapplied edit)',
+  };
+}
+
+/** The art-style box, beside Apply: the same write, with the style as what the box supplies. */
+export function styleBox(opened: boolean): Offer {
+  const control = {
+    id      : 'project.setArtStyle',
+    on      : 'style',
+    label   : 'Art style',
+    tooltip : 'The sentence every image prompt opens with. Applying it re-keys every image task.',
+    supplies: ['style'],
+  };
+  if (!opened) return { ...refuse('No project is open.'), ...control };
+  return { ok: true, props: {}, ...control };
+}
+
+/** Every offer the Project pane draws from this module: Apply, reload, then the box. */
 export function controls(state: ProjectBarState): readonly Offer[] {
-  return [applyStyleAction(state.opened, state.dirty)];
+  return [applyStyleAction(state.opened, state.dirty), reloadAction(), styleBox(state.opened)];
 }
