@@ -6,10 +6,15 @@ import {
   BARRIER_ID,
   clusterMembers,
   clusteredGraphOf,
+  fitAction,
   gateApproveAction,
   isSelected,
   nodeAction,
+  overviewAction,
+  reloadAction,
+  resultAction,
   slotNodeIds,
+  tidyAction,
   subgraphFor,
   taskGraphOf,
   type ClusterKind,
@@ -57,6 +62,7 @@ type Scope = { kind: 'cluster' | 'slot'; id: string; name: string } | null;
  * for the layered layout by construction — see `rules/taskGraph.ts`.
  */
 export class TaskGraphEditor extends VnEditor {
+  private resultPass: AnchorPass = redrawing('taskgraph', 'results');
   private bar!: Container;
   private canvas!: GraphCanvas;
   private search!: HTMLInputElement;
@@ -205,6 +211,7 @@ export class TaskGraphEditor extends VnEditor {
     const query = this.query.trim().toLowerCase();
     const status = this.status;
     this.results.replaceChildren();
+    this.resultPass = redrawing('taskgraph', 'results');
     if (query === '' || !status) {
       this.results.style.display = 'none';
       return;
@@ -226,7 +233,6 @@ export class TaskGraphEditor extends VnEditor {
   private resultRow(slot: SlotNode, id: string): HTMLElement {
     const entry = document.createElement('button');
     entry.textContent = slot.label;
-    entry.title = `Show only the work ${slot.label} is drawn from`;
     Object.assign(entry.style, {
       display     : 'block',
       width       : '100%',
@@ -240,7 +246,7 @@ export class TaskGraphEditor extends VnEditor {
       fontFamily  : TOKENS.mono,
       fontSize    : '11px',
     });
-    entry.addEventListener('click', () => {
+    this.resultPass.act(entry, resultAction(slot), () => {
       this.clearQuery();
       this.setScope({ kind: 'slot', id, name: slot.label });
     });
@@ -383,28 +389,40 @@ export class TaskGraphEditor extends VnEditor {
         : `${tasks} task${tasks === 1 ? '' : 's'}${unplanned > 0 ? ` · ${unplanned} not yet planned` : ''}`,
     ).style['padding'] = '0px 8px';
 
+    const anchors = redrawing('taskgraph', 'bar');
     if (this.scope) {
       this.bar.label(`showing ${this.scope.name}`).style['padding'] = '0px 8px';
-      this.bar.button('← Overview', () => this.setScope(null)).description =
-        'Go back to the whole project, grouped by scene, character and location';
+      const overview = overviewAction();
+      anchors.act(
+        this.bar.button(overview.label, () => {}),
+        overview,
+        () => this.setScope(null),
+      );
     }
 
-    const tidy = this.bar.check(undefined, 'Tidy') as Check;
+    // Recorded rather than acted: a tick's flip arrives through `on_change`, path.ux's own hook
+    const tidy = anchors.record(this.bar.check(undefined, 'Tidy') as Check, tidyAction());
     tidy.checked = this.tidy;
-    tidy.description =
-      'Straighten the columns so edges run more directly. The graph itself is unchanged — only where it is drawn.';
     tidy.on_change = (next: unknown) => {
       this.tidy = next === true;
-      // A relayout, not a redraw: the coordinates themselves are what changes.
       this.rebuild();
     };
 
-    this.bar.button('Fit', () => {
-      this.fitted = false;
-      this.fitOnce();
-    }).description = 'Zoom out until the whole graph is on screen';
-    this.bar.button('Refresh', () => void this.load()).description =
-      'Re-read the task log and replan what is ready';
+    const fit = fitAction();
+    anchors.act(
+      this.bar.button(fit.label, () => {}),
+      fit,
+      () => {
+        this.fitted = false;
+        this.fitOnce();
+      },
+    );
+    const reload = reloadAction();
+    anchors.act(
+      this.bar.button(reload.label, () => {}),
+      reload,
+      () => void this.load(),
+    );
     this.bar.flushUpdate();
   }
 

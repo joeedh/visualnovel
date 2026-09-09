@@ -10,9 +10,14 @@ import {
   clusterMembers,
   clusteredGraphOf,
   controls,
+  fitAction,
   gateApproveAction,
   nodeAction,
+  overviewAction,
+  reloadAction,
+  resultAction,
   slotNodeIds,
+  tidyAction,
   subgraphFor,
   subjectOf,
   taskGraphOf,
@@ -652,17 +657,53 @@ describe('nodeAction', () => {
     expect(keyOf(nodeAction(plate('p1', 'cafe'), NONE))).toBe('item:task/p1');
   });
 
-  it('is listed after the gate buttons', () => {
+  it('is listed after the gate buttons and the bar', () => {
     const cards = { tasks: [plate('p1', 'cafe')], selection: NONE };
     expect(controls({ pending: ['aiko'], gates: {}, cards }).map(keyOf)).toEqual([
       'cmd:gate.approve#aiko',
+      'fx:pane.view#tidy',
+      'fx:pane.view#fit',
+      'fx:pane.view#reload',
       'item:task/p1',
     ]);
   });
 });
 
+describe('the bar and the search rows', () => {
+  it('are view effects keyed by what they change', () => {
+    expect(overviewAction()).toMatchObject({ props: { what: 'scope' }, on: 'overview' });
+    expect(tidyAction()).toMatchObject({ props: { what: 'tidy' }, on: 'tidy', label: 'Tidy' });
+    expect(fitAction()).toMatchObject({ props: { what: 'fit' }, on: 'fit' });
+    expect(reloadAction()).toMatchObject({ props: { what: 'reload' }, on: 'reload' });
+    expect(resultAction({ key: 'plate:cafe/night', label: 'cafe night' })).toEqual({
+      ok     : true,
+      id     : 'pane.view',
+      props  : { what: 'scope' },
+      on     : 'slot/plate:cafe/night',
+      label  : 'cafe night',
+      tooltip: 'Show only the work cafe night is drawn from',
+    });
+  });
+
+  it('offers Overview only while the graph is narrowed', () => {
+    expect(controls({ pending: [], gates: {} }).map(keyOf)).toEqual([
+      'fx:pane.view#tidy',
+      'fx:pane.view#fit',
+      'fx:pane.view#reload',
+    ]);
+    const results = [{ key: 'plate:cafe/night', label: 'cafe night' }];
+    expect(controls({ pending: [], gates: {}, scoped: 'cafe night', results }).map(keyOf)).toEqual([
+      'fx:pane.view#overview',
+      'fx:pane.view#tidy',
+      'fx:pane.view#fit',
+      'fx:pane.view#reload',
+      'fx:pane.view#slot/plate:cafe/night',
+    ]);
+  });
+});
+
 describe('controls', () => {
-  it('lists one gate button per pending character, each key once', () => {
+  it('lists one gate button per pending character before the bar, each key once', () => {
     const REFUSE: CommandCheck = { state: 'refuse', message: 'Nothing on file.' };
     const states: GateState[] = [
       { pending: [], gates: {} },
@@ -680,9 +721,11 @@ describe('controls', () => {
         ];
         return gateApproveAction(c, gate?.check, gate?.candidates);
       });
-      expect(listed).toEqual(each);
+      expect(listed).toEqual([...each, tidyAction(), fitAction(), reloadAction()]);
       expect(duplicateKeys(listed)).toEqual([]);
-      expect(listed.map(keyOf)).toEqual(state.pending.map((c) => `cmd:gate.approve#${c}`));
+      expect(listed.map(keyOf).slice(0, each.length)).toEqual(
+        state.pending.map((c) => `cmd:gate.approve#${c}`),
+      );
     }
   });
 });

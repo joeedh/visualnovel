@@ -442,7 +442,13 @@
       "module": "taskGraph",
       "editor": "taskgraph",
       "name"  : "no-gate",
-      "why"   : "No run is waiting at a gate, so nothing is drawn."
+      "why"   : "No run is waiting at a gate, so only the bar is drawn: Tidy, Fit and Refresh."
+    },
+    {
+      "module": "taskGraph",
+      "editor": "taskgraph",
+      "name"  : "scoped",
+      "why": "The graph is narrowed to one picture’s work and the search box has found two slots, so the bar offers Overview and each hit offers its scope."
     },
     {
       "module": "taskGraph",
@@ -14814,6 +14820,231 @@
       "via"      : "control",
       "editor"   : "taskgraph",
       "module"   : "taskGraph",
+      "situation": "no-gate",
+      "key"      : "fx:pane.view#tidy",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Tidy",
+        "tooltip": "Straighten the columns so edges run more directly. The graph itself is unchanged — only where it is drawn.",
+        "on"     : "tidy",
+        "ok"     : true,
+        "props": {
+          "what": "tidy"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "tidy"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "no-gate",
+      "key"      : "fx:pane.view#fit",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Fit",
+        "tooltip": "Zoom out until the whole graph is on screen",
+        "on"     : "fit",
+        "ok"     : true,
+        "props": {
+          "what": "fit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "fit"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "no-gate",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read the task log and replan what is ready",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "scoped",
+      "key"      : "fx:pane.view#overview",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "← Overview",
+        "tooltip": "Go back to the whole project, grouped by scene, character and location",
+        "on"     : "overview",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "scoped",
+      "key"      : "fx:pane.view#tidy",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Tidy",
+        "tooltip": "Straighten the columns so edges run more directly. The graph itself is unchanged — only where it is drawn.",
+        "on"     : "tidy",
+        "ok"     : true,
+        "props": {
+          "what": "tidy"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "tidy"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "scoped",
+      "key"      : "fx:pane.view#fit",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Fit",
+        "tooltip": "Zoom out until the whole graph is on screen",
+        "on"     : "fit",
+        "ok"     : true,
+        "props": {
+          "what": "fit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "fit"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "scoped",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read the task log and replan what is ready",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "scoped",
+      "key"      : "fx:pane.view#slot/plate:cafe/night",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "cafe night",
+        "tooltip": "Show only the work cafe night is drawn from",
+        "on"     : "slot/plate:cafe/night",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "scoped",
+      "key"      : "fx:pane.view#slot/plate:cafe/day",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "cafe day",
+        "tooltip": "Show only the work cafe day is drawn from",
+        "on"     : "slot/plate:cafe/day",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
       "situation": "gate-unasked",
       "key"      : "cmd:gate.approve#aiko",
       "offer": {
@@ -14833,6 +15064,81 @@
           "id"   : "gate.approve",
           "props": {
             "characterId": "aiko"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "gate-unasked",
+      "key"      : "fx:pane.view#tidy",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Tidy",
+        "tooltip": "Straighten the columns so edges run more directly. The graph itself is unchanged — only where it is drawn.",
+        "on"     : "tidy",
+        "ok"     : true,
+        "props": {
+          "what": "tidy"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "tidy"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "gate-unasked",
+      "key"      : "fx:pane.view#fit",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Fit",
+        "tooltip": "Zoom out until the whole graph is on screen",
+        "on"     : "fit",
+        "ok"     : true,
+        "props": {
+          "what": "fit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "fit"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "gate-unasked",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read the task log and replan what is ready",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
           }
         }
       ]
@@ -14865,6 +15171,81 @@
       ]
     },
     {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "gate-with-candidates",
+      "key"      : "fx:pane.view#tidy",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Tidy",
+        "tooltip": "Straighten the columns so edges run more directly. The graph itself is unchanged — only where it is drawn.",
+        "on"     : "tidy",
+        "ok"     : true,
+        "props": {
+          "what": "tidy"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "tidy"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "gate-with-candidates",
+      "key"      : "fx:pane.view#fit",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Fit",
+        "tooltip": "Zoom out until the whole graph is on screen",
+        "on"     : "fit",
+        "ok"     : true,
+        "props": {
+          "what": "fit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "fit"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "gate-with-candidates",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read the task log and replan what is ready",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
       "via"       : "control",
       "editor"    : "taskgraph",
       "module"    : "taskGraph",
@@ -14888,6 +15269,156 @@
         }
       ],
       "reasonFrom": "stack"
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "gate-without-candidates",
+      "key"      : "fx:pane.view#tidy",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Tidy",
+        "tooltip": "Straighten the columns so edges run more directly. The graph itself is unchanged — only where it is drawn.",
+        "on"     : "tidy",
+        "ok"     : true,
+        "props": {
+          "what": "tidy"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "tidy"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "gate-without-candidates",
+      "key"      : "fx:pane.view#fit",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Fit",
+        "tooltip": "Zoom out until the whole graph is on screen",
+        "on"     : "fit",
+        "ok"     : true,
+        "props": {
+          "what": "fit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "fit"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "gate-without-candidates",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read the task log and replan what is ready",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "cards",
+      "key"      : "fx:pane.view#tidy",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Tidy",
+        "tooltip": "Straighten the columns so edges run more directly. The graph itself is unchanged — only where it is drawn.",
+        "on"     : "tidy",
+        "ok"     : true,
+        "props": {
+          "what": "tidy"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "tidy"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "cards",
+      "key"      : "fx:pane.view#fit",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Fit",
+        "tooltip": "Zoom out until the whole graph is on screen",
+        "on"     : "fit",
+        "ok"     : true,
+        "props": {
+          "what": "fit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "fit"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "taskgraph",
+      "module"   : "taskGraph",
+      "situation": "cards",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read the task log and replan what is ready",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",

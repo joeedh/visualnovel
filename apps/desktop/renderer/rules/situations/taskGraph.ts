@@ -33,8 +33,21 @@ const CARDS: readonly Task[] = [
 export const SITUATIONS = situations<GateState>(
   {
     name : 'no-gate',
-    why  : 'No run is waiting at a gate, so nothing is drawn.',
+    why  : 'No run is waiting at a gate, so only the bar is drawn: Tidy, Fit and Refresh.',
     state: { pending: [], gates: {} },
+  },
+  {
+    name : 'scoped',
+    why: 'The graph is narrowed to one picture’s work and the search box has found two slots, so the bar offers Overview and each hit offers its scope.',
+    state: {
+      pending: [],
+      gates  : {},
+      scoped : 'cafe night',
+      results: [
+        { key: 'plate:cafe/night', label: 'cafe night' },
+        { key: 'plate:cafe/day', label: 'cafe day' },
+      ],
+    },
   },
   {
     name : 'gate-unasked',

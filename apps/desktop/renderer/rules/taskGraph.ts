@@ -25,7 +25,7 @@ import type {
   TaskStatus,
 } from '../../src/shared/ipc';
 import { refuse, type Offer } from './anchors.js';
-import { publish, type Publishes } from './effects.js';
+import { publish, view, type Publishes } from './effects.js';
 import { taskIsSelected, taskPublishes, type Selection } from './selection.js';
 import type { Graph, GraphEdge, GraphNode } from '../graph/types.js';
 
@@ -518,8 +518,66 @@ export interface GateState {
   pending: string[];
   /** What `gate.approve` and the candidate list said for each character, once asked. */
   gates: Record<string, { check?: CommandCheck; candidates?: number }>;
+  /** The name of the picture the graph is narrowed to, while it is; the bar then offers Overview. */
+  scoped?: string;
+  /** The slots the search box has found, drawn as rows under it. */
+  results?: readonly { key: string; label: string }[];
   /** The task cards on screen, and the selection they are drawn against. */
   cards?: { tasks: readonly Task[]; selection: Selection };
+}
+
+/** The bar's Overview, drawn only while the graph is narrowed to one picture's work. */
+export function overviewAction(): Offer {
+  return {
+    ok: true,
+    ...view('scope'),
+    on     : 'overview',
+    label  : '← Overview',
+    tooltip: 'Go back to the whole project, grouped by scene, character and location',
+  };
+}
+
+/** The Tidy tick. A relayout rather than a redraw: the coordinates are what changes. */
+export function tidyAction(): Offer {
+  return {
+    ok: true,
+    ...view('tidy'),
+    on     : 'tidy',
+    label  : 'Tidy',
+    tooltip:
+      'Straighten the columns so edges run more directly. The graph itself is unchanged — only where it is drawn.',
+  };
+}
+
+export function fitAction(): Offer {
+  return {
+    ok: true,
+    ...view('fit'),
+    on     : 'fit',
+    label  : 'Fit',
+    tooltip: 'Zoom out until the whole graph is on screen',
+  };
+}
+
+export function reloadAction(): Offer {
+  return {
+    ok: true,
+    ...view('reload'),
+    on     : 'reload',
+    label  : 'Refresh',
+    tooltip: 'Re-read the task log and replan what is ready',
+  };
+}
+
+/** One row under the search box, which narrows the graph to the work one picture is drawn from. */
+export function resultAction(slot: { key: string; label: string }): Offer {
+  return {
+    ok: true,
+    ...view('scope'),
+    on     : `slot/${slot.key}`,
+    label  : slot.label,
+    tooltip: `Show only the work ${slot.label} is drawn from`,
+  };
 }
 
 /**
@@ -574,6 +632,11 @@ export function controls(state: GateState): readonly Offer[] {
       const gate = state.gates[character];
       return gateApproveAction(character, gate?.check, gate?.candidates);
     }),
+    ...(state.scoped === undefined ? [] : [overviewAction()]),
+    tidyAction(),
+    fitAction(),
+    reloadAction(),
+    ...(state.results ?? []).map(resultAction),
     ...(cards ? cards.tasks.map((task) => nodeAction(task, cards.selection)) : []),
   ];
 }
