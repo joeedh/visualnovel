@@ -164,6 +164,10 @@ const strays = [];
 const drawn = [];
 /** Anchors whose control carries no meta tag, which the sweep reports rather than records. */
 const untagged = [];
+/** Anchors whose control the widget walk does not reach. Empty is the healthy answer. */
+const unwalked = [];
+/** Named controls the walk found in a home that no live anchor claims, which is information. */
+const unclaimed = [];
 
 /**
  * Each live keymap against the shortcut table, by scope. A pane's keymap is live only while the
@@ -192,6 +196,18 @@ async function sweepHome(editor) {
   const mine = dump.filter((a) => a.editor === editor).map(read);
   // A control the pass anchored but never tagged, which would leave a record with no id at all
   untagged.push(...mine.filter((a) => a.id === '').map((a) => `${editor} ${a.key}`));
+
+  // The third oracle: whether the widget walk reaches every control the passes anchored.
+  // `walkWidgets` descends a UIBase's shadow and no other kind of shadow root, so a control
+  // mounted under one of those is anchored and unreachable, and lands in `unwalked`.
+  const walked = new Set(
+    JSON.parse(await evaluate(socket, 'JSON.stringify(window.__vnAnchors.walk())')),
+  );
+  unwalked.push(...mine.filter((a) => !walked.has(a.widgetPath)).map((a) => `${editor} ${a.key}`));
+  const claimed = new Set(mine.map((a) => a.widgetPath));
+  unclaimed.push(
+    ...[...walked].filter((path) => path.startsWith(`${editor}/`) && !claimed.has(path)),
+  );
   const items = mine.filter((a) => a.id === 'ui.publish').length;
   const drawnIds = new Set(mine.map((a) => a.id));
   const undrawn = [...(derivedIds.get(editor) ?? [])]
@@ -307,6 +323,7 @@ await fs.writeFile(
       disagreements,
       strays  : [...new Set(strays)].sort(),
       untagged: [...new Set(untagged)].sort(),
+      unwalked: [...new Set(unwalked)].sort(),
     },
     null,
     2,
@@ -354,6 +371,17 @@ for (const editor of [...derivedIds.keys()].sort()) {
 }
 for (const bare of new Set(untagged)) {
   process.stdout.write(`  ⚠ ${bare}: it is anchored, but its control carries no meta tag
+`);
+}
+for (const missed of new Set(unwalked)) {
+  process.stdout.write(`  ⚠ ${missed}: it is tagged, but the widget walk does not reach it
+`);
+}
+// Information rather than a finding: a control that is in the document without being drawn keeps
+// the tag its last pass wrote, and the composer's Stop button is hidden between turns.
+if (unclaimed.length > 0) {
+  process.stdout
+    .write(`  tagged but not anchored right now: ${[...new Set(unclaimed)].sort().join(' ')}
 `);
 }
 for (const stray of new Set(strays)) {

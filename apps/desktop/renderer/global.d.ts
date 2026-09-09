@@ -16,6 +16,8 @@ declare global {
     __vnAnchors?: {
       generation: () => number;
       dump: () => SweptAnchor[];
+      /** Every named control the document holds, walked rather than asked of the passes. */
+      walk: () => string[];
       /** The half of the map derived from the menu table, which no pane draws and no sweep can see. */
       menus: () => AnchorRecord[];
       /** Anchors whose ring would not land on the thing they name. A healthy screen lists none. */

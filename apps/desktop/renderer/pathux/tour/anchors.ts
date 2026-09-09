@@ -10,7 +10,7 @@
  * Exposed as `window.__vnAnchors` for the sweep and for DevTools. Unlike `window.__vnDebug` this
  * ships in production, because the tour reads it at runtime.
  */
-import { composeTooltip, keymap as KEYS, reverse_keymap, type HotKey } from 'pathux';
+import { composeTooltip, keymap as KEYS, reverse_keymap, walkWidgets, type HotKey } from 'pathux';
 import * as nstructjs from 'nstructjs';
 import { StdUXMeta, getMeta, type MetaOwner } from 'pathux-meta';
 import type { PopupHome } from '../../../src/shared/editors.js';
@@ -295,6 +295,27 @@ export function dumpAnchors(): SweptAnchor[] {
   });
 }
 
+/**
+ * Every named control the document holds, found by walking it rather than by asking the passes.
+ *
+ * The second opinion on the tag layer's reach. `walkWidgets` descends `childNodes` and then a
+ * `UIBase`'s shadow, so a control mounted in a shadow root that is not a widget's would be
+ * invisible to it; the sweep compares this list with what the passes anchored and reports the
+ * difference. The whole document rather than the screen, since the header and the three toolbar
+ * popups are not panes.
+ *
+ * Only this app's writer fills `widgetPath`, so a tag path.ux's own builders left on a button is
+ * skipped rather than reported as an anchor nothing claims.
+ */
+export function walkedAnchors(): string[] {
+  const named = new Set<string>();
+  for (const owner of walkWidgets(document)) {
+    const path = getMeta(owner, StdUXMeta)?.widgetPath;
+    if (path !== undefined) named.add(path);
+  }
+  return [...named].sort();
+}
+
 /** A `DOMRect` does not survive `JSON.stringify`, so the sweep is handed a plain object. */
 const plain = (rect: AnchorRect): AnchorRect => ({
   left  : rect.left,
@@ -452,6 +473,7 @@ export function installAnchors(): void {
   window.__vnAnchors = {
     generation: () => generation,
     dump      : dumpAnchors,
+    walk      : walkedAnchors,
     menus     : menuAnchors,
     strays    : strayAnchors,
     shortcuts : shortcutReport,

@@ -377,6 +377,8 @@ As shipped:
 
 ### Stage 5 — the sweep walks widgets
 
+**Done, as a second oracle rather than as the replacement described.**
+
 `dumpAnchors()` walks the **screen root** with `walkWidgets` rather than each open pane's
 root: the three popup homes mount on the screen with `screen.popup(...)`
 (`chrome/notifications.ts:134`, `approvals.ts:68`, `diagnostics.ts:51`), and the header is
@@ -392,6 +394,38 @@ that is a submodule change with its own gate.
 The check that the replacement is safe is an in-page assertion that the walk and the pass
 produce the same key set. If it cannot be made to agree, stop: stages 1 to 4 stand on
 their own, and the tag is already the dump format.
+
+As shipped:
+
+- **Reachability, established first, in the running app.** A probe walked the document
+  twice — once descending only a `UIBase`'s `shadow`, the way `walkWidgets` does, and once
+  descending every element's `shadowRoot` — over seven homes. The two walks found the same
+  set every time, 58 to 121 tagged nodes per home, with nothing the wide walk reached that
+  the narrow one did not. **No path.ux change is needed**, and no `walk-widen` branch was
+  made.
+- **The walk does not replace the dump.** Three things stop it, all found by building it:
+    - `Anchor.key` — the resolver's `cmd:` / `item:` / `fx:` namespacing — is not in the
+      tag, and a walk-built dump would have to re-derive it from `keyOf`'s rules in a
+      second language.
+    - `Anchor.via` says whether a click reaches the node or the canvas underneath it. The
+      DOM does not say that; only the pass that recorded it does.
+    - The walk and the pass disagree by design on **drawnness**. `liveAnchors()` drops an
+      anchor whose node has no size, and the walk keeps its tag: the composer's Stop
+      button and the agent report's are in the document and hidden between turns, so the
+      walk finds two named controls the passes do not offer. That is the two tiers being
+      right about different questions, not a fault to reconcile.
+- **So the walk ships as `window.__vnAnchors.walk()`**, the sorted `widgetPath` of every
+  named control the document holds. Per home the sweep asserts every anchored path is one
+  the walk reached, and writes what it could not under a new `unwalked` key in
+  `anchors.json`. It prints the other direction — walked but unclaimed — as information.
+- **Measured:** 429 records, 0 strays, 0 disagreements, 0 untagged, **0 unwalked**; and
+  two informational lines, `convo/agent-stop~aa84330a` and `report/report-stop~45bc2b95`.
+- Only this app's writer fills `widgetPath`, so a tag path.ux's own builders leave on a
+  button is walked past rather than reported.
+- **A pre-existing non-determinism, unrelated to this work:** the onboarding pane's two
+  `project.setKey` rows swap order between app restarts, so `anchors.json` moves two
+  records. It is stable within one session — the stage 4 reproducibility check was
+  byte-identical.
 
 ### Stage 6 — the widened comparison
 
