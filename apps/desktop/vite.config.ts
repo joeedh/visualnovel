@@ -30,6 +30,8 @@ export default defineConfig({
         __dirname,
         '../../vendor/path.ux/scripts/core/base/ui_base_types.ts',
       ),
+      // The meta-tag half the rules modules build a tag with, which node can import too
+      'pathux-meta': resolve(__dirname, '../../vendor/path.ux/scripts/core/base/ui_meta_tags.ts'),
       nstructjs          : resolve(__dirname, '../../vendor/nstructjs'),
     },
   },

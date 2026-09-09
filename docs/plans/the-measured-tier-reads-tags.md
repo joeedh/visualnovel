@@ -279,12 +279,29 @@ As shipped:
 
 ### Stage 2 — the alias, and `VnToolMeta`
 
-`pathux-meta` in the three config files. `renderer/rules/toolmeta.ts`:
+**Done.** `pathux-meta` in the three config files. `renderer/rules/toolmeta.ts`:
 `VnToolMeta extends UXToolMeta<'vn'>`, registered as `vn.VnToolMeta`, carrying `toolPath`
 (the command id), `on`, `supplies`, `form`, and `props` / `then` as JSON strings.
 `identity()` returns `toolPath`, `on`, `form` and the sorted `supplies` — not `props`,
 which a widget supplies at commit time, and not the tooltip, which is presentation. A jest
 test constructs one headlessly, proving the alias.
+
+As shipped:
+
+- **Four config files, and not the ones named.** The alias goes in `jest.config.cjs` and
+  `apps/desktop/vite.config.ts` to source, in `apps/desktop/renderer/tsconfig.json` to the
+  declaration, and in `scripts/aliases.mjs` — which is what `loadEntry` hands esbuild, so
+  without it `pnpm gen:uxmodel` cannot bundle stage 3's driver. The **root**
+  `tsconfig.json` needs no entry: it includes `packages/*/src`, `apps/*/src` and
+  `scripts`, and nothing under those imports the tags. The renderer typechecks against its
+  own config.
+- `static override STRUCT`, because the renderer's tsconfig sets `noImplicitOverride` and
+  `UXToolMeta` declares `STRUCT` too.
+- `props` and `then` are plain string fields with `propValues` / `thenActions` accessors
+  either side, and the constructor takes an optional `ToolFacts` so nstructjs can still
+  build one with no arguments.
+- The test also round-trips a `StdUXMeta` holding one through `writeJSON` and
+  `readMetaJSON`, which is what proves the struct registration rather than only the alias.
 
 ### Stage 3 — `tagOf`, and the derived tier writes `widgetPath`
 

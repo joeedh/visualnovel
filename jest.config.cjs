@@ -72,6 +72,9 @@ const shared = {
     '^pathux-graph$'       : '<rootDir>/vendor/path.ux/scripts/graph/index.ts',
     '^pathux-toolprop$'    : '<rootDir>/vendor/path.ux/scripts/path-controller/toolsys/toolprop.ts',
     '^pathux-base-types$'  : '<rootDir>/vendor/path.ux/scripts/core/base/ui_base_types.ts',
+    // The meta-tag half, which imports nothing at runtime but nstructjs, so a node-only rules
+    // test can build the same tag a live widget carries. The widget barrel stays unmapped.
+    '^pathux-meta$'        : '<rootDir>/vendor/path.ux/scripts/core/base/ui_meta_tags.ts',
     // nstructjs names an ESM bundle as its `main`, which this CJS runner cannot load; the
     // same build ships beside it in CommonJS. Shared because both the desktop app and
     // @vn/gengraph depend on it, always as the `vendor/nstructjs` submodule.

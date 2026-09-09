@@ -16,6 +16,7 @@
       "pathux-graph"       : ["../dist/pathux-types/graph/index.d.ts"],
       "pathux-base-types"  : ["../dist/pathux-types/core/base/ui_base_types.d.ts"],
       "pathux-toolprop"    : ["../dist/pathux-types/path-controller/toolsys/toolprop.d.ts"],
+      "pathux-meta"        : ["../dist/pathux-types/core/base/ui_meta_tags.d.ts"],
       "nstructjs"          : ["../../../vendor/nstructjs/build/structjs.d.ts"]
     }
   },
