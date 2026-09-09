@@ -341,7 +341,9 @@
   color: var(--mist-dim);
 }
 
-/* The drag edges sit ON the boundary they move, half outside the bracket. */
+/* The drag edges straddle the boundary they move, overhanging the bracket by the grid's row gap.
+   No further: one shot's end handle and the next shot's start handle share a boundary, and the
+   later bracket paints over anything of the earlier one that reaches into it. */
 .tl-edge {
   position: absolute;
   left: 18%;
@@ -359,10 +361,10 @@
   opacity: 1;
 }
 .tl-edge.start {
-  top: -4px;
+  top: -2px;
 }
 .tl-edge.end {
-  bottom: -4px;
+  bottom: -2px;
 }
 
 /* The wardrobe. Sodium, not signal: an outfit is an authorial decision — the strip above it is
