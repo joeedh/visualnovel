@@ -574,7 +574,7 @@
       "module": "wiki",
       "editor": "wiki",
       "name"  : "none-open",
-      "why"   : "No page is open, so Save is refused."
+      "why"   : "No page is open, so Save and the text box are refused; reload stays offered."
     },
     {
       "module": "wiki",
@@ -586,7 +586,7 @@
       "module": "wiki",
       "editor": "wiki",
       "name"  : "open-dirty",
-      "why"   : "The open page has changed, so Save is offered."
+      "why": "The open page has changed, so Save is offered, and one picture drawn from it opens in the asset editor."
     },
     {
       "module": "doctree",
@@ -22005,6 +22005,54 @@
       "via"      : "control",
       "editor"   : "wiki",
       "module"   : "wiki",
+      "situation": "none-open",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this document from disk (discards an unsaved draft)",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "wiki",
+      "module"   : "wiki",
+      "situation": "none-open",
+      "key"      : "cmd:doc.write#text",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "The file, as text",
+        "tooltip": "Edit the document as markdown, front-matter and all. Ctrl+S saves and commits.",
+        "on"      : "text",
+        "supplies": ["text", "seenHash"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "No document is open."
+        }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "wiki",
+      "module"   : "wiki",
       "situation": "open",
       "key"      : "cmd:doc.write",
       "offer": {
@@ -22020,6 +22068,57 @@
       "effects": [
         {
           "id": "doc.write"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "wiki",
+      "module"   : "wiki",
+      "situation": "open",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this document from disk (discards an unsaved draft)",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "wiki",
+      "module"   : "wiki",
+      "situation": "open",
+      "key"      : "cmd:doc.write#text",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "The file, as text",
+        "tooltip": "Edit the document as markdown, front-matter and all. Ctrl+S saves and commits.",
+        "on"      : "text",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
         }
       ]
     },
@@ -22044,6 +22143,100 @@
           "id"   : "doc.write",
           "props": {
             "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "wiki",
+      "module"   : "wiki",
+      "situation": "open-dirty",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this document from disk (discards an unsaved draft)",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "wiki",
+      "module"   : "wiki",
+      "situation": "open-dirty",
+      "key"      : "cmd:doc.write#text",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "The file, as text",
+        "tooltip": "Edit the document as markdown, front-matter and all. Ctrl+S saves and commits.",
+        "on"      : "text",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "wiki",
+      "module"   : "wiki",
+      "situation": "open-dirty",
+      "key"      : "item:link/asset/a1b2c3d4",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "Aiko — uniform / front",
+        "tooltip": "Aiko — uniform / front · accepted — open it in the asset editor",
+        "on"     : "link/asset/a1b2c3d4",
+        "ok"     : true,
+        "props": {
+          "assetHash": "a1b2c3d4"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "asset",
+              "where"  : "elsewhere",
+              "subject": "a1b2c3d4"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "assetHash": "a1b2c3d4"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "a1b2c3d4"
           }
         }
       ]

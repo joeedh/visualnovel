@@ -1,6 +1,11 @@
 import type { Button, Container } from 'pathux';
 import { api } from '../../api.js';
 import { ASSETSTRIP_CSS, renderAssetStrip } from '../assets/assetstrip.js';
+import { cellAction } from '../../rules/assetstrip.js';
+import { RELOAD_TIP, TEXT_TIP } from '../../rules/wiki.js';
+import { reloadOffer, textBox } from '../../rules/docbuffer.js';
+import { visibleEditors } from '../panes/route.js';
+import { panesOf } from '../panes/view.js';
 import { onInvalidate, onWrote } from '../app/bridge.js';
 import { DocBuffer } from '../doctree/docbuffer.js';
 import { redrawing } from '../tour/anchors.js';
@@ -67,8 +72,14 @@ export class WikiEditor extends VnEditor {
     bar.label('DOCUMENT').style['padding'] = '0px 8px';
     this.saveBtn = bar.button('Save', () => void this.buf.save());
     this.saveBtn.description = 'Write this document back to disk, and commit it';
-    const reload = bar.button('⟳', () => void this.buf.reload());
-    reload.description = 'Re-read this document from disk (discards an unsaved draft)';
+    // Its own pass: the button is built once with the pane, so a record in the bar's pass would be
+    // dropped by the bar's next paint
+    const reload = reloadOffer(RELOAD_TIP);
+    redrawing('wiki', 'reload').act(
+      bar.button(reload.label, () => {}),
+      reload,
+      () => void this.buf.reload(),
+    );
     // Built once with the rest of this bar. The toggle keeps its own state, so it does not need
     // redrawing when the document changes underneath it.
     this.pinToggle(bar);
@@ -87,8 +98,6 @@ export class WikiEditor extends VnEditor {
 
     this.text = document.createElement('textarea');
     this.text.className = 'wk-text';
-    this.text.title =
-      'Edit the document as markdown, front-matter and all. Ctrl+S saves and commits.';
     this.text.spellcheck = false;
     this.text.style.display = 'none';
     this.text.addEventListener('input', () => {
@@ -185,7 +194,9 @@ export class WikiEditor extends VnEditor {
     // Re-recorded on every paint rather than once with the bar: the bar is built at init and
     // the offer changes with the buffer, so a record kept from init would say `Nothing to save`
     // for the life of the pane.
-    redrawing('wiki', 'bar').act(this.saveBtn, this.buf.saveOffer, () => void this.buf.save());
+    const anchors = redrawing('wiki', 'bar');
+    anchors.act(this.saveBtn, this.buf.saveOffer, () => void this.buf.save());
+    anchors.record(this.text, textBox(this.buf.path, TEXT_TIP));
     this.noteEl.textContent = this.buf.note;
     this.noteEl.className = this.buf.bad ? 'wk-note bad' : 'wk-note';
     this.noteEl.title = this.buf.note;
@@ -205,8 +216,12 @@ export class WikiEditor extends VnEditor {
     this.strip.style.display = 'block';
     const key = this.tree?.pathIndex[this.buf.path];
     const links = key === undefined ? undefined : this.tree?.backlinks[key];
+    const screen = this.ctx?.screen as VnScreen | undefined;
+    const visible = visibleEditors(screen ? panesOf(screen) : []);
+    const anchors = redrawing('wiki', 'strip');
     renderAssetStrip(this.strip, links ? assetGroups(links) : [], EMPTY, {
       onPick: (hash) => this.openAsset(hash),
+      anchor: (box, asset, run) => anchors.act(box, cellAction(asset, visible), run),
     });
   }
 }

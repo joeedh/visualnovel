@@ -5,7 +5,7 @@ import type { WikiState } from '../wiki.js';
 export const SITUATIONS = situations<WikiState>(
   {
     name : 'none-open',
-    why  : 'No page is open, so Save is refused.',
+    why  : 'No page is open, so Save and the text box are refused; reload stays offered.',
     state: { path: '', dirty: false },
   },
   {
@@ -15,7 +15,14 @@ export const SITUATIONS = situations<WikiState>(
   },
   {
     name : 'open-dirty',
-    why  : 'The open page has changed, so Save is offered.',
-    state: { path: 'characters/aiko/character.md', dirty: true },
+    why: 'The open page has changed, so Save is offered, and one picture drawn from it opens in the asset editor.',
+    state: {
+      path : 'characters/aiko/character.md',
+      dirty: true,
+      strip: {
+        assets : [{ hash: 'a1b2c3d4', label: 'Aiko — uniform / front', accepted: true }],
+        visible: ['wiki'],
+      },
+    },
   },
 );
