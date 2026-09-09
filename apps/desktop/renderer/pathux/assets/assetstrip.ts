@@ -17,7 +17,15 @@ export { ASSETSTRIP_CSS };
 export interface AssetStripHandlers {
   /** A cell was clicked. The host decides what that means; every host routes. */
   onPick(hash: string): void;
+  /**
+   * Record the cell under the host's pass with the host's offer, which then owns the click and
+   * the tooltip. Without it the cell is titled and wired here, unrecorded.
+   */
+  anchor?(box: HTMLElement, asset: StripCell, run: () => void): void;
 }
+
+/** What a cell reads of the asset it draws. */
+export type StripCell = EntityLinks['assets'][number];
 
 /**
  * Draw `groups` into `root`, replacing whatever was there. An empty group list draws `empty`, the
@@ -48,14 +56,19 @@ export function renderAssetStrip(
  * One stored image, by hash. Portraits and model sheets are base art, so the `vnasset://` handler
  * consults both asset roots. Without the second root this strip draws empty frames.
  */
-function cell(asset: EntityLinks['assets'][number], handlers: AssetStripHandlers): HTMLElement {
+function cell(asset: StripCell, handlers: AssetStripHandlers): HTMLElement {
   const box = el('div', `as-cell${asset.accepted ? ' accepted' : ''}`);
-  box.title = `${asset.label}${asset.accepted ? ' · accepted' : ''} — open it in the asset editor`;
   const img = document.createElement('img');
   img.src = `vnasset://${asset.hash}.${asset.ext}`;
   img.alt = asset.kind;
   box.appendChild(img);
-  box.addEventListener('click', () => handlers.onPick(asset.hash));
+  const pick = () => handlers.onPick(asset.hash);
+  if (handlers.anchor) {
+    handlers.anchor(box, asset, pick);
+  } else {
+    box.title = `${asset.label}${asset.accepted ? ' · accepted' : ''} — open it in the asset editor`;
+    box.addEventListener('click', pick);
+  }
   return box;
 }
 

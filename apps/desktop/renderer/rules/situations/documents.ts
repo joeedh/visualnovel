@@ -39,7 +39,16 @@ const ROWS: readonly RowState[] = [
 ];
 
 export const SITUATIONS = situations<DocumentsState>(
-  { name: 'idle', why: 'Only the New… button is drawn.', state: {} },
+  {
+    name : 'idle',
+    why  : 'Only the bar is drawn: the mode toggle, New…, Refresh and Close all.',
+    state: {},
+  },
+  {
+    name : 'files-mode',
+    why: 'The tree is grouped by folder, so the toggle reads FILES and offers the other grouping.',
+    state: { mode: 'files' },
+  },
   {
     name : 'renaming',
     why  : 'A row holds the rename box, which commits doc.rename on the document it stands in.',
@@ -58,6 +67,20 @@ export const SITUATIONS = situations<DocumentsState>(
         list     : ROWS,
         selection: { ...NONE, assetHash: 'a1b2c3d4' },
         visible  : ['documents', 'script', 'asset'],
+      },
+    },
+  },
+  {
+    name : 'backlinks',
+    why: 'A character is picked, so the panel links its sheet, its art, and the scenes and shots it appears in.',
+    state: {
+      rows : { list: ROWS, selection: { ...NONE, characterId: 'aiko' }, visible: ['documents'] },
+      panel: {
+        sheet  : { path: 'characters/aiko/character.md', wiki: false },
+        assets : [{ hash: 'a1b2c3d4', label: 'Aiko — uniform / front', accepted: true }],
+        scenes : ['arrival'],
+        shots  : [{ scene: 'arrival', shot: 'arrival__s1' }],
+        visible: ['documents'],
       },
     },
   },

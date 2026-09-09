@@ -1,4 +1,17 @@
-import { controls, createAction, renameAction, rowAction, type RowState } from '../documents.js';
+import {
+  collapseAction,
+  controls,
+  createAction,
+  modeAction,
+  panelControls,
+  reloadAction,
+  renameAction,
+  rowAction,
+  sceneLinkAction,
+  sheetLinkAction,
+  shotLinkAction,
+  type RowState,
+} from '../documents.js';
 import { duplicateKeys, keyOf } from '../anchors.js';
 import type { Selection } from '../selection.js';
 import type { DocNode } from '../../../src/shared/ipc.js';
@@ -110,23 +123,116 @@ describe('rowAction', () => {
   });
 });
 
+describe('the bar', () => {
+  it('labels the mode toggle with the grouping it is in', () => {
+    expect(modeAction('documents')).toMatchObject({
+      id   : 'pane.view',
+      props: { what: 'mode' },
+      on   : 'mode',
+      label: 'DOCUMENTS',
+    });
+    expect(modeAction('files')).toMatchObject({ label: 'FILES' });
+    expect(modeAction('files').tooltip).not.toBe(modeAction('documents').tooltip);
+  });
+
+  it('reloads and folds the tree as view effects', () => {
+    expect(reloadAction()).toMatchObject({ id: 'pane.view', props: { what: 'reload' } });
+    expect(collapseAction()).toMatchObject({ id: 'tree.expand', props: { node: '*' }, on: 'all' });
+  });
+});
+
+describe('the backlink panel', () => {
+  const visible = ['documents' as const];
+
+  it('opens the sheet where the route says, labelled by where it lives', () => {
+    const sheet = sheetLinkAction({ path: 'characters/aiko/character.md', wiki: false }, visible);
+    expect(sheet).toMatchObject({
+      id   : 'ui.publish',
+      props: { docPath: 'characters/aiko/character.md' },
+      on   : 'link/sheet',
+      label: 'sheet · characters/aiko/character.md',
+      then : [{ id: 'view.open', props: { editor: 'wiki', where: 'elsewhere' } }],
+    });
+    expect(sheetLinkAction({ path: 'wiki/aiko.md', wiki: true }, visible).label).toBe(
+      'in the story bible · wiki/aiko.md',
+    );
+  });
+
+  it('selects a scene, or a shot with its scene', () => {
+    expect(sceneLinkAction('arrival')).toMatchObject({
+      id   : 'ui.publish',
+      props: { sceneId: 'arrival', shotId: '' },
+      on   : 'link/scene/arrival',
+    });
+    expect(shotLinkAction('arrival', 'arrival__s1')).toMatchObject({
+      props: { sceneId: 'arrival', shotId: 'arrival__s1' },
+      on   : 'link/shot/arrival/arrival__s1',
+    });
+  });
+
+  it('lists the sheet, the art, the scenes and the shots in draw order', () => {
+    const panel = {
+      sheet : { path: 'characters/aiko/character.md', wiki: false },
+      assets: [{ hash: 'a1b2c3d4', label: 'Aiko', accepted: true }],
+      scenes: ['arrival'],
+      shots : [{ scene: 'arrival', shot: 'arrival__s1' }],
+      visible,
+    };
+    expect(panelControls(panel).map(keyOf)).toEqual([
+      'item:link/sheet',
+      'item:link/asset/a1b2c3d4',
+      'item:link/scene/arrival',
+      'item:link/shot/arrival/arrival__s1',
+    ]);
+    expect(panelControls({ ...panel, sheet: undefined }).map(keyOf)).not.toContain(
+      'item:link/sheet',
+    );
+  });
+});
+
 describe('controls', () => {
+  const bar = ['fx:pane.view#mode', 'cmd:doc.create', 'fx:pane.view#reload', 'fx:tree.expand#all'];
+
   it('lists one offer per row, after the bar', () => {
     const rows = { list: [scene, asset], selection: NONE, visible: ['documents' as const] };
     expect(controls({ rows }).map(keyOf)).toEqual([
-      'cmd:doc.create',
+      ...bar,
       'item:scene/arrival',
       'item:asset/a1b2c3d4',
     ]);
   });
 
-  it('lists the create button, and the rename box only while one is open', () => {
-    expect(controls({}).map(keyOf)).toEqual(['cmd:doc.create']);
+  it('lists the bar, and the rename box only while one is open', () => {
+    expect(controls({}).map(keyOf)).toEqual(bar);
     const renaming = { path: 'wiki/lore.md', name: 'Lore' };
     const listed = controls({ renaming });
     expect(new Set(listed.map(keyOf))).toEqual(
-      new Set([createAction(), renameAction(renaming)].map(keyOf)),
+      new Set(
+        [
+          modeAction('documents'),
+          createAction(),
+          reloadAction(),
+          collapseAction(),
+          renameAction(renaming),
+        ].map(keyOf),
+      ),
     );
+    expect(duplicateKeys(listed)).toEqual([]);
+  });
+
+  it('lists the panel after the rows, with no key shared between them', () => {
+    const rows = { list: [scene, asset], selection: NONE, visible: ['documents' as const] };
+    const panel = {
+      assets : [{ hash: 'a1b2c3d4', label: 'Aiko', accepted: false }],
+      scenes : ['arrival'],
+      shots  : [],
+      visible: ['documents' as const],
+    };
+    const listed = controls({ rows, panel });
+    expect(listed.map(keyOf).slice(-2)).toEqual([
+      'item:link/asset/a1b2c3d4',
+      'item:link/scene/arrival',
+    ]);
     expect(duplicateKeys(listed)).toEqual([]);
   });
 });

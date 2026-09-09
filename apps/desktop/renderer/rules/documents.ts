@@ -4,8 +4,9 @@
  * then opens the editor that claims it, or expands where it names nothing.
  */
 import { type Action, type Offer } from './anchors.js';
-import { expand, publish, type Publishes } from './effects.js';
+import { EVERY_NODE, expand, publish, view, type Publishes } from './effects.js';
 import { openOf, routeFor } from './route.js';
+import { cellAction, type StripAsset } from './assetstrip.js';
 import {
   nodeIsSelected,
   nodeKey,
@@ -26,6 +27,8 @@ export interface RowState {
 
 /** What the Documents pane reads when it draws its bar, its rename box and its rows. */
 export interface DocumentsState {
+  /** Which grouping the pane shows; `documents` when unset. */
+  mode?: DocMode;
   /** The document whose row holds the rename box, while one does. */
   renaming?: { path: string; name: string };
   /** The rows on screen, the selection they are drawn against and the editors that are up. */
@@ -34,6 +37,122 @@ export interface DocumentsState {
     selection: Selection;
     visible: readonly EditorId[];
   };
+  /** The backlink panel under the rows, drawn for the picked character or location. */
+  panel?: BacklinkPanel;
+}
+
+/** The two groupings the tree can show. */
+export type DocMode = 'files' | 'documents';
+
+/** What the panel draws: the sheet, the art, and the scenes and shots the subject appears in. */
+export interface BacklinkPanel {
+  /** The sheet the subject was discovered in, and whether it lives in the story bible. */
+  sheet?: { path: string; wiki: boolean };
+  assets: readonly StripAsset[];
+  scenes: readonly string[];
+  shots: readonly { scene: string; shot: string }[];
+  /** The editors some pane is showing, which the route a link opens with depends on. */
+  visible: readonly EditorId[];
+}
+
+/**
+ * The bar's mode toggle. Labelled with the mode it is in rather than the one it would switch to,
+ * matching the header's own PLAN/EXECUTE button.
+ */
+export function modeAction(mode: DocMode): Offer {
+  return {
+    ok: true,
+    ...view('mode'),
+    on     : 'mode',
+    label  : mode === 'files' ? 'FILES' : 'DOCUMENTS',
+    tooltip:
+      mode === 'files'
+        ? 'Showing every file on disk. Click to group by what the documents are instead.'
+        : 'Showing cast, locations and scenes. Click to see the folders they live in instead.',
+  };
+}
+
+/** The bar's Refresh. */
+export function reloadAction(): Offer {
+  return {
+    ok: true,
+    ...view('reload'),
+    on     : 'reload',
+    label  : 'Refresh',
+    tooltip: 'Re-read the project from disk',
+  };
+}
+
+/**
+ * The bar's fold-everything button. Folding the tree back up is not the same as reloading:
+ * expansion survives every refetch, so without it a tree left with dozens of open branches has
+ * to be closed row by row.
+ */
+export function collapseAction(): Offer {
+  return {
+    ok: true,
+    ...expand(EVERY_NODE),
+    on     : 'all',
+    label  : 'Close all',
+    tooltip: 'Fold every branch of the tree shut',
+  };
+}
+
+/**
+ * The panel's sheet row. Labelled by where the sheet lives, because a character filed in the
+ * story bible is still a character and the author would otherwise not know which of the two it is.
+ */
+export function sheetLinkAction(
+  sheet: { path: string; wiki: boolean },
+  visible: readonly EditorId[],
+): Offer {
+  const node: DocNode = {
+    id   : `wiki:${sheet.path}`,
+    kind : 'wiki',
+    label: sheet.path,
+    path : sheet.path,
+  };
+  const open = openOf(routeFor({ node, visible }));
+  return {
+    ok: true,
+    ...publish({ docPath: sheet.path }),
+    on     : 'link/sheet',
+    label  : `${sheet.wiki ? 'in the story bible' : 'sheet'} · ${sheet.path}`,
+    tooltip: `Open ${sheet.path}`,
+    ...(open ? { then: [open] } : {}),
+  };
+}
+
+/** A panel row naming a scene the subject appears in, which selects that scene. */
+export function sceneLinkAction(scene: string): Offer {
+  return {
+    ok: true,
+    ...publish({ sceneId: scene, shotId: '' }),
+    on     : `link/scene/${scene}`,
+    label  : scene,
+    tooltip: `Go to ${scene}`,
+  };
+}
+
+/** A panel row naming a shot the subject is framed in, which selects the shot and its scene. */
+export function shotLinkAction(scene: string, shot: string): Offer {
+  return {
+    ok: true,
+    ...publish({ sceneId: scene, shotId: shot }),
+    on     : `link/shot/${scene}/${shot}`,
+    label  : shot,
+    tooltip: `Go to this shot of ${scene}`,
+  };
+}
+
+/** Every offer the panel draws, in draw order: the sheet, the art, the scenes, the shots. */
+export function panelControls(panel: BacklinkPanel): Offer[] {
+  return [
+    ...(panel.sheet ? [sheetLinkAction(panel.sheet, panel.visible)] : []),
+    ...panel.assets.map((asset) => cellAction(asset, panel.visible)),
+    ...panel.scenes.map(sceneLinkAction),
+    ...panel.shots.map(({ scene, shot }) => shotLinkAction(scene, shot)),
+  ];
 }
 
 /**
@@ -168,13 +287,19 @@ export function rowAction(
   };
 }
 
-/** Every offer the Documents pane draws from this module. */
+/** Every offer the Documents pane draws from this module: the bar, the rename box, the rows, the panel. */
 export function controls(state: DocumentsState): readonly Offer[] {
-  const list: Offer[] = [createAction()];
+  const list: Offer[] = [
+    modeAction(state.mode ?? 'documents'),
+    createAction(),
+    reloadAction(),
+    collapseAction(),
+  ];
   if (state.renaming) list.push(renameAction(state.renaming));
   if (state.rows) {
     const { selection, visible } = state.rows;
     for (const row of state.rows.list) list.push(rowAction(row, selection, visible));
   }
+  if (state.panel) list.push(...panelControls(state.panel));
   return list;
 }

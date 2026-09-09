@@ -20,7 +20,18 @@ import {
 } from '../doctree/doctree.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { VN_ICONS } from '../app/icons.js';
-import { createAction, renameAction, rowAction } from '../../rules/documents.js';
+import {
+  collapseAction,
+  createAction,
+  modeAction,
+  reloadAction,
+  renameAction,
+  rowAction,
+  sceneLinkAction,
+  sheetLinkAction,
+  shotLinkAction,
+} from '../../rules/documents.js';
+import { cellAction } from '../../rules/assetstrip.js';
 import { redrawing } from '../tour/anchors.js';
 import { assetNode, openNode } from '../panes/open.js';
 import { visibleEditors } from '../panes/route.js';
@@ -222,14 +233,13 @@ export class DocumentsEditor extends VnEditor {
   private rebuildBar(): void {
     const files = this.mode === 'files';
     this.bar.clear();
-    // Labelled with the mode it is in rather than the one it would switch to, matching the
-    // header's own PLAN/EXECUTE button.
-    this.bar.button(files ? 'FILES' : 'DOCUMENTS', () =>
-      this.setMode(files ? 'documents' : 'files'),
-    ).description = files
-      ? 'Showing every file on disk. Click to group by what the documents are instead.'
-      : 'Showing cast, locations and scenes. Click to see the folders they live in instead.';
     const anchors = redrawing('documents', 'bar');
+    const mode = modeAction(this.mode);
+    anchors.act(
+      this.bar.button(mode.label, () => {}),
+      mode,
+      () => this.setMode(files ? 'documents' : 'files'),
+    );
     // The button rather than the row it opens: pressing it is where writing a document starts, and
     // the kind and the name are both typed after it.
     const create = createAction();
@@ -238,15 +248,20 @@ export class DocumentsEditor extends VnEditor {
       create,
       () => this.showNewRow(),
     );
-    this.bar.button('Refresh', () => void this.load()).description =
-      'Re-read the project from disk';
-    // Folding the tree back up is not the same as reloading: expansion survives every refetch, so
-    // without this button a tree left with dozens of open branches has to be closed row by row.
-    const shut =
+    const reload = reloadAction();
+    anchors.act(
+      this.bar.button(reload.label, () => {}),
+      reload,
+      () => void this.load(),
+    );
+    const shut = collapseAction();
+    anchors.act(
       VN_ICONS.collapse >= 0
-        ? this.bar.iconbutton(VN_ICONS.collapse, '', () => this.collapseAll())
-        : this.bar.button('Close all', () => this.collapseAll());
-    shut.description = 'Fold every branch of the tree shut';
+        ? this.bar.iconbutton(VN_ICONS.collapse, '', () => {})
+        : this.bar.button(shut.label, () => {}),
+      shut,
+      () => this.collapseAll(),
+    );
     this.bar.flushUpdate();
   }
 
@@ -420,10 +435,13 @@ export class DocumentsEditor extends VnEditor {
    */
   private rebuildPanel(): void {
     this.panel.textContent = '';
+    const anchors = redrawing('documents', 'panel');
 
     const id = backlinkSubject(this.picked, this.selection());
     const links = id ? this.tree?.backlinks[id] : undefined;
     if (!links || !this.tree) return;
+    const screen = this.ctx?.screen as VnScreen | undefined;
+    const visible = visibleEditors(screen ? panesOf(screen) : []);
 
     const node = findNode(this.tree.roots, id);
     const head = el('div', 'dt-subject');
@@ -436,11 +454,10 @@ export class DocumentsEditor extends VnEditor {
     // The sheet row is labelled by where the sheet lives, because a character filed in the story
     // bible is still a character and the author would otherwise not know which of the two it is.
     if (links.sheet) {
-      const label = links.wiki ? 'in the story bible' : 'sheet';
+      const sheet = links.sheet;
+      const link = sheetLinkAction({ path: sheet, wiki: links.wiki !== undefined }, visible);
       this.panel.appendChild(
-        this.linkRow(`${label} · ${links.sheet}`, `Open ${links.sheet}`, () =>
-          this.openDoc(links.sheet!),
-        ),
+        anchors.act(el('div', 'dt-link', link.label), link, () => this.openDoc(sheet)),
       );
     }
 
@@ -448,14 +465,18 @@ export class DocumentsEditor extends VnEditor {
     // scene and shot rows below are the rest of the answer. Saying a strip is empty earns its
     // place only in a pane showing one document.
     const strip = el('div', 'dt-strip');
-    renderAssetStrip(strip, assetGroups(links), '', { onPick: (hash) => this.openAsset(hash) });
+    renderAssetStrip(strip, assetGroups(links), '', {
+      onPick: (hash) => this.openAsset(hash),
+      anchor: (box, asset, run) => anchors.act(box, cellAction(asset, visible), run),
+    });
     this.panel.appendChild(strip);
 
     if (links.scenes.length > 0) {
       this.panel.appendChild(el('div', 'dt-section', 'SCENES'));
       for (const scene of links.scenes) {
+        const link = sceneLinkAction(scene);
         this.panel.appendChild(
-          this.linkRow(scene, `Go to ${scene}`, () =>
+          anchors.act(el('div', 'dt-link', link.label), link, () =>
             this.publish({ ...this.selection(), sceneId: scene, shotId: '' }),
           ),
         );
@@ -465,20 +486,14 @@ export class DocumentsEditor extends VnEditor {
     if (links.shots.length > 0) {
       this.panel.appendChild(el('div', 'dt-section', 'SHOTS'));
       for (const { scene, shot } of links.shots) {
+        const link = shotLinkAction(scene, shot);
         this.panel.appendChild(
-          this.linkRow(shot, `Go to this shot of ${scene}`, () =>
+          anchors.act(el('div', 'dt-link', link.label), link, () =>
             this.publish({ ...this.selection(), sceneId: scene, shotId: shot }),
           ),
         );
       }
     }
-  }
-
-  private linkRow(text: string, tip: string, onClick: () => void): HTMLElement {
-    const row = el('div', 'dt-link', text);
-    row.title = tip;
-    row.addEventListener('click', onClick);
-    return row;
   }
 
   // -------------------------------------------------------------------------
