@@ -1,13 +1,13 @@
 /**
- * Closes an editor's nstructjs struct script, declaring its own per-pane fields inside it.
+ * Finalizes an editor's `nstructjs` definition by injecting its pane-specific fields.
  *
- * `STRUCT.inherit` hands back an open script (the struct name, a brace, and the parent's fields)
- * which every caller in path.ux closes by appending `'\n}'`. An editor that remembers something of
- * its own declares it between the two, and CLAUDE.md forbids writing the struct by hand, so
- * `registerEditor` splices it in here.
+ * `STRUCT.inherit` returns an open struct definition (header, opening brace, and parent
+ * fields) normally closed by appending `'\n}'`. Because project guidelines forbid writing
+ * the full struct definition by hand, `registerEditor` splices the editor's custom fields
+ * into that gap before sealing the block.
  *
- * This module imports nothing from `pathux`, so the splice is testable in node against the real
- * nstructjs rather than only in a browser.
+ * Free of `pathux` imports so this splicing logic can be unit tested in Node directly
+ * against `nstructjs` without a browser environment.
  */
 
 /**

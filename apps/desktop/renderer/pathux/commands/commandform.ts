@@ -1,11 +1,11 @@
 /**
- * One command as a form: its declared props as widgets, the live verdict above the button, and the
- * button that runs it.
+ * Form view for a single command, containing its input widgets, status verdict,
+ * and submit button.
  *
- * It is its own thing because two surfaces host it — the palette's detail column and the command
- * dialog — and a second copy of these rules would be two places to disagree about how a
- * `directory` draws, when `confirm` needs a second click, or whether an `undeclared` check is a
- * yes. `coerceProps` in main stays the authority on the values themselves.
+ * Shared between the palette detail column and the command dialog to ensure
+ * consistent interaction rules (e.g., `directory` rendering, `confirm` click guards,
+ * and `undeclared` handling). `coerceProps` in main remains the authority on
+ * underlying values.
  */
 import { EnumProperty, ThumbnailCache, pickAssetPopup } from 'pathux';
 import type { Button, Container, DropBox, TextBox } from 'pathux';
