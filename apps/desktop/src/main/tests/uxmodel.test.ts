@@ -98,7 +98,7 @@ describe('ux-model.json against the registry', () => {
  * **`enabled`, the tooltip and the refusal sentence are deliberately not compared, and must not
  * be added.** The derived tier is situation-indexed and the measured tier is not: a rule module
  * answers `controls(state)` once per situation, so 981 derived control records collapse to 302
- * `(editor, widgetPath)` pairs, 47 of which carry records that disagree with each other on
+ * `(editor, widgetPath)` pairs, 46 of which carry records that disagree with each other on
  * `offer.ok`. A measured record observes one screen state and keys onto several derived records
  * holding contradictory values for exactly those fields, so the comparison would be a coin toss.
  * They have a better oracle in any case: the sweep asks `stack.check` per command anchor and

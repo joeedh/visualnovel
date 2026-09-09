@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-09T10:14:35.048Z",
-  "gitSha"       : "9cb8e9a29bd1560fd834621d0ad101ad04b3f124",
+  "sweptAt"      : "2026-09-09T10:23:32.126Z",
+  "gitSha"       : "a8c9b37417e6cffa52c912b4420643007c0f1aa8",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -3148,16 +3148,16 @@
     {
       "id"        : "project.setKey",
       "editor"    : "onboarding",
-      "key"       : "cmd:project.setKey#anthropic",
-      "widgetPath": "onboarding/project-setkey~b45dc248",
+      "key"       : "cmd:project.setKey#gemini",
+      "widgetPath": "onboarding/project-setkey~83f4e4d5",
       "supplies"  : ["key"],
       "refused"   : "Paste a key first"
     },
     {
       "id"        : "project.setKey",
       "editor"    : "onboarding",
-      "key"       : "cmd:project.setKey#gemini",
-      "widgetPath": "onboarding/project-setkey~83f4e4d5",
+      "key"       : "cmd:project.setKey#anthropic",
+      "widgetPath": "onboarding/project-setkey~b45dc248",
       "supplies"  : ["key"],
       "refused"   : "Paste a key first"
     },

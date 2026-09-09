@@ -5,9 +5,9 @@ offer a control draws and the offer a rule module derives are one serialized typ
 the two controls whose recorded offer already goes stale, and widens the
 derived-against-measured comparison as far as it can honestly go.
 
-Status: **planned**. Plan 7 of the eight in
-[`ux-behaviour-model-tasklist.md`](ux-behaviour-model-tasklist.md); depends on plans 3 and
-6, both shipped.
+Status: **shipped** 2026-09-09; see [As shipped](#as-shipped). Plan 7 of the eight in
+[`ux-behaviour-model-tasklist.md`](../ux-behaviour-model-tasklist.md); depends on plans 3
+and 6, both shipped.
 
 Revised once, after a fresh-context pressure test that removed two stages, inverted one
 design decision and cut the plan's central claim in half. See [Findings](#findings) for
@@ -15,6 +15,7 @@ the disposition of each of the sixteen results.
 
 <!-- toc -->
 
+- [As shipped](#as-shipped)
 - [Context](#context)
     - [What exists](#what-exists)
     - [What plan 6 shipped, and what it costs to use](#what-plan-6-shipped-and-what-it-costs-to-use)
@@ -46,6 +47,46 @@ the disposition of each of the sixteen results.
     - [Rejected](#rejected)
 
 <!-- tocstop -->
+
+## As shipped
+
+Shipped 2026-09-09 on `measured-tags`, off `master` at `463b8527`: seven commits, one per
+stage, each green under `pnpm check`, `pnpm test` and `pnpm lint`. **No path.ux change was
+needed** — stage 5's reachability probe found nothing behind a shadow root `walkWidgets`
+does not descend — so both submodules are untouched and no `walk-widen` branch exists.
+
+The shape that landed, in one paragraph: `writeTag(owner, offer, scope, first)` in
+`rules/anchors.ts` is the single writer of a `StdUXMeta`, `tagOf(offer, scope)` is the
+same call against a bare object, and the derived tier and the live pass therefore name a
+control identically wherever they can name it at all. The pass's `present()` calls the
+writer; `dumpAnchors()` hands the tag over through `nstructjs.writeJSON`; the sweep
+flattens it back.
+
+The numbers, from the two committed files at the last commit:
+
+- `ux-model.json`: 981 control records, collapsing to **302 `(editor, widgetPath)` pairs**
+  against 300 `(editor, key)` pairs — `supplies` and `form` enter `identity()` and not
+  `keyOf`. 46 of those pairs hold records that disagree with each other on `offer.ok`,
+  which is why the comparison excludes `enabled`, the tooltip and the refusal sentence.
+- `anchors.json` (sha `a8c9b374`, against the sample project): 429 records — 339 controls
+  over 20 homes and 90 menu entries — every control carrying a `widgetPath` and 88 a
+  `then`; **0 strays, 0 enabled-state disagreements, 0 `wording` disagreements, 0
+  `untagged`, 0 `unwalked`**. Two tagged controls are not anchored at the moment of the
+  sweep and are printed as information: the composer's Stop button and the agent report's,
+  both hidden between turns. Two consecutive sweeps differ only in `sweptAt`.
+- **116 of the 339 swept controls have a `widgetPath` the derived tier also produces**,
+  and those are the population the second comparison checks. The other 223 name a subject
+  the fixtures do not have.
+
+| Stage | As shipped                                                                                                                                                                                                                                                                                                                                               |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | The budget menu and the Compact button anchor **only** through their own passes; the bar's pass records neither, since its record is created first and would shadow the fresh one. The test is a source scan — `tour/anchors.ts` is the only caller of `applyOffer` under `renderer/pathux/**` — because node-only jest cannot load a pass (`ed758922`). |
+| 2     | Four config files, not three: `scripts/aliases.mjs` as well, or `pnpm gen:uxmodel` cannot bundle stage 3's driver. `static override STRUCT`. `props` and `then` are string fields with `propValues` / `thenActions` accessors (`3dc0e17e`).                                                                                                              |
+| 3     | `tagOf` fills `widgetPath` itself rather than through `widgetPathOf`, which needs an owner; `toolOf` splits out the tool alone for stage 4's append. `widgetPath` is required in `UX_RECORD`'s control branch (`e87feb67`).                                                                                                                              |
+| 4     | The writer is `writeTag` in `rules/anchors.ts`, so `tagOf` is one call into it and the replace-then-append rule is testable in node. `dumpAnchors()` returns `{ key, editor, tag, via, nodeId?, rect? }` — the three extra fields are the anchor's, not the offer's (`a1b5cb35`).                                                                        |
+| 5     | The walk is a second oracle, not a replacement: it cannot produce `Anchor.key` or `Anchor.via`, and it disagrees with the passes about what is drawn. `walk()` on the registry, `unwalked` in the file, and the unclaimed paths printed as information (`9cb8e9a2`).                                                                                     |
+| 6     | Two assertions rather than one, both on situation-invariant fields only: every swept control has a derived record with the same id, `form`, `supplies` and `then` **by shape**, and the two tiers agree wherever both name a control the same `widgetPath`. `then` by value fails on `view.open`'s `where` alone (`a8c9b374`).                           |
+| 7     | The sweep re-run, the docs as listed, and this section. `guided-tours.md` gained a **The meta tag** subsection under Part I (this commit).                                                                                                                                                                                                               |
 
 ## Context
 
@@ -481,10 +522,20 @@ all.
 
 ### Stage 7 — the sweep, and the docs
 
-Re-run the sweep, and update
-[`../reference/guided-tours.md`](../reference/guided-tours.md) — Part I's registry and
+**Done.** Re-run the sweep, and update
+[`../reference/guided-tours.md`](../../reference/guided-tours.md) — Part I's registry and
 dump sections, Part III's record, and the enforcement list — plus an As-shipped section
 here, the tasklist row and `index.md`.
+
+As shipped:
+
+- `guided-tours.md` gained a **The meta tag** subsection under Part I, since the tag is
+  neither a registry detail nor a recording detail; the registry section covers `dump()`
+  and `walk()`, the cross-checks cover `untagged` and `unwalked`, and Part III's record
+  and rule table carry `widgetPath`.
+- Stage 6 recorded 47 `(editor, widgetPath)` pairs holding records that disagree on
+  `offer.ok`. The count over the committed file is 46, corrected in both the test's doc
+  comment and the doc.
 
 ## Testing
 

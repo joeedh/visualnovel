@@ -37,7 +37,7 @@ that neither report knew about. Those are in
 | 4   | [Pseudo-commands, and a control's list of effects](archive/pseudo-commands-and-a-controls-effects.md) | app                                  | 1          | The closed effect vocabulary in the catalog, closures rewritten as recorded effects, and the four rules effects unlock                                                                               |
 | 5   | Disabling menu items, and refusals that carry a reason                                                | `vendor/path.ux`                     | —          | **Already written and complete**, and the authority on its own scope: `menu-item-disabling.md`, stages 1-5 done, stage 6 (the native menu bar) dropped                                               |
 | 6   | [Finishing the meta-tag system](../../vendor/path.ux/documentation/plans/meta-tag-system.md)          | `vendor/path.ux` + `path-controller` | 5          | **Shipped 2026-09-09.** The barrel exports, an owner type covering a raw DOM node, a scope-plus-segment `widgetPath`, `enabled` and `refusal`, a validating deserialize, and the `toolPath` builders |
-| 7   | [The measured tier reads tags](the-measured-tier-reads-tags.md)                                       | app                                  | 3, 6       | `act()` writes a `StdUXMeta`, the sweep walks widgets instead of `window.__vnAnchors`, derived compared against measured                                                                             |
+| 7   | [The measured tier reads tags](archive/the-measured-tier-reads-tags.md)                               | app                                  | 3, 6       | **Shipped 2026-09-09.** `act()` writes a `StdUXMeta`, the sweep reads it and walks widgets as a second oracle, derived compared against measured                                                     |
 | 8   | `affects` on every command, and the executed tier                                                     | app                                  | —          | Each command declaring the subtrees and `ui.*` fields it may touch, verified by diffing the undo snapshot                                                                                            |
 
 Plans 1, 2, 3 and 7 are the model itself. Plan 4 widens its vocabulary past commands.
@@ -250,7 +250,7 @@ Routing the two reports' open decisions, so no plan starts by rediscovering them
   a function of the home. The plan also establishes that `enabled`, `tooltip` and the
   refusal sentence cannot be compared across the tiers at all — the derived tier is
   situation-indexed and a `widgetPath` is situation-blind by construction. See
-  [`the-measured-tier-reads-tags.md`](the-measured-tier-reads-tags.md).
+  [`the-measured-tier-reads-tags.md`](archive/the-measured-tier-reads-tags.md).
 - **Plan 8** — whether `affects` is a list of document-tree path prefixes, a list of
   `ui.*` field names, or both, and how the snapshot diff is matched against it.
 
@@ -363,8 +363,8 @@ quoted under each, so the claim stays traceable.
 - [x] 6 — finishing the meta-tag system (path.ux + `path-controller`; shipped 2026-09-09:
       [`meta-tag-system.md`](../../vendor/path.ux/documentation/plans/meta-tag-system.md),
       [`meta_tags.md`](../../vendor/path.ux/documentation/meta_tags.md))
-- [ ] 7 — the measured tier reads tags (written 2026-09-09:
-      [`the-measured-tier-reads-tags.md`](the-measured-tier-reads-tags.md))
+- [x] 7 — the measured tier reads tags (shipped 2026-09-09:
+      [`the-measured-tier-reads-tags.md`](archive/the-measured-tier-reads-tags.md))
 - [ ] 8 — `affects` on every command, and the executed tier
 
 ## Stopping points
