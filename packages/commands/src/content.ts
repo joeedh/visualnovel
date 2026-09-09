@@ -394,3 +394,50 @@ export class ContentStore {
     await fs.rmdir(dir).catch(() => {});
   }
 }
+
+/**
+ * The paths whose contents differ between two trees, root-relative, forward-slashed and sorted.
+ * A path in one tree and not the other counts, and so does one that changed from a file to a
+ * directory or back.
+ *
+ * The read-only half of what a restore walks, so what it reports is what a restore would touch —
+ * which also means it reports nothing about the paths a capture skipped. Media never enters a
+ * tree, so a command that writes only a picture answers an empty list here.
+ */
+export function diffTrees(store: ContentStore, from: string, to: string): string[] {
+  const changed: string[] = [];
+  diffDir(store, '', from, to, changed);
+  return changed.sort();
+}
+
+function diffDir(
+  store: ContentStore,
+  prefix: string,
+  from: string,
+  to: string,
+  changed: string[],
+): void {
+  if (from === to) return;
+  const before = new Map((store.tree(from) ?? []).map((e) => [e.name, e]));
+  const after = new Map((store.tree(to) ?? []).map((e) => [e.name, e]));
+
+  for (const [name, entry] of after) {
+    const rel = prefix === '' ? name : `${prefix}/${name}`;
+    const was = before.get(name);
+    if (was && was.kind === entry.kind && was.hash === entry.hash) continue;
+    if (entry.kind === 'blob') changed.push(rel);
+    // A path that was a file and is now a directory is reported as both: the file went, and
+    // whatever the directory now holds arrived.
+    if (was?.kind === 'blob' && entry.kind === 'tree') changed.push(rel);
+    if (entry.kind === 'tree') {
+      diffDir(store, rel, was?.kind === 'tree' ? was.hash : EMPTY_HASH, entry.hash, changed);
+    }
+  }
+
+  for (const [name, entry] of before) {
+    if (after.has(name)) continue;
+    const rel = prefix === '' ? name : `${prefix}/${name}`;
+    if (entry.kind === 'blob') changed.push(rel);
+    else diffDir(store, rel, entry.hash, EMPTY_HASH, changed);
+  }
+}

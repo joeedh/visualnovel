@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ContentStore } from '../content.js';
+import { ContentStore, diffTrees } from '../content.js';
 
 let dir: string;
 
@@ -190,5 +190,48 @@ describe('ContentStore', () => {
       expect(changed).toEqual(['a.md']);
       expect(await fs.readFile(join(dir, 'a.md'), 'utf8')).toBe('first\n');
     });
+  });
+});
+
+describe('diffTrees', () => {
+  it('names an added file, a removed file and a changed one, and nothing else', async () => {
+    await fs.mkdir(join(dir, 'kept'), { recursive: true });
+    await write('kept/steady.md', 'unchanged\n');
+    await write('gone.md', 'here for now\n');
+    await write('moved.md', 'before\n');
+    const store = new ContentStore();
+    const before = await store.capture(dir);
+
+    await settle();
+    await fs.rm(join(dir, 'gone.md'));
+    await write('moved.md', 'after\n');
+    await write('new.md', 'arrived\n');
+    const after = await store.capture(dir);
+
+    expect(diffTrees(store, before, after)).toEqual(['gone.md', 'moved.md', 'new.md']);
+  });
+
+  it('reports a path that changed kind as both the file and what the directory now holds', async () => {
+    await write('thing', 'a file\n');
+    const store = new ContentStore();
+    const before = await store.capture(dir);
+
+    await settle();
+    await fs.rm(join(dir, 'thing'));
+    await fs.mkdir(join(dir, 'thing'));
+    await write('thing/inside.md', 'now a directory\n');
+    const after = await store.capture(dir);
+
+    expect(diffTrees(store, before, after)).toEqual(['thing', 'thing/inside.md']);
+  });
+
+  it('answers nothing for two captures of a tree nobody touched', async () => {
+    await write('a.md', 'alpha\n');
+    const store = new ContentStore();
+    const before = await store.capture(dir);
+    await settle();
+    const after = await store.capture(dir);
+
+    expect(diffTrees(store, before, after)).toEqual([]);
   });
 });

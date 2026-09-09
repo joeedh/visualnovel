@@ -11,6 +11,7 @@ export {
   ContentStore,
   EMPTY_HASH,
   MEDIA_EXTS,
+  diffTrees,
   type EntryKind,
   type StoreStats,
   type TreeEntry,
