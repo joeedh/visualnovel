@@ -343,6 +343,18 @@
       "why": "Nodes are selected but the level on screen no longer resolves, so every button is refused with NO_LEVEL."
     },
     {
+      "module": "inspector",
+      "editor": "inspector",
+      "name"  : "no-task",
+      "why"   : "Nothing is selected, so only Refresh is drawn."
+    },
+    {
+      "module": "inspector",
+      "editor": "inspector",
+      "name"  : "task",
+      "why": "A task is on screen; its attempts are read-only, so Refresh is still the one control."
+    },
+    {
       "module": "onboarding",
       "editor": "onboarding",
       "name"  : "blank",
@@ -15583,6 +15595,56 @@
         "id"     : "pane.view",
         "label"  : "⟳",
         "tooltip": "Re-read this graph from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "inspector",
+      "module"   : "inspector",
+      "situation": "no-task",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read this task, its attempts and its prompt from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "inspector",
+      "module"   : "inspector",
+      "situation": "task",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read this task, its attempts and its prompt from disk",
         "on"     : "reload",
         "ok"     : true,
         "props": {

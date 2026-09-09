@@ -27,6 +27,7 @@ import * as promptview from './promptview.js';
 import * as branch from './branch/controls.js';
 import * as documents from './documents.js';
 import * as gengraph from './gengraph.js';
+import * as inspector from './inspector.js';
 import * as onboarding from './onboarding.js';
 import * as play from './play.js';
 import * as projectbar from './projectbar.js';
@@ -48,6 +49,7 @@ import { SITUATIONS as PROMPTVIEW } from './situations/promptview.js';
 import { SITUATIONS as BRANCH } from './situations/branch.js';
 import { SITUATIONS as DOCUMENTS } from './situations/documents.js';
 import { SITUATIONS as GENGRAPH } from './situations/gengraph.js';
+import { SITUATIONS as INSPECTOR } from './situations/inspector.js';
 import { SITUATIONS as ONBOARDING } from './situations/onboarding.js';
 import { SITUATIONS as PLAY } from './situations/play.js';
 import { SITUATIONS as PROJECTBAR } from './situations/projectbar.js';
@@ -99,6 +101,7 @@ export const ROWS: readonly Row<unknown>[] = [
   row('convobar', 'convo', CONVOBAR, convobar.controls),
   row('documents', 'documents', DOCUMENTS, documents.controls),
   row('gengraph', 'gengraph', GENGRAPH, gengraph.controls),
+  row('inspector', 'inspector', INSPECTOR, inspector.controls),
   row('onboarding', 'onboarding', ONBOARDING, onboarding.controls),
   row('play', 'play', PLAY, play.controls),
   row('projectbar', 'project', PROJECTBAR, projectbar.controls),

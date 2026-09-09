@@ -7,6 +7,7 @@ import { SITUATIONS as promptview } from '../promptview.js';
 import { SITUATIONS as branch } from '../branch.js';
 import { SITUATIONS as documents } from '../documents.js';
 import { SITUATIONS as gengraph } from '../gengraph.js';
+import { SITUATIONS as inspector } from '../inspector.js';
 import { SITUATIONS as onboarding } from '../onboarding.js';
 import { SITUATIONS as play } from '../play.js';
 import { SITUATIONS as projectbar } from '../projectbar.js';
@@ -25,6 +26,7 @@ import * as promptviewRules from '../../promptview.js';
 import * as branchRules from '../../branch/controls.js';
 import * as documentsRules from '../../documents.js';
 import * as gengraphRules from '../../gengraph.js';
+import * as inspectorRules from '../../inspector.js';
 import * as onboardingRules from '../../onboarding.js';
 import * as playRules from '../../play.js';
 import * as projectbarRules from '../../projectbar.js';
@@ -62,6 +64,7 @@ const ROWS: Row<unknown>[] = [
   row('branch', branch, branchRules.controls),
   row('documents', documents, documentsRules.controls),
   row('gengraph', gengraph, gengraphRules.controls),
+  row('inspector', inspector, inspectorRules.controls),
   row('onboarding', onboarding, onboardingRules.controls),
   row('play', play, playRules.controls),
   row('projectbar', projectbar, projectbarRules.controls),

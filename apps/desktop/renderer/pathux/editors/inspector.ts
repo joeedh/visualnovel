@@ -11,6 +11,8 @@ import {
   type TriageSummary,
 } from '../../rules/attempts.js';
 import { subjectOf } from '../../rules/taskGraph.js';
+import { reloadAction } from '../../rules/inspector.js';
+import { redrawing } from '../tour/anchors.js';
 import { card, centered, dot, mono, note, row, stamp, statusColour } from '../widgets/dom.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { TOKENS, alpha } from '../app/tokens.js';
@@ -130,8 +132,12 @@ export class InspectorEditor extends VnEditor {
     this.bar.clear();
     this.bar.label('INSPECTOR').style['padding'] = '0px 8px';
     this.bar.label(task ? subjectOf(task) : '—').style['padding'] = '0px 8px';
-    this.bar.button('Refresh', () => void this.load()).description =
-      'Re-read this task, its attempts and its prompt from disk';
+    const reload = reloadAction();
+    redrawing('inspector', 'bar').act(
+      this.bar.button(reload.label, () => {}),
+      reload,
+      () => void this.load(),
+    );
     this.pinToggle(this.bar);
     this.bar.flushUpdate();
   }
