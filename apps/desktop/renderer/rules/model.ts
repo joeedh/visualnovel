@@ -11,6 +11,7 @@ import { keyOf, type Offer } from './anchors.js';
 import { PALETTE_ONLY } from './paletteonly.js';
 import { MENU_EXEMPT } from './menuexempt.js';
 import { MENU_ROWS, menuRecords } from './menus.js';
+import { comboOf, findShortcut, shortcutRecords } from './shortcuts.js';
 import { isEffectId } from '../../src/shared/effects.js';
 import type { Situation } from './situations/situation.js';
 import type { AnchorHome } from '../../src/shared/editors.js';
@@ -163,12 +164,17 @@ export function effectsOf(offer: UxOffer): UxAction[] {
   return [{ id: offer.id, props: offer.props }, ...(offer.then ?? [])];
 }
 
-/** The records one situation yields: each offer picked, and stamped where its reason is the stack's. */
+/**
+ * The records one situation yields: each offer picked, stamped where its reason is the stack's,
+ * and stamped with the key bound to its first effect in its editor's scope or the shell's.
+ */
 export function situationRecords<S>(row: Row<S>, situation: Situation<S>): UxControlRecord[] {
   const stackWorded = new Set(refusingVerdicts(situation.state));
   return row.controls(situation.state).map((offer) => {
     const picked = pickOffer(offer);
     const fromStack = !picked.ok && stackWorded.has(picked.refusal.reason);
+    const effects = effectsOf(picked);
+    const bound = findShortcut(effects[0]!, picked.on, row.editor);
     return {
       via      : 'control',
       editor   : row.editor,
@@ -176,15 +182,16 @@ export function situationRecords<S>(row: Row<S>, situation: Situation<S>): UxCon
       situation: situation.name,
       key      : keyOf(offer),
       offer    : picked,
-      effects  : effectsOf(picked),
+      effects,
       ...(fromStack ? { reasonFrom: 'stack' } : {}),
+      ...(bound === undefined ? {} : { shortcut: comboOf(bound) }),
     };
   });
 }
 
 /**
  * The whole file: the control situations in table order, then the menu situations, then every
- * record in the same order, then the palette-only and exemption lists.
+ * record in the same order, then the palette-only list, the shortcut table and the exemption list.
  */
 export function model(): UxModel {
   const situations: UxModel['situations'] = [];
@@ -215,7 +222,7 @@ export function model(): UxModel {
     situations,
     records,
     paletteOnly: PALETTE_ONLY.map((entry) => ({ ...entry })),
-    shortcuts  : [],
+    shortcuts  : shortcutRecords(),
     menuExempt : MENU_EXEMPT.map((entry) => ({ ...entry })),
   };
 }

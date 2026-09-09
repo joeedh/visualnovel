@@ -64,7 +64,7 @@ import GENGRAPH_CSS from '../../styles/gengraph.css?inline';
 import { defineGraphApi } from '../app/api.js';
 import { beginCheckpoint, endCheckpoint, exec, onWrote, say } from '../app/bridge.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
-import { redrawing } from '../tour/anchors.js';
+import { redrawing, watchKeymap } from '../tour/anchors.js';
 import { assetNode, openNode } from '../panes/open.js';
 import type { VnScreen } from '../app/screen.js';
 
@@ -252,6 +252,7 @@ export class GenGraphEditor extends VnEditor {
     // the screen keymap, and path.ux declines to route a keystroke that landed in a textbox, so a
     // node's own prop rows keep their editing keys.
     this.keymap = new KeyMap(this.view.hotkeys());
+    watchKeymap('gengraph', () => this.keymap);
 
     // The links are painted on a canvas sized from the pan area at paint time, and nothing repaints
     // it when the pane is dragged wider: they would stay clipped to the width the pane opened at.

@@ -141,6 +141,18 @@ const disagreements = [];
 const strays = [];
 const drawn = [];
 
+/**
+ * Each live keymap against the shortcut table, by scope. A pane's keymap is live only while the
+ * pane is, so this is read after each editor is opened and the last reading of a scope is kept.
+ */
+const scopes = new Map();
+async function noteShortcuts() {
+  const report = JSON.parse(
+    await evaluate(socket, 'JSON.stringify(window.__vnAnchors.shortcuts?.() ?? [])'),
+  );
+  for (const scope of report) scopes.set(scope.scope, scope);
+}
+
 // The tree first, so a scene and a shot are selected before the panes that follow them are opened.
 await run("view.open(editor='documents' where='here')");
 await sleep(SETTLE_MS);
@@ -224,6 +236,7 @@ for (const editor of editors) {
   await run(`view.open(editor='${editor}' where='here'${where})`);
   await sleep(SETTLE_MS);
   await sweepHome(editor);
+  await noteShortcuts();
 }
 
 // The toolbar's popups, each opened by pressing the toolbar control that opens it, which is the
@@ -318,5 +331,22 @@ for (const stray of new Set(strays)) {
 for (const d of disagreements) {
   const about = d.wording ? 'the wording differs: the pane' : 'the pane';
   process.stdout.write(`  ⚠ ${d.editor} ${d.key}: ${about} ${d.pane}; the stack ${d.stack}\n`);
+}
+// Advisory: the Gen Graph scope is a copy of path.ux's own table, and this is where the copy is
+// checked against the pane. Main's two accelerators never reach the renderer, so they have no
+// keymap to compare with.
+for (const scope of [...new Set(derived.shortcuts.map((s) => s.scope))].sort()) {
+  if (scope === 'main') continue;
+  const live = scopes.get(scope);
+  if (!live) {
+    process.stdout.write(`  shortcuts ${scope}: no keymap was live during the sweep\n`);
+  } else if (live.missing.length === 0 && live.extra.length === 0) {
+    process.stdout.write(`  shortcuts ${scope}: the live keymap agrees with the table\n`);
+  } else {
+    process.stdout.write(
+      `  ⚠ shortcuts ${scope}: the table lists [${live.missing.join(', ')}] the pane does not ` +
+        `bind; the pane binds [${live.extra.join(', ')}] the table does not list\n`,
+    );
+  }
 }
 process.exit(0);

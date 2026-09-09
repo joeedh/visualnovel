@@ -1,7 +1,8 @@
 /**
  * The app-level keymap. path.ux routes a keystroke to the focused area's keymaps first and
  * falls through to `screen.keymap`, so these are the gestures that belong to the shell rather
- * than to the focused editor.
+ * than to the focused editor. The keys themselves are the `global` rows of `rules/shortcuts.ts`;
+ * this file supplies what each runs.
  *
  * Escape is not here: a popup installs its own handler while it is up, and nothing else in
  * the shell claims it.
@@ -10,19 +11,34 @@ import { HotKey, KeyMap } from 'pathux';
 import { closeWindow, exec, move, quit, toggleMode } from './bridge.js';
 import type { ShellApp } from './context.js';
 import { openPalette } from '../chrome/palette.js';
+import { bindings, type ShortcutScope } from '../../rules/shortcuts.js';
+import { watchKeymap } from '../tour/anchors.js';
+
+/** The `HotKey`s of one scope, each running the handler its table row names. */
+export function hotkeys(
+  scope: ShortcutScope,
+  handlers: Readonly<Record<string, () => void>>,
+): HotKey[] {
+  return bindings(scope, handlers).map(
+    (binding) => new HotKey(binding.key, [...binding.mods], binding.run, binding.label),
+  );
+}
 
 export function installKeymap(app: ShellApp): void {
-  if (!app.screen) return;
+  const screen = app.screen;
+  if (!screen) return;
 
-  app.screen.keymap = new KeyMap([
-    new HotKey('P', ['ctrl', 'shift'], () => openPalette(), 'Command palette'),
-    new HotKey('Z', ['ctrl'], () => void move('undo'), 'Undo'),
-    new HotKey('Z', ['ctrl', 'shift'], () => void move('redo'), 'Redo'),
-    new HotKey('Y', ['ctrl'], () => void move('redo'), 'Redo'),
-    new HotKey('Tab', ['shift'], () => void toggleMode(), 'Plan ⇄ Execute'),
-    // Ctrl+Q came with the stock menu, which this app deletes; it belongs to the shell now.
-    new HotKey('Q', ['ctrl'], () => void quit(), 'Quit'),
-    new HotKey('N', ['ctrl', 'shift'], () => void exec('window.new'), 'New window'),
-    new HotKey('W', ['ctrl'], () => void closeWindow(), 'Close window'),
-  ]);
+  screen.keymap = new KeyMap(
+    hotkeys('global', {
+      'Command palette': () => openPalette(),
+      Undo             : () => void move('undo'),
+      Redo             : () => void move('redo'),
+      'Plan ⇄ Execute' : () => void toggleMode(),
+      // Ctrl+Q came with the stock menu, which this app deletes; it belongs to the shell now.
+      Quit             : () => void quit(),
+      'New window'     : () => void exec('window.new'),
+      'Close window'   : () => void closeWindow(),
+    }),
+  );
+  watchKeymap('global', () => screen.keymap);
 }

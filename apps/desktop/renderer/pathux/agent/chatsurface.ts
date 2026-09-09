@@ -28,6 +28,8 @@ import {
   moveHighlight,
   slashQuery,
 } from '../../rules/slash.js';
+import { openPopup } from '../../rules/effects.js';
+import { shortcutOf } from '../../rules/shortcuts.js';
 import type { CompactionMark, FeedItem } from '../../../src/shared/convo.js';
 import type { AskRequest, SkillEntry } from '../../../src/shared/ipc.js';
 
@@ -393,7 +395,7 @@ export class ChatStage {
       // A `>` rather than the `/` it used to be: `/` now names a skill in the box beside it, and
       // one glyph cannot mean two things a keystroke apart.
       palette.textContent = '>';
-      palette.title = 'Open the palette and run a command by name (Ctrl+Shift+P)';
+      palette.title = `Open the palette and run a command by name (${shortcutOf(openPopup('palette'))})`;
       palette.addEventListener('click', () => hooks.onPalette!());
       composer.appendChild(palette);
     }

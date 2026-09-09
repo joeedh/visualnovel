@@ -12,6 +12,7 @@ import {
 } from '../model.js';
 import { PALETTE_ONLY } from '../paletteonly.js';
 import { MENU_ROWS, menuRecords } from '../menus.js';
+import { SHORTCUTS, comboOf, findShortcut, shortcutRecords } from '../shortcuts.js';
 import { createDesktopEffects } from '../../../src/shared/effects.js';
 import {
   actionProblems,
@@ -95,6 +96,43 @@ describe('model()', () => {
 
   it('lists the menu records the menu table yields, record for record', () => {
     expect(file.records.filter((r) => r.via === 'menu')).toEqual(menuRecords());
+  });
+
+  it('writes the shortcut table as its shortcuts section', () => {
+    expect(file.shortcuts).toEqual(shortcutRecords());
+    expect(file.shortcuts).toHaveLength(SHORTCUTS.length);
+  });
+
+  it('stamps shortcut on the controls a binding in their editor or the shell matches', () => {
+    for (const row of ROWS) {
+      for (const situation of row.situations) {
+        for (const record of situationRecords(row, situation)) {
+          const bound = findShortcut(record.effects[0]!, record.offer.on, row.editor);
+          expect(record.shortcut).toEqual(bound === undefined ? undefined : comboOf(bound));
+          if (bound !== undefined) expect(['global', row.editor]).toContain(bound.scope);
+        }
+      }
+    }
+    const grouped = file.records.find(
+      (r) =>
+        r.via === 'control' && r.editor === 'gengraph' && r.offer.id === 'gengraph.createGroup',
+    );
+    expect(grouped).toMatchObject({ shortcut: 'Ctrl+G' });
+    const stamped = new Set(
+      file.records.flatMap((r) =>
+        r.via === 'control' && r.shortcut !== undefined
+          ? [`${r.editor} ${r.key} ${r.shortcut}`]
+          : [],
+      ),
+    );
+    expect([...stamped].sort()).toEqual([
+      'convo cmd:agent.setMode Shift+Tab',
+      'gengraph cmd:gengraph.createGroup Ctrl+G',
+      'gengraph cmd:gengraph.duplicateNode Shift+D',
+      'gengraph cmd:gengraph.removeNode Delete',
+      'gengraph cmd:gengraph.ungroup Ctrl+Alt+G',
+      'header cmd:agent.setMode Shift+Tab',
+    ]);
   });
 
   it('writes what a click does as its effects, in order', () => {

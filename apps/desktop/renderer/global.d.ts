@@ -1,6 +1,6 @@
 import type { DesktopApi } from '../src/shared/ipc';
 import type { AnchorRecord } from './rules/anchors';
-import type { AnchorDump } from './pathux/tour/anchors';
+import type { AnchorDump, ScopeReport } from './pathux/tour/anchors';
 import type { Debugger2D } from '@vn/debug2d';
 
 declare global {
@@ -22,6 +22,8 @@ declare global {
       strays: () => string[];
       /** Click the control an anchor key names, which is how the sweep opens each toolbar popup. */
       press: (key: string) => boolean;
+      /** Each live keymap against the shortcut table, which the sweep prints. */
+      shortcuts: () => ScopeReport[];
     };
     /** Which tour is running, which step it is on, and what the overlay is ringing. Read over CDP. */
     __vnTour?: () => { tour: string; at: number; step: string; ring?: string } | null;

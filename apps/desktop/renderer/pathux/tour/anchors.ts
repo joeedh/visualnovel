@@ -10,10 +10,11 @@
  * Exposed as `window.__vnAnchors` for the sweep and for DevTools. Unlike `window.__vnDebug` this
  * ships in production, because the tour reads it at runtime.
  */
-import { composeTooltip } from 'pathux';
+import { composeTooltip, keymap as KEYS, reverse_keymap, type HotKey } from 'pathux';
 import type { PropValue } from '../../../src/shared/ipc.js';
 import type { PopupHome } from '../../../src/shared/editors.js';
 import { menuRecords } from '../../rules/menus.js';
+import { SHORTCUTS, comboOf, type ShortcutScope } from '../../rules/shortcuts.js';
 import { hitFor, up } from '../interactions/hittest.js';
 import { centreOf } from '../../rules/ring.js';
 import {
@@ -374,12 +375,70 @@ export function menuAnchors(): AnchorRecord[] {
   return anchors;
 }
 
+/** The live keymap of each scope that has installed one, read when the sweep asks. */
+const liveKeymaps = new Map<ShortcutScope, () => readonly HotKey[] | undefined>();
+
+/**
+ * Let the sweep compare a scope's live keymap with the table. A thunk rather than the keymap,
+ * since a pane may build a new one; the last pane of a scope to register is the one read.
+ */
+export function watchKeymap(scope: ShortcutScope, keys: () => readonly HotKey[] | undefined): void {
+  liveKeymaps.set(scope, keys);
+}
+
+/** One live scope against the table: the combos each has that the other lacks. */
+export interface ScopeReport {
+  scope: string;
+  /** Combos the table lists that the live keymap does not bind. */
+  missing: string[];
+  /** Combos the live keymap binds that the table does not list. */
+  extra: string[];
+}
+
+/**
+ * Every watched scope against `SHORTCUTS`, compared by key code and modifiers so a spelling of
+ * the same key cannot read as a difference. Advisory: the sweep prints it and gates nothing.
+ */
+export function shortcutReport(): ScopeReport[] {
+  const combo = (key: number, mods: readonly string[]) =>
+    `${[...mods]
+      .map((mod) => mod.toLowerCase())
+      .sort()
+      .join('+')} ${key}`;
+  const report: ScopeReport[] = [];
+  for (const [scope, keys] of liveKeymaps) {
+    const listed = new Map(
+      SHORTCUTS.filter((entry) => entry.scope === scope).map((entry) => [
+        combo((KEYS as unknown as Record<string, number>)[entry.key] ?? -1, entry.mods),
+        comboOf(entry),
+      ]),
+    );
+    const live = new Map(
+      // A KeyMap is an Array subclass whose constructor takes hotkeys, so map() runs on a copy
+      [...(keys() ?? [])].map((hotkey) => [
+        combo(hotkey.key, hotkey.mods),
+        comboOf({
+          key : (reverse_keymap[hotkey.key] ?? String(hotkey.key)) as never,
+          mods: hotkey.mods.map((mod) => mod.toLowerCase() as never),
+        }),
+      ]),
+    );
+    report.push({
+      scope,
+      missing: [...listed].filter(([key]) => !live.has(key)).map(([, name]) => name),
+      extra  : [...live].filter(([key]) => !listed.has(key)).map(([, name]) => name),
+    });
+  }
+  return report;
+}
+
 export function installAnchors(): void {
   window.__vnAnchors = {
     generation: () => generation,
     dump      : dumpAnchors,
     menus     : menuAnchors,
     strays    : strayAnchors,
+    shortcuts : shortcutReport,
     press,
   };
 }

@@ -1,9 +1,11 @@
-import { HotKey, KeyMap, type Container } from 'pathux';
+import { KeyMap, type Container } from 'pathux';
 import { api } from '../../api.js';
 import type { Playable, PlayableScene } from '../../../src/shared/ipc.js';
 import { notify, onInvalidate } from '../app/bridge.js';
 import { centered } from '../widgets/dom.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
+import { hotkeys } from '../app/keymap.js';
+import { watchKeymap } from '../tour/anchors.js';
 import {
   advance,
   assetUrl,
@@ -81,13 +83,13 @@ export class PlayEditor extends VnEditor {
 
     // This keymap runs ahead of the screen keymap, and path.ux already declines to route a
     // keystroke that landed in a textbox, so nothing here needs to sniff the target's tag.
-    this.keymap = new KeyMap([
-      new HotKey('Space', [], () => this.stepForward(), 'Advance'),
-      new HotKey('Enter', [], () => this.stepForward(), 'Advance'),
-      new HotKey('Right', [], () => this.stepForward(), 'Advance'),
-      new HotKey('Left', [], () => this.go(back(this.history)), 'Back'),
-      new HotKey('Backspace', [], () => this.go(back(this.history)), 'Back'),
-    ]);
+    this.keymap = new KeyMap(
+      hotkeys('play', {
+        Advance: () => this.stepForward(),
+        Back   : () => this.go(back(this.history)),
+      }),
+    );
+    watchKeymap('play', () => this.keymap);
 
     // The playable is built from the model and the store rather than read from a file, so a shot
     // made or rendered since the last read is a re-read away. Coming back on screen re-reads for

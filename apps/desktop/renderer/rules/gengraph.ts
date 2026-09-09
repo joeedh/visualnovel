@@ -24,6 +24,7 @@ import type { DescentEntry, GraphEdit } from 'pathux';
 
 import { graphDocPath, graphGroupPath } from '../../src/shared/writes.js';
 import { refuse, type Control, type Offer } from './anchors.js';
+import { shortcutOf } from './shortcuts.js';
 
 /** One `gengraph.*` invocation, in the shape `exec` takes. */
 export interface GenCommand {
@@ -424,10 +425,12 @@ export const DUPLICATE_WHAT =
   'Add a copy of each selected node, carrying over the values it authored';
 
 export const GROUP_WHAT =
-  'Move the selected nodes into a new group, and leave an instance of it in their place (Ctrl+G)';
+  'Move the selected nodes into a new group, and leave an instance of it in their place ' +
+  `(${shortcutOf({ id: 'gengraph.createGroup', props: {} })})`;
 
 export const UNGROUP_WHAT =
-  'Put a copy of each selected group’s nodes where the instance stands, values included (Ctrl+Alt+G)';
+  'Put a copy of each selected group’s nodes where the instance stands, values included ' +
+  `(${shortcutOf({ id: 'gengraph.ungroup', props: {} })})`;
 
 /** Said where the view's level no longer resolves, which undo and delete can bring about. */
 export const NO_LEVEL = 'this level of the graph is no longer there; go back up';

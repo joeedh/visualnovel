@@ -112,7 +112,8 @@ export const UX_PALETTE_ONLY = z
 
 /**
  * One key binding, from `renderer/rules/shortcuts.ts`. `scope` is `global`, an editor id or
- * `main`; `runs` is the action the key performs; `shadows` marks an editor binding that takes a
+ * `main`; `label` is the binding's name; `runs` is the action the key performs and `on` narrows
+ * it to one control where several share the id; `shadows` marks an editor binding that takes a
  * combination the shell also binds; `from` marks a binding copied from path.ux's own table.
  */
 export const UX_SHORTCUT = z
@@ -120,7 +121,9 @@ export const UX_SHORTCUT = z
     scope  : z.string().min(1),
     key    : z.string().min(1),
     mods   : z.array(z.string().min(1)),
+    label  : z.string().min(1),
     runs   : action,
+    on     : z.string().min(1).optional(),
     shadows: z.literal(true).optional(),
     from   : z.literal('pathux').optional(),
   })

@@ -52,6 +52,15 @@ describe('ux-model.json against the registry', () => {
     expect(actionProblems(model, new Set(live), desktopEffects)).toEqual([]);
   });
 
+  it('binds a shortcut only to a command or an effect, apart from main’s own accelerators', () => {
+    const unknown = model.shortcuts
+      .filter(
+        (s) => s.scope !== 'main' && !live.includes(s.runs.id) && !desktopEffects.has(s.runs.id),
+      )
+      .map((s) => `${s.scope} ${s.key} ${s.runs.id}`);
+    expect(unknown).toEqual([]);
+  });
+
   it('gives every command a control or a reason', () => {
     const uncovered = live.filter((id) => !anchored.has(id) && !listed(id));
     expect(uncovered).toEqual([]);

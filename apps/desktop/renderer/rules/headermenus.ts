@@ -18,6 +18,7 @@ import type { MenuName } from '../../src/shared/effects.js';
 import { MENU_SEP, SEPARATOR, type MenuEntry } from '../pathux/chrome/contextmenu.js';
 import { arrange, move, openMenu, openPopup, view } from './effects.js';
 import { runAction } from './headerbar.js';
+import { shortcutOf } from './shortcuts.js';
 
 /** What the header reads when it builds its menus, assembled when a menu is opened. */
 export interface HeaderMenuState {
@@ -73,14 +74,14 @@ function submenu(
 const UNDO: MenuEntry = {
   label: 'Undo',
   ...move('undo'),
-  shortcut: 'Ctrl+Z',
+  shortcut: shortcutOf(move('undo')),
   tooltip : 'Put the project back the way it was before the last act',
 };
 
 const REDO: MenuEntry = {
   label: 'Redo',
   ...move('redo'),
-  shortcut: 'Ctrl+Shift+Z',
+  shortcut: shortcutOf(move('redo')),
   tooltip : 'Reapply the act that was just undone',
 };
 
@@ -96,7 +97,7 @@ export function appMenu(state: HeaderMenuState): MenuEntry[] {
     {
       label: 'Command Palette…',
       ...openPopup('palette'),
-      shortcut: 'Ctrl+Shift+P',
+      shortcut: shortcutOf(openPopup('palette')),
       tooltip : 'Search every command by name and fill in its arguments',
     },
     SEPARATOR,
@@ -174,14 +175,14 @@ export function appMenu(state: HeaderMenuState): MenuEntry[] {
       label   : 'Plan ⇄ Execute',
       id      : 'agent.setMode',
       props   : { mode: state.agentMode === 'plan' ? 'execute' : 'plan' },
-      shortcut: 'Shift+Tab',
+      shortcut: shortcutOf({ id: 'agent.setMode', props: {} }),
       tooltip : 'Switch the agent between reading only and being allowed to apply edits',
     },
     SEPARATOR,
     {
       label   : 'Quit',
       id      : 'window.quit',
-      shortcut: 'Ctrl+Q',
+      shortcut: shortcutOf({ id: 'window.quit', props: {} }),
       tooltip : 'Close every window and quit vnstudio',
     },
   ];
@@ -230,7 +231,7 @@ export function editMenu(): MenuEntry[] {
       label   : 'Create Group',
       id      : 'gengraph.createGroup',
       supplies: ['slug', 'nodes'],
-      shortcut: 'Ctrl+G',
+      shortcut: shortcutOf({ id: 'gengraph.createGroup', props: {} }),
       tooltip:
         'Move the selected nodes of the active Gen Graph pane into a new group, and leave an ' +
         'instance of it in their place',
@@ -239,14 +240,14 @@ export function editMenu(): MenuEntry[] {
       label   : 'Ungroup',
       id      : 'gengraph.ungroup',
       supplies: ['slug', 'node'],
-      shortcut: 'Ctrl+Alt+G',
+      shortcut: shortcutOf({ id: 'gengraph.ungroup', props: {} }),
       tooltip : 'Put a copy of each selected group’s nodes where the instance stands',
     },
     {
       label: 'Edit Group',
       ...view('scope'),
       on      : 'enter',
-      shortcut: 'Tab',
+      shortcut: shortcutOf(view('scope'), 'enter'),
       tooltip : 'Open the selected group’s definition, which every instance of it follows',
     },
     {
@@ -300,13 +301,13 @@ export function viewMenu(state: HeaderMenuState): MenuEntry[] {
     {
       label   : 'New Window',
       id      : 'window.new',
-      shortcut: 'Ctrl+Shift+N',
+      shortcut: shortcutOf({ id: 'window.new', props: {} }),
       tooltip : 'Open another window onto this project — one app, panes across two monitors',
     },
     {
       label   : 'Close Window',
       id      : 'window.close',
-      shortcut: 'Ctrl+W',
+      shortcut: shortcutOf({ id: 'window.close', props: {} }),
       tooltip : 'Close this window; closing the last one quits',
     },
     {
