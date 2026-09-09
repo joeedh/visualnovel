@@ -41,6 +41,8 @@ export interface CatalogEntry {
   undoable: boolean;
   /** Whether `stack.check` has a precondition to consult. False means `undeclared`, not `accept`. */
   checkable: boolean;
+  /** The subtrees the command may write, as its host spells them. Absent on a non-mutator. */
+  affects?: readonly string[];
   props: CatalogProp[];
   /** A ready-to-paste DSL template, e.g. `gate.approve(characterId='' hash='')`. */
   usage: string;
@@ -74,6 +76,8 @@ export interface DocCommandEntry {
   undoable: boolean;
   /** Whether `stack.check` has a precondition to consult. False means `undeclared`, not `accept`. */
   checkable: boolean;
+  /** The subtrees the command may write, as its host spells them. Absent on a non-mutator. */
+  affects?: readonly string[];
   notes?: string;
   props: DocProp[];
 }
@@ -87,6 +91,7 @@ export function toDocIndex(registry: CommandRegistry<any>): DocCommandEntry[] {
     confirm  : command.confirm ?? false,
     undoable : command.undoable ?? false,
     checkable: Boolean(command.check),
+    ...(command.affects ? { affects: [...command.affects] } : {}),
     ...(command.notes ? { notes: command.notes } : {}),
     props: Object.entries(command.props).map(([name, spec]) => ({
       name,
@@ -212,9 +217,10 @@ export function toCatalog(
       confirm    : command.confirm ?? false,
       undoable   : command.undoable ?? false,
       checkable  : Boolean(command.check),
-      props      : catalogProps(command.props),
-      usage      : formatCommand(command.id, template),
-      schema     : { type: 'object', properties, required, additionalProperties: false },
+      ...(command.affects ? { affects: [...command.affects] } : {}),
+      props : catalogProps(command.props),
+      usage : formatCommand(command.id, template),
+      schema: { type: 'object', properties, required, additionalProperties: false },
     };
   });
 

@@ -7,14 +7,14 @@
 | Command | Props | Notes |
 | ------- | ----- | ----- |
 | `agent.clear` | — | Resets the conversation, back to plan mode. The thread it was in stays on disk and stays listed. |
-| `agent.compact` ✍ ✓ | — | Summarize the open conversation so the agent carries a summary instead of every turn. Appends one line to each of the thread's logs and rewrites neither, so the transcript on screen is unchanged. Checked because it costs a model call, and refused while a turn is running, with no finished turn to summarize, with the last turn stopped part way through a tool call, and when nothing has been said since the last compaction. |
+| `agent.compact` ✍ ✓ | — | Writes `vngen/state/threads`. Summarize the open conversation so the agent carries a summary instead of every turn. Appends one line to each of the thread's logs and rewrites neither, so the transcript on screen is unchanged. Checked because it costs a model call, and refused while a turn is running, with no finished turn to summarize, with the last turn stopped part way through a tool call, and when nothing has been said since the last compaction. |
 | `agent.editLine` ✓ | `scene`, `line` | — |
 | `agent.fixAsset` ✓ | `hash` | — |
 | `agent.newThread` | — | End the open conversation and start again. The next turn opens a new thread file. |
 | `agent.openThread` | `id` | Replay a saved conversation on screen. **Read-only**: the model is not shown it, and the next turn starts a new thread unless Continue is pressed first. Returns the whole record as `data`. |
-| `agent.renameThread` ✍ ✓ | `id` (default `''`), `title` | Retitle a saved conversation; an empty `id` renames the open one. Appended as a superseding `title` record — the log stays append-only, and the last one read wins. |
+| `agent.renameThread` ✍ ✓ | `id` (default `''`), `title` | Writes `vngen/state/threads`. Retitle a saved conversation; an empty `id` renames the open one. Appended as a superseding `title` record — the log stays append-only, and the last one read wins. |
 | `agent.resumeThread` ✓ | `id` | Continue a saved conversation: the agent is handed the messages from its native log and the session binds to that thread, so later turns append to the same two files. Not mutating — it changes what the agent holds, not the project. Checked because a conversation recorded through another vendor or another protocol cannot be handed to the model bound now; the check answers that sentence, along with a log merged from two clones, one written by a newer version of the app, and a thread that kept only its transcript. |
-| `agent.run` ✍ | `input`, `scene` (default `''`) | One agent turn. Mutating: a turn in execute mode writes. |
+| `agent.run` ✍ | `input`, `scene` (default `''`) | Writes `characters`, `locations`, `wiki`, `scenes`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`. One agent turn. Mutating: a turn in execute mode writes. |
 | `agent.setBudget` | `budget` (`50k`\|`100k`\|`200k`\|`400k`\|`600k`\|`1m`\|`5m`\|`unlimited`) | — |
 | `agent.setEffort` | `effort` (`none`\|`low`\|`medium`\|`high`\|`xhigh`\|`max`) | How hard the model thinks; `none` switches thinking off. Every choice is accepted — the menu is what filters by model, and one the model will not take is stepped down at the wire (`resolveEffort`). A model with no such knob keeps the setting and ignores it (`supportsEffort`). |
 | `agent.setMode` | `mode` (`plan`\|`execute`) | — |
@@ -36,27 +36,27 @@
 
 | Command | Props | Notes |
 | ------- | ----- | ----- |
-| `art.generate` ✍ ⚠ ✓ | `sentence`, `subject` (default `''`), `open` (default `true`) | Draw a concept from a sentence and file it under Concepts, bound to the location or character it names. Spends one image generation; the pipeline never plans one and `vngen export` ignores it. |
-| `art.promote` ✍ ⚠ ✓ | `hash`, `variant`, `description` (default `''`) | Make a concept the location plate for one variant: the variant joins the sheet if it is new, the bytes are re-recorded as a plate, and that plate's task is logged `done` so the next run **adopts** the picture. A character concept is refused — a look goes through the gate. |
-| `art.redraw` ✍ ⚠ ✓ | `hash`, `prompt` (default `''`), `title` (default `''`), `open` (default `true`) | Draw a concept again from an edited prompt — the one asset whose prompt is authored rather than derived, so the one prompt there is to rewrite. The result is a **new** sketch beside the original; nothing is overwritten. A planned asset is refused by name: re-rendering one is `asset.regenerate`. |
-| `art.setNotes` ✍ ↺ ✓ | `target`, `notes` (default `''`) | Art direction on one rung — `character:aiko`, `character:aiko/gala`, `location:cafe`, `location:cafe/night`, `shot:greet/s2`. Appended to the prompt, so it **re-renders** what that rung reaches. Never creates the rung it names. |
-| `art.setSeed` ✍ ↺ ✓ | `target`, `seed` (default `-1`) | — |
+| `art.generate` ✍ ⚠ ✓ | `sentence`, `subject` (default `''`), `open` (default `true`) | Writes `assets/objects`, `assets/manifest.json`. Draw a concept from a sentence and file it under Concepts, bound to the location or character it names. Spends one image generation; the pipeline never plans one and `vngen export` ignores it. |
+| `art.promote` ✍ ⚠ ✓ | `hash`, `variant`, `description` (default `''`) | Writes `characters`, `locations`, `wiki`, `assets/manifest.json`, `vngen/state/tasks.jsonl`. Make a concept the location plate for one variant: the variant joins the sheet if it is new, the bytes are re-recorded as a plate, and that plate's task is logged `done` so the next run **adopts** the picture. A character concept is refused — a look goes through the gate. |
+| `art.redraw` ✍ ⚠ ✓ | `hash`, `prompt` (default `''`), `title` (default `''`), `open` (default `true`) | Writes `assets/objects`, `assets/manifest.json`. Draw a concept again from an edited prompt — the one asset whose prompt is authored rather than derived, so the one prompt there is to rewrite. The result is a **new** sketch beside the original; nothing is overwritten. A planned asset is refused by name: re-rendering one is `asset.regenerate`. |
+| `art.setNotes` ✍ ↺ ✓ | `target`, `notes` (default `''`) | Writes `characters`, `locations`, `wiki`, `vngen/work/shots`. Art direction on one rung — `character:aiko`, `character:aiko/gala`, `location:cafe`, `location:cafe/night`, `shot:greet/s2`. Appended to the prompt, so it **re-renders** what that rung reaches. Never creates the rung it names. |
+| `art.setSeed` ✍ ↺ ✓ | `target`, `seed` (default `-1`) | Writes `characters`, `locations`, `wiki`, `vngen/work/shots`. |
 
 ## `asset.`
 
 | Command | Props | Notes |
 | ------- | ----- | ----- |
-| `asset.accept` ✍ ✓ | `hash` | `store.accept`, generic across both roots. A portrait is refused by name — approving one also writes `character.md` and `approved.png`, which is `gate.approve`. So is a concept: nothing downstream consumes one, so making it count is `art.promote`. And so is an upload — nothing generated it, so there is no work to bless; it counts by being pointed at. A **suspended** asset is refused too, naming what moved. |
-| `asset.adopt` ✍ ⚠ ✓ | `hash`, `slot`, `replace` (default `false`) | Make an asset already in the store the output of the picture a slot names — `plate:cafe/night`, `sheet:aiko/gala/front`, `shot:greet/s2` — so the next run **adopts** it rather than rendering one. The generalization of `art.promote`, which is now one caller of it. A `portrait:` slot is refused by name (approving a look is `gate.approve`), as is an `asset:` one (an upload and a concept are their own identity). Superseding a render that already holds the slot needs `replace`; the old bytes stay in the store either way, and nothing is auto-accepted. |
+| `asset.accept` ✍ ✓ | `hash` | Writes `assets/manifest.json`, `vngen/build/manifest.json`. `store.accept`, generic across both roots. A portrait is refused by name — approving one also writes `character.md` and `approved.png`, which is `gate.approve`. So is a concept: nothing downstream consumes one, so making it count is `art.promote`. And so is an upload — nothing generated it, so there is no work to bless; it counts by being pointed at. A **suspended** asset is refused too, naming what moved. |
+| `asset.adopt` ✍ ⚠ ✓ | `hash`, `slot`, `replace` (default `false`) | Writes `assets/objects`, `assets/manifest.json`, `vngen/build/assets`, `vngen/build/manifest.json`, `vngen/work/shots`, `vngen/state/tasks.jsonl`. Make an asset already in the store the output of the picture a slot names — `plate:cafe/night`, `sheet:aiko/gala/front`, `shot:greet/s2` — so the next run **adopts** it rather than rendering one. The generalization of `art.promote`, which is now one caller of it. A `portrait:` slot is refused by name (approving a look is `gate.approve`), as is an `asset:` one (an upload and a concept are their own identity). Superseding a render that already holds the slot needs `replace`; the old bytes stay in the store either way, and nothing is auto-accepted. |
 | `asset.export` | `hash` | Save a copy of one asset's bytes outside the project, through the native save dialog. `mutating: false`: nothing in the workspace changes, so there is no commit and no undo point. Cancelling changes nothing. |
 | `asset.info` | `hash` | One asset: label, kind, root, accepted, its task, the prompt it was rendered from, the prompt the builders would write **today**, and the art-notes rungs reaching it. |
 | `asset.list` | — | Every asset in the manifest: hash, extension, kind, display label, whether it is accepted, and the slot it fills. `asset.info` is the detailed read for one. |
-| `asset.regenerate` ✍ ⚠ ✓ | `hash`, `run` (default `false`) | Put the asset's task back to `pending`; with `run`, run the pipeline for real straight afterwards. A fixed image seed makes a plain re-roll deterministic, and the refusal text says so. A **concept** is refused by name — the planner never made one, so there is no task to requeue: `art.redraw` is what draws it again. An **upload** is refused for the same reason, pointing at `asset.upload` for a different image. |
-| `asset.replace` ✍ ⚠ ✓ | `hash` | The asset editor's Replace strip: open an image chooser and make what comes back this picture's slot — `asset.upload` with the chooser in front and the slot read off the asset instead of typed. Refused when these bytes fill no slot (a concept, an upload, a render something later superseded). Cancelling changes nothing. |
-| `asset.restore` ✍ ⚠ ✓ | `hash` | `asset.adopt(replace)` followed by `asset.accept`, as one act. Refused for a take that is already the picture in its slot, for one nothing planned, and — by name — for a portrait (`gate.approve`), a concept and an upload. The suspension and upstream-approval refusals are the ones `asset.accept` would give. |
+| `asset.regenerate` ✍ ⚠ ✓ | `hash`, `run` (default `false`) | Writes `assets/objects`, `assets/manifest.json`, `vngen/build`, `vngen/state/tasks.jsonl`, `vngen/state/graphs`. Put the asset's task back to `pending`; with `run`, run the pipeline for real straight afterwards. A fixed image seed makes a plain re-roll deterministic, and the refusal text says so. A **concept** is refused by name — the planner never made one, so there is no task to requeue: `art.redraw` is what draws it again. An **upload** is refused for the same reason, pointing at `asset.upload` for a different image. |
+| `asset.replace` ✍ ⚠ ✓ | `hash` | Writes `assets/objects`, `assets/manifest.json`, `vngen/build/assets`, `vngen/build/manifest.json`, `vngen/work/shots`, `vngen/state/tasks.jsonl`. The asset editor's Replace strip: open an image chooser and make what comes back this picture's slot — `asset.upload` with the chooser in front and the slot read off the asset instead of typed. Refused when these bytes fill no slot (a concept, an upload, a render something later superseded). Cancelling changes nothing. |
+| `asset.restore` ✍ ⚠ ✓ | `hash` | Writes `assets/objects`, `assets/manifest.json`, `vngen/build/assets`, `vngen/build/manifest.json`, `vngen/work/shots`, `vngen/state/tasks.jsonl`. `asset.adopt(replace)` followed by `asset.accept`, as one act. Refused for a take that is already the picture in its slot, for one nothing planned, and — by name — for a portrait (`gate.approve`), a concept and an upload. The suspension and upstream-approval refusals are the ones `asset.accept` would give. |
 | `asset.suspended` | — | Every asset drawn against a reference whose slot has moved, plus everything downstream of one, in dependency order with the reason for each. Derived on every call, never a stored flag — the bytes stay; suspension only says they are out of date. |
-| `asset.unapprove` ✍ ⚠ ✓ | `hash` | — |
-| `asset.upload` ✍ ⚠ ✓ | `file`, `title` (default `''`), `slot` (default `''`), `replace` (default `false`), `open` (default `true`) | Bring an image from outside into the **base** store. With no `slot` it is a `reference`: nothing generated it, so it is never approved and never planned — it exists to be pointed at by `prompt.addRef`. Name a `slot` and the same act files the bytes and adopts them onto it, which is what a repainted plate wants. Mock placeholder art and anything that is not an image are refused by name; a file that lands but cannot be adopted says so and stays filed as a reference, recoverable with `asset.adopt`. |
+| `asset.unapprove` ✍ ⚠ ✓ | `hash` | Writes `characters`, `locations`, `wiki`, `assets/manifest.json`, `vngen/build/manifest.json`, `vngen/work/characters`. |
+| `asset.upload` ✍ ⚠ ✓ | `file`, `title` (default `''`), `slot` (default `''`), `replace` (default `false`), `open` (default `true`) | Writes `assets/objects`, `assets/manifest.json`, `vngen/build/assets`, `vngen/build/manifest.json`, `vngen/work/shots`, `vngen/state/tasks.jsonl`. Bring an image from outside into the **base** store. With no `slot` it is a `reference`: nothing generated it, so it is never approved and never planned — it exists to be pointed at by `prompt.addRef`. Name a `slot` and the same act files the bytes and adopts them onto it, which is what a repainted plate wants. Mock placeholder art and anything that is not an image are refused by name; a file that lands but cannot be adopted says so and stays filed as a reference, recoverable with `asset.adopt`. |
 
 ## `bible.`
 
@@ -74,47 +74,47 @@
 
 | Command | Props | Notes |
 | ------- | ----- | ----- |
-| `doc.create` ✍ ↺ ✓ | `kind` (`character`\|`location`\|`note`\|`skill`), `name`, `open` (default `true`) | Scaffold a sheet, a note or a skill in its conventional home, from the same templates the agent's create tools use. Refuses over an existing path. |
+| `doc.create` ✍ ↺ ✓ | `kind` (`character`\|`location`\|`note`\|`skill`), `name`, `open` (default `true`) | Writes `characters`, `locations`, `wiki`, `.aiagent/skills`. Scaffold a sheet, a note or a skill in its conventional home, from the same templates the agent's create tools use. Refuses over an existing path. |
 | `doc.read` | `path` | The text of one workspace document, with the content hash it was read at. Bounded and text only. |
-| `doc.rename` ✍ ↺ ✓ | `path`, `name` | Change the name a document is known by, **in place**. A sheet is renamed through its `name:` field, anything else through its title — front-matter `title:`, else the first heading — so the new name is read back from wherever the old one was. The file does not move: an id is derived from a name once, at creation, and afterwards it is what shots, cast lists and `[[goto:]]` markers point at. What the tree's double-click-to-rename dispatches. |
-| `doc.write` ✍ ↺ ✓ | `path`, `text` (digest), `seenHash` (default `''`) | Overwrite a document. A file changed underneath the edit is refused by content. `scenes/**` is refused outright. |
+| `doc.rename` ✍ ↺ ✓ | `path`, `name` | Writes `characters`, `locations`, `wiki`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`. Change the name a document is known by, **in place**. A sheet is renamed through its `name:` field, anything else through its title — front-matter `title:`, else the first heading — so the new name is read back from wherever the old one was. The file does not move: an id is derived from a name once, at creation, and afterwards it is what shots, cast lists and `[[goto:]]` markers point at. What the tree's double-click-to-rename dispatches. |
+| `doc.write` ✍ ↺ ✓ | `path`, `text` (digest), `seenHash` (default `''`) | Writes `characters`, `locations`, `wiki`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`. Overwrite a document. A file changed underneath the edit is refused by content. `scenes/**` is refused outright. |
 
 ## `gate.`
 
 | Command | Props | Notes |
 | ------- | ----- | ----- |
-| `gate.approve` ✍ ✓ | `characterId`, `hash` | Flips `character.md`; writes the approved PNG + manifest. |
+| `gate.approve` ✍ ✓ | `characterId`, `hash` | Writes `characters`, `wiki`, `vngen/work/characters`, `assets/manifest.json`, `vngen/build/manifest.json`. Flips `character.md`; writes the approved PNG + manifest. |
 | `gate.candidates` | `characterId` | Pending portrait candidates for one character. |
 
 ## `gengraph.`
 
 | Command | Props | Notes |
 | ------- | ----- | ----- |
-| `gengraph.addBoundary` ✍ ↺ ✓ | `group`, `dir`, `key`, `type` | — |
-| `gengraph.addGroup` ✍ ↺ ✓ | `slug`, `ref`, `x` (default `0`), `y` (default `0`), `group` (default `''`) | Place one instance of a definition under `lib/`, bound at once so the file never holds an unresolved instance. What the Add Group menu runs. |
-| `gengraph.addNode` ✍ ↺ ✓ | `slug`, `type`, `x` (default `0`), `y` (default `0`), `group` (default `''`) | Place one node of a registered type. A type no plugin provides is refused by name rather than written and reported on the next load. |
-| `gengraph.apply` ✍ ↺ ✓ | `slug`, `description` (digest) | Rewrite a whole graph from a JSON description in path.ux's graph DSL, diffed by node id so a node the description leaves alone keeps its position and its journal. The description is a string prop because `@vn/commands` has no JSON kind. |
-| `gengraph.create` ✍ ↺ ✓ | `name` | Start an empty graph at `vngen/work/graphs/<slug>.json`. The slug comes from the name once, at creation, so a graph is renamed the way a scene is — not at all. |
-| `gengraph.createForSlot` ✍ ↺ ✓ | `slot`, `name` (default `''`), `open` (default `true`) | Start a graph that draws one slot, wired the way the pipeline draws it: the derived prompt and the task references feed an image node, and its picture fills the slot. An empty `name` is derived from the slot address, and takes the next free `<base>-2` where a graph of that name exists. A slot another graph already draws is refused, because two active outputs claiming one slot leave it bound to neither. `open` shows the new graph in the Gen Graph editor, focusing a pane already open on one rather than making a second. This is what _Create a graph for this slot_ dispatches, on a slot row and on a picture a slot claims alike. |
-| `gengraph.createGroup` ✍ ↺ ✓ | `slug`, `nodes`, `name` (default `''`), `group` (default `''`) | Move the selected nodes into a new definition file under `lib/` and leave an instance in their place; every link that crossed the selection is rewired through the instance. Writes both files. What Ctrl+G and Edit ▸ Create Group run. |
-| `gengraph.delete` ✍ ⚠ ↺ ✓ | `slug` | Remove a graph's document. Its journal and blobs under `vngen/state/graphs/` stay, being the record of runs that happened. |
-| `gengraph.duplicateNode` ✍ ↺ ✓ | `slug`, `node`, `x` (default `0`), `y` (default `0`), `group` (default `''`) | — |
+| `gengraph.addBoundary` ✍ ↺ ✓ | `group`, `dir`, `key`, `type` | Writes `vngen/work/graphs`. |
+| `gengraph.addGroup` ✍ ↺ ✓ | `slug`, `ref`, `x` (default `0`), `y` (default `0`), `group` (default `''`) | Writes `vngen/work/graphs`. Place one instance of a definition under `lib/`, bound at once so the file never holds an unresolved instance. What the Add Group menu runs. |
+| `gengraph.addNode` ✍ ↺ ✓ | `slug`, `type`, `x` (default `0`), `y` (default `0`), `group` (default `''`) | Writes `vngen/work/graphs`. Place one node of a registered type. A type no plugin provides is refused by name rather than written and reported on the next load. |
+| `gengraph.apply` ✍ ↺ ✓ | `slug`, `description` (digest) | Writes `vngen/work/graphs`. Rewrite a whole graph from a JSON description in path.ux's graph DSL, diffed by node id so a node the description leaves alone keeps its position and its journal. The description is a string prop because `@vn/commands` has no JSON kind. |
+| `gengraph.create` ✍ ↺ ✓ | `name` | Writes `vngen/work/graphs`. Start an empty graph at `vngen/work/graphs/<slug>.json`. The slug comes from the name once, at creation, so a graph is renamed the way a scene is — not at all. |
+| `gengraph.createForSlot` ✍ ↺ ✓ | `slot`, `name` (default `''`), `open` (default `true`) | Writes `vngen/work/graphs`. Start a graph that draws one slot, wired the way the pipeline draws it: the derived prompt and the task references feed an image node, and its picture fills the slot. An empty `name` is derived from the slot address, and takes the next free `<base>-2` where a graph of that name exists. A slot another graph already draws is refused, because two active outputs claiming one slot leave it bound to neither. `open` shows the new graph in the Gen Graph editor, focusing a pane already open on one rather than making a second. This is what _Create a graph for this slot_ dispatches, on a slot row and on a picture a slot claims alike. |
+| `gengraph.createGroup` ✍ ↺ ✓ | `slug`, `nodes`, `name` (default `''`), `group` (default `''`) | Writes `vngen/work/graphs`. Move the selected nodes into a new definition file under `lib/` and leave an instance in their place; every link that crossed the selection is rewired through the instance. Writes both files. What Ctrl+G and Edit ▸ Create Group run. |
+| `gengraph.delete` ✍ ⚠ ↺ ✓ | `slug` | Writes `vngen/work/graphs`. Remove a graph's document. Its journal and blobs under `vngen/state/graphs/` stay, being the record of runs that happened. |
+| `gengraph.duplicateNode` ✍ ↺ ✓ | `slug`, `node`, `x` (default `0`), `y` (default `0`), `group` (default `''`) | Writes `vngen/work/graphs`. |
 | `gengraph.estimate` | `slug` | What one run would cost, per paid node and in total, from the shipped price table. Writes nothing. |
-| `gengraph.expose` ✍ ↺ ✓ | `group`, `node`, `key` (default `''`), `label` (default `''`) | Add a forwarded row to a definition: one inner node's property, or the node's whole panel when no key is named. Every instance shows it. What the designer's Expose runs. |
-| `gengraph.link` ✍ ↺ ✓ | `slug`, `from`, `fromSocket`, `to`, `toSocket`, `group` (default `''`) | Feed one node's input from another node's output. A pair whose types cannot coerce is refused, and so is a link that would close a cycle. |
+| `gengraph.expose` ✍ ↺ ✓ | `group`, `node`, `key` (default `''`), `label` (default `''`) | Writes `vngen/work/graphs`. Add a forwarded row to a definition: one inner node's property, or the node's whole panel when no key is named. Every instance shows it. What the designer's Expose runs. |
+| `gengraph.link` ✍ ↺ ✓ | `slug`, `from`, `fromSocket`, `to`, `toSocket`, `group` (default `''`) | Writes `vngen/work/graphs`. Feed one node's input from another node's output. A pair whose types cannot coerce is refused, and so is a link that would close a cycle. |
 | `gengraph.list` | — | Every generation graph the project holds, with the sentence an unreadable one earns instead of opening. |
 | `gengraph.listGroups` | — | Every group definition the project holds, with the sentence an unreadable one earns instead of opening. What Add Group offers. |
-| `gengraph.moveNodes` ✍ ↺ ✓ | `slug`, `moves` (digest), `group` (default `''`) | — |
-| `gengraph.removeBoundary` ✍ ↺ ✓ | `group`, `dir`, `key` | — |
-| `gengraph.removeNode` ✍ ↺ ✓ | `slug`, `node`, `group` (default `''`) | Delete one node and every link touching it. |
-| `gengraph.reorderExposed` ✍ ↺ ✓ | `group`, `from`, `to` | — |
-| `gengraph.repointExposed` ✍ ↺ ✓ | `group`, `index`, `node`, `key` (default `''`) | — |
-| `gengraph.run` ✍ ⚠ ✓ | `slug`, `node` (default `''`), `force` (default `false`) | Execute the graph through the same executor and journal the scheduler uses, targeting the active Output or the named one. Confirmed, quoting the estimate. Not undoable: what it writes is a journal record and a blob under `vngen/state`. `force` re-runs every paid node feeding the target rather than resuming from the journal. |
-| `gengraph.setActiveOutput` ✍ ↺ ✓ | `slug`, `node` | Choose which Output node a run targets and which slot binding counts. An Output filling no slot is refused, because a task's slot is what names the graph that draws it. |
-| `gengraph.setProp` ✍ ↺ ✓ | `slug`, `node`, `key`, `value`, `group` (default `''`) | Write one node property. The value is typed as text and the node's own property decides how to read it, so a number field refuses prose. Addressed by node key into a group instance, the write is an override on that instance. |
-| `gengraph.unexpose` ✍ ↺ ✓ | `group`, `index` | — |
-| `gengraph.ungroup` ✍ ↺ ✓ | `slug`, `node`, `group` (default `''`) | Inline a copy of the instance's subgraph, overrides included, where the instance stood. The definition under `lib/` is left for its other instances. What Edit ▸ Ungroup runs. |
-| `gengraph.unlink` ✍ ↺ ✓ | `slug`, `to`, `toSocket`, `from` (default `''`), `fromSocket` (default `''`), `group` (default `''`) | Sever what feeds an input. Naming a source severs that one edge; naming none severs every edge into the socket. |
+| `gengraph.moveNodes` ✍ ↺ ✓ | `slug`, `moves` (digest), `group` (default `''`) | Writes `vngen/work/graphs`. |
+| `gengraph.removeBoundary` ✍ ↺ ✓ | `group`, `dir`, `key` | Writes `vngen/work/graphs`. |
+| `gengraph.removeNode` ✍ ↺ ✓ | `slug`, `node`, `group` (default `''`) | Writes `vngen/work/graphs`. Delete one node and every link touching it. |
+| `gengraph.reorderExposed` ✍ ↺ ✓ | `group`, `from`, `to` | Writes `vngen/work/graphs`. |
+| `gengraph.repointExposed` ✍ ↺ ✓ | `group`, `index`, `node`, `key` (default `''`) | Writes `vngen/work/graphs`. |
+| `gengraph.run` ✍ ⚠ ✓ | `slug`, `node` (default `''`), `force` (default `false`) | Writes `vngen/state/graphs`. Execute the graph through the same executor and journal the scheduler uses, targeting the active Output or the named one. Confirmed, quoting the estimate. Not undoable: what it writes is a journal record and a blob under `vngen/state`. `force` re-runs every paid node feeding the target rather than resuming from the journal. |
+| `gengraph.setActiveOutput` ✍ ↺ ✓ | `slug`, `node` | Writes `vngen/work/graphs`. Choose which Output node a run targets and which slot binding counts. An Output filling no slot is refused, because a task's slot is what names the graph that draws it. |
+| `gengraph.setProp` ✍ ↺ ✓ | `slug`, `node`, `key`, `value`, `group` (default `''`) | Writes `vngen/work/graphs`. Write one node property. The value is typed as text and the node's own property decides how to read it, so a number field refuses prose. Addressed by node key into a group instance, the write is an override on that instance. |
+| `gengraph.unexpose` ✍ ↺ ✓ | `group`, `index` | Writes `vngen/work/graphs`. |
+| `gengraph.ungroup` ✍ ↺ ✓ | `slug`, `node`, `group` (default `''`) | Writes `vngen/work/graphs`. Inline a copy of the instance's subgraph, overrides included, where the instance stood. The definition under `lib/` is left for its other instances. What Edit ▸ Ungroup runs. |
+| `gengraph.unlink` ✍ ↺ ✓ | `slug`, `to`, `toSocket`, `from` (default `''`), `fromSocket` (default `''`), `group` (default `''`) | Writes `vngen/work/graphs`. Sever what feeds an input. Naming a source severs that one edge; naming none severs every edge into the socket. |
 
 ## `interaction.`
 
@@ -128,7 +128,7 @@
 | Command | Props | Notes |
 | ------- | ----- | ----- |
 | `notify.clear` | `ids` | — |
-| `notify.deleteAll` ✍ ⚠ ✓ | — | — |
+| `notify.deleteAll` ✍ ⚠ ✓ | — | Writes `vngen/state/notifications.jsonl`. |
 | `notify.follow` | `id` | — |
 | `notify.hide` | `id` | — |
 | `notify.list` | — | — |
@@ -139,8 +139,8 @@
 
 | Command | Props | Notes |
 | ------- | ----- | ----- |
-| `pipeline.approveAndRun` ✍ ⚠ ✓ | — | Approve everything waiting, run, and repeat until nothing is left of either — a whole art pass as one act. Each round unlocks the next rung of the slot graph, so it takes at most `MAX_ROUNDS` (twelve) of them and stops early on convergence, on a round that approved nothing and failed everything, or on `pipeline.stop`. The pass holds the session under its own busy name (`BUSY_PASS`) for all of its rounds and the gaps between them, sharing one `AbortController` with the runs inside it, so `pipeline.stop` ends the pass rather than only the round it interrupted — and the Stop button stays drawn while a round is approving, which is not a run and had nothing to abort before. It approves **one** candidate per slot, and **nothing at all for a slot that already has an answer** — a cleared gate, or another candidate already accepted. Candidates for one slot are alternatives rather than separate pictures: two approved portraits of one character settle her look and then change it, and two accepted sheets for one angle leave the slot unable to say which it holds. A finished project still lists the takes that lost, so without that rule the pass re-decides every settled slot each round, is offered the previous winner the round after, and never converges while the pipeline it runs between rounds has nothing to do. Confirmed because it is the one command that both approves art and spends money without asking again in between. |
-| `pipeline.run` ✍ ✓ | `mock` (default `true`) | Plan and execute to the next gate. Deliberately **not** confirmed: every door to it is already a click on the words "run pipeline", and the `check` note carries the upper bound in image and review calls. |
+| `pipeline.approveAndRun` ✍ ⚠ ✓ | — | Writes `characters`, `wiki`, `vngen/work/characters`, `assets/objects`, `assets/manifest.json`, `vngen/build`, `vngen/state/tasks.jsonl`, `vngen/state/graphs`. Approve everything waiting, run, and repeat until nothing is left of either — a whole art pass as one act. Each round unlocks the next rung of the slot graph, so it takes at most `MAX_ROUNDS` (twelve) of them and stops early on convergence, on a round that approved nothing and failed everything, or on `pipeline.stop`. The pass holds the session under its own busy name (`BUSY_PASS`) for all of its rounds and the gaps between them, sharing one `AbortController` with the runs inside it, so `pipeline.stop` ends the pass rather than only the round it interrupted — and the Stop button stays drawn while a round is approving, which is not a run and had nothing to abort before. It approves **one** candidate per slot, and **nothing at all for a slot that already has an answer** — a cleared gate, or another candidate already accepted. Candidates for one slot are alternatives rather than separate pictures: two approved portraits of one character settle her look and then change it, and two accepted sheets for one angle leave the slot unable to say which it holds. A finished project still lists the takes that lost, so without that rule the pass re-decides every settled slot each round, is offered the previous winner the round after, and never converges while the pipeline it runs between rounds has nothing to do. Confirmed because it is the one command that both approves art and spends money without asking again in between. |
+| `pipeline.run` ✍ ✓ | `mock` (default `true`) | Writes `assets/objects`, `assets/manifest.json`, `vngen/build`, `vngen/state/tasks.jsonl`, `vngen/state/graphs`. Plan and execute to the next gate. Deliberately **not** confirmed: every door to it is already a click on the words "run pipeline", and the `check` note carries the upper bound in image and review calls. |
 | `pipeline.status` | — | Task counts, gate-pending characters, gate-blocked state. |
 | `pipeline.stop` ✓ | — | — |
 
@@ -148,37 +148,37 @@
 
 | Command | Props | Notes |
 | ------- | ----- | ----- |
-| `plugin.install` ✍ ✓ | `source` | — |
+| `plugin.install` ✍ ✓ | `source` | Writes `<user>/plugins`. |
 | `plugin.list` | — | — |
-| `plugin.prices` ✍ ✓ | `name` | — |
-| `plugin.remove` ✍ ✓ | `name` | — |
+| `plugin.prices` ✍ ✓ | `name` | Writes `<user>/prices.json`. |
+| `plugin.remove` ✍ ✓ | `name` | Writes `<user>/plugins`. |
 
 ## `project.`
 
 | Command | Props | Notes |
 | ------- | ----- | ----- |
 | `project.info` | — | What `project.yaml` says: title, entry scene, art style, model ids, image params, and how many image tasks the art style reaches. Never the API keys — their *names* are in the file and a pane listing them is one screenshot away from looking like it lists their values. |
-| `project.installPages` ✍ ⚠ ✓ | `branch` (default `'gh-pages'`) | Write a GitHub Actions workflow into the project that publishes it as a light-novel web page, plus the bundled renderer the workflow runs. Refuses a project that is not a git repository, has no branch checked out, or has no `origin` remote. Exports the playable first, so the commit CI builds from is complete. Deliberately **not undoable**: it writes `.github/` and `.vnstudio/`, outside the tree the undo snapshot covers. The app never pushes. See [`../guides/github-pages.md`](../guides/github-pages.md). |
+| `project.installPages` ✍ ⚠ ✓ | `branch` (default `'gh-pages'`) | Writes `.github/workflows`, `.vnstudio/pages`, `.gitattributes`, `vngen/build/story.play.json`, `vngen/state/notifications.jsonl`. Write a GitHub Actions workflow into the project that publishes it as a light-novel web page, plus the bundled renderer the workflow runs. Refuses a project that is not a git repository, has no branch checked out, or has no `origin` remote. Exports the playable first, so the commit CI builds from is complete. Deliberately **not undoable**: it writes `.github/` and `.vnstudio/`, outside the tree the undo snapshot covers. The app never pushes. See [`../guides/github-pages.md`](../guides/github-pages.md). |
 | `project.keyStatus` | — | — |
 | `project.pagesStatus` | `branch` (default `'gh-pages'`) | Whether this project carries the GitHub page builder, and whether the copy it carries came from this build of the app. Read by the menu, which reads Install or Update accordingly. |
-| `project.setArtStyle` ✍ ⚠ ↺ ✓ | `style` (default `''`) | The sentence every image prompt opens with. Not art notes on one rung: it reaches every portrait, sheet, plate and shot, so it re-keys **every** image task. Spliced into `project.yaml`, so comments and key order survive. |
-| `project.setKey` ✍ ✓ | `provider` (`gemini`\|`anthropic`), `key` (**secret**), `scope` (`project`\|`user`, default `'project'`) | Store one model provider's API key in `keys/`, the file `resolveKeys` reads when the matching environment variable is unset — and it says so when one is set, because the variable wins. The value goes to that file and nowhere else: the history records `<secret>`, and `keys` is added to `.gitignore` **before** the write, because commit-on-save runs `git commit -A`. Deliberately **not undoable**: `keys/` is outside the class a snapshot covers, which is what keeps an undo from writing over or deleting the credential this command exists to store. |
+| `project.setArtStyle` ✍ ⚠ ↺ ✓ | `style` (default `''`) | Writes `project.yaml`. The sentence every image prompt opens with. Not art notes on one rung: it reaches every portrait, sheet, plate and shot, so it re-keys **every** image task. Spliced into `project.yaml`, so comments and key order survive. |
+| `project.setKey` ✍ ✓ | `provider` (`gemini`\|`anthropic`), `key` (**secret**), `scope` (`project`\|`user`, default `'project'`) | Writes `keys`, `.gitignore`, `<user>/keys`. Store one model provider's API key in `keys/`, the file `resolveKeys` reads when the matching environment variable is unset — and it says so when one is set, because the variable wins. The value goes to that file and nowhere else: the history records `<secret>`, and `keys` is added to `.gitignore` **before** the write, because commit-on-save runs `git commit -A`. Deliberately **not undoable**: `keys/` is outside the class a snapshot covers, which is what keeps an undo from writing over or deleting the credential this command exists to store. |
 | `project.testKey` ✓ | `provider` (`gemini`\|`anthropic`) | — |
 
 ## `prompt.`
 
 | Command | Props | Notes |
 | ------- | ----- | ----- |
-| `prompt.addRef` ✍ ↺ ✓ | `hash`, `chunk`, `ref` | Attach a reference image to one clause — evidence for that clause, so muting it drops the reference too. `ref` is an asset hash (a prefix will do) or a **slot address**: `portrait:<character>`, `sheet:<character>/<outfit>/<angle>`, `plate:<location>/<variant>`, `shot:<scene>/<shot>`. A slot pins what fills it today and remembers where it came from; a bare hash pins itself and can never move. Refuses a reference that would close a cycle, naming the whole path. |
+| `prompt.addRef` ✍ ↺ ✓ | `hash`, `chunk`, `ref` | Writes `characters`, `locations`, `wiki`, `vngen/work/shots`. Attach a reference image to one clause — evidence for that clause, so muting it drops the reference too. `ref` is an asset hash (a prefix will do) or a **slot address**: `portrait:<character>`, `sheet:<character>/<outfit>/<angle>`, `plate:<location>/<variant>`, `shot:<scene>/<shot>`. A slot pins what fills it today and remembers where it came from; a bare hash pins itself and can never move. Refuses a reference that would close a cycle, naming the whole path. |
 | `prompt.check` | `hash` | Which clauses a hand-written or condensed prompt no longer appears to say. A word-overlap heuristic — "not found", never "dropped" — so it is a prompt to go and look. In chunks mode nothing can be missing. |
-| `prompt.clear` ✍ ↺ ✓ | `hash`, `part` (`all`\|`chunks`\|`order`\|`custom`\|`agent`, default `'all'`) | Discard part of what was done to a prompt. What is left is what the builders derive, byte for byte. |
-| `prompt.condense` ✍ ↺ ✓ | `hash`, `force` (default `false`) | Ask the text model to rewrite the clauses as one fluent prompt and store it. It is then **held**: clauses moving under it do not re-render the picture. `force` reconciles against a hand-written prompt rather than refusing over it. |
-| `prompt.dropRef` ✍ ↺ ✓ | `hash`, `chunk`, `ref` | Take a reference off a clause. The bytes stay in the store — this only stops them being sent. |
+| `prompt.clear` ✍ ↺ ✓ | `hash`, `part` (`all`\|`chunks`\|`order`\|`custom`\|`agent`, default `'all'`) | Writes `characters`, `locations`, `wiki`, `vngen/work/shots`. Discard part of what was done to a prompt. What is left is what the builders derive, byte for byte. |
+| `prompt.condense` ✍ ↺ ✓ | `hash`, `force` (default `false`) | Writes `characters`, `locations`, `wiki`, `vngen/work/shots`. Ask the text model to rewrite the clauses as one fluent prompt and store it. It is then **held**: clauses moving under it do not re-render the picture. `force` reconciles against a hand-written prompt rather than refusing over it. |
+| `prompt.dropRef` ✍ ↺ ✓ | `hash`, `chunk`, `ref` | Writes `characters`, `locations`, `wiki`, `vngen/work/shots`. Take a reference off a clause. The bytes stay in the store — this only stops them being sent. |
 | `prompt.info` | `hash` | The prompt one asset would be generated from: the clauses the builders derived, what the author has done to them, and the one string that gets sent. The same projection the Asset editor draws, so an agent and the pane never disagree about what a picture was asked for. |
-| `prompt.moveChunk` ✍ ↺ ✓ | `hash`, `chunk`, `after` (default `''`) | Reorder one clause; empty `after` means the top. Order is weight to an image model, so this is an authorial act. `prompt.clear(part=order)` restores the derived order. |
-| `prompt.repin` ✍ ↺ ✓ | `hash`, `chunk`, `ref`, `regenerate` (default `true`) | Point a linked reference at whatever its slot holds now, which is how a suspension is cleared. `regenerate=false` is **re-approve**: it keeps the existing bytes by recording them as the newly-keyed task's output, so nothing re-renders. |
-| `prompt.setChunk` ✍ ↺ ✓ | `hash`, `chunk`, `op` (`replace`\|`append`\|`mute`\|`clear`), `text` (default `''`) | One thing to one clause. The keys are what `prompt.info` lists. An edit records the derived text it was written against, so the pane can say when the project moved underneath it. It **re-renders** what that rung reaches. |
-| `prompt.setCustom` ✍ ↺ ✓ | `hash`, `text` (digest) | Replace the whole prompt with one written by hand. The clauses stay underneath — they are what `prompt.condense` reconciles against and what `prompt.check` measures. |
+| `prompt.moveChunk` ✍ ↺ ✓ | `hash`, `chunk`, `after` (default `''`) | Writes `characters`, `locations`, `wiki`, `vngen/work/shots`. Reorder one clause; empty `after` means the top. Order is weight to an image model, so this is an authorial act. `prompt.clear(part=order)` restores the derived order. |
+| `prompt.repin` ✍ ↺ ✓ | `hash`, `chunk`, `ref`, `regenerate` (default `true`) | Writes `characters`, `locations`, `wiki`, `vngen/work/shots`, `vngen/state/tasks.jsonl`. Point a linked reference at whatever its slot holds now, which is how a suspension is cleared. `regenerate=false` is **re-approve**: it keeps the existing bytes by recording them as the newly-keyed task's output, so nothing re-renders. |
+| `prompt.setChunk` ✍ ↺ ✓ | `hash`, `chunk`, `op` (`replace`\|`append`\|`mute`\|`clear`), `text` (default `''`) | Writes `characters`, `locations`, `wiki`, `vngen/work/shots`. One thing to one clause. The keys are what `prompt.info` lists. An edit records the derived text it was written against, so the pane can say when the project moved underneath it. It **re-renders** what that rung reaches. |
+| `prompt.setCustom` ✍ ↺ ✓ | `hash`, `text` (digest) | Writes `characters`, `locations`, `wiki`, `vngen/work/shots`. Replace the whole prompt with one written by hand. The clauses stay underneath — they are what `prompt.condense` reconciles against and what `prompt.check` measures. |
 
 ## `report.`
 
@@ -196,36 +196,36 @@
 
 | Command | Props | Notes |
 | ------- | ----- | ----- |
-| `story.assignLineIds` ✍ ↺ ✓ | `scene` (default `''`) | Writes allocated ids down as `[[line:]]` marks; empty `scene` means all. |
+| `story.assignLineIds` ✍ ↺ ✓ | `scene` (default `''`) | Writes `scenes`. Writes allocated ids down as `[[line:]]` marks; empty `scene` means all. |
 | `story.coverage` | `scene` | One scene's lines + persisted shots — the timeline's input. |
-| `story.decomposeAll` ✍ ⚠ ↺ ✓ | — | Storyboard every reachable scene that has none, so the graph is whole rather than one wave of it. One model call per scene. Additive only — a scene with a file is left alone and there is **no `force`**, because the file wins forever and re-decomposing would move shot ids, hence task identities, hence re-render art already paid for. A scene the model does not answer for is named and **not written**: an absent file is the only signal meaning "decompose this" (so a scene begun by hand with `story.newShot` already has its file, and is left alone like any other). `check` refuses mock or unresolved keys with `pipeline.run`'s own sentence, reports the count, and warns about scenes naming a character the project does not have yet. One undo point for the batch. |
-| `story.deleteLine` ✍ ↺ ✓ | `line` | A shot left covering nothing is **kept** — deleting paid-for art is the author's call. |
-| `story.deleteScene` ✍ ↺ ✓ | `scene` | Refuses while anything still points at it, naming what. |
-| `story.deleteShot` ✍ ↺ ✓ | `scene`, `shot` | The covered lines become visible gaps — never handed to a neighbour — and a rendered frame is orphaned, not deleted. Removing the last shot deletes the storyboard file itself, so the scene will be decomposed again. |
-| `story.export` ✍ ✓ | — | Write `vngen/build/story.play.json` (`vngen export`). |
+| `story.decomposeAll` ✍ ⚠ ↺ ✓ | — | Writes `vngen/work/shots`. Storyboard every reachable scene that has none, so the graph is whole rather than one wave of it. One model call per scene. Additive only — a scene with a file is left alone and there is **no `force`**, because the file wins forever and re-decomposing would move shot ids, hence task identities, hence re-render art already paid for. A scene the model does not answer for is named and **not written**: an absent file is the only signal meaning "decompose this" (so a scene begun by hand with `story.newShot` already has its file, and is left alone like any other). `check` refuses mock or unresolved keys with `pipeline.run`'s own sentence, reports the count, and warns about scenes naming a character the project does not have yet. One undo point for the batch. |
+| `story.deleteLine` ✍ ↺ ✓ | `line` | Writes `scenes`, `vngen/work/shots`. A shot left covering nothing is **kept** — deleting paid-for art is the author's call. |
+| `story.deleteScene` ✍ ↺ ✓ | `scene` | Writes `scenes`, `vngen/work/shots`. Refuses while anything still points at it, naming what. |
+| `story.deleteShot` ✍ ↺ ✓ | `scene`, `shot` | Writes `vngen/work/shots`. The covered lines become visible gaps — never handed to a neighbour — and a rendered frame is orphaned, not deleted. Removing the last shot deletes the storyboard file itself, so the scene will be decomposed again. |
+| `story.export` ✍ ✓ | — | Writes `vngen/build/story.play.json`. Write `vngen/build/story.play.json` (`vngen export`). |
 | `story.graph` | — | Scenes + branch edges for the editor; reachability marked. |
-| `story.insertLine` ✍ ↺ ✓ | `scene`, `text`, `after` (default `''`), `kind` (`dialogue`\|`parenthetical`\|`narration`\|`transition`\|`lyric`\|`centered`, default `'dialogue'`), `speaker` (default `''`) | Empty `after` means the top of the scene; the id is allocated, not positional. |
-| `story.mergeScene` ✍ ↺ ✓ | `scene`, `into` | Only across a `next` boundary; `scene`'s file and storyboard are removed. |
-| `story.moveLine` ✍ ↺ ✓ | `line`, `after` (default `''`) | Reorder within the scene. What `script.moveLine` commits. |
-| `story.moveShot` ✍ ↺ ✓ | `scene`, `shot`, `after` (default `''`) | Reorder a shot by moving the lines it covers; empty `after` means the top. A shot other shots draw inside is refused by name. |
-| `story.newScene` ✍ ↺ ✓ | `scene`, `heading` | A `scenes/<id>.md` with a heading and no lines; nothing points at it yet. |
-| `story.newShot` ✍ ↺ ✓ | `scene`, `lines`, `framing` (`medium`\|`wide`\|`close`\|`establishing`, default `'medium'`), `subjects` (default `''`) | Place a shot by hand over the lines it covers; claimed lines leave other shots. A new shot id is a new task — a new frame to render. On a scene with no storyboard this **creates** it, which ends decomposition for that scene; lines the shot does not claim stay uncovered until covered by hand. Empty `subjects` casts the speakers of the covered lines; a character no sheet describes is refused by name. `story.setSubjects` changes the cast afterwards. |
+| `story.insertLine` ✍ ↺ ✓ | `scene`, `text`, `after` (default `''`), `kind` (`dialogue`\|`parenthetical`\|`narration`\|`transition`\|`lyric`\|`centered`, default `'dialogue'`), `speaker` (default `''`) | Writes `scenes`. Empty `after` means the top of the scene; the id is allocated, not positional. |
+| `story.mergeScene` ✍ ↺ ✓ | `scene`, `into` | Writes `scenes`, `vngen/work/shots`. Only across a `next` boundary; `scene`'s file and storyboard are removed. |
+| `story.moveLine` ✍ ↺ ✓ | `line`, `after` (default `''`) | Writes `scenes`. Reorder within the scene. What `script.moveLine` commits. |
+| `story.moveShot` ✍ ↺ ✓ | `scene`, `shot`, `after` (default `''`) | Writes `scenes`. Reorder a shot by moving the lines it covers; empty `after` means the top. A shot other shots draw inside is refused by name. |
+| `story.newScene` ✍ ↺ ✓ | `scene`, `heading` | Writes `scenes`. A `scenes/<id>.md` with a heading and no lines; nothing points at it yet. |
+| `story.newShot` ✍ ↺ ✓ | `scene`, `lines`, `framing` (`medium`\|`wide`\|`close`\|`establishing`, default `'medium'`), `subjects` (default `''`) | Writes `vngen/work/shots`. Place a shot by hand over the lines it covers; claimed lines leave other shots. A new shot id is a new task — a new frame to render. On a scene with no storyboard this **creates** it, which ends decomposition for that scene; lines the shot does not claim stay uncovered until covered by hand. Empty `subjects` casts the speakers of the covered lines; a character no sheet describes is refused by name. `story.setSubjects` changes the cast afterwards. |
 | `story.play` | — | Build the playable in memory; writes nothing. |
-| `story.removeChoice` ✍ ↺ ✓ | `scene`, `index` | Deletes the marker line; the prose is untouched. |
-| `story.requireCast` ✍ ↺ ✓ | `scene`, `shot`, `required` (default `true`) | Turn the reviewer's demand that a shot show its cast on or off. Off keeps the reference sheets and only stops an absence counting as a defect, which is how a frame the refine loop cannot satisfy is unstuck. |
-| `story.screenplay` ✍ ✓ | `clean` (default `false`) | Project the scenes back to one Fountain file at the project root (`vngen screenplay`). `clean` drops the `[[…]]` markers, which makes it one-way. |
-| `story.setChoice` ✍ ↺ ✓ | `scene`, `goto`, `label`, `index` (default `-1`) | `-1` appends. Rewrites one `[[choice:]]` marker. |
-| `story.setCoverage` ✍ ↺ ✓ | `scene`, `shot`, `lines` (default `''`) | Comma-separated line ids; claimed lines leave every other shot. |
-| `story.setHeading` ✍ ↺ ✓ | `scene`, `heading` | Move a scene somewhere else. No line id changes, but a location is in every shot's task inputs, so the check says how many rendered shots will be drawn again — and the prose it leaves behind is the agent's to rewrite. Deliberately not `confirm`: the check **is** the warning. |
-| `story.setLineText` ✍ ↺ ✓ | `line`, `text` | Retype one line. Says how many rendered shots now illustrate the old prose. |
-| `story.setNext` ✍ ↺ ✓ | `scene`, `goto` (default `''`) | Empty `goto` clears the `[[next:]]` marker. |
-| `story.setOutfit` ✍ ↺ ✓ | `scene`, `shot`, `character`, `outfit` (default `''`) | One subject of one shot; empty clears the override. Unlike coverage this re-hashes the shot. |
-| `story.setSceneOutfit` ✍ ↺ ✓ | `scene`, `character`, `outfit` (default `''`) | Writes the scene's `[[outfit:]]` marker; empty clears it. Every shot that does not override it re-renders. |
-| `story.setSpeaker` ✍ ↺ ✓ | `line`, `speaker` (default `''`) | Empty `speaker` makes the line narration. |
-| `story.setSubjects` ✍ ↺ ✓ | `scene`, `shot`, `subjects` (default `''`) | Replace the cast of one shot; empty makes it a background plate. Changes the prompt and the reference sheets, so the frame is drawn again. A character no sheet describes is refused by name. |
-| `story.setVariant` ✍ ↺ ✓ | `scene`, `shot`, `variant` | — |
-| `story.spliceScene` ✍ ↺ ✓ | `scene`, `from`, `edge` (default `-1`) | `A→B` becomes `A→scene→B`, as one two-scene patch. |
-| `story.splitScene` ✍ ↺ ✓ | `scene`, `at`, `into` | `at` starts the second half; shots follow their lines, keeping their ids. |
+| `story.removeChoice` ✍ ↺ ✓ | `scene`, `index` | Writes `scenes`. Deletes the marker line; the prose is untouched. |
+| `story.requireCast` ✍ ↺ ✓ | `scene`, `shot`, `required` (default `true`) | Writes `vngen/work/shots`. Turn the reviewer's demand that a shot show its cast on or off. Off keeps the reference sheets and only stops an absence counting as a defect, which is how a frame the refine loop cannot satisfy is unstuck. |
+| `story.screenplay` ✍ ✓ | `clean` (default `false`) | Writes `screenplay.fountain`. Project the scenes back to one Fountain file at the project root (`vngen screenplay`). `clean` drops the `[[…]]` markers, which makes it one-way. |
+| `story.setChoice` ✍ ↺ ✓ | `scene`, `goto`, `label`, `index` (default `-1`) | Writes `scenes`. `-1` appends. Rewrites one `[[choice:]]` marker. |
+| `story.setCoverage` ✍ ↺ ✓ | `scene`, `shot`, `lines` (default `''`) | Writes `vngen/work/shots`. Comma-separated line ids; claimed lines leave every other shot. |
+| `story.setHeading` ✍ ↺ ✓ | `scene`, `heading` | Writes `scenes`, `vngen/work/shots`. Move a scene somewhere else. No line id changes, but a location is in every shot's task inputs, so the check says how many rendered shots will be drawn again — and the prose it leaves behind is the agent's to rewrite. Deliberately not `confirm`: the check **is** the warning. |
+| `story.setLineText` ✍ ↺ ✓ | `line`, `text` | Writes `scenes`. Retype one line. Says how many rendered shots now illustrate the old prose. |
+| `story.setNext` ✍ ↺ ✓ | `scene`, `goto` (default `''`) | Writes `scenes`. Empty `goto` clears the `[[next:]]` marker. |
+| `story.setOutfit` ✍ ↺ ✓ | `scene`, `shot`, `character`, `outfit` (default `''`) | Writes `vngen/work/shots`. One subject of one shot; empty clears the override. Unlike coverage this re-hashes the shot. |
+| `story.setSceneOutfit` ✍ ↺ ✓ | `scene`, `character`, `outfit` (default `''`) | Writes `scenes`. Writes the scene's `[[outfit:]]` marker; empty clears it. Every shot that does not override it re-renders. |
+| `story.setSpeaker` ✍ ↺ ✓ | `line`, `speaker` (default `''`) | Writes `scenes`. Empty `speaker` makes the line narration. |
+| `story.setSubjects` ✍ ↺ ✓ | `scene`, `shot`, `subjects` (default `''`) | Writes `vngen/work/shots`. Replace the cast of one shot; empty makes it a background plate. Changes the prompt and the reference sheets, so the frame is drawn again. A character no sheet describes is refused by name. |
+| `story.setVariant` ✍ ↺ ✓ | `scene`, `shot`, `variant` | Writes `vngen/work/shots`. |
+| `story.spliceScene` ✍ ↺ ✓ | `scene`, `from`, `edge` (default `-1`) | Writes `scenes`. `A→B` becomes `A→scene→B`, as one two-scene patch. |
+| `story.splitScene` ✍ ↺ ✓ | `scene`, `at`, `into` | Writes `scenes`, `vngen/work/shots`. `at` starts the second half; shots follow their lines, keeping their ids. |
 
 ## `tour.`
 
@@ -240,8 +240,8 @@
 
 | Command | Props | Notes |
 | ------- | ----- | ----- |
-| `upload.files` ✍ ⚠ ✓ | `paths` | Copy the author's own documents into `archive/` verbatim, then open a fresh conversation in plan mode asking what to do with them. The archive is outside every directory the agent sweeps, so nothing here reaches `search` or the bible — it is read by name. |
-| `upload.pick` ✍ ⚠ ✓ | — | `upload.files` with the native multi-select file chooser in front. Cancelling changes nothing, and the dialog is not a permission: what the command refuses is refused after it too. |
+| `upload.files` ✍ ⚠ ✓ | `paths` | Writes `archive`, `vngen/state/threads`. Copy the author's own documents into `archive/` verbatim, then open a fresh conversation in plan mode asking what to do with them. The archive is outside every directory the agent sweeps, so nothing here reaches `search` or the bible — it is read by name. |
+| `upload.pick` ✍ ⚠ ✓ | — | Writes `archive`, `vngen/state/threads`. `upload.files` with the native multi-select file chooser in front. Cancelling changes nothing, and the dialog is not a permission: what the command refuses is refused after it too. |
 
 ## `view.`
 
@@ -254,8 +254,8 @@
 | `view.layouts` | — | Every layout template the project has, and which one the window is showing. One a merge left unresolved is listed with the reason rather than left out. |
 | `view.open` | `editor` (`branches`\|`script`\|`convo`\|`timeline`\|`tasklist`\|`taskgraph`\|`gengraph`\|`inspector`\|`play`\|`skills`\|`wiki`\|`documents`\|`asset`\|`project`\|`systemprompt`\|`onboarding`\|`report`), `where` (`here`\|`left`\|`right`\|`above`\|`below`\|`elsewhere`\|`window`\|`popup`, default `'here'`), `subject` (default `''`) | Shows an editor, in the active pane or in a new pane split off it. `elsewhere` is anywhere but the asking pane; `window` is not a pane at all — it opens a second window showing the editor. |
 | `view.palette` | `open` (default `true`) | Opens or closes the command palette. |
-| `view.resetLayout` ✍ ⚠ ↺ ✓ | `scope` (`shipped`\|`all`, default `'shipped'`) | Puts the layouts the app ships with back the way they shipped and re-applies the one on screen. `all` also deletes the ones the author saved. |
-| `view.saveLayout` ✍ ↺ ✓ | `name`, `layout` (digest) | Files the arrangement on screen in the project as `.vnstudio/layouts/<slug>.json`. Saving over one that exists is allowed and is one undo away. |
+| `view.resetLayout` ✍ ⚠ ↺ ✓ | `scope` (`shipped`\|`all`, default `'shipped'`) | Writes `.vnstudio/layouts`, `.vnstudio/session.json`. Puts the layouts the app ships with back the way they shipped and re-applies the one on screen. `all` also deletes the ones the author saved. |
+| `view.saveLayout` ✍ ↺ ✓ | `name`, `layout` (digest) | Writes `.vnstudio/layouts`, `.vnstudio/session.json`. Files the arrangement on screen in the project as `.vnstudio/layouts/<slug>.json`. Saving over one that exists is allowed and is one undo away. |
 
 ## `window.`
 
@@ -270,14 +270,14 @@
 | Command | Props | Notes |
 | ------- | ----- | ----- |
 | `workspace.chooseDirectory` | — | Open the folder chooser and answer with what was chosen, touching nothing — what fills in a `directory` field. |
-| `workspace.create` ✍ ✓ | `path`, `title` (default `''`), `newFolder` (default `false`) | Create a project in a new or empty directory — a starter scene, a story bible page, `project.yaml`, a git repo — then open it. `newFolder` puts it in a `slug(title)` folder inside `path`. Refuses a directory with files in it; warns when it sits inside another repo. |
+| `workspace.create` ✍ ✓ | `path`, `title` (default `''`), `newFolder` (default `false`) | Writes `project.yaml`, `scenes`, `wiki`, `.gitignore`, `.gitattributes`, `.vnstudio/layouts`. Create a project in a new or empty directory — a starter scene, a story bible page, `project.yaml`, a git repo — then open it. `newFolder` puts it in a `slug(title)` folder inside `path`. Refuses a directory with files in it; warns when it sits inside another repo. |
 | `workspace.doctree` | — | The sidebar tree (story → scenes → shots, characters, locations, wiki, assets by kind) plus per-entity backlinks — see [`document-tree.md`](document-tree.md). |
 | `workspace.filetree` | — | Every file in the workspace as a tree, `.git` and `node_modules` excluded. |
-| `workspace.import` ✍ ✓ | — | Convert `screenplay/*.fountain` into `scenes/<id>.md` chunks (`vngen import`). Refuses over existing chunks; the original is moved aside. |
+| `workspace.import` ✍ ✓ | — | Writes `scenes`, `screenplay`, `project.yaml`. Convert `screenplay/*.fountain` into `scenes/<id>.md` chunks (`vngen import`). Refuses over existing chunks; the original is moved aside. |
 | `workspace.index` | — | Characters, locations, screenplay files, diagnostics. |
-| `workspace.open` ✍ ✓ | `path` | Open another project, making it one if it is not yet (`project.yaml` + `git init` + a first commit). Closes the current one — see [`desktop-app-state.md`](desktop-app-state.md#which-project-is-open). |
-| `workspace.pick` ✍ ✓ | — | `workspace.open` with the native directory chooser in front. Cancelling changes nothing. |
+| `workspace.open` ✍ ✓ | `path` | Writes `project.yaml`, `.gitignore`, `.gitattributes`, `.vnstudio/layouts`. Open another project, making it one if it is not yet (`project.yaml` + `git init` + a first commit). Closes the current one — see [`desktop-app-state.md`](desktop-app-state.md#which-project-is-open). |
+| `workspace.pick` ✍ ✓ | — | Writes `project.yaml`, `.gitignore`, `.gitattributes`, `.vnstudio/layouts`. `workspace.open` with the native directory chooser in front. Cancelling changes nothing. |
 | `workspace.recent` | — | The open project and the ones opened before it, most recent first. |
-| `workspace.reindex` ✍ ✓ | — | Rebuild `AICONTEXT.generated.md`: the cast, the locations, the story graph, and the bible's table of contents. Refuses over a file it did not write. |
+| `workspace.reindex` ✍ ✓ | — | Writes `AICONTEXT.generated.md`. Rebuild `AICONTEXT.generated.md`: the cast, the locations, the story graph, and the bible's table of contents. Refuses over a file it did not write. |
 | `workspace.skills` | — | — |
 | `workspace.skilltree` | — | — |

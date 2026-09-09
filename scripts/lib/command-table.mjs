@@ -44,11 +44,22 @@ function formatProps(props) {
   return props.length > 0 ? props.map(formatProp).join(', ') : '—';
 }
 
+/**
+ * The subtrees a mutator declared, as the sentence that opens its Notes cell. An upper bound, so
+ * the wording says what the command may write rather than what a given run did.
+ */
+function affects(entry) {
+  if (!entry.affects || entry.affects.length === 0) return '';
+  return `Writes ${entry.affects.map((p) => `\`${p}\``).join(', ')}.`;
+}
+
 function row(entry) {
   const command = `\`${entry.id}\`${symbols(entry)}`;
   const props = formatProps(entry.props);
-  const notes = entry.notes ? escapeCell(entry.notes) : '—';
-  return `| ${command} | ${props} | ${notes} |`;
+  const notes = [affects(entry), entry.notes ? escapeCell(entry.notes) : '']
+    .filter((part) => part !== '')
+    .join(' ');
+  return `| ${command} | ${props} | ${notes === '' ? '—' : notes} |`;
 }
 
 function table(entries) {
