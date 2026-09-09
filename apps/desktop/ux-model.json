@@ -505,6 +505,18 @@
       "why"   : "The open skill has changed, so Save is offered."
     },
     {
+      "module": "systemprompt",
+      "editor": "systemprompt",
+      "name"  : "no-prompt",
+      "why"   : "No project is open, so there is no prompt and Copy is refused."
+    },
+    {
+      "module": "systemprompt",
+      "editor": "systemprompt",
+      "name"  : "prompt",
+      "why"   : "A prompt of three sections has been read, so Copy is offered."
+    },
+    {
       "module": "taskGraph",
       "editor": "taskgraph",
       "name"  : "no-gate",
@@ -20334,6 +20346,103 @@
           "id"   : "doc.write",
           "props": {
             "path": ".vnauthor/skills/casting/SKILL.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "systemprompt",
+      "module"   : "systemprompt",
+      "situation": "no-prompt",
+      "key"      : "cmd:app.copy",
+      "offer": {
+        "id"      : "app.copy",
+        "label"   : "Copy",
+        "tooltip": "Put the whole prompt — every section, joined the way the agent gets it — on the clipboard",
+        "supplies": ["text"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "No prompt — open a project first."
+        }
+      },
+      "effects": [
+        {
+          "id": "app.copy"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "systemprompt",
+      "module"   : "systemprompt",
+      "situation": "no-prompt",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read the prompt. The project map and AICONTEXT.md are files, and either may have moved",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "systemprompt",
+      "module"   : "systemprompt",
+      "situation": "prompt",
+      "key"      : "cmd:app.copy",
+      "offer": {
+        "id"      : "app.copy",
+        "label"   : "Copy",
+        "tooltip": "Put the whole prompt — every section, joined the way the agent gets it — on the clipboard",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "what": "the system prompt"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "app.copy",
+          "props": {
+            "what": "the system prompt"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "systemprompt",
+      "module"   : "systemprompt",
+      "situation": "prompt",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read the prompt. The project map and AICONTEXT.md are files, and either may have moved",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
           }
         }
       ]

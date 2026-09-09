@@ -13,6 +13,7 @@ import { SITUATIONS as projectbar } from '../projectbar.js';
 import { SITUATIONS as reportconvo } from '../reportconvo.js';
 import { SITUATIONS as script } from '../script.js';
 import { SITUATIONS as skills } from '../skills.js';
+import { SITUATIONS as systemprompt } from '../systemprompt.js';
 import { SITUATIONS as taskGraph } from '../taskGraph.js';
 import { SITUATIONS as tasklist } from '../tasklist.js';
 import { SITUATIONS as timeline } from '../timeline.js';
@@ -30,6 +31,7 @@ import * as projectbarRules from '../../projectbar.js';
 import * as reportconvoRules from '../../reportconvo.js';
 import * as scriptRules from '../../script.js';
 import * as skillsRules from '../../skills.js';
+import * as systempromptRules from '../../systemprompt.js';
 import * as taskGraphRules from '../../taskGraph.js';
 import * as tasklistRules from '../../tasklist.js';
 import * as timelineRules from '../../timeline/controls.js';
@@ -66,6 +68,7 @@ const ROWS: Row<unknown>[] = [
   row('reportconvo', reportconvo, reportconvoRules.controls),
   row('script', script, scriptRules.controls),
   row('skills', skills, skillsRules.controls),
+  row('systemprompt', systemprompt, systempromptRules.controls),
   row('taskGraph', taskGraph, taskGraphRules.controls),
   row('tasklist', tasklist, tasklistRules.controls),
   row('timeline', timeline, timelineRules.controls),

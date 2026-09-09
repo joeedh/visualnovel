@@ -1,7 +1,8 @@
-import type { Container } from 'pathux';
+import type { Button, Container } from 'pathux';
 import { api } from '../../api.js';
-import { onInvalidate } from '../app/bridge.js';
-import { joined, scaleOf } from '../../rules/systemprompt.js';
+import { exec, onInvalidate } from '../app/bridge.js';
+import { copyAction, joined, reloadAction, scaleOf } from '../../rules/systemprompt.js';
+import { redrawing } from '../tour/anchors.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import SYSTEM_PROMPT_CSS from '../../styles/systemprompt.css?inline';
 import type { AgentSystem } from '../../../src/shared/ipc.js';
@@ -27,6 +28,7 @@ export class SystemPromptEditor extends VnEditor {
   private body!: HTMLDivElement;
 
   private view: AgentSystem | undefined;
+  private copyBtn!: Button;
   /** Rising with every load, so a slow read that arrives after a newer one is dropped. */
   private token = 0;
 
@@ -43,10 +45,16 @@ export class SystemPromptEditor extends VnEditor {
 
     const bar = (this.header as Container).row();
     bar.label('SYSTEM PROMPT').style['padding'] = '0px 8px';
-    bar.button('Copy', () => void this.copyAll()).description =
-      'Put the whole prompt — every section, joined the way the agent gets it — on the clipboard';
-    bar.button('⟳', () => void this.load()).description =
-      'Re-read the prompt. The project map and AICONTEXT.md are files, and either may have moved';
+    // Presented by `paint`, which every load ends in
+    this.copyBtn = bar.button('Copy', () => {});
+    // Its own pass: the button is built once with the pane, so a record in the bar's pass would be
+    // dropped by the bar's next paint
+    const reload = reloadAction();
+    redrawing('systemprompt', 'reload').act(
+      bar.button(reload.label, () => {}),
+      reload,
+      () => void this.load(),
+    );
     bar.flushUpdate();
 
     this.adoptStyle(SYSTEM_PROMPT_CSS);
@@ -82,13 +90,19 @@ export class SystemPromptEditor extends VnEditor {
     this.paint();
   }
 
-  /** The whole prompt, joined the way the agent receives it — not the section under the cursor. */
+  /**
+   * The whole prompt, joined the way the agent receives it — not the section under the cursor.
+   * Runs `app.copy` so the copy is a command like any other, with its own sentence back.
+   */
   private async copyAll(): Promise<void> {
     const view = this.view;
     if (!view) return void this.note('nothing to copy yet', true);
     try {
-      await navigator.clipboard.writeText(joined(view.sections));
-      this.note('copied');
+      const ran = await exec('app.copy', {
+        text: joined(view.sections),
+        what: 'the system prompt',
+      });
+      this.note(ran.ok ? 'copied' : ran.error, !ran.ok);
     } catch (error) {
       this.note(error instanceof Error ? error.message : String(error), true);
     }
@@ -105,6 +119,13 @@ export class SystemPromptEditor extends VnEditor {
     this.body.textContent = '';
 
     const view = this.view;
+    // Re-recorded on every paint: the bar is built once at init, and what Copy offers follows
+    // whether a prompt has been read
+    redrawing('systemprompt', 'bar').act(
+      this.copyBtn,
+      copyAction(view?.sections.length ?? 0),
+      () => void this.copyAll(),
+    );
     if (!view || view.sections.length === 0) {
       const empty = el('div', 'sp-empty', 'No prompt — open a project first.');
       this.body.appendChild(empty);

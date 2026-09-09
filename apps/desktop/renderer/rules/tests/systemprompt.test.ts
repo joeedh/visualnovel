@@ -1,5 +1,13 @@
 import { joinSections } from '@vn/authoring';
-import { joined, roughTokens, scaleOf } from '../systemprompt.js';
+import {
+  controls,
+  copyAction,
+  joined,
+  reloadAction,
+  roughTokens,
+  scaleOf,
+} from '../systemprompt.js';
+import { duplicateKeys, keyOf } from '../anchors.js';
 import type { SystemSectionView } from '../../../src/shared/ipc';
 
 const SECTIONS: SystemSectionView[] = [
@@ -42,5 +50,27 @@ describe('scaleOf', () => {
 describe('roughTokens', () => {
   it('is characters over four, and says so by being called rough', () => {
     expect(roughTokens('12345678')).toBe(2);
+  });
+});
+
+describe('controls', () => {
+  it('offers Copy only once a prompt has been read, and reload always', () => {
+    expect(copyAction(3)).toEqual({
+      ok      : true,
+      id      : 'app.copy',
+      props   : { what: 'the system prompt' },
+      label   : 'Copy',
+      tooltip:
+        'Put the whole prompt — every section, joined the way the agent gets it — on the clipboard',
+      supplies: ['text'],
+    });
+    expect(copyAction(0)).toMatchObject({
+      ok     : false,
+      refusal: { reason: 'No prompt — open a project first.' },
+    });
+    expect(reloadAction()).toMatchObject({ props: { what: 'reload' }, on: 'reload', label: '⟳' });
+    const listed = controls({ sections: 3 });
+    expect(listed.map(keyOf)).toEqual(['cmd:app.copy', 'fx:pane.view#reload']);
+    expect(duplicateKeys(listed)).toEqual([]);
   });
 });

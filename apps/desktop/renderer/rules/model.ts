@@ -33,6 +33,7 @@ import * as projectbar from './projectbar.js';
 import * as reportconvo from './reportconvo.js';
 import * as script from './script.js';
 import * as skills from './skills.js';
+import * as systemprompt from './systemprompt.js';
 import * as taskGraph from './taskGraph.js';
 import * as tasklist from './tasklist.js';
 import * as timeline from './timeline/controls.js';
@@ -53,6 +54,7 @@ import { SITUATIONS as PROJECTBAR } from './situations/projectbar.js';
 import { SITUATIONS as REPORTCONVO } from './situations/reportconvo.js';
 import { SITUATIONS as SCRIPT } from './situations/script.js';
 import { SITUATIONS as SKILLS } from './situations/skills.js';
+import { SITUATIONS as SYSTEMPROMPT } from './situations/systemprompt.js';
 import { SITUATIONS as TASKGRAPH } from './situations/taskGraph.js';
 import { SITUATIONS as TASKLIST } from './situations/tasklist.js';
 import { SITUATIONS as TIMELINE } from './situations/timeline.js';
@@ -103,6 +105,7 @@ export const ROWS: readonly Row<unknown>[] = [
   row('reportconvo', 'report', REPORTCONVO, reportconvo.controls),
   row('script', 'script', SCRIPT, script.controls),
   row('skills', 'skills', SKILLS, skills.controls),
+  row('systemprompt', 'systemprompt', SYSTEMPROMPT, systemprompt.controls),
   row('taskGraph', 'taskgraph', TASKGRAPH, taskGraph.controls),
   row('tasklist', 'tasklist', TASKLIST, tasklist.controls),
   row(
