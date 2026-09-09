@@ -37,7 +37,7 @@ that neither report knew about. Those are in
 | 4   | [Pseudo-commands, and a control's list of effects](archive/pseudo-commands-and-a-controls-effects.md) | app                                  | 1          | The closed effect vocabulary in the catalog, closures rewritten as recorded effects, and the four rules effects unlock                                                                               |
 | 5   | Disabling menu items, and refusals that carry a reason                                                | `vendor/path.ux`                     | —          | **Already written and complete**, and the authority on its own scope: `menu-item-disabling.md`, stages 1-5 done, stage 6 (the native menu bar) dropped                                               |
 | 6   | [Finishing the meta-tag system](../../vendor/path.ux/documentation/plans/meta-tag-system.md)          | `vendor/path.ux` + `path-controller` | 5          | **Shipped 2026-09-09.** The barrel exports, an owner type covering a raw DOM node, a scope-plus-segment `widgetPath`, `enabled` and `refusal`, a validating deserialize, and the `toolPath` builders |
-| 7   | The measured tier reads tags                                                                          | app                                  | 3, 6       | `act()` writes a `StdUXMeta`, the sweep walks widgets instead of `window.__vnAnchors`, derived compared against measured                                                                             |
+| 7   | [The measured tier reads tags](the-measured-tier-reads-tags.md)                                       | app                                  | 3, 6       | `act()` writes a `StdUXMeta`, the sweep walks widgets instead of `window.__vnAnchors`, derived compared against measured                                                                             |
 | 8   | `affects` on every command, and the executed tier                                                     | app                                  | —          | Each command declaring the subtrees and `ui.*` fields it may touch, verified by diffing the undo snapshot                                                                                            |
 
 Plans 1, 2, 3 and 7 are the model itself. Plan 4 widens its vocabulary past commands.
@@ -207,7 +207,7 @@ its own tier makes checkable rather than deferring them to a plan of their own.
 | Two controls in one pane share a key only with a discriminator   | 4 ✔  | `keyOf` gives `cmd:`, `item:` and `fx:` keys with `#<on>`; `duplicateKeys` per situation, and no key from two modules of one home                                                                                                                                     |
 | Enabled state agrees with `stack.check`                          | —    | Already checked by the sweep; plan 7 carries it across and adds wording                                                                                                                                                                                               |
 | The ring lands on the control                                    | —    | Already checked by the sweep; plan 7 carries it across                                                                                                                                                                                                                |
-| A bound path resolves on the api its own pane carries            | 7    | Reads `DataAPI.lastResolveError`; see the note below on taking it early                                                                                                                                                                                               |
+| A bound path resolves on the api its own pane carries            | —    | Deferred by plan 7: no renderer widget sets a `datapath`, so the check has an empty population and passes by construction. Worth taking the day one does                                                                                                              |
 
 The `valuePath` rule is separable from the rest of plan 7. It needs the sweep to walk the
 screen and read `lastResolveError`, and it needs neither the derived model nor the meta
@@ -243,9 +243,14 @@ Routing the two reports' open decisions, so no plan starts by rediscovering them
   is still free to validate its own assembled dump with zod, as the desktop app does for
   `anchors.json`. See
   [`meta-tag-system.md`](../../vendor/path.ux/documentation/plans/meta-tag-system.md).
-- **Plan 7** — whether `AnchorDump` is replaced outright or kept as a projection for the
-  tour's resolver; whether `anchors.json` is absorbed into the model's measured fields or
-  kept as the tour's smaller input; how a record names the api a path resolves against.
+- **Plan 7** (answered) — `AnchorDump` is replaced and `Anchor` is kept, because `via`
+  holds live node handles no tag can carry; `anchors.json` keeps its shape and gains a
+  `widgetPath`, because the tour's resolver reads it before any pane is open and CI reads
+  it where there is no app; and a record names its api through the scope, since the api is
+  a function of the home. The plan also establishes that `enabled`, `tooltip` and the
+  refusal sentence cannot be compared across the tiers at all — the derived tier is
+  situation-indexed and a `widgetPath` is situation-blind by construction. See
+  [`the-measured-tier-reads-tags.md`](the-measured-tier-reads-tags.md).
 - **Plan 8** — whether `affects` is a list of document-tree path prefixes, a list of
   `ui.*` field names, or both, and how the snapshot diff is matched against it.
 
@@ -358,7 +363,8 @@ quoted under each, so the claim stays traceable.
 - [x] 6 — finishing the meta-tag system (path.ux + `path-controller`; shipped 2026-09-09:
       [`meta-tag-system.md`](../../vendor/path.ux/documentation/plans/meta-tag-system.md),
       [`meta_tags.md`](../../vendor/path.ux/documentation/meta_tags.md))
-- [ ] 7 — the measured tier reads tags
+- [ ] 7 — the measured tier reads tags (written 2026-09-09:
+      [`the-measured-tier-reads-tags.md`](the-measured-tier-reads-tags.md))
 - [ ] 8 — `affects` on every command, and the executed tier
 
 ## Stopping points
