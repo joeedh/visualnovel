@@ -26,6 +26,7 @@ export const MENUS = [
   'recent',
   'editors',
   'layout',
+  'nodes',
 ] as const;
 export type MenuName = (typeof MENUS)[number];
 

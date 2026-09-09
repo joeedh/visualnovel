@@ -24,6 +24,7 @@ import type { DescentEntry, GraphEdit } from 'pathux';
 
 import { graphDocPath, graphGroupPath } from '../../src/shared/writes.js';
 import { refuse, type Control, type Offer } from './anchors.js';
+import { openMenu, publish, view } from './effects.js';
 import { shortcutOf } from './shortcuts.js';
 
 /** One `gengraph.*` invocation, in the shape `exec` takes. */
@@ -400,9 +401,11 @@ export function commandFor(target: EditTarget, edit: GenEdit): GenCommand {
   }
 }
 
-/** What the Gen Graph pane reads when it draws its Delete, Duplicate, Group and Ungroup buttons. */
+/** What the Gen Graph pane reads when it draws its bar. */
 export interface GroupState {
   selected: GraphId[];
+  /** The one slot this graph draws, which the Asset button shows; none or `''` refuses it. */
+  slot?: string;
   /** The group instances among the selection, by id. */
   groups: GraphId[];
   /**
@@ -494,12 +497,68 @@ export function ungroupAction(
   return judged(control, weighed, target);
 }
 
-/** Every offer the Gen Graph pane draws from this module: the four selection buttons, in bar order. */
+/** Add…, which drops down path.ux's menu of node types; a pick adds one at a fixed spot. */
+export function addAction(): Offer {
+  return {
+    ok: true,
+    ...openMenu('nodes'),
+    label  : 'Add…',
+    tooltip: 'Add a node to this graph',
+  };
+}
+
+/** Arrange, a relayout of the whole graph. */
+export function arrangeAction(): Offer {
+  return {
+    ok: true,
+    ...view('tidy'),
+    on     : 'arrange',
+    label  : 'Arrange',
+    tooltip: 'Lay the whole graph out again, left to right',
+  };
+}
+
+/**
+ * Asset, which selects whatever fills the slot this graph draws and opens it in the Asset editor.
+ * The hash is read from the pipeline status on the click, so the offer names it as supplied.
+ */
+export function assetAction(slot: string | undefined): Offer {
+  const control = { ...publish({}), on: 'link/asset', label: 'Asset' };
+  if (!slot) {
+    return {
+      ...refuse('This graph names no one slot, so there is no picture of its own to show'),
+      ...control,
+      tooltip: 'Show what this graph draws in the Asset editor',
+    };
+  }
+  return {
+    ok: true,
+    ...control,
+    tooltip : `Show what ${slot} holds in the Asset editor`,
+    supplies: ['assetHash'],
+  };
+}
+
+export function reloadAction(): Offer {
+  return {
+    ok: true,
+    ...view('reload'),
+    on     : 'reload',
+    label  : '⟳',
+    tooltip: 'Re-read this graph from disk',
+  };
+}
+
+/** Every offer the Gen Graph pane draws from this module, in bar order. */
 export function controls(state: GroupState): readonly Offer[] {
   return [
+    addAction(),
+    arrangeAction(),
     deleteAction(state.selected, state.weighed.delete, state.target),
     duplicateAction(state.selected, state.weighed.duplicate, state.target),
     groupAction(state.selected, state.weighed.group, state.target),
     ungroupAction(state.groups, state.weighed.ungroup, state.target),
+    assetAction(state.slot),
+    reloadAction(),
   ];
 }

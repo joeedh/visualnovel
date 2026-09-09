@@ -42,6 +42,10 @@ import {
 } from '../../../src/shared/writes.js';
 import { api } from '../../api.js';
 import {
+  reloadAction,
+  assetAction,
+  arrangeAction,
+  addAction,
   deleteAction,
   duplicateAction,
   NO_LEVEL,
@@ -173,23 +177,31 @@ export class GenGraphEditor extends VnEditor {
     const bar = (this.header as Container).row();
     bar.label('GEN GRAPH').style['padding'] = '0px 8px';
     this.pinToggle(bar);
-    describe(
-      bar.button('Add…', () => this.view.openAddMenu(ADD_MENU_AT)),
-      'Add a node to this graph',
+    const anchors = redrawing('gengraph', 'bar');
+    const add = addAction();
+    anchors.act(
+      bar.button(add.label, () => {}),
+      add,
+      () => this.view.openAddMenu(ADD_MENU_AT),
     );
-    describe(
-      bar.button('Arrange', () => void this.view.arrangeNodes()),
-      'Lay the whole graph out again, left to right',
+    const arrange = arrangeAction();
+    anchors.act(
+      bar.button(arrange.label, () => {}),
+      arrange,
+      () => void this.view.arrangeNodes(),
     );
     // Wired by `paintGroupButtons`, which records what each would run against the selection.
     this.deleteButton = bar.button('Delete', () => {});
     this.duplicateButton = bar.button('Duplicate', () => {});
     this.groupButton = bar.button('Group', () => {});
     this.ungroupButton = bar.button('Ungroup', () => {});
-    this.assetButton = bar.button('Asset', () => void this.showAsset());
-    describe(
-      bar.button('⟳', () => void this.load(this.slug)),
-      'Re-read this graph from disk',
+    // Wired by `paintState`, which records it against the slot the graph draws
+    this.assetButton = bar.button('Asset', () => {});
+    const reload = reloadAction();
+    anchors.act(
+      bar.button(reload.label, () => {}),
+      reload,
+      () => void this.load(this.slug),
     );
     bar.flushUpdate();
 
@@ -555,11 +567,11 @@ export class GenGraphEditor extends VnEditor {
     this.notesEl.style.display = notes.length === 0 ? 'none' : 'block';
 
     const slot = this.graph === undefined ? '' : drawnSlot(this.graph);
-    this.assetButton.disabled = slot === '';
-    this.assetButton.description =
-      slot === ''
-        ? 'This graph names no one slot, so there is no picture of its own to show'
-        : `Show what ${slot} holds in the Asset editor`;
+    redrawing('gengraph', 'asset').act(
+      this.assetButton,
+      assetAction(slot),
+      () => void this.showAsset(),
+    );
   }
 
   /**
@@ -904,10 +916,6 @@ const ADD_MENU_AT: readonly [number, number] = [40, 40];
 /** What deleting does, shared by the header button and the key that does the same thing. */
 
 /** What duplicating does, shared by the header button and the key that does the same thing. */
-
-function describe(button: { description?: string }, description: string): void {
-  button.description = description;
-}
 
 /** The written value a property holds, or nothing where it holds something no command carries. */
 function genValue(value: unknown): GenPropValue | undefined {

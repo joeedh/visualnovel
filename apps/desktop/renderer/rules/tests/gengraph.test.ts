@@ -18,6 +18,9 @@ import {
   GROUP_WHAT,
   NO_LEVEL,
   UNGROUP_WHAT,
+  addAction,
+  arrangeAction,
+  assetAction,
   commandFor,
   contestedSlots,
   controls,
@@ -29,6 +32,7 @@ import {
   groupAction,
   keyOf,
   newDocSync,
+  reloadAction,
   noActiveOutput,
   reloadsOnAck,
   shouldReload,
@@ -665,8 +669,35 @@ describe('deleteAction and duplicateAction', () => {
   });
 });
 
+describe('the bar’s own buttons', () => {
+  it('open the node menu, relayout and reload as effects', () => {
+    expect(addAction()).toMatchObject({ id: 'menu.open', props: { menu: 'nodes' }, label: 'Add…' });
+    expect(arrangeAction()).toMatchObject({ props: { what: 'tidy' }, on: 'arrange' });
+    expect(reloadAction()).toMatchObject({ props: { what: 'reload' }, on: 'reload', label: '⟳' });
+  });
+
+  it('offer Asset only while the graph draws a slot, with the hash read on the click', () => {
+    expect(assetAction('plate:cafe/night')).toEqual({
+      ok      : true,
+      id      : 'ui.publish',
+      props   : {},
+      on      : 'link/asset',
+      label   : 'Asset',
+      tooltip : 'Show what plate:cafe/night holds in the Asset editor',
+      supplies: ['assetHash'],
+    });
+    expect(assetAction('')).toMatchObject({
+      ok     : false,
+      refusal: {
+        reason: 'This graph names no one slot, so there is no picture of its own to show',
+      },
+    });
+    expect(assetAction(undefined).ok).toBe(false);
+  });
+});
+
 describe('controls', () => {
-  it('lists the four buttons in bar order, each key once', () => {
+  it('lists the eight buttons in bar order, each key once', () => {
     const target = { slug: 'plates', group: '', prefix: [] };
     const states: GroupState[] = [
       { selected: [], groups: [], weighed: {}, target },
@@ -680,20 +711,26 @@ describe('controls', () => {
     for (const state of states) {
       const listed = controls(state);
       const each = [
+        addAction(),
+        arrangeAction(),
         deleteAction(state.selected, state.weighed.delete, state.target),
         duplicateAction(state.selected, state.weighed.duplicate, state.target),
         groupAction(state.selected, state.weighed.group, state.target),
         ungroupAction(state.groups, state.weighed.ungroup, state.target),
+        assetAction(state.slot),
+        reloadAction(),
       ];
       expect(listed).toEqual(each);
-      expect(new Set(listed.map(anchorKeyOf))).toEqual(
-        new Set([
-          'cmd:gengraph.removeNode',
-          'cmd:gengraph.duplicateNode',
-          'cmd:gengraph.createGroup',
-          'cmd:gengraph.ungroup',
-        ]),
-      );
+      expect(listed.map(anchorKeyOf)).toEqual([
+        'fx:menu.open',
+        'fx:pane.view#arrange',
+        'cmd:gengraph.removeNode',
+        'cmd:gengraph.duplicateNode',
+        'cmd:gengraph.createGroup',
+        'cmd:gengraph.ungroup',
+        'item:link/asset',
+        'fx:pane.view#reload',
+      ]);
       expect(duplicateKeys(listed)).toEqual([]);
     }
   });

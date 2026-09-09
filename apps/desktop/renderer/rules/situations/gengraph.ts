@@ -7,14 +7,15 @@ const target = { slug: 'plates', group: '', prefix: [] };
 export const SITUATIONS = situations<GroupState>(
   {
     name : 'nothing-selected',
-    why  : 'Nothing is selected, so all four buttons are refused before anything is weighed.',
+    why: 'Nothing is selected and no slot is drawn, so the four selection buttons and Asset are refused before anything is weighed.',
     state: { selected: [], groups: [], weighed: {}, target },
   },
   {
     name : 'nodes-selected',
-    why: 'Plain nodes are selected and weighed, so Delete, Duplicate and Group are offered and Ungroup is refused.',
+    why: 'Plain nodes are selected and weighed, so Delete, Duplicate and Group are offered and Ungroup is refused; the graph draws a slot, so Asset is offered.',
     state: {
       selected: [1, 2],
+      slot    : 'plate:cafe/night',
       groups  : [],
       weighed: {
         delete   : { ok: true, edit: { op: 'removeNode', node: 1 } },

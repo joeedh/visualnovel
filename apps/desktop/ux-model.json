@@ -304,13 +304,13 @@
       "module": "gengraph",
       "editor": "gengraph",
       "name"  : "nothing-selected",
-      "why"   : "Nothing is selected, so all four buttons are refused before anything is weighed."
+      "why": "Nothing is selected and no slot is drawn, so the four selection buttons and Asset are refused before anything is weighed."
     },
     {
       "module": "gengraph",
       "editor": "gengraph",
       "name"  : "nodes-selected",
-      "why": "Plain nodes are selected and weighed, so Delete, Duplicate and Group are offered and Ungroup is refused."
+      "why": "Plain nodes are selected and weighed, so Delete, Duplicate and Group are offered and Ungroup is refused; the graph draws a slot, so Asset is offered."
     },
     {
       "module": "gengraph",
@@ -12795,6 +12795,55 @@
       "editor"   : "gengraph",
       "module"   : "gengraph",
       "situation": "nothing-selected",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Add…",
+        "tooltip": "Add a node to this graph",
+        "ok"     : true,
+        "props": {
+          "menu": "nodes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "nodes"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "nothing-selected",
+      "key"      : "fx:pane.view#arrange",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Arrange",
+        "tooltip": "Lay the whole graph out again, left to right",
+        "on"     : "arrange",
+        "ok"     : true,
+        "props": {
+          "what": "tidy"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "tidy"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "nothing-selected",
       "key"      : "cmd:gengraph.removeNode",
       "offer": {
         "id"     : "gengraph.removeNode",
@@ -12877,6 +12926,102 @@
         }
       ],
       "shortcut" : "Ctrl+Alt+G"
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "nothing-selected",
+      "key"      : "item:link/asset",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "Asset",
+        "tooltip": "Show what this graph draws in the Asset editor",
+        "on"     : "link/asset",
+        "ok"     : false,
+        "refusal": {
+          "reason": "This graph names no one slot, so there is no picture of its own to show"
+        }
+      },
+      "effects": [
+        {
+          "id": "ui.publish"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "nothing-selected",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this graph from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "nodes-selected",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Add…",
+        "tooltip": "Add a node to this graph",
+        "ok"     : true,
+        "props": {
+          "menu": "nodes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "nodes"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "nodes-selected",
+      "key"      : "fx:pane.view#arrange",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Arrange",
+        "tooltip": "Lay the whole graph out again, left to right",
+        "on"     : "arrange",
+        "ok"     : true,
+        "props": {
+          "what": "tidy"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "tidy"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
@@ -12991,6 +13136,102 @@
       "via"      : "control",
       "editor"   : "gengraph",
       "module"   : "gengraph",
+      "situation": "nodes-selected",
+      "key"      : "item:link/asset",
+      "offer": {
+        "id"      : "ui.publish",
+        "label"   : "Asset",
+        "tooltip" : "Show what plate:cafe/night holds in the Asset editor",
+        "on"      : "link/asset",
+        "supplies": ["assetHash"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "nodes-selected",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this graph from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "group-selected",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Add…",
+        "tooltip": "Add a node to this graph",
+        "ok"     : true,
+        "props": {
+          "menu": "nodes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "nodes"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "group-selected",
+      "key"      : "fx:pane.view#arrange",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Arrange",
+        "tooltip": "Lay the whole graph out again, left to right",
+        "on"     : "arrange",
+        "ok"     : true,
+        "props": {
+          "what": "tidy"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "tidy"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
       "situation": "group-selected",
       "key"      : "cmd:gengraph.removeNode",
       "offer": {
@@ -13098,6 +13339,102 @@
       "via"      : "control",
       "editor"   : "gengraph",
       "module"   : "gengraph",
+      "situation": "group-selected",
+      "key"      : "item:link/asset",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "Asset",
+        "tooltip": "Show what this graph draws in the Asset editor",
+        "on"     : "link/asset",
+        "ok"     : false,
+        "refusal": {
+          "reason": "This graph names no one slot, so there is no picture of its own to show"
+        }
+      },
+      "effects": [
+        {
+          "id": "ui.publish"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "group-selected",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this graph from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "no-level",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Add…",
+        "tooltip": "Add a node to this graph",
+        "ok"     : true,
+        "props": {
+          "menu": "nodes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "nodes"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "no-level",
+      "key"      : "fx:pane.view#arrange",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Arrange",
+        "tooltip": "Lay the whole graph out again, left to right",
+        "on"     : "arrange",
+        "ok"     : true,
+        "props": {
+          "what": "tidy"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "tidy"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
       "situation": "no-level",
       "key"      : "cmd:gengraph.removeNode",
       "offer": {
@@ -13181,6 +13518,53 @@
         }
       ],
       "shortcut" : "Ctrl+Alt+G"
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "no-level",
+      "key"      : "item:link/asset",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "Asset",
+        "tooltip": "Show what this graph draws in the Asset editor",
+        "on"     : "link/asset",
+        "ok"     : false,
+        "refusal": {
+          "reason": "This graph names no one slot, so there is no picture of its own to show"
+        }
+      },
+      "effects": [
+        {
+          "id": "ui.publish"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "gengraph",
+      "situation": "no-level",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this graph from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
     },
     {
       "via"      : "control",
