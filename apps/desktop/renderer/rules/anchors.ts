@@ -8,7 +8,7 @@
  * desktop jest project is node-only and a pane can only be checked live over CDP.
  */
 import type { Refusal } from 'pathux';
-import { StdUXMeta, widgetSegment } from 'pathux-meta';
+import { StdUXMeta, ensureMeta, widgetSegment, type MetaOwner } from 'pathux-meta';
 import type { PropValue } from '../../src/shared/ipc.js';
 import { VnToolMeta } from './toolmeta.js';
 import {
@@ -118,19 +118,38 @@ export const toolOf = (offer: Offer): VnToolMeta =>
   });
 
 /**
- * One offer as a path.ux meta tag, named `<scope>/<segment>` within its home.
+ * Write the tag an offer makes onto the thing that draws it, named `<scope>/<segment>`.
  *
- * The one converter both tiers use: `AnchorPass` writes it onto the widget it wired, and the
- * model driver builds it with no owner at all. Two spellings of the tag would make the
- * comparison in `uxmodel.test.ts` a comparison of the two spellings.
+ * `first` says this is the presenting pass's first sight of the owner, and replaces whatever
+ * tools an earlier pass left on it; a second offer on the same owner within one pass appends its
+ * own. Appending unconditionally — what path.ux's own builders do — would grow `tools` without
+ * bound on the two controls a later pass re-anchors, the pin toggle and the task graph's gate
+ * buttons. `widgetSegment` hashes every tool's `identity()`, so the owner's name would move on
+ * every redraw and `anchors.json` would stop being reproducible.
  */
-export function tagOf(offer: Offer, scope: AnchorHome): StdUXMeta<VnToolMeta> {
-  const tag = new StdUXMeta<VnToolMeta>({ description: offer.tooltip, tools: [toolOf(offer)] });
+export function writeTag(
+  owner: MetaOwner,
+  offer: Offer,
+  scope: AnchorHome,
+  first: boolean,
+): StdUXMeta {
+  const tag = ensureMeta(owner, StdUXMeta);
+  if (first) tag.tools = [toolOf(offer)];
+  else tag.tools.push(toolOf(offer));
+  tag.description = offer.tooltip;
   tag.enabled = offer.ok;
   tag.refusal = offer.ok ? undefined : offer.refusal;
   tag.widgetPath = `${scope}/${widgetSegment(tag)}`;
   return tag;
 }
+
+/**
+ * One offer as a tag with no widget under it, which is how the derived tier names a control it
+ * has only a rule for. The same converter as the live pane's, so the comparison in
+ * `uxmodel.test.ts` compares two tiers rather than two spellings of one idea.
+ */
+export const tagOf = (offer: Offer, scope: AnchorHome): StdUXMeta =>
+  writeTag({}, offer, scope, true);
 
 /** The part of a `DOMRect` the overlay reads. Typed structurally so a test needs no DOM. */
 export interface AnchorRect {

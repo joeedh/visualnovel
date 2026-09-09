@@ -11,7 +11,8 @@
  * ships in production, because the tour reads it at runtime.
  */
 import { composeTooltip, keymap as KEYS, reverse_keymap, type HotKey } from 'pathux';
-import type { PropValue } from '../../../src/shared/ipc.js';
+import * as nstructjs from 'nstructjs';
+import { StdUXMeta, getMeta, type MetaOwner } from 'pathux-meta';
 import type { PopupHome } from '../../../src/shared/editors.js';
 import { menuRecords } from '../../rules/menus.js';
 import { SHORTCUTS, comboOf, type ShortcutScope } from '../../rules/shortcuts.js';
@@ -21,6 +22,7 @@ import {
   HEADER,
   applyOffer,
   keyOf,
+  writeTag,
   type Action,
   type Anchor,
   type AnchorHome,
@@ -140,19 +142,23 @@ export class AnchorPass {
   /**
    * A node may carry several offers — a menu button whose rows run different commands — only
    * while they present the same way, so the second one cannot silently overwrite the first.
+   *
+   * The tag is written on every offer, and only the first one this pass presents replaces the
+   * tools an earlier pass left there.
    */
   private present(node: AnchorNode, offer: Offer): void {
     const prior = this.pass.presented.get(node);
-    if (prior === undefined) {
-      this.pass.presented.set(node, offer);
-      applyOffer(node as unknown as OfferNode, offer, composeTooltip);
-      return;
-    }
-    if (prior.ok !== offer.ok || prior.tooltip !== offer.tooltip) {
+    if (prior !== undefined && (prior.ok !== offer.ok || prior.tooltip !== offer.tooltip)) {
       throw new Error(
         `${keyOf(offer)} shares a node with ${keyOf(prior)} and would present it differently`,
       );
     }
+    const first = prior === undefined;
+    if (first) {
+      this.pass.presented.set(node, offer);
+      applyOffer(node as unknown as OfferNode, offer, composeTooltip);
+    }
+    writeTag(node as unknown as MetaOwner, offer, this.pass.editor, first);
   }
 }
 
@@ -243,35 +249,45 @@ export function rectOf(anchor: Anchor): AnchorRect | undefined {
   return anchor.via.node?.getBoundingClientRect() ?? anchor.via.rect;
 }
 
-/** One anchor as the sweep writes it down: everything but the node, which does not serialize. */
-export interface AnchorDump {
+/**
+ * One anchor as the sweep reads it: the tag its control carries, plus the two things the tag has
+ * nowhere to put — the key the resolver re-finds it by, and where the ring goes.
+ *
+ * `tag` is a `StdUXMeta` through `nstructjs.writeJSON`, so what the offer said travels as the
+ * type both tiers write rather than as a second hand-kept interface. `null` where the control
+ * carries no tag at all, which is a defect the sweep reports.
+ */
+export interface SweptAnchor {
   key: string;
-  id: string;
-  props: Record<string, PropValue>;
-  then?: readonly Action[];
-  supplies?: string[];
-  form?: boolean;
-  enabled: boolean;
-  reason?: string;
   editor: AnchorHome;
+  tag: unknown;
   via: 'dom' | 'pick';
   nodeId?: string;
   rect?: AnchorRect;
 }
 
-export function dumpAnchors(): AnchorDump[] {
+/**
+ * The tag on the node this anchor points at, narrowed to the one tool this anchor's own offer
+ * put there. A node presenting two offers carries both, and each anchor is about one of them;
+ * the name stays the node's, since two offers on one node are still one control.
+ */
+function tagJSON(anchor: Anchor): unknown {
+  const node = anchor.via.node;
+  const tag = node === undefined ? undefined : getMeta(node as unknown as MetaOwner, StdUXMeta);
+  if (tag === undefined) return null;
+  const one = tag.copy();
+  const mine = one.tools.find((tool) => tool.toolPath === anchor.id) ?? one.tools[0];
+  one.tools = mine === undefined ? [] : [mine];
+  return nstructjs.writeJSON(one);
+}
+
+export function dumpAnchors(): SweptAnchor[] {
   return liveAnchors().map((anchor) => {
     const rect = rectOf(anchor);
     return {
-      key  : anchor.key,
-      id   : anchor.id,
-      props: anchor.props,
-      ...(anchor.then ? { then: anchor.then } : {}),
-      ...(anchor.supplies ? { supplies: anchor.supplies } : {}),
-      ...(anchor.form ? { form: true } : {}),
-      enabled: anchor.enabled,
-      ...(anchor.reason === undefined ? {} : { reason: anchor.reason }),
+      key   : anchor.key,
       editor: anchor.editor,
+      tag   : tagJSON(anchor),
       via   : anchor.via.kind,
       ...(anchor.via.kind === 'pick' ? { nodeId: anchor.via.nodeId } : {}),
       ...(rect ? { rect: plain(rect) } : {}),

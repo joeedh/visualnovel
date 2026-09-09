@@ -330,9 +330,9 @@ As shipped:
 
 ### Stage 4 — the pass writes the tag, and the sweep reads it
 
-One commit, because splitting it leaves `anchors.json` unregenerable and no gate would say
-so — the sweep is a hand-run `.mjs` that `pnpm check`, `pnpm test` and `pnpm lint` never
-execute.
+**Done.** One commit, because splitting it leaves `anchors.json` unregenerable and no gate
+would say so — the sweep is a hand-run `.mjs` that `pnpm check`, `pnpm test` and
+`pnpm lint` never execute.
 
 - `AnchorPass.present` calls `tagOf` and attaches the tag, replacing `tools` on the pass's
   first sight of the node and appending on later ones.
@@ -343,6 +343,37 @@ execute.
   dump.
 - Re-run the sweep and commit `anchors.json`, with `widgetPath` on control records. Expect
   the same 429 records, 0 strays, 0 disagreements.
+
+As shipped:
+
+- **The tag is attached by `writeTag` in `rules/anchors.ts`, not by `present` itself.** It
+  takes the owner, the offer, the scope and whether this is the pass's first sight, and
+  `tagOf` is now `writeTag({}, offer, scope, true)` — one body, so the two tiers cannot
+  drift. Putting it in the rules module is also what makes the replace-then-append rule
+  testable: `pathux/tour/anchors.ts` imports the widget barrel and node-only jest cannot
+  load it.
+- **`dumpAnchors()` returns `{ key, editor, tag, via, nodeId?, rect? }`.** The two extra
+  fields are the `Anchor`'s own rather than the offer's, and the tag has nowhere to put
+  either: `key` is the resolver's `cmd:` / `item:` / `fx:` namespacing, which the sweep
+  would otherwise have to re-derive from `keyOf`'s rules in a second language, and
+  `editor` is the scope half of `widgetPath`, which is cheaper to name than to parse back
+  out of a hashed path.
+- **The tag is read off the node, not kept on the anchor**, with `tools` narrowed to the
+  tool that anchor's own offer put there. The node's tag is the one stage 5's walk will
+  find, so taking the dump from anywhere else would give the walk something to disagree
+  with.
+- The sweep flattens the payload through one `read()` helper, so the rest of the script is
+  unchanged, and reports an `untagged` list — anchors whose control carries no tag at all.
+  It is empty.
+- **Measured:** 429 records (339 control over 20 homes, 90 menu), 0 strays, 0
+  disagreements, 0 untagged, and every control record carries a `widgetPath`.
+- **Reproducibility, checked as the plan asks:** a second sweep after flipping the Script
+  pane's pin three times and opening the task graph is byte-identical to the first apart
+  from `sweptAt`. The pin's `widgetPath` (`script/pane-pin~3ef17e3e`) does not move across
+  a flip.
+- `toolsys.Refusal` is registered by `toolop.ts`, which only the widget barrel pulls in —
+  so `nstructjs.writeJSON` of a refused tag works in the app and throws in a node-only
+  test. No test serializes a refusal.
 
 ### Stage 5 — the sweep walks widgets
 

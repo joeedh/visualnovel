@@ -1,6 +1,6 @@
 import type { DesktopApi } from '../src/shared/ipc';
 import type { AnchorRecord } from './rules/anchors';
-import type { AnchorDump, ScopeReport } from './pathux/tour/anchors';
+import type { ScopeReport, SweptAnchor } from './pathux/tour/anchors';
 import type { Debugger2D } from '@vn/debug2d';
 
 declare global {
@@ -15,7 +15,7 @@ declare global {
      */
     __vnAnchors?: {
       generation: () => number;
-      dump: () => AnchorDump[];
+      dump: () => SweptAnchor[];
       /** The half of the map derived from the menu table, which no pane draws and no sweep can see. */
       menus: () => AnchorRecord[];
       /** Anchors whose ring would not land on the thing they name. A healthy screen lists none. */

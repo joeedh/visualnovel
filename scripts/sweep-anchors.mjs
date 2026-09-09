@@ -69,6 +69,28 @@ const editors =
 /** The toolbar popups that are anchor homes: the same list as `POPUP_HOMES` in `shared/editors.ts`. */
 const POPUP_HOMES = ['notifications', 'approvals', 'diagnostics'];
 
+/**
+ * One dumped anchor flattened back into what the offer said. The page hands over a `StdUXMeta`
+ * through `nstructjs.writeJSON` — the same tag the derived tier builds — so what a control runs
+ * lives in its one tool, and whether it accepts a press lives on the tag itself.
+ */
+function read(anchor) {
+  const tag = anchor.tag ?? {};
+  const tool = (tag.tools ?? [])[0] ?? {};
+  const supplies = tool.supplies ?? [];
+  return {
+    key       : anchor.key,
+    editor    : anchor.editor,
+    widgetPath: tag.widgetPath ?? '',
+    id        : tool.toolPath ?? '',
+    props     : JSON.parse(tool.props ?? '{}'),
+    enabled   : tag.enabled !== false,
+    reason    : tag.refusal?.reason,
+    ...(supplies.length > 0 ? { supplies } : {}),
+    ...(tool.form ? { form: true } : {}),
+  };
+}
+
 /** Whether the anchor omits a prop its command requires. */
 function leavesBlank(anchor) {
   const props = catalog.commands.find((c) => c.id === anchor.id)?.props ?? [];
@@ -140,6 +162,8 @@ async function select(kind) {
 const disagreements = [];
 const strays = [];
 const drawn = [];
+/** Anchors whose control carries no meta tag, which the sweep reports rather than records. */
+const untagged = [];
 
 /**
  * Each live keymap against the shortcut table, by scope. A pane's keymap is live only while the
@@ -165,7 +189,9 @@ selected.shot = await select('shot');
 /** Record every anchor one home draws right now, and ask the stack about each command. */
 async function sweepHome(editor) {
   const dump = JSON.parse(await evaluate(socket, 'JSON.stringify(window.__vnAnchors.dump())'));
-  const mine = dump.filter((a) => a.editor === editor);
+  const mine = dump.filter((a) => a.editor === editor).map(read);
+  // A control the pass anchored but never tagged, which would leave a record with no id at all
+  untagged.push(...mine.filter((a) => a.id === '').map((a) => `${editor} ${a.key}`));
   const items = mine.filter((a) => a.id === 'ui.publish').length;
   const drawnIds = new Set(mine.map((a) => a.id));
   const undrawn = [...(derivedIds.get(editor) ?? [])]
@@ -184,7 +210,8 @@ async function sweepHome(editor) {
     records.push({
       id: anchor.id,
       editor,
-      key: anchor.key,
+      key       : anchor.key,
+      widgetPath: anchor.widgetPath,
       ...(anchor.supplies ? { supplies: anchor.supplies } : {}),
       ...(anchor.form ? { form: true } : {}),
       ...(anchor.enabled ? {} : { refused: anchor.reason ?? '' }),
@@ -278,7 +305,8 @@ await fs.writeFile(
       effects,
       records,
       disagreements,
-      strays: [...new Set(strays)].sort(),
+      strays  : [...new Set(strays)].sort(),
+      untagged: [...new Set(untagged)].sort(),
     },
     null,
     2,
@@ -323,6 +351,10 @@ for (const editor of [...derivedIds.keys()].sort()) {
   process.stdout.write(
     `  ${editor}: not swept (${derivedIds.get(editor).size} derived commands)\n`,
   );
+}
+for (const bare of new Set(untagged)) {
+  process.stdout.write(`  ⚠ ${bare}: it is anchored, but its control carries no meta tag
+`);
 }
 for (const stray of new Set(strays)) {
   process.stdout.write(`  ⚠ ${stray}: it is drawn, but a click in the middle of it lands elsewhere

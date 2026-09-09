@@ -14,12 +14,14 @@ import {
   resolveSubject,
   subsumes,
   tagOf,
+  writeTag,
   type Anchor,
   type AnchorMap,
   type Compose,
   type LiveAnchors,
   type Offer,
 } from '../anchors.js';
+import type { MetaOwner } from 'pathux-meta';
 import type { EditorId } from '../../../src/shared/editors.js';
 
 const node = {
@@ -151,6 +153,59 @@ describe('tagOf', () => {
 
   it('names the same control differently in two homes', () => {
     expect(tagOf(accepted, 'asset').widgetPath).not.toBe(tagOf(accepted, 'documents').widgetPath);
+  });
+});
+
+describe('writeTag', () => {
+  const other: Offer = {
+    ok     : true,
+    id     : 'asset.export',
+    props  : {},
+    label  : 'Export',
+    tooltip: 'Write a copy somewhere else',
+  };
+  /** Stands in for a path.ux widget, which is what most anchored controls are. */
+  const owner = (): MetaOwner => ({
+    disabled     : false,
+    description  : '',
+    refusalReason: undefined,
+  });
+
+  it('greys the owner and hands it the refusal', () => {
+    const widget = owner();
+    writeTag(widget, refused, 'asset', true);
+    expect(widget.disabled).toBe(true);
+    expect(widget.description).toBe(refused.tooltip);
+    expect(widget.refusalReason).toEqual(refused.ok ? undefined : refused.refusal);
+    writeTag(widget, accepted, 'asset', true);
+    expect(widget.disabled).toBe(false);
+    expect(widget.refusalReason).toBeUndefined();
+  });
+
+  /**
+   * The rule the whole tag layer rests on. Two controls are re-anchored from a later pass — the
+   * pin toggle on every flip, the task graph's gate buttons when `command:check` answers — and
+   * `widgetSegment` hashes every tool's `identity()`, so appending on a later pass would move the
+   * name on every redraw and `anchors.json` would depend on when the sweep looked.
+   */
+  it('replaces the tools an earlier pass left, and keeps the name it gave', () => {
+    const widget = owner();
+    const tag = writeTag(widget, accepted, 'asset', true);
+    const named = tag.widgetPath;
+    for (let redraw = 0; redraw < 3; redraw++) {
+      expect(writeTag(widget, accepted, 'asset', true)).toBe(tag);
+      expect(tag.tools).toHaveLength(1);
+      expect(tag.widgetPath).toBe(named);
+    }
+  });
+
+  it('appends a second offer presented on one owner within one pass', () => {
+    const widget = owner();
+    const tag = writeTag(widget, accepted, 'asset', true);
+    const alone = tag.widgetPath;
+    writeTag(widget, other, 'asset', false);
+    expect(tag.tools).toHaveLength(2);
+    expect(tag.widgetPath).not.toBe(alone);
   });
 });
 

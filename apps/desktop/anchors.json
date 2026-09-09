@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-09T04:12:36.396Z",
-  "gitSha"       : "fb5372199848fed80dbd54dccbec7b25e1742122",
+  "sweptAt"      : "2026-09-09T10:03:13.691Z",
+  "gitSha"       : "e87feb6775401ddb626f8f9c2eaecbb5a7562a85",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -759,1784 +759,2124 @@
       "when"  : "header/view/layout"
     },
     {
-      "id"    : "popup.open",
-      "editor": "branches",
-      "key"   : "fx:popup.open#label/arrival#choice:0"
+      "id"        : "popup.open",
+      "editor"    : "branches",
+      "key"       : "fx:popup.open#label/arrival#choice:0",
+      "widgetPath": "branches/popup-open~9e45c78d"
     },
     {
-      "id"    : "popup.open",
-      "editor": "branches",
-      "key"   : "fx:popup.open#label/arrival#choice:1"
+      "id"        : "popup.open",
+      "editor"    : "branches",
+      "key"       : "fx:popup.open#label/arrival#choice:1",
+      "widgetPath": "branches/popup-open~a1efcf94"
     },
     {
-      "id"      : "story.newScene",
-      "editor"  : "branches",
-      "key"     : "cmd:story.newScene",
-      "supplies": ["scene", "heading"]
+      "id"        : "story.newScene",
+      "editor"    : "branches",
+      "key"       : "cmd:story.newScene",
+      "widgetPath": "branches/story-newscene~b5704068",
+      "supplies"  : ["scene", "heading"]
     },
     {
-      "id"    : "pane.view",
-      "editor": "branches",
-      "key"   : "fx:pane.view#fit"
+      "id"        : "pane.view",
+      "editor"    : "branches",
+      "key"       : "fx:pane.view#fit",
+      "widgetPath": "branches/pane-view~9d190a17"
     },
     {
-      "id"    : "pane.view",
-      "editor": "branches",
-      "key"   : "fx:pane.view#reload"
+      "id"        : "pane.view",
+      "editor"    : "branches",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "branches/pane-view~a08a707d"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "branches",
-      "key"   : "item:scene/arrival"
+      "id"        : "ui.publish",
+      "editor"    : "branches",
+      "key"       : "item:scene/arrival",
+      "widgetPath": "branches/ui-publish~a9b13cd4"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "branches",
-      "key"   : "item:scene/scene_monster"
+      "id"        : "ui.publish",
+      "editor"    : "branches",
+      "key"       : "item:scene/scene_monster",
+      "widgetPath": "branches/ui-publish~51f56072"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "branches",
-      "key"   : "item:scene/greet"
+      "id"        : "ui.publish",
+      "editor"    : "branches",
+      "key"       : "item:scene/greet",
+      "widgetPath": "branches/ui-publish~c137c08e"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "branches",
-      "key"   : "item:scene/observe"
+      "id"        : "ui.publish",
+      "editor"    : "branches",
+      "key"       : "item:scene/observe",
+      "widgetPath": "branches/ui-publish~b61d159d"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "branches",
-      "key"   : "item:scene/rooftop"
+      "id"        : "ui.publish",
+      "editor"    : "branches",
+      "key"       : "item:scene/rooftop",
+      "widgetPath": "branches/ui-publish~4db37ce8"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "branches",
-      "key"   : "item:scene/rooftop_2"
+      "id"        : "ui.publish",
+      "editor"    : "branches",
+      "key"       : "item:scene/rooftop_2",
+      "widgetPath": "branches/ui-publish~c457bcd5"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "branches",
-      "key"   : "item:scene/ending"
+      "id"        : "ui.publish",
+      "editor"    : "branches",
+      "key"       : "item:scene/ending",
+      "widgetPath": "branches/ui-publish~2f9cede8"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "branches",
-      "key"   : "item:scene/epilogue"
+      "id"        : "ui.publish",
+      "editor"    : "branches",
+      "key"       : "item:scene/epilogue",
+      "widgetPath": "branches/ui-publish~36cee6df"
     },
     {
-      "id"     : "story.deleteScene",
-      "editor" : "branches",
-      "key"    : "cmd:story.deleteScene",
-      "refused": "arrival is the entry scene — point start: in project.yaml elsewhere first."
+      "id"        : "story.deleteScene",
+      "editor"    : "branches",
+      "key"       : "cmd:story.deleteScene",
+      "widgetPath": "branches/story-deletescene~a4288987",
+      "refused"   : "arrival is the entry scene — point start: in project.yaml elsewhere first."
     },
     {
-      "id"    : "story.setHeading",
-      "editor": "script",
-      "key"   : "cmd:story.setHeading",
-      "form"  : true
+      "id"        : "story.setHeading",
+      "editor"    : "script",
+      "key"       : "cmd:story.setHeading",
+      "widgetPath": "script/story-setheading~a1b1a71c",
+      "form"      : true
     },
     {
-      "id"    : "drag.start",
-      "editor": "script",
-      "key"   : "fx:drag.start#line/arrival:L2"
+      "id"        : "drag.start",
+      "editor"    : "script",
+      "key"       : "fx:drag.start#line/arrival:L2",
+      "widgetPath": "script/drag-start~d68bc315"
     },
     {
-      "id"      : "story.setSpeaker",
-      "editor"  : "script",
-      "key"     : "cmd:story.setSpeaker#arrival:L2",
-      "supplies": ["speaker"]
+      "id"        : "story.setSpeaker",
+      "editor"    : "script",
+      "key"       : "cmd:story.setSpeaker#arrival:L2",
+      "widgetPath": "script/story-setspeaker~dcab6715",
+      "supplies"  : ["speaker"]
     },
     {
-      "id"      : "story.setLineText",
-      "editor"  : "script",
-      "key"     : "cmd:story.setLineText#arrival:L2",
-      "supplies": ["text"]
+      "id"        : "story.setLineText",
+      "editor"    : "script",
+      "key"       : "cmd:story.setLineText#arrival:L2",
+      "widgetPath": "script/story-setlinetext~5f3115cb",
+      "supplies"  : ["text"]
     },
     {
-      "id"    : "drag.start",
-      "editor": "script",
-      "key"   : "fx:drag.start#line/arrival:L3"
+      "id"        : "drag.start",
+      "editor"    : "script",
+      "key"       : "fx:drag.start#line/arrival:L3",
+      "widgetPath": "script/drag-start~da35cb1c"
     },
     {
-      "id"      : "story.setSpeaker",
-      "editor"  : "script",
-      "key"     : "cmd:story.setSpeaker#arrival:L3",
-      "supplies": ["speaker"]
+      "id"        : "story.setSpeaker",
+      "editor"    : "script",
+      "key"       : "cmd:story.setSpeaker#arrival:L3",
+      "widgetPath": "script/story-setspeaker~747323e4",
+      "supplies"  : ["speaker"]
     },
     {
-      "id"      : "story.setLineText",
-      "editor"  : "script",
-      "key"     : "cmd:story.setLineText#arrival:L3",
-      "supplies": ["text"]
+      "id"        : "story.setLineText",
+      "editor"    : "script",
+      "key"       : "cmd:story.setLineText#arrival:L3",
+      "widgetPath": "script/story-setlinetext~02d50a02",
+      "supplies"  : ["text"]
     },
     {
-      "id"    : "popup.open",
-      "editor": "script",
-      "key"   : "fx:popup.open#split/arrival:L3"
+      "id"        : "popup.open",
+      "editor"    : "script",
+      "key"       : "fx:popup.open#split/arrival:L3",
+      "widgetPath": "script/popup-open~9870a066"
     },
     {
-      "id"    : "drag.start",
-      "editor": "script",
-      "key"   : "fx:drag.start#line/arrival:L1"
+      "id"        : "drag.start",
+      "editor"    : "script",
+      "key"       : "fx:drag.start#line/arrival:L1",
+      "widgetPath": "script/drag-start~d2e1bb0e"
     },
     {
-      "id"      : "story.setSpeaker",
-      "editor"  : "script",
-      "key"     : "cmd:story.setSpeaker#arrival:L1",
-      "supplies": ["speaker"]
+      "id"        : "story.setSpeaker",
+      "editor"    : "script",
+      "key"       : "cmd:story.setSpeaker#arrival:L1",
+      "widgetPath": "script/story-setspeaker~74ff36a6",
+      "supplies"  : ["speaker"]
     },
     {
-      "id"      : "story.setLineText",
-      "editor"  : "script",
-      "key"     : "cmd:story.setLineText#arrival:L1",
-      "supplies": ["text"]
+      "id"        : "story.setLineText",
+      "editor"    : "script",
+      "key"       : "cmd:story.setLineText#arrival:L1",
+      "widgetPath": "script/story-setlinetext~0a1def10",
+      "supplies"  : ["text"]
     },
     {
-      "id"    : "popup.open",
-      "editor": "script",
-      "key"   : "fx:popup.open#split/arrival:L1"
+      "id"        : "popup.open",
+      "editor"    : "script",
+      "key"       : "fx:popup.open#split/arrival:L1",
+      "widgetPath": "script/popup-open~9fc4b074"
     },
     {
-      "id"    : "popup.open",
-      "editor": "script",
-      "key"   : "fx:popup.open#compose/arrival:L1"
+      "id"        : "popup.open",
+      "editor"    : "script",
+      "key"       : "fx:popup.open#compose/arrival:L1",
+      "widgetPath": "script/popup-open~180839d6"
     },
     {
-      "id"    : "menu.open",
-      "editor": "script",
-      "key"   : "fx:menu.open"
+      "id"        : "menu.open",
+      "editor"    : "script",
+      "key"       : "fx:menu.open",
+      "widgetPath": "script/menu-open~eb5b4984"
     },
     {
-      "id"    : "pane.view",
-      "editor": "script",
-      "key"   : "fx:pane.view#reload"
+      "id"        : "pane.view",
+      "editor"    : "script",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "script/pane-view~a08a707d"
     },
     {
-      "id"    : "pane.pin",
-      "editor": "script",
-      "key"   : "fx:pane.pin"
+      "id"        : "pane.pin",
+      "editor"    : "script",
+      "key"       : "fx:pane.pin",
+      "widgetPath": "script/pane-pin~3ef17e3e"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "script",
-      "key"   : "item:link/asset/0ecfeacfe59a7f7f71eefe402342216597f4ad4d9063be6e40e8bdf11389d2d3"
+      "id"        : "ui.publish",
+      "editor"    : "script",
+      "key": "item:link/asset/0ecfeacfe59a7f7f71eefe402342216597f4ad4d9063be6e40e8bdf11389d2d3",
+      "widgetPath": "script/ui-publish~57f11c42"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "script",
-      "key"   : "item:link/asset/1ce8ffe13288f7a50cf46e7520ba6cc393cc0d284485c903114e99c7689f4a94"
+      "id"        : "ui.publish",
+      "editor"    : "script",
+      "key": "item:link/asset/1ce8ffe13288f7a50cf46e7520ba6cc393cc0d284485c903114e99c7689f4a94",
+      "widgetPath": "script/ui-publish~5f3ee461"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "script",
-      "key"   : "item:link/asset/5d888bf1a7976857b461b9a849a0dbfd5833ecd19b7a7f8ecc036b4a328d4178"
+      "id"        : "ui.publish",
+      "editor"    : "script",
+      "key": "item:link/asset/5d888bf1a7976857b461b9a849a0dbfd5833ecd19b7a7f8ecc036b4a328d4178",
+      "widgetPath": "script/ui-publish~778c381f"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "script",
-      "key"   : "item:link/asset/9a410851f3c5d5df8f3548ce1cd7102a0cbeb728d69ce63e730b3e39059ec534"
+      "id"        : "ui.publish",
+      "editor"    : "script",
+      "key": "item:link/asset/9a410851f3c5d5df8f3548ce1cd7102a0cbeb728d69ce63e730b3e39059ec534",
+      "widgetPath": "script/ui-publish~a3b8e462"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "script",
-      "key"   : "item:link/asset/f73e12779d1ca6b1e29c156049c5e5ff579d7440e96838da3f695f8ce96bbf45"
+      "id"        : "ui.publish",
+      "editor"    : "script",
+      "key": "item:link/asset/f73e12779d1ca6b1e29c156049c5e5ff579d7440e96838da3f695f8ce96bbf45",
+      "widgetPath": "script/ui-publish~5b06bc9e"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "script",
-      "key"   : "item:link/asset/163ad341aabf3b76d51a763839b64a7624ce689dfde60f115f178bc8d76762fd"
+      "id"        : "ui.publish",
+      "editor"    : "script",
+      "key": "item:link/asset/163ad341aabf3b76d51a763839b64a7624ce689dfde60f115f178bc8d76762fd",
+      "widgetPath": "script/ui-publish~b1dc0f88"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "script",
-      "key"   : "item:link/asset/9b979b83f3f40a0b6678c24c29824f73f7b3454c3af70bb1f224cd029e09b0c0"
+      "id"        : "ui.publish",
+      "editor"    : "script",
+      "key": "item:link/asset/9b979b83f3f40a0b6678c24c29824f73f7b3454c3af70bb1f224cd029e09b0c0",
+      "widgetPath": "script/ui-publish~bc406dbe"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "script",
-      "key"   : "item:link/asset/e0205990dce5fe0ae048375704d3ce65d5062be5afb56f5bf28ce32093413cfa"
+      "id"        : "ui.publish",
+      "editor"    : "script",
+      "key": "item:link/asset/e0205990dce5fe0ae048375704d3ce65d5062be5afb56f5bf28ce32093413cfa",
+      "widgetPath": "script/ui-publish~b7345c33"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "script",
-      "key"   : "item:link/asset/ecb9bbcf9145c5f6873ed496880d84da77bd886846cb6baafbd801f2643990ff"
+      "id"        : "ui.publish",
+      "editor"    : "script",
+      "key": "item:link/asset/ecb9bbcf9145c5f6873ed496880d84da77bd886846cb6baafbd801f2643990ff",
+      "widgetPath": "script/ui-publish~d13a0cf9"
     },
     {
-      "id"    : "agent.setMode",
-      "editor": "convo",
-      "key"   : "cmd:agent.setMode"
+      "id"        : "agent.setMode",
+      "editor"    : "convo",
+      "key"       : "cmd:agent.setMode",
+      "widgetPath": "convo/agent-setmode~12ef4d33"
     },
     {
-      "id"      : "agent.setModel",
-      "editor"  : "convo",
-      "key"     : "cmd:agent.setModel",
-      "supplies": ["modelId"]
+      "id"        : "agent.setModel",
+      "editor"    : "convo",
+      "key"       : "cmd:agent.setModel",
+      "widgetPath": "convo/agent-setmodel~a6e2e715",
+      "supplies"  : ["modelId"]
     },
     {
-      "id"      : "agent.setEffort",
-      "editor"  : "convo",
-      "key"     : "cmd:agent.setEffort",
-      "supplies": ["effort"]
+      "id"        : "agent.setEffort",
+      "editor"    : "convo",
+      "key"       : "cmd:agent.setEffort",
+      "widgetPath": "convo/agent-seteffort~b6d4c3b8",
+      "supplies"  : ["effort"]
     },
     {
-      "id"      : "agent.setBudget",
-      "editor"  : "convo",
-      "key"     : "cmd:agent.setBudget",
-      "supplies": ["budget"]
+      "id"        : "agent.openThread",
+      "editor"    : "convo",
+      "key"       : "cmd:agent.openThread",
+      "widgetPath": "convo/agent-openthread~2c98574d",
+      "supplies"  : ["id"]
     },
     {
-      "id"      : "agent.openThread",
-      "editor"  : "convo",
-      "key"     : "cmd:agent.openThread",
-      "supplies": ["id"]
+      "id"        : "agent.newThread",
+      "editor"    : "convo",
+      "key"       : "cmd:agent.newThread",
+      "widgetPath": "convo/agent-newthread~373761f0"
     },
     {
-      "id"    : "agent.newThread",
-      "editor": "convo",
-      "key"   : "cmd:agent.newThread"
+      "id"        : "agent.setBudget",
+      "editor"    : "convo",
+      "key"       : "cmd:agent.setBudget",
+      "widgetPath": "convo/agent-setbudget~e80486e0",
+      "supplies"  : ["budget"]
     },
     {
-      "id"     : "agent.compact",
-      "editor" : "convo",
-      "key"    : "cmd:agent.compact",
-      "refused": "This conversation is open for reading. Continue it before compacting it."
+      "id"        : "agent.compact",
+      "editor"    : "convo",
+      "key"       : "cmd:agent.compact",
+      "widgetPath": "convo/agent-compact~a458e835",
+      "refused"   : "This conversation is open for reading. Continue it before compacting it."
     },
     {
-      "id"    : "drag.start",
-      "editor": "timeline",
-      "key"   : "fx:drag.start#line/arrival:L2"
+      "id"        : "drag.start",
+      "editor"    : "timeline",
+      "key"       : "fx:drag.start#line/arrival:L2",
+      "widgetPath": "timeline/drag-start~d68bc315"
     },
     {
-      "id"      : "story.setLineText",
-      "editor"  : "timeline",
-      "key"     : "cmd:story.setLineText#arrival:L2",
-      "supplies": ["text"]
+      "id"        : "story.setLineText",
+      "editor"    : "timeline",
+      "key"       : "cmd:story.setLineText#arrival:L2",
+      "widgetPath": "timeline/story-setlinetext~5f3115cb",
+      "supplies"  : ["text"]
     },
     {
-      "id"    : "drag.start",
-      "editor": "timeline",
-      "key"   : "fx:drag.start#line/arrival:L3"
+      "id"        : "drag.start",
+      "editor"    : "timeline",
+      "key"       : "fx:drag.start#line/arrival:L3",
+      "widgetPath": "timeline/drag-start~da35cb1c"
     },
     {
-      "id"      : "story.setLineText",
-      "editor"  : "timeline",
-      "key"     : "cmd:story.setLineText#arrival:L3",
-      "supplies": ["text"]
+      "id"        : "story.setLineText",
+      "editor"    : "timeline",
+      "key"       : "cmd:story.setLineText#arrival:L3",
+      "widgetPath": "timeline/story-setlinetext~02d50a02",
+      "supplies"  : ["text"]
     },
     {
-      "id"    : "drag.start",
-      "editor": "timeline",
-      "key"   : "fx:drag.start#line/arrival:L1"
+      "id"        : "drag.start",
+      "editor"    : "timeline",
+      "key"       : "fx:drag.start#line/arrival:L1",
+      "widgetPath": "timeline/drag-start~d2e1bb0e"
     },
     {
-      "id"      : "story.setLineText",
-      "editor"  : "timeline",
-      "key"     : "cmd:story.setLineText#arrival:L1",
-      "supplies": ["text"]
+      "id"        : "story.setLineText",
+      "editor"    : "timeline",
+      "key"       : "cmd:story.setLineText#arrival:L1",
+      "widgetPath": "timeline/story-setlinetext~0a1def10",
+      "supplies"  : ["text"]
     },
     {
-      "id"    : "drag.start",
-      "editor": "timeline",
-      "key"   : "fx:drag.start#shot/arrival__beat1/start"
+      "id"        : "drag.start",
+      "editor"    : "timeline",
+      "key"       : "fx:drag.start#shot/arrival__beat1/start",
+      "widgetPath": "timeline/drag-start~c03d359b"
     },
     {
-      "id"    : "drag.start",
-      "editor": "timeline",
-      "key"   : "fx:drag.start#shot/arrival__beat1/end"
+      "id"        : "drag.start",
+      "editor"    : "timeline",
+      "key"       : "fx:drag.start#shot/arrival__beat1/end",
+      "widgetPath": "timeline/drag-start~7456c04c"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "timeline",
-      "key"   : "item:shot/arrival__beat1"
+      "id"        : "ui.publish",
+      "editor"    : "timeline",
+      "key"       : "item:shot/arrival__beat1",
+      "widgetPath": "timeline/ui-publish~bcd25149"
     },
     {
-      "id"    : "drag.start",
-      "editor": "timeline",
-      "key"   : "fx:drag.start#shot/arrival__shot1/start"
+      "id"        : "drag.start",
+      "editor"    : "timeline",
+      "key"       : "fx:drag.start#shot/arrival__shot1/start",
+      "widgetPath": "timeline/drag-start~ffc447e1"
     },
     {
-      "id"    : "drag.start",
-      "editor": "timeline",
-      "key"   : "fx:drag.start#shot/arrival__shot1/end"
+      "id"        : "drag.start",
+      "editor"    : "timeline",
+      "key"       : "fx:drag.start#shot/arrival__shot1/end",
+      "widgetPath": "timeline/drag-start~058387a6"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "timeline",
-      "key"   : "item:shot/arrival__shot1"
+      "id"        : "ui.publish",
+      "editor"    : "timeline",
+      "key"       : "item:shot/arrival__shot1",
+      "widgetPath": "timeline/ui-publish~19b8b823"
     },
     {
-      "id"      : "story.setSceneOutfit",
-      "editor"  : "timeline",
-      "key"     : "cmd:story.setSceneOutfit#scene/aiko",
-      "supplies": ["outfit"]
+      "id"        : "story.setSceneOutfit",
+      "editor"    : "timeline",
+      "key"       : "cmd:story.setSceneOutfit#scene/aiko",
+      "widgetPath": "timeline/story-setsceneoutfit~439b9d59",
+      "supplies"  : ["outfit"]
     },
     {
-      "id"      : "story.setVariant",
-      "editor"  : "timeline",
-      "key"     : "cmd:story.setVariant",
-      "supplies": ["variant"]
+      "id"        : "story.setVariant",
+      "editor"    : "timeline",
+      "key"       : "cmd:story.setVariant",
+      "widgetPath": "timeline/story-setvariant~b8c7edea",
+      "supplies"  : ["variant"]
     },
     {
-      "id"      : "story.setOutfit",
-      "editor"  : "timeline",
-      "key"     : "cmd:story.setOutfit#shot/aiko",
-      "supplies": ["outfit"]
+      "id"        : "story.setOutfit",
+      "editor"    : "timeline",
+      "key"       : "cmd:story.setOutfit#shot/aiko",
+      "widgetPath": "timeline/story-setoutfit~eddd1ec1",
+      "supplies"  : ["outfit"]
     },
     {
-      "id"    : "story.setSubjects",
-      "editor": "timeline",
-      "key"   : "cmd:story.setSubjects#drop/aiko"
+      "id"        : "story.setSubjects",
+      "editor"    : "timeline",
+      "key"       : "cmd:story.setSubjects#drop/aiko",
+      "widgetPath": "timeline/story-setsubjects~4daf2d67"
     },
     {
-      "id"      : "story.setSubjects",
-      "editor"  : "timeline",
-      "key"     : "cmd:story.setSubjects#add",
-      "supplies": ["subjects"]
+      "id"        : "story.setSubjects",
+      "editor"    : "timeline",
+      "key"       : "cmd:story.setSubjects#add",
+      "widgetPath": "timeline/story-setsubjects~c2457003",
+      "supplies"  : ["subjects"]
     },
     {
-      "id"    : "story.requireCast",
-      "editor": "timeline",
-      "key"   : "cmd:story.requireCast"
+      "id"        : "story.requireCast",
+      "editor"    : "timeline",
+      "key"       : "cmd:story.requireCast",
+      "widgetPath": "timeline/story-requirecast~e40b54c8"
     },
     {
-      "id"    : "menu.open",
-      "editor": "timeline",
-      "key"   : "fx:menu.open"
+      "id"        : "menu.open",
+      "editor"    : "timeline",
+      "key"       : "fx:menu.open",
+      "widgetPath": "timeline/menu-open~eb5b4984"
     },
     {
-      "id"    : "story.newShot",
-      "editor": "timeline",
-      "key"   : "cmd:story.newShot",
-      "form"  : true
+      "id"        : "story.newShot",
+      "editor"    : "timeline",
+      "key"       : "cmd:story.newShot",
+      "widgetPath": "timeline/story-newshot~fa8b69f2",
+      "form"      : true
     },
     {
-      "id"    : "pane.view",
-      "editor": "timeline",
-      "key"   : "fx:pane.view#reload"
+      "id"        : "pane.view",
+      "editor"    : "timeline",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "timeline/pane-view~a08a707d"
     },
     {
-      "id"    : "pane.pin",
-      "editor": "timeline",
-      "key"   : "fx:pane.pin"
+      "id"        : "pane.pin",
+      "editor"    : "timeline",
+      "key"       : "fx:pane.pin",
+      "widgetPath": "timeline/pane-pin~3ef17e3e"
     },
     {
-      "id"    : "pipeline.run",
-      "editor": "tasklist",
-      "key"   : "cmd:pipeline.run",
-      "form"  : true
+      "id"        : "pipeline.run",
+      "editor"    : "tasklist",
+      "key"       : "cmd:pipeline.run",
+      "widgetPath": "tasklist/pipeline-run~ee6d0f4e",
+      "form"      : true
     },
     {
-      "id"    : "pane.view",
-      "editor": "tasklist",
-      "key"   : "fx:pane.view#done"
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key"       : "fx:pane.view#done",
+      "widgetPath": "tasklist/pane-view~deef914c"
     },
     {
-      "id"    : "pane.view",
-      "editor": "tasklist",
-      "key"   : "fx:pane.view#running"
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key"       : "fx:pane.view#running",
+      "widgetPath": "tasklist/pane-view~b127364b"
     },
     {
-      "id"    : "pane.view",
-      "editor": "tasklist",
-      "key"   : "fx:pane.view#failed"
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key"       : "fx:pane.view#failed",
+      "widgetPath": "tasklist/pane-view~9eff0847"
     },
     {
-      "id"    : "pane.view",
-      "editor": "tasklist",
-      "key"   : "fx:pane.view#clear"
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key"       : "fx:pane.view#clear",
+      "widgetPath": "tasklist/pane-view~13059a85"
     },
     {
-      "id"    : "pane.view",
-      "editor": "tasklist",
-      "key"   : "fx:pane.view#reload"
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "tasklist/pane-view~a08a707d"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/5f2c8cddcc9f6971b6fa7aff40dfc2ef176dcaa89da3fb89377dc039e49c9662"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/5f2c8cddcc9f6971b6fa7aff40dfc2ef176dcaa89da3fb89377dc039e49c9662",
+      "widgetPath": "tasklist/ui-publish~c2319151"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/4e810d2cf8748bde65b4e30bf3d981b5ad6987b46302d16d4abb738c3fa9c507"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/4e810d2cf8748bde65b4e30bf3d981b5ad6987b46302d16d4abb738c3fa9c507",
+      "widgetPath": "tasklist/ui-publish~a6ab851d"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/c286fe3b94035a92cecac09970434d7f7b59d85572412207176b6b92498987e6"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/c286fe3b94035a92cecac09970434d7f7b59d85572412207176b6b92498987e6",
+      "widgetPath": "tasklist/ui-publish~a2c1c139"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/b1a87d2310e5f2a78747da9a6c74316d3a7ff538079b1c9067ba2543ff417d00"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/b1a87d2310e5f2a78747da9a6c74316d3a7ff538079b1c9067ba2543ff417d00",
+      "widgetPath": "tasklist/ui-publish~c1601f58"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/7485d74f05137fe088b4098c50cd11d2864c5b4d43dc7395608fea935329b33d"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/7485d74f05137fe088b4098c50cd11d2864c5b4d43dc7395608fea935329b33d",
+      "widgetPath": "tasklist/ui-publish~53fe888b"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/d2cf12482be5e81d9b47f648e29807291e17d663dd99510691e4ed335e4126af"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/d2cf12482be5e81d9b47f648e29807291e17d663dd99510691e4ed335e4126af",
+      "widgetPath": "tasklist/ui-publish~2ba9b91f"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/cd9b0ae115ec8ce77254f7adad97102754f0d6a83b3a62e081434e85ac7f462b"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/cd9b0ae115ec8ce77254f7adad97102754f0d6a83b3a62e081434e85ac7f462b",
+      "widgetPath": "tasklist/ui-publish~fe56517c"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/8a88664e4a18f46eec4d2825f220a0936ac8a039ef1bcfdca664b1a20972e989"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/8a88664e4a18f46eec4d2825f220a0936ac8a039ef1bcfdca664b1a20972e989",
+      "widgetPath": "tasklist/ui-publish~73a5e816"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/4fb2f68ee17e16ee84522ea6b5ed02e67380acf9728118f0d75d0966a5839ee7"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/4fb2f68ee17e16ee84522ea6b5ed02e67380acf9728118f0d75d0966a5839ee7",
+      "widgetPath": "tasklist/ui-publish~8d15b2de"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/ea9ce0dc02bfa20426d3703641cb946369f5d453212f9f90289b3ddb3d795f23"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/ea9ce0dc02bfa20426d3703641cb946369f5d453212f9f90289b3ddb3d795f23",
+      "widgetPath": "tasklist/ui-publish~e3d638f4"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/bd28a6275337d3377caa17e2a4a61b6a0700b11ccd9a6493fabf501008b6643a"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/bd28a6275337d3377caa17e2a4a61b6a0700b11ccd9a6493fabf501008b6643a",
+      "widgetPath": "tasklist/ui-publish~6045ad62"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/d9cc0358a9047d0ba965ea5565501b3ef7b3696e78fc28bac02f262035d481bb"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/d9cc0358a9047d0ba965ea5565501b3ef7b3696e78fc28bac02f262035d481bb",
+      "widgetPath": "tasklist/ui-publish~63e60e97"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/46c8a4151e3668ea8196bdf6851e0f523cbb155a46e714a9be1bec56f5baf3ed"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/46c8a4151e3668ea8196bdf6851e0f523cbb155a46e714a9be1bec56f5baf3ed",
+      "widgetPath": "tasklist/ui-publish~57e6f057"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/2827b4cd9c2416db5c49efa8826c4063fa3b3ee1515b80713e3f7d374f528f41"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/2827b4cd9c2416db5c49efa8826c4063fa3b3ee1515b80713e3f7d374f528f41",
+      "widgetPath": "tasklist/ui-publish~63f71a1b"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/9cc3360a2032ed375775689e66ccda198654a20bc17251dcc92441db07f0c31e"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/9cc3360a2032ed375775689e66ccda198654a20bc17251dcc92441db07f0c31e",
+      "widgetPath": "tasklist/ui-publish~814b8343"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/c0771d4d5970297d3310f3c765ff9fc9065d841579e9e3593f8927e84bf9c3cf"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/c0771d4d5970297d3310f3c765ff9fc9065d841579e9e3593f8927e84bf9c3cf",
+      "widgetPath": "tasklist/ui-publish~dd23c998"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/0259ab68076c0a956a3887f3f0abada70cec8e013138fbd5f85fe2f21e74c119"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/0259ab68076c0a956a3887f3f0abada70cec8e013138fbd5f85fe2f21e74c119",
+      "widgetPath": "tasklist/ui-publish~0a2e21ce"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/961a63ba4c3086f52838482a08a8255ac97e99c056e3f0f141cd2c581f2f9e7f"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/961a63ba4c3086f52838482a08a8255ac97e99c056e3f0f141cd2c581f2f9e7f",
+      "widgetPath": "tasklist/ui-publish~0e82ab17"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/2a4ee3c97595129ac0f88d203bb979f09a5d40bd4c7cd8f63ea35d6154eaf862"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/2a4ee3c97595129ac0f88d203bb979f09a5d40bd4c7cd8f63ea35d6154eaf862",
+      "widgetPath": "tasklist/ui-publish~81d8aa37"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/0dc80a5ac326dd90d6e9643a52915a9c3a2561ce57497f2279e87b9edb87aed6"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/0dc80a5ac326dd90d6e9643a52915a9c3a2561ce57497f2279e87b9edb87aed6",
+      "widgetPath": "tasklist/ui-publish~76684bc3"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/d7ab6909bc6bbb901f9bad49d9661b1ef902e3c7ffcf16164c95fe2df33f25e8"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/d7ab6909bc6bbb901f9bad49d9661b1ef902e3c7ffcf16164c95fe2df33f25e8",
+      "widgetPath": "tasklist/ui-publish~152be496"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/33539bcdbbe4be8f79d9b7f2f2313128c813488a20c881cfec5ed0474b275b11"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/33539bcdbbe4be8f79d9b7f2f2313128c813488a20c881cfec5ed0474b275b11",
+      "widgetPath": "tasklist/ui-publish~8ec35f06"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/f989f88e1b83851ba353c302ff9e05c885bfca24a59bd685a92e9ef23e05e134"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/f989f88e1b83851ba353c302ff9e05c885bfca24a59bd685a92e9ef23e05e134",
+      "widgetPath": "tasklist/ui-publish~f67ec831"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/2b3491b4996c4f412d9a4d8c9e5f0bbf0e8294661b0e45c781d9e4267957076d"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/2b3491b4996c4f412d9a4d8c9e5f0bbf0e8294661b0e45c781d9e4267957076d",
+      "widgetPath": "tasklist/ui-publish~253f42da"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/bf622ea704fcced068a81bb0bf3d3ec5529095f77c7e126b8fcd0f36a78bae6e"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/bf622ea704fcced068a81bb0bf3d3ec5529095f77c7e126b8fcd0f36a78bae6e",
+      "widgetPath": "tasklist/ui-publish~e8efead8"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/9f0dd7eadcad013471705b79dee5cbd40e500c1ffd49099d0569c7464ad24e74"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/9f0dd7eadcad013471705b79dee5cbd40e500c1ffd49099d0569c7464ad24e74",
+      "widgetPath": "tasklist/ui-publish~7d7f2ece"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/cc8ad9971dcdc9518fbe2d4904ee54abcb711b7bd3bec09d3ddea74eaa8ce4d0"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/cc8ad9971dcdc9518fbe2d4904ee54abcb711b7bd3bec09d3ddea74eaa8ce4d0",
+      "widgetPath": "tasklist/ui-publish~1df1dabe"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/bca21035b3900d5e245df7a7e7c63cac29170d24a8de44d0dce77d4d972f8574"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/bca21035b3900d5e245df7a7e7c63cac29170d24a8de44d0dce77d4d972f8574",
+      "widgetPath": "tasklist/ui-publish~fd614a69"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/2d4c759f780da71568e3ecbb7f7116bf34c9d7af268c45943ad7b0bb0263f945"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/2d4c759f780da71568e3ecbb7f7116bf34c9d7af268c45943ad7b0bb0263f945",
+      "widgetPath": "tasklist/ui-publish~6193376b"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/193959764d3e7b04cf7516d0d9a4667340ee3710f55ed71ca3522546cf326f6f"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/193959764d3e7b04cf7516d0d9a4667340ee3710f55ed71ca3522546cf326f6f",
+      "widgetPath": "tasklist/ui-publish~832c684b"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/7e6106cc292ab784c51620a8a171f966e2b7fe1111fa115ae4750a2b3a668dc7"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/7e6106cc292ab784c51620a8a171f966e2b7fe1111fa115ae4750a2b3a668dc7",
+      "widgetPath": "tasklist/ui-publish~8350ee77"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/8712f0b92a0f593b101f3ce1461e732bc047b7f5c2b3d1e09fa76156db652e9d"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/8712f0b92a0f593b101f3ce1461e732bc047b7f5c2b3d1e09fa76156db652e9d",
+      "widgetPath": "tasklist/ui-publish~419424f1"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/9e040a80d0bdae9549363647ba9a6e06a156df28ee2aa8803eece40280a42c11"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/9e040a80d0bdae9549363647ba9a6e06a156df28ee2aa8803eece40280a42c11",
+      "widgetPath": "tasklist/ui-publish~ec16e3b9"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/bd084a2528e9215ca81c7afff2e41b2769382fca8f516a63e0a63468af2f0f88"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/bd084a2528e9215ca81c7afff2e41b2769382fca8f516a63e0a63468af2f0f88",
+      "widgetPath": "tasklist/ui-publish~8cdd0b09"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/36578b22cd1f5b8046eb63d2ced22cb7dfbf7202557f54cf37eabe2c596ae647"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/36578b22cd1f5b8046eb63d2ced22cb7dfbf7202557f54cf37eabe2c596ae647",
+      "widgetPath": "tasklist/ui-publish~15390595"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/fa5849df381546b0251f6aab8039f1e7f89e05a7a2fd061fa6c0add26a58aafe"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/fa5849df381546b0251f6aab8039f1e7f89e05a7a2fd061fa6c0add26a58aafe",
+      "widgetPath": "tasklist/ui-publish~d8fda0e2"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/1c5f711615f498f093251575fbb13be069b35170011ab719d8ae4f0ab187d3e7"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/1c5f711615f498f093251575fbb13be069b35170011ab719d8ae4f0ab187d3e7",
+      "widgetPath": "tasklist/ui-publish~baabd4e6"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/5b3a20a1b047d2e03eb8dc884cf6fb34389311cff3995810264b07c1f8d51cec"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/5b3a20a1b047d2e03eb8dc884cf6fb34389311cff3995810264b07c1f8d51cec",
+      "widgetPath": "tasklist/ui-publish~43bcd6f7"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/33643da11f55c2252abc87bb19d0b8ed1c3c20f8c4e4ba1883f6f5c787e3a904"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/33643da11f55c2252abc87bb19d0b8ed1c3c20f8c4e4ba1883f6f5c787e3a904",
+      "widgetPath": "tasklist/ui-publish~19a84519"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/949c3d141db9a7e22ff2aa46be86d6537f994a8cece614d7b71f679be27ca382"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/949c3d141db9a7e22ff2aa46be86d6537f994a8cece614d7b71f679be27ca382",
+      "widgetPath": "tasklist/ui-publish~791029e6"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/2377742ad9a90e22cff217781bf5e6f73c4ae53bc0c6d1f10eb04ec048a4a274"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/2377742ad9a90e22cff217781bf5e6f73c4ae53bc0c6d1f10eb04ec048a4a274",
+      "widgetPath": "tasklist/ui-publish~ae5e7a03"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "tasklist",
-      "key"   : "item:task/4553c7bb2ed3cc7f136081c071cfeb877d50b7b3f46b33c5c4f6883bfdfaf460"
+      "id"        : "ui.publish",
+      "editor"    : "tasklist",
+      "key"       : "item:task/4553c7bb2ed3cc7f136081c071cfeb877d50b7b3f46b33c5c4f6883bfdfaf460",
+      "widgetPath": "tasklist/ui-publish~6d656fbe"
     },
     {
-      "id"    : "pane.view",
-      "editor": "taskgraph",
-      "key"   : "fx:pane.view#tidy"
+      "id"        : "pane.view",
+      "editor"    : "taskgraph",
+      "key"       : "fx:pane.view#tidy",
+      "widgetPath": "taskgraph/pane-view~654925ec"
     },
     {
-      "id"    : "pane.view",
-      "editor": "taskgraph",
-      "key"   : "fx:pane.view#fit"
+      "id"        : "pane.view",
+      "editor"    : "taskgraph",
+      "key"       : "fx:pane.view#fit",
+      "widgetPath": "taskgraph/pane-view~9d190a17"
     },
     {
-      "id"    : "pane.view",
-      "editor": "taskgraph",
-      "key"   : "fx:pane.view#reload"
+      "id"        : "pane.view",
+      "editor"    : "taskgraph",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "taskgraph/pane-view~a08a707d"
     },
     {
-      "id"    : "pane.pin",
-      "editor": "gengraph",
-      "key"   : "fx:pane.pin"
+      "id"        : "pane.pin",
+      "editor"    : "gengraph",
+      "key"       : "fx:pane.pin",
+      "widgetPath": "gengraph/pane-pin~3ef17e3e"
     },
     {
-      "id"    : "menu.open",
-      "editor": "gengraph",
-      "key"   : "fx:menu.open"
+      "id"        : "menu.open",
+      "editor"    : "gengraph",
+      "key"       : "fx:menu.open",
+      "widgetPath": "gengraph/menu-open~eb5b4984"
     },
     {
-      "id"    : "pane.view",
-      "editor": "gengraph",
-      "key"   : "fx:pane.view#arrange"
+      "id"        : "pane.view",
+      "editor"    : "gengraph",
+      "key"       : "fx:pane.view#arrange",
+      "widgetPath": "gengraph/pane-view~fe6554e0"
     },
     {
-      "id"    : "pane.view",
-      "editor": "gengraph",
-      "key"   : "fx:pane.view#reload"
+      "id"        : "pane.view",
+      "editor"    : "gengraph",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "gengraph/pane-view~a08a707d"
     },
     {
-      "id"     : "gengraph.removeNode",
-      "editor" : "gengraph",
-      "key"    : "cmd:gengraph.removeNode",
-      "refused": "Select the nodes to delete first."
+      "id"        : "gengraph.removeNode",
+      "editor"    : "gengraph",
+      "key"       : "cmd:gengraph.removeNode",
+      "widgetPath": "gengraph/gengraph-removenode~07c81bd5",
+      "refused"   : "Select the nodes to delete first."
     },
     {
-      "id"     : "gengraph.duplicateNode",
-      "editor" : "gengraph",
-      "key"    : "cmd:gengraph.duplicateNode",
-      "refused": "Select the nodes to duplicate first."
+      "id"        : "gengraph.duplicateNode",
+      "editor"    : "gengraph",
+      "key"       : "cmd:gengraph.duplicateNode",
+      "widgetPath": "gengraph/gengraph-duplicatenode~3016cb14",
+      "refused"   : "Select the nodes to duplicate first."
     },
     {
-      "id"     : "gengraph.createGroup",
-      "editor" : "gengraph",
-      "key"    : "cmd:gengraph.createGroup",
-      "refused": "Select the nodes to group first."
+      "id"        : "gengraph.createGroup",
+      "editor"    : "gengraph",
+      "key"       : "cmd:gengraph.createGroup",
+      "widgetPath": "gengraph/gengraph-creategroup~ee205880",
+      "refused"   : "Select the nodes to group first."
     },
     {
-      "id"     : "gengraph.ungroup",
-      "editor" : "gengraph",
-      "key"    : "cmd:gengraph.ungroup",
-      "refused": "Select a group instance to ungroup."
+      "id"        : "gengraph.ungroup",
+      "editor"    : "gengraph",
+      "key"       : "cmd:gengraph.ungroup",
+      "widgetPath": "gengraph/gengraph-ungroup~5b91928f",
+      "refused"   : "Select a group instance to ungroup."
     },
     {
-      "id"      : "ui.publish",
-      "editor"  : "gengraph",
-      "key"     : "item:link/asset",
-      "supplies": ["assetHash"]
+      "id"        : "ui.publish",
+      "editor"    : "gengraph",
+      "key"       : "item:link/asset",
+      "widgetPath": "gengraph/ui-publish~6419fddb",
+      "supplies"  : ["assetHash"]
     },
     {
-      "id"    : "pane.view",
-      "editor": "inspector",
-      "key"   : "fx:pane.view#reload"
+      "id"        : "pane.view",
+      "editor"    : "inspector",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "inspector/pane-view~a08a707d"
     },
     {
-      "id"    : "pane.pin",
-      "editor": "inspector",
-      "key"   : "fx:pane.pin"
+      "id"        : "pane.pin",
+      "editor"    : "inspector",
+      "key"       : "fx:pane.pin",
+      "widgetPath": "inspector/pane-pin~3ef17e3e"
     },
     {
-      "id"    : "pane.view",
-      "editor": "play",
-      "key"   : "fx:pane.view#forward"
+      "id"        : "pane.view",
+      "editor"    : "play",
+      "key"       : "fx:pane.view#forward",
+      "widgetPath": "play/pane-view~35b451ff"
     },
     {
-      "id"     : "pane.view",
-      "editor" : "play",
-      "key"    : "fx:pane.view#back",
-      "refused": "You are at the beginning; there is nothing to step back to."
+      "id"        : "pane.view",
+      "editor"    : "play",
+      "key"       : "fx:pane.view#back",
+      "widgetPath": "play/pane-view~ba78f537",
+      "refused"   : "You are at the beginning; there is nothing to step back to."
     },
     {
-      "id"    : "pane.view",
-      "editor": "play",
-      "key"   : "fx:pane.view#save"
+      "id"        : "pane.view",
+      "editor"    : "play",
+      "key"       : "fx:pane.view#save",
+      "widgetPath": "play/pane-view~4638707d"
     },
     {
-      "id"    : "pane.view",
-      "editor": "play",
-      "key"   : "fx:pane.view#load"
+      "id"        : "pane.view",
+      "editor"    : "play",
+      "key"       : "fx:pane.view#load",
+      "widgetPath": "play/pane-view~d1014b72"
     },
     {
-      "id"    : "pane.view",
-      "editor": "play",
-      "key"   : "fx:pane.view#reset"
+      "id"        : "pane.view",
+      "editor"    : "play",
+      "key"       : "fx:pane.view#reset",
+      "widgetPath": "play/pane-view~2b7778f1"
     },
     {
-      "id"    : "pane.view",
-      "editor": "skills",
-      "key"   : "fx:pane.view#reload"
+      "id"        : "pane.view",
+      "editor"    : "skills",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "skills/pane-view~a08a707d"
     },
     {
-      "id"    : "agent.run",
-      "editor": "skills",
-      "key"   : "cmd:agent.run",
-      "form"  : true
+      "id"        : "agent.run",
+      "editor"    : "skills",
+      "key"       : "cmd:agent.run",
+      "widgetPath": "skills/agent-run~97823f35",
+      "form"      : true
     },
     {
-      "id"      : "doc.write",
-      "editor"  : "skills",
-      "key"     : "cmd:doc.write",
-      "supplies": ["text", "seenHash"],
-      "refused" : "No document is open."
+      "id"        : "doc.write",
+      "editor"    : "skills",
+      "key"       : "cmd:doc.write",
+      "widgetPath": "skills/doc-write~1ab13660",
+      "supplies"  : ["text", "seenHash"],
+      "refused"   : "No document is open."
     },
     {
-      "id"      : "doc.write",
-      "editor"  : "skills",
-      "key"     : "cmd:doc.write#text",
-      "supplies": ["text", "seenHash"],
-      "refused" : "No document is open."
+      "id"        : "doc.write",
+      "editor"    : "skills",
+      "key"       : "cmd:doc.write#text",
+      "widgetPath": "skills/doc-write~b0b7797d",
+      "supplies"  : ["text", "seenHash"],
+      "refused"   : "No document is open."
     },
     {
-      "id"    : "pane.view",
-      "editor": "wiki",
-      "key"   : "fx:pane.view#reload"
+      "id"        : "pane.view",
+      "editor"    : "wiki",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "wiki/pane-view~a08a707d"
     },
     {
-      "id"    : "pane.pin",
-      "editor": "wiki",
-      "key"   : "fx:pane.pin"
+      "id"        : "pane.pin",
+      "editor"    : "wiki",
+      "key"       : "fx:pane.pin",
+      "widgetPath": "wiki/pane-pin~3ef17e3e"
     },
     {
-      "id"      : "doc.write",
-      "editor"  : "wiki",
-      "key"     : "cmd:doc.write",
-      "supplies": ["text", "seenHash"],
-      "refused" : "Nothing to save"
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write",
+      "widgetPath": "wiki/doc-write~1ab13660",
+      "supplies"  : ["text", "seenHash"],
+      "refused"   : "Nothing to save"
     },
     {
-      "id"      : "doc.write",
-      "editor"  : "wiki",
-      "key"     : "cmd:doc.write#text",
-      "supplies": ["text", "seenHash"]
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#text",
+      "widgetPath": "wiki/doc-write~b0b7797d",
+      "supplies"  : ["text", "seenHash"]
     },
     {
-      "id"    : "ui.publish",
-      "editor": "wiki",
-      "key"   : "item:link/asset/43cfb9ffc189d3cf3fe8cdf326f1e6dec8683c59d74b308e95dd53a3543cd5fc"
+      "id"        : "ui.publish",
+      "editor"    : "wiki",
+      "key": "item:link/asset/43cfb9ffc189d3cf3fe8cdf326f1e6dec8683c59d74b308e95dd53a3543cd5fc",
+      "widgetPath": "wiki/ui-publish~1d8d671a"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "wiki",
-      "key"   : "item:link/asset/6b956e77272d2666585df48cb5983f42978b0f04ded4c358761fe17037d6d9c9"
+      "id"        : "ui.publish",
+      "editor"    : "wiki",
+      "key": "item:link/asset/6b956e77272d2666585df48cb5983f42978b0f04ded4c358761fe17037d6d9c9",
+      "widgetPath": "wiki/ui-publish~eb2dbedc"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "wiki",
-      "key"   : "item:link/asset/d6c366006abee34ea5315527ea02fd592128fb0514c0e58c911ad8201b76754c"
+      "id"        : "ui.publish",
+      "editor"    : "wiki",
+      "key": "item:link/asset/d6c366006abee34ea5315527ea02fd592128fb0514c0e58c911ad8201b76754c",
+      "widgetPath": "wiki/ui-publish~f6b19cc4"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "wiki",
-      "key"   : "item:link/asset/6f41ba9a6ea0b96fff77ed13bf2473174b91986da3b87791f0260b7da829947d"
+      "id"        : "ui.publish",
+      "editor"    : "wiki",
+      "key": "item:link/asset/6f41ba9a6ea0b96fff77ed13bf2473174b91986da3b87791f0260b7da829947d",
+      "widgetPath": "wiki/ui-publish~180ea8a0"
     },
     {
-      "id"    : "pane.view",
-      "editor": "documents",
-      "key"   : "fx:pane.view#mode"
+      "id"        : "pane.view",
+      "editor"    : "documents",
+      "key"       : "fx:pane.view#mode",
+      "widgetPath": "documents/pane-view~f711061f"
     },
     {
-      "id"      : "doc.create",
-      "editor"  : "documents",
-      "key"     : "cmd:doc.create",
-      "supplies": ["kind", "name"]
+      "id"        : "doc.create",
+      "editor"    : "documents",
+      "key"       : "cmd:doc.create",
+      "widgetPath": "documents/doc-create~ac61d9ac",
+      "supplies"  : ["kind", "name"]
     },
     {
-      "id"    : "pane.view",
-      "editor": "documents",
-      "key"   : "fx:pane.view#reload"
+      "id"        : "pane.view",
+      "editor"    : "documents",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "documents/pane-view~a08a707d"
     },
     {
-      "id"    : "tree.expand",
-      "editor": "documents",
-      "key"   : "fx:tree.expand#all"
+      "id"        : "tree.expand",
+      "editor"    : "documents",
+      "key"       : "fx:tree.expand#all",
+      "widgetPath": "documents/tree-expand~1a390e92"
     },
     {
-      "id"    : "tree.expand",
-      "editor": "documents",
-      "key"   : "fx:tree.expand#branch/story"
+      "id"        : "tree.expand",
+      "editor"    : "documents",
+      "key"       : "fx:tree.expand#branch/story",
+      "widgetPath": "documents/tree-expand~8626f093"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "documents",
-      "key"   : "item:scene/arrival"
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:scene/arrival",
+      "widgetPath": "documents/ui-publish~a9b13cd4"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "documents",
-      "key"   : "item:scene/ending"
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:scene/ending",
+      "widgetPath": "documents/ui-publish~2f9cede8"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "documents",
-      "key"   : "item:scene/epilogue"
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:scene/epilogue",
+      "widgetPath": "documents/ui-publish~36cee6df"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "documents",
-      "key"   : "item:scene/greet"
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:scene/greet",
+      "widgetPath": "documents/ui-publish~c137c08e"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "documents",
-      "key"   : "item:scene/observe"
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:scene/observe",
+      "widgetPath": "documents/ui-publish~b61d159d"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "documents",
-      "key"   : "item:scene/rooftop"
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:scene/rooftop",
+      "widgetPath": "documents/ui-publish~4db37ce8"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "documents",
-      "key"   : "item:scene/rooftop_2"
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:scene/rooftop_2",
+      "widgetPath": "documents/ui-publish~c457bcd5"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "documents",
-      "key"   : "item:scene/scene_monster"
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:scene/scene_monster",
+      "widgetPath": "documents/ui-publish~51f56072"
     },
     {
-      "id"    : "tree.expand",
-      "editor": "documents",
-      "key"   : "fx:tree.expand#branch/characters"
+      "id"        : "tree.expand",
+      "editor"    : "documents",
+      "key"       : "fx:tree.expand#branch/characters",
+      "widgetPath": "documents/tree-expand~987b39aa"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "documents",
-      "key"   : "item:character/aiko"
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:character/aiko",
+      "widgetPath": "documents/ui-publish~6e93b5d4"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "documents",
-      "key"   : "item:character/haruki"
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:character/haruki",
+      "widgetPath": "documents/ui-publish~d7a9635c"
     },
     {
-      "id"    : "tree.expand",
-      "editor": "documents",
-      "key"   : "fx:tree.expand#branch/locations"
+      "id"        : "tree.expand",
+      "editor"    : "documents",
+      "key"       : "fx:tree.expand#branch/locations",
+      "widgetPath": "documents/tree-expand~79b4a4de"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "documents",
-      "key"   : "item:location/classroom"
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:location/classroom",
+      "widgetPath": "documents/ui-publish~2a40b575"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "documents",
-      "key"   : "item:location/high_school"
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:location/high_school",
+      "widgetPath": "documents/ui-publish~d9d0c6b9"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "documents",
-      "key"   : "item:location/rooftop"
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:location/rooftop",
+      "widgetPath": "documents/ui-publish~ee552feb"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "documents",
-      "key"   : "item:location/classroom_2_b"
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:location/classroom_2_b",
+      "widgetPath": "documents/ui-publish~b9504535"
     },
     {
-      "id"    : "tree.expand",
-      "editor": "documents",
-      "key"   : "fx:tree.expand#branch/wiki"
+      "id"        : "tree.expand",
+      "editor"    : "documents",
+      "key"       : "fx:tree.expand#branch/wiki",
+      "widgetPath": "documents/tree-expand~78199704"
     },
     {
-      "id"    : "tree.expand",
-      "editor": "documents",
-      "key"   : "fx:tree.expand#wikidir/locations"
+      "id"        : "tree.expand",
+      "editor"    : "documents",
+      "key"       : "fx:tree.expand#wikidir/locations",
+      "widgetPath": "documents/tree-expand~83a03b51"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "documents",
-      "key"   : "item:wiki/world.md"
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:wiki/world.md",
+      "widgetPath": "documents/ui-publish~dc92a050"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "documents",
-      "key"   : "item:branch/skills"
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:branch/skills",
+      "widgetPath": "documents/ui-publish~1f2e4447"
     },
     {
-      "id"    : "tree.expand",
-      "editor": "documents",
-      "key"   : "fx:tree.expand#branch/graphs"
+      "id"        : "tree.expand",
+      "editor"    : "documents",
+      "key"       : "fx:tree.expand#branch/graphs",
+      "widgetPath": "documents/tree-expand~be13c41f"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "documents",
-      "key"   : "item:graph/portrait-haruki"
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:graph/portrait-haruki",
+      "widgetPath": "documents/ui-publish~b43774bb"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "documents",
-      "key"   : "item:graph/testgraph"
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:graph/testgraph",
+      "widgetPath": "documents/ui-publish~059f64e7"
     },
     {
-      "id"    : "tree.expand",
-      "editor": "documents",
-      "key"   : "fx:tree.expand#branch/unapproved"
+      "id"        : "tree.expand",
+      "editor"    : "documents",
+      "key"       : "fx:tree.expand#branch/unapproved",
+      "widgetPath": "documents/tree-expand~3068b418"
     },
     {
-      "id"    : "tree.expand",
-      "editor": "documents",
-      "key"   : "fx:tree.expand#branch/waiting"
+      "id"        : "tree.expand",
+      "editor"    : "documents",
+      "key"       : "fx:tree.expand#branch/waiting",
+      "widgetPath": "documents/tree-expand~25a3e183"
     },
     {
-      "id"    : "tree.expand",
-      "editor": "documents",
-      "key"   : "fx:tree.expand#branch/assets"
+      "id"        : "tree.expand",
+      "editor"    : "documents",
+      "key"       : "fx:tree.expand#branch/assets",
+      "widgetPath": "documents/tree-expand~e94a8a13"
     },
     {
-      "id"    : "tree.expand",
-      "editor": "documents",
-      "key"   : "fx:tree.expand#assetkind/concept"
+      "id"        : "tree.expand",
+      "editor"    : "documents",
+      "key"       : "fx:tree.expand#assetkind/concept",
+      "widgetPath": "documents/tree-expand~670bb854"
     },
     {
-      "id"    : "tree.expand",
-      "editor": "documents",
-      "key"   : "fx:tree.expand#assetkind/location_ref"
+      "id"        : "tree.expand",
+      "editor"    : "documents",
+      "key"       : "fx:tree.expand#assetkind/location_ref",
+      "widgetPath": "documents/tree-expand~1b35254f"
     },
     {
-      "id"    : "tree.expand",
-      "editor": "documents",
-      "key"   : "fx:tree.expand#assetkind/model_sheet"
+      "id"        : "tree.expand",
+      "editor"    : "documents",
+      "key"       : "fx:tree.expand#assetkind/model_sheet",
+      "widgetPath": "documents/tree-expand~bbe36c33"
     },
     {
-      "id"    : "tree.expand",
-      "editor": "documents",
-      "key"   : "fx:tree.expand#assetkind/portrait"
+      "id"        : "tree.expand",
+      "editor"    : "documents",
+      "key"       : "fx:tree.expand#assetkind/portrait",
+      "widgetPath": "documents/tree-expand~5d1a1bc3"
     },
     {
-      "id"    : "tree.expand",
-      "editor": "documents",
-      "key"   : "fx:tree.expand#assetkind/shot_image"
+      "id"        : "tree.expand",
+      "editor"    : "documents",
+      "key"       : "fx:tree.expand#assetkind/shot_image",
+      "widgetPath": "documents/tree-expand~0b485fd4"
     },
     {
-      "id"     : "prompt.clear",
-      "editor" : "asset",
-      "key"    : "cmd:prompt.clear#chunks",
-      "refused": "This prompt is already in chunks mode."
+      "id"        : "prompt.clear",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.clear#chunks",
+      "widgetPath": "asset/prompt-clear~5d73d376",
+      "refused"   : "This prompt is already in chunks mode."
     },
     {
-      "id"    : "prompt.setCustom",
-      "editor": "asset",
-      "key"   : "cmd:prompt.setCustom#custom"
+      "id"        : "prompt.setCustom",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setCustom#custom",
+      "widgetPath": "asset/prompt-setcustom~4ec2a0b5"
     },
     {
-      "id"    : "prompt.condense",
-      "editor": "asset",
-      "key"   : "cmd:prompt.condense#agent"
+      "id"        : "prompt.condense",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.condense#agent",
+      "widgetPath": "asset/prompt-condense~f4a6f7b5"
     },
     {
-      "id"    : "prompt.condense",
-      "editor": "asset",
-      "key"   : "cmd:prompt.condense"
+      "id"        : "prompt.condense",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.condense",
+      "widgetPath": "asset/prompt-condense~703792dc"
     },
     {
-      "id"    : "prompt.check",
-      "editor": "asset",
-      "key"   : "cmd:prompt.check"
+      "id"        : "prompt.check",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.check",
+      "widgetPath": "asset/prompt-check~7c9f54e9"
     },
     {
-      "id"    : "drag.start",
-      "editor": "asset",
-      "key"   : "fx:drag.start#style"
+      "id"        : "drag.start",
+      "editor"    : "asset",
+      "key"       : "fx:drag.start#style",
+      "widgetPath": "asset/drag-start~d1c63df4"
     },
     {
-      "id"    : "view.open",
-      "editor": "asset",
-      "key"   : "cmd:view.open#style"
+      "id"        : "view.open",
+      "editor"    : "asset",
+      "key"       : "cmd:view.open#style",
+      "widgetPath": "asset/view-open~c69bf685"
     },
     {
-      "id"    : "prompt.setChunk",
-      "editor": "asset",
-      "key"   : "cmd:prompt.setChunk#style/mute"
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#style/mute",
+      "widgetPath": "asset/prompt-setchunk~10e0e417"
     },
     {
-      "id"      : "prompt.setChunk",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.setChunk#style/replace",
-      "supplies": ["text"]
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#style/replace",
+      "widgetPath": "asset/prompt-setchunk~a60cfe57",
+      "supplies"  : ["text"]
     },
     {
-      "id"      : "prompt.setChunk",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.setChunk#style/append",
-      "supplies": ["text"]
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#style/append",
+      "widgetPath": "asset/prompt-setchunk~29c98d6d",
+      "supplies"  : ["text"]
     },
     {
-      "id"      : "prompt.addRef",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.addRef#style/attach",
-      "supplies": ["ref"]
+      "id"        : "prompt.addRef",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.addRef#style/attach",
+      "widgetPath": "asset/prompt-addref~55c536ad",
+      "supplies"  : ["ref"]
     },
     {
-      "id"     : "prompt.setChunk",
-      "editor" : "asset",
-      "key"    : "cmd:prompt.setChunk#style/reset",
-      "refused": "Nothing has been done to this clause."
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#style/reset",
+      "widgetPath": "asset/prompt-setchunk~813548a3",
+      "refused"   : "Nothing has been done to this clause."
     },
     {
-      "id"    : "drag.start",
-      "editor": "asset",
-      "key"   : "fx:drag.start#subject"
+      "id"        : "drag.start",
+      "editor"    : "asset",
+      "key"       : "fx:drag.start#subject",
+      "widgetPath": "asset/drag-start~087795a7"
     },
     {
-      "id"    : "view.open",
-      "editor": "asset",
-      "key"   : "cmd:view.open#subject"
+      "id"        : "view.open",
+      "editor"    : "asset",
+      "key"       : "cmd:view.open#subject",
+      "widgetPath": "asset/view-open~790fa5a6"
     },
     {
-      "id"    : "prompt.setChunk",
-      "editor": "asset",
-      "key"   : "cmd:prompt.setChunk#subject/mute"
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#subject/mute",
+      "widgetPath": "asset/prompt-setchunk~23aaae1c"
     },
     {
-      "id"      : "prompt.setChunk",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.setChunk#subject/replace",
-      "supplies": ["text"]
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#subject/replace",
+      "widgetPath": "asset/prompt-setchunk~9b44cda4",
+      "supplies"  : ["text"]
     },
     {
-      "id"      : "prompt.setChunk",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.setChunk#subject/append",
-      "supplies": ["text"]
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#subject/append",
+      "widgetPath": "asset/prompt-setchunk~a3f9b436",
+      "supplies"  : ["text"]
     },
     {
-      "id"      : "prompt.addRef",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.addRef#subject/attach",
-      "supplies": ["ref"]
+      "id"        : "prompt.addRef",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.addRef#subject/attach",
+      "widgetPath": "asset/prompt-addref~0752afde",
+      "supplies"  : ["ref"]
     },
     {
-      "id"     : "prompt.setChunk",
-      "editor" : "asset",
-      "key"    : "cmd:prompt.setChunk#subject/reset",
-      "refused": "Nothing has been done to this clause."
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#subject/reset",
+      "widgetPath": "asset/prompt-setchunk~d20f4f20",
+      "refused"   : "Nothing has been done to this clause."
     },
     {
-      "id"    : "drag.start",
-      "editor": "asset",
-      "key"   : "fx:drag.start#description"
+      "id"        : "drag.start",
+      "editor"    : "asset",
+      "key"       : "fx:drag.start#description",
+      "widgetPath": "asset/drag-start~1c2b760d"
     },
     {
-      "id"    : "view.open",
-      "editor": "asset",
-      "key"   : "cmd:view.open#description"
+      "id"        : "view.open",
+      "editor"    : "asset",
+      "key"       : "cmd:view.open#description",
+      "widgetPath": "asset/view-open~0fcfbccc"
     },
     {
-      "id"    : "prompt.setChunk",
-      "editor": "asset",
-      "key"   : "cmd:prompt.setChunk#description/mute"
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#description/mute",
+      "widgetPath": "asset/prompt-setchunk~2dcc5ad6"
     },
     {
-      "id"      : "prompt.setChunk",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.setChunk#description/replace",
-      "supplies": ["text"]
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#description/replace",
+      "widgetPath": "asset/prompt-setchunk~9695961e",
+      "supplies"  : ["text"]
     },
     {
-      "id"      : "prompt.setChunk",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.setChunk#description/append",
-      "supplies": ["text"]
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#description/append",
+      "widgetPath": "asset/prompt-setchunk~ff18095c",
+      "supplies"  : ["text"]
     },
     {
-      "id"      : "prompt.addRef",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.addRef#description/attach",
-      "supplies": ["ref"]
+      "id"        : "prompt.addRef",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.addRef#description/attach",
+      "widgetPath": "asset/prompt-addref~4b1349b4",
+      "supplies"  : ["ref"]
     },
     {
-      "id"     : "prompt.setChunk",
-      "editor" : "asset",
-      "key"    : "cmd:prompt.setChunk#description/reset",
-      "refused": "Nothing has been done to this clause."
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#description/reset",
+      "widgetPath": "asset/prompt-setchunk~d96c1a9a",
+      "refused"   : "Nothing has been done to this clause."
     },
     {
-      "id"    : "drag.start",
-      "editor": "asset",
-      "key"   : "fx:drag.start#mood"
+      "id"        : "drag.start",
+      "editor"    : "asset",
+      "key"       : "fx:drag.start#mood",
+      "widgetPath": "asset/drag-start~9bf34932"
     },
     {
-      "id"    : "view.open",
-      "editor": "asset",
-      "key"   : "cmd:view.open#mood"
+      "id"        : "view.open",
+      "editor"    : "asset",
+      "key"       : "cmd:view.open#mood",
+      "widgetPath": "asset/view-open~cb954b3b"
     },
     {
-      "id"    : "prompt.setChunk",
-      "editor": "asset",
-      "key"   : "cmd:prompt.setChunk#mood/mute"
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#mood/mute",
+      "widgetPath": "asset/prompt-setchunk~1cb124f9"
     },
     {
-      "id"      : "prompt.setChunk",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.setChunk#mood/replace",
-      "supplies": ["text"]
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#mood/replace",
+      "widgetPath": "asset/prompt-setchunk~35d6bb39",
+      "supplies"  : ["text"]
     },
     {
-      "id"      : "prompt.setChunk",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.setChunk#mood/append",
-      "supplies": ["text"]
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#mood/append",
+      "widgetPath": "asset/prompt-setchunk~f056c303",
+      "supplies"  : ["text"]
     },
     {
-      "id"      : "prompt.addRef",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.addRef#mood/attach",
-      "supplies": ["ref"]
+      "id"        : "prompt.addRef",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.addRef#mood/attach",
+      "widgetPath": "asset/prompt-addref~a43eec3b",
+      "supplies"  : ["ref"]
     },
     {
-      "id"     : "prompt.setChunk",
-      "editor" : "asset",
-      "key"    : "cmd:prompt.setChunk#mood/reset",
-      "refused": "Nothing has been done to this clause."
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#mood/reset",
+      "widgetPath": "asset/prompt-setchunk~36c4db4d",
+      "refused"   : "Nothing has been done to this clause."
     },
     {
-      "id"    : "drag.start",
-      "editor": "asset",
-      "key"   : "fx:drag.start#variant"
+      "id"        : "drag.start",
+      "editor"    : "asset",
+      "key"       : "fx:drag.start#variant",
+      "widgetPath": "asset/drag-start~e1ae56c4"
     },
     {
-      "id"    : "view.open",
-      "editor": "asset",
-      "key"   : "cmd:view.open#variant"
+      "id"        : "view.open",
+      "editor"    : "asset",
+      "key"       : "cmd:view.open#variant",
+      "widgetPath": "asset/view-open~ecbdad75"
     },
     {
-      "id"    : "prompt.setChunk",
-      "editor": "asset",
-      "key"   : "cmd:prompt.setChunk#variant/mute"
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#variant/mute",
+      "widgetPath": "asset/prompt-setchunk~2bae3287"
     },
     {
-      "id"      : "prompt.setChunk",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.setChunk#variant/replace",
-      "supplies": ["text"]
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#variant/replace",
+      "widgetPath": "asset/prompt-setchunk~c76be167",
+      "supplies"  : ["text"]
     },
     {
-      "id"      : "prompt.setChunk",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.setChunk#variant/append",
-      "supplies": ["text"]
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#variant/append",
+      "widgetPath": "asset/prompt-setchunk~2d40c0fd",
+      "supplies"  : ["text"]
     },
     {
-      "id"      : "prompt.addRef",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.addRef#variant/attach",
-      "supplies": ["ref"]
+      "id"        : "prompt.addRef",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.addRef#variant/attach",
+      "widgetPath": "asset/prompt-addref~aee6d7bd",
+      "supplies"  : ["ref"]
     },
     {
-      "id"     : "prompt.setChunk",
-      "editor" : "asset",
-      "key"    : "cmd:prompt.setChunk#variant/reset",
-      "refused": "Nothing has been done to this clause."
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#variant/reset",
+      "widgetPath": "asset/prompt-setchunk~bfb354f3",
+      "refused"   : "Nothing has been done to this clause."
     },
     {
-      "id"    : "drag.start",
-      "editor": "asset",
-      "key"   : "fx:drag.start#palette"
+      "id"        : "drag.start",
+      "editor"    : "asset",
+      "key"       : "fx:drag.start#palette",
+      "widgetPath": "asset/drag-start~52a7eafe"
     },
     {
-      "id"    : "view.open",
-      "editor": "asset",
-      "key"   : "cmd:view.open#palette"
+      "id"        : "view.open",
+      "editor"    : "asset",
+      "key"       : "cmd:view.open#palette",
+      "widgetPath": "asset/view-open~177a6d3f"
     },
     {
-      "id"    : "prompt.setChunk",
-      "editor": "asset",
-      "key"   : "cmd:prompt.setChunk#palette/mute"
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#palette/mute",
+      "widgetPath": "asset/prompt-setchunk~61640b1d"
     },
     {
-      "id"      : "prompt.setChunk",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.setChunk#palette/replace",
-      "supplies": ["text"]
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#palette/replace",
+      "widgetPath": "asset/prompt-setchunk~a542b0fd",
+      "supplies"  : ["text"]
     },
     {
-      "id"      : "prompt.setChunk",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.setChunk#palette/append",
-      "supplies": ["text"]
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#palette/append",
+      "widgetPath": "asset/prompt-setchunk~ff8e2fa7",
+      "supplies"  : ["text"]
     },
     {
-      "id"      : "prompt.addRef",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.addRef#palette/attach",
-      "supplies": ["ref"]
+      "id"        : "prompt.addRef",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.addRef#palette/attach",
+      "widgetPath": "asset/prompt-addref~55a0b947",
+      "supplies"  : ["ref"]
     },
     {
-      "id"     : "prompt.setChunk",
-      "editor" : "asset",
-      "key"    : "cmd:prompt.setChunk#palette/reset",
-      "refused": "Nothing has been done to this clause."
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#palette/reset",
+      "widgetPath": "asset/prompt-setchunk~ce6b5609",
+      "refused"   : "Nothing has been done to this clause."
     },
     {
-      "id"    : "drag.start",
-      "editor": "asset",
-      "key"   : "fx:drag.start#scaffolding"
+      "id"        : "drag.start",
+      "editor"    : "asset",
+      "key"       : "fx:drag.start#scaffolding",
+      "widgetPath": "asset/drag-start~80612d5d"
     },
     {
-      "id"    : "prompt.setChunk",
-      "editor": "asset",
-      "key"   : "cmd:prompt.setChunk#scaffolding/mute"
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#scaffolding/mute",
+      "widgetPath": "asset/prompt-setchunk~d6d28a86"
     },
     {
-      "id"      : "prompt.setChunk",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.setChunk#scaffolding/replace",
-      "supplies": ["text"]
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#scaffolding/replace",
+      "widgetPath": "asset/prompt-setchunk~74afbcae",
+      "supplies"  : ["text"]
     },
     {
-      "id"      : "prompt.setChunk",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.setChunk#scaffolding/append",
-      "supplies": ["text"]
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#scaffolding/append",
+      "widgetPath": "asset/prompt-setchunk~72887aec",
+      "supplies"  : ["text"]
     },
     {
-      "id"      : "prompt.addRef",
-      "editor"  : "asset",
-      "key"     : "cmd:prompt.addRef#scaffolding/attach",
-      "supplies": ["ref"]
+      "id"        : "prompt.addRef",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.addRef#scaffolding/attach",
+      "widgetPath": "asset/prompt-addref~00f500e4",
+      "supplies"  : ["ref"]
     },
     {
-      "id"     : "prompt.setChunk",
-      "editor" : "asset",
-      "key"    : "cmd:prompt.setChunk#scaffolding/reset",
-      "refused": "Nothing has been done to this clause."
+      "id"        : "prompt.setChunk",
+      "editor"    : "asset",
+      "key"       : "cmd:prompt.setChunk#scaffolding/reset",
+      "widgetPath": "asset/prompt-setchunk~7b7e032a",
+      "refused"   : "Nothing has been done to this clause."
     },
     {
-      "id"      : "art.setSeed",
-      "editor"  : "asset",
-      "key"     : "cmd:art.setSeed#location:rooftop",
-      "supplies": ["seed"]
+      "id"        : "art.setSeed",
+      "editor"    : "asset",
+      "key"       : "cmd:art.setSeed#location:rooftop",
+      "widgetPath": "asset/art-setseed~2cccbb9e",
+      "supplies"  : ["seed"]
     },
     {
-      "id"      : "art.setNotes",
-      "editor"  : "asset",
-      "key"     : "cmd:art.setNotes#location:rooftop",
-      "supplies": ["notes"]
+      "id"        : "art.setNotes",
+      "editor"    : "asset",
+      "key"       : "cmd:art.setNotes#location:rooftop",
+      "widgetPath": "asset/art-setnotes~ad372366",
+      "supplies"  : ["notes"]
     },
     {
-      "id"      : "art.setSeed",
-      "editor"  : "asset",
-      "key"     : "cmd:art.setSeed#location:rooftop/evening",
-      "supplies": ["seed"]
+      "id"        : "art.setSeed",
+      "editor"    : "asset",
+      "key"       : "cmd:art.setSeed#location:rooftop/evening",
+      "widgetPath": "asset/art-setseed~e2a47069",
+      "supplies"  : ["seed"]
     },
     {
-      "id"      : "art.setNotes",
-      "editor"  : "asset",
-      "key"     : "cmd:art.setNotes#location:rooftop/evening",
-      "supplies": ["notes"]
+      "id"        : "art.setNotes",
+      "editor"    : "asset",
+      "key"       : "cmd:art.setNotes#location:rooftop/evening",
+      "widgetPath": "asset/art-setnotes~da3ff829",
+      "supplies"  : ["notes"]
     },
     {
-      "id"    : "asset.restore",
-      "editor": "asset",
-      "key"   : "cmd:asset.restore"
+      "id"        : "asset.restore",
+      "editor"    : "asset",
+      "key"       : "cmd:asset.restore",
+      "widgetPath": "asset/asset-restore~235255c3"
     },
     {
-      "id"    : "asset.regenerate",
-      "editor": "asset",
-      "key"   : "cmd:asset.regenerate"
+      "id"        : "asset.regenerate",
+      "editor"    : "asset",
+      "key"       : "cmd:asset.regenerate",
+      "widgetPath": "asset/asset-regenerate~70fee3cf"
     },
     {
-      "id"    : "view.open",
-      "editor": "asset",
-      "key"   : "cmd:view.open"
+      "id"        : "view.open",
+      "editor"    : "asset",
+      "key"       : "cmd:view.open",
+      "widgetPath": "asset/view-open~dd85e74a"
     },
     {
-      "id"    : "asset.export",
-      "editor": "asset",
-      "key"   : "cmd:asset.export"
+      "id"        : "asset.export",
+      "editor"    : "asset",
+      "key"       : "cmd:asset.export",
+      "widgetPath": "asset/asset-export~5b627077"
     },
     {
-      "id"    : "menu.open",
-      "editor": "asset",
-      "key"   : "fx:menu.open"
+      "id"        : "menu.open",
+      "editor"    : "asset",
+      "key"       : "fx:menu.open",
+      "widgetPath": "asset/menu-open~eb5b4984"
     },
     {
-      "id"    : "pane.view",
-      "editor": "asset",
-      "key"   : "fx:pane.view#reload"
+      "id"        : "pane.view",
+      "editor"    : "asset",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "asset/pane-view~a08a707d"
     },
     {
-      "id"    : "pane.pin",
-      "editor": "asset",
-      "key"   : "fx:pane.pin"
+      "id"        : "pane.pin",
+      "editor"    : "asset",
+      "key"       : "fx:pane.pin",
+      "widgetPath": "asset/pane-pin~3ef17e3e"
     },
     {
-      "id"    : "pane.view",
-      "editor": "project",
-      "key"   : "fx:pane.view#reload"
+      "id"        : "pane.view",
+      "editor"    : "project",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "project/pane-view~a08a707d"
     },
     {
-      "id"      : "project.setArtStyle",
-      "editor"  : "project",
-      "key"     : "cmd:project.setArtStyle",
-      "supplies": ["style"],
-      "refused" : "No changes"
+      "id"        : "project.setArtStyle",
+      "editor"    : "project",
+      "key"       : "cmd:project.setArtStyle",
+      "widgetPath": "project/project-setartstyle~74240823",
+      "supplies"  : ["style"],
+      "refused"   : "No changes"
     },
     {
-      "id"      : "project.setArtStyle",
-      "editor"  : "project",
-      "key"     : "cmd:project.setArtStyle#style",
-      "supplies": ["style"]
+      "id"        : "project.setArtStyle",
+      "editor"    : "project",
+      "key"       : "cmd:project.setArtStyle#style",
+      "widgetPath": "project/project-setartstyle~47770ae4",
+      "supplies"  : ["style"]
     },
     {
-      "id"    : "pane.view",
-      "editor": "systemprompt",
-      "key"   : "fx:pane.view#reload"
+      "id"        : "pane.view",
+      "editor"    : "systemprompt",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "systemprompt/pane-view~a08a707d"
     },
     {
-      "id"      : "app.copy",
-      "editor"  : "systemprompt",
-      "key"     : "cmd:app.copy",
-      "supplies": ["text"]
+      "id"        : "app.copy",
+      "editor"    : "systemprompt",
+      "key"       : "cmd:app.copy",
+      "widgetPath": "systemprompt/app-copy~e35ed21a",
+      "supplies"  : ["text"]
     },
     {
-      "id"    : "app.openKeyLink",
-      "editor": "onboarding",
-      "key"   : "cmd:app.openKeyLink#gemini/console"
+      "id"        : "app.openKeyLink",
+      "editor"    : "onboarding",
+      "key"       : "cmd:app.openKeyLink#gemini/console",
+      "widgetPath": "onboarding/app-openkeylink~df585ca0"
     },
     {
-      "id"    : "app.openKeyLink",
-      "editor": "onboarding",
-      "key"   : "cmd:app.openKeyLink#gemini/docs"
+      "id"        : "app.openKeyLink",
+      "editor"    : "onboarding",
+      "key"       : "cmd:app.openKeyLink#gemini/docs",
+      "widgetPath": "onboarding/app-openkeylink~e367a94c"
     },
     {
-      "id"    : "app.openKeyLink",
-      "editor": "onboarding",
-      "key"   : "cmd:app.openKeyLink#gemini/billing"
+      "id"        : "app.openKeyLink",
+      "editor"    : "onboarding",
+      "key"       : "cmd:app.openKeyLink#gemini/billing",
+      "widgetPath": "onboarding/app-openkeylink~bc9e3124"
     },
     {
-      "id"    : "app.openKeyLink",
-      "editor": "onboarding",
-      "key"   : "cmd:app.openKeyLink#anthropic/console"
+      "id"        : "app.openKeyLink",
+      "editor"    : "onboarding",
+      "key"       : "cmd:app.openKeyLink#anthropic/console",
+      "widgetPath": "onboarding/app-openkeylink~0d87b865"
     },
     {
-      "id"    : "app.openKeyLink",
-      "editor": "onboarding",
-      "key"   : "cmd:app.openKeyLink#anthropic/docs"
+      "id"        : "app.openKeyLink",
+      "editor"    : "onboarding",
+      "key"       : "cmd:app.openKeyLink#anthropic/docs",
+      "widgetPath": "onboarding/app-openkeylink~eab6da91"
     },
     {
-      "id"    : "app.openKeyLink",
-      "editor": "onboarding",
-      "key"   : "cmd:app.openKeyLink#anthropic/billing"
+      "id"        : "app.openKeyLink",
+      "editor"    : "onboarding",
+      "key"       : "cmd:app.openKeyLink#anthropic/billing",
+      "widgetPath": "onboarding/app-openkeylink~82ab45f1"
     },
     {
-      "id"     : "project.testKey",
-      "editor" : "onboarding",
-      "key"    : "cmd:project.testKey#gemini",
-      "refused": "Mock mode makes no calls, so there is nothing to test."
+      "id"        : "project.testKey",
+      "editor"    : "onboarding",
+      "key"       : "cmd:project.testKey#gemini",
+      "widgetPath": "onboarding/project-testkey~a48292d6",
+      "refused"   : "Mock mode makes no calls, so there is nothing to test."
     },
     {
-      "id"     : "project.testKey",
-      "editor" : "onboarding",
-      "key"    : "cmd:project.testKey#anthropic",
-      "refused": "Mock mode makes no calls, so there is nothing to test."
+      "id"        : "project.testKey",
+      "editor"    : "onboarding",
+      "key"       : "cmd:project.testKey#anthropic",
+      "widgetPath": "onboarding/project-testkey~52587993",
+      "refused"   : "Mock mode makes no calls, so there is nothing to test."
     },
     {
-      "id"      : "project.setKey",
-      "editor"  : "onboarding",
-      "key"     : "cmd:project.setKey#gemini",
-      "supplies": ["key"],
-      "refused" : "Paste a key first"
+      "id"        : "project.setKey",
+      "editor"    : "onboarding",
+      "key"       : "cmd:project.setKey#anthropic",
+      "widgetPath": "onboarding/project-setkey~b45dc248",
+      "supplies"  : ["key"],
+      "refused"   : "Paste a key first"
     },
     {
-      "id"      : "project.setKey",
-      "editor"  : "onboarding",
-      "key"     : "cmd:project.setKey#anthropic",
-      "supplies": ["key"],
-      "refused" : "Paste a key first"
+      "id"        : "project.setKey",
+      "editor"    : "onboarding",
+      "key"       : "cmd:project.setKey#gemini",
+      "widgetPath": "onboarding/project-setkey~83f4e4d5",
+      "supplies"  : ["key"],
+      "refused"   : "Paste a key first"
     },
     {
-      "id"     : "report.open",
-      "editor" : "report",
-      "key"    : "cmd:report.open",
+      "id"        : "report.open",
+      "editor"    : "report",
+      "key"       : "cmd:report.open",
+      "widgetPath": "report/report-open~0bee4f69",
       "refused": "Not while this workspace is running with mock providers — a real model has to read the conversation."
     },
     {
-      "id"    : "notify.clear",
-      "editor": "notifications",
-      "key"   : "cmd:notify.clear"
+      "id"        : "notify.clear",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.clear",
+      "widgetPath": "notifications/notify-clear~bfd3bdf9"
     },
     {
-      "id"    : "pane.view",
-      "editor": "notifications",
-      "key"   : "fx:pane.view#hidden"
+      "id"        : "pane.view",
+      "editor"    : "notifications",
+      "key"       : "fx:pane.view#hidden",
+      "widgetPath": "notifications/pane-view~74909dae"
     },
     {
-      "id"    : "popup.open",
-      "editor": "notifications",
-      "key"   : "fx:popup.open#filter"
+      "id"        : "popup.open",
+      "editor"    : "notifications",
+      "key"       : "fx:popup.open#filter",
+      "widgetPath": "notifications/popup-open~9106e64d"
     },
     {
-      "id"    : "notify.deleteAll",
-      "editor": "notifications",
-      "key"   : "cmd:notify.deleteAll",
-      "form"  : true
+      "id"        : "notify.deleteAll",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.deleteAll",
+      "widgetPath": "notifications/notify-deleteall~53de25de",
+      "form"      : true
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260907-172843-67be-0015"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260907-172843-67be-0015",
+      "widgetPath": "notifications/notify-follow~a4a543ed"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260907-172843-67be-0015"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260907-172843-67be-0015",
+      "widgetPath": "notifications/notify-hide~39a7a60c"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260907-172843-67be-0014"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260907-172843-67be-0014",
+      "widgetPath": "notifications/notify-follow~a84f4bf4"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260907-172843-67be-0014"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260907-172843-67be-0014",
+      "widgetPath": "notifications/notify-hide~35fd9e05"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260907-172843-67be-0013"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260907-172843-67be-0013",
+      "widgetPath": "notifications/notify-follow~abf953fb"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260907-172843-67be-0013"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260907-172843-67be-0013",
+      "widgetPath": "notifications/notify-hide~40fbb61a"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260907-172843-67be-0012"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260907-172843-67be-0012",
+      "widgetPath": "notifications/notify-follow~afa35c02"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260907-172843-67be-0012"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260907-172843-67be-0012",
+      "widgetPath": "notifications/notify-hide~3d51ae13"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260907-172843-67be-0011"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260907-172843-67be-0011",
+      "widgetPath": "notifications/notify-follow~b34d6409"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260907-172843-67be-0011"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260907-172843-67be-0011",
+      "widgetPath": "notifications/notify-hide~484fc628"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260907-172843-67be-0010"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260907-172843-67be-0010",
+      "widgetPath": "notifications/notify-follow~b6f76c10"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260907-172843-67be-0010"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260907-172843-67be-0010",
+      "widgetPath": "notifications/notify-hide~44a5be21"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260907-172843-67be-0009"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260907-172843-67be-0009",
+      "widgetPath": "notifications/notify-follow~4ad111b0"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260907-172843-67be-0009"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260907-172843-67be-0009",
+      "widgetPath": "notifications/notify-hide~b0cc1881"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260907-172843-67be-0008"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260907-172843-67be-0008",
+      "widgetPath": "notifications/notify-follow~472709a9"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260907-172843-67be-0008"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260907-172843-67be-0008",
+      "widgetPath": "notifications/notify-hide~b4762088"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260907-172843-67be-0007"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260907-172843-67be-0007",
+      "widgetPath": "notifications/notify-follow~1784a14e"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260907-172843-67be-0007"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260907-172843-67be-0007",
+      "widgetPath": "notifications/notify-hide~b820288f"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260907-172843-67be-0006"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260907-172843-67be-0006",
+      "widgetPath": "notifications/notify-follow~13da9947"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260907-172843-67be-0006"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260907-172843-67be-0006",
+      "widgetPath": "notifications/notify-hide~bbca3096"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260907-172843-67be-0005"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260907-172843-67be-0005",
+      "widgetPath": "notifications/notify-follow~1ed8b15c"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260907-172843-67be-0005"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260907-172843-67be-0005",
+      "widgetPath": "notifications/notify-hide~bf74389d"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260907-172843-67be-0004"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260907-172843-67be-0004",
+      "widgetPath": "notifications/notify-follow~1b2ea955"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260907-172843-67be-0004"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260907-172843-67be-0004",
+      "widgetPath": "notifications/notify-hide~c31e40a4"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260907-172843-67be-0003"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260907-172843-67be-0003",
+      "widgetPath": "notifications/notify-follow~262cc16a"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260907-172843-67be-0003"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260907-172843-67be-0003",
+      "widgetPath": "notifications/notify-hide~c6c848ab"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260907-172843-67be-0002"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260907-172843-67be-0002",
+      "widgetPath": "notifications/notify-follow~2282b963"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260907-172843-67be-0002"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260907-172843-67be-0002",
+      "widgetPath": "notifications/notify-hide~ca7250b2"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260907-172843-67be-0001"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260907-172843-67be-0001",
+      "widgetPath": "notifications/notify-follow~2d80d178"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260907-172843-67be-0001"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260907-172843-67be-0001",
+      "widgetPath": "notifications/notify-hide~ce1c58b9"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260907-172843-67be-0000"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260907-172843-67be-0000",
+      "widgetPath": "notifications/notify-follow~29d6c971"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260907-172843-67be-0000"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260907-172843-67be-0000",
+      "widgetPath": "notifications/notify-hide~d1c660c0"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260907-013330-0bf5-0001"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260907-013330-0bf5-0001",
+      "widgetPath": "notifications/notify-follow~89196f76"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260907-013330-0bf5-0001"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260907-013330-0bf5-0001",
+      "widgetPath": "notifications/notify-hide~35dcf7a7"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260907-013330-0bf5-0000"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260907-013330-0bf5-0000",
+      "widgetPath": "notifications/notify-follow~856f676f"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260907-013330-0bf5-0000"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260907-013330-0bf5-0000",
+      "widgetPath": "notifications/notify-hide~3986ffae"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260906-145945-7ecd-0001"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260906-145945-7ecd-0001",
+      "widgetPath": "notifications/notify-follow~087da569"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260906-145945-7ecd-0001"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260906-145945-7ecd-0001",
+      "widgetPath": "notifications/notify-hide~2121c588"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260906-145945-7ecd-0000"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260906-145945-7ecd-0000",
+      "widgetPath": "notifications/notify-follow~0c27ad70"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260906-145945-7ecd-0000"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260906-145945-7ecd-0000",
+      "widgetPath": "notifications/notify-hide~1d77bd81"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260905-013047-5302-0087"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260905-013047-5302-0087",
+      "widgetPath": "notifications/notify-follow~03456c14"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260905-013047-5302-0087"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260905-013047-5302-0087",
+      "widgetPath": "notifications/notify-hide~b6003935"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260905-013047-5302-0086"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260905-013047-5302-0086",
+      "widgetPath": "notifications/notify-follow~ff9b640d"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260905-013047-5302-0086"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260905-013047-5302-0086",
+      "widgetPath": "notifications/notify-hide~b9aa413c"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260905-013047-5302-0085"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260905-013047-5302-0085",
+      "widgetPath": "notifications/notify-follow~fbf15c06"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260905-013047-5302-0085"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260905-013047-5302-0085",
+      "widgetPath": "notifications/notify-hide~aeac2927"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260905-013047-5302-0084"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260905-013047-5302-0084",
+      "widgetPath": "notifications/notify-follow~f84753ff"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260905-013047-5302-0084"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260905-013047-5302-0084",
+      "widgetPath": "notifications/notify-hide~b256312e"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260905-013047-5302-0083"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260905-013047-5302-0083",
+      "widgetPath": "notifications/notify-follow~11ed8c30"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260905-013047-5302-0083"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260905-013047-5302-0083",
+      "widgetPath": "notifications/notify-hide~c4a85951"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260905-013047-5302-0082"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260905-013047-5302-0082",
+      "widgetPath": "notifications/notify-follow~0e438429"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260905-013047-5302-0082"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260905-013047-5302-0082",
+      "widgetPath": "notifications/notify-hide~c8526158"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260905-013047-5302-0081"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260905-013047-5302-0081",
+      "widgetPath": "notifications/notify-follow~0a997c22"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260905-013047-5302-0081"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260905-013047-5302-0081",
+      "widgetPath": "notifications/notify-hide~bd544943"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260905-013047-5302-0080"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260905-013047-5302-0080",
+      "widgetPath": "notifications/notify-follow~06ef741b"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260905-013047-5302-0080"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260905-013047-5302-0080",
+      "widgetPath": "notifications/notify-hide~c0fe514a"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260905-013047-5302-0079"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260905-013047-5302-0079",
+      "widgetPath": "notifications/notify-follow~42cd93b5"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260905-013047-5302-0079"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260905-013047-5302-0079",
+      "widgetPath": "notifications/notify-hide~99d0bd04"
     },
     {
-      "id"    : "notify.follow",
-      "editor": "notifications",
-      "key"   : "cmd:notify.follow#20260905-013047-5302-0078"
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260905-013047-5302-0078",
+      "widgetPath": "notifications/notify-follow~46779bbc"
     },
     {
-      "id"    : "notify.hide",
-      "editor": "notifications",
-      "key"   : "cmd:notify.hide#20260905-013047-5302-0078"
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260905-013047-5302-0078",
+      "widgetPath": "notifications/notify-hide~9626b4fd"
     },
     {
-      "id"    : "pane.view",
-      "editor": "notifications",
-      "key"   : "fx:pane.view"
+      "id"        : "pane.view",
+      "editor"    : "notifications",
+      "key"       : "fx:pane.view",
+      "widgetPath": "notifications/pane-view~6adf673c"
     },
     {
-      "id"    : "popup.close",
-      "editor": "approvals",
-      "key"   : "fx:popup.close#011b281aee20cdec4e83ae6525d4dda83ae8fdafacedf31b6d490e9547b18c8b"
+      "id"        : "popup.close",
+      "editor"    : "approvals",
+      "key": "fx:popup.close#011b281aee20cdec4e83ae6525d4dda83ae8fdafacedf31b6d490e9547b18c8b",
+      "widgetPath": "approvals/popup-close~41fb9207"
     },
     {
-      "id"    : "popup.close",
-      "editor": "approvals",
-      "key"   : "fx:popup.close#9b979b83f3f40a0b6678c24c29824f73f7b3454c3af70bb1f224cd029e09b0c0"
+      "id"        : "popup.close",
+      "editor"    : "approvals",
+      "key": "fx:popup.close#9b979b83f3f40a0b6678c24c29824f73f7b3454c3af70bb1f224cd029e09b0c0",
+      "widgetPath": "approvals/popup-close~ec3b576f"
     },
     {
-      "id"    : "popup.close",
-      "editor": "approvals",
-      "key"   : "fx:popup.close#ecb9bbcf9145c5f6873ed496880d84da77bd886846cb6baafbd801f2643990ff"
+      "id"        : "popup.close",
+      "editor"    : "approvals",
+      "key": "fx:popup.close#ecb9bbcf9145c5f6873ed496880d84da77bd886846cb6baafbd801f2643990ff",
+      "widgetPath": "approvals/popup-close~83954158"
     },
     {
-      "id"    : "popup.close",
-      "editor": "approvals",
-      "key"   : "fx:popup.close#6c2828f231a59a151c8cd856b370f27333d1af78ffff40f2a5d01e5d6980fa69"
+      "id"        : "popup.close",
+      "editor"    : "approvals",
+      "key": "fx:popup.close#6c2828f231a59a151c8cd856b370f27333d1af78ffff40f2a5d01e5d6980fa69",
+      "widgetPath": "approvals/popup-close~9c50f00b"
     },
     {
-      "id"    : "popup.close",
-      "editor": "approvals",
-      "key"   : "fx:popup.close#ce00bfbc8b93c673a588bf3a2ee960d6ec17ec7980f9bae8863485b339e56491"
+      "id"        : "popup.close",
+      "editor"    : "approvals",
+      "key": "fx:popup.close#ce00bfbc8b93c673a588bf3a2ee960d6ec17ec7980f9bae8863485b339e56491",
+      "widgetPath": "approvals/popup-close~1519a9a4"
     },
     {
-      "id"    : "popup.close",
-      "editor": "approvals",
-      "key"   : "fx:popup.close#d767c3af07a5b1933c0205900bf9aab284bcd51391c3014a9b50b327c2c2d48a"
+      "id"        : "popup.close",
+      "editor"    : "approvals",
+      "key": "fx:popup.close#d767c3af07a5b1933c0205900bf9aab284bcd51391c3014a9b50b327c2c2d48a",
+      "widgetPath": "approvals/popup-close~c8bc7322"
     },
     {
-      "id"    : "popup.close",
-      "editor": "approvals",
-      "key"   : "fx:popup.close#f202f3f3f8d11b5d461c1af135dfc6eb1eda1a2e3fec78ca7d9bf5227d6647b0"
+      "id"        : "popup.close",
+      "editor"    : "approvals",
+      "key": "fx:popup.close#f202f3f3f8d11b5d461c1af135dfc6eb1eda1a2e3fec78ca7d9bf5227d6647b0",
+      "widgetPath": "approvals/popup-close~a7548890"
     },
     {
-      "id"    : "popup.close",
-      "editor": "approvals",
-      "key"   : "fx:popup.close#09dd119889947568f797a00ae8a5d4d1bc811da6a6047fc68a2ad2785d05929a"
+      "id"        : "popup.close",
+      "editor"    : "approvals",
+      "key": "fx:popup.close#09dd119889947568f797a00ae8a5d4d1bc811da6a6047fc68a2ad2785d05929a",
+      "widgetPath": "approvals/popup-close~ef0a627d"
     },
     {
-      "id"    : "popup.close",
-      "editor": "approvals",
-      "key"   : "fx:popup.close#a3fa8452f484e88ddd6f814474f3b6263a6d49ad192c8eba14a5e5244381eec2"
+      "id"        : "popup.close",
+      "editor"    : "approvals",
+      "key": "fx:popup.close#a3fa8452f484e88ddd6f814474f3b6263a6d49ad192c8eba14a5e5244381eec2",
+      "widgetPath": "approvals/popup-close~34794c66"
     },
     {
-      "id"    : "popup.close",
-      "editor": "approvals",
-      "key"   : "fx:popup.close#6e9fbd3e4a65e6c591fa2b25444014f61da042341a165c0fd583a853773f7539"
+      "id"        : "popup.close",
+      "editor"    : "approvals",
+      "key": "fx:popup.close#6e9fbd3e4a65e6c591fa2b25444014f61da042341a165c0fd583a853773f7539",
+      "widgetPath": "approvals/popup-close~8f39907b"
     },
     {
-      "id"    : "ui.publish",
-      "editor": "diagnostics",
-      "key"   : "item:scene/scene_monster"
+      "id"        : "ui.publish",
+      "editor"    : "diagnostics",
+      "key"       : "item:scene/scene_monster",
+      "widgetPath": "diagnostics/ui-publish~51f56072"
     }
   ],
   "disagreements": [],
-  "strays"       : []
+  "strays"       : [],
+  "untagged"     : []
 }
