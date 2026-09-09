@@ -520,19 +520,25 @@
       "module": "timeline",
       "editor": "timeline",
       "name"  : "no-scene",
-      "why"   : "No scene is on screen, so + shot is refused."
+      "why"   : "No scene is on screen, so + shot is refused and only the bar is drawn."
     },
     {
       "module": "timeline",
       "editor": "timeline",
       "name"  : "decomposed",
-      "why"   : "The scene has shots, so + shot is offered and no door is drawn."
+      "why": "The scene has shots, so + shot is offered and no door is drawn; each line has a gutter and opens a box, and the shot’s bracket selects it with a handle at each edge."
+    },
+    {
+      "module": "timeline",
+      "editor": "timeline",
+      "name"  : "editing-a-line",
+      "why"   : "One line’s box is open, so its box stands in for that line’s control."
     },
     {
       "module": "timeline",
       "editor": "timeline",
       "name"  : "undecomposed-unasked",
-      "why": "The scene has no shots and the doors have not answered, so only + shot is anchored."
+      "why": "The scene has no shots and the doors have not answered, so the bar and the lines are anchored and no door is."
     },
     {
       "module": "timeline",
@@ -19698,6 +19704,30 @@
       "editor"   : "timeline",
       "module"   : "timeline",
       "situation": "no-scene",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "scene…",
+        "tooltip": "Which scene this timeline covers. Every pane follows the choice.",
+        "ok"     : true,
+        "props": {
+          "menu": "scenes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "scenes"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "no-scene",
       "key"      : "cmd:story.newShot",
       "offer": {
         "id"     : "story.newShot",
@@ -19712,6 +19742,55 @@
       "effects": [
         {
           "id": "story.newShot"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "no-scene",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read the shots and their images from disk.",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "decomposed",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "arrival",
+        "tooltip": "Which scene this timeline covers. Every pane follows the choice.",
+        "ok"     : true,
+        "props": {
+          "menu": "scenes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "scenes"
+          }
         }
       ]
     },
@@ -19736,6 +19815,511 @@
           "id"   : "story.newShot",
           "props": {
             "scene": "arrival"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "decomposed",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read the shots and their images from disk.",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "decomposed",
+      "key"      : "fx:drag.start#line/arrival:L1",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "",
+        "tooltip": "Drag along this edge to sweep lines into a new shot — a new frame to render, priced as you drag.",
+        "on"     : "line/arrival:L1",
+        "ok"     : true,
+        "props": {
+          "interaction": "timeline.create"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "timeline.create"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "decomposed",
+      "key"      : "cmd:story.setLineText#arrival:L1",
+      "offer": {
+        "id"      : "story.setLineText",
+        "label"   : "Aiko stops at the gate.",
+        "tooltip" : "Click to retype this line",
+        "on"      : "arrival:L1",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "decomposed",
+      "key"      : "fx:drag.start#line/arrival:L2",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "",
+        "tooltip": "Drag along this edge to sweep lines into a new shot — a new frame to render, priced as you drag.",
+        "on"     : "line/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "interaction": "timeline.create"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "timeline.create"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "decomposed",
+      "key"      : "cmd:story.setLineText#arrival:L2",
+      "offer": {
+        "id"      : "story.setLineText",
+        "label"   : "AIKO: Is this the place?",
+        "tooltip" : "Click to retype this line",
+        "on"      : "arrival:L2",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "decomposed",
+      "key"      : "item:shot/arrival__s1",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "arrival__s1",
+        "tooltip": "arrival__s1 — click to select it, double-click to open its frame, drag to move it among the other shots",
+        "on"     : "shot/arrival__s1",
+        "ok"     : true,
+        "props": {
+          "shotId": "arrival__s1"
+        },
+        "then": [
+          {
+            "id"   : "drag.start",
+            "props": {
+              "interaction": "timeline.reorder"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "shotId": "arrival__s1"
+          }
+        },
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "timeline.reorder"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "decomposed",
+      "key"      : "fx:drag.start#shot/arrival__s1/start",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "",
+        "tooltip": "Drag to move the first line this shot covers",
+        "on"     : "shot/arrival__s1/start",
+        "ok"     : true,
+        "props": {
+          "interaction": "timeline.cover"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "timeline.cover"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "decomposed",
+      "key"      : "fx:drag.start#shot/arrival__s1/end",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "",
+        "tooltip": "Drag to move the last line this shot covers",
+        "on"     : "shot/arrival__s1/end",
+        "ok"     : true,
+        "props": {
+          "interaction": "timeline.cover"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "timeline.cover"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "editing-a-line",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "arrival",
+        "tooltip": "Which scene this timeline covers. Every pane follows the choice.",
+        "ok"     : true,
+        "props": {
+          "menu": "scenes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "scenes"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "editing-a-line",
+      "key"      : "cmd:story.newShot",
+      "offer": {
+        "id"     : "story.newShot",
+        "label"  : "+ shot",
+        "tooltip": "Place a shot by hand over lines you name — a new frame to render. Opens the command, priced before it runs.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "scene": "arrival"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.newShot",
+          "props": {
+            "scene": "arrival"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "editing-a-line",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read the shots and their images from disk.",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "editing-a-line",
+      "key"      : "fx:drag.start#line/arrival:L1",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "",
+        "tooltip": "Drag along this edge to sweep lines into a new shot — a new frame to render, priced as you drag.",
+        "on"     : "line/arrival:L1",
+        "ok"     : true,
+        "props": {
+          "interaction": "timeline.create"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "timeline.create"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "editing-a-line",
+      "key"      : "cmd:story.setLineText#arrival:L1/box",
+      "offer": {
+        "id"      : "story.setLineText",
+        "label"   : "Retype arrival:L1",
+        "tooltip" : "Retype arrival:L1 — Enter writes it, Escape leaves the line alone",
+        "on"      : "arrival:L1/box",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "editing-a-line",
+      "key"      : "fx:drag.start#line/arrival:L2",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "",
+        "tooltip": "Drag along this edge to sweep lines into a new shot — a new frame to render, priced as you drag.",
+        "on"     : "line/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "interaction": "timeline.create"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "timeline.create"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "editing-a-line",
+      "key"      : "cmd:story.setLineText#arrival:L2",
+      "offer": {
+        "id"      : "story.setLineText",
+        "label"   : "AIKO: Is this the place?",
+        "tooltip" : "Click to retype this line",
+        "on"      : "arrival:L2",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "editing-a-line",
+      "key"      : "item:shot/arrival__s1",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "arrival__s1",
+        "tooltip": "arrival__s1 — click to select it, double-click to open its frame, drag to move it among the other shots",
+        "on"     : "shot/arrival__s1",
+        "ok"     : true,
+        "props": {
+          "shotId": "arrival__s1"
+        },
+        "then": [
+          {
+            "id"   : "drag.start",
+            "props": {
+              "interaction": "timeline.reorder"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "shotId": "arrival__s1"
+          }
+        },
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "timeline.reorder"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "editing-a-line",
+      "key"      : "fx:drag.start#shot/arrival__s1/start",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "",
+        "tooltip": "Drag to move the first line this shot covers",
+        "on"     : "shot/arrival__s1/start",
+        "ok"     : true,
+        "props": {
+          "interaction": "timeline.cover"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "timeline.cover"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "editing-a-line",
+      "key"      : "fx:drag.start#shot/arrival__s1/end",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "",
+        "tooltip": "Drag to move the last line this shot covers",
+        "on"     : "shot/arrival__s1/end",
+        "ok"     : true,
+        "props": {
+          "interaction": "timeline.cover"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "timeline.cover"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "undecomposed-unasked",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "arrival",
+        "tooltip": "Which scene this timeline covers. Every pane follows the choice.",
+        "ok"     : true,
+        "props": {
+          "menu": "scenes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "scenes"
           }
         }
       ]
@@ -19769,6 +20353,157 @@
       "via"      : "control",
       "editor"   : "timeline",
       "module"   : "timeline",
+      "situation": "undecomposed-unasked",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read the shots and their images from disk.",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "undecomposed-unasked",
+      "key"      : "fx:drag.start#line/arrival:L1",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "",
+        "tooltip": "Drag along this edge to sweep lines into a new shot — a new frame to render, priced as you drag.",
+        "on"     : "line/arrival:L1",
+        "ok"     : true,
+        "props": {
+          "interaction": "timeline.create"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "timeline.create"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "undecomposed-unasked",
+      "key"      : "cmd:story.setLineText#arrival:L1",
+      "offer": {
+        "id"      : "story.setLineText",
+        "label"   : "Aiko stops at the gate.",
+        "tooltip" : "Click to retype this line",
+        "on"      : "arrival:L1",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L1"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "undecomposed-unasked",
+      "key"      : "fx:drag.start#line/arrival:L2",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "",
+        "tooltip": "Drag along this edge to sweep lines into a new shot — a new frame to render, priced as you drag.",
+        "on"     : "line/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "interaction": "timeline.create"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "timeline.create"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "undecomposed-unasked",
+      "key"      : "cmd:story.setLineText#arrival:L2",
+      "offer": {
+        "id"      : "story.setLineText",
+        "label"   : "AIKO: Is this the place?",
+        "tooltip" : "Click to retype this line",
+        "on"      : "arrival:L2",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "undecomposed-asked",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "arrival",
+        "tooltip": "Which scene this timeline covers. Every pane follows the choice.",
+        "ok"     : true,
+        "props": {
+          "menu": "scenes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "scenes"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
       "situation": "undecomposed-asked",
       "key"      : "cmd:story.newShot",
       "offer": {
@@ -19786,6 +20521,31 @@
           "id"   : "story.newShot",
           "props": {
             "scene": "arrival"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "undecomposed-asked",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read the shots and their images from disk.",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
           }
         }
       ]
@@ -19840,6 +20600,30 @@
       "editor"   : "timeline",
       "module"   : "timeline",
       "situation": "shot-selected",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "arrival",
+        "tooltip": "Which scene this timeline covers. Every pane follows the choice.",
+        "ok"     : true,
+        "props": {
+          "menu": "scenes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "scenes"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "shot-selected",
       "key"      : "cmd:story.newShot",
       "offer": {
         "id"     : "story.newShot",
@@ -19856,6 +20640,31 @@
           "id"   : "story.newShot",
           "props": {
             "scene": "arrival"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "shot-selected",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read the shots and their images from disk.",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
           }
         }
       ]
@@ -20063,6 +20872,30 @@
       "editor"   : "timeline",
       "module"   : "timeline",
       "situation": "shot-frames-nobody",
+      "key"      : "fx:menu.open",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "arrival",
+        "tooltip": "Which scene this timeline covers. Every pane follows the choice.",
+        "ok"     : true,
+        "props": {
+          "menu": "scenes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "scenes"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "shot-frames-nobody",
       "key"      : "cmd:story.newShot",
       "offer": {
         "id"     : "story.newShot",
@@ -20079,6 +20912,31 @@
           "id"   : "story.newShot",
           "props": {
             "scene": "arrival"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "timeline",
+      "situation": "shot-frames-nobody",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read the shots and their images from disk.",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
           }
         }
       ]

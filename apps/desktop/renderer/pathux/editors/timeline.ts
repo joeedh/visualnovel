@@ -39,10 +39,17 @@ import {
 } from '../../rules/timeline/wardrobe.js';
 import {
   addShotAction,
+  bracketAction,
   byHandDoor,
   decomposeDoor,
   doorAction,
   doorKey,
+  gutterAction,
+  handleAction,
+  lineBox,
+  lineTextAction,
+  pickerAction,
+  reloadAction,
   type Door,
 } from '../../rules/timeline/controls.js';
 import { redrawing, type AnchorPass } from '../tour/anchors.js';
@@ -320,8 +327,10 @@ export class TimelineEditor extends VnEditor {
       `Show the shot coverage of ${s.id}, set in ${s.location}.`,
       s.id,
     ]) as MenuTemplate;
-    const picker = this.bar.menu(this.ui.sceneId || 'scene…', menu);
-    picker.description = 'Which scene this timeline covers. Every pane follows the choice.';
+    const anchors = redrawing('timeline', 'bar');
+    const pick = pickerAction(this.ui.sceneId);
+    // Recorded rather than acted: the drop-down opens through path.ux's own handler
+    anchors.record(this.bar.menu(pick.label, menu), pick);
     this.pinToggle(this.bar);
 
     const summary = this.bar.label(this.summary());
@@ -331,15 +340,18 @@ export class TimelineEditor extends VnEditor {
     // A door into `story.newShot` for a scene with no gaps: the gutter drag needs a row to sweep,
     // and a scene whose every line is covered still takes a hand-placed shot, which claims its
     // lines off the shots that hold them.
-    const anchors = redrawing('timeline', 'bar');
     const adds = addShotAction(this.ui.sceneId);
     anchors.act(
       this.bar.button(adds.label, () => {}),
       adds,
       (action) => openCommandDialog(action.id, action.props as Record<string, string>),
     );
-    const refresh = this.bar.button('Refresh', () => void this.load());
-    refresh.description = 'Re-read the shots and their images from disk.';
+    const refresh = reloadAction();
+    anchors.act(
+      this.bar.button(refresh.label, () => {}),
+      refresh,
+      () => void this.load(),
+    );
     this.bar.flushUpdate();
   }
 
@@ -447,8 +459,12 @@ export class TimelineEditor extends VnEditor {
     return button;
   }
 
+  /** The grid's own pass, replaced with the grid, so a rebuild drops the old rows' records whole. */
+  private gridPass: AnchorPass = redrawing('timeline', 'grid');
+
   private buildGrid(data: SceneCoverage): HTMLDivElement {
     const cov = this.coverage;
+    this.gridPass = redrawing('timeline', 'grid');
     const grid = el('div', 'tl-grid') as HTMLDivElement;
     grid.style.gridTemplateColumns = `minmax(0, 1.3fr)${
       cov.lanes ? ` repeat(${cov.lanes}, minmax(130px, 0.6fr))` : ''
@@ -494,9 +510,8 @@ export class TimelineEditor extends VnEditor {
 
     // The creation gesture's grab, as its own element: the prose cell keeps click-to-edit, so no
     // two gestures share a pointerdown. Dragging along it sweeps lines into a new shot.
-    const gutter = el('div', 'tl-gutter');
-    gutter.title =
-      'Drag along this edge to sweep lines into a new shot — a new frame to render, priced as you drag.';
+    // Recorded rather than acted: the gutter is grabbed on `pointerdown`, not clicked
+    const gutter = this.gridPass.record(el('div', 'tl-gutter'), gutterAction(line));
     gutter.addEventListener('pointerdown', (event) => {
       // Prevented for the same reason the drag handles prevent theirs: the gutter must never take
       // focus off an open editor, so a blocked grab is refused aloud rather than committing a
@@ -514,10 +529,10 @@ export class TimelineEditor extends VnEditor {
 
     if (this.editing === line.id) box.appendChild(this.lineEditor(line));
     else {
-      const text = el('div', 'text', line.text);
-      text.title = 'Click to retype this line';
-      text.addEventListener('click', () => this.openEditor(line));
-      box.appendChild(text);
+      const retype = lineTextAction(line);
+      box.appendChild(
+        this.gridPass.act(el('div', 'text', retype.label), retype, () => this.openEditor(line)),
+      );
     }
     return box;
   }
@@ -533,8 +548,9 @@ export class TimelineEditor extends VnEditor {
     const input = document.createElement('textarea');
     input.value = this.draft;
     input.spellcheck = true;
-    input.setAttribute('aria-label', `Retype ${line.id}`);
-    input.title = `Retype ${line.id} — Enter writes it, Escape leaves the line alone`;
+    const box = lineBox(line);
+    input.setAttribute('aria-label', box.label);
+    this.gridPass.record(input, box);
     input.addEventListener('input', () => {
       this.draft = input.value;
       sizer.dataset['value'] = this.draft;
@@ -624,9 +640,9 @@ export class TimelineEditor extends VnEditor {
 
     if (last) box.appendChild(this.handle(shotId, 'end'));
 
-    box.title =
-      `${shotId} — click to select it, double-click to open its frame, ` +
-      'drag to move it among the other shots';
+    // Recorded rather than acted: the bracket's `pointerdown` below both selects and grabs, and a
+    // second segment of the same shot shares the key, so only the first is recorded
+    if (first) this.gridPass.record(box, bracketAction(shotId));
     // The drag handles prevent their pointerdown and a bracket does not, because a bracket is
     // also the click target that selects a shot, and a grab that never moves must read as a click.
     box.addEventListener('pointerdown', (event) => {
@@ -659,7 +675,8 @@ export class TimelineEditor extends VnEditor {
     button.className = `tl-edge ${edge}`;
     const which = edge === 'start' ? 'first' : 'last';
     button.setAttribute('aria-label', `Drag the ${which} covered line`);
-    button.title = `Drag to move the ${which} line this shot covers`;
+    // Recorded rather than acted: the handle is grabbed on `pointerdown`, not clicked
+    this.gridPass.record(button, handleAction(shotId, edge));
     button.addEventListener('pointerdown', (event) => {
       // Prevented so it never takes focus off an open editor — which means the drag has to be
       // refused rather than the editor silently committed under it. See `canGrab`.

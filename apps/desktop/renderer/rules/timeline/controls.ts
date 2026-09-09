@@ -5,6 +5,7 @@
  */
 import type { CommandCheck, PropValue } from '../../../src/shared/ipc.js';
 import { keyOf, refuse, type Control, type Offer } from '../anchors.js';
+import { openMenu, publish, startDrag, view } from '../effects.js';
 import {
   addCastAction,
   removeCastAction,
@@ -31,6 +32,93 @@ export interface TimelineState {
   wardrobe?: readonly OutfitRow[];
   /** The selected shot's cast, while a shot is selected. */
   cast?: ShotCast | null;
+  /** The scene's lines, in page order, once the coverage is loaded. */
+  lines?: readonly { id: string; text: string }[];
+  /** The line whose text box is open, which stands in for that line's control. */
+  editing?: string | null;
+  /** The shots drawn as brackets beside the lines, in lane order. */
+  shots?: readonly { id: string }[];
+}
+
+/** The bar's scene picker, a drop-down of every scene in the story. */
+export function pickerAction(sceneId: string): Offer {
+  return {
+    ok: true,
+    ...openMenu('scenes'),
+    label  : sceneId || 'scene…',
+    tooltip: 'Which scene this timeline covers. Every pane follows the choice.',
+  };
+}
+
+export function reloadAction(): Offer {
+  return {
+    ok: true,
+    ...view('reload'),
+    on     : 'reload',
+    label  : 'Refresh',
+    tooltip: 'Re-read the shots and their images from disk.',
+  };
+}
+
+/** The gutter at a line's left edge, which sweeps lines into a new shot when dragged along. */
+export function gutterAction(line: { id: string }): Offer {
+  return {
+    ok: true,
+    ...startDrag('timeline.create'),
+    on     : `line/${line.id}`,
+    label  : '',
+    tooltip:
+      'Drag along this edge to sweep lines into a new shot — a new frame to render, priced as you drag.',
+  };
+}
+
+/** One line's text, which opens a box to retype it; the new text is what the box supplies. */
+export function lineTextAction(line: { id: string; text: string }): Offer {
+  return {
+    ok      : true,
+    id      : 'story.setLineText',
+    props   : { line: line.id },
+    on      : line.id,
+    label   : line.text,
+    tooltip : 'Click to retype this line',
+    supplies: ['text'],
+  };
+}
+
+/** The box a line is retyped in, drawn in place of the line while it is open. */
+export function lineBox(line: { id: string; text: string }): Offer {
+  return {
+    ...lineTextAction(line),
+    on     : `${line.id}/box`,
+    label  : `Retype ${line.id}`,
+    tooltip: `Retype ${line.id} — Enter writes it, Escape leaves the line alone`,
+  };
+}
+
+/** A shot's bracket: a click selects the shot, and a grab that moves reorders it among the others. */
+export function bracketAction(shotId: string): Offer {
+  return {
+    ok: true,
+    ...publish({ shotId }),
+    on     : `shot/${shotId}`,
+    label  : shotId,
+    tooltip:
+      `${shotId} — click to select it, double-click to open its frame, ` +
+      'drag to move it among the other shots',
+    then   : [startDrag('timeline.reorder')],
+  };
+}
+
+/** The handle at a bracket's first or last line, which drags that edge of the shot's coverage. */
+export function handleAction(shotId: string, edge: 'start' | 'end'): Offer {
+  const which = edge === 'start' ? 'first' : 'last';
+  return {
+    ok: true,
+    ...startDrag('timeline.cover'),
+    on     : `shot/${shotId}/${edge}`,
+    label  : '',
+    tooltip: `Drag to move the ${which} line this shot covers`,
+  };
 }
 
 /**
@@ -106,17 +194,24 @@ export function wardrobeControls(rows: readonly OutfitRow[], cast: ShotCast | nu
 }
 
 /**
- * Every offer the timeline draws from this module: the add button, each answered door, then the
- * wardrobe strip.
+ * Every offer the timeline draws from this module: the bar's picker, add button and Refresh;
+ * each answered door; per line its gutter and its text or the box that stands in for it; per shot
+ * its bracket and two handles; then the wardrobe strip.
  */
 export function controls(state: TimelineState): readonly Offer[] {
-  const list: Offer[] = [addShotAction(state.sceneId)];
+  const list: Offer[] = [pickerAction(state.sceneId), addShotAction(state.sceneId), reloadAction()];
   const scene = state.undecomposed;
   if (scene) {
     for (const door of [decomposeDoor(), byHandDoor(scene.sceneId, scene.firstLine)]) {
       const check = state.verdicts[doorKey(scene.sceneId, door)];
       if (check) list.push(doorAction(door, check));
     }
+  }
+  for (const line of state.lines ?? []) {
+    list.push(gutterAction(line), line.id === state.editing ? lineBox(line) : lineTextAction(line));
+  }
+  for (const shot of state.shots ?? []) {
+    list.push(bracketAction(shot.id), handleAction(shot.id, 'start'), handleAction(shot.id, 'end'));
   }
   list.push(...wardrobeControls(state.wardrobe ?? [], state.cast ?? null));
   return list;

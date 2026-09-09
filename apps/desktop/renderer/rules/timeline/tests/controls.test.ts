@@ -1,10 +1,17 @@
 import {
   addShotAction,
+  bracketAction,
   byHandDoor,
   controls,
   decomposeDoor,
   doorAction,
   doorKey,
+  gutterAction,
+  handleAction,
+  lineBox,
+  lineTextAction,
+  pickerAction,
+  reloadAction,
   wardrobeControls,
   type TimelineState,
 } from '../controls.js';
@@ -119,18 +126,69 @@ describe('controls', () => {
     },
   });
 
-  it('is the add button alone for a decomposed scene, and with no scene', () => {
-    expect(controls(state()).map(keyOf)).toEqual(['cmd:story.newShot']);
-    expect(controls(state({ sceneId: '' })).map(keyOf)).toEqual(['cmd:story.newShot']);
+  const BAR = ['fx:menu.open', 'cmd:story.newShot', 'fx:pane.view#reload'];
+
+  it('is the bar alone for a decomposed scene with nothing loaded, and with no scene', () => {
+    expect(controls(state()).map(keyOf)).toEqual(BAR);
+    expect(controls(state({ sceneId: '' })).map(keyOf)).toEqual(BAR);
+    expect(pickerAction('')).toMatchObject({ props: { menu: 'scenes' }, label: 'scene…' });
+    expect(reloadAction()).toMatchObject({ props: { what: 'reload' }, label: 'Refresh' });
   });
 
   it('adds a door only once its verdict is in', () => {
-    expect(controls(state({ undecomposed })).map(keyOf)).toEqual(['cmd:story.newShot']);
+    expect(controls(state({ undecomposed })).map(keyOf)).toEqual(BAR);
     const one = state({
       undecomposed,
       verdicts: { [doorKey('intro', decomposeDoor())]: ACCEPT },
     });
-    expect(controls(one).map(keyOf)).toEqual(['cmd:story.newShot', 'cmd:story.decomposeAll']);
+    expect(controls(one).map(keyOf)).toEqual([...BAR, 'cmd:story.decomposeAll']);
+  });
+
+  it('gives each line a gutter and its text, or the box that stands in for it', () => {
+    const lines = [
+      { id: 's:L1', text: 'One.' },
+      { id: 's:L2', text: 'Two.' },
+    ];
+    expect(controls(state({ lines })).map(keyOf)).toEqual([
+      ...BAR,
+      'fx:drag.start#line/s:L1',
+      'cmd:story.setLineText#s:L1',
+      'fx:drag.start#line/s:L2',
+      'cmd:story.setLineText#s:L2',
+    ]);
+    expect(
+      controls(state({ lines, editing: 's:L1' }))
+        .map(keyOf)
+        .slice(3, 5),
+    ).toEqual(['fx:drag.start#line/s:L1', 'cmd:story.setLineText#s:L1/box']);
+    expect(gutterAction({ id: 's:L1' })).toMatchObject({
+      props: { interaction: 'timeline.create' },
+    });
+    expect(lineTextAction(lines[0]!)).toMatchObject({
+      props   : { line: 's:L1' },
+      label   : 'One.',
+      supplies: ['text'],
+    });
+    expect(lineBox(lines[0]!)).toMatchObject({ on: 's:L1/box', label: 'Retype s:L1' });
+  });
+
+  it('gives each shot a bracket that selects it and then drags, and a handle at each edge', () => {
+    const keys = controls(state({ shots: [{ id: 's__s1' }] })).map(keyOf);
+    expect(keys.slice(3)).toEqual([
+      'item:shot/s__s1',
+      'fx:drag.start#shot/s__s1/start',
+      'fx:drag.start#shot/s__s1/end',
+    ]);
+    expect(bracketAction('s__s1')).toMatchObject({
+      id   : 'ui.publish',
+      props: { shotId: 's__s1' },
+      label: 's__s1',
+      then : [{ id: 'drag.start', props: { interaction: 'timeline.reorder' } }],
+    });
+    expect(handleAction('s__s1', 'end')).toMatchObject({
+      props  : { interaction: 'timeline.cover' },
+      tooltip: 'Drag to move the last line this shot covers',
+    });
   });
 
   // A verdict kept for another scene is not this scene's answer
@@ -139,13 +197,13 @@ describe('controls', () => {
       undecomposed,
       verdicts: { [doorKey('outro', decomposeDoor())]: ACCEPT },
     });
-    expect(controls(stale).map(keyOf)).toEqual(['cmd:story.newShot']);
+    expect(controls(stale).map(keyOf)).toEqual(BAR);
   });
 
   it('lists every control the editor draws, each key once', () => {
     for (const s of [state(), state({ undecomposed }), both]) {
       const listed = controls(s);
-      const each = [addShotAction(s.sceneId)];
+      const each = [pickerAction(s.sceneId), addShotAction(s.sceneId), reloadAction()];
       if (s.undecomposed) {
         for (const door of [decomposeDoor(), byHandDoor('intro', 's:L1')]) {
           const check = s.verdicts[doorKey('intro', door)];
@@ -207,7 +265,9 @@ describe('wardrobeControls', () => {
   it('is listed by controls after the bar and the doors', () => {
     const listed = controls(state({ wardrobe: [row('scene', 'aiko')], cast }));
     expect(listed.map(keyOf)).toEqual([
+      'fx:menu.open',
       'cmd:story.newShot',
+      'fx:pane.view#reload',
       'cmd:story.setSceneOutfit#scene/aiko',
       'cmd:story.setVariant',
       'cmd:story.setSubjects#add',

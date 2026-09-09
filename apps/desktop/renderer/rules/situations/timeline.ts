@@ -9,6 +9,13 @@ import type { OutfitRow } from '../timeline/wardrobe.js';
 
 const undecomposed = { sceneId: 'arrival', firstLine: 'arrival:L1' };
 
+const lines = [
+  { id: 'arrival:L1', text: 'Aiko stops at the gate.' },
+  { id: 'arrival:L2', text: 'AIKO: Is this the place?' },
+];
+
+const shots = [{ id: 'arrival__s1' }];
+
 const sheet = { id: 'uniform', origin: 'default' } as const;
 
 const sceneRow = (character: string): OutfitRow => ({
@@ -45,18 +52,23 @@ const cast = (framed: string[], spare: string[]): ShotCast => ({
 export const SITUATIONS = situations<TimelineState>(
   {
     name : 'no-scene',
-    why  : 'No scene is on screen, so + shot is refused.',
+    why  : 'No scene is on screen, so + shot is refused and only the bar is drawn.',
     state: { sceneId: '', verdicts: {} },
   },
   {
     name : 'decomposed',
-    why  : 'The scene has shots, so + shot is offered and no door is drawn.',
-    state: { sceneId: 'arrival', verdicts: {} },
+    why: 'The scene has shots, so + shot is offered and no door is drawn; each line has a gutter and opens a box, and the shot’s bracket selects it with a handle at each edge.',
+    state: { sceneId: 'arrival', verdicts: {}, lines, shots },
+  },
+  {
+    name : 'editing-a-line',
+    why  : 'One line’s box is open, so its box stands in for that line’s control.',
+    state: { sceneId: 'arrival', verdicts: {}, lines, shots, editing: 'arrival:L1' },
   },
   {
     name : 'undecomposed-unasked',
-    why  : 'The scene has no shots and the doors have not answered, so only + shot is anchored.',
-    state: { sceneId: 'arrival', undecomposed, verdicts: {} },
+    why: 'The scene has no shots and the doors have not answered, so the bar and the lines are anchored and no door is.',
+    state: { sceneId: 'arrival', undecomposed, verdicts: {}, lines },
   },
   {
     name : 'undecomposed-asked',
