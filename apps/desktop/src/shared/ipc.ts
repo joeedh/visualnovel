@@ -328,6 +328,8 @@ export interface GateCandidate {
 export interface ApproveResult {
   ok: boolean;
   message: string;
+  /** Workspace-relative paths the approval wrote. Empty on a refusal. */
+  written?: string[];
 }
 
 /** One scene as the branch editor draws it — the card face, not the screenplay text. */

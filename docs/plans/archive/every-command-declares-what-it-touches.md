@@ -5,9 +5,10 @@ command may write. Three things read it: a registry test that checks it is well-
 two rules that tie it to `undoable`, and an executed tier that runs the command over a
 scratch project and fails when the snapshot diff reaches outside what was declared.
 
-Status: **written** 2026-09-09, not started. Plan 8 of the eight in
-[`ux-behaviour-model-tasklist.md`](ux-behaviour-model-tasklist.md); depends on nothing,
-and nothing depends on it.
+Status: **shipped** 2026-09-09, in six commits on `plan8-affects`. Plan 8 of the eight in
+[`../ux-behaviour-model-tasklist.md`](../ux-behaviour-model-tasklist.md); depends on
+nothing, and nothing depends on it. What was built and where it differs from the plan is
+in [As shipped](#as-shipped).
 
 Revised once, after a fresh-context pressure test that found four commands writing outside
 the workspace, two undoable commands the first draft's central rule would have failed, and
@@ -40,6 +41,13 @@ an existing doc comment that already carries the plan's stated motivation. See
 - [Testing](#testing)
 - [Risks](#risks)
 - [Follow-ups deliberately not in scope](#follow-ups-deliberately-not-in-scope)
+- [As shipped](#as-shipped)
+    - [Stage 1, as shipped](#stage-1-as-shipped)
+    - [Stage 2, as shipped](#stage-2-as-shipped)
+    - [Stage 3, as shipped](#stage-3-as-shipped)
+    - [Stage 4, as shipped](#stage-4-as-shipped)
+    - [Stage 5, as shipped](#stage-5-as-shipped)
+    - [Stage 6, as shipped](#stage-6-as-shipped)
 - [Findings](#findings)
     - [Accepted](#accepted)
     - [Rejected](#rejected)
@@ -469,6 +477,108 @@ unverified lists sit in the tree.
   the vocabulary comes first.
 - **A lower bound.** Asserting every declared prefix is reached needs a fixture per
   branch.
+
+## As shipped
+
+Six commits, each green under `pnpm check`, `pnpm test` and `pnpm lint` on its own.
+
+### Stage 1, as shipped
+
+**Done.** `Command.affects` in `packages/commands/src/command.ts`, and
+`apps/desktop/src/shared/affects.ts` holding the vocabulary, the moved `UNDO_EXCLUDES`,
+`snapshotted`, `covers` and `declarable`.
+
+- As shipped: the move cost less than the plan stated. Three source importers were
+  repointed, as predicted, but none of the five documentation references cites the
+  constant's module — each names `UNDO_EXCLUDES` alone — so no doc needed an edit.
+- As shipped: `declarable(prefix)` was added beside `covers` and `snapshotted`. The plan
+  described the vocabulary check in prose and left it to the registry test; a predicate
+  keeps the refusal of a malformed entry beside the list it is refused against.
+
+### Stage 2, as shipped
+
+**Done**, with one deliberate departure.
+
+- **Rule B was dropped, at the plan's own stopping point.** `NOT_UNDOABLE` measured at 25
+  entries against a predicted eight to eleven and a stated ceiling of fifteen. The cause
+  is structural rather than a mis-measurement: `assets/manifest.json` is inside the
+  document class while `assets/objects` is in `UNDO_EXCLUDES`, so every command that
+  touches a base asset — `art.generate`, `art.promote`, `art.redraw`, all seven `asset.*`
+  mutators, `gate.approve`, `pipeline.run` and `pipeline.approveAndRun` — writes a
+  snapshotted path and is not undoable. Adding the eleven the plan already named, plus
+  `agent.run`, `upload.files`/`upload.pick`, the four `workspace.*` writers and
+  `project.installPages`, gives 25 of the 32 non-undoable mutators. Rule A is kept and
+  needs no list.
+- The three registry tests became three of a different shape: the declaration lint, rule
+  A, and one that runs both predicates over synthetic commands so each is shown to fail.
+- **`archive` joined the vocabulary.** The plan's list omitted it; `upload.files` and
+  `upload.pick` copy the author's documents into `archive/`
+  (`packages/authoring/src/archive.ts`).
+- **`ANY_DOCUMENT` and `ANY_UNGUARDED_DOCUMENT`** name the forced-breadth case the plan
+  describes under the upper-bound rule. `doc.write` and `doc.rename` take the second,
+  since both refuse `scenes/**`; `agent.run` takes the first.
+- **Two wrong `written` claims were corrected here rather than in stage 6**, because the
+  declaration beside each would otherwise have had to match a path no project has.
+  `AssetStore.manifestFileOf(hash)` answers the manifest of the root holding a hash — the
+  same base-first routing `accept` and `unaccept` use — and `asset.accept` and
+  `asset.unapprove` report that instead of a hardcoded path. `asset.unapprove`'s portrait
+  branch also reports the character sheet where it was discovered rather than assuming
+  `characters/<id>/character.md`.
+
+### Stage 3, as shipped
+
+**Done.** `CatalogEntry.affects` and `DocCommandEntry.affects`, both optional and both
+omitted when absent; `scripts/lib/command-table.mjs` opens a mutator's Notes cell with the
+subtrees it declared.
+
+### Stage 4, as shipped
+
+**Done**, as described, including the `gengraph.setProp` proof and its
+narrowed-declaration counterpart.
+
+- As shipped: the harness opens the install-global `SessionStore` in a temp directory
+  outside the workspace. Opening it at the project root — the obvious reading of "a real
+  `SessionAccess` over the temp project" — writes `<root>/session.json` eagerly, which
+  lands in the diff of whichever command happens to be running.
+- As shipped: `RunResult` carries `data`, so a fixture can name the node or slug the
+  command before it created.
+
+### Stage 5, as shipped
+
+**Done.** `RUNS` holds 59 commands and `SKIPS` 35, and they partition the 94 exactly.
+
+- **The runnable reach is 59, not 60.** The plan predicted 60 of the 62 undoable commands.
+  Four it assumed runnable are in `SKIPS`: `gengraph.run` declares no mock flag, so it
+  reaches real providers; `prompt.condense` asks a real text model; `prompt.repin` moves a
+  reference the derived prompt pinned to a slot, and the mock fixture draws none;
+  `view.saveLayout` takes an arrangement only a live renderer can serialize. Against that,
+  `RUNS` also reaches `story.export`, `story.screenplay` and `workspace.reindex`, which
+  are not undoable at all.
+- As shipped: the scaffolded project is built with an outfit on `aiko` and a second
+  variant on `classroom`, so `story.setOutfit`, `story.setSceneOutfit` and
+  `story.setVariant` have something to name that the project's own sheets declare.
+- As shipped: a `Run`'s props may be a function of the harness, so a line id, a shot id or
+  a node id is read back from the session rather than hardcoded against a fixture that the
+  commands before it have already edited.
+
+### Stage 6, as shipped
+
+**Done.** A section in `command-system.md`, the pointer from `repos-and-commits.md`, the
+`CLAUDE.md` bullet, and the tasklist and index rows.
+
+- **`project.installPages`'s note is corrected**, as the plan asked: `.github/` and
+  `.vnstudio/pages/` are both inside the snapshot, and what puts the command outside undo
+  is the `vngen/build/story.play.json` it exports in the same act.
+- **`asset.accept`'s `written` was corrected in stage 2.** The plan's claim that stage 5
+  would turn it into a failure is wrong: every `asset.*` mutator is in `SKIPS`, so no tier
+  reads that path. It was fixed because it was wrong, not because a test caught it.
+- **A fourth correction the plan did not name.** `gate.approve` reported
+  `vngen/build/manifest.json` and `characters/<id>/character.md`. A portrait is a base
+  kind, so the manifest is `assets/manifest.json`, and the sheet is wherever the `type:`
+  tag was discovered. Both now come from `approveCharacter`.
+- **The comment at `commands.test.ts:163-185` is left standing.** The plan reduced it to a
+  pointer at `NOT_UNDOABLE`; with rule B dropped there is no table to point at, and the
+  comment is again the only place the reasons are written down.
 
 ## Findings
 

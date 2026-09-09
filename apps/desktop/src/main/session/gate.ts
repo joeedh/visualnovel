@@ -18,7 +18,7 @@ import type { ApproveResult, AssetFailure, GateCandidate } from '../../shared/ip
 import { reorderApprovals, type ApprovalQueue } from '../workspace/approvals.js';
 import { labelAssets, labelContext } from '../assets/assetlabel.js';
 import type { WorkspaceSession, LoadedProject } from './core.js';
-import { suspensionsOf, driftedFrames, readAllShots, loadProject } from './core.js';
+import { suspensionsOf, driftedFrames, readAllShots, loadProject, relPath } from './core.js';
 
 export class GatePart {
   constructor(private readonly session: WorkspaceSession) {}
@@ -74,8 +74,19 @@ export class GatePart {
     }
     const bytes = await project.store.read({ hash, ext: 'png' });
     await writeApprovedPortrait(project.paths, characterId, bytes);
+    // Asked before the accept, because which manifest answers is decided by which root holds the
+    // hash, and a portrait's bytes never move between the two.
+    const manifest = relPath(this.session.dir, project.store.manifestFileOf(hash));
     await project.store.accept(hash);
-    return { ok: true, message: `Approved ${characterId} → ${hash}.` };
+    return {
+      ok     : true,
+      message: `Approved ${characterId} → ${hash}.`,
+      written: [
+        relPath(this.session.dir, file),
+        relPath(this.session.dir, project.paths.approvedPortrait(characterId)),
+        manifest,
+      ],
+    };
   }
 
   /**

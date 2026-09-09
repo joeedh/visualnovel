@@ -251,6 +251,11 @@ write-up.
   authority; `prop.secret` marks a string redacted at `digestProps` and never persisted.
 - A mutating command declares its refusal before it runs, via `stack.check` (`accept` /
   `refuse` / `undeclared`); `undeclared` is not treated as permission.
+- A mutating command also declares `affects`: the workspace-relative subtrees it may
+  write, drawn from the closed vocabulary in `apps/desktop/src/shared/affects.ts`. It is
+  an upper bound, and a command whose declaration reaches nothing an undo snapshot holds
+  may not be `undoable`.
+  ([`docs/reference/command-system.md#every-mutating-command-declares-what-it-may-touch`](docs/reference/command-system.md#every-mutating-command-declares-what-it-may-touch))
 - The palette, the menu bar, right-click menus and CDP all reach the same registry; the
   agent does not. An agent tool like `edit_scene` shares the underlying rule its `story.*`
   counterpart uses, without invoking the registry, so a command with no tool wrapper

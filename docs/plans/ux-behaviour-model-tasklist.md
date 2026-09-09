@@ -10,8 +10,8 @@ and 6 shipped 2026-09-09
 ([`meta-tag-system.md`](../../vendor/path.ux/documentation/plans/meta-tag-system.md)).
 Plan 7 shipped 2026-09-09
 ([`archive/the-measured-tier-reads-tags.md`](archive/the-measured-tier-reads-tags.md)),
-and plan 8 is written and pressure-tested
-([`every-command-declares-what-it-touches.md`](every-command-declares-what-it-touches.md));
+and plan 8 shipped 2026-09-09
+([`archive/every-command-declares-what-it-touches.md`](archive/every-command-declares-what-it-touches.md));
 nothing else is scheduled. This file is not a plan; it proposes how the work in
 [`../research/ux-behaviour-model.md`](../research/ux-behaviour-model.md) and its companion
 [`../research/formalizing-the-rules-modules.md`](../research/formalizing-the-rules-modules.md)
@@ -32,16 +32,16 @@ that neither report knew about. Those are in
 
 ## The proposed plans
 
-| #   | Plan                                                                                                  | Where                                | Depends on | Covers                                                                                                                                                                                               |
-| --- | ----------------------------------------------------------------------------------------------------- | ------------------------------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | [One `Offer`, and the six rule modules unified](archive/one-offer-and-the-six-rule-modules.md)        | app                                  | —          | `Offer` absorbs `ActOptions`, `tooltip` becomes required, the refused branch carries a `Refusal`, the six modules gain `controls()`                                                                  |
-| 2   | [The ten inline editors get a rule module](archive/the-ten-inline-editors-get-a-rule-module.md)       | app                                  | 1          | `rules/<editor>.ts` extracted from each editor that computes offers beside its DOM code                                                                                                              |
-| 3   | [Situations, and the derived model](archive/situations-and-the-derived-model.md)                      | app                                  | 1, 2       | The fixture list, the headless driver, the zod schema, `ux-model.json`, and the three lint rules the derived tier answers                                                                            |
-| 4   | [Pseudo-commands, and a control's list of effects](archive/pseudo-commands-and-a-controls-effects.md) | app                                  | 1          | The closed effect vocabulary in the catalog, closures rewritten as recorded effects, and the four rules effects unlock                                                                               |
-| 5   | Disabling menu items, and refusals that carry a reason                                                | `vendor/path.ux`                     | —          | **Already written and complete**, and the authority on its own scope: `menu-item-disabling.md`, stages 1-5 done, stage 6 (the native menu bar) dropped                                               |
-| 6   | [Finishing the meta-tag system](../../vendor/path.ux/documentation/plans/meta-tag-system.md)          | `vendor/path.ux` + `path-controller` | 5          | **Shipped 2026-09-09.** The barrel exports, an owner type covering a raw DOM node, a scope-plus-segment `widgetPath`, `enabled` and `refusal`, a validating deserialize, and the `toolPath` builders |
-| 7   | [The measured tier reads tags](archive/the-measured-tier-reads-tags.md)                               | app                                  | 3, 6       | **Shipped 2026-09-09.** `act()` writes a `StdUXMeta`, the sweep reads it and walks widgets as a second oracle, derived compared against measured                                                     |
-| 8   | [`affects` on every command, and the executed tier](every-command-declares-what-it-touches.md)        | app                                  | —          | **Written 2026-09-09.** Each mutating command declaring the subtrees it may write, two rules tying that to `undoable`, and an executed tier that diffs a snapshot around each run                    |
+| #   | Plan                                                                                                   | Where                                | Depends on | Covers                                                                                                                                                                                               |
+| --- | ------------------------------------------------------------------------------------------------------ | ------------------------------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | [One `Offer`, and the six rule modules unified](archive/one-offer-and-the-six-rule-modules.md)         | app                                  | —          | `Offer` absorbs `ActOptions`, `tooltip` becomes required, the refused branch carries a `Refusal`, the six modules gain `controls()`                                                                  |
+| 2   | [The ten inline editors get a rule module](archive/the-ten-inline-editors-get-a-rule-module.md)        | app                                  | 1          | `rules/<editor>.ts` extracted from each editor that computes offers beside its DOM code                                                                                                              |
+| 3   | [Situations, and the derived model](archive/situations-and-the-derived-model.md)                       | app                                  | 1, 2       | The fixture list, the headless driver, the zod schema, `ux-model.json`, and the three lint rules the derived tier answers                                                                            |
+| 4   | [Pseudo-commands, and a control's list of effects](archive/pseudo-commands-and-a-controls-effects.md)  | app                                  | 1          | The closed effect vocabulary in the catalog, closures rewritten as recorded effects, and the four rules effects unlock                                                                               |
+| 5   | Disabling menu items, and refusals that carry a reason                                                 | `vendor/path.ux`                     | —          | **Already written and complete**, and the authority on its own scope: `menu-item-disabling.md`, stages 1-5 done, stage 6 (the native menu bar) dropped                                               |
+| 6   | [Finishing the meta-tag system](../../vendor/path.ux/documentation/plans/meta-tag-system.md)           | `vendor/path.ux` + `path-controller` | 5          | **Shipped 2026-09-09.** The barrel exports, an owner type covering a raw DOM node, a scope-plus-segment `widgetPath`, `enabled` and `refusal`, a validating deserialize, and the `toolPath` builders |
+| 7   | [The measured tier reads tags](archive/the-measured-tier-reads-tags.md)                                | app                                  | 3, 6       | **Shipped 2026-09-09.** `act()` writes a `StdUXMeta`, the sweep reads it and walks widgets as a second oracle, derived compared against measured                                                     |
+| 8   | [`affects` on every command, and the executed tier](archive/every-command-declares-what-it-touches.md) | app                                  | —          | **Shipped 2026-09-09.** Each mutating command declaring the subtrees it may write, one rule tying that to `undoable`, and an executed tier that diffs a snapshot around each of 59 runs              |
 
 Plans 1, 2, 3 and 7 are the model itself. Plan 4 widens its vocabulary past commands.
 Plans 5 and 6 are submodule work committed separately; 5 was already complete there before
@@ -259,8 +259,10 @@ Routing the two reports' open decisions, so no plan starts by rediscovering them
   through a `view.*` effect's `subject`, so the executed tier — which has no renderer —
   could never measure such a claim. The diff is matched with `checkWrittenScope`'s own
   rule (`p === s || p.startsWith(s + '/')`), against a closed vocabulary that includes a
-  `<user>` sentinel for the four commands writing outside the workspace. See
-  [`every-command-declares-what-it-touches.md`](every-command-declares-what-it-touches.md).
+  `<user>` sentinel for the four commands writing outside the workspace. As shipped, the
+  vocabulary also carries `archive`, which the plan's list omitted, and the second
+  `undoable` rule was dropped when measuring it produced 25 exemptions. See
+  [`archive/every-command-declares-what-it-touches.md`](archive/every-command-declares-what-it-touches.md).
 
 ## What the numbers are today
 
@@ -373,8 +375,8 @@ quoted under each, so the claim stays traceable.
       [`meta_tags.md`](../../vendor/path.ux/documentation/meta_tags.md))
 - [x] 7 — the measured tier reads tags (shipped 2026-09-09:
       [`the-measured-tier-reads-tags.md`](archive/the-measured-tier-reads-tags.md))
-- [ ] 8 — `affects` on every command, and the executed tier (written 2026-09-09:
-      [`every-command-declares-what-it-touches.md`](every-command-declares-what-it-touches.md))
+- [x] 8 — `affects` on every command, and the executed tier (shipped 2026-09-09:
+      [`archive/every-command-declares-what-it-touches.md`](archive/every-command-declares-what-it-touches.md))
 
 ## Stopping points
 

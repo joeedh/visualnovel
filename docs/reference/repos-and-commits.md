@@ -322,7 +322,10 @@ after it.
 -   - **A checkpoint narrows the scope of undo further to one declared subtree, for the
       span of one grouped undo point.** The checkpoint's rollback commit uses the same
       `record`/`commit(true, record)` pair an ordinary undo restore uses, so it is
-      recorded in `commands.jsonl` the same way. The full design is in
+      recorded in `commands.jsonl` the same way. The scope is asserted by whoever opens
+      the checkpoint rather than derived from the commands it groups; each command's own
+      [`affects`](command-system.md#every-mutating-command-declares-what-it-may-touch) is
+      what a derivation would read, and doing so is a follow-up. The full design is in
       [`command-system.md#checkpoints-group-several-commands-into-one-undo-point`](command-system.md#checkpoints-group-several-commands-into-one-undo-point).
 
 ## Multi-repo

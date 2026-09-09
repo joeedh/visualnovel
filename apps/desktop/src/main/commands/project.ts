@@ -7,8 +7,9 @@
  * run draws it all again. That is why the write is `confirm: true` and why its check counts what
  * it would touch.
  *
- * `project.installPages` is `mutating` but not `undoable`. It writes `.github/` and `.vnstudio/`,
- * which are outside the document tree an undo snapshot covers, and removing it again is a
+ * `project.installPages` is `mutating` but not `undoable`. `.github/` and `.vnstudio/pages/` are
+ * both inside the tree an undo snapshot covers; what puts it outside undo is the
+ * `vngen/build/story.play.json` it exports in the same act, and removing the workflow again is a
  * `git rm` of two paths rather than a state the app models.
  */
 import { defineFor, prop, type CheckResult } from '@vn/commands';
@@ -217,7 +218,7 @@ export const projectInstallPages = define({
     'page. The workflow and the renderer it runs are committed to the project repository; ' +
     'pushing the repository then publishes the site to a branch GitHub Pages can serve.',
   notes:
-    'Write a GitHub Actions workflow into the project that publishes it as a light-novel web page, plus the bundled renderer the workflow runs. Refuses a project that is not a git repository, has no branch checked out, or has no `origin` remote. Exports the playable first, so the commit CI builds from is complete. Deliberately **not undoable**: it writes `.github/` and `.vnstudio/`, outside the tree the undo snapshot covers. The app never pushes. See [`../guides/github-pages.md`](../guides/github-pages.md).',
+    'Write a GitHub Actions workflow into the project that publishes it as a light-novel web page, plus the bundled renderer the workflow runs. Refuses a project that is not a git repository, has no branch checked out, or has no `origin` remote. Exports the playable first, so the commit CI builds from is complete. Deliberately **not undoable**: it exports `vngen/build/story.play.json` in the same act, which is outside the tree the undo snapshot covers. The app never pushes. See [`../guides/github-pages.md`](../guides/github-pages.md).',
   mutating   : true,
   affects: [
     '.github/workflows',

@@ -9,6 +9,7 @@
 - [The DSL](#the-dsl)
 - [The stack](#the-stack)
     - [`CommandRecord`](#commandrecord)
+    - [Every mutating command declares what it may touch](#every-mutating-command-declares-what-it-may-touch)
     - [Undo is opt-in, and rests on content-addressed snapshots](#undo-is-opt-in-and-rests-on-content-addressed-snapshots)
     - [Checkpoints group several commands into one undo point](#checkpoints-group-several-commands-into-one-undo-point)
     - [Commit-on-save is the journal's sibling](#commit-on-save-is-the-journals-sibling)
@@ -246,6 +247,49 @@ interface CommandRecord {
 `appendJsonl` at `vngen/state/commands.jsonl`, next to the pipeline's own `tasks.jsonl`.
 Both are append-only logs that can be replayed and diffed.
 
+### Every mutating command declares what it may touch
+
+`Command.affects` names the subtrees a command may write, workspace-relative and
+forward-slashed — the form `written`, `checkWrittenScope` and `DocNode.path` already use.
+`@vn/commands` carries and serializes the field without reading it; the desktop app owns
+the vocabulary and the rules, the arrangement `mutating` and `undoable` already have.
+
+- **An upper bound, never a lower one.** A run that writes less than it declared passes,
+  and nothing checks that a declared prefix is ever reached. `story.newShot` writes
+  `vngen/work/shots/<scene>.json` only when there is something to write, and a lower bound
+  would need a fixture per branch of every command.
+- **The vocabulary is closed** (`apps/desktop/src/shared/affects.ts`). Twelve directory
+  roots, five root files commands write, and the `<user>` sentinel for the user-level
+  configuration directory that `plugin.*` and `project.setKey` reach and no
+  workspace-relative path can name. Without a closed list, `'scene'` for `'scenes'`
+  declares a subtree nothing writes and every test still passes.
+- **`keys` is a legal declaration.** `project.setKey` exists to write it, and refusing the
+  root would make the one command that touches it undeclarable. Declaring it forces
+  `undoable: false` by the rule below, which is the property that command's own comment
+  argues for.
+- **One rule ties it to `undoable`: a command opts into undo only when a snapshot would
+  hold something it writes.** `snapshotted(prefix)` answers that, over `UNDO_EXCLUDES` and
+  the `<user>` sentinel. The converse does not hold, so it is not stated as one: a mutator
+  writing both a snapshotted document and generated output is ordinary. The first draft of
+  the plan proposed a second rule with an exemption list for such commands, and measuring
+  it put 25 of the 32 non-undoable mutators in the list, because `assets/manifest.json` is
+  in the document class while `assets/objects` is excluded. It was dropped.
+- **Three tiers read the field.** A registry test checks that every mutator declares a
+  non-empty list drawn from the vocabulary and that no non-mutator declares one; the undo
+  rule runs over all 94; and an executed tier
+  (`apps/desktop/src/main/commands/tests/affects.test.ts`) runs 59 of them over two
+  `@vn/testkit` projects and fails on a path the declaration does not cover, in the
+  workspace diff or in the command's own `written`. `RUNS` and `SKIPS` partition the 94,
+  so what the executed tier does not reach is a written-down list with a reason each.
+- **The executed tier skips two paths.** `keys`, because a capture would read a credential
+  into an in-memory blob store, and `.vnstudio/session.json`, because `SessionStore.set`
+  schedules a debounced flush that would land during the next command's window.
+  `vngen/build` and `vngen/state` are not skipped, unlike `UNDO_EXCLUDES`: a command
+  writing generated output is what the tier exists to see.
+- **`checkWrittenScope` is a separate rule.** Folding the checkpoint scope check onto
+  `covers` would change behaviour for every checkpoint caller in a shared package, so the
+  two matchers stay apart until `affects` has settled.
+
 ### Undo is opt-in, and rests on content-addressed snapshots
 
 v1 shipped without undo on purpose, because a half-working undo on an author's only copy
@@ -318,10 +362,13 @@ design and the five review rounds behind it are in
   `scope`, which whoever opens the checkpoint decides. The caller is asserting that its
   commands write only within that subtree, and a successful command's own `written` is
   checked against `scope` after the fact; a mismatch is logged rather than refused. This
-  sidesteps the general drift problem rather than solving it. A scoped snapshot does not
-  record an edit outside `scope` (an authoring-agent write to a scene file, say), so its
-  rollback has nothing to reconcile against such an edit. The cost is that one checkpoint
-  can safely group edits only within one declared subtree.
+  sidesteps the general drift problem rather than solving it, and it is a separate matcher
+  from [`affects`](#every-mutating-command-declares-what-it-may-touch), which is per
+  command rather than per checkpoint. Deriving a checkpoint's scope from the `affects` of
+  the commands it groups is a follow-up. A scoped snapshot does not record an edit outside
+  `scope` (an authoring-agent write to a scene file, say), so its rollback has nothing to
+  reconcile against such an edit. The cost is that one checkpoint can safely group edits
+  only within one declared subtree.
 - **One handle, one open checkpoint.** `CommandStack` is shared by every window, the
   agent, CDP and the DSL, and `beginCheckpoint` throws if a checkpoint is already open.
   `exec()` and `execDsl()` take an optional `CheckpointHandle`. A call tagged with the
@@ -432,7 +479,9 @@ conversation that was open, which `vngen/state` being outside the snapshot means
 could not put back; and `workspace.open`/`workspace.pick`/`workspace.create` write into a
 _different_ tree than the one a snapshot covers, and switching workspaces drops the
 journal along with the stack. The reasoning is in
-[`../plans/archive/INDEX.md#command-undo-redo`](../plans/archive/INDEX.md#command-undo-redo).
+[`../plans/archive/INDEX.md#command-undo-redo`](../plans/archive/INDEX.md#command-undo-redo),
+and each command's own [`affects`](#every-mutating-command-declares-what-it-may-touch) now
+states which subtrees the reasoning is about.
 
 `view.*` commands run in the main process and push a `command:ui` effect that the renderer
 applies (`applyView` moves the panes, `openPalette`/`closePalette` handle the palette).

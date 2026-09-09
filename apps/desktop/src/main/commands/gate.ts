@@ -72,16 +72,9 @@ export const gateApprove = define({
   async run({ characterId, hash }, ctx) {
     const result = await ctx.host.session.approveCharacter(characterId, hash);
     if (!result.ok) throw new Error(result.message);
-    return {
-      message: result.message,
-      data   : result,
-      // Mirrors what `approveCharacter` touches: the input doc, the visible portrait, and
-      // the manifest entry flipped to accepted.
-      written: [
-        `characters/${characterId}/character.md`,
-        `vngen/work/characters/${characterId}/approved.png`,
-        'vngen/build/manifest.json',
-      ],
-    };
+    // The sheet, the visible portrait and the manifest entry flipped to accepted, as
+    // `approveCharacter` names them: a sheet discovered under `wiki/` is reported where it is, and
+    // a portrait's manifest is whichever root holds the bytes.
+    return { message: result.message, data: result, written: result.written ?? [] };
   },
 });
