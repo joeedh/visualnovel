@@ -23,10 +23,10 @@ import {
   recentWorkspaces,
   rememberWorkspace,
   seedWorkspace,
-  UNDO_EXCLUDES,
   writeScaffolding,
   type RecentStore,
 } from '../workspace/workspace.js';
+import { UNDO_EXCLUDES } from '../../shared/affects.js';
 
 /** A template shaped like `templates/basic`: authored inputs plus a previous run's output. */
 async function makeTemplate(dir: string): Promise<void> {

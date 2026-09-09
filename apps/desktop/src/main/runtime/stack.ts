@@ -16,7 +16,7 @@ import { getSession } from './sessionaccess.js';
 import { createWindow } from './windowmanager.js';
 import { scheduleApprovals, switchWorkspace } from './workspacelifecycle.js';
 import { snapshotStore } from '../workspace/filecache.js';
-import { UNDO_EXCLUDES } from '../workspace/workspace.js';
+import { UNDO_EXCLUDES } from '../../shared/affects.js';
 import { notify } from '../notify/notifications.js';
 import { categoryOfCommand, shouldFileCommand } from '../../shared/notify.js';
 import { workspaceIsTaken } from '../bootstrap/instancelock.js';

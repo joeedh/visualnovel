@@ -69,6 +69,15 @@ export interface Command<M extends PropSpecMap = PropSpecMap, Host = any> {
   props: M;
   /** True if the command writes files or git history. Recorded; not yet a gate. */
   mutating: boolean;
+  /**
+   * Subtrees this command may write, workspace-relative and forward-slashed. An upper bound: a
+   * run that writes less than it declared is not a violation, and nothing checks that every
+   * declared prefix is ever reached.
+   *
+   * `@vn/commands` carries and serializes the field without reading it. The host decides what the
+   * vocabulary is and what the entries mean, the way it already does for `mutating`.
+   */
+  affects?: readonly string[];
   /** True if the command always needs explicit user confirmation, regardless of caller. */
   confirm?: boolean;
   /**

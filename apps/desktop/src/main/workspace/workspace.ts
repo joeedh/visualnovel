@@ -34,25 +34,6 @@ const FALLBACK_IDENTITY = { name: 'VN Studio', email: 'vnstudio@localhost' };
 export const SESSION_IGNORE = '.vnstudio/session.json*';
 
 /**
- * What an undo snapshot leaves out, as root-relative paths. Everything else under the project
- * root is the document class, apart from the media files `@vn/commands` skips wherever they sit.
- *
- * `build/` is content-addressed and `state/` is an append-only log — rolling either back would
- * throw away work a later run has to pay for again, and excluding them is also what keeps a
- * `pipeline.run` between two edits from reading as workspace drift. `assets/objects` is the base
- * store, which is the same class of thing, and pruning the walk there is worth the entry even
- * though its bytes are media. `keys/` holds credentials, which no undo may write over or delete,
- * and the session file moves on every pane drag.
- */
-export const UNDO_EXCLUDES = [
-  'vngen/build',
-  'vngen/state',
-  'assets/objects',
-  'keys',
-  '.vnstudio/session.json',
-];
-
-/**
  * What a project's `.gitignore` starts as. `vngen/` is deliberately absent, because the generated
  * tree is committed on purpose. `keys` is the load-bearing line: commit-on-save runs
  * `git commit -A`, so a key git can see is committed within the second.

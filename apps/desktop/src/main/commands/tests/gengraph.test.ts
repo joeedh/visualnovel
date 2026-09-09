@@ -14,7 +14,7 @@ import { GroupNode, bindSlots } from '@vn/gengraph';
 import { openGit } from '@vn/git';
 import type { UiEffect } from '../../../shared/ipc.js';
 import { readGraph, readGroupDoc } from '../../doctree/graphs.js';
-import { UNDO_EXCLUDES } from '../../workspace/workspace.js';
+import { UNDO_EXCLUDES } from '../../../shared/affects.js';
 import {
   gengraphAddBoundary,
   gengraphAddGroup,
