@@ -41,7 +41,7 @@ import type { AssetInfo, AssetListing } from '../../shared/ipc.js';
 import { graphSlugs, readGraph } from '../doctree/graphs.js';
 import { labelAssets, labelContext } from '../assets/assetlabel.js';
 import { derivePrompt } from '../assets/assetprompt.js';
-import type { WorkspaceSession, LoadedProject } from './core.js';
+import type { WorkspaceSession, LoadedProject, PromptWriteResult } from './core.js';
 import {
   relPath,
   ACCEPTABLE,
@@ -209,16 +209,20 @@ export class AssetPart {
    * Accepting is exclusive per slot: the takes this one replaces are un-accepted in the same write,
    * because a slot with two accepted candidates cannot be resolved and reads as empty.
    */
-  async acceptAsset(hash: string): Promise<{ ok: boolean; message: string }> {
+  async acceptAsset(hash: string): Promise<PromptWriteResult> {
     const allowed = await this.session.previewAccept(hash);
-    if (!allowed.ok) return allowed;
+    if (!allowed.ok) return { ...allowed, written: [] };
     const project = await loadProject(this.session.dir);
-    if (!project.store.has(hash)) return { ok: false, message: `No asset "${hash}" in the store.` };
+    if (!project.store.has(hash))
+      return { ok: false, message: `No asset "${hash}" in the store.`, written: [] };
     const assets = project.store.manifest();
     const asset = assets.find((a) => a.hash === hash);
     const ctx = { ...labelContext(project.model, project.graph), assets };
+    // Asked before the write, since which root answers is decided by which one holds the hash and
+    // an accept moves no bytes between them.
+    const manifest = relPath(this.session.dir, project.store.manifestFileOf(hash));
     await project.store.accept(hash, asset ? supersededBy(asset, ctx) : []);
-    return { ok: true, message: `Accepted ${hash.slice(0, 8)}.` };
+    return { ok: true, message: `Accepted ${hash.slice(0, 8)}.`, written: [manifest] };
   }
 
   /**
@@ -283,13 +287,10 @@ export class AssetPart {
     if (!info) return { ok: false, message: `No asset "${hash}" in the manifest.`, written: [] };
     const project = await loadProject(this.session.dir);
 
+    const manifest = relPath(this.session.dir, project.store.manifestFileOf(hash));
     if (info.kind !== 'portrait') {
       await project.store.unaccept(hash);
-      return {
-        ok     : true,
-        message: `Un-accepted ${info.label}.`,
-        written: ['vngen/build/manifest.json'],
-      };
+      return { ok: true, message: `Un-accepted ${info.label}.`, written: [manifest] };
     }
 
     const who = this.portraitOwner(info) ?? '';
@@ -303,9 +304,9 @@ export class AssetPart {
       ok     : true,
       message: `${who} is back at the approval gate.`,
       written: [
-        `characters/${who}/character.md`,
-        `vngen/work/characters/${who}/approved.png`,
-        'vngen/build/manifest.json',
+        relPath(this.session.dir, file),
+        relPath(this.session.dir, project.paths.approvedPortrait(who)),
+        manifest,
       ],
     };
   }

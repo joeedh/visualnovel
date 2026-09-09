@@ -10,6 +10,7 @@ import {
   type BudgetChoice,
   type EffortChoice,
 } from '@vn/types';
+import { ANY_DOCUMENT } from '../../shared/affects.js';
 import { assetOpener, lineOpener } from '../../shared/agentseed.js';
 import { BUSY_AGENT } from '../../shared/ipc.js';
 import type { CommandHost } from './host.js';
@@ -22,6 +23,7 @@ export const agentRun = define({
   description: 'Send one turn to the authoring agent and return its result.',
   notes      : 'One agent turn. Mutating: a turn in execute mode writes.',
   mutating   : true,
+  affects    : ANY_DOCUMENT,
   props: {
     input: prop.string('what to ask the agent'),
     // Filled by the composer from the selection. Optional because the palette and CDP have no
@@ -238,6 +240,7 @@ export const agentRenameThread = define({
   notes:
     'Retitle a saved conversation; an empty `id` renames the open one. Appended as a superseding `title` record — the log stays append-only, and the last one read wins.',
   mutating   : true,
+  affects    : ['vngen/state/threads'],
   props: {
     id   : prop.string('the conversation to rename, or empty for the open one', { default: '' }),
     title: prop.string('the new name'),
@@ -263,6 +266,7 @@ export const agentCompact = define({
   notes:
     "Summarize the open conversation so the agent carries a summary instead of every turn. Appends one line to each of the thread's logs and rewrites neither, so the transcript on screen is unchanged. Checked because it costs a model call, and refused while a turn is running, with no finished turn to summarize, with the last turn stopped part way through a tool call, and when nothing has been said since the last compaction.",
   mutating   : true,
+  affects    : ['vngen/state/threads'],
   props      : {},
   check: async (_props, ctx) => {
     const free = idle(ctx.host);

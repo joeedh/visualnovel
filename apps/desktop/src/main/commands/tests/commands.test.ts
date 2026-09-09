@@ -6,12 +6,28 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { COMMAND_ID } from '@vn/commands';
+import { declarable, snapshotted } from '../../../shared/affects.js';
 import { catalog, catalogOf, desktopEffects } from '../catalog-entry.js';
 import { docIndex } from '../doc-entry.js';
 import { desktopInteractions } from '../interaction.js';
 import { createDesktopRegistry } from '../index.js';
 
 const GENERATED = join(__dirname, '..', '..', '..', '..', 'dist', 'commands.json');
+
+/**
+ * What is wrong with one command's `affects`, as the entries to name in a failure. A mutator owes
+ * a non-empty list of prefixes the vocabulary knows; a non-mutator owes none at all.
+ */
+function malformedAffects(command: { mutating: boolean; affects?: readonly string[] }): string[] {
+  const declared = command.affects ?? [];
+  if (!command.mutating) return [...declared];
+  return declared.length === 0 ? ['(nothing)'] : declared.filter((p) => !declarable(p));
+}
+
+/** Would an undo snapshot hold anything this command writes? */
+function restorable(command: { affects?: readonly string[] }): boolean {
+  return (command.affects ?? []).some(snapshotted);
+}
 
 describe('the desktop registry', () => {
   const commands = createDesktopRegistry().list();
@@ -249,6 +265,42 @@ describe('the desktop registry', () => {
       'view.saveLayout',
     ]);
     expect(commands.filter((c) => c.undoable && !c.mutating)).toEqual([]);
+  });
+
+  /**
+   * What every mutator says it may write. The vocabulary is closed so that a misspelled prefix
+   * fails here rather than declaring a subtree nothing writes, and a non-mutator declares nothing
+   * because there is nothing for the declaration to bound.
+   */
+  it('gives every mutating command a well-formed list of the subtrees it may write', () => {
+    for (const command of commands) {
+      expect(`${command.id}: ${malformedAffects(command).join(', ')}`).toBe(`${command.id}: `);
+    }
+  });
+
+  /**
+   * Undo restores a snapshot, so a command with nothing inside that snapshot has nothing to
+   * restore. The converse does not hold: plenty of mutators write both a snapshotted document and
+   * generated output, which is why this is the only rule tying `affects` to `undoable`.
+   *
+   * The first draft of this plan proposed a second rule — a non-undoable mutator either declares
+   * no snapshotted prefix or appears in an exemption list with a reason. Measuring it put 25 of
+   * the 32 non-undoable mutators in that list, past the plan's own stopping point of fifteen,
+   * because the base asset store's manifest sits in the document class while its objects do not.
+   * A rule with 25 exemptions describes an exception rather than a rule, so it was dropped.
+   */
+  it('opts a command into undo only when a snapshot would hold something it writes', () => {
+    expect(commands.filter((c) => c.undoable && !restorable(c)).map((c) => c.id)).toEqual([]);
+  });
+
+  /** Both rules can fail, which 170 conforming commands do not demonstrate on their own. */
+  it('fails a misspelled prefix, an empty declaration, and undo over generated output', () => {
+    expect(malformedAffects({ mutating: true, affects: ['scenez'] })).toEqual(['scenez']);
+    expect(malformedAffects({ mutating: true, affects: ['scenes/'] })).toEqual(['scenes/']);
+    expect(malformedAffects({ mutating: true, affects: [] })).toEqual(['(nothing)']);
+    expect(malformedAffects({ mutating: false, affects: ['scenes'] })).toEqual(['scenes']);
+    expect(restorable({ affects: ['vngen/build', 'keys'] })).toBe(false);
+    expect(restorable({ affects: ['vngen/build', 'scenes'] })).toBe(true);
   });
 
   /**

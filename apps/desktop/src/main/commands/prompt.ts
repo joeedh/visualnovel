@@ -62,6 +62,7 @@ export const promptSetChunk = define({
   notes:
     'One thing to one clause. The keys are what `prompt.info` lists. An edit records the derived text it was written against, so the pane can say when the project moved underneath it. It **re-renders** what that rung reaches.',
   mutating   : true,
+  affects    : ['characters', 'locations', 'wiki', 'vngen/work/shots'],
   undoable   : true,
   props: {
     hash : prop.string('the asset whose prompt to edit'),
@@ -92,6 +93,7 @@ export const promptMoveChunk = define({
   notes:
     'Reorder one clause; empty `after` means the top. Order is weight to an image model, so this is an authorial act. `prompt.clear(part=order)` restores the derived order.',
   mutating   : true,
+  affects    : ['characters', 'locations', 'wiki', 'vngen/work/shots'],
   undoable   : true,
   props: {
     hash : prop.string('the asset whose prompt to reorder'),
@@ -118,6 +120,7 @@ export const promptSetCustom = define({
   notes:
     'Replace the whole prompt with one written by hand. The clauses stay underneath — they are what `prompt.condense` reconciles against and what `prompt.check` measures.',
   mutating   : true,
+  affects    : ['characters', 'locations', 'wiki', 'vngen/work/shots'],
   undoable   : true,
   props: {
     hash: prop.string('the asset whose prompt to replace'),
@@ -146,6 +149,7 @@ export const promptCondense = define({
   notes:
     'Ask the text model to rewrite the clauses as one fluent prompt and store it. It is then **held**: clauses moving under it do not re-render the picture. `force` reconciles against a hand-written prompt rather than refusing over it.',
   mutating   : true,
+  affects    : ['characters', 'locations', 'wiki', 'vngen/work/shots'],
   undoable   : true,
   props: {
     hash : prop.string('the asset whose prompt to condense'),
@@ -173,6 +177,7 @@ export const promptClear = define({
   notes:
     'Discard part of what was done to a prompt. What is left is what the builders derive, byte for byte.',
   mutating   : true,
+  affects    : ['characters', 'locations', 'wiki', 'vngen/work/shots'],
   undoable   : true,
   props: {
     hash: prop.string('the asset whose override to clear'),
@@ -202,6 +207,7 @@ export const promptAddRef = define({
   notes:
     'Attach a reference image to one clause — evidence for that clause, so muting it drops the reference too. `ref` is an asset hash (a prefix will do) or a **slot address**: `portrait:<character>`, `sheet:<character>/<outfit>/<angle>`, `plate:<location>/<variant>`, `shot:<scene>/<shot>`. A slot pins what fills it today and remembers where it came from; a bare hash pins itself and can never move. Refuses a reference that would close a cycle, naming the whole path.',
   mutating   : true,
+  affects    : ['characters', 'locations', 'wiki', 'vngen/work/shots'],
   undoable   : true,
   props: {
     hash : prop.string('the asset whose prompt to attach to'),
@@ -227,6 +233,7 @@ export const promptDropRef = define({
   notes:
     'Take a reference off a clause. The bytes stay in the store — this only stops them being sent.',
   mutating   : true,
+  affects    : ['characters', 'locations', 'wiki', 'vngen/work/shots'],
   undoable   : true,
   props: {
     hash : prop.string('the asset whose prompt to edit'),
@@ -255,6 +262,7 @@ export const promptRepin = define({
   notes:
     "Point a linked reference at whatever its slot holds now, which is how a suspension is cleared. `regenerate=false` is **re-approve**: it keeps the existing bytes by recording them as the newly-keyed task's output, so nothing re-renders.",
   mutating   : true,
+  affects    : ['characters', 'locations', 'wiki', 'vngen/work/shots', 'vngen/state/tasks.jsonl'],
   undoable   : true,
   props: {
     hash      : prop.string('the asset whose reference to repin'),

@@ -186,6 +186,7 @@ export const gengraphCreate = define({
   notes:
     'Start an empty graph at `vngen/work/graphs/<slug>.json`. The slug comes from the name once, at creation, so a graph is renamed the way a scene is — not at all.',
   mutating   : true,
+  affects    : ['vngen/work/graphs'],
   undoable   : true,
   props: {
     name: prop.string('what to call it; the filename is this name'),
@@ -218,6 +219,7 @@ export const gengraphCreateForSlot = define({
   notes:
     'Start a graph that draws one slot, wired the way the pipeline draws it: the derived prompt and the task references feed an image node, and its picture fills the slot. An empty `name` is derived from the slot address, and takes the next free `<base>-2` where a graph of that name exists. A slot another graph already draws is refused, because two active outputs claiming one slot leave it bound to neither. `open` shows the new graph in the Gen Graph editor, focusing a pane already open on one rather than making a second. This is what _Create a graph for this slot_ dispatches, on a slot row and on a picture a slot claims alike.',
   mutating   : true,
+  affects    : ['vngen/work/graphs'],
   undoable   : true,
   props: {
     slot: prop.string('which slot the graph fills, as the document tree writes it'),
@@ -339,6 +341,7 @@ export const gengraphDelete = define({
   notes:
     "Remove a graph's document. Its journal and blobs under `vngen/state/graphs/` stay, being the record of runs that happened.",
   mutating   : true,
+  affects    : ['vngen/work/graphs'],
   undoable   : true,
   confirm    : true,
   props: {
@@ -367,6 +370,7 @@ export const gengraphAddNode = define({
   notes:
     'Place one node of a registered type. A type no plugin provides is refused by name rather than written and reported on the next load.',
   mutating   : true,
+  affects    : ['vngen/work/graphs'],
   undoable   : true,
   props: {
     slug : prop.string(SLUG),
@@ -391,6 +395,7 @@ export const gengraphDuplicateNode = define({
     'so it starts with no run journal of its own and runs the first time the graph does; links ' +
     'are not carried over. A copied group instance keeps its group and its overrides.',
   mutating   : true,
+  affects    : ['vngen/work/graphs'],
   undoable   : true,
   props: {
     slug : prop.string(SLUG),
@@ -425,6 +430,7 @@ export const gengraphRemoveNode = define({
   description: 'Take one node out of a graph, along with every link into or out of it.',
   notes      : 'Delete one node and every link touching it.',
   mutating   : true,
+  affects    : ['vngen/work/graphs'],
   undoable   : true,
   props: {
     slug : prop.string(SLUG),
@@ -455,6 +461,7 @@ export const gengraphLink = define({
   notes:
     "Feed one node's input from another node's output. A pair whose types cannot coerce is refused, and so is a link that would close a cycle.",
   mutating   : true,
+  affects    : ['vngen/work/graphs'],
   undoable   : true,
   props: {
     slug      : prop.string(SLUG),
@@ -505,6 +512,7 @@ export const gengraphUnlink = define({
   notes:
     'Sever what feeds an input. Naming a source severs that one edge; naming none severs every edge into the socket.',
   mutating   : true,
+  affects    : ['vngen/work/graphs'],
   undoable   : true,
   props: {
     slug      : prop.string(SLUG),
@@ -559,6 +567,7 @@ export const gengraphSetProp = define({
   notes:
     "Write one node property. The value is typed as text and the node's own property decides how to read it, so a number field refuses prose. Addressed by node key into a group instance, the write is an override on that instance.",
   mutating    : true,
+  affects     : ['vngen/work/graphs'],
   undoable    : true,
   // Dragging a slider sends one of these per frame, and each is a separate undo point either way.
   defersCommit: true,
@@ -593,6 +602,7 @@ export const gengraphSetActiveOutput = define({
   notes:
     "Choose which Output node a run targets and which slot binding counts. An Output filling no slot is refused, because a task's slot is what names the graph that draws it.",
   mutating   : true,
+  affects    : ['vngen/work/graphs'],
   undoable   : true,
   props: {
     slug: prop.string(SLUG),
@@ -615,6 +625,7 @@ export const gengraphMoveNodes = define({
     'Put nodes where a drag left them. One drag is one edit, so a graph is never half-moved and ' +
     'one undo puts every node back. A move naming a node the graph has lost is refused whole.',
   mutating    : true,
+  affects     : ['vngen/work/graphs'],
   undoable    : true,
   // A drag across the canvas sends one of these per frame, the way `gengraph.setProp` does.
   defersCommit: true,
@@ -672,6 +683,7 @@ export const gengraphApply = define({
   notes:
     "Rewrite a whole graph from a JSON description in path.ux's graph DSL, diffed by node id so a node the description leaves alone keeps its position and its journal. The description is a string prop because `@vn/commands` has no JSON kind.",
   mutating   : true,
+  affects    : ['vngen/work/graphs'],
   undoable   : true,
   props: {
     slug       : prop.string(SLUG),
@@ -734,6 +746,7 @@ export const gengraphCreateGroup = define({
   notes:
     'Move the selected nodes into a new definition file under `lib/` and leave an instance in their place; every link that crossed the selection is rewired through the instance. Writes both files. What Ctrl+G and Edit ▸ Create Group run.',
   mutating   : true,
+  affects    : ['vngen/work/graphs'],
   undoable   : true,
   props: {
     slug : prop.string(SLUG),
@@ -789,6 +802,7 @@ export const gengraphUngroup = define({
   notes:
     "Inline a copy of the instance's subgraph, overrides included, where the instance stood. The definition under `lib/` is left for its other instances. What Edit ▸ Ungroup runs.",
   mutating   : true,
+  affects    : ['vngen/work/graphs'],
   undoable   : true,
   props: {
     slug : prop.string(SLUG),
@@ -815,6 +829,7 @@ export const gengraphAddGroup = define({
   notes:
     'Place one instance of a definition under `lib/`, bound at once so the file never holds an unresolved instance. What the Add Group menu runs.',
   mutating   : true,
+  affects    : ['vngen/work/graphs'],
   undoable   : true,
   props: {
     slug : prop.string(SLUG),
@@ -870,6 +885,7 @@ export const gengraphExpose = define({
   notes:
     "Add a forwarded row to a definition: one inner node's property, or the node's whole panel when no key is named. Every instance shows it. What the designer's Expose runs.",
   mutating   : true,
+  affects    : ['vngen/work/graphs'],
   undoable   : true,
   props: {
     group: prop.string(GROUP_ONLY),
@@ -905,6 +921,7 @@ export const gengraphUnexpose = define({
     'Stop forwarding one row onto the group’s instances. The inner node keeps its value; only ' +
     'the control on the instances goes.',
   mutating   : true,
+  affects    : ['vngen/work/graphs'],
   undoable   : true,
   props: {
     group: prop.string(GROUP_ONLY),
@@ -935,6 +952,7 @@ export const gengraphReorderExposed = define({
     'Move one forwarded row to another position, which is the order every instance of the ' +
     'group shows its controls in.',
   mutating   : true,
+  affects    : ['vngen/work/graphs'],
   undoable   : true,
   props: {
     group: prop.string(GROUP_ONLY),
@@ -974,6 +992,7 @@ export const gengraphRepointExposed = define({
     'its place and its label. A row forwarding a property needs a property; one forwarding a ' +
     'whole panel takes a node alone.',
   mutating   : true,
+  affects    : ['vngen/work/graphs'],
   undoable   : true,
   props: {
     group: prop.string(GROUP_ONLY),
@@ -1011,6 +1030,7 @@ export const gengraphAddBoundary = define({
     'gains the socket, and inside the definition it appears on the group’s input or output node ' +
     'to be wired from.',
   mutating   : true,
+  affects    : ['vngen/work/graphs'],
   undoable   : true,
   props: {
     group: prop.string(GROUP_ONLY),
@@ -1045,6 +1065,7 @@ export const gengraphRemoveBoundary = define({
     'Take one input or output off the group. Every link into it inside the definition is ' +
     'severed, and every instance loses the socket along with whatever fed it.',
   mutating   : true,
+  affects    : ['vngen/work/graphs'],
   undoable   : true,
   props: {
     group: prop.string(GROUP_ONLY),
@@ -1115,6 +1136,7 @@ export const gengraphRun = define({
   notes:
     'Execute the graph through the same executor and journal the scheduler uses, targeting the active Output or the named one. Confirmed, quoting the estimate. Not undoable: what it writes is a journal record and a blob under `vngen/state`. `force` re-runs every paid node feeding the target rather than resuming from the journal.',
   mutating   : true,
+  affects    : ['vngen/state/graphs'],
   undoable   : false,
   confirm    : true,
   props: {

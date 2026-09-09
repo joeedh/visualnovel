@@ -29,6 +29,7 @@ export const artSetNotes = define({
   notes:
     'Art direction on one rung — `character:aiko`, `character:aiko/gala`, `location:cafe`, `location:cafe/night`, `shot:greet/s2`. Appended to the prompt, so it **re-renders** what that rung reaches. Never creates the rung it names.',
   mutating   : true,
+  affects    : ['characters', 'locations', 'wiki', 'vngen/work/shots'],
   undoable   : true,
   props: {
     target: prop.string('the rung to write: kind:id[/outfit|variant|shotId]'),
@@ -54,6 +55,7 @@ export const artSetSeed = define({
     'what the picture should *look* like is art notes. A rung with no seed inherits the one ' +
     'above it, and the project config is the floor.',
   mutating   : true,
+  affects    : ['characters', 'locations', 'wiki', 'vngen/work/shots'],
   undoable   : true,
   props: {
     target: prop.string('the rung to write: kind:id[/outfit|variant|shotId]'),
@@ -86,6 +88,7 @@ export const artGenerate = define({
   notes:
     'Draw a concept from a sentence and file it under Concepts, bound to the location or character it names. Spends one image generation; the pipeline never plans one and `vngen export` ignores it.',
   mutating   : true,
+  affects    : ['assets/objects', 'assets/manifest.json'],
   // Spends a real image call, the same bar `asset.regenerate(run=true)` clears. It is neither
   // undoable nor journalled, because it writes new content-addressed bytes and there is no prior
   // state to restore
@@ -133,6 +136,7 @@ export const artRedraw = define({
   notes:
     'Draw a concept again from an edited prompt — the one asset whose prompt is authored rather than derived, so the one prompt there is to rewrite. The result is a **new** sketch beside the original; nothing is overwritten. A planned asset is refused by name: re-rendering one is `asset.regenerate`.',
   mutating   : true,
+  affects    : ['assets/objects', 'assets/manifest.json'],
   // One image call, like `art.generate`, and not undoable because new bytes have no prior state
   // to restore
   confirm    : true,
@@ -178,6 +182,7 @@ export const artPromote = define({
   notes:
     "Make a concept the location plate for one variant: the variant joins the sheet if it is new, the bytes are re-recorded as a plate, and that plate's task is logged `done` so the next run **adopts** the picture. A character concept is refused — a look goes through the gate.",
   mutating   : true,
+  affects: ['characters', 'locations', 'wiki', 'assets/manifest.json', 'vngen/state/tasks.jsonl'],
   // Writes a sheet, a manifest row and a `done` task record across two trees, which no document
   // snapshot covers, so it is committed like any other act but never undone
   confirm    : true,

@@ -75,6 +75,7 @@ export const uploadFiles = define({
   notes:
     "Copy the author's own documents into `archive/` verbatim, then open a fresh conversation in plan mode asking what to do with them. The archive is outside every directory the agent sweeps, so nothing here reaches `search` or the bible — it is read by name.",
   mutating   : true,
+  affects    : ['archive', 'vngen/state/threads'],
   // Confirmed because it copies bytes into the repo from paths the author named, which is the same
   // bar `asset.upload` meets.
   confirm    : true,
@@ -92,6 +93,7 @@ export const uploadPick = define({
   notes:
     '`upload.files` with the native multi-select file chooser in front. Cancelling changes nothing, and the dialog is not a permission: what the command refuses is refused after it too.',
   mutating   : true,
+  affects    : ['archive', 'vngen/state/threads'],
   confirm    : true,
   props      : {},
   async check(_props, ctx) {

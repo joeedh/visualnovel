@@ -7,6 +7,7 @@
  * written whole is unvalidated, and the agent's `write_file` refuses it through this same code.
  */
 import { defineFor, prop, type CheckResult } from '@vn/commands';
+import { ANY_UNGUARDED_DOCUMENT } from '../../shared/affects.js';
 import type { NewDocKind } from '../session.js';
 import type { CommandHost } from './host.js';
 
@@ -50,6 +51,7 @@ export const docWrite = define({
   notes:
     'Overwrite a document. A file changed underneath the edit is refused by content. `scenes/**` is refused outright.',
   mutating   : true,
+  affects    : ANY_UNGUARDED_DOCUMENT,
   undoable   : true,
   props: {
     path    : prop.string('workspace-relative path to the file'),
@@ -85,6 +87,7 @@ export const docRename = define({
   notes:
     "Change the name a document is known by, **in place**. A sheet is renamed through its `name:` field, anything else through its title — front-matter `title:`, else the first heading — so the new name is read back from wherever the old one was. The file does not move: an id is derived from a name once, at creation, and afterwards it is what shots, cast lists and `[[goto:]]` markers point at. What the tree's double-click-to-rename dispatches.",
   mutating   : true,
+  affects    : ANY_UNGUARDED_DOCUMENT,
   undoable   : true,
   props: {
     path: prop.string('workspace-relative path to the file'),
@@ -113,6 +116,7 @@ export const docCreate = define({
   notes:
     "Scaffold a sheet, a note or a skill in its conventional home, from the same templates the agent's create tools use. Refuses over an existing path.",
   mutating   : true,
+  affects    : ['characters', 'locations', 'wiki', '.aiagent/skills'],
   undoable   : true,
   props: {
     kind: prop.oneOf(NEW_DOC_KINDS, 'what to create'),

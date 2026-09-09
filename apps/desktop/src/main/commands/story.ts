@@ -158,6 +158,7 @@ export const storySetChoice = define({
   description: 'Add a branch choice to a scene, or replace the one at an index.',
   notes      : '`-1` appends. Rewrites one `[[choice:]]` marker.',
   mutating   : true,
+  affects    : ['scenes'],
   undoable   : true,
   props: {
     scene: prop.string('the scene the choice is offered in'),
@@ -182,6 +183,7 @@ export const storyRemoveChoice = define({
   description: "Delete one of a scene's branch choices by index.",
   notes      : 'Deletes the marker line; the prose is untouched.',
   mutating   : true,
+  affects    : ['scenes'],
   undoable   : true,
   props: {
     scene: prop.string('the scene to edit'),
@@ -201,6 +203,7 @@ export const storySetNext = define({
   description: "Set a scene's linear continuation, or clear it by passing an empty goto.",
   notes      : 'Empty `goto` clears the `[[next:]]` marker.',
   mutating   : true,
+  affects    : ['scenes'],
   undoable   : true,
   props: {
     scene: prop.string('the scene to edit'),
@@ -220,6 +223,7 @@ export const storySpliceScene = define({
   description: 'Rewire A→B into A→C→B in one patch. Refuses when C already forks.',
   notes      : '`A→B` becomes `A→scene→B`, as one two-scene patch.',
   mutating   : true,
+  affects    : ['scenes'],
   undoable   : true,
   props: {
     scene: prop.string('the scene to splice in (C)'),
@@ -257,6 +261,7 @@ export const storySetLineText = define({
     'shot prompt never reads prose, so rendered art of this line drifts and will not re-render.',
   notes      : 'Retype one line. Says how many rendered shots now illustrate the old prose.',
   mutating   : true,
+  affects    : ['scenes'],
   undoable   : true,
   props: {
     line: prop.string('the line id, e.g. arrival:L3'),
@@ -278,6 +283,7 @@ export const storyInsertLine = define({
     "takes the scene's next allocated id, so no other line's coverage moves.",
   notes      : 'Empty `after` means the top of the scene; the id is allocated, not positional.',
   mutating   : true,
+  affects    : ['scenes'],
   undoable   : true,
   props: {
     scene  : prop.string('the scene to insert into'),
@@ -307,6 +313,7 @@ export const storyDeleteLine = define({
     'line fewer — possibly none, which the timeline shows rather than treating as an error.',
   notes: "A shot left covering nothing is **kept** — deleting paid-for art is the author's call.",
   mutating   : true,
+  affects    : ['scenes', 'vngen/work/shots'],
   undoable   : true,
   props      : { line: prop.string('the line id to remove') },
   check({ line }, ctx) {
@@ -325,6 +332,7 @@ export const storyMoveLine = define({
     'made to depict its covered lines in order, so art covering the moved line drifts.',
   notes      : 'Reorder within the scene. What `script.moveLine` commits.',
   mutating   : true,
+  affects    : ['scenes'],
   undoable   : true,
   props: {
     line : prop.string('the line id to move'),
@@ -346,6 +354,7 @@ export const storySetSpeaker = define({
     'line kind, so this is also what turns narration into dialogue and back.',
   notes      : 'Empty `speaker` makes the line narration.',
   mutating   : true,
+  affects    : ['scenes'],
   undoable   : true,
   props: {
     line   : prop.string('the line id to re-attribute'),
@@ -367,6 +376,7 @@ export const storyNewScene = define({
     'unreachable until story.setNext or story.setChoice points at it.',
   notes      : 'A `scenes/<id>.md` with a heading and no lines; nothing points at it yet.',
   mutating   : true,
+  affects    : ['scenes'],
   undoable   : true,
   props: {
     scene  : prop.string('the scene id, which is also its filename'),
@@ -390,6 +400,7 @@ export const storySetHeading = define({
   notes:
     "Move a scene somewhere else. No line id changes, but a location is in every shot's task inputs, so the check says how many rendered shots will be drawn again — and the prose it leaves behind is the agent's to rewrite. Deliberately not `confirm`: the check **is** the warning.",
   mutating   : true,
+  affects    : ['scenes', 'vngen/work/shots'],
   undoable   : true,
   props: {
     scene  : prop.string('the scene to move'),
@@ -411,6 +422,7 @@ export const storyDeleteScene = define({
     'the same failure a dangling goto would be, caught before it exists.',
   notes      : 'Refuses while anything still points at it, naming what.',
   mutating   : true,
+  affects    : ['scenes', 'vngen/work/shots'],
   undoable   : true,
   props      : { scene: prop.string('the scene to remove') },
   check({ scene }, ctx) {
@@ -430,6 +442,7 @@ export const storySplitScene = define({
     'their local ids, so coverage can follow them.',
   notes      : '`at` starts the second half; shots follow their lines, keeping their ids.',
   mutating   : true,
+  affects    : ['scenes', 'vngen/work/shots'],
   undoable   : true,
   props: {
     scene: prop.string('the scene to split'),
@@ -453,6 +466,7 @@ export const storyMergeScene = define({
     'so shots covering them stop covering anything.',
   notes      : "Only across a `next` boundary; `scene`'s file and storyboard are removed.",
   mutating   : true,
+  affects    : ['scenes', 'vngen/work/shots'],
   undoable   : true,
   props: {
     scene: prop.string('the scene to absorb'),
@@ -494,6 +508,7 @@ export const storySetCoverage = define({
     'released ones become visible gaps. Changes no prompt, so nothing rehashes.',
   notes      : 'Comma-separated line ids; claimed lines leave every other shot.',
   mutating   : true,
+  affects    : ['vngen/work/shots'],
   undoable   : true,
   props: {
     scene: prop.string('the scene the shot belongs to'),
@@ -529,6 +544,7 @@ export const storyMoveShot = define({
   notes:
     'Reorder a shot by moving the lines it covers; empty `after` means the top. A shot other shots draw inside is refused by name.',
   mutating   : true,
+  affects    : ['scenes'],
   undoable   : true,
   props: {
     scene: prop.string('the scene the shot belongs to'),
@@ -556,6 +572,7 @@ export const storyNewShot = define({
   notes:
     'Place a shot by hand over the lines it covers; claimed lines leave other shots. A new shot id is a new task — a new frame to render. On a scene with no storyboard this **creates** it, which ends decomposition for that scene; lines the shot does not claim stay uncovered until covered by hand. Empty `subjects` casts the speakers of the covered lines; a character no sheet describes is refused by name. `story.setSubjects` changes the cast afterwards.',
   mutating   : true,
+  affects    : ['vngen/work/shots'],
   undoable   : true,
   props: {
     scene   : prop.string('the scene to place the shot in'),
@@ -591,6 +608,7 @@ export const storyDeleteShot = define({
   notes:
     'The covered lines become visible gaps — never handed to a neighbour — and a rendered frame is orphaned, not deleted. Removing the last shot deletes the storyboard file itself, so the scene will be decomposed again.',
   mutating   : true,
+  affects    : ['vngen/work/shots'],
   undoable   : true,
   props: {
     scene: prop.string('the scene the shot belongs to'),
@@ -620,6 +638,7 @@ export const storySetSceneOutfit = define({
   notes:
     "Writes the scene's `[[outfit:]]` marker; empty clears it. Every shot that does not override it re-renders.",
   mutating   : true,
+  affects    : ['scenes'],
   undoable   : true,
   props: {
     scene    : prop.string('the scene to dress'),
@@ -650,6 +669,7 @@ export const storySetOutfit = define({
   notes:
     'One subject of one shot; empty clears the override. Unlike coverage this re-hashes the shot.',
   mutating   : true,
+  affects    : ['vngen/work/shots'],
   undoable   : true,
   props: {
     scene    : prop.string('the scene the shot belongs to'),
@@ -676,6 +696,7 @@ export const storySetVariant = define({
     'storyboard listing shows. That is the plate the frame is drawn against, so the shot ' +
     're-hashes and the next run re-renders it.',
   mutating   : true,
+  affects    : ['vngen/work/shots'],
   undoable   : true,
   props: {
     scene  : prop.string('the scene the shot belongs to'),
@@ -704,6 +725,7 @@ export const storySetSubjects = define({
   notes:
     'Replace the cast of one shot; empty makes it a background plate. Changes the prompt and the reference sheets, so the frame is drawn again. A character no sheet describes is refused by name.',
   mutating   : true,
+  affects    : ['vngen/work/shots'],
   undoable   : true,
   props: {
     scene   : prop.string('the scene the shot belongs to'),
@@ -735,6 +757,7 @@ export const storyRequireCast = define({
   notes:
     "Turn the reviewer's demand that a shot show its cast on or off. Off keeps the reference sheets and only stops an absence counting as a defect, which is how a frame the refine loop cannot satisfy is unstuck.",
   mutating   : true,
+  affects    : ['vngen/work/shots'],
   undoable   : true,
   props: {
     scene   : prop.string('the scene the shot belongs to'),
@@ -760,6 +783,7 @@ export const storyAssignLineIds = define({
     'inserting a line can no longer re-point the shots that cover the ones below it.',
   notes      : 'Writes allocated ids down as `[[line:]]` marks; empty `scene` means all.',
   mutating   : true,
+  affects    : ['scenes'],
   undoable   : true,
   props: {
     scene: prop.string('the scene to mark; empty means every scene', { default: '' }),
@@ -793,6 +817,7 @@ export const storyDecomposeAll = define({
   notes:
     'Storyboard every reachable scene that has none, so the graph is whole rather than one wave of it. One model call per scene. Additive only — a scene with a file is left alone and there is **no `force`**, because the file wins forever and re-decomposing would move shot ids, hence task identities, hence re-render art already paid for. A scene the model does not answer for is named and **not written**: an absent file is the only signal meaning "decompose this" (so a scene begun by hand with `story.newShot` already has its file, and is left alone like any other). `check` refuses mock or unresolved keys with `pipeline.run`\'s own sentence, reports the count, and warns about scenes naming a character the project does not have yet. One undo point for the batch.',
   mutating   : true,
+  affects    : ['vngen/work/shots'],
   // One undo point covers the whole batch, so this runs as one command rather than N.
   undoable   : true,
   // Confirmed because it costs a model call per scene, and because the storyboard it writes is
@@ -857,6 +882,7 @@ export const storyExport = define({
   description: 'Write vngen/build/story.play.json — the `vngen export` equivalent.',
   notes      : 'Write `vngen/build/story.play.json` (`vngen export`).',
   mutating   : true,
+  affects    : ['vngen/build/story.play.json'],
   props      : {},
   async check(_props, ctx) {
     // Building the playable is the question, and it is pure and writes nothing, so the check
@@ -887,6 +913,7 @@ export const storyScreenplay = define({
   notes:
     'Project the scenes back to one Fountain file at the project root (`vngen screenplay`). `clean` drops the `[[…]]` markers, which makes it one-way.',
   mutating   : true,
+  affects    : ['screenplay.fountain'],
   props: {
     clean: prop.boolean('drop the [[…]] machine markers, which makes the output one-way', {
       default: false,

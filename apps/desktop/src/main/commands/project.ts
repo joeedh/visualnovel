@@ -53,6 +53,7 @@ export const projectSetArtStyle = define({
   notes:
     'The sentence every image prompt opens with. Not art notes on one rung: it reaches every portrait, sheet, plate and shot, so it re-keys **every** image task. Spliced into `project.yaml`, so comments and key order survive.',
   mutating   : true,
+  affects    : ['project.yaml'],
   undoable   : true,
   // Every other document mutator changes one document's words. This one changes what the project
   // looks like, and the next run redraws the whole library for it.
@@ -85,6 +86,7 @@ export const projectSetKey = define({
   notes:
     "Store one model provider's API key in `keys/`, the file `resolveKeys` reads when the matching environment variable is unset — and it says so when one is set, because the variable wins. The value goes to that file and nowhere else: the history records `<secret>`, and `keys` is added to `.gitignore` **before** the write, because commit-on-save runs `git commit -A`. Deliberately **not undoable**: `keys/` is outside the class a snapshot covers, which is what keeps an undo from writing over or deleting the credential this command exists to store.",
   mutating   : true,
+  affects    : ['keys', '.gitignore', '<user>/keys'],
   // Deliberately not undoable: an undo point is a git snapshot, and this command exists to keep
   // the credential out of git. At the user scope the file is not in a repository at all, so no
   // snapshot is possible.
@@ -217,6 +219,13 @@ export const projectInstallPages = define({
   notes:
     'Write a GitHub Actions workflow into the project that publishes it as a light-novel web page, plus the bundled renderer the workflow runs. Refuses a project that is not a git repository, has no branch checked out, or has no `origin` remote. Exports the playable first, so the commit CI builds from is complete. Deliberately **not undoable**: it writes `.github/` and `.vnstudio/`, outside the tree the undo snapshot covers. The app never pushes. See [`../guides/github-pages.md`](../guides/github-pages.md).',
   mutating   : true,
+  affects: [
+    '.github/workflows',
+    '.vnstudio/pages',
+    '.gitattributes',
+    'vngen/build/story.play.json',
+    'vngen/state/notifications.jsonl',
+  ],
   confirm    : true,
   props: {
     branch: prop.string('The branch the workflow publishes the site to.', {

@@ -107,6 +107,7 @@ export const workspaceCreate = define({
   notes:
     'Create a project in a new or empty directory — a starter scene, a story bible page, `project.yaml`, a git repo — then open it. `newFolder` puts it in a `slug(title)` folder inside `path`. Refuses a directory with files in it; warns when it sits inside another repo.',
   mutating   : true,
+  affects: ['project.yaml', 'scenes', 'wiki', '.gitignore', '.gitattributes', '.vnstudio/layouts'],
   props: {
     path     : prop.directory('the folder the project goes in'),
     title    : prop.string('the project title', { default: '' }),
@@ -139,6 +140,7 @@ export const workspaceOpen = define({
   notes:
     'Open another project, making it one if it is not yet (`project.yaml` + `git init` + a first commit). Closes the current one — see [`desktop-app-state.md`](desktop-app-state.md#which-project-is-open).',
   mutating   : true,
+  affects    : ['project.yaml', '.gitignore', '.gitattributes', '.vnstudio/layouts'],
   props: {
     path: prop.string('the project directory to open'),
   },
@@ -160,6 +162,7 @@ export const workspacePick = define({
     'picker in front. Cancelling changes nothing.',
   notes: '`workspace.open` with the native directory chooser in front. Cancelling changes nothing.',
   mutating   : true,
+  affects    : ['project.yaml', '.gitignore', '.gitattributes', '.vnstudio/layouts'],
   props      : {},
   async check(_props, ctx) {
     const busy = ctx.host.session.busy();
@@ -307,6 +310,7 @@ export const workspaceReindex = define({
   notes:
     "Rebuild `AICONTEXT.generated.md`: the cast, the locations, the story graph, and the bible's table of contents. Refuses over a file it did not write.",
   mutating   : true,
+  affects    : ['AICONTEXT.generated.md'],
   props      : {},
   async check(_props, ctx) {
     const state = await ctx.host.session.generatedContext();
@@ -337,6 +341,7 @@ export const workspaceImport = define({
   notes:
     'Convert `screenplay/*.fountain` into `scenes/<id>.md` chunks (`vngen import`). Refuses over existing chunks; the original is moved aside.',
   mutating   : true,
+  affects    : ['scenes', 'screenplay', 'project.yaml'],
   props      : {},
   async check(_props, ctx) {
     const preview = await ctx.host.session.previewImport();

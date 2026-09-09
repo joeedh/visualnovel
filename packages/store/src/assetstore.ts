@@ -270,6 +270,15 @@ export class AssetStore implements IAssetStore {
   }
 
   /**
+   * The manifest recording `hash`, which is the file {@link accept} and {@link unaccept} rewrite.
+   * Both route base-first, so a caller reporting what it wrote has to ask which root answered
+   * rather than naming one of the two.
+   */
+  manifestFileOf(hash: string): string {
+    return this.rootHolding(hash).manifestFile;
+  }
+
+  /**
    * Both manifests as one list, base first and deduped by hash. The roots cannot disagree about
    * content, so where both hold a hash the base record — the one that travels with the bytes a
    * later prompt references — is the one reported.

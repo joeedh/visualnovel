@@ -49,6 +49,7 @@ export const AFFECTS_DIRS = [
   'wiki',
   'scenes',
   'screenplay',
+  'archive',
   'assets',
   'vngen',
   '.vnstudio',
@@ -68,6 +69,27 @@ export const AFFECTS_FILES = [
 
 /** Every root a declared prefix must be, or be under. */
 export const AFFECTS_ROOTS = [...AFFECTS_DIRS, ...AFFECTS_FILES, USER_ROOT];
+
+/**
+ * Every workspace root except `keys`, which only `project.setKey` writes.
+ *
+ * Three commands take their destination from the caller rather than fixing one, so their truthful
+ * upper bound is nearly the whole vocabulary: `doc.rename`, `doc.write` and `agent.run`. Declaring
+ * that carries little information, and the closed vocabulary is what rules out the worse case of
+ * declaring the project root.
+ */
+export const ANY_DOCUMENT: readonly string[] = [
+  ...AFFECTS_DIRS.filter((dir) => dir !== 'keys'),
+  ...AFFECTS_FILES,
+];
+
+/**
+ * {@link ANY_DOCUMENT} without `scenes`, which has one validated writer and is refused by every
+ * whole-file surface. `doc.write` and `doc.rename` take this one.
+ */
+export const ANY_UNGUARDED_DOCUMENT: readonly string[] = ANY_DOCUMENT.filter(
+  (dir) => dir !== 'scenes',
+);
 
 /** Is `path` at or under `prefix`? Neither may carry a trailing slash. */
 function under(path: string, prefix: string): boolean {

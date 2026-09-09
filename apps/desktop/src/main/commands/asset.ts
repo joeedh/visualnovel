@@ -79,6 +79,7 @@ export const assetAccept = define({
   notes:
     '`store.accept`, generic across both roots. A portrait is refused by name — approving one also writes `character.md` and `approved.png`, which is `gate.approve`. So is a concept: nothing downstream consumes one, so making it count is `art.promote`. And so is an upload — nothing generated it, so there is no work to bless; it counts by being pointed at. A **suspended** asset is refused too, naming what moved.',
   mutating   : true,
+  affects    : ['assets/manifest.json', 'vngen/build/manifest.json'],
   props      : { hash: prop.string('the asset hash to accept') },
   async check({ hash }, ctx) {
     return verdict(await ctx.host.session.previewAccept(hash));
@@ -86,7 +87,7 @@ export const assetAccept = define({
   async run({ hash }, ctx) {
     const result = await ctx.host.session.acceptAsset(hash);
     if (!result.ok) throw new Error(result.message);
-    return { message: result.message, data: result, written: ['manifest.json'] };
+    return { message: result.message, data: result, written: result.written };
   },
 });
 
@@ -133,6 +134,14 @@ export const assetRestore = define({
   notes:
     '`asset.adopt(replace)` followed by `asset.accept`, as one act. Refused for a take that is already the picture in its slot, for one nothing planned, and — by name — for a portrait (`gate.approve`), a concept and an upload. The suspension and upstream-approval refusals are the ones `asset.accept` would give.',
   mutating   : true,
+  affects: [
+    'assets/objects',
+    'assets/manifest.json',
+    'vngen/build/assets',
+    'vngen/build/manifest.json',
+    'vngen/work/shots',
+    'vngen/state/tasks.jsonl',
+  ],
   // Supersedes a render the project is currently using, which is the bar `asset.adopt` clears too
   confirm    : true,
   props      : { hash: prop.string('the older take to put back') },
@@ -155,6 +164,14 @@ export const assetUnapprove = define({
     'and `approved.png` all come back out with it — and everything else is the manifest flag ' +
     '`asset.accept` set. The bytes are never touched, so the same take can be approved again.',
   mutating   : true,
+  affects: [
+    'characters',
+    'locations',
+    'wiki',
+    'assets/manifest.json',
+    'vngen/build/manifest.json',
+    'vngen/work/characters',
+  ],
   // Un-approving reopens a gate a run has already passed, which is worth one confirmation
   confirm    : true,
   props      : { hash: prop.string('the asset hash to un-approve') },
@@ -180,6 +197,14 @@ export const assetUpload = define({
   notes:
     'Bring an image from outside into the **base** store. With no `slot` it is a `reference`: nothing generated it, so it is never approved and never planned — it exists to be pointed at by `prompt.addRef`. Name a `slot` and the same act files the bytes and adopts them onto it, which is what a repainted plate wants. Mock placeholder art and anything that is not an image are refused by name; a file that lands but cannot be adopted says so and stays filed as a reference, recoverable with `asset.adopt`.',
   mutating   : true,
+  affects: [
+    'assets/objects',
+    'assets/manifest.json',
+    'vngen/build/assets',
+    'vngen/build/manifest.json',
+    'vngen/work/shots',
+    'vngen/state/tasks.jsonl',
+  ],
   // Writes bytes into the repo from a path the author named, which is worth one confirmation
   confirm    : true,
   props: {
@@ -225,6 +250,14 @@ export const assetAdopt = define({
   notes:
     'Make an asset already in the store the output of the picture a slot names — `plate:cafe/night`, `sheet:aiko/gala/front`, `shot:greet/s2` — so the next run **adopts** it rather than rendering one. The generalization of `art.promote`, which is now one caller of it. A `portrait:` slot is refused by name (approving a look is `gate.approve`), as is an `asset:` one (an upload and a concept are their own identity). Superseding a render that already holds the slot needs `replace`; the old bytes stay in the store either way, and nothing is auto-accepted.',
   mutating   : true,
+  affects: [
+    'assets/objects',
+    'assets/manifest.json',
+    'vngen/build/assets',
+    'vngen/build/manifest.json',
+    'vngen/work/shots',
+    'vngen/state/tasks.jsonl',
+  ],
   // Makes existing bytes the project's art, and with `replace` it supersedes real work
   confirm    : true,
   props: {
@@ -253,6 +286,14 @@ export const assetReplace = define({
   notes:
     "The asset editor's Replace strip: open an image chooser and make what comes back this picture's slot — `asset.upload` with the chooser in front and the slot read off the asset instead of typed. Refused when these bytes fill no slot (a concept, an upload, a render something later superseded). Cancelling changes nothing.",
   mutating   : true,
+  affects: [
+    'assets/objects',
+    'assets/manifest.json',
+    'vngen/build/assets',
+    'vngen/build/manifest.json',
+    'vngen/work/shots',
+    'vngen/state/tasks.jsonl',
+  ],
   // Supersedes real work with a file from outside, which is the bar `asset.upload` clears too
   confirm    : true,
   props      : { hash: prop.string('the asset the chosen file replaces') },
@@ -292,6 +333,13 @@ export const assetRegenerate = define({
   notes:
     "Put the asset's task back to `pending`; with `run`, run the pipeline for real straight afterwards. A fixed image seed makes a plain re-roll deterministic, and the refusal text says so. A **concept** is refused by name — the planner never made one, so there is no task to requeue: `art.redraw` is what draws it again. An **upload** is refused for the same reason, pointing at `asset.upload` for a different image.",
   mutating   : true,
+  affects: [
+    'assets/objects',
+    'assets/manifest.json',
+    'vngen/build',
+    'vngen/state/tasks.jsonl',
+    'vngen/state/graphs',
+  ],
   // Requeuing costs nothing by itself, but running spends a real image call, and the gate is on
   // the command rather than the props.
   confirm    : true,

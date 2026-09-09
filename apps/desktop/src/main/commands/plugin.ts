@@ -52,6 +52,7 @@ export const pluginInstall = define({
     "the services and key names it declares. An installed plugin runs with this application's " +
     'own permissions. Installing over a plugin of the same name replaces it.',
   mutating   : true,
+  affects    : ['<user>/plugins'],
   undoable   : false,
   props: {
     source: prop.string('the plugin directory to install from, or empty to choose one'),
@@ -99,6 +100,7 @@ export const pluginPrices = define({
     'table. It calls a model on your own key, so nothing is looked up until you ask. The ' +
     'models it does not mention keep the prices they already had.',
   mutating   : true,
+  affects    : ['<user>/prices.json'],
   undoable   : false,
   props: {
     name: prop.string(NAME),
@@ -139,6 +141,7 @@ export const pluginRemove = define({
     'registry until the app restarts, and a graph holding one of them then reports the node ' +
     'type as unknown rather than substituting anything.',
   mutating   : true,
+  affects    : ['<user>/plugins'],
   undoable   : false,
   props: {
     name: prop.string(NAME),

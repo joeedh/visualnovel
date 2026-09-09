@@ -1600,7 +1600,7 @@ export class WorkspaceSession {
    * Accepting is exclusive per slot: the takes this one replaces are un-accepted in the same write,
    * because a slot with two accepted candidates cannot be resolved and reads as empty.
    */
-  async acceptAsset(hash: string): Promise<{ ok: boolean; message: string }> {
+  async acceptAsset(hash: string): Promise<PromptWriteResult> {
     return this.assetPart.acceptAsset(hash);
   }
 

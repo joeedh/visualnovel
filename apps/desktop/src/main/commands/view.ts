@@ -199,6 +199,7 @@ export const viewSaveLayout = define({
   notes:
     'Files the arrangement on screen in the project as `.vnstudio/layouts/<slug>.json`. Saving over one that exists is allowed and is one undo away.',
   mutating   : true,
+  affects    : ['.vnstudio/layouts', '.vnstudio/session.json'],
   undoable   : true,
   props: {
     name  : prop.string('what to call it; the filename is derived from this'),
@@ -245,6 +246,7 @@ export const viewResetLayout = define({
   notes:
     'Puts the layouts the app ships with back the way they shipped and re-applies the one on screen. `all` also deletes the ones the author saved.',
   mutating   : true,
+  affects    : ['.vnstudio/layouts', '.vnstudio/session.json'],
   undoable   : true,
   confirm    : true,
   props: {

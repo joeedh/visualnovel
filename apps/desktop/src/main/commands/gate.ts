@@ -26,6 +26,13 @@ export const gateApprove = define({
   description: "Approve a character's portrait by asset hash, clearing them from the gate.",
   notes      : 'Flips `character.md`; writes the approved PNG + manifest.',
   mutating   : true,
+  affects: [
+    'characters',
+    'wiki',
+    'vngen/work/characters',
+    'assets/manifest.json',
+    'vngen/build/manifest.json',
+  ],
   props: {
     characterId: prop.string('the character to approve'),
     hash       : prop.string('the asset hash to approve'),

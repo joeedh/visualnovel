@@ -103,6 +103,7 @@ export const notifyDeleteAll = define({
   // Truncates a file the repo tracks, so the committer should record it. This is the only mutator
   // in this file, and the only one with a precondition worth asking about
   mutating   : true,
+  affects    : ['vngen/state/notifications.jsonl'],
   confirm    : true,
   props      : {},
   async check() {

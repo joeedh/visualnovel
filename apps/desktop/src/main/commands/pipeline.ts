@@ -28,6 +28,13 @@ export const pipelineRun = define({
   notes:
     'Plan and execute to the next gate. Deliberately **not** confirmed: every door to it is already a click on the words "run pipeline", and the `check` note carries the upper bound in image and review calls.',
   mutating   : true,
+  affects: [
+    'assets/objects',
+    'assets/manifest.json',
+    'vngen/build',
+    'vngen/state/tasks.jsonl',
+    'vngen/state/graphs',
+  ],
   // Deliberately not `confirm`. The header's button, the menu entry and the advanced dialog's OK
   // are each already a deliberate click on the words "run pipeline", so a second card repeating
   // them gets dismissed without being read.
@@ -200,6 +207,16 @@ export const pipelineApproveAndRun = define({
   notes:
     'Approve everything waiting, run, and repeat until nothing is left of either — a whole art pass as one act. Each round unlocks the next rung of the slot graph, so it takes at most `MAX_ROUNDS` (twelve) of them and stops early on convergence, on a round that approved nothing and failed everything, or on `pipeline.stop`. The pass holds the session under its own busy name (`BUSY_PASS`) for all of its rounds and the gaps between them, sharing one `AbortController` with the runs inside it, so `pipeline.stop` ends the pass rather than only the round it interrupted — and the Stop button stays drawn while a round is approving, which is not a run and had nothing to abort before. It approves **one** candidate per slot, and **nothing at all for a slot that already has an answer** — a cleared gate, or another candidate already accepted. Candidates for one slot are alternatives rather than separate pictures: two approved portraits of one character settle her look and then change it, and two accepted sheets for one angle leave the slot unable to say which it holds. A finished project still lists the takes that lost, so without that rule the pass re-decides every settled slot each round, is offered the previous winner the round after, and never converges while the pipeline it runs between rounds has nothing to do. Confirmed because it is the one command that both approves art and spends money without asking again in between.',
   mutating   : true,
+  affects: [
+    'characters',
+    'wiki',
+    'vngen/work/characters',
+    'assets/objects',
+    'assets/manifest.json',
+    'vngen/build',
+    'vngen/state/tasks.jsonl',
+    'vngen/state/graphs',
+  ],
   // The one command that both approves art and spends money without asking again in between.
   // Every step is undoable on its own; the pass as a whole is not.
   confirm    : true,
