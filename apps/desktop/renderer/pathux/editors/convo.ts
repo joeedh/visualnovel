@@ -42,6 +42,8 @@ import { redrawing, type AnchorPass } from '../tour/anchors.js';
 import { applyOffer } from '../../rules/anchors.js';
 import { modeAction, modelAction } from '../../rules/headerbar.js';
 import {
+  decideAction,
+  allowAction,
   budgetAction,
   compact,
   compactAction,
@@ -419,6 +421,7 @@ export class ConvoEditor extends VnEditor {
       rulesUpTo(item.id);
     }
     rulesUpTo(Number.MAX_SAFE_INTEGER);
+    this.cardPass = redrawing('convo', 'cards');
     if (state.plan) this.transcript.appendChild(this.planCard(state.plan.plan));
     if (state.question) this.transcript.appendChild(this.asks.cardFor(state.question));
     if (state.confirm) this.transcript.appendChild(this.confirmCard(state.confirm));
@@ -429,6 +432,9 @@ export class ConvoEditor extends VnEditor {
     const seeded = takeSeed();
     if (seeded !== null) this.stage.fill(seeded);
   }
+
+  /** The cards' own pass, replaced with the transcript, so a redraw drops the old buttons whole. */
+  private cardPass: AnchorPass = redrawing('convo', 'cards');
 
   /** The gate between plan mode and execute mode, as a card in the transcript. */
   private planCard(plan: Plan): HTMLElement {
@@ -448,35 +454,20 @@ export class ConvoEditor extends VnEditor {
     body.appendChild(steps);
 
     const acts = el('div', 'plan-acts');
-    acts.appendChild(
-      this.decideBtn(
-        'Reject',
-        'btn',
-        false,
-        'Turn this plan down. Nothing is written; say why next.',
-      ),
-    );
-    acts.appendChild(
-      this.decideBtn(
-        'Approve →',
-        'btn primary',
-        true,
-        'Let the agent carry the plan out and commit it.',
-      ),
-    );
+    acts.appendChild(this.decideBtn('btn', false));
+    acts.appendChild(this.decideBtn('btn primary', true));
     body.appendChild(acts);
 
     card.appendChild(body);
     return card;
   }
 
-  private decideBtn(label: string, className: string, approved: boolean, tip: string): HTMLElement {
+  private decideBtn(className: string, approved: boolean): HTMLElement {
+    const offer = decideAction(approved);
     const button = document.createElement('button');
     button.className = className;
-    button.textContent = label;
-    button.title = tip;
-    button.addEventListener('click', () => void decide(approved));
-    return button;
+    button.textContent = offer.label;
+    return this.cardPass.act(button, offer, () => void decide(approved));
   }
 
   /**
@@ -492,30 +483,20 @@ export class ConvoEditor extends VnEditor {
     body.appendChild(el('div', 'plan-sum', request.detail));
 
     const acts = el('div', 'plan-acts');
-    acts.appendChild(
-      this.allowBtn(
-        'Deny',
-        'btn',
-        false,
-        `Refuse ${request.tool}. The agent is told and carries on.`,
-      ),
-    );
-    acts.appendChild(
-      this.allowBtn('Allow →', 'btn primary', true, `Let ${request.tool} go ahead, this once.`),
-    );
+    acts.appendChild(this.allowBtn('btn', request.tool, false));
+    acts.appendChild(this.allowBtn('btn primary', request.tool, true));
     body.appendChild(acts);
 
     card.appendChild(body);
     return card;
   }
 
-  private allowBtn(label: string, className: string, allowed: boolean, tip: string): HTMLElement {
+  private allowBtn(className: string, tool: string, allowed: boolean): HTMLElement {
+    const offer = allowAction(tool, allowed);
     const button = document.createElement('button');
     button.className = className;
-    button.textContent = label;
-    button.title = tip;
-    button.addEventListener('click', () => allow(allowed));
-    return button;
+    button.textContent = offer.label;
+    return this.cardPass.act(button, offer, () => allow(allowed));
   }
 }
 

@@ -255,6 +255,18 @@
     {
       "module": "convobar",
       "editor": "convo",
+      "name"  : "plan-proposed",
+      "why"   : "The agent proposed a plan, so its card offers Reject and Approve."
+    },
+    {
+      "module": "convobar",
+      "editor": "convo",
+      "name"  : "confirming",
+      "why": "An always-confirm tool is waiting, so its card offers Deny and Allow, naming the tool."
+    },
+    {
+      "module": "convobar",
+      "editor": "convo",
       "name"  : "reading",
       "why": "A saved conversation is open for reading, so Continue is offered and Compact is refused."
     },
@@ -12227,6 +12239,496 @@
         {
           "id"   : "agent.stop",
           "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "plan-proposed",
+      "key"      : "cmd:agent.setMode",
+      "offer": {
+        "id"     : "agent.setMode",
+        "label"  : "PLAN",
+        "tooltip": "Plan mode: the agent reads but never writes. Click to let it apply edits.",
+        "ok"     : true,
+        "props": {
+          "mode": "execute"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setMode",
+          "props": {
+            "mode": "execute"
+          }
+        }
+      ],
+      "shortcut" : "Shift+Tab"
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "plan-proposed",
+      "key"      : "cmd:agent.setModel",
+      "offer": {
+        "id"      : "agent.setModel",
+        "label"   : "claude-opus-5",
+        "tooltip" : "Which model the agent answers with. Switching takes effect next turn.",
+        "supplies": ["modelId"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "agent.setModel",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "plan-proposed",
+      "key"      : "cmd:agent.setEffort",
+      "offer": {
+        "id"      : "agent.setEffort",
+        "label"   : "effort: medium",
+        "tooltip" : "How hard the model thinks before answering. Higher costs more.",
+        "supplies": ["effort"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "agent.setEffort",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "plan-proposed",
+      "key"      : "cmd:agent.setBudget",
+      "offer": {
+        "id"      : "agent.setBudget",
+        "label"   : "budget 200k",
+        "tooltip": "What one turn may spend, counting fresh input and output but not what the cache served. This turn stops once it has spent 200k. Nothing spent on the last turn yet. The setting is remembered between sessions.",
+        "supplies": ["budget"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "agent.setBudget",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "plan-proposed",
+      "key"      : "cmd:agent.openThread",
+      "offer": {
+        "id"      : "agent.openThread",
+        "label"   : "Threads",
+        "tooltip": "Saved conversations. Reopening one is read-only — the agent is not shown it until Continue hands it back.",
+        "supplies": ["id"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "agent.openThread",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "plan-proposed",
+      "key"      : "cmd:agent.newThread",
+      "offer": {
+        "id"     : "agent.newThread",
+        "label"  : "New",
+        "tooltip": "Save this conversation and start a fresh one in plan mode. Nothing is lost — the old one stays under Threads.",
+        "ok"     : true,
+        "props"  : {}
+      },
+      "effects": [
+        {
+          "id"   : "agent.newThread",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "plan-proposed",
+      "key"      : "cmd:agent.compact",
+      "offer": {
+        "id"     : "agent.compact",
+        "label"  : "Compact",
+        "tooltip": "Summarize what has been said so far, so the agent carries a summary instead of every turn. Nothing is deleted — the summary is added to the saved conversation, and the turns above it stay readable. How much the agent is carrying is not known until a turn has run.",
+        "ok"     : true,
+        "props"  : {}
+      },
+      "effects": [
+        {
+          "id"   : "agent.compact",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "plan-proposed",
+      "key"      : "cmd:agent.resumeThread",
+      "offer": {
+        "id"     : "agent.resumeThread",
+        "label"  : "Continue",
+        "tooltip": "Continue this conversation — the agent is shown everything above.",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No saved conversation is open."
+        }
+      },
+      "effects": [
+        {
+          "id": "agent.resumeThread"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "plan-proposed",
+      "key"      : "cmd:agent.stop",
+      "offer": {
+        "id"     : "agent.stop",
+        "label"  : "Stop",
+        "tooltip": "Stop the agent after the step it is on. What it already did is kept.",
+        "ok"     : false,
+        "refusal": {
+          "reason": "The agent is not running."
+        }
+      },
+      "effects": [
+        {
+          "id": "agent.stop"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "plan-proposed",
+      "key"      : "fx:agent.answer#plan/reject",
+      "offer": {
+        "id"     : "agent.answer",
+        "label"  : "Reject",
+        "tooltip": "Turn this plan down. Nothing is written; say why next.",
+        "on"     : "plan/reject",
+        "ok"     : true,
+        "props": {
+          "to"    : "plan",
+          "answer": "reject"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "agent.answer",
+          "props": {
+            "to"    : "plan",
+            "answer": "reject"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "plan-proposed",
+      "key"      : "fx:agent.answer#plan/approve",
+      "offer": {
+        "id"     : "agent.answer",
+        "label"  : "Approve →",
+        "tooltip": "Let the agent carry the plan out and commit it.",
+        "on"     : "plan/approve",
+        "ok"     : true,
+        "props": {
+          "to"    : "plan",
+          "answer": "approve"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "agent.answer",
+          "props": {
+            "to"    : "plan",
+            "answer": "approve"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "confirming",
+      "key"      : "cmd:agent.setMode",
+      "offer": {
+        "id"     : "agent.setMode",
+        "label"  : "PLAN",
+        "tooltip": "Plan mode: the agent reads but never writes. Click to let it apply edits.",
+        "ok"     : true,
+        "props": {
+          "mode": "execute"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setMode",
+          "props": {
+            "mode": "execute"
+          }
+        }
+      ],
+      "shortcut" : "Shift+Tab"
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "confirming",
+      "key"      : "cmd:agent.setModel",
+      "offer": {
+        "id"      : "agent.setModel",
+        "label"   : "claude-opus-5",
+        "tooltip" : "Which model the agent answers with. Switching takes effect next turn.",
+        "supplies": ["modelId"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "agent.setModel",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "confirming",
+      "key"      : "cmd:agent.setEffort",
+      "offer": {
+        "id"      : "agent.setEffort",
+        "label"   : "effort: medium",
+        "tooltip" : "How hard the model thinks before answering. Higher costs more.",
+        "supplies": ["effort"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "agent.setEffort",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "confirming",
+      "key"      : "cmd:agent.setBudget",
+      "offer": {
+        "id"      : "agent.setBudget",
+        "label"   : "budget 200k",
+        "tooltip": "What one turn may spend, counting fresh input and output but not what the cache served. This turn stops once it has spent 200k. Nothing spent on the last turn yet. The setting is remembered between sessions.",
+        "supplies": ["budget"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "agent.setBudget",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "confirming",
+      "key"      : "cmd:agent.openThread",
+      "offer": {
+        "id"      : "agent.openThread",
+        "label"   : "Threads",
+        "tooltip": "Saved conversations. Reopening one is read-only — the agent is not shown it until Continue hands it back.",
+        "supplies": ["id"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "agent.openThread",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "confirming",
+      "key"      : "cmd:agent.newThread",
+      "offer": {
+        "id"     : "agent.newThread",
+        "label"  : "New",
+        "tooltip": "Save this conversation and start a fresh one in plan mode. Nothing is lost — the old one stays under Threads.",
+        "ok"     : true,
+        "props"  : {}
+      },
+      "effects": [
+        {
+          "id"   : "agent.newThread",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "confirming",
+      "key"      : "cmd:agent.compact",
+      "offer": {
+        "id"     : "agent.compact",
+        "label"  : "Compact",
+        "tooltip": "Summarize what has been said so far, so the agent carries a summary instead of every turn. Nothing is deleted — the summary is added to the saved conversation, and the turns above it stay readable. How much the agent is carrying is not known until a turn has run.",
+        "ok"     : false,
+        "refusal": {
+          "reason": "A turn is still running; wait for it to finish."
+        }
+      },
+      "effects": [
+        {
+          "id": "agent.compact"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "confirming",
+      "key"      : "cmd:agent.resumeThread",
+      "offer": {
+        "id"     : "agent.resumeThread",
+        "label"  : "Continue",
+        "tooltip": "Continue this conversation — the agent is shown everything above.",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No saved conversation is open."
+        }
+      },
+      "effects": [
+        {
+          "id": "agent.resumeThread"
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "confirming",
+      "key"      : "cmd:agent.stop",
+      "offer": {
+        "id"     : "agent.stop",
+        "label"  : "Stop",
+        "tooltip": "Stop the agent after the step it is on. What it already did is kept.",
+        "ok"     : true,
+        "props"  : {}
+      },
+      "effects": [
+        {
+          "id"   : "agent.stop",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "confirming",
+      "key"      : "fx:agent.answer#confirm/deny",
+      "offer": {
+        "id"     : "agent.answer",
+        "label"  : "Deny",
+        "tooltip": "Refuse run_pipeline. The agent is told and carries on.",
+        "on"     : "confirm/deny",
+        "ok"     : true,
+        "props": {
+          "to"    : "confirm",
+          "answer": "deny"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "agent.answer",
+          "props": {
+            "to"    : "confirm",
+            "answer": "deny"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "convo",
+      "module"   : "convobar",
+      "situation": "confirming",
+      "key"      : "fx:agent.answer#confirm/allow",
+      "offer": {
+        "id"     : "agent.answer",
+        "label"  : "Allow →",
+        "tooltip": "Let run_pipeline go ahead, this once.",
+        "on"     : "confirm/allow",
+        "ok"     : true,
+        "props": {
+          "to"    : "confirm",
+          "answer": "allow"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "agent.answer",
+          "props": {
+            "to"    : "confirm",
+            "answer": "allow"
+          }
         }
       ]
     },

@@ -1,8 +1,10 @@
 import {
+  allowAction,
   budgetAction,
   compact,
   compactAction,
   controls,
+  decideAction,
   effortAction,
   newThreadAction,
   resumeAction,
@@ -130,6 +132,36 @@ describe('controls', () => {
       spent    : 12,
     },
   ];
+
+  it('adds the plan card’s and the confirm card’s buttons while each is waiting', () => {
+    const plan = { id: 1, plan: { summary: 'Recast Aiko.', steps: [], files: [] } };
+    const confirm = { id: 2, tool: 'run_pipeline', detail: 'Run it.' };
+    const bare = fixtures[0]!;
+    expect(
+      controls({ ...bare, convo: state({ plan }) })
+        .map(keyOf)
+        .slice(-2),
+    ).toEqual(['fx:agent.answer#plan/reject', 'fx:agent.answer#plan/approve']);
+    expect(
+      controls({ ...bare, convo: state({ confirm }) })
+        .map(keyOf)
+        .slice(-2),
+    ).toEqual(['fx:agent.answer#confirm/deny', 'fx:agent.answer#confirm/allow']);
+    expect(decideAction(true)).toEqual({
+      ok     : true,
+      id     : 'agent.answer',
+      props  : { to: 'plan', answer: 'approve' },
+      on     : 'plan/approve',
+      label  : 'Approve →',
+      tooltip: 'Let the agent carry the plan out and commit it.',
+    });
+    expect(decideAction(false)).toMatchObject({ props: { answer: 'reject' }, label: 'Reject' });
+    expect(allowAction('run_pipeline', false)).toMatchObject({
+      props  : { to: 'confirm', answer: 'deny' },
+      tooltip: 'Refuse run_pipeline. The agent is told and carries on.',
+    });
+    expect(allowAction('run_pipeline', true).tooltip).toBe('Let run_pipeline go ahead, this once.');
+  });
 
   it('lists every control the functions produce, each key once', () => {
     for (const fixture of fixtures) {

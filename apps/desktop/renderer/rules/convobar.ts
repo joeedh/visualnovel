@@ -9,6 +9,7 @@ import type { ThreadHeader } from '../../src/shared/convo.js';
 import type { OpenedThread } from '../../src/shared/threads.js';
 import { resumeRefusal } from '../../src/shared/threads.js';
 import { refuse, type Offer } from './anchors.js';
+import { answer } from './effects.js';
 import { modeAction, modelAction } from './headerbar.js';
 import { SEPARATOR, type MenuEntry } from '../pathux/chrome/contextmenu.js';
 
@@ -199,6 +200,7 @@ export function threadsMenu(state: ThreadsMenuState): MenuEntry[] {
  * mode button is the header's offer, drawn here a second time.
  */
 export function controls(state: ConvoBarState): readonly Offer[] {
+  const confirm = state.convo.confirm;
   return [
     modeAction(state.agentMode),
     modelAction(state.model),
@@ -209,5 +211,50 @@ export function controls(state: ConvoBarState): readonly Offer[] {
     compactAction(state.convo, state.opened !== undefined),
     resumeAction(state.opened, state.model),
     stopTurnAction(state.convo.busy),
+    ...(state.convo.plan ? [decideAction(false), decideAction(true)] : []),
+    ...(confirm ? [allowAction(confirm.tool, false), allowAction(confirm.tool, true)] : []),
   ];
+}
+
+/**
+ * The plan card's two buttons, Reject first: turning the plan down writes nothing, and the
+ * accented button is never the one the hand lands on by default.
+ */
+export function decideAction(approved: boolean): Offer {
+  if (approved) {
+    return {
+      ok: true,
+      ...answer('plan', 'approve'),
+      on     : 'plan/approve',
+      label  : 'Approve →',
+      tooltip: 'Let the agent carry the plan out and commit it.',
+    };
+  }
+  return {
+    ok: true,
+    ...answer('plan', 'reject'),
+    on     : 'plan/reject',
+    label  : 'Reject',
+    tooltip: 'Turn this plan down. Nothing is written; say why next.',
+  };
+}
+
+/** The confirm card's two buttons for an always-confirm tool, Deny first for the same reason. */
+export function allowAction(tool: string, allowed: boolean): Offer {
+  if (allowed) {
+    return {
+      ok: true,
+      ...answer('confirm', 'allow'),
+      on     : 'confirm/allow',
+      label  : 'Allow →',
+      tooltip: `Let ${tool} go ahead, this once.`,
+    };
+  }
+  return {
+    ok: true,
+    ...answer('confirm', 'deny'),
+    on     : 'confirm/deny',
+    label  : 'Deny',
+    tooltip: `Refuse ${tool}. The agent is told and carries on.`,
+  };
 }

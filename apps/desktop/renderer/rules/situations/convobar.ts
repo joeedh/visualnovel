@@ -66,6 +66,36 @@ export const SITUATIONS = situations<ConvoBarState>(
     },
   },
   {
+    name : 'plan-proposed',
+    why  : 'The agent proposed a plan, so its card offers Reject and Approve.',
+    state: {
+      ...base,
+      convo: convo({
+        feed: [{ id: 1, role: 'user', text: 'recast Aiko' }],
+        plan: {
+          id  : 1,
+          plan: {
+            summary: 'Recast Aiko as a transfer student.',
+            steps  : ['Edit her sheet'],
+            files  : [],
+          },
+        },
+      }),
+    },
+  },
+  {
+    name : 'confirming',
+    why  : 'An always-confirm tool is waiting, so its card offers Deny and Allow, naming the tool.',
+    state: {
+      ...base,
+      convo: convo({
+        busy   : true,
+        feed   : [{ id: 1, role: 'user', text: 'run it' }],
+        confirm: { id: 2, tool: 'run_pipeline', detail: 'Run the pipeline over 3 shots.' },
+      }),
+    },
+  },
+  {
     name : 'reading',
     why: 'A saved conversation is open for reading, so Continue is offered and Compact is refused.',
     state: { ...base, opened: opened({ header }) },
