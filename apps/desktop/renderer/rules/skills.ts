@@ -14,7 +14,7 @@
 export { SKILLS_DIR, underSkills } from '../../src/shared/editors.js';
 
 import type { Offer } from './anchors.js';
-import { saveOffer } from './docbuffer.js';
+import { reloadOffer, saveOffer, textBox } from './docbuffer.js';
 import { SKILLS_DIR, underSkills } from '../../src/shared/editors.js';
 
 /**
@@ -68,5 +68,13 @@ export function askSkillAction(): Offer {
 
 /** Every offer the Skills pane draws from this module. */
 export function controls(state: SkillsState): readonly Offer[] {
-  return [saveOffer(state.path, state.dirty), askSkillAction()];
+  return [
+    saveOffer(state.path, state.dirty),
+    reloadOffer(RELOAD_TIP),
+    askSkillAction(),
+    textBox(state.path, TEXT_TIP),
+  ];
 }
+
+export const TEXT_TIP = 'Edit this file as text. Ctrl+S saves and commits.';
+export const RELOAD_TIP = 'Re-read this file from disk (discards an unsaved draft)';

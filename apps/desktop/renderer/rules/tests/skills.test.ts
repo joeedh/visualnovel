@@ -1,13 +1,15 @@
 import {
   NEW_SKILL_PROMPT,
+  RELOAD_TIP,
   SKILLS_DIR,
+  TEXT_TIP,
   askSkillAction,
   controls,
   skillIdOf,
   underSkills,
   type SkillsState,
 } from '../skills.js';
-import { saveOffer } from '../docbuffer.js';
+import { reloadOffer, saveOffer, textBox } from '../docbuffer.js';
 import { duplicateKeys, keyOf } from '../anchors.js';
 
 describe('underSkills', () => {
@@ -91,12 +93,23 @@ describe('controls', () => {
     ...over,
   });
 
-  it('lists the save button and the hint door, each key once', () => {
+  it('lists Save, reload, the hint door and the text box, each key once', () => {
     for (const s of [state(), state({ dirty: false }), state({ path: '' })]) {
       const listed = controls(s);
-      const each = [saveOffer(s.path, s.dirty), askSkillAction()];
-      expect(new Set(listed.map(keyOf))).toEqual(new Set(each.map(keyOf)));
+      const each = [
+        saveOffer(s.path, s.dirty),
+        reloadOffer(RELOAD_TIP),
+        askSkillAction(),
+        textBox(s.path, TEXT_TIP),
+      ];
+      expect(listed).toEqual(each);
       expect(duplicateKeys(listed)).toEqual([]);
     }
+    expect(controls(state()).map(keyOf)).toEqual([
+      'cmd:doc.write',
+      'fx:pane.view#reload',
+      'cmd:agent.run',
+      'cmd:doc.write#text',
+    ]);
   });
 });

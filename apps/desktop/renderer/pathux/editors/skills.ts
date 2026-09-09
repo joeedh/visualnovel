@@ -1,6 +1,7 @@
 import type { Button, Container } from 'pathux';
 import { api } from '../../api.js';
-import { askSkillAction, underSkills } from '../../rules/skills.js';
+import { RELOAD_TIP, TEXT_TIP, askSkillAction, underSkills } from '../../rules/skills.js';
+import { reloadOffer, textBox } from '../../rules/docbuffer.js';
 import { onInvalidate, onWrote } from '../app/bridge.js';
 import { openCommandDialog } from '../chrome/dialog.js';
 import { DocBuffer } from '../doctree/docbuffer.js';
@@ -78,8 +79,14 @@ export class SkillsEditor extends VnEditor {
     bar.label('SKILLS').style['padding'] = '0px 8px';
     this.saveBtn = bar.button('Save', () => void this.buf.save());
     this.saveBtn.description = 'Write this skill file back to disk, and commit it';
-    const reload = bar.button('⟳', () => void this.buf.reload());
-    reload.description = 'Re-read this file from disk (discards an unsaved draft)';
+    // Its own pass: the button is built once with the pane, so a record in the bar's pass would be
+    // dropped by the bar's next paint
+    const reload = reloadOffer(RELOAD_TIP);
+    redrawing('skills', 'reload').act(
+      bar.button(reload.label, () => {}),
+      reload,
+      () => void this.buf.reload(),
+    );
     bar.flushUpdate();
 
     this.adoptStyle(SKILLS_CSS);
@@ -149,7 +156,6 @@ export class SkillsEditor extends VnEditor {
 
     this.text = document.createElement('textarea');
     this.text.className = 'sk-text';
-    this.text.title = 'Edit this file as text. Ctrl+S saves and commits.';
     this.text.spellcheck = false;
     this.text.addEventListener('input', () => {
       this.buf.text = this.text.value;
@@ -218,7 +224,9 @@ export class SkillsEditor extends VnEditor {
     // Re-recorded on every paint rather than once with the bar: the bar is built at init and
     // the offer changes with the buffer, so a record kept from init would say `Nothing to save`
     // for the life of the pane.
-    redrawing('skills', 'bar').act(this.saveBtn, this.buf.saveOffer, () => void this.buf.save());
+    const anchors = redrawing('skills', 'bar');
+    anchors.act(this.saveBtn, this.buf.saveOffer, () => void this.buf.save());
+    anchors.record(this.text, textBox(this.buf.path, TEXT_TIP));
     this.noteEl.textContent = this.buf.note;
     this.noteEl.className = this.buf.bad ? 'sk-note bad' : 'sk-note';
     this.noteEl.title = this.buf.note;

@@ -5,7 +5,7 @@ import type { SkillsState } from '../skills.js';
 export const SITUATIONS = situations<SkillsState>(
   {
     name : 'none-open',
-    why  : 'No skill is open, so Save is refused; the hint’s agent button is always offered.',
+    why: 'No skill is open, so Save and the text box are refused; reload and the hint’s agent button are always offered.',
     state: { path: '', dirty: false },
   },
   {

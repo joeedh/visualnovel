@@ -460,7 +460,7 @@
       "module": "skills",
       "editor": "skills",
       "name"  : "none-open",
-      "why"   : "No skill is open, so Save is refused; the hint’s agent button is always offered."
+      "why": "No skill is open, so Save and the text box are refused; reload and the hint’s agent button are always offered."
     },
     {
       "module": "skills",
@@ -19298,6 +19298,31 @@
       "editor"   : "skills",
       "module"   : "skills",
       "situation": "none-open",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this file from disk (discards an unsaved draft)",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "skills",
+      "module"   : "skills",
+      "situation": "none-open",
       "key"      : "cmd:agent.run",
       "offer": {
         "id"     : "agent.run",
@@ -19315,6 +19340,29 @@
           "props": {
             "input": "Write a new skill under .aiagent/skills — a SKILL.md with name, description and when-to-use in its front-matter, and the procedure below it. It should: "
           }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "skills",
+      "module"   : "skills",
+      "situation": "none-open",
+      "key"      : "cmd:doc.write#text",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "The file, as text",
+        "tooltip" : "Edit this file as text. Ctrl+S saves and commits.",
+        "on"      : "text",
+        "supplies": ["text", "seenHash"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "No document is open."
+        }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
         }
       ]
     },
@@ -19345,6 +19393,31 @@
       "editor"   : "skills",
       "module"   : "skills",
       "situation": "open",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this file from disk (discards an unsaved draft)",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "skills",
+      "module"   : "skills",
+      "situation": "open",
       "key"      : "cmd:agent.run",
       "offer": {
         "id"     : "agent.run",
@@ -19361,6 +19434,32 @@
           "id"   : "agent.run",
           "props": {
             "input": "Write a new skill under .aiagent/skills — a SKILL.md with name, description and when-to-use in its front-matter, and the procedure below it. It should: "
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "skills",
+      "module"   : "skills",
+      "situation": "open",
+      "key"      : "cmd:doc.write#text",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "The file, as text",
+        "tooltip" : "Edit this file as text. Ctrl+S saves and commits.",
+        "on"      : "text",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": ".vnauthor/skills/casting/SKILL.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": ".vnauthor/skills/casting/SKILL.md"
           }
         }
       ]
@@ -19395,6 +19494,31 @@
       "editor"   : "skills",
       "module"   : "skills",
       "situation": "open-dirty",
+      "key"      : "fx:pane.view#reload",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this file from disk (discards an unsaved draft)",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "skills",
+      "module"   : "skills",
+      "situation": "open-dirty",
       "key"      : "cmd:agent.run",
       "offer": {
         "id"     : "agent.run",
@@ -19411,6 +19535,32 @@
           "id"   : "agent.run",
           "props": {
             "input": "Write a new skill under .aiagent/skills — a SKILL.md with name, description and when-to-use in its front-matter, and the procedure below it. It should: "
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "skills",
+      "module"   : "skills",
+      "situation": "open-dirty",
+      "key"      : "cmd:doc.write#text",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "The file, as text",
+        "tooltip" : "Edit this file as text. Ctrl+S saves and commits.",
+        "on"      : "text",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": ".vnauthor/skills/casting/SKILL.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": ".vnauthor/skills/casting/SKILL.md"
           }
         }
       ]
