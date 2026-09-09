@@ -1,10 +1,14 @@
 # A UX behaviour model — tasklist
 
-Status: **in progress**. Plans 1, 2 and 3 are shipped
+Status: **in progress**. Plans 1 to 4 are shipped
 ([`archive/one-offer-and-the-six-rule-modules.md`](archive/one-offer-and-the-six-rule-modules.md),
 [`archive/the-ten-inline-editors-get-a-rule-module.md`](archive/the-ten-inline-editors-get-a-rule-module.md),
-[`archive/situations-and-the-derived-model.md`](archive/situations-and-the-derived-model.md));
-the other five are not written, and nothing is scheduled. This file is not a plan; it
+[`archive/situations-and-the-derived-model.md`](archive/situations-and-the-derived-model.md),
+[`archive/pseudo-commands-and-a-controls-effects.md`](archive/pseudo-commands-and-a-controls-effects.md)).
+Plan 5 was already complete in the submodule before the batch began, and plan 6 is written
+and pressure-tested
+([`meta-tag-system.md`](../../vendor/path.ux/documentation/plans/meta-tag-system.md)).
+Plans 7 and 8 are not written, and nothing is scheduled. This file is not a plan; it
 proposes how the work in
 [`../research/ux-behaviour-model.md`](../research/ux-behaviour-model.md) and its companion
 [`../research/formalizing-the-rules-modules.md`](../research/formalizing-the-rules-modules.md)
@@ -16,29 +20,30 @@ machine-readable model, derived rather than hand-written, traced to the code tha
 implements it, queryable by an LLM and checkable by a linter.
 
 The file also records what reading `vendor/path.ux` against the reports turned up. Two of
-the things the reports list as owed are already built, one is a bug rather than a plan,
-and one — refusals carrying a sentence — has grown a path.ux half that neither report knew
-about. Those are in
+the things the reports list as owed are already built, two were bugs rather than plans and
+have since been fixed, and one — refusals carrying a sentence — has grown a path.ux half
+that neither report knew about. Those are in
 [What refusals look like once path.ux carries them](#what-refusals-look-like-once-pathux-carries-them),
 [What is actually owed in the submodule](#what-is-actually-owed-in-the-submodule) and
-[Two path.ux bugs, independent of the batch](#two-pathux-bugs-independent-of-the-batch).
+[Two path.ux bugs, independent of the batch — both fixed](#two-pathux-bugs-independent-of-the-batch--both-fixed).
 
 ## The proposed plans
 
-| #   | Plan                                                                                                  | Where            | Depends on | Covers                                                                                                                                                 |
-| --- | ----------------------------------------------------------------------------------------------------- | ---------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | [One `Offer`, and the six rule modules unified](archive/one-offer-and-the-six-rule-modules.md)        | app              | —          | `Offer` absorbs `ActOptions`, `tooltip` becomes required, the refused branch carries a `Refusal`, the six modules gain `controls()`                    |
-| 2   | [The ten inline editors get a rule module](archive/the-ten-inline-editors-get-a-rule-module.md)       | app              | 1          | `rules/<editor>.ts` extracted from each editor that computes offers beside its DOM code                                                                |
-| 3   | [Situations, and the derived model](archive/situations-and-the-derived-model.md)                      | app              | 1, 2       | The fixture list, the headless driver, the zod schema, `ux-model.json`, and the three lint rules the derived tier answers                              |
-| 4   | [Pseudo-commands, and a control's list of effects](archive/pseudo-commands-and-a-controls-effects.md) | app              | 1          | The closed effect vocabulary in the catalog, closures rewritten as recorded effects, and the four rules effects unlock                                 |
-| 5   | Disabling menu items, and refusals that carry a reason                                                | `vendor/path.ux` | —          | **Already written and complete**, and the authority on its own scope: `menu-item-disabling.md`, stages 1-5 done, stage 6 (the native menu bar) dropped |
-| 6   | Finishing the meta-tag system                                                                         | `vendor/path.ux` | 5          | A `widgetPath` scheme, a `refusal` accessor on `StdUXMeta`, a validating deserialize, and the `toolPath` builders                                      |
-| 7   | The measured tier reads tags                                                                          | app              | 3, 6       | `act()` writes a `StdUXMeta`, the sweep walks widgets instead of `window.__vnAnchors`, derived compared against measured                               |
-| 8   | `affects` on every command, and the executed tier                                                     | app              | —          | Each command declaring the subtrees and `ui.*` fields it may touch, verified by diffing the undo snapshot                                              |
+| #   | Plan                                                                                                  | Where                                | Depends on | Covers                                                                                                                                                                                           |
+| --- | ----------------------------------------------------------------------------------------------------- | ------------------------------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | [One `Offer`, and the six rule modules unified](archive/one-offer-and-the-six-rule-modules.md)        | app                                  | —          | `Offer` absorbs `ActOptions`, `tooltip` becomes required, the refused branch carries a `Refusal`, the six modules gain `controls()`                                                              |
+| 2   | [The ten inline editors get a rule module](archive/the-ten-inline-editors-get-a-rule-module.md)       | app                                  | 1          | `rules/<editor>.ts` extracted from each editor that computes offers beside its DOM code                                                                                                          |
+| 3   | [Situations, and the derived model](archive/situations-and-the-derived-model.md)                      | app                                  | 1, 2       | The fixture list, the headless driver, the zod schema, `ux-model.json`, and the three lint rules the derived tier answers                                                                        |
+| 4   | [Pseudo-commands, and a control's list of effects](archive/pseudo-commands-and-a-controls-effects.md) | app                                  | 1          | The closed effect vocabulary in the catalog, closures rewritten as recorded effects, and the four rules effects unlock                                                                           |
+| 5   | Disabling menu items, and refusals that carry a reason                                                | `vendor/path.ux`                     | —          | **Already written and complete**, and the authority on its own scope: `menu-item-disabling.md`, stages 1-5 done, stage 6 (the native menu bar) dropped                                           |
+| 6   | [Finishing the meta-tag system](../../vendor/path.ux/documentation/plans/meta-tag-system.md)          | `vendor/path.ux` + `path-controller` | 5          | Written 2026-09-09. The barrel exports, an owner type covering a raw DOM node, a scope-plus-segment `widgetPath`, `enabled` and `refusal`, a validating deserialize, and the `toolPath` builders |
+| 7   | The measured tier reads tags                                                                          | app                                  | 3, 6       | `act()` writes a `StdUXMeta`, the sweep walks widgets instead of `window.__vnAnchors`, derived compared against measured                                                                         |
+| 8   | `affects` on every command, and the executed tier                                                     | app                                  | —          | Each command declaring the subtrees and `ui.*` fields it may touch, verified by diffing the undo snapshot                                                                                        |
 
 Plans 1, 2, 3 and 7 are the model itself. Plan 4 widens its vocabulary past commands.
-Plans 5 and 6 are submodule work committed separately, and 5 is already planned there.
-Plan 8 is independent of every other row and is worth taking on its own merits.
+Plans 5 and 6 are submodule work committed separately; 5 was already complete there before
+the batch began, and 6 is written and reaches `path-controller` as well. Plan 8 is
+independent of every other row and is worth taking on its own merits.
 
 ## Why this split
 
@@ -138,6 +143,16 @@ in path.ux while this file was being written, so the shape below is the one in t
 There is no scheme today — `walkWidgets` and `widgetPathOf` appear only in the commented
 example at `ui_meta_tags.ts:31`. Plan 6 settles it, and the two candidates are not equal.
 
+**Superseded in part by the plan.** Rejecting `saveUIData`'s positional walk and `_id`
+still holds, and so does hashing what a widget does. The rest does not: a hash chained
+over meta-bearing ancestors assumed a tree that nothing builds, since only controls carry
+tags and a rule module answers with a flat `Offer[]`. The plan's answer is a
+caller-supplied scope plus one segment, an explicit `identity()` in place of a hash over
+the serialized tag, and a repeated segment reported rather than disambiguated by an
+occurrence index — which the two tiers cannot count alike. Read
+[`meta-tag-system.md`](../../vendor/path.ux/documentation/plans/meta-tag-system.md) for
+the scheme; what follows is the reasoning it starts from.
+
 - **What the field's doc comment points at is positional.** `saveUIData`
   (`vendor/path.ux/scripts/core/base/ui_savedata.ts:12`) addresses a widget by two numbers
   per hop — the child index, and 1/0 for whether the hop crossed into a shadow root
@@ -215,8 +230,13 @@ Routing the two reports' open decisions, so no plan starts by rediscovering them
 - **Plan 5** — the tooltip expander the long form is written for, which `tooltipText`
   appends in the meantime. Whether a refusal disables a control is already answered: it
   does not, and a refusal on an enabled control is not shown at all.
-- **Plan 6** — the `widgetPath` scheme; whether the receiving side calls `validateJSON` or
-  a STRUCT-to-zod converter.
+- **Plan 6** (answered) — the `widgetPath` scheme is a caller-supplied scope plus one
+  segment hashed from an explicit `identity()`, and the receiving side calls
+  `validateJSON` rather than converting the STRUCT to zod, because a converter is a second
+  schema to keep in step and the boundary is between two halves of one program. A consumer
+  is still free to validate its own assembled dump with zod, as the desktop app does for
+  `anchors.json`. See
+  [`meta-tag-system.md`](../../vendor/path.ux/documentation/plans/meta-tag-system.md).
 - **Plan 7** — whether `AnchorDump` is replaced outright or kept as a projection for the
   tour's resolver; whether `anchors.json` is absorbed into the model's measured fields or
   kept as the tour's smaller input; how a record names the api a path resolves against.
@@ -295,23 +315,27 @@ true, and the other half has no consumer in this app.
   become a named effect before "a keyboard shortcut is bound once" can be checked.
 - **`widgetPath` has no scheme.** Covered above.
 
-## Two path.ux bugs, independent of the batch
+## Two path.ux bugs, independent of the batch — both fixed
 
-Found while checking the report's claims. Both belong to the submodule, neither is plan
-work, and the second one matters to the tooltip rule.
+Found while checking the report's claims. Both were fixed in the submodule before plan 6
+was written, and re-checking them is what establishes that the tag's two proxying
+accessors read trustworthy values. Kept here with their original wording so the claim is
+traceable; neither is work.
 
-- **Three builders ignore `dataPrefix`.** `textareaImpl`
+- **Three builders ignore `dataPrefix`.** Fixed: all three join
+  (`container_widgets.ts:356`, `:386`, `container_enum.ts:27`), and every other site that
+  writes the `datapath` attribute joins it earlier in the same function. `textareaImpl`
   (`vendor/path.ux/scripts/core/utils/container_widgets.ts:365`), `viewerImpl` (`:395`)
   and `iconcheckImpl` (`container_enum.ts:27`) store the raw argument, where every other
   site stores `self._joinPrefix(inpath)` — `textbox`, `pathlabel`, `colorbutton`,
   `curve1d`, `vecpopup`, `colorPicker`, `check`, `listenum`, `prop`, `slider` and
   `listbox` all join. Under a container with a prefix those three record a relative path
   that does not resolve standalone, which is what the `valuePath` rule would report.
-- **`iconcheck` never gets its tooltip.** `container_enum.ts:24` reads
-  `ret.description = name ?? ""`, and no `name` is in that function's scope — the
-  parameter is `description`, and the `name` bindings further down the file belong to
-  `checkImpl`. It resolves to the global `name`, so the description argument is dropped
-  and the tooltip is the empty string.
+- **`iconcheck` never gets its tooltip.** Fixed: `container_enum.ts:24` reads
+  `description ?? ""`. `container_enum.ts:24` reads `ret.description = name ?? ""`, and no
+  `name` is in that function's scope — the parameter is `description`, and the `name`
+  bindings further down the file belong to `checkImpl`. It resolves to the global `name`,
+  so the description argument is dropped and the tooltip is the empty string.
 
 ## The list
 
@@ -323,9 +347,11 @@ work, and the second one matters to the tooltip rule.
       [`archive/situations-and-the-derived-model.md`](archive/situations-and-the-derived-model.md))
 - [x] 4 — pseudo-commands, and a control's list of effects (shipped 2026-09-08:
       [`archive/pseudo-commands-and-a-controls-effects.md`](archive/pseudo-commands-and-a-controls-effects.md))
-- [ ] 5 — disabling menu items, and refusals that carry a reason (path.ux, already
-      planned)
-- [ ] 6 — finishing the meta-tag system (path.ux)
+- [x] 5 — disabling menu items, and refusals that carry a reason (path.ux; complete before
+      the batch began, stage 6 dropped:
+      [`menu-item-disabling.md`](../../vendor/path.ux/documentation/plans/menu-item-disabling.md))
+- [ ] 6 — finishing the meta-tag system (path.ux; written 2026-09-09:
+      [`meta-tag-system.md`](../../vendor/path.ux/documentation/plans/meta-tag-system.md))
 - [ ] 7 — the measured tier reads tags
 - [ ] 8 — `affects` on every command, and the executed tier
 
@@ -374,6 +400,9 @@ either can be dropped without invalidating the rest.
   — the companion report, and the authority on plans 1 and 2.
 - [`menu-item-disabling.md`](../../vendor/path.ux/documentation/plans/menu-item-disabling.md)
   — plan 5, in the submodule, and the authority on its own scope.
+- [`meta-tag-system.md`](../../vendor/path.ux/documentation/plans/meta-tag-system.md) —
+  plan 6, in the submodule, and the authority on the `widgetPath` scheme and the tag's
+  public surface.
 - [`../reference/guided-tours.md`](../reference/guided-tours.md) — the anchor layer and
   the sweep as they ship.
 - [`../reference/command-system.md`](../reference/command-system.md) — the registry and
