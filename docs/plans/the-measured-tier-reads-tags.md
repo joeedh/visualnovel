@@ -429,15 +429,55 @@ As shipped:
 
 ### Stage 6 — the widened comparison
 
-`uxmodel.test.ts` compares derived and measured on the situation-invariant fields only —
-`id`, `on`, `form`, `supplies`, `then` — keyed on `(editor, widgetPath)`, and in both
-directions for existence within a home the sweep actually visited. `enabled`, `tooltip`
-and the refusal sentence are excluded, with the reason from
-[the situation mismatch](#the-situation-mismatch) written into the test's doc comment so
-nobody adds them later.
+**Done, on a narrower key than described.** `uxmodel.test.ts` compares derived and
+measured on the situation-invariant fields only — `id`, `on`, `form`, `supplies`, `then` —
+keyed on `(editor, widgetPath)`, and in both directions for existence within a home the
+sweep actually visited. `enabled`, `tooltip` and the refusal sentence are excluded, with
+the reason from [the situation mismatch](#the-situation-mismatch) written into the test's
+doc comment so nobody adds them later.
 
 `header` is excluded explicitly: it has zero measured control records, for the structural
 reason above.
+
+As shipped. Two findings changed this stage, both measured against the swept project
+rather than argued:
+
+- **`(editor, widgetPath)` cannot key the whole comparison.** 223 of the 339 swept
+  controls have a `widgetPath` the derived tier never produces. The split is exact: **all
+  44 swept controls with no `on` match a derived path; of the 295 with one, 72 match and
+  223 do not.** `identity()` carries `on`, and `on` is usually a subject — a scene id, a
+  line id, an asset hash. The derived tier's subjects come from fixtures and the sweep's
+  from the project on disk, so the two tiers name a per-subject control differently by
+  construction. This is the same mismatch as
+  [the situation mismatch](#the-situation-mismatch), one level down: not only is a
+  fixture's _state_ not the screen's, its _subjects_ are not either.
+- **`then` cannot be compared by value.** Its props carry subjects too, and `view.open`'s
+  `where` comes from `routeFor` over what is visible, so a swept row says `here` where the
+  fixture says `elsewhere`. Compared **by shape** — each action's id and its prop names,
+  sorted — every one of the 339 agrees.
+
+So the test asks two things instead of one:
+
+- **Every swept control has a derived record in its editor agreeing on `id`, `form`,
+  `supplies` and the shape of `then`** — unconditionally, where the old test compared
+  `form` and `supplies` only when the swept record carried them, and never compared `then`
+  at all. 339 of 339 pass.
+- **Every swept control whose `widgetPath` the derived tier also produces agrees with the
+  derived records at that path on `key`, `form`, `supplies` and the shape of `then`.** 116
+  controls, 0 disagreements. Comparing `key` is how `id` and `on` are compared without
+  inverting `keyOf` in the test. A `toBeGreaterThan(100)` keeps a rename from emptying the
+  population and leaving the rule passing vacuously.
+
+The reverse direction is not a rule, and the plan was wrong to ask for it: **170 derived
+`(editor, widgetPath)` pairs sit in homes the sweep visited and were not drawn there** —
+the sweep already prints them per home as "N derived command(s) not drawn". A situation
+describes a state the swept project never reached, which is what a situation list is for.
+
+`header` needed no explicit exclusion: with no measured control records it never enters
+either direction. The test says so rather than filtering.
+
+`anchors.json`'s control records gain `then`, which is what makes the tail comparable at
+all.
 
 ### Stage 7 — the sweep, and the docs
 

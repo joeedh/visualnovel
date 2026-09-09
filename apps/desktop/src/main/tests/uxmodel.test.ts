@@ -8,7 +8,13 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { desktopEffects } from '../commands/catalog-entry.js';
 import { createDesktopRegistry } from '../commands/index.js';
-import { actionProblems, actionsOf, paletteMatches, UX_MODEL } from '../../shared/uxmodel.js';
+import {
+  actionProblems,
+  actionsOf,
+  paletteMatches,
+  UX_MODEL,
+  type UxAction,
+} from '../../shared/uxmodel.js';
 
 const model = UX_MODEL.parse(
   JSON.parse(readFileSync(resolve(__dirname, '../../../ux-model.json'), 'utf8')),
@@ -33,9 +39,12 @@ interface SweptRecord {
   id: string;
   editor: string;
   key?: string;
+  /** The meta tag's own name for the control, on a control record. Menu records carry none. */
+  widgetPath?: string;
   when?: string;
   supplies?: string[];
   form?: boolean;
+  then?: UxAction[];
   refused?: string;
 }
 
@@ -80,29 +89,89 @@ describe('ux-model.json against the registry', () => {
 });
 
 /**
- * One direction only: what the sweep drew, the situations must list. The other direction is not
- * a rule, because a situation can describe a state the swept project never reached.
+ * The derived model against the sweep, on the fields a fixture and a live screen can agree about.
+ *
+ * One direction only: what the sweep drew, the situations must list. The other is not a rule,
+ * because a situation can describe a state the swept project never reached — 170 derived
+ * `(editor, widgetPath)` pairs in homes the sweep visited were not drawn there.
+ *
+ * **`enabled`, the tooltip and the refusal sentence are deliberately not compared, and must not
+ * be added.** The derived tier is situation-indexed and the measured tier is not: a rule module
+ * answers `controls(state)` once per situation, so 981 derived control records collapse to 302
+ * `(editor, widgetPath)` pairs, 47 of which carry records that disagree with each other on
+ * `offer.ok`. A measured record observes one screen state and keys onto several derived records
+ * holding contradictory values for exactly those fields, so the comparison would be a coin toss.
+ * They have a better oracle in any case: the sweep asks `stack.check` per command anchor and
+ * reports both a verdict and a wording disagreement, and the stack is what the rules echo.
+ *
+ * Prop values are out for a second reason. The derived tier's subjects are fixtures and the
+ * sweep's are the swept project's, so a scene id, an asset hash and `view.open`'s `where` differ
+ * by construction. `then` is compared by shape — each action's id and its prop names — which is
+ * the part a fixture and a project do share.
+ *
+ * `header` needs no exclusion: it has no measured control records at all, because the sweep
+ * iterates `view.open`'s editor list and the header is not an editor.
  */
 describe('ux-model.json against anchors.json', () => {
   const controls = model.records.filter((r) => r.via === 'control');
-  const same = (a: readonly string[] | undefined, b: readonly string[] | undefined) =>
-    JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  const drew = sweep.records.filter((record) => record.key !== undefined);
+  const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  const shapeOf = (then: readonly UxAction[] | undefined) =>
+    (then ?? []).map(
+      (step) =>
+        `${step.id}(${Object.keys(step.props ?? {})
+          .sort()
+          .join(',')})`,
+    );
 
-  it('lists every control the sweep drew, with the same form and supplies', () => {
-    const unlisted = sweep.records
-      .filter((swept) => swept.key !== undefined)
+  it('lists every control the sweep drew, with the same form, supplies and tail', () => {
+    const unlisted = drew
       .filter(
         (swept) =>
           !controls.some(
             (record) =>
               record.editor === swept.editor &&
               record.offer.id === swept.id &&
-              (swept.form === undefined || record.offer.form === swept.form) &&
-              (swept.supplies === undefined || same(record.offer.supplies, swept.supplies)),
+              same(record.offer.form, swept.form) &&
+              same(record.offer.supplies, swept.supplies) &&
+              same(shapeOf(record.offer.ok ? record.offer.then : undefined), shapeOf(swept.then)),
           ),
       )
       .map((swept) => `${swept.editor} ${swept.key}`);
     expect(unlisted).toEqual([]);
+  });
+
+  /**
+   * The two tiers name a control the same way, wherever both can name it.
+   *
+   * Only some controls can be named on both sides. `widgetSegment` hashes each tool's
+   * `identity()`, which carries the offer's `on`, and `on` is often a subject — a scene id, a
+   * line id, an asset hash. The derived tier's subjects come from fixtures and the sweep's from
+   * the swept project, so those two names differ by construction and there is nothing to compare.
+   * What is left is every control whose `on` is fixed or absent, and there the path must be the
+   * same string on both sides and must stand for the same offer.
+   */
+  it('gives one control one widgetPath in both tiers', () => {
+    const derivedAt = new Map<string, typeof controls>();
+    for (const record of controls) {
+      const at = `${record.editor} ${record.widgetPath}`;
+      derivedAt.set(at, [...(derivedAt.get(at) ?? []), record]);
+    }
+    const shared = drew.filter((swept) => derivedAt.has(`${swept.editor} ${swept.widgetPath}`));
+    // Guards against the day a rename empties the population and leaves the rule passing vacuously
+    expect(shared.length).toBeGreaterThan(100);
+    const disagreeing = shared.flatMap((swept) =>
+      (derivedAt.get(`${swept.editor} ${swept.widgetPath}`) ?? [])
+        .filter(
+          (record) =>
+            record.key !== swept.key ||
+            !same(record.offer.form, swept.form) ||
+            !same(record.offer.supplies, swept.supplies) ||
+            !same(shapeOf(record.offer.ok ? record.offer.then : undefined), shapeOf(swept.then)),
+        )
+        .map((record) => `${swept.editor} ${swept.key} vs ${record.module}/${record.situation}`),
+    );
+    expect(disagreeing).toEqual([]);
   });
 
   it('lists the same menu entries as the sweep, entry for entry', () => {

@@ -78,6 +78,7 @@ function read(anchor) {
   const tag = anchor.tag ?? {};
   const tool = (tag.tools ?? [])[0] ?? {};
   const supplies = tool.supplies ?? [];
+  const then = JSON.parse(tool.then ?? '[]');
   return {
     key       : anchor.key,
     editor    : anchor.editor,
@@ -88,6 +89,7 @@ function read(anchor) {
     reason    : tag.refusal?.reason,
     ...(supplies.length > 0 ? { supplies } : {}),
     ...(tool.form ? { form: true } : {}),
+    ...(then.length > 0 ? { then } : {}),
   };
 }
 
@@ -230,6 +232,7 @@ async function sweepHome(editor) {
       widgetPath: anchor.widgetPath,
       ...(anchor.supplies ? { supplies: anchor.supplies } : {}),
       ...(anchor.form ? { form: true } : {}),
+      ...(anchor.then ? { then: anchor.then } : {}),
       ...(anchor.enabled ? {} : { refused: anchor.reason ?? '' }),
     });
     // An effect has no precondition in the stack, so there is nothing to ask. An anchor that
