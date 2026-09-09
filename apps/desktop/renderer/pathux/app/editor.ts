@@ -9,7 +9,6 @@ import {
 } from 'pathux';
 import {
   EDITOR_IDS,
-  PIN_NOUN,
   editorTitle,
   editorTooltip,
   pinFieldOf,
@@ -22,6 +21,8 @@ import { pinnedView } from '../doctree/pin.js';
 import type { VnScreen } from './screen.js';
 import type { ShellState } from './state.js';
 import { closeStruct, type StructField } from '../commands/structfields.js';
+import { pinAction } from '../../rules/pin.js';
+import { redrawing } from '../tour/anchors.js';
 
 /**
  * Base class for every editor in the shell: a column container inside the area's shadow
@@ -62,14 +63,18 @@ export class VnEditor extends Area {
 
   /** Which selection field this pane can be pinned to — `undefined` for one that follows none. */
   get pinField(): PinField | undefined {
-    const cls = this.constructor as unknown as { define(): { areaname: string } };
-    return pinFieldOf(cls.define().areaname);
+    return pinFieldOf(this.areaname);
+  }
+
+  private get areaname(): EditorId {
+    const cls = this.constructor as unknown as { define(): { areaname: EditorId } };
+    return cls.define().areaname;
   }
 
   /**
    * The pin, for a pinnable editor's own header row. One toggle rather than two buttons. It draws
-   * as the pin icon once the icon sheet has one, and as a checkbox until then. Its tooltip says
-   * what pinning does, because "Pin" alone tells an author nothing about following.
+   * as the pin icon once the icon sheet has one, and as a checkbox until then. Its offer comes
+   * from `rules/pin.ts`, and is re-recorded whenever the toggle flips.
    *
    * Pinning snapshots what the pane is on at that moment. Unpinning jumps back to what the rest of
    * the app is looking at, and the editor's own `update()` sees that as an ordinary selection
@@ -93,19 +98,17 @@ export class VnEditor extends Area {
   }
 
   private drawPin(row: Container, field: PinField): void {
-    const noun = PIN_NOUN[field];
-
-    const say = (on: boolean): string =>
-      on
-        ? `Pinned to this ${noun}. Click to follow the selection again.`
-        : `Keep this pane on this ${noun} while the rest of the app moves on.`;
-
     const toggle =
       VN_ICONS.pin >= 0
         ? row.iconcheck(undefined, VN_ICONS.pin)
-        : row.check(undefined, `pin ${noun}`);
+        : row.check(undefined, pinAction(field, false).label);
     toggle.checked = this.pinned;
-    toggle.description = say(this.pinned);
+    // Recorded rather than acted: path.ux drives the toggle through `on_change`. A fresh pass on
+    // every flip, because the offer's tooltip says which way the next click goes
+    const present = (): void => {
+      redrawing(this.areaname, 'pin').record(toggle, pinAction(field, this.pinned));
+    };
+    present();
     toggle.on_change = (next: unknown) => {
       const on = next === true;
       if (on === this.pinned) return;
@@ -113,7 +116,7 @@ export class VnEditor extends Area {
       // false and the pin must start out holding what the pane is already showing
       if (on) this.pinnedTo = this.ui[field];
       this.pinned = on;
-      toggle.description = say(on);
+      present();
       // The pin is saved with the pane and the mesh's shape did not change, so the save is asked
       // for here. It goes through the screen's own hook rather than `persist.layoutChanged`,
       // because persistence already imports this module and that dependency goes only one way.

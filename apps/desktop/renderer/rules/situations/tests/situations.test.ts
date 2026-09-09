@@ -9,6 +9,7 @@ import { SITUATIONS as documents } from '../documents.js';
 import { SITUATIONS as gengraph } from '../gengraph.js';
 import { SITUATIONS as inspector } from '../inspector.js';
 import { SITUATIONS as onboarding } from '../onboarding.js';
+import { pinSituations } from '../pin.js';
 import { SITUATIONS as play } from '../play.js';
 import { SITUATIONS as projectbar } from '../projectbar.js';
 import { SITUATIONS as reportconvo } from '../reportconvo.js';
@@ -28,6 +29,7 @@ import * as documentsRules from '../../documents.js';
 import * as gengraphRules from '../../gengraph.js';
 import * as inspectorRules from '../../inspector.js';
 import * as onboardingRules from '../../onboarding.js';
+import * as pinRules from '../../pin.js';
 import * as playRules from '../../play.js';
 import * as projectbarRules from '../../projectbar.js';
 import * as reportconvoRules from '../../reportconvo.js';
@@ -76,6 +78,11 @@ const ROWS: Row<unknown>[] = [
   row('tasklist', tasklist, tasklistRules.controls),
   row('timeline', timeline, timelineRules.controls),
   row('wiki', wiki, wikiRules.controls),
+  ...pinRules.PINNABLE.map(({ editor, field }) =>
+    row(`pin/${editor}`, pinSituations(field), (state: pinRules.PinState) =>
+      pinRules.controls(field, state),
+    ),
+  ),
 ];
 
 describe('situations', () => {

@@ -29,6 +29,7 @@ import * as documents from './documents.js';
 import * as gengraph from './gengraph.js';
 import * as inspector from './inspector.js';
 import * as onboarding from './onboarding.js';
+import * as pin from './pin.js';
 import * as play from './play.js';
 import * as projectbar from './projectbar.js';
 import * as reportconvo from './reportconvo.js';
@@ -51,6 +52,7 @@ import { SITUATIONS as DOCUMENTS } from './situations/documents.js';
 import { SITUATIONS as GENGRAPH } from './situations/gengraph.js';
 import { SITUATIONS as INSPECTOR } from './situations/inspector.js';
 import { SITUATIONS as ONBOARDING } from './situations/onboarding.js';
+import { pinSituations } from './situations/pin.js';
 import { SITUATIONS as PLAY } from './situations/play.js';
 import { SITUATIONS as PROJECTBAR } from './situations/projectbar.js';
 import { SITUATIONS as REPORTCONVO } from './situations/reportconvo.js';
@@ -119,6 +121,10 @@ export const ROWS: readonly Row<unknown>[] = [
     'apps/desktop/renderer/rules/timeline/controls.ts',
   ),
   row('wiki', 'wiki', WIKI, wiki.controls),
+  // One row per pinnable pane: the toggle is the base editor's, drawn in each pane's own header
+  ...pin.PINNABLE.map(({ editor, field }) =>
+    row('pin', editor, pinSituations(field), (state: pin.PinState) => pin.controls(field, state)),
+  ),
 ];
 
 /**

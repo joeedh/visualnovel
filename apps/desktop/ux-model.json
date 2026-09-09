@@ -649,6 +649,78 @@
       "why": "The open page has changed, so Save is offered, and one picture drawn from it opens in the asset editor."
     },
     {
+      "module": "pin",
+      "editor": "script",
+      "name"  : "following",
+      "why"   : "The pane follows the selected scene, so the toggle offers to hold it."
+    },
+    {
+      "module": "pin",
+      "editor": "script",
+      "name"  : "pinned",
+      "why"   : "The pane is held on one scene, so the toggle offers to follow again."
+    },
+    {
+      "module": "pin",
+      "editor": "timeline",
+      "name"  : "following",
+      "why"   : "The pane follows the selected scene, so the toggle offers to hold it."
+    },
+    {
+      "module": "pin",
+      "editor": "timeline",
+      "name"  : "pinned",
+      "why"   : "The pane is held on one scene, so the toggle offers to follow again."
+    },
+    {
+      "module": "pin",
+      "editor": "gengraph",
+      "name"  : "following",
+      "why"   : "The pane follows the selected generation graph, so the toggle offers to hold it."
+    },
+    {
+      "module": "pin",
+      "editor": "gengraph",
+      "name"  : "pinned",
+      "why"   : "The pane is held on one generation graph, so the toggle offers to follow again."
+    },
+    {
+      "module": "pin",
+      "editor": "inspector",
+      "name"  : "following",
+      "why"   : "The pane follows the selected task, so the toggle offers to hold it."
+    },
+    {
+      "module": "pin",
+      "editor": "inspector",
+      "name"  : "pinned",
+      "why"   : "The pane is held on one task, so the toggle offers to follow again."
+    },
+    {
+      "module": "pin",
+      "editor": "wiki",
+      "name"  : "following",
+      "why"   : "The pane follows the selected document, so the toggle offers to hold it."
+    },
+    {
+      "module": "pin",
+      "editor": "wiki",
+      "name"  : "pinned",
+      "why"   : "The pane is held on one document, so the toggle offers to follow again."
+    },
+    {
+      "module": "pin",
+      "editor": "asset",
+      "name"  : "following",
+      "why"   : "The pane follows the selected asset, so the toggle offers to hold it."
+    },
+    {
+      "module": "pin",
+      "editor": "asset",
+      "name"  : "pinned",
+      "why"   : "The pane is held on one asset, so the toggle offers to follow again."
+    },
+    {
       "module": "doctree",
       "editor": "documents",
       "name"  : "every-kind",
@@ -24680,6 +24752,294 @@
             "editor" : "asset",
             "where"  : "elsewhere",
             "subject": "a1b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "pin",
+      "situation": "following",
+      "key"      : "fx:pane.pin",
+      "offer": {
+        "id"     : "pane.pin",
+        "label"  : "pin scene",
+        "tooltip": "Keep this pane on this scene while the rest of the app moves on.",
+        "ok"     : true,
+        "props": {
+          "pinned": true
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.pin",
+          "props": {
+            "pinned": true
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "script",
+      "module"   : "pin",
+      "situation": "pinned",
+      "key"      : "fx:pane.pin",
+      "offer": {
+        "id"     : "pane.pin",
+        "label"  : "pin scene",
+        "tooltip": "Pinned to this scene. Click to follow the selection again.",
+        "ok"     : true,
+        "props": {
+          "pinned": false
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.pin",
+          "props": {
+            "pinned": false
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "pin",
+      "situation": "following",
+      "key"      : "fx:pane.pin",
+      "offer": {
+        "id"     : "pane.pin",
+        "label"  : "pin scene",
+        "tooltip": "Keep this pane on this scene while the rest of the app moves on.",
+        "ok"     : true,
+        "props": {
+          "pinned": true
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.pin",
+          "props": {
+            "pinned": true
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "timeline",
+      "module"   : "pin",
+      "situation": "pinned",
+      "key"      : "fx:pane.pin",
+      "offer": {
+        "id"     : "pane.pin",
+        "label"  : "pin scene",
+        "tooltip": "Pinned to this scene. Click to follow the selection again.",
+        "ok"     : true,
+        "props": {
+          "pinned": false
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.pin",
+          "props": {
+            "pinned": false
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "pin",
+      "situation": "following",
+      "key"      : "fx:pane.pin",
+      "offer": {
+        "id"     : "pane.pin",
+        "label"  : "pin generation graph",
+        "tooltip": "Keep this pane on this generation graph while the rest of the app moves on.",
+        "ok"     : true,
+        "props": {
+          "pinned": true
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.pin",
+          "props": {
+            "pinned": true
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "gengraph",
+      "module"   : "pin",
+      "situation": "pinned",
+      "key"      : "fx:pane.pin",
+      "offer": {
+        "id"     : "pane.pin",
+        "label"  : "pin generation graph",
+        "tooltip": "Pinned to this generation graph. Click to follow the selection again.",
+        "ok"     : true,
+        "props": {
+          "pinned": false
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.pin",
+          "props": {
+            "pinned": false
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "inspector",
+      "module"   : "pin",
+      "situation": "following",
+      "key"      : "fx:pane.pin",
+      "offer": {
+        "id"     : "pane.pin",
+        "label"  : "pin task",
+        "tooltip": "Keep this pane on this task while the rest of the app moves on.",
+        "ok"     : true,
+        "props": {
+          "pinned": true
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.pin",
+          "props": {
+            "pinned": true
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "inspector",
+      "module"   : "pin",
+      "situation": "pinned",
+      "key"      : "fx:pane.pin",
+      "offer": {
+        "id"     : "pane.pin",
+        "label"  : "pin task",
+        "tooltip": "Pinned to this task. Click to follow the selection again.",
+        "ok"     : true,
+        "props": {
+          "pinned": false
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.pin",
+          "props": {
+            "pinned": false
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "wiki",
+      "module"   : "pin",
+      "situation": "following",
+      "key"      : "fx:pane.pin",
+      "offer": {
+        "id"     : "pane.pin",
+        "label"  : "pin document",
+        "tooltip": "Keep this pane on this document while the rest of the app moves on.",
+        "ok"     : true,
+        "props": {
+          "pinned": true
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.pin",
+          "props": {
+            "pinned": true
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "wiki",
+      "module"   : "pin",
+      "situation": "pinned",
+      "key"      : "fx:pane.pin",
+      "offer": {
+        "id"     : "pane.pin",
+        "label"  : "pin document",
+        "tooltip": "Pinned to this document. Click to follow the selection again.",
+        "ok"     : true,
+        "props": {
+          "pinned": false
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.pin",
+          "props": {
+            "pinned": false
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "pin",
+      "situation": "following",
+      "key"      : "fx:pane.pin",
+      "offer": {
+        "id"     : "pane.pin",
+        "label"  : "pin asset",
+        "tooltip": "Keep this pane on this asset while the rest of the app moves on.",
+        "ok"     : true,
+        "props": {
+          "pinned": true
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.pin",
+          "props": {
+            "pinned": true
+          }
+        }
+      ]
+    },
+    {
+      "via"      : "control",
+      "editor"   : "asset",
+      "module"   : "pin",
+      "situation": "pinned",
+      "key"      : "fx:pane.pin",
+      "offer": {
+        "id"     : "pane.pin",
+        "label"  : "pin asset",
+        "tooltip": "Pinned to this asset. Click to follow the selection again.",
+        "ok"     : true,
+        "props": {
+          "pinned": false
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.pin",
+          "props": {
+            "pinned": false
           }
         }
       ]
