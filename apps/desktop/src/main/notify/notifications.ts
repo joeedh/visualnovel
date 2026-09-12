@@ -1,20 +1,23 @@
 /**
- * The notification log: one append-only JSONL file per project at
- * `vngen/state/notifications.jsonl`, holding every event the app has reported.
+ * Each project maintains an append-only JSONL notification log at
+ * `vngen/state/notifications.jsonl`
+ * that records all reported events.
  *
- * It lives in the desktop app rather than `@vn/store` for the reason `threads.ts` gives: a
- * notification is not one of a project's authored files, so it does not belong in the package
- * that models those, even though `vngen/state/` is where this project keeps its append-only logs
- * and the path itself is a `ProjectPaths` getter. Nothing here assumes the desktop.
+ * This log is managed by the desktop app rather than `@vn/store` because notifications are not
+ * user-authored project files (following the rationale in `threads.ts`). However, because the
+ * project
+ * stores its append-only logs in `vngen/state/`, the path is still resolved via `ProjectPaths`.
+ * The implementation itself does not assume a desktop environment.
  *
- * Two contracts are owned by this module and by nothing else:
+ * This module exclusively owns two contracts:
  *
- * 1. Flags are patched in place. `"r"` (read) and `"h"` (hidden) are single ASCII digits in
- *    each line's head, so marking one read is a one-byte write at a computed offset rather than a
- *    rewrite of the file or another line appended to it.
- * 2. The file is union-merged (`merge=union` in the project's `.gitattributes`), so a line
- *    whose flags both sides changed comes back twice. The reader dedupes by `id` and ORs the
- *    flags: read and hidden are monotonic, so the set bit is always the newer truth.
+ * 1. **In-place flag updates**: The `"r"` (read) and `"h"` (hidden) flags are stored as single
+ *    ASCII digits at the start of each line. Updating a flag requires only a single-byte write at
+ *    a computed offset, avoiding file rewrites or appends.
+ * 2. **Union merging**: The file uses `merge=union` in `.gitattributes`. If concurrent edits
+ *    modify the same line, both versions are preserved. The reader deduplicates these entries by
+ *    `id` and ORs their flags; because the 'read' and 'hidden' flags are monotonic, a set bit
+ *    always represents the latest state.
  */
 import { randomBytes } from 'node:crypto';
 import { promises as fs } from 'node:fs';
@@ -45,9 +48,9 @@ function stamp(at: Date): string {
 }
 
 /**
- * Random-suffixed, because two launches in the same second are ordinary — closing the app and
- * reopening it, or a second window — and a session id that collides makes the debugging tooling
- * this field exists for report one session where there were two.
+ * A random suffix is added because multiple launches can occur within the same second (e.g.,
+ * reopening the app or opening a second window). Without it, colliding session IDs would cause
+ * debugging tools to merge separate sessions into one.
  */
 function newSessionId(at = new Date()): string {
   return `${stamp(at)}-${randomBytes(2).toString('hex')}`;

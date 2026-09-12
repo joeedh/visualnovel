@@ -399,7 +399,7 @@ export function menuAnchors(): AnchorRecord[] {
   for (const record of menuRecords()) {
     // The same row over several situations makes one anchor, since these four fields are all
     // an anchor keeps
-    const key = `${record.editor} ${record.when} ${record.id} ${record.form ? 'form' : ''}`;
+    const key = `${record.editor}\0${record.when}\0${record.id}\0${record.form ? 'form' : ''}`;
     if (seen.has(key)) continue;
     seen.add(key);
     anchors.push({

@@ -1,7 +1,7 @@
 /**
- * The graph documents at `vngen/work/graphs/`, as this app reaches them. The reading and
- * writing themselves live in `@vn/gengraph/state`, because the authoring agent loads the same
- * files; what is added here is the summary the document tree lists them by.
+ * Graph documents under `vngen/work/graphs/`, insofar as this app touches them. Reading
+ * and writing them lives in `@vn/gengraph/state` and is shared with the authoring agent; what
+ * this adds is the summary the document tree lists them by.
  */
 import {
   graphPath,

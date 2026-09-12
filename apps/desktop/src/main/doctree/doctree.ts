@@ -1,8 +1,8 @@
 /**
- * The sidebar's two shapes, as pure projections: a logical document tree and per-entity
- * backlinks. Every edge here already exists somewhere — the model's cast lists, `ShotSubject`,
- * `Asset.satisfies`, the tag index — so this module reads no file and writes none. Plan:
- * `docs/plans/archive/INDEX.md#document-tree-and-backlinks`.
+ * The sidebar projects two core views: a logical document tree and per-entity backlinks. All
+ * relationships are derived from existing model data (e.g., cast lists, `ShotSubject`,
+ * `Asset.satisfies`, tag index), ensuring this module neither reads nor writes files. For
+ * further details, refer to `docs/plans/archive/INDEX.md#document-tree-and-backlinks`.
  */
 import { relative } from 'node:path';
 import type { LoadedInputs } from '@vn/parse';
@@ -23,8 +23,9 @@ export interface DocTreeInput {
   inputs: LoadedInputs;
   manifest: readonly Asset[];
   /**
-   * Persisted shots by scene id. A scene absent from the map has no decomposition; one mapped to
-   * `null` has a file that could not be read, which the tree says rather than hides.
+   * Shots by scene id. A missing key means the scene has no decomposition; a `null` value means
+   * its decomposition file exists but could not be read, and the tree displays an error rather
+   * than silently skipping the scene.
    */
   shots: Map<string, Shot[] | null>;
   bible: BibleFile[];
@@ -134,23 +135,22 @@ function storyBranch(input: DocTreeInput, cap: number): DocNode {
   };
   const scenes = [...input.model.scenes.values()].map((scene) => {
     const shots = input.shots.get(scene.id);
-    const children =
-      shots == null
-        ? undefined
-        : capped(
-            `scene:${scene.id}`,
-            shots.map((s) =>
-              node(`shot:${scene.id}/${s.id}`, 'shot', s.id, {
-                badge: s.framing,
-                // A shot is an address a graph can draw, so its row names the graph the way a slot
-                // row does, and an open Gen Graph pane follows the click to it.
-                ...boundGraphOf(input, `shot:${scene.id}/${s.id}`),
-                ...(s.image ? { hash: s.image } : {}),
-                ...(frameApproved(s.image) ? { approved: true } : {}),
-              }),
-            ),
-            cap,
-          );
+    const children = !shots
+      ? undefined
+      : capped(
+          `scene:${scene.id}`,
+          shots.map((s) =>
+            node(`shot:${scene.id}/${s.id}`, 'shot', s.id, {
+              badge: s.framing,
+              // A shot is an address a graph can draw, so its row names the graph the way a slot
+              // row does, and an open Gen Graph pane follows the click to it.
+              ...boundGraphOf(input, `shot:${scene.id}/${s.id}`),
+              ...(s.image ? { hash: s.image } : {}),
+              ...(frameApproved(s.image) ? { approved: true } : {}),
+            }),
+          ),
+          cap,
+        );
     // An unreadable storyboard outranks an unreachable scene, because a disk problem is the one
     // somebody has to go fix
     const badge =

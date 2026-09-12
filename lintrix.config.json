@@ -1,0 +1,22 @@
+{
+  "extends": "lintrix:recommended",
+  "rules": {
+    "prefer-const"        : "error",
+    "no-unsafe-assignment": "error",
+    "eqeqeq"              : "error",
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ]
+  },
+  "ignores": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/vendor/**",
+    "**/.package/**",
+    "**/win-unpacked/**"
+  ]
+}

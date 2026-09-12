@@ -162,7 +162,7 @@ function validate(edits: SceneMarkerEdit[]): Diagnostic[] {
     seen.add(edit.sceneId);
     const gotos = [
       ...(edit.choices ?? []).map((c) => c.goto),
-      ...(edit.next != null ? [edit.next] : []),
+      ...(typeof edit.next === 'string' ? [edit.next] : []),
     ];
     for (const goto of gotos) {
       if (!goto.trim() || /\s/.test(goto) || goto.includes('[[') || goto.includes(']]')) {
@@ -318,7 +318,7 @@ export function applySceneMarkerEdit(
         addAfter(anchor, `${indent}[[choice: "${c.label.trim()}" -> ${c.goto}]]`);
       }
     }
-    if (edit.next != null) {
+    if (typeof edit.next === 'string') {
       const anchor = firstOf('next') ?? lastOf('choice') ?? fallback;
       addAfter(anchor, `${indentOf('next')}[[next: ${edit.next}]]`);
     }

@@ -218,7 +218,7 @@ export function createGeminiImage(
         contents: [{ role: 'user', parts }],
         config: {
           responseModalities: ['IMAGE'],
-          ...(params.seed != null ? { seed: params.seed } : {}),
+          ...(params.seed !== undefined ? { seed: params.seed } : {}),
         },
       });
       return extractImage(res, modelId);
