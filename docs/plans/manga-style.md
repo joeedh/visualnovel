@@ -1,291 +1,313 @@
 # Colour manga as a second visual style
 
-**Status: planned.** Nothing here is built. Pressure-tested once; the findings and what
-each one changed are at the end.
+**Status: planned.** Implementation has not started. The proposal completed one review
+pass; the findings and resulting modifications are documented at the end.
 
 ## What this adds
 
-Today every prompt, the decomposer and the reviewer speak visual-novel vocabulary, and the
-only style control is the free-text `config.art_style`. This plan makes a colour-manga
-project possible with four additions, none of which is a project-level mode:
+Prompt construction, the scene decomposer, and the visual reviewer currently rely on
+visual-novel conventions, with style configuration limited to the free-text
+`config.art_style` field. This design enables color-manga generation through four targeted
+additions without introducing a global project-level mode:
 
-- **Page shots.** A shot that renders one manga page made of several panels, each panel
-  with its own framing, camera and cast, covering its own lines. A shot without panels
-  keeps its current meaning (one frame), and a project mixes the two freely: a page for a
-  conversation, a single cinematic frame for a beat that deserves one. Per-shot `aspect`
-  comes with it, because a page is not 16:9.
-- **A decomposer and reviewer that know about pages**, told what the project wants through
-  `art_style` and a new `storyboard_notes` string rather than a switch.
-- **Lettering, staged.** First the image model draws the words (`lettering: model`); later
-  the runner draws bubbles the author or agent placed (`lettering: runner`).
-- **A sheet as a staging reference.** An optional gen graph that draws a group of shots at
-  once as a grid of cells, crops each cell, and hands the crop to that shot's own
-  full-resolution generation as a reference. Its purpose is perspective coherence: a
-  sequence like establishing → mid → over-the-shoulder → reverse → reverse in one room is
-  drawn against one internal model of the room, so a reverse is the reverse of the frame
-  before it rather than a re-invented one.
+- **Page shots.** A shot that renders a multi-panel manga page, where each panel specifies
+  distinct framing, camera angles, cast members, and dialogue line coverage. Panel-less
+  shots retain single-frame semantics, allowing projects to mix multi-panel pages (e.g.,
+  dialogue sequences) and full cinematic frames. Per-shot `aspect` ratios are supported to
+  accommodate non-16:9 page dimensions.
+- **Page-aware decomposer and reviewer.** The decomposer and reviewer are instructed via
+  `art_style` and a new `storyboard_notes` configuration string rather than a dedicated
+  style toggle.
+- **Staged lettering.** Initial implementations support direct model-rendered text
+  (`lettering: model`); subsequent iterations enable runner-rendered dialogue bubbles
+  positioned by authors or agents (`lettering: runner`).
+- **Staging reference sheets.** An optional generation graph draws a sequence of shots as
+  one picture, a grid of cells, then crops each cell and passes the crop as an image
+  reference to the shot's full-resolution generation pass. This maintains spatial and
+  perspective coherence across sequential shots in a shared environment (e.g.,
+  establishing → medium → over-the-shoulder → reverse angles).
 
-[`../research/manga-shot-composition.md`](../research/manga-shot-composition.md) is the
-prior research. This plan agrees with its "one mode, not two" conclusion and its per-shot
-`aspect` stage, and adds the page and sheet work it stopped short of. Its other stages
-(front sheet for every subject, camera enums, a geometric scale check, screen placement)
-are independent of this plan and are not taken up here.
+This document builds on
+[`../research/manga-shot-composition.md`](../research/manga-shot-composition.md). It
+adopts that document's single-mode architecture and per-shot `aspect` stages while
+implementing the page and staging-sheet workflows deferred by that research. Other
+proposals in that document (per-subject front sheets, camera enums, geometric scale
+checks, and screen placement) remain independent and are excluded from this specification.
 
 ## Facts the plan rests on
 
-Each was checked against the code during the review.
+The following implementation details have been validated against the codebase:
 
-- A task's identity is `sha256(kind, inputs)`, and `TaskInputs.shot_image` is
-  `{ shotId, prompt, refs, params }` (`packages/types/src/tasks.ts`). Any change to a
-  prompt string re-keys every task that renders it, so a new chunk renders empty for
-  existing shots, the pattern `artClause`, `paletteClause` and `seedFor` follow
-  (`packages/artgen/src/prompts.ts`).
-- `buildShotChunks` reads no `coversLines` (`packages/artgen/src/prompts.ts:382-428`), so
-  coverage is not in the hash. Prose drift is reported through `proseHash`
-  (`packages/artgen/src/drift.ts`), never by re-keying. Four places say so in words:
-  `set_coverage`'s description (`packages/authoring/src/tools/storyboard.ts:100-105`),
-  `WorkspaceSession.setCoverage`'s doc (`apps/desktop/src/main/session/story.ts:428-430`),
-  `docs/reference/pipeline-contracts.md` (twice), and the `full-production` skill.
-- `shotSpec` (what the reviewer reads; defined in `packages/artgen/src/prompts.ts`,
-  re-exported through `packages/pipeline/src/prompts.ts`) is not hashed and can change
-  freely. It is called from `packages/pipeline/src/runners.ts:150` without the config,
-  though `makeShotRunner(config)` has it.
-- `ChatVisionReviewer.review` returns `{ reviewer, defects }` only
-  (`packages/providers/src/review.ts:50`), and `defectReportSchema` is a non-strict
-  `z.object` (`packages/types/src/schemas.ts:339-351`), so an extra field the model
-  answers is stripped by zod.
-- The runner records reviews on `task.attempts` (`runners.ts:180-187`); the planner's
-  `refreshShotData` (`packages/pipeline/src/planner.ts:114-138`) copies task results onto
-  the in-memory `Shot`, which is flat, and `serialize` in `packages/store/src/shots.ts`
-  files the derived half under `shotData`.
-- **The built-in Gemini image backend does not send `params.aspect`.**
-  `packages/providers/src/backends/gemini.ts:216-222` sends `responseModalities` and
-  `seed` only; only the Gemini plugin sends `imageConfig.aspectRatio`
-  (`plugins/gemini/draw.ts:108`). Every project's `16:9` is in the hash and unsent.
-- Under a bound graph the task's `params` never reach the image node: `drawThroughGraph`
-  (`runners.ts:59-78`) passes prompt, refs and critique, and `GenImage` reads model,
-  aspect and seed from its own props (`packages/gengraph/src/nodes/runtimes.ts:101-115`).
-  `runBoundGraph` sees strings only (`packages/pipeline/src/graphrun.ts:234-238`). The
-  desktop's interactive `gengraph.run` passes no seeds
+- Task identity is computed as `sha256(kind, inputs)`, where `TaskInputs.shot_image` is
+  `{ shotId, prompt, refs, params }` (`packages/types/src/tasks.ts`). Modifying a prompt
+  string invalidates the cache key for all tasks rendering it. Consequently, newly added
+  prompt chunks must evaluate to empty strings for existing shots, following the pattern
+  in `artClause`, `paletteClause`, and `seedFor` (`packages/artgen/src/prompts.ts`).
+- `buildShotChunks` does not read `coversLines`
+  (`packages/artgen/src/prompts.ts:382-428`), excluding line coverage from the task hash.
+  Content drift is tracked via `proseHash` (`packages/artgen/src/drift.ts`) rather than
+  cache invalidation. This contract is codified in four locations: `set_coverage`
+  documentation (`packages/authoring/src/tools/storyboard.ts:100-105`),
+  `WorkspaceSession.setCoverage` documentation
+  (`apps/desktop/src/main/session/story.ts:428-430`),
+  `docs/reference/pipeline-contracts.md` (two occurrences), and the `full-production`
+  agent skill.
+- `shotSpec` defines reviewer input (`packages/artgen/src/prompts.ts`, re-exported in
+  `packages/pipeline/src/prompts.ts`) and is excluded from task hashing, allowing safe
+  modifications. It is invoked without config context from
+  `packages/pipeline/src/runners.ts:150`, though `makeShotRunner(config)` maintains config
+  access.
+- `ChatVisionReviewer.review` returns strictly `{ reviewer, defects }`
+  (`packages/providers/src/review.ts:50`). Because `defectReportSchema` is a non-strict
+  `z.object` (`packages/types/src/schemas.ts:339-351`), unrecognized model output fields
+  are stripped during Zod parsing.
+- The runner records review results in `task.attempts` (`runners.ts:180-187`). The
+  planner's `refreshShotData` (`packages/pipeline/src/planner.ts:114-138`) populates task
+  results onto the flat in-memory `Shot` instance, and `serialize`
+  (`packages/store/src/shots.ts`) persists derived values under `shotData`.
+- The built-in Gemini image backend does not transmit `params.aspect`:
+  `packages/providers/src/backends/gemini.ts:216-222` passes only `responseModalities` and
+  `seed`. Only the external Gemini plugin forwards `imageConfig.aspectRatio`
+  (`plugins/gemini/draw.ts:108`). Default `16:9` values are therefore present in task
+  hashes but ignored by the built-in backend.
+- Under a bound graph, task `params` do not reach the image node: `drawThroughGraph`
+  (`runners.ts:59-78`) passes only prompt, reference, and critique strings, while
+  `GenImage` sources model, aspect ratio, and seed from node properties
+  (`packages/gengraph/src/nodes/runtimes.ts:101-115`). `runBoundGraph` processes string
+  inputs only (`packages/pipeline/src/graphrun.ts:234-238`). Desktop interactive execution
+  via `gengraph.run` does not inject seeds
   (`apps/desktop/src/main/session/gengraph.ts:291-294`).
-- A seeded node type must be registered with `seededInput`
-  (`packages/gengraph/src/nodes/types.ts:405-448`) or `seedInputs` throws
-  (`packages/gengraph/src/execute.ts:254-258`). `graphDrift` compares authored hashes only
-  (`packages/gengraph/src/drift.ts`), so a seed shared across tasks has no drift signal.
-  `executeGenGraph` resumes a node whose hash matches its last `done` record
-  (`execute.ts:131-143`), and `invalidateGenGraph` invalidates only nodes that `spend`
-  (`execute.ts:218`).
-- Nothing in the repo manipulates pixels; `docs/reference/gen-graphs.md` records that a
-  Blend node is deliberately absent. `GenServices` is implemented by `createGenServices`
-  (`packages/pipeline/src/genservices.ts:130`), the gengraph node-test fixture, the
-  plugin-load test and the testkit, and is the plugin-facing capability API. The renderer
-  imports `@vn/gengraph`'s main entry, so a native or heavy dependency cannot live there.
-- `ImageParams.extra` exists, is documented as "model-specific extra params"
-  (`packages/types/src/entities.ts:38`), reaches the hash, and no provider reads it.
-- `say` and `narrate` beats carry no line id (`packages/export/src/playable.ts:140-144`),
-  and `framesOf` (`apps/desktop/renderer/pathux/play/playback.ts`) folds `show` into the
-  frames after it. `showBeatSchema` is `{ type, shot?, image? }`, playable `version` is
-  the literal 1. `timeline.css:310` hard-codes `aspect-ratio: 16 / 9`; the asset editor
-  already uses `object-fit: contain`.
-- Shot-level `subjects` has four writers: `setShotOutfit`
+- Seeded node types must register via `seededInput`
+  (`packages/gengraph/src/nodes/types.ts:405-448`); otherwise, `seedInputs` throws
+  (`packages/gengraph/src/execute.ts:254-258`). `graphDrift` evaluates authored hashes
+  only (`packages/gengraph/src/drift.ts`), providing no drift detection for cross-task
+  seeds. `executeGenGraph` resumes any node whose hash matches its prior `done` record
+  (`execute.ts:131-143`), while `invalidateGenGraph` purges only nodes with `spend` side
+  effects (`execute.ts:218`).
+- The repository contains no pixel manipulation utilities; `docs/reference/gen-graphs.md`
+  notes the intentional omission of a `Blend` node. `GenServices` defines the
+  plugin-facing capability interface, implemented by `createGenServices`
+  (`packages/pipeline/src/genservices.ts:130`), the gengraph node test fixture, the plugin
+  loading test, and the testkit. Because the desktop renderer imports the `@vn/gengraph`
+  entry point, native or heavy dependencies cannot live in that package.
+- `ImageParams.extra` is typed and documented as "model-specific extra params"
+  (`packages/types/src/entities.ts:38`) and is included in task hashes, but no provider
+  currently reads it.
+- `say` and `narrate` beats do not store line IDs
+  (`packages/export/src/playable.ts:140-144`), and `framesOf`
+  (`apps/desktop/renderer/pathux/play/playback.ts`) collapses `show` beats into subsequent
+  frames. `showBeatSchema` is defined as `{ type, shot?, image? }`, and playable data
+  version is pinned to `1`. `timeline.css:310` enforces a fixed `aspect-ratio: 16 / 9`,
+  while the asset editor uses `object-fit: contain`.
+- Shot-level `subjects` has four mutating call sites: `setShotOutfit`
   (`packages/scriptedit/src/outfits.ts`), `setShotSubjects` and `requireShotCast`
-  (`packages/scriptedit/src/cast.ts`), and the agent's `set_outfit`. The planner pushes
-  one portrait ref per subject in order (`planner.ts:252-278`), and `refs` is positional
-  in the hash.
-- `setCoverage` lives in `packages/scriptedit/src/coverage.ts:64-119`, works over the
-  structural `CoverShot`, and returns `{ id, coversLines }` per changed shot; the desktop
-  (`story.ts:451-456`) and the authoring tool apply that to full shots themselves.
-  `withCoverage` (`packages/artgen/src/storyboard.ts:214-224`) prepends the scene's first
-  line to `shots[0].coversLines`.
-- The two plans this one used to hedge on are largely landed: `newShot`/`deleteShot`
-  (`packages/scriptedit/src/shotcreate.ts`), `write_storyboard` and `propose_storyboard`
-  with `.strict()` shapes (`packages/authoring/src/tools/storyboard.ts:161-197`),
-  `setShotVariant` (`packages/scriptedit/src/variants.ts`), `basePromptOf`
+  (`packages/scriptedit/src/cast.ts`), and the agent tool `set_outfit`. The planner
+  appends one portrait reference per subject in stable order (`planner.ts:252-278`), and
+  `refs` ordering affects the task hash.
+- `setCoverage` (`packages/scriptedit/src/coverage.ts:64-119`) operates on structural
+  `CoverShot` records and returns `{ id, coversLines }` per modified shot; desktop session
+  handlers (`story.ts:451-456`) and authoring tools reconcile these changes against full
+  shot records. `withCoverage` (`packages/artgen/src/storyboard.ts:214-224`) prepends the
+  first line of a scene to `shots[0].coversLines`.
+- The two open plans that touch the same code
+  ([`creating-shots-by-hand-and-by-agent.md`](creating-shots-by-hand-and-by-agent.md) and
+  [`refine-corrections-tool-schemas-shot-variants-and-commit-subjects.md`](refine-corrections-tool-schemas-shot-variants-and-commit-subjects.md))
+  have largely landed: `newShot` and `deleteShot`
+  (`packages/scriptedit/src/shotcreate.ts`), `.strict()` validation for `write_storyboard`
+  and `propose_storyboard` (`packages/authoring/src/tools/storyboard.ts:161-197`),
+  `setShotVariant` (`packages/scriptedit/src/variants.ts`), and `basePromptOf`
   (`packages/pipeline/src/p6.ts`). Their rows in `index.md` still read "planned"; that is
   their bookkeeping, not this plan's.
-- `project.setArtStyle` splices `art_style:` into `project.yaml` through `withArtStyle`
-  (`packages/config/src/config.ts:74`) and its check prices the re-key
-  (`apps/desktop/src/main/session/project.ts:52-64`).
-- `decomposeScene(scene, model, providers)` takes no config. Callers: `planner.ts:91`,
-  `packages/pipeline/src/decompose.ts:76` (`decomposeAll`, whose options carry no config),
-  and `packages/authoring/src/tools/storyboard.ts:146`, where `Workspace.load()` reads
-  `project.yaml` for `title` and `start` only
-  (`packages/authoring/src/workspace.ts:176-189`).
+- `project.setArtStyle` updates `art_style:` in `project.yaml` via `withArtStyle`
+  (`packages/config/src/config.ts:74`), and its pre-flight validation calculates cache
+  invalidation costs (`apps/desktop/src/main/session/project.ts:52-64`).
+- `decomposeScene(scene, model, providers)` does not accept configuration arguments. Its
+  call sites are `planner.ts:91`, `packages/pipeline/src/decompose.ts:76` (`decomposeAll`,
+  whose options omit config), and `packages/authoring/src/tools/storyboard.ts:146` (where
+  `Workspace.load()` parses only `title` and `start` from `project.yaml`,
+  `packages/authoring/src/workspace.ts:176-189`).
 
 ## Decisions
 
-1.  **No project-level mode.** The first draft had a `style_profile: 'vn' | 'manga'`
-    owning the preamble default, every scaffolding sentence, the decomposer and reviewer
-    personas, lettering and page aspect. The research doc's objection holds against the
-    code: the differences that matter are per shot (a page beside a single frame, a tall
-    page beside a wide frame), and everything cross-cutting the profile would have carried
-    is either free text that already reaches every prompt (`art_style`) or a property of
-    pages rather than of the project. What replaces it:
-    - `art_style` stays the one style string and is now also handed to the decomposer, so
-      "full-colour manga" in `project.yaml` reaches the storyboard as well as the paint.
-    - `config.storyboard_notes: string`, default `''`: author guidance to the decomposer
-      ("storyboard as manga pages of four to six panels; one splash per scene"). Empty
-      means what it means today: frames only.
-    - `config.lettering: 'model' | 'runner'`, default `'model'`. Applies to page shots
-      only (decision 9).
-    - `config.image_params.page_aspect: string`, default `'3:4'`: the aspect a page shot
-      takes when its own `aspect` is unset.
-    - `project.setStoryboardNotes` and `project.setLettering` beside
-      `project.setArtStyle`, through a `withConfigKey` that generalizes `withArtStyle`'s
-      splice; the lettering command's check prices the re-key of every page shot.
+1. **No project-level mode.** The initial design introduced
+   `style_profile: 'vn' | 'manga'` to manage prompt defaults, scaffolding strings,
+   decomposer/reviewer personas, lettering modes, and page aspect ratios. This abstraction
+   was rejected: stylistic variance occurs per shot (e.g., standard frames alongside
+   multi-panel pages or varying aspect ratios), while global style directives are already
+   handled by `art_style`. The adopted replacement includes:
+    - `art_style` remains the primary style description and is now forwarded to the
+      decomposer, aligning storyboard composition with prompt generation (e.g.,
+      "full-colour manga").
+    - `config.storyboard_notes: string` (default `''`): author directives supplied to the
+      decomposer (e.g., "storyboard as manga pages of four to six panels; one splash per
+      scene"). An empty string retains legacy single-frame decomposition.
+    - `config.lettering: 'model' | 'runner'` (default `'model'`): applies strictly to page
+      shots (Decision 10).
+    - `config.image_params.page_aspect: string` (default `'3:4'`): default aspect ratio
+      applied to page shots when `aspect` is omitted.
+    - `project.setStoryboardNotes` and `project.setLettering` complement
+      `project.setArtStyle`, backed by a generalized `withConfigKey` helper. Changing
+      lettering computes the invalidation cost across all page shots.
 
-2.  **Per-shot `aspect`.** `Shot.aspect?: string`, resolved by `aspectFor(params, shot)`
-    with the same shape as `seedFor`: unset on a frame returns `params` untouched (no hash
-    moves); unset on a page shot takes `page_aspect`; set takes the value. This is the
-    research doc's stage 3 and is required for pages.
+2. **Per-shot `aspect`.** Add `Shot.aspect?: string`, resolved via
+   `aspectFor(params, shot)` mirroring `seedFor`. An unset aspect on a standard frame
+   preserves `params` unmodified (preserving task hashes); an unset aspect on a page shot
+   defaults to `page_aspect`; an explicit value overrides defaults. This implements Stage
+   3 of the research document.
 
-3.  **The built-in Gemini backend sends the aspect.** `createGeminiImage` gains
-    `imageConfig: { aspectRatio: params.aspect }`. No hash moves, but a re-render of any
-    existing task can look different, because the `16:9` it has always carried was never
-    sent. This is stated in the commit and in `docs/guides/cli.md`'s `--mock` and
-    re-render notes, and lands as its own commit before anything renders a page.
+3. **Built-in Gemini backend aspect transmission.** Update `createGeminiImage` to transmit
+   `imageConfig: { aspectRatio: params.aspect }`. This changes no task hashes, but
+   re-rendering existing shots may alter output because the implicit `16:9` ratio was
+   previously omitted from provider requests. This change will land in an isolated commit
+   accompanied by documentation updates in `docs/guides/cli.md` regarding `--mock` and
+   re-rendering behavior prior to page generation rollout.
 
-4.  **Panels are a field on `Shot`, not a new task kind.** `Shot.panels?: PagePanel[]`.
-    Absent means one frame. One task, one slot, one `shot_image` asset, one `show` beat,
-    one `proseHash`, one art-notes rung, one prompt override: coverage, export, the slot
-    graph, the document tree, adoption and the coverage strip keep working with no second
-    `kind` case.
+4. **Panels modeled on `Shot` rather than as a new task kind.** Add
+   `Shot.panels?: PagePanel[]`, where omission signifies a single frame. Retaining a
+   single task kind preserves existing single-slot semantics, `shot_image` asset
+   pipelines, `show` playback beats, `proseHash` tracking, art-notes evaluation, prompt
+   overrides, slot graphing, export workflows, and coverage UI without branching on task
+   type.
 
-5.  **Panel geometry is a polygon in page fractions.** `PagePanel.shape` is a list of
-    `[x, y]` points, clockwise, at least three, each coordinate in `[0, 1]`. A rectangle
-    is four points; a diagonal gutter is four points with two off-axis; a bleed runs to
-    the page edge. Manga panels are routinely not rectangles. Named layout templates
-    (`two-tier`, `three-tier`, `diagonal-split`, `splash-with-insets`) in
-    `packages/artgen/src/layout.ts` are polygon lists an author or the decomposer starts
-    from.
+5. **Panel geometry defined as normalized polygon coordinates.** `PagePanel.shape`
+   represents a clockwise sequence of at least three `[x, y]` vertices normalized to
+   `[0, 1]`. Rectangles require four points, diagonal gutters specify non-orthogonal
+   coordinates, and bleeds extend to the unit boundary. Standard layouts (`two-tier`,
+   `three-tier`, `diagonal-split`, `splash-with-insets`) are predefined in
+   `packages/artgen/src/layout.ts` as starting templates for authors and the decomposer.
 
-6.  **The prompt's layout words are derived from the polygons** by `layout.ts` ("panel 2:
-    tall, left column, lower edge cut on a diagonal"), so words and data cannot disagree.
+6. **Deterministic layout prompt derivation.** Prompt layout descriptions are
+   deterministically generated from panel polygon definitions via `layout.ts` (e.g.,
+   "panel 2: tall, left column, lower edge cut on a diagonal"), preventing
+   desynchronization between data structures and model instructions.
 
-7.  **The reviewer reports bounding boxes, and only checks.** When the spec lists panels,
-    the reviewer is asked for one box per panel it sees, in reading order, under
-    `DefectReport.observed.panels`. Boxes are matched to intended polygons by overlap; a
-    count mismatch or an unmatched panel is a blocking `layout` defect. Boxes are recorded
-    beside the image as `Shot.panelBoxes` in memory and `shotData.panelBoxes` on disk,
-    stamped by `refreshShotData` when `image` changes (the `proseHash` rule), and used for
-    nothing else. Every consumer reads the intended polygon.
+7. **Reviewer panel validation via bounding box extraction.** When inspecting panel specs,
+   the reviewer outputs observed bounding boxes in reading order under
+   `DefectReport.observed.panels`. Boxes are evaluated against intended polygons via
+   intersection-over-union; panel count mismatches or unmapped panels trigger a blocking
+   `layout` defect. Detected boxes are persisted alongside the image in `Shot.panelBoxes`
+   (in memory) and `shotData.panelBoxes` (on disk), updated by `refreshShotData` upon
+   image updates (following `proseHash` semantics). Downstream consumers consume the
+   intended polygon definitions rather than detected boxes.
 
-8.  **The shot-level cast stays authored; panels name who is in them.**
-    `PagePanel.subjects` is `{ characterId; pose?; expression? }[]`. `Shot.subjects`
-    remains the cast list carrying `outfit`, so `setShotOutfit`, `setShotSubjects`,
-    `requireShotCast` and `set_outfit` keep working unchanged, and the planner's one
-    portrait ref per subject stays deduplicated and positional. A character wears one
-    outfit across a page. On a page shot the shot-level `pose` and `expression` are not
-    read; the panel's are. `realizeDecomposition` builds the cast as the deduplicated
-    union of the panels; the validator reports a panel naming a character outside the cast
-    (`panel_subject_not_in_cast`, error) rather than anything normalizing at write time.
-    `Shot.framing` stays required and is set to the first panel's framing; the page prompt
-    does not read it and `shotDescription` says "page" instead of "single `framing` shot".
+8. **Authored shot cast with panel-level character assignments.** `PagePanel.subjects` is
+   typed as `{ characterId: string; pose?: string; expression?: string }[]`.
+   `Shot.subjects` remains the authoritative cast list governing character outfits,
+   preserving `setShotOutfit`, `setShotSubjects`, `requireShotCast`, and `set_outfit`
+   without altering reference deduplication or hash order. Characters maintain a single
+   outfit across a given page. On page shots, top-level `pose` and `expression` fields are
+   ignored in favor of panel-level values. `realizeDecomposition` derives the shot cast
+   from the union of panel subjects. The model validator reports a panel naming a
+   character outside the cast as a `panel_subject_not_in_cast` error rather than mutating
+   data at write time. `Shot.framing` remains required and defaults to the framing of the
+   first panel; page prompts ignore it, and `shotDescription` describes the shot as a
+   "page" rather than a single framed shot.
 
-9.  **Coverage stays shot-level and panels partition it.** `Shot.coversLines` remains the
-    authority for coverage, the slot graph and the strip. `PagePanel.coversLines` must
-    partition it; a covered line in no panel is a `line_in_no_panel` warning (the page
-    still renders; the line is unlettered and stepping shows the whole page). The
-    mechanism for edits: `CoverShot` gains optional `panels: { coversLines }[]`,
-    `CoverageOp.changed` carries the new panel assignment beside `coversLines`, and both
-    hosts apply both. A line gained by a page shot lands in the panel covering the nearest
-    earlier line, or the first panel; a line lost leaves the panel that held it.
-    `withCoverage`'s first-line repair lands the line in the first panel.
+9. **Shot-level coverage partitioned across panels.** `Shot.coversLines` remains
+   authoritative for coverage, the slot graph, and the timeline UI.
+   `PagePanel.coversLines` partitions the shot's covered lines; a covered line in no panel
+   is a `line_in_no_panel` warning (the page still renders, the line is unlettered, and
+   playback shows the whole page for it). For structural edits, `CoverShot` introduces
+   optional `panels: { coversLines }[]`, and `CoverageOp.changed` includes updated panel
+   assignments alongside `coversLines`. Lines added to a page shot are assigned to the
+   panel containing the preceding line (or panel 1 if none match); removed lines are
+   purged from their respective panels. `withCoverage`'s first-line repair puts the
+   scene's first line in the first panel.
 
-10. **Lettering applies to page shots only.** A single frame is never lettered: the
-    runner's text box is its lettering, and a manga single frame is a cinematic panel
-    rather than a page. Under `lettering: model` a `lettering` chunk lists each panel's
-    dialogue and captions verbatim from its covered lines; under `runner` the chunk is
-    empty and the page scaffolding says no text. The reviewer, given `spec.lettering`,
-    checks the drawn text against it and reports a mismatch as blocking.
+10. **Lettering scoped exclusively to page shots.** Single-frame shots are not lettered
+    in-image; dialogue is rendered via the runner UI, treating single frames as cinematic
+    compositions. When `lettering: model` is active, a `lettering` chunk embeds line text
+    and panel assignments directly into the prompt. Under `lettering: runner`, the chunk
+    is empty and the page's scaffolding sentence says no text. The reviewer checks
+    generated text against `spec.lettering` and flags mismatches as blocking defects.
 
-11. **Model lettering is a deliberate exception to "coverage is free".** On a page shot
-    under `lettering: model`, the covered lines' text and their assignment to panels are
-    in the prompt and so in the hash. A line edit or a coverage edit re-renders the page.
-    That is correct, because the page shows the words, and it is recorded in the four
-    places that say coverage is free (facts above), each gaining the page-shot clause.
-    `story.setCoverage`'s `check` states the re-render on a lettered page shot the way
-    `story.setHeading` states its cost.
+11. **Model lettering invalidates task identity on coverage edits.** Under
+    `lettering: model`, dialogue text and panel mappings are embedded in the prompt,
+    making the task hash sensitive to line and coverage modifications. Editing a covered
+    line's text, or which panel covers it, re-keys the task and forces re-rendering. This
+    exception to the "coverage edits do not re-render" invariant is written into the four
+    places listed in the facts above, each gaining the page-shot clause.
+    `story.setCoverage` surfaces invalidation costs for lettered page shots analogously to
+    `story.setHeading`.
 
-12. **The `framing` enum stays.** Manga camera vocabulary (extreme close-up, low angle,
-    over-the-shoulder, insert, splash) goes in the free-text `camera` field, which the
-    decomposer is told to use when `storyboard_notes` asks for pages. The research doc's
-    stage 2 (camera enums) would be a further refinement and is not blocked by this.
+12. **Retention of the `framing` enum.** Manga-specific framing and staging instructions
+    (e.g., extreme close-up, low angle, over-the-shoulder, insert, splash) are specified
+    in the free-text `camera` field, which the decomposer populates when
+    `storyboard_notes` requests manga formatting. Formalizing camera enums remains
+    deferred to future iterations.
 
-13. **The sheet is a gen graph; sheet membership is authored on the shot and the group is
-    a record in the shots file.** `Shot.sheet?: string` names a group within the scene;
-    `shotsFile.sheets?: Record<string, { seed?: number; notes?: string }>` holds the
-    group. The decomposer proposes groups (pages under manga notes, continuous beats
-    otherwise, at most eight members) and the author edits them.
+13. **Staging sheets implemented via generation graphs.** `Shot.sheet?: string` assigns a
+    shot to a scene-scoped staging group, tracked in
+    `shotsFile.sheets?: Record<string, { seed?: number; notes?: string }>`. The decomposer
+    proposes groupings (up to eight shots per sheet, grouping pages under manga directives
+    or contiguous beats in standard workflows), which authors can reconfigure.
 
-14. **Sheet identity is in the task hash.** On a member shot `shotInputs` puts
-    `params.extra.sheet = sha256(sheet prompt, sheet ref hashes in order, group seed)`
-    where the sheet prompt and refs are what the graph will be seeded with (decision 16).
-    Anything the sheet is drawn from — the member list and order, each member's framing,
-    camera and cast, the plate, the group's seed — therefore re-keys every member, which
-    is right because they were all drawn against one sheet. The alternative, extending
-    `graphDrift` to compare seeds, is rejected below. A shot with no `sheet` puts nothing
-    in `extra`, so no existing hash moves; `extra`'s doc comment is rewritten to say it
-    carries identity as well as provider parameters. The legacy (no graph) runner ignores
-    the field.
+14. **Sheet identity tracked in task input hashes.** Member shots include
+    `params.extra.sheet = sha256(sheet prompt, sheet ref hashes in order, group seed)` in
+    `shotInputs`, capturing the generation inputs of the upstream sheet graph (Decision
+    16). Any modification to what the sheet is drawn from (member list and order, each
+    member's framing, camera and cast, the background plate, or the group seed) re-keys
+    every member shot in the group. Non-member shots omit `extra.sheet`, preserving
+    existing task hashes. `extra`'s doc comment is rewritten to say it carries task
+    identity as well as provider parameters. The legacy runner ignores this field.
 
-15. **A sheet is redrawn through its inputs, never by `force`.** `gengraph.run` with
-    `force` is refused on a graph holding a node that feeds more than one output
-    (`sheet_graph_force`), naming the group's `seed` as the way to reroll: bumping it
-    re-keys every member through decision 14, so the sheet and all its members redraw
-    together. A forced sheet under resumed crops would leave every other member drawn
-    against a sheet that no longer exists, and `invalidateGenGraph` cannot reach the crops
-    because they do not spend.
+15. **Sheet invalidation managed through seed mutations.** Invoking `gengraph.run` with
+    `force` on a graph holding a node that feeds more than one output is refused
+    (`sheet_graph_force`). Rerolling requires incrementing the group `seed`, which re-keys
+    all member tasks concurrently via Decision 14. Forcing single-node execution without
+    invalidating dependent tasks would create desynchronization, as downstream crop nodes
+    do not incur spend and would not be invalidated by `invalidateGenGraph`.
 
-16. **The graph shape.** `GenSheetPrompt` and `GenSheetRefs` (host-seeded, registered with
-    `seededInput` like the three existing seeds) → `GenImage` (the sheet) → one `GenCrop`
-    per cell → per member: `GenRefList` (the crop, the whole sheet, the task's
-    `GenTaskRefs`) and a `GenTemplate` ("This is cell {varA} of the attached sequence
-    sheet; match its staging and camera. {varB}" with `varB` from `GenDerivedPrompt`) →
-    `GenImage` (the shot; `aspect` prop written from `aspectFor`) → `GenOutput` for that
-    member's slot. The cell words live in the authored graph, in the authored hash, not in
-    the derived prompt, so the legacy path's prompt is untouched. Multi-output graphs
-    already share an upstream through the journal, so the sheet is drawn once per group
-    and resumed for each sibling. Under a bound graph the shot's own `seed` rung does not
-    apply, which is already true of every bound graph today. `gengraph.scaffoldSheet`
-    writes this graph for a group, following `createForSlot`/`planForSlot`/`claimOf`
+16. **Staging sheet graph topology.** The graph pipeline is structured as:
+    `GenSheetPrompt` and `GenSheetRefs` (registered as seeded inputs) → `GenImage`
+    (renders sequence sheet) → `GenCrop` (slices cell per member) → Per member:
+    `GenRefList` (aggregates cropped cell, full sequence sheet, and task references) and
+    `GenTemplate` ("This is cell {varA} of the attached sequence sheet; match its staging
+    and camera. {varB}", resolving `{varB}` via `GenDerivedPrompt`) → `GenImage` (renders
+    final shot using `aspectFor`) → `GenOutput` (maps to slot). Cell instructions reside
+    strictly within the authored graph template, keeping derived prompt strings clean for
+    the legacy path. Shared upstreams are cached in the execution journal, rendering the
+    sheet once per group. Under a bound graph the shot's own `seed` rung does not apply,
+    which is already true of every bound graph today. `gengraph.scaffoldSheet` generates
+    this graph structure, following `createForSlot`/`planForSlot`/`claimOf`
     (`apps/desktop/src/main/commands/gengraph.ts:212-315`) and refusing when any member
     slot already has a claim.
 
-17. **Seeds are computed by a shared helper and threaded through the run.**
-    `sheetSeeds(scene, group, model, config, upstreamByShot)` in `@vn/artgen` returns
-    `{ prompt, refs }`; the planner computes it once per group (it already resolves each
-    member's upstream through `shotUpstream`) and passes the sheet key into `shotInputs`;
-    `makeShotRunner` (which has the scene from `findShot`) passes the seeds to
-    `runBoundGraph` through a new `GraphRunOptions.seeds`; the desktop's interactive
-    `runGraph` computes them through the same helper when the graph holds a sheet node, so
-    Run on a sheet graph draws the same sheet the pipeline would.
+17. **Centralized seed calculation and propagation.** A shared helper
+    `sheetSeeds(scene, group, model, config, upstreamByShot)` in `@vn/artgen` generates
+    `{ prompt, refs }`. The planner computes this once per group and injects the resulting
+    sheet key into `shotInputs`. `makeShotRunner` supplies these seeds to `runBoundGraph`
+    via `GraphRunOptions.seeds`. The interactive desktop execution command `runGraph`
+    invokes the same helper, ensuring parity between manual runs and pipeline execution.
 
-18. **`GenCrop` is the repo's first pixel node, behind `GenServices.pixels`.** The seam is
-    `pixels: { crop(bytes, ext, rect): Promise<{ bytes, ext }> }`, a plugin-visible
-    capability. The implementation lives in `@vn/pipeline` (`jimp`: pure JS, PNG and JPEG,
-    no native rebuild in the packaged app), never in `@vn/gengraph`, because the renderer
-    imports that package's main entry. The gengraph test fixture, the plugin-load test and
-    the testkit implement the seam with a stub that returns its input. A crop is an exact
-    pixel copy plus a lossless re-encode; the rectangle is the cell, and no mask is needed
-    for a fixed grid. The Blend note in `gen-graphs.md` is updated to say what pixel work
-    the repo now does.
+18. **`GenCrop` pixel processing via `GenServices.pixels`.** Pixel operations are exposed
+    through the plugin interface
+    `pixels: { crop(bytes, ext, rect): Promise<{ bytes, ext }> }`. The concrete
+    implementation resides in `@vn/pipeline` using `jimp` (pure JavaScript, supporting
+    PNG/JPEG without native bindings in the desktop shell) rather than `@vn/gengraph`,
+    keeping the renderer package free of heavy dependencies. Test harnesses and fixtures
+    implement a pass-through stub. Cell cropping performs a lossless extraction and
+    re-encode of the target rectangular bounds.
 
-19. **The whole sheet also goes in as a reference** (decision 16's `GenRefList`). A crop
-    alone loses the geography the sheet exists to establish.
+19. **Full sheet injected as global reference.** `GenRefList` incorporates both the
+    cropped cell and the uncropped staging sheet. Providing the complete sheet preserves
+    global spatial orientation that isolated cell crops discard.
 
-20. **Sheets are bounded** at eight cells, 16:9 cells for frames and `page_aspect` cells
-    for pages; a group mixing the two takes the page cell. A longer scene becomes
-    sequential groups, each group's sheet given the previous group's sheet as a reference
-    (a `GenSlotRef` is not enough because a sheet is a blob, so `GenSheetRefs` carries the
-    previous group's last sheet hash from the journal when one exists).
+20. **Sheet sizing and multi-group scaling.** Staging sheets support up to eight cells,
+    dimensioned at 16:9 for single frames and `page_aspect` for page shots (mixed groups
+    default to `page_aspect` cells). Longer sequences are partitioned into sequential
+    groups, where subsequent sheets receive the preceding sheet as an image reference via
+    `GenSheetRefs`, which reads the previous group's last sheet hash from the journal (a
+    `GenSlotRef` cannot do this, because a sheet is a blob rather than an asset).
 
-21. **The runner shows the whole page first.** Stage 2 exports a page shot as one `show`
-    beat with the page image; the dialogue plays in the ordinary text box under it. Stage
-    3 adds `show.panels?: { shape, lines }[]` and an optional `line` (the line id) on
-    `say` and `narrate` beats, both optional so the playable `version` stays 1; `framesOf`
-    sets `Frame.panel` by matching the beat's `line` to a panel's `lines`, and the PLAY
-    editor highlights the panel's polygon. The site renderer ignores both fields.
+21. **Initial whole-page playback and panel highlight progression.** Stage 2 outputs a
+    page shot as a single `show` beat referencing the page asset, displaying dialogue in
+    the standard overlay box. Stage 3 introduces optional
+    `show.panels?: { shape, lines }[]` along with `say.line` and `narrate.line`
+    references, maintaining playable format `version: 1`. `framesOf` matches beat line IDs
+    to panel definitions to populate `Frame.panel`, enabling the desktop player to
+    highlight active panels while dimming background elements. The static web renderer
+    safely ignores these optional properties.
 
 ## Data model
 
@@ -296,9 +318,9 @@ interface PagePanel {
     shape: [number, number][];
     framing: Shot["framing"];
     camera?: string;
-    /** Who is in this panel; the outfit comes from the shot's cast. */
+    /** Character assignments; outfits inherit from the parent shot cast. */
     subjects: { characterId: string; pose?: string; expression?: string }[];
-    /** A partition of the shot's `coversLines`. */
+    /** A partition of the parent shot's `coversLines`. */
     coversLines: string[];
     artNotes?: string;
 }
@@ -307,9 +329,9 @@ interface Shot {
     // …existing fields…
     aspect?: string;
     panels?: PagePanel[];
-    /** The sheet group this shot is staged with, scoped to its scene. */
+    /** Staging sheet group ID, scoped to the parent scene. */
     sheet?: string;
-    /** Derived: the reviewer's observed boxes, recorded with `image`. */
+    /** Derived: reviewer-detected bounding boxes, persisted alongside `image`. */
     panelBoxes?: { x: number; y: number; w: number; h: number }[];
 }
 
@@ -320,237 +342,245 @@ interface ShotsFile {
 }
 ```
 
-- `shotsFileSchema`: `aspect`, `panels`, `sheet` authored (top level); `panelBoxes` under
-  `shotData`; `sheets` a top-level record. `serialize` stays byte-stable for a file
-  without any of them, which the existing round-trip test pins.
-- `shotDecompositionSchema` gains optional `aspect`, `panels` (subjects by name as today),
-  `sheet`, and a top-level `sheets`. `realizeDecomposition` resolves subjects per panel
-  with the same case-insensitive rule, drops invented line ids per panel, builds the cast
-  from the panels, and coerces `framing`. `deterministicShots` stays frames-only.
-- `ShotSpec` gains `panels?: { index; shapeWords; framing; characters }[]` and
-  `lettering?: { panel; lines: string[] }[]`. `REVIEW_SYSTEM` gains two generic rules,
-  applied only when the spec carries those fields: report observed boxes; check the drawn
-  text. No per-project persona.
-- `DefectReport` gains `observed?: { panels: { box }[] }`; `defectReportSchema` and the
-  reviewer's return type carry it.
-- `ImageParams.extra.sheet` on a member shot; absent otherwise.
-- `PromptChunk` categories gain `'panel'` and `'lettering'`. Chunk keys are `page`,
-  `panel-<i>` and `lettering`, keyed by index so an override survives an edit to the
-  panel's words.
-- `CoverShot.panels?`, `CoverageOp.changed[].panels?`.
-- Playable: `show.panels?`, `say.line?`, `narrate.line?`.
+- `shotsFileSchema`: `aspect`, `panels`, and `sheet` are authored top-level properties;
+  `panelBoxes` persists under `shotData`; `sheets` is a top-level dictionary. `serialize`
+  preserves byte-stability for files omitting these fields, as verified by existing
+  round-trip tests.
+- `shotDecompositionSchema`: gains optional `aspect`, `panels` (with subjects declared by
+  name), `sheet`, and top-level `sheets`. `realizeDecomposition` resolves character IDs
+  case-insensitively, discards ungrounded line IDs, derives the shot cast from panel
+  subjects, and normalizes `framing`. `deterministicShots` remains frame-only.
+- `ShotSpec`: gains `panels?: { index; shapeWords; framing; characters }[]` and
+  `lettering?: { panel; lines: string[] }[]`. `REVIEW_SYSTEM` adds two conditional
+  instructions: bounding box extraction and lettering verification.
+- `DefectReport`: adds `observed?: { panels: { box }[] }`, exposed through
+  `defectReportSchema` and reviewer return signatures.
+- `ImageParams.extra.sheet`: present on staging sheet member shots; omitted otherwise.
+- `PromptChunk`: adds `'panel'` and `'lettering'` categories. Emitted chunk keys are
+  `page`, `panel-<i>`, and `lettering`, keyed by index so overrides survive text edits.
+- Coverage types: `CoverShot.panels?` and `CoverageOp.changed[].panels?` added.
+- Playable schema: `show.panels?`, `say.line?`, and `narrate.line?` added.
 
 ## Prompt shape of a page shot
 
-`buildShotChunks` on a shot with panels emits, in order: `style`, `page` (replacing
-`framing`: "A manga page of N panels in <location> (<variant>)." plus the layout words),
-`panel-<i>` for each panel (replacing `subject`: framing, cast with outfit from the shot's
-cast, camera, the panel's art notes), `lettering`, `art-notes` (shot-level), `scaffolding`
-("Render as one complete comic page with drawn panel borders; no UI text." under `model`
-lettering, "…; no text or lettering of any kind." under `runner`). The shot-level `camera`
-chunk is empty on a page. On a shot without panels the chunk list is exactly today's,
-which the existing literal-string pins in `packages/artgen/src/tests/prompts.test.ts` and
-`packages/pipeline/src/tests/pipeline.test.ts` continue to assert.
+For shots containing `panels`, `buildShotChunks` generates chunks in the following order:
+`style`, `page` (replaces `framing`: "A manga page of N panels in <location> (<variant>)."
+and includes derived layout text), `panel-<i>` for each panel (replaces `subject`:
+framing, cast with inherited outfits, camera angle, and panel art notes), `lettering`,
+shot-level `art-notes`, and `scaffolding` ("Render as one complete comic page with drawn
+panel borders; no UI text." for `lettering: model`; "…; no text or lettering of any kind."
+for `runner`). Shot-level `camera` chunks evaluate to empty strings on page shots. Shots
+without panels preserve the existing chunk sequence, matching literal string assertions in
+`packages/artgen/src/tests/prompts.test.ts` and
+`packages/pipeline/src/tests/pipeline.test.ts`.
 
 ## Stages
 
-Each stage lands green under `pnpm check && pnpm test && pnpm lint`.
+Each stage must pass `pnpm check && pnpm test && pnpm lint` prior to merging.
 
 ### Stage 1 — aspect reaches the model, and the config gains its three keys
 
-- `createGeminiImage` sends `imageConfig.aspectRatio` (decision 3). Own commit.
-- `Shot.aspect`, `aspectFor` beside `seedFor` in `packages/artgen/src/prompts.ts`,
-  `shotInputs` uses it; `shotsFileSchema` and `shotDecompositionSchema` gain `aspect`.
-- `projectConfig`: `storyboard_notes`, `lettering`, `image_params.page_aspect`.
-  `withConfigKey` in `packages/config/src/config.ts` generalizing `withArtStyle`;
-  `project.setStoryboardNotes`, `project.setLettering` in
-  `apps/desktop/src/main/commands/` following `project.setArtStyle`, the lettering check
-  counting page shots (zero until stage 2, and the command is still correct then).
-- `decomposeScene` gains a `style: { artStyle; storyboardNotes }` argument; the four
-  callers pass it (`planner.ts:91`, `decompose.ts:76` through `DecomposeAllOptions`,
+- Update `createGeminiImage` to transmit `imageConfig.aspectRatio` (Decision 3) in an
+  isolated commit.
+- Implement `Shot.aspect` and `aspectFor` in `packages/artgen/src/prompts.ts` alongside
+  `seedFor`; integrate into `shotInputs`; add `aspect` to `shotsFileSchema` and
+  `shotDecompositionSchema`.
+- Extend `projectConfig` with `storyboard_notes`, `lettering`, and
+  `image_params.page_aspect`. Add generalized `withConfigKey` in
+  `packages/config/src/config.ts`; implement `project.setStoryboardNotes` and
+  `project.setLettering` in `apps/desktop/src/main/commands/`, pricing invalidations
+  across page shots.
+- Update `decomposeScene` to accept `style: { artStyle; storyboardNotes }`; update the
+  call sites (`planner.ts:91`; `decompose.ts:76` through `DecomposeAllOptions`;
   `packages/authoring/src/tools/storyboard.ts:146` through `LoadedWorkspace`, which starts
   reading the two keys off `project.yaml`). `DECOMP_SYSTEM` becomes a function of the
   style and says nothing about pages yet.
-- Tests: `aspectFor` unset returns the same object; the existing prompt and pipeline hash
-  pins are unchanged; a decomposition test asserts the notes reach the system prompt.
+- Tests: verify `aspectFor` returns inputs unmodified when unset; assert prompt and
+  pipeline hashes remain unchanged; verify `storyboard_notes` reach the decomposition
+  system prompt.
 
 ### Stage 2 — page shots, model lettering, whole-page display
 
-- Types and schemas as above. `packages/store/src/shots.ts` reads and writes `panels`,
-  `sheet`, `sheets` and `shotData.panelBoxes`; the validator gains
-  `panel_subject_not_in_cast` and `line_in_no_panel`.
-- `packages/artgen/src/layout.ts`: templates, polygon → words, overlap matching.
-- `buildShotChunks`, `shotInputs`, `shotSpec` as above; `castLine` and `shotDescription`
-  say "page" for a page.
-- `DECOMP_SYSTEM` (`packages/artgen/src/storyboard.ts:102-114`) learns pages: emit
-  `panels` only when the notes ask for pages, templates by name, the camera vocabulary, at
-  most six panels. `realizeDecomposition` as above.
-- `setCoverage`, `CoverShot`, `CoverageOp`, both hosts, and `withCoverage` (decision 9).
-  `story.setCoverage`'s check and the four "coverage is free" sentences (decision 11).
-- `REVIEW_SYSTEM`'s two conditional rules; `defectReportSchema.observed`;
-  `ChatVisionReviewer.review` returns it; `refreshShotData` stamps `panelBoxes`.
-- `write_storyboard`'s strict shape gains `aspect`, `panels` (a strict sub-shape) and
-  `sheet`; `propose_storyboard` prints them so the agent can restate a page.
-- `newShot` never creates panels (the panel editor is stage 3).
-- Timeline: `timeline.css:310`'s `16 / 9` becomes per-asset, read from the image. The
-  shot-menu rule module (`apps/desktop/renderer/rules/shotmenu/`) gains a page-shot
-  situation, then `pnpm gen:uxmodel`.
-- Export: no change; the page is the shot's image.
-- Docs: `pipeline-contracts.md` (decision 11, `observed`), `playable-format.md` (a page
-  shot is one `show` beat; nothing else changes yet).
+- Implement data models and schemas. Update `packages/store/src/shots.ts` to serialize
+  `panels`, `sheet`, `sheets`, and `shotData.panelBoxes`; add `panel_subject_not_in_cast`
+  and `line_in_no_panel` validations.
+- Implement `packages/artgen/src/layout.ts` for layout templates, polygon-to-prose
+  conversion, and bounding-box overlap matching.
+- Update `buildShotChunks`, `shotInputs`, and `shotSpec`; adjust `castLine` and
+  `shotDescription` to output "page" for multi-panel shots.
+- Update `DECOMP_SYSTEM` (`packages/artgen/src/storyboard.ts:102-114`) to emit `panels` up
+  to a maximum of six when requested by `storyboard_notes`, utilizing named templates and
+  camera vocabulary. Implement `realizeDecomposition` resolution logic.
+- Update `setCoverage`, `CoverShot`, `CoverageOp`, session hosts, and `withCoverage`
+  (Decision 9). Update `story.setCoverage` invalidation pricing and documentation
+  regarding coverage invalidations (Decision 11).
+- Add conditional rules to `REVIEW_SYSTEM`; add `observed` to `defectReportSchema` and
+  `ChatVisionReviewer.review`; update `refreshShotData` to populate `panelBoxes`.
+- Update `write_storyboard` and `propose_storyboard` strict schemas to support `aspect`,
+  `panels`, and `sheet`.
+- Restrict `newShot` from generating panels (deferred to Stage 3).
+- Timeline: update `timeline.css:310` to read aspect ratios per asset. Add a page-shot
+  situation to the shot-menu rule module (`apps/desktop/renderer/rules/shotmenu/`) and
+  regenerate via `pnpm gen:uxmodel`.
+- Export: preserve single-image export for page shots.
+- Documentation: update `pipeline-contracts.md` (Decision 11, `observed`) and
+  `playable-format.md`.
 
 ### Stage 3 — panel stepping and the panel editor
 
-- `buildPlayable` emits `show.panels` and `say.line`/`narrate.line`; `framesOf` sets
-  `Frame.panel`; the PLAY editor draws the polygon outline and dims the rest of the page.
-- A panel editor in the asset pane: drag polygon vertices, pick a template, assign lines
-  to panels, per-panel cast and camera. Writes through `story.setPanels` (undoable,
-  `affects` the shots subtree); its check prices the re-key. Situations and
-  `pnpm gen:uxmodel`. `set_panels` for the agent over the same rule.
-- Docs: `playable-format.md`, `desktop-app.md`.
+- Update `buildPlayable` to export `show.panels`, `say.line`, and `narrate.line`; update
+  `framesOf` to set `Frame.panel`; configure desktop playback to highlight active panel
+  polygons while dimming the background.
+- Add panel editor to the desktop asset panel: polygon vertex editing, template selection,
+  line assignment, and per-panel cast/camera overrides. Route mutations through
+  `story.setPanels` with undo support and invalidation calculations. Regenerate UI models
+  via `pnpm gen:uxmodel` and expose `set_panels` to the agent.
+- Documentation: update `playable-format.md` and `desktop-app.md`.
 
 ### Stage 4 — the sheet graph
 
-- `Shot.sheet`, `shotsFile.sheets`, the decomposer proposing groups, `params.extra.sheet`
-  through `sheetSeeds` and `shotInputs` (decisions 13, 14, 17).
-- `buildSheetChunks(scene, members, model, config)` in `@vn/artgen`: the plate, the cast,
-  then the ordered members as camera moves in one space, unlettered, into a fixed grid of
-  cells.
-- `GenSheetPrompt`, `GenSheetRefs`, `GenCrop` in `packages/gengraph/src/nodes/`
-  (`registerGenNodes` gains the two `seededInput`s; the `gen-graphs.md` node table goes
-  from twelve to fifteen). `GenServices.pixels`, implemented in
-  `packages/pipeline/src/genservices.ts` with `jimp` and stubbed in the three fixtures.
-- `GraphRunOptions.seeds`; `makeShotRunner` and the desktop `runGraph` compute them.
-- `gengraph.run`'s `sheet_graph_force` refusal.
-- `gengraph.scaffoldSheet(scene, sheet)`.
-- The reviewer is handed the crop as an extra ref with a sentence in `spec.description`
-  ("matches the staging of the attached cell").
-- Trial on one scene of an example project before the decomposer proposes groups by
-  default; `storyboard_notes` is where an author turns it on until then.
+- Implement `Shot.sheet`, `shotsFile.sheets`, decomposer group suggestions, and
+  `params.extra.sheet` via `sheetSeeds` and `shotInputs` (Decisions 13, 14, 17).
+- Implement `buildSheetChunks(scene, members, model, config)` in `@vn/artgen` to arrange
+  scene cast, background plate, and sequential camera cells into an unlettered grid.
+- Add `GenSheetPrompt`, `GenSheetRefs`, and `GenCrop` to `packages/gengraph/src/nodes/`
+  (register seeded inputs in `registerGenNodes`). Implement `GenServices.pixels` in
+  `packages/pipeline/src/genservices.ts` using `jimp`, stubbing execution in test
+  fixtures.
+- Add `GraphRunOptions.seeds`; wire seed generation into `makeShotRunner` and desktop
+  `runGraph`.
+- Implement `sheet_graph_force` execution refusal in `gengraph.run`.
+- Implement `gengraph.scaffoldSheet(scene, sheet)`.
+- Forward cropped reference cells to the reviewer as auxiliary references with
+  instructions in `spec.description`.
+- Validate against an example project scene prior to enabling automatic decomposer
+  grouping; until then `storyboard_notes` is where an author turns sheets on.
 - The fixture asset cache key includes `params` (`schemas.ts:475`), so a recorded fixture
   for a member shot is invalidated by `extra.sheet`. Accepted: only member shots carry it,
   and none exists before this stage.
-- Docs: `gen-graphs.md` (node table, seeds, the pixel seam, the Blend note, the force
-  refusal), `pipeline-contracts.md` (identity: `params.extra.sheet`).
+- Documentation: update `gen-graphs.md` (node tables, seeded inputs, pixel capability
+  interface, `Blend` notes, force-run constraints) and `pipeline-contracts.md`.
 
 ### Stage 5 — runner-drawn bubbles
 
-- `PagePanel.bubbles?: { lineId; anchor: [number, number]; tail?: [number, number] }[]`,
-  authored in the panel editor or proposed by the agent from `panelBoxes`.
-- `project.setLettering runner`; the `lettering` chunk goes empty and the scaffolding
-  changes, re-keying every page shot, which the command's check prices.
-- The runner draws the bubble for the current line inside its panel. The site renderer
-  stays text-under-page, because it is a bundle committed into author repositories.
-- Deferred until stages 2–4 have run on a real project, because the bubble placement UI is
-  the largest piece of editor work in the plan and its shape depends on how well observed
-  boxes match intended polygons in practice.
+- Add
+  `PagePanel.bubbles?: { lineId; anchor: [number, number]; tail?: [number, number] }[]`,
+  configured via the panel editor or populated by the agent using `panelBoxes`.
+- Implement `project.setLettering runner`; clear prompt `lettering` chunks and update
+  scaffolding, pricing the resulting invalidation of all page shots.
+- Render speech bubbles directly within active panels during runner playback. Preserve
+  existing text overlay rendering in the standalone web player.
+- Defer implementation until Stages 2–4 have been validated on production projects to
+  confirm alignment between detected bounding boxes and intended geometries.
 
 ## Contracts to update
 
-- `pipeline-contracts.md`, Identity: `Shot.aspect` in `params`, `params.extra.sheet`, and
-  the page-shot exception to "coverage is free" (decision 11).
-- `pipeline-contracts.md`, Generation and review: `ShotSpec.panels`/`lettering`,
-  `DefectReport.observed`, `panelBoxes` recorded like `proseHash`.
-- `gen-graphs.md`: three node types, two seeds, `GenServices.pixels`, the Blend note, the
-  force refusal, the interactive run's seeds (its claim that `runGraph` seeds today is
-  wrong and is corrected in stage 4).
-- `playable-format.md`: `show.panels`, `say.line`, `narrate.line` (stage 3), bubbles
-  (stage 5).
+- `pipeline-contracts.md`: identity specifications for `Shot.aspect` in `params`,
+  `params.extra.sheet`, and the invalidation exception for lettered page shots (Decision
+  11). Update generation and review sections with `ShotSpec.panels`/`lettering`,
+  `DefectReport.observed`, and `panelBoxes` persistence rules.
+- `gen-graphs.md`: document three new node types, two seeded inputs, `GenServices.pixels`,
+  updated `Blend` rationale, force execution restrictions, and interactive runner seeding
+  corrections.
+- `playable-format.md`: document `show.panels`, `say.line`, `narrate.line` (Stage 3), and
+  speech bubble definitions (Stage 5).
 
 ## Cost to undo
 
-- Stage 1's backend change is the one that reaches every project: with `aspectRatio` sent,
-  a re-render of any existing task can look different, and reverting changes it back. No
-  hash moves either way.
-- Stage 1's config keys and `Shot.aspect` are optional and contribute nothing when unset;
-  deleting them restores byte-identical prompts.
-- Stage 2 adds optional fields. A project that never authored a page shot has no page
-  tasks; removing the feature leaves page shots as frames with no panels, which re-render
-  as single frames. Every page rendered under `lettering: model` is re-keyed by stage 5's
-  switch and again by a revert of it.
-- Stage 4's `params.extra.sheet` re-keys member shots when removed, the same cost as
-  changing their camera, and only for shots that opted in.
-- `ShotSpec.panels` and `lettering` are on the wire once stage 2 ships, so recorded
-  attempts and the reports `report.agent` reads carry them. Harmless.
+- **Stage 1 (Backend Aspect):** Transmitting `aspectRatio` affects all project tasks.
+  Reverting restores prior behavior, but active re-renders will reflect output shifts.
+  Task hashes remain unchanged across both states.
+- **Stage 1 (Config/Aspect Types):** Fields are optional; removing them restores
+  byte-identical prompt generation.
+- **Stage 2 (Page Shots):** Fields are optional; removing the feature causes existing page
+  shots to evaluate as standard single frames and re-render accordingly. Toggling between
+  Stage 2 and Stage 5 re-keys all page shots rendered under `lettering: model`.
+- **Stage 4 (Staging Sheets):** Removing `params.extra.sheet` invalidates cache keys only
+  for shots explicitly assigned to staging groups.
+- **Reviewer Specifications:** Exposing `ShotSpec.panels` and `lettering` adds metadata to
+  execution logs and agent reports with no downstream side effects.
 
 ## Rejected alternatives
 
-- **A project-level style profile.** The first draft. Rejected for the research doc's
-  reasons and one more: every string the profile would have owned is either already free
-  text on every prompt or a property of pages, so the profile would have doubled the
-  decomposer, reviewer and scaffolding contracts to carry nothing a per-shot field does
-  not (decision 1).
-- **Sheet → split → upscale as the final pixels.** Cells are too small, page panels are
-  not 16:9, and generative upscaling drifts. The sheet is a reference (decision 16).
-- **A `page_image` task kind.** Every consumer of `shot_image` would grow a second case
-  (decision 4).
-- **Extending `graphDrift` to compare seeds.** Would give a sheet seed change a drift
-  signal without touching the task hash, but drift is a report rather than a plan, so the
-  siblings would be flagged and not re-planned; and it would make the graph, which is
-  meant to change only how a slot is drawn, into something that changes when the slot
-  should be redrawn. Putting the sheet in the hash keeps one identity rule (decision 14).
-- **Normalizing the shot-level cast and coverage from the panels at write time.** Would
-  erase four existing writers' edits on the next write (decision 8) and undo a coverage
-  edit applied at shot level (decision 9).
-- **A reviewer persona on the spec.** With no profile there is no persona; the page rules
-  are conditional on spec fields (data model).
-- **Widening the `framing` enum** (decision 12).
-- **Boxes for panel geometry** (decision 5).
-- **Cell words in the derived prompt.** Would put the cell index into the legacy path's
-  prompt and hash (decision 16).
+- **Project-level style profile.** Rejected because style directives are already handled
+  via `art_style`, and structural requirements (aspect ratio, layout, lettering) vary per
+  shot. Introducing a global profile would duplicate existing configuration paths without
+  functional benefit (Decision 1).
+- **Generating final pixels via sheet crop upscaling.** Rejected because cell resolutions
+  are insufficient, panel geometries deviate from 16:9, and generative upscaling
+  introduces detail drift. Sheets are restricted to staging references (Decision 16).
+- **Dedicated `page_image` task kind.** Rejected to avoid branching logic across asset
+  storage, export pipelines, document graphs, and coverage workflows (Decision 4).
+- **Tracking sheet drift via `graphDrift` seed comparison.** Rejected because drift
+  evaluation reports discrepancies without forcing re-planning, and graphs should dictate
+  execution behavior rather than task invalidation timing. Ingestion into task input
+  hashes preserves unified identity semantics (Decision 14).
+- **Automated normalization of shot cast and coverage at write time.** Rejected because
+  overwriting shot-level fields erases explicit edits from four existing mutators
+  (Decision 8) and overrides manual coverage adjustments (Decision 9).
+- **Reviewer personas in `ShotSpec`.** Rejected alongside style profiles; panel inspection
+  rules are applied conditionally based on spec field presence.
+- **Expanding the `framing` enum.** Rejected; staging nuance is handled via free-text
+  `camera` inputs (Decision 12).
+- **Bounding-box panel geometry.** Rejected; manga paneling requires non-orthogonal
+  polygon definitions (Decision 5).
+- **Injecting cell descriptions into derived prompts.** Rejected to prevent polluting task
+  prompts and hashes in the legacy execution path (Decision 16).
 
 ## Open questions
 
-- Whether a page shot with one panel (a splash) should be a page or a frame with a tall
-  `aspect`. The plan allows both; the decomposer is told a splash is a one-panel page so
-  it can be lettered.
-- Other image providers in the four-vendors plan may not accept `3:4`; `page_aspect` is a
-  string the provider validates, and a refused value surfaces as a provider error.
-- Whether `lettering` should also be settable per shot. Not until a project needs both
-  modes at once.
+- **Single-panel page representation:** Determine whether a single-panel page (splash)
+  should be authored as a page shot or a standard frame with a vertical `aspect`. Both are
+  supported; the decomposer currently emits splash shots as single-panel pages to enable
+  lettering workflows.
+- **Vendor aspect ratio validation:** Third-party providers in the four-vendor plan may
+  reject `3:4` aspect ratios. `page_aspect` is passed directly to the active provider,
+  surfacing unsupported ratios as provider validation errors.
+- **Per-shot lettering configuration:** Determine whether `lettering` requires per-shot
+  overrides rather than project-level configuration once mixed workflows are required.
 
 ## Review findings
 
-From the fresh-context review, numbered as the reviewer ranked them. Each is fixed in the
-text above or answered here.
+The following findings from the initial design review have been addressed in this
+specification:
 
-1.  The built-in Gemini backend ignores `params.aspect`. **Fixed**: decision 3, stage 1,
-    cost to undo.
-2.  Under a bound graph `params` never reach the image node. **Fixed**: decision 16 writes
-    the aspect into the node prop and states that the seed rung does not apply.
-3.  `params.extra.sheet` hashed less than the sheet is drawn from. **Fixed**: decision 14
-    hashes the seeded prompt and refs; decision 17 says where the planner gets them.
-4.  Normalizing `subjects` from panels overwrites four writers; the union was undefined.
-    **Fixed**: decision 8 keeps the cast authored, panels name characters, no
-    normalization.
-5.  `setCoverage` returns only `coversLines` and both hosts apply it themselves.
-    **Fixed**: decision 9 names `CoverShot.panels` and `CoverageOp.changed[].panels`.
-6.  Four shipped sentences say coverage is free. **Fixed**: listed in the facts, updated
-    under decision 11, `story.setCoverage`'s check states the cost.
-7.  `refreshShotData` writes derived fields, not the runner; `observed` is stripped twice;
-    no in-memory field named. **Fixed**: decision 7, data model.
-8.  `Frame.panel` cannot be computed without a line id on beats. **Fixed**: decision 21
-    adds `say.line`/`narrate.line`.
-9.  The research doc argues against a mode. **Adopted**: decision 1 drops the profile.
-10. Both open plans are largely landed; `write_storyboard` is strict. **Fixed**: facts,
-    stage 2. Their index rows are left to their own plans.
-11. `force` on a sheet resumes stale crops. **Fixed**: decision 15 refuses `force` and
-    gives the group a seed.
-12. `runBoundGraph` sees strings; the desktop run passes no seeds. **Fixed**: decision 17.
-13. `decomposeScene` and `shotSpec` cannot reach the config. **Fixed** for the decomposer
-    (stage 1 names the four callers); `shotSpec` no longer needs the config because the
-    persona is gone.
-14. The cell words had no home. **Fixed**: decision 16 puts them in an authored
-    `GenTemplate`.
-15. `jimp` cannot live in `@vn/gengraph`; the seam is plugin-visible. **Fixed**:
-    decision 18.
-16. Imprecise facts (`conceptPrompt` as a sixth builder, `shotSpec`'s path, `proseHash`'s
-    file, `extra`'s doc comment, a page's `framing`, `asset.css`). **Fixed** in the facts
-    and decisions 8 and 14; the builder count no longer matters with the profile gone.
-17. The before/after hash test is not writable as described; the fixture cache key
-    includes `params`. **Fixed**: stage 1 extends the existing pins; stage 4 accepts the
-    fixture invalidation.
-18. Further undo costs. **Fixed**: cost to undo.
-19. Unactionable steps (decomposer file, shot-menu module, `scaffoldSheet`'s precedent,
-    `seededInput` registration, the node count, no command for switching). **Fixed** in
-    stages 1, 2 and 4 and decision 16.
+1. **Gemini backend ignored `params.aspect`:** Resolved in Decision 3, Stage 1, and Cost
+   to Undo.
+2. **Bound graphs dropped task `params` before reaching image nodes:** Resolved in
+   Decision 16 by writing the aspect into the node property and stating that the shot's
+   `seed` rung does not apply under a bound graph.
+3. **`params.extra.sheet` omitted generation dependencies:** Resolved in Decisions 14 and
+   17 by hashing seeded prompt strings and ordered reference hashes.
+4. **Cast normalization overwrote explicit author mutators:** Resolved in Decision 8 by
+   keeping shot cast authoritative and validating panel assignments via schema checks.
+5. **`setCoverage` lacked panel handling:** Resolved in Decision 9 by adding panel support
+   to `CoverShot` and `CoverageOp.changed`.
+6. **Inaccurate "coverage is free" invariant:** Resolved in Decision 11, adding explicit
+   invalidation warnings and pricing to `story.setCoverage`.
+7. **Derived review data flow desynchronization:** Resolved in Decision 7 and Data Model
+   by persisting observed boxes via `refreshShotData` under `shotData.panelBoxes`.
+8. **Missing playback beat line IDs:** Resolved in Decision 21 by adding optional
+   `say.line` and `narrate.line` fields to playback beats.
+9. **Global style profile coupling:** Resolved in Decision 1 by removing style profiles in
+   favor of targeted per-shot properties.
+10. **Landed status of the two open plans this one hedged on:** Corrected in the codebase
+    facts section and Stage 2.
+11. **Force runs on staging graphs produced stale crops:** Resolved in Decision 15 by
+    rejecting force execution on multi-output graphs and routing invalidations through
+    group seeds.
+12. **Bound graph seed starvation:** Resolved in Decision 17 by computing seeds centrally
+    and passing them through `GraphRunOptions`.
+13. **Missing config context in `decomposeScene` and `shotSpec`:** Resolved in Stage 1 by
+    updating decomposer call sites; removed config requirements from `shotSpec` by
+    eliminating personas.
+14. **Unallocated cell staging prompt text:** Resolved in Decision 16 by embedding cell
+    directives in authored `GenTemplate` nodes.
+15. **Inappropriate dependency placement for image manipulation:** Resolved in Decision 18
+    by locating `jimp` operations in `@vn/pipeline` behind `GenServices.pixels`.
+16. **Inaccurate codebase references:** Corrected file paths, line references, and
+    terminology across codebase facts and Decisions 8 and 14.
+17. **Invalid test verification strategy for fixture hashes:** Resolved in Stages 1 and 4
+    by updating existing test pins and documenting fixture invalidation costs.
+18. **Incomplete undo cost analysis:** Documented all rollback costs in Cost to Undo.
+19. **Ambiguous implementation steps:** Clarified explicit tasks, file targets, and
+    command structures across Stages 1, 2, and 4 and Decision 16.
