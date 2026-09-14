@@ -198,6 +198,13 @@ export function promptOverrideIsEmpty(o: PromptOverride | undefined): boolean {
 const imageSeed = z.number().int().nonnegative();
 
 /**
+ * An authored aspect ratio, `<width>:<height>` in whole numbers, which is the form every image
+ * backend takes. Whether a model honours a given ratio is the provider's answer, not this
+ * schema's.
+ */
+const aspectRatio = z.string().regex(/^[1-9]\d*:[1-9]\d*$/, 'an aspect ratio such as 3:4');
+
+/**
  * The long form of a wardrobe entry or a location variant: what it is, plus how it should look.
  * `.strict()` because a misspelled key here would silently drop art direction from a prompt.
  */
@@ -386,6 +393,8 @@ export const shotDecompositionSchema = z.object({
       location   : z.string(),
       subjects   : z.array(shotSubject),
       camera     : z.string().optional(),
+      /** The frame's own ratio; left out, the frame takes `image_params.aspect`. */
+      aspect     : aspectRatio.optional(),
       coversLines: z.array(z.string()).default([]),
     }),
   ),
@@ -457,6 +466,8 @@ export const shotsFileSchema = z.object({
         artNotes      : z.string().optional(),
         /** Authored image seed for this frame; in the task hash, so editing it re-renders it. */
         seed          : imageSeed.optional(),
+        /** Authored aspect ratio for this frame; in the task hash, like `seed`. */
+        aspect        : aspectRatio.optional(),
         /**
          * The author's override of this frame's derived prompt. Authored, so it sits at top level
          * beside `artNotes` and never inside `shotData`, which a run rewrites wholesale.

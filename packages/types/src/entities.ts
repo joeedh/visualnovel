@@ -202,6 +202,12 @@ export interface Shot {
   artNotes?: string;
   /** Image seed for this frame alone — see {@link Character.seed}. Authored, like {@link artNotes}. */
   seed?: number;
+  /**
+   * Aspect ratio for this frame alone, such as `3:4`, in place of `image_params.aspect`. Authored,
+   * like {@link seed}, and in the task's params, so setting it re-renders this shot and nothing
+   * else.
+   */
+  aspect?: string;
   /** Override of this frame's derived prompt. Authored, like {@link artNotes}. */
   promptOverride?: PromptOverride;
   /** Dialogue line ids this shot covers. */

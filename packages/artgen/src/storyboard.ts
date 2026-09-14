@@ -192,6 +192,7 @@ export function realizeDecomposition(
       return [{ characterId, pose: sub.pose, expression: sub.expression }];
     }),
     camera     : s.camera,
+    aspect     : s.aspect,
     coversLines: s.coversLines.filter((id) => realLineIds.has(id)),
     status     : 'pending' as const,
   }));

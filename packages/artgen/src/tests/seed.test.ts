@@ -1,13 +1,14 @@
 /**
- * The image seed as an authored field: the narrowest rung wins, and a project that authored none
- * hashes exactly as it did before seeds existed.
+ * The image seed and the shot's aspect ratio as authored fields: the narrowest rung wins, and a
+ * project that authored none hashes exactly as it did before the fields existed.
  *
- * A project that authored no seed must keep hashing the same because `params` is in the task hash.
- * A stray key here re-keys every task in every existing project and re-renders all of them.
+ * A project that authored neither must keep hashing the same because `params` is in the task
+ * hash. A stray key here re-keys every task in every existing project and re-renders all of them.
  */
 import { projectConfig, type ImageParams, type Shot } from '@vn/types';
 import { character, location, model, scene } from '@vn/testkit';
 import {
+  aspectFor,
   imageParams,
   locationInputs,
   modelSheetInputs,
@@ -24,7 +25,7 @@ const config = projectConfig.parse({
 
 const base: ImageParams = imageParams(config);
 
-function shotOf(seed?: number): Shot {
+function shotOf(seed?: number, aspect?: string): Shot {
   return {
     id         : 's1__a',
     sceneId    : 's1',
@@ -34,8 +35,22 @@ function shotOf(seed?: number): Shot {
     coversLines: [],
     status     : 'pending',
     ...(seed === undefined ? {} : { seed }),
+    ...(aspect === undefined ? {} : { aspect }),
   };
 }
+
+describe('aspectFor', () => {
+  it('puts the shot’s own ratio in place of the project’s', () => {
+    expect(aspectFor(base, shotOf(undefined, '3:4'))).toEqual({ ...base, aspect: '3:4' });
+  });
+
+  it('returns the very same params when the shot authored none', () => {
+    // Identity rather than equality, for the reason `seedFor` checks it: a fresh object with the
+    // same fields is where an `aspect: undefined` key gets into the inputs.
+    expect(aspectFor(base, shotOf())).toBe(base);
+    expect(aspectFor(base, {})).toBe(base);
+  });
+});
 
 describe('seedFor', () => {
   it('takes the narrowest rung that authored one', () => {
@@ -106,5 +121,20 @@ describe('the four builders', () => {
     const s = m.scenes.get('s1')!;
     expect(shotInputs(shotOf(6), s, m, config, base, []).params.seed).toBe(6);
     expect(shotInputs(shotOf(), s, m, config, base, []).params).toBe(base);
+  });
+
+  it('reads a shot aspect beside its seed, and keeps the project’s where it authored none', () => {
+    const m = model([aiko], [scene('s1', ['aiko'], 'cafe')], [cafe]);
+    const s = m.scenes.get('s1')!;
+    expect(shotInputs(shotOf(6, '9:16'), s, m, config, base, []).params).toEqual({
+      ...base,
+      seed  : 6,
+      aspect: '9:16',
+    });
+    expect(shotInputs(shotOf(undefined, '9:16'), s, m, config, base, []).params).toEqual({
+      ...base,
+      aspect: '9:16',
+    });
+    expect(shotInputs(shotOf(6), s, m, config, base, []).params.aspect).toBe(base.aspect);
   });
 });

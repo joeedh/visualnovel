@@ -742,3 +742,7 @@ specification:
   and bills nothing, which is the cheap call the button promises.
 - **The key guide gains an `## OpenRouter` section** because `keyGuideProblems` requires
   one per `KEY_VENDORS` entry; the intro now says the OpenRouter key is optional.
+- **A shot's `aspect` and `image_params.page_aspect` are validated as `W:H`.** Both
+  schemas share one `aspectRatio` string type with a whole-number `W:H` pattern, so a
+  shots file or a `project.yaml` saying `4x3` or `1.5` is refused at parse time rather
+  than reaching a backend. `Shot.aspect` itself stays a plain string.

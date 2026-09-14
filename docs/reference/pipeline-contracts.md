@@ -24,6 +24,10 @@ These implement the system design in
 - **Content-addressed task graph.**
     - A task is identified by `sha256(kind, inputs)`, where inputs include the normalized
       prompt, ordered reference asset hashes, model id, and params.
+    - `params` is `image_params` with the narrowest authored seed applied (`seedFor`) and,
+      for a shot, its own `aspect` in place of the project's (`aspectFor`). Both return
+      the project's params by identity when nothing was authored, so a project that
+      authored neither hashes as it did before either field existed.
     - Identical work collapses to one node, so dedupe, resumability, and staleness come at
       no extra cost.
     - Every status transition is appended to `state/tasks.jsonl`. Replaying that log (last

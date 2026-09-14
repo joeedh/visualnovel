@@ -135,3 +135,27 @@ describe('decomposeScene subjects', () => {
     });
   });
 });
+
+describe('decomposeScene aspect', () => {
+  it('carries a ratio the model chose for a shot, and none where it chose none', async () => {
+    const { shots, source } = await decomposeScene(
+      SCENE,
+      MODEL,
+      providersReturning([
+        { ...shot([]), aspect: '9:16', coversLines: ['epilogue:L1'] },
+        { ...shot([]), id: 'S2' },
+      ]),
+    );
+    expect(source).toBe('model');
+    expect(shots.map((s) => s.aspect)).toEqual(['9:16', undefined]);
+  });
+
+  it('falls back to the baseline when the model writes a ratio the schema refuses', async () => {
+    const { source } = await decomposeScene(
+      SCENE,
+      MODEL,
+      providersReturning([{ ...shot([]), aspect: 'portrait' }]),
+    );
+    expect(source).toBe('baseline');
+  });
+});

@@ -52,6 +52,15 @@ export function seedFor(params: ImageParams, ...rungs: (number | undefined)[]): 
   return authored === undefined ? params : { ...params, seed: authored };
 }
 
+/**
+ * `params` with the shot's own aspect ratio applied, where it authored one. A shot that authored
+ * none returns `params` untouched, so every existing task keeps the hash it had — the same
+ * guarantee {@link seedFor} gives.
+ */
+export function aspectFor(params: ImageParams, shot: Pick<Shot, 'aspect'>): ImageParams {
+  return shot.aspect === undefined ? params : { ...params, aspect: shot.aspect };
+}
+
 /** The art-style preamble injected into every image prompt for style consistency (§5). */
 export function stylePreamble(config: ProjectConfig): string {
   const style = config.art_style.trim();
@@ -468,7 +477,7 @@ export function shotInputs(
     prompt: buildShotPrompt(shot, scene, model, config),
     refs  : [...upstream, ...shotRefs(shot, scene, model, config)],
     // A frame is its own rung: the cast it draws is carried in as references, not as a seed.
-    params: seedFor(params, shot.seed),
+    params: aspectFor(seedFor(params, shot.seed), shot),
   };
 }
 

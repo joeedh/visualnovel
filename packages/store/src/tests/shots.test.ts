@@ -118,6 +118,32 @@ describe('shots file', () => {
     expect('castOptional' in plain.shots[0]).toBe(false);
   });
 
+  it('round-trips a shot’s own aspect ratio, and writes no key for a shot without one', async () => {
+    const paths = await tempPaths();
+    const tall = shot({ aspect: '3:4', seed: 5 });
+    await writeShots(paths, 'arrival', [tall]);
+
+    const raw = JSON.parse(await readFile(paths.shotsFile('arrival'), 'utf8'));
+    expect(raw.shots[0].aspect).toBe('3:4');
+    expect((await readShots(paths, 'arrival'))?.shots).toEqual([tall]);
+    expect(await writeShots(paths, 'arrival', [tall])).toBe(false);
+
+    await writeShots(paths, 'arrival', [shot()]);
+    const plain = JSON.parse(await readFile(paths.shotsFile('arrival'), 'utf8'));
+    expect('aspect' in plain.shots[0]).toBe(false);
+  });
+
+  it('refuses an aspect that is not two whole numbers', async () => {
+    const paths = await tempPaths();
+    await writeShots(paths, 'arrival', [shot()]);
+    const text = await readFile(paths.shotsFile('arrival'), 'utf8');
+    await writeFile(
+      paths.shotsFile('arrival'),
+      text.replace('"framing"', '"aspect":"wide","framing"'),
+    );
+    await expect(readShots(paths, 'arrival')).rejects.toThrow(ValidationError);
+  });
+
   it('round-trips a chunk’s references, pin and binding both', async () => {
     const paths = await tempPaths();
     const withRefs = shot({
