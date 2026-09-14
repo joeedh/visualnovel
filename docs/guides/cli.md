@@ -82,6 +82,13 @@ exactly the same way ([`../reference/vnauthor.md`](../reference/vnauthor.md#runn
 carrying that marker; see
 [`testkit.md`](testkit.md#placeholder-art-and-the-recorded-corpus).
 
+A real run sends `image_params.aspect` to Gemini as `imageConfig.aspectRatio`. It did not
+before September 2026: the ratio was hashed into every image task's identity but never
+reached the model, which picked a shape from the prompt. That change moved no task
+identity, so nothing is re-planned and `vngen cost` reports no new work — but a task
+rendered again (after `approve`, a prompt edit, or a deleted asset) can now come back at
+the configured ratio where its earlier render did not.
+
 ## Project layout on disk
 
 Authored input lives at the project root: `project.yaml`, `characters/<id>/character.md`,

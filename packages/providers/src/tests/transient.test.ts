@@ -25,20 +25,38 @@ const oneImage = {
   ],
 };
 
-/** A fake `@google/genai` whose `generateContent` replays `outcomes`, counting the calls. */
+/** The part of a request this file reads back. */
+interface SentRequest {
+  config?: { seed?: number; imageConfig?: { aspectRatio?: string } };
+}
+
+/**
+ * A fake `@google/genai` whose `generateContent` replays `outcomes`, counting the calls and
+ * keeping each request it was handed.
+ */
 function fakeSdk(outcomes: (Error | typeof oneImage)[]): {
   client: GeminiClient;
   calls: () => number;
+  sent: SentRequest[];
 } {
   let calls = 0;
-  const generateContent = (): Promise<unknown> => {
+  const sent: SentRequest[] = [];
+  const generateContent = (request: unknown): Promise<unknown> => {
+    sent.push(request as SentRequest);
     const outcome = outcomes[Math.min(calls++, outcomes.length - 1)];
     return outcome instanceof Error ? Promise.reject(outcome) : Promise.resolve(outcome);
   };
-  return { client: () => Promise.resolve({ models: { generateContent } }), calls: () => calls };
+  return {
+    client: () => Promise.resolve({ models: { generateContent } }),
+    calls : () => calls,
+    sent,
+  };
 }
 
 const params = { modelId: 'gemini-2.5-flash-image', aspect: '16:9' as const };
+
+/** Bytes that pass the backend's own check that a reference is a picture. */
+const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]);
 
 describe('isTransient', () => {
   it('retries rate limits and the server’s own faults', () => {
@@ -108,6 +126,28 @@ describe('createGeminiImage — retry in place', () => {
       /not a valid PNG/,
     );
     expect(sdk.calls()).toBe(0);
+  });
+});
+
+describe('createGeminiImage — what the request carries', () => {
+  it('sends the aspect ratio and the seed the params name', async () => {
+    const sdk = fakeSdk([oneImage]);
+    const backend = createGeminiImage('k', params.modelId, sdk.client);
+
+    await backend.generate('a room', [], { ...params, aspect: '3:4', seed: 11 });
+    expect(sdk.sent[0]?.config).toEqual({
+      responseModalities: ['IMAGE'],
+      seed              : 11,
+      imageConfig       : { aspectRatio: '3:4' },
+    });
+  });
+
+  it('leaves both out when the params name neither', async () => {
+    const sdk = fakeSdk([oneImage]);
+    const backend = createGeminiImage('k', params.modelId, sdk.client);
+
+    await backend.edit({ bytes: PNG, ext: 'png' }, 'a room', [], { modelId: params.modelId });
+    expect(sdk.sent[0]?.config).toEqual({ responseModalities: ['IMAGE'] });
   });
 });
 

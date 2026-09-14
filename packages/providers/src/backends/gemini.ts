@@ -219,6 +219,7 @@ export function createGeminiImage(
         config: {
           responseModalities: ['IMAGE'],
           ...(params.seed !== undefined ? { seed: params.seed } : {}),
+          ...(params.aspect !== undefined ? { imageConfig: { aspectRatio: params.aspect } } : {}),
         },
       });
       return extractImage(res, modelId);
