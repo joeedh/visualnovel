@@ -393,6 +393,8 @@ See ['docs/reference/proseStyle.md'](docs/reference/proseStyle.md).
 
 ### Plans
 
+- **DO NOT use any pre-existing 'house style' for plans**.  Do not read files simply 
+  to try and match their prose style or structure.  
 - A plan is pressure-tested by a fresh-context agent once it is written, before the work
   starts. Hand the finished `docs/plans/<name>.md` to a subagent that has not seen the
   conversation that produced it, and ask it to attack the plan: what does it assume
