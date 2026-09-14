@@ -62,28 +62,28 @@ role.
 
 Run from the repo root.
 
-| Task                         | Command                                                                                 |
-| ---------------------------- | --------------------------------------------------------------------------------------- |
-| Typecheck (the gate)         | `pnpm check`                                                                            |
-| Test (all)                   | `pnpm test`                                                                             |
-| Test one package             | `pnpm exec jest --selectProjects @vn/taskgraph`                                         |
-| Lint (eslint + format check) | `pnpm lint`                                                                             |
-| Eslint only, with fixes      | `pnpm lint:eslint`                                                                      |
-| Eslint only, no fixes        | `pnpm lint:eslint:check`                                                                |
-| Auto-format                  | `pnpm format`                                                                           |
-| Update docs TOCs             | `pnpm markdown-toc` (skips `docs/plans/**`)                                             |
-| Regenerate the UX model      | `pnpm gen:uxmodel` (writes `apps/desktop/ux-model.json`; a jest test compares it)       |
-| Check doc links              | `pnpm check:doclinks` (relative links + anchors; part of `pnpm lint`)                   |
-| Bundle everything            | `pnpm build` (turbo: `vngen`, `vnauthor`, and the desktop app)                          |
-| Run the CLI                  | `node apps/cli/dist/cli.js <cmd>` (or `pnpm vngen <cmd>`)                               |
-| Run the authoring agent      | `node apps/authoring/dist/vnauthor.js [dir]` (or `pnpm vnauthor [dir]`)                 |
-| Run the desktop app          | `pnpm vndesktop [--mock]` (built app, CDP on 9222)                                      |
-| Package the desktop app      | `pnpm package` (installer) / `pnpm package:dir` (unpacked)                              |
-| Smoke-test the packaged app  | `pnpm smoke` (runs the built binary; proves both SDKs and the source resolve)           |
-| Check the key-guide links    | `pnpm check:keylinks` (blocking in CI; `docs/guides/api-keys.md` only)                  |
-| Audit the key-guide wording  | `pnpm audit:keydocs [--dry-run]` (weekly, advisory, needs a key)                        |
-| Lint comment prose           | `pnpm lint:comments` (part of `pnpm lint`; `commentlint <file>...` for one file)        |
-| Propose a prose-style pass   | `pnpm prose:style --file docs/<page>.md` (advisory, needs a key; writes `.prosestyle/`) |
+| Task                          | Command                                                                                 |
+| ----------------------------- | --------------------------------------------------------------------------------------- |
+| Typecheck (the gate)          | `pnpm check`                                                                            |
+| Test (all)                    | `pnpm test`                                                                             |
+| Test one package              | `pnpm exec jest --selectProjects @vn/taskgraph`                                         |
+| Lint (lintrix + format check) | `pnpm lint`                                                                             |
+| Lintrix only, with fixes      | `pnpm lint:lintrix`                                                                     |
+| Lintrix only, no fixes        | `pnpm lint:lintrix:check`                                                               |
+| Auto-format                   | `pnpm format`                                                                           |
+| Update docs TOCs              | `pnpm markdown-toc` (skips `docs/plans/**`)                                             |
+| Regenerate the UX model       | `pnpm gen:uxmodel` (writes `apps/desktop/ux-model.json`; a jest test compares it)       |
+| Check doc links               | `pnpm check:doclinks` (relative links + anchors; part of `pnpm lint`)                   |
+| Bundle everything             | `pnpm build` (turbo: `vngen`, `vnauthor`, and the desktop app)                          |
+| Run the CLI                   | `node apps/cli/dist/cli.js <cmd>` (or `pnpm vngen <cmd>`)                               |
+| Run the authoring agent       | `node apps/authoring/dist/vnauthor.js [dir]` (or `pnpm vnauthor [dir]`)                 |
+| Run the desktop app           | `pnpm vndesktop [--mock]` (built app, CDP on 9222)                                      |
+| Package the desktop app       | `pnpm package` (installer) / `pnpm package:dir` (unpacked)                              |
+| Smoke-test the packaged app   | `pnpm smoke` (runs the built binary; proves both SDKs and the source resolve)           |
+| Check the key-guide links     | `pnpm check:keylinks` (blocking in CI; `docs/guides/api-keys.md` only)                  |
+| Audit the key-guide wording   | `pnpm audit:keydocs [--dry-run]` (weekly, advisory, needs a key)                        |
+| Lint comment prose            | `pnpm lint:comments` (part of `pnpm lint`; `commentlint <file>...` for one file)        |
+| Propose a prose-style pass    | `pnpm prose:style --file docs/<page>.md` (advisory, needs a key; writes `.prosestyle/`) |
 
 `pnpm check`, `pnpm test`, and `pnpm lint` should all be green before and after any
 change.
@@ -94,12 +94,9 @@ enough mistakes to repeat here:
 
 - `pnpm check` runs two passes: the flat workspace check plus `pnpm check:renderer`,
   because `apps/desktop/renderer/**` lives outside `src/` and nothing else typechecks it.
-- `pnpm lint`'s eslint step runs through `eslint-dispatcher` (`@pathtx/eslint-dispatcher`)
-  rather than calling `eslint` directly. It walks the repo itself, batches files across a
-  worker pool, and caches per-file results under `.eslintcache/`, keyed on file content +
-  config + eslint version, so a re-run only re-lints what changed. `pnpm lint:eslint` runs
-  it with `--fix`; `pnpm lint:eslint:check` runs it without. Delete `.eslintcache/` to
-  force a full re-lint.
+- `pnpm lint`'s first step is lintrix (`lintrix.config.json`), which replaced eslint in
+  September 2026. `pnpm lint:lintrix` runs it with `--fix`; `pnpm lint:lintrix:check` runs
+  it without.
 - Tests must live in a `tests/` subfolder beside the code they cover. A `*.test.ts`
   anywhere else is silently never run.
 - Internal packages are source-only (no per-package `dist`), so consumers import
@@ -393,8 +390,8 @@ See ['docs/reference/proseStyle.md'](docs/reference/proseStyle.md).
 
 ### Plans
 
-- **DO NOT use any pre-existing 'house style' for plans**.  Do not read files simply 
-  to try and match their prose style or structure.  
+- **DO NOT use any pre-existing 'house style' for plans**. Do not read files simply to try
+  and match their prose style or structure.
 - A plan is pressure-tested by a fresh-context agent once it is written, before the work
   starts. Hand the finished `docs/plans/<name>.md` to a subagent that has not seen the
   conversation that produced it, and ask it to attack the plan: what does it assume

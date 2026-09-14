@@ -27,7 +27,7 @@
     "check:doclinks": "node scripts/check-doc-links.mjs",
     "check:commandtable": "node scripts/check-command-table.mjs",
     "test": "jest",
-    "lint": "pnpm lint:eslint && pnpm format:check && pnpm check:doclinks && pnpm check:commandtable && pnpm lint:comments",
+    "lint": "pnpm lint:lintrix:check && pnpm format:check && pnpm check:doclinks && pnpm check:commandtable && pnpm lint:comments",
     "lint:lintrix:check": "node node_modules/lintrix/dist/ts/cli.js .",
     "lint:lintrix": "node node_modules/lintrix/dist/ts/cli.js --fix .",
     "lint:comments": "pnpm exec commentlint . --concise",
