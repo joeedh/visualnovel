@@ -396,6 +396,7 @@ export class GengraphPart {
       const project = await loadProject(this.session.dir);
       return decomposeAll({
         model    : project.model,
+        config   : project.config,
         providers: await buildProviders(project, false),
         paths    : project.paths,
       });

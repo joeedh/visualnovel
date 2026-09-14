@@ -7,6 +7,7 @@ import {
   baseRefusal,
   costPreview,
   decomposeScene,
+  decompSystem,
   deterministicShots,
   gateStatus,
   buildLocationPrompt,
@@ -17,6 +18,7 @@ import {
   refinePrompt,
   shotId,
   shotSpec,
+  storyboardStyle,
 } from '../index.js';
 
 const config = projectConfig.parse({
@@ -352,24 +354,68 @@ describe('decomposeScene (LLM path)', () => {
     coversLines,
   });
 
-  it('shows the model each line with its id, so coversLines is answerable at all', async () => {
-    const m = build();
-    const providers = providersReturning([SHOT('a', ['s1:L1', 's1:L2'])]);
-    let seen = '';
+  /** A project that states no style, so the decomposer gets the plain prompt. */
+  const PLAIN = { artStyle: '', storyboardNotes: '' };
+
+  /** What `decomposeScene` sent: the prompt, then the system prompt after a rule. */
+  const seeing = (providers: ReturnType<typeof providersReturning>): { seen: string } => {
+    const out = { seen: '' };
     const inner = providers.text;
     providers.text = {
       complete  : (p, s) => inner.complete(p, s),
       structured: (prompt, parse, system) => {
-        seen = `${prompt}\n---\n${system}`;
+        out.seen = `${prompt}\n---\n${system}`;
         return inner.structured(prompt, parse, system);
       },
     };
+    return out;
+  };
 
-    await decomposeScene(m.scenes.get('s1')!, m, providers);
-    expect(seen).toContain('[s1:L1] narration: The room is quiet.');
-    expect(seen).toContain('[s1:L2] dialogue/aiko: Hi.');
+  it('shows the model each line with its id, so coversLines is answerable at all', async () => {
+    const m = build();
+    const providers = providersReturning([SHOT('a', ['s1:L1', 's1:L2'])]);
+    const spy = seeing(providers);
+
+    await decomposeScene(m.scenes.get('s1')!, m, providers, PLAIN);
+    expect(spy.seen).toContain('[s1:L1] narration: The room is quiet.');
+    expect(spy.seen).toContain('[s1:L2] dialogue/aiko: Hi.');
     // The template must not show an empty answer as an example, because the LLM copies it
-    expect(seen).not.toContain('"coversLines":[]');
+    expect(spy.seen).not.toContain('"coversLines":[]');
+  });
+
+  it('tells the model the art style and the storyboard notes, before the answer format', async () => {
+    const m = build();
+    const providers = providersReturning([SHOT('a', ['s1:L1', 's1:L2'])]);
+    const spy = seeing(providers);
+
+    await decomposeScene(m.scenes.get('s1')!, m, providers, {
+      artStyle       : 'full-colour manga',
+      storyboardNotes: 'pages of four to six panels; one splash per scene',
+    });
+    const system = spy.seen.split('\n---\n')[1]!;
+    const style = system.indexOf('The frames will be drawn in this art style: full-colour manga.');
+    const notes = system.indexOf(
+      'Storyboard notes from the author: pages of four to six panels; one splash per scene.',
+    );
+    const format = system.indexOf('Respond ONLY with JSON');
+    expect(style).toBeGreaterThan(0);
+    expect(notes).toBeGreaterThan(style);
+    expect(format).toBeGreaterThan(notes);
+  });
+
+  it('says nothing about style when the project states none, so the prompt is as it was', async () => {
+    const m = build();
+    const providers = providersReturning([SHOT('a', ['s1:L1', 's1:L2'])]);
+    const spy = seeing(providers);
+
+    await decomposeScene(m.scenes.get('s1')!, m, providers, PLAIN);
+    const system = spy.seen.split('\n---\n')[1]!;
+    expect(system).not.toContain('art style');
+    expect(system).not.toContain('Storyboard notes');
+    expect(system).toContain(
+      'a line with no shot leaves the previous image on screen. Respond ONLY with JSON',
+    );
+    expect(decompSystem(PLAIN)).toBe(system);
   });
 
   it('keeps a decomposition that binds lines, dropping ids the scene does not have', async () => {
@@ -378,6 +424,7 @@ describe('decomposeScene (LLM path)', () => {
       m.scenes.get('s1')!,
       m,
       providersReturning([SHOT('a', ['s1:L1']), SHOT('b', ['s1:L2', 's1:L9'])]),
+      PLAIN,
     );
     expect(shots.map((s) => s.id)).toEqual([shotId('s1', 'a'), shotId('s1', 'b')]);
     expect(shots[1]!.coversLines).toEqual(['s1:L2']);
@@ -391,6 +438,7 @@ describe('decomposeScene (LLM path)', () => {
       m.scenes.get('s1')!,
       m,
       providersReturning([SHOT('a', []), SHOT('b', ['s1:L9'])]),
+      PLAIN,
     );
     expect(result.shots.map((s) => s.id)).toEqual([
       shotId('s1', 'establishing'),
@@ -405,7 +453,7 @@ describe('decomposeScene (LLM path)', () => {
     const m = build();
     const providers = providersReturning([]);
     providers.text.structured = () => Promise.reject(new Error('no API key for claude'));
-    const result = await decomposeScene(m.scenes.get('s1')!, m, providers);
+    const result = await decomposeScene(m.scenes.get('s1')!, m, providers, PLAIN);
     expect(result.source).toBe('baseline');
     expect(result.reason).toBe('no API key for claude');
     // Still a runnable storyboard: a run must not stop because a decomposition did.
@@ -418,6 +466,7 @@ describe('decomposeScene (LLM path)', () => {
       m.scenes.get('s1')!,
       m,
       providersReturning([SHOT('a', ['s1:L1', 's1:L2'])]),
+      PLAIN,
     );
     expect(result).toEqual({ shots: expect.any(Array), source: 'model' });
   });
@@ -428,9 +477,21 @@ describe('decomposeScene (LLM path)', () => {
       m.scenes.get('s1')!,
       m,
       providersReturning([SHOT('a', []), SHOT('b', ['s1:L2'])]),
+      PLAIN,
     );
     expect(shots[0]!.coversLines).toEqual(['s1:L1']);
     expect(shots[1]!.coversLines).toEqual(['s1:L2']);
+  });
+});
+
+describe('storyboardStyle', () => {
+  it('reads the two keys off the config and nothing else', () => {
+    expect(storyboardStyle(config)).toEqual({ artStyle: 'watercolor', storyboardNotes: '' });
+    expect(
+      storyboardStyle(
+        projectConfig.parse({ title: 'T', art_style: 'ink', storyboard_notes: 'pages' }),
+      ),
+    ).toEqual({ artStyle: 'ink', storyboardNotes: 'pages' });
   });
 });
 

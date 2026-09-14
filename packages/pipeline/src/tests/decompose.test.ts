@@ -76,56 +76,46 @@ const shot = (subjects: unknown[]): Record<string, unknown> => ({
   coversLines: ['epilogue:L2'],
 });
 
+/** A project that states no style: the decomposer's prompt is then the plain one. */
+const PLAIN = { artStyle: '', storyboardNotes: '' };
+
+const decompose = (shots: unknown[]): ReturnType<typeof decomposeScene> =>
+  decomposeScene(SCENE, MODEL, providersReturning(shots), PLAIN);
+
 describe('decomposeScene subjects', () => {
   it('keeps a subject the model has', async () => {
-    const { shots } = await decomposeScene(
-      SCENE,
-      MODEL,
-      providersReturning([shot([{ characterId: 'aiko', outfit: 'uniform' }])]),
-    );
+    const { shots } = await decompose([shot([{ characterId: 'aiko', outfit: 'uniform' }])]);
     expect(shots[0]!.subjects.map((s) => s.characterId)).toEqual(['aiko']);
   });
 
   it('resolves the case the prose uses to the id the sheet has', async () => {
-    const { shots } = await decomposeScene(
-      SCENE,
-      MODEL,
-      providersReturning([shot([{ characterId: 'Aiko', outfit: 'uniform' }])]),
-    );
+    const { shots } = await decompose([shot([{ characterId: 'Aiko', outfit: 'uniform' }])]);
     // The id is rewritten, not merely accepted, because the planner looks it up verbatim
     expect(shots[0]!.subjects.map((s) => s.characterId)).toEqual(['aiko']);
   });
 
   it('drops a character the project does not have, and keeps the shot', async () => {
-    const { shots } = await decomposeScene(
-      SCENE,
-      MODEL,
-      providersReturning([
-        shot([
-          { characterId: 'aiko', outfit: 'uniform' },
-          { characterId: 'the_teacher', outfit: 'suit' },
-        ]),
+    const { shots } = await decompose([
+      shot([
+        { characterId: 'aiko', outfit: 'uniform' },
+        { characterId: 'the_teacher', outfit: 'suit' },
       ]),
-    );
+    ]);
     expect(shots).toHaveLength(1);
     expect(shots[0]!.subjects.map((s) => s.characterId)).toEqual(['aiko']);
   });
 
   it('carries pose and expression through the resolution, but never an outfit', async () => {
-    const { shots } = await decomposeScene(
-      SCENE,
-      MODEL,
-      providersReturning([
-        shot([
-          {
-            characterId: 'Aiko',
-            outfit     : 'uniform',
-            pose       : 'pausing at the doorway',
-            expression : 'gentle smile',
-          },
-        ]),
+    const { shots } = await decompose([
+      shot([
+        {
+          characterId: 'Aiko',
+          outfit     : 'uniform',
+          pose       : 'pausing at the doorway',
+          expression : 'gentle smile',
+        },
       ]),
-    );
+    ]);
     // The outfit is dropped even though the model volunteered one — baking it here would shadow
     // the `[[outfit:]]` marker the author writes later.
     expect(shots[0]!.subjects[0]).toEqual({
@@ -138,24 +128,16 @@ describe('decomposeScene subjects', () => {
 
 describe('decomposeScene aspect', () => {
   it('carries a ratio the model chose for a shot, and none where it chose none', async () => {
-    const { shots, source } = await decomposeScene(
-      SCENE,
-      MODEL,
-      providersReturning([
-        { ...shot([]), aspect: '9:16', coversLines: ['epilogue:L1'] },
-        { ...shot([]), id: 'S2' },
-      ]),
-    );
+    const { shots, source } = await decompose([
+      { ...shot([]), aspect: '9:16', coversLines: ['epilogue:L1'] },
+      { ...shot([]), id: 'S2' },
+    ]);
     expect(source).toBe('model');
     expect(shots.map((s) => s.aspect)).toEqual(['9:16', undefined]);
   });
 
   it('falls back to the baseline when the model writes a ratio the schema refuses', async () => {
-    const { source } = await decomposeScene(
-      SCENE,
-      MODEL,
-      providersReturning([{ ...shot([]), aspect: 'portrait' }]),
-    );
+    const { source } = await decompose([{ ...shot([]), aspect: 'portrait' }]);
     expect(source).toBe('baseline');
   });
 });

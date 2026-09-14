@@ -46,8 +46,8 @@ describe('decomposeAll', () => {
   it('writes a storyboard for every reachable scene, and none for the one nothing points at', async () => {
     const p = await makeProject({ script: SCRIPTS.orphan });
     try {
-      const { model } = await p.reload();
-      const result = await decomposeAll({ model, providers: answering(), paths: p.paths });
+      const { config, model } = await p.reload();
+      const result = await decomposeAll({ model, config, providers: answering(), paths: p.paths });
 
       expect(result.decomposed.sort()).toEqual(['arrival', 'rooftop']);
       expect(result.fellBack).toEqual([]);
@@ -63,11 +63,12 @@ describe('decomposeAll', () => {
   it('writes nothing when the model does not answer, and names every scene it did not write', async () => {
     const p = await makeProject({ script: SCRIPTS.linear });
     try {
-      const { model } = await p.reload();
+      const { config, model } = await p.reload();
       // The default mock text LLM echoes the prompt, which no schema accepts — the same shape a
       // real run with a bad key has.
       const result = await decomposeAll({
         model,
+        config,
         providers: createMockProviders(),
         paths    : p.paths,
       });
@@ -87,9 +88,10 @@ describe('decomposeAll', () => {
   it('writes the baseline only when a caller asks for it by name', async () => {
     const p = await makeProject({ script: SCRIPTS.linear });
     try {
-      const { model } = await p.reload();
+      const { config, model } = await p.reload();
       const result = await decomposeAll({
         model,
+        config,
         providers   : createMockProviders(),
         paths       : p.paths,
         keepBaseline: true,
@@ -106,15 +108,15 @@ describe('decomposeAll', () => {
   it('keeps what is already decomposed, spending nothing and leaving the tree clean', async () => {
     const p = await makeProject({ script: SCRIPTS.linear });
     try {
-      const { model } = await p.reload();
-      await decomposeAll({ model, providers: answering(), paths: p.paths });
+      const { config, model } = await p.reload();
+      await decomposeAll({ model, config, providers: answering(), paths: p.paths });
       const before = await shotsOf(p, 'arrival');
 
       // This provider throws if it is reached. Keeping must cost nothing, not merely be idempotent
       // on disk: re-decomposing would change shot ids and re-render paid-for art.
       const forbidden = createMockProviders();
       forbidden.text.structured = () => Promise.reject(new Error('should not have been asked'));
-      const again = await decomposeAll({ model, providers: forbidden, paths: p.paths });
+      const again = await decomposeAll({ model, config, providers: forbidden, paths: p.paths });
 
       expect(again.kept.sort()).toEqual(['arrival', 'rooftop']);
       expect(again.decomposed).toEqual([]);
@@ -128,8 +130,8 @@ describe('decomposeAll', () => {
     const p = await makeProject({ script: SCRIPTS.linear });
     try {
       await p.write('vngen/work/shots/arrival.json', '{ not json');
-      const { model } = await p.reload();
-      const result = await decomposeAll({ model, providers: answering(), paths: p.paths });
+      const { config, model } = await p.reload();
+      const result = await decomposeAll({ model, config, providers: answering(), paths: p.paths });
 
       expect(result.unreadable.map((u) => u.scene)).toEqual(['arrival']);
       expect(result.unreadable[0]!.error).toContain('arrival');
@@ -147,7 +149,7 @@ describe('decomposeAllPreview', () => {
   it('says what a run would cost without asking the model anything', async () => {
     const p = await makeProject({ script: SCRIPTS.orphan });
     try {
-      const { model } = await p.reload();
+      const { config, model } = await p.reload();
       expect(await decomposeAllPreview(model, p.paths)).toEqual({
         pending   : ['arrival', 'rooftop'],
         kept      : [],
@@ -155,7 +157,7 @@ describe('decomposeAllPreview', () => {
         atRisk    : [],
       });
 
-      await decomposeAll({ model, providers: answering(), paths: p.paths });
+      await decomposeAll({ model, config, providers: answering(), paths: p.paths });
       const after = await decomposeAllPreview(model, p.paths);
       expect(after.pending).toEqual([]);
       expect(after.kept.sort()).toEqual(['arrival', 'rooftop']);

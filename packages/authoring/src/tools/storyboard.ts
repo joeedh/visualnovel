@@ -129,7 +129,7 @@ const proposeStoryboardTool: Tool<{ scene: string }> = {
     if (!ctx.text) {
       return fail('no text model is wired into this session, so there is nothing to propose with.');
     }
-    const { model } = await ctx.workspace.load();
+    const { model, style } = await ctx.workspace.load();
     const scene = model.scenes.get(a.scene);
     if (!scene) return fail(`No scene "${a.scene}".`);
     const loaded = await readShots(
@@ -143,7 +143,7 @@ const proposeStoryboardTool: Tool<{ scene: string }> = {
           'edit_scene (newShot/deleteShot), set_coverage and set_outfit instead.',
       );
     }
-    const result = await decomposeScene(scene, model, { text: ctx.text });
+    const result = await decomposeScene(scene, model, { text: ctx.text }, style);
     const source =
       result.source === 'model'
         ? 'Proposed by the model.'

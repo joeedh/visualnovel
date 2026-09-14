@@ -426,7 +426,8 @@ export async function cmdDecompose(args: Args, logger: Logger): Promise<number> 
 
   const providers = await buildProviders(project, { logger, require: ['anthropic'] });
   const result = await decomposeAll({
-    model: project.model,
+    model : project.model,
+    config: project.config,
     providers,
     paths: project.paths,
     logger,

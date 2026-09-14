@@ -1,4 +1,11 @@
-import type { Providers, Scene, Shot, ShotDecomposition, ProjectModel } from '@vn/types';
+import type {
+  ProjectConfig,
+  Providers,
+  Scene,
+  Shot,
+  ShotDecomposition,
+  ProjectModel,
+} from '@vn/types';
 import { shotDecompositionSchema } from '@vn/types';
 
 /**
@@ -99,7 +106,25 @@ function resolveSubject(raw: string, model: ProjectModel): string | undefined {
   return undefined;
 }
 
-const DECOMP_SYSTEM = [
+/**
+ * What the decomposer is told about the project's look and its storyboarding, read off
+ * `project.yaml` by {@link storyboardStyle}. Both are prose; either may be empty.
+ */
+export interface StoryboardStyle {
+  /** `art_style`, so the storyboard is composed for the look the frames will be drawn in. */
+  artStyle: string;
+  /** `storyboard_notes`: how a scene is storyboarded, as distinct from how a frame is drawn. */
+  storyboardNotes: string;
+}
+
+/** The {@link StoryboardStyle} a project config states. */
+export function storyboardStyle(
+  config: Pick<ProjectConfig, 'art_style' | 'storyboard_notes'>,
+): StoryboardStyle {
+  return { artStyle: config.art_style, storyboardNotes: config.storyboard_notes };
+}
+
+const DECOMP_ROLE = [
   'You are a visual-novel storyboard artist. Decompose a scene into a short ordered list',
   'of illustrated shots. Each shot names its framing (wide|medium|close|establishing), a',
   'location variant id, and the subjects (characterId + optional pose/expression).',
@@ -107,11 +132,30 @@ const DECOMP_SYSTEM = [
   'The scene is given to you as numbered lines, each prefixed with its id in square brackets.',
   '`coversLines` lists the ids of the lines a shot is on screen for — copy them verbatim from',
   'the prompt. Assign EVERY line to exactly one shot, in order: a shot with no lines is never',
-  'displayed, and a line with no shot leaves the previous image on screen. Respond ONLY with',
-  'JSON of the form {"shots":[{"id","framing","location",',
+  'displayed, and a line with no shot leaves the previous image on screen.',
+].join(' ');
+
+const DECOMP_FORMAT = [
+  'Respond ONLY with JSON of the form {"shots":[{"id","framing","location",',
   '"subjects":[{"characterId","pose?","expression?"}],"camera?",',
   '"coversLines":["scene:L1","scene:L2"]}]}.',
 ].join(' ');
+
+/**
+ * The decomposer's system prompt. The style sits between the role and the answer format, so
+ * a project that states neither gets the prompt every decomposition before this was made with,
+ * byte for byte.
+ */
+export function decompSystem(style: StoryboardStyle): string {
+  const artStyle = style.artStyle.trim();
+  const notes = style.storyboardNotes.trim();
+  return [
+    DECOMP_ROLE,
+    ...(artStyle ? [`The frames will be drawn in this art style: ${artStyle}.`] : []),
+    ...(notes ? [`Storyboard notes from the author: ${notes}.`] : []),
+    DECOMP_FORMAT,
+  ].join(' ');
+}
 
 /**
  * Decompose a scene into shots (report §P5). Uses the text LLM with structured-output
@@ -127,6 +171,7 @@ export async function decomposeScene(
   // Only the text half: the agent's `propose_storyboard` has a text seam and no image provider,
   // and a full `Providers` still satisfies this signature.
   providers: Pick<Providers, 'text'>,
+  style: StoryboardStyle,
 ): Promise<Decomposition> {
   const location = model.locations.get(scene.location);
   const variants = location?.variants.map((v) => v.id) ?? ['day'];
@@ -151,7 +196,7 @@ export async function decomposeScene(
     const result = await providers.text.structured(
       prompt,
       (raw) => shotDecompositionSchema.parse(JSON.parse(raw)),
-      DECOMP_SYSTEM,
+      decompSystem(style),
     );
     return realizeDecomposition(result, scene, model);
   } catch (err) {

@@ -1,7 +1,7 @@
-import type { Logger, ProjectModel, Providers } from '@vn/types';
+import type { Logger, ProjectConfig, ProjectModel, Providers } from '@vn/types';
 import { reachableScenes } from '@vn/model';
 import { readShots, writeShots, type ProjectPaths } from '@vn/store';
-import { decomposeScene } from './p5.js';
+import { decomposeScene, storyboardStyle } from './p5.js';
 
 /**
  * What a batch decomposition did, per scene. Four disjoint lists rather than a count, because each
@@ -20,6 +20,8 @@ export interface DecomposeAllResult {
 
 export interface DecomposeAllOptions {
   model: ProjectModel;
+  /** Read for the art style and the storyboard notes the decomposer is told. */
+  config: Pick<ProjectConfig, 'art_style' | 'storyboard_notes'>;
   providers: Providers;
   paths: ProjectPaths;
   logger?: Logger;
@@ -55,6 +57,7 @@ export interface DecomposeAllOptions {
  */
 export async function decomposeAll(opts: DecomposeAllOptions): Promise<DecomposeAllResult> {
   const { model, providers, paths, logger } = opts;
+  const style = storyboardStyle(opts.config);
   const out: DecomposeAllResult = { decomposed: [], kept: [], fellBack: [], unreadable: [] };
 
   for (const scene of reachableScenes(model)) {
@@ -73,7 +76,7 @@ export async function decomposeAll(opts: DecomposeAllOptions): Promise<Decompose
       continue;
     }
 
-    const result = await decomposeScene(scene, model, providers);
+    const result = await decomposeScene(scene, model, providers, style);
     if (result.source === 'baseline' && !opts.keepBaseline) {
       out.fellBack.push({ scene: scene.id, reason: result.reason ?? 'the model did not answer' });
       logger?.warn('not writing a baseline storyboard', {

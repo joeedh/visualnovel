@@ -759,3 +759,9 @@ specification:
   out again in the stage that draws the fields, because the list is checked both ways. The
   re-sweep ran against `examples/mySampleRepo` in `--mock`, as the earlier sweeps did, and
   its only other change is the OpenRouter row the Setup pane now draws.
+- **`decompSystem(style)` splices the style between the role and the format.** The two
+  style sentences (`The frames will be drawn in this art style: …` and
+  `Storyboard notes from the author: …`) go between the unchanged role paragraph and the
+  unchanged format paragraph, each only when its key is set, so with both keys empty the
+  prompt is byte for byte the old `DECOMP_SYSTEM`. The pinned prompt tests check that.
+  `LoadedWorkspace` carries the pair as one `style: StoryboardStyle` field.

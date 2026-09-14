@@ -1,3 +1,4 @@
+import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ProjectPaths, readShots } from '@vn/store';
 import { exists } from '@vn/util';
@@ -152,6 +153,42 @@ describe('storyboard tools', () => {
       expect(r.output).toContain('ending__opener');
       expect(r.output).toContain('Nothing is written.');
       expect(await exists(join(dir, 'vngen', 'work', 'shots', 'ending.json'))).toBe(false);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('propose_storyboard tells the decomposer what project.yaml says about style', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      await writeFile(
+        join(dir, 'project.yaml'),
+        'title: Test Project\nstart: arrival\nart_style: ink wash\nstoryboard_notes: one splash per scene\n',
+      );
+      let system = '';
+      ctx.text = {
+        complete  : () => Promise.resolve(''),
+        structured: async (_prompt, parse, sys) => {
+          system = sys ?? '';
+          return parse(
+            JSON.stringify({
+              shots: [
+                {
+                  id         : 'opener',
+                  framing    : 'wide',
+                  location   : 'day',
+                  subjects   : [],
+                  coversLines: ['ending:L1'],
+                },
+              ],
+            }),
+          );
+        },
+      };
+      const r = await run('propose_storyboard', { scene: 'ending' }, ctx);
+      expect(r.ok).toBe(true);
+      expect(system).toContain('The frames will be drawn in this art style: ink wash.');
+      expect(system).toContain('Storyboard notes from the author: one splash per scene.');
     } finally {
       await cleanup();
     }

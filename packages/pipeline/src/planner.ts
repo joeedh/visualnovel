@@ -32,7 +32,7 @@ import {
   MODEL_SHEET_ANGLES,
   SHEET_FRONT,
 } from './prompts.js';
-import { decomposeScene } from './p5.js';
+import { decomposeScene, storyboardStyle, type StoryboardStyle } from './p5.js';
 import { proseHash } from './drift.js';
 
 /** Model-sheet angles generated per outfit once a character is approved (report §P4). */
@@ -70,6 +70,7 @@ async function shotsFor(
   scene: Scene,
   model: ProjectModel,
   providers: Providers,
+  style: StoryboardStyle,
   paths?: ProjectPaths,
   logger?: Logger,
   readOnly = false,
@@ -88,7 +89,7 @@ async function shotsFor(
       return loaded.shots;
     }
   }
-  const decomposition = await decomposeScene(scene, model, providers);
+  const decomposition = await decomposeScene(scene, model, providers, style);
   // Inside a run a baseline decomposition means the deterministic fallback worked, so it is still
   // written. Persisting one silently is how a whole project ends up baselined forever, so it is
   // logged here; `decomposeAll` refuses to write it at all.
@@ -229,8 +230,17 @@ export async function planTasks(opts: {
   // P5–P7: shots, but only for scenes that have fully cleared the character gate.
   for (const scene of reachableScenes(model)) {
     if (!sceneUnblocked(model, scene.id)) continue;
-    if (scene.shots.length === 0)
-      scene.shots = await shotsFor(scene, model, providers, paths, logger, readOnlyShots);
+    if (scene.shots.length === 0) {
+      scene.shots = await shotsFor(
+        scene,
+        model,
+        providers,
+        storyboardStyle(config),
+        paths,
+        logger,
+        readOnlyShots,
+      );
+    }
 
     for (const shot of scene.shots) {
       // A shot can only be hashed once its location plate exists (its hash is a ref).

@@ -277,6 +277,11 @@ These implement the system design in
       which holds generative policy shared with the agent's `propose_storyboard`.
       `propose_storyboard` cannot import the pipeline. `@vn/pipeline`'s `p5.ts` re-exports
       them.)
+    - Every caller hands `decomposeScene` the project's `art_style` and `storyboard_notes`
+      (`storyboardStyle(config)`), which `decompSystem` places between the role and the
+      answer format. A project that states neither gets the prompt every earlier
+      decomposition was made with. Because a decomposition is persisted, changing either
+      key re-keys nothing; it reaches the next scene storyboarded.
     - The file is human-editable. A malformed file throws instead of being silently
       re-decomposed over.
     - Authored fields sit at the top level. Fields a run produced sit under `shotData`,

@@ -28,6 +28,7 @@ import {
   type ShotOutfitOp,
 } from '@vn/scriptedit';
 import { sourcesOf, type SceneEditInput, type SceneSource } from '@vn/scriptedit/write';
+import { storyboardStyle, type StoryboardStyle } from '@vn/artgen';
 import { loadConfig } from '@vn/config';
 import { RepoResolver } from '@vn/git';
 import { exists, readText, VnError, writeFileAtomic } from '@vn/util';
@@ -124,6 +125,8 @@ export interface GeneratedContextState {
 /** Full load result: the built model plus the raw docs (for editing/serialization). */
 export interface LoadedWorkspace {
   title: string;
+  /** `art_style` and `storyboard_notes` off `project.yaml`, empty where it is absent or invalid. */
+  style: StoryboardStyle;
   model: ProjectModel;
   inputs: LoadedInputs;
 }
@@ -177,15 +180,17 @@ export class Workspace {
     const inputs = await loadInputs(this.paths);
     let title = 'Untitled';
     let start: string | undefined;
+    let style: StoryboardStyle = { artStyle: '', storyboardNotes: '' };
     try {
       const config = await loadConfig(this.root);
       title = config.title;
       start = config.start;
+      style = storyboardStyle(config);
     } catch {
       // No (or invalid) project.yaml: the agent still operates, title is a placeholder
     }
     const model = modelFromInputs(inputs, { title, start });
-    return { title, model, inputs };
+    return { title, style, model, inputs };
   }
 
   /** Build the lightweight index from the model. */
