@@ -36,8 +36,8 @@ importers:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@22.20.2)
       lintrix:
-        specifier: file:..\fastlint\build\release\lintrix-0.1.0.tgz
-        version: file:../fastlint/build/release/lintrix-0.1.0.tgz
+        specifier: 0.1.2
+        version: 0.1.2
       markdown-toc:
         specifier: ^1.2.0
         version: 1.2.0
@@ -2895,9 +2895,8 @@ packages:
   lines-and-columns@1.2.4:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==}
 
-  lintrix@file:../fastlint/build/release/lintrix-0.1.0.tgz:
-    resolution: {integrity: sha512-1Ko14VaDsTNG8VwuFLoLQoyIB4iA9JpzzfteJEOs+K5VUxSrIakkOjmx00E6HHmxISrRWZncuDyavMqGVe/Eyw==, tarball: file:../fastlint/build/release/lintrix-0.1.0.tgz}
-    version: 0.1.0
+  lintrix@0.1.2:
+    resolution: {integrity: sha512-ojtQ38zYDRnWHr+Dxd7dvD1JSJYjQ/gbizxRQJmSh9N2Iklj2T0KpPSgD/iZVM+wB6TLKFP56y5HxAFJX8ZIoQ==}
     engines: {node: '>=24'}
     hasBin: true
 
@@ -6466,7 +6465,7 @@ snapshots:
 
   lines-and-columns@1.2.4: {}
 
-  lintrix@file:../fastlint/build/release/lintrix-0.1.0.tgz: {}
+  lintrix@0.1.2: {}
 
   list-item@1.1.1:
     dependencies:
