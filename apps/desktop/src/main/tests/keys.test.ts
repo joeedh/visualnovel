@@ -108,7 +108,7 @@ describe('project.keyStatus', () => {
 
   it('reports a vendor with no key, in KEY_VENDORS order', async () => {
     const view = await session.keyStatusView();
-    expect(view.vendors.map((v) => v.vendor)).toEqual(['gemini', 'anthropic']);
+    expect(view.vendors.map((v) => v.vendor)).toEqual(['gemini', 'anthropic', 'openrouter']);
     for (const vendor of view.vendors) {
       expect(vendor.resolved).toBe(false);
       expect(vendor.source).toBe('Not set.');

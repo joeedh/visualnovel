@@ -308,11 +308,15 @@ export const projectConfig = z.object({
       seed  : z.number().optional(),
     })
     .default({}),
-  /** Env var names that hold API keys; never the keys themselves. */
+  /**
+   * Env var names that hold API keys; never the keys themselves. `openrouter` is read by no
+   * built-in backend; the OpenRouter plugin's nodes ask for it through `GenServices.key`.
+   */
   keys: z
     .object({
-      gemini   : z.string().default('GEMINI_API_KEY'),
-      anthropic: z.string().default('ANTHROPIC_API_KEY'),
+      gemini    : z.string().default('GEMINI_API_KEY'),
+      anthropic : z.string().default('ANTHROPIC_API_KEY'),
+      openrouter: z.string().default('OPENROUTER_API_KEY'),
     })
     .default({}),
   concurrency        : z.number().int().positive().default(4),

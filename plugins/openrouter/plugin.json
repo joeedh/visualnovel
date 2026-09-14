@@ -1,0 +1,11 @@
+{
+  "name"       : "openrouter",
+  "version"    : "1.0.0",
+  "apiVersion" : 1,
+  "description": "Any image model OpenRouter routes to, as one generate node that calls OpenRouter directly.",
+  "nodeTypes"  : ["OpenRouterImage"],
+  "services"   : ["blobs", "assets", "fetch", "key"],
+  "keys"       : ["openrouter"],
+  "entry"      : "index.ts",
+  "priceAgent" : false
+}

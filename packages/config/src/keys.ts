@@ -1,22 +1,30 @@
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
-import type { ChatVendor, ProjectConfig } from '@vn/types';
+import type { ProjectConfig } from '@vn/types';
 import { ConfigError, exists, readText } from '@vn/util';
 
 /**
- * Resolved API keys, one per vendor a model id can name. Values are secrets and MUST never be
- * logged (report §8, §11).
+ * The vendors a key is resolved for. Ordered, so a UI can offer them without inventing a list.
+ * Every `ChatVendor` is one; `openrouter` is not a chat vendor, because no built-in backend calls
+ * it, and is resolved for the OpenRouter plugin's image nodes.
  */
-export type ResolvedKeys = Record<ChatVendor, string>;
+export const KEY_VENDORS = ['gemini', 'anthropic', 'openrouter'] as const;
 
-/** The vendors a key is resolved for. Ordered, so a UI can offer them without inventing a list. */
-export const KEY_VENDORS = ['gemini', 'anthropic'] as const;
+export type KeyVendor = (typeof KEY_VENDORS)[number];
+
+/**
+ * Resolved API keys, one per vendor. Values are secrets and MUST never be logged (report §8,
+ * §11). `@vn/agentreport` indexes it by a `ChatVendor`, which type-checks only while every chat
+ * vendor has a row here.
+ */
+export type ResolvedKeys = Record<KeyVendor, string>;
 
 /** Filenames to look for when an env var is unset: `<secretsDir>/<file>`, by vendor. */
-const SECRET_FILES: Record<keyof ResolvedKeys, string[]> = {
-  gemini   : ['gemini.txt'],
-  anthropic: ['claude.txt', 'anthropic.txt'],
+const SECRET_FILES: Record<KeyVendor, string[]> = {
+  gemini    : ['gemini.txt'],
+  anthropic : ['claude.txt', 'anthropic.txt'],
+  openrouter: ['openrouter.txt'],
 };
 
 /**
@@ -261,18 +269,18 @@ export async function resolveKeys(
   opts: { secretsDirs?: string[]; require?: (keyof ResolvedKeys)[] } = {},
 ): Promise<ResolvedKeys> {
   const secretsDirs = opts.secretsDirs ?? [];
-  const gemini = await resolveOne(config.keys.gemini, SECRET_FILES.gemini, secretsDirs);
-  const anthropic = await resolveOne(config.keys.anthropic, SECRET_FILES.anthropic, secretsDirs);
+  const keys = {} as ResolvedKeys;
+  for (const vendor of KEY_VENDORS) {
+    keys[vendor] = (await resolveOne(config.keys[vendor], SECRET_FILES[vendor], secretsDirs)) ?? '';
+  }
 
   for (const name of opts.require ?? []) {
-    const value = name === 'gemini' ? gemini : anthropic;
-    if (!value) {
-      const envName = name === 'gemini' ? config.keys.gemini : config.keys.anthropic;
+    if (!keys[name]) {
       throw new ConfigError(
-        `missing ${name} API key: set $${envName} or place ${SECRET_FILES[name][0]} in a keys/ dir`,
+        `missing ${name} API key: set $${config.keys[name]} or place ${SECRET_FILES[name][0]} in a keys/ dir`,
       );
     }
   }
 
-  return { gemini: gemini ?? '', anthropic: anthropic ?? '' };
+  return keys;
 }

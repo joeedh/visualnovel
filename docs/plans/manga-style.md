@@ -1,7 +1,8 @@
 # Colour manga as a second visual style
 
-**Status: planned.** Implementation has not started. The proposal completed one review
-pass; the findings and resulting modifications are documented at the end.
+**Status: partial.** Stage 1 is in progress; the As-shipped section at the end records
+each commit and every deviation. The proposal completed one review pass; the findings and
+resulting modifications are documented before that.
 
 ## What this adds
 
@@ -135,6 +136,7 @@ The following implementation details have been validated against the codebase:
    was rejected: stylistic variance occurs per shot (e.g., standard frames alongside
    multi-panel pages or varying aspect ratios), while global style directives are already
    handled by `art_style`. The adopted replacement includes:
+
     - `art_style` remains the primary style description and is now forwarded to the
       decomposer, aligning storyboard composition with prompt generation (e.g.,
       "full-colour manga").
@@ -709,3 +711,34 @@ specification:
 18. **Incomplete undo cost analysis:** Documented all rollback costs in Cost to Undo.
 19. **Ambiguous implementation steps:** Clarified explicit tasks, file targets, and
     command structures across Stages 1, 2, and 4 and Decision 16.
+
+## As-shipped
+
+### Stage 1
+
+- **The OpenRouter plugin posts to `/api/v1/images`, not `/api/v1/chat/completions`.** The
+  harness section names the chat-completions route with `modalities: ['image', 'text']`.
+  At implementation time OpenRouter documents a dedicated image endpoint,
+  `POST /api/v1/images`, and that is the only route carrying `aspect_ratio`, `seed` and
+  `input_references`, which are the three things the Stage 1 check needs. Its reply is
+  `{ data: [{ b64_json, media_type }], usage: { cost } }`. The plugin sends
+  `provider: { data_collection: 'deny' }` on every call (the privacy research's
+  recommendation) and leaves `zdr` off, as the harness section says.
+- **The plugin records `cost`.** OpenRouter reports what each call cost in the reply, so
+  the node writes it to the run's journal as a `cost` output beside `modelId` and
+  `prompt`. Nothing reads it yet; it is what the live-test spend column comes from.
+- **The plugin declares no `prices` fragment and no price agent.** OpenRouter prices each
+  model as its provider does (per image for some, per token for Google's), and the
+  plugin's estimate is one `image` line for the named model, which an author's own price
+  table can price or leave unpriced.
+- **`KeyVendor` is a superset of `ChatVendor`, not a widening of it.** `KEY_VENDORS` gains
+  `openrouter`, and `ResolvedKeys` is `Record<KeyVendor, string>`. `ChatVendor` stays
+  `'gemini' | 'anthropic'`, because no chat backend calls OpenRouter and `threads.ts` and
+  `convo.ts` index by it. `resolveKeys` now loops the vendor list rather than naming each
+  vendor.
+- **`project.testKey('openrouter')` calls `GET /api/v1/key`.** The generic path finds a
+  configured chat model for the vendor and there is none for OpenRouter, so the Setup
+  pane's test button would have refused. The key endpoint describes the key it was sent
+  and bills nothing, which is the cheap call the button promises.
+- **The key guide gains an `## OpenRouter` section** because `keyGuideProblems` requires
+  one per `KEY_VENDORS` entry; the intro now says the OpenRouter key is optional.

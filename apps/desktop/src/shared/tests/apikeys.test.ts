@@ -117,15 +117,17 @@ describe('the shipped docs/guides/api-keys.md', () => {
     expect(guide.vendors.map((vendor) => vendor.vendor)).toEqual([...KEY_VENDORS]);
   });
 
-  it('says what each vendor charges, because neither vendor’s own page does', () => {
+  it('says what each vendor charges, because no vendor’s own page does', () => {
     expect(guide.vendors.find((vendor) => vendor.vendor === 'gemini')!.freeTier).toBe(true);
     expect(guide.vendors.find((vendor) => vendor.vendor === 'anthropic')!.freeTier).toBe(false);
+    expect(guide.vendors.find((vendor) => vendor.vendor === 'openrouter')!.freeTier).toBe(false);
   });
 
   it('names the environment variables `project.yaml` defaults to', () => {
     expect(guide.vendors.map((vendor) => vendor.env)).toEqual([
       'GEMINI_API_KEY',
       'ANTHROPIC_API_KEY',
+      'OPENROUTER_API_KEY',
     ]);
   });
 });

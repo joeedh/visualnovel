@@ -29,7 +29,7 @@
 | `app.checkForUpdates` | `quiet` (default `false`) | — |
 | `app.copy` | `text`, `what` (default `'text'`) | — |
 | `app.keyGuide` | — | — |
-| `app.openKeyLink` | `provider` (`gemini`\|`anthropic`), `link` (`console`\|`docs`\|`billing`, default `'console'`) | — |
+| `app.openKeyLink` | `provider` (`gemini`\|`anthropic`\|`openrouter`), `link` (`console`\|`docs`\|`billing`, default `'console'`) | — |
 | `app.openReleases` | — | — |
 
 ## `art.`
@@ -162,8 +162,8 @@
 | `project.keyStatus` | — | — |
 | `project.pagesStatus` | `branch` (default `'gh-pages'`) | Whether this project carries the GitHub page builder, and whether the copy it carries came from this build of the app. Read by the menu, which reads Install or Update accordingly. |
 | `project.setArtStyle` ✍ ⚠ ↺ ✓ | `style` (default `''`) | Writes `project.yaml`. The sentence every image prompt opens with. Not art notes on one rung: it reaches every portrait, sheet, plate and shot, so it re-keys **every** image task. Spliced into `project.yaml`, so comments and key order survive. |
-| `project.setKey` ✍ ✓ | `provider` (`gemini`\|`anthropic`), `key` (**secret**), `scope` (`project`\|`user`, default `'project'`) | Writes `keys`, `.gitignore`, `<user>/keys`. Store one model provider's API key in `keys/`, the file `resolveKeys` reads when the matching environment variable is unset — and it says so when one is set, because the variable wins. The value goes to that file and nowhere else: the history records `<secret>`, and `keys` is added to `.gitignore` **before** the write, because commit-on-save runs `git commit -A`. Deliberately **not undoable**: `keys/` is outside the class a snapshot covers, which is what keeps an undo from writing over or deleting the credential this command exists to store. |
-| `project.testKey` ✓ | `provider` (`gemini`\|`anthropic`) | — |
+| `project.setKey` ✍ ✓ | `provider` (`gemini`\|`anthropic`\|`openrouter`), `key` (**secret**), `scope` (`project`\|`user`, default `'project'`) | Writes `keys`, `.gitignore`, `<user>/keys`. Store one model provider's API key in `keys/`, the file `resolveKeys` reads when the matching environment variable is unset — and it says so when one is set, because the variable wins. The value goes to that file and nowhere else: the history records `<secret>`, and `keys` is added to `.gitignore` **before** the write, because commit-on-save runs `git commit -A`. Deliberately **not undoable**: `keys/` is outside the class a snapshot covers, which is what keeps an undo from writing over or deleting the credential this command exists to store. |
+| `project.testKey` ✓ | `provider` (`gemini`\|`anthropic`\|`openrouter`) | — |
 
 ## `prompt.`
 

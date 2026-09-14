@@ -691,6 +691,14 @@ in the same three ways a built-in node type is split.
   built-in image node still runs through the host's image backend, which a project with no
   plugins depends on. The fixture plugin the loader's tests use lives in
   `packages/testkit/src/plugin/`.
+- The second plugin is OpenRouter, at `plugins/openrouter/`. Its one `OpenRouterImage`
+  type (props `model`, `aspect`, `seed`) posts to OpenRouter's `/api/v1/images` endpoint
+  with the `openrouter` key, carries references as data URLs, sends
+  `data_collection: deny` on every call, and records the cost OpenRouter reports as a
+  `cost` output in the run's journal. It exists so one shot can be drawn by several image
+  models through bound graphs with no test-only code path
+  ([`../plans/manga-style.md`](../plans/manga-style.md#live-model-testing)), and it
+  declares no prices, because OpenRouter prices each model as its provider does.
 
 ## Deliberately not built
 

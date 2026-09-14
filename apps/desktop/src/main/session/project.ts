@@ -15,7 +15,7 @@ import { chmod, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { exists, writeFileAtomic } from '@vn/util';
 import { chatBackendFor, chatVendorFor, createMockProviders } from '@vn/providers';
-import type { TextLLM } from '@vn/types';
+import type { ProjectConfig, TextLLM } from '@vn/types';
 import type { KeyScope, KeyStatusView, ProjectView } from '../../shared/ipc.js';
 import { parseKeyGuide, type GuideUrlField, type KeyGuide } from '../../shared/apikeys.js';
 import { readResource } from '../distribution/resources.js';
@@ -31,6 +31,12 @@ import {
 import { ensureIgnored } from '../workspace/workspace.js';
 import type { WorkspaceSession, LoadedProject, PromptResult, PromptWriteResult } from './core.js';
 import { IMAGE_KINDS, relPath, describeKeySource, loadProject, buildProviders } from './core.js';
+
+/** Answers with the sent key's label and limits; a wrong key gets a 401 and nothing is billed. */
+const OPENROUTER_KEY_URL = 'https://openrouter.ai/api/v1/key';
+
+/** How much of an OpenRouter error body {@link ProjectPart.testKey} quotes. */
+const OPENROUTER_ERROR_CHARS = 200;
 
 export class ProjectPart {
   constructor(private readonly session: WorkspaceSession) {}
@@ -294,6 +300,7 @@ export class ProjectPart {
       return { ok: true, message: 'Mock mode makes no calls, so there is nothing to test.' };
 
     const config = await loadConfig(this.session.dir);
+    if (vendor === 'openrouter') return this.testOpenRouterKey(config);
     const modelId = [config.models.text, ...config.models.vision].find(
       (id) => chatVendorFor(id) === vendor,
     );
@@ -317,6 +324,35 @@ export class ProjectPart {
       // "revoked" from "no access to that model". `resolveKeys` names sources, never values, and
       // a vendor SDK does not echo the key back, so this is safe to show.
       return { ok: false, message: `The ${vendor} key did not work: ${(err as Error).message}` };
+    }
+  }
+
+  /**
+   * OpenRouter has no chat backend here, so the cheap call is its key endpoint, which describes
+   * the key it was sent and bills nothing.
+   */
+  private async testOpenRouterKey(config: ProjectConfig): Promise<PromptResult> {
+    try {
+      const keys = await resolveKeys(config, {
+        secretsDirs: await secretDirsFor(this.session.dir),
+        require    : ['openrouter'],
+      });
+      const response = await fetch(OPENROUTER_KEY_URL, {
+        headers: { authorization: `Bearer ${keys.openrouter}` },
+        signal : AbortSignal.timeout(CHECK_TIMEOUT_MS),
+      });
+      if (!response.ok) {
+        // The error body carries the reason (401 for an unknown key) and no copy of the key, so
+        // it is safe to show
+        const body = (await response.text()).slice(0, OPENROUTER_ERROR_CHARS);
+        return {
+          ok     : false,
+          message: `The openrouter key did not work: HTTP ${response.status} ${body}`,
+        };
+      }
+      return { ok: true, message: 'The openrouter key works — OpenRouter recognised it.' };
+    } catch (err) {
+      return { ok: false, message: `The openrouter key did not work: ${(err as Error).message}` };
     }
   }
 

@@ -4,6 +4,7 @@
 
 - [Gemini](#gemini)
 - [Anthropic](#anthropic)
+- [OpenRouter](#openrouter)
 - [Where a key goes](#where-a-key-goes)
 - [Keeping a key safe](#keeping-a-key-safe)
 
@@ -15,8 +16,10 @@ frame. This page walks through the steps, and no other copy of that walkthrough 
 the desktop app's Setup pane renders this file, and anything printable is generated from
 it. Fixing a step here fixes every place that shows it.
 
-You need both keys. Claude writes and revises the screenplay, and Gemini draws. With a key
-for only one of them, half the app works.
+You need both the Gemini and the Anthropic keys. Claude writes and revises the screenplay,
+and Gemini draws. With a key for only one of them, half the app works. The OpenRouter key
+is optional: only the OpenRouter plugin's image nodes read it, and nothing else in the app
+stops working without one.
 
 ## Gemini
 
@@ -67,15 +70,40 @@ freeTier: false
 call fails with a credit-balance error until you buy some under **Billing** in the
 console. This is the single most common reason a freshly pasted key fails.
 
+## OpenRouter
+
+```yaml
+vendor: openrouter
+name: OpenRouter
+console: https://openrouter.ai/settings/keys
+docs: https://openrouter.ai/docs/api/reference/authentication
+billing: https://openrouter.ai/models?output_modalities=image
+env: OPENROUTER_API_KEY
+freeTier: false
+```
+
+1. Open the console link above and sign in, or create an account.
+2. Choose **Create Key**. A key can carry a spending limit; set one, because the
+   OpenRouter plugin's image nodes call whichever image model a graph names, and the
+   models differ in price by more than an order of magnitude.
+3. Copy the key. It begins with `sk-or-`, and it is shown once.
+4. Paste it into the Setup pane, or write it to a file yourself (see
+   [Where a key goes](#where-a-key-goes)).
+
+**Money.** There is no free tier for image models. OpenRouter bills per image or per token
+depending on the model, at each provider's own price plus its fee, and a call that fails
+is not charged. Buy credit under **Credits** in the console before the first call.
+
 ## Where a key goes
 
 A key is read from the first source in this list that supplies one, so a project that
 supplies its own key takes precedence:
 
-1.  1. The environment variable named in `project.yaml` is `GEMINI_API_KEY` or
-       `ANTHROPIC_API_KEY` unless the project renamed them.
-2.  2. The project's `keys/` directory holds `keys/gemini.txt` and `keys/claude.txt`. The
-       directory is added to `.gitignore` before anything is written to it.
+1.  1. The environment variable named in `project.yaml` is `GEMINI_API_KEY`,
+       `ANTHROPIC_API_KEY` or `OPENROUTER_API_KEY` unless the project renamed them.
+2.  2. The project's `keys/` directory holds `keys/gemini.txt`, `keys/claude.txt` and
+       `keys/openrouter.txt`. The directory is added to `.gitignore` before anything is
+       written to it.
 3.  3. The enclosing repository's `keys/`, for a workspace holding several projects.
 4.  4. Your own `keys/`, which is not inside any repository. This is the correct choice,
        and the Setup pane writes here by default:
@@ -104,7 +132,7 @@ actually read.
   Documents editor, and the debug agent's source reader) returns "keys/ holds API
   credentials and is never readable." instead of the file, so no read can copy a key into
   a saved conversation.
-- Both consoles let you revoke a key and issue a new one, which is how you recover from a
+- Every console lets you revoke a key and issue a new one, which is how you recover from a
   leaked key. Revoking a key is instant and costs nothing.
 - A key is per-machine by design. The user-level directory is the local one on Windows
   rather than the roaming one, so a key does not follow a domain account to another

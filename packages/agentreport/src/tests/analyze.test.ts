@@ -421,21 +421,20 @@ describe('on a backend that supports conversations', () => {
 
 describe('the key the analysis model needs', () => {
   const config = { keys: { gemini: 'GEMINI_API_KEY', anthropic: 'ANTHROPIC_API_KEY' } } as never;
+  const keys = (gemini: string, anthropic: string) => ({ gemini, anthropic, openrouter: '' });
 
   it('refuses by naming the source, never the value', () => {
-    expect(() => analystBackend('claude-sonnet-5', config, { gemini: 'g', anthropic: '' })).toThrow(
+    expect(() => analystBackend('claude-sonnet-5', config, keys('g', ''))).toThrow(
       /\$ANTHROPIC_API_KEY.*claude\.txt/s,
     );
   });
 
   it('asks for the vendor the model actually needs', () => {
-    expect(() =>
-      analystBackend('gemini-2.5-flash', config, { gemini: '', anthropic: 'a' }),
-    ).toThrow(/gemini\.txt/);
+    expect(() => analystBackend('gemini-2.5-flash', config, keys('', 'a'))).toThrow(/gemini\.txt/);
   });
 
   it('builds a backend when the key is there', () => {
-    const backend = analystBackend('claude-sonnet-5', config, { gemini: '', anthropic: 'sk-test' });
+    const backend = analystBackend('claude-sonnet-5', config, keys('', 'sk-test'));
     expect(backend.modelId).toBe('claude-sonnet-5');
   });
 });

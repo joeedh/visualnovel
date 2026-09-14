@@ -315,7 +315,7 @@ describe('keyStatus', () => {
     const config = await loadConfig(dir);
 
     const status = await keyStatus(config, { secretsDirs: [join(dir, 'keys')] });
-    expect(status.map((s) => s.vendor)).toEqual(['gemini', 'anthropic']);
+    expect(status.map((s) => s.vendor)).toEqual(['gemini', 'anthropic', 'openrouter']);
 
     const gemini = status[0]!;
     expect(gemini.resolved).toBe(true);
@@ -350,6 +350,20 @@ describe('resolveKeys errors', () => {
     const config = await loadConfig(dir);
     await expect(resolveKeys(config, { require: ['gemini'] })).rejects.toThrow(
       /missing gemini API key/,
+    );
+  });
+
+  it('resolves every vendor, naming the openrouter file and env var when that one is required', async () => {
+    const dir = await tempProject('title: T\n');
+    await mkdir(join(dir, 'keys'), { recursive: true });
+    await writeFile(join(dir, 'keys', 'openrouter.txt'), 'or-key\n');
+    const config = await loadConfig(dir);
+    const keys = await resolveKeys(config, { secretsDirs: [join(dir, 'keys')] });
+    expect(keys).toEqual({ gemini: '', anthropic: '', openrouter: 'or-key' });
+
+    const bare = await loadConfig(await tempProject('title: T\n'));
+    await expect(resolveKeys(bare, { require: ['openrouter'] })).rejects.toThrow(
+      /missing openrouter API key: set \$OPENROUTER_API_KEY or place openrouter\.txt/,
     );
   });
 });

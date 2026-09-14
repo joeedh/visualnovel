@@ -2,8 +2,8 @@
  * Key lookup for the two routes.
  *
  * Not `resolveKeys`, which reads env-var names out of a project's `project.yaml` and this repo
- * root has none. `KEY_VENDORS` and `SECRET_FILES` in `@vn/config` cover the vendors a `ChatVendor`
- * can name, and `openrouter` is not one, so the filenames live here instead.
+ * root has none. The filenames here match `SECRET_FILES` in `@vn/config`, which is where a
+ * project resolves the same two vendors from.
  */
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
