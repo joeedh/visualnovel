@@ -765,3 +765,21 @@ specification:
   unchanged format paragraph, each only when its key is set, so with both keys empty the
   prompt is byte for byte the old `DECOMP_SYSTEM`. The pinned prompt tests check that.
   `LoadedWorkspace` carries the pair as one `style: StoryboardStyle` field.
+- **`@google/genai` is bumped from 0.3.1 to 2.22.0, because 0.3.1 never sent the ratio.**
+  The live check found the built-in backend returning 1024×1024 at every ratio: the old
+  SDK's config converter copies a fixed list of fields onto the wire and `imageConfig` is
+  not on it, so the field commit 3ecd62b5 added was dropped in the process. The same
+  backend code through 2.22.0 returns 1344×768, 864×1184 and 768×1344. The bump is its own
+  commit; the backend's call shape (`generateContent`, `res.text`, `candidates`,
+  `usageMetadata`) is unchanged across the two versions, and the fake-SDK tests never
+  loaded the real one.
+- **The live check ran through a scratch driver, not bound graphs.** The harness section
+  binds one graph per model to a slot, which the pipeline-running stages need. Stage 1
+  needs only bytes, so the driver bundled the backend, the plugin's `drawWithOpenRouter`
+  and `buildShotPrompt` and called them directly. Results, spend and the model table are
+  in [`../research/manga-live-tests.md`](../research/manga-live-tests.md): 40 of 52
+  OpenRouter models honour all three ratios within 3%, every miss is a quoted provider
+  refusal, and `3:4` stands as the default `page_aspect`. Two things the check turned up
+  and Stage 1 leaves alone: Recraft's four `styles` models declare ratios their endpoint
+  refuses, and its vector models answer with an SVG the plugin passes through as
+  `ext: 'svg+xml'`.
