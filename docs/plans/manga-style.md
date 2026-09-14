@@ -271,7 +271,14 @@ The following implementation details have been validated against the codebase:
     which is already true of every bound graph today. `gengraph.scaffoldSheet` generates
     this graph structure, following `createForSlot`/`planForSlot`/`claimOf`
     (`apps/desktop/src/main/commands/gengraph.ts:212-315`) and refusing when any member
-    slot already has a claim.
+    slot already has a claim. The per-member chain (`GenCrop` → `GenRefList` →
+    `GenTemplate` → `GenImage`) is written once as a group definition,
+    `lib/sheet-cell.json`, on the project's first scaffold, and instanced per member with
+    the cell rectangle and index as overrides; the outputs stay at the root because an
+    output cannot be grouped. The definition is project-owned, like the pages bundle
+    `project.installPages` commits, so an author can change the cell chain (swap the image
+    node, add an edit pass) and every cell follows. No cross-project library is added;
+    `gen-graphs.md` lists that as deliberately unbuilt and this plan keeps it so.
 
 17. **Centralized seed calculation and propagation.** A shared helper
     `sheetSeeds(scene, group, model, config, upstreamByShot)` in `@vn/artgen` generates
@@ -376,10 +383,14 @@ without panels preserve the existing chunk sequence, matching literal string ass
 
 ## Stages
 
-Each stage must pass `pnpm check && pnpm test && pnpm lint` prior to merging.
+Each stage must pass `pnpm check && pnpm test && pnpm lint` prior to merging, and Stages
+1, 2 and 4 additionally pass their live-model check (below) before the stage counts as
+done. The OpenRouter plugin the live checks need is Stage 1's first commit.
 
 ### Stage 1 — aspect reaches the model, and the config gains its three keys
 
+- `plugins/openrouter/` and the `openrouter` key row (Live-model testing), so the rest of
+  the stage can be checked against more than one model.
 - Update `createGeminiImage` to transmit `imageConfig.aspectRatio` (Decision 3) in an
   isolated commit.
 - Implement `Shot.aspect` and `aspectFor` in `packages/artgen/src/prompts.ts` alongside
@@ -429,12 +440,15 @@ Each stage must pass `pnpm check && pnpm test && pnpm lint` prior to merging.
 ### Stage 3 — panel stepping and the panel editor
 
 - Update `buildPlayable` to export `show.panels`, `say.line`, and `narrate.line`; update
-  `framesOf` to set `Frame.panel`; configure desktop playback to highlight active panel
-  polygons while dimming the background.
-- Add panel editor to the desktop asset panel: polygon vertex editing, template selection,
-  line assignment, and per-panel cast/camera overrides. Route mutations through
-  `story.setPanels` with undo support and invalidation calculations. Regenerate UI models
-  via `pnpm gen:uxmodel` and expose `set_panels` to the agent.
+  `framesOf` to set `Frame.panel`; the PLAY treatment (lit panel, dimmed page, cut under
+  reduced motion) follows the design section above.
+- Add the panel editor to the desktop asset pane, built under the `frontend-design` skill
+  as described in "Designing the editor surfaces": the design plan is written and reviewed
+  against the brief before the first widget, and the stage does not land without its
+  screenshot critique. Polygon vertex editing, template selection, line assignment, and
+  per-panel cast/camera. Route mutations through `story.setPanels` with undo support and
+  invalidation pricing. Regenerate UI models via `pnpm gen:uxmodel` and expose
+  `set_panels` to the agent.
 - Documentation: update `playable-format.md` and `desktop-app.md`.
 
 ### Stage 4 — the sheet graph
@@ -453,8 +467,9 @@ Each stage must pass `pnpm check && pnpm test && pnpm lint` prior to merging.
 - Implement `gengraph.scaffoldSheet(scene, sheet)`.
 - Forward cropped reference cells to the reviewer as auxiliary references with
   instructions in `spec.description`.
-- Validate against an example project scene prior to enabling automatic decomposer
-  grouping; until then `storyboard_notes` is where an author turns sheets on.
+- The Stage 4 live check (the six-shot room sequence, three ways, on each model) decides
+  whether the decomposer proposes groups by default; until then `storyboard_notes` is
+  where an author turns sheets on.
 - The fixture asset cache key includes `params` (`schemas.ts:475`), so a recorded fixture
   for a member shot is invalidated by `extra.sheet`. Accepted: only member shots carry it,
   and none exists before this stage.
@@ -468,10 +483,120 @@ Each stage must pass `pnpm check && pnpm test && pnpm lint` prior to merging.
   configured via the panel editor or populated by the agent using `panelBoxes`.
 - Implement `project.setLettering runner`; clear prompt `lettering` chunks and update
   scaffolding, pricing the resulting invalidation of all page shots.
-- Render speech bubbles directly within active panels during runner playback. Preserve
-  existing text overlay rendering in the standalone web player.
+- The bubble editor extends the panel editor under the same design plan; the runner draws
+  the bubble for the current line inside its panel. Preserve existing text overlay
+  rendering in the standalone web player.
 - Defer implementation until Stages 2–4 have been validated on production projects to
   confirm alignment between detected bounding boxes and intended geometries.
+
+## Designing the editor surfaces
+
+Three surfaces in this plan are new UI rather than a new row in an existing one, and each
+is built under the `frontend-design` skill: a written design brief, the skill's design
+plan (palette, type, layout with wireframes, principles) reviewed against that brief
+before any code, and a screenshot critique before the stage lands. The design plan and its
+critique are filed beside the plan as `docs/plans/manga-style-design.md` so the choices
+survive the conversation that made them.
+
+- **The panel editor** (Stage 3) is the one that matters most. Its brief: the page is the
+  canvas. The author sees the rendered page (or the empty page aspect before a render)
+  with the intended polygons drawn over it and, once a render exists, the reviewer's
+  observed boxes as a second, quieter layer, so a mismatch is visible without a label.
+  Vertices are dragged directly; a line is assigned to a panel by dragging it from a list
+  of the shot's covered lines onto the panel; a template is picked from a row of small
+  page glyphs rather than a dropdown of names. Cast and camera per panel are edited in a
+  side column that follows the selected panel. Every control goes through `act()`, carries
+  a tooltip, and the two commands behind it (`story.setPanels`, `story.setCoverage`) price
+  the re-render in their `check`, which the surface shows verbatim on the control.
+- **Panel stepping in PLAY** (Stage 3): the current panel is the whole idea, so the
+  treatment is a single move — the page stays put, the current panel's polygon is lit and
+  the rest of the page dims, with no motion beyond the crossfade between panels.
+  Reduced-motion is respected by cutting instead of fading.
+- **The bubble editor** (Stage 5) is the panel editor with one more layer: a bubble anchor
+  per line dropped inside its panel, the tail dragged to the speaker. It reuses the panel
+  editor's plan rather than getting its own.
+
+The brief's fixed points, which the skill is told to follow exactly: path.ux's theme
+supplies the palette and type, since the editor sits beside sixteen others that share
+them; the memorable element is the page-as-canvas interaction, and everything around it
+stays quiet; and the words on the surface name what the author does ("Assign this line to
+panel 3", "Re-renders this page") rather than what the system does. Page display in the
+timeline and asset editor (Stage 2) is a per-asset aspect ratio inside an existing surface
+and does not go through the skill.
+
+## Live-model testing
+
+The mock tests prove the plumbing. Whether an image model honours a polygon layout,
+letters a page verbatim, or keeps one room across a sheet is model behaviour, and each
+stage that depends on it is checked against real models before the stage counts as done.
+Gemini and OpenRouter keys are available for this.
+
+### The harness: an OpenRouter plugin and bound graphs
+
+- The pipeline has one live image backend, `createGeminiImage`, and the host's key
+  vocabulary does not include `openrouter` (`scripts/prosestyle/keys.ts` keeps its own
+  filename table for that reason). So the comparison runs through a plugin,
+  `plugins/openrouter/`, built like `plugins/gemini/`: one `OpenRouterImage` node with
+  `model`, `aspect` and `seed` props, calling `/api/v1/chat/completions` with
+  `modalities: ['image', 'text']` over the host's recorded transport, declaring
+  `keys: ["openrouter"]`. The host's key table gains the `openrouter` row
+  (`OPENROUTER_API_KEY`, `keys/openrouter.txt`) so `resolveKeys` can hand it over.
+- A bound graph changes how a slot is drawn without moving its hash, so the same shot is
+  drawn by several models by binding one graph per model to the same slot in turn, with
+  identical prompts and references. That is the whole harness; no test-only code path.
+- Models: the built-in Gemini backend (direct, after Stage 1's aspect fix) is the
+  baseline. Through OpenRouter, whichever image-output models it lists at the time —
+  Google's image models are the ones known to be there; `gpt-image` and Flux endpoints are
+  checked at the time rather than assumed. Model ids churn, so the research doc records
+  which were run, not this plan.
+- The plugin is not a `@vn/providers` backend, so it does not pre-empt
+  [`four-chat-vendors-and-two-more-image-providers.md`](four-chat-vendors-and-two-more-image-providers.md);
+  if that plan lands first the same comparison runs through its backends.
+- Privacy:
+  [`../research/openrouter-vs-direct-image-api-privacy.md`](../research/openrouter-vs-direct-image-api-privacy.md)
+  finds that only Google's image models route ZDR on OpenRouter. The live tests run on
+  `templates/basic` and the example projects, which hold nothing private, so non-ZDR
+  models are allowed for the comparison and `zdr` is left off. A real manuscript is never
+  used for a live test.
+- Recording: `scripts/record-fixture-assets.mjs` records live image calls into the
+  committed corpus `makeProject({ assets: 'cached' })` replays
+  ([`../guides/testkit.md`](../guides/testkit.md#refreshing-the-corpus)). A page render is
+  larger than the current entries (9 entries, 11.3 MB), so one representative page and one
+  sheet are recorded per stage and the rest are not committed.
+
+### What each stage checks live
+
+- **Stage 1 — aspect is honoured.** One shot drawn at `16:9`, `3:4` and `9:16` on each
+  model; the check is the returned image's pixel dimensions, read from the bytes, not a
+  look. A model that refuses a ratio must surface a provider error, not a wrong-shaped
+  image. This is the check the research doc says nobody has run.
+- **Stage 2 — layout and lettering.** Each layout template drawn as a page on each model,
+  several seeds each, under `lettering: model`. Two numbers per model, both from data the
+  stage already produces: the layout-honoured rate (the reviewer's observed boxes matched
+  to the intended polygons by the same overlap rule that files the `layout` defect) and
+  the lettering exact-match rate. Plus attempts-to-accept and spend from `vngen cost`. The
+  result decides the default `page_aspect`, the overlap threshold, the panel bound the
+  decomposer is told, and whether any model is unfit for pages.
+- **Stage 4 — perspective coherence.** The stage exists for this. One six-shot sequence in
+  one room (establishing, mid, over-the-shoulder, reverse, pan, reverse) drawn three ways:
+  per shot with no sheet, per shot with the sheet crop and full sheet as references
+  through the graph, and the sheet at two cell counts. Judged by a vision reviewer given a
+  fixed question list across the six frames (same room and furniture; shot 4 is the
+  reverse of shot 3; the eyeline holds) and by a person looking at the six side by side,
+  because the survey the research doc cites puts vision models at 55% on composition. The
+  result decides whether the decomposer proposes groups by default, and the cell bound.
+- **Stages 3 and 5** have no live-model step; the runner does not call a model.
+
+### Rules
+
+- A live pass runs after the stage's mock tests are green, never instead of them.
+- Every pass is budgeted up front (`vngen cost` before the run, the spend recorded after)
+  and bounded to the shots listed above; nothing loops on a model until it passes.
+- Keys go through `resolveKeys` and are never printed; a failing call is quoted by its
+  error text, never its request.
+- Results are written to `docs/research/manga-live-tests.md` (per the research convention)
+  as one table per stage — model, what was drawn, the rate, attempts, spend — and the
+  decisions they settled are copied into this plan's As-shipped section.
 
 ## Contracts to update
 
