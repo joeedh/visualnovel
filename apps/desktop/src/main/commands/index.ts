@@ -106,6 +106,8 @@ import {
   projectPagesStatus,
   projectSetArtStyle,
   projectSetKey,
+  projectSetLettering,
+  projectSetStoryboardNotes,
   projectTestKey,
 } from './project.js';
 import {
@@ -286,6 +288,8 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     projectPagesStatus,
     projectSetArtStyle,
     projectSetKey,
+    projectSetLettering,
+    projectSetStoryboardNotes,
     projectTestKey,
     reportAgent,
     reportGrant,

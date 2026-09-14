@@ -84,6 +84,11 @@ const APP: readonly PaletteOnly[] = [
   },
 ];
 
+const PROJECT = ['project.setStoryboardNotes', 'project.setLettering'].map((match) => ({
+  match,
+  why: 'A project.yaml key the palette and CDP set; no editor draws a field for it until the manga-style plan’s page-shot stage.',
+}));
+
 const GENGRAPH_NODES = [
   'gengraph.addBoundary',
   'gengraph.addGroup',
@@ -151,6 +156,7 @@ export const PALETTE_ONLY: readonly PaletteOnly[] = [
   ...READS,
   ...VIEW,
   ...APP,
+  ...PROJECT,
   ...GENGRAPH_NODES,
   ...STORY,
   ...PROMPT,

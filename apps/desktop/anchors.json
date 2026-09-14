@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-09T10:23:32.126Z",
-  "gitSha"       : "a8c9b37417e6cffa52c912b4420643007c0f1aa8",
+  "sweptAt"      : "2026-09-14T06:57:34.513Z",
+  "gitSha"       : "0d325cf13ef461ad44ceb328f164565410073044",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -101,6 +101,8 @@
     "project.pagesStatus",
     "project.setArtStyle",
     "project.setKey",
+    "project.setLettering",
+    "project.setStoryboardNotes",
     "project.testKey",
     "prompt.addRef",
     "prompt.check",
@@ -3132,6 +3134,24 @@
       "widgetPath": "onboarding/app-openkeylink~82ab45f1"
     },
     {
+      "id"        : "app.openKeyLink",
+      "editor"    : "onboarding",
+      "key"       : "cmd:app.openKeyLink#openrouter/console",
+      "widgetPath": "onboarding/app-openkeylink~eb195aee"
+    },
+    {
+      "id"        : "app.openKeyLink",
+      "editor"    : "onboarding",
+      "key"       : "cmd:app.openKeyLink#openrouter/docs",
+      "widgetPath": "onboarding/app-openkeylink~e27d2212"
+    },
+    {
+      "id"        : "app.openKeyLink",
+      "editor"    : "onboarding",
+      "key"       : "cmd:app.openKeyLink#openrouter/billing",
+      "widgetPath": "onboarding/app-openkeylink~13eaf3fa"
+    },
+    {
       "id"        : "project.testKey",
       "editor"    : "onboarding",
       "key"       : "cmd:project.testKey#gemini",
@@ -3143,6 +3163,13 @@
       "editor"    : "onboarding",
       "key"       : "cmd:project.testKey#anthropic",
       "widgetPath": "onboarding/project-testkey~52587993",
+      "refused"   : "Mock mode makes no calls, so there is nothing to test."
+    },
+    {
+      "id"        : "project.testKey",
+      "editor"    : "onboarding",
+      "key"       : "cmd:project.testKey#openrouter",
+      "widgetPath": "onboarding/project-testkey~2de0c608",
       "refused"   : "Mock mode makes no calls, so there is nothing to test."
     },
     {
@@ -3158,6 +3185,14 @@
       "editor"    : "onboarding",
       "key"       : "cmd:project.setKey#anthropic",
       "widgetPath": "onboarding/project-setkey~b45dc248",
+      "supplies"  : ["key"],
+      "refused"   : "Paste a key first"
+    },
+    {
+      "id"        : "project.setKey",
+      "editor"    : "onboarding",
+      "key"       : "cmd:project.setKey#openrouter",
+      "widgetPath": "onboarding/project-setkey~e338045b",
       "supplies"  : ["key"],
       "refused"   : "Paste a key first"
     },

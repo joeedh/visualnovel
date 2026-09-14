@@ -1186,6 +1186,34 @@ describe('WorkspaceSession — project settings', () => {
     expect(preview.ok).toBe(true);
     expect(preview.message).toMatch(/re-keys \d+ image task/);
   });
+
+  it('writes the storyboard notes beside the art style, and says they re-key nothing', async () => {
+    const preview = await session.previewStoryboardNotes('pages of four to six panels');
+    expect(preview).toMatchObject({ ok: true });
+    expect(preview.message).toMatch(/no shot already written is re-keyed/);
+
+    const result = await session.setProjectStoryboardNotes('pages of four to six panels');
+    expect(result).toMatchObject({ ok: true, written: ['project.yaml'] });
+    expect(await p.read('project.yaml')).toContain('storyboard_notes: pages of four to six panels');
+    expect(await p.read('project.yaml')).toContain('art_style: ink wash, muted');
+    expect(await session.setProjectStoryboardNotes('pages of four to six panels')).toMatchObject({
+      ok     : false,
+      written: [],
+    });
+  });
+
+  it('writes the lettering mode and prices the page shots it re-keys', async () => {
+    const preview = await session.previewLettering('runner');
+    expect(preview.ok).toBe(true);
+    expect(preview.message).toMatch(/re-keys \d+ of them/);
+
+    expect(await session.setProjectLettering('runner')).toMatchObject({
+      ok     : true,
+      written: ['project.yaml'],
+    });
+    expect(await p.read('project.yaml')).toContain('lettering: runner');
+    expect(await session.previewLettering('runner')).toMatchObject({ ok: false });
+  });
 });
 
 describe('WorkspaceSession — over a generated project', () => {

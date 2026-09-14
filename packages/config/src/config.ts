@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
-import { projectConfig, type ProjectConfig } from '@vn/types';
+import { projectConfig, type Lettering, type ProjectConfig } from '@vn/types';
 import { ConfigError, exists, readText, writeFileAtomic } from '@vn/util';
 
 export type { ProjectConfig };
@@ -55,8 +55,11 @@ export function withStartScene(text: string, sceneId: string): string {
   return text === '' || text.endsWith('\n') ? text + line : `${text}\n${line}`;
 }
 
-/** The head of a top-level `art_style:` entry; its value may run on into indented lines. */
-const ART_STYLE_LINE = /^art_style:/m;
+/**
+ * The top-level `project.yaml` keys a command may write one at a time, each a scalar the
+ * splice below can replace. `start` has its own splice in {@link withStartScene}.
+ */
+export type ConfigTextKey = 'art_style' | 'storyboard_notes' | 'lettering';
 
 /** Split `text` into lines that keep their own terminators, so a splice can be byte-exact. */
 function keepLines(text: string): string[] {
@@ -64,16 +67,16 @@ function keepLines(text: string): string[] {
 }
 
 /**
- * Replace or add `art_style:` in `project.yaml` text, leaving every other byte alone — the same
- * splice {@link withStartScene} performs, and for the same reason.
+ * Replace or add one top-level key in `project.yaml` text, leaving every other byte alone — the
+ * same splice {@link withStartScene} performs, and for the same reason.
  *
- * Unlike `start:`, an art style is prose and may already be written as a block scalar, so the
- * entry it replaces is the header line plus the indented lines under it. The replacement goes
- * through the YAML serializer, which picks the quoting or block form the value needs.
+ * Unlike `start:`, the value may be prose already written as a block scalar, so the entry it
+ * replaces is the header line plus the indented lines under it. The replacement goes through the
+ * YAML serializer, which picks the quoting or block form the value needs.
  */
-export function withArtStyle(text: string, style: string): string {
-  const entry = stringifyYaml({ art_style: style });
-  const found = ART_STYLE_LINE.exec(text);
+export function withConfigKey(text: string, key: ConfigTextKey, value: string): string {
+  const entry = stringifyYaml({ [key]: value });
+  const found = new RegExp(`^${key}:`, 'm').exec(text);
   if (found) {
     const lines = keepLines(text.slice(found.index));
     let end = found.index + (lines[0]?.length ?? 0);
@@ -104,22 +107,47 @@ export function withArtStyle(text: string, style: string): string {
   return text === '' || text.endsWith('\n') ? text + entry : `${text}\n${entry}`;
 }
 
+/** {@link withConfigKey} for `art_style`. */
+export function withArtStyle(text: string, style: string): string {
+  return withConfigKey(text, 'art_style', style);
+}
+
 /**
- * Set a project's art style. Returns false when it already said that — a committed config that
- * would not change must not be rewritten.
+ * Set one top-level key of a project's config. Returns false when it already said that — a
+ * committed config that would not change must not be rewritten. The result is re-parsed before
+ * it is written, so a value the schema refuses (a lettering mode it does not know) never lands.
  */
-export async function setArtStyle(projectDir: string, style: string): Promise<boolean> {
+async function setConfigKey(
+  projectDir: string,
+  key: ConfigTextKey,
+  value: string,
+): Promise<boolean> {
   const path = join(projectDir, CONFIG_FILENAME);
   const before = await readText(path);
-  const after = withArtStyle(before, style);
+  const after = withConfigKey(before, key, value);
   if (after === before) return false;
 
   const parsed = projectConfig.safeParse(parseYaml(after) ?? {});
-  if (!parsed.success || parsed.data.art_style !== style) {
-    throw new ConfigError(`could not set art_style in ${path}; set it by hand`);
+  if (!parsed.success || parsed.data[key] !== value) {
+    throw new ConfigError(`could not set ${key} in ${path}; set it by hand`);
   }
   await writeFileAtomic(path, after);
   return true;
+}
+
+/** Set a project's art style. */
+export function setArtStyle(projectDir: string, style: string): Promise<boolean> {
+  return setConfigKey(projectDir, 'art_style', style);
+}
+
+/** Set the directives the decomposer is given beside the art style. */
+export function setStoryboardNotes(projectDir: string, notes: string): Promise<boolean> {
+  return setConfigKey(projectDir, 'storyboard_notes', notes);
+}
+
+/** Set who letters a page shot. Refuses a mode the schema does not know. */
+export function setLettering(projectDir: string, lettering: Lettering): Promise<boolean> {
+  return setConfigKey(projectDir, 'lettering', lettering);
 }
 
 /**

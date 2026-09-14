@@ -358,6 +358,8 @@ const OTHER_RUNS: Run[] = [
     },
   },
   { id: 'project.setArtStyle', props: { style: 'soft watercolour' } },
+  { id: 'project.setStoryboardNotes', props: { notes: 'pages of four to six panels' } },
+  { id: 'project.setLettering', props: { lettering: 'runner' } },
   { id: 'view.resetLayout', props: { scope: 'shipped' } },
   { id: 'workspace.reindex', props: {} },
 ];

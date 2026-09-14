@@ -746,3 +746,16 @@ specification:
   schemas share one `aspectRatio` string type with a whole-number `W:H` pattern, so a
   shots file or a `project.yaml` saying `4x3` or `1.5` is refused at parse time rather
   than reaching a backend. `Shot.aspect` itself stays a plain string.
+- **`project.setLettering` prices zero page shots for now.** Its preview says how many
+  page shots the change re-keys, and `pageShotCount` answers zero until Stage 2 gives a
+  shot panels. Both new commands mirror `project.setArtStyle` exactly: mutating, undoable,
+  `affects: ['project.yaml']`, no confirmation.
+- **The two commands are palette-only, and Stage 1 regenerated the UX model after all.**
+  Every registered command must be a drawn control in `ux-model.json` or a `paletteOnly`
+  entry with a reason, and `anchors.json` pins the registry's full id list, so adding a
+  command with no control means an entry in `apps/desktop/renderer/rules/paletteonly.ts`,
+  `pnpm gen:uxmodel`, and a re-sweep of `anchors.json`. The plan said Stage 1 touched no
+  rule module; the reasons list lives under `rules/**` all the same. The entry must come
+  out again in the stage that draws the fields, because the list is checked both ways. The
+  re-sweep ran against `examples/mySampleRepo` in `--mock`, as the earlier sweeps did, and
+  its only other change is the OpenRouter row the Setup pane now draws.

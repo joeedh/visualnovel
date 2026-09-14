@@ -7,6 +7,8 @@ import {
   secretDirsFor,
   secretFileFor,
   setArtStyle,
+  setLettering,
+  setStoryboardNotes,
   userKeysDir,
   type ResolvedKeys,
   type VendorKeyStatus,
@@ -15,7 +17,7 @@ import { chmod, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { exists, writeFileAtomic } from '@vn/util';
 import { chatBackendFor, chatVendorFor, createMockProviders } from '@vn/providers';
-import type { ProjectConfig, TextLLM } from '@vn/types';
+import type { Lettering, ProjectConfig, TextLLM } from '@vn/types';
 import type { KeyScope, KeyStatusView, ProjectView } from '../../shared/ipc.js';
 import { parseKeyGuide, type GuideUrlField, type KeyGuide } from '../../shared/apikeys.js';
 import { readResource } from '../distribution/resources.js';
@@ -37,6 +39,14 @@ const OPENROUTER_KEY_URL = 'https://openrouter.ai/api/v1/key';
 
 /** How much of an OpenRouter error body {@link ProjectPart.testKey} quotes. */
 const OPENROUTER_ERROR_CHARS = 200;
+
+/**
+ * How many of a project's shots are pages, which is what a change of lettering re-keys. A page
+ * is a shot with panels, and no shot carries them yet, so every project holds none.
+ */
+function pageShotCount(_project: LoadedProject): number {
+  return 0;
+}
 
 export class ProjectPart {
   constructor(private readonly session: WorkspaceSession) {}
@@ -78,6 +88,69 @@ export class ProjectPart {
     const preview = await this.session.previewArtStyle(style);
     if (!preview.ok) return { ...preview, written: [] };
     if (!(await setArtStyle(this.session.dir, style))) {
+      return { ok: false, message: 'The project already says that.', written: [] };
+    }
+    return {
+      ok     : true,
+      message: preview.message,
+      written: [relPath(this.session.dir, join(this.session.dir, CONFIG_FILENAME))],
+    };
+  }
+
+  /** What `project.setStoryboardNotes` would do, without writing it. */
+  async previewStoryboardNotes(notes: string): Promise<PromptResult> {
+    const project = await loadProject(this.session.dir);
+    if (project.config.storyboard_notes === notes) {
+      return { ok: false, message: 'The project already says that.' };
+    }
+    const said = notes.trim()
+      ? `Set the storyboard notes to "${notes.trim()}".`
+      : 'Clear the storyboard notes.';
+    return {
+      ok     : true,
+      message:
+        `${said} The decomposer reads them the next time a scene is storyboarded; no shot ` +
+        'already written is re-keyed.',
+    };
+  }
+
+  /** Write the decomposer's directives, spliced into `project.yaml` like the art style. */
+  async setProjectStoryboardNotes(notes: string): Promise<PromptWriteResult> {
+    const preview = await this.session.previewStoryboardNotes(notes);
+    if (!preview.ok) return { ...preview, written: [] };
+    if (!(await setStoryboardNotes(this.session.dir, notes))) {
+      return { ok: false, message: 'The project already says that.', written: [] };
+    }
+    return {
+      ok     : true,
+      message: preview.message,
+      written: [relPath(this.session.dir, join(this.session.dir, CONFIG_FILENAME))],
+    };
+  }
+
+  /**
+   * What `project.setLettering` would do, without writing it. Lettering is in a page shot's
+   * prompt and nowhere else, so the price is the page shots the project holds.
+   */
+  async previewLettering(lettering: Lettering): Promise<PromptResult> {
+    const project = await loadProject(this.session.dir);
+    if (project.config.lettering === lettering) {
+      return { ok: false, message: 'The project already says that.' };
+    }
+    const pages = pageShotCount(project);
+    return {
+      ok     : true,
+      message:
+        `Set lettering to "${lettering}". It applies to page shots alone, so it re-keys ` +
+        `${pages} of them.`,
+    };
+  }
+
+  /** Write who letters a page shot, spliced into `project.yaml` like the art style. */
+  async setProjectLettering(lettering: Lettering): Promise<PromptWriteResult> {
+    const preview = await this.session.previewLettering(lettering);
+    if (!preview.ok) return { ...preview, written: [] };
+    if (!(await setLettering(this.session.dir, lettering))) {
       return { ok: false, message: 'The project already says that.', written: [] };
     }
     return {

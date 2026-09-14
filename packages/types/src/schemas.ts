@@ -292,10 +292,25 @@ export const sceneFrontMatter = z
   .strict();
 export type SceneFrontMatter = z.infer<typeof sceneFrontMatter>;
 
+/**
+ * Who letters a page shot: the image model draws the dialogue into the panels, or the runner
+ * draws bubbles over a page rendered without words. Applies only to shots with panels.
+ */
+export const LETTERING_MODES = ['model', 'runner'] as const;
+
+export type Lettering = (typeof LETTERING_MODES)[number];
+
 /** `project.yaml` (report §8, §11). */
 export const projectConfig = z.object({
   title              : z.string().min(1),
   art_style          : z.string().default(''),
+  /**
+   * Directives for the decomposer alone, beside the art style: how a scene is storyboarded (as
+   * pages, with a splash per scene) rather than how a frame is drawn. Empty means the plain
+   * single-frame storyboard.
+   */
+  storyboard_notes   : z.string().default(''),
+  lettering          : z.enum(LETTERING_MODES).default('model'),
   /**
    * The entry scene's id. Optional here rather than required, because a project missing it is
    * reported as an error diagnostic by the model, which can list the available scene ids where
@@ -311,8 +326,10 @@ export const projectConfig = z.object({
     .default({}),
   image_params: z
     .object({
-      aspect: z.string().default('16:9'),
-      seed  : z.number().optional(),
+      aspect     : z.string().default('16:9'),
+      /** The ratio a page shot takes when it authored none; a plain frame never reads it. */
+      page_aspect: aspectRatio.default('3:4'),
+      seed       : z.number().optional(),
     })
     .default({}),
   /**

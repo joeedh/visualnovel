@@ -7,11 +7,14 @@ import {
   resolveKeys,
   secretDirsFor,
   setArtStyle,
+  setLettering,
   setStartScene,
+  setStoryboardNotes,
   userConfigDir,
   userConfigDirs,
   userKeysDir,
   withArtStyle,
+  withConfigKey,
   withStartScene,
 } from '../index.js';
 
@@ -149,6 +152,57 @@ describe('setArtStyle', () => {
       expect((await loadConfig(dir)).art_style).toBe(style);
       expect((await loadConfig(dir)).concurrency).toBe(2);
     }
+  });
+});
+
+describe('withConfigKey', () => {
+  it('splices whichever key it is given, and never another that shares a suffix', () => {
+    const before = 'title: T\nart_style: ink\nstoryboard_notes: pages\n';
+    expect(withConfigKey(before, 'storyboard_notes', 'splash per scene')).toBe(
+      'title: T\nart_style: ink\nstoryboard_notes: splash per scene\n',
+    );
+    expect(withConfigKey(before, 'lettering', 'runner')).toBe(
+      'title: T\nlettering: runner\nart_style: ink\nstoryboard_notes: pages\n',
+    );
+  });
+});
+
+describe('setStoryboardNotes and setLettering', () => {
+  it('write their keys and read back through loadConfig, defaults untouched', async () => {
+    const dir = await tempProject('title: T\nart_style: ink\n');
+    expect(await setStoryboardNotes(dir, 'manga pages of four to six panels')).toBe(true);
+    expect(await setLettering(dir, 'runner')).toBe(true);
+    const config = await loadConfig(dir);
+    expect(config.storyboard_notes).toBe('manga pages of four to six panels');
+    expect(config.lettering).toBe('runner');
+    expect(config.art_style).toBe('ink');
+    expect(config.image_params.page_aspect).toBe('3:4');
+  });
+
+  it('leave a config that already says that untouched', async () => {
+    const dir = await tempProject('title: T\nlettering: runner\nstoryboard_notes: pages\n');
+    expect(await setLettering(dir, 'runner')).toBe(false);
+    expect(await setStoryboardNotes(dir, 'pages')).toBe(false);
+  });
+
+  it('refuse a lettering mode the schema does not know, and write nothing', async () => {
+    const dir = await tempProject('title: T\n');
+    await expect(setLettering(dir, 'stencil' as never)).rejects.toThrow(/could not set lettering/);
+    expect(await readFile(join(dir, 'project.yaml'), 'utf8')).toBe('title: T\n');
+  });
+});
+
+describe('loadConfig — the storyboard keys', () => {
+  it('defaults storyboard_notes to nothing, lettering to the model and page_aspect to 3:4', async () => {
+    const config = await loadConfig(await tempProject('title: T\n'));
+    expect(config.storyboard_notes).toBe('');
+    expect(config.lettering).toBe('model');
+    expect(config.image_params.page_aspect).toBe('3:4');
+  });
+
+  it('refuses a page_aspect that is not two whole numbers', async () => {
+    const dir = await tempProject('title: T\nimage_params:\n  page_aspect: tall\n');
+    await expect(loadConfig(dir)).rejects.toThrow(/page_aspect/);
   });
 });
 

@@ -110,6 +110,7 @@ import { sourcesOf, type SceneEditInput, type SceneSource } from '@vn/scriptedit
 import type {
   AssetKind,
   EffortChoice,
+  Lettering,
   LocationVariant,
   Outfit,
   Playable,
@@ -1813,6 +1814,24 @@ export class WorkspaceSession {
    */
   async setProjectArtStyle(style: string): Promise<PromptWriteResult> {
     return this.projectPart.setProjectArtStyle(style);
+  }
+
+  async previewStoryboardNotes(notes: string): Promise<PromptResult> {
+    return this.projectPart.previewStoryboardNotes(notes);
+  }
+
+  /** Write the decomposer's directives, spliced into `project.yaml` like the art style. */
+  async setProjectStoryboardNotes(notes: string): Promise<PromptWriteResult> {
+    return this.projectPart.setProjectStoryboardNotes(notes);
+  }
+
+  async previewLettering(lettering: Lettering): Promise<PromptResult> {
+    return this.projectPart.previewLettering(lettering);
+  }
+
+  /** Write who letters a page shot, spliced into `project.yaml` like the art style. */
+  async setProjectLettering(lettering: Lettering): Promise<PromptWriteResult> {
+    return this.projectPart.setProjectLettering(lettering);
   }
 
   async previewKey(vendor: keyof ResolvedKeys, scope: KeyScope = 'project'): Promise<PromptResult> {

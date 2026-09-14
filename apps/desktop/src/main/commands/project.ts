@@ -1,11 +1,13 @@
 /**
- * Commands for the project's own settings: reading what `project.yaml` says, and writing the one
- * field in it an author edits often enough to want a pane for.
+ * Commands for the project's own settings: reading what `project.yaml` says, and writing the
+ * three fields in it an author edits often enough to want a pane for.
  *
  * The art style is not like the other settings. It is the first clause of every image prompt and
  * is folded into every image task's hash, so changing it re-keys the whole library and the next
  * run draws it all again. That is why the write is `confirm: true` and why its check counts what
- * it would touch.
+ * it would touch. The storyboard notes reach no prompt, and lettering reaches only a page
+ * shot's, so neither of those writes asks for confirmation; the lettering check still counts the
+ * pages it would re-key.
  *
  * `project.installPages` is `mutating` but not `undoable`. `.github/` and `.vnstudio/pages/` are
  * both inside the tree an undo snapshot covers; what puts it outside undo is the
@@ -14,6 +16,7 @@
  */
 import { defineFor, prop, type CheckResult } from '@vn/commands';
 import { KEY_VENDORS } from '@vn/config';
+import { LETTERING_MODES } from '@vn/types';
 import { openGit } from '@vn/git';
 import { notify } from '../notify/notifications.js';
 import { installPages, pagesState } from '../distribution/pages.js';
@@ -67,6 +70,58 @@ export const projectSetArtStyle = define({
   },
   async run({ style }, ctx) {
     const result = await ctx.host.session.setProjectArtStyle(style);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
+export const projectSetStoryboardNotes = define({
+  id         : 'project.setStoryboardNotes',
+  title      : 'Set the storyboard notes',
+  description:
+    "Set the project's storyboard notes — directives the scene decomposer reads beside the art " +
+    'style, such as how many panels a page holds or that every scene opens on a splash. They ' +
+    'reach no image prompt, so no shot already written is re-keyed; the next scene storyboarded ' +
+    'reads them. The line is spliced into `project.yaml`, so comments and key order survive.',
+  notes:
+    'Directives for the decomposer alone, beside `art_style`: how a scene is storyboarded rather than how a frame is drawn. In no image prompt, so it re-keys nothing; the next `story.decompose` reads it. Spliced into `project.yaml`, so comments and key order survive.',
+  mutating   : true,
+  affects    : ['project.yaml'],
+  undoable   : true,
+  props: {
+    notes: prop.string('the storyboard notes; empty clears them', { default: '' }),
+  },
+  async check({ notes }, ctx) {
+    return verdict(await ctx.host.session.previewStoryboardNotes(notes));
+  },
+  async run({ notes }, ctx) {
+    const result = await ctx.host.session.setProjectStoryboardNotes(notes);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
+export const projectSetLettering = define({
+  id         : 'project.setLettering',
+  title      : 'Set who letters a page',
+  description:
+    'Set who letters a page shot: `model` has the image model draw the dialogue into the panels, ' +
+    '`runner` has the playable draw bubbles over a page rendered without words. Applies to page ' +
+    'shots alone, so the check counts the pages it re-keys and an ordinary frame is untouched. ' +
+    'The line is spliced into `project.yaml`, so comments and key order survive.',
+  notes:
+    'Who letters a page shot: the image model, or the runner over a wordless page. Applies to page shots alone, so the check prices the pages it re-keys and a plain frame is untouched. Spliced into `project.yaml`, so comments and key order survive.',
+  mutating   : true,
+  affects    : ['project.yaml'],
+  undoable   : true,
+  props: {
+    lettering: prop.oneOf(LETTERING_MODES, 'who letters a page shot'),
+  },
+  async check({ lettering }, ctx) {
+    return verdict(await ctx.host.session.previewLettering(lettering));
+  },
+  async run({ lettering }, ctx) {
+    const result = await ctx.host.session.setProjectLettering(lettering);
     if (!result.ok) throw new Error(result.message);
     return { message: result.message, data: result, written: result.written };
   },
