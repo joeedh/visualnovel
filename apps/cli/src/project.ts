@@ -9,6 +9,7 @@ import {
   createImageBackend,
   createMockProviders,
   createProviders,
+  requiredVendors,
   StubImageBackend,
   type ImageBackend,
 } from '@vn/providers';
@@ -81,11 +82,12 @@ export async function buildGenDeps(
     return { providers: createMockProviders({ refLoader: loadRef, imageBackend }), imageBackend };
   }
 
-  // A run draws, so it needs the image key; `vngen decompose` only writes text, and refusing it
-  // for a missing image key would be a refusal the author cannot act on.
+  // A run draws and reviews, so it needs every configured vendor's key; `vngen decompose` only
+  // writes text, and refusing it for a missing image key would be a refusal the author cannot
+  // act on, so it passes its own list.
   const keys: ResolvedKeys = await resolveKeys(project.config, {
     secretsDirs: await secretDirsFor(project.dir),
-    require    : opts.require ?? ['gemini'],
+    require    : opts.require ?? requiredVendors(project.config),
   });
   return {
     providers   : createProviders({ config: project.config, keys, loadRef }),

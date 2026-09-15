@@ -1,0 +1,154 @@
+/**
+ * OpenRouter's image endpoint as an `ImageBackend`. A model id here is `<vendor>/<model>`, and
+ * OpenRouter routes the call to that vendor; the endpoint has no edit form, so an edit is a
+ * generate with the base picture placed ahead of the references, as the Gemini backend does it.
+ */
+import { Buffer } from 'node:buffer';
+import type { ImageParams, ImageResult } from '@vn/types';
+import { ProviderError, RetryableProviderError } from '@vn/util';
+import type { ImageBackend, ImageInput } from '../backend.js';
+import { refGuard } from '../image.js';
+import { captureRequest } from './capture.js';
+import { callWithRetry, retryAfterMs } from './transient.js';
+
+export const OPENROUTER_IMAGES_URL = 'https://openrouter.ai/api/v1/images';
+
+const MIME: Record<string, string> = {
+  png : 'image/png',
+  jpg : 'image/jpeg',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+};
+
+/** How much of a refused response is quoted back, so an error stays readable. */
+export const ERROR_CHARS = 400;
+
+/** The transport, injectable so a test can stand a fake endpoint up. */
+export type FetchImpl = typeof fetch;
+
+export interface OpenRouterImageOptions {
+  fetchImpl?: FetchImpl;
+}
+
+/**
+ * A refusal that carries its HTTP status, so `isTransient` reads the number and `faultKind` reads
+ * the code at the head of the message.
+ */
+export class OpenRouterError extends ProviderError {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
+/** Rate limiting and the server's own faults, which another attempt can plausibly get past. */
+const retryableStatus = (status: number): boolean =>
+  status === 429 || (status >= 500 && status < 600);
+
+/** One reference as the request carries it: a data URL, which OpenRouter takes in place of a hosted one. */
+function reference(img: ImageInput): { type: 'image_url'; image_url: { url: string } } {
+  refGuard(img);
+  const mime = MIME[img.ext.toLowerCase()] ?? 'image/png';
+  const data = Buffer.from(img.bytes).toString('base64');
+  return { type: 'image_url', image_url: { url: `data:${mime};base64,${data}` } };
+}
+
+/** The first picture in a reply, or nothing where the reply carries none. */
+function firstImage(reply: unknown, modelId: string): ImageResult | undefined {
+  const data = (reply as { data?: unknown[] } | null)?.data;
+  for (const item of data ?? []) {
+    const entry = item as { b64_json?: unknown; media_type?: unknown };
+    if (typeof entry.b64_json !== 'string') continue;
+    const mime = typeof entry.media_type === 'string' ? entry.media_type : 'image/png';
+    const ext = mime.split('/')[1]?.replace('jpeg', 'jpg') ?? 'png';
+    return { bytes: new Uint8Array(Buffer.from(entry.b64_json, 'base64')), ext, modelId };
+  }
+  return undefined;
+}
+
+/**
+ * OpenRouter image backend. Every call sends `data_collection: deny`, which keeps the prompt and
+ * the picture out of any provider that trains on or logs its traffic; `aspect_ratio` and `seed`
+ * go only when set. The refusal quotes OpenRouter's own answer, which is where a provider's
+ * reason for refusing a ratio or a reference arrives, and the key is never part of it.
+ */
+export function createOpenRouterImage(
+  apiKey: string,
+  modelId: string,
+  opts: OpenRouterImageOptions = {},
+): ImageBackend {
+  const fetchImpl = opts.fetchImpl ?? fetch;
+
+  const run = async (
+    images: ImageInput[],
+    prompt: string,
+    params: ImageParams,
+  ): Promise<ImageResult> => {
+    const refs = images.map(reference);
+    const body = {
+      model: modelId,
+      prompt,
+      ...(params.aspect === undefined ? {} : { aspect_ratio: params.aspect }),
+      ...(params.seed === undefined ? {} : { seed: params.seed }),
+      ...(refs.length === 0 ? {} : { input_references: refs }),
+      provider: { data_collection: 'deny' },
+    };
+    // The ring keeps the body without its pictures: a 400 names a field rather than a byte of
+    // a reference, and one page's base64 would evict a conversation
+    const refBytes = refs.reduce((n, ref) => n + ref.image_url.url.length, 0);
+    const capture = await captureRequest('openrouter-image', {
+      ...body,
+      ...(refs.length === 0
+        ? {}
+        : { input_references: `${refs.length} references, ${refBytes} bytes` }),
+    });
+
+    try {
+      return await callWithRetry(`OpenRouter image request failed (${modelId})`, async () => {
+        const response = await fetchImpl(OPENROUTER_IMAGES_URL, {
+          method : 'POST',
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+          body   : JSON.stringify(body),
+        });
+        const said = await response.text();
+
+        if (response.status !== 200) {
+          const message = `${response.status} OpenRouter: ${said.slice(0, ERROR_CHARS)}`;
+          if (retryableStatus(response.status)) {
+            const after = retryAfterMs({ headers: response.headers });
+            throw new RetryableProviderError(message, {
+              ...(after === undefined ? {} : { retryAfterMs: after }),
+            });
+          }
+          throw new OpenRouterError(response.status, message);
+        }
+
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(said);
+        } catch {
+          throw new ProviderError(
+            `OpenRouter answered with something that is not JSON: ${said.slice(0, ERROR_CHARS)}`,
+          );
+        }
+
+        const picture = firstImage(parsed, modelId);
+        if (picture === undefined) {
+          throw new ProviderError(`OpenRouter returned no picture (${modelId})`);
+        }
+        return picture;
+      });
+    } catch (err) {
+      await capture.failed(err);
+      throw err;
+    }
+  };
+
+  return {
+    modelId,
+    generate: (prompt, refs, params) => run(refs, prompt, params),
+    edit    : (base, prompt, refs, params) => run([base, ...refs], prompt, params),
+  };
+}

@@ -6,8 +6,8 @@ import { ConfigError, exists, readText } from '@vn/util';
 
 /**
  * The vendors a key is resolved for. Ordered, so a UI can offer them without inventing a list.
- * Every `ChatVendor` is one; `openrouter` is not a chat vendor, because no built-in backend calls
- * it, and is resolved for the OpenRouter plugin's image nodes.
+ * Every `ChatVendor` and every `ImageVendor` is one; `openrouter` is an image vendor only, read by
+ * the OpenRouter image backend for a `models.image` or a node model named `<vendor>/<model>`.
  */
 export const KEY_VENDORS = ['gemini', 'anthropic', 'openrouter'] as const;
 
@@ -260,6 +260,17 @@ export async function keyStatus(
 }
 
 /**
+ * The refusal a missing key gets, naming the env var and the file that would supply it and never
+ * a value. Shared with the image router, so a vendor first needed mid-run is refused in the same
+ * words a pre-run check uses.
+ */
+export function missingKeyError(config: ProjectConfig, vendor: KeyVendor): ConfigError {
+  return new ConfigError(
+    `missing ${vendor} API key: set $${config.keys[vendor]} or place ${SECRET_FILES[vendor][0]} in a keys/ dir`,
+  );
+}
+
+/**
  * Resolve API keys from environment variables (named in config) first, then optional
  * secret files under each of `secretsDirs` (in order). Throws a ConfigError naming only
  * the source, never the value, if a required key is missing.
@@ -275,11 +286,7 @@ export async function resolveKeys(
   }
 
   for (const name of opts.require ?? []) {
-    if (!keys[name]) {
-      throw new ConfigError(
-        `missing ${name} API key: set $${config.keys[name]} or place ${SECRET_FILES[name][0]} in a keys/ dir`,
-      );
-    }
+    if (!keys[name]) throw missingKeyError(config, name);
   }
 
   return keys;

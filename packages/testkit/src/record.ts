@@ -16,8 +16,9 @@ import {
   AssetCache,
   CachedImageBackend,
   StubImageBackend,
-  createGeminiImage,
+  createImageBackend,
   createMockProviders,
+  imageVendorOf,
   type ImageBackend,
   type ServedRequest,
 } from '@vn/providers';
@@ -145,8 +146,9 @@ function summarize(
 }
 
 /**
- * Record a fixture against the real image model. Costs money, needs a Gemini key, and is meant
- * to be run by a human who decided to spend it, never by a suite.
+ * Record a fixture against the real image model. Costs money, needs the key of the vendor
+ * `models.image` names, and is meant to be run by a human who decided to spend it, never by a
+ * suite.
  */
 export async function recordCorpus(opts: CorpusOptions = {}): Promise<CorpusReport> {
   const fixture = opts.fixture ?? 'linear';
@@ -164,9 +166,11 @@ export async function recordCorpus(opts: CorpusOptions = {}): Promise<CorpusRepo
       // than inherited. This function spends real money, and it must not succeed on a
       // developer's machine by picking up their own key from an enclosing directory.
       secretsDirs: await secretDirsFor(process.cwd(), { includeUser: false }),
-      require    : ['gemini'],
+      // Only the image vendor: text and vision are mocked here (see the file header), so the
+      // vendors a full run would require are never called
+      require    : [imageVendorOf(config.models.image)],
     });
-    backend = new CachedImageBackend(cache, createGeminiImage(keys.gemini, config.models.image), {
+    backend = new CachedImageBackend(cache, createImageBackend(config, keys), {
       record: true,
       fixture,
     });

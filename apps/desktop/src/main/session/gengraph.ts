@@ -30,6 +30,7 @@ import {
   type GraphRuntime,
 } from '@vn/pipeline';
 import { assetSlotLabel } from '@vn/artgen';
+import { requiredVendors } from '@vn/providers';
 import { runPipeline, type RunSummary } from '@vn/scheduler';
 import type { Asset } from '@vn/types';
 import { BUSY_RUN } from '../../shared/ipc.js';
@@ -326,7 +327,7 @@ export class GengraphPart {
       try {
         await resolveKeys(project.config, {
           secretsDirs: await secretDirsFor(project.dir),
-          require    : ['gemini'],
+          require    : requiredVendors(project.config),
         });
       } catch (err) {
         keyError = err instanceof Error ? err.message : String(err);

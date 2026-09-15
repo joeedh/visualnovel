@@ -4,9 +4,24 @@ import {
   chatVendorFor,
   effortChoicesFor,
   effortLabel,
+  imageVendorOf,
   resolveEffort,
   supportsEffort,
 } from '../textmodels.js';
+
+describe('imageVendorOf', () => {
+  it('routes a vendor/model id to openrouter', () => {
+    for (const id of ['openai/gpt-image-2', 'google/gemini-2.5-flash-image', ' bfl/flux-2 ']) {
+      expect(imageVendorOf(id)).toBe('openrouter');
+    }
+  });
+
+  it('keeps a bare id and the @google/genai long form on gemini', () => {
+    expect(imageVendorOf('gemini-2.5-flash-image')).toBe('gemini');
+    expect(imageVendorOf('models/gemini-2.5-flash-image')).toBe('gemini');
+    expect(imageVendorOf('')).toBe('gemini');
+  });
+});
 
 describe('chatVendorFor', () => {
   it('reads both spellings of an Anthropic id, cased either way', () => {

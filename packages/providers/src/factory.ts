@@ -1,15 +1,17 @@
-import { chatVendorFor, type EffortChoice, type Providers } from '@vn/types';
-import type { ProjectConfig, ResolvedKeys } from '@vn/config';
+import { chatVendorFor, imageVendorOf, type EffortChoice, type Providers } from '@vn/types';
+import { missingKeyError, type KeyVendor, type ProjectConfig, type ResolvedKeys } from '@vn/config';
+import { ProviderError } from '@vn/util';
 import type { ChatBackend, ImageBackend, RefLoader } from './backend.js';
 import { createAnthropicChat } from './backends/anthropic.js';
 import { createGeminiChat, createGeminiImage } from './backends/gemini.js';
+import { createOpenRouterImage } from './backends/openrouter.js';
 import { ChatTextLLM } from './text.js';
 import { ChatVisionReviewer } from './review.js';
 import { BackendImageProvider } from './image.js';
 
-// Re-exported from where the rule now lives, so the callers that reach it through this package
+// Re-exported from where the rules now live, so the callers that reach them through this package
 // are unchanged.
-export { chatVendorFor } from '@vn/types';
+export { chatVendorFor, imageVendorOf } from '@vn/types';
 
 /**
  * Pick the vendor for a model id and a stable reviewer label. Exported because a plain chat call
@@ -37,12 +39,77 @@ export function chatBackendFor(
 }
 
 /**
- * The byte-level image seam for the project's configured image model. Exported because a
- * generation graph attaches references it read out of its own blob store, which have no
- * `AssetRef` to resolve, so it calls the backend rather than the `ImageProvider` above it.
+ * The keys a pipeline run needs before it starts: the image model's vendor, and the vendor of
+ * every vision and text model. Passed as `resolveKeys`'s `require`, so a project that draws
+ * through OpenRouter and reviews with Claude is refused before it pays for a picture it cannot
+ * review, and is not asked for a Gemini key it never uses.
  */
-export function createImageBackend(config: ProjectConfig, keys: ResolvedKeys): ImageBackend {
-  return createGeminiImage(keys.gemini, config.models.image);
+export function requiredVendors(config: ProjectConfig): KeyVendor[] {
+  const vendors = new Set<KeyVendor>([imageVendorOf(config.models.image)]);
+  for (const modelId of [...config.models.vision, config.models.text]) {
+    vendors.add(chatVendorFor(modelId));
+  }
+  return [...vendors];
+}
+
+/** Builds the per-vendor backend the router keeps for one model. Injectable for the router's tests. */
+export type ImageBackendBuilder = (
+  vendor: KeyVendor,
+  apiKey: string,
+  modelId: string,
+) => ImageBackend;
+
+const buildImageBackend: ImageBackendBuilder = (vendor, apiKey, modelId) =>
+  vendor === 'openrouter'
+    ? createOpenRouterImage(apiKey, modelId)
+    : createGeminiImage(apiKey, modelId);
+
+/**
+ * The byte-level image seam. Its `modelId` is the project's `models.image`, and each call is
+ * routed by the `modelId` on its params, so a graph node naming another model draws with that
+ * model rather than the project's. A backend is built once per model and kept for the life of the
+ * router. A vendor whose key is missing is refused with the `ConfigError` `resolveKeys` would have
+ * raised, so a host's key-setup handling sees the fault it already knows.
+ *
+ * Exported because a generation graph attaches references it read out of its own blob store,
+ * which have no `AssetRef` to resolve, so it calls the backend rather than the `ImageProvider`
+ * above it.
+ */
+export function createImageBackend(
+  config: ProjectConfig,
+  keys: ResolvedKeys,
+  opts: { build?: ImageBackendBuilder } = {},
+): ImageBackend {
+  const build = opts.build ?? buildImageBackend;
+  const built = new Map<string, ImageBackend>();
+
+  const backendFor = (modelId: string): ImageBackend => {
+    // Nothing above the seam may send an empty id: the graph runtime resolves an inherit node
+    // to the project's model, and the task runners copy `models.image` into every task
+    if (modelId.trim() === '') {
+      throw new ProviderError(
+        'an image call named no model; the project’s models.image is resolved before this seam',
+      );
+    }
+    const found = built.get(modelId);
+    if (found !== undefined) return found;
+
+    const vendor = imageVendorOf(modelId);
+    const apiKey = keys[vendor];
+    if (!apiKey) throw missingKeyError(config, vendor);
+    const backend = build(vendor, apiKey, modelId);
+    built.set(modelId, backend);
+    return backend;
+  };
+
+  // Async so a refusal here surfaces as a rejected promise, the same way a backend's own does.
+  return {
+    modelId : config.models.image,
+    generate: async (prompt, refs, params) =>
+      backendFor(params.modelId).generate(prompt, refs, params),
+    edit: async (base, prompt, refs, params) =>
+      backendFor(params.modelId).edit(base, prompt, refs, params),
+  };
 }
 
 /**

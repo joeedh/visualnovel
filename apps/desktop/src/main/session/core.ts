@@ -57,6 +57,7 @@ import {
   createImageBackend,
   createMockProviders,
   createProviders,
+  requiredVendors,
   StubImageBackend,
   type ImageBackend,
 } from '@vn/providers';
@@ -681,11 +682,11 @@ export async function buildGenDeps(project: LoadedProject, mock: boolean): Promi
     const imageBackend = new StubImageBackend();
     return { providers: createMockProviders({ refLoader: loadRef, imageBackend }), imageBackend };
   }
-  // `gemini` is required because the pipeline's image tasks cannot run without it; the chat
-  // backends degrade more gracefully and are checked where they are built.
+  // Every configured vendor is required up front, so a run is refused here rather than failing
+  // at its first review call after it has paid for a picture
   const keys = await resolveKeys(project.config, {
     secretsDirs: await secretDirsFor(project.dir),
-    require    : ['gemini'],
+    require    : requiredVendors(project.config),
   });
   return {
     providers   : createProviders({ config: project.config, keys, loadRef }),

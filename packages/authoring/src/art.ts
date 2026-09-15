@@ -16,6 +16,7 @@ import {
   chatVendorFor,
   createMockProviders,
   createProviders,
+  requiredVendors,
   type ChatBackend,
 } from '@vn/providers';
 import type { TextLLM } from '@vn/types';
@@ -109,7 +110,7 @@ export function workspaceArtGen(workspace: Workspace, opts: { mock?: boolean } =
           config,
           keys: await resolveKeys(config, {
             secretsDirs: await secretDirsFor(workspace.root),
-            require    : ['gemini'],
+            require    : requiredVendors(config),
           }),
           loadRef,
         });

@@ -11,7 +11,7 @@ import type {
   TokenUsage,
   ToolSchema,
 } from '../backend.js';
-import { isPlaceholderImage } from '../placeholder.js';
+import { refGuard } from '../image.js';
 import { captureRequest } from './capture.js';
 import { callWithRetry } from './transient.js';
 
@@ -42,36 +42,8 @@ function lazyClient(apiKey: string): GeminiClient {
   };
 }
 
-/** Leading magic bytes of the image formats the pipeline produces/consumes. */
-const IMAGE_MAGIC: number[][] = [
-  [0x89, 0x50, 0x4e, 0x47], // PNG
-  [0xff, 0xd8, 0xff], // JPEG
-  [0x47, 0x49, 0x46, 0x38], // GIF
-  [0x52, 0x49, 0x46, 0x46], // RIFF (WebP)
-];
-
-function looksLikeImage(bytes: Uint8Array): boolean {
-  return IMAGE_MAGIC.some((sig) => sig.every((b, i) => bytes[i] === b));
-}
-
 function imagePart(img: ImageInput): any {
-  // A --mock asset decodes fine, so only its marker distinguishes it from generated art.
-  // Reusing one as a reference would silently condition a paid run on a coloured rectangle.
-  if (isPlaceholderImage(img.bytes)) {
-    throw new ProviderError(
-      'reference image is a --mock placeholder, not generated art. ' +
-        'Regenerate the references without --mock.',
-    );
-  }
-  // Catch other non-image bytes before the network round-trip — Gemini otherwise rejects
-  // them with an opaque "Unable to process input image" 400.
-  if (!looksLikeImage(img.bytes)) {
-    const head = JSON.stringify(Buffer.from(img.bytes.slice(0, 8)).toString('latin1'));
-    throw new ProviderError(
-      `reference image is not a valid PNG/JPEG/WebP (starts with ${head}). ` +
-        'Assets generated with --mock are placeholders — regenerate the references without --mock.',
-    );
-  }
+  refGuard(img);
   return {
     inlineData: {
       mimeType: MIME[img.ext.toLowerCase()] ?? 'image/png',

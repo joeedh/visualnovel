@@ -7,7 +7,9 @@ import {
   RecordedChatBackend,
   StubImageBackend,
   createGeminiImage,
+  createOpenRouterImage,
   effortChoicesFor,
+  type ImageBackend,
   mapRefLoader,
   mergeReports,
   placeholderPng,
@@ -125,22 +127,41 @@ describe('BackendImageProvider — ImageProvider contract', () => {
   });
 });
 
-describe('createGeminiImage — input validation', () => {
-  it('rejects a --mock placeholder reference before any API call', async () => {
-    const image = createGeminiImage('fake-key', 'gemini-2.5-flash-image');
-    const mockRef = { bytes: placeholderPng('deadbeefcafe0123'), ext: 'png' };
-    await expect(
-      image.generate('a shot', [mockRef], { modelId: 'gemini-2.5-flash-image' }),
-    ).rejects.toThrow(/--mock placeholder/);
-  });
+describe('every image backend — the reference guard', () => {
+  // Both transports throw, so a reference has to be refused before any request is made
+  const refuses = (): never => {
+    throw new Error('no request may leave');
+  };
+  const backends: [string, ImageBackend][] = [
+    [
+      'gemini',
+      createGeminiImage('fake-key', 'gemini-2.5-flash-image', () => Promise.reject(refuses())),
+    ],
+    [
+      'openrouter',
+      createOpenRouterImage('fake-key', 'openai/gpt-image-2', { fetchImpl: refuses as never }),
+    ],
+  ];
 
-  it('rejects reference bytes that are not an image at all', async () => {
-    const image = createGeminiImage('fake-key', 'gemini-2.5-flash-image');
-    const junkRef = { bytes: new TextEncoder().encode('IMG:deadbeef'), ext: 'png' };
-    await expect(
-      image.generate('a shot', [junkRef], { modelId: 'gemini-2.5-flash-image' }),
-    ).rejects.toThrow(/not a valid PNG\/JPEG\/WebP/);
-  });
+  it.each(backends)(
+    '%s rejects a --mock placeholder reference before any API call',
+    async (_name, image) => {
+      const mockRef = { bytes: placeholderPng('deadbeefcafe0123'), ext: 'png' };
+      await expect(image.generate('a shot', [mockRef], { modelId: image.modelId })).rejects.toThrow(
+        /--mock placeholder/,
+      );
+    },
+  );
+
+  it.each(backends)(
+    '%s rejects reference bytes that are not an image at all',
+    async (_name, image) => {
+      const junkRef = { bytes: new TextEncoder().encode('IMG:deadbeef'), ext: 'png' };
+      await expect(image.generate('a shot', [junkRef], { modelId: image.modelId })).rejects.toThrow(
+        /not a valid PNG\/JPEG\/WebP/,
+      );
+    },
+  );
 });
 
 describe('supportsEffort', () => {

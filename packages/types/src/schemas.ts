@@ -333,8 +333,9 @@ export const projectConfig = z.object({
     })
     .default({}),
   /**
-   * Env var names that hold API keys; never the keys themselves. `openrouter` is read by no
-   * built-in backend; the OpenRouter plugin's nodes ask for it through `GenServices.key`.
+   * Env var names that hold API keys; never the keys themselves. `openrouter` is read by the
+   * OpenRouter image backend, which `models.image` or a node's `model` reaches by naming a
+   * `<vendor>/<model>` id (`imageVendorOf`).
    */
   keys: z
     .object({

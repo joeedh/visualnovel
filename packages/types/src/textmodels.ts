@@ -19,6 +19,20 @@ export function chatVendorFor(modelId: string): ChatVendor {
   return id.startsWith('claude') || id.startsWith('anthropic') ? 'anthropic' : 'gemini';
 }
 
+/** The vendors an image model can belong to, and therefore the keys one can need. */
+export type ImageVendor = 'gemini' | 'openrouter';
+
+/**
+ * Which key an image model id needs. OpenRouter names every model `<vendor>/<model>`, so an id
+ * with a slash is routed there; the one exception is the `@google/genai` long form `models/<id>`,
+ * which is still Gemini. Anything else is Gemini.
+ */
+export function imageVendorOf(modelId: string): ImageVendor {
+  const id = modelId.trim();
+  if (id.startsWith('models/')) return 'gemini';
+  return id.includes('/') ? 'openrouter' : 'gemini';
+}
+
 /** The effort levels a surface may offer, in order. A tuple, so a command prop can name it. */
 export const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
 

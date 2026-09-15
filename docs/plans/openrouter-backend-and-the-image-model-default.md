@@ -479,4 +479,26 @@ changed:
 
 ## As shipped
 
-Nothing yet.
+Stage 1 (the backend and the router), and what differed from the plan:
+
+- `imageVendorOf` returns an `ImageVendor` (`'gemini' | 'openrouter'`, declared beside it
+  in `packages/types/src/textmodels.ts`) rather than `KeyVendor`: `@vn/types` sits below
+  `@vn/config`, where `KeyVendor` lives, and cannot import it. Every `ImageVendor` is a
+  `KeyVendor`, so the `require` sites and the router index `ResolvedKeys` with it
+  unchanged.
+- The `ConfigError` a missing key raises is built by one function, `missingKeyError` in
+  `packages/config/src/keys.ts`, which `resolveKeys` now calls and the router calls for a
+  vendor first needed mid-run, so the two cannot drift.
+- `createOpenRouterImage(apiKey, modelId, opts)` takes an options object (`fetchImpl`)
+  rather than a positional `fetchImpl`, so Stage 5's seed flag joins it without a second
+  positional argument.
+- `createImageBackend(config, keys, opts)` takes a `build` option, the per-vendor backend
+  constructor, which is the seam Decision 7's router test stands two stub backends at; the
+  default builds the real Gemini and OpenRouter backends.
+- `packages/testkit/src/record.ts` passes `[imageVendorOf(config.models.image)]` as
+  `require`, not `requiredVendors(config)`: a recording mocks text and vision (the file
+  header says why), so requiring the vendors of models it never calls would refuse a
+  recording that only needs the image key. The other four sites pass `requiredVendors`.
+- `docs/guides/api-keys.md`'s two sentences about who reads the OpenRouter key were
+  reworded at Stage 1 in terms that hold before and after the plugin is retired, rather
+  than once now and again at Stage 3.

@@ -18,8 +18,9 @@ it. Fixing a step here fixes every place that shows it.
 
 You need both the Gemini and the Anthropic keys. Claude writes and revises the screenplay,
 and Gemini draws. With a key for only one of them, half the app works. The OpenRouter key
-is optional: only the OpenRouter plugin's image nodes read it, and nothing else in the app
-stops working without one.
+is optional: it is read only when `models.image` in `project.yaml`, or an image node in a
+generation graph, names an OpenRouter model (`<vendor>/<model>`, such as
+`openai/gpt-image-2`), and nothing else in the app stops working without one.
 
 ## Gemini
 
@@ -83,9 +84,9 @@ freeTier: false
 ```
 
 1. Open the console link above and sign in, or create an account.
-2. Choose **Create Key**. A key can carry a spending limit; set one, because the
-   OpenRouter plugin's image nodes call whichever image model a graph names, and the
-   models differ in price by more than an order of magnitude.
+2. Choose **Create Key**. A key can carry a spending limit; set one, because the app calls
+   whichever OpenRouter image model `models.image` or a graph node names, and the models
+   differ in price by more than an order of magnitude.
 3. Copy the key. It begins with `sk-or-`, and it is shown once.
 4. Paste it into the Setup pane, or write it to a file yourself (see
    [Where a key goes](#where-a-key-goes)).

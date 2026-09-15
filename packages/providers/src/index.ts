@@ -25,6 +25,13 @@ export {
 } from '@vn/types';
 export { createGeminiChat, createGeminiImage, type GeminiClient } from './backends/gemini.js';
 export {
+  createOpenRouterImage,
+  OpenRouterError,
+  OPENROUTER_IMAGES_URL,
+  type FetchImpl,
+  type OpenRouterImageOptions,
+} from './backends/openrouter.js';
+export {
   captureRequest,
   capturedRequest,
   capturedRequests,
