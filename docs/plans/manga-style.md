@@ -820,3 +820,30 @@ specification:
   panel in reading order, the best unclaimed observed box at or above it; a page is
   honoured when every panel matched and no box was left over. The same rule files the
   `layout` defect and scores the live table.
+- **The `layout` defect is filed by the runner, as a report of its own.** The plan's
+  Decision 7 has the reviewer file it, but the reviewer never sees the intended outlines
+  (`ShotSpec.panels` carries words, not geometry) and `@vn/providers` holds no layout
+  rule. `makeShotRunner` takes the first review that measured anything, matches its boxes
+  with `layoutDefect`, and appends `{ reviewer: 'layout', defects }` to the attempt's
+  reviews before merging, so the verdict is attributable. A page no reviewer measured gets
+  no verdict at all, which is what keeps the mock reviewers (and any vision model that
+  answers nothing about panels) from blocking every page.
+- **`shotSpec` takes the lettering mode as a fourth argument, not the config.** The runner
+  passes `config.lettering`; every other caller passes nothing and gets a spec without the
+  `lettering` key. The reviewer's system prompt is now assembled per spec: the unchanged
+  base sentence, plus the panel rule when `spec.panels` is set and the lettering rule when
+  `spec.lettering` is, so a frame's review is byte for byte what it was. `observed` is
+  kept only on a page's report, whatever a model volunteers on a frame.
+- **The page prompt's exact shape.** `style`; `page` ("A manga page of N panels in
+  <location> (<variant>). Layout: panel 1: …; panel 2: …"); one `panel-<i>` per panel
+  ("Panel i (<framing> shot): <cast with clothes, pose, expression>. camera: …. art
+  direction: …."); `lettering` ("Lettering, verbatim: panel 1: caption "…", NAME says "…";
+  …", empty under `runner`); the shot's `art-notes`; and the scaffolding sentence, which
+  says "no UI text" under `model` and "no text or lettering of any kind" under `runner`. A
+  panel's cast is drawn from the shot's `subjects` (a panel naming anyone else contributes
+  nothing, and the store refuses the file), and the page's own `camera` is ignored, as the
+  plan says.
+- **`panelBoxes` is stamped only with new bytes, from the attempt that drew them.** The
+  same rule as `proseHash`: a rerun that reports the same image leaves the boxes alone,
+  and a page with no image has none. The planner re-parses the attempt's review through
+  `defectReportSchema`, since attempts record reviews untyped.

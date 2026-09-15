@@ -5,11 +5,13 @@ import type {
   Character,
   ImageParams,
   Logger,
+  PanelBox,
   ProjectModel,
   Scene,
   Shot,
   TaskGraph,
 } from '@vn/types';
+import { defectReportSchema } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import type { Providers } from '@vn/types';
 import {
@@ -86,6 +88,13 @@ async function shotsFor(
           lines: d.lineIds,
         });
       }
+      for (const u of loaded.unpanelled) {
+        logger?.warn('line_in_no_panel: a page covers lines no panel letters', {
+          scene: scene.id,
+          shot : u.shotId,
+          lines: u.lineIds,
+        });
+      }
       return loaded.shots;
     }
   }
@@ -113,13 +122,18 @@ async function shotsFor(
  * `proseHash` is a deliberate exception: it is stamped only when these bytes are new. A rerun
  * reporting the same image must not re-baseline the prose under it, or a drift the author has
  * not acted on would be silently cleared by a run that did no work.
+ *
+ * `panelBoxes` follows the same rule: written with new bytes, from the attempt that produced
+ * them, and left alone otherwise.
  */
 function refreshShotData(shot: Shot, task: AnyTask, scene: Scene): void {
   const before = shot.image;
   const stamp = (): void => {
-    if (shot.image !== undefined && shot.image !== before) {
-      shot.proseHash = proseHash(scene, shot.coversLines);
-    }
+    if (shot.image === undefined || shot.image === before) return;
+    shot.proseHash = proseHash(scene, shot.coversLines);
+    const boxes = observedBoxes(task, shot.image);
+    if (boxes) shot.panelBoxes = boxes;
+    else delete shot.panelBoxes;
   };
   if (task.status === 'done' && task.output) {
     shot.status = 'accepted';
@@ -138,6 +152,21 @@ function refreshShotData(shot: Shot, task: AnyTask, scene: Scene): void {
   delete shot.image;
   // No image, so nothing the hash could describe; `serialize` would drop it anyway.
   delete shot.proseHash;
+  delete shot.panelBoxes;
+}
+
+/**
+ * The panel boxes a reviewer saw in `image`, from the attempt that drew it. Reviews are recorded
+ * loosely typed on the attempt, so the shape is checked here rather than trusted.
+ */
+function observedBoxes(task: AnyTask, image: string): PanelBox[] | undefined {
+  const attempt = task.attempts.find((a) => a.output === image);
+  for (const review of attempt?.reviews ?? []) {
+    const parsed = defectReportSchema.safeParse(review);
+    if (parsed.success && parsed.data.observed)
+      return parsed.data.observed.panels.map((p) => p.box);
+  }
+  return undefined;
 }
 
 /**

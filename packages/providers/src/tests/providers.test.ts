@@ -43,6 +43,35 @@ describe('ChatVisionReviewer — VisionReviewer contract', () => {
     const report = await reviewer.review({ hash: 'img', ext: 'png' }, spec, []);
     expect(report.defects).toEqual([]);
   });
+
+  it('asks a page for its boxes, a lettered page for its words, and a frame for neither', async () => {
+    const systems: string[] = [];
+    const measured =
+      '{"reviewer":"raw","defects":[],"observed":{"panels":[{"box":{"x":0,"y":0,"w":1,"h":0.5}}]}}';
+    const backend = new RecordedChatBackend('m', (req) => {
+      systems.push(req.system ?? '');
+      return measured;
+    });
+    const reviewer = new ChatVisionReviewer('gemini', backend, loadRef);
+    const panels = [{ index: 1, shapeWords: 'the full page', framing: 'wide', characters: [] }];
+
+    const frame = await reviewer.review({ hash: 'img', ext: 'png' }, spec, []);
+    const page = await reviewer.review({ hash: 'img', ext: 'png' }, { ...spec, panels }, []);
+    const lettered = await reviewer.review(
+      { hash: 'img', ext: 'png' },
+      { ...spec, panels, lettering: [{ panel: 1, lines: ['Hi.'] }] },
+      [],
+    );
+
+    expect(systems[0]).not.toContain('observed');
+    expect(systems[1]).toContain('"observed": {"panels"');
+    expect(systems[1]).not.toContain('lettering');
+    expect(systems[2]).toContain('category "lettering"');
+    // A frame's review never carries measurements, whatever the model volunteered.
+    expect('observed' in frame).toBe(false);
+    expect(page.observed).toEqual({ panels: [{ box: { x: 0, y: 0, w: 1, h: 0.5 } }] });
+    expect(lettered.observed).toEqual(page.observed);
+  });
 });
 
 describe('mergeReports', () => {

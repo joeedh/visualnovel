@@ -14,7 +14,7 @@ import type {
 } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import { mergeReports } from '@vn/providers';
-import { supersededBy } from '@vn/artgen';
+import { layoutDefect, supersededBy } from '@vn/artgen';
 import { refinePrompt } from './p6.js';
 import { shotSpec } from './prompts.js';
 import { boundGraph, refinesThroughNode, runBoundGraph, storeGraphImage } from './graphrun.js';
@@ -143,11 +143,27 @@ const runModelSheet: Runner<'model_sheet'> = async (task, deps) => {
  * is flagged `needs_human` rather than silently shipping a flawed frame. The loop also gives up
  * early when a refinement changes nothing.
  */
+/**
+ * The layout verdict on a page, as one more report beside the reviewers': the boxes the first
+ * reviewer that measured any saw, matched to the intended panels. A page no reviewer measured
+ * gets no verdict, so a reviewer that answers nothing about panels cannot block every page.
+ */
+function layoutReport(shot: Shot | undefined, reports: readonly DefectReport[]): DefectReport[] {
+  if (!shot?.panels) return [];
+  const seen = reports.find((r) => r.observed !== undefined)?.observed;
+  if (!seen) return [];
+  const defect = layoutDefect(
+    shot.panels,
+    seen.panels.map((p) => p.box),
+  );
+  return [{ reviewer: 'layout', defects: defect ? [defect] : [] }];
+}
+
 function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
   return async (task, deps) => {
     const found = findShot(deps, task.inputs.shotId);
     const spec: ShotSpec = found
-      ? shotSpec(found.shot, found.scene, deps.model)
+      ? shotSpec(found.shot, found.scene, deps.model, config.lettering)
       : { description: task.inputs.prompt, characters: [], location: '' };
     const refs = task.inputs.refs;
     const maxAttempts = Math.max(1, config.max_refine_attempts);
@@ -172,9 +188,10 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
         : await generateAsset(deps, prompt, refs, task.inputs.params, meta);
       lastRef = ref;
 
-      const reports: DefectReport[] = await Promise.all(
+      const reviewed: DefectReport[] = await Promise.all(
         deps.providers.reviewers.map((r) => r.review(ref, spec, refs)),
       );
+      const reports = [...reviewed, ...layoutReport(found?.shot, reviewed)];
       const merged = mergeReports(reports);
 
       const record: TaskAttempt = {

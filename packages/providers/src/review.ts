@@ -18,6 +18,33 @@ const REVIEW_SYSTEM = [
 ].join(' ');
 
 /**
+ * Asked only of a page: the boxes are measured, not judged, and the runner draws the layout
+ * verdict from them against the intended outlines, which the reviewer never sees.
+ */
+const PANEL_RULE = [
+  'The spec carries `panels`, so the image is a comic page. Also measure it: add',
+  '"observed": {"panels": [{"box": {"x", "y", "w", "h"}}]} to your JSON, one box per drawn',
+  'panel border in reading order, each as fractions of the page from its top-left corner.',
+  "Check each panel's framing and characters against its entry in `panels`.",
+].join(' ');
+
+/** Asked only when the image model was told to letter the page itself. */
+const LETTERING_RULE = [
+  'The spec carries `lettering`: the exact words each panel must show. Read every piece of',
+  'text in the image and compare it, panel by panel. Text that is missing, misspelt, in the',
+  'wrong panel, or that the spec does not list is a blocking defect in category "lettering".',
+].join(' ');
+
+/** The system prompt for one spec: the base rules, plus what a page and a lettered page add. */
+function reviewSystem(spec: ShotSpec): string {
+  return [
+    REVIEW_SYSTEM,
+    ...(spec.panels ? [PANEL_RULE] : []),
+    ...(spec.lettering ? [LETTERING_RULE] : []),
+  ].join(' ');
+}
+
+/**
  * A `VisionReviewer` over any vision-capable `ChatBackend` — both Gemini and Claude
  * implement this (report §P7). The critique is requested as structured JSON and
  * validated, so the refine step can act on it programmatically.
@@ -44,10 +71,15 @@ export class ChatVisionReviewer implements VisionReviewer {
     ].join('\n');
 
     const report = await withStructuredRetry(defectReportSchema, () =>
-      this.backend.message({ system: REVIEW_SYSTEM, prompt, images }),
+      this.backend.message({ system: reviewSystem(spec), prompt, images }),
     );
     // Stamp the reviewer id so merged reports are attributable.
-    return { reviewer: this.id, defects: report.defects ?? [] };
+    const stamped: DefectReport = { reviewer: this.id, defects: report.defects ?? [] };
+    // Only what a page asked for: a frame's review never carries measurements
+    if (spec.panels && report.observed) {
+      stamped.observed = { panels: report.observed.panels ?? [] };
+    }
+    return stamped;
   }
 }
 

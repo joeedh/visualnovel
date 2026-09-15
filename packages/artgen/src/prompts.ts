@@ -2,12 +2,17 @@ import type {
   AssetRef,
   Character,
   ImageParams,
+  Lettering,
   Location,
+  PagePanel,
   ProjectModel,
   PromptChunk,
   PromptOverride,
   Scene,
+  SceneLine,
   Shot,
+  ShotSpec,
+  ShotSubject,
   Task,
   TaskInputs,
 } from '@vn/types';
@@ -15,6 +20,7 @@ import type { ProjectConfig } from '@vn/config';
 import { outfitFor, outfitText } from '@vn/model';
 import { makeTask } from '@vn/taskgraph';
 import { chunk, chunkList, composePrompt } from './chunks.js';
+import { layoutWords, shapeWords } from './layout.js';
 import { authoredRefs } from './refs.js';
 
 /**
@@ -53,12 +59,17 @@ export function seedFor(params: ImageParams, ...rungs: (number | undefined)[]): 
 }
 
 /**
- * `params` with the shot's own aspect ratio applied, where it authored one. A shot that authored
- * none returns `params` untouched, so every existing task keeps the hash it had — the same
- * guarantee {@link seedFor} gives.
+ * `params` with the shot's own aspect ratio applied, where it authored one, and otherwise the
+ * project's `page_aspect` on a page shot. A frame that authored none returns `params` untouched,
+ * so every existing task keeps the hash it had — the same guarantee {@link seedFor} gives.
  */
-export function aspectFor(params: ImageParams, shot: Pick<Shot, 'aspect'>): ImageParams {
-  return shot.aspect === undefined ? params : { ...params, aspect: shot.aspect };
+export function aspectFor(
+  params: ImageParams,
+  shot: Pick<Shot, 'aspect' | 'panels'>,
+  pageAspect?: string,
+): ImageParams {
+  const aspect = shot.aspect ?? (shot.panels && pageAspect);
+  return aspect === undefined ? params : { ...params, aspect };
 }
 
 /** The art-style preamble injected into every image prompt for style consistency (§5). */
@@ -387,22 +398,132 @@ export function modelSheetInputs(
   };
 }
 
-/** P6 shot chunks, synthesized from the terse shot description + entities (report §P6). */
+/**
+ * A cast member as a prompt names them: name, the outfit they resolve to through the shot's own
+ * subject entry, then whatever pose and expression `rung` states. On a frame the rung is the
+ * subject itself; on a page it is the panel's entry, since the page's cast holds the clothes and
+ * each panel holds the pose.
+ */
+function subjectWords(
+  cast: ShotSubject,
+  rung: { pose?: string; expression?: string },
+  scene: Scene,
+  model: ProjectModel,
+): string {
+  const character = model.characters.get(cast.characterId);
+  const name = character?.name ?? cast.characterId;
+  const bits = [name, `wearing ${outfitText(character, outfitFor(cast, scene, character).id)}`];
+  if (rung.pose) bits.push(`pose: ${rung.pose}`);
+  if (rung.expression) bits.push(`expression: ${rung.expression}`);
+  return bits.join(', ');
+}
+
+/** The line as a page letters it: the speaker's name and the words, or a bare caption. */
+function letteredLine(line: SceneLine, model: ProjectModel): string {
+  const said = JSON.stringify(line.text);
+  if (!line.speaker) return `caption ${said}`;
+  const name = model.characters.get(line.speaker)?.name ?? line.speaker;
+  return `${name} says ${said}`;
+}
+
+/**
+ * The words a page shot's lettering chunk carries under `lettering: model`: each panel's lines in
+ * page order, quoted verbatim, so the image model letters exactly what the scene says. Empty under
+ * `lettering: runner`, where the page is drawn wordless and the runner draws the bubbles.
+ */
+function letteringClause(
+  panels: readonly PagePanel[],
+  scene: Scene,
+  model: ProjectModel,
+  config: ProjectConfig,
+): string {
+  if (config.lettering !== 'model') return '';
+  const parts = panels.flatMap((p, i) => {
+    const lines = scene.lines.filter((l) => p.coversLines.includes(l.id));
+    if (!lines.length) return [];
+    return [`panel ${i + 1}: ${lines.map((l) => letteredLine(l, model)).join(', ')}`];
+  });
+  return parts.length ? `Lettering, verbatim: ${parts.join('; ')}.` : '';
+}
+
+/**
+ * P6 chunks for a page shot. In place of the frame's `framing`, `subject` and `camera` chunks the
+ * page carries one `page` chunk (the panel count, the location and the derived layout), one
+ * `panel-<i>` chunk per panel (framing, cast, camera, the panel's own notes) and a `lettering`
+ * chunk, then the shot's notes and a page scaffolding sentence. Keyed by index rather than by
+ * text, so an override survives an edit to the panel's words.
+ */
+function buildPageChunks(
+  shot: Shot,
+  panels: readonly PagePanel[],
+  scene: Scene,
+  model: ProjectModel,
+  config: ProjectConfig,
+): PromptChunk[] {
+  const location = model.locations.get(scene.location);
+  const at = { sceneId: shot.sceneId, shotId: shot.id } as const;
+  const cast = new Map(shot.subjects.map((s) => [s.characterId, s]));
+  const panelChunks = panels.map((p, i) => {
+    const who = p.subjects.flatMap((s) => {
+      const member = cast.get(s.characterId);
+      return member ? [subjectWords(member, s, scene, model)] : [];
+    });
+    const bits = [
+      `Panel ${i + 1} (${p.framing} shot): ${who.length ? who.join('; ') : 'no characters'}`,
+      p.camera ? `camera: ${p.camera}` : '',
+      p.artNotes?.trim() ? `art direction: ${p.artNotes.trim()}` : '',
+    ].filter(Boolean);
+    return chunk(`panel-${i + 1}`, 'panel', `${bits.join('. ')}.`, {
+      kind: 'shot',
+      ...at,
+      field: 'panels',
+    });
+  });
+  const wordless = config.lettering === 'runner';
+  return chunkList(
+    chunk('style', 'style', stylePreamble(config), { kind: 'project', field: 'art_style' }),
+    chunk(
+      'page',
+      'framing',
+      `A manga page of ${panels.length} panel${panels.length === 1 ? '' : 's'}` +
+        `${location ? ` in ${location.name}` : ''} (${shot.location}). ` +
+        `Layout: ${layoutWords(panels)}.`,
+      { kind: 'shot', ...at, field: 'panels' },
+    ),
+    ...panelChunks,
+    chunk('lettering', 'lettering', letteringClause(panels, scene, model, config), {
+      kind: 'shot',
+      ...at,
+      field: 'coversLines',
+    }),
+    chunk('art-notes', 'art-notes', artClause(shot.artNotes), {
+      kind  : 'art-notes',
+      target: `shot:${shot.sceneId}/${shot.id}`,
+    }),
+    chunk(
+      'scaffolding',
+      'scaffolding',
+      wordless
+        ? 'Render as one complete comic page with drawn panel borders; no text or lettering of any kind.'
+        : 'Render as one complete comic page with drawn panel borders; no UI text.',
+      { kind: 'builder' },
+    ),
+  );
+}
+
+/**
+ * P6 shot chunks, synthesized from the terse shot description + entities (report §P6). A shot
+ * with panels takes {@link buildPageChunks} instead; a frame's chunks are what they always were.
+ */
 export function buildShotChunks(
   shot: Shot,
   scene: Scene,
   model: ProjectModel,
   config: ProjectConfig,
 ): PromptChunk[] {
+  if (shot.panels) return buildPageChunks(shot, shot.panels, scene, model, config);
   const location = model.locations.get(scene.location);
-  const subjects = shot.subjects.map((s) => {
-    const character = model.characters.get(s.characterId);
-    const name = character?.name ?? s.characterId;
-    const bits = [name, `wearing ${outfitText(character, outfitFor(s, scene, character).id)}`];
-    if (s.pose) bits.push(`pose: ${s.pose}`);
-    if (s.expression) bits.push(`expression: ${s.expression}`);
-    return bits.join(', ');
-  });
+  const subjects = shot.subjects.map((s) => subjectWords(s, s, scene, model));
   const at = { sceneId: shot.sceneId, shotId: shot.id } as const;
   return chunkList(
     chunk('style', 'style', stylePreamble(config), { kind: 'project', field: 'art_style' }),
@@ -477,7 +598,7 @@ export function shotInputs(
     prompt: buildShotPrompt(shot, scene, model, config),
     refs  : [...upstream, ...shotRefs(shot, scene, model, config)],
     // A frame is its own rung: the cast it draws is carried in as references, not as a seed.
-    params: aspectFor(seedFor(params, shot.seed), shot),
+    params: aspectFor(seedFor(params, shot.seed), shot, config.image_params.page_aspect),
   };
 }
 
@@ -511,10 +632,14 @@ function shotDescription(shot: Shot, scene: Scene): string {
     ? scene.lines.filter((l) => shot.coversLines.includes(l.id))
     : [];
   const prose = covered.map((l) => (l.speaker ? `${l.speaker}: ${l.text}` : l.text)).join(' ');
+  const what = shot.panels
+    ? `A manga page of ${shot.panels.length} panel(s) set in ${shot.location}.`
+    : `A single ${shot.framing} shot set in ${shot.location}.`;
   return [
-    `A single ${shot.framing} shot set in ${shot.location}.`,
+    what,
     castLine(shot),
-    shot.camera ? `Camera: ${shot.camera}.` : '',
+    // A page's cameras are per panel and reach the reviewer through `panels`
+    shot.camera && !shot.panels ? `Camera: ${shot.camera}.` : '',
     prose ? `Narrative context, for setting and mood only: ${prose}` : '',
   ]
     .filter(Boolean)
@@ -530,21 +655,19 @@ function shotDescription(shot: Shot, scene: Scene): string {
  * `characters` is empty on a `castOptional` shot, because that field is what the reviewer reads as
  * the casting instruction: leaving the subjects in it would ask for the defect the flag exists to
  * stop. The description still names them, so the generator has them.
+ *
+ * A page adds `panels`, which asks the reviewer to report the boxes it sees, and — when
+ * `lettering` says the model drew the words — the lines each panel should carry, so a misspelt
+ * or misplaced line is a defect. A frame's spec has neither key, so its review is unchanged.
  */
 export function shotSpec(
   shot: Shot,
   scene: Scene,
   model?: ProjectModel,
-): {
-  description: string;
-  characters: string[];
-  outfit?: string;
-  location: string;
-  expression?: string;
-  framing?: string;
-} {
+  lettering?: Lettering,
+): ShotSpec {
   const lead = shot.subjects[0];
-  return {
+  const spec: ShotSpec = {
     description: shotDescription(shot, scene),
     characters : shot.castOptional ? [] : shot.subjects.map((s) => s.characterId),
     outfit     : lead && outfitFor(lead, scene, model?.characters.get(lead.characterId)).id,
@@ -552,4 +675,18 @@ export function shotSpec(
     expression : shot.subjects[0]?.expression,
     framing    : shot.framing,
   };
+  if (!shot.panels) return spec;
+  spec.panels = shot.panels.map((p, i) => ({
+    index     : i + 1,
+    shapeWords: shapeWords(p.shape),
+    framing   : p.framing,
+    characters: p.subjects.map((s) => s.characterId),
+  }));
+  if (lettering === 'model') {
+    spec.lettering = shot.panels.flatMap((p, i) => {
+      const lines = scene.lines.filter((l) => p.coversLines.includes(l.id)).map((l) => l.text);
+      return lines.length ? [{ panel: i + 1, lines }] : [];
+    });
+  }
+  return spec;
 }
