@@ -1,6 +1,7 @@
 import type { Graph, GraphId, Node } from 'pathux-graph';
 
 import { authoredHashes, graphHashes } from './hash.js';
+import type { GenHashDefaults } from './hash.js';
 import { journalRecord } from './journal.js';
 import type { GenUsage, GraphJournal, GraphJournalRecord } from './journal.js';
 import { flattenNodes, linkedSources, nodeKey, resolveNodeKey } from './nodekey.js';
@@ -61,6 +62,10 @@ export interface GenRunResult {
  * never runs, which is what keeps a scratch branch from spending money. A failure is
  * recorded and stops that node's downstream; branches beside it still run. A group
  * instance is run as its inner nodes, each journaled under its key.
+ *
+ * An image node with an empty model prop draws with the services' `defaultModel`, so that
+ * model is hashed in the prop's place. Reading it from the same services the runtime draws
+ * through is what keeps a project whose image model changed from resuming the old picture.
  */
 export async function executeGenGraph(
   graph: Graph,
@@ -69,7 +74,8 @@ export async function executeGenGraph(
 ): Promise<GenRunResult> {
   seedInputs(graph, options.seeds);
 
-  const hashes = graphHashes(graph);
+  const defaults: GenHashDefaults = { imageModel: ctx.services.image.defaultModel };
+  const hashes = graphHashes(graph, defaults);
   const authored = authoredHashes(graph);
   const members = new Set(flattenNodes(graph));
   const wanted = ancestorsOf(graph, members, options.targets);
@@ -102,6 +108,7 @@ export async function executeGenGraph(
       graph,
       { record: write, ...(ctx.now === undefined ? {} : { now: ctx.now }) },
       options.targets,
+      defaults,
     );
   }
 
@@ -195,13 +202,16 @@ export async function executeGenGraph(
  * deliberate re-render asks for. Without it a bound slot whose nodes are all clean would
  * resume straight to the cached picture. Deterministic prep still resumes, because only a
  * node its type marks `spends` is invalidated. Returns the keys of the nodes it invalidated.
+ * The record's hash is informational, since an `invalidated` record is never resumed from,
+ * so a caller without the run's `defaults` may leave them out.
  */
 export async function invalidateGenGraph(
   graph: Graph,
   ctx: Pick<GenRunContext, 'record' | 'now'>,
   targets: readonly GraphId[],
+  defaults?: GenHashDefaults,
 ): Promise<GraphId[]> {
-  const hashes = graphHashes(graph);
+  const hashes = graphHashes(graph, defaults);
   const authored = authoredHashes(graph);
   const members = new Set(flattenNodes(graph));
   const wanted = ancestorsOf(graph, members, targets);

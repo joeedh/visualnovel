@@ -59,7 +59,12 @@ export interface MockOptions {
   answer?: (call: MockFetchCall) => MockFetchReply;
   /** The keys a node may ask for, keyed by the name it asks under. */
   keys?: Record<string, string>;
+  /** What an image node with an empty model prop draws with. Defaults to `MOCK_IMAGE_MODEL`. */
+  imageModel?: string;
 }
+
+/** The project image model the fixture stands in with. */
+export const MOCK_IMAGE_MODEL = 'mock-image';
 
 export function bytes(text: string): Uint8Array {
   return new TextEncoder().encode(text);
@@ -87,11 +92,12 @@ export function mockServices(options: MockOptions = {}): MockServices {
     drawn: {
       bytes  : bytes('drawn picture'),
       ext    : 'png',
-      modelId: 'mock-image',
+      modelId: MOCK_IMAGE_MODEL,
       ...options.drawn,
     },
 
     image: {
+      defaultModel: options.imageModel ?? MOCK_IMAGE_MODEL,
       generate: (prompt: string, refs: GenImageInput[], params: ImageParams) => {
         mock.images.push({ kind: 'generate', prompt, refs, params });
         return Promise.resolve(mock.drawn);

@@ -222,7 +222,13 @@ export class TestProject {
       ...(opts.graphs === undefined
         ? {}
         : {
-            graphs: await this.graphRuntime(opts.graphs, { model, store, providers, imageBackend }),
+            graphs: await this.graphRuntime(opts.graphs, {
+              model,
+              store,
+              providers,
+              imageBackend,
+              imageModel: config.models.image,
+            }),
           }),
     });
   }
@@ -239,6 +245,7 @@ export class TestProject {
       store: AssetStore;
       providers: Providers;
       imageBackend: ImageBackend;
+      imageModel: string;
     },
   ): Promise<GraphRuntime> {
     const loaded: LoadedGraph[] = [];

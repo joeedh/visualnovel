@@ -143,6 +143,8 @@ export interface GraphsReport {
 export interface GraphsReportOptions {
   /** From `config.max_refine_attempts`; the refine tail is counted this many times. */
   maxRefineAttempts?: number;
+  /** From `config.models.image`; an image node with an empty model prop is priced against it. */
+  imageModel?: string;
   /** The clock a price table's age is measured against. Defaults to the current time. */
   now?: Date;
   /**
@@ -184,6 +186,7 @@ export function reportGraphs(
       ...(opts.maxRefineAttempts === undefined
         ? {}
         : { maxRefineAttempts: opts.maxRefineAttempts }),
+      ...(opts.imageModel === undefined ? {} : { imageModel: opts.imageModel }),
     });
     const estimate =
       opts.tables === undefined

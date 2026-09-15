@@ -8,7 +8,7 @@ import type { NodeTypeConstructor } from 'pathux-graph';
 
 import { registerGenRuntime } from '../registry.js';
 import type { GenInputs, GenNodeRun, GenProps } from '../registry.js';
-import type { GenImageInput, GenServices } from '../services.js';
+import type { GenImageInput, GenImageService, GenServices } from '../services.js';
 import {
   GenDerivedPrompt,
   GenEditImage,
@@ -98,8 +98,9 @@ function seedOf(value: unknown): number | undefined {
   return seed;
 }
 
-function imageParamsOf(props: GenProps): ImageParams {
-  const params: ImageParams = { modelId: text(props.model) };
+/** The call's params, with an empty model prop resolved to the project's before any backend sees it. */
+function imageParamsOf(props: GenProps, image: GenImageService): ImageParams {
+  const params: ImageParams = { modelId: text(props.model).trim() || image.defaultModel };
 
   const aspect = text(props.aspect).trim();
   if (aspect.length > 0) {
@@ -221,7 +222,7 @@ export function registerGenRuntimes(): void {
     const result = await services.image.generate(
       prompt,
       await readRefs(services, inputs.refs),
-      imageParamsOf(props),
+      imageParamsOf(props, services.image),
     );
     return storeImage(services, result, prompt);
   });
@@ -233,7 +234,7 @@ export function registerGenRuntimes(): void {
       await readImageBytes(services, base),
       prompt,
       await readRefs(services, inputs.refs),
-      imageParamsOf(props),
+      imageParamsOf(props, services.image),
     );
     return storeImage(services, result, prompt);
   });

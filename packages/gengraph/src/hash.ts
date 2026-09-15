@@ -4,6 +4,12 @@ import type { Graph, GraphId, Node } from 'pathux-graph';
 import { flattenNodes, nodeKey } from './nodekey.js';
 import { genNodeSpec } from './registry.js';
 
+/** What the host resolves an empty prop to, hashed in the prop's place so the run keys on it. */
+export interface GenHashDefaults {
+  /** The project's image model, read by a node whose spec names an `imageModelProp`. */
+  imageModel?: string;
+}
+
 /**
  * A node's content address: its type and version, its authored props, and whatever
  * feeds each of its inputs. Identity, label and position are deliberately absent, so
@@ -12,11 +18,28 @@ import { genNodeSpec } from './registry.js';
  * The caller decides what each input contributes. A connected input contributes the
  * hash of the node feeding it, which is how an edit propagates to everything below it;
  * a picture contributes its content hash rather than its bytes.
+ *
+ * An image node whose model prop is empty draws with the project's image model, so that
+ * model is hashed in the prop's place when `defaults` carries it. Without it the empty
+ * prop hashes as written, and a change of project model would resume the old picture.
  */
-export function nodeHash(node: Node, inputs: Readonly<Record<string, unknown>>): string {
+export function nodeHash(
+  node: Node,
+  inputs: Readonly<Record<string, unknown>>,
+  defaults: GenHashDefaults = {},
+): string {
   const props: Record<string, unknown> = {};
   for (const [key, prop] of Object.entries(node.props)) {
     props[key] = prop.getValue();
+  }
+
+  const modelProp = genNodeSpec(node.def.typeName)?.imageModelProp;
+  if (
+    modelProp !== undefined &&
+    defaults.imageModel !== undefined &&
+    String(props[modelProp] ?? '').trim() === ''
+  ) {
+    props[modelProp] = defaults.imageModel;
   }
 
   // hashParts canonicalizes each part, sorting object keys recursively, so neither
@@ -34,20 +57,25 @@ export function nodeHash(node: Node, inputs: Readonly<Record<string, unknown>>):
  * Nodes inside a cycle are absent from the result, because a hash there would have to
  * contain itself.
  */
-export function graphHashes(graph: Graph): Map<GraphId, string> {
-  return walk(graph, false);
+export function graphHashes(graph: Graph, defaults: GenHashDefaults = {}): Map<GraphId, string> {
+  return walk(graph, false, defaults);
 }
 
 /**
  * Every node's hash over the authored graph alone, with each host-seeded input read as
- * though nothing had been seeded onto it. `graphHashes` moves with the task a run was for,
- * so this is the quantity that answers whether the graph itself was edited.
+ * though nothing had been seeded onto it and an empty model prop hashed as written.
+ * `graphHashes` moves with the task a run was for, so this is the quantity that answers
+ * whether the graph itself was edited.
  */
 export function authoredHashes(graph: Graph): Map<GraphId, string> {
-  return walk(graph, true);
+  return walk(graph, true, {});
 }
 
-function walk(graph: Graph, authoredOnly: boolean): Map<GraphId, string> {
+function walk(
+  graph: Graph,
+  authoredOnly: boolean,
+  defaults: GenHashDefaults,
+): Map<GraphId, string> {
   const hashes = new Map<GraphId, string>();
   const members = new Set(flattenNodes(graph));
 
@@ -76,7 +104,7 @@ function walk(graph: Graph, authoredOnly: boolean): Map<GraphId, string> {
         .sort();
     }
 
-    hashes.set(nodeKey(node), nodeHash(node, inputs));
+    hashes.set(nodeKey(node), nodeHash(node, inputs, defaults));
   }
 
   return hashes;

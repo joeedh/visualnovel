@@ -20,6 +20,11 @@ export interface GenEstimateOptions {
    * attempt, the default, applies no multiplier at all.
    */
   maxRefineAttempts?: number;
+  /**
+   * The project's image model, from `config.models.image`, which an image node with an empty
+   * model prop is priced against. Left out, such a node prices as an unknown model.
+   */
+  imageModel?: string;
 }
 
 /**
@@ -60,7 +65,11 @@ export function estimateGraph(graph: Graph, opts: GenEstimateOptions = {}): GenG
 
     const key = nodeKey(node);
     const factor = tail.has(key) ? attempts : 1;
-    const lines = estimate(props, { connected }).map((line) => ({
+    const ctx = {
+      connected,
+      ...(opts.imageModel === undefined ? {} : { imageModel: opts.imageModel }),
+    };
+    const lines = estimate(props, ctx).map((line) => ({
       ...line,
       count: line.count * factor,
     }));

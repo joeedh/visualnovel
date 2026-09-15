@@ -239,6 +239,7 @@ async function printGraphStatus(project: LoadedProject): Promise<void> {
 
   const report = reportGraphs(docs, {
     maxRefineAttempts: project.config.max_refine_attempts,
+    imageModel       : project.config.models.image,
     tables           : await hostPriceTables(),
   });
   ok(`Generation graphs: ${docs.length} (${report.bound.size} slot(s) bound)`);
@@ -343,6 +344,7 @@ async function loadGraphs(
     store       : project.store,
     providers   : deps.providers,
     imageBackend: deps.imageBackend,
+    imageModel  : project.config.models.image,
     ...(deps.keys === undefined ? {} : { keys: deps.keys }),
   });
   for (const slot of conflicts) {
@@ -361,6 +363,7 @@ async function printGraphCost(project: LoadedProject, docs: readonly GraphDoc[])
 
   const report = reportGraphs(docs, {
     maxRefineAttempts: project.config.max_refine_attempts,
+    imageModel       : project.config.models.image,
     tables           : await hostPriceTables(),
   });
   const slots = unrenderedBoundSlots(report, {

@@ -9,7 +9,8 @@ import { BoolProperty, PropFlags, StringProperty } from 'pathux-toolprop';
 import { TEXT_MODELS } from '@vn/types';
 
 import { mtok, SHIPPED_PRICES } from '../prices.js';
-import { registerGenNode, type NodeMigration } from '../registry.js';
+import { registerGenNode, type GenEstimateContext, type NodeMigration } from '../registry.js';
+import type { GenProps } from '../registry.js';
 import { ImageSocket, RefsSocket, TextSocket } from './sockets.js';
 
 /**
@@ -152,6 +153,14 @@ const TEMPLATE_VARS: NodeMigration = {
   placeholders: ['template'],
 };
 
+/** The model an image node's estimate is priced against: its own, or the project's when its own is empty. */
+function imageModelOf(props: GenProps, ctx: GenEstimateContext): string {
+  return String(props.model ?? '').trim() || (ctx.imageModel ?? '');
+}
+
+/** The picker row that leaves an image node's model prop empty. */
+const INHERIT_LABEL = 'Inherit (project image model)';
+
 /** Image models the shipped price table knows about, so the list can't drift from what estimates price. */
 function getImageModelList(): string[] {
   return Object.keys(SHIPPED_PRICES.models).filter(
@@ -159,19 +168,21 @@ function getImageModelList(): string[] {
   );
 }
 
+/** The image picker's rows, ui name to value, with the inherit row first. */
+function imageModelRows(): Record<string, string> {
+  return { [INHERIT_LABEL]: '', ...Object.fromEntries(getImageModelList().map((m) => [m, m])) };
+}
+
 /**
- * Builds a `customPropUX` entry for a model prop, drawing it as a dropdown over `models`
- * rather than a free-text field. `getModels` is called each time the menu opens, so the list
- * stays current if it is ever backed by something dynamic.
+ * Builds a `customPropUX` entry for a model prop, drawing it as a dropdown over the rows
+ * `getRows` answers, ui name to value, rather than a free-text field. `getRows` is called each
+ * time the menu opens, so the list stays current if it is ever backed by something dynamic.
  */
 function modelDropdownUX(
-  getModels: () => readonly string[],
+  getRows: () => Record<string, string>,
 ): NonNullable<NodeDef['customPropUX']>[string] {
   return (row, path, label) => {
-    const dropdown = row.listenum(path, {
-      enumDef: () => Object.fromEntries(getModels().map((m) => [m, m])),
-      name   : label,
-    });
+    const dropdown = row.listenum(path, { enumDef: getRows, name: label });
     dropdown.setAttribute('fit-to-width', 'true');
   };
 }
@@ -195,7 +206,7 @@ export class GenRewrite extends Node<{ text: TextSocket }, { text: TextSocket }>
         system     : str('', 'System', 'The system prompt sent ahead of the instruction.'),
       },
       customPropUX: {
-        model: modelDropdownUX(() => TEXT_MODELS),
+        model: modelDropdownUX(() => Object.fromEntries(TEXT_MODELS.map((m) => [m, m]))),
       },
       typeVersion : 2,
     };
@@ -226,7 +237,11 @@ export class GenImage extends Node<
         image: new ImageSocket('out', { description: 'The picture the model drew.' }),
       },
       props: {
-        model : str('gemini-2.5-flash-image', 'Model', 'Which image model draws the picture.'),
+        model: str(
+          '',
+          'Model',
+          'Which image model draws the picture. Empty, or omitted, draws with the project’s image model.',
+        ),
         aspect: str(
           '',
           'Aspect',
@@ -235,7 +250,7 @@ export class GenImage extends Node<
         seed  : str('', 'Seed', 'The seed to draw with. Empty lets the model pick one.'),
       },
       customPropUX: {
-        model: modelDropdownUX(getImageModelList),
+        model: modelDropdownUX(imageModelRows),
       },
       typeVersion : 1,
     };
@@ -268,7 +283,11 @@ export class GenEditImage extends Node<
         image: new ImageSocket('out', { description: 'The redrawn picture.' }),
       },
       props: {
-        model : str('gemini-2.5-flash-image', 'Model', 'Which image model redraws the picture.'),
+        model: str(
+          '',
+          'Model',
+          'Which image model redraws the picture. Empty, or omitted, redraws with the project’s image model.',
+        ),
         aspect: str(
           '',
           'Aspect',
@@ -277,7 +296,7 @@ export class GenEditImage extends Node<
         seed  : str('', 'Seed', 'The seed to draw with. Empty lets the model pick one.'),
       },
       customPropUX: {
-        model: modelDropdownUX(getImageModelList),
+        model: modelDropdownUX(imageModelRows),
       },
       typeVersion : 1,
     };
@@ -426,18 +445,20 @@ export function registerGenNodes(): void {
     ],
   });
   registerGenNode({
-    cls        : GenImage,
-    spends     : true,
-    refineInput: 'refine',
-    estimate: (props) => [
-      { service: 'image', model: String(props.model), unit: 'image', count: 1 },
+    cls           : GenImage,
+    spends        : true,
+    refineInput   : 'refine',
+    imageModelProp: 'model',
+    estimate: (props, ctx) => [
+      { service: 'image', model: imageModelOf(props, ctx), unit: 'image', count: 1 },
     ],
   });
   registerGenNode({
-    cls     : GenEditImage,
-    spends  : true,
-    estimate: (props) => [
-      { service: 'image', model: String(props.model), unit: 'image', count: 1 },
+    cls           : GenEditImage,
+    spends        : true,
+    imageModelProp: 'model',
+    estimate: (props, ctx) => [
+      { service: 'image', model: imageModelOf(props, ctx), unit: 'image', count: 1 },
     ],
   });
   registerGenNode({ cls: GenRefList });

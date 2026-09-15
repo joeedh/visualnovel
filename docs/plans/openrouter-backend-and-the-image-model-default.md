@@ -502,3 +502,29 @@ Stage 1 (the backend and the router), and what differed from the plan:
 - `docs/guides/api-keys.md`'s two sentences about who reads the OpenRouter key were
   reworded at Stage 1 in terms that hold before and after the plugin is retired, rather
   than once now and again at Stage 3.
+
+Stage 2 (inherit), and what differed from the plan:
+
+- `executeGenGraph` takes no `defaults` option. It reads the model to hash off
+  `ctx.services.image.defaultModel`, the same field the runtime resolves an empty prop to,
+  so the value hashed and the value drawn with cannot disagree. `graphHashes` and
+  `nodeHash` take the `defaults: { imageModel }` argument the plan names, and
+  `invalidateGenGraph` takes it as an optional fourth argument so the `force` path records
+  the same hash; the desktop's `invalidateBound` leaves it out, because an `invalidated`
+  record is never resumed from. `runBoundGraph` and the desktop's `gengraph.run` therefore
+  pass nothing: their services already carry the model.
+- Which prop inherits is declared on the spec rather than by type name: `GenNodeSpec`
+  gains `imageModelProp`, both image nodes name `model`, and `registerGenNode` refuses a
+  name that is no prop, in the same probe as `slotProp`. A plugin type can declare it too.
+- `createGenServices` takes `imageModel: string` in its deps rather than the config,
+  because `GenServicesDeps` carries no config and `imageBackend.modelId` is the mock's id
+  under `--mock`, not the project's. The four hosts that build services (the desktop's two
+  sites, the CLI's `graphRuntime` call and the testkit project) pass
+  `config.models.image`.
+- `GenEstimateContext.imageModel` is optional rather than `''` when absent, so the three
+  plugin tests that build a context by hand keep compiling; the node estimates read
+  `ctx.imageModel ?? ''`, which prices as the unknown model the plan describes.
+- The node pickers gain an "Inherit (project image model)" row at Stage 2 rather than
+  Stage 5, because a `listenum` over a value its rows do not hold shows nothing. Stage 5
+  replaces the label with the model's id. Whether path.ux's `DropBox` shows an empty
+  string value correctly is unverified until the app runs; that check is owed.

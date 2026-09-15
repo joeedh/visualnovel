@@ -84,6 +84,7 @@ export class GengraphPart {
           store       : project.store,
           providers   : deps.providers,
           imageBackend: deps.imageBackend,
+          imageModel  : project.config.models.image,
           blobs       : graphBlobStore(project.paths, slug),
           ...(deps.keys === undefined ? {} : { keys: deps.keys }),
         }),
@@ -217,6 +218,7 @@ export class GengraphPart {
     const { config } = await loadProject(this.session.dir);
     const counted = estimateGraph(read.graph, {
       maxRefineAttempts: config.max_refine_attempts,
+      imageModel       : config.models.image,
     });
     const estimate = priceEstimate(counted.lines, await hostPriceTables());
     const asOf = estimate.pricesAsOf;
@@ -241,6 +243,7 @@ export class GengraphPart {
       store       : project.store,
       providers   : deps.providers,
       imageBackend: deps.imageBackend,
+      imageModel  : project.config.models.image,
       ...(deps.keys === undefined ? {} : { keys: deps.keys }),
     });
 

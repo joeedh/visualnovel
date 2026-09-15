@@ -42,6 +42,11 @@ export interface GenImageInput {
  * wrote to. The host adapter reads them out of whichever store holds them.
  */
 export interface GenImageService {
+  /**
+   * The project's `models.image`, which a node whose own model prop is empty draws with. The
+   * runtime resolves it before the call, so neither call below ever sees an empty model id.
+   */
+  defaultModel: string;
   generate(prompt: string, refs: GenImageInput[], params: ImageParams): Promise<ImageResult>;
   edit(
     base: GenImageInput,

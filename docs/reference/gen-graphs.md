@@ -140,9 +140,14 @@ models.
   from it.
 - `slotProp` names the prop holding the slot the node fills. Only an output node has a
   `slotProp`.
-- `estimate(props, {connected})` returns what one run is expected to spend, before
-  anything has run, in `image`, `mtok-in` or `mtok-out` units. A type with no estimate
-  counts as spending nothing.
+- `estimate(props, {connected, imageModel?})` returns what one run is expected to spend,
+  before anything has run, in `image`, `mtok-in` or `mtok-out` units. A type with no
+  estimate counts as spending nothing. `imageModel` is the project's `models.image`, which
+  a host passes through `estimateGraph` so an inherit node prices against the model it
+  will draw with.
+- `imageModelProp` names the prop holding an image model id, where an empty value means
+  the project's `models.image`. `graphHashes` hashes the resolved model in the prop's
+  place, and `registerGenNode` refuses a name that is no prop on the class.
 - `seededInput` names the input socket a host fills before a run. Its value belongs to the
   task rather than to the graph, so `authoredHashes` ignores the seeded value.
 - `refineInput` names the socket that a refine pass re-enters at. `refineFallback` marks
@@ -161,26 +166,36 @@ path.ux's coercion.
 
 `registerGenNodes` registers the twelve built-in types:
 
-| Type               | Shown as       | What it does                                                                                                                  | Spec                             |
-| ------------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| `GenDerivedPrompt` | Derived prompt | Passes through the prompt the host derived for the bound slot.                                                                | seeded `prompt`, refine fallback |
-| `GenTaskRefs`      | Task refs      | Passes through the task's reference pictures, seeded as the JSON an `AssetRef[]` writes to.                                   | seeded `assets`                  |
-| `GenRefinePrompt`  | Refine prompt  | Carries the critique a refine pass wrote; empty until one has run.                                                            | seeded `text`                    |
-| `GenSlotRef`       | Slot ref       | Reads whatever asset another slot holds when the graph runs, such as a plate or a sheet.                                      |                                  |
-| `GenImageFile`     | Image file     | Names a picture already in the asset store, by content hash and extension.                                                    |                                  |
-| `GenTemplate`      | Text           | Authored text with `{varA}`, `{varB}` and `{varC}` replaced by what feeds those inputs. A template naming none is plain text. | migration v1→v2                  |
-| `GenRewrite`       | LLM rewrite    | Rewrites its input through a text model, under an instruction and a system prompt.                                            | spends                           |
-| `GenImage`         | Generate image | Draws a picture from a prompt, references and an optional critique, with model, aspect and seed props.                        | spends, refine input `refine`    |
-| `GenEditImage`     | Edit image     | Redraws the picture feeding it, guided by a prompt and further references.                                                    | spends                           |
-| `GenRefList`       | Reference list | Collects pictures into one ordered list: the list input first, then `a`, `b` and `c`.                                         |                                  |
-| `GenSwitch`        | Switch         | Passes on picture `a` or picture `b`, so a branch is tried without rewiring.                                                  |                                  |
-| `GenOutput`        | Output image   | Fills the named slot with the picture feeding it. Declares no output socket; its runtime returns the terminal picture.        | slot prop `slot`, `active`       |
+| Type               | Shown as       | What it does                                                                                                                                                | Spec                                                    |
+| ------------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `GenDerivedPrompt` | Derived prompt | Passes through the prompt the host derived for the bound slot.                                                                                              | seeded `prompt`, refine fallback                        |
+| `GenTaskRefs`      | Task refs      | Passes through the task's reference pictures, seeded as the JSON an `AssetRef[]` writes to.                                                                 | seeded `assets`                                         |
+| `GenRefinePrompt`  | Refine prompt  | Carries the critique a refine pass wrote; empty until one has run.                                                                                          | seeded `text`                                           |
+| `GenSlotRef`       | Slot ref       | Reads whatever asset another slot holds when the graph runs, such as a plate or a sheet.                                                                    |                                                         |
+| `GenImageFile`     | Image file     | Names a picture already in the asset store, by content hash and extension.                                                                                  |                                                         |
+| `GenTemplate`      | Text           | Authored text with `{varA}`, `{varB}` and `{varC}` replaced by what feeds those inputs. A template naming none is plain text.                               | migration v1→v2                                         |
+| `GenRewrite`       | LLM rewrite    | Rewrites its input through a text model, under an instruction and a system prompt.                                                                          | spends                                                  |
+| `GenImage`         | Generate image | Draws a picture from a prompt, references and an optional critique, with model, aspect and seed props. An empty model draws with the project's image model. | spends, refine input `refine`, image model prop `model` |
+| `GenEditImage`     | Edit image     | Redraws the picture feeding it, guided by a prompt and further references. An empty model redraws with the project's image model.                           | spends, image model prop `model`                        |
+| `GenRefList`       | Reference list | Collects pictures into one ordered list: the list input first, then `a`, `b` and `c`.                                                                       |                                                         |
+| `GenSwitch`        | Switch         | Passes on picture `a` or picture `b`, so a branch is tried without rewiring.                                                                                |                                                         |
+| `GenOutput`        | Output image   | Fills the named slot with the picture feeding it. Declares no output socket; its runtime returns the terminal picture.                                      | slot prop `slot`, `active`                              |
 
 - The three host-seeded nodes take their value on an input socket rather than in a prop.
   Taking the value on a socket lets `graphHashes` read a seeded value through the socket's
   default with no special case, and keeps the seeded prompt out of the document's authored
   state. `seedInputs` refuses to seed an input the type does not declare, so a fourth
   seeded type cannot count task state as authored.
+- The image nodes' `model` prop defaults to empty, which means the project's
+  `models.image`. The runtime resolves it to `GenServices.image.defaultModel` before the
+  call, so no backend and no cache sees an empty id; the run hash carries the resolved
+  model, so changing the project's model re-runs every inherit node rather than resuming
+  the picture the old model drew; the authored hash does not, because the file did not
+  change. A node written before this default keeps the literal `gemini-2.5-flash-image` it
+  was saved with and draws with it whatever the project's model is; clear the prop to
+  inherit. The picker's first row, "Inherit (project image model)", leaves it empty. In
+  the DSL an omitted `model` is the same as an empty one, since `graphToDSL` omits a prop
+  at its default.
 - The image nodes store their seed as a string, and an empty string means the seed is
   unauthored, because a `FloatProperty` always carries a value and zero is a valid seed. A
   seed that does not read as a number is refused rather than dropped. `GenRewrite`'s
@@ -208,6 +223,9 @@ a test:
   reference pictures as bytes, because a node's references come from the blob store its
   upstream wrote to. The image service is the byte-level `ImageBackend` seam, so a graph
   and a task runner produce the same picture from the same prompt and refs.
+  `image.defaultModel` is the project's `models.image`, which an image node with an empty
+  model prop draws with; `executeGenGraph` reads the same field to hash the resolved model
+  in the prop's place.
 - `text.complete(modelId, prompt, system?)` and `text.structured(...)`. The host's text
   service sends every call to the project's one configured text provider. The model
   specified by a node is recorded rather than used for routing.

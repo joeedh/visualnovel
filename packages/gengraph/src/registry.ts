@@ -31,6 +31,11 @@ export interface GenCostLine {
 export interface GenEstimateContext {
   /** Input socket keys wired to something upstream. */
   connected: ReadonlySet<string>;
+  /**
+   * The project's image model, which a node whose `imageModelProp` is empty prices against.
+   * Absent when the host passed none, and such a node then prices as an unknown model.
+   */
+  imageModel?: string;
 }
 
 /** Answers what one run of a node is expected to spend. */
@@ -65,6 +70,12 @@ export interface GenNodeSpec {
   /** What one run costs. A type with no estimate is taken to spend nothing. */
   estimate?: GenNodeEstimate;
   /**
+   * Names the prop holding an image model id, where an empty value means the project's
+   * `models.image`. The run hash and the estimate read the resolved id in its place, so a
+   * change of project model re-runs and re-prices the node.
+   */
+  imageModelProp?: string;
+  /**
    * Names the input socket a host fills before a run. Its value belongs to the task rather
    * than to the graph, so `authoredHashes` reads it as though nothing had been seeded.
    */
@@ -83,19 +94,30 @@ const runtimes = new Map<string, GenNodeRun>();
 
 /**
  * Registers a node type with path.ux and records its generator spec. A declared
- * slotProp or seededInput is checked against a constructed instance, so a typo fails here
- * rather than silently leaving an output node unable to name the slot it fills, or a
- * seeded value counted as authored graph state.
+ * slotProp, imageModelProp or seededInput is checked against a constructed instance, so a
+ * typo fails here rather than silently leaving an output node unable to name the slot it
+ * fills, an inherit node hashed at its empty model, or a seeded value counted as authored
+ * graph state.
  */
 export function registerGenNode(spec: GenNodeSpec): void {
   registerNodeType(spec.cls);
 
   const typeName = spec.cls.graphDef().typeName;
 
-  if (spec.slotProp !== undefined || spec.seededInput !== undefined || spec.migrations) {
+  if (
+    spec.slotProp !== undefined ||
+    spec.imageModelProp !== undefined ||
+    spec.seededInput !== undefined ||
+    spec.migrations
+  ) {
     const probe = new spec.cls();
     if (spec.slotProp !== undefined && probe.props[spec.slotProp] === undefined) {
       throw new Error(`${typeName}: slotProp '${spec.slotProp}' names no prop on this node type`);
+    }
+    if (spec.imageModelProp !== undefined && probe.props[spec.imageModelProp] === undefined) {
+      throw new Error(
+        `${typeName}: imageModelProp '${spec.imageModelProp}' names no prop on this node type`,
+      );
     }
     if (spec.seededInput !== undefined && probe.inputs[spec.seededInput] === undefined) {
       throw new Error(

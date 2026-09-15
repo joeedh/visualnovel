@@ -26,6 +26,12 @@ export interface GenServicesDeps {
   /** The byte-level image seam, from `createImageBackend` or a mock backend. */
   imageBackend: ImageBackend;
   /**
+   * The project's `models.image`, which an image node with an empty model prop draws with.
+   * Passed rather than read off `imageBackend.modelId`, because a mock backend's id is not the
+   * project's, and the run hash and the task's own key must agree on the model.
+   */
+  imageModel: string;
+  /**
    * Where a node's intermediate pictures land, from `@vn/gengraph/state`. A caller with no
    * graph behind it leaves this out, and every blob call then refuses by name.
    */
@@ -132,6 +138,7 @@ export function createGenServices(deps: GenServicesDeps): GenServices {
 
   return {
     image: {
+      defaultModel: deps.imageModel,
       generate: (
         prompt: string,
         refs: GenImageInput[],
