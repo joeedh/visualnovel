@@ -5,6 +5,7 @@ import type {
   Character,
   ImageParams,
   Logger,
+  PagePanel,
   PanelBox,
   ProjectModel,
   Scene,
@@ -23,7 +24,14 @@ import {
 } from '@vn/model';
 import { type ProjectPaths, readShots, writeShots } from '@vn/store';
 import { makeTask } from '@vn/taskgraph';
-import { baseRefusal, cycleRefusal, firstCycle, isApproved, sceneUnblocked } from '@vn/artgen';
+import {
+  baseRefusal,
+  cycleRefusal,
+  firstCycle,
+  isApproved,
+  layoutDefect,
+  sceneUnblocked,
+} from '@vn/artgen';
 import { VnError } from '@vn/util';
 import {
   imageParams,
@@ -131,7 +139,7 @@ function refreshShotData(shot: Shot, task: AnyTask, scene: Scene): void {
   const stamp = (): void => {
     if (shot.image === undefined || shot.image === before) return;
     shot.proseHash = proseHash(scene, shot.coversLines);
-    const boxes = observedBoxes(task, shot.image);
+    const boxes = observedBoxes(task, shot.image, shot.panels);
     if (boxes) shot.panelBoxes = boxes;
     else delete shot.panelBoxes;
   };
@@ -156,17 +164,25 @@ function refreshShotData(shot: Shot, task: AnyTask, scene: Scene): void {
 }
 
 /**
- * The panel boxes a reviewer saw in `image`, from the attempt that drew it. Reviews are recorded
- * loosely typed on the attempt, so the shape is checked here rather than trusted.
+ * The panel boxes a reviewer saw in `image`, from the attempt that drew it: the measurement that
+ * matched the intended `panels` when one did (the runner's verdict trusts any reviewer's match),
+ * else the first. Reviews are recorded loosely typed on the attempt, so the shape is checked here
+ * rather than trusted.
  */
-function observedBoxes(task: AnyTask, image: string): PanelBox[] | undefined {
+function observedBoxes(
+  task: AnyTask,
+  image: string,
+  panels: readonly PagePanel[] | undefined,
+): PanelBox[] | undefined {
   const attempt = task.attempts.find((a) => a.output === image);
+  const measured: PanelBox[][] = [];
   for (const review of attempt?.reviews ?? []) {
     const parsed = defectReportSchema.safeParse(review);
     if (parsed.success && parsed.data.observed)
-      return parsed.data.observed.panels.map((p) => p.box);
+      measured.push(parsed.data.observed.panels.map((p) => p.box));
   }
-  return undefined;
+  const matched = panels && measured.find((boxes) => layoutDefect(panels, boxes) === undefined);
+  return matched ?? measured[0];
 }
 
 /**

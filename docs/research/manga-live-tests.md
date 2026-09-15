@@ -159,3 +159,174 @@ model, in the order 16:9, 3:4, 9:16.
   three, the four Recraft `styles` models, the four older OpenAI models and `muse-image`),
   and every one that serves it lands within 2.7% of the shape. Nothing here argues against
   `3:4` as the default `page_aspect`.
+
+## Stage 2 — layout and lettering (2026-09-15)
+
+### What was checked
+
+- Pages of `templates/basic`'s `rooftop` scene (seven lines, two characters), one per
+  layout template at the template's own panel count, each panel lettering one line: the
+  two-panel `diagonal-split` (L2, L3), the three-panel splash (L1–L3), the four-panel
+  `two-tier` (L1–L4), the six-panel `three-tier` (L1–L6), and an eight-panel `evenLayout`
+  page (L1–L7, one panel silent) past the bound the decomposer is told. The prompt is the
+  one `buildShotPrompt` makes for a page under `lettering: model`; the four-panel one is
+  quoted below the list.
+- Ten models: the built-in Gemini backend (`gemini-2.5-flash-image`, direct) and nine
+  through the OpenRouter plugin's `drawWithOpenRouter`, chosen from Stage 1's table to
+  span the vendors that serve `3:4` and to fit the budget. Per model, the four templates
+  at three seeds at `3:4`, `two-tier` at two seeds at `2:3`, and the eight-panel page
+  once: 15 pages, 150 in all.
+- Every page was reviewed by the pipeline's own two reviewers (`gemini-2.5-flash` and
+  `claude-opus-4-8` through `ChatVisionReviewer`, with the page's `shotSpec` under
+  `lettering: model` and no references), so the two numbers come from what the stage
+  ships: the layout-honoured rate is the reviewer's `observed` boxes matched to the
+  intended outlines by `matchPanels` at `LAYOUT_IOU`, and the lettering exact-match rate
+  is a review with no `lettering` defect. First-attempt acceptance is the runner's rule:
+  no blocking defect from either reviewer and the layout honoured.
+- A scratch driver again, not a bound graph: the same `run.mjs` as Stage 1, bundling the
+  repo's own prompt builder, backend, plugin and reviewers. Keys went through
+  `resolveKeys`; nothing printed one. The full P7 refine loop was not run (150 pages at up
+  to four attempts each would have quadrupled the spend), so attempts-to-accept is
+  reported as first-attempt acceptance rather than measured.
+
+> Art style: soft anime visual-novel illustration, cel shaded, warm lighting. A manga page
+> of 4 panels in School Rooftop (evening). Layout: panel 1: roughly square, top-left;
+> panel 2: roughly square, top-right; panel 3: roughly square, bottom-left; panel 4:
+> roughly square, bottom-right. Panel 1 (wide shot): Aiko, wearing navy winter school
+> uniform, pleated skirt, worn satchel of enamel pins; Haruki, wearing uniform. camera:
+> eye level. Panel 2 (medium shot): Aiko, wearing navy winter school uniform, pleated
+> skirt, worn satchel of enamel pins. Panel 3 (close shot): Haruki, wearing uniform. Panel
+> 4 (medium shot): Aiko, wearing navy winter school uniform, pleated skirt, worn satchel
+> of enamel pins; Haruki, wearing uniform. Lettering, verbatim: panel 1: caption "Aiko
+> pushes through the heavy door to find the rooftop already occupied. Haruki leans against
+> the fence, hands in his pockets, watching the courtyard lights flicker on."; panel 2:
+> Aiko says "Oh — sorry. I didn't think anyone came up here."; panel 3: Haruki says "Most
+> people don't. That's the appeal."; panel 4: caption "He glances at her, then back to the
+> view. Aiko hesitates, then steps up beside him.". Render as one complete comic page with
+> drawn panel borders; no UI text.
+
+### Budget and spend
+
+- `vngen cost templates/basic` before the run: 6 image calls pending at the P3 gate (4
+  `location_ref`, 2 `portrait`), none of which this check runs; unchanged after, since the
+  check never touches the project.
+- Estimated from Stage 1's per-model prices: about $8 of images plus the reviews.
+- Spent
+  $9.50 on OpenRouter across 150 calls (`usage.cost` summed; the table has each
+  model's share), plus 15 direct Gemini calls at about $0.04
+  each, so about
+  $0.60. The 292
+  review calls are not priced by either API; at published rates they are roughly $6,
+  nearly all of it Claude.
+- Latency through OpenRouter: median 47 s per page, 9 s at best, 154 s at worst. A page is
+  slower than a frame everywhere; the OpenAI and Grok models take a minute or two each.
+  Reviews: Claude 5 s median, Gemini 15 s.
+
+### Per model (the four templates, three seeds, at 3:4)
+
+"Either" is the runner's verdict, below; the two reviewer columns are each reviewer's own
+boxes. Spend is the model's 15 pages together.
+
+| Model                             | Pages | Layout honoured (either) | gemini | claude | Lettering exact (gemini) | (claude) | Accepted first try | Median s | Spend             |
+| --------------------------------- | ----- | ------------------------ | ------ | ------ | ------------------------ | -------- | ------------------ | -------- | ----------------- |
+| `gemini-2.5-flash-image` (direct) | 12    | 83%                      | 75%    | 75%    | 8%                       | 8%       | 8%                 | 7        | —                 |
+| `google/gemini-3.1-flash-image`   | 12    | 75%                      | 67%    | 67%    | 58%                      | 58%      | 42%                | 11       | $1.01             |
+| `google/gemini-3-pro-image`       | 12    | 92%                      | 83%    | 92%    | 92%                      | 92%      | 92%                | 25       | $2.03             |
+| `openai/gpt-image-2`              | 12    | 100%                     | 100%   | 83%    | 100%                     | 100%     | 100%               | 49       | $1.33             |
+| `openai/gpt-image-2.5-sunburst`   | 12    | 100%                     | 92%    | 75%    | 100%                     | 100%     | 92%                | 38       | $1.33             |
+| `bytedance-seed/seedream-5-0-pro` | 12    | 100%                     | 83%    | 92%    | 67%                      | 42%      | 50%                | 78       | $1.35             |
+| `x-ai/grok-imagine-image-2.0`     | 12    | 100%                     | 83%    | 100%   | 100%                     | 100%     | 100%               | 100      | $0.90             |
+| `qwen/qwen-image-3-pro`           | 12    | 100%                     | 92%    | 100%   | 75%                      | 42%      | 33%                | 69       | $0.60             |
+| `black-forest-labs/flux.2-pro`    | 8     | 63%                      | 38%    | 50%    | 13%                      | 13%      | 0%                 | 22       | $0.49 (4 refused) |
+| `microsoft/mai-image-2.6`         | 12    | 100%                     | 92%    | 100%   | 17%                      | 17%      | 17%                | 26       | $0.47             |
+
+### Per template (all models, at 3:4)
+
+The splash row is scored against the outline the template now has (see below).
+
+| Template          | Panels | Pages | Layout honoured (either) | gemini | claude | Lettering exact (gemini) | (claude) | Accepted first try |
+| ----------------- | ------ | ----- | ------------------------ | ------ | ------ | ------------------------ | -------- | ------------------ |
+| `diagonal-split`  | 2      | 30    | 97%                      | 93%    | 80%    | 77%                      | 73%      | 70%                |
+| `splash-over-two` | 3      | 29    | 100%                     | 90%    | 100%   | 66%                      | 59%      | 55%                |
+| `two-tier`        | 4      | 28    | 86%                      | 75%    | 82%    | 64%                      | 57%      | 54%                |
+| `three-tier`      | 6      | 29    | 86%                      | 69%    | 76%    | 52%                      | 45%      | 41%                |
+| `evenLayout(8)`   | 8      | 10    | 70%                      | 60%    | 50%    | 50%                      | 40%      | 40%                |
+
+### The ratio, the threshold and the reviewers
+
+| `two-tier` at | Pages | Layout honoured (either) | Lettering exact (gemini) | (claude) | Accepted first try |
+| ------------- | ----- | ------------------------ | ------------------------ | -------- | ------------------ |
+| `3:4`         | 28    | 86%                      | 64%                      | 57%      | 54%                |
+| `2:3`         | 20    | 80%                      | 60%                      | 50%      | 40%                |
+
+| IoU threshold | Layout honoured (either) | gemini | claude |
+| ------------- | ------------------------ | ------ | ------ |
+| 0.3           | 95%                      | 91%    | 86%    |
+| 0.4           | 94%                      | 84%    | 85%    |
+| 0.5           | 92%                      | 82%    | 84%    |
+| 0.6           | 85%                      | 75%    | 68%    |
+| 0.7           | 74%                      | 66%    | 49%    |
+
+- The two reviewers gave the same layout verdict on 95 of 116 pages and the same lettering
+  verdict on 109 of 116.
+- A drawn panel's median overlap with its intended box is 0.88–0.94 on `two-tier`,
+  0.74–0.87 on `three-tier`, 0.66–0.78 on `diagonal-split` (the bounding boxes of the two
+  slanted panels overlap each other, so the ceiling is lower) and 0.70–0.92 on the
+  eight-panel page.
+
+### What the tables say
+
+- **Nobody draws a splash with insets.** The template as designed (a full-page splash with
+  two small panels floating over its lower corners) was drawn by none of the ten models on
+  any of 29 pages: every one drew a splash across the top half to two thirds over a row of
+  two, with nothing overlapping. The panel count was right on 28 of 29, so this is the
+  layout being refused, not the measurement. The template is now that page,
+  `splash-over-two` (`rect(0, 0, 1, 0.6)` over two `0.5 × 0.4` panels), and against that
+  outline the same 29 pages are honoured 100% (either reviewer).
+- **The Gemini reviewer sometimes measures against the wrong edge.** On seven six-panel
+  pages its boxes ended at 0.74 of the page height, rows of 0.24 apiece, while Claude's
+  ended at 1.0; the page was laid out correctly. A reviewer's miss is therefore not proof
+  of a wrong layout, while no reviewer produced well-matched boxes for a page that was
+  wrong, so the runner now honours a page when any measuring reviewer's boxes match. That
+  is the "either" column, and it lifts the honoured rate from about 82% (either reviewer
+  alone) to 92% at the same threshold.
+- **The threshold is 0.5.** Honoured rates hold from 0.3 to 0.5 (95% to 92%) and fall away
+  above it (85% at 0.6, 74% at 0.7), because a drawn gutter and the reviewer's imprecision
+  cost every box a few percent and the slanted template's boxes overlap by design. Below
+  0.5 a box from the neighbouring tier starts to qualify.
+- **Six panels is the bound.** Layout holds to six (86%) and lettering falls steadily with
+  the count (77% exact at two panels, 52% at six, 50% at eight from ten pages); the
+  eight-panel page is honoured 70% and accepted 40%. The bound the decomposer is told
+  stays at six.
+- **`3:4` stays the default `page_aspect`.** `2:3` was not better on any number (80%
+  versus 86% honoured, 40% versus 54% accepted, on 20 versus 28 pages).
+- **Lettering is where the models divide.** Four letter a page exactly nearly every time:
+  `gpt-image-2` and `grok-imagine-image-2.0` (100%), `gpt-image-2.5-sunburst` (100%) and
+  `gemini-3-pro-image` (92%). `seedream-5-0-pro` and `qwen-image-3-pro` draw the layout
+  every time and misspell a word or two on half their pages ("AGAIINST", "courtyord").
+  Three are unfit for lettered pages: the built-in `gemini-2.5-flash-image` (8% exact,
+  garbled captions throughout), `mai-image-2.6` (17%) and `flux.2-pro` (13%, and
+  OpenRouter refused 4 of its 15 pages through Black Forest Labs' content moderation for a
+  prompt about two students on a school rooftop). Their layouts are fine, so under
+  `lettering: runner`, which draws no text, they would be ordinary; the finding is about
+  model lettering, and it means the default image model letters pages it cannot pass.
+- **Long captions fail first.** Panel 1's 28-word narration caption is the line most often
+  garbled or truncated; dialogue of a dozen words is nearly always exact on the models
+  that letter at all. A decomposer that keeps a panel's lettering short will pass more
+  pages.
+- Blocking defects other than lettering and layout were few (a missing character on 23
+  reviews, a framing miss on 4) and are the ordinary frame review, not a page problem.
+
+### Decisions settled
+
+- `page_aspect` defaults to `3:4`.
+- `LAYOUT_IOU` stays `0.5`.
+- `MAX_PANELS` stays 6.
+- `splash-with-insets` is replaced by `splash-over-two`, the page every model draws when
+  asked for the former.
+- The runner's layout verdict trusts a match from any measuring reviewer, and the planner
+  stamps that reviewer's boxes as `panelBoxes`.
+- Under `lettering: model`, `gemini-2.5-flash-image`, `mai-image-2.6` and `flux.2-pro` are
+  unfit for pages. The project default image model is the first of those, so a project
+  that wants lettered pages today should draw them through the OpenRouter plugin on one of
+  the four that pass, or wait for `lettering: runner`.

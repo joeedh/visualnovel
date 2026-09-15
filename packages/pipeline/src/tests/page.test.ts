@@ -4,7 +4,8 @@
  * end because both live at the seam between a review and the shots file.
  */
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
-import type { ShotsFile } from '@vn/types';
+import type { DefectReport, Shot, ShotsFile } from '@vn/types';
+import { layoutReport } from '../runners.js';
 
 const FILE = 'vngen/work/shots/arrival.json';
 
@@ -128,5 +129,33 @@ describe('a page shot through the pipeline', () => {
     } finally {
       await p.cleanup();
     }
+  });
+});
+
+describe('the layout verdict over several measurements', () => {
+  const shot = PAGE.shots[0] as unknown as Shot;
+  const report = (boxes: { x: number; y: number; w: number; h: number }[]): DefectReport => ({
+    reviewer: 'r',
+    defects : [],
+    observed: { panels: boxes.map((box) => ({ box })) },
+  });
+  // A page measured against its width rather than its height, as one reviewer did in the
+  // Stage 2 live check: every box sits in the top three quarters
+  const squashed = [
+    { x: 0, y: 0, w: 1, h: 0.37 },
+    { x: 0, y: 0.37, w: 1, h: 0.37 },
+  ];
+
+  it('trusts a match from any measuring reviewer over a miss from another', () => {
+    const [verdict] = layoutReport(shot, [report(squashed), report(TWO_TIERS)]);
+    expect(verdict).toEqual({ reviewer: 'layout', defects: [] });
+    expect(layoutReport(shot, [report(TWO_TIERS), report(squashed)])[0]!.defects).toEqual([]);
+  });
+
+  it('files the first miss when no measurement matches', () => {
+    const [verdict] = layoutReport(shot, [report(squashed), report([{ x: 0, y: 0, w: 1, h: 1 }])]);
+    expect(verdict!.defects).toEqual([
+      expect.objectContaining({ severity: 'blocking', category: 'layout' }),
+    ]);
   });
 });

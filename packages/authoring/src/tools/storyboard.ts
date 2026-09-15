@@ -242,7 +242,7 @@ const storyboardShotShape = z
       .string()
       .optional()
       .describe(
-        'a layout template by name (two-tier, three-tier, diagonal-split, splash-with-insets) ' +
+        'a layout template by name (two-tier, three-tier, diagonal-split, splash-over-two) ' +
           'for panels that carry no shape',
       ),
     panels: z

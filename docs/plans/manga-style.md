@@ -1,8 +1,8 @@
 # Colour manga as a second visual style
 
-**Status: partial.** Stage 1 has landed and Stage 2 is in progress; the As-shipped section
-at the end records each commit and every deviation. The proposal completed one review
-pass; the findings and resulting modifications are documented before that.
+**Status: partial.** Stages 1 and 2 have landed; the As-shipped section at the end records
+each commit and every deviation. The proposal completed one review pass; the findings and
+resulting modifications are documented before that.
 
 ## What this adds
 
@@ -177,6 +177,7 @@ The following implementation details have been validated against the codebase:
    coordinates, and bleeds extend to the unit boundary. Standard layouts (`two-tier`,
    `three-tier`, `diagonal-split`, `splash-with-insets`) are predefined in
    `packages/artgen/src/layout.ts` as starting templates for authors and the decomposer.
+   (As shipped, the splash template is `splash-over-two`; see the Stage 2 As-shipped.)
 
 6. **Deterministic layout prompt derivation.** Prompt layout descriptions are
    deterministically generated from panel polygon definitions via `layout.ts` (e.g.,
@@ -896,3 +897,34 @@ specification:
   `desktop-app-editors-story.md` and the `full-production` skill carry the same exception.
   The plan's "Export: preserve single-image export" needed no code, since the exporter
   never read panels.
+- **The Stage 2 live check
+  ([`../research/manga-live-tests.md`](../research/manga-live-tests.md#stage-2--layout-and-lettering-2026-09-15))
+  settled four of its five questions the way the code already had, and changed two
+  things.** 150 pages of `templates/basic`'s rooftop scene on ten models (the built-in
+  Gemini backend and nine through the OpenRouter plugin), reviewed by the pipeline's own
+  two reviewers; $9.50 on OpenRouter plus about $7 of direct Gemini and review calls.
+  `page_aspect` stays `3:4` (`2:3` was better on nothing), `LAYOUT_IOU` stays `0.5` (the
+  honoured rate holds to 0.5 and falls away above it), and the decomposer's bound stays at
+  six (the eight-panel page was honoured 70% and accepted 40%). The check was bounded to
+  ten models rather than every model Stage 1 listed, to keep it near the budget; and the
+  refine loop was not run, so attempts-to-accept is reported as first-attempt acceptance.
+- **`splash-with-insets` became `splash-over-two`.** None of the ten models, on any of 29
+  pages, drew two insets floating over a full-page splash; every one drew a splash across
+  the top over a row of two. The template is now that page (`rect(0, 0, 1, 0.6)` over two
+  `0.5 × 0.4` panels), which the same pages honour 100%.
+- **The layout verdict trusts a match from any measuring reviewer.** The plan had the
+  first measuring reviewer decide. The Gemini reviewer measured seven correct six-panel
+  pages against the wrong edge (boxes ending at 0.74 of the height) while Claude measured
+  them right, and no reviewer produced well-matched boxes for a wrong page, so
+  `layoutReport` files the defect only when no measurement matches, and the planner stamps
+  the matching reviewer's boxes as `panelBoxes`. That took the honoured rate from about
+  82% to 92%.
+- **Under `lettering: model`, three of the ten models are unfit for pages, and the default
+  image model is one of them.** `gemini-2.5-flash-image` lettered 1 of 12 pages exactly,
+  `mai-image-2.6` 2 of 12, `flux.2-pro` 1 of 8 (and was refused 4 pages by content
+  moderation). `gpt-image-2`, `gpt-image-2.5-sunburst`, `grok-imagine-image-2.0` and
+  `gemini-3-pro-image` lettered 92–100% exactly. Nothing in the code changes for this: the
+  default `lettering` stays `model` because `runner` is a later stage, and a project that
+  wants lettered pages now draws them through the plugin on a model that passes. Long
+  narration captions fail first, which is a note for the decomposer's prompt rather than a
+  change made here.

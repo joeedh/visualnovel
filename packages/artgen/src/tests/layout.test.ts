@@ -67,6 +67,13 @@ describe('shapeWords', () => {
     );
   });
 
+  it('describes the splash template as a top row over two, which is what models draw', () => {
+    expect(layoutWords(LAYOUT_TEMPLATES['splash-over-two']!.map((shape) => ({ shape })))).toBe(
+      'panel 1: wide, top row, full width; panel 2: roughly square, bottom-left; ' +
+        'panel 3: roughly square, bottom-right',
+    );
+  });
+
   it('numbers the panels in reading order for the page sentence', () => {
     expect(layoutWords(LAYOUT_TEMPLATES['two-tier']!.map((shape) => ({ shape })))).toBe(
       'panel 1: roughly square, top-left; panel 2: roughly square, top-right; ' +

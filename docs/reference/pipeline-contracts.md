@@ -303,9 +303,11 @@ These implement the system design in
     - `shotData.panelBoxes` holds the panel boxes the reviewer measured on the accepted
       image, from `DefectReport.observed`, which the reviewer fills only for a page. It is
       derived, like `proseHash`, and a rerun that reports the same image leaves it alone.
-      The runner matches the boxes against the intended outlines (`matchPanels`, IoU at or
-      above `LAYOUT_IOU`) and files a `layout` defect of its own when they disagree; a
-      page no reviewer measured gets no layout verdict.
+      The runner matches every reviewer's boxes against the intended outlines
+      (`matchPanels`, IoU at or above `LAYOUT_IOU`) and files a `layout` defect of its own
+      only when none of them match, because a reviewer's measurement can be off while none
+      invents a match for a wrong page; a page no reviewer measured gets no layout
+      verdict. The boxes stamped are the matching reviewer's.
     - Dry runs read the file but never write it, so a real run never reuses a mock
       decomposition.
 - Reordering a shot means editing the prose, because a shot's order comes from the

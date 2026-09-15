@@ -54,7 +54,10 @@ export const LAYOUT_TEMPLATES: Readonly<Record<string, readonly PanelShape[]>> =
       [0, 1],
     ],
   ],
-  'splash-with-insets': [rect(0, 0, 1, 1), rect(0.05, 0.65, 0.35, 0.3), rect(0.6, 0.65, 0.35, 0.3)],
+  // A splash across the top three fifths over a row of two. The Stage 2 live check asked ten
+  // models for a full-page splash with two insets floating over its lower corners, and every
+  // one of them drew this instead, so this is the layout the name promises
+  'splash-over-two': [rect(0, 0, 1, 0.6), rect(0, 0.6, 0.5, 0.4), rect(0.5, 0.6, 0.5, 0.4)],
 };
 
 /**
@@ -168,8 +171,10 @@ export function iou(a: PanelBox, b: PanelBox): number {
 
 /**
  * How much of an intended panel an observed box must cover, as intersection over union, to
- * count as that panel. Half is where the Stage 2 live check put it: a drawn gutter and a
- * reviewer's own imprecision take a few percent, and a box under half is a different panel.
+ * count as that panel. Half is where the Stage 2 live check put it: a drawn panel's median
+ * overlap with its intended box is 0.65 to 0.95 depending on the template, a drawn gutter and
+ * a reviewer's own imprecision take the rest, and the honoured rate falls away above 0.5
+ * (`docs/research/manga-live-tests.md`).
  */
 export const LAYOUT_IOU = 0.5;
 

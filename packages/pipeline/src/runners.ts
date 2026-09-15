@@ -135,6 +135,29 @@ const runModelSheet: Runner<'model_sheet'> = async (task, deps) => {
 };
 
 /**
+ * The layout verdict on a page, as one more report beside the reviewers': every measuring
+ * reviewer's boxes matched to the intended panels, and the page honoured when any of them match.
+ * A reviewer's measurement can be off (the Stage 2 live check caught one scaling a page by its
+ * width) while none invents well-matched boxes for a wrong layout, so a match from any reviewer
+ * is trusted and the defect names the first reviewer's miss. A page no reviewer measured gets no
+ * verdict, so a reviewer that answers nothing about panels cannot block every page.
+ */
+export function layoutReport(
+  shot: Shot | undefined,
+  reports: readonly DefectReport[],
+): DefectReport[] {
+  if (!shot?.panels) return [];
+  const measured = reports.flatMap((r) =>
+    r.observed ? [r.observed.panels.map((p) => p.box)] : [],
+  );
+  if (measured.length === 0) return [];
+  const defects = measured.map((boxes) => layoutDefect(shot.panels!, boxes));
+  const first = defects.find((d) => d !== undefined);
+  const honoured = defects.some((d) => d === undefined);
+  return [{ reviewer: 'layout', defects: honoured || !first ? [] : [first] }];
+}
+
+/**
  * P7 generate → critique → refine loop (report §P7), folded into the shot runner so every
  * attempt is recorded on the task for provenance. Each attempt: generate the image, have
  * every vision reviewer critique it against the shot spec, merge the verdicts. A clean (no
@@ -143,22 +166,6 @@ const runModelSheet: Runner<'model_sheet'> = async (task, deps) => {
  * is flagged `needs_human` rather than silently shipping a flawed frame. The loop also gives up
  * early when a refinement changes nothing.
  */
-/**
- * The layout verdict on a page, as one more report beside the reviewers': the boxes the first
- * reviewer that measured any saw, matched to the intended panels. A page no reviewer measured
- * gets no verdict, so a reviewer that answers nothing about panels cannot block every page.
- */
-function layoutReport(shot: Shot | undefined, reports: readonly DefectReport[]): DefectReport[] {
-  if (!shot?.panels) return [];
-  const seen = reports.find((r) => r.observed !== undefined)?.observed;
-  if (!seen) return [];
-  const defect = layoutDefect(
-    shot.panels,
-    seen.panels.map((p) => p.box),
-  );
-  return [{ reviewer: 'layout', defects: defect ? [defect] : [] }];
-}
-
 function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
   return async (task, deps) => {
     const found = findShot(deps, task.inputs.shotId);
