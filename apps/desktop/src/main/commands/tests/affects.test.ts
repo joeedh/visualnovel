@@ -450,6 +450,7 @@ const SKIPS: Record<string, string> = {
   'asset.upload'          : 'copies an image in from outside the workspace',
   'gate.approve'          : 'approves a portrait candidate a real run has to have drawn',
   'gengraph.run'          : 'executes a graph through real providers; the command declares no mock',
+  'models.refresh'        : 'asks OpenRouter for its model listing over the network',
   'notify.deleteAll':
     'truncates the notification log, which is a process-global rather than a session member',
   'pipeline.approveAndRun': 'runs the pipeline with real keys, by design',

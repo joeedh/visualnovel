@@ -1,10 +1,10 @@
 # OpenRouter as a built-in image backend, and one image model to inherit from
 
-**Status: planned.** Written 2026-09-15 after the manga-style Stage 2 live check found the
-default image model unfit for lettered pages while three OpenRouter-routed models were
-not, and there was no way to say so in `project.yaml` without a plugin graph on every
-slot. Pressure-tested the same day; the findings and what changed are in the Review
-section.
+**Status: Stages 1 to 5 shipped on 2026-09-15; Stage 6, the live check, is owed.** Written
+2026-09-15 after the manga-style Stage 2 live check found the default image model unfit
+for lettered pages while three OpenRouter-routed models were not, and there was no way to
+say so in `project.yaml` without a plugin graph on every slot. Pressure-tested the same
+day; the findings and what changed are in the Review section.
 
 ## What this adds
 
@@ -582,3 +582,80 @@ Stage 4 (the setting), and what differed from the plan:
 - `docs/reference/desktop-app-editors-misc.md`'s Project section said one field was
   editable; it now says two and describes the dropdown. `docs/reference/module-map.md`'s
   `config.ts` row names `setImageModel`.
+
+Stage 5 (the catalog), and what differed from the plan:
+
+- Two of the "Needs verification" items were settled by reading the two endpoints without
+  a key on 2026-09-15. `GET /api/v1/images/models` answers without one (52 models) and so
+  does each `/endpoints`. The endpoints record states a per-picture price only for models
+  billed per picture (`billable: output_image, unit: image`; 26 of the 52, Recraft,
+  Seedream, Qwen, xAI, Sourceful); OpenAI's, Google's and Microsoft's are billed per
+  output token and Black Forest Labs' per megapixel, and those are written without
+  `priceUsd` rather than priced from a guessed token count. `perImagePrice` takes the row
+  with no `variant` as the base tier, or the cheapest tier where every row names one. So
+  the graph estimate still says "no price for `openai/gpt-image-2`" after a refresh, and
+  the claim in "What this adds" holds for the per-picture models only. The listing also
+  declares `input_references.max` per model (1 to 16), which answers the reference-cap
+  question in Risks; it is not carried into the catalog, and a refusal is still quoted
+  rather than pre-empted.
+- `readModelCatalog`, `writeModelCatalog` and `catalogPriceTable` live in
+  `packages/gengraph/src/modelstore.ts` under `@vn/gengraph/state`, beside
+  `pricestore.ts`, which is where `readUserPrices` is; the plan placed the read in
+  `@vn/pipeline`, which only hosts `hostPriceTables`. `@vn/pipeline` re-exports
+  `readModelCatalog` from `graphload.ts` so the CLI, which does not depend on the graph
+  package directly, reads the listing for its router through the package it already has.
+- The fetch is `listOpenRouterImageModels(fetchImpl)` in
+  `packages/providers/src/backends/openrouterlist.ts`, and the schemas are
+  `packages/types/src/imagemodels.ts`. The listing's `supported_parameters` is read for
+  `aspect_ratio.values` and the presence of `seed` and otherwise passed through, so a new
+  parameter cannot fail the parse.
+- The seed refusal is `createOpenRouterImage`'s `seed: false` option, and the router takes
+  a `catalog` option (`id` and `seed` per entry) that its default builder reads it from;
+  `createProviders` passes the same option through. Both hosts' `buildGenDeps` (the
+  desktop's and the CLI's) read the cached listing and pass it, so a task with an authored
+  seed is refused by name at the seam for a model the listing says takes none.
+- The pickers' rows are one function, `imageModelChoices` in
+  `packages/gengraph/src/modelcatalog.ts`, which the Project editor reaches through
+  `imageModelRows` in `rules/projectbar.ts` and the node pickers through an `EnumProperty`
+  built per resolution with the row's label as its ui name and its tooltip as its
+  description, so a `<vendor>/<model>` id is drawn as written rather than title-cased. The
+  node picker adds the node's own value by reading it off the row's data path when the
+  rows are resolved. A Google model reached through OpenRouter carries "routed by
+  OpenRouter" without the zero-data-retention clause, as Decision 6 says.
+- path.ux's `DropBox` keeps the first `EnumProperty` it resolved for its button label
+  (`this.prop`, set once in `_updateFromPath`), while the menu it opens resolves the rows
+  afresh. A node frame built before the first project view arrived therefore opens a menu
+  with the full list and the "Inherit (`<models.image>`)" row, but its button says
+  "Inherit (project image model)" until the frame is rebuilt; checked in the running app.
+  A frame built after the view arrived is right from the start. Left as is rather than
+  rebuilding every node frame on each project-view read.
+- The shell's read is `refreshProjectView` in `renderer/pathux/app/bridge.ts`: it runs
+  `project.info` through `command:exec` directly (so a refusal with no project open is not
+  said out loud), hands `imageModels` to `setModelCatalog`, and tells `onProjectView`
+  watchers. It runs with every `refreshWorkspace` (which a `project.yaml` write reaches
+  through `documents:wrote`) and after a successful `models.refresh` by id, since that
+  command writes nothing in the workspace. The Project editor no longer reads
+  `project.info` itself: its reload asks the bridge, and it paints what every watcher is
+  told, so the read has one owner. `ProjectView.imageModels` is a `ModelCatalog` of the
+  shipped ids, the cached OpenRouter rows, the project's model and the listing's date.
+- `models.refresh` (`apps/desktop/src/main/commands/models.ts`, a new `models` namespace)
+  has no `check` beyond naming the file it writes; its message counts the models listed,
+  those with a per-picture price, and any endpoints calls that failed. `affects.test.ts`
+  skips it, as it skips `plugin.prices`, because it reaches the network; the write is
+  covered in `session.test.ts` with a fake fetch, including the failing listing that
+  leaves the file alone. The plan said the harness gains both commands.
+- Refresh models is drawn on the Project editor inside the picker's row frame and on the
+  Gen Graph pane's bar (`refreshModelsAction` in `rules/models.ts`, shared by both rule
+  modules), refused with no project open since the command runs in a workspace session.
+  The Gen Graph pane records it in its own `models` pass and re-records it from every
+  project view, so the date in its tooltip follows a refresh.
+- `hostPriceTables` appends the listing's table after the plugin fragments, as the plan
+  says, by passing it in `genPriceTables`'s `plugins` list rather than adding a fourth
+  parameter.
+- The anchor sweep was re-run (80 of 174 commands anchored); both Refresh models buttons
+  are anchored. `models.refresh` was also run once in the live app against the real
+  endpoints, which wrote 52 models to this machine's `<user>/models.json` and redrew both
+  pickers with 53 and 54 rows.
+- `docs/reference/pipeline-contracts.md`'s provider-seams bullet, `desktopAppState.md`'s
+  persistence table, `gen-graphs.md`'s image-node bullets, the Project section of
+  `desktop-app-editors-misc.md` and four `module-map.md` rows were updated.

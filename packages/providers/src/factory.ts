@@ -1,4 +1,10 @@
-import { chatVendorFor, imageVendorOf, type EffortChoice, type Providers } from '@vn/types';
+import {
+  chatVendorFor,
+  imageVendorOf,
+  type EffortChoice,
+  type ImageModelEntry,
+  type Providers,
+} from '@vn/types';
 import { missingKeyError, type KeyVendor, type ProjectConfig, type ResolvedKeys } from '@vn/config';
 import { ProviderError } from '@vn/util';
 import type { ChatBackend, ImageBackend, RefLoader } from './backend.js';
@@ -59,10 +65,28 @@ export type ImageBackendBuilder = (
   modelId: string,
 ) => ImageBackend;
 
-const buildImageBackend: ImageBackendBuilder = (vendor, apiKey, modelId) =>
-  vendor === 'openrouter'
-    ? createOpenRouterImage(apiKey, modelId)
-    : createGeminiImage(apiKey, modelId);
+export interface ImageBackendOptions {
+  build?: ImageBackendBuilder;
+  /**
+   * The cached OpenRouter listing, so a model it says takes no seed refuses one by name rather
+   * than sending it. A model the listing lacks is built as if it took one.
+   */
+  catalog?: readonly Pick<ImageModelEntry, 'id' | 'seed'>[];
+}
+
+function imageBackendBuilder(
+  catalog: readonly Pick<ImageModelEntry, 'id' | 'seed'>[],
+): ImageBackendBuilder {
+  return (vendor, apiKey, modelId) => {
+    if (vendor !== 'openrouter') return createGeminiImage(apiKey, modelId);
+    const listed = catalog.find((entry) => entry.id === modelId);
+    return createOpenRouterImage(
+      apiKey,
+      modelId,
+      listed === undefined ? {} : { seed: listed.seed },
+    );
+  };
+}
 
 /**
  * The byte-level image seam. Its `modelId` is the project's `models.image`, and each call is
@@ -78,9 +102,9 @@ const buildImageBackend: ImageBackendBuilder = (vendor, apiKey, modelId) =>
 export function createImageBackend(
   config: ProjectConfig,
   keys: ResolvedKeys,
-  opts: { build?: ImageBackendBuilder } = {},
+  opts: ImageBackendOptions = {},
 ): ImageBackend {
-  const build = opts.build ?? buildImageBackend;
+  const build = opts.build ?? imageBackendBuilder(opts.catalog ?? []);
   const built = new Map<string, ImageBackend>();
 
   const backendFor = (modelId: string): ImageBackend => {
@@ -121,10 +145,15 @@ export function createProviders(opts: {
   config: ProjectConfig;
   keys: ResolvedKeys;
   loadRef: RefLoader;
+  /** Passed to the image router; see {@link ImageBackendOptions}. */
+  catalog?: ImageBackendOptions['catalog'];
 }): Providers {
-  const { config, keys, loadRef } = opts;
+  const { config, keys, loadRef, catalog } = opts;
 
-  const image = new BackendImageProvider(createImageBackend(config, keys), loadRef);
+  const image = new BackendImageProvider(
+    createImageBackend(config, keys, catalog === undefined ? {} : { catalog }),
+    loadRef,
+  );
 
   const reviewers = config.models.vision.map((modelId) => {
     const { backend, label } = chatBackendFor(modelId, keys);

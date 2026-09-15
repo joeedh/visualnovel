@@ -2,8 +2,8 @@
 
 # Registered commands
 
-173 commands, in 22 namespaces. 97 are `mutating`;
-110 declare a precondition; 65 are undoable; 20 ask
+174 commands, in 23 namespaces. 98 are `mutating`;
+111 declare a precondition; 65 are undoable; 20 ask
 for confirmation.
 
 ✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
@@ -81,6 +81,7 @@ for confirmation.
 | `gengraph.unlink` ✍ ↺ ✓ | `slug`, `to`, `toSocket`, `from` (default `''`), `fromSocket` (default `''`), `group` (default `''`) | Writes `vngen/work/graphs`. Sever what feeds an input. Naming a source severs that one edge; naming none severs every edge into the socket. |
 | `interaction.list` | — | The gestures the app offers — see below. |
 | `interaction.targets` | `interaction` (`branch.connect`\|`branch.splice`\|`branch.unwire`\|`prompt.reorder`\|`script.moveLine`\|`timeline.cover`\|`timeline.create`\|`timeline.reorder`), `carried`, `scene` (default `''`), `asset` (default `''`) | Every target of a gesture, accepted or refused with why. `scene` and `asset` build the state the named gesture is judged against. |
+| `models.refresh` ✍ ✓ | — | Writes `<user>/models.json`. |
 | `notify.clear` | `ids` | — |
 | `notify.deleteAll` ✍ ⚠ ✓ | — | Writes `vngen/state/notifications.jsonl`. |
 | `notify.follow` | `id` | — |

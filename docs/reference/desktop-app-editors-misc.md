@@ -207,20 +207,29 @@ clause in the Asset pane opens this editor `elsewhere` and scrolls to the field.
   entry only when indented text follows it. Comments, key order and the author's own
   quoting are preserved, and undo restores the file byte-for-byte.
 - **The image model is a dropdown.** The `models.image` row is a path.ux `DropBox` opened
-  in search mode, with one row per model id (`imageModelRows` in `rules/projectbar.ts`:
-  the shipped Gemini ids, plus the file's current value when the list lacks it) and a
-  tooltip per row saying which vendor draws it. Picking a row runs `project.setImageModel`
-  at once, with the command's own confirmation, which refuses an id whose vendor has no
-  key and otherwise counts the image tasks it re-keys, the way the art style does.
-  `withImageModel` splices the `image:` line inside the `models:` block, or inserts the
-  block after `title:` when the file has none. The control is recorded through one Offer
-  that supplies `model`, since a `MenuTemplate` row cannot carry an Offer of its own.
+  in search mode, with one row per model id (`imageModelRows` in `rules/projectbar.ts`,
+  over `imageModelChoices` in `@vn/gengraph`: the shipped Gemini ids, the cached
+  OpenRouter listing, plus the file's current value when the list lacks it) and a tooltip
+  per row saying which vendor draws it, and for an OpenRouter row its price, ratios and
+  seed. Picking a row runs `project.setImageModel` at once, with the command's own
+  confirmation, which refuses an id whose vendor has no key and otherwise counts the image
+  tasks it re-keys, the way the art style does. `withImageModel` splices the `image:` line
+  inside the `models:` block, or inserts the block after `title:` when the file has none.
+  The control is recorded through one Offer that supplies `model`, since a `MenuTemplate`
+  row cannot carry an Offer of its own.
+- **Refresh models, beside the dropdown,** runs `models.refresh`, which fetches
+  OpenRouter's image-model listing into `<user>/models.json`; its tooltip says the cached
+  listing's date, or that there is none. Nothing refreshes on its own: the Gen Graph pane
+  draws the same button, and both pickers read the one snapshot the shell sets from every
+  `project.info` answer (`refreshProjectView` in `app/bridge.ts`, re-run after every
+  workspace refresh and after `models.refresh`).
 - **Reads through `project.info`, not a bespoke channel.** Every other editor reads
   through a non-mutating command, and a twelfth IPC channel for the twelfth editor would
-  have been the first surface in the app to reach around the registry. `project.info`
-  deliberately omits the `keys` block. Those entries are the names of env vars rather than
-  their values, so they are safe to print, but a screenshot of a settings pane listing
-  them would look like it lists the values.
+  have been the first surface in the app to reach around the registry. The shell owns the
+  read: the pane asks the bridge to re-read, and paints what every pane is told.
+  `project.info` deliberately omits the `keys` block. Those entries are the names of env
+  vars rather than their values, so they are safe to print, but a screenshot of a settings
+  pane listing them would look like it lists the values.
 
 ## System Prompt
 

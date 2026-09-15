@@ -1218,6 +1218,56 @@ describe('WorkspaceSession — project settings', () => {
     expect(await session.previewImageModel('openai/gpt-image-2')).toMatchObject({ ok: false });
   });
 
+  // jest sets `$VNAUTHOR_HOME` per worker, so the listing lands in a directory this worker owns
+  it('caches the OpenRouter listing for the pickers, and leaves it alone when the fetch fails', async () => {
+    const answer = (body: unknown, status = 200): Response =>
+      new Response(typeof body === 'string' ? body : JSON.stringify(body), { status });
+    const listing = {
+      data: [
+        {
+          id                  : 'openai/gpt-image-2',
+          name                : 'GPT Image 2',
+          supported_parameters: { aspect_ratio: { values: ['1:1'] } },
+        },
+      ],
+    };
+    const priced = {
+      endpoints: [{ pricing: [{ billable: 'output_image', unit: 'image', cost_usd: 0.05 }] }],
+    };
+    const fetchImpl = ((url: string) =>
+      Promise.resolve(url.endsWith('/endpoints') ? answer(priced) : answer(listing))) as never;
+
+    const before = (await session.projectView()).imageModels;
+    expect(before.openrouter).toEqual([]);
+    expect(before.asOf).toBeUndefined();
+    expect(before.shipped).toContain('gemini-2.5-flash-image');
+
+    const done = await session.refreshModelCatalog(fetchImpl);
+    expect(done).toMatchObject({ ok: true, listed: 1 });
+    expect((done as { message: string }).message).toMatch(
+      /^Listed 1 OpenRouter image model\(s\) as of \d{4}-\d{2}-\d{2}, 1 with a per-picture price\.$/,
+    );
+    const after = (await session.projectView()).imageModels;
+    expect(after.openrouter).toEqual([
+      {
+        id      : 'openai/gpt-image-2',
+        name    : 'GPT Image 2',
+        aspects : ['1:1'],
+        seed    : false,
+        priceUsd: 0.05,
+      },
+    ]);
+    expect(after.asOf).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(after.default).toBe('openai/gpt-image-2');
+
+    const failing = (() => Promise.resolve(answer('busy', 503))) as never;
+    expect(await session.refreshModelCatalog(failing)).toEqual({
+      ok    : false,
+      reason: '503 OpenRouter: busy',
+    });
+    expect((await session.projectView()).imageModels).toEqual(after);
+  });
+
   it('writes the storyboard notes beside the art style, and says they re-key nothing', async () => {
     const preview = await session.previewStoryboardNotes('pages of four to six panels');
     expect(preview).toMatchObject({ ok: true });

@@ -7,6 +7,7 @@
  * context rather than its props, so there is nothing to thread it through.
  */
 import { message as note, error as noteError } from 'pathux';
+import { setModelCatalog } from '@vn/gengraph';
 import {
   DEFAULT_BUDGET,
   EFFORT_CHOICES,
@@ -24,6 +25,7 @@ import type {
   ExecOutcome,
   Notification,
   NotificationInput,
+  ProjectView,
   PropValue,
   UiEffect,
 } from '../../../src/shared/ipc.js';
@@ -99,6 +101,42 @@ export async function refreshWorkspace(): Promise<void> {
   ui.errors = index.diagnostics.filter((d) => d.severity === 'error').length;
   ui.warnings = index.diagnostics.length - ui.errors;
   touch();
+  void refreshProjectView();
+}
+
+type ProjectViewWatcher = (view: ProjectView | undefined) => void;
+
+const projectWatchers = new Set<ProjectViewWatcher>();
+
+/**
+ * Watch the project view the shell reads. It is re-read with every workspace refresh, so a
+ * `project.yaml` write reaches it, and after `models.refresh`, which writes outside the workspace.
+ */
+export function onProjectView(watcher: ProjectViewWatcher): () => void {
+  projectWatchers.add(watcher);
+  return () => projectWatchers.delete(watcher);
+}
+
+/** The commands whose outcome moves the project view without writing anything in the workspace. */
+const REFETCHES_PROJECT = new Set(['models.refresh']);
+
+/**
+ * Re-read `project.yaml` as the run reads it, and hand its image-model catalog to `@vn/gengraph`,
+ * so the Project editor's dropdown and the node frames' pickers draw one snapshot and the inherit
+ * row names the model the file says. With no project open the snapshot is cleared.
+ */
+export async function refreshProjectView(): Promise<ProjectView | undefined> {
+  // Invoked directly rather than through `exec`, which would say the refusal out loud: with no
+  // project open there is nothing to read, and that is not news
+  const outcome = await api.invoke('command:exec', {
+    id    : 'project.info',
+    props : {},
+    source: 'ui',
+  });
+  const view = outcome.ok ? (outcome.data as ProjectView) : undefined;
+  setModelCatalog(view?.imageModels);
+  for (const watcher of projectWatchers) watcher(view);
+  return view;
 }
 
 /** How long a burst of input edits is allowed to run before the header is recounted. */
@@ -215,6 +253,7 @@ export async function exec(
   // `wrote` is not raised here. Main broadcasts every write to every window, so raising it from
   // the outcome as well would tell this window twice and still tell no other window at all.
   if (outcome.ok && outcome.record.mutating) invalidate();
+  if (outcome.ok && REFETCHES_PROJECT.has(id)) void refreshProjectView();
   return outcome;
 }
 

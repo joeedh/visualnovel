@@ -12,11 +12,12 @@ export const SITUATIONS = situations<GroupState>(
   },
   {
     name : 'nodes-selected',
-    why: 'Plain nodes are selected and weighed, so Delete, Duplicate and Group are offered and Ungroup is refused; the graph draws a slot, so Asset is offered.',
+    why: 'Plain nodes are selected and weighed, so Delete, Duplicate and Group are offered and Ungroup is refused; the graph draws a slot, so Asset is offered; a listing is cached, so Refresh models says its date.',
     state: {
-      selected: [1, 2],
-      slot    : 'plate:cafe/night',
-      groups  : [],
+      selected   : [1, 2],
+      slot       : 'plate:cafe/night',
+      catalogAsOf: '2026-09-15',
+      groups     : [],
       weighed: {
         delete   : { ok: true, edit: { op: 'removeNode', node: 1 } },
         duplicate: { ok: true, edit: { op: 'duplicateNode', node: 1, pos: [120, 60] } },

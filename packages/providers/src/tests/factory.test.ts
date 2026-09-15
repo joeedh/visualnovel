@@ -108,6 +108,20 @@ describe('createImageBackend', () => {
     );
     expect(built).toEqual([]);
   });
+
+  // The default builder is the one the hosts use, so the catalog's seed flag is checked through it
+  // with a fetch that must never be reached: the refusal comes ahead of the request.
+  it('reads the catalog’s seed flag into the OpenRouter backend it builds', async () => {
+    const backend = createImageBackend(
+      config,
+      { gemini: '', anthropic: '', openrouter: 'or-key' },
+      { catalog: [{ id: 'openai/gpt-image-2', seed: false }] },
+    );
+
+    await expect(
+      backend.generate('a', [], { modelId: 'openai/gpt-image-2', seed: 4 }),
+    ).rejects.toThrow('openai/gpt-image-2 takes no seed');
+  });
 });
 
 describe('requiredVendors', () => {

@@ -32,15 +32,21 @@ import {
   graphBlobStore,
   graphDrift,
   graphSlugs,
+  catalogPriceTable,
   installedPriceTables,
   readGraphDoc,
   readGraphJournal,
+  readModelCatalog,
   readUserPrices,
   type GraphRead,
 } from '@vn/gengraph/state';
 import type { GenServicesDeps } from './genservices.js';
 import { createGenServices } from './genservices.js';
 import { indexGraphs, type GraphIndex, type LoadedGraph } from './graphrun.js';
+
+// Re-exported so a host that builds its providers through this package reads the listing the
+// router takes without a dependency on the graph package's state entry.
+export { readModelCatalog } from '@vn/gengraph/state';
 
 /** One graph as it stands on disk, with the journal its runs have written so far. */
 export interface GraphDoc {
@@ -158,14 +164,15 @@ export interface GraphsReportOptions {
 /**
  * The tables a host prices an estimate against, in the order they are consulted: the author's
  * own first, then the one this release shipped with, then whatever the installed plugins
- * declare. It reads the per-user directory rather than the project, so two projects on one
- * machine quote the same figures.
+ * declare, then the cached OpenRouter listing. It reads the per-user directory rather than the
+ * project, so two projects on one machine quote the same figures.
  */
 export async function hostPriceTables(): Promise<GenPriceTable[]> {
   const user = await readUserPrices();
+  const listed = catalogPriceTable(await readModelCatalog());
   return genPriceTables({
     ...(user === undefined ? {} : { user }),
-    plugins: await installedPriceTables(),
+    plugins: [...(await installedPriceTables()), ...(listed === undefined ? [] : [listed])],
   });
 }
 

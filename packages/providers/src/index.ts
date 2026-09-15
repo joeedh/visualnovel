@@ -32,6 +32,12 @@ export {
   type OpenRouterImageOptions,
 } from './backends/openrouter.js';
 export {
+  listOpenRouterImageModels,
+  perImagePrice,
+  OPENROUTER_MODELS_URL,
+  type OpenRouterListing,
+} from './backends/openrouterlist.js';
+export {
   captureRequest,
   capturedRequest,
   capturedRequests,

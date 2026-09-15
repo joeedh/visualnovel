@@ -123,6 +123,12 @@
 | `interaction.list` | — | The gestures the app offers — see below. |
 | `interaction.targets` | `interaction` (`branch.connect`\|`branch.splice`\|`branch.unwire`\|`prompt.reorder`\|`script.moveLine`\|`timeline.cover`\|`timeline.create`\|`timeline.reorder`), `carried`, `scene` (default `''`), `asset` (default `''`) | Every target of a gesture, accepted or refused with why. `scene` and `asset` build the state the named gesture is judged against. |
 
+## `models.`
+
+| Command | Props | Notes |
+| ------- | ----- | ----- |
+| `models.refresh` ✍ ✓ | — | Writes `<user>/models.json`. |
+
 ## `notify.`
 
 | Command | Props | Notes |

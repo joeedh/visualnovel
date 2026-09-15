@@ -25,6 +25,7 @@ import type { DescentEntry, GraphEdit } from 'pathux';
 import { graphDocPath, graphGroupPath } from '../../src/shared/writes.js';
 import { refuse, type Control, type Offer } from './anchors.js';
 import { openMenu, publish, view } from './effects.js';
+import { refreshModelsAction } from './models.js';
 import { shortcutOf } from './shortcuts.js';
 
 /** One `gengraph.*` invocation, in the shape `exec` takes. */
@@ -420,6 +421,8 @@ export interface GroupState {
   };
   /** Where an edit at the level on screen is written; none when the level no longer resolves. */
   target?: EditTarget;
+  /** The day the cached OpenRouter listing the node pickers draw was fetched; absent with none. */
+  catalogAsOf?: string;
 }
 
 export const DELETE_WHAT = 'Remove the selected nodes and sever the selected links';
@@ -559,6 +562,7 @@ export function controls(state: GroupState): readonly Offer[] {
     groupAction(state.selected, state.weighed.group, state.target),
     ungroupAction(state.groups, state.weighed.ungroup, state.target),
     assetAction(state.slot),
+    refreshModelsAction(true, state.catalogAsOf),
     reloadAction(),
   ];
 }

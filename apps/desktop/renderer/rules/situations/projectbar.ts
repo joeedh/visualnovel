@@ -15,12 +15,17 @@ export const SITUATIONS = situations<ProjectBarState>(
   },
   {
     name : 'openrouter-model',
-    why  : 'The file names an OpenRouter model, which the picker’s button shows as its label.',
-    state: { opened: true, dirty: false, imageModel: 'openai/gpt-image-2' },
+    why: 'The file names an OpenRouter model, which the picker’s button shows as its label, and a listing is cached, so Refresh models says its date.',
+    state: {
+      opened     : true,
+      dirty      : false,
+      imageModel : 'openai/gpt-image-2',
+      catalogAsOf: '2026-09-15',
+    },
   },
   {
     name : 'no-project',
-    why  : 'No project is open, so Apply, the box and the picker are refused.',
+    why  : 'No project is open, so Apply, the box, the picker and Refresh models are refused.',
     state: { opened: false, dirty: false, imageModel: '' },
   },
 );

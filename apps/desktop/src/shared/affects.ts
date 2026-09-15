@@ -33,7 +33,7 @@ export const UNDO_EXCLUDES = [
 
 /**
  * The user-level configuration directory (`userConfigDir` in `@vn/config`), which sits outside
- * every workspace. Four commands write there and no workspace-relative path can name it, so it
+ * every workspace. Five commands write there and no workspace-relative path can name it, so it
  * gets a spelling no real path can collide with. A subtree under it is written `<user>/plugins`.
  */
 export const USER_ROOT = '<user>';

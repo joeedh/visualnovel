@@ -5,6 +5,7 @@ import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
 import { errors as modelErrors, modelFromInputs } from '@vn/model';
 import { AssetStore, ProjectPaths, loadInputs } from '@vn/store';
 import { TaskGraph, loadGraph } from '@vn/taskgraph';
+import { readModelCatalog } from '@vn/pipeline';
 import {
   createImageBackend,
   createMockProviders,
@@ -89,9 +90,12 @@ export async function buildGenDeps(
     secretsDirs: await secretDirsFor(project.dir),
     require    : opts.require ?? requiredVendors(project.config),
   });
+  // The cached listing says which OpenRouter models take a seed, so the router refuses one by
+  // name rather than sending it
+  const catalog = (await readModelCatalog())?.openrouter ?? [];
   return {
-    providers   : createProviders({ config: project.config, keys, loadRef }),
-    imageBackend: createImageBackend(project.config, keys),
+    providers   : createProviders({ config: project.config, keys, loadRef, catalog }),
+    imageBackend: createImageBackend(project.config, keys, { catalog }),
     keys,
   };
 }

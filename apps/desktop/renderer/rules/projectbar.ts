@@ -1,7 +1,13 @@
-/** What the Project pane offers: its two writes, the box one is typed in, and reload. */
-import { shippedImageModels } from '@vn/gengraph';
+/** What the Project pane offers: its two writes, the box one is typed in, reload, and the refresh. */
+import {
+  imageModelChoices,
+  modelCatalog,
+  type ImageModelChoice,
+  type ModelCatalog,
+} from '@vn/gengraph';
 import { refuse, type Offer } from './anchors.js';
 import { view } from './effects.js';
+import { refreshModelsAction } from './models.js';
 
 /** What the Project pane reads when it draws its bar. */
 export interface ProjectBarState {
@@ -10,28 +16,21 @@ export interface ProjectBarState {
   dirty: boolean;
   /** The image model `project.yaml` names, which the picker's button shows. */
   imageModel: string;
-}
-
-/** One row of the image-model picker: the id it writes, and what its tooltip says. */
-export interface ImageModelRow {
-  id: string;
-  tooltip: string;
+  /** The day the cached OpenRouter listing was fetched; absent with none. */
+  catalogAsOf?: string;
 }
 
 /**
- * The image-model picker's rows: the shipped Gemini ids, then the current value when it is none
- * of them, so the button always names a row. A `<vendor>/<model>` id draws through OpenRouter,
- * which the row says, since that is a different key and a different privacy posture.
+ * The image-model picker's rows: the shipped Gemini ids, the cached OpenRouter ids, then the
+ * current value when it is none of them, so the button always names a row. Each row's tooltip
+ * says which vendor draws it, since an OpenRouter row is a different key and a different privacy
+ * posture. The catalog defaults to the snapshot the shell last set.
  */
-export function imageModelRows(current: string): ImageModelRow[] {
-  const ids = shippedImageModels();
-  if (current && !ids.includes(current)) ids.push(current);
-  return ids.map((id) => ({
-    id,
-    tooltip: id.includes('/')
-      ? `Draw every image task with ${id}, routed by OpenRouter; not zero-data-retention.`
-      : `Draw every image task with ${id}, through Gemini.`,
-  }));
+export function imageModelRows(
+  current: string,
+  catalog: ModelCatalog | undefined = modelCatalog(),
+): ImageModelChoice[] {
+  return imageModelChoices(catalog, current);
 }
 
 /**
@@ -92,12 +91,13 @@ export function styleBox(opened: boolean): Offer {
   return { ok: true, props: {}, ...control };
 }
 
-/** Every offer the Project pane draws from this module: Apply, reload, the box, then the picker. */
+/** Every offer the Project pane draws from this module: Apply, reload, the box, the picker, then the refresh. */
 export function controls(state: ProjectBarState): readonly Offer[] {
   return [
     applyStyleAction(state.opened, state.dirty),
     reloadAction(),
     styleBox(state.opened),
     imageModelAction(state.opened, state.imageModel),
+    refreshModelsAction(state.opened, state.catalogAsOf),
   ];
 }

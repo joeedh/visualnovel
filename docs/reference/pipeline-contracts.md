@@ -652,7 +652,12 @@ These implement the system design in
     - The scheduler imports `Task`, `deps`, and `status`, and never imports a concrete
       provider.
     - Changing model ids in `project.yaml` swaps backends, and nothing else needs to
-      change.
+      change. An image model id picks its vendor: `imageVendorOf` in `@vn/types` reads a
+      `<vendor>/<model>` id as OpenRouter's and anything else as Gemini's, and the image
+      seam `createImageBackend` builds is a router that sends each call to the backend for
+      the `modelId` on its params, so a graph node naming another model draws with that
+      model rather than the project's. A vendor whose key is missing is refused with the
+      `ConfigError` `resolveKeys` raises, before anything is paid for.
     - Tests inject `RecordedChatBackend`/`StubImageBackend` (see `@vn/providers` `mock.ts`
       / `createMockProviders`) to exercise the contracts without network access. See
       [`../guides/testkit.md`](../guides/testkit.md).

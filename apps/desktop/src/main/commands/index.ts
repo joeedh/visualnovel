@@ -85,6 +85,7 @@ import {
   notifyMarkRead,
   notifyUnhide,
 } from './notify.js';
+import { modelsRefresh } from './models.js';
 import { pipelineApproveAndRun, pipelineRun, pipelineStatus, pipelineStop } from './pipeline.js';
 import { pluginInstall, pluginList, pluginPrices, pluginRemove } from './plugin.js';
 import {
@@ -258,6 +259,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     gengraphUnlink,
     interactionList,
     interactionTargets,
+    modelsRefresh,
     notifyClear,
     notifyDeleteAll,
     notifyFollow,

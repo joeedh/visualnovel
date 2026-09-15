@@ -5,10 +5,11 @@
  */
 import { Node } from 'pathux-graph';
 import type { NodeDef, Sockets } from 'pathux-graph';
-import { BoolProperty, PropFlags, StringProperty } from 'pathux-toolprop';
+import { BoolProperty, EnumProperty, PropFlags, StringProperty } from 'pathux-toolprop';
 import { TEXT_MODELS } from '@vn/types';
 
-import { mtok, SHIPPED_PRICES } from '../prices.js';
+import { imageModelChoices, modelCatalog } from '../modelcatalog.js';
+import { mtok } from '../prices.js';
 import { registerGenNode, type GenEstimateContext, type NodeMigration } from '../registry.js';
 import type { GenProps } from '../registry.js';
 import { ImageSocket, RefsSocket, TextSocket } from './sockets.js';
@@ -158,34 +159,38 @@ function imageModelOf(props: GenProps, ctx: GenEstimateContext): string {
   return String(props.model ?? '').trim() || (ctx.imageModel ?? '');
 }
 
-/** The picker row that leaves an image node's model prop empty. */
-const INHERIT_LABEL = 'Inherit (project image model)';
-
 /**
- * Image models the shipped price table knows about, which every image-model picker lists first,
- * so the list can't drift from what estimates price.
+ * The image picker's rows as path.ux draws them: the inherit row first, then the catalog, then the
+ * node's own value where the catalog lacks it. Keyed by id, with the row's text and tooltip
+ * beside it, so a `<vendor>/<model>` id is shown as written rather than title-cased.
  */
-export function shippedImageModels(): string[] {
-  return Object.keys(SHIPPED_PRICES.models).filter(
-    (id) => SHIPPED_PRICES.models[id]?.image !== undefined,
-  );
-}
-
-/** The image picker's rows, ui name to value, with the inherit row first. */
-function imageModelRows(): Record<string, string> {
-  return { [INHERIT_LABEL]: '', ...Object.fromEntries(shippedImageModels().map((m) => [m, m])) };
+function imageModelEnum(current: string): EnumProperty {
+  const rows = imageModelChoices(modelCatalog(), current, { inherit: true });
+  const prop = new EnumProperty(undefined, Object.fromEntries(rows.map((row) => [row.id, row.id])));
+  for (const row of rows) {
+    prop.ui_value_names[row.id] = row.label;
+    prop.descriptions[row.id] = row.tooltip;
+  }
+  return prop;
 }
 
 /**
- * Builds a `customPropUX` entry for a model prop, drawing it as a dropdown over the rows
- * `getRows` answers, ui name to value, rather than a free-text field. `getRows` is called each
- * time the menu opens, so the list stays current if it is ever backed by something dynamic.
+ * Builds a `customPropUX` entry for a model prop, drawing it as a dropdown over the rows `rows`
+ * answers rather than a free-text field. `rows` is called with the prop's value each time the
+ * dropdown resolves its rows, so the list follows the catalog snapshot and the value on the node.
  */
 function modelDropdownUX(
-  getRows: () => Record<string, string>,
+  rows: (current: string) => EnumProperty | Record<string, string>,
 ): NonNullable<NodeDef['customPropUX']>[string] {
   return (row, path, label) => {
-    const dropdown = row.listenum(path, { enumDef: getRows, name: label });
+    const valueOf = (): string => {
+      try {
+        return String(row.ctx.api.getValue(row.ctx, path) ?? '');
+      } catch {
+        return '';
+      }
+    };
+    const dropdown = row.listenum(path, { enumDef: () => rows(valueOf()), name: label });
     dropdown.setAttribute('fit-to-width', 'true');
   };
 }
@@ -253,7 +258,7 @@ export class GenImage extends Node<
         seed  : str('', 'Seed', 'The seed to draw with. Empty lets the model pick one.'),
       },
       customPropUX: {
-        model: modelDropdownUX(imageModelRows),
+        model: modelDropdownUX(imageModelEnum),
       },
       typeVersion : 1,
     };
@@ -299,7 +304,7 @@ export class GenEditImage extends Node<
         seed  : str('', 'Seed', 'The seed to draw with. Empty lets the model pick one.'),
       },
       customPropUX: {
-        model: modelDropdownUX(imageModelRows),
+        model: modelDropdownUX(imageModelEnum),
       },
       typeVersion : 1,
     };

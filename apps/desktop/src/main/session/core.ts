@@ -47,6 +47,7 @@ import {
   type Graph as GenGraph,
   type GraphId,
 } from '@vn/gengraph';
+import { readModelCatalog } from '@vn/gengraph/state';
 
 import { loadGraph, type TaskGraph } from '@vn/taskgraph';
 import { driftOf, type DecomposeAllResult, type LoadedGraph } from '@vn/pipeline';
@@ -59,6 +60,7 @@ import {
   createProviders,
   requiredVendors,
   StubImageBackend,
+  type FetchImpl,
   type ImageBackend,
 } from '@vn/providers';
 import {
@@ -688,9 +690,12 @@ export async function buildGenDeps(project: LoadedProject, mock: boolean): Promi
     secretsDirs: await secretDirsFor(project.dir),
     require    : requiredVendors(project.config),
   });
+  // The cached listing says which OpenRouter models take a seed, so the router refuses one by
+  // name rather than sending it
+  const catalog = (await readModelCatalog())?.openrouter ?? [];
   return {
-    providers   : createProviders({ config: project.config, keys, loadRef }),
-    imageBackend: createImageBackend(project.config, keys),
+    providers   : createProviders({ config: project.config, keys, loadRef, catalog }),
+    imageBackend: createImageBackend(project.config, keys, { catalog }),
     keys,
   };
 }
@@ -1824,6 +1829,13 @@ export class WorkspaceSession {
   /** Write the project's image model, spliced into `project.yaml`'s `models:` block. */
   async setProjectImageModel(modelId: string): Promise<PromptWriteResult> {
     return this.projectPart.setProjectImageModel(modelId);
+  }
+
+  /** Fetch OpenRouter's image-model listing into `<user>/models.json`. */
+  async refreshModelCatalog(
+    fetchImpl?: FetchImpl,
+  ): Promise<{ ok: true; message: string; listed: number } | { ok: false; reason: string }> {
+    return this.projectPart.refreshModelCatalog(fetchImpl);
   }
 
   async previewStoryboardNotes(notes: string): Promise<PromptResult> {

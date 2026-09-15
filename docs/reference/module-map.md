@@ -51,6 +51,7 @@ the file; the authoritative package responsibilities and import rules are in
 | `prompt.ts`        | prompt chunk / ref types shared by artgen and providers                       |
 | `providers.ts`     | backend capability types (`ChatBackend`, `ImageBackend`, reviewers)           |
 | `textmodels.ts`    | chat message / request types for text backends                                |
+| `imagemodels.ts`   | the cached OpenRouter image-model listing and its two response schemas        |
 | `budget.ts`        | cost-budget types                                                             |
 | `playable.ts`      | `story.play.json` format types                                                |
 | `notifications.ts` | user-notification types                                                       |
@@ -196,21 +197,22 @@ the file; the authoritative package responsibilities and import rules are in
 
 See [`gen-graphs.md`](gen-graphs.md) for what ships.
 
-| module                                                           | purpose                                                               |
-| ---------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `document.ts` / `dsl.ts` / `edit.ts`                             | graph document, its DSL, edits                                        |
-| `validate.ts`                                                    | graph validation (`validateGenGraph`)                                 |
-| `registry.ts` / `plugin.ts` / `pluginload.ts`                    | node registry and plugin loading                                      |
-| `nodes/`                                                         | built-in node kinds, runtimes, socket types (barrel `nodes/index.ts`) |
-| `services.ts`                                                    | service surface nodes call                                            |
-| `execute.ts`                                                     | executor (hashes nodes, runs via runtimes)                            |
-| `state.ts`                                                       | **side entry** (fs): graphs dir, run journal, blobs, hashes           |
-| `journal.ts` / `journalfile.ts` / `manifest.ts` / `graphfile.ts` | on-disk formats                                                       |
-| `blobs.ts` / `hash.ts` / `paths.ts`                              | blob store, hashing, paths                                            |
-| `drift.ts`                                                       | generation-graph drift reporting                                      |
-| `migrate.ts` / `defaults.ts`                                     | migration and defaults                                                |
-| `cost.ts` / `prices.ts` / `pricestore.ts` / `priceagent.ts`      | pricing; agents only on request                                       |
-| `index.ts`                                                       | main barrel (renderer-safe; `state.ts` is the node-only entry)        |
+| module                                                           | purpose                                                                |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `document.ts` / `dsl.ts` / `edit.ts`                             | graph document, its DSL, edits                                         |
+| `validate.ts`                                                    | graph validation (`validateGenGraph`)                                  |
+| `registry.ts` / `plugin.ts` / `pluginload.ts`                    | node registry and plugin loading                                       |
+| `nodes/`                                                         | built-in node kinds, runtimes, socket types (barrel `nodes/index.ts`)  |
+| `services.ts`                                                    | service surface nodes call                                             |
+| `execute.ts`                                                     | executor (hashes nodes, runs via runtimes)                             |
+| `state.ts`                                                       | **side entry** (fs): graphs dir, run journal, blobs, hashes            |
+| `journal.ts` / `journalfile.ts` / `manifest.ts` / `graphfile.ts` | on-disk formats                                                        |
+| `blobs.ts` / `hash.ts` / `paths.ts`                              | blob store, hashing, paths                                             |
+| `drift.ts`                                                       | generation-graph drift reporting                                       |
+| `migrate.ts` / `defaults.ts`                                     | migration and defaults                                                 |
+| `cost.ts` / `prices.ts` / `pricestore.ts` / `priceagent.ts`      | pricing; agents only on request                                        |
+| `modelcatalog.ts` / `modelstore.ts`                              | the image-model pickers' rows and snapshot; the cached listing on disk |
+| `index.ts`                                                       | main barrel (renderer-safe; `state.ts` is the node-only entry)         |
 
 ## Layer 4 — orchestration
 
@@ -225,6 +227,8 @@ append-only status log in `state/tasks.jsonl`), `index.ts`.
 | ------------------------------------- | ---------------------------------- |
 | `backend.ts`                          | backend interface glue             |
 | `backends/anthropic.ts` / `gemini.ts` | vendor text backends               |
+| `backends/openrouter.ts`              | OpenRouter image backend           |
+| `backends/openrouterlist.ts`          | OpenRouter image-model listing     |
 | `backends/capture.ts`                 | request capture (tests/debug)      |
 | `backends/transient.ts`               | retryable/transient error handling |
 | `backends/convo-request.ts`           | conversation request shaping       |

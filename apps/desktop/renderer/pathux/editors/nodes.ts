@@ -4,6 +4,7 @@ import {
   genNodeSpec,
   Node as GraphNode,
   instancedRefs,
+  modelCatalog,
   nodePropKeys,
   nodePropTarget,
   readGraphFile,
@@ -64,9 +65,18 @@ import {
   type EditTarget,
   ungroupAction,
 } from '../../rules/gengraph.js';
+import { refreshModelsAction } from '../../rules/models.js';
 import GENGRAPH_CSS from '../../styles/gengraph.css?inline';
 import { defineGraphApi } from '../app/api.js';
-import { beginCheckpoint, endCheckpoint, exec, onWrote, say } from '../app/bridge.js';
+import {
+  beginCheckpoint,
+  endCheckpoint,
+  exec,
+  onProjectView,
+  onWrote,
+  report,
+  say,
+} from '../app/bridge.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { redrawing, watchKeymap } from '../tour/anchors.js';
 import { assetNode, openNode } from '../panes/open.js';
@@ -119,6 +129,8 @@ export class GenGraphEditor extends VnEditor {
   private designerEl!: HTMLDivElement;
   /** Opens the picture this graph drew. Repainted with the graph, since the slot moves with it. */
   private assetButton!: Button;
+  /** Fetches the OpenRouter listing the node pickers draw. Repainted as the project view moves. */
+  private modelsButton!: Button;
   private deleteButton!: Button;
   private duplicateButton!: Button;
   private groupButton!: Button;
@@ -197,6 +209,8 @@ export class GenGraphEditor extends VnEditor {
     this.ungroupButton = bar.button('Ungroup', () => {});
     // Wired by `paintState`, which records it against the slot the graph draws
     this.assetButton = bar.button('Asset', () => {});
+    // Wired by `paintModels`, which records it against the cached listing's date
+    this.modelsButton = bar.button('Refresh models', () => {});
     const reload = reloadAction();
     anchors.act(
       bar.button(reload.label, () => {}),
@@ -303,7 +317,24 @@ export class GenGraphEditor extends VnEditor {
       () => void this.load(this.slug),
     );
 
+    // The node pickers draw the catalog snapshot the shell sets from each project view, and the
+    // button beside them says how old that listing is, so it follows the same reads.
+    this.watch(
+      () => onProjectView((view) => this.paintModels(view?.imageModels.asOf)),
+      () => this.paintModels(modelCatalog()?.asOf),
+    );
+    this.paintModels(modelCatalog()?.asOf);
+
     this.paint(false);
+  }
+
+  /** Record Refresh models against the cached listing's date, and wire it. */
+  private paintModels(catalogAsOf: string | undefined): void {
+    redrawing('gengraph', 'models').act(
+      this.modelsButton,
+      refreshModelsAction(true, catalogAsOf),
+      () => void exec('models.refresh').then(report),
+    );
   }
 
   override update() {

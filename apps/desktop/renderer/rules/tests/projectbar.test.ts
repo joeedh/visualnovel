@@ -1,3 +1,4 @@
+import { setModelCatalog } from '@vn/gengraph';
 import {
   applyStyleAction,
   controls,
@@ -6,6 +7,7 @@ import {
   reloadAction,
   styleBox,
 } from '../projectbar.js';
+import { refreshModelsAction } from '../models.js';
 import { duplicateKeys, keyOf } from '../anchors.js';
 
 describe('applyStyleAction', () => {
@@ -71,7 +73,7 @@ describe('imageModelAction', () => {
 });
 
 describe('imageModelRows', () => {
-  it('lists the shipped Gemini ids and says how each row draws', () => {
+  it('lists the shipped Gemini ids and says how each row draws, with no catalog set', () => {
     const rows = imageModelRows('gemini-2.5-flash-image');
     expect(rows.map((row) => row.id)).toEqual(['gemini-2.5-flash-image']);
     expect(rows[0]?.tooltip).toContain('through Gemini');
@@ -82,12 +84,51 @@ describe('imageModelRows', () => {
     expect(rows.map((row) => row.id)).toEqual(['gemini-2.5-flash-image', 'openai/gpt-image-2']);
     expect(rows[1]?.tooltip).toContain('routed by OpenRouter; not zero-data-retention');
   });
+
+  it('draws the catalog it is given, or the snapshot the shell set', () => {
+    const catalog = {
+      shipped   : ['gemini-2.5-flash-image'],
+      openrouter: [{ id: 'openai/gpt-image-2', name: 'GPT Image 2', aspects: [], seed: false }],
+      default   : 'gemini-2.5-flash-image',
+      asOf      : '2026-09-15',
+    };
+    const ids = ['gemini-2.5-flash-image', 'openai/gpt-image-2'];
+    expect(imageModelRows('gemini-2.5-flash-image', catalog).map((row) => row.id)).toEqual(ids);
+    setModelCatalog(catalog);
+    try {
+      expect(imageModelRows('gemini-2.5-flash-image').map((row) => row.id)).toEqual(ids);
+    } finally {
+      setModelCatalog(undefined);
+    }
+  });
+});
+
+describe('refreshModelsAction', () => {
+  it('says the cached listing’s date, or that there is none', () => {
+    expect(refreshModelsAction(true, '2026-09-15')).toMatchObject({
+      ok     : true,
+      id     : 'models.refresh',
+      props  : {},
+      label  : 'Refresh models',
+      tooltip: expect.stringContaining('from 2026-09-15') as string,
+    });
+    expect(refreshModelsAction(true, undefined).tooltip).toContain('none are cached yet');
+    expect(refreshModelsAction(false, undefined)).toMatchObject({
+      ok     : false,
+      refusal: { reason: 'No project is open.' },
+    });
+  });
 });
 
 describe('controls', () => {
-  it('lists Apply, reload, the box and the picker, each key once', () => {
+  it('lists Apply, reload, the box, the picker and the refresh, each key once', () => {
     for (const state of [
-      { opened: true, dirty: true, imageModel: 'gemini-2.5-flash-image' },
+      {
+        opened     : true,
+        dirty      : true,
+        imageModel : 'gemini-2.5-flash-image',
+        catalogAsOf: '2026-09-15',
+      },
       { opened: false, dirty: false, imageModel: '' },
     ]) {
       const listed = controls(state);
@@ -96,6 +137,7 @@ describe('controls', () => {
         reloadAction(),
         styleBox(state.opened),
         imageModelAction(state.opened, state.imageModel),
+        refreshModelsAction(state.opened, state.catalogAsOf),
       ]);
       expect(duplicateKeys(listed)).toEqual([]);
     }
@@ -106,6 +148,7 @@ describe('controls', () => {
       'fx:pane.view#reload',
       'cmd:project.setArtStyle#style',
       'cmd:project.setImageModel',
+      'cmd:models.refresh',
     ]);
   });
 });

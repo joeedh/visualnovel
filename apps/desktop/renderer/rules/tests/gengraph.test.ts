@@ -12,6 +12,7 @@ import {
 import type { GraphEdit } from 'pathux';
 
 import { duplicateKeys, keyOf as anchorKeyOf } from '../anchors.js';
+import { refreshModelsAction } from '../models.js';
 import {
   DELETE_WHAT,
   DUPLICATE_WHAT,
@@ -697,10 +698,10 @@ describe('the bar’s own buttons', () => {
 });
 
 describe('controls', () => {
-  it('lists the eight buttons in bar order, each key once', () => {
+  it('lists the nine buttons in bar order, each key once', () => {
     const target = { slug: 'plates', group: '', prefix: [] };
     const states: GroupState[] = [
-      { selected: [], groups: [], weighed: {}, target },
+      { selected: [], groups: [], weighed: {}, target, catalogAsOf: '2026-09-15' },
       { selected: [1], groups: [], weighed: { group: { ok: false, reason: 'nope' } }, target },
       {
         selected: [1],
@@ -718,6 +719,7 @@ describe('controls', () => {
         groupAction(state.selected, state.weighed.group, state.target),
         ungroupAction(state.groups, state.weighed.ungroup, state.target),
         assetAction(state.slot),
+        refreshModelsAction(true, state.catalogAsOf),
         reloadAction(),
       ];
       expect(listed).toEqual(each);
@@ -729,6 +731,7 @@ describe('controls', () => {
         'cmd:gengraph.createGroup',
         'cmd:gengraph.ungroup',
         'item:link/asset',
+        'cmd:models.refresh',
         'fx:pane.view#reload',
       ]);
       expect(duplicateKeys(listed)).toEqual([]);

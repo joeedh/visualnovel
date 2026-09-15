@@ -193,9 +193,22 @@ path.ux's coercion.
   the picture the old model drew; the authored hash does not, because the file did not
   change. A node written before this default keeps the literal `gemini-2.5-flash-image` it
   was saved with and draws with it whatever the project's model is; clear the prop to
-  inherit. The picker's first row, "Inherit (project image model)", leaves it empty. In
-  the DSL an omitted `model` is the same as an empty one, since `graphToDSL` omits a prop
-  at its default.
+  inherit. The picker's first row leaves it empty and names the project's model, "Inherit
+  (`<models.image>`)", once the desktop shell has set the catalog snapshot. In the DSL an
+  omitted `model` is the same as an empty one, since `graphToDSL` omits a prop at its
+  default.
+- The image-model pickers draw one snapshot, `modelCatalog()` in `modelcatalog.ts`, which
+  the desktop shell sets through `setModelCatalog` from every `project.info` answer. Its
+  rows are `imageModelChoices`: the inherit row (node pickers only), the shipped Gemini
+  ids, the cached OpenRouter ids in listing order, then the current value where it is in
+  none of those, so a model that dropped off the listing stays visible rather than being
+  reset. Each OpenRouter row's tooltip carries its per-picture price where its endpoint
+  states one, its aspect ratios, whether it takes a seed, and that OpenRouter routes it.
+  The listing itself is `<user>/models.json`, read and written by `modelstore.ts` under
+  `@vn/gengraph/state` and fetched only by the desktop's `models.refresh`; it is also a
+  price table, `catalogPriceTable`, which `hostPriceTables` consults after the author's,
+  the shipped one and the plugins'. With no file a picker lists the Gemini ids and the
+  node's own value.
 - The image nodes store their seed as a string, and an empty string means the seed is
   unauthored, because a `FloatProperty` always carries a value and zero is a valid seed. A
   seed that does not read as a number is refused rather than dropped. `GenRewrite`'s

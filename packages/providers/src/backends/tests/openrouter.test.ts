@@ -89,6 +89,19 @@ describe('what the request carries', () => {
     expect(sent[0]?.body.seed).toBe(7);
   });
 
+  it('refuses a seed by name for a model the catalog says takes none, before any request', async () => {
+    const fake = endpoint([() => drew('a drawing')]);
+    const image = createOpenRouterImage('a-key', MODEL, { fetchImpl: fake.fetchImpl, seed: false });
+
+    await expect(image.generate('a cat', [], { modelId: MODEL, seed: 7 })).rejects.toThrow(
+      `${MODEL} takes no seed`,
+    );
+    expect(fake.sent).toHaveLength(0);
+
+    await image.generate('a cat', [], { modelId: MODEL });
+    expect(fake.sent).toHaveLength(1);
+  });
+
   it('carries each reference as a data url, the edit base first', async () => {
     const { image, sent } = backend([() => drew('a drawing')]);
     const base = { bytes: new Uint8Array([...PNG, 9]), ext: 'png' };

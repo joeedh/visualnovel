@@ -46,7 +46,7 @@ import type {
   UndoState,
 } from '@vn/commands';
 import type { Report } from '@vn/agentreport';
-import type { GenDiagnostic } from '@vn/gengraph';
+import type { GenDiagnostic, ModelCatalog } from '@vn/gengraph';
 
 export type { Report } from '@vn/agentreport';
 
@@ -752,6 +752,12 @@ export interface ProjectView {
    * confirms against.
    */
   imageTasks: number;
+  /**
+   * What the image-model pickers draw: the shipped ids, the cached OpenRouter listing, and the
+   * model an empty node inherits. The shell hands it to `setModelCatalog` on every answer, so the
+   * Project editor and the Gen Graph pane read one snapshot.
+   */
+  imageModels: ModelCatalog;
 }
 
 /** The two places `project.setKey` can write a key. Keys also resolve from an env var and from

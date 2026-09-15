@@ -28,6 +28,11 @@ export type FetchImpl = typeof fetch;
 
 export interface OpenRouterImageOptions {
   fetchImpl?: FetchImpl;
+  /**
+   * Whether the model takes a `seed`, as the catalog lists it. `false` refuses a call carrying
+   * one by name, ahead of the request; absent, the seed is sent as given.
+   */
+  seed?: boolean;
 }
 
 /**
@@ -86,6 +91,11 @@ export function createOpenRouterImage(
     prompt: string,
     params: ImageParams,
   ): Promise<ImageResult> => {
+    if (opts.seed === false && params.seed !== undefined) {
+      throw new ProviderError(
+        `${modelId} takes no seed, and this call carries seed ${params.seed}; clear it to draw`,
+      );
+    }
     const refs = images.map(reference);
     const body = {
       model: modelId,

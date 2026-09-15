@@ -1,7 +1,8 @@
 import { UIBase, type Button, type Container, type MenuTemplate, type RowFrame } from 'pathux';
-import { exec, onInvalidate, report } from '../app/bridge.js';
+import { exec, onInvalidate, onProjectView, refreshProjectView, report } from '../app/bridge.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { redrawing, type AnchorPass } from '../tour/anchors.js';
+import { refreshModelsAction } from '../../rules/models.js';
 import {
   applyStyleAction,
   imageModelAction,
@@ -37,8 +38,6 @@ export class ProjectEditor extends VnEditor {
   private view: ProjectView | undefined;
   /** True once the box was typed into, so a background refetch stops overwriting the draft. */
   private dirty = false;
-  /** Rising with every load, so a slow read that arrives after a newer one is dropped. */
-  private token = 0;
 
   static override define() {
     return {
@@ -106,6 +105,9 @@ export class ProjectEditor extends VnEditor {
       if (!this.dirty) void this.load();
     };
     this.watch(() => onInvalidate(refollow), refollow);
+    // Every read of the file lands here, this pane's own included, so a refreshed model list
+    // drawn for the node pickers redraws this pane's picker too.
+    this.watch(() => onProjectView((view) => this.follow(view)));
 
     void this.load();
   }
@@ -114,21 +116,17 @@ export class ProjectEditor extends VnEditor {
   // Reading and writing
   // -------------------------------------------------------------------------
 
+  /** Re-read the file through the shell, which is what sets the pickers' catalog snapshot. */
   private async load(): Promise<void> {
-    const mine = ++this.token;
-    const outcome = await exec('project.info');
-    if (mine !== this.token) return;
+    await refreshProjectView();
+  }
 
-    if (!outcome.ok) {
-      this.view = undefined;
-      this.note(outcome.error, true);
-      this.paint();
-      return;
-    }
-    this.view = outcome.data as ProjectView;
-    this.dirty = false;
-    this.styleBox.value = this.view.artStyle;
-    this.note('');
+  /** Show what the shell read, unless the box holds a draft the author has not applied. */
+  private follow(view: ProjectView | undefined): void {
+    if (this.dirty) return;
+    this.view = view;
+    this.styleBox.value = view?.artStyle ?? '';
+    this.note(view === undefined ? 'No project is open.' : '', view === undefined);
     this.paint();
   }
 
@@ -155,6 +153,13 @@ export class ProjectEditor extends VnEditor {
     if (!outcome.ok) return void this.note(outcome.error, true);
     report(outcome);
     await this.load();
+  }
+
+  /** Fetch the OpenRouter listing again. The bridge re-reads the project view once it lands. */
+  private async refreshModels(): Promise<void> {
+    const outcome = await exec('models.refresh');
+    if (!outcome.ok) return void this.note(outcome.error, true);
+    report(outcome);
   }
 
   private touched(): void {
@@ -195,7 +200,7 @@ export class ProjectEditor extends VnEditor {
     if (!view) return;
     row(this.rows, 'title', view.title);
     row(this.rows, 'start', view.start);
-    this.modelPicker(anchors, view.models.image);
+    this.modelPicker(anchors, view);
     row(this.rows, 'models.text', view.models.text);
     row(this.rows, 'models.vision', view.models.vision.join(', '));
     row(this.rows, 'image_params.aspect', view.imageParams.aspect);
@@ -204,11 +209,12 @@ export class ProjectEditor extends VnEditor {
 
   /**
    * The `models.image` row: a dropdown in place of the value, one row per image model, opened in
-   * search mode because the catalog is long. The rows carry their own tooltips and run the
-   * command as they are picked; the dropdown is what the pass records, with the rows supplying
-   * the id, the way the header records the agent's model menu.
+   * search mode because the catalog is long, with Refresh models beside it. The rows carry their
+   * own tooltips and run the command as they are picked; the dropdown is what the pass records,
+   * with the rows supplying the id, the way the header records the agent's model menu.
    */
-  private modelPicker(anchors: AnchorPass, current: string): void {
+  private modelPicker(anchors: AnchorPass, view: ProjectView): void {
+    const current = view.models.image;
     this.rows.appendChild(el('span', 'pj-key', 'models.image'));
     const holder = el('span', 'pj-val');
     const frame = UIBase.constructElement<RowFrame>('rowframe-x', this.ctx);
@@ -218,8 +224,8 @@ export class ProjectEditor extends VnEditor {
 
     // Rows carry their own tooltip, so the last slot has to be an explicit id: `createMenu` reads
     // `item[5]` for any row longer than four and would otherwise file the callback under undefined
-    const template: MenuTemplate = imageModelRows(current).map((entry) => [
-      entry.id,
+    const template: MenuTemplate = imageModelRows(current, view.imageModels).map((entry) => [
+      entry.label,
       () => void this.pickModel(entry.id),
       undefined,
       undefined,
@@ -228,6 +234,12 @@ export class ProjectEditor extends VnEditor {
     ]) as MenuTemplate;
     const offer = imageModelAction(true, current);
     anchors.record(frame.menu({ title: offer.label, template, autoSearchMode: true }), offer);
+    const refresh = refreshModelsAction(true, view.imageModels.asOf);
+    anchors.act(
+      frame.button(refresh.label, () => {}),
+      refresh,
+      () => void this.refreshModels(),
+    );
     frame.flushUpdate();
   }
 }
