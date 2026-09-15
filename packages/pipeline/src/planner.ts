@@ -99,7 +99,9 @@ async function shotsFor(
       reason: decomposition.reason,
     });
   }
-  if (paths && !readOnly) await writeShots(paths, scene.id, decomposition.shots);
+  if (paths && !readOnly) {
+    await writeShots(paths, scene.id, decomposition.shots, { sheets: decomposition.sheets });
+  }
   return decomposition.shots;
 }
 

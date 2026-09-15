@@ -3,7 +3,7 @@
  * imports a concrete provider — it only knows Task/deps/status. Providers are swapped
  * via model ids in project.yaml.
  */
-import type { AssetRef, ImageParams } from './entities.js';
+import type { AssetRef, ImageParams, PanelBox } from './entities.js';
 
 /** Result of an image generation or edit. */
 export interface ImageResult {
@@ -39,6 +39,22 @@ export interface DefectReport {
   /** Who produced this review, e.g. `gemini` or `claude`. */
   reviewer: string;
   defects: Defect[];
+  /**
+   * What the reviewer measured in the image, present only when the spec asked for it: the
+   * panel boxes it saw, in reading order. The layout verdict is drawn from these by the runner,
+   * which holds the intended geometry.
+   */
+  observed?: { panels: { box: PanelBox }[] };
+}
+
+/** One panel of a page shot, in the words a reviewer reads. */
+export interface PanelSpec {
+  /** One-based, in reading order. */
+  index: number;
+  /** The panel's place on the page in words, derived from its outline. */
+  shapeWords: string;
+  framing: string;
+  characters: string[];
 }
 
 /** What a shot is supposed to depict; handed to reviewers as the spec (report §P7). */
@@ -49,6 +65,13 @@ export interface ShotSpec {
   location: string;
   expression?: string;
   framing?: string;
+  /** Present on a page shot; the reviewer then reports the boxes it sees under `observed`. */
+  panels?: PanelSpec[];
+  /**
+   * The words each panel should letter, present only when the image model was asked to draw
+   * them. The reviewer reads the page's text against this and files a mismatch as blocking.
+   */
+  lettering?: { panel: number; lines: string[] }[];
 }
 
 /** Reads an image back and reports defects against the spec (Gemini and Claude). */

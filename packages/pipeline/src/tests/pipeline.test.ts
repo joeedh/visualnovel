@@ -403,6 +403,24 @@ describe('decomposeScene (LLM path)', () => {
     expect(format).toBeGreaterThan(notes);
   });
 
+  it('brings the page vocabulary and the wider answer format with the storyboard notes alone', async () => {
+    const m = build();
+    const providers = providersReturning([SHOT('a', ['s1:L1', 's1:L2'])]);
+    const spy = seeing(providers);
+
+    await decomposeScene(m.scenes.get('s1')!, m, providers, {
+      artStyle       : 'full-colour manga',
+      storyboardNotes: 'pages of four to six panels',
+    });
+    const system = spy.seen.split('\n---\n')[1]!;
+    expect(system).toContain('"panels", one to 6 in reading order');
+    expect(system).toContain('two-tier (4 panels)');
+    expect(system).toContain('"panels?":[{"framing"');
+    // The art style alone asks for frames drawn a certain way, not for pages
+    const styled = decompSystem({ artStyle: 'full-colour manga', storyboardNotes: '' });
+    expect(styled).not.toContain('panel');
+  });
+
   it('says nothing about style when the project states none, so the prompt is as it was', async () => {
     const m = build();
     const providers = providersReturning([SHOT('a', ['s1:L1', 's1:L2'])]);

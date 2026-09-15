@@ -9,7 +9,7 @@
  * and trusted.
  */
 import fs from 'node:fs/promises';
-import type { Shot } from '@vn/types';
+import type { PagePanel, SheetGroup, Shot, ShotsFile } from '@vn/types';
 import {
   promptOverrideFrom,
   promptOverrideIsEmpty,
@@ -25,10 +25,56 @@ export interface LoadedShots {
   /** Line ids dropped because the scene no longer has them, per shot. */
   dropped: { shotId: string; lineIds: string[] }[];
   /**
+   * Lines a page shot covers but letters in no panel, per shot. The page still renders and
+   * playback shows the whole page for such a line; a caller reports it as `line_in_no_panel`.
+   */
+  unpanelled: { shotId: string; lineIds: string[] }[];
+  /**
    * High-water mark for hand-allocated `__shot<n>` ids; see `shotsFileSchema`. Absent on
    * decomposed and pre-mark files — `derivedNextShot` in `@vn/scriptedit` covers those.
    */
   nextShot?: number;
+  /** The scene's staging-sheet groups, when the file declares any. */
+  sheets?: Record<string, SheetGroup>;
+}
+
+/**
+ * The file's panels as the flat shot carries them, each panel's lines cut down to the lines the
+ * shot still covers. The shot's own `coversLines` is the authority on coverage, so a panel line
+ * the shot lost (to a screenplay edit, or a hand edit of the file) follows it out silently.
+ */
+function panelsOf(raw: ShotsFile['shots'][number], kept: readonly string[]): PagePanel[] {
+  const covered = new Set(kept);
+  return raw.panels!.map((p) => {
+    const panel: PagePanel = {
+      shape      : p.shape,
+      framing    : p.framing,
+      subjects   : p.subjects,
+      coversLines: p.coversLines.filter((id) => covered.has(id)),
+    };
+    if (p.camera !== undefined) panel.camera = p.camera;
+    if (p.artNotes !== undefined) panel.artNotes = p.artNotes;
+    return panel;
+  });
+}
+
+/**
+ * A panel may cast only the parent shot's subjects: the cast list is what decides outfits and
+ * references, so a name found only in a panel would reach the prompt with no sheet behind it.
+ * Reported rather than repaired, since either the cast or the panel could be the mistake.
+ */
+function castErrors(raw: ShotsFile['shots'][number], file: string): ValidationError | undefined {
+  const cast = new Set(raw.subjects.map((s) => s.characterId));
+  const issues = (raw.panels ?? []).flatMap((p, i) =>
+    p.subjects
+      .filter((s) => !cast.has(s.characterId))
+      .map((s) => ({
+        code   : 'panel_subject_not_in_cast',
+        message: `panel ${i + 1} of ${raw.id} casts "${s.characterId}", who is not in the shot's cast`,
+        where  : `${file}:shots.${raw.id}.panels.${i}`,
+      })),
+  );
+  return issues.length ? new ValidationError(`malformed shots file: ${file}`, issues) : undefined;
 }
 
 /**
@@ -72,7 +118,10 @@ export async function readShots(
   }
 
   const dropped: LoadedShots['dropped'] = [];
+  const unpanelled: LoadedShots['unpanelled'] = [];
   const shots = parsed.data.shots.map((s) => {
+    const cast = castErrors(s, file);
+    if (cast) throw cast;
     const kept = knownLineIds ? s.coversLines.filter((id) => knownLineIds.has(id)) : s.coversLines;
     if (kept.length !== s.coversLines.length) {
       dropped.push({
@@ -94,25 +143,54 @@ export async function readShots(
     if (s.artNotes !== undefined) shot.artNotes = s.artNotes;
     if (s.seed !== undefined) shot.seed = s.seed;
     if (s.aspect !== undefined) shot.aspect = s.aspect;
+    if (s.panels) {
+      shot.panels = panelsOf(s, kept);
+      const lettered = new Set(shot.panels.flatMap((p) => p.coversLines));
+      const orphaned = kept.filter((id) => !lettered.has(id));
+      if (orphaned.length) unpanelled.push({ shotId: s.id, lineIds: orphaned });
+    }
+    if (s.sheet !== undefined) shot.sheet = s.sheet;
     if (s.promptOverride) shot.promptOverride = promptOverrideFrom(s.promptOverride);
     if (s.shotData?.prompt !== undefined) shot.prompt = s.shotData.prompt;
     if (s.shotData?.image !== undefined) shot.image = s.shotData.image;
     if (s.shotData?.proseHash !== undefined) shot.proseHash = s.shotData.proseHash;
+    if (s.shotData?.panelBoxes !== undefined) shot.panelBoxes = s.shotData.panelBoxes;
     return shot;
   });
 
-  const loaded: LoadedShots = { shots, dropped };
+  const loaded: LoadedShots = { shots, dropped, unpanelled };
   if (parsed.data.nextShot !== undefined) loaded.nextShot = parsed.data.nextShot;
+  if (parsed.data.sheets !== undefined) loaded.sheets = parsed.data.sheets;
   return loaded;
 }
 
+/** The file-level fields a writer carries through unchanged unless it says otherwise. */
+interface FileMarks {
+  nextShot?: number;
+  sheets?: Record<string, SheetGroup>;
+}
+
+/** A panel as written: the authored keys in a fixed order, each optional one only when set. */
+function panelDoc(p: PagePanel): Record<string, unknown> {
+  return {
+    shape  : p.shape,
+    framing: p.framing,
+    ...(p.camera !== undefined ? { camera: p.camera } : {}),
+    subjects   : p.subjects,
+    coversLines: p.coversLines,
+    ...(p.artNotes !== undefined ? { artNotes: p.artNotes } : {}),
+  };
+}
+
 /** The file text for a set of shots — flat `Shot`s projected into the nested on-disk shape. */
-function serialize(sceneId: string, shots: readonly Shot[], nextShot?: number): string {
+function serialize(sceneId: string, shots: readonly Shot[], marks: FileMarks): string {
   const file = {
     version: 1,
     scene  : sceneId,
     // Only present once a hand-made shot has spent an id, so decomposed files stay byte-stable.
-    ...(nextShot !== undefined ? { nextShot } : {}),
+    ...(marks.nextShot !== undefined ? { nextShot: marks.nextShot } : {}),
+    // Likewise only once a scene has a staging group.
+    ...(marks.sheets !== undefined ? { sheets: marks.sheets } : {}),
     shots: shots.map((s) => ({
       id      : s.id,
       sceneId : s.sceneId,
@@ -125,6 +203,8 @@ function serialize(sceneId: string, shots: readonly Shot[], nextShot?: number): 
       ...(s.artNotes !== undefined ? { artNotes: s.artNotes } : {}),
       ...(s.seed !== undefined ? { seed: s.seed } : {}),
       ...(s.aspect !== undefined ? { aspect: s.aspect } : {}),
+      ...(s.panels !== undefined ? { panels: s.panels.map(panelDoc) } : {}),
+      ...(s.sheet !== undefined ? { sheet: s.sheet } : {}),
       // An override that says nothing is not written: it would change nothing about the prompt,
       // and a shots file that grows an inert key stops rewriting byte-identically.
       ...(promptOverrideIsEmpty(s.promptOverride)
@@ -142,6 +222,10 @@ function serialize(sceneId: string, shots: readonly Shot[], nextShot?: number): 
               // from these words when no frame exists.
               ...(s.image !== undefined && s.proseHash !== undefined
                 ? { proseHash: s.proseHash }
+                : {}),
+              // Beside the image for the same reason: the boxes were seen in these bytes.
+              ...(s.image !== undefined && s.panelBoxes !== undefined
+                ? { panelBoxes: s.panelBoxes }
                 : {}),
               status: s.status,
             },
@@ -161,27 +245,34 @@ function serialize(sceneId: string, shots: readonly Shot[], nextShot?: number): 
  * writers here — the planner, shot fallout, the outfit editors — are rewriting shots they
  * loaded, and dropping the mark on their way through would quietly resurrect id reuse.
  * Only the two acts that move the mark (`story.newShot` spends an id, `story.deleteShot`
- * carries it into the rewritten file) pass one.
+ * carries it into the rewritten file) pass one. The scene's `sheets` are carried the same way.
  */
 export async function writeShots(
   paths: ProjectPaths,
   sceneId: string,
   shots: readonly Shot[],
-  opts?: { nextShot?: number },
+  opts?: FileMarks,
 ): Promise<boolean> {
   const file = paths.shotsFile(sceneId);
   const had = await exists(file);
   const before = had ? await readText(file) : undefined;
-  let mark = opts?.nextShot;
-  if (mark === undefined && before !== undefined) {
+  const marks: FileMarks = {};
+  if (opts?.nextShot !== undefined) marks.nextShot = opts.nextShot;
+  if (opts?.sheets !== undefined) marks.sheets = opts.sheets;
+  if (before !== undefined) {
     try {
-      const raw = JSON.parse(before) as { nextShot?: unknown };
-      if (typeof raw.nextShot === 'number') mark = raw.nextShot;
+      const raw = JSON.parse(before) as { nextShot?: unknown; sheets?: unknown };
+      if (marks.nextShot === undefined && typeof raw.nextShot === 'number') {
+        marks.nextShot = raw.nextShot;
+      }
+      if (marks.sheets === undefined && raw.sheets && typeof raw.sheets === 'object') {
+        marks.sheets = raw.sheets as FileMarks['sheets'];
+      }
     } catch {
       // Unparseable is readShots's problem to report; an overwrite here keeps the caller's shots.
     }
   }
-  const next = serialize(sceneId, shots, mark);
+  const next = serialize(sceneId, shots, marks);
   if (before === next) return false;
   await writeFileAtomic(file, next);
   return true;

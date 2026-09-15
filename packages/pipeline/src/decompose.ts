@@ -85,7 +85,7 @@ export async function decomposeAll(opts: DecomposeAllOptions): Promise<Decompose
       });
       continue;
     }
-    await writeShots(paths, scene.id, result.shots);
+    await writeShots(paths, scene.id, result.shots, { sheets: result.sheets });
     out.decomposed.push(scene.id);
   }
   return out;

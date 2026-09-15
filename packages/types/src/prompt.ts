@@ -20,6 +20,10 @@ export type ChunkCategory =
   | 'palette'
   | 'camera'
   | 'framing'
+  /** One panel of a page shot: its framing, cast and camera. */
+  | 'panel'
+  /** The words a page shot letters, under `lettering: model`. */
+  | 'lettering'
   | 'art-notes'
   | 'scaffolding'
   | 'request';

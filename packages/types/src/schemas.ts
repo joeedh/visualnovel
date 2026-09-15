@@ -363,6 +363,17 @@ export const projectConfig = z.object({
 });
 export type ProjectConfig = z.infer<typeof projectConfig>;
 
+/** A page fraction: a coordinate or a length on the unit page. */
+const pageFraction = z.number().min(0).max(1);
+
+/** A rectangle in page fractions. */
+export const panelBoxSchema = z.object({
+  x: pageFraction,
+  y: pageFraction,
+  w: pageFraction,
+  h: pageFraction,
+});
+
 /** Structured critique returned by a vision reviewer (report §P7). */
 export const defectReportSchema = z.object({
   reviewer: z.string(),
@@ -376,6 +387,16 @@ export const defectReportSchema = z.object({
       }),
     )
     .default([]),
+  /**
+   * What the reviewer measured rather than judged. Asked for only when the spec carries panels;
+   * a frame's review never has it.
+   */
+  observed: z
+    .object({
+      /** The panel boxes seen in the image, in reading order. */
+      panels: z.array(z.object({ box: panelBoxSchema })).default([]),
+    })
+    .optional(),
 });
 
 /** Locations mined from the screenplay by the LLM (report §P1). */
@@ -401,20 +422,54 @@ const shotSubject = z.object({
   expression : z.string().optional(),
 });
 
+/** A panel outline: page fractions, clockwise, at least three points. */
+const panelShape = z.array(z.tuple([pageFraction, pageFraction])).min(3);
+
+/** One panel of a page shot as persisted — see {@link PagePanel}. */
+const pagePanel = z.object({
+  shape      : panelShape,
+  framing    : shotFraming,
+  camera     : z.string().optional(),
+  subjects   : z.array(shotSubject.omit({ outfit: true })).default([]),
+  coversLines: z.array(z.string()).default([]),
+  artNotes   : z.string().optional(),
+});
+
+/** A staging-sheet group's own settings, keyed by the group id in `sheets`. */
+const sheetGroup = z.object({
+  seed : imageSeed.optional(),
+  notes: z.string().optional(),
+});
+export type SheetGroup = z.infer<typeof sheetGroup>;
+
 /** Shots proposed for one scene by the LLM (report §P5). */
 export const shotDecompositionSchema = z.object({
   shots: z.array(
     z.object({
       id         : z.string(),
-      framing    : shotFraming,
+      /** Required on a frame; a page may leave it out and take its first panel's. */
+      framing    : shotFraming.optional(),
       location   : z.string(),
-      subjects   : z.array(shotSubject),
+      subjects   : z.array(shotSubject).default([]),
       camera     : z.string().optional(),
       /** The frame's own ratio; left out, the frame takes `image_params.aspect`. */
       aspect     : aspectRatio.optional(),
+      /**
+       * A layout template by name, which places `panels` that carry no `shape`. A page whose
+       * panels all carry shapes needs none; a page with neither takes the even split.
+       */
+      layout     : z.string().optional(),
+      /** Present on a page shot. A panel's `shape` may be left out for `layout` to supply. */
+      panels: z
+        .array(pagePanel.extend({ shape: panelShape.optional() }))
+        .min(1)
+        .max(6)
+        .optional(),
+      sheet      : z.string().optional(),
       coversLines: z.array(z.string()).default([]),
     }),
   ),
+  sheets: z.record(sheetGroup).optional(),
 });
 
 /** A parsed decomposition — what the model answers, and what `write_storyboard` restates. */
@@ -438,17 +493,22 @@ export const condensedPromptSchema = z.object({
  */
 export const shotDataSchema = z.object({
   /** P6, rebuilt by `buildShotPrompt` from the authored fields. */
-  prompt   : z.string().optional(),
+  prompt    : z.string().optional(),
   /** P7 output asset hash; `manifest.json` is the authority for the bytes. */
-  image    : z.string().optional(),
+  image     : z.string().optional(),
   /**
    * Hash of the covered lines' text when `image` was produced, so a later load can tell that the
    * frame no longer illustrates what the scene says. Recorded with the bytes and never refreshed
    * without them — a rerun that reports the same image must not clear a drift the author has not
    * acted on. Absent means unknown, and that is how every shot rendered before this field reads.
    */
-  proseHash: z.string().optional(),
-  status   : z.enum(['pending', 'prompted', 'generated', 'accepted', 'needs_human']),
+  proseHash : z.string().optional(),
+  /**
+   * The panel boxes a reviewer saw in `image`, recorded with the bytes like `proseHash`. Absent
+   * on a frame and on a page no reviewer measured.
+   */
+  panelBoxes: z.array(panelBoxSchema).optional(),
+  status    : z.enum(['pending', 'prompted', 'generated', 'accepted', 'needs_human']),
 });
 
 /**
@@ -485,6 +545,10 @@ export const shotsFileSchema = z.object({
         seed          : imageSeed.optional(),
         /** Authored aspect ratio for this frame; in the task hash, like `seed`. */
         aspect        : aspectRatio.optional(),
+        /** Authored; present on a page shot and absent on a frame — see {@link Shot.panels}. */
+        panels        : z.array(pagePanel).min(1).optional(),
+        /** Authored; the staging-sheet group, one of the file's `sheets` keys. */
+        sheet         : z.string().min(1).optional(),
         /**
          * The author's override of this frame's derived prompt. Authored, so it sits at top level
          * beside `artNotes` and never inside `shotData`, which a run rewrites wholesale.
@@ -495,6 +559,8 @@ export const shotsFileSchema = z.object({
       }),
     )
     .default([]),
+  /** The scene's staging-sheet groups, by id. Authored; absent until a shot names one. */
+  sheets  : z.record(sheetGroup).optional(),
 });
 export type ShotsFile = z.infer<typeof shotsFileSchema>;
 

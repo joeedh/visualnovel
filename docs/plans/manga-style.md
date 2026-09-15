@@ -1,8 +1,8 @@
 # Colour manga as a second visual style
 
-**Status: partial.** Stage 1 is in progress; the As-shipped section at the end records
-each commit and every deviation. The proposal completed one review pass; the findings and
-resulting modifications are documented before that.
+**Status: partial.** Stage 1 has landed and Stage 2 is in progress; the As-shipped section
+at the end records each commit and every deviation. The proposal completed one review
+pass; the findings and resulting modifications are documented before that.
 
 ## What this adds
 
@@ -783,3 +783,40 @@ specification:
   and Stage 1 leaves alone: Recraft's four `styles` models declare ratios their endpoint
   refuses, and its vector models answer with an SVG the plugin passes through as
   `ext: 'svg+xml'`.
+
+### Stage 2
+
+- **The decomposition schema makes `framing` optional and takes a `layout` name.** A page
+  the model writes has no single framing, so the schema lets a page leave it out and
+  `realizeDecomposition` gives it the first panel's (`medium` when a frame leaves it out
+  too). Panels may carry outlines or not: a page whose panels all carry `shape` keeps
+  them, and any other page takes `shapesFor(layout, n)`, which is the named template at
+  its own panel count and `evenLayout(n)` (tiers of two, an odd last panel spanning its
+  tier) otherwise. The decomposition schema caps `panels` at six, the bound `MAX_PANELS`
+  tells the model; the shots-file schema caps nothing, since the file is the author's.
+- **A page's cast is the union of what the shot named and what its panels name.** Decision
+  8 derives the cast from the panels alone; keeping the shot's own list as well lets the
+  model cast a silent character on the page without a panel naming them. A character
+  reached only through a panel is cast bare, since the panel rung holds the pose.
+- **The page vocabulary reaches the decomposer with `storyboard_notes` alone.**
+  `art_style` says how a frame is drawn, not whether scenes are pages, so a project with a
+  manga art style and empty notes still storyboards frames, and its prompt never contains
+  the word "panel". With notes set the system prompt gains a page paragraph (the template
+  names with their panel counts, the camera vocabulary, the bound) and the wider answer
+  format.
+- **`panel_subject_not_in_cast` is thrown by `readShots`, and `line_in_no_panel` is a list
+  it returns.** The plan filed both under "the model validator", but `@vn/model` never
+  reads a shots file; the store does. A panel naming someone outside the shot's cast makes
+  the file unloadable with that code, like any malformed file, because either the cast or
+  the panel could be the mistake. A covered line no panel letters is
+  `LoadedShots.unpanelled`, which the planner logs; the page still renders. A panel line
+  the shot itself does not cover is cut at read, silently, because the shot's
+  `coversLines` is the authority and a screenplay edit that drops a line is already
+  reported once through `dropped`.
+- **`sheets` is carried by `writeShots` like `nextShot`.** A writer that says nothing
+  keeps the file's groups; `Decomposition.sheets` carries the model's proposal to the
+  three writers of a fresh storyboard. Nothing reads the groups until Stage 4.
+- **`LAYOUT_IOU` is `0.5`, pending the live check.** `matchPanels` claims, per intended
+  panel in reading order, the best unclaimed observed box at or above it; a page is
+  honoured when every panel matched and no box was left over. The same rule files the
+  `layout` defect and scores the live table.

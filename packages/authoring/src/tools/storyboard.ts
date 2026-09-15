@@ -253,7 +253,7 @@ const writeStoryboardTool: Tool<z.infer<typeof writeStoryboardShape>> = {
     if (result.source === 'baseline') {
       return fail(`refused: ${result.reason ?? 'the shots were unusable'} — nothing was written.`);
     }
-    await writeShots(ctx.workspace.paths, a.scene, result.shots);
+    await writeShots(ctx.workspace.paths, a.scene, result.shots, { sheets: result.sheets });
     const shotsFile = `vngen/work/shots/${a.scene}.json`;
     return ok(
       `Wrote the storyboard for "${a.scene}" — ${result.shots.length} shot(s), each a frame the ` +

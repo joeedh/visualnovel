@@ -180,6 +180,35 @@ export type Drift =
   /** Rendered before {@link Shot.proseHash} existed, so drift cannot be determined. */
   | 'unknown';
 
+/** A rectangle in page fractions, `x`/`y` its top-left corner. */
+export interface PanelBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * One panel of a page shot. A shot with panels renders one picture, the whole page, and each
+ * panel is a region of it with its own framing, camera and cast; outfits come from the parent
+ * shot's cast, so a character wears one outfit across the page.
+ */
+export interface PagePanel {
+  /** The panel's outline in page fractions, clockwise, at least three points. */
+  shape: [number, number][];
+  framing: Shot['framing'];
+  camera?: string;
+  /**
+   * Who is in this panel, with the pose and expression they hold there. Each must be in the
+   * parent shot's {@link Shot.subjects}; the store refuses a panel naming anyone else.
+   */
+  subjects: { characterId: string; pose?: string; expression?: string }[];
+  /** A partition of the parent shot's {@link Shot.coversLines}: the lines lettered here. */
+  coversLines: string[];
+  /** Art direction for this panel alone, appended to the panel's own sentence. */
+  artNotes?: string;
+}
+
 /** A single rendered image within a scene (report §3, §P5). */
 export interface Shot {
   id: string;
@@ -208,6 +237,18 @@ export interface Shot {
    * else.
    */
   aspect?: string;
+  /**
+   * The panels of a page shot. Absent means a single frame, which is what every shot was before
+   * pages existed. Authored, and in the prompt: the page's layout, each panel's cast and (under
+   * `lettering: model`) the lines it letters are all derived from this list, so editing it
+   * re-renders the page.
+   */
+  panels?: PagePanel[];
+  /**
+   * The staging-sheet group this shot is drawn from, scoped to its scene. Authored; read by
+   * nothing until the sheet graph exists.
+   */
+  sheet?: string;
   /** Override of this frame's derived prompt. Authored, like {@link artNotes}. */
   promptOverride?: PromptOverride;
   /** Dialogue line ids this shot covers. */
@@ -223,6 +264,13 @@ export interface Shot {
    * reads as unknown and never as drifted.
    */
   proseHash?: string;
+  /**
+   * The panel boxes a reviewer saw in {@link image}, in reading order. Derived and recorded
+   * beside the image, like {@link proseHash}; the intended geometry stays in {@link panels}, and
+   * nothing downstream reads these. Absent on a frame, on an unrendered page, and on a page no
+   * reviewer measured.
+   */
+  panelBoxes?: PanelBox[];
   status: 'pending' | 'prompted' | 'generated' | 'accepted' | 'needs_human';
 }
 

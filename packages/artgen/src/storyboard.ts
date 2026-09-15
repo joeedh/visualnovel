@@ -1,12 +1,15 @@
 import type {
+  PagePanel,
   ProjectConfig,
   Providers,
   Scene,
+  SheetGroup,
   Shot,
   ShotDecomposition,
   ProjectModel,
 } from '@vn/types';
 import { shotDecompositionSchema } from '@vn/types';
+import { LAYOUT_TEMPLATES, shapesFor } from './layout.js';
 
 /**
  * Scene decomposition (report §P5) — the prompt, the parse, and the deterministic fallback.
@@ -36,6 +39,8 @@ export interface Decomposition {
   source: 'model' | 'baseline';
   /** Why the model's answer was not used, in a sentence a caller can report verbatim. */
   reason?: string;
+  /** The staging groups the model proposed, when it proposed any; written beside the shots. */
+  sheets?: Record<string, SheetGroup>;
 }
 
 function baseline(scene: Scene, model: ProjectModel, reason: string): Decomposition {
@@ -141,10 +146,37 @@ const DECOMP_FORMAT = [
   '"coversLines":["scene:L1","scene:L2"]}]}.',
 ].join(' ');
 
+/** The most panels a page may carry; the schema refuses more, so the model is told the bound. */
+export const MAX_PANELS = 6;
+
+/**
+ * What the model is told about pages, only when the author's notes are set: a project that
+ * storyboards plain frames never hears the word "panel", so its decompositions do not grow them.
+ */
+const DECOMP_PAGES = [
+  `Where the notes ask for pages, a shot may be a manga page instead of one frame: give it`,
+  `"panels", one to ${MAX_PANELS} in reading order, each with its own framing, an optional camera`,
+  '(extreme close-up, low angle, over-the-shoulder, insert, splash), the subjects in it, and the',
+  '"coversLines" it letters; the page\'s own "coversLines" is the union of its panels\' and its',
+  '"subjects" the union of theirs. Name a "layout" for the page from:',
+  `${Object.entries(LAYOUT_TEMPLATES)
+    .map(([name, shapes]) => `${name} (${shapes.length} panels)`)
+    .join(', ')};`,
+  'a page whose panel count matches none of them is split into even tiers. A shot without',
+  '"panels" is a single frame as before.',
+].join(' ');
+
+const DECOMP_FORMAT_PAGES = [
+  'Respond ONLY with JSON of the form {"shots":[{"id","framing","location",',
+  '"subjects":[{"characterId","pose?","expression?"}],"camera?","layout?",',
+  '"panels?":[{"framing","camera?","subjects":[{"characterId","pose?","expression?"}],',
+  '"coversLines":["scene:L1"]}],"coversLines":["scene:L1","scene:L2"]}]}.',
+].join(' ');
+
 /**
  * The decomposer's system prompt. The style sits between the role and the answer format, so
  * a project that states neither gets the prompt every decomposition before this was made with,
- * byte for byte.
+ * byte for byte. Storyboard notes bring the page vocabulary and the wider answer format with them.
  */
 export function decompSystem(style: StoryboardStyle): string {
   const artStyle = style.artStyle.trim();
@@ -152,8 +184,8 @@ export function decompSystem(style: StoryboardStyle): string {
   return [
     DECOMP_ROLE,
     ...(artStyle ? [`The frames will be drawn in this art style: ${artStyle}.`] : []),
-    ...(notes ? [`Storyboard notes from the author: ${notes}.`] : []),
-    DECOMP_FORMAT,
+    ...(notes ? [`Storyboard notes from the author: ${notes}.`, DECOMP_PAGES] : []),
+    notes ? DECOMP_FORMAT_PAGES : DECOMP_FORMAT,
   ].join(' ');
 }
 
@@ -208,7 +240,8 @@ export async function decomposeScene(
  * Turn a parsed decomposition into real, validated shots: ids namespaced under the scene (already-
  * namespaced ids are kept, so a proposal read back is not double-prefixed), locations coerced to a
  * variant the scene's location has, subjects resolved to characters the model actually holds,
- * invented line ids dropped, and the coverage backstop applied.
+ * invented line ids dropped, a page's panels realized ({@link realizePanels}) with its cast and
+ * coverage derived from them, and the coverage backstop applied.
  *
  * Public because `write_storyboard` applies the same repairs to the shot list the agent restates.
  * A proposal approved in conversation must be repaired at persist time the way the batch would
@@ -224,24 +257,87 @@ export function realizeDecomposition(
   const variants = location?.variants.map((v) => v.id) ?? ['day'];
   // Only accept line ids the scene actually has, so the LLM cannot invent bindings.
   const realLineIds = new Set(scene.lines.map((l) => l.id));
-  const shots: Shot[] = raw.shots.map((s) => ({
-    id         : s.id.startsWith(`${scene.id}__`) ? s.id : shotId(scene.id, s.id),
-    sceneId    : scene.id,
-    framing    : s.framing,
-    location   : variants.includes(s.location) ? s.location : (variants[0] ?? 'day'),
+  const rank = new Map(scene.lines.map((l, i) => [l.id, i]));
+  const shots: Shot[] = raw.shots.map((s) => {
     // `outfit` is dropped even if the model volunteers one: clothes are the author's, and a
     // baked value here would shadow the scene marker the author writes later.
-    subjects: s.subjects.flatMap((sub) => {
+    const subjects = s.subjects.flatMap((sub) => {
       const characterId = resolveSubject(sub.characterId, model);
       if (!characterId) return [];
       return [{ characterId, pose: sub.pose, expression: sub.expression }];
-    }),
-    camera     : s.camera,
-    aspect     : s.aspect,
-    coversLines: s.coversLines.filter((id) => realLineIds.has(id)),
-    status     : 'pending' as const,
-  }));
-  return withCoverage(shots, scene, model);
+    });
+    const panels = s.panels ? realizePanels(s.panels, s.layout, model, realLineIds) : undefined;
+    // A page's cast is the union of its panels' with whoever the shot named itself; the panel
+    // rung holds the poses, so a character reached only through a panel is cast bare.
+    for (const sub of panels?.flatMap((p) => p.subjects) ?? []) {
+      if (!subjects.some((x) => x.characterId === sub.characterId)) {
+        subjects.push({ characterId: sub.characterId, pose: undefined, expression: undefined });
+      }
+    }
+    const lettered = panels?.flatMap((p) => p.coversLines) ?? [];
+    const coversLines = [
+      ...new Set([...s.coversLines.filter((id) => realLineIds.has(id)), ...lettered]),
+    ].sort((a, b) => rank.get(a)! - rank.get(b)!);
+    const shot: Shot = {
+      id      : s.id.startsWith(`${scene.id}__`) ? s.id : shotId(scene.id, s.id),
+      sceneId : scene.id,
+      // A page that named no framing takes its first panel's; the page prompt ignores it anyway
+      framing : s.framing ?? panels?.[0]?.framing ?? 'medium',
+      location: variants.includes(s.location) ? s.location : (variants[0] ?? 'day'),
+      subjects,
+      camera: s.camera,
+      aspect: s.aspect,
+      coversLines,
+      status: 'pending' as const,
+    };
+    if (panels) shot.panels = panels;
+    if (s.sheet !== undefined) shot.sheet = s.sheet;
+    return shot;
+  });
+  const realized = withCoverage(shots, scene, model);
+  if (realized.source === 'model' && raw.sheets && Object.keys(raw.sheets).length) {
+    realized.sheets = raw.sheets;
+  }
+  return realized;
+}
+
+/**
+ * A page's panels as real {@link PagePanel}s: outlines from the named layout wherever a panel
+ * carried none, subjects resolved like a shot's, invented line ids dropped, and a line claimed by
+ * two panels kept in the first, so the panels partition the page's lines.
+ */
+function realizePanels(
+  raw: NonNullable<ShotDecomposition['shots'][number]['panels']>,
+  layout: string | undefined,
+  model: ProjectModel,
+  realLineIds: ReadonlySet<string>,
+): PagePanel[] {
+  const drawn = raw.every((p) => p.shape !== undefined);
+  const shapes = drawn ? raw.map((p) => p.shape!) : shapesFor(layout, raw.length);
+  const claimed = new Set<string>();
+  return raw.map((p, i) => {
+    const coversLines = p.coversLines.filter((id) => realLineIds.has(id) && !claimed.has(id));
+    for (const id of coversLines) claimed.add(id);
+    const panel: PagePanel = {
+      shape   : shapes[i]!,
+      framing : p.framing,
+      subjects: p.subjects.flatMap((sub) => {
+        const characterId = resolveSubject(sub.characterId, model);
+        if (!characterId) return [];
+        return [
+          {
+            characterId,
+            ...(sub.pose === undefined ? {} : { pose: sub.pose }),
+            ...(sub.expression === undefined ? {} : { expression: sub.expression }),
+          },
+        ];
+      }),
+      coversLines,
+    };
+    if (p.camera !== undefined) panel.camera = p.camera;
+    if (p.artNotes !== undefined) panel.artNotes = p.artNotes;
+    return panel;
+  });
 }
 
 /**
@@ -265,6 +361,10 @@ export function withCoverage(shots: Shot[], scene: Scene, model: ProjectModel): 
   // A scene has to open on something. With the first line uncovered there is no `show` before
   // the first beat, so the runner starts on a blank frame however good the rest is.
   const first = scene.lines[0];
-  if (first && !covered.has(first.id) && shots[0]) shots[0].coversLines.unshift(first.id);
+  if (first && !covered.has(first.id) && shots[0]) {
+    shots[0].coversLines.unshift(first.id);
+    // A page letters its lines by panel, so the repaired line opens the first panel too
+    shots[0].panels?.[0]?.coversLines.unshift(first.id);
+  }
   return { shots, source: 'model' };
 }

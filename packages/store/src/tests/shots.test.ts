@@ -133,6 +133,120 @@ describe('shots file', () => {
     expect('aspect' in plain.shots[0]).toBe(false);
   });
 
+  const page = (): Shot =>
+    shot({
+      subjects: [{ characterId: 'aiko' }, { characterId: 'ren' }],
+      panels: [
+        {
+          shape: [
+            [0, 0],
+            [1, 0],
+            [1, 0.5],
+            [0, 0.5],
+          ],
+          framing    : 'wide',
+          camera     : 'low angle',
+          subjects   : [{ characterId: 'aiko', expression: 'startled' }],
+          coversLines: ['arrival:L1'],
+        },
+        {
+          shape: [
+            [0, 0.5],
+            [1, 0.5],
+            [1, 1],
+            [0, 1],
+          ],
+          framing    : 'close',
+          subjects   : [{ characterId: 'ren' }],
+          coversLines: ['arrival:L2'],
+          artNotes   : 'rain on the glass',
+        },
+      ],
+    });
+
+  it('round-trips a page shot’s panels as authored material, and writes no key for a frame', async () => {
+    const paths = await tempPaths();
+    await writeShots(paths, 'arrival', [page()]);
+
+    const raw = JSON.parse(await readFile(paths.shotsFile('arrival'), 'utf8'));
+    expect(raw.shots[0].panels).toHaveLength(2);
+    expect(raw.shots[0].panels[1].artNotes).toBe('rain on the glass');
+    expect(raw.shots[0].shotData).toBeUndefined();
+    const loaded = await readShots(paths, 'arrival');
+    expect(loaded?.shots).toEqual([page()]);
+    expect(loaded?.unpanelled).toEqual([]);
+    expect(await writeShots(paths, 'arrival', [page()])).toBe(false);
+
+    await writeShots(paths, 'arrival', [shot()]);
+    const plain = JSON.parse(await readFile(paths.shotsFile('arrival'), 'utf8'));
+    expect('panels' in plain.shots[0]).toBe(false);
+  });
+
+  it('cuts a panel’s lines down to the shot’s, and reports the lines no panel letters', async () => {
+    const paths = await tempPaths();
+    const wide = page();
+    wide.coversLines = ['arrival:L1', 'arrival:L2', 'arrival:L3'];
+    wide.panels![0]!.coversLines = ['arrival:L1', 'arrival:L9'];
+    await writeShots(paths, 'arrival', [wide]);
+
+    // L9 is in a panel but not in the shot, and L2 leaves the scene with the shot's own list.
+    const loaded = await readShots(paths, 'arrival', new Set(['arrival:L1', 'arrival:L3']));
+    expect(loaded?.shots[0]?.coversLines).toEqual(['arrival:L1', 'arrival:L3']);
+    expect(loaded?.shots[0]?.panels?.map((p) => p.coversLines)).toEqual([['arrival:L1'], []]);
+    expect(loaded?.dropped).toEqual([{ shotId: 'arrival__establishing', lineIds: ['arrival:L2'] }]);
+    expect(loaded?.unpanelled).toEqual([
+      { shotId: 'arrival__establishing', lineIds: ['arrival:L3'] },
+    ]);
+  });
+
+  it('refuses a panel that casts someone outside the shot’s cast, naming both', async () => {
+    const paths = await tempPaths();
+    const wrong = page();
+    wrong.subjects = [{ characterId: 'aiko' }];
+    await writeShots(paths, 'arrival', [wrong]);
+    await expect(readShots(paths, 'arrival')).rejects.toMatchObject({
+      diagnostics: [
+        {
+          code   : 'panel_subject_not_in_cast',
+          message: expect.stringContaining('panel 2 of arrival__establishing casts "ren"'),
+        },
+      ],
+    });
+  });
+
+  it('writes the observed panel boxes beside the image alone', async () => {
+    const paths = await tempPaths();
+    const boxes = [{ x: 0, y: 0, w: 1, h: 0.5 }];
+    await writeShots(paths, 'arrival', [page(), { ...page(), id: 'x', panelBoxes: boxes }]);
+    let raw = JSON.parse(await readFile(paths.shotsFile('arrival'), 'utf8'));
+    // No image, so no boxes: they describe bytes that do not exist.
+    expect(raw.shots[1].shotData).toBeUndefined();
+
+    const drawn = { ...page(), image: 'deadbeef', status: 'accepted' as const, panelBoxes: boxes };
+    await writeShots(paths, 'arrival', [drawn]);
+    raw = JSON.parse(await readFile(paths.shotsFile('arrival'), 'utf8'));
+    expect(raw.shots[0].panelBoxes).toBeUndefined();
+    expect(raw.shots[0].shotData.panelBoxes).toEqual(boxes);
+    expect((await readShots(paths, 'arrival'))?.shots).toEqual([drawn]);
+  });
+
+  it('round-trips the staging groups and carries them through a write that says nothing', async () => {
+    const paths = await tempPaths();
+    const sheets = { staging: { seed: 3, notes: 'the whole café' } };
+    await writeShots(paths, 'arrival', [shot({ sheet: 'staging' })], { sheets });
+    expect(await readShots(paths, 'arrival')).toMatchObject({
+      sheets,
+      shots: [{ sheet: 'staging' }],
+    });
+
+    await writeShots(paths, 'arrival', [shot({ sheet: 'staging', framing: 'wide' })]);
+    expect((await readShots(paths, 'arrival'))?.sheets).toEqual(sheets);
+    // A decomposed file never carries the key.
+    await writeShots(paths, 'other', [shot({ sceneId: 'other' })]);
+    const raw = JSON.parse(await readFile(paths.shotsFile('other'), 'utf8'));
+    expect('sheets' in raw).toBe(false);
+  });
+
   it('refuses an aspect that is not two whole numbers', async () => {
     const paths = await tempPaths();
     await writeShots(paths, 'arrival', [shot()]);
