@@ -872,3 +872,27 @@ specification:
   `shotFallout` renames a panel's lines the way it renames the page's and cuts them to
   what the page still covers, so a page carried into another scene or straddling a split
   keeps a valid partition. `panelLines(panels, keep)` is the one helper both use.
+- **The timeline sets each thumbnail's ratio inline rather than per asset in CSS.**
+  `timeline.css` keeps `16 / 9` as the default and the strip writes `style.aspectRatio`
+  from `CoverageShot.aspect` on the image and on the "no frame" placeholder alike, so a
+  portrait page stands portrait before it is drawn. A page's head reads `page · N` where a
+  frame's reads its framing, and so does its continuation bracket. The shot menu gained a
+  `page` situation (`rules/situations/shotmenu.ts`), whose menu is the frame's, since a
+  page is one asset; `ux-model.json` was regenerated.
+- **`pageShotCount` reads every storyboard.** `project.setLettering`'s price is the number
+  of shots with panels across the project, from `readAllShots`; a storyboard that will not
+  parse counts for nothing, since its pages cannot render either.
+- **`write_storyboard`'s strict shape mirrors the decomposition schema.** `framing` is
+  optional (a page takes its first panel's), and `aspect`, `layout`, `panels` (one to six,
+  each with an optional `shape`, `framing`, `camera`, `subjects`, `coversLines`,
+  `artNotes`) and `sheet` are accepted; a misspelled key is still refused.
+  `propose_storyboard` echoes a page with its realized outlines rather than a layout name,
+  so a restatement needs no template, and `read_shots` prints a page as
+  `[page · N @variant]` with one line per panel. `set_coverage`'s description says a frame
+  is free and a lettered page is not.
+- **Docs.** `pipeline-contracts.md` gained the page shape, the lettering exception to
+  "coverage edits do not rehash", `panelBoxes`/`observed` and the runner's layout verdict;
+  `playable-format.md` says a page is shown whole with its lines stepped beneath it;
+  `desktop-app-editors-story.md` and the `full-production` skill carry the same exception.
+  The plan's "Export: preserve single-image export" needed no code, since the exporter
+  never read panels.

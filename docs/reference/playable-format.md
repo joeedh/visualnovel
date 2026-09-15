@@ -66,6 +66,14 @@ Contracts. Each scene flattens into ordered beats plus its branch edges:
   a viewer jump from the point they are watching. The field is optional in the schema so
   that a playable written before the field existed can still be read, and every export
   since writes it.
+- **A page shot is shown whole.** A shot with `panels` renders as one image of several
+  panels, and the exporter treats it as any other shot: one `show` beat naming the shot,
+  with its single image, when the covering shot changes, then the `say`/`narrate` beats of
+  every line it covers over that image. The playable carries nothing about panels, so a
+  runner shows the page at its own aspect and steps the lines beneath it, with the page
+  held over all of them. Stepping the panels, lighting one as its line is read, is a later
+  stage
+  ([`../plans/manga-style.md#stage-3--panel-stepping-and-the-panel-editor`](../plans/manga-style.md#stage-3--panel-stepping-and-the-panel-editor)).
 - **A `transition` line is coverable but produces no beat.** `CUT TO:` is an instruction
   to the reader of a screenplay rather than a line of the story. A shot may cover it, and
   covering it still changes the frame above (the `show` beat is emitted), but the

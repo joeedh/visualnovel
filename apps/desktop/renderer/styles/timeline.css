@@ -307,6 +307,7 @@
 }
 .tl-frame {
   width: 100%;
+  /* The default; the strip sets each frame's own ratio inline, so a page stands portrait. */
   aspect-ratio: 16 / 9;
   object-fit: cover;
   border-radius: 2px;

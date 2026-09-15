@@ -2,7 +2,7 @@
 import { z } from 'zod';
 import { decomposeScene, realizeDecomposition } from '@vn/artgen';
 import { readShots, writeShots } from '@vn/store';
-import type { Scene, Shot } from '@vn/types';
+import type { Scene, Shot, ShotSubject } from '@vn/types';
 import { ok, fail, type Tool } from './core.js';
 
 /**
@@ -19,7 +19,13 @@ function formatStoryboard(scene: Scene, shots: readonly Shot[]): string {
     const lines = s.coversLines.length
       ? `covers ${s.coversLines.join(', ')}`
       : 'covers nothing — never shown';
-    return `${s.id}  [${s.framing} @${s.location}]  ${cast}\n    ${lines}`;
+    const kind = s.panels ? `page · ${s.panels.length}` : s.framing;
+    const panels = (s.panels ?? []).map((p, i) => {
+      const who = p.subjects.map((x) => x.characterId).join(', ') || 'nobody';
+      const held = p.coversLines.length ? p.coversLines.join(', ') : 'no lines';
+      return `\n    panel ${i + 1} (${p.framing}): ${who} — ${held}`;
+    });
+    return `${s.id}  [${kind} @${s.location}]  ${cast}\n    ${lines}${panels.join('')}`;
   });
   const gaps = scene.lines.filter((l) => !covered.has(l.id)).map((l) => l.id);
   const tail = gaps.length
@@ -34,16 +40,33 @@ function formatStoryboard(scene: Scene, shots: readonly Shot[]): string {
  * the scene's and the pipeline's, not the caller's.
  */
 function storyboardArgsOf(shots: readonly Shot[]): unknown[] {
+  const subjectsOf = (list: readonly ShotSubject[]): unknown[] =>
+    list.map((x) => ({
+      characterId: x.characterId,
+      ...(x.pose === undefined ? {} : { pose: x.pose }),
+      ...(x.expression === undefined ? {} : { expression: x.expression }),
+    }));
   return shots.map((s) => ({
     id      : s.id,
     framing : s.framing,
     location: s.location,
-    subjects: s.subjects.map((x) => ({
-      characterId: x.characterId,
-      ...(x.pose === undefined ? {} : { pose: x.pose }),
-      ...(x.expression === undefined ? {} : { expression: x.expression }),
-    })),
+    subjects: subjectsOf(s.subjects),
     ...(s.camera === undefined ? {} : { camera: s.camera }),
+    ...(s.aspect === undefined ? {} : { aspect: s.aspect }),
+    // A realized page carries its outlines, so the restatement needs no layout name
+    ...(s.panels === undefined
+      ? {}
+      : {
+          panels: s.panels.map((p) => ({
+            shape  : p.shape,
+            framing: p.framing,
+            ...(p.camera === undefined ? {} : { camera: p.camera }),
+            subjects   : subjectsOf(p.subjects),
+            coversLines: p.coversLines,
+            ...(p.artNotes === undefined ? {} : { artNotes: p.artNotes }),
+          })),
+        }),
+    ...(s.sheet === undefined ? {} : { sheet: s.sheet }),
     coversLines: s.coversLines,
   }));
 }
@@ -98,8 +121,10 @@ const coverageShape = z.object({
 const setCoverageTool: Tool<z.infer<typeof coverageShape>> = {
   name       : 'set_coverage',
   description:
-    'Restate which line ids one shot is on screen for — the whole set, not a delta. Free: ' +
-    'coverage is not in a shot’s task hash, so nothing re-renders. Claiming a line takes it from ' +
+    'Restate which line ids one shot is on screen for — the whole set, not a delta. Free on a ' +
+    'frame: coverage is not in its task hash, so nothing re-renders. Not free on a page under ' +
+    'lettering: model, whose lines are in its prompt: the page is drawn again, and a line it ' +
+    'gains joins the panel holding the line before it. Claiming a line takes it from ' +
     'whichever shot had it, and a claim that would leave a neighbour empty is refused — delete ' +
     'the neighbour first if that is what you mean. A released line is a gap the runner shows as ' +
     'the previous image held too long. Read what covers what with read_shots first.',
@@ -161,10 +186,42 @@ const proposeStoryboardTool: Tool<{ scene: string }> = {
 // Both shapes are `.strict()` for the reason `@vn/types`'s art-direction shapes are: a misspelled
 // key here is dropped silently, and a shot's variant sent as `variant` cost one conversation
 // fifteen items and seven wrong frames before the agent worked out it had never arrived.
+const framingShape = z.enum(['wide', 'medium', 'close', 'establishing']);
+
+const subjectShape = z.object({
+  characterId: z.string().min(1),
+  pose       : z.string().optional(),
+  expression : z.string().optional(),
+});
+
+const fraction = z.number().min(0).max(1);
+
+const panelShape = z
+  .object({
+    shape: z
+      .array(z.tuple([fraction, fraction]))
+      .min(3)
+      .optional()
+      .describe(
+        'the panel outline as page fractions, clockwise from the top left; left out, the ' +
+          'shot’s layout places it',
+      ),
+    framing    : framingShape,
+    camera     : z.string().optional(),
+    subjects: z
+      .array(subjectShape)
+      .describe('who is in this panel; each must be in the shot’s cast'),
+    coversLines: z.array(z.string()).describe('the line ids lettered in this panel'),
+    artNotes   : z.string().optional(),
+  })
+  .strict();
+
 const storyboardShotShape = z
   .object({
     id: z.string().min(1).describe('the shot id from the proposal, e.g. arrival__establishing'),
-    framing    : z.enum(['wide', 'medium', 'close', 'establishing']),
+    framing: framingShape
+      .optional()
+      .describe('required on a frame; a page may leave it out and take its first panel’s'),
     location: z
       .string()
       .min(1)
@@ -173,15 +230,28 @@ const storyboardShotShape = z
           'the location',
       ),
     subjects: z
-      .array(
-        z.object({
-          characterId: z.string().min(1),
-          pose       : z.string().optional(),
-          expression : z.string().optional(),
-        }),
-      )
+      .array(subjectShape)
       .describe('who is in frame; wardrobe is deliberately not here — outfits are set_outfit’s'),
     camera     : z.string().optional(),
+    aspect: z
+      .string()
+      .regex(/^[1-9]\d*:[1-9]\d*$/, 'an aspect ratio such as 3:4')
+      .optional()
+      .describe('this shot’s own ratio; a page without one takes the project’s page_aspect'),
+    layout: z
+      .string()
+      .optional()
+      .describe(
+        'a layout template by name (two-tier, three-tier, diagonal-split, splash-with-insets) ' +
+          'for panels that carry no shape',
+      ),
+    panels: z
+      .array(panelShape)
+      .min(1)
+      .max(6)
+      .optional()
+      .describe('present on a page shot: one entry per panel, in reading order'),
+    sheet      : z.string().optional().describe('the staging-sheet group this shot belongs to'),
     coversLines: z.array(z.string()).describe('the line ids this shot is on screen for'),
   })
   .strict();
@@ -227,7 +297,8 @@ const writeStoryboardTool: Tool<z.infer<typeof writeStoryboardShape>> = {
     'Persist a whole storyboard for a scene that has none — the mutating half of ' +
     'propose_storyboard. Takes the full shot list as arguments on purpose: the decomposer is ' +
     'non-deterministic, so what is written is exactly what the author read and approved, never a ' +
-    'fresh roll. Every shot is a frame the pipeline will owe. It refuses when a storyboard ' +
+    'fresh roll. Every shot is a frame the pipeline will owe; a shot with panels is a page, one ' +
+    'image of several panels, each with its own framing, cast and lettered lines. It refuses when a storyboard ' +
     'already exists (no force — the file wins forever; edit it instead), and it runs the same ' +
     'validation the batch decomposer does: unknown characters and invented line ids are dropped, ' +
     'and a list that binds none of the scene’s lines is refused rather than repaired into the ' +

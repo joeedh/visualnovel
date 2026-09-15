@@ -604,10 +604,11 @@ export class TimelineEditor extends VnEditor {
     box.style.gridColumn = String(span.lane + 2);
     box.style.gridRow = `${segment.from + 1} / ${segment.to + 2}`;
 
+    const kind = shot.panels ? `page · ${shot.panels.length}` : shot.framing;
     if (first) {
       box.appendChild(this.handle(shotId, 'start'));
       const head = el('div', 'tl-head');
-      head.appendChild(el('span', 'fr', shot.framing));
+      head.appendChild(el('span', 'fr', kind));
       head.appendChild(
         el('span', 'cast', shot.subjects.length ? shot.subjects.join(' · ') : 'plate'),
       );
@@ -620,20 +621,24 @@ export class TimelineEditor extends VnEditor {
       }
       box.appendChild(head);
 
+      let frame: HTMLElement;
       if (shot.image) {
         const img = document.createElement('img');
         img.className = 'tl-frame';
         img.src = `vnasset://${shot.image.hash}.${shot.image.ext}`;
         img.alt = shot.id;
         img.draggable = false;
-        box.appendChild(img);
+        frame = img;
       } else {
         // A shot that has not rendered yet is the normal pre-run state, not a fault.
-        box.appendChild(el('div', 'tl-frame none', 'no frame'));
+        frame = el('div', 'tl-frame none', 'no frame');
       }
+      // The shot's own ratio, so a portrait page is not cropped to a landscape frame
+      frame.style.aspectRatio = shot.aspect.replace(':', ' / ');
+      box.appendChild(frame);
       box.appendChild(el('div', 'tl-id', shot.id));
     } else {
-      const cont = el('div', 'tl-cont', `⋯ ${shot.framing}`);
+      const cont = el('div', 'tl-cont', `⋯ ${kind}`);
       cont.title = shot.id;
       box.appendChild(cont);
     }

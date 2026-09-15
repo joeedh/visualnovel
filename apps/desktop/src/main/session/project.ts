@@ -32,7 +32,14 @@ import {
 } from '../distribution/updates.js';
 import { ensureIgnored } from '../workspace/workspace.js';
 import type { WorkspaceSession, LoadedProject, PromptResult, PromptWriteResult } from './core.js';
-import { IMAGE_KINDS, relPath, describeKeySource, loadProject, buildProviders } from './core.js';
+import {
+  IMAGE_KINDS,
+  relPath,
+  describeKeySource,
+  loadProject,
+  buildProviders,
+  readAllShots,
+} from './core.js';
 
 /** Answers with the sent key's label and limits; a wrong key gets a 401 and nothing is billed. */
 const OPENROUTER_KEY_URL = 'https://openrouter.ai/api/v1/key';
@@ -41,11 +48,15 @@ const OPENROUTER_KEY_URL = 'https://openrouter.ai/api/v1/key';
 const OPENROUTER_ERROR_CHARS = 200;
 
 /**
- * How many of a project's shots are pages, which is what a change of lettering re-keys. A page
- * is a shot with panels, and no shot carries them yet, so every project holds none.
+ * How many of a project's shots are pages, which is what a change of lettering re-keys. A
+ * storyboard that will not parse counts for nothing here, since its pages cannot render either.
  */
-function pageShotCount(_project: LoadedProject): number {
-  return 0;
+async function pageShotCount(project: LoadedProject): Promise<number> {
+  let pages = 0;
+  for (const shots of (await readAllShots(project)).values()) {
+    for (const shot of shots ?? []) if (shot.panels) pages += 1;
+  }
+  return pages;
 }
 
 export class ProjectPart {
@@ -137,7 +148,7 @@ export class ProjectPart {
     if (project.config.lettering === lettering) {
       return { ok: false, message: 'The project already says that.' };
     }
-    const pages = pageShotCount(project);
+    const pages = await pageShotCount(project);
     return {
       ok     : true,
       message:

@@ -135,8 +135,10 @@ exists, you can work on it:
 - **Read it first** with `read_shots`. Coverage is what to check: every line covered by
   exactly one shot, no shot with no lines. A shot with no lines never appears; a line with
   no shot leaves the previous image on screen.
-- **Coverage edits are free.** `set_coverage` restates the full set of lines a shot covers
-  — claiming takes from the shot that held them — and re-renders nothing.
+- **Coverage edits to a frame are free.** `set_coverage` restates the full set of lines a
+  shot covers — claiming takes from the shot that held them — and re-renders no frame. A
+  page (a shot with `panels`) under `lettering: model` is the exception: its lines are in
+  its prompt, so a coverage take re-renders it, and the tool says so.
   `edit_scene op=moveShot` reorders by moving the lines the shot covers.
 - To direct a frame, `set_art_notes rung=shot:<sceneId>/<shotId>` ("the speaker in the
   near third, listener over-shoulder") and `set_outfit shot=…`. Framing and subjects are

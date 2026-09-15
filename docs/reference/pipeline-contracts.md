@@ -289,7 +289,23 @@ These implement the system design in
       authority, so the pipeline does not treat work as done when a shots file is restored
       from an old commit.
     - Line ids the scene no longer contains are dropped with a warning. `buildShotPrompt`
-      ignores `coversLines`, so coverage edits do not trigger a rehash.
+      ignores `coversLines` on a frame, so coverage edits to a frame do not trigger a
+      rehash. A page under `lettering: model` is the exception, below.
+    - A shot with `panels` is a page: one image of several panels, each with an outline in
+      page fractions, its own framing, camera and cast, and the lines it letters. A
+      panel's subjects must be in the shot's `subjects`, or `readShots` refuses the file
+      with `panel_subject_not_in_cast`; a covered line no panel letters is reported as
+      `line_in_no_panel` and the page still renders. A page's prompt is built by
+      `buildPageChunks`, and under `lettering: model` its lettered lines are in the prompt
+      verbatim, so the text and its panel assignment are in the task hash: a coverage take
+      on a page, or a line edit inside one, re-keys the page. Every host's coverage take
+      says so through `letteredPagesNote`.
+    - `shotData.panelBoxes` holds the panel boxes the reviewer measured on the accepted
+      image, from `DefectReport.observed`, which the reviewer fills only for a page. It is
+      derived, like `proseHash`, and a rerun that reports the same image leaves it alone.
+      The runner matches the boxes against the intended outlines (`matchPanels`, IoU at or
+      above `LAYOUT_IOU`) and files a `layout` defect of its own when they disagree; a
+      page no reviewer measured gets no layout verdict.
     - Dry runs read the file but never write it, so a real run never reuses a mock
       decomposition.
 - Reordering a shot means editing the prose, because a shot's order comes from the
@@ -420,12 +436,16 @@ These implement the system design in
     - Hashes cannot cycle today, but bindings can. A cycle in this graph does not raise an
       error at run time. It leaves tasks that are never ready, so the run appears to do
       nothing.
-- Editing a scene's prose never invalidates its art, so drift has to be reported.
-    - `buildShotPrompt` reads neither `coversLines` nor line text, because prose reaches
-      only the P7 reviewer spec, which never enters a task's `inputs`. Retyping a covered
-      line therefore rehashes nothing and re-renders nothing. The frame still illustrates
-      words the scene no longer contains, and by default no check detects that. So the
-      frame must be checked against the words it covers.
+- Editing a scene's prose never invalidates a frame's art, so drift has to be reported.
+    - `buildShotPrompt` reads neither `coversLines` nor line text on a frame, because
+      prose reaches only the P7 reviewer spec, which never enters a task's `inputs`.
+      Retyping a covered line therefore rehashes nothing and re-renders nothing. The frame
+      still illustrates words the scene no longer contains, and by default no check
+      detects that. So the frame must be checked against the words it covers.
+    - A page under `lettering: model` is the one exception: its lettered lines are in its
+      prompt, so retyping one, or moving one between panels, re-keys the page. Drift on a
+      page therefore only ever means a line that changed without changing the prompt,
+      which under `lettering: runner` is every line.
     - `Shot.proseHash` records a hash of the covered lines' text at the moment the image
       was produced. The hash is persisted under `shotData`, is written only beside an
       image, and is stamped only when the bytes are new. A rerun that reports the same

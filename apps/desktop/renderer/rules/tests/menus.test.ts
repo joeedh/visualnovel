@@ -71,6 +71,9 @@ describe('menuRecords', () => {
       'drawn story.deleteShot',
       'undrawn view.open refused',
       'undrawn story.deleteShot',
+      // A page is one asset, so it gets the drawn frame's menu
+      'page view.open',
+      'page story.deleteShot',
     ]);
     const line = records.filter((r) => r.module === 'linemenu');
     expect(line.map((r) => r.situation)).toEqual([

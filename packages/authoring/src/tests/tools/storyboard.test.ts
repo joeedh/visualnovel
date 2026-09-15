@@ -288,6 +288,62 @@ describe('storyboard tools', () => {
     }
   });
 
+  it('write_storyboard takes a page, places its panels by layout, and reads it back as one', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const r = await run(
+        'write_storyboard',
+        {
+          scene: 'ending',
+          shots: [
+            {
+              id         : 'page1',
+              location   : 'day',
+              subjects   : [{ characterId: 'aiko' }],
+              aspect     : '3:4',
+              layout     : 'diagonal-split',
+              panels: [
+                { framing: 'wide', subjects: [], coversLines: ['ending:L1'] },
+                {
+                  framing    : 'close',
+                  subjects   : [{ characterId: 'aiko', expression: 'wry' }],
+                  coversLines: ['ending:L2'],
+                },
+              ],
+              coversLines: ['ending:L1', 'ending:L2'],
+            },
+          ],
+        },
+        ctx,
+      );
+      expect(r.ok).toBe(true);
+      expect(r.output).toContain('[page · 2 @day]');
+      expect(r.output).toContain('panel 2 (close): aiko — ending:L2');
+      const board = await readShots(new ProjectPaths(dir), 'ending');
+      const shot = board?.shots[0];
+      expect(shot?.aspect).toBe('3:4');
+      expect(shot?.framing).toBe('wide');
+      expect(shot?.panels?.map((p) => p.shape.length)).toEqual([4, 4]);
+      expect(shot?.panels?.[1]?.subjects).toEqual([{ characterId: 'aiko', expression: 'wry' }]);
+
+      // What read_shots prints is the same picture, and a coverage take moves the panel line
+      const c = await run(
+        'set_coverage',
+        { scene: 'ending', shot: 'ending__page1', lines: ['ending:L1', 'ending:L2', 'ending:L3'] },
+        ctx,
+      );
+      expect(c.ok).toBe(true);
+      expect(c.output).toContain('ending__page1 letters its lines, so it is drawn again');
+      const after = await readShots(new ProjectPaths(dir), 'ending');
+      expect(after?.shots[0]?.panels?.map((p) => p.coversLines)).toEqual([
+        ['ending:L1'],
+        ['ending:L2', 'ending:L3'],
+      ]);
+    } finally {
+      await cleanup();
+    }
+  });
+
   it('write_storyboard rejects a shot key it does not take, rather than dropping it', () => {
     const shape = tool('write_storyboard').args;
     const shot = {

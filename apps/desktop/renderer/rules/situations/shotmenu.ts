@@ -1,4 +1,8 @@
-/** The shot menu's two situations. One shot has a drawn frame; the other has no frame yet. */
+/**
+ * The shot menu's three situations. One shot has a drawn frame, one has no frame yet, and one is
+ * a page: several panels, drawn portrait, whose menu is the frame's menu because a page is one
+ * asset.
+ */
 import { situations } from './situation.js';
 import type { CoverageShot } from '../../../src/shared/ipc.js';
 
@@ -29,5 +33,19 @@ export const SITUATIONS = situations<ShotMenuState>(
     name : 'undrawn',
     why  : 'The shot has no frame yet, so Open shot asset is refused with the strip’s sentence.',
     state: { sceneId: 'arrival', shot: bare },
+  },
+  {
+    name : 'page',
+    why  : 'A drawn page of two panels gets the same menu as a frame: one asset, one image.',
+    state: {
+      sceneId: 'arrival',
+      shot: {
+        ...bare,
+        coversLines: ['arrival:L1', 'arrival:L2'],
+        panels     : [{ coversLines: ['arrival:L1'] }, { coversLines: ['arrival:L2'] }],
+        aspect     : '3:4',
+        image      : { hash: 'a1b2c3d4', ext: 'png' },
+      },
+    },
   },
 );

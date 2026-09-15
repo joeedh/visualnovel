@@ -408,9 +408,14 @@ and
 
 This is the only surface that edits `Shot.coversLines` directly (the `story.*` scene
 editors also move it, as fallout of a split or merge rather than as the point), and
-`buildShotPrompt` ignores it, so every edit here is free: nothing rehashes and no art is
-invalidated. Edits to the prose on this surface are free in the same way, and for prose
-that is a problem rather than a feature, which is why the drift marking below exists.
+`buildShotPrompt` ignores it on a frame, so an edit to a frame here is free: nothing
+rehashes and no art is invalidated. Edits to the prose on this surface are free in the
+same way, and for prose that is a problem rather than a feature, which is why the drift
+marking below exists. A page shot (`CoverageShot.panels`) is the exception: its head reads
+`page · N`, its thumbnail stands at the shot's own `aspect`, and under `lettering: model`
+its lines are in its prompt, so a take on a page re-keys it. The command's check says so
+in the same sentence the write does (`letteredPagesNote`), and the take moves the lines
+between the page's panels by the rule in `@vn/scriptedit`'s `coverage.ts`.
 
 - **One rule, previewed and committed.** `@vn/scriptedit`'s `coverage.ts` holds the whole
   gesture's logic: `setCoverage` (the rule), `spansFor` (the geometry) and `resolveDrag`

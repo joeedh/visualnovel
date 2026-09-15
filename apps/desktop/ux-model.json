@@ -745,6 +745,12 @@
       "why": "The shot has no frame yet, so Open shot asset is refused with the strip’s sentence."
     },
     {
+      "module": "shotmenu",
+      "editor": "timeline",
+      "name"  : "page",
+      "why"   : "A drawn page of two panels gets the same menu as a frame: one asset, one image."
+    },
+    {
       "module": "linemenu",
       "editor": "script",
       "name"  : "drawn",
@@ -27263,6 +27269,33 @@
       "editor"   : "timeline",
       "module"   : "shotmenu",
       "situation": "undrawn",
+      "when"     : "shot:arrival/arrival:s1",
+      "id"       : "story.deleteShot",
+      "label"    : "Delete this shot",
+      "props": {
+        "scene": "arrival",
+        "shot" : "arrival:s1"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "timeline",
+      "module"   : "shotmenu",
+      "situation": "page",
+      "when"     : "shot:arrival/arrival:s1",
+      "id"       : "view.open",
+      "label"    : "Open shot asset",
+      "props": {
+        "editor" : "asset",
+        "where"  : "elsewhere",
+        "subject": "a1b2c3d4"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "timeline",
+      "module"   : "shotmenu",
+      "situation": "page",
       "when"     : "shot:arrival/arrival:s1",
       "id"       : "story.deleteShot",
       "label"    : "Delete this shot",
