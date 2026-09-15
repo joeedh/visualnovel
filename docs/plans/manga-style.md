@@ -733,7 +733,7 @@ specification:
   plugin's estimate is one `image` line for the named model, which an author's own price
   table can price or leave unpriced.
 - **The plugin was retired on 2026-09-15** by
-  [`openrouter-backend-and-the-image-model-default.md`](openrouter-backend-and-the-image-model-default.md),
+  [`archive/openrouter-backend-and-the-image-model-default.md`](archive/openrouter-backend-and-the-image-model-default.md),
   whose Stage 1 moved `draw.ts` into `@vn/providers` as `createOpenRouterImage` and whose
   Stage 3 deleted `plugins/openrouter/` and its test. A graph holding an `OpenRouterImage`
   node loads as a `GenImage` naming the same `<vendor>/<model>` id, through

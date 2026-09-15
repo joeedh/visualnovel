@@ -331,3 +331,94 @@ The splash row is scored against the outline the template now has (see below).
   that wants lettered pages today should draw them through OpenRouter on one of the four
   that pass (by naming its `<vendor>/<model>` id in `models.image` or on a node; the
   plugin the check ran through has since been retired), or wait for `lettering: runner`.
+
+## Image model default — OpenRouter as a backend (2026-09-15)
+
+The live check the
+[OpenRouter-backend plan](../plans/archive/openrouter-backend-and-the-image-model-default.md#live-check)
+asks for, run on the branch after Stages 1 to 5 were green.
+
+### What was checked
+
+- A copy of `templates/basic` with `models.image: openai/gpt-image-2` and its own `keys/`,
+  run through the CLI built from the branch: `vngen cost`, a run with the OpenRouter key
+  withheld, the run to the P3 gate, `vngen approve --yes`, and the run past it. The check
+  is each asset's `modelId` and pixel size read from the two manifests, and the reviewers'
+  verdicts in `state/tasks.jsonl`.
+- One graph, `GenDerivedPrompt` and `GenTaskRefs` feeding a `GenImage` into a `GenOutput`
+  bound to `shot:ending/ending__s1`, written from the DSL, run three times on the same
+  slot: with `model` empty, with `model: gemini-2.5-flash-image`, and empty again. The
+  check is the run journal's `draw` records and the manifest.
+- The inherit graph's node hashes under two project models and none, computed from the
+  graph doc the run used (`graphHashes` with `defaults.imageModel`).
+- One catalog refresh against the live endpoints, timed, through
+  `listOpenRouterImageModels` with a counting `fetch`.
+
+### Budget and spend
+
+- `vngen cost` before the first run: 6 image calls at the P3 gate (4 `location_ref`, 2
+  `portrait`); after approval, 13 tasks (6 `model_sheet`, 7 `shot_image`) at an upper
+  bound of 34 image calls and 56 review calls.
+- OpenRouter's key meter read $37.317 after the P3 run and $38.008 at the end:
+  $0.61 for
+  the 17 pictures past the gate (about $0.036 each on `gpt-image-2` at 16:9,
+  against $0.0885 for a 3:4 page in Stage 2) and $0.08 for the three graph draws. The
+  eight pictures before the first reading are estimated at
+  $0.29 from the same rate, so about
+  **$0.98 on OpenRouter** across 28 pictures, plus one
+  direct Gemini draw (about $0.04),
+  34 review calls (about $0.70) and two scene
+  decompositions on Claude (under $0.10).
+  About $1.80 in all; the plan estimated $0.60
+  for a run stopping after one shot, and the post-gate wave was run whole because the
+  model sheets are the edit path.
+- Latency: the P3 run took 67 s for 8 pictures at concurrency 4; the post-gate wave 5 m 48
+  s for 17 pictures with 26 reviews. A catalog refresh took 2.7 s for 53 calls.
+
+### What came back
+
+- With `keys/openrouter.txt` moved aside, `vngen run` refused before decomposing or
+  drawing:
+  `missing openrouter API key: set $OPENROUTER_API_KEY or place openrouter.txt in a keys/ dir`,
+  exit 1. Nothing was written.
+- Every one of the 25 pipeline assets says `modelId: openai/gpt-image-2` and is 1536×864
+  PNG, the exact 16:9 the project asked for: 4 location refs, 2 portraits, 6 model sheets
+  (reference-guided edits through the same endpoint, base first) and 13 shots. All 13
+  shots were accepted on the first attempt by both reviewers.
+- The graph on the same slot: `model: ''` drew through OpenRouter with
+  `modelId: openai/gpt-image-2` (two attempts, the second after a critique, then
+  accepted); `model: gemini-2.5-flash-image` was reported as
+  `drifted: live-inherit node out` by `vngen status`, redrawn on the next run direct
+  through Gemini (`modelId: gemini-2.5-flash-image`, 1344×768); empty again redrew through
+  OpenRouter. The pictures drawn through the graph are 1672×941 and 1344×768 rather than
+  16:9, because a graph node's `aspect` prop is what it sends and the test graph left it
+  empty.
+- The flip back to `''` redrew rather than resumed, although a `done` record with that
+  exact hash was in the journal: `executeGenGraph` resumes from the node's latest record
+  only, and the latest was the Gemini one. That is the existing rule, and it errs toward a
+  redraw.
+- The hashes, from the graph doc: `refs` and `prompt` are the same under every default;
+  `draw` and `out` differ between `openai/gpt-image-2`, `google/gemini-2.5-flash-image`
+  and no default at all. A change of `models.image` therefore reaches an inherit node's
+  run hash, which is what keeps the journal from handing a re-keyed task the old picture.
+- `vngen cost` on the bound slot said `no price for: openai/gpt-image-2`, which is right:
+  the resolved id is a per-token model and the catalog carries no per-picture price for
+  it. `vngen status` reported the drifted output, but `vngen cost` counted 0 slots to draw
+  for it: a drifted slot is not in the graph estimate, only an unrendered one.
+- The listing: 52 image models, every id with a slash, 26 with a per-picture price
+  ($0.019
+  to $0.30; ByteDance, Qwen, Recraft, Sourceful, xAI), 26 without (Black Forest
+  Labs, Google, Krea, Meta, Microsoft, OpenAI, all billed per token or per megapixel), 12
+  declaring a `seed` parameter, no endpoints call failed. 53 free calls, no key.
+
+### Decisions settled
+
+- OpenRouter as a built-in backend works end to end for every task kind, the edit path
+  included, and the refusal for a missing key is the `resolveKeys` sentence before any
+  spend.
+- A per-token OpenRouter model stays unpriced in the estimate. The alternative, a nominal
+  token count per picture, would put an unchecked figure beside checked ones.
+- Nothing in the results changes the plan's decisions. Two things are noted for later work
+  rather than fixed here: a drifted bound slot is not counted in `vngen cost`'s graph
+  estimate, and a graph node with an empty `aspect` draws at the provider's default size
+  rather than the project's.

@@ -1,10 +1,11 @@
 # OpenRouter as a built-in image backend, and one image model to inherit from
 
-**Status: Stages 1 to 5 shipped on 2026-09-15; Stage 6, the live check, is owed.** Written
-2026-09-15 after the manga-style Stage 2 live check found the default image model unfit
-for lettered pages while three OpenRouter-routed models were not, and there was no way to
-say so in `project.yaml` without a plugin graph on every slot. Pressure-tested the same
-day; the findings and what changed are in the Review section.
+**Status: shipped.** All six stages landed on 2026-09-15; the As-shipped section records
+each stage's deviations and the live check's results. Written 2026-09-15 after the
+manga-style Stage 2 live check found the default image model unfit for lettered pages
+while three OpenRouter-routed models were not, and there was no way to say so in
+`project.yaml` without a plugin graph on every slot. Pressure-tested the same day; the
+findings and what changed are in the Review section.
 
 ## What this adds
 
@@ -24,7 +25,7 @@ day; the findings and what changed are in the Review section.
 ## What this does not do
 
 - Chat vendors, `models.text` and `models.vision`. Those stay with
-  [`four-chat-vendors-and-two-more-image-providers.md`](four-chat-vendors-and-two-more-image-providers.md).
+  [`four-chat-vendors-and-two-more-image-providers.md`](../four-chat-vendors-and-two-more-image-providers.md).
 - Direct OpenAI, xAI or BFL image backends. OpenRouter reaches those models already; a
   direct backend for one of them is that plan's Decision 7 and is not pre-empted here.
 - A per-shot or per-scene image model. A graph bound to a slot is how one slot draws
@@ -33,7 +34,7 @@ day; the findings and what changed are in the Review section.
   prices only graph-bound slots (`apps/cli/src/commands.ts:359-402`); this plan adds a
   price table that section reads and does not add task pricing.
 - The dollars ledger.
-  [`provider-credentials-and-the-ai-usage-ledger.md`](provider-credentials-and-the-ai-usage-ledger.md)
+  [`provider-credentials-and-the-ai-usage-ledger.md`](../provider-credentials-and-the-ai-usage-ledger.md)
   owns spend accounting.
 
 ## Facts the plan rests on
@@ -302,7 +303,7 @@ day; the findings and what changed are in the Review section.
   ids and the current value. Each OpenRouter row's tooltip carries its price, its aspect
   ratios, whether it takes a seed, and, for a non-Google model, "routed by OpenRouter; not
   zero-data-retention", from
-  [`../research/openrouter-vs-direct-image-api-privacy.md`](../research/openrouter-vs-direct-image-api-privacy.md).
+  [`../research/openrouter-vs-direct-image-api-privacy.md`](../../research/openrouter-vs-direct-image-api-privacy.md).
 - One owner in the renderer. `ProjectView` gains `imageModels: ModelCatalog` (the shipped
   ids, the cached OpenRouter rows, the default), read in main by `readModelCatalog()` in
   `@vn/pipeline` beside `readUserPrices`. The shell's project-view fetch calls
@@ -622,13 +623,11 @@ Stage 5 (the catalog), and what differed from the plan:
   node picker adds the node's own value by reading it off the row's data path when the
   rows are resolved. A Google model reached through OpenRouter carries "routed by
   OpenRouter" without the zero-data-retention clause, as Decision 6 says.
-- path.ux's `DropBox` keeps the first `EnumProperty` it resolved for its button label
-  (`this.prop`, set once in `_updateFromPath`), while the menu it opens resolves the rows
-  afresh. A node frame built before the first project view arrived therefore opens a menu
-  with the full list and the "Inherit (`<models.image>`)" row, but its button says
-  "Inherit (project image model)" until the frame is rebuilt; checked in the running app.
-  A frame built after the view arrived is right from the start. Left as is rather than
-  rebuilding every node frame on each project-view read.
+- path.ux's `DropBox` kept the first `EnumProperty` it resolved for its button label
+  (`this.prop`, set once in `_updateFromPath`), while the menu it opens resolved the rows
+  afresh, so a node frame built before the first project view arrived said "Inherit
+  (project image model)" on its button until rebuilt. Fixed in path.ux `2977e4dc`, which
+  makes the cache follow each resolution; the gitlink bump is in the Stage 6 commit.
 - The shell's read is `refreshProjectView` in `renderer/pathux/app/bridge.ts`: it runs
   `project.info` through `command:exec` directly (so a refusal with no project open is not
   said out loud), hands `imageModels` to `setModelCatalog`, and tells `onProjectView`
@@ -659,3 +658,29 @@ Stage 5 (the catalog), and what differed from the plan:
 - `docs/reference/pipeline-contracts.md`'s provider-seams bullet, `desktopAppState.md`'s
   persistence table, `gen-graphs.md`'s image-node bullets, the Project section of
   `desktop-app-editors-misc.md` and four `module-map.md` rows were updated.
+
+Stage 6 (the live check), and what differed from the plan:
+
+- Results are in
+  [`../research/manga-live-tests.md`](../../research/manga-live-tests.md#image-model-default--openrouter-as-a-backend-2026-09-15).
+  Every asset of a `templates/basic` copy on `openai/gpt-image-2` came back from that
+  model at the exact 16:9, the model sheets through the edit path included; 13 of 13 shots
+  were accepted first try; the withheld key was refused with `resolveKeys`'s sentence
+  before any spend; the same slot drew through OpenRouter on an empty node model and
+  direct through Gemini on a literal one, with the drift reported by `vngen status` in
+  between; the inherit node's `draw` hash differs per project model while the nodes above
+  it do not; the listing came back in 2.7 s over 53 free calls.
+- The post-gate wave was run whole rather than stopping after one shot, because the model
+  sheets are the only exercise of the edit path. About
+  $1.80 in all against the plan's
+  $0.60: $0.98 on OpenRouter for 28 pictures, the rest
+  reviews, one direct Gemini draw and two decompositions.
+- Two observations left for later work: `vngen cost` counts a drifted bound slot as 0 to
+  draw, so a redraw the next run will make is not in the graph estimate; and a graph node
+  whose `aspect` prop is empty draws at the provider's default size, not the project's.
+- Switching a node's model away and back redrew rather than resumed, because
+  `executeGenGraph` resumes from a node's latest journal record only. That is the
+  pre-existing rule and it over-draws rather than under-draws, so it is recorded, not
+  changed.
+- path.ux's `DropBox` label cache (Stage 5's known limit) was fixed in path.ux `2977e4dc`
+  and the gitlink bumped in this stage's commit.

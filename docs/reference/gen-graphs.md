@@ -728,7 +728,7 @@ in the same three ways a built-in node type is split.
   ([`../plans/manga-style.md`](../plans/manga-style.md#live-model-testing)). It is
   retired: the built-in image backend routes a `<vendor>/<model>` id to OpenRouter itself,
   so a `GenImage` naming `openai/gpt-image-2` draws through the same endpoint
-  ([`../plans/openrouter-backend-and-the-image-model-default.md`](../plans/openrouter-backend-and-the-image-model-default.md)).
+  ([`../plans/archive/openrouter-backend-and-the-image-model-default.md`](../plans/archive/openrouter-backend-and-the-image-model-default.md)).
   `migrateGraphJSON` carries a `RETIRED_TYPES` map, `{ OpenRouterImage: 'GenImage' }`,
   applied before the per-type renames, so a graph that used the plugin loads as the
   built-in node with the same model, aspect and seed and the same wiring; nothing is
