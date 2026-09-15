@@ -709,14 +709,20 @@ in the same three ways a built-in node type is split.
   built-in image node still runs through the host's image backend, which a project with no
   plugins depends on. The fixture plugin the loader's tests use lives in
   `packages/testkit/src/plugin/`.
-- The second plugin is OpenRouter, at `plugins/openrouter/`. Its one `OpenRouterImage`
-  type (props `model`, `aspect`, `seed`) posts to OpenRouter's `/api/v1/images` endpoint
-  with the `openrouter` key, carries references as data URLs, sends
-  `data_collection: deny` on every call, and records the cost OpenRouter reports as a
-  `cost` output in the run's journal. It exists so one shot can be drawn by several image
-  models through bound graphs with no test-only code path
-  ([`../plans/manga-style.md`](../plans/manga-style.md#live-model-testing)), and it
-  declares no prices, because OpenRouter prices each model as its provider does.
+- There was a second plugin, OpenRouter, whose one `OpenRouterImage` type posted to
+  OpenRouter's `/api/v1/images` endpoint so one shot could be drawn by several image
+  models through bound graphs
+  ([`../plans/manga-style.md`](../plans/manga-style.md#live-model-testing)). It is
+  retired: the built-in image backend routes a `<vendor>/<model>` id to OpenRouter itself,
+  so a `GenImage` naming `openai/gpt-image-2` draws through the same endpoint
+  ([`../plans/openrouter-backend-and-the-image-model-default.md`](../plans/openrouter-backend-and-the-image-model-default.md)).
+  `migrateGraphJSON` carries a `RETIRED_TYPES` map, `{ OpenRouterImage: 'GenImage' }`,
+  applied before the per-type renames, so a graph that used the plugin loads as the
+  built-in node with the same model, aspect and seed and the same wiring; nothing is
+  rewritten on disk until the graph is next saved, and the load reports "1 OpenRouterImage
+  node now loads as GenImage" the way a rename does. A copy installed under
+  `<userConfigDir>/plugins/openrouter` keeps registering a type no graph names any more,
+  which is harmless; `plugin.remove` it.
 
 ## Deliberately not built
 

@@ -528,3 +528,18 @@ Stage 2 (inherit), and what differed from the plan:
   Stage 5, because a `listenum` over a value its rows do not hold shows nothing. Stage 5
   replaces the label with the model's id. Whether path.ux's `DropBox` shows an empty
   string value correctly is unverified until the app runs; that check is owed.
+
+Stage 3 (the plugin retired), and what differed from the plan:
+
+- `RETIRED_TYPES` rewrites the node's `_structName` (`graph.OpenRouterImage` to
+  `graph.GenImage`) in `migrateNode`, before that node's per-type renames, and inside a
+  group instance's subgraph too. The file's `typeVersion` is kept, since the alias holds
+  only at the version whose keys the two types share; a later `GenImage` rename would then
+  replay over the aliased node as over any other. The load reports it as its own note, "N
+  OpenRouterImage node(s) now load as GenImage", rather than as an "updated to vN" line.
+- The plugin's `cost` output (the spend OpenRouter reports per call) is not carried into
+  the built-in backend; nothing read it. The manga plan's As-shipped says so.
+- One sentence in `docs/research/manga-live-tests.md` advised drawing lettered pages
+  "through the OpenRouter plugin"; it now says through OpenRouter by model id. The rest of
+  that document is the record of a check that ran through the plugin and is left as
+  history.

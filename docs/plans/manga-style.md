@@ -732,6 +732,15 @@ specification:
   model as its provider does (per image for some, per token for Google's), and the
   plugin's estimate is one `image` line for the named model, which an author's own price
   table can price or leave unpriced.
+- **The plugin was retired on 2026-09-15** by
+  [`openrouter-backend-and-the-image-model-default.md`](openrouter-backend-and-the-image-model-default.md),
+  whose Stage 1 moved `draw.ts` into `@vn/providers` as `createOpenRouterImage` and whose
+  Stage 3 deleted `plugins/openrouter/` and its test. A graph holding an `OpenRouterImage`
+  node loads as a `GenImage` naming the same `<vendor>/<model>` id, through
+  `RETIRED_TYPES` in `migrateGraphJSON`, and draws through the same endpoint. The `cost`
+  output the plugin recorded is not carried over; the spend column in
+  [`../research/manga-live-tests.md`](../research/manga-live-tests.md) came from the
+  plugin as it stood then.
 - **`KeyVendor` is a superset of `ChatVendor`, not a widening of it.** `KEY_VENDORS` gains
   `openrouter`, and `ResolvedKeys` is `Record<KeyVendor, string>`. `ChatVendor` stays
   `'gemini' | 'anthropic'`, because no chat backend calls OpenRouter and `threads.ts` and

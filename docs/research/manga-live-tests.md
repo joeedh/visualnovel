@@ -328,5 +328,6 @@ The splash row is scored against the outline the template now has (see below).
   stamps that reviewer's boxes as `panelBoxes`.
 - Under `lettering: model`, `gemini-2.5-flash-image`, `mai-image-2.6` and `flux.2-pro` are
   unfit for pages. The project default image model is the first of those, so a project
-  that wants lettered pages today should draw them through the OpenRouter plugin on one of
-  the four that pass, or wait for `lettering: runner`.
+  that wants lettered pages today should draw them through OpenRouter on one of the four
+  that pass (by naming its `<vendor>/<model>` id in `models.image` or on a node; the
+  plugin the check ran through has since been retired), or wait for `lettering: runner`.

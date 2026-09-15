@@ -1,6 +1,8 @@
 import {
+  GenImage,
   GenTemplate,
   Graph,
+  RETIRED_TYPES,
   migrateGraphJSON,
   migrateGroupJSON,
   readGraphFile,
@@ -205,6 +207,82 @@ describe('the template node, which renamed a, b and c at v2', () => {
     expect(
       readGraphFile(JSON.parse(JSON.stringify(writeGraphFile(graph)))).migrated,
     ).toBeUndefined();
+  });
+});
+
+describe('the retired OpenRouter plugin node', () => {
+  /** An OpenRouterImage node as the plugin wrote it, with the same keys GenImage has at v1. */
+  function pluginNode(id: string, model: string): Record<string, unknown> {
+    return {
+      _structName: 'graph.OpenRouterImage',
+      id,
+      typeVersion: 1,
+      props: [
+        { apiname: 'model', data: model },
+        { apiname: 'aspect', data: '16:9' },
+        { apiname: 'seed', data: '' },
+      ],
+      inputs     : [{ name: 'prompt' }, { name: 'refs' }, { name: 'refine' }],
+      outputs    : [{ name: 'image' }],
+    };
+  }
+
+  it('loads as a GenImage naming the same model, with its wiring and values kept', () => {
+    const json = {
+      VERSION: 1,
+      nodes: [
+        pluginNode('0', 'openai/gpt-image-2'),
+        { _structName: 'graph.GenOutput', id: '1', typeVersion: 1, inputs: [{ name: 'image' }] },
+      ],
+      links  : [{ srcNode: '0', srcKey: 'image', dstNode: '1', dstKey: 'image' }],
+    };
+    const run = migrateGraphJSON(json);
+    const [first] = (run.json as { nodes: Record<string, unknown>[] }).nodes;
+
+    expect(first?._structName).toBe('graph.GenImage');
+    expect(first?.typeVersion).toBe(1);
+    expect(first?.props).toEqual([
+      { apiname: 'model', data: 'openai/gpt-image-2' },
+      { apiname: 'aspect', data: '16:9' },
+      { apiname: 'seed', data: '' },
+    ]);
+    expect((run.json as { links: unknown[] }).links).toEqual(json.links);
+    expect(run.notes).toEqual(['1 OpenRouterImage node now loads as GenImage']);
+    expect(RETIRED_TYPES).toEqual({ OpenRouterImage: 'GenImage' });
+  });
+
+  it('reads back through the graph reader as a runnable GenImage', () => {
+    // The plugin wrote the same fields GenImage writes, under its own struct name
+    const graph = new Graph();
+    const image = new GenImage();
+    graph.add(image);
+    setProp(image, 'model', 'bfl/flux-2');
+    setProp(image, 'aspect', '16:9');
+    const json = JSON.parse(JSON.stringify(writeGraphFile(graph))) as {
+      nodes: Record<string, unknown>[];
+    };
+    for (const entry of json.nodes) entry._structName = 'graph.OpenRouterImage';
+
+    const read = readGraphFile(json);
+    const [only] = (read.graph as Graph).nodes as GenImage[];
+
+    expect(read.diagnostics).toEqual([]);
+    expect(read.migrated).toEqual(['1 OpenRouterImage node now loads as GenImage']);
+    expect(only).toBeInstanceOf(GenImage);
+    expect(only?.props.model?.getValue()).toBe('bfl/flux-2');
+    expect(only?.props.aspect?.getValue()).toBe('16:9');
+  });
+
+  it('is counted inside a group instance too', () => {
+    const outer = {
+      _structName: 'graph.GroupNode',
+      id         : '0',
+      typeVersion: 1,
+      subgraph: { VERSION: 1, nodes: [pluginNode('0', 'x/y'), pluginNode('1', 'x/z')], links: [] },
+    };
+    const run = migrateGraphJSON({ VERSION: 1, nodes: [outer], links: [] });
+
+    expect(run.notes).toEqual(['2 OpenRouterImage nodes now load as GenImage']);
   });
 });
 

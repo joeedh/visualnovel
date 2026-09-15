@@ -15,6 +15,15 @@ import { genNodeSpecs, type NodeMigration } from './registry.js';
 import { migrateJSON } from 'nstructjs';
 
 /**
+ * Node types that no longer exist, each mapped to the built-in type it is loaded as. A retired
+ * type's sockets and props carry the same names as its replacement at its replacement's current
+ * `typeVersion`, which is what lets the file's own values and links stand as they are.
+ * `OpenRouterImage` was the OpenRouter plugin's node; the built-in `GenImage` now draws with
+ * any `<vendor>/<model>` id through the same endpoint.
+ */
+export const RETIRED_TYPES: Readonly<Record<string, string>> = { OpenRouterImage: 'GenImage' };
+
+/**
  * A file rewritten on the way in, and what changed. `json` is a copy whenever the argument was
  * a record, because path.ux's own pass rewrites in place and the argument is left as it was.
  */
@@ -69,18 +78,27 @@ export function migrateGroupJSON(json: unknown): GraphMigration {
 interface Rewrite {
   /** Nodes migrated, counted by type name. */
   tally: Map<string, { to: number; count: number }>;
+  /** Nodes of a retired type, counted by the retired name. */
+  retired: Map<string, number>;
   /** The prop renames applied to each node, by the id the file gives it. */
   props: Map<string, Record<string, string>>;
 }
 
 function newRewrite(): Rewrite {
-  return { tally: new Map(), props: new Map() };
+  return { tally: new Map(), retired: new Map(), props: new Map() };
 }
 
 function finish(copy: unknown, rewrite: Rewrite): GraphMigration {
-  const notes = [...rewrite.tally].map(
-    ([type, { to, count }]) => `${count} ${type} node${count === 1 ? '' : 's'} updated to v${to}`,
-  );
+  const plural = (count: number): string => (count === 1 ? '' : 's');
+  const notes = [
+    ...[...rewrite.retired].map(
+      ([type, count]) =>
+        `${count} ${type} node${plural(count)} now load${count === 1 ? 's' : ''} as ${RETIRED_TYPES[type]}`,
+    ),
+    ...[...rewrite.tally].map(
+      ([type, { to, count }]) => `${count} ${type} node${plural(count)} updated to v${to}`,
+    ),
+  ];
   return { json: copy, notes };
 }
 
@@ -98,7 +116,8 @@ function migrateNode(node: Record<string, unknown>, links: unknown[], rewrite: R
   const nested = rec(node.subgraph);
   if (nested !== undefined) migrateGraph(nested, rewrite);
 
-  const type = typeNameOf(node);
+  // A retired type is renamed first, so its replacement's own renames then apply to it
+  const type = retire(node, rewrite);
   const was = typeof node.typeVersion === 'number' ? node.typeVersion : 0;
   const due = (genNodeSpecs().get(type ?? '')?.migrations ?? [])
     .filter((step) => step.to > was)
@@ -180,6 +199,21 @@ function refillPlaceholders(props: unknown[], step: NodeMigration): void {
       renames[name] === undefined ? token : `{${renames[name]}}`,
     );
   }
+}
+
+/**
+ * Rewrites a retired type's struct name to its replacement's and answers the type name the
+ * node now declares. The file's `typeVersion` is kept, because a retired type is aliased only
+ * at the version whose keys it shares.
+ */
+function retire(node: Record<string, unknown>, rewrite: Rewrite): string | undefined {
+  const type = typeNameOf(node);
+  const to = type === undefined ? undefined : RETIRED_TYPES[type];
+  if (type === undefined || to === undefined) return type;
+
+  node._structName = `graph.${to}`;
+  rewrite.retired.set(type, (rewrite.retired.get(type) ?? 0) + 1);
+  return to;
 }
 
 /** The type name a node entry declares, which nstructjs writes under the `graph.` namespace. */
