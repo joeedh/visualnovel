@@ -418,7 +418,7 @@
       "module": "projectbar",
       "editor": "project",
       "name"  : "clean",
-      "why": "The box matches the file, so Apply is refused with No changes; the box and reload stay offered."
+      "why": "The box matches the file, so Apply is refused with No changes; the box, reload and the image-model picker stay offered."
     },
     {
       "module": "projectbar",
@@ -429,8 +429,14 @@
     {
       "module": "projectbar",
       "editor": "project",
+      "name"  : "openrouter-model",
+      "why"   : "The file names an OpenRouter model, which the picker’s button shows as its label."
+    },
+    {
+      "module": "projectbar",
+      "editor": "project",
       "name"  : "no-project",
-      "why"   : "No project is open, so Apply and the box are refused."
+      "why"   : "No project is open, so Apply, the box and the picker are refused."
     },
     {
       "module": "reportconvo",
@@ -19456,6 +19462,28 @@
       "via"       : "control",
       "editor"    : "project",
       "module"    : "projectbar",
+      "situation" : "clean",
+      "key"       : "cmd:project.setImageModel",
+      "widgetPath": "project/project-setimagemodel~d5765173",
+      "offer": {
+        "id"      : "project.setImageModel",
+        "label"   : "gemini-2.5-flash-image",
+        "tooltip": "Which image model every image task, and every graph node whose model is empty, draws with. Picking one re-keys every image task; a node that names a model overrides it.",
+        "supplies": ["model"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "project.setImageModel",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
       "situation" : "dirty",
       "key"       : "cmd:project.setArtStyle",
       "widgetPath": "project/project-setartstyle~74240823",
@@ -19519,6 +19547,122 @@
       "effects": [
         {
           "id"   : "project.setArtStyle",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "dirty",
+      "key"       : "cmd:project.setImageModel",
+      "widgetPath": "project/project-setimagemodel~d5765173",
+      "offer": {
+        "id"      : "project.setImageModel",
+        "label"   : "gemini-2.5-flash-image",
+        "tooltip": "Which image model every image task, and every graph node whose model is empty, draws with. Picking one re-keys every image task; a node that names a model overrides it.",
+        "supplies": ["model"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "project.setImageModel",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "openrouter-model",
+      "key"       : "cmd:project.setArtStyle",
+      "widgetPath": "project/project-setartstyle~74240823",
+      "offer": {
+        "id"      : "project.setArtStyle",
+        "label"   : "Apply",
+        "tooltip" : "Write these settings back to project.yaml",
+        "supplies": ["style"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "No changes"
+        }
+      },
+      "effects": [
+        {
+          "id": "project.setArtStyle"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "openrouter-model",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "project/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read project.yaml (discards an unapplied edit)",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "openrouter-model",
+      "key"       : "cmd:project.setArtStyle#style",
+      "widgetPath": "project/project-setartstyle~47770ae4",
+      "offer": {
+        "id"      : "project.setArtStyle",
+        "label"   : "Art style",
+        "tooltip": "The sentence every image prompt opens with. Applying it re-keys every image task.",
+        "on"      : "style",
+        "supplies": ["style"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "project.setArtStyle",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "openrouter-model",
+      "key"       : "cmd:project.setImageModel",
+      "widgetPath": "project/project-setimagemodel~d5765173",
+      "offer": {
+        "id"      : "project.setImageModel",
+        "label"   : "openai/gpt-image-2",
+        "tooltip": "Which image model every image task, and every graph node whose model is empty, draws with. Picking one re-keys every image task; a node that names a model overrides it.",
+        "supplies": ["model"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "project.setImageModel",
           "props": {}
         }
       ]
@@ -19593,6 +19737,29 @@
       "effects": [
         {
           "id": "project.setArtStyle"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "no-project",
+      "key"       : "cmd:project.setImageModel",
+      "widgetPath": "project/project-setimagemodel~d5765173",
+      "offer": {
+        "id"      : "project.setImageModel",
+        "label"   : "model…",
+        "tooltip": "Which image model every image task, and every graph node whose model is empty, draws with. Picking one re-keys every image task; a node that names a model overrides it.",
+        "supplies": ["model"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "No project is open."
+        }
+      },
+      "effects": [
+        {
+          "id": "project.setImageModel"
         }
       ]
     },

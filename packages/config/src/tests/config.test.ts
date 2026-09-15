@@ -7,6 +7,7 @@ import {
   resolveKeys,
   secretDirsFor,
   setArtStyle,
+  setImageModel,
   setLettering,
   setStartScene,
   setStoryboardNotes,
@@ -15,6 +16,7 @@ import {
   userKeysDir,
   withArtStyle,
   withConfigKey,
+  withImageModel,
   withStartScene,
 } from '../index.js';
 
@@ -189,6 +191,66 @@ describe('setStoryboardNotes and setLettering', () => {
     const dir = await tempProject('title: T\n');
     await expect(setLettering(dir, 'stencil' as never)).rejects.toThrow(/could not set lettering/);
     expect(await readFile(join(dir, 'project.yaml'), 'utf8')).toBe('title: T\n');
+  });
+});
+
+describe('withImageModel', () => {
+  it('replaces the image row inside an existing models block, at its own indent', () => {
+    const before =
+      'title: T\nmodels:\n    text: claude-opus-4-8\n    image: gemini-2.5-flash-image # default\n    vision:\n      - gemini-2.5-pro\nconcurrency: 2\n';
+    expect(withImageModel(before, 'openai/gpt-image-2')).toBe(
+      'title: T\nmodels:\n    text: claude-opus-4-8\n    image: openai/gpt-image-2\n    vision:\n      - gemini-2.5-pro\nconcurrency: 2\n',
+    );
+  });
+
+  it('adds the row as the first line of a models block that has none', () => {
+    const before = 'title: T\nmodels:\n  text: claude-opus-4-8\n\n  vision: []\nconcurrency: 2\n';
+    expect(withImageModel(before, 'bfl/flux-2')).toBe(
+      'title: T\nmodels:\n  image: bfl/flux-2\n  text: claude-opus-4-8\n\n  vision: []\nconcurrency: 2\n',
+    );
+  });
+
+  it('adds a models block after the title when the file has none', () => {
+    expect(withImageModel('title: T\nconcurrency: 2\n', 'bfl/flux-2')).toBe(
+      'title: T\nmodels:\n  image: bfl/flux-2\nconcurrency: 2\n',
+    );
+    expect(withImageModel('', 'bfl/flux-2')).toBe('models:\n  image: bfl/flux-2\n');
+  });
+
+  it('never touches an image key at the top level or in another block', () => {
+    const before =
+      'title: T\nimage: not-this\nimage_params:\n  image: nor-this\nmodels:\n  image: old\n';
+    expect(withImageModel(before, 'new')).toBe(
+      'title: T\nimage: not-this\nimage_params:\n  image: nor-this\nmodels:\n  image: new\n',
+    );
+  });
+
+  it('keeps an unterminated last line unterminated', () => {
+    expect(withImageModel('title: T\nmodels:\n  image: old', 'new')).toBe(
+      'title: T\nmodels:\n  image: new',
+    );
+    expect(withImageModel('title: T\nmodels:', 'new')).toBe('title: T\nmodels:\n  image: new');
+  });
+});
+
+describe('setImageModel', () => {
+  it('writes the model and reads back through loadConfig', async () => {
+    const dir = await tempProject('title: T\nmodels:\n  text: claude-opus-4-8\n');
+    expect(await setImageModel(dir, 'openai/gpt-image-2')).toBe(true);
+    const config = await loadConfig(dir);
+    expect(config.models.image).toBe('openai/gpt-image-2');
+    expect(config.models.text).toBe('claude-opus-4-8');
+  });
+
+  it('leaves a config that already says that untouched', async () => {
+    const dir = await tempProject('title: T\nmodels:\n  image: bfl/flux-2\n');
+    expect(await setImageModel(dir, 'bfl/flux-2')).toBe(false);
+  });
+
+  it('refuses a models block it cannot place a row in, and writes nothing', async () => {
+    const dir = await tempProject('title: T\nmodels: {}\n');
+    await expect(setImageModel(dir, 'bfl/flux-2')).rejects.toThrow(/could not set models.image/);
+    expect(await readFile(join(dir, 'project.yaml'), 'utf8')).toBe('title: T\nmodels: {}\n');
   });
 });
 

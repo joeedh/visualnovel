@@ -161,8 +161,11 @@ function imageModelOf(props: GenProps, ctx: GenEstimateContext): string {
 /** The picker row that leaves an image node's model prop empty. */
 const INHERIT_LABEL = 'Inherit (project image model)';
 
-/** Image models the shipped price table knows about, so the list can't drift from what estimates price. */
-function getImageModelList(): string[] {
+/**
+ * Image models the shipped price table knows about, which every image-model picker lists first,
+ * so the list can't drift from what estimates price.
+ */
+export function shippedImageModels(): string[] {
   return Object.keys(SHIPPED_PRICES.models).filter(
     (id) => SHIPPED_PRICES.models[id]?.image !== undefined,
   );
@@ -170,7 +173,7 @@ function getImageModelList(): string[] {
 
 /** The image picker's rows, ui name to value, with the inherit row first. */
 function imageModelRows(): Record<string, string> {
-  return { [INHERIT_LABEL]: '', ...Object.fromEntries(getImageModelList().map((m) => [m, m])) };
+  return { [INHERIT_LABEL]: '', ...Object.fromEntries(shippedImageModels().map((m) => [m, m])) };
 }
 
 /**

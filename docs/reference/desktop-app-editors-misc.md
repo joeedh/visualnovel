@@ -193,10 +193,12 @@ a singleton pane: a workspace has one config, so the pane has no subject, is abs
 `SUBJECT_OF`, and `view.open(editor=project)` carries nothing. The `⇱` on an asset's style
 clause in the Asset pane opens this editor `elsewhere` and scrolls to the field.
 
-- **One field is editable and the rest are shown.** Every image prompt opens with the art
-  style sentence, so an author changes that setting often. The model ids and the image
-  params are read-only here because changing one is a deliberate, file-level act, and
-  making that change a two-click operation in this pane would encourage it.
+- **Two fields are editable and the rest are shown.** Every image prompt opens with the
+  art style sentence, so an author changes that setting often, and the image model is the
+  one every image task and every graph node with an empty model draws with. The text and
+  vision model ids and the image params are read-only here because changing one is a
+  deliberate, file-level act, and making that change a two-click operation in this pane
+  would encourage it.
 - **Applying.** `project.setArtStyle` confirms before it writes, and the confirmation says
   how many image tasks it will re-key, since it re-keys all of them. `withArtStyle`
   splices the line into `project.yaml` rather than re-serializing it, and it differs from
@@ -204,6 +206,15 @@ clause in the Asset pane opens this editor `elsewhere` and scrolls to the field.
   header line plus the indented lines under it, and a trailing blank line belongs to the
   entry only when indented text follows it. Comments, key order and the author's own
   quoting are preserved, and undo restores the file byte-for-byte.
+- **The image model is a dropdown.** The `models.image` row is a path.ux `DropBox` opened
+  in search mode, with one row per model id (`imageModelRows` in `rules/projectbar.ts`:
+  the shipped Gemini ids, plus the file's current value when the list lacks it) and a
+  tooltip per row saying which vendor draws it. Picking a row runs `project.setImageModel`
+  at once, with the command's own confirmation, which refuses an id whose vendor has no
+  key and otherwise counts the image tasks it re-keys, the way the art style does.
+  `withImageModel` splices the `image:` line inside the `models:` block, or inserts the
+  block after `title:` when the file has none. The control is recorded through one Offer
+  that supplies `model`, since a `MenuTemplate` row cannot carry an Offer of its own.
 - **Reads through `project.info`, not a bespoke channel.** Every other editor reads
   through a non-mutating command, and a twelfth IPC channel for the twelfth editor would
   have been the first surface in the app to reach around the registry. `project.info`

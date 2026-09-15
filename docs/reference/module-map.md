@@ -70,10 +70,10 @@ the file; the authoritative package responsibilities and import rules are in
 
 ### @vn/config — project.yaml and key resolution (`packages/config`)
 
-| module      | purpose                                                    |
-| ----------- | ---------------------------------------------------------- |
-| `config.ts` | load/patch `project.yaml` (`setArtStyle`, `setStartScene`) |
-| `keys.ts`   | four-place key resolution, `userConfigDir`, `resolveKeys`  |
+| module      | purpose                                                                     |
+| ----------- | --------------------------------------------------------------------------- |
+| `config.ts` | load/patch `project.yaml` (`setArtStyle`, `setStartScene`, `setImageModel`) |
+| `keys.ts`   | four-place key resolution, `userConfigDir`, `resolveKeys`                   |
 
 ### @vn/parse — authored inputs (`packages/parse`)
 

@@ -459,6 +459,8 @@ const SKIPS: Record<string, string> = {
   'plugin.prices'         : 'asks a provider for a price table',
   'plugin.remove'         : 'removes a plugin the network installed',
   'project.installPages'  : 'needs a repository with an origin remote and a branch',
+  'project.setImageModel':
+    'is refused until the model’s vendor has a key, and a credential is what nothing here may leave behind',
   'project.setKey'        : 'writes a credential, which nothing here may capture or leave behind',
   'prompt.condense'       : 'asks a real text model to rewrite the clauses',
   'prompt.repin':

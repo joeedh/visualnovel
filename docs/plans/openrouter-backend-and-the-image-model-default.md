@@ -526,8 +526,12 @@ Stage 2 (inherit), and what differed from the plan:
   `ctx.imageModel ?? ''`, which prices as the unknown model the plan describes.
 - The node pickers gain an "Inherit (project image model)" row at Stage 2 rather than
   Stage 5, because a `listenum` over a value its rows do not hold shows nothing. Stage 5
-  replaces the label with the model's id. Whether path.ux's `DropBox` shows an empty
-  string value correctly is unverified until the app runs; that check is owed.
+  replaces the label with the model's id. Checked at Stage 4 in the running app: the
+  node's `DropBox` carries the row (`'Inherit (project image model)': ''`) in its enum,
+  and `DropBox.setValue` in `vendor/path.ux/scripts/menu/dropbox.ts` looks an empty string
+  up through `prop.keys`, where `''` is a key like any other, so the row's label is what
+  an empty model shows. No sample graph holds an empty model, so the label was read off
+  the widget's definition rather than seen drawn.
 
 Stage 3 (the plugin retired), and what differed from the plan:
 
@@ -543,3 +547,38 @@ Stage 3 (the plugin retired), and what differed from the plan:
   "through the OpenRouter plugin"; it now says through OpenRouter by model id. The rest of
   that document is the record of a check that ran through the plugin and is left as
   history.
+
+Stage 4 (the setting), and what differed from the plan:
+
+- `withConfigKey` did not learn a nested key. It and `setConfigKey` are written over
+  `ConfigTextKey`, a top-level key whose re-parse check indexes `parsed.data[key]`, and a
+  nested key would have meant a second shape for every caller. `withImageModel(text, id)`
+  and `setImageModel(dir, id)` sit beside them in `packages/config/src/config.ts` and do
+  what Decision 5 says: replace the `image:` line inside the `models:` block at its own
+  indent, insert it as the block's first line when absent, or insert `models:\n  image:`
+  after `title:` when the file has no block. `setImageModel` re-parses and refuses (a
+  `ConfigError` saying to set it by hand) when the value does not read back, which is also
+  where a `models: {}` flow scalar lands, since a spliced row under it is not YAML.
+- The command's `check` reads the vendor's key through `keyStatus` (resolved or not, never
+  a value) with the project's secrets directories, so the refusal wording is Decision 5's
+  and no key value passes through the session.
+- The picker's rows are not each drawn through `act()`. A path.ux `MenuTemplate` row is a
+  label, a callback and a tooltip, with no node for an Offer to be applied to, so the
+  `DropBox` is recorded once through `act()` with an Offer for `project.setImageModel`
+  that supplies `model`, the way `header.ts`'s `modelMenu` records the text model; the
+  sweep therefore lists the command with `supplies: ['model']` rather than one anchor per
+  id. The `DropBox` is built with `UIBase.constructElement('rowframe-x')` inside the
+  editor's raw `rows` div, since the Project editor draws raw DOM and has no `Container`
+  to call `menu` on; the sweep's widget walk reaches it (nothing under `unwalked`).
+- `imageModelRows(current)` and `imageModelAction` live in `rules/projectbar.ts`, where
+  `ux-model.json` derives them, so the four project-bar situations carry an `imageModel`.
+- `affects.test.ts` skips `project.setImageModel` by name: its harness runs each writer
+  once against a fixture project, and this one is refused until the model's vendor has a
+  key, which the harness may not leave behind. `session.test.ts` covers the write with a
+  throwaway key and the refusal with the env var cleared.
+- The anchor sweep was run against `examples/mySampleRepo` (79 of 173 commands anchored,
+  up from 78) and `anchors.json` is committed with the run. The two `notify.*` records it
+  re-keyed follow the sample project's newest notification, not this change.
+- `docs/reference/desktop-app-editors-misc.md`'s Project section said one field was
+  editable; it now says two and describes the dropdown. `docs/reference/module-map.md`'s
+  `config.ts` row names `setImageModel`.

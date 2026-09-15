@@ -1,13 +1,14 @@
 /**
  * Commands for the project's own settings: reading what `project.yaml` says, and writing the
- * three fields in it an author edits often enough to want a pane for.
+ * four fields in it an author edits often enough to want a pane for.
  *
- * The art style is not like the other settings. It is the first clause of every image prompt and
- * is folded into every image task's hash, so changing it re-keys the whole library and the next
- * run draws it all again. That is why the write is `confirm: true` and why its check counts what
- * it would touch. The storyboard notes reach no prompt, and lettering reaches only a page
- * shot's, so neither of those writes asks for confirmation; the lettering check still counts the
- * pages it would re-key.
+ * The art style and the image model are not like the other settings. The style is the first
+ * clause of every image prompt and the model is in every image task's params, so both are folded
+ * into every image task's hash, changing either re-keys the whole library, and the next run draws
+ * it all again. That is why both writes are `confirm: true` and why their checks count what they
+ * would touch. The storyboard notes reach no prompt, and lettering reaches only a page shot's, so
+ * neither of those writes asks for confirmation; the lettering check still counts the pages it
+ * would re-key.
  *
  * `project.installPages` is `mutating` but not `undoable`. `.github/` and `.vnstudio/pages/` are
  * both inside the tree an undo snapshot covers; what puts it outside undo is the
@@ -70,6 +71,36 @@ export const projectSetArtStyle = define({
   },
   async run({ style }, ctx) {
     const result = await ctx.host.session.setProjectArtStyle(style);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
+export const projectSetImageModel = define({
+  id         : 'project.setImageModel',
+  title      : 'Set the image model',
+  description:
+    "Set the project's image model, `models.image` — the model every image task and every " +
+    'graph node with an empty model prop draws with. A `<vendor>/<model>` id draws through ' +
+    'OpenRouter and any other id through Gemini, and the vendor needs a key before the change is ' +
+    "accepted. The id is in every image task's hash, so setting it re-keys every image task and " +
+    'the next `pipeline.run` renders the whole library again. The row is spliced into ' +
+    "`project.yaml`'s `models:` block, so comments and key order survive.",
+  notes:
+    "The model every image task and every inherit node draws with. A `<vendor>/<model>` id goes through OpenRouter, anything else through Gemini, and the vendor needs a key first. In every image task's hash, so it re-keys **every** image task. Spliced into `project.yaml`, so comments and key order survive.",
+  mutating   : true,
+  affects    : ['project.yaml'],
+  undoable   : true,
+  // Confirmed for the same reason the art style is: the next run redraws the whole library
+  confirm    : true,
+  props: {
+    model: prop.string('the image model id, such as openai/gpt-image-2'),
+  },
+  async check({ model }, ctx) {
+    return verdict(await ctx.host.session.previewImageModel(model));
+  },
+  async run({ model }, ctx) {
+    const result = await ctx.host.session.setProjectImageModel(model);
     if (!result.ok) throw new Error(result.message);
     return { message: result.message, data: result, written: result.written };
   },

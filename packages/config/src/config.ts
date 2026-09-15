@@ -112,6 +112,64 @@ export function withArtStyle(text: string, style: string): string {
   return withConfigKey(text, 'art_style', style);
 }
 
+/** A top-level `models:` line, with whatever terminated it. */
+const MODELS_LINE = /^models:[^\r\n]*(?:\r?\n|$)/m;
+/** An indented `image:` line inside a block, with whatever terminated it. */
+const IMAGE_LINE = /^([ \t]+)image:[^\r\n]*(?:\r?\n|$)/m;
+/** What a `models:` block's rows are indented by when the block has no rows to copy from. */
+const BLOCK_INDENT = '  ';
+
+/**
+ * Replace or add `models.image` in `project.yaml` text, leaving every other byte alone. The key
+ * is nested, so the splice works inside the `models:` block: an `image:` row there is replaced
+ * at its own indent, a block without one gets the row as its first line, and a file with no
+ * `models:` block gets the block after `title:` the way {@link withConfigKey} places a key. The
+ * value goes through the YAML serializer, so an id YAML would read as something else comes back
+ * quoted.
+ */
+export function withImageModel(text: string, modelId: string): string {
+  const row = (indent: string): string => `${indent}${stringifyYaml({ image: modelId })}`;
+  const header = MODELS_LINE.exec(text);
+  if (header) {
+    const start = header.index + header[0].length;
+    const lines = keepLines(text.slice(start));
+    let end = start;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]!;
+      const blankBeforeRow = !line.trim() && lines.slice(i + 1).some((l) => /^[ \t]/.test(l));
+      if (!/^[ \t]/.test(line) && !blankBeforeRow) break;
+      end += line.length;
+    }
+
+    const block = text.slice(start, end);
+    const found = IMAGE_LINE.exec(block);
+    if (found) {
+      const terminated = found[0].endsWith('\n');
+      const replaced = terminated ? row(found[1]!) : row(found[1]!).trimEnd();
+      return (
+        text.slice(0, start + found.index) +
+        replaced +
+        text.slice(start + found.index + found[0].length)
+      );
+    }
+
+    const first = /^([ \t]+)\S/m.exec(block);
+    const headerEnded = header[0].endsWith('\n');
+    const inserted = row(first?.[1] ?? BLOCK_INDENT);
+    return headerEnded
+      ? text.slice(0, start) + inserted + text.slice(start)
+      : `${text.slice(0, start)}\n${inserted.trimEnd()}${text.slice(start)}`;
+  }
+
+  const entry = `models:\n${row(BLOCK_INDENT)}`;
+  const title = TITLE_LINE.exec(text);
+  if (title) {
+    const at = title.index + title[0].length;
+    return text.slice(0, at) + entry + text.slice(at);
+  }
+  return text === '' || text.endsWith('\n') ? text + entry : `${text}\n${entry}`;
+}
+
 /**
  * Set one top-level key of a project's config. Returns false when it already said that — a
  * committed config that would not change must not be rewritten. The result is re-parsed before
@@ -148,6 +206,33 @@ export function setStoryboardNotes(projectDir: string, notes: string): Promise<b
 /** Set who letters a page shot. Refuses a mode the schema does not know. */
 export function setLettering(projectDir: string, lettering: Lettering): Promise<boolean> {
   return setConfigKey(projectDir, 'lettering', lettering);
+}
+
+/**
+ * Set a project's image model, `models.image`. Returns false when it already said that. The
+ * result is re-parsed and read back through the nested path before it is written, so a `models:`
+ * block the splice could not place a row in never lands.
+ */
+export async function setImageModel(projectDir: string, modelId: string): Promise<boolean> {
+  const path = join(projectDir, CONFIG_FILENAME);
+  const before = await readText(path);
+  const after = withImageModel(before, modelId);
+  if (after === before) return false;
+
+  // A row spliced into a block written in flow form (`models: {}`) is not YAML at all, so the
+  // parse itself can throw here, and that is the same refusal as a value the schema rejects
+  let raw: unknown;
+  try {
+    raw = parseYaml(after);
+  } catch {
+    raw = undefined;
+  }
+  const parsed = projectConfig.safeParse(raw ?? {});
+  if (!parsed.success || parsed.data.models.image !== modelId) {
+    throw new ConfigError(`could not set models.image in ${path}; set it by hand`);
+  }
+  await writeFileAtomic(path, after);
+  return true;
 }
 
 /**

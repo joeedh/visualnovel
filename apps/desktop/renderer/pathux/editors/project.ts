@@ -1,8 +1,14 @@
-import type { Button, Container } from 'pathux';
+import { UIBase, type Button, type Container, type MenuTemplate, type RowFrame } from 'pathux';
 import { exec, onInvalidate, report } from '../app/bridge.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
-import { redrawing } from '../tour/anchors.js';
-import { applyStyleAction, reloadAction, styleBox } from '../../rules/projectbar.js';
+import { redrawing, type AnchorPass } from '../tour/anchors.js';
+import {
+  applyStyleAction,
+  imageModelAction,
+  imageModelRows,
+  reloadAction,
+  styleBox,
+} from '../../rules/projectbar.js';
 import PROJECT_CSS from '../../styles/project.css?inline';
 import type { ProjectView } from '../../../src/shared/ipc.js';
 
@@ -11,10 +17,12 @@ import type { ProjectView } from '../../../src/shared/ipc.js';
  * config), so it is deliberately absent from `SUBJECT_OF` and `view.open(editor=project)` carries
  * nothing.
  *
- * The art style is the one editable field, because it is the sentence every image prompt opens
- * with. The model ids and image params are read-only here because changing them is a deliberate,
- * file-level act. Applying goes through `project.setArtStyle`, which is `confirm: true` and says
- * how many image tasks it re-keys before it writes.
+ * Two fields are editable. The art style is the sentence every image prompt opens with, typed
+ * into a box and written by Apply through `project.setArtStyle`. The image model is picked from a
+ * dropdown whose every row runs `project.setImageModel` at once. Both commands are
+ * `confirm: true` and say how many image tasks they re-key before they write. The other model
+ * ids and the image params are read-only here because changing them is a deliberate, file-level
+ * act.
  */
 export class ProjectEditor extends VnEditor {
   private surface!: HTMLDivElement;
@@ -137,6 +145,18 @@ export class ProjectEditor extends VnEditor {
     await this.load();
   }
 
+  /**
+   * Write one picker row. `project.setImageModel` is `confirm: true`, so the author is asked with
+   * the count of image tasks it re-keys before the file moves; a refusal (no key for the vendor,
+   * the value the file already holds) lands in the note.
+   */
+  private async pickModel(id: string): Promise<void> {
+    const outcome = await exec('project.setImageModel', { model: id });
+    if (!outcome.ok) return void this.note(outcome.error, true);
+    report(outcome);
+    await this.load();
+  }
+
   private touched(): void {
     this.dirty = true;
     this.note('');
@@ -175,11 +195,40 @@ export class ProjectEditor extends VnEditor {
     if (!view) return;
     row(this.rows, 'title', view.title);
     row(this.rows, 'start', view.start);
-    row(this.rows, 'models.image', view.models.image);
+    this.modelPicker(anchors, view.models.image);
     row(this.rows, 'models.text', view.models.text);
     row(this.rows, 'models.vision', view.models.vision.join(', '));
     row(this.rows, 'image_params.aspect', view.imageParams.aspect);
     row(this.rows, 'image_params.seed', view.imageParams.seed?.toString() ?? '');
+  }
+
+  /**
+   * The `models.image` row: a dropdown in place of the value, one row per image model, opened in
+   * search mode because the catalog is long. The rows carry their own tooltips and run the
+   * command as they are picked; the dropdown is what the pass records, with the rows supplying
+   * the id, the way the header records the agent's model menu.
+   */
+  private modelPicker(anchors: AnchorPass, current: string): void {
+    this.rows.appendChild(el('span', 'pj-key', 'models.image'));
+    const holder = el('span', 'pj-val');
+    const frame = UIBase.constructElement<RowFrame>('rowframe-x', this.ctx);
+    frame.ctx = this.ctx;
+    holder.appendChild(frame);
+    this.rows.appendChild(holder);
+
+    // Rows carry their own tooltip, so the last slot has to be an explicit id: `createMenu` reads
+    // `item[5]` for any row longer than four and would otherwise file the callback under undefined
+    const template: MenuTemplate = imageModelRows(current).map((entry) => [
+      entry.id,
+      () => void this.pickModel(entry.id),
+      undefined,
+      undefined,
+      entry.tooltip,
+      entry.id,
+    ]) as MenuTemplate;
+    const offer = imageModelAction(true, current);
+    anchors.record(frame.menu({ title: offer.label, template, autoSearchMode: true }), offer);
+    frame.flushUpdate();
   }
 }
 

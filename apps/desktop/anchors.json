@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-14T06:57:34.513Z",
-  "gitSha"       : "0d325cf13ef461ad44ceb328f164565410073044",
+  "sweptAt"      : "2026-09-15T22:06:55.971Z",
+  "gitSha"       : "50e16acd96297b452bba075be9999624f8e1b7a3",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -100,6 +100,7 @@
     "project.keyStatus",
     "project.pagesStatus",
     "project.setArtStyle",
+    "project.setImageModel",
     "project.setKey",
     "project.setLettering",
     "project.setStoryboardNotes",
@@ -225,6 +226,7 @@
     "pipeline.run",
     "project.installPages",
     "project.setArtStyle",
+    "project.setImageModel",
     "project.setKey",
     "project.testKey",
     "prompt.addRef",
@@ -3085,6 +3087,13 @@
       "supplies"  : ["style"]
     },
     {
+      "id"        : "project.setImageModel",
+      "editor"    : "project",
+      "key"       : "cmd:project.setImageModel",
+      "widgetPath": "project/project-setimagemodel~d5765173",
+      "supplies"  : ["model"]
+    },
+    {
       "id"        : "pane.view",
       "editor"    : "systemprompt",
       "key"       : "fx:pane.view#reload",
@@ -3227,6 +3236,18 @@
       "key"       : "cmd:notify.deleteAll",
       "widgetPath": "notifications/notify-deleteall~53de25de",
       "form"      : true
+    },
+    {
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260914-160803-5a63-0000",
+      "widgetPath": "notifications/notify-follow~34aaef2b"
+    },
+    {
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260914-160803-5a63-0000",
+      "widgetPath": "notifications/notify-hide~265c954a"
     },
     {
       "id"        : "notify.follow",
@@ -3575,18 +3596,6 @@
       "editor"    : "notifications",
       "key"       : "cmd:notify.hide#20260905-013047-5302-0079",
       "widgetPath": "notifications/notify-hide~99d0bd04"
-    },
-    {
-      "id"        : "notify.follow",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.follow#20260905-013047-5302-0078",
-      "widgetPath": "notifications/notify-follow~46779bbc"
-    },
-    {
-      "id"        : "notify.hide",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.hide#20260905-013047-5302-0078",
-      "widgetPath": "notifications/notify-hide~9626b4fd"
     },
     {
       "id"        : "pane.view",

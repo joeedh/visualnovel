@@ -1187,6 +1187,37 @@ describe('WorkspaceSession — project settings', () => {
     expect(preview.message).toMatch(/re-keys \d+ image task/);
   });
 
+  it('refuses an image model whose vendor has no key, naming Setup', async () => {
+    const had = process.env.OPENROUTER_API_KEY;
+    process.env.OPENROUTER_API_KEY = '';
+    try {
+      expect(await session.previewImageModel('openai/gpt-image-2')).toEqual({
+        ok     : false,
+        message: 'no OpenRouter key is set; provide one in Setup first',
+      });
+      expect(await session.previewImageModel('   ')).toMatchObject({ ok: false });
+      expect(await p.read('project.yaml')).not.toContain('openai/gpt-image-2');
+    } finally {
+      if (had === undefined) delete process.env.OPENROUTER_API_KEY;
+      else process.env.OPENROUTER_API_KEY = had;
+    }
+  });
+
+  it('writes the image model into the models block once its vendor has a key', async () => {
+    await session.setKey('openrouter', 'not-a-real-key');
+    const preview = await session.previewImageModel('openai/gpt-image-2');
+    expect(preview.ok).toBe(true);
+    expect(preview.message).toMatch(
+      /^Set the image model to `openai\/gpt-image-2`\. It is in every image task's hash, so it re-keys \d+ image task\(s\)\.$/,
+    );
+
+    const result = await session.setProjectImageModel('openai/gpt-image-2');
+    expect(result).toMatchObject({ ok: true, written: ['project.yaml'] });
+    expect((await session.projectView()).models.image).toBe('openai/gpt-image-2');
+    expect(await p.read('project.yaml')).toContain('title: Settings');
+    expect(await session.previewImageModel('openai/gpt-image-2')).toMatchObject({ ok: false });
+  });
+
   it('writes the storyboard notes beside the art style, and says they re-key nothing', async () => {
     const preview = await session.previewStoryboardNotes('pages of four to six panels');
     expect(preview).toMatchObject({ ok: true });

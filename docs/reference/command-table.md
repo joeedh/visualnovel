@@ -2,8 +2,8 @@
 
 # Registered commands
 
-172 commands, in 22 namespaces. 96 are `mutating`;
-109 declare a precondition; 64 are undoable; 19 ask
+173 commands, in 22 namespaces. 97 are `mutating`;
+110 declare a precondition; 65 are undoable; 20 ask
 for confirmation.
 
 ✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
@@ -101,6 +101,7 @@ for confirmation.
 | `project.keyStatus` | — | — |
 | `project.pagesStatus` | `branch` (default `'gh-pages'`) | Whether this project carries the GitHub page builder, and whether the copy it carries came from this build of the app. Read by the menu, which reads Install or Update accordingly. |
 | `project.setArtStyle` ✍ ⚠ ↺ ✓ | `style` (default `''`) | Writes `project.yaml`. The sentence every image prompt opens with. Not art notes on one rung: it reaches every portrait, sheet, plate and shot, so it re-keys **every** image task. Spliced into `project.yaml`, so comments and key order survive. |
+| `project.setImageModel` ✍ ⚠ ↺ ✓ | `model` | Writes `project.yaml`. The model every image task and every inherit node draws with. A `<vendor>/<model>` id goes through OpenRouter, anything else through Gemini, and the vendor needs a key first. In every image task's hash, so it re-keys **every** image task. Spliced into `project.yaml`, so comments and key order survive. |
 | `project.setKey` ✍ ✓ | `provider` (`gemini`\|`anthropic`\|`openrouter`), `key` (**secret**), `scope` (`project`\|`user`, default `'project'`) | Writes `keys`, `.gitignore`, `<user>/keys`. Store one model provider's API key in `keys/`, the file `resolveKeys` reads when the matching environment variable is unset — and it says so when one is set, because the variable wins. The value goes to that file and nowhere else: the history records `<secret>`, and `keys` is added to `.gitignore` **before** the write, because commit-on-save runs `git commit -A`. Deliberately **not undoable**: `keys/` is outside the class a snapshot covers, which is what keeps an undo from writing over or deleting the credential this command exists to store. |
 | `project.setLettering` ✍ ↺ ✓ | `lettering` (`model`\|`runner`) | Writes `project.yaml`. Who letters a page shot: the image model, or the runner over a wordless page. Applies to page shots alone, so the check prices the pages it re-keys and a plain frame is untouched. Spliced into `project.yaml`, so comments and key order survive. |
 | `project.setStoryboardNotes` ✍ ↺ ✓ | `notes` (default `''`) | Writes `project.yaml`. Directives for the decomposer alone, beside `art_style`: how a scene is storyboarded rather than how a frame is drawn. In no image prompt, so it re-keys nothing; the next `story.decompose` reads it. Spliced into `project.yaml`, so comments and key order survive. |

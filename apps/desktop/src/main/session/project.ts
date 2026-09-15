@@ -7,6 +7,7 @@ import {
   secretDirsFor,
   secretFileFor,
   setArtStyle,
+  setImageModel,
   setLettering,
   setStoryboardNotes,
   userKeysDir,
@@ -16,7 +17,7 @@ import {
 import { chmod, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { exists, writeFileAtomic } from '@vn/util';
-import { chatBackendFor, chatVendorFor, createMockProviders } from '@vn/providers';
+import { chatBackendFor, chatVendorFor, createMockProviders, imageVendorOf } from '@vn/providers';
 import type { Lettering, ProjectConfig, TextLLM } from '@vn/types';
 import type { KeyScope, KeyStatusView, ProjectView } from '../../shared/ipc.js';
 import { parseKeyGuide, type GuideUrlField, type KeyGuide } from '../../shared/apikeys.js';
@@ -99,6 +100,50 @@ export class ProjectPart {
     const preview = await this.session.previewArtStyle(style);
     if (!preview.ok) return { ...preview, written: [] };
     if (!(await setArtStyle(this.session.dir, style))) {
+      return { ok: false, message: 'The project already says that.', written: [] };
+    }
+    return {
+      ok     : true,
+      message: preview.message,
+      written: [relPath(this.session.dir, join(this.session.dir, CONFIG_FILENAME))],
+    };
+  }
+
+  /**
+   * What `project.setImageModel` would do, without writing it. A model whose vendor has no key is
+   * refused here rather than at the first task that would draw with it, and the count is the same
+   * one the art style reports, because `models.image` is in every image task's hash too.
+   */
+  async previewImageModel(modelId: string): Promise<PromptResult> {
+    const id = modelId.trim();
+    if (!id) return { ok: false, message: 'No image model given.' };
+
+    const project = await loadProject(this.session.dir);
+    if (project.config.models.image === id) {
+      return { ok: false, message: 'The project already says that.' };
+    }
+
+    const vendor = imageVendorOf(id);
+    const status = await keyStatus(project.config, {
+      secretsDirs: await secretDirsFor(this.session.dir),
+    });
+    if (!status.find((s) => s.vendor === vendor)?.resolved) {
+      const named = vendor === 'openrouter' ? 'OpenRouter' : 'Gemini';
+      return { ok: false, message: `no ${named} key is set; provide one in Setup first` };
+    }
+
+    const count = project.graph.all().filter((task) => IMAGE_KINDS.has(task.kind)).length;
+    return {
+      ok     : true,
+      message: `Set the image model to \`${id}\`. It is in every image task's hash, so it re-keys ${count} image task(s).`,
+    };
+  }
+
+  /** Write the project's image model, spliced into `project.yaml`'s `models:` block. */
+  async setProjectImageModel(modelId: string): Promise<PromptWriteResult> {
+    const preview = await this.session.previewImageModel(modelId);
+    if (!preview.ok) return { ...preview, written: [] };
+    if (!(await setImageModel(this.session.dir, modelId.trim()))) {
       return { ok: false, message: 'The project already says that.', written: [] };
     }
     return {

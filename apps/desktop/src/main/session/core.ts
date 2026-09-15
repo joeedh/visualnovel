@@ -1817,6 +1817,15 @@ export class WorkspaceSession {
     return this.projectPart.setProjectArtStyle(style);
   }
 
+  async previewImageModel(modelId: string): Promise<PromptResult> {
+    return this.projectPart.previewImageModel(modelId);
+  }
+
+  /** Write the project's image model, spliced into `project.yaml`'s `models:` block. */
+  async setProjectImageModel(modelId: string): Promise<PromptWriteResult> {
+    return this.projectPart.setProjectImageModel(modelId);
+  }
+
   async previewStoryboardNotes(notes: string): Promise<PromptResult> {
     return this.projectPart.previewStoryboardNotes(notes);
   }
