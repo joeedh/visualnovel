@@ -1,4 +1,12 @@
-import { resolveDrag, setCoverage, spansFor, type CoverShot } from '../coverage.js';
+import {
+  applyCoverage,
+  letteredPagesNote,
+  panelLines,
+  resolveDrag,
+  setCoverage,
+  spansFor,
+  type CoverShot,
+} from '../coverage.js';
 
 const LINES = ['s:L1', 's:L2', 's:L3', 's:L4', 's:L5', 's:L6'];
 
@@ -120,6 +128,151 @@ describe('setCoverage', () => {
     });
     if (!op.ok) throw new Error(op.error);
     expect(op.changed[0]!.coversLines).toEqual(['s:L2', 's:L3']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Pages. A page's panels partition its lines, so a coverage take has to say which panel a line
+// joins or leaves, and every host applies the answer through `applyCoverage`.
+// ---------------------------------------------------------------------------
+
+/** A page over the first three lines, two panels, beside a frame over the rest. */
+const board = (): CoverShot[] => [
+  {
+    id         : 's__page1',
+    coversLines: ['s:L1', 's:L2', 's:L3'],
+    panels     : [{ coversLines: ['s:L1'] }, { coversLines: ['s:L2', 's:L3'] }],
+  },
+  { id: 's__beat2', coversLines: ['s:L4', 's:L5', 's:L6'] },
+];
+
+describe('setCoverage on a page', () => {
+  it('drops a released line from its panel, and only that panel', () => {
+    const op = setCoverage(board(), {
+      shot     : 's__page1',
+      lines    : ['s:L1', 's:L2'],
+      lineOrder: LINES,
+    });
+    if (!op.ok) throw new Error(op.error);
+    expect(op.changed[0]).toEqual({
+      id         : 's__page1',
+      coversLines: ['s:L1', 's:L2'],
+      panels     : [{ coversLines: ['s:L1'] }, { coversLines: ['s:L2'] }],
+    });
+  });
+
+  it('puts a newly claimed line in the panel holding the line before it', () => {
+    const op = setCoverage(board(), {
+      shot     : 's__page1',
+      lines    : ['s:L1', 's:L2', 's:L3', 's:L4'],
+      lineOrder: LINES,
+    });
+    if (!op.ok) throw new Error(op.error);
+    expect(op.changed[0]!.panels).toEqual([
+      { coversLines: ['s:L1'] },
+      { coversLines: ['s:L2', 's:L3', 's:L4'] },
+    ]);
+    // The frame it was taken from carries no panels, so its change carries none either
+    expect(op.changed[1]).toEqual({ id: 's__beat2', coversLines: ['s:L5', 's:L6'] });
+  });
+
+  it('puts a line earlier than every lettered one in the first panel', () => {
+    const shots = board();
+    shots[0]!.coversLines = ['s:L2', 's:L3'];
+    shots[0]!.panels = [{ coversLines: ['s:L2'] }, { coversLines: ['s:L3'] }];
+    const op = setCoverage(shots, {
+      shot     : 's__page1',
+      lines    : ['s:L1', 's:L2', 's:L3'],
+      lineOrder: LINES,
+    });
+    if (!op.ok) throw new Error(op.error);
+    expect(op.changed[0]!.panels).toEqual([
+      { coversLines: ['s:L1', 's:L2'] },
+      { coversLines: ['s:L3'] },
+    ]);
+  });
+
+  it('keeps every panel in the page order, so the partition reads down the page', () => {
+    const op = setCoverage(board(), {
+      shot     : 's__page1',
+      lines    : ['s:L3', 's:L1', 's:L4', 's:L2'],
+      lineOrder: LINES,
+    });
+    if (!op.ok) throw new Error(op.error);
+    const panels = op.changed[0]!.panels!;
+    expect(panels.flatMap((p) => p.coversLines)).toEqual(op.changed[0]!.coversLines);
+  });
+
+  it('moves a page’s panel lines when a neighbour takes one of them', () => {
+    const op = setCoverage(board(), {
+      shot     : 's__beat2',
+      lines    : ['s:L3', 's:L4', 's:L5', 's:L6'],
+      lineOrder: LINES,
+    });
+    if (!op.ok) throw new Error(op.error);
+    expect(op.changed[1]).toEqual({
+      id         : 's__page1',
+      coversLines: ['s:L1', 's:L2'],
+      panels     : [{ coversLines: ['s:L1'] }, { coversLines: ['s:L2'] }],
+    });
+  });
+});
+
+describe('applyCoverage', () => {
+  it('writes the changed lines onto full shots and keeps every other field', () => {
+    const full = board().map((s) => ({ ...s, framing: 'medium', status: 'pending' }));
+    full[0]!.panels = full[0]!.panels!.map((p, i) => ({ ...p, shape: i }));
+    const op = setCoverage(full, { shot: 's__page1', lines: ['s:L1', 's:L2'], lineOrder: LINES });
+    if (!op.ok) throw new Error(op.error);
+    const [page, frame] = applyCoverage(full, op.changed);
+    expect(page).toEqual({
+      id         : 's__page1',
+      framing    : 'medium',
+      status     : 'pending',
+      coversLines: ['s:L1', 's:L2'],
+      panels: [
+        { shape: 0, coversLines: ['s:L1'] },
+        { shape: 1, coversLines: ['s:L2'] },
+      ],
+    });
+    expect(frame).toBe(full[1]);
+  });
+});
+
+describe('letteredPagesNote', () => {
+  const changed: CoverShot[] = [
+    { id: 's__page1', coversLines: [], panels: [] },
+    { id: 's__beat2', coversLines: [] },
+  ];
+
+  it('names the pages that re-render under model lettering, and nothing under runner', () => {
+    expect(letteredPagesNote(changed, 'model')).toBe(
+      ' s__page1 letters its lines, so it is drawn again on the next run.',
+    );
+    expect(letteredPagesNote(changed, 'runner')).toBe('');
+  });
+
+  it('is silent when only frames changed', () => {
+    expect(letteredPagesNote([changed[1]!], 'model')).toBe('');
+  });
+
+  it('lists several pages in one sentence', () => {
+    const two = [changed[0]!, { id: 's__page2', coversLines: [], panels: [] }];
+    expect(letteredPagesNote(two, 'model')).toBe(
+      ' s__page1, s__page2 letter their lines, so they are drawn again on the next run.',
+    );
+  });
+});
+
+describe('panelLines', () => {
+  it('renames the lines a panel holds and drops the retired ones', () => {
+    const panels = [{ coversLines: ['s:L1', 's:L2'], shape: 0 }, { coversLines: ['s:L3'] }];
+    const keep = (id: string): string | undefined =>
+      id === 's:L2' ? undefined : id === 's:L3' ? 't:L1' : id;
+    expect(panelLines(panels, keep)).toEqual([
+      { coversLines: ['s:L1'], shape: 0 },
+      { coversLines: ['t:L1'] },
+    ]);
   });
 });
 

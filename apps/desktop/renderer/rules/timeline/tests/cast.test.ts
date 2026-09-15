@@ -22,6 +22,7 @@ const shot = (id: string, subjects: string[], castOptional?: boolean): CoverageS
   ...(castOptional ? { castOptional: true } : {}),
   outfits    : {},
   coversLines: ['club:L1'],
+  aspect     : '16:9',
   status     : 'accepted',
   drift      : 'current',
 });
@@ -36,6 +37,7 @@ const coverage = (shots: CoverageShot[]): SceneCoverage => ({
   characters: ['aiko', 'ben', 'cho'],
   variants  : ['day', 'night'],
   decomposed: true,
+  lettering : 'model',
 });
 
 describe('shotCast', () => {

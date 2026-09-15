@@ -14,6 +14,7 @@ const scene: SceneCoverage = {
   characters: [],
   variants  : [],
   decomposed: true,
+  lettering : 'model',
 };
 
 function failed(over: Partial<AssetFailure> = {}): AssetFailure {

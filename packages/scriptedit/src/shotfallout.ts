@@ -25,6 +25,7 @@
  *   is in a shot's task inputs, so moving a scene re-renders it.
  */
 import type { Shot } from '@vn/types';
+import { panelLines } from './coverage.js';
 import { sceneIdOf, type AppliedLineOp } from './lineops.js';
 
 /** The persisted shots of every scene an edit touches, keyed by scene id. */
@@ -86,16 +87,20 @@ export function scenesTouchedBy(op: AppliedLineOp): string[] {
   return [...ids];
 }
 
+/** The id a line is now known by: renamed where the edit renamed it, `undefined` where it retired. */
+function renamer(op: AppliedLineOp): (id: string) => string | undefined {
+  const retired = new Set(op.retired);
+  const moved = new Map(op.moved);
+  return (id) => moved.get(id) ?? (retired.has(id) ? undefined : id);
+}
+
 /** Every id a shot still covers, renamed where the edit renamed it and dropped where it retired. */
 function rewrite(op: AppliedLineOp, shot: Shot): string[] {
-  const retired = new Set(op.retired);
-  const lines: string[] = [];
-  for (const id of shot.coversLines) {
-    const moved = op.moved.find(([from]) => from === id);
-    if (moved) lines.push(moved[1]);
-    else if (!retired.has(id)) lines.push(id);
-  }
-  return lines;
+  const keep = renamer(op);
+  return shot.coversLines.flatMap((id) => {
+    const now = keep(id);
+    return now === undefined ? [] : [now];
+  });
 }
 
 /**
@@ -156,10 +161,21 @@ export function shotFallout(op: AppliedLineOp, shots: ShotsByScene): ShotFallout
       // moved is staged where it lands rather than where it came from.
       const variant = staging.get(home);
       if (variant !== undefined && variant !== shot.location) restaged.push(shot.id);
+      // A page's panels hold the same ids, so they are renamed the same way and cut to what the
+      // shot still covers
+      const kept = new Set(lines);
+      const keep = renamer(op);
+      const panels = shot.panels
+        ? panelLines(shot.panels, (id) => {
+            const now = keep(id);
+            return now !== undefined && kept.has(now) ? now : undefined;
+          })
+        : undefined;
       listFor(home).push({
         ...shot,
         sceneId    : home,
         coversLines: lines,
+        ...(panels ? { panels } : {}),
         ...(variant !== undefined ? { location: variant } : {}),
       });
     }

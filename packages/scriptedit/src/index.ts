@@ -44,6 +44,9 @@ export {
 } from './lineops.js';
 export { moveShot, planShotMove, type PositionedShot, type ShotMove } from './shotorder.js';
 export {
+  applyCoverage,
+  letteredPagesNote,
+  panelLines,
   resolveDrag,
   range,
   runsOf,

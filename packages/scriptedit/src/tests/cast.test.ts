@@ -60,6 +60,44 @@ describe('setShotSubjects', () => {
     expect(op.message).toContain('aiko left it');
   });
 
+  it('takes a departing character out of every panel of a page', () => {
+    const [page, other] = shots([{ characterId: 'aiko' }, { characterId: 'ben' }]);
+    page!.panels = [
+      {
+        shape: [
+          [0, 0],
+          [1, 0],
+          [1, 0.5],
+          [0, 0.5],
+        ],
+        framing    : 'medium',
+        subjects   : [{ characterId: 'aiko', pose: 'bowing' }, { characterId: 'ben' }],
+        coversLines: ['club:L1'],
+      },
+      {
+        shape: [
+          [0, 0.5],
+          [1, 0.5],
+          [1, 1],
+          [0, 1],
+        ],
+        framing    : 'close',
+        subjects   : [{ characterId: 'ben' }],
+        coversLines: [],
+      },
+    ];
+    const op = setShotSubjects([page!, other!], scene, CAST, {
+      shot    : 'club__beat1',
+      subjects: ['aiko'],
+    });
+    if (!op.ok) throw new Error(op.error);
+    expect(op.shots[0]!.panels!.map((p) => p.subjects)).toEqual([
+      [{ characterId: 'aiko', pose: 'bowing' }],
+      [],
+    ]);
+    expect(op.message).toContain('overrides and panels with them');
+  });
+
   it('empties the list into a background plate', () => {
     const op = setShotSubjects(shots([{ characterId: 'aiko' }]), scene, CAST, {
       shot    : 'club__beat1',

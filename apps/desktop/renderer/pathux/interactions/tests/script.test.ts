@@ -26,6 +26,7 @@ const scene: SceneCoverage = {
   characters: [],
   variants  : ['day'],
   decomposed: false,
+  lettering : 'model',
 };
 
 describe('what a grab captures', () => {
@@ -83,6 +84,7 @@ describe('what right-clicking a line offers', () => {
     location   : 'day',
     outfits    : {},
     coversLines: covers,
+    aspect     : '16:9',
     status     : 'accepted',
     image,
     drift: 'current',

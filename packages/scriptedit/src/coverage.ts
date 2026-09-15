@@ -23,6 +23,7 @@
  * richer projection (the desktop's `CoverageLine`/`CoverageShot` carry frames and drift) gets its
  * own type back out of `spansFor` instead of a narrowed one.
  */
+import type { Lettering } from '@vn/types';
 
 /** The part of a scene line the coverage rules read. */
 export interface CoverLine {
@@ -33,12 +34,20 @@ export interface CoverLine {
 export interface CoverShot {
   id: string;
   coversLines: string[];
+  /**
+   * A page shot's panels, each with the lines it letters — a partition of `coversLines`. Absent
+   * on a frame. Only the lines are read here; a caller with full `PagePanel`s passes them as is.
+   */
+  panels?: { coversLines: string[] }[];
 }
 
 export type CoverageOp =
   | {
       ok: true;
-      /** Every shot whose coverage changed, with its complete new line set. */
+      /**
+       * Every shot whose coverage changed, with its complete new line set, and its panels' new
+       * line sets where it has panels.
+       */
       changed: CoverShot[];
       /** Line ids no shot covers after the edit — a visible state, never an error. */
       uncovered: string[];
@@ -47,6 +56,98 @@ export type CoverageOp =
   | { ok: false; error: string };
 
 const refuse = (error: string): CoverageOp => ({ ok: false, error });
+
+/**
+ * A page's panels after its coverage became `lines`: a line no longer covered leaves its panel,
+ * and a line newly covered joins the panel holding the line before it in `lineOrder`, or the first
+ * panel when nothing before it is lettered. Returns `undefined` for a frame.
+ */
+function panelsAfter(
+  shot: CoverShot,
+  lines: readonly string[],
+  lineOrder: readonly string[],
+): { coversLines: string[] }[] | undefined {
+  if (!shot.panels) return undefined;
+  const kept = new Set(lines);
+  const next = shot.panels.map((p) => ({
+    coversLines: p.coversLines.filter((id) => kept.has(id)),
+  }));
+  const rank = new Map(lineOrder.map((id, i) => [id, i]));
+  const byRank = (a: string, b: string): number => (rank.get(a) ?? 0) - (rank.get(b) ?? 0);
+  const home = new Map<string, number>();
+  next.forEach((p, i) => p.coversLines.forEach((id) => home.set(id, i)));
+  // Walking the lines in order, a new line lands wherever the last lettered one did
+  let last = 0;
+  for (const id of [...lines].sort(byRank)) {
+    const at = home.get(id);
+    if (at !== undefined) {
+      last = at;
+      continue;
+    }
+    next[last]!.coversLines.push(id);
+    home.set(id, last);
+  }
+  for (const p of next) p.coversLines.sort(byRank);
+  return next;
+}
+
+/**
+ * `shots` with the changed line sets written back onto them: a shot's `coversLines`, and each
+ * panel's, where the change carries panels. The shots keep every other field, so a host that holds
+ * full `Shot`s gets full `Shot`s back. Every host that applies a {@link CoverageOp} goes through
+ * this, so no host can update the shot's lines and forget its panels'.
+ */
+export function applyCoverage<S extends CoverShot>(
+  shots: readonly S[],
+  changed: readonly CoverShot[],
+): S[] {
+  const next = new Map(changed.map((s) => [s.id, s]));
+  return shots.map((s) => {
+    const change = next.get(s.id);
+    if (!change) return s;
+    const out = { ...s, coversLines: change.coversLines };
+    if (s.panels && change.panels) {
+      out.panels = s.panels.map((p, i) => ({
+        ...p,
+        coversLines: change.panels![i]?.coversLines ?? [],
+      }));
+    }
+    return out;
+  });
+}
+
+/**
+ * The sentence a coverage edit adds when it re-renders something: under `lettering: model` a
+ * page's lines are in its prompt, so a page whose coverage changed is drawn again. Empty under
+ * `runner`, and when no page changed, which is every edit to frames alone. One sentence for the
+ * command's check and the write, so the price shown is the price paid.
+ */
+export function letteredPagesNote(changed: readonly CoverShot[], lettering: Lettering): string {
+  if (lettering !== 'model') return '';
+  const pages = changed.filter((s) => s.panels).map((s) => s.id);
+  if (!pages.length) return '';
+  return pages.length === 1
+    ? ` ${pages[0]} letters its lines, so it is drawn again on the next run.`
+    : ` ${pages.join(', ')} letter their lines, so they are drawn again on the next run.`;
+}
+
+/**
+ * `panels` with every line passed through `keep`, which returns the id a line is now known by or
+ * `undefined` for one that is gone. Exported for the fallout of a line edit, which renames and
+ * retires ids under a whole storyboard at once.
+ */
+export function panelLines<P extends { coversLines: string[] }>(
+  panels: readonly P[],
+  keep: (id: string) => string | undefined,
+): P[] {
+  return panels.map((p) => ({
+    ...p,
+    coversLines: p.coversLines.flatMap((id) => {
+      const now = keep(id);
+      return now === undefined ? [] : [now];
+    }),
+  }));
+}
 
 /**
  * Assign `lines` to `shot`, taking each of them off every other shot.
@@ -77,11 +178,12 @@ export function setCoverage(
   const claimed = new Set(args.lines);
   const sorted = [...claimed].sort((a, b) => rank.get(a)! - rank.get(b)!);
 
-  const next = shots.map((shot) =>
-    shot.id === target.id
-      ? { id: shot.id, coversLines: sorted }
-      : { id: shot.id, coversLines: shot.coversLines.filter((id) => !claimed.has(id)) },
-  );
+  const next: CoverShot[] = shots.map((shot) => {
+    const coversLines =
+      shot.id === target.id ? sorted : shot.coversLines.filter((id) => !claimed.has(id));
+    const panels = panelsAfter(shot, coversLines, args.lineOrder);
+    return panels ? { id: shot.id, coversLines, panels } : { id: shot.id, coversLines };
+  });
   const before = new Map(shots.map((s) => [s.id, s.coversLines]));
   // The dragged shot comes first, so a caller reading `changed` sees it before the shots it took
   // lines from

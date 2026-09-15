@@ -13,9 +13,12 @@ import {
 } from '@vn/store';
 import { exists, readText } from '@vn/util';
 import { fileCache } from '../workspace/filecache.js';
+import { aspectFor, imageParams } from '@vn/artgen';
 import { driftOf } from '@vn/pipeline';
 import {
+  applyCoverage,
   deleteShot as planDeleteShot,
+  letteredPagesNote,
   moveShot,
   requireShotCast,
   newShot as planNewShot,
@@ -373,6 +376,8 @@ export class StoryPart {
     const loaded = await readShots(project.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
     const exts = new Map(project.store.manifest().map((a) => [a.hash, a.ext]));
     const wardrobes = wardrobesOf(project.model.characters);
+    const params = imageParams(project.config);
+    const pageAspect = project.config.image_params.page_aspect;
     // Whoever the scene declares, plus anyone a shot actually frames — a subject the scene's
     // `characters` list forgot is still someone the strip has to be able to dress.
     const cast = new Set([
@@ -401,7 +406,9 @@ export class StoryPart {
           s.subjects.filter((sub) => sub.outfit).map((sub) => [sub.characterId, sub.outfit!]),
         ),
         coversLines: s.coversLines,
-        status     : s.status,
+        ...(s.panels ? { panels: s.panels.map((p) => ({ coversLines: p.coversLines })) } : {}),
+        aspect: aspectFor(params, s, pageAspect).aspect ?? project.config.image_params.aspect,
+        status: s.status,
         ...(s.image ? { image: { hash: s.image, ext: exts.get(s.image) ?? 'png' } } : {}),
         // Against `scene` as just loaded, so an edit made anywhere — this app, the CLI, the
         // agent, a hand-edit — shows up the next time the strip is read.
@@ -420,14 +427,17 @@ export class StoryPart {
       characters: [...wardrobes.keys()],
       variants  : (project.model.locations.get(scene.location)?.variants ?? []).map((v) => v.id),
       decomposed: loaded !== null,
+      lettering : project.config.lettering,
       ...(loaded?.nextShot !== undefined ? { nextShot: loaded.nextShot } : {}),
     };
   }
 
   /**
    * Rewrite one shot's coverage. The rule is `@vn/scriptedit`'s `setCoverage`, so the timeline's mid-drag
-   * preview and this write cannot disagree; only `coversLines` is touched, and `buildShotPrompt`
-   * ignores it, so no task rehashes and no generated art is invalidated.
+   * preview and this write cannot disagree. On a frame only `coversLines` is touched, which
+   * `buildShotPrompt` ignores, so no task rehashes and no generated art is invalidated. On a page
+   * the panels' lines move with it, and under `lettering: model` those lines are in the prompt,
+   * so the page re-keys; `story.setCoverage`'s check prices that.
    */
   async setCoverage(
     sceneId: string,
@@ -451,14 +461,12 @@ export class StoryPart {
     const op = setCoverage(loaded.shots, { shot: shotId, lines, lineOrder });
     if (!op.ok) return { ok: false, message: op.error, written: [] };
 
-    const next = new Map(op.changed.map((s) => [s.id, s.coversLines]));
-    const shots = loaded.shots.map((s) => ({ ...s, coversLines: next.get(s.id) ?? s.coversLines }));
-    await writeShots(project.paths, sceneId, shots);
+    await writeShots(project.paths, sceneId, applyCoverage(loaded.shots, op.changed));
 
     const gaps = op.uncovered.length ? ` ${op.uncovered.length} line(s) now uncovered.` : '';
     return {
       ok      : true,
-      message : op.message + gaps,
+      message : op.message + gaps + letteredPagesNote(op.changed, project.config.lettering),
       written : [`vngen/work/shots/${sceneId}.json`],
       coverage: await this.session.sceneCoverage(sceneId),
     };

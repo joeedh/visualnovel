@@ -235,6 +235,7 @@ describe('timeline.cover', () => {
     location: 'night',
     outfits : {},
     coversLines,
+    aspect: '16:9',
     status: 'accepted',
     drift : 'current',
   });
@@ -297,6 +298,7 @@ describe('timeline.create', () => {
     location: 'night',
     outfits : {},
     coversLines,
+    aspect: '16:9',
     status: 'accepted',
     drift : 'current',
   });
@@ -360,6 +362,7 @@ describe('timeline.reorder', () => {
     location: 'night',
     outfits : {},
     coversLines,
+    aspect: '16:9',
     status: 'accepted',
     drift : 'current',
   });

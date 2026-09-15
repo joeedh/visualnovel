@@ -24,6 +24,7 @@ import {
   deleteLine,
   deleteScene,
   insertLine,
+  letteredPagesNote,
   mergeScene,
   moveLine,
   newScene,
@@ -505,7 +506,8 @@ export const storySetCoverage = define({
   title      : 'Set shot coverage',
   description:
     'Set which lines a shot is on screen for. Claimed lines are taken off every other shot; ' +
-    'released ones become visible gaps. Changes no prompt, so nothing rehashes.',
+    "released ones become visible gaps. A frame's prompt does not change, so it does not " +
+    'rehash; a page that letters its lines does, since the lines are in its prompt.',
   notes      : 'Comma-separated line ids; claimed lines leave every other shot.',
   mutating   : true,
   affects    : ['vngen/work/shots'],
@@ -523,7 +525,9 @@ export const storySetCoverage = define({
       lines    : idsOf(lines),
       lineOrder: coverage.lines.map((l) => l.id),
     });
-    return op.ok ? { ok: true, note: op.message } : { ok: false, reason: op.error };
+    return op.ok
+      ? { ok: true, note: op.message + letteredPagesNote(op.changed, coverage.lettering) }
+      : { ok: false, reason: op.error };
   },
   async run({ scene, shot, lines }, ctx) {
     const ids = idsOf(lines);

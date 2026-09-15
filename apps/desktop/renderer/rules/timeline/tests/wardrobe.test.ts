@@ -19,6 +19,7 @@ const shot = (outfits: Record<string, string>, subjects = ['aiko', 'ren']): Cove
   location: 'day',
   outfits,
   coversLines: ['club:L1'],
+  aspect     : '16:9',
   status     : 'accepted',
   drift      : 'current',
 });
@@ -33,6 +34,7 @@ const coverage = (cast: CoverageCast[], shots: CoverageShot[]): SceneCoverage =>
   characters: [],
   variants  : ['day'],
   decomposed: shots.length > 0,
+  lettering : 'model',
 });
 
 describe('outfitRows', () => {

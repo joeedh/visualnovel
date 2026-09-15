@@ -19,7 +19,7 @@
  */
 
 import type { SceneLine, Shot, ShotSubject } from '@vn/types';
-import { setCoverage, type CoverShot } from './coverage.js';
+import { applyCoverage, setCoverage, type CoverShot } from './coverage.js';
 
 /** What `newShot` reads off a scene: identity, the lines (for order and speakers), the heading's variant. */
 export interface ShotScene {
@@ -148,10 +148,7 @@ export function newShot<S extends CoverShot>(
   const id = `${scene.id}__shot${n}`;
   const existing = board?.shots ?? [];
 
-  const covers: CoverShot[] = [
-    ...existing.map((s) => ({ id: s.id, coversLines: [...s.coversLines] })),
-    { id, coversLines: [] },
-  ];
+  const covers: CoverShot[] = [...existing, { id, coversLines: [] }];
   const op = setCoverage(covers, {
     shot     : id,
     lines    : args.lines,
@@ -159,8 +156,7 @@ export function newShot<S extends CoverShot>(
   });
   if (!op.ok) return { ok: false, error: op.error };
 
-  const taken = new Map(op.changed.map((s) => [s.id, s.coversLines]));
-  const coversLines = taken.get(id)!;
+  const coversLines = op.changed.find((s) => s.id === id)!.coversLines;
 
   const variants = args.variants ?? [];
   const location =
@@ -182,10 +178,7 @@ export function newShot<S extends CoverShot>(
     coversLines,
     status: 'pending',
   };
-  const shots = [
-    ...existing.map((s) => ({ ...s, coversLines: taken.get(s.id) ?? s.coversLines })),
-    shot,
-  ];
+  const shots = [...applyCoverage(existing, op.changed), shot];
 
   const created = board === null;
   const parts = [`${id} covers ${coversLines.length} line(s) — a new frame to render.`];

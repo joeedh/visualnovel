@@ -144,6 +144,44 @@ describe('a shot that straddles a split', () => {
   });
 });
 
+describe('a page', () => {
+  const panel = (lines: string[]) => ({
+    shape: [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [0, 1],
+    ] as [number, number][],
+    framing    : 'medium' as const,
+    subjects   : [],
+    coversLines: lines,
+  });
+
+  it('carries its panels with it, renamed the way its lines were', () => {
+    const page = {
+      ...shot('arrival__page', 'arrival', ['arrival:L3', 'arrival:L4']),
+      panels: [panel(['arrival:L3']), panel(['arrival:L4'])],
+    };
+    const out = shotFallout(split(), stored({ arrival: [page] }));
+    expect(out.writes.get('climb')?.[0]?.panels).toEqual([
+      panel(['climb:L3']),
+      panel(['climb:L4']),
+    ]);
+  });
+
+  it('loses a straddled line from its panel as well as from the page', () => {
+    const page = {
+      ...shot('arrival__page', 'arrival', ['arrival:L2', 'arrival:L3']),
+      panels: [panel(['arrival:L2']), panel(['arrival:L3'])],
+    };
+    const out = shotFallout(split(), stored({ arrival: [page] }));
+    expect(out.writes.get('arrival')?.[0]).toMatchObject({
+      coversLines: ['arrival:L2'],
+      panels     : [panel(['arrival:L2']), panel([])],
+    });
+  });
+});
+
 describe('a merge', () => {
   it('carries the absorbed scene’s shots into the survivor under their new ids', () => {
     const shots = stored({

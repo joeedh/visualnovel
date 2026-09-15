@@ -52,13 +52,23 @@ export function setShotSubjects(
 
   const held = new Map(shot.subjects.map((s) => [s.characterId, s]));
   const subjects: ShotSubject[] = wanted.map((id) => held.get(id) ?? { characterId: id });
-  const next = shots.map((s) => (s.id === args.shot ? { ...s, subjects } : s));
   const gone = was.filter((id) => !wanted.includes(id));
+  // A page's panels may cast only the page's own subjects, so whoever leaves the cast leaves
+  // every panel too; the file would not load otherwise
+  const panels = shot.panels?.map((p) => ({
+    ...p,
+    subjects: p.subjects.filter((s) => wanted.includes(s.characterId)),
+  }));
+  const next = shots.map((s) =>
+    s.id === args.shot ? { ...s, subjects, ...(panels ? { panels } : {}) } : s,
+  );
   const message =
     (wanted.length
       ? `${args.shot} frames ${wanted.join(', ')}.`
       : `${args.shot} frames nobody — it is a background plate now.`) +
-    (gone.length ? ` ${gone.join(', ')} left it, and their outfit overrides with them.` : '') +
+    (gone.length
+      ? ` ${gone.join(', ')} left it, and their outfit overrides${panels ? ' and panels' : ''} with them.`
+      : '') +
     ' The frame is drawn again on the next run.';
   return { ok: true, shots: next, message };
 }

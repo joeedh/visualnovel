@@ -847,3 +847,28 @@ specification:
   same rule as `proseHash`: a rerun that reports the same image leaves the boxes alone,
   and a page with no image has none. The planner re-parses the attempt's review through
   `defectReportSchema`, since attempts record reviews untyped.
+- **A coverage take on a page moves lines between panels by one rule, and every host
+  applies it through `applyCoverage`.** `CoverShot.panels` carries only each panel's
+  lines; `setCoverage` returns them per changed page (`CoverageOp.changed[].panels`). A
+  line the page no longer covers leaves its panel; a line newly covered joins the panel
+  holding the last lettered line before it in screenplay order, or the first panel when
+  nothing before it is lettered (Decision 9's "the panel holding the preceding line", read
+  as the nearest lettered predecessor rather than the immediately preceding line, which
+  the page may not cover). `applyCoverage(shots, changed)` writes the lines onto full
+  shots and their panels; the desktop session, the authoring workspace and `newShot` all
+  go through it, so no host can update a page's lines and forget its panels'. A
+  neighbour's take is the same rule: a panel of the page it took from loses the line.
+- **The pricing sentence is `letteredPagesNote`, shared by the check and the write.**
+  Under `lettering: model` a page whose coverage changed is named as drawn again (" X
+  letters its lines, so it is drawn again on the next run."); under `runner`, and for
+  edits touching only frames, the sentence is empty. `story.setCoverage`'s description now
+  says a frame does not rehash and a lettered page does; its check appends the sentence
+  from `SceneCoverage.lettering`, which the IPC projection gained beside
+  `CoverageShot.panels` and `CoverageShot.aspect` (the shot's effective ratio, resolved by
+  `aspectFor`, which the timeline sizes thumbnails by).
+- **A page's panels follow its lines through a cast change and a prose edit.**
+  `setShotSubjects` takes a departing character out of every panel as well, because
+  `readShots` refuses a panel naming someone outside the cast; the message says so.
+  `shotFallout` renames a panel's lines the way it renames the page's and cuts them to
+  what the page still covers, so a page carried into another scene or straddling a split
+  keeps a valid partition. `panelLines(panels, keep)` is the one helper both use.

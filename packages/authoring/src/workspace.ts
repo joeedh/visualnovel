@@ -10,7 +10,9 @@ import { modelFromInputs } from '@vn/model';
 import { openBible, type Bible } from '@vn/bible';
 import { baseAssetsOf, loadInputs, readShots, ProjectPaths } from '@vn/store';
 import {
+  applyCoverage,
   deleteShot as planDeleteShot,
+  letteredPagesNote,
   moveShot,
   newShot as planNewShot,
   setCoverage,
@@ -33,7 +35,14 @@ import { loadConfig } from '@vn/config';
 import { RepoResolver } from '@vn/git';
 import { exists, readText, VnError, writeFileAtomic } from '@vn/util';
 import { join, relative, resolve, sep } from 'node:path';
-import type { BaseAssets, CharacterStatus, Diagnostic, ProjectModel, Shot } from '@vn/types';
+import type {
+  BaseAssets,
+  CharacterStatus,
+  Diagnostic,
+  Lettering,
+  ProjectModel,
+  Shot,
+} from '@vn/types';
 import {
   countsOf,
   GENERATED_CONTEXT_FILE,
@@ -127,6 +136,8 @@ export interface LoadedWorkspace {
   title: string;
   /** `art_style` and `storyboard_notes` off `project.yaml`, empty where it is absent or invalid. */
   style: StoryboardStyle;
+  /** `lettering` off `project.yaml`, the default where it is absent or invalid. */
+  lettering: Lettering;
   model: ProjectModel;
   inputs: LoadedInputs;
 }
@@ -181,16 +192,18 @@ export class Workspace {
     let title = 'Untitled';
     let start: string | undefined;
     let style: StoryboardStyle = { artStyle: '', storyboardNotes: '' };
+    let lettering: Lettering = 'model';
     try {
       const config = await loadConfig(this.root);
       title = config.title;
       start = config.start;
       style = storyboardStyle(config);
+      lettering = config.lettering;
     } catch {
       // No (or invalid) project.yaml: the agent still operates, title is a placeholder
     }
     const model = modelFromInputs(inputs, { title, start });
-    return { title, style, model, inputs };
+    return { title, style, lettering, model, inputs };
   }
 
   /** Build the lightweight index from the model. */
@@ -432,7 +445,7 @@ export class Workspace {
     shotId: string,
     lines: readonly string[],
   ): Promise<{ ok: false; error: string } | { ok: true; shots: Shot[]; message: string }> {
-    const { model } = await this.load();
+    const { model, lettering } = await this.load();
     const scene = model.scenes.get(sceneId);
     if (!scene) return { ok: false, error: `No scene "${sceneId}".` };
     const lineOrder = scene.lines.map((l) => l.id);
@@ -445,10 +458,13 @@ export class Workspace {
     }
     const op = setCoverage(loaded.shots, { shot: shotId, lines, lineOrder });
     if (!op.ok) return { ok: false, error: op.error };
-    const next = new Map(op.changed.map((s) => [s.id, s.coversLines]));
-    const shots = loaded.shots.map((s) => ({ ...s, coversLines: next.get(s.id) ?? s.coversLines }));
+    const shots = applyCoverage(loaded.shots, op.changed);
     const gaps = op.uncovered.length ? ` ${op.uncovered.length} line(s) now uncovered.` : '';
-    return { ok: true, shots, message: op.message + gaps };
+    return {
+      ok: true,
+      shots,
+      message: op.message + gaps + letteredPagesNote(op.changed, lettering),
+    };
   }
 
   /**

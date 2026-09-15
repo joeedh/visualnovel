@@ -26,6 +26,7 @@ import type {
   DefectReport,
   Diagnostic,
   Drift,
+  Lettering,
   Notification,
   NotificationInput,
   Playable,
@@ -401,6 +402,17 @@ export interface CoverageShot {
    */
   outfits: Record<string, string>;
   coversLines: string[];
+  /**
+   * The panels of a page shot, each with the lines it holds, in the page's own order. Absent on a
+   * frame. The lines are what a coverage take moves between panels; the drawing stays main's.
+   */
+  panels?: { coversLines: string[] }[];
+  /**
+   * The aspect this shot is drawn at, as `aspectFor` would resolve it: its own override, else the
+   * project's `page_aspect` for a page, else the project's default. The timeline sizes the
+   * thumbnail by it.
+   */
+  aspect: string;
   status: Shot['status'];
   /** The accepted frame, for the thumbnail. Absent until a run produced one. */
   image?: AssetRef;
@@ -460,6 +472,11 @@ export interface SceneCoverage {
   variants: string[];
   /** No decomposition on disk yet: the scene has not been planned past the gate. */
   decomposed: boolean;
+  /**
+   * The project's lettering mode. Under `model` a page's lines are in its prompt, so a coverage
+   * take on a page re-keys it; the strip's check has to price that.
+   */
+  lettering: Lettering;
   /**
    * The storyboard's persisted shot-id high-water mark, when the file records one — so a surface
    * previewing `story.newShot` names the id the write would actually mint, not a derived guess.

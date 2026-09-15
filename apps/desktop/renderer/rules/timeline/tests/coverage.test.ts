@@ -16,6 +16,7 @@ const shot = (id: string, coversLines: string[]): CoverageShot => ({
   location: 'day',
   outfits : {},
   coversLines,
+  aspect: '16:9',
   status: 'accepted',
   drift : 'current',
 });

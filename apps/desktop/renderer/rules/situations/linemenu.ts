@@ -17,6 +17,7 @@ const shot = (id: string, covers: string[], image?: CoverageShot['image']): Cove
   location   : 'gate',
   outfits    : {},
   coversLines: covers,
+  aspect     : '16:9',
   status     : 'accepted',
   drift      : 'current',
   ...(image ? { image } : {}),
@@ -39,6 +40,7 @@ const scene: SceneCoverage = {
   characters: [],
   variants  : ['day'],
   decomposed: true,
+  lettering : 'model',
 };
 
 export const SITUATIONS = situations<LineMenuState>(
