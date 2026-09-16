@@ -482,8 +482,13 @@ These implement the system design in
       measured on the task's own `nodeHash`, because that hash includes the seeding and
       would report drift after every run whether or not anyone edited anything.
     - A successful redraw writes the graph's new authored hash into the journal, which
-      clears the drift. A failed redraw writes no such record, so the failure goes to
-      `requeueFailed` and its own attempt budget rather than being requeued here forever.
+      clears the drift. That holds for a redraw the executor resumed from a cached answer
+      as well as for one it drew: a node that resumes while its latest `done` record
+      carries stale hashes writes a fresh `done` record under the current ones. Without
+      that record an edit that leaves a node's output unchanged (adding an empty `{varC}`
+      to a template) would keep the slot drifted and requeue it on every run. A failed
+      redraw writes no such record, so the failure goes to `requeueFailed` and its own
+      attempt budget rather than being requeued here forever.
     - The requeue happens at run time rather than at the graph write, because undo
       excludes `vngen/state/`. Undoing a graph edit restores the authored hash, so the
       drift disappears before anything is redrawn.

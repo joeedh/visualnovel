@@ -243,9 +243,12 @@ a test:
   service sends every call to the project's one configured text provider. The model
   specified by a node is recorded rather than used for routing.
 - `blobs.read(hash)` and `blobs.write(bytes, ext)` are kept per graph slug, which is why a
-  services object lives on each loaded graph rather than on the runtime.
+  services object lives on each loaded graph rather than on the runtime. `blobs.has(ref)`
+  answers whether a blob is still on disk with one `stat`, for the executor's check on a
+  cached answer.
 - The Slot-ref and Image-file nodes read the asset store through `assets.read(ref)` and
-  `assets.slot(slotKey)`.
+  `assets.slot(slotKey)`; `assets.has(ref)` is the same existence check for a picture the
+  asset store holds.
 - Calls `fetch(url, init?)` through the provider request ring, so a fault can be read
   against the body that caused it.
 - `key(name)` returns the value of a declared key through the ordinary `resolveKeys`
@@ -283,28 +286,59 @@ implementation. The testkit passes a mock.
   hash apart.
 - **The journal only appends, and each append is a full snapshot.** Each line of
   `state/graphs/<slug>.jsonl` holds one node's whole state as
-  `{v, nodeId, nodeHash, authoredHash?, status, output?, usage?, error?, at}`. Every line
-  carries `v` because git union-merges the file across clones. `status` is `running`,
-  `done`, `failed` or `invalidated`. Replay keeps the last line written for each node, the
-  same way `state/tasks.jsonl` is replayed. A line that does not parse (a crash
-  mid-append) is counted and skipped rather than raised as an error. A record written
-  before `authoredHash` existed reports no drift.
+  `{v, nodeId, nodeHash, authoredHash?, runKey?, status, output?, usage?, error?, at}`.
+  Every line carries `v` because git union-merges the file across clones; `v` is 2 since
+  `runKey` arrived, and nothing gates on it, so a reader takes the fields it knows from
+  any numeric version. `status` is `running`, `done`, `failed` or `invalidated`. A line
+  that does not parse (a crash mid-append) is counted and skipped rather than raised as an
+  error. A record written before `authoredHash` existed reports no drift.
+- **A run key names what fed a node.** `nodeRunKey` hashes the same parts as `nodeHash`,
+  with each input contributing the value on its socket (a picture's `{store, hash, ext}`,
+  a prompt's text) rather than the hash of the node feeding it. The executor computes it
+  when the walk reaches the node, once every upstream answer has been applied to the
+  sockets, so it exists only during a run and never for a graph at rest. Every `running`,
+  `done` and `failed` record the executor writes carries it; an `invalidated` record is
+  written at rest and carries none. Two runs with the same key were fed the same bytes,
+  which is what makes it safe to resume on. The claim does not extend to a node that
+  answers from a service rather than from its inputs (Slot-ref, Image-file): a changed
+  slot or file is invisible to the key, exactly as it is to the hash.
+- **Replay builds three views, through one rule.** `applyRecord` is the only place the
+  update rule is written; `replayJournal` folds it over the file, and the executor and the
+  runner wrapper fold it over a `cloneJournal` copy as they append, so a run resumes
+  against its own records without moving the journal the host loaded. The views are
+  `latest` (each node's last record, whatever its status), `lastDone` (each node's last
+  `done` record, which drift reads) and `cached`: per node, every `done` record carrying a
+  `runKey` that no invalidation has retired, filed under that key with the latest writer
+  winning. An `invalidated` record retires every cached answer of its node stamped at or
+  before its own `at`, and a `done` record stamped earlier than the node's latest
+  invalidation stays out whatever order the file holds the two lines in. The cutoff is by
+  timestamp rather than by line position because a union merge can land another clone's
+  older `done` line after this clone's `invalidated` line; two clocks that disagree by
+  more than the gap between a force and its redraw are the residual exposure. A `failed`
+  or `running` record leaves `cached` alone, because a failure is not an answer and does
+  not retire the answers whose keys say what they were fed.
 - **Drift is reported per output node and acted on at run time.** `graphDrift` recomputes
   each active output's authored hash and compares it against the journal's last `done`
   record for that node. `requeueDrifted` in `@vn/scheduler` returns every planned `done`
   or `needs_human` task whose bound graph has drifted to `pending`, once per run and
   before the wave loop, and `RunSummary.redrawn` names them for the CLI and the run
-  notification. A successful redraw clears the drift by writing the new authored hash; a
-  graph that fails writes no such record, so `requeueFailed` and its attempt budget handle
-  the failure rather than requeuing it forever. The requeue happens at run time rather
-  than at the graph write because undo excludes `state/`. Undoing the edit restores the
-  authored hash, so the drift disappears before anything is redrawn. The contract is
-  stated in [`pipeline-contracts.md`](pipeline-contracts.md).
+  notification. A successful redraw clears the drift by writing the new authored hash,
+  whether the output node drew or resumed: a node that resumes while its latest `done`
+  record carries stale hashes writes a fresh `done` record under the current ones, with
+  the cached output and no `usage`. A graph that fails writes no such record, so
+  `requeueFailed` and its attempt budget handle the failure rather than requeuing it
+  forever. The requeue happens at run time rather than at the graph write because undo
+  excludes `state/`. Undoing the edit restores the authored hash, so the drift disappears
+  before anything is redrawn. The contract is stated in
+  [`pipeline-contracts.md`](pipeline-contracts.md).
 - **A deliberate re-render marks nodes invalid instead of re-walking the graph.** With
   every node clean, a plain requeue would skip straight to the cached image.
   `PipelineControl.regenerate` on a bound slot, and `gengraph.run` with `force`, append an
-  `invalidated` record for each spending ancestor of the target, so those nodes and
-  everything below them run again while deterministic prep still resumes.
+  `invalidated` record for each spending ancestor of the target. That record retires every
+  answer the node has ever given, not only its last, so the node runs again; a node below
+  it runs only if the redraw fed it different bytes, and deterministic prep still resumes.
+  The executor applies the `invalidated` records a `force` writes to its own copy of the
+  journal before it consults `cached`, so a force cannot resume what it just retired.
 
 ## Slots and outputs
 
@@ -331,13 +365,25 @@ implementation. The testkit passes a mock.
 - **The executor** (`executeGenGraph`, in `@vn/gengraph/state`) takes the graph and a
   target set by node key and evaluates only the targets' ancestors, in path.ux's Tarjan
   `sort()` order over the flattened graph, so the executor runs a group instance's inner
-  nodes. A node whose journal record already matches its hash resumes from the record. A
-  node hash covers what feeds a node rather than what it produces, so the executor tracks
-  the nodes it ran and forces everything below them. That is why the resume rule is
-  correct and not merely cheap. Every transition is journaled, intermediates are written
-  as blobs, and a failing node writes a `failed` record and blocks only the branch below
-  it; branches beside it still run. A target inside a cycle throws, because a cycle has no
-  order to run in.
+  nodes. For each node, in order: a node fed by a failed node is blocked. Otherwise the
+  executor computes the node's run key and looks it up in `cached`; a record there whose
+  pictures are still in their stores (`blobs.has`, `assets.has`, one `stat` each rather
+  than a read) is applied to the node's sockets and the node is skipped, whatever ran in
+  between. That is exact because the key names the bytes the node was fed, so a model prop
+  moved A → B → A resumes the A picture rather than paying for it again. Otherwise, a
+  `done` record written before run keys existed resumes on its `nodeHash`, but only while
+  every node above it resumed the same way: such a record cannot say which of its
+  upstream's answers it was drawn from, so a node above it that ran, or that resumed by
+  key, makes it untrustworthy. Otherwise the node runs and is journaled with its key. A
+  skipped node's output goes onto its sockets like a drawn one, so the node below keys on
+  the cached bytes. Every transition is journaled, intermediates are written as blobs, and
+  a failing node writes a `failed` record and blocks only the branch below it; branches
+  beside it still run. A target inside a cycle throws, because a cycle has no order to run
+  in.
+- **The cache is per node, not per graph.** An answer is filed under the node's key, so a
+  node deleted and recreated, a pasted copy or a re-made group instance starts with no
+  answers although its blobs are on disk. Widening it to a shared store, and pruning the
+  journal or the blob store, are both unbuilt.
 - **The runner wrapper** lives in `@vn/pipeline` (`graphrun.ts`). When a task's slot is
   bound, the runner seeds the Derived-prompt and Task-refs inputs from the task, executes
   the graph against the slot's active output, and writes the terminal picture through the
@@ -353,7 +399,10 @@ implementation. The testkit passes a mock.
   and `max_refine_attempts` stay host policy in the runner. The critique enters through a
   wired Refine-prompt node reaching the active output (`refinesThroughNode`). Otherwise
   the refiner modifies the derived prompt. Only the tail downstream of that entry point
-  re-runs per attempt.
+  re-runs per attempt. The loop stalls to `needs_human` when the next critique (or refined
+  prompt) repeats one from any earlier attempt of the task, not only the previous one:
+  with resume by run key a repeated critique resumes the picture it produced before, so
+  the reviewers would answer as they did then and the loop would only spend their calls.
 - The slot-to-graph index is built on load by scanning every graph's output bindings. The
   host session owns it, and the runner consults it. `vngen run` builds it through
   `buildGenDeps`; the desktop session builds it when the workspace opens; `@vn/testkit`'s
@@ -767,3 +816,6 @@ in the same three ways a built-in node type is split.
 - [`../plans/archive/gengraph-node-editor-data-api.md`](../plans/archive/gengraph-node-editor-data-api.md)
   and its pressure test,
   [`../research/pressure-test-gengraph-node-editor-data-api.md`](../research/pressure-test-gengraph-node-editor-data-api.md).
+- [`../plans/archive/journal-content-cache.md`](../plans/archive/journal-content-cache.md)
+  covers the run key, the `cached` view and the resume rule, and why the smaller change
+  (an index by `nodeHash`) was rejected.

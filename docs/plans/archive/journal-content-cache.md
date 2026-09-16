@@ -1,7 +1,7 @@
 # The gen-graph journal resumes from any answer it already holds
 
-Status: planned. Follows the OpenRouter live check
-([`archive/openrouter-backend-and-the-image-model-default.md`](archive/openrouter-backend-and-the-image-model-default.md)),
+Status: shipped. Follows the OpenRouter live check
+([`openrouter-backend-and-the-image-model-default.md`](openrouter-backend-and-the-image-model-default.md)),
 which recorded the redraw this plan removes.
 
 ## The problem
@@ -69,8 +69,9 @@ which recorded the redraw this plan removes.
 - The cutoff is by timestamp rather than by line position because git union-merges the
   journal across clones, and a merge can land another clone's older `done` line after this
   clone's `invalidated` line. Ordering by `at` makes the merge order irrelevant; two
-  clocks that disagree by more than the gap between a force and a redraw are the residual
-  exposure, and a record with an `at` that does not parse is retired as if it were old.
+  clocks that disagree by more than the real time between the old answer and the force are
+  the residual exposure, and a record with an `at` that does not parse is retired as if it
+  were old.
 - A `failed` or `running` record leaves the map alone. A failure is not an answer and does
   not retire earlier answers, because the run key of the earlier answer says exactly what
   it was fed.
@@ -243,11 +244,13 @@ Each stage lands green under `pnpm check && pnpm test && pnpm lint`.
 ## Risks
 
 - **Union merge across clones.** The timestamp cutoff removes line order from the
-  invalidation rule, but two clones' clocks are the new dependency. A clone whose clock is
-  behind another's by more than the time between a force and its redraw can resurrect a
-  retired answer. Today's rule has the mirror-image exposure (a merge can put an older
-  `done` line last and resume it), so neither is strictly safer; the cutoff is the one
-  that does not depend on which clone merged.
+  invalidation rule, but two clones' clocks are the new dependency. An answer drawn on
+  clone X survives a later force on clone Y when X's stamp is not earlier than Y's, so X's
+  clock has to be ahead of Y's by at least the real time between X's draw and Y's force.
+  Two sessions on two machines are hours apart and NTP keeps clocks within seconds, so the
+  exposure is a clock that is wrong by hours, not skew. Today's rule has the mirror-image
+  exposure (a merge can put an older `done` line last and resume it), so neither is
+  strictly safer; the cutoff is the one that does not depend on which clone merged.
 - **Memory.** `cached` holds every un-retired `done` record. Records carry the full prompt
   text (the `examples/test4` journals are 1–17 KB each), so this is megabytes at worst for
   a graph that has been run thousands of times.
@@ -263,8 +266,9 @@ Each stage lands green under `pnpm check && pnpm test && pnpm lint`.
 - That no host reads `journal.latest` to decide anything other than what the executor
   decides. The grep at planning time found only `execute.ts`, `graphrun.ts` and `drift.ts`
   (`lastDone`).
-- The gap between a force and its redraw in practice, to size the clock-skew exposure in
-  Decision 2. It is the time the redraw takes, so seconds to minutes.
+- How far apart the two clones' clocks can be in practice, to size the exposure in
+  Decision 2 against the real interval between an old answer and a force on the other
+  clone.
 
 ## Review
 
@@ -315,4 +319,59 @@ A fresh-context agent reviewed the first draft. Its findings, and what each chan
 
 ## As shipped
 
-Nothing yet.
+Four stages, one commit each, on the `journal-content-cache` branch. Every stage landed
+green under `pnpm check && pnpm test && pnpm lint`. The Review section's numbering is
+unchanged; the deviations below name the decisions they touch.
+
+- **Stage 1** (`journal.ts`, `execute.ts`, `graphrun.ts`, `services.ts`, `blobs.ts`,
+  `genservices.ts`, the mock services fixture). `runKey?` on the record,
+  `GRAPH_JOURNAL_VERSION = 2` with parsing ungated, `cached` on the journal, `applyRecord`
+  and `cloneJournal` with `replayJournal` and `emptyJournal` built on them, the executor
+  and `runBoundGraph` cloning and applying, `has(ref)` on both services. Tests: replay
+  builds `cached`; an invalidation retires the answers at or before its `at` and leaves a
+  later one; a keyless `done` record stays out; a clone leaves its source alone;
+  `applyRecord` equals replay; the runner wrapper's advanced journal equals a replay of
+  what it appended; the blob store's `has` is a `stat`.
+    - Deviation from Decision 2: `GraphJournal` also carries `invalidatedAt`, the parsed
+      stamp of each node's latest `invalidated` record. Decision 2 says the cutoff is by
+      timestamp so that a merge landing an older `done` line _after_ the `invalidated`
+      line cannot resurrect it, and retiring only what `cached` holds at the moment the
+      invalidation is applied would not achieve that. The second map is what holds a
+      later-arriving `done` record to the same cutoff. An answer stamped exactly at the
+      invalidation is retired if it was already filed and kept if it arrives after, which
+      is what lets a test clock held still force a node and then file its redraw.
+- **Stage 2** (`hash.ts`, `execute.ts`, `nodes/sockets.ts`, `nodes/runtimes.ts`,
+  `graphrun.ts`). `nodeRunKey`, the three-step resume rule of Decision 4, the bytes check,
+  the fresh `done` record, the `reran` set removed. All nine tests the Staging section
+  lists, plus a forced node resuming its own redraw on the run after.
+    - Deviation from the Staging section: `nodeRunKey` delegates to `nodeHash` rather than
+      sharing a prop-resolution helper with it. The two are the same computation over
+      different input parts, so the helper would have been the whole function.
+    - Deviation from Decision 4: the fresh `done` record is written when the node's
+      **latest `done` record** carries hashes different from the current ones, not when
+      the hit's own record does. `graphDrift` reads `lastDone`, and in the flip A → B → A
+      the hit's hashes already match the current ones while the latest record is B's;
+      keying on the hit would have left the slot drifted forever, which is the outcome the
+      plan's own test for the flip forbids. The `{varC}` case comes out the same under
+      either reading.
+    - The bytes check is applied to a step-3 (pre-key) candidate as well as to a step-2
+      hit. Decision 6 names only the hit; the check costs one `stat` and a pre-key record
+      is no more likely to have its blob.
+    - `imageRefOf` is exported from `nodes/sockets.ts` and replaces the private copies in
+      `runtimes.ts` and `graphrun.ts`, because the executor needed a third.
+    - Three existing tests changed with the rule: a node below one that ran again now
+      resumes when the redraw's bytes are identical, and the inherit test's second host
+      shares the first's blob store rather than starting empty.
+- **Stage 3** (`runners.ts`). The stall check compares the next critique, or the next
+  refined prompt on the unbound path, against every one the task's attempts have tried.
+  The test cycles the reviewers c1 → c2 → c1 through a bound graph with a cap of six and
+  expects three attempts, three draws and `needs_human`.
+- **Stage 4**. `gen-graphs.md` ("Identity, the journal and drift", `GenServices`, "Running
+  a graph"), the contracts doc's drift entry, the index row, this section, and the note in
+  `manga-live-tests.md`.
+- **Needs verification**, resolved: no host reads `journal.latest` to decide anything but
+  what the executor decides (`graphrun.ts` no longer reads it at all; `drift.ts` reads
+  `lastDone`). The clock exposure was not measured. The first draft named the wrong
+  quantity (the gap between a force and its redraw, which does not enter the rule); the
+  quantity that matters is the real interval between an old answer and a force on another
+  clone, and the Risks entry now says so.

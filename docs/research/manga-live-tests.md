@@ -395,8 +395,10 @@ asks for, run on the branch after Stages 1 to 5 were green.
   empty.
 - The flip back to `''` redrew rather than resumed, although a `done` record with that
   exact hash was in the journal: `executeGenGraph` resumes from the node's latest record
-  only, and the latest was the Gemini one. That is the existing rule, and it errs toward a
-  redraw.
+  only, and the latest was the Gemini one. That was the rule at the time, and it erred
+  toward a redraw. Since fixed: the journal now resumes from any answer it holds for the
+  same run key
+  ([`../plans/archive/journal-content-cache.md`](../plans/archive/journal-content-cache.md)).
 - The hashes, from the graph doc: `refs` and `prompt` are the same under every default;
   `draw` and `out` differ between `openai/gpt-image-2`, `google/gemini-2.5-flash-image`
   and no default at all. A change of `models.image` therefore reaches an inherit node's
