@@ -48,7 +48,8 @@ export const interactionTargets = define({
     carried: prop.string(
       'what is being carried — a scene id, an edge id for branch.unwire, a ' +
         '`<shotId>#start`/`#end` handle for timeline.cover, a shot id for timeline.reorder, ' +
-        'a line id for script.moveLine, or a chunk key for prompt.reorder',
+        'a `<shotId>#<lineId>` for page.letter, a line id for script.moveLine, or a chunk key ' +
+        'for prompt.reorder',
     ),
     scene: prop.string('which scene, for a gesture judged against one scene', { default: '' }),
     asset      : prop.string('which asset, for prompt.reorder', { default: '' }),
@@ -91,7 +92,9 @@ async function stateFor(
     if (!view) throw new Error(`No asset "${asset}" in the manifest.`);
     return { hash: view.hash, chunks: view.chunks, mode: view.mode };
   }
-  if (!interaction.startsWith('timeline.')) return branchState(await host.session.storyGraph());
+  if (!interaction.startsWith('timeline.') && !interaction.startsWith('page.')) {
+    return branchState(await host.session.storyGraph());
+  }
   if (!scene) throw new Error(`"${interaction}" is judged against one scene — pass scene=<id>.`);
   const { sceneId, lines, shots } = await host.session.sceneCoverage(scene);
   return { sceneId, lines, shots };

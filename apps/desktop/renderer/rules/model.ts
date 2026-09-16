@@ -29,6 +29,7 @@ import * as documents from './documents.js';
 import * as gengraph from './gengraph.js';
 import * as inspector from './inspector.js';
 import * as onboarding from './onboarding.js';
+import * as page from './page.js';
 import * as pin from './pin.js';
 import * as play from './play.js';
 import * as projectbar from './projectbar.js';
@@ -52,6 +53,7 @@ import { SITUATIONS as DOCUMENTS } from './situations/documents.js';
 import { SITUATIONS as GENGRAPH } from './situations/gengraph.js';
 import { SITUATIONS as INSPECTOR } from './situations/inspector.js';
 import { SITUATIONS as ONBOARDING } from './situations/onboarding.js';
+import { SITUATIONS as PAGE } from './situations/page.js';
 import { pinSituations } from './situations/pin.js';
 import { SITUATIONS as PLAY } from './situations/play.js';
 import { SITUATIONS as PROJECTBAR } from './situations/projectbar.js';
@@ -105,6 +107,7 @@ export const ROWS: readonly Row<unknown>[] = [
   row('gengraph', 'gengraph', GENGRAPH, gengraph.controls),
   row('inspector', 'inspector', INSPECTOR, inspector.controls),
   row('onboarding', 'onboarding', ONBOARDING, onboarding.controls),
+  row('page', 'page', PAGE, page.controls),
   row('play', 'play', PLAY, play.controls),
   row('projectbar', 'project', PROJECTBAR, projectbar.controls),
   row('reportconvo', 'report', REPORTCONVO, reportconvo.controls),

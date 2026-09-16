@@ -81,7 +81,7 @@ export {
 } from './outfits.js';
 export { setShotVariant } from './variants.js';
 export { requireShotCast, setShotSubjects } from './cast.js';
-export { setPanels } from './panels.js';
+export { letterLine, setPanels, type PanelShot, type PanelsOp } from './panels.js';
 export {
   scenesTouchedBy,
   shotFallout,

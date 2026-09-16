@@ -149,6 +149,11 @@ describe('model()', () => {
       'header cmd:agent.setMode Shift+Tab',
       'header fx:history.move#redo Ctrl+Shift+Z',
       'header fx:history.move#undo Ctrl+Z',
+      // The selected panel's four corners, each under the page's corner family
+      'page cmd:story.setPanels#corner/2/1 Left',
+      'page cmd:story.setPanels#corner/2/2 Left',
+      'page cmd:story.setPanels#corner/2/3 Left',
+      'page cmd:story.setPanels#corner/2/4 Left',
       'play fx:pane.view#back Left',
       'play fx:pane.view#forward Space',
     ]);

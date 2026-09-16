@@ -6,6 +6,7 @@ describe('PINNABLE', () => {
   it('is every editor declaring pins, with the field it holds', () => {
     expect(PINNABLE).toEqual([
       { editor: 'script', field: 'sceneId' },
+      { editor: 'page', field: 'shotId' },
       { editor: 'timeline', field: 'sceneId' },
       { editor: 'gengraph', field: 'graphSlug' },
       { editor: 'inspector', field: 'taskHash' },

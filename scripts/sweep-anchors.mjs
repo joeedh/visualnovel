@@ -136,16 +136,18 @@ const subjectFor = await subjects();
 /**
  * Click the tree row that names something, so the panes following `ui.sceneId` and `ui.shotId`
  * have a subject too. `view.open`'s `subject` carries only a path and an asset hash, and no
- * command publishes a selection, so nothing but this click reaches one. Returns the address
- * clicked, or `''` when the project holds nothing of that kind.
+ * command publishes a selection, so nothing but this click reaches one. `badge` narrows the pick
+ * to a row whose text carries it, which is how the Page editor is handed a page rather than the
+ * first shot. Returns the address clicked, or `''` when the project holds nothing of that kind.
  */
-async function select(kind) {
+async function select(kind, badge = '') {
   const clicked = await evaluate(
     socket,
-    `(() => { const want = ${JSON.stringify(`${kind}/`)};
+    `(() => { const want = ${JSON.stringify(`${kind}/`)}; const badge = ${JSON.stringify(badge)};
       const hit = (root) => {
         for (const node of root.querySelectorAll('[data-anchor]')) {
-          if (node.dataset.anchor.startsWith(want)) return node;
+          if (!node.dataset.anchor.startsWith(want)) continue;
+          if (badge === '' || (node.textContent ?? '').includes(badge)) return node;
         }
         for (const node of root.querySelectorAll('*')) {
           if (node.shadowRoot) { const found = hit(node.shadowRoot); if (found) return found; }
@@ -159,6 +161,25 @@ async function select(kind) {
     })()`,
   );
   return clicked;
+}
+
+/** Press the twisty of the row anchored `address`, which opens what is under it without selecting it. */
+async function expand(address) {
+  await evaluate(
+    socket,
+    `(() => { const want = ${JSON.stringify(address)};
+      const hit = (root) => {
+        for (const node of root.querySelectorAll('[data-anchor]')) {
+          if (node.dataset.anchor === want) return node;
+        }
+        for (const node of root.querySelectorAll('*')) {
+          if (node.shadowRoot) { const found = hit(node.shadowRoot); if (found) return found; }
+        }
+        return null;
+      };
+      hit(document)?.querySelector('.tv-twisty')?.click();
+    })()`,
+  );
 }
 
 const disagreements = [];
@@ -186,11 +207,21 @@ async function noteShortcuts() {
 // The tree first, so a scene and a shot are selected before the panes that follow them are opened.
 await run("view.open(editor='documents' where='here')");
 await sleep(SETTLE_MS);
-const selected = { scene: await select('scene'), shot: '' };
-// A shot row is drawn only once its scene is expanded, and a scene expands when it is clicked, so
-// the second pass has to wait for the redraw the first one asked for.
+const selected = { scene: await select('scene'), shot: '', page: '' };
+// A shot row is drawn only once its scene is expanded, which a click on the row does not do — it
+// selects — so the scene's twisty is pressed when no shot row is on screen, and the second pass
+// waits for the redraw.
 await sleep(SETTLE_MS);
 selected.shot = await select('shot');
+if (!selected.shot && selected.scene) {
+  await expand(selected.scene);
+  await sleep(SETTLE_MS);
+  selected.shot = await select('shot');
+  await sleep(SETTLE_MS);
+}
+
+/** The badge a page shot's tree row carries, which `storyBranch` writes as `page · N`. */
+const PAGE_BADGE = 'page ·';
 
 /** Record every anchor one home draws right now, and ask the stack about each command. */
 async function sweepHome(editor) {
@@ -279,10 +310,21 @@ async function sweepHome(editor) {
 for (const editor of editors) {
   const subject = subjectFor[editor] ?? '';
   const where = subject ? ` subject=${JSON.stringify(subject)}` : '';
+  // The Page editor claims page shots only, so it is handed one from the expanded scene where the
+  // project has one, and the first shot is put back afterwards so the panes after it see what the
+  // panes before it saw.
+  if (editor === 'page') {
+    selected.page = await select('shot', PAGE_BADGE);
+    if (selected.page) await sleep(SETTLE_MS);
+  }
   await run(`view.open(editor='${editor}' where='here'${where})`);
   await sleep(SETTLE_MS);
   await sweepHome(editor);
   await noteShortcuts();
+  if (editor === 'page' && selected.page) {
+    await select('shot');
+    await sleep(SETTLE_MS);
+  }
 }
 
 // The toolbar's popups, each opened by pressing the toolbar control that opens it, which is the

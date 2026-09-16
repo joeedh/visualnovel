@@ -391,6 +391,30 @@
       "why": "The guide names no pricing page for this vendor, so that link is refused; the verdicts are not in yet."
     },
     {
+      "module": "page",
+      "editor": "page",
+      "name"  : "no-shot",
+      "why"   : "Nothing is selected, so the pane is a sentence and no control is drawn."
+    },
+    {
+      "module": "page",
+      "editor": "page",
+      "name"  : "frame",
+      "why": "The shot is a single frame: the layout row offers to make it a page, its lines refuse to be dragged, and there is no panel to select."
+    },
+    {
+      "module": "page",
+      "editor": "page",
+      "name"  : "page",
+      "why": "A two-panel page with no panel selected: the layout it sits in is refused as already so, each panel selects, each line drags, and the side column offers nothing yet."
+    },
+    {
+      "module": "page",
+      "editor": "page",
+      "name"  : "panel-selected",
+      "why": "The second panel is selected, so its four corners are drawn, its framing, camera and notes take a value, and the cast toggles show aiko in and ren out."
+    },
+    {
       "module": "play",
       "editor": "play",
       "name"  : "start",
@@ -671,6 +695,18 @@
       "editor": "script",
       "name"  : "pinned",
       "why"   : "The pane is held on one scene, so the toggle offers to follow again."
+    },
+    {
+      "module": "pin",
+      "editor": "page",
+      "name"  : "following",
+      "why"   : "The pane follows the selected shot, so the toggle offers to hold it."
+    },
+    {
+      "module": "pin",
+      "editor": "page",
+      "name"  : "pinned",
+      "why"   : "The pane is held on one shot, so the toggle offers to follow again."
     },
     {
       "module": "pin",
@@ -18870,6 +18906,1470 @@
     },
     {
       "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "frame",
+      "key"       : "cmd:story.setPanels#layout/two-tier",
+      "widgetPath": "page/story-setpanels~584427d9",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "two tiers of two",
+        "tooltip": "Make this frame a page laid out as two tiers of two. arrival__s1 has 4 panel(s). arrival__s1 is a page now. arrival:L1, arrival:L2, arrival:L3 are in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/two-tier",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__s1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.5],[0.5,0.5],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.5],[1,0.5],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__s1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.5],[0.5,0.5],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.5],[1,0.5],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "frame",
+      "key"       : "cmd:story.setPanels#layout/three-tier",
+      "widgetPath": "page/story-setpanels~76c68c7b",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "three tiers of two",
+        "tooltip": "Make this frame a page laid out as three tiers of two. arrival__s1 has 6 panel(s). arrival__s1 is a page now. arrival:L1, arrival:L2, arrival:L3 are in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/three-tier",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__s1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[0.5,0.6666666666666666],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.6666666666666666],[1,0.6666666666666666],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__s1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[0.5,0.6666666666666666],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.6666666666666666],[1,0.6666666666666666],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "frame",
+      "key"       : "cmd:story.setPanels#layout/diagonal-split",
+      "widgetPath": "page/story-setpanels~e1f8952a",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "two panels split on a diagonal",
+        "tooltip": "Make this frame a page laid out as two panels split on a diagonal. arrival__s1 has 2 panel(s). arrival__s1 is a page now. arrival:L1, arrival:L2, arrival:L3 are in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/diagonal-split",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__s1",
+          "panels": "[{\"shape\":[[0,0],[1,0],[1,0.35],[0,0.65]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.65],[1,0.35],[1,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__s1",
+            "panels": "[{\"shape\":[[0,0],[1,0],[1,0.35],[0,0.65]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.65],[1,0.35],[1,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "frame",
+      "key"       : "cmd:story.setPanels#layout/splash-over-two",
+      "widgetPath": "page/story-setpanels~63f2ae6d",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "a splash over a row of two",
+        "tooltip": "Make this frame a page laid out as a splash over a row of two. arrival__s1 has 3 panel(s). arrival__s1 is a page now. arrival:L1, arrival:L2, arrival:L3 are in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/splash-over-two",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__s1",
+          "panels": "[{\"shape\":[[0,0],[1,0],[1,0.6],[0,0.6]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6],[0.5,0.6],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.6],[1,0.6],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__s1",
+            "panels": "[{\"shape\":[[0,0],[1,0],[1,0.6],[0,0.6]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6],[0.5,0.6],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.6],[1,0.6],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "frame",
+      "key"       : "cmd:story.setPanels#layout/even-2",
+      "widgetPath": "page/story-setpanels~ac911e1d",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "2 panels in tiers of two",
+        "tooltip": "Make this frame a page laid out as 2 panels in tiers of two. arrival__s1 has 2 panel(s). arrival__s1 is a page now. arrival:L1, arrival:L2, arrival:L3 are in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/even-2",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__s1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0],[1,0],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__s1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0],[1,0],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "frame",
+      "key"       : "cmd:story.setPanels#layout/even-3",
+      "widgetPath": "page/story-setpanels~b03b2624",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "3 panels in tiers of two",
+        "tooltip": "Make this frame a page laid out as 3 panels in tiers of two. arrival__s1 has 3 panel(s). arrival__s1 is a page now. arrival:L1, arrival:L2, arrival:L3 are in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/even-3",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__s1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.5],[1,0.5],[1,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__s1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.5],[1,0.5],[1,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "frame",
+      "key"       : "cmd:story.setPanels#layout/even-4",
+      "widgetPath": "page/story-setpanels~b3e52e2b",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "4 panels in tiers of two",
+        "tooltip": "Make this frame a page laid out as 4 panels in tiers of two. arrival__s1 has 4 panel(s). arrival__s1 is a page now. arrival:L1, arrival:L2, arrival:L3 are in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/even-4",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__s1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.5],[0.5,0.5],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.5],[1,0.5],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__s1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.5],[0.5,0.5],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.5],[1,0.5],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "frame",
+      "key"       : "cmd:story.setPanels#layout/even-5",
+      "widgetPath": "page/story-setpanels~b78f3632",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "5 panels in tiers of two",
+        "tooltip": "Make this frame a page laid out as 5 panels in tiers of two. arrival__s1 has 5 panel(s). arrival__s1 is a page now. arrival:L1, arrival:L2, arrival:L3 are in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/even-5",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__s1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[1,0.6666666666666666],[1,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__s1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[1,0.6666666666666666],[1,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "frame",
+      "key"       : "cmd:story.setPanels#layout/even-6",
+      "widgetPath": "page/story-setpanels~bb393e39",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "6 panels in tiers of two",
+        "tooltip": "Make this frame a page laid out as 6 panels in tiers of two. arrival__s1 has 6 panel(s). arrival__s1 is a page now. arrival:L1, arrival:L2, arrival:L3 are in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/even-6",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__s1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[0.5,0.6666666666666666],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.6666666666666666],[1,0.6666666666666666],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__s1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[0.5,0.6666666666666666],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.6666666666666666],[1,0.6666666666666666],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "frame",
+      "key"       : "fx:drag.start#line/arrival:L1",
+      "widgetPath": "page/drag-start~d2e1bb0e",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "Aiko stops at the gate.",
+        "tooltip": "Drag onto a panel to letter this line there; Enter letters it in the selected panel. The page is drawn again on the next run.",
+        "on"     : "line/arrival:L1",
+        "ok"     : false,
+        "refusal": {
+          "reason": "arrival__s1 is a single frame; pick a layout to make it a page first."
+        }
+      },
+      "effects": [
+        {
+          "id": "drag.start"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "frame",
+      "key"       : "fx:drag.start#line/arrival:L2",
+      "widgetPath": "page/drag-start~d68bc315",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "Is this the place?",
+        "tooltip": "Drag onto a panel to letter this line there; Enter letters it in the selected panel. The page is drawn again on the next run.",
+        "on"     : "line/arrival:L2",
+        "ok"     : false,
+        "refusal": {
+          "reason": "arrival__s1 is a single frame; pick a layout to make it a page first."
+        }
+      },
+      "effects": [
+        {
+          "id": "drag.start"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "frame",
+      "key"       : "fx:drag.start#line/arrival:L3",
+      "widgetPath": "page/drag-start~da35cb1c",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "It was.",
+        "tooltip": "Drag onto a panel to letter this line there; Enter letters it in the selected panel. The page is drawn again on the next run.",
+        "on"     : "line/arrival:L3",
+        "ok"     : false,
+        "refusal": {
+          "reason": "arrival__s1 is a single frame; pick a layout to make it a page first."
+        }
+      },
+      "effects": [
+        {
+          "id": "drag.start"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "page",
+      "key"       : "cmd:story.setPanels#layout/two-tier",
+      "widgetPath": "page/story-setpanels~584427d9",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "two tiers of two",
+        "tooltip": "Lay this page out as two tiers of two. arrival__page1 has 4 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/two-tier",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.5],[0.5,0.5],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.5],[1,0.5],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.5],[0.5,0.5],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.5],[1,0.5],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "page",
+      "key"       : "cmd:story.setPanels#layout/three-tier",
+      "widgetPath": "page/story-setpanels~76c68c7b",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "three tiers of two",
+        "tooltip": "Lay this page out as three tiers of two. arrival__page1 has 6 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/three-tier",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[0.5,0.6666666666666666],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.6666666666666666],[1,0.6666666666666666],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[0.5,0.6666666666666666],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.6666666666666666],[1,0.6666666666666666],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "page",
+      "key"       : "cmd:story.setPanels#layout/diagonal-split",
+      "widgetPath": "page/story-setpanels~e1f8952a",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "two panels split on a diagonal",
+        "tooltip": "Lay this page out as two panels split on a diagonal. arrival__page1 has 2 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/diagonal-split",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[1,0],[1,0.35],[0,0.65]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0,0.65],[1,0.35],[1,1],[0,1]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[1,0],[1,0.35],[0,0.65]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0,0.65],[1,0.35],[1,1],[0,1]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "page",
+      "key"       : "cmd:story.setPanels#layout/splash-over-two",
+      "widgetPath": "page/story-setpanels~63f2ae6d",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "a splash over a row of two",
+        "tooltip": "Lay this page out as a splash over a row of two. arrival__page1 has 3 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/splash-over-two",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[1,0],[1,0.6],[0,0.6]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0,0.6],[0.5,0.6],[0.5,1],[0,1]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0.5,0.6],[1,0.6],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[1,0],[1,0.6],[0,0.6]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0,0.6],[0.5,0.6],[0.5,1],[0,1]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0.5,0.6],[1,0.6],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "page",
+      "key"       : "cmd:story.setPanels#layout/even-2",
+      "widgetPath": "page/story-setpanels~ac911e1d",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "2 panels in tiers of two",
+        "tooltip": "Lay this page out as 2 panels in tiers of two. arrival__page1 has 2 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/even-2",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,1],[0,1]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,1],[0.5,1]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,1],[0,1]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,1],[0.5,1]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "page",
+      "key"       : "cmd:story.setPanels#layout/even-3",
+      "widgetPath": "page/story-setpanels~b03b2624",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "3 panels in tiers of two",
+        "tooltip": "Lay this page out as 3 panels in tiers of two. arrival__page1 has 3 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/even-3",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.5],[1,0.5],[1,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.5],[1,0.5],[1,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "page",
+      "key"       : "cmd:story.setPanels#layout/even-4",
+      "widgetPath": "page/story-setpanels~b3e52e2b",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "4 panels in tiers of two",
+        "tooltip": "Lay this page out as 4 panels in tiers of two. arrival__page1 has 4 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/even-4",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.5],[0.5,0.5],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.5],[1,0.5],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.5],[0.5,0.5],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.5],[1,0.5],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "page",
+      "key"       : "cmd:story.setPanels#layout/even-5",
+      "widgetPath": "page/story-setpanels~b78f3632",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "5 panels in tiers of two",
+        "tooltip": "Lay this page out as 5 panels in tiers of two. arrival__page1 has 5 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/even-5",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[1,0.6666666666666666],[1,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[1,0.6666666666666666],[1,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "page",
+      "key"       : "cmd:story.setPanels#layout/even-6",
+      "widgetPath": "page/story-setpanels~bb393e39",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "6 panels in tiers of two",
+        "tooltip": "Lay this page out as 6 panels in tiers of two. arrival__page1 has 6 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/even-6",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[0.5,0.6666666666666666],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.6666666666666666],[1,0.6666666666666666],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[0.5,0.6666666666666666],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.6666666666666666],[1,0.6666666666666666],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "page",
+      "key"       : "fx:pane.view#panel/1",
+      "widgetPath": "page/pane-view~887495cc",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Panel 1",
+        "tooltip": "Select panel 1 to move its corners and edit its framing, camera and cast. Double-click an edge to add a corner there.",
+        "on"     : "panel/1",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "page",
+      "key"       : "fx:pane.view#panel/2",
+      "widgetPath": "page/pane-view~7d767db7",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Panel 2",
+        "tooltip": "Select panel 2 to move its corners and edit its framing, camera and cast. Double-click an edge to add a corner there.",
+        "on"     : "panel/2",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "page",
+      "key"       : "fx:drag.start#line/arrival:L1",
+      "widgetPath": "page/drag-start~d2e1bb0e",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "Aiko stops at the gate.",
+        "tooltip": "Drag onto a panel to letter this line there; Enter letters it in the selected panel. The page is drawn again on the next run.",
+        "on"     : "line/arrival:L1",
+        "ok"     : true,
+        "props": {
+          "interaction": "page.letter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "page.letter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "page",
+      "key"       : "fx:drag.start#line/arrival:L2",
+      "widgetPath": "page/drag-start~d68bc315",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "Is this the place?",
+        "tooltip": "Drag onto a panel to letter this line there; Enter letters it in the selected panel. The page is drawn again on the next run.",
+        "on"     : "line/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "interaction": "page.letter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "page.letter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "page",
+      "key"       : "fx:drag.start#line/arrival:L3",
+      "widgetPath": "page/drag-start~da35cb1c",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "It was.",
+        "tooltip": "Drag onto a panel to letter this line there; Enter letters it in the selected panel. The page is drawn again on the next run.",
+        "on"     : "line/arrival:L3",
+        "ok"     : true,
+        "props": {
+          "interaction": "page.letter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "page.letter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "cmd:story.setPanels#layout/two-tier",
+      "widgetPath": "page/story-setpanels~584427d9",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "two tiers of two",
+        "tooltip": "Lay this page out as two tiers of two. arrival__page1 has 4 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/two-tier",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.5],[0.5,0.5],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.5],[1,0.5],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.5],[0.5,0.5],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.5],[1,0.5],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "cmd:story.setPanels#layout/three-tier",
+      "widgetPath": "page/story-setpanels~76c68c7b",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "three tiers of two",
+        "tooltip": "Lay this page out as three tiers of two. arrival__page1 has 6 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/three-tier",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[0.5,0.6666666666666666],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.6666666666666666],[1,0.6666666666666666],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[0.5,0.6666666666666666],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.6666666666666666],[1,0.6666666666666666],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "cmd:story.setPanels#layout/diagonal-split",
+      "widgetPath": "page/story-setpanels~e1f8952a",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "two panels split on a diagonal",
+        "tooltip": "Lay this page out as two panels split on a diagonal. arrival__page1 has 2 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/diagonal-split",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[1,0],[1,0.35],[0,0.65]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0,0.65],[1,0.35],[1,1],[0,1]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[1,0],[1,0.35],[0,0.65]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0,0.65],[1,0.35],[1,1],[0,1]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "cmd:story.setPanels#layout/splash-over-two",
+      "widgetPath": "page/story-setpanels~63f2ae6d",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "a splash over a row of two",
+        "tooltip": "Lay this page out as a splash over a row of two. arrival__page1 has 3 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/splash-over-two",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[1,0],[1,0.6],[0,0.6]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0,0.6],[0.5,0.6],[0.5,1],[0,1]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0.5,0.6],[1,0.6],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[1,0],[1,0.6],[0,0.6]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0,0.6],[0.5,0.6],[0.5,1],[0,1]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0.5,0.6],[1,0.6],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "cmd:story.setPanels#layout/even-2",
+      "widgetPath": "page/story-setpanels~ac911e1d",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "2 panels in tiers of two",
+        "tooltip": "Lay this page out as 2 panels in tiers of two. arrival__page1 has 2 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/even-2",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,1],[0,1]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,1],[0.5,1]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,1],[0,1]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,1],[0.5,1]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "cmd:story.setPanels#layout/even-3",
+      "widgetPath": "page/story-setpanels~b03b2624",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "3 panels in tiers of two",
+        "tooltip": "Lay this page out as 3 panels in tiers of two. arrival__page1 has 3 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/even-3",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.5],[1,0.5],[1,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.5],[1,0.5],[1,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "cmd:story.setPanels#layout/even-4",
+      "widgetPath": "page/story-setpanels~b3e52e2b",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "4 panels in tiers of two",
+        "tooltip": "Lay this page out as 4 panels in tiers of two. arrival__page1 has 4 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/even-4",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.5],[0.5,0.5],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.5],[1,0.5],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.5],[0.5,0.5],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.5],[1,0.5],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "cmd:story.setPanels#layout/even-5",
+      "widgetPath": "page/story-setpanels~b78f3632",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "5 panels in tiers of two",
+        "tooltip": "Lay this page out as 5 panels in tiers of two. arrival__page1 has 5 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/even-5",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[1,0.6666666666666666],[1,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[1,0.6666666666666666],[1,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "cmd:story.setPanels#layout/even-6",
+      "widgetPath": "page/story-setpanels~bb393e39",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "6 panels in tiers of two",
+        "tooltip": "Lay this page out as 6 panels in tiers of two. arrival__page1 has 6 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/even-6",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[0.5,0.6666666666666666],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.6666666666666666],[1,0.6666666666666666],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[0.5,0.6666666666666666],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.6666666666666666],[1,0.6666666666666666],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "fx:pane.view#panel/1",
+      "widgetPath": "page/pane-view~887495cc",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Panel 1",
+        "tooltip": "Select panel 1 to move its corners and edit its framing, camera and cast. Double-click an edge to add a corner there.",
+        "on"     : "panel/1",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "fx:pane.view#panel/2",
+      "widgetPath": "page/pane-view~7d767db7",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Panel 2",
+        "tooltip": "Select panel 2 to move its corners and edit its framing, camera and cast. Double-click an edge to add a corner there.",
+        "on"     : "panel/2",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "cmd:story.setPanels#corner/2/1",
+      "widgetPath": "page/story-setpanels~092ab0d6",
+      "offer": {
+        "id"      : "story.setPanels",
+        "label"   : "",
+        "tooltip": "Drag to move this corner of panel 2; arrows nudge it by half a percent of the page and Shift-arrows by two, Delete removes it. The page is drawn again on the next run.",
+        "on"      : "corner/2/1",
+        "supplies": ["panels"],
+        "ok"      : true,
+        "props": {
+          "scene": "arrival",
+          "shot" : "arrival__page1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene": "arrival",
+            "shot" : "arrival__page1"
+          }
+        }
+      ],
+      "shortcut"  : "Left"
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "cmd:story.setPanels#corner/2/2",
+      "widgetPath": "page/story-setpanels~13e67f8d",
+      "offer": {
+        "id"      : "story.setPanels",
+        "label"   : "",
+        "tooltip": "Drag to move this corner of panel 2; arrows nudge it by half a percent of the page and Shift-arrows by two, Delete removes it. The page is drawn again on the next run.",
+        "on"      : "corner/2/2",
+        "supplies": ["panels"],
+        "ok"      : true,
+        "props": {
+          "scene": "arrival",
+          "shot" : "arrival__page1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene": "arrival",
+            "shot" : "arrival__page1"
+          }
+        }
+      ],
+      "shortcut"  : "Left"
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "cmd:story.setPanels#corner/2/3",
+      "widgetPath": "page/story-setpanels~e08997c4",
+      "offer": {
+        "id"      : "story.setPanels",
+        "label"   : "",
+        "tooltip": "Drag to move this corner of panel 2; arrows nudge it by half a percent of the page and Shift-arrows by two, Delete removes it. The page is drawn again on the next run.",
+        "on"      : "corner/2/3",
+        "supplies": ["panels"],
+        "ok"      : true,
+        "props": {
+          "scene": "arrival",
+          "shot" : "arrival__page1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene": "arrival",
+            "shot" : "arrival__page1"
+          }
+        }
+      ],
+      "shortcut"  : "Left"
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "cmd:story.setPanels#corner/2/4",
+      "widgetPath": "page/story-setpanels~d133f97b",
+      "offer": {
+        "id"      : "story.setPanels",
+        "label"   : "",
+        "tooltip": "Drag to move this corner of panel 2; arrows nudge it by half a percent of the page and Shift-arrows by two, Delete removes it. The page is drawn again on the next run.",
+        "on"      : "corner/2/4",
+        "supplies": ["panels"],
+        "ok"      : true,
+        "props": {
+          "scene": "arrival",
+          "shot" : "arrival__page1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene": "arrival",
+            "shot" : "arrival__page1"
+          }
+        }
+      ],
+      "shortcut"  : "Left"
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "fx:drag.start#line/arrival:L1",
+      "widgetPath": "page/drag-start~d2e1bb0e",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "Aiko stops at the gate.",
+        "tooltip": "Drag onto a panel to letter this line there; Enter letters it in the selected panel. The page is drawn again on the next run.",
+        "on"     : "line/arrival:L1",
+        "ok"     : true,
+        "props": {
+          "interaction": "page.letter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "page.letter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "fx:drag.start#line/arrival:L2",
+      "widgetPath": "page/drag-start~d68bc315",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "Is this the place?",
+        "tooltip": "Drag onto a panel to letter this line there; Enter letters it in the selected panel. The page is drawn again on the next run.",
+        "on"     : "line/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "interaction": "page.letter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "page.letter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "fx:drag.start#line/arrival:L3",
+      "widgetPath": "page/drag-start~da35cb1c",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "It was.",
+        "tooltip": "Drag onto a panel to letter this line there; Enter letters it in the selected panel. The page is drawn again on the next run.",
+        "on"     : "line/arrival:L3",
+        "ok"     : true,
+        "props": {
+          "interaction": "page.letter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "page.letter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "cmd:story.setPanels#panel/2/framing",
+      "widgetPath": "page/story-setpanels~f0f99e6e",
+      "offer": {
+        "id"      : "story.setPanels",
+        "label"   : "Framing",
+        "tooltip" : "How close the camera is in panel 2. The page is drawn again on the next run.",
+        "on"      : "panel/2/framing",
+        "supplies": ["panels"],
+        "ok"      : true,
+        "props": {
+          "scene": "arrival",
+          "shot" : "arrival__page1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene": "arrival",
+            "shot" : "arrival__page1"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "cmd:story.setPanels#panel/2/camera",
+      "widgetPath": "page/story-setpanels~b6638057",
+      "offer": {
+        "id"      : "story.setPanels",
+        "label"   : "Camera",
+        "tooltip": "Where the camera stands in panel 2 — an angle, a height. The page is drawn again on the next run.",
+        "on"      : "panel/2/camera",
+        "supplies": ["panels"],
+        "ok"      : true,
+        "props": {
+          "scene": "arrival",
+          "shot" : "arrival__page1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene": "arrival",
+            "shot" : "arrival__page1"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "cmd:story.setPanels#panel/2/cast/aiko",
+      "widgetPath": "page/story-setpanels~94afdb7d",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "aiko",
+        "tooltip": "Take aiko out of panel 2. arrival__page1 has 2 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "panel/2/cast/aiko",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[1,0],[1,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0,0.5],[1,0.5],[1,1],[0,1]],\"framing\":\"close\",\"subjects\":[],\"coversLines\":[\"arrival:L2\"]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[1,0],[1,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0,0.5],[1,0.5],[1,1],[0,1]],\"framing\":\"close\",\"subjects\":[],\"coversLines\":[\"arrival:L2\"]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "cmd:story.setPanels#panel/2/cast/aiko/pose",
+      "widgetPath": "page/story-setpanels~f94a1386",
+      "offer": {
+        "id"      : "story.setPanels",
+        "label"   : "Pose",
+        "tooltip" : "aiko’s pose in panel 2. The page is drawn again on the next run.",
+        "on"      : "panel/2/cast/aiko/pose",
+        "supplies": ["panels"],
+        "ok"      : true,
+        "props": {
+          "scene": "arrival",
+          "shot" : "arrival__page1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene": "arrival",
+            "shot" : "arrival__page1"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "cmd:story.setPanels#panel/2/cast/aiko/expression",
+      "widgetPath": "page/story-setpanels~92d3325d",
+      "offer": {
+        "id"      : "story.setPanels",
+        "label"   : "Expression",
+        "tooltip" : "aiko’s expression in panel 2. The page is drawn again on the next run.",
+        "on"      : "panel/2/cast/aiko/expression",
+        "supplies": ["panels"],
+        "ok"      : true,
+        "props": {
+          "scene": "arrival",
+          "shot" : "arrival__page1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene": "arrival",
+            "shot" : "arrival__page1"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "cmd:story.setPanels#panel/2/cast/ren",
+      "widgetPath": "page/story-setpanels~e284ba70",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "ren",
+        "tooltip": "Put ren in panel 2. arrival__page1 has 2 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "panel/2/cast/ren",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[1,0],[1,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0,0.5],[1,0.5],[1,1],[0,1]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"},{\"characterId\":\"ren\"}],\"coversLines\":[\"arrival:L2\"]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[1,0],[1,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0,0.5],[1,0.5],[1,1],[0,1]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"},{\"characterId\":\"ren\"}],\"coversLines\":[\"arrival:L2\"]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "cmd:story.setPanels#panel/2/notes",
+      "widgetPath": "page/story-setpanels~94bfa615",
+      "offer": {
+        "id"      : "story.setPanels",
+        "label"   : "Art notes",
+        "tooltip": "Direction for panel 2 alone, appended to the page's prompt. The page is drawn again on the next run.",
+        "on"      : "panel/2/notes",
+        "supplies": ["panels"],
+        "ok"      : true,
+        "props": {
+          "scene": "arrival",
+          "shot" : "arrival__page1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene": "arrival",
+            "shot" : "arrival__page1"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
       "editor"    : "play",
       "module"    : "play",
       "situation" : "start",
@@ -26658,6 +28158,56 @@
     },
     {
       "via"       : "control",
+      "editor"    : "page",
+      "module"    : "pin",
+      "situation" : "following",
+      "key"       : "fx:pane.pin",
+      "widgetPath": "page/pane-pin~3ef17e3e",
+      "offer": {
+        "id"     : "pane.pin",
+        "label"  : "pin shot",
+        "tooltip": "Keep this pane on this shot while the rest of the app moves on.",
+        "ok"     : true,
+        "props": {
+          "pinned": true
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.pin",
+          "props": {
+            "pinned": true
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "pin",
+      "situation" : "pinned",
+      "key"       : "fx:pane.pin",
+      "widgetPath": "page/pane-pin~3ef17e3e",
+      "offer": {
+        "id"     : "pane.pin",
+        "label"  : "pin shot",
+        "tooltip": "Pinned to this shot. Click to follow the selection again.",
+        "ok"     : true,
+        "props": {
+          "pinned": false
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.pin",
+          "props": {
+            "pinned": false
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
       "editor"    : "timeline",
       "module"    : "pin",
       "situation" : "following",
@@ -28135,6 +29685,19 @@
       "situation": "fresh",
       "when"     : "header/view/editors",
       "id"       : "view.open",
+      "label"    : "Page",
+      "tooltip": "Show one page shot: its panels, their lines and what the render made of them in this pane",
+      "props": {
+        "editor": "page"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
       "label"    : "Shot Coverage",
       "tooltip"  : "Show a scene against the shots that illustrate it in this pane",
       "props": {
@@ -28756,6 +30319,19 @@
       "tooltip"  : "Show the vnauthor conversation in this pane",
       "props": {
         "editor": "convo"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Page",
+      "tooltip": "Show one page shot: its panels, their lines and what the render made of them in this pane",
+      "props": {
+        "editor": "page"
       }
     },
     {
@@ -29393,6 +30969,19 @@
       "situation": "running",
       "when"     : "header/view/editors",
       "id"       : "view.open",
+      "label"    : "Page",
+      "tooltip": "Show one page shot: its panels, their lines and what the render made of them in this pane",
+      "props": {
+        "editor": "page"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
       "label"    : "Shot Coverage",
       "tooltip"  : "Show a scene against the shots that illustrate it in this pane",
       "props": {
@@ -30007,6 +31596,19 @@
       "situation": "no-pane",
       "when"     : "header/view/editors",
       "id"       : "view.open",
+      "label"    : "Page",
+      "tooltip": "Show one page shot: its panels, their lines and what the render made of them in this pane",
+      "props": {
+        "editor": "page"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
       "label"    : "Shot Coverage",
       "tooltip"  : "Show a scene against the shots that illustrate it in this pane",
       "props": {
@@ -30507,10 +32109,6 @@
       "why"  : "The playable is built and exported from the menu bar and the palette."
     },
     {
-      "match": "story.setPanels",
-      "why": "The Page editor draws it in the manga-style plan’s next commit; until then the palette and the agent reach it."
-    },
-    {
       "match": "prompt.moveChunk",
       "why"  : "A drag interaction; the drag layer runs it when the drop lands."
     },
@@ -30696,6 +32294,118 @@
         }
       },
       "on"   : "back"
+    },
+    {
+      "scope": "page",
+      "key"  : "Left",
+      "mods" : [],
+      "label": "Nudge left",
+      "runs": {
+        "id"   : "story.setPanels",
+        "props": {}
+      },
+      "on"   : "corner/"
+    },
+    {
+      "scope": "page",
+      "key"  : "Right",
+      "mods" : [],
+      "label": "Nudge right",
+      "runs": {
+        "id"   : "story.setPanels",
+        "props": {}
+      },
+      "on"   : "corner/"
+    },
+    {
+      "scope": "page",
+      "key"  : "Up",
+      "mods" : [],
+      "label": "Nudge up",
+      "runs": {
+        "id"   : "story.setPanels",
+        "props": {}
+      },
+      "on"   : "corner/"
+    },
+    {
+      "scope": "page",
+      "key"  : "Down",
+      "mods" : [],
+      "label": "Nudge down",
+      "runs": {
+        "id"   : "story.setPanels",
+        "props": {}
+      },
+      "on"   : "corner/"
+    },
+    {
+      "scope": "page",
+      "key"  : "Left",
+      "mods" : ["shift"],
+      "label": "Nudge left by two",
+      "runs": {
+        "id"   : "story.setPanels",
+        "props": {}
+      },
+      "on"   : "corner/"
+    },
+    {
+      "scope": "page",
+      "key"  : "Right",
+      "mods" : ["shift"],
+      "label": "Nudge right by two",
+      "runs": {
+        "id"   : "story.setPanels",
+        "props": {}
+      },
+      "on"   : "corner/"
+    },
+    {
+      "scope": "page",
+      "key"  : "Up",
+      "mods" : ["shift"],
+      "label": "Nudge up by two",
+      "runs": {
+        "id"   : "story.setPanels",
+        "props": {}
+      },
+      "on"   : "corner/"
+    },
+    {
+      "scope": "page",
+      "key"  : "Down",
+      "mods" : ["shift"],
+      "label": "Nudge down by two",
+      "runs": {
+        "id"   : "story.setPanels",
+        "props": {}
+      },
+      "on"   : "corner/"
+    },
+    {
+      "scope": "page",
+      "key"  : "Delete",
+      "mods" : [],
+      "label": "Remove corner",
+      "runs": {
+        "id"   : "story.setPanels",
+        "props": {}
+      },
+      "on"   : "corner/"
+    },
+    {
+      "scope": "page",
+      "key"  : "Escape",
+      "mods" : [],
+      "label": "Deselect",
+      "runs": {
+        "id"   : "pane.view",
+        "props": {
+          "what": "scope"
+        }
+      },
+      "on"   : "exit"
     },
     {
       "scope": "gengraph",

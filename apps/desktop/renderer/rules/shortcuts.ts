@@ -38,7 +38,11 @@ export interface Shortcut {
   label: string;
   /** What the key does, as the action a control's offer would carry. */
   runs: Action;
-  /** Narrows the match to the control keyed with this discriminator, where one id has several. */
+  /**
+   * Narrows the match to the control keyed with this discriminator, where one id has several. An
+   * `on` ending in `/` names a family: the Page editor's corners are keyed `corner/<n>/<m>`, and
+   * one arrow row covers them all.
+   */
   on?: string;
   /** An editor binding that takes a combination the shell also binds; the pane wins while focused. */
   shadows?: true;
@@ -88,6 +92,82 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { scope: 'play', key: 'Right', mods: [], label: 'Advance', runs: view('step'), on: 'forward' },
   { scope: 'play', key: 'Left', mods: [], label: 'Back', runs: view('step'), on: 'back' },
   { scope: 'play', key: 'Backspace', mods: [], label: 'Back', runs: view('step'), on: 'back' },
+
+  // The Page editor's keys act on the focused corner of the selected panel, so each row names the
+  // corner family; Escape deselects, which no drawn control does
+  {
+    scope: 'page',
+    key  : 'Left',
+    mods : [],
+    label: 'Nudge left',
+    runs : command('story.setPanels'),
+    on   : 'corner/',
+  },
+  {
+    scope: 'page',
+    key  : 'Right',
+    mods : [],
+    label: 'Nudge right',
+    runs : command('story.setPanels'),
+    on   : 'corner/',
+  },
+  {
+    scope: 'page',
+    key  : 'Up',
+    mods : [],
+    label: 'Nudge up',
+    runs : command('story.setPanels'),
+    on   : 'corner/',
+  },
+  {
+    scope: 'page',
+    key  : 'Down',
+    mods : [],
+    label: 'Nudge down',
+    runs : command('story.setPanels'),
+    on   : 'corner/',
+  },
+  {
+    scope: 'page',
+    key  : 'Left',
+    mods : ['shift'],
+    label: 'Nudge left by two',
+    runs : command('story.setPanels'),
+    on   : 'corner/',
+  },
+  {
+    scope: 'page',
+    key  : 'Right',
+    mods : ['shift'],
+    label: 'Nudge right by two',
+    runs : command('story.setPanels'),
+    on   : 'corner/',
+  },
+  {
+    scope: 'page',
+    key  : 'Up',
+    mods : ['shift'],
+    label: 'Nudge up by two',
+    runs : command('story.setPanels'),
+    on   : 'corner/',
+  },
+  {
+    scope: 'page',
+    key  : 'Down',
+    mods : ['shift'],
+    label: 'Nudge down by two',
+    runs : command('story.setPanels'),
+    on   : 'corner/',
+  },
+  {
+    scope: 'page',
+    key  : 'Delete',
+    mods : [],
+    label: 'Remove corner',
+    runs : command('story.setPanels'),
+    on   : 'corner/',
+  },
+  { scope: 'page', key: 'Escape', mods: [], label: 'Deselect', runs: view('scope'), on: 'exit' },
 
   {
     scope: 'gengraph',
@@ -151,10 +231,15 @@ export function comboOf(entry: Pick<Shortcut, 'key' | 'mods'>): string {
   return [...mods, entry.key].join('+');
 }
 
+/** An entry's `on` against a control's: equal, or the control's under the entry's family. */
+const onMatches = (entry: string, on: string | undefined): boolean =>
+  entry.endsWith('/') ? on !== undefined && on.startsWith(entry) : entry === on;
+
 /**
  * Whether an entry is the key for what a control does: the same id, the same `on` where the entry
- * names one, and every prop the entry's action names at the same value. Props the entry leaves out
- * are the control's to fill, the way `agent.setMode`'s mode is.
+ * names one (or the same family, for an `on` ending in `/`), and every prop the entry's action
+ * names at the same value. Props the entry leaves out are the control's to fill, the way
+ * `agent.setMode`'s mode is.
  */
 export function matches(
   entry: Shortcut,
@@ -162,7 +247,7 @@ export function matches(
   on?: string,
 ): boolean {
   if (entry.runs.id !== action.id) return false;
-  if (entry.on !== undefined && entry.on !== on) return false;
+  if (entry.on !== undefined && !onMatches(entry.on, on)) return false;
   const props = action.props ?? {};
   return Object.entries(entry.runs.props).every(([name, value]) => props[name] === value);
 }

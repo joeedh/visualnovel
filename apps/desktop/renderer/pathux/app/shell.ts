@@ -42,6 +42,7 @@ import '../editors/graph.js';
 import '../editors/inspector.js';
 import '../editors/nodes.js';
 import '../editors/onboarding.js';
+import '../editors/page.js';
 import '../editors/systemprompt.js';
 import '../editors/project.js';
 import '../editors/report.js';

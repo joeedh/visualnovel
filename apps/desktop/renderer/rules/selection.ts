@@ -56,7 +56,7 @@ export function taskPublishes(task: Task, current: Selection): Record<string, st
 }
 
 /** Shot ids are namespaced `<sceneId>__<raw>`, which is a shot task's only link to a scene. */
-const sceneOfShot = (shotId: string): string => shotId.split('__')[0] ?? shotId;
+export const sceneOfShot = (shotId: string): string => shotId.split('__')[0] ?? shotId;
 
 /**
  * What clicking a task selects. A shot task names a shot and the scene holding it; a character

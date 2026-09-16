@@ -63,6 +63,19 @@ describe('where a clicked node goes', () => {
     expect(opened(route)).toBe(WITH_NOTHING_OPEN[kind]);
   });
 
+  test('a page shot goes to Page, and to Shot Coverage only when that pane alone is up', () => {
+    const page = node('shot', { id: 'shot:greet/greet__page1', panels: true });
+    expect(opened(routeFor({ node: page, visible: documents }))).toBe('page');
+    expect(opened(routeFor({ node: page, visible: [...documents, 'timeline'] }))).toBe('timeline');
+    expect(opened(routeFor({ node: page, visible: [...documents, 'timeline', 'page'] }))).toBe(
+      'page',
+    );
+    // A frame is never Page's, however the panes are arranged
+    expect(opened(routeFor({ node: NODES.shot, visible: [...documents, 'page'] }))).toBe(
+      'timeline',
+    );
+  });
+
   test('a claimant that is up is focused rather than opened again', () => {
     const route = routeFor({ node: NODES.wiki, visible: [...documents, 'wiki'] });
     expect(route).toEqual({

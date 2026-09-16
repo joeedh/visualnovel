@@ -8,10 +8,28 @@
  * page again. Moving a line between two panels of one page is this rule's, not `setCoverage`'s,
  * since the shot's own line set does not change.
  */
-import { SHOT_FRAMINGS, type PagePanel, type Shot } from '@vn/types';
-import type { ShotOutfitOp } from './outfits.js';
+import { SHOT_FRAMINGS, type PagePanel } from '@vn/types';
+
+/**
+ * Just enough of a `Shot` to reason about its panels. `subjects` may be character ids or the
+ * storyboard's subject records, because the desktop's coverage read carries the former and the
+ * storyboard on disk the latter, and both hosts judge the same edit.
+ */
+export interface PanelShot {
+  id: string;
+  coversLines: string[];
+  subjects: readonly (string | { characterId: string })[];
+  panels?: PagePanel[];
+}
+
+/** A panel change: the scene's shots as they would be written, the edited one among them. */
+export type PanelsOp<S extends PanelShot> =
+  { ok: true; shots: S[]; message: string } | { ok: false; error: string; noop?: boolean };
 
 const listed = (ids: readonly string[]): string => ids.map((id) => `"${id}"`).join(', ');
+
+const castOf = (shot: PanelShot): Set<string> =>
+  new Set(shot.subjects.map((s) => (typeof s === 'string' ? s : s.characterId)));
 
 /** Why one panel cannot stand, or `undefined` when it can. */
 function panelFault(
@@ -42,10 +60,10 @@ function panelFault(
  * panels; a covered line in no panel is allowed, and the message names it, because the page still
  * renders with that line unlettered. Lines are written in screenplay order.
  */
-export function setPanels(
-  shots: readonly Shot[],
+export function setPanels<S extends PanelShot>(
+  shots: readonly S[],
   args: { shot: string; panels: readonly PagePanel[]; lineOrder: readonly string[] },
-): ShotOutfitOp {
+): PanelsOp<S> {
   const shot = shots.find((s) => s.id === args.shot);
   if (!shot) return { ok: false, error: `No shot "${args.shot}" in this scene.` };
 
@@ -55,12 +73,12 @@ export function setPanels(
     const { panels: _gone, ...frame } = shot;
     return {
       ok     : true,
-      shots  : shots.map((s) => (s.id === args.shot ? frame : s)),
+      shots  : shots.map((s) => (s.id === args.shot ? (frame as S) : s)),
       message: `${args.shot} is a single frame now; its lines are no longer lettered. It is drawn again on the next run.`,
     };
   }
 
-  const cast = new Set(shot.subjects.map((s) => s.characterId));
+  const cast = castOf(shot);
   for (const [i, panel] of args.panels.entries()) {
     const fault = panelFault(panel, i, cast);
     if (fault) return { ok: false, error: fault };
@@ -107,4 +125,15 @@ export function setPanels(
     shots  : shots.map((s) => (s.id === args.shot ? { ...s, panels } : s)),
     message: `${args.shot} has ${panels.length} panel(s).${became}${gaps} The page is drawn again on the next run.`,
   };
+}
+
+/**
+ * The panel list with `line` lettered in panel `index` and in no other. The list a drop on the
+ * Page editor, or the agent, hands to {@link setPanels}; the rule then says whether it stands.
+ */
+export function letterLine(panels: readonly PagePanel[], index: number, line: string): PagePanel[] {
+  return panels.map((panel, i) => {
+    const kept = panel.coversLines.filter((id) => id !== line);
+    return { ...panel, coversLines: i === index ? [...kept, line] : kept };
+  });
 }

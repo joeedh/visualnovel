@@ -1,11 +1,12 @@
 {
-  "sweptAt"      : "2026-09-16T18:43:56.798Z",
-  "gitSha"       : "a3c747ff99cd68b9989ff251dcacfa3ba8fd0141",
+  "sweptAt"      : "2026-09-16T19:30:26.237Z",
+  "gitSha"       : "47c838a153a6e5f11035b49ee0a271d8a3bccadf",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
       "scene": "scene/arrival",
-      "shot" : ""
+      "shot" : "shot/arrival/arrival__beat1",
+      "page" : "shot/arrival/arrival__page1"
     }
   },
   "commands": [
@@ -250,6 +251,7 @@
     "story.setHeading",
     "story.setLineText",
     "story.setOutfit",
+    "story.setPanels",
     "story.setSceneOutfit",
     "story.setSpeaker",
     "story.setSubjects",
@@ -995,10 +997,62 @@
       "widgetPath": "script/popup-open~9fc4b074"
     },
     {
+      "id"        : "drag.start",
+      "editor"    : "script",
+      "key"       : "fx:drag.start#line/arrival:L4",
+      "widgetPath": "script/drag-start~dddfd323"
+    },
+    {
+      "id"        : "story.setSpeaker",
+      "editor"    : "script",
+      "key"       : "cmd:story.setSpeaker#arrival:L4",
+      "widgetPath": "script/story-setspeaker~6dda0213",
+      "supplies"  : ["speaker"]
+    },
+    {
+      "id"        : "story.setLineText",
+      "editor"    : "script",
+      "key"       : "cmd:story.setLineText#arrival:L4",
+      "widgetPath": "script/story-setlinetext~4845ecfd",
+      "supplies"  : ["text"]
+    },
+    {
       "id"        : "popup.open",
       "editor"    : "script",
-      "key"       : "fx:popup.open#compose/arrival:L1",
-      "widgetPath": "script/popup-open~180839d6"
+      "key"       : "fx:popup.open#split/arrival:L4",
+      "widgetPath": "script/popup-open~aac2c889"
+    },
+    {
+      "id"        : "drag.start",
+      "editor"    : "script",
+      "key"       : "fx:drag.start#line/arrival:L5",
+      "widgetPath": "script/drag-start~e189db2a"
+    },
+    {
+      "id"        : "story.setSpeaker",
+      "editor"    : "script",
+      "key"       : "cmd:story.setSpeaker#arrival:L5",
+      "widgetPath": "script/story-setspeaker~aabdf122",
+      "supplies"  : ["speaker"]
+    },
+    {
+      "id"        : "story.setLineText",
+      "editor"    : "script",
+      "key"       : "cmd:story.setLineText#arrival:L5",
+      "widgetPath": "script/story-setlinetext~93777f34",
+      "supplies"  : ["text"]
+    },
+    {
+      "id"        : "popup.open",
+      "editor"    : "script",
+      "key"       : "fx:popup.open#split/arrival:L5",
+      "widgetPath": "script/popup-open~ae6cd090"
+    },
+    {
+      "id"        : "popup.open",
+      "editor"    : "script",
+      "key"       : "fx:popup.open#compose/arrival:L5",
+      "widgetPath": "script/popup-open~26b059f2"
     },
     {
       "id"        : "menu.open",
@@ -1210,6 +1264,91 @@
       "refused"   : "This conversation is open for reading. Continue it before compacting it."
     },
     {
+      "id"        : "story.setPanels",
+      "editor"    : "page",
+      "key"       : "cmd:story.setPanels#layout/two-tier",
+      "widgetPath": "page/story-setpanels~584427d9"
+    },
+    {
+      "id"        : "story.setPanels",
+      "editor"    : "page",
+      "key"       : "cmd:story.setPanels#layout/three-tier",
+      "widgetPath": "page/story-setpanels~76c68c7b"
+    },
+    {
+      "id"        : "story.setPanels",
+      "editor"    : "page",
+      "key"       : "cmd:story.setPanels#layout/diagonal-split",
+      "widgetPath": "page/story-setpanels~e1f8952a",
+      "refused"   : "arrival__page1 already has exactly those panels."
+    },
+    {
+      "id"        : "story.setPanels",
+      "editor"    : "page",
+      "key"       : "cmd:story.setPanels#layout/splash-over-two",
+      "widgetPath": "page/story-setpanels~63f2ae6d"
+    },
+    {
+      "id"        : "story.setPanels",
+      "editor"    : "page",
+      "key"       : "cmd:story.setPanels#layout/even-2",
+      "widgetPath": "page/story-setpanels~ac911e1d"
+    },
+    {
+      "id"        : "story.setPanels",
+      "editor"    : "page",
+      "key"       : "cmd:story.setPanels#layout/even-3",
+      "widgetPath": "page/story-setpanels~b03b2624"
+    },
+    {
+      "id"        : "story.setPanels",
+      "editor"    : "page",
+      "key"       : "cmd:story.setPanels#layout/even-4",
+      "widgetPath": "page/story-setpanels~b3e52e2b"
+    },
+    {
+      "id"        : "story.setPanels",
+      "editor"    : "page",
+      "key"       : "cmd:story.setPanels#layout/even-5",
+      "widgetPath": "page/story-setpanels~b78f3632"
+    },
+    {
+      "id"        : "story.setPanels",
+      "editor"    : "page",
+      "key"       : "cmd:story.setPanels#layout/even-6",
+      "widgetPath": "page/story-setpanels~bb393e39"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "page",
+      "key"       : "fx:pane.view#panel/1",
+      "widgetPath": "page/pane-view~887495cc"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "page",
+      "key"       : "fx:pane.view#panel/2",
+      "widgetPath": "page/pane-view~7d767db7"
+    },
+    {
+      "id"        : "drag.start",
+      "editor"    : "page",
+      "key"       : "fx:drag.start#line/arrival:L4",
+      "widgetPath": "page/drag-start~dddfd323"
+    },
+    {
+      "id"        : "drag.start",
+      "editor"    : "page",
+      "key"       : "fx:drag.start#line/arrival:L5",
+      "widgetPath": "page/drag-start~e189db2a"
+    },
+    {
+      "id"        : "pane.pin",
+      "editor"    : "page",
+      "key"       : "fx:pane.pin",
+      "widgetPath": "page/pane-pin~3ef17e3e"
+    },
+    {
       "id"        : "drag.start",
       "editor"    : "timeline",
       "key"       : "fx:drag.start#line/arrival:L2",
@@ -1246,6 +1385,32 @@
       "editor"    : "timeline",
       "key"       : "cmd:story.setLineText#arrival:L1",
       "widgetPath": "timeline/story-setlinetext~0a1def10",
+      "supplies"  : ["text"]
+    },
+    {
+      "id"        : "drag.start",
+      "editor"    : "timeline",
+      "key"       : "fx:drag.start#line/arrival:L4",
+      "widgetPath": "timeline/drag-start~dddfd323"
+    },
+    {
+      "id"        : "story.setLineText",
+      "editor"    : "timeline",
+      "key"       : "cmd:story.setLineText#arrival:L4",
+      "widgetPath": "timeline/story-setlinetext~4845ecfd",
+      "supplies"  : ["text"]
+    },
+    {
+      "id"        : "drag.start",
+      "editor"    : "timeline",
+      "key"       : "fx:drag.start#line/arrival:L5",
+      "widgetPath": "timeline/drag-start~e189db2a"
+    },
+    {
+      "id"        : "story.setLineText",
+      "editor"    : "timeline",
+      "key"       : "cmd:story.setLineText#arrival:L5",
+      "widgetPath": "timeline/story-setlinetext~93777f34",
       "supplies"  : ["text"]
     },
     {
@@ -1291,6 +1456,32 @@
       "editor"    : "timeline",
       "key"       : "item:shot/arrival__shot1",
       "widgetPath": "timeline/ui-publish~19b8b823",
+      "then": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "timeline.reorder"
+          }
+        }
+      ]
+    },
+    {
+      "id"        : "drag.start",
+      "editor"    : "timeline",
+      "key"       : "fx:drag.start#shot/arrival__page1/start",
+      "widgetPath": "timeline/drag-start~22214ffa"
+    },
+    {
+      "id"        : "drag.start",
+      "editor"    : "timeline",
+      "key"       : "fx:drag.start#shot/arrival__page1/end",
+      "widgetPath": "timeline/drag-start~e84a9aad"
+    },
+    {
+      "id"        : "ui.publish",
+      "editor"    : "timeline",
+      "key"       : "item:shot/arrival__page1",
+      "widgetPath": "timeline/ui-publish~b78d69d8",
       "then": [
         {
           "id"   : "drag.start",
@@ -2330,6 +2521,54 @@
     {
       "id"        : "ui.publish",
       "editor"    : "documents",
+      "key"       : "item:shot/arrival/arrival__beat1",
+      "widgetPath": "documents/ui-publish~74b81f3d",
+      "then": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "timeline",
+            "where"  : "elsewhere",
+            "subject": ""
+          }
+        }
+      ]
+    },
+    {
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:shot/arrival/arrival__shot1",
+      "widgetPath": "documents/ui-publish~077d2837",
+      "then": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "timeline",
+            "where"  : "elsewhere",
+            "subject": ""
+          }
+        }
+      ]
+    },
+    {
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:shot/arrival/arrival__page1",
+      "widgetPath": "documents/ui-publish~d83bce0c",
+      "then": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "page",
+            "where"  : "here",
+            "subject": ""
+          }
+        }
+      ]
+    },
+    {
+      "id"        : "ui.publish",
+      "editor"    : "documents",
       "key"       : "item:scene/ending",
       "widgetPath": "documents/ui-publish~2f9cede8",
       "then": [
@@ -2620,6 +2859,12 @@
       "editor"    : "documents",
       "key"       : "fx:tree.expand#branch/waiting",
       "widgetPath": "documents/tree-expand~25a3e183"
+    },
+    {
+      "id"        : "tree.expand",
+      "editor"    : "documents",
+      "key"       : "fx:tree.expand#branch/unrendered",
+      "widgetPath": "documents/tree-expand~d46cca80"
     },
     {
       "id"        : "tree.expand",
@@ -3255,6 +3500,18 @@
     {
       "id"        : "notify.follow",
       "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260916-122031-ea98-0000",
+      "widgetPath": "notifications/notify-follow~f672854a"
+    },
+    {
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260916-122031-ea98-0000",
+      "widgetPath": "notifications/notify-hide~6d84de5b"
+    },
+    {
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
       "key"       : "cmd:notify.follow#20260916-093525-7eb7-0000",
       "widgetPath": "notifications/notify-follow~c3b76f8b"
     },
@@ -3599,18 +3856,6 @@
       "editor"    : "notifications",
       "key"       : "cmd:notify.hide#20260905-013047-5302-0082",
       "widgetPath": "notifications/notify-hide~c8526158"
-    },
-    {
-      "id"        : "notify.follow",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.follow#20260905-013047-5302-0081",
-      "widgetPath": "notifications/notify-follow~0a997c22"
-    },
-    {
-      "id"        : "notify.hide",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.hide#20260905-013047-5302-0081",
-      "widgetPath": "notifications/notify-hide~bd544943"
     },
     {
       "id"        : "pane.view",

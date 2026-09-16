@@ -126,10 +126,6 @@ const STORY: readonly PaletteOnly[] = [
     match,
     why: 'The playable is built and exported from the menu bar and the palette.',
   })),
-  {
-    match: 'story.setPanels',
-    why: 'The Page editor draws it in the manga-style plan’s next commit; until then the palette and the agent reach it.',
-  },
 ];
 
 const PROMPT: readonly PaletteOnly[] = [

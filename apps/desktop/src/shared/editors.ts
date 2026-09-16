@@ -35,6 +35,16 @@ export const EDITORS = [
   },
   { id: 'convo', title: 'Convo', what: 'the vnauthor conversation' },
   {
+    id    : 'page',
+    title : 'Page',
+    what  : 'one page shot: its panels, their lines and what the render made of them',
+    // A page shot only, so a frame never lands here. Listed before Shot Coverage because both
+    // claim a page as `primary` and the tie breaks on this order; visibility still ranks ahead
+    // of it, so a page clicked while only Shot Coverage is open goes there.
+    claims: (node: ClaimNode) => (node.kind === 'shot' && node.panels ? 'primary' : undefined),
+    pins  : 'shotId',
+  },
+  {
     id    : 'timeline',
     title : 'Shot Coverage',
     what  : 'a scene against the shots that illustrate it',
@@ -199,11 +209,12 @@ export type EditorId = (typeof EDITORS)[number]['id'];
  * is about. A pane that froze the rest of the selection with it would stop responding to its own
  * rows: Shot Coverage holds the scene and still follows the shot.
  */
-export type PinField = 'sceneId' | 'docPath' | 'assetHash' | 'taskHash' | 'graphSlug';
+export type PinField = 'sceneId' | 'shotId' | 'docPath' | 'assetHash' | 'taskHash' | 'graphSlug';
 
 /** What a pinned editor is holding, in the author's words. Used in the pin's own tooltip. */
 export const PIN_NOUN: Record<PinField, string> = {
   sceneId  : 'scene',
+  shotId   : 'shot',
   docPath  : 'document',
   assetHash: 'asset',
   taskHash : 'task',

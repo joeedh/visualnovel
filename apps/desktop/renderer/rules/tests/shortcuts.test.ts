@@ -74,7 +74,7 @@ describe('comboOf and shortcutOf', () => {
 
   it('throws for an action nothing binds, since a label is a claim', () => {
     expect(() => shortcutOf({ id: 'story.newScene', props: {} })).toThrow(/no shortcut is bound/);
-    expect(() => shortcutOf(view('scope'), 'exit')).toThrow(/pane.view#exit/);
+    expect(() => shortcutOf(view('scope'), 'leave')).toThrow(/pane.view#leave/);
   });
 
   it('matches by id, `on` and the props the entry names', () => {
@@ -88,6 +88,14 @@ describe('comboOf and shortcutOf', () => {
     expect(matches(edit, view('scope'))).toBe(false);
     const remove = SHORTCUTS.find((e) => e.label === 'Delete')!;
     expect(matches(remove, { id: 'gengraph.removeNode' })).toBe(true);
+  });
+
+  it('matches a family when the entry’s `on` ends in a slash', () => {
+    const nudge = SHORTCUTS.find((e) => e.label === 'Nudge left')!;
+    expect(matches(nudge, { id: 'story.setPanels' }, 'corner/2/3')).toBe(true);
+    expect(matches(nudge, { id: 'story.setPanels' }, 'layout/two-tier')).toBe(false);
+    expect(matches(nudge, { id: 'story.setPanels' })).toBe(false);
+    expect(shortcutOf({ id: 'story.setPanels', props: {} }, 'corner/1/1')).toBe('Left');
   });
 
   it('looks in the editor’s scope and the shell’s when an editor is named', () => {

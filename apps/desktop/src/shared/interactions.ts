@@ -26,7 +26,14 @@ import {
   type SceneMap,
   type ScriptState,
 } from '@vn/scriptedit';
-import { resolveDrag, setCoverage, spansFor, type Edge } from '@vn/scriptedit';
+import {
+  letterLine,
+  resolveDrag,
+  setCoverage,
+  setPanels,
+  spansFor,
+  type Edge,
+} from '@vn/scriptedit';
 import type { CoverageLine, CoverageShot, PropValue, StoryEdge, StoryGraph } from './ipc.js';
 import { effectiveOrder, moveChunk, TOP_CHUNK, type PromptOrderState } from './promptops.js';
 
@@ -454,6 +461,98 @@ export const timelineCreate = defineInteraction<CoverState>({
 });
 
 // ---------------------------------------------------------------------------
+// The Page editor's one gesture: a line dropped onto a panel of its page.
+// ---------------------------------------------------------------------------
+
+/** `<shotId>#<lineId>` — the line being carried, and the page it belongs to, as one token. */
+export const letterId = (shotId: string, lineId: string): string => `${shotId}#${lineId}`;
+
+const parseLetter = (carried: string): { shotId: string; lineId: string } | null => {
+  const cut = carried.indexOf('#');
+  if (cut <= 0 || cut === carried.length - 1) return null;
+  return { shotId: carried.slice(0, cut), lineId: carried.slice(cut + 1) };
+};
+
+/** The target a panel is dropped on, named by its number in reading order. */
+export const panelTarget = (index: number): string => `panel/${index + 1}`;
+
+/**
+ * Dragging one of a page's lines onto one of its panels. Every panel is a target, judged by
+ * `setPanels` with the line moved there and out of whichever panel held it; the panel already
+ * lettering the line refuses, since the drop would change nothing. A frame has no panels, so on
+ * one the gesture is unresolved: the layout row is the way to make it a page.
+ */
+export const pageLetter = defineInteraction<CoverState>({
+  id         : 'page.letter',
+  title      : 'Letter a line in a panel',
+  description:
+    "Drag a line of a page shot onto one of the page's panels. The line is lettered in that " +
+    'panel and in no other; every part of a panel is in the page’s prompt, so the page is drawn ' +
+    'again. Refused on the panel that already letters the line.',
+  grab       : 'a line row in the Page editor',
+  carries    : 'the line and its page — `<shotId>#<lineId>`',
+  accepts    : 'any panel of that page',
+  commands   : ['story.setPanels'],
+  cancellable: true,
+  targets: (state, carried) => {
+    const grabbed = parseLetter(carried);
+    if (!grabbed) {
+      return [
+        {
+          target: UNRESOLVED,
+          accept: false,
+          reason: `Malformed handle "${carried}" (expected "<shotId>#<lineId>").`,
+        },
+      ];
+    }
+    const shot = state.shots.find((s) => s.id === grabbed.shotId);
+    if (!shot) {
+      return [
+        {
+          target: UNRESOLVED,
+          accept: false,
+          reason: `No shot "${grabbed.shotId}" in ${state.sceneId}.`,
+        },
+      ];
+    }
+    if (!shot.panels || shot.panels.length === 0) {
+      return [
+        {
+          target: UNRESOLVED,
+          accept: false,
+          reason: `${shot.id} is a single frame; pick a layout to make it a page first.`,
+        },
+      ];
+    }
+    const lineOrder = state.lines.map((l) => l.id);
+    return shot.panels.map((panel, index): Verdict => {
+      const target = panelTarget(index);
+      if (panel.coversLines.includes(grabbed.lineId)) {
+        return {
+          target,
+          accept: false,
+          reason: `Panel ${index + 1} already letters ${grabbed.lineId}.`,
+        };
+      }
+      const moved = letterLine(shot.panels!, index, grabbed.lineId);
+      const op = setPanels(state.shots, { shot: shot.id, panels: moved, lineOrder });
+      if (!op.ok) return { target, accept: false, reason: op.error };
+      // The rule's own list, so the panels the drop writes have their lines in screenplay order
+      const panels = op.shots.find((s) => s.id === shot.id)?.panels ?? moved;
+      return {
+        target,
+        accept: true,
+        note  : op.message,
+        invoke: {
+          id   : 'story.setPanels',
+          props: { scene: state.sceneId, shot: shot.id, panels: JSON.stringify(panels) },
+        },
+      };
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
 // The script's one gesture. It was declared and tested here before any surface ran it; STUDIO's
 // script column is its first consumer.
 // ---------------------------------------------------------------------------
@@ -596,6 +695,7 @@ export const INTERACTION_IDS = [
   'branch.connect',
   'branch.splice',
   'branch.unwire',
+  'page.letter',
   'prompt.reorder',
   'script.moveLine',
   'timeline.cover',
@@ -613,6 +713,7 @@ export function createDesktopInteractions(): InteractionRegistry {
     branchConnect,
     branchSplice,
     branchUnwire,
+    pageLetter,
     promptReorder,
     timelineCover,
     timelineCreate,

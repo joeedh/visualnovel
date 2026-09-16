@@ -121,7 +121,7 @@
 | Command | Props | Notes |
 | ------- | ----- | ----- |
 | `interaction.list` | — | The gestures the app offers — see below. |
-| `interaction.targets` | `interaction` (`branch.connect`\|`branch.splice`\|`branch.unwire`\|`prompt.reorder`\|`script.moveLine`\|`timeline.cover`\|`timeline.create`\|`timeline.reorder`), `carried`, `scene` (default `''`), `asset` (default `''`) | Every target of a gesture, accepted or refused with why. `scene` and `asset` build the state the named gesture is judged against. |
+| `interaction.targets` | `interaction` (`branch.connect`\|`branch.splice`\|`branch.unwire`\|`page.letter`\|`prompt.reorder`\|`script.moveLine`\|`timeline.cover`\|`timeline.create`\|`timeline.reorder`), `carried`, `scene` (default `''`), `asset` (default `''`) | Every target of a gesture, accepted or refused with why. `scene` and `asset` build the state the named gesture is judged against. |
 
 ## `models.`
 
@@ -259,10 +259,10 @@
 | ------- | ----- | ----- |
 | `view.applyLayout` | `name` | Rearranges the whole window to one of the project's layout templates. Refuses a missing or unreadable one by name. |
 | `view.close` | — | Collapses the active pane into its neighbour; the last pane is kept. |
-| `view.focus` | `editor` (`branches`\|`script`\|`convo`\|`timeline`\|`tasklist`\|`taskgraph`\|`gengraph`\|`inspector`\|`play`\|`skills`\|`wiki`\|`documents`\|`asset`\|`project`\|`systemprompt`\|`onboarding`\|`report`), `subject` (default `''`) | Makes the pane already showing an editor the active one. |
+| `view.focus` | `editor` (`branches`\|`script`\|`convo`\|`page`\|`timeline`\|`tasklist`\|`taskgraph`\|`gengraph`\|`inspector`\|`play`\|`skills`\|`wiki`\|`documents`\|`asset`\|`project`\|`systemprompt`\|`onboarding`\|`report`), `subject` (default `''`) | Makes the pane already showing an editor the active one. |
 | `view.layout` | — | Throws the remembered arrangement away and rebuilds the default one, ignoring the project's layout templates. The escape hatch; the menu offers `view.applyLayout` instead. |
 | `view.layouts` | — | Every layout template the project has, and which one the window is showing. One a merge left unresolved is listed with the reason rather than left out. |
-| `view.open` | `editor` (`branches`\|`script`\|`convo`\|`timeline`\|`tasklist`\|`taskgraph`\|`gengraph`\|`inspector`\|`play`\|`skills`\|`wiki`\|`documents`\|`asset`\|`project`\|`systemprompt`\|`onboarding`\|`report`), `where` (`here`\|`left`\|`right`\|`above`\|`below`\|`elsewhere`\|`window`\|`popup`, default `'here'`), `subject` (default `''`) | Shows an editor, in the active pane or in a new pane split off it. `elsewhere` is anywhere but the asking pane; `window` is not a pane at all — it opens a second window showing the editor. |
+| `view.open` | `editor` (`branches`\|`script`\|`convo`\|`page`\|`timeline`\|`tasklist`\|`taskgraph`\|`gengraph`\|`inspector`\|`play`\|`skills`\|`wiki`\|`documents`\|`asset`\|`project`\|`systemprompt`\|`onboarding`\|`report`), `where` (`here`\|`left`\|`right`\|`above`\|`below`\|`elsewhere`\|`window`\|`popup`, default `'here'`), `subject` (default `''`) | Shows an editor, in the active pane or in a new pane split off it. `elsewhere` is anywhere but the asking pane; `window` is not a pane at all — it opens a second window showing the editor. |
 | `view.palette` | `open` (default `true`) | Opens or closes the command palette. |
 | `view.resetLayout` ✍ ⚠ ↺ ✓ | `scope` (`shipped`\|`all`, default `'shipped'`) | Writes `.vnstudio/layouts`, `.vnstudio/session.json`. Puts the layouts the app ships with back the way they shipped and re-applies the one on screen. `all` also deletes the ones the author saved. |
 | `view.saveLayout` ✍ ↺ ✓ | `name`, `layout` (digest) | Writes `.vnstudio/layouts`, `.vnstudio/session.json`. Files the arrangement on screen in the project as `.vnstudio/layouts/<slug>.json`. Saving over one that exists is allowed and is one undo away. |
@@ -272,7 +272,7 @@
 | Command | Props | Notes |
 | ------- | ----- | ----- |
 | `window.close` ✓ | — | Close the asking window. Its note says how many stay open, or that this is the last one and closing it quits. |
-| `window.new` | `editor` (``\|`branches`\|`script`\|`convo`\|`timeline`\|`tasklist`\|`taskgraph`\|`gengraph`\|`inspector`\|`play`\|`skills`\|`wiki`\|`documents`\|`asset`\|`project`\|`systemprompt`\|`onboarding`\|`report`, default `''`), `subject` (default `''`) | Open another window onto the same project. A second *view*, not a second app: one process, one `WorkspaceSession`, one undo history. Both props are optional; naming an editor opens showing it. |
+| `window.new` | `editor` (``\|`branches`\|`script`\|`convo`\|`page`\|`timeline`\|`tasklist`\|`taskgraph`\|`gengraph`\|`inspector`\|`play`\|`skills`\|`wiki`\|`documents`\|`asset`\|`project`\|`systemprompt`\|`onboarding`\|`report`, default `''`), `subject` (default `''`) | Open another window onto the same project. A second *view*, not a second app: one process, one `WorkspaceSession`, one undo history. Both props are optional; naming an editor opens showing it. |
 | `window.quit` ✓ | — | — |
 
 ## `workspace.`

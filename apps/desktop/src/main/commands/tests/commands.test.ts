@@ -512,6 +512,7 @@ describe('the desktop registry', () => {
       'branch.connect',
       'branch.splice',
       'branch.unwire',
+      'page.letter',
       'prompt.reorder',
       'script.moveLine',
       'timeline.cover',

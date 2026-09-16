@@ -10,6 +10,9 @@ import {
   NEW_CHOICE,
   createDesktopInteractions,
   handleId,
+  letterId,
+  pageLetter,
+  panelTarget,
   promptReorder,
   scriptMoveLine,
   timelineCover,
@@ -535,6 +538,81 @@ The train stopped.
   });
 });
 
+describe('page.letter', () => {
+  const square = (y0: number, y1: number): [number, number][] => [
+    [0, y0],
+    [1, y0],
+    [1, y1],
+    [0, y1],
+  ];
+  const page: CoverageShot = {
+    id         : 'arrival__page1',
+    framing    : 'wide',
+    subjects   : ['aiko'],
+    location   : 'night',
+    outfits    : {},
+    coversLines: ['arrival:L1', 'arrival:L2', 'arrival:L3'],
+    panels: [
+      { shape: square(0, 0.5), framing: 'wide', subjects: [], coversLines: ['arrival:L1'] },
+      {
+        shape      : square(0.5, 1),
+        framing    : 'close',
+        subjects   : [],
+        coversLines: ['arrival:L2', 'arrival:L3'],
+      },
+    ],
+    aspect     : '3:4',
+    status     : 'accepted',
+    drift      : 'current',
+  };
+  const frame: CoverageShot = { ...page, id: 'arrival__frame', panels: undefined };
+  const lines = ['L1', 'L2', 'L3'].map((n) => ({
+    id  : `arrival:${n}`,
+    kind: 'narration' as const,
+    text: n,
+  }));
+  const state: CoverState = { sceneId: 'arrival', lines, shots: [page, frame] };
+
+  it('judges every panel: the one holding the line refuses, the other letters it there', () => {
+    const verdicts = pageLetter.targets(state, letterId('arrival__page1', 'arrival:L1'));
+    expect(verdicts.map((v) => [v.target, v.accept])).toEqual([
+      [panelTarget(0), false],
+      [panelTarget(1), true],
+    ]);
+    expect(verdicts[0]).toMatchObject({ reason: 'Panel 1 already letters arrival:L1.' });
+    const accepted = verdicts[1]!;
+    if (!accepted.accept) throw new Error('expected an accept');
+    expect(accepted.invoke.id).toBe('story.setPanels');
+    expect(accepted.invoke.props['scene']).toBe('arrival');
+    const panels = JSON.parse(String(accepted.invoke.props['panels'])) as {
+      coversLines: string[];
+    }[];
+    expect(panels.map((p) => p.coversLines)).toEqual([
+      [],
+      ['arrival:L1', 'arrival:L2', 'arrival:L3'],
+    ]);
+    expect(accepted.note).toContain('drawn again');
+  });
+
+  it('is unresolved on a frame and on a shot the scene lacks', () => {
+    expect(pageLetter.targets(state, letterId('arrival__frame', 'arrival:L1'))).toEqual([
+      { target: UNRESOLVED, accept: false, reason: expect.stringContaining('single frame') },
+    ]);
+    expect(pageLetter.targets(state, letterId('arrival__gone', 'arrival:L1'))).toEqual([
+      { target: UNRESOLVED, accept: false, reason: expect.stringContaining('arrival__gone') },
+    ]);
+    expect(pageLetter.targets(state, 'arrival__page1')).toEqual([
+      { target: UNRESOLVED, accept: false, reason: expect.stringContaining('Malformed handle') },
+    ]);
+  });
+
+  it('refuses a line the page does not cover, panel by panel', () => {
+    const verdicts = pageLetter.targets(state, letterId('arrival__page1', 'arrival:L9'));
+    expect(verdicts.every((v) => !v.accept)).toBe(true);
+    expect(verdicts[0]).toMatchObject({ reason: expect.stringContaining('does not cover') });
+  });
+});
+
 describe('the registry', () => {
   it('holds every declared gesture, and each names only commands the app has', () => {
     const registry = createDesktopInteractions();
@@ -542,6 +620,7 @@ describe('the registry', () => {
       'branch.connect',
       'branch.splice',
       'branch.unwire',
+      'page.letter',
       'prompt.reorder',
       'script.moveLine',
       'timeline.cover',
