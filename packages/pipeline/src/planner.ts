@@ -1,5 +1,6 @@
 import type {
   AnyTask,
+  Asset,
   AssetRef,
   BaseAssets,
   Character,
@@ -31,6 +32,9 @@ import {
   isApproved,
   layoutDefect,
   sceneUnblocked,
+  sheetGroups,
+  sheetKey,
+  sheetSeeds,
 } from '@vn/artgen';
 import { VnError } from '@vn/util';
 import {
@@ -70,9 +74,12 @@ function modelSheetTask(
   );
 }
 
+/** What a scene's storyboard holds: the shots, and the staging-sheet groups the file declares. */
+type Storyboard = Pick<Scene, 'shots' | 'sheets'>;
+
 /**
- * A scene's shots. Returns the persisted decomposition if one exists. Otherwise decomposes the
- * scene and writes the result out immediately. Re-decomposing over an existing file is never
+ * A scene's storyboard. Returns the persisted decomposition if one exists. Otherwise decomposes
+ * the scene and writes the result out immediately. Re-decomposing over an existing file is never
  * done: the LLM path is non-deterministic, so it would change shot ids, hence task identities,
  * hence regenerate art.
  */
@@ -84,7 +91,7 @@ async function shotsFor(
   paths?: ProjectPaths,
   logger?: Logger,
   readOnly = false,
-): Promise<Shot[]> {
+): Promise<Storyboard> {
   if (paths) {
     const known = new Set(scene.lines.map((l) => l.id));
     const loaded = await readShots(paths, scene.id, known);
@@ -103,7 +110,7 @@ async function shotsFor(
           lines: u.lineIds,
         });
       }
-      return loaded.shots;
+      return { shots: loaded.shots, ...(loaded.sheets ? { sheets: loaded.sheets } : {}) };
     }
   }
   const decomposition = await decomposeScene(scene, model, providers, style);
@@ -119,7 +126,29 @@ async function shotsFor(
   if (paths && !readOnly) {
     await writeShots(paths, scene.id, decomposition.shots, { sheets: decomposition.sheets });
   }
-  return decomposition.shots;
+  return {
+    shots: decomposition.shots,
+    ...(decomposition.sheets ? { sheets: decomposition.sheets } : {}),
+  };
+}
+
+/**
+ * The key each of the scene's staging-sheet groups puts into its members' params, derived once
+ * per group. A group whose sheet nothing can be resolved for yet still keys; what it hashes is the
+ * sheet's inputs as they stand, so a plate arriving later re-keys the members, as it should.
+ */
+function sheetKeys(
+  scene: Scene,
+  model: ProjectModel,
+  config: ProjectConfig,
+  assets: readonly Asset[],
+): Map<string, string> {
+  const keys = new Map<string, string>();
+  for (const group of sheetGroups(scene)) {
+    const seeds = sheetSeeds(scene, group, model, config, assets);
+    if (seeds) keys.set(group, sheetKey(seeds));
+  }
+  return keys;
 }
 
 /**
@@ -233,8 +262,14 @@ export async function planTasks(opts: {
    * decomposition must not be left behind for a later real run to reuse.
    */
   readOnlyShots?: boolean;
+  /**
+   * The manifest, which a staging sheet's references resolve from. Without it a sheet is keyed
+   * on its prompt and the portraits alone, which is what a plan with no store can know.
+   */
+  assets?: readonly Asset[];
 }): Promise<AnyTask[]> {
   const { model, graph, config, providers, paths, logger, base, readOnlyShots } = opts;
+  const assets = opts.assets ?? [];
   const refusal = baseRefusal(base);
   if (refusal) {
     logger?.error('plan.refused', { reason: refusal, root: base?.root });
@@ -278,7 +313,7 @@ export async function planTasks(opts: {
   for (const scene of reachableScenes(model)) {
     if (!sceneUnblocked(model, scene.id)) continue;
     if (scene.shots.length === 0) {
-      scene.shots = await shotsFor(
+      const storyboard = await shotsFor(
         scene,
         model,
         providers,
@@ -287,7 +322,10 @@ export async function planTasks(opts: {
         logger,
         readOnlyShots,
       );
+      scene.shots = storyboard.shots;
+      if (storyboard.sheets) scene.sheets = storyboard.sheets;
     }
+    const sheets = sheetKeys(scene, model, config, assets);
 
     for (const shot of scene.shots) {
       // A shot can only be hashed once its location plate exists (its hash is a ref).
@@ -335,7 +373,15 @@ export async function planTasks(opts: {
       }
       if (missingRef) continue;
 
-      const inputs = shotInputs(shot, scene, model, config, params, [locAsset, ...subjectRefs]);
+      const inputs = shotInputs(
+        shot,
+        scene,
+        model,
+        config,
+        params,
+        [locAsset, ...subjectRefs],
+        shot.sheet === undefined ? undefined : sheets.get(shot.sheet),
+      );
       shot.prompt = inputs.prompt;
       const task = makeTask('shot_image', inputs, [locTaskHash, ...sheetDeps]);
       const node = graph.add(task);

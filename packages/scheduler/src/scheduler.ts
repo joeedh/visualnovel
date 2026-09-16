@@ -191,6 +191,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
     logger,
     base         : store.base,
     readOnlyShots: dryRun,
+    assets       : store.manifest(),
   });
 
   // Refuse here rather than letting the loop find nothing ready: from the outside "nothing was
@@ -279,7 +280,8 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
       providers,
       paths,
       logger,
-      base: store.base,
+      base  : store.base,
+      assets: store.manifest(),
     });
     planned = new Set(plannedNow.map((t) => t.hash));
     const ready = graph.ready();

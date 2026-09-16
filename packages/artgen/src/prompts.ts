@@ -404,7 +404,7 @@ export function modelSheetInputs(
  * subject itself; on a page it is the panel's entry, since the page's cast holds the clothes and
  * each panel holds the pose.
  */
-function subjectWords(
+export function subjectWords(
   cast: ShotSubject,
   rung: { pose?: string; expression?: string },
   scene: Scene,
@@ -583,7 +583,9 @@ export function shotRefs(
 /**
  * One shot task's inputs. `upstream` is what the caller resolved and this cannot — the plate the
  * shot is set in and the portrait/sheet of each subject — and it leads the refs, with the authored
- * ones appended after, the order the hash has always seen (§12).
+ * ones appended after, the order the hash has always seen (§12). `sheet` is the key of the staging
+ * sheet a member shot is drawn from (`sheetKey`), carried in `params.extra` so the sheet's inputs
+ * are part of the member's identity; a shot in no group passes none and keeps the params it had.
  */
 export function shotInputs(
   shot: Shot,
@@ -592,13 +594,15 @@ export function shotInputs(
   config: ProjectConfig,
   params: ImageParams,
   upstream: AssetRef[],
+  sheet?: string,
 ): TaskInputs['shot_image'] {
+  // A frame is its own rung: the cast it draws is carried in as references, not as a seed.
+  const own = aspectFor(seedFor(params, shot.seed), shot, config.image_params.page_aspect);
   return {
     shotId: shot.id,
     prompt: buildShotPrompt(shot, scene, model, config),
     refs  : [...upstream, ...shotRefs(shot, scene, model, config)],
-    // A frame is its own rung: the cast it draws is carried in as references, not as a seed.
-    params: aspectFor(seedFor(params, shot.seed), shot, config.image_params.page_aspect),
+    params: sheet === undefined ? own : { ...own, extra: { ...own.extra, sheet } },
   };
 }
 

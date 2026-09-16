@@ -35,7 +35,11 @@ export interface ImageParams {
   modelId: string;
   aspect?: string;
   seed?: number;
-  /** Free-form, model-specific extra params; hashed verbatim. */
+  /**
+   * Extra params, hashed verbatim, so they carry task identity as well as anything a provider
+   * reads. No provider reads any today; `sheet` is the key of the staging sheet a member shot is
+   * drawn from, which re-keys the shot when the sheet's inputs move.
+   */
   extra?: Record<string, string | number | boolean>;
 }
 
@@ -245,8 +249,9 @@ export interface Shot {
    */
   panels?: PagePanel[];
   /**
-   * The staging-sheet group this shot is drawn from, scoped to its scene. Authored; read by
-   * nothing until the sheet graph exists.
+   * The staging-sheet group this shot is drawn from, one of its scene's {@link Scene.sheets} keys.
+   * Authored, and in the task's params through the sheet's key, so moving a shot between groups
+   * re-renders it.
    */
   sheet?: string;
   /** Override of this frame's derived prompt. Authored, like {@link artNotes}. */
@@ -325,6 +330,19 @@ export interface Scene {
   /** Linear continuation when there are no explicit choices. */
   next?: string;
   shots: Shot[];
+  /**
+   * The scene's staging-sheet groups by id, from the shots file. A shot's {@link Shot.sheet} names
+   * one; a group a shot names but this map lacks takes the defaults. Absent until a shot names one.
+   */
+  sheets?: Record<string, SheetGroup>;
+}
+
+/** One staging-sheet group's own settings: the seed the whole sheet is drawn with, and notes. */
+export interface SheetGroup {
+  /** Rerolling the sheet is bumping this, which re-keys every member shot at once. */
+  seed?: number;
+  /** Words about the group for the sheet prompt, such as what stays fixed across it. */
+  notes?: string;
 }
 
 /** The entity, scene or shot an asset serves. */

@@ -23,6 +23,7 @@ export * from './upstream.js';
 export * from './suspend.js';
 export * from './prereq.js';
 export * from './layout.js';
+export * from './sheet.js';
 export * from './prompts.js';
 export * from './artnotes.js';
 export * from './setnotes.js';

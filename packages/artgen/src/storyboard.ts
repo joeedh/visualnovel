@@ -10,6 +10,7 @@ import type {
 } from '@vn/types';
 import { shotDecompositionSchema } from '@vn/types';
 import { LAYOUT_TEMPLATES, shapesFor } from './layout.js';
+import { MAX_SHEET_CELLS } from './sheet.js';
 
 /**
  * Scene decomposition (report §P5) — the prompt, the parse, and the deterministic fallback.
@@ -163,14 +164,19 @@ const DECOMP_PAGES = [
     .map(([name, shapes]) => `${name} (${shapes.length} panels)`)
     .join(', ')};`,
   'a page whose panel count matches none of them is split into even tiers. A shot without',
-  '"panels" is a single frame as before.',
+  '"panels" is a single frame as before. Where the notes ask for staging sheets, give shots',
+  'that play out in one continuous space a shared "sheet" group id, contiguous beats up to',
+  `${MAX_SHEET_CELLS} shots per group, and list each group under "sheets" with optional "notes"`,
+  'on what stays fixed across it; the group is drawn once as a grid and every member is drawn',
+  'from its cell.',
 ].join(' ');
 
 const DECOMP_FORMAT_PAGES = [
   'Respond ONLY with JSON of the form {"shots":[{"id","framing","location",',
   '"subjects":[{"characterId","pose?","expression?"}],"camera?","layout?",',
   '"panels?":[{"framing","camera?","subjects":[{"characterId","pose?","expression?"}],',
-  '"coversLines":["scene:L1"]}],"coversLines":["scene:L1","scene:L2"]}]}.',
+  '"coversLines":["scene:L1"]}],"sheet?","coversLines":["scene:L1","scene:L2"]}],',
+  '"sheets?":{"<group>":{"notes?"}}}.',
 ].join(' ');
 
 /**

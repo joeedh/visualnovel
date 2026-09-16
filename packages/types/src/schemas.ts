@@ -4,6 +4,7 @@
  * output from leaking into the deterministic core.
  */
 import { z } from 'zod';
+import type { SheetGroup } from './entities.js';
 import type { ChunkEdit, ChunkRef, PromptOverride } from './prompt.js';
 
 const hexColor = z.string().regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'expected hex color');
@@ -441,11 +442,10 @@ const pagePanel = z.object({
 export const pagePanelsSchema = z.array(pagePanel);
 
 /** A staging-sheet group's own settings, keyed by the group id in `sheets`. */
-const sheetGroup = z.object({
+const sheetGroup: z.ZodType<SheetGroup> = z.object({
   seed : imageSeed.optional(),
   notes: z.string().optional(),
 });
-export type SheetGroup = z.infer<typeof sheetGroup>;
 
 /** Shots proposed for one scene by the LLM (report §P5). */
 export const shotDecompositionSchema = z.object({
