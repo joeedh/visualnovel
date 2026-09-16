@@ -206,7 +206,9 @@ record for B says nothing about which of A's answers it was drawn from.
 - A cache for `vngen cost`. The estimate is the worst case over the whole graph by design
   and does not consult the journal.
 - Pruning the journal or the blob store. Both stay append-only.
-- Making `GenSlotRef` and `GenImageFile` notice that what they read changed.
+- Making `GenSlotRef` and `GenImageFile` notice that what they read changed. Done after
+  the plan shipped: `GenSlotRef` declares `live` in its spec and runs on every run;
+  `GenImageFile` names its picture by content hash, so it needed nothing.
 
 ## Staging
 

@@ -65,6 +65,12 @@ export interface GenNodeSpec {
   cls: NodeTypeConstructor;
   /** True when running this node calls a paid model. */
   spends?: boolean;
+  /**
+   * True when the node answers from the project rather than from its inputs and props, so
+   * the executor runs it on every run instead of resuming it. A slot-ref node reads what its
+   * slot holds now, and a resumed record would keep handing out the picture it held then.
+   */
+  live?: boolean;
   /** Names the prop holding the slot key this node fills. Only an output node has one. */
   slotProp?: string;
   /** What one run costs. A type with no estimate is taken to spend nothing. */

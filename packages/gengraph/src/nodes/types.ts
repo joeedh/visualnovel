@@ -432,7 +432,7 @@ export class GenOutput extends Node<{ image: ImageSocket }, Sockets> {
 export function registerGenNodes(): void {
   registerGenNode({ cls: GenDerivedPrompt, seededInput: 'prompt', refineFallback: true });
   registerGenNode({ cls: GenTaskRefs, seededInput: 'assets' });
-  registerGenNode({ cls: GenSlotRef });
+  registerGenNode({ cls: GenSlotRef, live: true });
   registerGenNode({ cls: GenTemplate, migrations: [TEMPLATE_VARS] });
   registerGenNode({
     cls     : GenRewrite,

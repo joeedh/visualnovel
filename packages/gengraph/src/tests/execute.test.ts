@@ -440,6 +440,48 @@ describe('resuming by run key', () => {
     expect(rerun.skipped).toContain(second.composed.id);
     expect(mock.images).toHaveLength(3);
   });
+
+  it('reads a slot again on every run, and redraws below it when the slot moved', async () => {
+    // A slot-ref node answers from the project rather than from its inputs, so no record of
+    // it is an answer for this run. The edit below it keys on the picture it hands down.
+    const graph = new Graph();
+    const plate = new GenSlotRef();
+    const prompt = new GenDerivedPrompt();
+    const edit = new GenEditImage();
+    const output = new GenOutput();
+    graph.add(plate);
+    graph.add(prompt);
+    graph.add(edit);
+    graph.add(output);
+    graph.connect(plate.outputs.image, edit.inputs.base);
+    graph.connect(prompt.outputs.prompt, edit.inputs.prompt);
+    graph.connect(edit.outputs.image, output.inputs.image);
+    setProp(plate, 'slot', 'plate:hall');
+    setProp(output, 'slot', 'portrait:aiko');
+    const records: GraphJournalRecord[] = [];
+
+    mock.slotAssets.set('plate:hall', putAsset(mock, 'the first hall'));
+    await executeGenGraph(graph, context(records), { targets: [output.id], seeds: SEEDS });
+    const same = await executeGenGraph(graph, context(records), {
+      targets: [output.id],
+      seeds  : SEEDS,
+    });
+
+    expect(same.ran).toEqual([plate.id]);
+    expect(same.skipped).toEqual([prompt.id, edit.id, output.id]);
+    expect(mock.images).toHaveLength(1);
+
+    mock.slotAssets.set('plate:hall', putAsset(mock, 'the hall, redrawn'));
+    mock.drawn = { ...mock.drawn, bytes: bytes('the edit over the redrawn hall') };
+    const moved = await executeGenGraph(graph, context(records), {
+      targets: [output.id],
+      seeds  : SEEDS,
+    });
+
+    expect(moved.ran).toEqual([plate.id, edit.id, output.id]);
+    expect(mock.images).toHaveLength(2);
+    expect(mock.images[1]?.base?.bytes).toEqual(bytes('the hall, redrawn'));
+  });
 });
 
 describe('a deliberate re-render', () => {

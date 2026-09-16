@@ -143,8 +143,10 @@ export async function executeGenGraph(
     const hash = hashOf(node);
     const inputs = readInputs(node);
     const runKey = nodeRunKey(node, inputs, defaults);
+    // A live node answers from the project, so no record of it is an answer for this run
+    const live = genNodeSpec(node.def.typeName)?.live === true;
 
-    const hit = journal.cached.get(key)?.get(runKey);
+    const hit = live ? undefined : journal.cached.get(key)?.get(runKey);
     if (hit?.output !== undefined && (await bytesExist(ctx.services, hit.output))) {
       resume(node, hit.output);
       // Drift reads the node's latest done record, so a resumed answer whose recorded hashes
@@ -169,7 +171,7 @@ export async function executeGenGraph(
       continue;
     }
 
-    const prior = journal.latest.get(key);
+    const prior = live ? undefined : journal.latest.get(key);
     if (
       prior?.status === 'done' &&
       prior.runKey === undefined &&

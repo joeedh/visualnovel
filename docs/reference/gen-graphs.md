@@ -299,9 +299,11 @@ implementation. The testkit passes a mock.
   sockets, so it exists only during a run and never for a graph at rest. Every `running`,
   `done` and `failed` record the executor writes carries it; an `invalidated` record is
   written at rest and carries none. Two runs with the same key were fed the same bytes,
-  which is what makes it safe to resume on. The claim does not extend to a node that
-  answers from a service rather than from its inputs (Slot-ref, Image-file): a changed
-  slot or file is invisible to the key, exactly as it is to the hash.
+  which is what makes it safe to resume on. A node that answers from the project rather
+  than from its inputs declares `live` in its spec, and the executor runs it on every run
+  instead of resuming it: Slot-ref is the one such type, since the slot it reads may hold
+  a different picture than it did last run, and the node below keys on the picture it
+  hands down. Image-file needs no such flag, because it names its picture by content hash.
 - **Replay builds three views, through one rule.** `applyRecord` is the only place the
   update rule is written; `replayJournal` folds it over the file, and the executor and the
   runner wrapper fold it over a `cloneJournal` copy as they append, so a run resumes
@@ -313,10 +315,10 @@ implementation. The testkit passes a mock.
   before its own `at`, and a `done` record stamped earlier than the node's latest
   invalidation stays out whatever order the file holds the two lines in. The cutoff is by
   timestamp rather than by line position because a union merge can land another clone's
-  older `done` line after this clone's `invalidated` line; two clocks that disagree by
-  more than the gap between a force and its redraw are the residual exposure. A `failed`
-  or `running` record leaves `cached` alone, because a failure is not an answer and does
-  not retire the answers whose keys say what they were fed.
+  older `done` line after this clone's `invalidated` line; a clock ahead of another's by
+  more than the real time between the old answer and the force is the residual exposure. A
+  `failed` or `running` record leaves `cached` alone, because a failure is not an answer
+  and does not retire the answers whose keys say what they were fed.
 - **Drift is reported per output node and acted on at run time.** `graphDrift` recomputes
   each active output's authored hash and compares it against the journal's last `done`
   record for that node. `requeueDrifted` in `@vn/scheduler` returns every planned `done`
@@ -443,8 +445,9 @@ implementation. The testkit passes a mock.
   incremental-planning undercount that the graph estimate corrects. A task a graph draws
   is still counted as pending but contributes no image or review calls, because the
   graph's own estimate prices it node by node and counting both would charge twice.
-  Drifted tasks are counted under the pending line, so a redraw is quoted before it is
-  paid for.
+  Drifted tasks are counted under the pending line, and their slots are priced beside the
+  unrendered ones in the graph estimate (`boundSlotsToDraw`), so a redraw is quoted before
+  it is paid for.
 
 ## The DSL and the agent
 
@@ -715,8 +718,8 @@ diagnostics from the read and from the file itself.
 `apps/cli` may import neither `@vn/gengraph` nor `@vn/artgen`, so everything both hosts do
 with a project's graphs lives in `@vn/pipeline`'s `graphload.ts`: `readProjectGraphs`
 (which takes the reader as a parameter, because the desktop reads a graph through git and
-the CLI reads the file), `graphRuntime`, `reportGraphs`, `unrenderedBoundSlots` and
-`priceSlots`.
+the CLI reads the file), `graphRuntime`, `reportGraphs`, `unrenderedBoundSlots`,
+`boundSlotsToDraw` and `priceSlots`.
 
 ## Plugins
 
