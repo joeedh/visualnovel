@@ -52,6 +52,9 @@ describe('project.setKey — the two scopes', () => {
     // jest already points $VNAUTHOR_HOME at an empty directory; pointing it inside the project
     // keeps the write in a directory the fixture cleans up.
     const home = join(p.dir, 'userhome');
+    // Restored rather than deleted afterwards, or every later test in this worker reads the
+    // developer's own user directory
+    const jestHome = process.env.VNAUTHOR_HOME;
     process.env.VNAUTHOR_HOME = home;
     try {
       const result = await session.setKey('anthropic', SECRET, 'user');
@@ -62,7 +65,7 @@ describe('project.setKey — the two scopes', () => {
       expect(result.message).toContain('outside every repository');
       expect(result.message).not.toContain(SECRET);
     } finally {
-      delete process.env.VNAUTHOR_HOME;
+      process.env.VNAUTHOR_HOME = jestHome;
     }
   });
 

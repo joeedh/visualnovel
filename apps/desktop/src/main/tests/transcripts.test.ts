@@ -22,14 +22,18 @@ import type { Report } from '@vn/agentreport';
 import type { ReportRow } from '../../shared/ipc.js';
 
 let home: string;
+// Jest's own per-worker home, restored afterwards so a later test in this worker never reads
+// the developer's user directory
+let jestHome: string | undefined;
 
 beforeEach(async () => {
   home = await mkdtemp(join(tmpdir(), 'vn-transcripts-'));
+  jestHome = process.env.VNAUTHOR_HOME;
   process.env.VNAUTHOR_HOME = home;
 });
 
 afterEach(async () => {
-  delete process.env.VNAUTHOR_HOME;
+  process.env.VNAUTHOR_HOME = jestHome;
   await rm(home, { recursive: true, force: true });
 });
 
