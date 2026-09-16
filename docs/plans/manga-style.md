@@ -1,8 +1,13 @@
 # Colour manga as a second visual style
 
 **Status: partial.** Stages 1 and 2 have landed; the As-shipped section at the end records
-each commit and every deviation. The proposal completed one review pass; the findings and
-resulting modifications are documented before that.
+each commit and every deviation. Between Stages 2 and 3 the image-model handling was
+refactored by
+[`archive/openrouter-backend-and-the-image-model-default.md`](archive/openrouter-backend-and-the-image-model-default.md)
+(shipped 2026-09-15), which retired the OpenRouter plugin Stage 1 built; the "Between
+Stages 2 and 3" subsection of As-shipped records what that changes for Stages 3–5. The
+proposal completed one review pass; the findings and resulting modifications are
+documented before that.
 
 ## What this adds
 
@@ -467,7 +472,15 @@ done. The OpenRouter plugin the live checks need is Stage 1's first commit.
 - Add `GraphRunOptions.seeds`; wire seed generation into `makeShotRunner` and desktop
   `runGraph`.
 - Implement `sheet_graph_force` execution refusal in `gengraph.run`.
-- Implement `gengraph.scaffoldSheet(scene, sheet)`.
+- Implement `gengraph.scaffoldSheet(scene, sheet)`. Both `GenImage` nodes it writes (the
+  sheet's and the cell chain's) leave `model` empty, so the group draws with
+  `models.image` and follows `project.setImageModel`; and both write `aspect` explicitly
+  (the sheet's from Decision 20, the cell's from `aspectFor`), because an empty `aspect`
+  prop sends no ratio and the provider picks the size
+  (`packages/gengraph/src/nodes/runtimes.ts`, `imageParamsOf`). Neither node carries a
+  `seed` prop: the group seed reaches the hash through the seeded inputs (Decision 17),
+  and a provider seed on an OpenRouter model the catalog says takes none is refused by
+  name at the router.
 - Forward cropped reference cells to the reviewer as auxiliary references with
   instructions in `spec.description`.
 - The Stage 4 live check (the six-shot room sequence, three ways, on each model) decides
@@ -498,8 +511,12 @@ Three surfaces in this plan are new UI rather than a new row in an existing one,
 is built under the `frontend-design` skill: a written design brief, the skill's design
 plan (palette, type, layout with wireframes, principles) reviewed against that brief
 before any code, and a screenshot critique before the stage lands. The design plan and its
-critique are filed beside the plan as `docs/plans/manga-style-design.md` so the choices
-survive the conversation that made them.
+critique are filed beside the plan as [`manga-style-design.md`](manga-style-design.md) so
+the choices survive the conversation that made them. The brief and the plan were written
+on 2026-09-16; the critique waits for Stage 3's first build. The brief places the panel
+editor in a new `Page` editor whose subject is `ui.shotId`, not the Asset pane named
+below, because a page before its first render has no asset; the design file records the
+reasoning.
 
 - **The panel editor** (Stage 3) is the one that matters most. Its brief: the page is the
   canvas. The author sees the rendered page (or the empty page aspect before a render)
@@ -535,6 +552,10 @@ stage that depends on it is checked against real models before the stage counts 
 Gemini and OpenRouter keys are available for this.
 
 ### The harness: an OpenRouter plugin and bound graphs
+
+This section is as written for Stages 1 and 2, which ran through the plugin it describes.
+The plugin is gone; the "Between Stages 2 and 3" subsection of As-shipped says what Stage
+4's check uses instead.
 
 - The pipeline has one live image backend, `createGeminiImage`, and the host's key
   vocabulary does not include `openrouter` (`scripts/prosestyle/keys.ts` keeps its own
@@ -932,8 +953,47 @@ specification:
   image model is one of them.** `gemini-2.5-flash-image` lettered 1 of 12 pages exactly,
   `mai-image-2.6` 2 of 12, `flux.2-pro` 1 of 8 (and was refused 4 pages by content
   moderation). `gpt-image-2`, `gpt-image-2.5-sunburst`, `grok-imagine-image-2.0` and
-  `gemini-3-pro-image` lettered 92–100% exactly. Nothing in the code changes for this: the
-  default `lettering` stays `model` because `runner` is a later stage, and a project that
-  wants lettered pages now draws them through the plugin on a model that passes. Long
-  narration captions fail first, which is a note for the decomposer's prompt rather than a
-  change made here.
+  `gemini-3-pro-image` lettered 92–100% exactly. Nothing in this stage's code changed for
+  it: the default `lettering` stays `model` because `runner` is a later stage. At the time
+  a project that wanted lettered pages had to bind a plugin graph to every page slot,
+  which is what prompted the refactor below; now it sets `models.image` to a model that
+  passes. Long narration captions fail first, which is a note for the decomposer's prompt
+  rather than a change made here.
+
+### Between Stages 2 and 3: the image-model refactor
+
+[`archive/openrouter-backend-and-the-image-model-default.md`](archive/openrouter-backend-and-the-image-model-default.md)
+shipped on 2026-09-15, six stages, in answer to the Stage 2 finding above. What it changed
+for the stages still to come:
+
+- **OpenRouter is a built-in backend, chosen by model id.** `createImageBackend` routes
+  each call by `imageVendorOf(params.modelId)`: an id with a slash goes to
+  `createOpenRouterImage` (`packages/providers/src/backends/openrouter.ts`, the plugin's
+  `draw.ts` moved), anything else to Gemini. `models.image` may name either, and
+  `project.setImageModel` writes it with the re-key count in its `check`. A `GenImage`
+  whose `model` prop is empty inherits `models.image`, and the resolved id is in the
+  node's run hash.
+- **The harness for Stage 4's live check is `models.image`, not a graph per model.** The
+  sheet graph's image nodes inherit, so drawing the six-shot sequence on another model is
+  `project.setImageModel` (on a copy of `templates/basic`) and a run, with the same graph
+  and the same seeded inputs. Where the check wants one slot drawn by two models at once,
+  a `GenImage` with a literal `<vendor>/<model>` id still does that. Nothing in the
+  harness section's second bullet is wrong; the node it names is now `GenImage`.
+- **The spend column comes from OpenRouter's key meter, not the reply.** The plugin wrote
+  `usage.cost` to the run journal and Stages 1 and 2 summed it; the built-in backend
+  discards it, because the ledger plan owns dollars and `ImageResult` has no field for
+  one. The image-model-default live check read `GET /api/v1/key`'s usage before and after
+  the run instead, and Stage 4's check does the same, with direct Gemini calls priced at
+  the published rate as before. `vngen cost` prices a bound slot from the catalog's
+  per-picture table, which covers the models billed per picture (26 of 52 at the time) and
+  leaves OpenAI's and Google's unpriced, so it is the budget's lower bound, not the
+  budget.
+- **`plugins/openrouter/` is deleted.** A graph naming `OpenRouterImage` loads as
+  `GenImage` through `RETIRED_TYPES` in `migrateGraphJSON`. Stage 1's As-shipped notes on
+  the plugin (its endpoint, its `cost` output, its price fragment) describe code that is
+  now `createOpenRouterImage`, except the `cost` output, which has no successor.
+- **`vngen cost` now prices a drifted bound slot** (`7548db11`), which closes one of that
+  plan's two "left for later" observations. The other, that an empty `aspect` prop draws
+  at the provider's default size, still holds and is why `gengraph.scaffoldSheet` writes
+  the prop (Stage 4).
+- **Stages 3 and 5 are untouched.** Neither calls a model.
