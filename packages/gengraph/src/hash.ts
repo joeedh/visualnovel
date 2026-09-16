@@ -48,6 +48,20 @@ export function nodeHash(
 }
 
 /**
+ * A node's run key: the same parts as `nodeHash`, resolved the same way, with each input
+ * contributing the value on its socket rather than the hash of the node feeding it. Two
+ * runs with the same key were fed the same bytes, which is what the executor resumes on.
+ * It exists only during a run, because the socket values do.
+ */
+export function nodeRunKey(
+  node: Node,
+  values: Readonly<Record<string, unknown>>,
+  defaults: GenHashDefaults = {},
+): string {
+  return nodeHash(node, values, defaults);
+}
+
+/**
  * Every node's hash, keyed by node key and computed in topological order over the
  * flattened graph, so a node inside an instance is hashed as part of its root. A connected
  * input contributes the hash of the node feeding it together with the socket it came from;

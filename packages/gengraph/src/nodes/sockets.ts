@@ -14,6 +14,17 @@ export interface GenImageRef extends GenBlobRef {
   store: 'asset' | 'blob';
 }
 
+/** The value as a picture, or undefined for anything that is not one. */
+export function imageRefOf(value: unknown): GenImageRef | undefined {
+  if (value === null || typeof value !== 'object') {
+    return undefined;
+  }
+  const ref = value as Partial<GenImageRef>;
+  return typeof ref.hash === 'string' && typeof ref.ext === 'string' && ref.store !== undefined
+    ? (ref as GenImageRef)
+    : undefined;
+}
+
 /** Prose on its way to a model. An unwired input carries the empty string. */
 export class TextSocket extends NodeSocketBase<'text', string> {
   static override socketDef(): SocketTypeDef {

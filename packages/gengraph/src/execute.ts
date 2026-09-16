@@ -1,10 +1,12 @@
 import type { Graph, GraphId, Node } from 'pathux-graph';
 
-import { authoredHashes, graphHashes } from './hash.js';
+import { authoredHashes, graphHashes, nodeRunKey } from './hash.js';
 import type { GenHashDefaults } from './hash.js';
 import { applyRecord, cloneJournal, journalRecord } from './journal.js';
 import type { GenUsage, GraphJournal, GraphJournalRecord } from './journal.js';
 import { flattenNodes, linkedSources, nodeKey, resolveNodeKey } from './nodekey.js';
+import { imageRefOf } from './nodes/sockets.js';
+import type { GenImageRef } from './nodes/sockets.js';
 import { genNodeRuntime, genNodeSpec } from './registry.js';
 import type { GenInputs, GenOutputs, GenProps } from './registry.js';
 import type { GenServices } from './services.js';
@@ -12,7 +14,7 @@ import type { GenServices } from './services.js';
 /** What one run reaches outside the graph itself. */
 export interface GenRunContext {
   services: GenServices;
-  /** The journal as it stood before this run, which is what resume is decided against. */
+  /** The journal as it stood before this run. The executor advances a private copy of it. */
   journal: GraphJournal;
   /** Appends one record. The host persists it and the executor keeps its own view current. */
   record(record: GraphJournalRecord): Promise<void>;
@@ -47,7 +49,7 @@ export interface GenNodeFailure {
 export interface GenRunResult {
   /** Nodes whose runtime ran this time. */
   ran: GraphId[];
-  /** Nodes resumed from a journal record matching their current hash. */
+  /** Nodes resumed from a journal record, by run key or by the pre-key hash rule. */
   skipped: GraphId[];
   /** Nodes left unevaluated because something upstream of them failed. */
   blocked: GraphId[];
@@ -57,11 +59,15 @@ export interface GenRunResult {
 }
 
 /**
- * Evaluates the targets and their ancestors in topological order, resuming every node
- * whose last record already matches its hash. A node on a branch no target descends from
- * never runs, which is what keeps a scratch branch from spending money. A failure is
- * recorded and stops that node's downstream; branches beside it still run. A group
- * instance is run as its inner nodes, each journaled under its key.
+ * Evaluates the targets and their ancestors in topological order, resuming every node the
+ * journal already holds an answer for. A node's run key is computed when the walk reaches
+ * it, from its resolved props and the values then on its input sockets, and a `done`
+ * record filed under that key is that answer, whatever ran in between. A record written
+ * before run keys existed resumes only through the hash rule it was written under, and only
+ * while nothing above it has moved. A node on a branch no target descends from never runs,
+ * which is what keeps a scratch branch from spending money. A failure is recorded and stops
+ * that node's downstream; branches beside it still run. A group instance is run as its
+ * inner nodes, each journaled under its key.
  *
  * An image node with an empty model prop draws with the services' `defaultModel`, so that
  * model is hashed in the prop's place. Reading it from the same services the runtime draws
@@ -121,9 +127,9 @@ export async function executeGenGraph(
     outputs : new Map(),
   };
   const blocked = new Set<Node>();
-  // A node's hash covers what feeds it rather than what that produced, so an upstream node
-  // that ran again may have answered differently at the same hash. Everything below it runs.
-  const reran = new Set<Node>();
+  // Nodes resumed through a pre-key record. Such a record cannot say which of its upstream's
+  // answers it was drawn from, so it is trusted only below nodes resumed the same way.
+  const preKey = new Set<Node>();
 
   for (const node of order) {
     const key = nodeKey(node);
@@ -135,47 +141,74 @@ export async function executeGenGraph(
     }
 
     const hash = hashOf(node);
-    const prior = journal.latest.get(key);
-    const stale = feedsFrom(node, members, reran);
+    const inputs = readInputs(node);
+    const runKey = nodeRunKey(node, inputs, defaults);
 
+    const hit = journal.cached.get(key)?.get(runKey);
+    if (hit?.output !== undefined && (await bytesExist(ctx.services, hit.output))) {
+      resume(node, hit.output);
+      // Drift reads the node's latest done record, so a resumed answer whose recorded hashes
+      // are stale re-records itself under the current ones
+      const last = journal.lastDone.get(key);
+      if (
+        last === undefined ||
+        last.nodeHash !== hash.nodeHash ||
+        last.authoredHash !== hash.authoredHash
+      ) {
+        await write(
+          journalRecord({
+            nodeId: key,
+            ...hash,
+            runKey,
+            status: 'done',
+            output: hit.output,
+            at    : stamp(),
+          }),
+        );
+      }
+      continue;
+    }
+
+    const prior = journal.latest.get(key);
     if (
-      !stale &&
       prior?.status === 'done' &&
+      prior.runKey === undefined &&
       prior.nodeHash === hash.nodeHash &&
-      prior.output !== undefined
+      prior.output !== undefined &&
+      sourceNodes(node, members).every((source) => preKey.has(source)) &&
+      (await bytesExist(ctx.services, prior.output))
     ) {
-      applyOutputs(node, prior.output);
-      result.outputs.set(key, prior.output);
-      result.skipped.push(key);
+      resume(node, prior.output);
+      preKey.add(node);
       continue;
     }
 
     const runtime = genNodeRuntime(node.def.typeName);
     if (runtime === undefined) {
-      await fail(node, hash, `node type '${node.def.typeName}' has no runtime registered here`);
+      await fail(node, runKey, `node type '${node.def.typeName}' has no runtime registered here`);
       continue;
     }
 
-    await write(journalRecord({ nodeId: key, ...hash, status: 'running', at: stamp() }));
+    await write(journalRecord({ nodeId: key, ...hash, runKey, status: 'running', at: stamp() }));
 
     let outputs: GenOutputs;
     try {
-      outputs = await runtime(readInputs(node), readProps(node), ctx.services);
+      outputs = await runtime(inputs, readProps(node), ctx.services);
     } catch (err) {
-      await fail(node, hash, err instanceof Error ? err.message : String(err));
+      await fail(node, runKey, err instanceof Error ? err.message : String(err));
       continue;
     }
 
     applyOutputs(node, outputs);
     result.outputs.set(key, outputs);
     result.ran.push(key);
-    reran.add(node);
 
     const usage = ctx.usage?.(node);
     await write(
       journalRecord({
         nodeId: key,
         ...hash,
+        runKey,
         status: 'done',
         output: outputs,
         at    : stamp(),
@@ -186,16 +219,55 @@ export async function executeGenGraph(
 
   return result;
 
-  async function fail(
-    node: Node,
-    hash: { nodeHash: string; authoredHash: string },
-    error: string,
-  ): Promise<void> {
+  /** Puts a recorded answer on the node's sockets, so the node below keys on those bytes. */
+  function resume(node: Node, output: Record<string, unknown>): void {
     const key = nodeKey(node);
-    await write(journalRecord({ nodeId: key, ...hash, status: 'failed', error, at: stamp() }));
+    applyOutputs(node, output);
+    result.outputs.set(key, output);
+    result.skipped.push(key);
+  }
+
+  async function fail(node: Node, runKey: string, error: string): Promise<void> {
+    const key = nodeKey(node);
+    await write(
+      journalRecord({ nodeId: key, ...hashOf(node), runKey, status: 'failed', error, at: stamp() }),
+    );
     blocked.add(node);
     result.failures.push({ nodeId: key, error });
   }
+}
+
+/**
+ * Whether every picture in a recorded output is still in its store. A blob that has been
+ * cleaned away would otherwise surface as a read failure in the node below.
+ */
+async function bytesExist(
+  services: GenServices,
+  output: Readonly<Record<string, unknown>>,
+): Promise<boolean> {
+  for (const ref of imageRefsIn(output)) {
+    const held =
+      ref.store === 'asset'
+        ? await services.assets.has({ hash: ref.hash, ext: ref.ext })
+        : await services.blobs.has({ hash: ref.hash, ext: ref.ext });
+    if (!held) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function imageRefsIn(output: Readonly<Record<string, unknown>>): GenImageRef[] {
+  const refs: GenImageRef[] = [];
+  for (const value of Object.values(output)) {
+    for (const item of Array.isArray(value) ? value : [value]) {
+      const ref = imageRefOf(item);
+      if (ref !== undefined) {
+        refs.push(ref);
+      }
+    }
+  }
+  return refs;
 }
 
 /**

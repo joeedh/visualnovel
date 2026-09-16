@@ -1,5 +1,6 @@
 import {
   GenDerivedPrompt,
+  GenEditImage,
   GenImage,
   GenOutput,
   GenSlotRef,
@@ -10,7 +11,8 @@ import {
   replayJournal,
 } from '../index.js';
 import type { GraphJournalRecord, Node } from '../index.js';
-import { executeGenGraph } from '../execute.js';
+import { graphDrift } from '../drift.js';
+import { executeGenGraph, invalidateGenGraph } from '../execute.js';
 import type { GenRunContext } from '../execute.js';
 import { bytes, mockServices, putAsset } from '../nodes/tests/__fixtures__/services.js';
 import type { MockServices } from '../nodes/tests/__fixtures__/services.js';
@@ -158,12 +160,13 @@ describe('resuming a run', () => {
     expect(mock.images).toHaveLength(1);
   });
 
-  it('re-runs a node whose props changed, and everything below it', async () => {
+  it('re-runs a node whose props changed, and everything below it that its new picture feeds', async () => {
     const { graph, prompt, image, output } = chain();
     const records: GraphJournalRecord[] = [];
 
     await executeGenGraph(graph, context(records), { targets: [output.id], seeds: SEEDS });
     setProp(image, 'aspect', '3:2');
+    mock.drawn = { ...mock.drawn, bytes: bytes('a wider take') };
     const second = await executeGenGraph(graph, context(records), {
       targets: [output.id],
       seeds  : SEEDS,
@@ -175,7 +178,7 @@ describe('resuming a run', () => {
   });
 
   it('re-runs a node whose seeded input changed', async () => {
-    const { graph, output } = chain();
+    const { graph, prompt, image, output } = chain();
     const records: GraphJournalRecord[] = [];
 
     await executeGenGraph(graph, context(records), { targets: [output.id], seeds: SEEDS });
@@ -184,8 +187,10 @@ describe('resuming a run', () => {
       seeds  : { GenDerivedPrompt: { prompt: 'a lantern at dawn' } },
     });
 
-    expect(second.ran).toHaveLength(3);
+    expect(second.ran).toEqual([prompt.id, image.id]);
     expect(mock.images[1]?.prompt).toBe('a lantern at dawn');
+    // The mock draws the same bytes for any prompt, so the output node was fed what it was before
+    expect(second.skipped).toEqual([output.id]);
   });
 
   it('resumes a picture without reading its bytes again', async () => {
@@ -203,6 +208,240 @@ describe('resuming a run', () => {
   });
 });
 
+function journalOf(records: readonly GraphJournalRecord[]) {
+  return replayJournal(records.map((r) => JSON.stringify(r)).join('\n'));
+}
+
+describe('resuming by run key', () => {
+  it('resumes a picture the node drew before an intervening change, and clears drift', async () => {
+    const { graph, image, output } = chain();
+    const records: GraphJournalRecord[] = [];
+
+    const first = await executeGenGraph(graph, context(records), {
+      targets: [output.id],
+      seeds  : SEEDS,
+    });
+    setProp(image, 'model', 'other/model');
+    mock.drawn = { ...mock.drawn, bytes: bytes("the other model's take") };
+    await executeGenGraph(graph, context(records), { targets: [output.id], seeds: SEEDS });
+    setProp(image, 'model', '');
+    const before = records.length;
+    const third = await executeGenGraph(graph, context(records), {
+      targets: [output.id],
+      seeds  : SEEDS,
+    });
+
+    expect(mock.images).toHaveLength(2);
+    expect(third.ran).toEqual([]);
+    expect(third.outputs.get(output.id)).toEqual(first.outputs.get(output.id));
+    // The latest done records were the other model's, so the resumed nodes re-record
+    // themselves under the current hashes and the output node no longer reads as drifted
+    const fresh = records.slice(before);
+    expect(fresh.map((r) => [r.nodeId, r.status])).toEqual([
+      [image.id, 'done'],
+      [output.id, 'done'],
+    ]);
+    expect(fresh.every((r) => r.runKey !== undefined && r.usage === undefined)).toBe(true);
+    expect(graphDrift(graph, journalOf(records))).toEqual([]);
+  });
+
+  it('runs a node whose upstream answered differently at the same hash', async () => {
+    // A feeds B. After a force redraws A and B fails on it, flipping A's model away and back
+    // resumes A's redraw, and B must run: its only answers were drawn from A's other pictures.
+    const graph = new Graph();
+    const prompt = new GenDerivedPrompt();
+    const a = new GenImage();
+    const b = new GenEditImage();
+    const output = new GenOutput();
+    graph.add(prompt);
+    graph.add(a);
+    graph.add(b);
+    graph.add(output);
+    graph.connect(prompt.outputs.prompt, a.inputs.prompt);
+    graph.connect(a.outputs.image, b.inputs.base);
+    graph.connect(prompt.outputs.prompt, b.inputs.prompt);
+    graph.connect(b.outputs.image, output.inputs.image);
+    setProp(output, 'slot', 'portrait:aiko');
+    const records: GraphJournalRecord[] = [];
+    const edit = mock.image.edit;
+
+    await executeGenGraph(graph, context(records), { targets: [output.id], seeds: SEEDS });
+
+    mock.drawn = { ...mock.drawn, bytes: bytes('a redrawn base') };
+    mock.image.edit = () => Promise.reject(new Error('the edit model is down'));
+    const forced = await executeGenGraph(graph, context(records), {
+      targets: [output.id],
+      seeds  : SEEDS,
+      force  : true,
+    });
+    expect(forced.failures.map((f) => f.nodeId)).toEqual([b.id]);
+
+    mock.image.edit = edit;
+    setProp(a, 'model', 'other/model');
+    mock.drawn = { ...mock.drawn, bytes: bytes("the other model's base") };
+    await executeGenGraph(graph, context(records), { targets: [output.id], seeds: SEEDS });
+
+    setProp(a, 'model', '');
+    const edits = mock.images.filter((call) => call.kind === 'edit').length;
+    const back = await executeGenGraph(graph, context(records), {
+      targets: [output.id],
+      seeds  : SEEDS,
+    });
+
+    expect(back.skipped).toContain(a.id);
+    expect(back.ran).toContain(b.id);
+    expect(mock.images.filter((call) => call.kind === 'edit')).toHaveLength(edits + 1);
+    expect(mock.images[mock.images.length - 1]?.base?.bytes).toEqual(bytes('a redrawn base'));
+  });
+
+  it('resumes a node below one that ran again when the bytes came back the same', async () => {
+    const { graph, prompt, image, output } = chain();
+    const records: GraphJournalRecord[] = [];
+
+    await executeGenGraph(graph, context(records), { targets: [output.id], seeds: SEEDS });
+    const second = await executeGenGraph(graph, context(records), {
+      targets: [output.id],
+      seeds  : SEEDS,
+      force  : true,
+    });
+
+    expect(second.ran).toEqual([image.id]);
+    expect(second.skipped).toEqual([prompt.id, output.id]);
+  });
+
+  it('records the new authored hash on a node whose output an edit left unchanged', async () => {
+    const graph = new Graph();
+    const prompt = new GenDerivedPrompt();
+    const template = new GenTemplate();
+    const image = new GenImage();
+    const output = new GenOutput();
+    graph.add(prompt);
+    graph.add(template);
+    graph.add(image);
+    graph.add(output);
+    graph.connect(prompt.outputs.prompt, template.inputs.varA);
+    graph.connect(template.outputs.text, image.inputs.prompt);
+    graph.connect(image.outputs.image, output.inputs.image);
+    setProp(template, 'template', '{varA}');
+    setProp(output, 'slot', 'portrait:aiko');
+    const records: GraphJournalRecord[] = [];
+
+    await executeGenGraph(graph, context(records), { targets: [output.id], seeds: SEEDS });
+    // varC is unwired and empty, so the template's text does not change
+    setProp(template, 'template', '{varA}{varC}');
+    expect(graphDrift(graph, journalOf(records)).map((d) => d.nodeId)).toEqual([output.id]);
+    const second = await executeGenGraph(graph, context(records), {
+      targets: [output.id],
+      seeds  : SEEDS,
+    });
+
+    expect(second.ran).toEqual([template.id]);
+    expect(second.skipped).toEqual([prompt.id, image.id, output.id]);
+    expect(mock.images).toHaveLength(1);
+    expect(graphDrift(graph, journalOf(records))).toEqual([]);
+  });
+
+  it('runs a node whose recorded picture is no longer in the store', async () => {
+    const { graph, image, output } = chain();
+    const records: GraphJournalRecord[] = [];
+
+    const first = await executeGenGraph(graph, context(records), {
+      targets: [output.id],
+      seeds  : SEEDS,
+    });
+    const drawn = first.outputs.get(image.id)?.image as { hash: string };
+    mock.blobs.stored.delete(drawn.hash);
+    const second = await executeGenGraph(graph, context(records), {
+      targets: [output.id],
+      seeds  : SEEDS,
+    });
+
+    expect(second.ran).toContain(image.id);
+    expect(mock.images).toHaveLength(2);
+  });
+
+  it('resumes a pre-key journal as a pure chain', async () => {
+    const { graph, output } = chain();
+    const records: GraphJournalRecord[] = [];
+
+    await executeGenGraph(graph, context(records), { targets: [output.id], seeds: SEEDS });
+    const preKey = records.map(({ runKey: _runKey, ...rest }) => ({ ...rest, v: 1 }));
+    const second = await executeGenGraph(graph, context(preKey), {
+      targets: [output.id],
+      seeds  : SEEDS,
+    });
+
+    expect(second.ran).toEqual([]);
+    expect(second.skipped).toHaveLength(3);
+    expect(mock.images).toHaveLength(1);
+  });
+
+  it('runs a pre-key node below the first node that resumed by key', async () => {
+    const { graph, prompt, image, output } = chain();
+    const records: GraphJournalRecord[] = [];
+
+    await executeGenGraph(graph, context(records), { targets: [output.id], seeds: SEEDS });
+    const mixed = records.map(({ runKey, ...rest }) =>
+      rest.nodeId === image.id ? { ...rest, runKey } : { ...rest, v: 1 },
+    );
+    const second = await executeGenGraph(graph, context(mixed), {
+      targets: [output.id],
+      seeds  : SEEDS,
+    });
+
+    expect(second.skipped).toEqual([prompt.id, image.id]);
+    expect(second.ran).toEqual([output.id]);
+    expect(mock.images).toHaveLength(1);
+  });
+
+  it('feeds a socket with two sources the resumed values', async () => {
+    const build = (): { graph: Graph; composed: GenImage; output: GenOutput } => {
+      const graph = new Graph();
+      const prompt = new GenDerivedPrompt();
+      const left = new GenImage();
+      const right = new GenImage();
+      const composed = new GenImage();
+      const output = new GenOutput();
+      graph.add(prompt);
+      graph.add(left);
+      graph.add(right);
+      graph.add(composed);
+      graph.add(output);
+      setProp(left, 'seed', '1');
+      setProp(right, 'seed', '2');
+      setProp(output, 'slot', 'portrait:aiko');
+      composed.inputs.refs.multiSocket = true;
+      graph.connect(prompt.outputs.prompt, left.inputs.prompt);
+      graph.connect(prompt.outputs.prompt, right.inputs.prompt);
+      graph.connect(prompt.outputs.prompt, composed.inputs.prompt);
+      graph.connect(left.outputs.image, composed.inputs.refs);
+      graph.connect(right.outputs.image, composed.inputs.refs);
+      graph.connect(composed.outputs.image, output.inputs.image);
+      return { graph, composed, output };
+    };
+    const records: GraphJournalRecord[] = [];
+
+    const first = build();
+    await executeGenGraph(first.graph, context(records), {
+      targets: [first.output.id],
+      seeds  : SEEDS,
+    });
+    expect(mock.images).toHaveLength(3);
+    expect(mock.images[2]?.refs).toHaveLength(1);
+
+    // A fresh graph object, as a reload gives, so nothing is memoized from the first run
+    const second = build();
+    const rerun = await executeGenGraph(second.graph, context(records), {
+      targets: [second.output.id],
+      seeds  : SEEDS,
+    });
+
+    expect(rerun.ran).toEqual([]);
+    expect(rerun.skipped).toContain(second.composed.id);
+    expect(mock.images).toHaveLength(3);
+  });
+});
+
 describe('a deliberate re-render', () => {
   it('invalidates each paid ancestor and re-runs it while prep still resumes', async () => {
     const { graph, prompt, image, output } = chain();
@@ -210,6 +449,7 @@ describe('a deliberate re-render', () => {
 
     await executeGenGraph(graph, context(records), { targets: [output.id], seeds: SEEDS });
     const before = records.length;
+    mock.drawn = { ...mock.drawn, bytes: bytes('a second take') };
     const second = await executeGenGraph(graph, context(records), {
       targets: [output.id],
       seeds  : SEEDS,
@@ -221,6 +461,56 @@ describe('a deliberate re-render', () => {
     ]);
     expect(second.skipped).toEqual([prompt.id]);
     expect(second.ran).toEqual([image.id, output.id]);
+    expect(mock.images).toHaveLength(2);
+  });
+
+  it('runs a forced node although an older answer matches, and resumes the new one after', async () => {
+    const { graph, image, output } = chain();
+    const records: GraphJournalRecord[] = [];
+
+    const first = await executeGenGraph(graph, context(records), {
+      targets: [output.id],
+      seeds  : SEEDS,
+    });
+    mock.drawn = { ...mock.drawn, bytes: bytes('a second take') };
+    await executeGenGraph(graph, context(records), {
+      targets: [output.id],
+      seeds  : SEEDS,
+      force  : true,
+    });
+    const third = await executeGenGraph(graph, context(records), {
+      targets: [output.id],
+      seeds  : SEEDS,
+    });
+
+    expect(mock.images).toHaveLength(2);
+    expect(third.ran).toEqual([]);
+    expect(third.skipped).toContain(image.id);
+    expect(third.outputs.get(output.id)).not.toEqual(first.outputs.get(output.id));
+  });
+
+  it('honours an invalidation written at rest, the way a regenerate writes one', async () => {
+    const { graph, image, output } = chain();
+    const records: GraphJournalRecord[] = [];
+
+    await executeGenGraph(graph, context(records), { targets: [output.id], seeds: SEEDS });
+    await invalidateGenGraph(
+      graph,
+      {
+        record: (record) => {
+          records.push(record);
+          return Promise.resolve();
+        },
+        now   : () => new Date('2026-01-01T00:00:00.000Z'),
+      },
+      [output.id],
+    );
+    const second = await executeGenGraph(graph, context(records), {
+      targets: [output.id],
+      seeds  : SEEDS,
+    });
+
+    expect(second.ran).toContain(image.id);
     expect(mock.images).toHaveLength(2);
   });
 

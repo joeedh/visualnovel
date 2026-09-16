@@ -150,11 +150,11 @@ describe('resuming across a change of project model', () => {
     const { graph, output } = chain();
     const records: GraphJournalRecord[] = [];
 
-    await executeGenGraph(graph, context(mockServices(), records), {
-      targets: [output.id],
-      seeds  : SEEDS,
-    });
+    const first = mockServices();
+    await executeGenGraph(graph, context(first, records), { targets: [output.id], seeds: SEEDS });
+    // The second host reaches the same blob store, as the same project on disk would
     const again = mockServices();
+    again.blobs = first.blobs;
     const rerun = await executeGenGraph(graph, context(again, records), {
       targets: [output.id],
       seeds  : SEEDS,

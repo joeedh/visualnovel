@@ -24,6 +24,7 @@ import {
   GenTemplate,
   registerGenNodes,
 } from './types.js';
+import { imageRefOf } from './sockets.js';
 import type { GenImageRef } from './sockets.js';
 
 /** The placeholders a template node fills in, which are also its input socket names. */
@@ -52,19 +53,9 @@ function text(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
-function imageOf(value: unknown): GenImageRef | undefined {
-  if (value === null || typeof value !== 'object') {
-    return undefined;
-  }
-  const ref = value as Partial<GenImageRef>;
-  return typeof ref.hash === 'string' && typeof ref.ext === 'string' && ref.store !== undefined
-    ? (ref as GenImageRef)
-    : undefined;
-}
-
 function refsOf(value: unknown): GenImageRef[] {
   return Array.isArray(value)
-    ? value.map(imageOf).filter((r): r is GenImageRef => r !== undefined)
+    ? value.map(imageRefOf).filter((r): r is GenImageRef => r !== undefined)
     : [];
 }
 
@@ -165,7 +156,7 @@ async function storeImage(
 }
 
 function requireImage(inputs: GenInputs, key: string, what: string): GenImageRef {
-  const ref = imageOf(inputs[key]);
+  const ref = imageRefOf(inputs[key]);
   if (ref === undefined) {
     throw new Error(`${what} has no picture on its '${key}' input`);
   }
@@ -242,7 +233,7 @@ export function registerGenRuntimes(): void {
   bind(GenRefList, async (inputs) => {
     const refs = [...refsOf(inputs.list)];
     for (const key of SLOTS) {
-      const one = imageOf(inputs[key]);
+      const one = imageRefOf(inputs[key]);
       if (one !== undefined) {
         refs.push(one);
       }
