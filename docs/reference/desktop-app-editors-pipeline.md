@@ -237,6 +237,19 @@ text box, and none of those is a control.
   line after it, so a shot change changes which image a frame shows rather than how many
   frames a scene has. A scene that has been removed since the last read is the one case
   that restarts the story.
+- **On a page, the panel that letters the current line is lit and the rest dims.** A
+  `show` beat of a page shot carries its panels, each with the line ids it letters
+  ([`playable-format.md`](playable-format.md#contracts)), and `framesOf` gives a frame
+  `panel` when the current page has a panel naming the frame's `line`. The stage then lays
+  an `<svg>` over the picture's own box (not the stage, since the picture is letterboxed
+  inside it) with one even-odd path of the page minus the panel, filled in ink at
+  `PANEL_DIM`; the panel itself is not outlined. Moving between two panels of the same
+  page crossfades the two dims over `PANEL_FADE_MS`; under `prefers-reduced-motion` the
+  new dim is drawn without a fade. A line no panel letters, a frame with no `line`, and a
+  single frame show the picture whole, which is what every frame did before pages existed.
+  On a page frame (`Frame.page`) the dialogue box sits below the picture rather than over
+  it, because a portrait page fills a landscape pane's height and the box would cover the
+  bottom tier while it is lit; a single frame keeps the box over the picture.
 - **A portrait is drawn over a shot only when the project enables it.** A shot prompt
   names its own subjects, so the frame already shows the cast. The speaker's portrait is
   drawn over the shot only when `story.play.json` sets `portraitOverlay`, which comes from

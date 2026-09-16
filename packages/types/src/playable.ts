@@ -18,18 +18,39 @@ export const playableAssetRefSchema = z.object({
   ext : z.string().min(1),
 });
 
+/**
+ * One panel of a page shot, as the runner needs it: its outline in page fractions and the ids of
+ * the lines it letters, so a runner can light the panel whose line is being read.
+ */
+export const playablePanelSchema = z.object({
+  shape: z.array(z.tuple([z.number(), z.number()])).min(3),
+  lines: z.array(z.string().min(1)),
+});
+export type PlayablePanel = z.infer<typeof playablePanelSchema>;
+
 /** Show a background / shot image for the beats that follow. */
 const showBeatSchema = z.object({
-  type : z.literal('show'),
+  type  : z.literal('show'),
   /**
    * Which shot this frame is, so a runner can say where the frame sits in the project. This is
    * the one place the playable names an authored id. Optional so that a file written before the
    * field still parses; a runner reading a beat without this id cannot jump to the shot.
    */
-  shot : z.string().min(1).optional(),
+  shot  : z.string().min(1).optional(),
   /** The shot image; omitted when the shot has no accepted asset yet (runner shows a placeholder). */
-  image: playableAssetRefSchema.optional(),
+  image : playableAssetRefSchema.optional(),
+  /**
+   * The panels of a page shot, in reading order. Absent on a single frame. A runner that ignores
+   * the field shows the page whole, which is what every runner did before the field existed.
+   */
+  panels: z.array(playablePanelSchema).optional(),
 });
+
+/**
+ * The id of the screenplay line a beat was made from, so a runner can find the panel that
+ * letters it. Optional so that a file written before the field still parses.
+ */
+const lineId = z.string().min(1).optional();
 
 /** A character speaks (dialogue or parenthetical). */
 const sayBeatSchema = z.object({
@@ -37,12 +58,14 @@ const sayBeatSchema = z.object({
   /** Speaking character id (a key into {@link Playable.characters}). */
   who : z.string().min(1),
   text: z.string(),
+  line: lineId,
 });
 
 /** Un-attributed narration or action. */
 const narrateBeatSchema = z.object({
   type: z.literal('narrate'),
   text: z.string(),
+  line: lineId,
 });
 
 /** A single ordered beat within a scene. */

@@ -237,7 +237,7 @@ export type { BibleFile, Excerpt } from '@vn/bible';
 // this shape only as data that already crossed the wire.
 import type { Prereq, SlotNode } from '@vn/artgen';
 export type { Prereq, SlotNode };
-export type { Playable, Beat, PlayableScene, TaskKind, TaskStatus } from '@vn/types';
+export type { Playable, Beat, PlayablePanel, PlayableScene, TaskKind, TaskStatus } from '@vn/types';
 export type { Defect, DefectReport, Diagnostic } from '@vn/types';
 
 /**

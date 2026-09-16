@@ -179,6 +179,73 @@ describe('persisted decompositions', () => {
     expect(shows[0]).toMatchObject({ image: { hash: 'llm1', ext: 'png' } });
   });
 
+  it('writes the line id on every say and narrate beat', () => {
+    const play = buildPlayable(model, fakeStore(), { shots: new Map([['arrival', llmShots()]]) });
+    const spoken = play.scenes['arrival']!.beats.flatMap((b) => (b.type === 'show' ? [] : [b]));
+    expect(spoken.map((b) => b.line)).toEqual(lines);
+  });
+
+  it("carries a page shot's panels on its show beat, with the lines each letters", () => {
+    const [first, ...rest] = lines;
+    const page: Shot = {
+      ...llmShots()[0]!,
+      panels: [
+        {
+          shape: [
+            [0, 0],
+            [1, 0],
+            [1, 0.5],
+            [0, 0.5],
+          ],
+          framing    : 'wide',
+          subjects   : [],
+          coversLines: [first!],
+        },
+        {
+          shape: [
+            [0, 0.5],
+            [1, 0.5],
+            [1, 1],
+            [0, 1],
+          ],
+          framing    : 'close',
+          subjects   : [],
+          coversLines: rest,
+        },
+      ],
+    };
+    const play = buildPlayable(model, fakeStore(), { shots: new Map([['arrival', [page]]]) });
+    expect(() => playableSchema.parse(play)).not.toThrow();
+    const show = play.scenes['arrival']!.beats[0];
+    expect(show).toMatchObject({
+      type  : 'show',
+      panels: [
+        {
+          shape: [
+            [0, 0],
+            [1, 0],
+            [1, 0.5],
+            [0, 0.5],
+          ],
+          lines: [first],
+        },
+        {
+          shape: [
+            [0, 0.5],
+            [1, 0.5],
+            [1, 1],
+            [0, 1],
+          ],
+          lines: rest,
+        },
+      ],
+    });
+    // A frame's show beat has no panels key at all, so a file with no pages is byte for byte
+    // what it was.
+    const frame = buildPlayable(model, fakeStore(), { shots: new Map([['arrival', llmShots()]]) });
+    expect('panels' in frame.scenes['arrival']!.beats[0]!).toBe(false);
+  });
+
   it('reads them off disk, dropping line ids the screenplay no longer has', async () => {
     const paths = new ProjectPaths(await mkdtemp(join(tmpdir(), 'vn-export-')));
     const stale = llmShots();

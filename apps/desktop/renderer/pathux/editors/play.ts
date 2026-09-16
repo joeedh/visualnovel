@@ -21,6 +21,7 @@ import {
   assetUrl,
   back,
   choose,
+  dimPath,
   framesOf,
   jumpTo,
   parseSave,
@@ -31,6 +32,14 @@ import {
   type Pos,
 } from '../play/playback.js';
 import { TOKENS, alpha } from '../app/tokens.js';
+
+const SVG = 'http://www.w3.org/2000/svg';
+/** How far the rest of a page is darkened while one panel is read. */
+const PANEL_DIM = 0.55;
+const PANEL_FADE_MS = 180;
+
+const reducedMotion = (): boolean =>
+  typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /**
  * The playthrough editor: the React `Runner` with its rules lifted out to `play/playback.ts`
@@ -64,6 +73,10 @@ export class PlayEditor extends VnEditor {
   private published = '';
   /** Bumped on every re-read, so a reload redraws even though the position did not move. */
   private revision = 0;
+  /** The panel lit on the last draw, so the next draw of the same page can fade from it. */
+  private lit: { hash: string; panel: NonNullable<Frame['panel']> } | undefined;
+  /** Keeps the dim overlay on the picture's box as the pane resizes; one per drawn frame. */
+  private fitOverlay: ResizeObserver | undefined;
 
   static override define() {
     return {
@@ -355,13 +368,21 @@ export class PlayEditor extends VnEditor {
     const atEnd = cur.frameIndex >= frames.length;
     const frame = this.currentFrame();
 
-    this.stage.appendChild(this.scenery(frame));
-    if (!atEnd && frame) this.stage.appendChild(this.dialogue(frame));
+    // A page's dialogue box sits below the picture instead of over it: a portrait page fills a
+    // landscape pane's height, and a box over it would cover the bottom tier while it is lit
+    const stacked = !atEnd && frame?.page === true;
+    Object.assign(this.stage.style, {
+      display      : stacked ? 'flex' : 'block',
+      flexDirection: 'column',
+    });
+
+    this.stage.appendChild(this.scenery(frame, stacked));
+    if (!atEnd && frame) this.stage.appendChild(this.dialogue(frame, stacked));
     if (atEnd) this.stage.appendChild(this.sceneEnd(scene));
   }
 
   /** The background, and the portrait over it when the project opted in. */
-  private scenery(frame: Frame | undefined): HTMLElement {
+  private scenery(frame: Frame | undefined, stacked: boolean): HTMLElement {
     const wrap = document.createElement('div');
     Object.assign(wrap.style, {
       position      : 'absolute',
@@ -370,6 +391,7 @@ export class PlayEditor extends VnEditor {
       alignItems    : 'center',
       justifyContent: 'center',
     });
+    if (stacked) Object.assign(wrap.style, { position: 'relative', flex: '1 1 0', minHeight: '0' });
 
     const bgUrl = assetUrl(frame?.bg);
     if (bgUrl) {
@@ -378,6 +400,7 @@ export class PlayEditor extends VnEditor {
       img.draggable = false;
       Object.assign(img.style, { maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' });
       wrap.appendChild(img);
+      this.lightPanel(wrap, img, frame);
     } else {
       const empty = document.createElement('div');
       empty.textContent = 'no background yet';
@@ -409,13 +432,65 @@ export class PlayEditor extends VnEditor {
     return wrap;
   }
 
-  private dialogue(frame: Frame): HTMLElement {
+  /**
+   * Dims the page around the panel that letters the current line. The overlay is fitted to the
+   * picture's own box rather than the stage, since the picture is letterboxed inside it, and is
+   * refitted as the pane resizes. Moving between two panels of one page crossfades the two dims;
+   * under reduced motion the new dim is simply drawn.
+   */
+  private lightPanel(wrap: HTMLElement, img: HTMLImageElement, frame: Frame | undefined): void {
+    const previous = this.lit;
+    const panel = frame?.panel;
+    this.lit = panel && frame?.bg ? { hash: frame.bg.hash, panel } : undefined;
+    this.fitOverlay?.disconnect();
+    this.fitOverlay = undefined;
+    if (!panel) return;
+
+    const svg = document.createElementNS(SVG, 'svg');
+    svg.setAttribute('viewBox', '0 0 1 1');
+    svg.setAttribute('preserveAspectRatio', 'none');
+    Object.assign(svg.style, { position: 'absolute', pointerEvents: 'none' });
+
+    const dim = (shape: NonNullable<Frame['panel']>): SVGPathElement => {
+      const path = document.createElementNS(SVG, 'path');
+      path.setAttribute('d', dimPath(shape));
+      path.setAttribute('fill', alpha(TOKENS.ink, PANEL_DIM));
+      path.setAttribute('fill-rule', 'evenodd');
+      svg.appendChild(path);
+      return path;
+    };
+
+    const fresh = dim(panel);
+    const samePage = previous !== undefined && previous.hash === frame?.bg?.hash;
+    if (samePage && !reducedMotion()) {
+      const stale = dim(previous.panel);
+      const fade = { duration: PANEL_FADE_MS, easing: 'ease', fill: 'forwards' as const };
+      fresh.animate([{ opacity: 0 }, { opacity: 1 }], fade);
+      stale.animate([{ opacity: 1 }, { opacity: 0 }], fade).onfinish = () => stale.remove();
+    }
+
+    // The picture's box: it keeps its own aspect inside the stage, so its offsets are the frame
+    const fit = () =>
+      Object.assign(svg.style, {
+        left  : `${img.offsetLeft}px`,
+        top   : `${img.offsetTop}px`,
+        width : `${img.offsetWidth}px`,
+        height: `${img.offsetHeight}px`,
+      });
+    this.fitOverlay = new ResizeObserver(fit);
+    this.fitOverlay.observe(img);
+    fit();
+    wrap.appendChild(svg);
+  }
+
+  private dialogue(frame: Frame, stacked: boolean): HTMLElement {
     const box = document.createElement('div');
     Object.assign(box.style, {
-      position  : 'absolute',
+      position  : stacked ? 'relative' : 'absolute',
       left      : '0',
       right     : '0',
       bottom    : '0',
+      flex      : 'none',
       padding   : '14px 18px 10px',
       background: alpha(TOKENS.ink, 0.86),
       borderTop : `1px solid ${TOKENS.inkLine}`,

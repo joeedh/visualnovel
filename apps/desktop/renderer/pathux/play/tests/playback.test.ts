@@ -4,6 +4,7 @@ import {
   assetUrl,
   back,
   choose,
+  dimPath,
   framesOf,
   jumpTo,
   parseSave,
@@ -65,6 +66,60 @@ describe('framesOf', () => {
 
   it('a missing scene has no frames', () => {
     expect(framesOf(undefined)).toEqual([]);
+  });
+
+  it('lights the panel that letters a line, and none for a line no panel letters', () => {
+    const top: [number, number][] = [
+      [0, 0],
+      [1, 0],
+      [1, 0.5],
+      [0, 0.5],
+    ];
+    const bottom: [number, number][] = [
+      [0, 0.5],
+      [1, 0.5],
+      [1, 1],
+      [0, 1],
+    ];
+    const frames = framesOf({
+      beats: [
+        {
+          type  : 'show',
+          shot  : 'a.page',
+          panels: [
+            { shape: top, lines: ['a:L1'] },
+            { shape: bottom, lines: ['a:L2', 'a:L3'] },
+          ],
+        },
+        { type: 'narrate', text: 'Rain.', line: 'a:L1' },
+        { type: 'say', who: 'aiko', text: 'Hello.', line: 'a:L2' },
+        { type: 'narrate', text: 'Unlettered.', line: 'a:L9' },
+        { type: 'narrate', text: 'No id.' },
+        // The next frame's panels do not carry over
+        { type: 'show', shot: 'a.s2' },
+        { type: 'narrate', text: 'Silence.', line: 'a:L1' },
+      ],
+      choices: [],
+    });
+
+    expect(frames.map((f) => f.panel)).toEqual([top, bottom, undefined, undefined, undefined]);
+    expect('panel' in frames[2]!).toBe(false);
+    // `page` is set on all four frames the page is on screen for, whether a panel is lit or
+    // not, and absent once the next shot's frame arrives
+    expect(frames.map((f) => f.page)).toEqual([true, true, true, true, undefined]);
+  });
+});
+
+describe('dimPath', () => {
+  it('is the unit square and the panel as two subpaths', () => {
+    expect(
+      dimPath([
+        [0, 0.5],
+        [1, 0.5],
+        [1, 1],
+        [0, 1],
+      ]),
+    ).toBe('M0 0H1V1H0ZM0 0.5L1 0.5L1 1L0 1Z');
   });
 });
 

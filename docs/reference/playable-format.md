@@ -35,12 +35,33 @@ Contracts. Each scene flattens into ordered beats plus its branch edges:
         "arrival": {
             "beats": [
                 {
-                    "type" : "show",
-                    "shot" : "arrival__establishing",
-                    "image": { "hash": "…", "ext": "png" },
+                    "type"  : "show",
+                    "shot"  : "arrival__establishing",
+                    "image" : { "hash": "…", "ext": "png" },
+                    // only on a page shot: each panel's outline in page fractions, and the lines it letters
+                    "panels": [
+                        {
+                            "shape": [
+                                [0, 0],
+                                [1, 0],
+                                [1, 0.5],
+                                [0, 0.5],
+                            ],
+                            "lines": ["arrival:L1"],
+                        },
+                    ],
                 }, // bg/shot (image omitted if none)
-                { "type": "say", "who": "aiko", "text": "Um… hello." }, // attributed dialogue/parenthetical
-                { "type": "narrate", "text": "She bows, a little too deeply." }, // narration/action
+                {
+                    "type": "say",
+                    "who" : "aiko",
+                    "text": "Um… hello.",
+                    "line": "arrival:L2",
+                }, // attributed dialogue/parenthetical
+                {
+                    "type": "narrate",
+                    "text": "She bows, a little too deeply.",
+                    "line": "arrival:L3",
+                }, // narration/action
             ],
             "choices": [{ "label": "Introduce yourself", "goto": "greet" }],
             "next"   : "rooftop", // followed when choices is empty
@@ -66,13 +87,21 @@ Contracts. Each scene flattens into ordered beats plus its branch edges:
   a viewer jump from the point they are watching. The field is optional in the schema so
   that a playable written before the field existed can still be read, and every export
   since writes it.
-- **A page shot is shown whole.** A shot with `panels` renders as one image of several
-  panels, and the exporter treats it as any other shot: one `show` beat naming the shot,
-  with its single image, when the covering shot changes, then the `say`/`narrate` beats of
-  every line it covers over that image. The playable carries nothing about panels, so a
-  runner shows the page at its own aspect and steps the lines beneath it, with the page
-  held over all of them. Stepping the panels, lighting one as its line is read, is a later
-  stage
+- **A page shot is one image, and its `show` beat carries the panels.** A shot with
+  `panels` renders as one picture of several panels, and the exporter treats it as any
+  other shot: one `show` beat naming the shot, with its single image, when the covering
+  shot changes, then the `say`/`narrate` beats of every line it covers over that image.
+  The `show` beat additionally lists `panels`, each panel's `shape` (its outline in page
+  fractions, clockwise, as authored in `work/shots/<sceneId>.json`) and the `lines` it
+  letters (the panel's `coversLines`). A single frame's `show` beat has no `panels` key at
+  all, so a playable with no pages is unchanged.
+- **Every `say` and `narrate` beat names its line.** `line` is the `SceneLine` id the beat
+  was made from, which is how a runner finds the panel that letters it: the desktop
+  runner's `framesOf` gives a frame `panel` when the current page has a panel whose
+  `lines` include the frame's `line`, and the stage dims the rest of the page around it. A
+  line no panel letters, and a beat with no `line`, show the page whole. Both fields are
+  optional in the schema so a playable written before them still parses, and the static
+  site renderer ignores them
   ([`../plans/manga-style.md#stage-3--panel-stepping-and-the-panel-editor`](../plans/manga-style.md#stage-3--panel-stepping-and-the-panel-editor)).
 - **A `transition` line is coverable but produces no beat.** `CUT TO:` is an instruction
   to the reader of a screenplay rather than a line of the story. A shot may cover it, and

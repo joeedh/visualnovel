@@ -2,13 +2,16 @@
  * The runner's rules, with no widget in them: folding a scene's beats into frames, where a click
  * or a key goes next, and what a save file is. The path.ux editor holds only the rendering.
  */
-import type { Beat, Playable, PlayableScene } from '../../../src/shared/ipc.js';
+import type { Beat, Playable, PlayablePanel, PlayableScene } from '../../../src/shared/ipc.js';
 
 /** A content-addressed asset ref, as it appears in the playable. */
 export interface Ref {
   hash: string;
   ext: string;
 }
+
+/** A panel outline in page fractions, clockwise. */
+export type PanelShape = PlayablePanel['shape'];
 
 /** A position in the playthrough: which scene, and how far into its frames. */
 export interface Pos {
@@ -30,6 +33,13 @@ export interface Frame {
   /** Set only when this frame is spoken dialogue (drives the nameplate). */
   speaker?: string;
   text: string;
+  /** Set when the background is a page shot, whose dialogue box sits below the picture. */
+  page?: true;
+  /**
+   * The outline of the page panel that letters this frame's line. Set only when the background
+   * is a page and one of its panels names the line; a line no panel letters shows the page whole.
+   */
+  panel?: PanelShape;
 }
 
 /** Fold a scene's beats into displayable frames. */
@@ -39,21 +49,39 @@ export function framesOf(scene: PlayableScene | undefined): Frame[] {
   const frames: Frame[] = [];
   let bg: Ref | undefined;
   let shotId: string | undefined;
+  let panels: PlayablePanel[] | undefined;
   let lastWho: string | undefined;
+
+  const panelOf = (line: string | undefined): PanelShape | undefined =>
+    line === undefined ? undefined : panels?.find((p) => p.lines.includes(line))?.shape;
 
   for (const beat of scene.beats as Beat[]) {
     if (beat.type === 'show') {
       bg = beat.image;
       shotId = beat.shot;
-    } else if (beat.type === 'say') {
+      panels = beat.panels;
+      continue;
+    }
+    const panel = panelOf(beat.line);
+    const lit = { ...(panels ? { page: true as const } : {}), ...(panel ? { panel } : {}) };
+    if (beat.type === 'say') {
       lastWho = beat.who;
-      frames.push({ bg, shotId, portraitWho: lastWho, speaker: beat.who, text: beat.text });
+      frames.push({ bg, shotId, portraitWho: lastWho, speaker: beat.who, text: beat.text, ...lit });
     } else {
-      frames.push({ bg, shotId, portraitWho: lastWho, text: beat.text });
+      frames.push({ bg, shotId, portraitWho: lastWho, text: beat.text, ...lit });
     }
   }
 
   return frames;
+}
+
+/**
+ * The SVG path of the page minus one panel, in a unit viewBox: the outer square wound one way and
+ * the panel wound the other, so an even-odd fill dims everything but the panel.
+ */
+export function dimPath(panel: PanelShape): string {
+  const ring = panel.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x} ${y}`).join('');
+  return `M0 0H1V1H0Z${ring}Z`;
 }
 
 /** `vnasset://<hash>.<ext>` — resolved by main from the content-addressed store. */

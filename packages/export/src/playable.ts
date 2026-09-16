@@ -16,6 +16,7 @@ import type {
   AssetRef,
   AssetStore,
   Playable,
+  PlayablePanel,
   PlayableScene,
   Beat,
   ProjectModel,
@@ -28,12 +29,18 @@ import { ProjectPaths, readShots } from '@vn/store';
 import { writeFileAtomic } from '@vn/util';
 
 /**
- * A shot reduced to what the exporter needs: its id (to resolve an image from the manifest)
- * and the line ids it covers.
+ * A shot reduced to what the exporter needs: its id (to resolve an image from the manifest),
+ * the line ids it covers, and its panels when it is a page.
  */
 interface CoveringShot {
   id: string;
   coversLines: string[];
+  panels?: PlayablePanel[];
+}
+
+/** A page's panels as the playable carries them; `undefined` for a single frame. */
+function panelsOf(shot: Shot): PlayablePanel[] | undefined {
+  return shot.panels?.map((p) => ({ shape: p.shape, lines: p.coversLines }));
 }
 
 /**
@@ -71,7 +78,10 @@ export async function loadSceneShots(
 function coveringShots(scene: Scene, persisted?: readonly Shot[]): CoveringShot[] {
   const own = persisted?.length ? persisted : scene.shots;
   if (own.length > 0) {
-    return own.map((s) => ({ id: s.id, coversLines: s.coversLines }));
+    return own.map((s) => {
+      const panels = panelsOf(s);
+      return { id: s.id, coversLines: s.coversLines, ...(panels ? { panels } : {}) };
+    });
   }
   const lineIds = (predicate: (l: SceneLine) => boolean): string[] =>
     scene.lines.filter(predicate).map((l) => l.id);
@@ -132,15 +142,20 @@ function sceneBeats(scene: Scene, assets: AssetIndex, persisted?: readonly Shot[
     if (shot && shot.id !== currentShotId) {
       currentShotId = shot.id;
       const image = assets.shotImage(shot.id);
-      beats.push(image ? { type: 'show', shot: shot.id, image } : { type: 'show', shot: shot.id });
+      beats.push({
+        type: 'show',
+        shot: shot.id,
+        ...(image ? { image } : {}),
+        ...(shot.panels ? { panels: shot.panels } : {}),
+      });
     }
     // A transition is coverable but is not shown: `CUT TO:` is an instruction to the reader of
     // a screenplay, not a line of the story. The show beat emitted above still changes the frame.
     if (line.kind === 'transition') continue;
     if ((line.kind === 'dialogue' || line.kind === 'parenthetical') && line.speaker) {
-      beats.push({ type: 'say', who: line.speaker, text: line.text });
+      beats.push({ type: 'say', who: line.speaker, text: line.text, line: line.id });
     } else {
-      beats.push({ type: 'narrate', text: line.text });
+      beats.push({ type: 'narrate', text: line.text, line: line.id });
     }
   }
   return beats;
