@@ -625,6 +625,32 @@ describe('a project whose slot a generation graph draws', () => {
     }
   });
 
+  it('prices a drawn slot again once its graph has drifted', async () => {
+    registerGenRuntimes();
+    const p = await makeProject({ script: SCRIPTS.linear });
+    try {
+      const graph = boundGraph('portrait:aiko');
+      await p.run({ graphs: { portraits: graph } });
+      const drawn = await capture(() => cmdCost({ positional: [p.dir], flags: {} }, silentLogger));
+      // The document has to be on disk for `cost` to see the graph at all
+      await writeGraphDoc(p.dir, 'portraits', graph);
+      const before = await capture(() => cmdCost({ positional: [p.dir], flags: {} }, silentLogger));
+      expect(drawn.out).not.toContain('Generation graphs:');
+      expect(before.out).toContain('slots to draw: 0 of 1 bound');
+
+      graph.nodes.find((n) => n instanceof GenImage)!.props['aspect']!.setValue('1:1');
+      await writeGraphDoc(p.dir, 'portraits', graph);
+      const { code, out } = await capture(() =>
+        cmdCost({ positional: [p.dir], flags: {} }, silentLogger),
+      );
+
+      expect(code).toBe(0);
+      expect(out).toContain('slots to draw: 1 of 1 bound');
+    } finally {
+      await p.cleanup();
+    }
+  });
+
   it('names the graph and what it binds in `status`', async () => {
     const { dir, cleanup } = await projectWithGraph();
     try {

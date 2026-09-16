@@ -406,7 +406,8 @@ asks for, run on the branch after Stages 1 to 5 were green.
 - `vngen cost` on the bound slot said `no price for: openai/gpt-image-2`, which is right:
   the resolved id is a per-token model and the catalog carries no per-picture price for
   it. `vngen status` reported the drifted output, but `vngen cost` counted 0 slots to draw
-  for it: a drifted slot is not in the graph estimate, only an unrendered one.
+  for it: a drifted slot was not in the graph estimate, only an unrendered one. Since
+  fixed: `boundSlotsToDraw` prices the drifted bound slots beside the unrendered ones.
 - The listing: 52 image models, every id with a slash, 26 with a per-picture price
   ($0.019
   to $0.30; ByteDance, Qwen, Recraft, Sourceful, xAI), 26 without (Black Forest
@@ -420,7 +421,7 @@ asks for, run on the branch after Stages 1 to 5 were green.
   spend.
 - A per-token OpenRouter model stays unpriced in the estimate. The alternative, a nominal
   token count per picture, would put an unchecked figure beside checked ones.
-- Nothing in the results changes the plan's decisions. Two things are noted for later work
-  rather than fixed here: a drifted bound slot is not counted in `vngen cost`'s graph
-  estimate, and a graph node with an empty `aspect` draws at the provider's default size
-  rather than the project's.
+- Nothing in the results changes the plan's decisions. Two things were noted for later
+  work rather than fixed here: a drifted bound slot was not counted in `vngen cost`'s
+  graph estimate (since fixed), and a graph node with an empty `aspect` draws at the
+  provider's default size rather than the project's.

@@ -19,6 +19,7 @@ import {
 } from '@vn/store';
 import { buildPlayable, loadSceneShots, writePlayable } from '@vn/export';
 import {
+  boundSlotsToDraw,
   decomposeAll,
   gateStatus,
   graphRuntime,
@@ -27,7 +28,6 @@ import {
   readProjectGraphs,
   reportGraphs,
   suspendedAssets,
-  unrenderedBoundSlots,
   type GraphDoc,
   type GraphRuntime,
 } from '@vn/pipeline';
@@ -356,7 +356,8 @@ async function loadGraphs(
 /**
  * What the graphs are expected to spend, printed under the call counts it replaces. Every slot
  * a graph draws and nothing has drawn yet is priced, planned or not, because the planner runs
- * one wave per run and a slot a later wave unlocks would otherwise be quoted at nothing.
+ * one wave per run and a slot a later wave unlocks would otherwise be quoted at nothing. A
+ * drawn slot whose graph has drifted is priced too, since the run requeues it before drawing.
  */
 async function printGraphCost(project: LoadedProject, docs: readonly GraphDoc[]): Promise<void> {
   if (docs.length === 0) return;
@@ -366,7 +367,7 @@ async function printGraphCost(project: LoadedProject, docs: readonly GraphDoc[])
     imageModel       : project.config.models.image,
     tables           : await hostPriceTables(),
   });
-  const slots = unrenderedBoundSlots(report, {
+  const slots = boundSlotsToDraw(report, {
     model : project.model,
     config: project.config,
     assets: project.store.manifest(),

@@ -269,6 +269,23 @@ export function unrenderedBoundSlots(report: GraphsReport, inputs: ProjectSlotIn
   });
 }
 
+/**
+ * The slots the next run draws through a graph: the unrendered ones, and the drawn ones whose
+ * graph has been edited since, which `requeueDrifted` puts back to `pending` at the start of
+ * the run. The unrendered slots come first, in slot order, then the drifted ones; a slot that
+ * is both is named once.
+ */
+export function boundSlotsToDraw(report: GraphsReport, inputs: ProjectSlotInputs): string[] {
+  const drifted = new Set(report.drifted.map((d) => d.slot).filter((slot) => slot.length > 0));
+  const slots = new Set(unrenderedBoundSlots(report, inputs));
+  for (const slot of drifted) {
+    if (report.bound.has(slot)) {
+      slots.add(slot);
+    }
+  }
+  return [...slots];
+}
+
 /** What drawing a set of graph-bound slots is expected to cost. */
 export interface GraphSlotCost {
   /** How many of the slots asked about a graph actually draws. */
