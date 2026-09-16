@@ -154,6 +154,8 @@ export interface ClaimNode {
    * where the tree is built, because a claim cannot read the project.
    */
   boundGraph?: string;
+  /** Whether a `shot` node's shot is a page, stamped where the tree is built. */
+  panels?: true;
 }
 
 /** What an editor will show for a clicked document-tree node, and how well. */

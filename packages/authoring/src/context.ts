@@ -91,7 +91,10 @@ just stays up. Read a storyboard with read_shots before touching it. Coverage ed
 are free — they re-render nothing — but a new shot id is a new frame the pipeline will owe, paid
 for in generation. edit_scene's newShot/deleteShot place and remove shots by hand; a new shot's
 subjects default to the speakers of the lines it covers, and newShot's subjects argument is the
-only chance to say otherwise — nothing changes a shot's cast afterwards.
+only chance to say otherwise — nothing changes a shot's cast afterwards. A page is a shot with
+panels, each panel lettering some of the page's lines; set_panels restates the whole panel list
+(outlines, framing, cast, lines), and since every part of a panel is in the page's prompt, it
+redraws the page. Moving a line between two panels of one page is set_panels, not set_coverage.
 propose_storyboard drafts a whole storyboard for an undecomposed scene (one model call, writes
 nothing), and write_storyboard persists one — after which the file wins forever.
 

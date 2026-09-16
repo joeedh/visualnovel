@@ -23,6 +23,19 @@ const bare: CoverageShot = {
   drift      : 'current',
 };
 
+const TOP: [number, number][] = [
+  [0, 0],
+  [1, 0],
+  [1, 0.5],
+  [0, 0.5],
+];
+const BOTTOM: [number, number][] = [
+  [0, 0.5],
+  [1, 0.5],
+  [1, 1],
+  [0, 1],
+];
+
 export const SITUATIONS = situations<ShotMenuState>(
   {
     name : 'drawn',
@@ -42,7 +55,10 @@ export const SITUATIONS = situations<ShotMenuState>(
       shot: {
         ...bare,
         coversLines: ['arrival:L1', 'arrival:L2'],
-        panels     : [{ coversLines: ['arrival:L1'] }, { coversLines: ['arrival:L2'] }],
+        panels: [
+          { shape: TOP, framing: 'wide', subjects: [], coversLines: ['arrival:L1'] },
+          { shape: BOTTOM, framing: 'close', subjects: [], coversLines: ['arrival:L2'] },
+        ],
         aspect     : '3:4',
         image      : { hash: 'a1b2c3d4', ext: 'png' },
       },

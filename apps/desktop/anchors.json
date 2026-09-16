@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-15T22:36:28.223Z",
-  "gitSha"       : "538e8ec7947fe2c6568cabb4376b17b4e749813e",
+  "sweptAt"      : "2026-09-16T18:43:56.798Z",
+  "gitSha"       : "a3c747ff99cd68b9989ff251dcacfa3ba8fd0141",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -147,6 +147,7 @@
     "story.setLineText",
     "story.setNext",
     "story.setOutfit",
+    "story.setPanels",
     "story.setSceneOutfit",
     "story.setSpeaker",
     "story.setSubjects",
@@ -3254,6 +3255,30 @@
     {
       "id"        : "notify.follow",
       "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260916-093525-7eb7-0000",
+      "widgetPath": "notifications/notify-follow~c3b76f8b"
+    },
+    {
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260916-093525-7eb7-0000",
+      "widgetPath": "notifications/notify-hide~ec4430aa"
+    },
+    {
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260915-153545-c0af-0000",
+      "widgetPath": "notifications/notify-follow~f4617c48"
+    },
+    {
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260915-153545-c0af-0000",
+      "widgetPath": "notifications/notify-hide~2591cd69"
+    },
+    {
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
       "key"       : "cmd:notify.follow#20260914-160803-5a63-0000",
       "widgetPath": "notifications/notify-follow~34aaef2b"
     },
@@ -3586,30 +3611,6 @@
       "editor"    : "notifications",
       "key"       : "cmd:notify.hide#20260905-013047-5302-0081",
       "widgetPath": "notifications/notify-hide~bd544943"
-    },
-    {
-      "id"        : "notify.follow",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.follow#20260905-013047-5302-0080",
-      "widgetPath": "notifications/notify-follow~06ef741b"
-    },
-    {
-      "id"        : "notify.hide",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.hide#20260905-013047-5302-0080",
-      "widgetPath": "notifications/notify-hide~c0fe514a"
-    },
-    {
-      "id"        : "notify.follow",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.follow#20260905-013047-5302-0079",
-      "widgetPath": "notifications/notify-follow~42cd93b5"
-    },
-    {
-      "id"        : "notify.hide",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.hide#20260905-013047-5302-0079",
-      "widgetPath": "notifications/notify-hide~99d0bd04"
     },
     {
       "id"        : "pane.view",

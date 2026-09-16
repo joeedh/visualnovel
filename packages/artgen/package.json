@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./slotaddr": "./src/slotaddr.ts"
+    "./slotaddr": "./src/slotaddr.ts",
+    "./layout": "./src/layout.ts"
   },
   "dependencies": {
     "@vn/types": "workspace:*",

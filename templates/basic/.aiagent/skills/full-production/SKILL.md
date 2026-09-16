@@ -140,6 +140,10 @@ exists, you can work on it:
   page (a shot with `panels`) under `lettering: model` is the exception: its lines are in
   its prompt, so a coverage take re-renders it, and the tool says so.
   `edit_scene op=moveShot` reorders by moving the lines the shot covers.
+- **Panel edits redraw the page.** `set_panels` restates a page's whole panel list — each
+  outline, framing, cast and the lines it letters — and an empty list makes the shot a
+  frame again. Every part of a panel is in the page's prompt, so the page is drawn again.
+  A line moving between two panels of one page is `set_panels`, not `set_coverage`.
 - To direct a frame, `set_art_notes rung=shot:<sceneId>/<shotId>` ("the speaker in the
   near third, listener over-shoulder") and `set_outfit shot=…`. Framing and subjects are
   set at birth (`newShot`/`write_storyboard`); to change them afterwards, delete the shot

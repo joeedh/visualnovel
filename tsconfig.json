@@ -14,6 +14,7 @@
       "@vn/bible"           : ["./packages/bible/src/index.ts"],
       "@vn/artgen"          : ["./packages/artgen/src/index.ts"],
       "@vn/artgen/slotaddr" : ["./packages/artgen/src/slotaddr.ts"],
+      "@vn/artgen/layout"   : ["./packages/artgen/src/layout.ts"],
       "@vn/git"             : ["./packages/git/src/index.ts"],
       "@vn/commands"        : ["./packages/commands/src/index.ts"],
       "@vn/agentreport"     : ["./packages/agentreport/src/index.ts"],

@@ -414,6 +414,8 @@ export const minedLocationsSchema = z.object({
 });
 
 const shotFraming = z.enum(['wide', 'medium', 'close', 'establishing']);
+/** The framings a shot or a panel may have, as the one list every picker and refusal draws. */
+export const SHOT_FRAMINGS = shotFraming.options;
 
 const shotSubject = z.object({
   characterId: z.string(),
@@ -435,6 +437,8 @@ const pagePanel = z.object({
   coversLines: z.array(z.string()).default([]),
   artNotes   : z.string().optional(),
 });
+/** A panel list as a command or a tool receives it, parsed before any rule reads it. */
+export const pagePanelsSchema = z.array(pagePanel);
 
 /** A staging-sheet group's own settings, keyed by the group id in `sheets`. */
 const sheetGroup = z.object({

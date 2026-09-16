@@ -42,7 +42,7 @@ import {
   type SceneMap,
   type ScriptState,
 } from '@vn/scriptedit';
-import type { Scene } from '@vn/types';
+import { SHOT_FRAMINGS, pagePanelsSchema, type PagePanel, type Scene } from '@vn/types';
 import { scenesOf } from '../../shared/interactions.js';
 import type { CommandHost } from './host.js';
 
@@ -581,11 +581,9 @@ export const storyNewShot = define({
   props: {
     scene   : prop.string('the scene to place the shot in'),
     lines   : prop.string('comma-separated line ids the shot covers; at least one'),
-    framing: prop.oneOf(
-      ['medium', 'wide', 'close', 'establishing'] as const,
-      'how the shot frames its subjects',
-      { default: 'medium' },
-    ),
+    framing: prop.oneOf(SHOT_FRAMINGS, 'how the shot frames its subjects', {
+      default: 'medium',
+    }),
     subjects: prop.string(
       'comma-separated character ids on screen; empty uses the speakers of the covered lines',
       { default: '' },
@@ -774,6 +772,65 @@ export const storyRequireCast = define({
   },
   async run({ scene, shot, required }, ctx) {
     const result = await ctx.host.session.requireShotCast(scene, shot, required);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result.coverage, written: result.written };
+  },
+});
+
+/**
+ * The panel list a `story.setPanels` call carries, parsed through the shots-file schema so a
+ * malformed panel is refused by name before any rule reads it. `[]` is a real answer: a frame.
+ */
+function panelsOf(json: string): { panels: PagePanel[] } | { refuse: string } {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch (err) {
+    return { refuse: `panels is not JSON: ${(err as Error).message}` };
+  }
+  const read = pagePanelsSchema.safeParse(parsed);
+  if (!read.success) {
+    const issue = read.error.issues[0];
+    return {
+      refuse: `panels ${issue ? `at ${issue.path.join('.')}: ${issue.message}` : 'do not parse'}`,
+    };
+  }
+  return { panels: read.data };
+}
+
+export const storySetPanels = define({
+  id         : 'story.setPanels',
+  title      : 'Set a page’s panels',
+  description:
+    'Replace the panels of a page shot: each one’s outline in page fractions, framing, camera, ' +
+    'cast, art notes and the lines it letters. Every part of a panel is in the page’s prompt, ' +
+    'so the page is drawn again on the next run. An empty list makes the shot a single frame; a ' +
+    'list on a frame makes it a page. A line the shot does not cover, a line in two panels, a ' +
+    'corner off the page and a panel casting someone the shot does not frame are each refused ' +
+    'by name; a covered line in no panel is allowed and named.',
+  notes:
+    'Replace a page’s whole panel list as JSON (`[{shape, framing, camera?, subjects, coversLines, artNotes?}]`); empty makes the shot a frame again. Everything in a panel is in the prompt, so the page is drawn again. The list is a string prop because `@vn/commands` has no JSON kind.',
+  mutating   : true,
+  affects    : ['vngen/work/shots'],
+  undoable   : true,
+  props: {
+    scene : prop.string('the scene the shot belongs to'),
+    shot  : prop.string('the shot id, e.g. arrival__beat1'),
+    panels: prop.string('the whole panel list, as JSON; `[]` makes the shot a single frame', {
+      digest   : true,
+      multiline: true,
+    }),
+  },
+  async check({ scene, shot, panels }, ctx) {
+    const read = panelsOf(panels);
+    if ('refuse' in read) return { ok: false, reason: read.refuse };
+    const op = await ctx.host.session.previewPanels(scene, shot, read.panels);
+    return op.ok ? { ok: true, note: op.message } : { ok: false, reason: op.error };
+  },
+  async run({ scene, shot, panels }, ctx) {
+    const read = panelsOf(panels);
+    if ('refuse' in read) throw new Error(read.refuse);
+    const result = await ctx.host.session.setPanels(scene, shot, read.panels);
     if (!result.ok) throw new Error(result.message);
     return { message: result.message, data: result.coverage, written: result.written };
   },

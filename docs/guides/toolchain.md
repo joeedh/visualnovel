@@ -193,9 +193,10 @@ can therefore typecheck, pass its tests, and still fail to bundle:
 Vite is the fifth resolver and needs nothing beyond what is already there. It reads the
 workspace symlink and the package's own `exports` map.
 
-A subpath export (`@vn/scriptedit/write` and `@vn/gengraph/state` are the two) costs two
-more entries, because a subpath names its source file rather than `index.ts`. Those
-entries are a `paths` line of its own in the root `tsconfig` and the
+A subpath export (`@vn/scriptedit/write`, `@vn/gengraph/state`, `@vn/artgen/slotaddr` and
+`@vn/artgen/layout` among them) costs two more entries, because a subpath names its source
+file rather than `index.ts`. Those entries are a `paths` line of its own in the root
+`tsconfig` (and in the renderer's, when the renderer imports it) and the
 `'^@vn/([^/]+)/([^/]+)$'` rule in jest's `moduleNameMapper`. `scripts/aliases.mjs` carries
 them in a `SUBPATHS` list beside `PACKAGES`. Split a package this way when one half must
 stay out of the renderer's bundle. The renderer imports `apps/desktop/src/shared/`, so

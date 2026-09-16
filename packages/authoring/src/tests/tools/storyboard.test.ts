@@ -344,6 +344,94 @@ describe('storyboard tools', () => {
     }
   });
 
+  it('set_panels restates the partition, refuses a line the page does not cover, and empties to a frame', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      await run(
+        'write_storyboard',
+        {
+          scene: 'ending',
+          shots: [
+            {
+              id         : 'page1',
+              location   : 'day',
+              subjects   : [{ characterId: 'aiko' }],
+              aspect     : '3:4',
+              layout     : 'two-tier',
+              panels: [
+                { framing: 'wide', subjects: [], coversLines: ['ending:L1'] },
+                { framing: 'close', subjects: [], coversLines: ['ending:L2'] },
+              ],
+              coversLines: ['ending:L1', 'ending:L2'],
+            },
+          ],
+        },
+        ctx,
+      );
+      const top: [number, number][] = [
+        [0, 0],
+        [1, 0],
+        [1, 0.4],
+        [0, 0.4],
+      ];
+      const bottom: [number, number][] = [
+        [0, 0.4],
+        [1, 0.4],
+        [1, 1],
+        [0, 1],
+      ];
+      const moved = await run(
+        'set_panels',
+        {
+          scene : 'ending',
+          shot  : 'ending__page1',
+          panels: [
+            { shape: top, framing: 'wide', subjects: [], coversLines: [] },
+            {
+              shape      : bottom,
+              framing    : 'close',
+              subjects   : [],
+              coversLines: ['ending:L1', 'ending:L2'],
+            },
+          ],
+        },
+        ctx,
+      );
+      expect(moved.ok).toBe(true);
+      expect(moved.written).toEqual(['vngen/work/shots/ending.json']);
+      expect(moved.output).toContain('drawn again');
+      const paths = new ProjectPaths(dir);
+      let shot = (await readShots(paths, 'ending'))?.shots[0];
+      expect(shot?.panels?.map((p) => p.coversLines)).toEqual([[], ['ending:L1', 'ending:L2']]);
+      expect(shot?.panels?.[0]?.shape).toEqual(top);
+
+      const stray = await run(
+        'set_panels',
+        {
+          scene : 'ending',
+          shot  : 'ending__page1',
+          panels: [{ shape: top, framing: 'wide', subjects: [], coversLines: ['ending:L3'] }],
+        },
+        ctx,
+      );
+      expect(stray.ok).toBe(false);
+      expect(stray.output).toContain('does not cover');
+      expect(stray.written ?? []).toEqual([]);
+
+      const framed = await run(
+        'set_panels',
+        { scene: 'ending', shot: 'ending__page1', panels: [] },
+        ctx,
+      );
+      expect(framed.ok).toBe(true);
+      expect(framed.output).toContain('single frame');
+      shot = (await readShots(paths, 'ending'))?.shots[0];
+      expect(shot?.panels).toBeUndefined();
+    } finally {
+      await cleanup();
+    }
+  });
+
   it('write_storyboard rejects a shot key it does not take, rather than dropping it', () => {
     const shape = tool('write_storyboard').args;
     const shot = {

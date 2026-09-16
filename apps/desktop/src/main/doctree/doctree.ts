@@ -141,7 +141,10 @@ function storyBranch(input: DocTreeInput, cap: number): DocNode {
           `scene:${scene.id}`,
           shots.map((s) =>
             node(`shot:${scene.id}/${s.id}`, 'shot', s.id, {
-              badge: s.framing,
+              // A page's badge counts its panels the way the coverage strip's head does; the
+              // framing is the page's overall one and says less about the row
+              badge: s.panels ? `page · ${s.panels.length}` : s.framing,
+              ...(s.panels ? { panels: true } : {}),
               // A shot is an address a graph can draw, so its row names the graph the way a slot
               // row does, and an open Gen Graph pane follows the click to it.
               ...boundGraphOf(input, `shot:${scene.id}/${s.id}`),

@@ -196,11 +196,11 @@ const subjectShape = z.object({
 
 const fraction = z.number().min(0).max(1);
 
+const outlineShape = z.array(z.tuple([fraction, fraction])).min(3);
+
 const panelShape = z
   .object({
-    shape: z
-      .array(z.tuple([fraction, fraction]))
-      .min(3)
+    shape: outlineShape
       .optional()
       .describe(
         'the panel outline as page fractions, clockwise from the top left; left out, the ' +
@@ -215,6 +215,46 @@ const panelShape = z
     artNotes   : z.string().optional(),
   })
   .strict();
+
+const setPanelsShape = z
+  .object({
+    scene : z.string().min(1).describe('the scene the shot belongs to'),
+    shot  : z.string().min(1).describe('the page shot whose panels are being restated'),
+    panels: z
+      .array(
+        panelShape.extend({
+          shape: outlineShape.describe(
+            'the panel outline as page fractions, clockwise from the top left',
+          ),
+        }),
+      )
+      .describe(
+        'the whole panel list in reading order, every panel with its shape; an empty list makes ' +
+          'the shot a single frame again',
+      ),
+  })
+  .strict();
+
+const setPanelsTool: Tool<z.infer<typeof setPanelsShape>> = {
+  name       : 'set_panels',
+  description:
+    'Restate a page shot’s panels — the whole list, not a delta: each panel’s outline in page ' +
+    'fractions, framing, camera, cast, art notes and the line ids it letters. Everything in a ' +
+    'panel is in the page’s prompt, so the page is drawn again. A list on a frame makes it a ' +
+    'page; an empty list makes a page a frame again. Panel lines must be lines the shot covers ' +
+    '(set_coverage changes those), no line may be in two panels, and a panel may cast only ' +
+    'characters in the shot’s cast; a covered line in no panel is allowed and named. Read the ' +
+    'page with read_shots first.',
+  mutating   : true,
+  args       : setPanelsShape,
+  async run(a, ctx) {
+    const op = await ctx.workspace.shotPanels(a.scene, a.shot, a.panels);
+    if (!op.ok) return fail(op.error);
+    await writeShots(ctx.workspace.paths, a.scene, op.shots);
+    const shotsFile = `vngen/work/shots/${a.scene}.json`;
+    return ok(op.message, { written: [shotsFile], data: { paths: [shotsFile] } });
+  },
+};
 
 const storyboardShotShape = z
   .object({
@@ -336,4 +376,10 @@ const writeStoryboardTool: Tool<z.infer<typeof writeStoryboardShape>> = {
   },
 };
 
-export { readShotsTool, setCoverageTool, proposeStoryboardTool, writeStoryboardTool };
+export {
+  readShotsTool,
+  setCoverageTool,
+  setPanelsTool,
+  proposeStoryboardTool,
+  writeStoryboardTool,
+};

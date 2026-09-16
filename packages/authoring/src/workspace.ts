@@ -16,6 +16,7 @@ import {
   moveShot,
   newShot as planNewShot,
   setCoverage,
+  setPanels,
   setSceneOutfit,
   setShotOutfit,
   setShotVariant,
@@ -40,6 +41,7 @@ import type {
   CharacterStatus,
   Diagnostic,
   Lettering,
+  PagePanel,
   ProjectModel,
   Shot,
 } from '@vn/types';
@@ -465,6 +467,33 @@ export class Workspace {
       shots,
       message: op.message + gaps + letteredPagesNote(op.changed, lettering),
     };
+  }
+
+  /**
+   * The panels rule over a fresh load of the board, so `set_panels` and the desktop's
+   * `story.setPanels` decide against the same shots. Mirrors the desktop's `session.setPanels` up
+   * to (but not including) the write.
+   */
+  async shotPanels(
+    sceneId: string,
+    shotId: string,
+    panels: readonly PagePanel[],
+  ): Promise<{ ok: false; error: string } | { ok: true; shots: Shot[]; message: string }> {
+    const { model } = await this.load();
+    const scene = model.scenes.get(sceneId);
+    if (!scene) return { ok: false, error: `No scene "${sceneId}".` };
+    const lineOrder = scene.lines.map((l) => l.id);
+    const loaded = await readShots(this.paths, sceneId, new Set(lineOrder));
+    if (!loaded) {
+      return {
+        ok   : false,
+        error: `Scene "${sceneId}" has no shots yet — decompose it or place one by hand first.`,
+      };
+    }
+    const op = setPanels(loaded.shots, { shot: shotId, panels, lineOrder });
+    return op.ok
+      ? { ok: true, shots: op.shots, message: op.message }
+      : { ok: false, error: op.error };
   }
 
   /**

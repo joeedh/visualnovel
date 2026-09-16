@@ -13,7 +13,7 @@ import {
 } from '@vn/store';
 import { exists, readText } from '@vn/util';
 import { fileCache } from '../workspace/filecache.js';
-import { aspectFor, imageParams } from '@vn/artgen';
+import { aspectFor, imageParams, layoutDefect } from '@vn/artgen';
 import { driftOf } from '@vn/pipeline';
 import {
   applyCoverage,
@@ -23,6 +23,7 @@ import {
   requireShotCast,
   newShot as planNewShot,
   setCoverage,
+  setPanels,
   setSceneOutfit,
   setShotOutfit,
   setShotSubjects,
@@ -46,7 +47,7 @@ import {
   type ScenePlan,
   type SceneSource,
 } from '@vn/scriptedit/write';
-import type { Scene, Shot } from '@vn/types';
+import type { PagePanel, Scene, Shot } from '@vn/types';
 import type {
   BranchEditResult,
   SceneCoverage,
@@ -56,6 +57,16 @@ import type {
 import { storyGraphOf } from '../doctree/storygraph.js';
 import type { WorkspaceSession, LoadedProject } from './core.js';
 import { editInputOf, relPath, loadProject } from './core.js';
+
+/**
+ * The layout verdict the Page editor's header shows: the runner's own `layout` defect over the
+ * boxes the reviewer measured, or nothing for a frame, an unmeasured page, or a page that matched.
+ */
+function layoutVerdict(shot: Shot): { layout?: string } {
+  if (!shot.panels || !shot.panelBoxes) return {};
+  const defect = layoutDefect(shot.panels, shot.panelBoxes);
+  return defect ? { layout: defect.description } : {};
+}
 
 export class StoryPart {
   constructor(private readonly session: WorkspaceSession) {}
@@ -406,7 +417,9 @@ export class StoryPart {
           s.subjects.filter((sub) => sub.outfit).map((sub) => [sub.characterId, sub.outfit!]),
         ),
         coversLines: s.coversLines,
-        ...(s.panels ? { panels: s.panels.map((p) => ({ coversLines: p.coversLines })) } : {}),
+        ...(s.panels ? { panels: s.panels } : {}),
+        ...(s.panelBoxes ? { panelBoxes: s.panelBoxes } : {}),
+        ...layoutVerdict(s),
         aspect: aspectFor(params, s, pageAspect).aspect ?? project.config.image_params.aspect,
         status: s.status,
         ...(s.image ? { image: { hash: s.image, ext: exts.get(s.image) ?? 'png' } } : {}),
@@ -737,6 +750,47 @@ export class StoryPart {
     required: boolean,
   ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
     const { project, op } = await this.castRule(sceneId, shotId, required);
+    if (!op.ok) return { ok: false, message: op.error, written: [] };
+
+    await writeShots(project.paths, sceneId, op.shots);
+    return {
+      ok      : true,
+      message : op.message,
+      written : [`vngen/work/shots/${sceneId}.json`],
+      coverage: await this.session.sceneCoverage(sceneId),
+    };
+  }
+
+  /** What `story.setPanels` would do, without writing it. */
+  async previewPanels(
+    sceneId: string,
+    shotId: string,
+    panels: readonly PagePanel[],
+  ): Promise<ShotOutfitOp> {
+    return (await this.panelsRule(sceneId, shotId, panels)).op;
+  }
+
+  private panelsRule(
+    sceneId: string,
+    shotId: string,
+    panels: readonly PagePanel[],
+  ): Promise<{ project: LoadedProject; op: ShotOutfitOp }> {
+    return this.shotsRule(sceneId, (shots, scene) =>
+      setPanels(shots, { shot: shotId, panels, lineOrder: scene.lines.map((l) => l.id) }),
+    );
+  }
+
+  /**
+   * Replace one shot's panels: its layout, what each panel frames, and which of its lines each
+   * letters. Every part of a panel is in the page's prompt, so the page re-hashes and the next run
+   * draws it again. An empty list makes the shot a single frame; a list on a frame makes it a page.
+   */
+  async setPanels(
+    sceneId: string,
+    shotId: string,
+    panels: readonly PagePanel[],
+  ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
+    const { project, op } = await this.panelsRule(sceneId, shotId, panels);
     if (!op.ok) return { ok: false, message: op.error, written: [] };
 
     await writeShots(project.paths, sceneId, op.shots);

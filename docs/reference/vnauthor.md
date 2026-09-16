@@ -194,24 +194,24 @@ project guidance that the agent follows.
 `mutating: true` (plan mode blocks it); **C** marks `confirm: true` (it always goes
 through the permission gate, in every mode).
 
-| Group               | Tools                                                                                                                             |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Read & search       | `read_file`, `list_workspace`, `search`, `search_bible`, `list_archive`                                                           |
-| Domain & validation | `validate_inputs`, `parse_fountain`, `story_graph`, `extract_entities`                                                            |
-| Entity editing      | `create_character` **M**, `create_location` **M**, `edit_character` **M**, `edit_location` **M**                                  |
-| Scene prose         | `edit_scene` **M**                                                                                                                |
-| Branch wiring       | `edit_branches` **M**                                                                                                             |
-| Wardrobe            | `set_outfit` **M**, `set_variant` **M**                                                                                           |
-| Storyboards         | `read_shots`, `set_coverage` **M**, `propose_storyboard` (costs a model call, writes nothing), `write_storyboard` **M**           |
-| Art (concepts)      | `list_images`, `generate_image` **M C**, `edit_image` **M C**                                                                     |
-| Art (planned)       | `list_assets`, `art_notes`, `view_image`, `set_art_notes` **M**, `regenerate_asset` **M C**                                       |
-| Approval            | `approve_assets` **M**, `unapprove_assets` **M** (each confirms its own list)                                                     |
-| Generation graphs   | `read_asset_graph`, `edit_asset_graph` **M**, `run_asset_graph` **M** (confirms a priced run)                                     |
-| Raw write           | `write_file` **M**, `edit_file` **M** (neither for `scenes/` or `.aiagent/skills/`)                                               |
-| Context             | `update_context` **M**, `regenerate_context` **M**                                                                                |
-| Git (read)          | `git_status`, `git_log`, `git_show`, `git_diff`                                                                                   |
-| Git (write)         | `git_commit` **M**, `git_init` **M**, `git_revert` **M C**, `git_restore` **M C**                                                 |
-| Skills              | `discover_skills`, `create_skill` **M**, `edit_skill` **M**, `run_skill` **M** (**C** on the first run of a script-bearing skill) |
+| Group               | Tools                                                                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Read & search       | `read_file`, `list_workspace`, `search`, `search_bible`, `list_archive`                                                                     |
+| Domain & validation | `validate_inputs`, `parse_fountain`, `story_graph`, `extract_entities`                                                                      |
+| Entity editing      | `create_character` **M**, `create_location` **M**, `edit_character` **M**, `edit_location` **M**                                            |
+| Scene prose         | `edit_scene` **M**                                                                                                                          |
+| Branch wiring       | `edit_branches` **M**                                                                                                                       |
+| Wardrobe            | `set_outfit` **M**, `set_variant` **M**                                                                                                     |
+| Storyboards         | `read_shots`, `set_coverage` **M**, `set_panels` **M**, `propose_storyboard` (costs a model call, writes nothing), `write_storyboard` **M** |
+| Art (concepts)      | `list_images`, `generate_image` **M C**, `edit_image` **M C**                                                                               |
+| Art (planned)       | `list_assets`, `art_notes`, `view_image`, `set_art_notes` **M**, `regenerate_asset` **M C**                                                 |
+| Approval            | `approve_assets` **M**, `unapprove_assets` **M** (each confirms its own list)                                                               |
+| Generation graphs   | `read_asset_graph`, `edit_asset_graph` **M**, `run_asset_graph` **M** (confirms a priced run)                                               |
+| Raw write           | `write_file` **M**, `edit_file` **M** (neither for `scenes/` or `.aiagent/skills/`)                                                         |
+| Context             | `update_context` **M**, `regenerate_context` **M**                                                                                          |
+| Git (read)          | `git_status`, `git_log`, `git_show`, `git_diff`                                                                                             |
+| Git (write)         | `git_commit` **M**, `git_init` **M**, `git_revert` **M C**, `git_restore` **M C**                                                           |
+| Skills              | `discover_skills`, `create_skill` **M**, `edit_skill` **M**, `run_skill` **M** (**C** on the first run of a script-bearing skill)           |
 
 `edit_file` changes part of a long document rather than restating the whole file. It
 replaces exact strings and writes through the same `writeDocFile` the Wiki pane saves

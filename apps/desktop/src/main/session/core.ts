@@ -116,6 +116,7 @@ import type {
   Lettering,
   LocationVariant,
   Outfit,
+  PagePanel,
   Playable,
   ProjectModel,
   PromptOverride,
@@ -2412,6 +2413,26 @@ export class WorkspaceSession {
     required: boolean,
   ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
     return this.storyPart.requireShotCast(sceneId, shotId, required);
+  }
+
+  async previewPanels(
+    sceneId: string,
+    shotId: string,
+    panels: readonly PagePanel[],
+  ): Promise<ShotOutfitOp> {
+    return this.storyPart.previewPanels(sceneId, shotId, panels);
+  }
+
+  /**
+   * Replace one shot's panels. Every part of a panel is in the page's prompt, so the page re-hashes
+   * and the next run draws it again; an empty list makes the shot a single frame.
+   */
+  async setPanels(
+    sceneId: string,
+    shotId: string,
+    panels: readonly PagePanel[],
+  ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
+    return this.storyPart.setPanels(sceneId, shotId, panels);
   }
 
   async previewNewShot(

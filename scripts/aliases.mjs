@@ -46,6 +46,7 @@ const SUBPATHS = [
   'gengraph/state',
   'gengraph/plugin',
   'artgen/slotaddr',
+  'artgen/layout',
   'commands/snapshot',
 ];
 

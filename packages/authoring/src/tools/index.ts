@@ -23,6 +23,7 @@ import { setOutfitTool, setVariantTool } from './outfits.js';
 import {
   readShotsTool,
   setCoverageTool,
+  setPanelsTool,
   proposeStoryboardTool,
   writeStoryboardTool,
 } from './storyboard.js';
@@ -73,6 +74,7 @@ export const ALL_TOOLS: Tool[] = [
   setVariantTool,
   readShotsTool,
   setCoverageTool,
+  setPanelsTool,
   proposeStoryboardTool,
   writeStoryboardTool,
   generateImageTool,

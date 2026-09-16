@@ -155,6 +155,27 @@ describe('buildDocTree', () => {
     expect(scenes[1]!.children).toBeUndefined();
   });
 
+  it('badges a page by its panel count and marks the row, so the Page editor can claim it', () => {
+    const square: [number, number][] = [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [0, 1],
+    ];
+    const panel = { shape: square, framing: 'wide' as const, subjects: [], coversLines: [] };
+    const paged = buildDocTree(
+      makeInput({
+        shots: new Map([['arrival', [scene('arrival', { panels: [panel, panel, panel] })]]]),
+      }),
+    );
+    const page = branch(paged.roots, 'branch:story').children![0]!.children![0]!;
+    expect(page.badge).toBe('page · 3');
+    expect(page.panels).toBe(true);
+    const frame = branch(tree.roots, 'branch:story').children![0]!.children![0]!;
+    expect(frame.badge).toBe('wide');
+    expect(frame.panels).toBeUndefined();
+  });
+
   it('carries the frame a shot was drawn as, so a second click can open it', () => {
     const frame = 'c'.repeat(64);
     const drawn = buildDocTree(

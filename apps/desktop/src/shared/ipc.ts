@@ -29,6 +29,8 @@ import type {
   Lettering,
   Notification,
   NotificationInput,
+  PagePanel,
+  PanelBox,
   Playable,
   SceneLine,
   Shot,
@@ -237,7 +239,16 @@ export type { BibleFile, Excerpt } from '@vn/bible';
 // this shape only as data that already crossed the wire.
 import type { Prereq, SlotNode } from '@vn/artgen';
 export type { Prereq, SlotNode };
-export type { Playable, Beat, PlayablePanel, PlayableScene, TaskKind, TaskStatus } from '@vn/types';
+export type {
+  PagePanel,
+  PanelBox,
+  Playable,
+  Beat,
+  PlayablePanel,
+  PlayableScene,
+  TaskKind,
+  TaskStatus,
+} from '@vn/types';
 export type { Defect, DefectReport, Diagnostic } from '@vn/types';
 
 /**
@@ -403,10 +414,22 @@ export interface CoverageShot {
   outfits: Record<string, string>;
   coversLines: string[];
   /**
-   * The panels of a page shot, each with the lines it holds, in the page's own order. Absent on a
-   * frame. The lines are what a coverage take moves between panels; the drawing stays main's.
+   * The panels of a page shot as authored, in the page's own order. Absent on a frame. The
+   * timeline reads each panel's lines, which a coverage take moves between panels; the Page
+   * editor draws the outlines and edits the rest through `story.setPanels`.
    */
-  panels?: { coversLines: string[] }[];
+  panels?: PagePanel[];
+  /**
+   * The boxes the reviewer measured in the page's current render, in reading order. Absent on a
+   * frame, on an unrendered page, and on a page no reviewer measured.
+   */
+  panelBoxes?: PanelBox[];
+  /**
+   * What the measured boxes say about the layout, in the words the runner's `layout` defect uses.
+   * Absent when the page was not measured or when every panel matched its box, so a sentence here
+   * is a page whose render disagrees with its outlines.
+   */
+  layout?: string;
   /**
    * The aspect this shot is drawn at, as `aspectFor` would resolve it: its own override, else the
    * project's `page_aspect` for a page, else the project's default. The timeline sizes the
@@ -559,6 +582,12 @@ export interface DocNode {
    * it is offering approval or offering to take one back.
    */
   approved?: boolean;
+  /**
+   * Set on a `shot` row whose shot is a page: several panels drawn as one picture. The Page
+   * editor claims a row by this and nothing else, so a frame never lands there; the count is in
+   * the badge.
+   */
+  panels?: true;
   children?: DocNode[];
 }
 

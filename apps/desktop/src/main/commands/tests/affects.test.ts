@@ -296,6 +296,26 @@ const STORY_RUNS: Run[] = [
     }),
   },
   {
+    id   : 'story.setPanels',
+    props: async (ctx) => ({
+      scene : 'arrival',
+      shot  : (await shotIds(ctx, 'arrival'))[0]!,
+      panels: JSON.stringify([
+        {
+          shape: [
+            [0, 0],
+            [1, 0],
+            [1, 1],
+            [0, 1],
+          ],
+          framing    : 'medium',
+          subjects   : [],
+          coversLines: [(await lineIds(ctx, 'arrival'))[0]!],
+        },
+      ]),
+    }),
+  },
+  {
     id   : 'story.setOutfit',
     props: async (ctx) => ({
       scene    : 'arrival',
