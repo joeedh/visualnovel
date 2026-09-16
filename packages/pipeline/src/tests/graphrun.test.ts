@@ -38,6 +38,8 @@ const SLUG = 'bound';
 
 const BLOCKING =
   '{"reviewer":"r","defects":[{"severity":"blocking","category":"outfit","description":"wrong"}]}';
+const BLOCKING_POSE =
+  '{"reviewer":"r","defects":[{"severity":"blocking","category":"pose","description":"slumped"}]}';
 
 function setProp(node: Node, key: string, value: unknown): void {
   const prop = node.props[key];
@@ -233,24 +235,32 @@ describe('the journal the runner wrapper advances', () => {
   });
 });
 
+/** A project with one decomposed shot of Aiko, run up to the gate and past it. */
+async function shotProject(maxAttempts: number): Promise<TestProject> {
+  const p = await makeProject({
+    script: SCRIPTS.linear,
+    config: { max_refine_attempts: maxAttempts },
+  });
+  const shot: Shot = {
+    id         : 's1',
+    sceneId    : 'arrival',
+    framing    : 'medium',
+    location   : 'day',
+    subjects   : [{ characterId: 'aiko' }],
+    camera     : 'static',
+    coversLines: [],
+    status     : 'pending',
+  };
+  await writeShots(p.paths, 'arrival', [shot]);
+  await p.run();
+  await p.approve('aiko');
+  return p;
+}
+
 describe('a refine pass through a bound graph', () => {
   it('re-runs the tail below the refine node and resumes everything above it', async () => {
-    const p = await makeProject({ script: SCRIPTS.linear, config: { max_refine_attempts: 2 } });
+    const p = await shotProject(2);
     try {
-      const shot: Shot = {
-        id         : 's1',
-        sceneId    : 'arrival',
-        framing    : 'medium',
-        location   : 'day',
-        subjects   : [{ characterId: 'aiko' }],
-        camera     : 'static',
-        coversLines: [],
-        status     : 'pending',
-      };
-      await writeShots(p.paths, 'arrival', [shot]);
-      await p.run();
-      await p.approve('aiko');
-
       const { graph, text, critique, image } = refineGraph('shot:arrival/s1');
       const summary = await p.run({ graphs: { [SLUG]: graph }, reviewResponses: [BLOCKING] });
       const runs = await runsPerNode(p);
@@ -261,6 +271,29 @@ describe('a refine pass through a bound graph', () => {
       expect(runs.get(String(critique.id))).toBe(2);
       expect(runs.get(String(image.id))).toBe(2);
       expect(runs.get(String(text.id))).toBe(1);
+    } finally {
+      await p.cleanup();
+    }
+  });
+
+  it('stops when a critique repeats one from further back, rather than resuming that picture', async () => {
+    const p = await shotProject(6);
+    try {
+      const { graph, image } = refineGraph('shot:arrival/s1');
+      // The reviewers cycle: the third verdict is the first again, so the critique it refines to
+      // was already tried on attempt 2, and attempt 4 would resume attempt 2's picture
+      const summary = await p.run({
+        graphs         : { [SLUG]: graph },
+        reviewResponses: [BLOCKING, BLOCKING_POSE, BLOCKING],
+      });
+      const runs = await runsPerNode(p);
+      const shots = summary.ran.filter((t) => t.kind === 'shot_image');
+
+      expect(shots).toHaveLength(1);
+      expect(shots[0]?.status).toBe('needs_human');
+      expect(shots[0]?.attempts).toHaveLength(3);
+      expect(shots[0]?.error).toContain('the critique repeated unchanged');
+      expect(runs.get(String(image.id))).toBe(3);
     } finally {
       await p.cleanup();
     }

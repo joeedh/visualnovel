@@ -164,7 +164,9 @@ export function layoutReport(
  * blocking defects) result is accepted. A blocking result triggers a deterministic prompt
  * refinement and another attempt, up to `config.max_refine_attempts`; after that the shot
  * is flagged `needs_human` rather than silently shipping a flawed frame. The loop also gives up
- * early when a refinement changes nothing.
+ * early when a refinement repeats one the task has already tried, at any distance back: a
+ * bound graph resumes the picture that critique produced rather than drawing a new one, so
+ * the reviewers would answer as they did then and the loop would only spend their calls.
  */
 function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
   return async (task, deps) => {
@@ -188,8 +190,11 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
     let critique = '';
     let lastRef: AssetRef | undefined;
     let stalledAfter: number | undefined;
+    // What every attempt so far was drawn from: the critique on the bound path, the prompt otherwise
+    const tried = new Set<string>();
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      tried.add(throughNode ? critique : prompt);
       const ref = binding
         ? await drawThroughGraph(deps, binding, prompt, refs, meta, critique)
         : await generateAsset(deps, prompt, refs, task.inputs.params, meta);
@@ -226,23 +231,20 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
       }
 
       // Blocking defects: refine from the merged critique and try again. Refinement is
-      // deterministic, so text that comes back unchanged means the reviewers returned the same
-      // critique and the next attempt would issue the identical request. `needs_human` is the
-      // outcome for a critique that repeats unchanged.
+      // deterministic, so text an earlier attempt already tried means the reviewers are going
+      // in circles and the next attempt would repeat a request already made. `needs_human` is
+      // the outcome for a critique that repeats.
+      const next = throughNode
+        ? refinePrompt('', merged.defects).trim()
+        : refinePrompt(prompt, merged.defects);
+      if (tried.has(next)) {
+        stalledAfter = attempt;
+        break;
+      }
       if (throughNode) {
-        const next = refinePrompt('', merged.defects).trim();
-        if (next === critique) {
-          stalledAfter = attempt;
-          break;
-        }
         critique = next;
       } else {
-        const refined = refinePrompt(prompt, merged.defects);
-        if (refined === prompt) {
-          stalledAfter = attempt;
-          break;
-        }
-        prompt = refined;
+        prompt = next;
       }
     }
 
