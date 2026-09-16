@@ -1,7 +1,11 @@
 import type { GraphId } from 'pathux-graph';
 
-/** Carried on every record, because git union-merges the journal across clones. */
-export const GRAPH_JOURNAL_VERSION = 1;
+/**
+ * Carried on every record, because git union-merges the journal across clones. Version 2
+ * added `runKey`; parsing does not gate on the version, so a reader takes the fields it
+ * knows from any numeric `v`.
+ */
+export const GRAPH_JOURNAL_VERSION = 2;
 
 /**
  * Reports where a node's last run got to. A deliberate re-render writes `invalidated`,
@@ -47,9 +51,20 @@ export interface GraphJournalRecord {
    * on a record written before the field existed, and such a record reports no drift.
    */
   authoredHash?: string;
+  /**
+   * The hash of what fed the node when it ran: its type and version, its resolved props and
+   * the values on its input sockets. Present on every record the executor writes and absent
+   * on an `invalidated` record, which is written at rest where no key exists, and on any
+   * record written before the field existed.
+   */
+  runKey?: string;
   status: GenNodeStatus;
   /** Socket name to value, as the run left it. Written on a `done` record. */
   output?: Record<string, unknown>;
+  /**
+   * Absent on a `done` record the executor writes for a cached answer, so anything summing
+   * usage from the journal must skip a record without it rather than read it as free.
+   */
   usage?: GenUsage;
   /** Why the run failed. Written on a `failed` record. */
   error?: string;
@@ -62,6 +77,16 @@ export interface GraphJournal {
   latest: ReadonlyMap<GraphId, GraphJournalRecord>;
   /** Each node's most recent `done` record. */
   lastDone: ReadonlyMap<GraphId, GraphJournalRecord>;
+  /**
+   * Per node, the `done` records carrying a `runKey` that no later `invalidated` record has
+   * retired, by that key, latest writer winning per key.
+   */
+  cached: ReadonlyMap<GraphId, ReadonlyMap<string, GraphJournalRecord>>;
+  /**
+   * Per node, the parsed `at` of the latest `invalidated` record. A `done` record stamped
+   * earlier than it stays out of `cached` whatever order the file holds the two lines in.
+   */
+  invalidatedAt: ReadonlyMap<GraphId, number>;
   /** Lines that did not parse as a record. A crash mid-append leaves one behind. */
   skipped: number;
 }
@@ -72,7 +97,84 @@ export function journalRecord(fields: Omit<GraphJournalRecord, 'v'>): GraphJourn
 }
 
 export function emptyJournal(): GraphJournal {
-  return { latest: new Map(), lastDone: new Map(), skipped: 0 };
+  return {
+    latest       : new Map(),
+    lastDone     : new Map(),
+    cached       : new Map(),
+    invalidatedAt: new Map(),
+    skipped      : 0,
+  };
+}
+
+/** A copy a caller can advance without moving the journal it was taken from. */
+export function cloneJournal(journal: GraphJournal): GraphJournal {
+  const cached = new Map<GraphId, Map<string, GraphJournalRecord>>();
+  for (const [nodeId, byKey] of journal.cached) {
+    cached.set(nodeId, new Map(byKey));
+  }
+  return {
+    latest  : new Map(journal.latest),
+    lastDone: new Map(journal.lastDone),
+    cached,
+    invalidatedAt: new Map(journal.invalidatedAt),
+    skipped      : journal.skipped,
+  };
+}
+
+/**
+ * Advances the journal by one record, in place. This is the one place the update rule is
+ * written: `latest` and `lastDone` take the record, a `done` record with a `runKey` enters
+ * `cached` unless it is stamped earlier than the node's latest invalidation, and an
+ * `invalidated` record retires every cached answer stamped at or before it. A `failed` or
+ * `running` record leaves `cached` alone, because a failure is not an answer and does not
+ * retire the answers whose keys say what they were fed. A stamp that does not parse counts
+ * as older than everything.
+ */
+export function applyRecord(journal: GraphJournal, record: GraphJournalRecord): void {
+  const latest = journal.latest as Map<GraphId, GraphJournalRecord>;
+  const lastDone = journal.lastDone as Map<GraphId, GraphJournalRecord>;
+  const cached = journal.cached as Map<GraphId, Map<string, GraphJournalRecord>>;
+  const invalidatedAt = journal.invalidatedAt as Map<GraphId, number>;
+
+  latest.set(record.nodeId, record);
+
+  if (record.status === 'done') {
+    lastDone.set(record.nodeId, record);
+
+    const cutoff = invalidatedAt.get(record.nodeId);
+    if (record.runKey !== undefined && (cutoff === undefined || stampOf(record.at) >= cutoff)) {
+      let byKey = cached.get(record.nodeId);
+      if (byKey === undefined) {
+        byKey = new Map();
+        cached.set(record.nodeId, byKey);
+      }
+      byKey.set(record.runKey, record);
+    }
+    return;
+  }
+
+  if (record.status === 'invalidated') {
+    const at = stampOf(record.at);
+    invalidatedAt.set(record.nodeId, Math.max(at, invalidatedAt.get(record.nodeId) ?? -Infinity));
+
+    const byKey = cached.get(record.nodeId);
+    if (byKey !== undefined) {
+      for (const [key, answer] of byKey) {
+        if (stampOf(answer.at) <= at) {
+          byKey.delete(key);
+        }
+      }
+      if (byKey.size === 0) {
+        cached.delete(record.nodeId);
+      }
+    }
+  }
+}
+
+/** A record's stamp as a number, with one that does not parse older than any that does. */
+function stampOf(at: string): number {
+  const ms = Date.parse(at);
+  return Number.isNaN(ms) ? -Infinity : ms;
 }
 
 /**
@@ -82,9 +184,7 @@ export function emptyJournal(): GraphJournal {
  * before it is still good.
  */
 export function replayJournal(text: string): GraphJournal {
-  const latest = new Map<GraphId, GraphJournalRecord>();
-  const lastDone = new Map<GraphId, GraphJournalRecord>();
-  let skipped = 0;
+  const journal = emptyJournal();
 
   for (const line of text.split('\n')) {
     if (line.trim().length === 0) {
@@ -93,17 +193,14 @@ export function replayJournal(text: string): GraphJournal {
 
     const record = parseRecord(line);
     if (record === undefined) {
-      skipped++;
+      journal.skipped++;
       continue;
     }
 
-    latest.set(record.nodeId, record);
-    if (record.status === 'done') {
-      lastDone.set(record.nodeId, record);
-    }
+    applyRecord(journal, record);
   }
 
-  return { latest, lastDone, skipped };
+  return journal;
 }
 
 function parseRecord(line: string): GraphJournalRecord | undefined {

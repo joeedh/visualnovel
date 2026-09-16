@@ -56,6 +56,15 @@ describe('the blob store', () => {
     expect(second.hash).toBe(first.hash);
   });
 
+  it('answers whether a blob is on disk without reading it', async () => {
+    const store = graphBlobStore(paths, 'cafe');
+    const ref = await store.write(new Uint8Array([4, 5, 6]), 'png');
+
+    expect(await store.has(ref)).toBe(true);
+    expect(await store.has({ hash: ref.hash, ext: 'jpg' })).toBe(false);
+    expect(await store.has({ hash: '0'.repeat(64), ext: 'png' })).toBe(false);
+  });
+
   it('reads nothing for a hash it never wrote', async () => {
     const store = graphBlobStore(paths, 'cafe');
     await store.write(new Uint8Array([1]), 'png');

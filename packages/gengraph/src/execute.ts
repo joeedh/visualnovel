@@ -2,7 +2,7 @@ import type { Graph, GraphId, Node } from 'pathux-graph';
 
 import { authoredHashes, graphHashes } from './hash.js';
 import type { GenHashDefaults } from './hash.js';
-import { journalRecord } from './journal.js';
+import { applyRecord, cloneJournal, journalRecord } from './journal.js';
 import type { GenUsage, GraphJournal, GraphJournalRecord } from './journal.js';
 import { flattenNodes, linkedSources, nodeKey, resolveNodeKey } from './nodekey.js';
 import { genNodeRuntime, genNodeSpec } from './registry.js';
@@ -86,10 +86,11 @@ export async function executeGenGraph(
   }
 
   const stamp = (): string => (ctx.now?.() ?? new Date()).toISOString();
-  const latest = new Map(ctx.journal.latest);
+  // The run's own view, so the records it writes are what its later nodes resume against
+  const journal = cloneJournal(ctx.journal);
 
   const write = async (record: GraphJournalRecord): Promise<void> => {
-    latest.set(record.nodeId, record);
+    applyRecord(journal, record);
     await ctx.record(record);
   };
 
@@ -134,7 +135,7 @@ export async function executeGenGraph(
     }
 
     const hash = hashOf(node);
-    const prior = latest.get(key);
+    const prior = journal.latest.get(key);
     const stale = feedsFrom(node, members, reran);
 
     if (

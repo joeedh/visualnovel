@@ -58,11 +58,15 @@ export interface GenImageService {
 
 export interface GenBlobService {
   read(hash: string): Promise<Uint8Array | undefined>;
+  /** Whether the blob's bytes are still on disk, answered without reading them. */
+  has(ref: GenBlobRef): Promise<boolean>;
   write(bytes: Uint8Array, ext: string): Promise<GenBlobRef>;
 }
 
 export interface GenAssetService {
   read(ref: AssetRef): Promise<Uint8Array | undefined>;
+  /** Whether the store still holds the asset, answered without reading its bytes. */
+  has(ref: AssetRef): Promise<boolean>;
   /** The asset a slot currently holds, or undefined while the slot is empty. */
   slot(slotKey: string): Promise<AssetRef | undefined>;
 }

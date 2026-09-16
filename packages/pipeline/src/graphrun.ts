@@ -7,7 +7,13 @@
  */
 import type { AnyTask, AssetMeta, AssetRef, ProjectModel, RefBinding } from '@vn/types';
 import { slotKey } from '@vn/artgen';
-import { bindSlots, genNodeSpec, registerGenRuntimes } from '@vn/gengraph';
+import {
+  applyRecord,
+  bindSlots,
+  cloneJournal,
+  genNodeSpec,
+  registerGenRuntimes,
+} from '@vn/gengraph';
 import type {
   GenImageRef,
   GenOutputs,
@@ -236,16 +242,14 @@ export async function runBoundGraph(
   binding: GraphBinding,
   options: GraphRunOptions,
 ): Promise<GraphDraw> {
-  const latest = new Map(binding.journal.latest);
-  const lastDone = new Map(binding.journal.lastDone);
+  // A clone, because `indexGraphs` spreads one loaded entry into a binding per slot, and
+  // advancing the shared journal in place would move every slot's view
+  const journal = cloneJournal(binding.journal);
   const ctx: GenRunContext = {
     services: binding.services,
-    journal : { latest, lastDone, skipped: binding.journal.skipped },
+    journal,
     record: async (record) => {
-      latest.set(record.nodeId, record);
-      if (record.status === 'done') {
-        lastDone.set(record.nodeId, record);
-      }
+      applyRecord(journal, record);
       await binding.record(record);
     },
     ...(deps.now === undefined ? {} : { now: (): Date => new Date(deps.now!()) }),
@@ -260,7 +264,7 @@ export async function runBoundGraph(
     },
     ...(options.force === true ? { force: true } : {}),
   });
-  binding.journal = { latest, lastDone, skipped: binding.journal.skipped };
+  binding.journal = journal;
 
   const failure = result.failures[0];
   if (failure !== undefined) {

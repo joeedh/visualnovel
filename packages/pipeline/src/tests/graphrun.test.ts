@@ -12,14 +12,22 @@ import {
   GenRefinePrompt,
   GenTemplate,
   Graph,
+  emptyJournal,
   registerGenRuntimes,
+  replayJournal,
 } from '@vn/gengraph';
 import type { GraphJournalRecord, Node } from '@vn/gengraph';
-import { graphJournalFile } from '@vn/gengraph/state';
+import { graphBlobStore, graphJournalFile } from '@vn/gengraph/state';
+import { StubImageBackend, createMockProviders } from '@vn/providers';
 import { writeShots } from '@vn/store';
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
 import type { Asset, Shot } from '@vn/types';
 import { readText } from '@vn/util';
+
+import { createGenServices } from '../genservices.js';
+import { runBoundGraph } from '../graphrun.js';
+import type { GraphBinding } from '../graphrun.js';
+import type { RunDeps } from '../pipeline.js';
 
 jest.setTimeout(120_000);
 
@@ -179,6 +187,48 @@ describe('a task whose slot a graph is bound to', () => {
     } finally {
       await bound.cleanup();
       await plain.cleanup();
+    }
+  });
+});
+
+describe('the journal the runner wrapper advances', () => {
+  it('equals a replay of what the run appended, and leaves the loaded one alone', async () => {
+    const p = await makeProject({ script: SCRIPTS.linear });
+    try {
+      const { model, store, config } = await p.reload();
+      const providers = createMockProviders();
+      const deps = { model, store, providers } as RunDeps;
+      const graph = plainGraph('portrait:aiko');
+      const output = graph.nodes.find((n) => n instanceof GenOutput)!;
+      const appended: GraphJournalRecord[] = [];
+      const loaded = emptyJournal();
+      const binding: GraphBinding = {
+        graph,
+        journal : loaded,
+        services: createGenServices({
+          model,
+          store,
+          providers,
+          imageBackend: new StubImageBackend(),
+          imageModel  : config.models.image,
+          blobs       : graphBlobStore(p.paths, SLUG),
+        }),
+        record: (record) => {
+          appended.push(record);
+          return Promise.resolve();
+        },
+        target  : output.id,
+      };
+
+      await runBoundGraph(deps, binding, { prompt: 'a lantern', refs: [] });
+
+      expect(appended.length).toBeGreaterThan(0);
+      expect(binding.journal).toEqual(
+        replayJournal(appended.map((r) => JSON.stringify(r)).join('\n')),
+      );
+      expect(loaded.latest.size).toBe(0);
+    } finally {
+      await p.cleanup();
     }
   });
 });

@@ -54,6 +54,7 @@ function assetService(model: ProjectModel, store: AssetStore): GenAssetService {
         return undefined;
       }
     },
+    has : (ref: AssetRef) => Promise.resolve(store.has(ref.hash)),
     slot: (key: string) => {
       const binding = parseSlot(key);
       if (binding === undefined) {
@@ -91,7 +92,7 @@ function noBlobs(): GenBlobService {
   const refuse = (): never => {
     throw new Error('these services were built without a graph, so they hold no blob store');
   };
-  return { read: refuse, write: refuse };
+  return { read: refuse, has: refuse, write: refuse };
 }
 
 function headersOf(response: Response): Record<string, string> {

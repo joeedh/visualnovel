@@ -127,6 +127,7 @@ export function mockServices(options: MockOptions = {}): MockServices {
     blobs: {
       stored,
       read : (hash: string) => Promise.resolve(stored.get(hash)),
+      has  : (ref: GenBlobRef) => Promise.resolve(stored.has(ref.hash)),
       write: (data: Uint8Array, ext: string): Promise<GenBlobRef> => {
         const hash = sha256(data);
         stored.set(hash, data);
@@ -136,6 +137,7 @@ export function mockServices(options: MockOptions = {}): MockServices {
 
     assets: {
       read: (ref: AssetRef) => Promise.resolve(assetBytes.get(`${ref.hash}.${ref.ext}`)),
+      has : (ref: AssetRef) => Promise.resolve(assetBytes.has(`${ref.hash}.${ref.ext}`)),
       slot: (slotKey: string) => Promise.resolve(slotAssets.get(slotKey)),
     },
 

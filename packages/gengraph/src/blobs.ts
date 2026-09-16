@@ -39,6 +39,10 @@ export function graphBlobStore(paths: ProjectPaths, slug: string): GenBlobServic
       return new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     },
 
+    has(ref: GenBlobRef): Promise<boolean> {
+      return exists(graphBlobFile(paths, slug, ref));
+    },
+
     async write(bytes: Uint8Array, ext: string): Promise<GenBlobRef> {
       const ref: GenBlobRef = { hash: sha256(bytes), ext };
       const path = graphBlobFile(paths, slug, ref);
