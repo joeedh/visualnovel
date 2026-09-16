@@ -301,4 +301,4 @@ Nothing may import it. See [`docs/guides/testkit.md`](../guides/testkit.md).
 ## Hosts (not mapped here)
 
 `apps/cli`, `apps/authoring`, `apps/desktop`. See docs/reference/desktop-app.md for the
-desktop app's structure, including the sixteen editors.
+desktop app's structure, including the eighteen editors.

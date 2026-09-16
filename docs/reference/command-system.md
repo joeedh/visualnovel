@@ -693,11 +693,12 @@ interaction has no write path of its own. Every gesture terminates in a register
 command, and `InteractionRegistry.verify` fails the build if an interaction names a
 command that does not exist.
 
-Eight gestures are declared in `apps/desktop/src/shared/interactions.ts`: the branch
+Nine gestures are declared in `apps/desktop/src/shared/interactions.ts`: the branch
 editor's `branch.connect`, `branch.splice` and `branch.unwire`, the coverage timeline's
 `timeline.cover`, `timeline.create` and `timeline.reorder`, the script's
-`script.moveLine`, and the asset pane's `prompt.reorder`. The file sits beside
-`branchops.ts` and delegates to `@vn/scriptedit`'s `lineops`, `coverage` and `shotcreate`
+`script.moveLine`, the asset pane's `prompt.reorder`, and the Page editor's `page.letter`
+(a line dragged onto a panel, one verdict per panel). The file sits beside `branchops.ts`
+and delegates to `@vn/scriptedit`'s `lineops`, `coverage`, `shotcreate` and `panels`
 modules, and it is shared for the same reason those modules are. `BranchEditor` runs
 `branchSplice.targets` to draw its mid-drag verdict overlay, the `Timeline` evaluates
 `timelineCover.targets` once per grab for its notice, and `interaction.targets` runs the

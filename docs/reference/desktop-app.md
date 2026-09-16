@@ -23,7 +23,7 @@ This page covers the cross-cutting invariants. The rest of the app is split by c
   menus, selection, keyboard, the palette), layout templates, and the graph canvas the two
   graph editors share.
 - [`desktop-app-editors-story.md`](desktop-app-editors-story.md) — covers the writing
-  editors: Branches, Script, Convo, and Shot Coverage.
+  editors: Branches, Script, Convo, Shot Coverage, and Page.
 - [`desktop-app-editors-pipeline.md`](desktop-app-editors-pipeline.md) — covers the
   pipeline editors: Tasks/Task Graph/Inspector, Gen Graph, Play, Asset. The Gen Graph pane
   is described in full, along with the graphs it edits, in

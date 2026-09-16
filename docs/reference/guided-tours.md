@@ -777,13 +777,14 @@ commands are listed by id, so a new one is reported.
 
 `shortcuts` is `renderer/rules/shortcuts.ts` written out: every key binding as
 `{ scope, key, mods, label, runs, on?, shadows?, from? }`, where `scope` is `global`, an
-editor id or `main`, `runs` is the action the key performs, `shadows` marks an editor
-binding that takes a combination the shell also binds, and `from: 'pathux'` marks the Gen
-Graph pane's five, copied from path.ux's node editor. The shell keymap and the Play pane
-build their `HotKey`s from the table through `bindings()`, and the header's menu rows, the
-Gen Graph tooltips and the palette button read `shortcutOf` for their labels, so a binding
-is spelled once. A shortcut is a property of the control it duplicates rather than an
-effect.
+editor id or `main`, `runs` is the action the key performs, `on` narrows the binding to
+one control's target (or, ending in `/`, to every target under that family — the Page
+editor's `corner/` rows), `shadows` marks an editor binding that takes a combination the
+shell also binds, and `from: 'pathux'` marks the Gen Graph pane's five, copied from
+path.ux's node editor. The shell keymap and the Play pane build their `HotKey`s from the
+table through `bindings()`, and the header's menu rows, the Gen Graph tooltips and the
+palette button read `shortcutOf` for their labels, so a binding is spelled once. A
+shortcut is a property of the control it duplicates rather than an effect.
 
 `menuExempt` is `renderer/rules/menuexempt.ts`: the mutating commands a menu runs on the
 click that neither undo nor confirm, each with the reason it is allowed to.

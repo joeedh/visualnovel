@@ -6,12 +6,14 @@
 - [Script](#script)
 - [Convo](#convo)
 - [Shot Coverage](#shot-coverage)
+- [Page](#page)
 
 <!-- tocstop -->
 
 This is part of [`desktop-app.md`](desktop-app.md). It describes the editors an author
 writes the story through: Branches (the story graph), Script (one scene's lines), Convo
-(the vnauthor conversation), and Shot Coverage (a scene's storyboard).
+(the vnauthor conversation), Shot Coverage (a scene's storyboard), and Page (one page
+shot's panels).
 
 ## Branches
 
@@ -577,3 +579,68 @@ between the page's panels by the rule in `@vn/scriptedit`'s `coverage.ts`.
   the `shotCast` shape in `timeline/cast.ts`; the two writes are `setShotSubjects` and
   `requireShotCast` in `@vn/scriptedit`'s `cast.ts`, placed beside the outfit and variant
   rules for the same reason those rules are there.
+
+## Page
+
+`editors/page.ts` draws one page shot: the page at its own aspect with the panels outlined
+over the render (or over a pale sheet when nothing is drawn yet), and a column beside it
+holding the shot's lines and the selected panel's fields. It is the manga plan's editor
+([`../plans/manga-style.md`](../plans/manga-style.md), design brief in
+[`../plans/manga-style-design.md`](../plans/manga-style-design.md)). Every write on the
+surface is `story.setPanels`, and every control is an `Offer` judged by the same
+`setPanels` rule in `@vn/scriptedit`'s `panels.ts` that the command runs, so a tooltip
+says what the write would do before it does it. The pure (side-effect-free) rules live in
+`renderer/rules/page.ts`; four situations in `rules/situations/page.ts` feed
+`ux-model.json`.
+
+- **A frame opens here too, with one way in.** The editor claims a shot whose `DocNode`
+  carries `panels` as primary, listed before Shot Coverage so a page routes here; a frame
+  routes to Shot Coverage but can still be opened in this pane. On a frame, the page area
+  shows the frame's own image, the line rows are refused ("… is a single frame; pick a
+  layout to make it a page first."), and the layout row is the only live control. Its
+  glyphs are drawn at the project's page aspect (`PAGE_ASPECT`, 3:4) rather than the
+  frame's, since they show what the frame would become.
+- **The layout row is the named templates, then the even layouts from two to six.**
+  `LAYOUTS` in `rules/page.ts` lists `@vn/artgen/layout`'s `LAYOUT_TEMPLATES` and
+  `evenLayout(2..6)`. Picking one runs `relaid`: each new shape takes the record (lines,
+  framing, camera, cast, notes) of the panel at the same index, and the lines of any panel
+  the new layout drops are handed to the last kept panel, so no line goes uncovered by a
+  relayout. The layout the page already sits in (`inLayout`, compared shape for shape) is
+  drawn as current and refused. `summaryOf` names the layout when the panels match one.
+- **Corners are edited on the page.** Clicking a panel selects it (`pane.view` on
+  `panel/<n>`), which draws a handle at each corner. Dragging a handle moves that corner,
+  clamped to the page (`withCorner`); a double-click on an edge adds a corner at its
+  midpoint (`withCornerAfter`); Delete removes the held corner (`withoutCorner`), refused
+  below `MIN_CORNERS`. The arrow keys nudge the held corner by `NUDGE` (shift:
+  `NUDGE_SHIFT`), debounced for `NUDGE_SETTLE_MS` so a run of presses is one write. Hit
+  areas are sized to each panel's bounding box and clipped to its polygon, so a diagonal
+  split's two panels do not overlap for the pointer or the sweep. Every drag issues one
+  command on release, and the shape is drawn in place while it is held.
+- **Lettering is a drag or a keypress.** `page.letter` (`src/shared/interactions.ts`) is
+  the ninth interaction: it carries `<shotId>#<lineId>` and returns a verdict per panel
+  (`panel/<n>`), judged once at the grab, as the coverage strip's gestures are. The drop
+  commits the verdict's invocation verbatim, with the panel lines in the rule's own order.
+  With a panel selected, Enter on a line row letters it there without a drag
+  (`enterLetters`). A line no panel letters carries a vermilion dot; a lettered one shows
+  its panel's number. Main's `stateFor` builds coverage state for `page.*` as it does for
+  `timeline.*`.
+- **The panel's fields are the page's prompt.** Framing (a select over `SHOT_FRAMINGS`),
+  camera, cast (a checkbox per member of the scene's cast, `withCast` sending the full
+  list), pose and expression for each subject in the panel, and art notes each commit on
+  blur or change through `story.setPanels` with the whole panel list. Nothing on the
+  surface is a delta.
+- **The render's one sentence sits at the right of the head.** `verdictOf` is "Not drawn
+  yet" with no image, the reviewer's `layout` sentence when it wrote one, and nothing
+  otherwise. The reviewer's measured boxes (`CoverageShot.panelBoxes`, via `boxesOf`) are
+  drawn dashed in signal beneath the authored outlines in sodium, so a panel that came out
+  in the wrong place is visible as two shapes that disagree.
+- **A write locks the surface the way the strip's does.** `rules/timeline/busy.ts` is
+  reused: the notice row becomes a progress bar after `BUSY_DELAY_MS` and resolves into
+  the outcome. `update()` returns early during a drag, because the panel under the pointer
+  is read from the DOM. The selection follows `ui.shotId` in `update()` rather than only
+  in `load()`, so a page opened from another shot of the same scene keeps its selected
+  panel across its first write.
+- **Ten page-scoped shortcuts.** Nudge in four directions, the same by two with shift,
+  Delete for the held corner, and Escape to deselect. The shortcut table's `on` field may
+  end in `/`, which matches every control whose target sits under that family, so one row
+  covers every corner.

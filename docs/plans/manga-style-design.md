@@ -6,8 +6,8 @@ panel editor, panel stepping in Play, the bubble editor) to be built under the
 code, and a screenshot critique before the stage lands. This file holds all three. The
 brief and the plan were written on 2026-09-16, before Stage 3's first widget, and
 pressure-tested the same day by a fresh-context reviewer; the Review section records each
-finding and what it changed. The critique section is filled when the stage's first build
-runs.
+finding and what it changed. The critique was written on 2026-09-16 against Stage 3's
+first build, in the mock app over `examples/mySampleRepo`.
 
 ## The brief
 
@@ -385,13 +385,72 @@ list is lifted to one constant.
 
 ## Screenshot critique
 
-To be written when Stage 3's first build runs, against the five pieces of content in the
-brief, before the stage lands. What to look at:
+Taken on 2026-09-16 against the first build, in the mock app (`examples/mySampleRepo`, the
+Art layout, the Page editor in the large pane at about 820px wide, and again with the
+window emulated at 1000px so the pane fell under 640px). The sample repo has no rendered
+page, so the measured-page and unlettered-line states were staged by hand in the shots
+file: a 16:9 frame's image stood in for the page's render, with boxes that leave panel 2
+short and one line lettered by no panel. The brief's four-panel rooftop page was not
+built; the sample's `arrival__page1` is a `diagonal-split` page of two, which exercised
+the polygon hit areas harder than a grid would have. Answers to the six questions, then
+what changed before the stage landed and what is left.
 
-- Does the page dominate at the pane's default size, and at the narrowest width the mesh
-  gives a pane?
-- Can the two layers be told apart at a glance on the short-panel page, with no legend?
-- Does the vermilion dot on the unlettered line read as the one thing to fix?
-- Is the empty page a page, or a grey rectangle?
-- Does anything move that the brief did not ask to move?
-- Hover every control: does each tooltip say what the author does and what it costs?
+- **Does the page dominate?** Yes at the default size: the page fills the stage's height
+  and the column sits beside it at 300px. Under 640px the column drops below the page and
+  the page takes 60vh, and the body scrolls, so the lines are one scroll away rather than
+  crushed beside a postage stamp.
+- **Can the two layers be told apart on the short-panel page?** Yes, but the dashed signal
+  boxes are quiet over a busy render; the sodium outlines carry the page, and the boxes
+  read as a second opinion rather than a peer. Where they disagree, the verdict sentence
+  in the head says so in words, which is the reading the brief wanted. The sentence
+  `layoutDefect` writes is long ("No box in the page matches panel 2 (wide, bottom row,
+  full width, upper edge cut on a diagonal).") and wraps to three lines at `34ch`; it is
+  the runner's own sentence, so the editor keeps it rather than writing a second one.
+- **Does the vermilion dot read as the one thing to fix?** Yes. It is the only vermilion
+  on the surface, and the grey "no panel letters this line" beneath the row names the fix.
+  On a frame every line carries it, which is correct (nothing letters anything) but loud;
+  the Panel section's one sentence ("Pick a layout above to make this frame a page.")
+  carries the way out.
+- **Is the empty page a page?** At 6% paper over ink it was a dark outlined rectangle,
+  hard to tell from the pane behind it. It is 9% now, which reads as a sheet without
+  competing with a render's whites when one arrives.
+- **Does anything move that the brief did not ask to move?** Two things did. The glyph row
+  was drawn at the shot's own aspect, so on a 16:9 frame the nine glyphs were landscape
+  and the row was twice as wide as on a page; they are drawn at the project's page aspect
+  (`PAGE_ASPECT`, 3:4) whatever the shot is. And the header's verdict wraps under the
+  glyph row when the pane is narrow, moving the page down by a line when a render's
+  sentence arrives; that is `flex-wrap` doing what it should, and it is left.
+- **Do the tooltips say what the author does and what it costs?** Every control carries
+  one, read through `title` on the DOM. A layout glyph says "Lay this page out as two
+  tiers of two. arrival__page1 has 4 panel(s). arrival:L5 is in no panel and will not be
+  lettered. The page is drawn again on the next run." — the first sentence is the editor's
+  and the rest is the command's `check`. The brief asked for "Panels 5 and 6 are dropped
+  and their lines fall to panel 4"; the command's sentence counts panels and names the
+  unlettered lines instead, which says the same thing less specifically, and the editor
+  does not restate it. The current layout's glyph is disabled with the rule's own refusal
+  ("arrival__page1 already has exactly those panels.").
+
+What the build changed beyond the two moves above:
+
+- The hit areas were one `<div>` per panel over the whole page, clipped by `clip-path`.
+  The anchor sweep measures a control at the centre of its box, and on a diagonal split
+  both panels' boxes are the page, so the sweep found panel 1's hit under panel 2's
+  centre. Each hit area is now sized to its panel's bounding box and clipped to the
+  polygon in that box's own coordinates, and the sweep records fourteen page anchors with
+  no strays.
+- The selected panel was lost on the page's first write when the page had been opened from
+  another shot of the same scene: `load()` reset the selection when the shot changed, and
+  `update()` had skipped `load()` because the scene had not. The selection follows the
+  shot in `update()`.
+
+What is left, none of it blocking:
+
+- The brief's four-panel rendered page, its measured short panel and its unlettered line
+  were staged, not produced by a run. Stage 4's live check draws real pages, and the
+  critique should be repeated over one of them, mainly to see the boxes over a real
+  render.
+- The dashed boxes could take a heavier stroke over a render (they are drawn at 1px at 70%
+  signal). Left until a real render shows whether they are too quiet.
+- The verdict sentence could stand a shorter form from `layoutDefect` for the head, with
+  the long one as the tooltip. That is the runner's sentence, so the change belongs there,
+  not here.

@@ -997,3 +997,53 @@ for the stages still to come:
   at the provider's default size, still holds and is why `gengraph.scaffoldSheet` writes
   the prop (Stage 4).
 - **Stages 3 and 5 are untouched.** Neither calls a model.
+
+### Stage 3
+
+Shipped on 2026-09-16 in three commits: the playable and Play, the command and the tool,
+then the editor. The design brief, plan, review and screenshot critique are in
+[`manga-style-design.md`](manga-style-design.md); what follows is where the build departed
+from this plan or decided something it left open.
+
+- **The playable names lines, not just panels.** `show.panels` carries each panel's
+  outline and the line ids it letters, and every `say` and `narrate` beat names its line,
+  all optional so an older `story.play.json` still parses and the static site ignores
+  them. `framesOf` gives a frame the panel that letters its line; a line no panel letters
+  shows the page whole. Play dims the rest of the page with an even-odd path over the
+  picture's own box, crossfades between two panels of one page, and cuts under reduced
+  motion.
+- **`setPanels` is the whole partition at once, and it is the only rule that moves a line
+  between two panels.** `@vn/scriptedit`'s `panels.ts` validates the list against the
+  shot's cast and covered lines, refuses a line in two panels, and reads an empty list as
+  "make this page a frame again". `setCoverage` cannot do the between-panels move because
+  the shot's line set does not change, so the plan's "route mutations through
+  `story.setPanels`" holds for every write the editor makes, including lettering. The
+  desktop command carries the list as a digest JSON prop, declares `vngen/work/shots`, and
+  is undoable; the agent's `set_panels` takes the same list with `shape` required, where
+  `write_storyboard` may leave a shape to the layout.
+- **The editor reads the coverage it already has.** `CoverageShot` carries the full
+  `PagePanel` list, the boxes the render placed each panel in, and the `layout` verdict
+  sentence when `layoutDefect` disagrees, so the Page editor needs no read of its own and
+  the coverage strip's page thumbnail and the editor cannot disagree. The document tree
+  badges a page `page · N` and stamps `DocNode.panels`, which is what the editor's claim
+  reads.
+- **The editor is a pane of its own, not a mode of the Asset pane.** The plan's Stage 3
+  line says "the desktop asset pane"; the design brief's "The editor's home" section chose
+  a `page` editor listed before Shot Coverage, claiming a shot with panels as primary and
+  pinning a `shotId`. That is what shipped, and the reasons are in the brief.
+- **`@vn/artgen/layout` is a subpath export.** The renderer draws the template glyphs from
+  `LAYOUT_TEMPLATES` and `evenLayout`, and pulling the artgen barrel into the browser
+  bundle would have brought the node side with it.
+- **Nine interactions, ten page shortcuts, one shortcut-table rule.** `page.letter`
+  carries `<shotId>#<lineId>` and answers per panel. The arrow keys, shift-arrows, Delete
+  and Escape are `scope: 'page'` rows; a row's `on` may end in `/` to cover a family of
+  targets (`corner/`), which is the one change to the shortcut table's shape.
+- **The sweep learned to expand a scene and select by badge.** Clicking a scene row
+  selects it without expanding it, so the sweep clicks the twisty, picks the row whose
+  badge starts `page ·` for the Page editor, and puts the first shot back afterwards. The
+  sample repo gained `arrival__page1`, a diagonal split of two, which is why the sweep
+  caught the hit-area overlap the critique records.
+- **Documentation landed in `desktop-app-editors-story.md`, not `desktop-app.md`.** The
+  desktop doc had been split by concern since the plan was written; the Page section sits
+  with the other story editors, and `command-system.md` and `guided-tours.md` carry the
+  ninth interaction and the `on` family rule.

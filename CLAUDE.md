@@ -187,7 +187,7 @@ cross-cutting invariants (workspace/window lifecycle, keys, layout templates, th
 notifications, asset naming, the debug agent, packaging, GitHub Pages publishing, updates)
 and its path.ux renderer rules live in
 [`docs/reference/desktop-app.md`](docs/reference/desktop-app.md#application-invariants),
-which also covers the shell, the canvas, and the sixteen editors in full.
+which also covers the shell, the canvas, and the eighteen editors in full.
 [`docs/reference/playable-format.md`](docs/reference/playable-format.md) specifies the
 playable format, [`docs/reference/desktopAppState.md`](docs/reference/desktopAppState.md)
 records what persists where, and

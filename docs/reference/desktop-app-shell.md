@@ -24,7 +24,7 @@ editor. There is no React and no room vocabulary. path.ux is a git submodule at
 `vendor/path.ux`, so a fresh clone needs `git submodule update --init --recursive`
 (`pnpm check:setup` reports this by name). Seven rules cause the most mistakes:
 
-- The sixteen editors are named in one place (`apps/desktop/src/shared/editors.ts`), and
+- The eighteen editors are named in one place (`apps/desktop/src/shared/editors.ts`), and
   `registerEditor(cls, 'vn.Name')` is the only way to register one, because a hand-written
   name string breaks under minification. That list also holds each editor's `claims`
   predicate (ranked in `renderer/pathux/panes/route.ts`) and a `pins` field for the one
