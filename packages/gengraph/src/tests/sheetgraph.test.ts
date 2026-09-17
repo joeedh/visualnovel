@@ -76,8 +76,8 @@ describe('the scaffolded sheet graph', () => {
 
     expect(inner(0, 'crop', 'rect')).toBe('0,0,0.5,1');
     expect(inner(1, 'crop', 'rect')).toBe('0.5,0,0.5,1');
-    expect(inner(0, 'template', 'template')).toMatch(/^This is cell 1 of 2 /);
-    expect(inner(1, 'template', 'template')).toMatch(/^This is cell 2 of 2 /);
+    expect(inner(0, 'template', 'template')).toMatch(/^The first reference is cell 1 of 2 /);
+    expect(inner(1, 'template', 'template')).toMatch(/^The first reference is cell 2 of 2 /);
     expect(inner(0, 'image', 'aspect')).toBe('16:9');
     expect(inner(1, 'image', 'aspect')).toBe('9:16');
     expect(inner(1, 'image', 'model')).toBe('');
@@ -119,7 +119,7 @@ describe('the scaffold on disk', () => {
       instances[i]!.subgraph.nodeIdMap.get(id)?.props[key]?.getValue();
     expect(instances).toHaveLength(2);
     expect(inner(1, 'crop', 'rect')).toBe('0.5,0,0.5,1');
-    expect(inner(1, 'template', 'template')).toMatch(/^This is cell 2 of 2 /);
+    expect(inner(1, 'template', 'template')).toMatch(/^The first reference is cell 2 of 2 /);
     expect(inner(1, 'image', 'aspect')).toBe('9:16');
     expect(sharedAncestors(read.graph)).toHaveLength(3);
   });
@@ -162,11 +162,12 @@ describe('running the scaffold', () => {
 
     const frames = mock.images.slice(1);
     expect(frames[0]!.prompt).toBe(
-      'This is cell 1 of 2 on the attached staging sheet; match its staging and camera. aiko at the window',
+      "The first reference is cell 1 of 2 cut from the scene's staging sheet; draw this one " +
+        'shot at full size, matching its room, staging and camera. aiko at the window',
     );
-    expect(frames[1]!.prompt).toMatch(/^This is cell 2 of 2 /);
+    expect(frames[1]!.prompt).toMatch(/^The first reference is cell 2 of 2 /);
     expect(frames.map((f) => f.params.aspect)).toEqual(['16:9', '9:16']);
-    // The cell first, then the whole sheet, ahead of nothing else because the task refs are empty
-    expect(frames[0]!.refs).toHaveLength(2);
+    // The cell alone, because the task refs are empty and the whole sheet is never shown
+    expect(frames[0]!.refs).toHaveLength(1);
   });
 });

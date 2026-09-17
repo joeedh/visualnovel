@@ -197,8 +197,8 @@ path.ux's coercion.
   ([`manga-style.md`](../plans/manga-style.md), Stage 4).
 - The image nodes record the pictures they were shown beside the picture they drew (`refs`
   in the journal record), so a host can tell what a frame was drawn from. The scheduled
-  runner reads that for a sheet member: the cell and the sheet, which are blobs rather
-  than assets, are handed to the reviewers as bytes.
+  runner reads that for a sheet member: the cell, which is a blob rather than an asset, is
+  handed to the reviewers as bytes.
 - The image nodes' `model` prop defaults to empty, which means the project's
   `models.image`. The runtime resolves it to `GenServices.image.defaultModel` before the
   call, so no backend and no cache sees an empty id; the run hash carries the resolved
@@ -390,17 +390,21 @@ implementation. The testkit passes a mock.
   `@vn/gengraph` build both, so every host scaffolds the same graph. The definition is
   written to `lib/sheet-cell.json` on the project's first scaffold and instanced from the
   file after that, so an author's edit to the cell chain reaches every later scaffold.
-  Inside it: Crop → Reference list (`list` the task refs, `a` the cell, `b` the sheet) →
-  Text ("This is cell _i_ of _n_ on the attached staging sheet; match its staging and
-  camera. {varB}", `varB` the derived prompt) → Generate image → the group's `image`
-  output; the derived prompt and task refs are read inside the group because they are
-  seeded per run for the output the run targets. Each instance overrides the crop's
-  `rect`, the text's `template` and the image's `aspect` (`aspectFor` for the member);
-  both image nodes leave `model` empty, so the group follows the project's image model.
-  The command refuses a scene with no storyboard, a group no shot names, and a member slot
-  another graph draws; a shot row in a group offers it from its menu. The seed a sheet is
-  drawn with is the group's, carried through the seeded inputs rather than a `seed` prop,
-  and `story.setSheetGroup` is how it changes.
+  Inside it: Crop → Reference list (`list` the task refs, `a` the cell; the whole sheet is
+  deliberately not a reference, because a model that follows references closely redraws
+  the grid —
+  [`manga-live-tests.md`](../research/manga-live-tests.md#stage-4--perspective-coherence-2026-09-17))
+  → Text ("The first reference is cell _i_ of _n_ cut from the scene's staging sheet; draw
+  this one shot at full size, matching its room, staging and camera. {varB}", `varB` the
+  derived prompt) → Generate image → the group's `image` output; the derived prompt and
+  task refs are read inside the group because they are seeded per run for the output the
+  run targets. Each instance overrides the crop's `rect`, the text's `template` and the
+  image's `aspect` (`aspectFor` for the member); both image nodes leave `model` empty, so
+  the group follows the project's image model. The command refuses a scene with no
+  storyboard, a group no shot names, and a member slot another graph draws; a shot row in
+  a group offers it from its menu. The seed a sheet is drawn with is the group's, carried
+  through the seeded inputs rather than a `seed` prop, and `story.setSheetGroup` is how it
+  changes.
 
 ## Running a graph
 

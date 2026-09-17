@@ -425,3 +425,201 @@ asks for, run on the branch after Stages 1 to 5 were green.
   work rather than fixed here: a drifted bound slot was not counted in `vngen cost`'s
   graph estimate (since fixed), and a graph node with an empty `aspect` draws at the
   provider's default size rather than the project's.
+
+## Stage 4 — perspective coherence (2026-09-17)
+
+The check the plan's [live-model section](../plans/manga-style.md#live-model-testing) asks
+for after Stage 4: one six-shot sequence in one room drawn with no sheet, through the
+scaffolded sheet graph, and with the sheet at two cell counts, judged by a vision model on
+a fixed question list and by a person over contact sheets. It also found two defects in
+what Stage 4 shipped before drawing a frame of its own, fixed in the same session.
+
+### What was checked
+
+- One scene written for the check, `INT. CLASSROOM - AFTERNOON`, six lines, two characters
+  from `templates/basic` (Aiko and Haruki), and a hand-written storyboard of six shots: s1
+  establishing from the doorway; s2 medium from the middle of the room; s3 medium over
+  Aiko's shoulder onto Haruki at the window desk; s4 the reverse, over Haruki's shoulder
+  onto Aiko; s5 a wide pan across the desks from the window to the door; s6 a close
+  reverse angle on Haruki. Every group carried the same notes (the desk rows, the board at
+  the front, the windows on the left, Haruki at the back window desk, Aiko coming in from
+  the door) and `seed: 1`.
+- One project copy per image model, each a cut-down `templates/basic` with its own
+  `keys/`: the classroom trimmed to one variant, the rooftop dropped, `candidates: 1`,
+  `max_refine_attempts: 1`, `concurrency: 3`. Three models: `gemini-2.5-flash-image` drawn
+  direct (the baseline the earlier stages used), `google/gemini-3-pro-image` and
+  `openai/gpt-image-2` through OpenRouter.
+- Four ways, run on the same copy in turn by rewriting the storyboard's groups and
+  re-scaffolding, so the plate, portraits and model sheets are drawn once per model and
+  every way's frames are new tasks (the sheet key re-keys them):
+    - **none** — no groups; the built-in path with the plate and portraits as references.
+    - **six** — one group of all six shots; the shipped scaffold, a 2×3 sheet at 21:9, the
+      member's cell and then the whole sheet as references ahead of the task's own.
+    - **split** — two groups, s1–s4 (2×2 at 16:9) and s5–s6 (1×2 at 21:9), the same chain:
+      the cell-count arm.
+    - **crop only** — the six-cell group again with `seed: 2` and the cell chain's
+      reference list carrying the cell but not the whole sheet, added after the baseline's
+      first results (below).
+- Everything ran through the shipped code: `vngen run` to the P3 gate,
+  `vngen approve --yes`, `vngen run` past it; the storyboard through `writeShots`, the
+  graphs through `sheetCellDef` and `sheetGraph` written with `writeGroupDef` and
+  `writeGraphDoc`, the same builders `gengraph.scaffoldSheet` calls. Nothing in the driver
+  drew a picture or wrote a prompt of its own.
+- Two judgements per six-frame set. The in-pipeline gate, which is `max_refine_attempts`
+  reviews against the shot spec (the sheet note included) by `models.vision`; and a fixed
+  question list put to `gemini-2.5-pro` shown the six frames in shot order: how many are a
+  single picture rather than a grid; whether every frame shows the same room; whether s4
+  reads as the reverse of s3; whether the eyeline holds across that cut; in which frames
+  Haruki is at the window desk as staged; which frames match their brief; whether the two
+  keep their identity. A person (this session) looked at every set as a 2×3 contact sheet
+  and at every sheet the graph drew.
+- The gate's reviewers were `gemini-2.5-flash` and `claude-opus-4-8` for the baseline's
+  first three ways, then `gemini-2.5-flash` and `gemini-2.5-pro` for everything after,
+  because the Anthropic key reached its monthly limit mid-run
+  (`You have reached your specified API usage limits`, refused with a 400; the frames
+  already drawn were kept and only the review was re-run, which the graph journal resumed
+  without redrawing). The cross-way comparison is the judge pass, which ran over every set
+  with one model, so the reviewer change does not reach it.
+
+### Budget and spend
+
+- `vngen cost` on each copy before the run: 3 image calls at the P3 gate (1
+  `location_ref`, 2 `portrait`); after approval 12 tasks (6 `model_sheet`, 6
+  `shot_image`), 12 image and 12 review calls. Per model the whole sequence is 37
+  pictures: 9 prerequisites, 6 frames with no sheet, then 7, 8 and 7 for the three sheet
+  ways. About $15 was estimated for the three models.
+- OpenRouter's key meter read $43.34 before anything ran and $52.61 at the end:
+  **$8.92**
+  for the 74 pictures on the two OpenRouter models, about $6.00 of it
+  `google/gemini-3-pro-image` (roughly $0.16 a picture) and $2.90 `openai/gpt-image-2`
+  (roughly
+  $0.08; the two sequences overlapped for their last third, so the split is by
+  the readings taken between them). The meter also moved $0.35
+  during the direct-Gemini runs, which make no OpenRouter call.
+- Direct Gemini: 37 pictures on `gemini-2.5-flash-image` at the published
+  $0.039, about
+  $1.45; about 150 review calls on `gemini-2.5-flash` and `gemini-2.5-pro`,
+  roughly $2;
+  16 judge calls of six pictures each on `gemini-2.5-pro`, under $1. The 36
+  Claude reviews before the key ran out are within its limit. **About $13 in all.**
+- Latency, from the logs: the no-sheet wave of 12 tasks took 3 m 18 s on
+  `gemini-3-pro-image` and 2 m 51 s on `gpt-image-2` at concurrency 3; the six-cell sheet
+  way, 7 pictures, 9 m 14 s and 6 m 14 s, because the runs of one graph are now serialised
+  (below).
+
+### Two defects found before the first sheet frame
+
+- **Only the first member was bound.** `vngen cost` on the scaffolded copy said
+  `slots to draw: 0 of 1 bound` for a six-output graph. `sheetGraph` set `active` on the
+  first output only, and `bindSlots` binds active outputs, so s2 to s6 would have drawn
+  through the built-in path with no sheet. The test enshrined it ("the first active").
+  `active` arbitrates between outputs claiming one slot; every sheet output claims its own
+  and is now active.
+- **Six members drew six sheets.** The first six-cell run journaled six `running`/`done`
+  pairs for the sheet node under one run key, with six different blobs. `indexGraphs`
+  spreads one loaded graph into a binding per slot and `runBoundGraph` cloned the journal
+  per binding, so no member saw the sheet another had drawn; and three members started in
+  one concurrency wave before any sheet existed. The bindings now share the graph's
+  journal object, and runs of one graph go one at a time, which also closes a race the
+  same run exposed: the seeds are written onto the shared graph's sockets, and a member
+  reading its task references after the first `await` read another member's. The six
+  frames of that first run are kept out of the tables; the six-cell way was rerun with a
+  fresh journal and every figure below is from the fixed code.
+
+### Per model and way
+
+Gate is frames the pipeline accepted at the one allowed attempt. Single is frames that are
+one picture rather than a grid. Room, Reverse and Eyeline are the judge's answers; Desk is
+frames with Haruki at the window desk; Brief is frames the judge matched to their brief;
+Identity is whether both characters kept hair, face and uniform throughout.
+
+| Model                       | Way       | Gate | Single | Room                               | Reverse | Eyeline | Desk | Brief | Identity |
+| --------------------------- | --------- | ---- | ------ | ---------------------------------- | ------- | ------- | ---- | ----- | -------- |
+| `gemini-2.5-flash-image`    | none      | 6/6  | 6/6    | yes                                | no      | yes     | 2/6  | 2/6   | no       |
+| `gemini-2.5-flash-image`    | six       | 0/6  | 2/6    | yes                                | no      | yes     | 5/6  | 2/6   | yes      |
+| `gemini-2.5-flash-image`    | split     | 1/6  | 4/6    | yes                                | yes     | yes     | 4/6  | 3/6   | yes      |
+| `gemini-2.5-flash-image`    | crop only | 0/6  | 6/6    | yes                                | no      | yes     | 2/6  | 3/6   | yes      |
+| `google/gemini-3-pro-image` | none      | 5/6  | 6/6    | no (s5 grows a door)               | no      | no      | 1/6  | 3/6   | yes      |
+| `google/gemini-3-pro-image` | six       | 1/6  | 6/6    | yes                                | yes     | yes     | 6/6  | 5/6   | no       |
+| `google/gemini-3-pro-image` | split     | 2/6  | 6/6    | no (s4–s6 another board and shelf) | no      | yes     | 5/6  | 5/6   | no       |
+| `google/gemini-3-pro-image` | crop only | 1/6  | 6/6    | yes                                | yes     | yes     | 6/6  | 3/6   | no       |
+| `openai/gpt-image-2`        | none      | 6/6  | 6/6    | yes                                | yes     | yes     | 2/6  | 4/6   | yes      |
+| `openai/gpt-image-2`        | six       | 3/6  | 6/6    | yes                                | yes     | yes     | 5/6  | 6/6   | yes      |
+| `openai/gpt-image-2`        | split     | 3/6  | 6/6    | no (windows swap walls in s3, s4)  | no      | yes     | 6/6  | 5/6   | yes      |
+| `openai/gpt-image-2`        | crop only | 5/6  | 6/6    | yes                                | yes     | yes     | 5/6  | 6/6   | yes      |
+
+Blocking defects the gate filed against the sheet ways, by category, over the frames it
+rejected: `gemini-2.5-flash-image` six 6 frames (staging 6, framing 3, casting 1,
+characters 1), split 5 (staging 6, framing 1, outfit 1), crop only 6 (staging 8);
+`gemini-3-pro-image` six 5 (staging 7), split 4 (staging 5, character 4), crop only 5
+(staging 7, character 1); `gpt-image-2` six 3 (staging 3), split 3 (staging 5), crop only
+1 (staging 1). The no-sheet ways on the baseline and `gpt-image-2` drew no blocking defect
+at all.
+
+### What the tables say
+
+- **The whole sheet as a reference makes `gemini-2.5-flash-image` redraw the grid.** Four
+  frames in six under the six-cell way and two in six under the split are 2×3 or 2×2 grids
+  of the room at frame resolution, not frames: the model copied the reference it was told
+  the cell came from. Both gate reviewers were confused by them too, one describing "cell
+  4" of the output as the frame. Taking the whole sheet out of the reference list (crop
+  only) gave six single frames on every model, and on `gpt-image-2` raised the gate from
+  3/6 to 5/6 with the brief matched 6/6.
+- **Where the model follows the cell, the sheet does what it is for.** On `gpt-image-2`
+  the no-sheet set is coherent as a room (the plate does that on every model; Room is
+  "yes" for nine sets of twelve) but the blocking wanders: Haruki is at his desk in two
+  frames of six and the brief holds in four. With the sheet he is at the desk in five, the
+  brief holds in six, s4 reads as the reverse of s3 and the eyeline holds; the sheet that
+  model drew is the storyboard as written, with the right uniforms and pins. On
+  `gemini-3-pro-image` the sheet also fixes the staging (Desk 1/6 to 6/6, Brief 3/6 to
+  5/6, the reverse pair appears) but the sheet itself lost the cast: a generic sailor
+  uniform and brown hair for Aiko, and two frames (s3, s5) copied their cell closely
+  enough to inherit it, so Identity turns "no". On `gemini-2.5-flash-image` the sheet's
+  own staging is poor (doubled figures, the same standing pose in three cells) and the
+  frames gain nothing from it.
+- **The gate punishes sheet frames for the sheet's mistakes.** Every rejected sheet frame
+  carried a `staging` defect, and the reviewers read the note as written: a frame whose
+  camera or pose differs from its cell is blocking, even where the cell was wrong and the
+  frame follows the spec. That is why the baseline's crop-only set, six single frames of
+  the same room, passed 0/6 while its no-sheet set passed 6/6. The note has been rewritten
+  (below).
+- **Two groups did not beat one.** The split's second sheet is a second roll of the room,
+  and on two models of three the judge found the room changing between or inside the
+  groups (`gpt-image-2`: the windows swap walls in s3 and s4; `gemini-3-pro-image`: s4 to
+  s6 have another board and shelf). Fewer cells made the baseline's sheet stage better and
+  copy the grid less, but not enough to pass. Nothing here argues for a bound below the
+  eight cells that ship; six worked on the two capable models.
+- **Reviewer reading of six frames is usable but not fine.** The judge's grid counts
+  matched the person's on every set. Its room and reverse answers agreed with the person
+  on the clear cases and wavered on close ones (the baseline's crop-only s3/s4 pair is a
+  reasonable reverse the judge refused; `gemini-3-pro-image`'s split got "no" for a room
+  that differs in the board's frame), which is the composition weakness the plan expected.
+  The person's look at the contact sheets is what settled the decisions below.
+
+### Decisions settled
+
+- **The cell chain shows the model its cell only.** `sheetCellDef` no longer wires the
+  sheet into the reference list's `b`; the sheet reaches the crop and nothing else, and
+  the cell template says the first reference is the cell cut from the sheet and asks for
+  one shot at full size. Every model drew single frames this way, and the model that
+  benefits most from the sheet benefited more.
+- **The staging note blocks on the room and the grid, not on the pose.** `sheetReviewNote`
+  now makes two things blocking in category `staging`: a frame that is a grid rather than
+  one picture, and a room or furniture that is not the cell's. The cell's camera and
+  staging are guidance, and a frame that follows the shot specification more closely than
+  the cell is not defective. The old wording made a bad cell an authority over a good
+  frame.
+- **The decomposer does not propose groups by default.** The gain is real on the models
+  that follow references (`gpt-image-2` above all) and absent or negative on the baseline,
+  and the sheet's identity drift on `gemini-3-pro-image` means a group costs attempts
+  there. `storyboard_notes` stays where an author turns sheets on, and Decision 20's
+  previous-sheet chaining stays unbuilt. Revisit if the default image model settles on one
+  that this table shows benefiting.
+- **The cell bound stays at eight, and one group per continuous sequence is the
+  recommendation.** Six cells staged correctly on both capable models; splitting a
+  sequence across two sheets rolled the room twice.
+- **Members of one sheet draw one at a time.** The serialisation that fixed the
+  double-sheet defect costs wall-clock (a six-member group is roughly three times slower
+  than the same six frames unbound at concurrency 3) and is accepted: the alternative, a
+  graph object per run, is a larger change than the check justified, and the sheet's cost
+  is one picture either way.

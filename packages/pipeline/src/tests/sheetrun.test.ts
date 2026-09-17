@@ -171,8 +171,8 @@ describe('a sheet member drawn through a bound graph', () => {
         .filter((r) => String(r.nodeId).endsWith('/image') && r.status === 'done')
         .map((r) => (r.output as { prompt: string }).prompt)
         .sort();
-      expect(prompts[0]).toMatch(/^This is cell 1 of 2 .*static, take s1/s);
-      expect(prompts[1]).toMatch(/^This is cell 2 of 2 .*static, take s2/s);
+      expect(prompts[0]).toMatch(/^The first reference is cell 1 of 2 .*static, take s1/s);
+      expect(prompts[1]).toMatch(/^The first reference is cell 2 of 2 .*static, take s2/s);
     } finally {
       await p.cleanup();
     }

@@ -120,9 +120,10 @@ export function sheetReviewNote(seeds: SheetSeeds, shotId: string): string {
   const cell = seeds.members.findIndex((m) => m.id === shotId) + 1;
   return (
     `This frame was drawn from cell ${cell} of a ${seeds.members.length}-cell staging sheet of ` +
-    'the scene. After the ordinary references come that cell and then the whole sheet: the ' +
-    "frame's room, furniture, camera and staging should match the cell; a difference there is " +
-    'a blocking defect in category "staging".'
+    'the scene, and that cell is the last reference. The frame must be one picture, never a ' +
+    "grid of several, and its room and furniture must be the cell's; either failing is a " +
+    'blocking defect in category "staging". The cell’s camera and staging are guidance: a ' +
+    'frame that follows the shot specification more closely than the cell does is not defective.'
   );
 }
 

@@ -1052,8 +1052,9 @@ from this plan or decided something it left open.
 
 Shipped on 2026-09-17 in three commits: the sheet in a member's identity; the sheet nodes,
 the pixel service and the scheduled runner's seeding; then the scaffold, the seeded
-interactive run and the force refusal. The live check is still owed (below). Where the
-build departed from the plan or decided something it left open:
+interactive run and the force refusal. The live check ran the same day and its two fixes
+and three decisions are the last bullets below. Where the build departed from the plan or
+decided something it left open:
 
 - **`sheetSeeds` reads the manifest, not `upstreamByShot`.** Decision 17 gave the helper
   the planner's resolved upstream. It takes the manifest instead, resolving the plate with
@@ -1064,18 +1065,18 @@ build departed from the plan or decided something it left open:
   references: the sheet is about staging, and the cell chain's task refs carry the outfit.
 - **The cell sentence lives in the `sheet-cell` definition, with the index inlined.** The
   plan's template took the cell number through `{varA}`; the scaffold overrides the
-  template text per instance ("This is cell _i_ of _n_ on the attached staging sheet…")
-  and keeps `{varB}` for the derived prompt, because an instance overrides a prop, not an
-  unconnected input's default. The derived prompt and task refs are read inside the group
-  rather than through boundary inputs, since both are seeded per run for the output the
-  run targets; the group's one input is the sheet.
-- **The reviewer sees the cell and the sheet as bytes.** `VisionReviewer.review` takes a
-  `ReviewRef` that is an asset or `{bytes, ext}`; the runner reads the blob refs the image
-  node recorded (`GraphDraw.refs`, new in the journal record) and appends a sentence to
+  template text per instance ("The first reference is cell _i_ of _n_ cut from the scene's
+  staging sheet…") and keeps `{varB}` for the derived prompt, because an instance
+  overrides a prop, not an unconnected input's default. The derived prompt and task refs
+  are read inside the group rather than through boundary inputs, since both are seeded per
+  run for the output the run targets; the group's one input is the sheet.
+- **The reviewer sees the cell as bytes.** `VisionReviewer.review` takes a `ReviewRef`
+  that is an asset or `{bytes, ext}`; the runner reads the blob refs the image node
+  recorded (`GraphDraw.refs`, new in the journal record) and appends a sentence to
   `spec.description` naming the cell and the `staging` category. The plan said "auxiliary
   references"; nothing in the manifest addresses a blob, so bytes it is.
 - **The image nodes record what they were shown.** `refs` on a `GenImage`/`GenEditImage`
-  record is what lets a host find the cell and the sheet without re-running the graph.
+  record is what lets a host find the cell without re-running the graph.
 - **`gengraph.run` seeds every host-seeded node, not only the sheet's.** Before this stage
   the interactive run seeded nothing, although the docs said otherwise; now it derives the
   prompt through the planner's `*Inputs` builders and the references from the manifest. An
@@ -1090,8 +1091,8 @@ build departed from the plan or decided something it left open:
   group's settings with it). Both are palette-only until a sheet surface exists.
 - **Decision 20's previous-sheet chaining is not built.** `GenSheetRefs` does not read the
   previous group's sheet from the journal; a sequence past eight shots is two independent
-  groups. It waits on the live check, which decides whether sheets are proposed by default
-  at all.
+  groups. The live check decided against proposing sheets by default, so it stays unbuilt
+  until a default model that benefits from sheets makes it worth having.
 - **jimp decodes by magic number, not by its own sniffing.** `Jimp.read` loads `file-type`
   through a dynamic import, which a CommonJS VM without ESM support (jest) refuses; the
   pixel service reads the PNG or JPEG magic and calls the codec directly, and refuses any
@@ -1099,6 +1100,26 @@ build departed from the plan or decided something it left open:
 - **The scaffold is offered from a shot row.** `DocNode.sheet` carries the group; the
   shot's menu offers _Scaffold a sheet graph for group g_. No sheet appears in Shot
   Coverage yet; that is a surface for after the live check.
-- **The live check has not run.** It spends money on two models and is the decision input
-  for the decomposer's default; it is the next step, and its results go to
-  [`../research/manga-live-tests.md`](../research/manga-live-tests.md).
+- **The live check found two defects before its first sheet frame.** `sheetGraph` marked
+  only the first output active, so one member of six was bound to the sheet graph; and
+  `runBoundGraph` cloned the journal per slot binding, so six members drew six sheets and
+  two members running at once read each other's seeds off the shared graph's sockets.
+  Every sheet output is now active, the bindings of one graph share its journal, and the
+  runs of one graph are serialised
+  ([`pipeline-contracts.md`](../reference/pipeline-contracts.md#scenes-shots-and-lines)).
+  The full record, with the tables, is
+  [`../research/manga-live-tests.md`](../research/manga-live-tests.md#stage-4--perspective-coherence-2026-09-17).
+- **The cell chain shows the model its cell, not the whole sheet.** Decision 17's "crop
+  and full sheet as references" made `gemini-2.5-flash-image` redraw the grid in four
+  frames of six; with the cell alone every model drew single frames and `gpt-image-2`
+  passed the gate 5/6 against 3/6. `sheetCellDef` leaves the reference list's `b` unwired,
+  and the reviewer note makes a grid, or another room, the blocking `staging` defect while
+  the cell's camera and pose are guidance, because the old wording rejected correct frames
+  for a wrong cell (0/6 on a set the judge and a person passed).
+- **The decomposer does not propose groups by default, and the cell bound stays at
+  eight.** The sheet fixed the staging on the two models that follow references
+  (`gpt-image-2`: Haruki at his desk 2/6 to 5/6, the brief 4/6 to 6/6, the reverse pair
+  and eyeline holding) and gained nothing on the baseline; `gemini-3-pro-image` lost the
+  cast's identity on the sheet itself. `storyboard_notes` stays the switch. Six cells
+  staged correctly where the model could stage at all, and two groups rolled the room
+  twice, so one group per continuous sequence up to eight is the recommendation.

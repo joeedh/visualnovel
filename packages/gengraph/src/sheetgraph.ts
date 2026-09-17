@@ -1,10 +1,12 @@
 /**
  * The graph a staging-sheet group is scaffolded as: the sheet drawn once from the seeded sheet
  * prompt and references, and one instance of the `sheet-cell` group per member, which cuts
- * the member's cell out, puts the cell and the sheet ahead of the task's own references, and
- * draws the frame from the derived prompt behind a sentence naming the cell. Every host that
- * scaffolds a sheet builds the same graph, so a sheet drawn from the desktop or the agent is
- * the sheet the pipeline's own path would draw.
+ * the member's cell out, puts the cell ahead of the task's own references, and draws the
+ * frame from the derived prompt behind a sentence naming the cell. The whole sheet is not a
+ * reference: shown it, a model that follows references closely redraws the grid rather than
+ * the cell (the Stage 4 live check, four frames in six on gemini-2.5-flash-image). Every
+ * host that scaffolds a sheet builds the same graph, so a sheet drawn from the desktop or
+ * the agent is the sheet the pipeline's own path would draw.
  */
 import { Graph, GroupDef, GroupNode } from 'pathux-graph';
 import type { Node } from 'pathux-graph';
@@ -35,8 +37,8 @@ export const CELL_IMAGE = 'image';
 /** The words a member's frame is drawn behind; `{varB}` is the member's derived prompt. */
 export function cellTemplate(index: number, count: number): string {
   return (
-    `This is cell ${index} of ${count} on the attached staging sheet; match its staging and ` +
-    'camera. {varB}'
+    `The first reference is cell ${index} of ${count} cut from the scene's staging sheet; ` +
+    'draw this one shot at full size, matching its room, staging and camera. {varB}'
   );
 }
 
@@ -56,7 +58,8 @@ function place(node: Node, x: number, y: number): void {
 
 /**
  * Builds the per-member chain as a group definition with one boundary input, the sheet, and
- * one boundary output, the frame. The derived prompt and the task's references are read
+ * one boundary output, the frame. The sheet reaches only the crop; the reference list takes
+ * the cell and the task's references. The derived prompt and the task's references are read
  * inside it, because they are seeded per run for the output the run targets. The crop's
  * rectangle, the template's cell number and the image's aspect are the values an instance
  * overrides; the image's model is left empty so every cell follows the project's model.
@@ -102,7 +105,6 @@ export function sheetCellDef(): GroupDef {
   graph.connect(sheetIn, crop.inputs.image);
   graph.connect(refs.outputs.refs, list.inputs.list);
   graph.connect(crop.outputs.image, list.inputs.a);
-  graph.connect(sheetIn, list.inputs.b);
   graph.connect(prompt.outputs.prompt, template.inputs.varB);
   graph.connect(template.outputs.text, image.inputs.prompt);
   graph.connect(list.outputs.refs, image.inputs.refs);
