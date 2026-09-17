@@ -1,7 +1,15 @@
-import type { AnyTask, Logger, ProjectModel, Providers, TaskKind, TaskStatus } from '@vn/types';
+import type {
+  AnyTask,
+  Logger,
+  ProjectModel,
+  Providers,
+  Shot,
+  TaskKind,
+  TaskStatus,
+} from '@vn/types';
 import type { AssetStore, BaseAssets } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
-import type { ProjectPaths } from '@vn/store';
+import { readShots, type ProjectPaths } from '@vn/store';
 import { TaskGraph, logTask } from '@vn/taskgraph';
 import { pool } from '@vn/util';
 import {
@@ -12,6 +20,7 @@ import {
   driftedTasks,
   gateStatus,
   planTasks,
+  repairAccepted,
   runTask,
   type CostPreview,
   type GateStatus,
@@ -50,6 +59,13 @@ export interface RunOptions {
    * to. A task whose slot no graph names runs the code it ran before graphs existed.
    */
   graphs?: GraphRuntime;
+  /**
+   * Task hashes to run, and nothing outside what they need: each wave runs only the ready tasks
+   * that are one of these or an upstream dependency of one. Planning still covers the whole
+   * project, so the storyboard files and the preview are what a full run would leave, and the
+   * failure and drift requeues are bounded to the same closure. Unset runs everything ready.
+   */
+  only?: readonly string[];
 }
 
 /** Where a run has got to, as {@link RunOptions.onProgress} sees it. */
@@ -156,6 +172,40 @@ export function requeueDrifted(
   return requeued;
 }
 
+/** Every scene's persisted storyboard, for the manifest repair; an unreadable one is skipped. */
+async function allShots(
+  model: ProjectModel,
+  paths: ProjectPaths,
+): Promise<ReadonlyMap<string, readonly Shot[] | null>> {
+  const out = new Map<string, readonly Shot[] | null>();
+  for (const scene of model.scenes.values()) {
+    try {
+      const loaded = await readShots(paths, scene.id, new Set(scene.lines.map((l) => l.id)));
+      if (loaded) out.set(scene.id, loaded.shots);
+    } catch {
+      // A storyboard that will not parse is reported elsewhere; here it simply names no take
+    }
+  }
+  return out;
+}
+
+/**
+ * The tasks a targeted run may touch: the targets and everything upstream of them, walked over
+ * `deps` from the graph as it stands now. Recomputed per wave, because a wave can plan nodes that
+ * did not exist before it (a shot task appears once the sheet it depends on is drawn).
+ */
+export function closureOf(graph: TaskGraph, targets: readonly string[]): Set<string> {
+  const seen = new Set<string>();
+  const stack = [...targets];
+  while (stack.length > 0) {
+    const hash = stack.pop()!;
+    if (seen.has(hash)) continue;
+    seen.add(hash);
+    for (const dep of graph.get(hash)?.deps ?? []) stack.push(dep);
+  }
+  return seen;
+}
+
 /** The reference hashes a task's inputs carry, if its kind has any (`prompt_refine` does not). */
 function inputRefHashes(task: AnyTask): string[] {
   const refs = (task.inputs as { refs?: { hash: string }[] }).refs;
@@ -179,6 +229,25 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
   const drawnByGraph = (task: AnyTask): boolean => boundGraph(task, deps) !== undefined;
   const runners: Record<TaskKind, Runner> = createRunners(config);
   const ran: AnyTask[] = [];
+  // What this run is allowed to touch, out of what the plan asked for
+  const inScope = (planned: AnyTask[]): Set<string> => {
+    const hashes = new Set(planned.map((t) => t.hash));
+    if (opts.only === undefined) return hashes;
+    const wanted = closureOf(graph, opts.only);
+    return new Set([...hashes].filter((hash) => wanted.has(hash)));
+  };
+
+  // A slot left with two accepted takes resolves to nothing, and the plan below would read it
+  // as unrendered. The manifest is put right first, and a dry run leaves it alone.
+  if (!dryRun) {
+    await repairAccepted({
+      model,
+      store,
+      graph,
+      logger,
+      readShots: () => allShots(model, paths),
+    });
+  }
 
   // Always (re)plan first so the preview and gate reflect the current model state. A dry run
   // may read persisted shots but must not write a mock decomposition a real run would reuse.
@@ -215,11 +284,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
 
   // Once per run, before the loop. Requeueing inside it would re-run a task that just failed,
   // in the same process, against the same transient condition — and could spin.
-  const requeued = requeueFailed(
-    graph,
-    new Set(firstPass.map((t) => t.hash)),
-    config.max_task_attempts,
-  );
+  const requeued = requeueFailed(graph, inScope(firstPass), config.max_task_attempts);
   const retried = requeued.map((t) => t.hash);
   // A dry run requeues in memory so `cost` counts the retry it would perform, and writes
   // nothing: the divergence from the log dies with the process.
@@ -227,7 +292,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
   if (retried.length) logger?.info('task.retry', { hashes: retried });
 
   // After the retries, so a task both a failure and a graph edit want back is requeued once.
-  const stale = requeueDrifted(graph, new Set(firstPass.map((t) => t.hash)), deps);
+  const stale = requeueDrifted(graph, inScope(firstPass), deps);
   const redrawn = stale.map((t) => t.hash);
   if (!dryRun) for (const node of stale) await logTask(paths, node);
   if (redrawn.length) logger?.info('task.redraw', { hashes: redrawn });
@@ -259,7 +324,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
   // The unfinished half of what the current plan asked for. Derived from the plan rather than
   // from `graph.all()`, which carries orphans `tasks.jsonl` was never pruned of — a progress
   // count that included those would never reach zero.
-  let planned = new Set(firstPass.map((t) => t.hash));
+  let planned = inScope(firstPass);
   let running = 0;
   const unfinished = () =>
     [...planned].filter((hash) => {
@@ -283,8 +348,8 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
       base  : store.base,
       assets: store.manifest(),
     });
-    planned = new Set(plannedNow.map((t) => t.hash));
-    const ready = graph.ready();
+    planned = inScope(plannedNow);
+    const ready = graph.ready().filter((t) => opts.only === undefined || planned.has(t.hash));
     if (ready.length === 0) break;
     progress();
 

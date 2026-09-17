@@ -75,6 +75,8 @@ export interface RunOptions {
    * filling that slot draws through the graph and every other task runs unchanged.
    */
   graphs?: Record<string, Graph>;
+  /** Task hashes to run, with their upstream needs and nothing else — the scheduler's `only`. */
+  only?: readonly string[];
 }
 
 export interface MakeProjectOptions {
@@ -219,6 +221,7 @@ export class TestProject {
       paths : this.paths,
       dryRun: opts.dryRun,
       logger: opts.logger,
+      ...(opts.only === undefined ? {} : { only: opts.only }),
       ...(opts.graphs === undefined
         ? {}
         : {

@@ -13,3 +13,4 @@ export * from './pipeline.js';
 export * from './genservices.js';
 export * from './graphrun.js';
 export * from './graphload.js';
+export * from './repair.js';

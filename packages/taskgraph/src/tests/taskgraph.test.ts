@@ -16,6 +16,25 @@ describe('content-addressed dedupe', () => {
     expect(a).not.toBe(b);
   });
 
+  it('the model id is not part of the identity, and a node yet to run takes the newer one', () => {
+    const other: ImageParams = { ...params, modelId: 'openai/gpt-5-image' };
+    const inputs = { characterId: 'aiko', prompt: 'p', refs: [], params };
+    expect(taskHash('portrait', inputs)).toBe(taskHash('portrait', { ...inputs, params: other }));
+    expect(taskHash('prompt_refine', { basePrompt: 'p', defects: 'd', modelId: 'a' })).toBe(
+      taskHash('prompt_refine', { basePrompt: 'p', defects: 'd', modelId: 'b' }),
+    );
+
+    const g = new TaskGraph();
+    const first = g.add(makeTask('portrait', inputs));
+    g.add(makeTask('portrait', { ...inputs, params: other }));
+    expect(first.inputs.params.modelId).toBe('openai/gpt-5-image');
+
+    // A rendered node keeps the inputs it ran with
+    g.setStatus(first.hash, 'done', { output: 'h' });
+    g.add(makeTask('portrait', inputs));
+    expect(first.inputs.params.modelId).toBe('openai/gpt-5-image');
+  });
+
   it('graph.add dedupes by hash', () => {
     const g = new TaskGraph();
     const t1 = makeTask('portrait', { characterId: 'aiko', prompt: 'p', refs: [], params });

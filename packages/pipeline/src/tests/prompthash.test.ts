@@ -20,17 +20,18 @@ async function taskHashes(p: TestProject): Promise<string[]> {
 }
 
 // Recorded against a run with no authored override. Regenerating this literal is never the fix
-// for a failure here; a diff means prompts moved.
+// for a failure here; a diff means prompts moved. Re-recorded once, on 2026-09-16, when the model
+// id left the task identity (`identityOf` in `@vn/taskgraph`): the prompts were unchanged.
 const BASELINE = [
-  'location_ref 336d09ed905d4352db239a19cf13aa3fc85c95d73f5758c1b69b0db6b1123d6b',
-  'location_ref 54b6681d8a620cb62480a6e2558c61124ec5302aaa99e7bcdb7d16e3b480ab38',
-  'model_sheet 298a2b83f0763969eb7ffc84e2f789cba72cbe83997d34b76a7d69997f7503d1',
-  'model_sheet 9075b2cf4e4af81eacbb42861498de2acaa8d2304e391d58f13b01bd3e6ae7ff',
-  'model_sheet ea377ace1857f70214f6c658bc899d8dac849de81879012192e0763b5534dfd9',
-  'portrait b4a6626010807bd563c84f04339090abb08f1868107dc625e4153b4a463aad2c',
-  'shot_image 51c8efab07cdc174937535ae0b3d810a558bb0372efdb818b2d746364d1865e0',
-  'shot_image 5565fd82f6a88e43e415dec48a53b4750be928eeacb64a77f3caefd7c0f727c3',
-  'shot_image 77468de49d1d806b3919803537e48b79ba609c5a1d610f004312b92dff1649b2',
+  'location_ref b339a1bbff4b3d6a13f8f129e900714f208d977e791cdfeb7500328ac3e28fd1',
+  'location_ref d8736c2a963bf4353c3a12a2bd40dd3a568f9b0716039c7097856395b323baac',
+  'model_sheet 13191e3134647a767e700dc2fdbbf837d99836ec87b4ae900d2102920b4e2636',
+  'model_sheet 7f850f038a1b98345da87a8fe6350448fedad9fe513d8cfca63256c8aeee74b8',
+  'model_sheet a4bd4512b5da9e8ec88f1df5053a265caaf31c7bae20b9e9a037e32c64bed6be',
+  'portrait faab8e6e7bc14f8616c961ca9898d0eb36b8de6bfb872b069d9710a5cfce52a6',
+  'shot_image 1ef72cc0ff3339cee84419bd83243e050e26bc19acb20b1a1b91c21c29137595',
+  'shot_image 86ec9bdf157dcac7fd40d7070385c94258b4da6f90f0b68f6dcc98c83e97ef1d',
+  'shot_image f73e58a028e1d79049be4f7ef7059f2131e61230b5a83427b35b38bf2baf9d8f',
 ];
 
 describe('prompt hash baseline', () => {

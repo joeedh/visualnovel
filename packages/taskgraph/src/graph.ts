@@ -14,6 +14,12 @@ export class TaskGraph implements ITaskGraph {
     if (existing) {
       // Dedupe: union dependency edges in case a later producer adds more context.
       for (const dep of task.deps) if (!existing.deps.includes(dep)) existing.deps.push(dep);
+      // The hash leaves the model id out, so a node that has not run yet takes the inputs it is
+      // planned with now: the runner then uses the project's current model rather than the one
+      // in force when the node was first logged. A rendered node keeps the inputs it ran with.
+      if (existing.status === 'pending' || existing.status === 'failed') {
+        existing.inputs = task.inputs;
+      }
       return existing as Task<K>;
     }
     this.nodes.set(task.hash, task as AnyTask);

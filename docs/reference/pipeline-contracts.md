@@ -23,11 +23,24 @@ These implement the system design in
 
 - **Content-addressed task graph.**
     - A task is identified by `sha256(kind, inputs)`, where inputs include the normalized
-      prompt, ordered reference asset hashes, model id, and params.
+      prompt, ordered reference asset hashes, and params — but not the model id.
+    - The model id is left out of the hash so that changing `models.image` in
+      `project.yaml` does not re-key every task: a rendered slot keeps its picture, and
+      the new model is used for slots not yet drawn, for a regenerate, and where a slot's
+      own `model` override names it. A node that has not run yet takes the inputs of the
+      latest planning pass (`TaskGraph.add`), so a pending task follows the project's
+      current model; a `done` node keeps the inputs it ran with, and the asset records the
+      model that drew it (`Asset.modelId`).
     - `params` is `image_params` with the narrowest authored seed applied (`seedFor`) and,
       for a shot, its own `aspect` in place of the project's (`aspectFor`). Both return
       the project's params by identity when nothing was authored, so a project that
-      authored neither hashes as it did before either field existed.
+      authored neither hashes as it did before either field existed. The model id is
+      resolved the same way (`modelFor`: the narrowest `imageModel` rung, else
+      `models.image`) but, being outside the hash, changes nothing about identity.
+    - A run can be narrowed to a set of targets. `RunOptions.only` restricts each wave to
+      `closureOf(graph, targets)` — the targets and every task they depend on — so
+      `asset.regenerate` and `pipeline.draw` draw one slot and what it still needs, and
+      nothing else the plan holds. Planning is unchanged; only which ready tasks start is.
     - Identical work collapses to one node, so dedupe, resumability, and staleness come at
       no extra cost.
     - Every status transition is appended to `state/tasks.jsonl`. Replaying that log (last
@@ -145,6 +158,14 @@ These implement the system design in
     - The manifest records no render time for a picture, and its entries are sorted by
       hash, so a surface that cannot resolve a slot must report the failure rather than
       guess which take is newest.
+    - A manifest that has ended up with two accepted takes in one slot is repaired, not
+      tolerated. `repairAccepted` (`@vn/pipeline`, over `overAccepted` in `@vn/artgen`)
+      runs at the start of every non-dry run and when the desktop opens a project: a shot
+      slot keeps the take its storyboard names, any other slot keeps the take whose task
+      recorded the latest attempt (the lowest hash when no task did), and the rest are
+      un-accepted in one `accept(keep, drop)` write per slot, logged as `manifest.repair`.
+      Portraits are skipped, since the gate selects them; sheets are only repaired with
+      `angleOf`, for the reason above. A clean manifest is not written.
 - **A storyboard is fetched only on an explicit request, and a fallback is never
   persisted.**
     - Once `work/shots/<sceneId>.json` is written it takes precedence permanently, and an
