@@ -7,14 +7,7 @@
  */
 import type { AnyTask, AssetMeta, AssetRef, ProjectModel, RefBinding } from '@vn/types';
 import { slotKey } from '@vn/artgen';
-import {
-  applyRecord,
-  bindSlots,
-  cloneJournal,
-  genNodeSpec,
-  imageRefOf,
-  registerGenRuntimes,
-} from '@vn/gengraph';
+import { applyRecord, bindSlots, genNodeSpec, imageRefOf, registerGenRuntimes } from '@vn/gengraph';
 import type {
   GenImageRef,
   GenOutputs,
@@ -36,7 +29,11 @@ const REFINE_PROMPT = 'GenRefinePrompt';
 /** One graph as a host holds it, with the journal and services it runs against. */
 export interface LoadedGraph {
   graph: Graph;
-  /** The journal as it stands on disk. A run's own records are tracked from here. */
+  /**
+   * The journal as it stands on disk, advanced by every run of this graph in this process.
+   * One object serves every slot the graph binds, so a member of a staging sheet resumes the
+   * sheet the member before it drew.
+   */
   journal: GraphJournal;
   /** What this graph's nodes reach, carrying the blob store kept under its own slug. */
   services: GenServices;
@@ -212,6 +209,19 @@ export function refinesThroughNode(graph: Graph): boolean {
   return wired && seeded;
 }
 
+const queues = new WeakMap<Graph, Promise<unknown>>();
+
+/** Runs `fn` after every earlier run on the same graph object has settled. */
+async function exclusive<T>(graph: Graph, fn: () => Promise<T>): Promise<T> {
+  const previous = queues.get(graph) ?? Promise.resolve();
+  const turn = previous.then(fn, fn);
+  queues.set(
+    graph,
+    turn.catch(() => undefined),
+  );
+  return turn;
+}
+
 /** What one pass through a bound graph drew. */
 export interface GraphDraw {
   image: GenImageRef;
@@ -244,39 +254,39 @@ export interface GraphRunOptions {
 /**
  * Executes the bound graph once and reports the picture its output node terminates on.
  * A failed node throws with the sentence the journal recorded, so the task's own failure
- * record names what went wrong inside the graph. The binding's journal is advanced to what
- * this run left behind, which is what lets a refine attempt resume the nodes the attempt
- * before it already ran.
+ * record names what went wrong inside the graph. The graph's journal is advanced to what
+ * this run left behind, which is what lets a refine attempt, or a sibling slot's run, resume
+ * the nodes an earlier run already ran. Runs of one graph are serialised, because the seeds
+ * are written onto the graph's own sockets and every slot the graph binds shares them, and
+ * because a node two members descend from should draw once and be resumed by the second.
  */
 export async function runBoundGraph(
   deps: RunDeps,
   binding: GraphBinding,
   options: GraphRunOptions,
 ): Promise<GraphDraw> {
-  // A clone, because `indexGraphs` spreads one loaded entry into a binding per slot, and
-  // advancing the shared journal in place would move every slot's view
-  const journal = cloneJournal(binding.journal);
   const ctx: GenRunContext = {
     services: binding.services,
-    journal,
+    journal : binding.journal,
     record: async (record) => {
-      applyRecord(journal, record);
+      applyRecord(binding.journal, record);
       await binding.record(record);
     },
     ...(deps.now === undefined ? {} : { now: (): Date => new Date(deps.now!()) }),
   };
 
-  const result = await executeGenGraph(binding.graph, ctx, {
-    targets: [binding.target],
-    seeds: {
-      ...options.seeds,
-      [DERIVED_PROMPT]: { prompt: options.prompt },
-      [TASK_REFS]     : { assets: JSON.stringify(options.refs) },
-      [REFINE_PROMPT] : { text: options.critique ?? '' },
-    },
-    ...(options.force === true ? { force: true } : {}),
-  });
-  binding.journal = journal;
+  const result = await exclusive(binding.graph, () =>
+    executeGenGraph(binding.graph, ctx, {
+      targets: [binding.target],
+      seeds: {
+        ...options.seeds,
+        [DERIVED_PROMPT]: { prompt: options.prompt },
+        [TASK_REFS]     : { assets: JSON.stringify(options.refs) },
+        [REFINE_PROMPT] : { text: options.critique ?? '' },
+      },
+      ...(options.force === true ? { force: true } : {}),
+    }),
+  );
 
   const failure = result.failures[0];
   if (failure !== undefined) {

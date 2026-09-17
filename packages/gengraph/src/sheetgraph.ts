@@ -126,8 +126,8 @@ export interface SheetCell {
  * Builds the sheet graph: the two seeded sheet nodes feeding one image node drawn at
  * `sheetAspect`, and per member one instance of `def` (bound under {@link SHEET_CELL_REF})
  * with its cell, number and aspect overridden, feeding an output bound to the member's slot.
- * The outputs stay at the root because an output cannot be grouped, and the first is the
- * active one.
+ * The outputs stay at the root because an output cannot be grouped, and every one is active,
+ * since `active` only arbitrates between outputs claiming the same slot.
  */
 export function sheetGraph(cells: readonly SheetCell[], sheetAspect: string, def: GroupDef): Graph {
   registerGenNodes();
@@ -164,7 +164,6 @@ export function sheetGraph(cells: readonly SheetCell[], sheetAspect: string, def
     place(output, COLUMN * 3, ROW * i);
     graph.add(output);
     output.props.slot?.setValue(cell.slot);
-    output.props.active?.setValue(i === 0);
 
     graph.connect(sheet.outputs.image, instance.inputs.sheet!);
     graph.connect(instance.outputs.image!, output.inputs.image);

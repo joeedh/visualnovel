@@ -59,6 +59,9 @@ which record stage by stage what was built and where the work deviated from the 
 - **One journal serves scheduled and interactive runs.** `vngen run`, `pipeline.run` in
   the app, and `gengraph.run` all execute through the same executor and append to the same
   journal, so a node that ran under one of these entry points resumes under the others.
+  Within one scheduled run, every slot a graph binds shares that graph's journal object,
+  and the runs of one graph go one at a time, so the second member of a staging sheet
+  resumes the sheet the first drew rather than drawing its own.
 
 ## Where things live on disk
 
@@ -382,22 +385,22 @@ implementation. The testkit passes a mock.
 - `gengraph.scaffoldSheet(scene, sheet)` starts the graph that draws one staging-sheet
   group ([`manga-style.md`](../plans/manga-style.md), Decision 16): Sheet prompt and Sheet
   refs feed one Generate image at the layout's aspect, and per member one instance of the
-  `sheet-cell` group feeds an output bound to the member's `shot:` slot, the first output
-  active. `sheetGraph` and `sheetCellDef` in `@vn/gengraph` build both, so every host
-  scaffolds the same graph. The definition is written to `lib/sheet-cell.json` on the
-  project's first scaffold and instanced from the file after that, so an author's edit to
-  the cell chain reaches every later scaffold. Inside it: Crop → Reference list (`list`
-  the task refs, `a` the cell, `b` the sheet) → Text ("This is cell _i_ of _n_ on the
-  attached staging sheet; match its staging and camera. {varB}", `varB` the derived
-  prompt) → Generate image → the group's `image` output; the derived prompt and task refs
-  are read inside the group because they are seeded per run for the output the run
-  targets. Each instance overrides the crop's `rect`, the text's `template` and the
-  image's `aspect` (`aspectFor` for the member); both image nodes leave `model` empty, so
-  the group follows the project's image model. The command refuses a scene with no
-  storyboard, a group no shot names, and a member slot another graph draws; a shot row in
-  a group offers it from its menu. The seed a sheet is drawn with is the group's, carried
-  through the seeded inputs rather than a `seed` prop, and `story.setSheetGroup` is how it
-  changes.
+  `sheet-cell` group feeds an output bound to the member's `shot:` slot, every output
+  active because each claims its own slot. `sheetGraph` and `sheetCellDef` in
+  `@vn/gengraph` build both, so every host scaffolds the same graph. The definition is
+  written to `lib/sheet-cell.json` on the project's first scaffold and instanced from the
+  file after that, so an author's edit to the cell chain reaches every later scaffold.
+  Inside it: Crop → Reference list (`list` the task refs, `a` the cell, `b` the sheet) →
+  Text ("This is cell _i_ of _n_ on the attached staging sheet; match its staging and
+  camera. {varB}", `varB` the derived prompt) → Generate image → the group's `image`
+  output; the derived prompt and task refs are read inside the group because they are
+  seeded per run for the output the run targets. Each instance overrides the crop's
+  `rect`, the text's `template` and the image's `aspect` (`aspectFor` for the member);
+  both image nodes leave `model` empty, so the group follows the project's image model.
+  The command refuses a scene with no storyboard, a group no shot names, and a member slot
+  another graph draws; a shot row in a group offers it from its menu. The seed a sheet is
+  drawn with is the group's, carried through the seeded inputs rather than a `seed` prop,
+  and `story.setSheetGroup` is how it changes.
 
 ## Running a graph
 

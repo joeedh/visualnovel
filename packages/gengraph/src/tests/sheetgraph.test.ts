@@ -53,13 +53,17 @@ function outputsOf(graph: Graph): GenOutput[] {
 }
 
 describe('the scaffolded sheet graph', () => {
-  it('binds one output per member, the first active, and validates clean', () => {
+  it('binds one active output per member and validates clean', () => {
     const graph = scaffold();
     const { bound, conflicts } = bindSlots([{ graph }]);
 
     expect(outputsOf(graph)).toHaveLength(2);
-    expect(activeOutputs(graph).map((o) => o.slot)).toEqual(['shot:room/room__1']);
+    expect(activeOutputs(graph).map((o) => o.slot)).toEqual([
+      'shot:room/room__1',
+      'shot:room/room__2',
+    ]);
     expect(bound.has('shot:room/room__1')).toBe(true);
+    expect(bound.has('shot:room/room__2')).toBe(true);
     expect(conflicts).toEqual([]);
     expect(validateGenGraph(graph)).toEqual([]);
   });

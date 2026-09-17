@@ -194,7 +194,7 @@ describe('a task whose slot a graph is bound to', () => {
 });
 
 describe('the journal the runner wrapper advances', () => {
-  it('equals a replay of what the run appended, and leaves the loaded one alone', async () => {
+  it('equals a replay of what the run appended, and is the loaded one, which every slot shares', async () => {
     const p = await makeProject({ script: SCRIPTS.linear });
     try {
       const { model, store, config } = await p.reload();
@@ -228,7 +228,9 @@ describe('the journal the runner wrapper advances', () => {
       expect(binding.journal).toEqual(
         replayJournal(appended.map((r) => JSON.stringify(r)).join('\n')),
       );
-      expect(loaded.latest.size).toBe(0);
+      // The loaded journal is shared by every slot the graph binds, so it is what advanced
+      expect(binding.journal).toBe(loaded);
+      expect(loaded.latest.size).toBe(3);
     } finally {
       await p.cleanup();
     }

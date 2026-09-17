@@ -530,6 +530,12 @@ These implement the system design in
       so a forced run to one output would redraw the sheet for it alone while the other
       members' frames stayed cut from the old one, with nothing to re-key them. The reroll
       path is `story.setSheetGroup` changing the seed, which re-keys every member.
+    - Every slot a graph binds shares the graph's one journal and one `Graph` object in a
+      process, and `runBoundGraph` serialises the runs of one graph. Seeds are written
+      onto the graph's own sockets, so two members running at once would read each other's
+      prompt and references, and the sheet would be drawn once per member rather than once
+      per group. The live check that found both is in
+      [`manga-live-tests.md`](../research/manga-live-tests.md).
     - Reference: [`gen-graphs.md`](gen-graphs.md#slots-and-outputs). Plan:
       [`../plans/manga-style.md`](../plans/manga-style.md) (Decisions 14 to 17).
 - **Renaming a node type's socket or prop requires a migration in the same commit.**

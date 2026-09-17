@@ -13,6 +13,8 @@ import {
   GenSheetRefs,
   Graph,
   registerGenRuntimes,
+  sheetCellDef,
+  sheetGraph as scaffoldSheet,
 } from '@vn/gengraph';
 import type { GraphJournalRecord, Node } from '@vn/gengraph';
 import { graphJournalFile } from '@vn/gengraph/state';
@@ -75,12 +77,17 @@ function sheetGraph(slot: string, rect: string): SheetGraph {
   return { graph, sheet, crop, frame };
 }
 
-async function doneRecords(p: TestProject): Promise<Map<string, GraphJournalRecord>> {
+async function journalRecords(p: TestProject): Promise<GraphJournalRecord[]> {
   const text = await readText(graphJournalFile(p.paths, SLUG));
+  return text
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .map((line) => JSON.parse(line) as GraphJournalRecord);
+}
+
+async function doneRecords(p: TestProject): Promise<Map<string, GraphJournalRecord>> {
   const out = new Map<string, GraphJournalRecord>();
-  for (const line of text.split('\n')) {
-    if (line.trim().length === 0) continue;
-    const record = JSON.parse(line) as GraphJournalRecord;
+  for (const record of await journalRecords(p)) {
     if (record.status === 'done') out.set(String(record.nodeId), record);
   }
   return out;
@@ -92,7 +99,7 @@ const frame = (id: string, sheet?: string): Shot => ({
   framing    : 'medium',
   location   : 'day',
   subjects   : [{ characterId: 'aiko' }],
-  camera     : 'static',
+  camera     : `static, take ${id}`,
   coversLines: [],
   status     : 'pending',
   ...(sheet === undefined ? {} : { sheet }),
@@ -130,6 +137,42 @@ describe('a sheet member drawn through a bound graph', () => {
       const drawnFrame = done.get(String(image.id))?.output as
         { refs: { store: string }[] } | undefined;
       expect(drawnFrame?.refs.map((r) => r.store)).toEqual(['blob', 'blob']);
+    } finally {
+      await p.cleanup();
+    }
+  });
+
+  it('draws the sheet once for every member of the scaffolded graph, each from its own seeds', async () => {
+    const p = await sheetProject();
+    try {
+      const graph = scaffoldSheet(
+        [
+          { slot: 'shot:arrival/s1', rect: { x: 0, y: 0, w: 0.5, h: 1 }, aspect: '16:9' },
+          { slot: 'shot:arrival/s2', rect: { x: 0.5, y: 0, w: 0.5, h: 1 }, aspect: '16:9' },
+        ],
+        '32:9',
+        sheetCellDef(),
+      );
+      const summary = await p.run({ graphs: { [SLUG]: graph } });
+      const records = await journalRecords(p);
+
+      expect(summary.failed).toEqual([]);
+      const sheetNode = graph.nodes.find(
+        (n) => n instanceof GenImage && n.inputs.prompt.edges.length > 0,
+      )!;
+      // One draw of the sheet however many members run, in one process or across two
+      expect(
+        records.filter((r) => r.nodeId === sheetNode.id && r.status === 'running'),
+      ).toHaveLength(1);
+
+      const frames = summary.ran.filter((t) => t.kind === 'shot_image' && t.status === 'done');
+      expect(frames).toHaveLength(3);
+      const prompts = records
+        .filter((r) => String(r.nodeId).endsWith('/image') && r.status === 'done')
+        .map((r) => (r.output as { prompt: string }).prompt)
+        .sort();
+      expect(prompts[0]).toMatch(/^This is cell 1 of 2 .*static, take s1/s);
+      expect(prompts[1]).toMatch(/^This is cell 2 of 2 .*static, take s2/s);
     } finally {
       await p.cleanup();
     }
