@@ -28547,6 +28547,19 @@
       "module"   : "doctree",
       "situation": "every-kind",
       "when"     : "shot:sample/shot1",
+      "id"       : "gengraph.scaffoldSheet",
+      "label"    : "Scaffold a sheet graph for group g1",
+      "props": {
+        "scene": "sample",
+        "sheet": "g1"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "shot:sample/shot1",
       "id"       : "asset.accept",
       "label"    : "Accept",
       "props": {
@@ -32107,6 +32120,14 @@
     {
       "match": "story.export",
       "why"  : "The playable is built and exported from the menu bar and the palette."
+    },
+    {
+      "match": "story.setSheet",
+      "why": "A staging-sheet group edit the palette, CDP and the agent make; no editor draws a control for it until the manga-style plan’s sheet editor."
+    },
+    {
+      "match": "story.setSheetGroup",
+      "why": "A staging-sheet group edit the palette, CDP and the agent make; no editor draws a control for it until the manga-style plan’s sheet editor."
     },
     {
       "match": "prompt.moveChunk",

@@ -314,6 +314,36 @@ export async function invalidateGenGraph(
 }
 
 /**
+ * The keys of the nodes that feed more than one output node, such as the sheet a staging
+ * graph cuts every member's cell from. A forced run to one output would re-run such a node
+ * and leave the other outputs' cells cut from a picture that no longer exists, so a host
+ * refuses `force` on a graph where this is non-empty.
+ */
+export function sharedAncestors(graph: Graph): GraphId[] {
+  const members = new Set(flattenNodes(graph));
+  const counts = new Map<Node, number>();
+
+  for (const node of members) {
+    if (genNodeSpec(node.def.typeName)?.slotProp === undefined) {
+      continue;
+    }
+    for (const above of ancestorsOf(graph, members, [nodeKey(node)])) {
+      if (above !== node) {
+        counts.set(above, (counts.get(above) ?? 0) + 1);
+      }
+    }
+  }
+
+  const shared: GraphId[] = [];
+  for (const [node, count] of counts) {
+    if (count > 1) {
+      shared.push(nodeKey(node));
+    }
+  }
+  return shared;
+}
+
+/**
  * Writes the host's values onto the default of each seeded input socket. `graphHashes`
  * already reads an unconnected input through its default, so a seeded prompt reaches the
  * hash with no special case and nothing about it is persisted as authored state. The socket

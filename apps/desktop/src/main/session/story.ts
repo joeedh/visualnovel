@@ -25,6 +25,8 @@ import {
   setCoverage,
   setPanels,
   setSceneOutfit,
+  setSheet,
+  setSheetGroup,
   setShotOutfit,
   setShotSubjects,
   setShotVariant,
@@ -35,6 +37,7 @@ import {
   type NewShotOp,
   type SceneOutfitOp,
   type ScriptState,
+  type SheetsOp,
   type ShotOutfitOp,
 } from '@vn/scriptedit';
 import {
@@ -794,6 +797,91 @@ export class StoryPart {
     if (!op.ok) return { ok: false, message: op.error, written: [] };
 
     await writeShots(project.paths, sceneId, op.shots);
+    return {
+      ok      : true,
+      message : op.message,
+      written : [`vngen/work/shots/${sceneId}.json`],
+      coverage: await this.session.sceneCoverage(sceneId),
+    };
+  }
+
+  /**
+   * The sheet-group rules against a fresh load, shared by the previews and the writes. The
+   * shots file's own `sheets` is read here, since the model's scenes do not carry it.
+   */
+  private async sheetsRule(
+    sceneId: string,
+    rule: (shots: readonly Shot[], sheets: Scene['sheets']) => SheetsOp<Shot>,
+  ): Promise<{ project: LoadedProject; op: SheetsOp<Shot> }> {
+    const project = await loadProject(this.session.dir);
+    const scene = project.model.scenes.get(sceneId);
+    if (!scene) return { project, op: { ok: false, error: `No scene "${sceneId}".` } };
+
+    const loaded = await readShots(project.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
+    if (!loaded) {
+      return {
+        project,
+        op: {
+          ok   : false,
+          error: `Scene "${sceneId}" has no decomposition yet — run the pipeline past the gate.`,
+        },
+      };
+    }
+    return { project, op: rule(loaded.shots, loaded.sheets) };
+  }
+
+  /** What `story.setSheet` would do, without writing it. */
+  async previewSheet(sceneId: string, shotId: string, sheet: string): Promise<SheetsOp<Shot>> {
+    return (
+      await this.sheetsRule(sceneId, (shots, sheets) =>
+        setSheet(shots, sheets, { shot: shotId, sheet }),
+      )
+    ).op;
+  }
+
+  /**
+   * Puts one shot in a staging-sheet group, or takes it out. The group's members are in the
+   * sheet's key, so every member is drawn again on the next run.
+   */
+  async setSheet(
+    sceneId: string,
+    shotId: string,
+    sheet: string,
+  ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
+    const { project, op } = await this.sheetsRule(sceneId, (shots, sheets) =>
+      setSheet(shots, sheets, { shot: shotId, sheet }),
+    );
+    return this.writeSheets(project, sceneId, op);
+  }
+
+  /** What `story.setSheetGroup` would do, without writing it. */
+  async previewSheetGroup(
+    sceneId: string,
+    args: { sheet: string; seed?: number; notes?: string },
+  ): Promise<SheetsOp<Shot>> {
+    return (await this.sheetsRule(sceneId, (shots, sheets) => setSheetGroup(shots, sheets, args)))
+      .op;
+  }
+
+  /** Sets a group's seed and notes, which re-keys every member; a new seed is how a sheet is rerolled. */
+  async setSheetGroup(
+    sceneId: string,
+    args: { sheet: string; seed?: number; notes?: string },
+  ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
+    const { project, op } = await this.sheetsRule(sceneId, (shots, sheets) =>
+      setSheetGroup(shots, sheets, args),
+    );
+    return this.writeSheets(project, sceneId, op);
+  }
+
+  private async writeSheets(
+    project: LoadedProject,
+    sceneId: string,
+    op: SheetsOp<Shot>,
+  ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
+    if (!op.ok) return { ok: false, message: op.error, written: [] };
+
+    await writeShots(project.paths, sceneId, op.shots, { sheets: op.sheets });
     return {
       ok      : true,
       message : op.message,

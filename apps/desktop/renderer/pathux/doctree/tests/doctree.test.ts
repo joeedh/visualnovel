@@ -634,6 +634,14 @@ describe('menuFor', () => {
     ]);
   });
 
+  it('offers a sheet member its group’s graph, and a shot outside any group nothing', () => {
+    const member = menuFor(node('shot:greet/greet__s1', 'shot', { sheet: 'g1' }));
+    const entry = member.find((e) => e.id === 'gengraph.scaffoldSheet');
+    expect(entry?.props).toEqual({ scene: 'greet', sheet: 'g1' });
+    expect(entry?.label).toContain('g1');
+    expect(idsOf(node('shot:greet/greet__s1', 'shot'))).not.toContain('gengraph.scaffoldSheet');
+  });
+
   it('opens nothing for a kind that names no subject a command takes', () => {
     for (const kind of ['assetkind', 'wiki', 'dir', 'file', 'more'] as const) {
       expect(menuFor(node(`${kind}:x`, kind))).toEqual([]);

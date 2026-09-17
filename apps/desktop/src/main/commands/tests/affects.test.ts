@@ -333,6 +333,29 @@ const STORY_RUNS: Run[] = [
     }),
   },
   {
+    id   : 'story.setSheet',
+    props: async (ctx) => ({
+      scene: 'arrival',
+      shot : (await shotIds(ctx, 'arrival'))[0]!,
+      sheet: 'g1',
+    }),
+  },
+  {
+    id   : 'story.setSheet',
+    props: async (ctx) => ({
+      scene: 'arrival',
+      shot : (await shotIds(ctx, 'arrival'))[1]!,
+      sheet: 'g1',
+    }),
+  },
+  {
+    id   : 'story.setSheetGroup',
+    props: { scene: 'arrival', sheet: 'g1', seed: 3, notes: 'one room' },
+  },
+  // Reaches `vngen/work/graphs` from the story half: the sheet graph and, on this first scaffold,
+  // the `sheet-cell` definition under `lib/`
+  { id: 'gengraph.scaffoldSheet', props: { scene: 'arrival', sheet: 'g1', name: '', open: false } },
+  {
     id   : 'story.moveShot',
     props: async (ctx) => {
       const shots = await shotIds(ctx, 'arrival');

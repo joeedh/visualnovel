@@ -588,6 +588,11 @@ export interface DocNode {
    * the badge.
    */
   panels?: true;
+  /**
+   * The staging-sheet group a `shot` row's shot is in, when it is in one. The row's menu offers
+   * to scaffold the group's graph from it, and the badge names the group.
+   */
+  sheet?: string;
   children?: DocNode[];
 }
 

@@ -836,6 +836,81 @@ export const storySetPanels = define({
   },
 });
 
+export const storySetSheet = define({
+  id         : 'story.setSheet',
+  title      : 'Put a shot in a staging-sheet group',
+  description:
+    'Put a shot in a staging-sheet group, or take it out with an empty group id. The shots of ' +
+    'one group are drawn from one staging sheet of the scene, so they share a room, furniture ' +
+    'and camera logic; up to eight shots share a sheet. The group’s members are in the sheet’s ' +
+    'key, so every member is drawn again on the next run.',
+  notes:
+    'Sets or clears `Shot.sheet` in `work/shots/<scene>.json`. A group past `MAX_SHEET_CELLS` shots is refused; the last member leaving takes the group’s seed and notes with it. Every member re-keys.',
+  mutating   : true,
+  affects    : ['vngen/work/shots'],
+  undoable   : true,
+  props: {
+    scene: prop.string('the scene the shot belongs to'),
+    shot : prop.string('the shot id, e.g. arrival__beat1'),
+    sheet: prop.string('the group id to join; empty takes the shot out of its group', {
+      default: '',
+    }),
+  },
+  async check({ scene, shot, sheet }, ctx) {
+    const op = await ctx.host.session.previewSheet(scene, shot, sheet);
+    return op.ok ? { ok: true, note: op.message } : { ok: false, reason: op.error };
+  },
+  async run({ scene, shot, sheet }, ctx) {
+    const result = await ctx.host.session.setSheet(scene, shot, sheet);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result.coverage, written: result.written };
+  },
+});
+
+export const storySetSheetGroup = define({
+  id         : 'story.setSheetGroup',
+  title      : 'Set a staging-sheet group’s seed and notes',
+  description:
+    'Set the seed a sheet group’s staging sheet is drawn with, and the notes its prompt carries ' +
+    '(what stays fixed across the group, say). Changing the seed is how a sheet is rerolled: it ' +
+    're-keys every member, so the sheet and every frame cut from it are drawn again. A seed ' +
+    'below zero leaves the group with no seed of its own.',
+  notes:
+    'Writes `sheets[<group>]` in `work/shots/<scene>.json`. `seed` below zero clears the seed; empty `notes` clears the notes. Refused for a group no shot names. This is the reroll path `gengraph.run` names when it refuses `force` on a sheet graph.',
+  mutating   : true,
+  affects    : ['vngen/work/shots'],
+  undoable   : true,
+  props: {
+    scene: prop.string('the scene the group belongs to'),
+    sheet: prop.string('the group id'),
+    seed: prop.number('the seed the sheet is drawn with; below zero means none of its own', {
+      default: -1,
+    }),
+    notes: prop.string('words about the group for the sheet prompt; empty clears them', {
+      default  : '',
+      multiline: true,
+    }),
+  },
+  async check({ scene, sheet, seed, notes }, ctx) {
+    const op = await ctx.host.session.previewSheetGroup(scene, sheetGroupArgs(sheet, seed, notes));
+    return op.ok ? { ok: true, note: op.message } : { ok: false, reason: op.error };
+  },
+  async run({ scene, sheet, seed, notes }, ctx) {
+    const result = await ctx.host.session.setSheetGroup(scene, sheetGroupArgs(sheet, seed, notes));
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result.coverage, written: result.written };
+  },
+});
+
+/** The rule's arguments from the command's props, with a seed below zero read as none. */
+function sheetGroupArgs(
+  sheet: string,
+  seed: number,
+  notes: string,
+): { sheet: string; seed?: number; notes?: string } {
+  return { sheet, ...(seed < 0 ? {} : { seed }), notes };
+}
+
 export const storyAssignLineIds = define({
   id         : 'story.assignLineIds',
   title      : 'Assign line ids',

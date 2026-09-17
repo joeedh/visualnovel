@@ -337,6 +337,9 @@ export interface Scene {
   sheets?: Record<string, SheetGroup>;
 }
 
+/** The most cells one staging sheet carries; a longer group is the author's to split. */
+export const MAX_SHEET_CELLS = 8;
+
 /** One staging-sheet group's own settings: the seed the whole sheet is drawn with, and notes. */
 export interface SheetGroup {
   /** Rerolling the sheet is bumping this, which re-keys every member shot at once. */

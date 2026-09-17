@@ -3,11 +3,14 @@
  * and writing them lives in `@vn/gengraph/state` and is shared with the authoring agent; what
  * this adds is the summary the document tree lists them by.
  */
+import { bindSlots } from '@vn/gengraph';
+import type { Graph } from '@vn/gengraph';
 import {
   graphPath,
   graphSlugs,
   groupPath,
   groupRefs,
+  isGraphSlug,
   readGraphDoc,
   readGroupDoc,
 } from '@vn/gengraph/state';
@@ -78,4 +81,44 @@ export async function listGroups(root: string): Promise<GroupSummary[]> {
   }
 
   return out;
+}
+
+/** Reports that another graph already draws this slot, through the rule a run binds by. */
+export async function claimOf(
+  root: string,
+  slugs: readonly GraphSlug[],
+  slot: string,
+): Promise<string | undefined> {
+  const loaded: { slug: GraphSlug; graph: Graph }[] = [];
+  for (const slug of slugs) {
+    const read = await readGraphDoc(root, slug);
+    // An unreadable graph is reported where it is listed; what it claims cannot be read here.
+    if (read.ok) loaded.push({ slug, graph: read.graph });
+  }
+
+  const { bound, conflicts } = bindSlots(loaded);
+  const owner = bound.get(slot);
+  if (owner !== undefined) return `the ${owner.entry.slug} graph already draws ${slot}`;
+  if (conflicts.includes(slot)) {
+    return `more than one graph already claims ${slot}, so that slot is bound to none of them`;
+  }
+  return undefined;
+}
+
+/** Turns a slot address or any other phrase into a graph name, replacing what a name cannot carry. */
+export function slugOfName(said: string): string {
+  const slug = said
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return isGraphSlug(slug) ? slug : 'graph';
+}
+
+/** The first of `base`, `base-2`, `base-3` that no graph file already carries. */
+export function freeName(base: string, taken: ReadonlySet<string>): string {
+  if (!taken.has(base)) return base;
+
+  let n = 2;
+  while (taken.has(`${base}-${n}`)) n += 1;
+  return `${base}-${n}`;
 }

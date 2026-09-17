@@ -126,6 +126,10 @@ const STORY: readonly PaletteOnly[] = [
     match,
     why: 'The playable is built and exported from the menu bar and the palette.',
   })),
+  ...['story.setSheet', 'story.setSheetGroup'].map((match) => ({
+    match,
+    why: 'A staging-sheet group edit the palette, CDP and the agent make; no editor draws a control for it until the manga-style plan’s sheet editor.',
+  })),
 ];
 
 const PROMPT: readonly PaletteOnly[] = [

@@ -9,6 +9,7 @@ import {
   writeGraphFile,
   writeGroupFile,
   type GenPricedEstimate,
+  type Graph as GenGraph,
   type GraphJournalRecord,
 } from '@vn/gengraph';
 import {
@@ -18,6 +19,7 @@ import {
   graphJournalFile,
   readGraphJournal,
   refreshUserPrices,
+  sharedAncestors,
   type GenRunContext,
 } from '@vn/gengraph/state';
 import {
@@ -29,7 +31,10 @@ import {
   type DecomposeAllResult,
   type GraphRuntime,
 } from '@vn/pipeline';
-import { assetSlotLabel } from '@vn/artgen';
+import { aspectFor, assetSlotLabel, imageParams, sheetSeeds, slotKey } from '@vn/artgen';
+import { SHEET_CELL_REF, sheetCellDef, sheetGraph } from '@vn/gengraph';
+import type { SheetCell } from '@vn/gengraph';
+import { readShots } from '@vn/store';
 import { requiredVendors } from '@vn/providers';
 import { runPipeline, type RunSummary } from '@vn/scheduler';
 import type { Asset } from '@vn/types';
@@ -37,16 +42,24 @@ import { BUSY_RUN } from '../../shared/ipc.js';
 import { GRAPH_DOCS_DIR } from '../../shared/writes.js';
 import type { GraphDocRead, GroupDocRead, PipelineRunResult } from '../../shared/ipc.js';
 import {
+  claimOf,
+  freeName,
   graphPath,
   graphSlugs,
   groupPath,
+  isGraphSlug,
   nodeIdOf,
   readGraph,
+  readGroupDef,
   readGroupDoc,
+  slugOfName,
+  writeGraph,
+  writeGroupDef,
   type GraphSlug,
 } from '../doctree/graphs.js';
 import { notify } from '../notify/notifications.js';
 import type { WorkspaceSession, LoadedProject, LoadedGraphDoc, GenDeps } from './core.js';
+import { graphSeeds } from './graphseeds.js';
 import {
   relPath,
   loadProject,
@@ -57,8 +70,101 @@ import {
   buildProviders,
 } from './core.js';
 
+/** What `gengraph.scaffoldSheet` is about to write, decided once for its check and its run. */
+export interface SheetScaffoldPlan {
+  slug: GraphSlug;
+  /** The member shots' ids, in sheet order. */
+  members: string[];
+  cells: SheetCell[];
+  sheetAspect: string;
+  /** Whether the `sheet-cell` definition is written too, on the project's first scaffold. */
+  writesDef: boolean;
+}
+
 export class GengraphPart {
   constructor(private readonly session: WorkspaceSession) {}
+
+  /**
+   * Decides the graph a staging-sheet group is scaffolded as, or refuses in one sentence: the
+   * scene must hold a storyboard with shots in that group, and no member's slot may already
+   * be drawn by a graph. The slug is the name given, or `sheet-<scene>-<group>` and the next
+   * free suffix after it.
+   */
+  async planSheet(
+    sceneId: string,
+    group: string,
+    name: string,
+  ): Promise<SheetScaffoldPlan | { refuse: string }> {
+    const root = this.session.dir;
+    const project = await loadProject(root);
+    const scene = project.model.scenes.get(sceneId);
+    if (scene === undefined) return { refuse: `there is no scene '${sceneId}'` };
+
+    const loaded = await readShots(project.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
+    if (!loaded) return { refuse: `scene '${sceneId}' has no storyboard yet` };
+
+    const said = group.trim();
+    const seeds = sheetSeeds(
+      { ...scene, shots: loaded.shots, ...(loaded.sheets ? { sheets: loaded.sheets } : {}) },
+      said,
+      project.model,
+      project.config,
+      project.store.manifest(),
+    );
+    if (seeds === undefined) {
+      return { refuse: `no shot in scene '${sceneId}' is in a sheet group '${said}'` };
+    }
+
+    const slugs = await graphSlugs(root);
+    const cells: SheetCell[] = [];
+    for (const [i, shot] of seeds.members.entries()) {
+      const slot = slotKey({ kind: 'shot', sceneId, shotId: shot.id });
+      const claimed = await claimOf(root, slugs, slot);
+      if (claimed !== undefined) return { refuse: claimed };
+      cells.push({
+        slot,
+        rect  : seeds.layout.cells[i]!,
+        aspect:
+          aspectFor(imageParams(project.config), shot, project.config.image_params.page_aspect)
+            .aspect ?? '',
+      });
+    }
+
+    const taken = new Set<string>(slugs);
+    const wanted = name.trim();
+    let slug: GraphSlug;
+    if (wanted === '') {
+      slug = freeName(slugOfName(`sheet-${sceneId}-${said}`), taken);
+    } else if (!isGraphSlug(wanted)) {
+      return { refuse: `'${wanted}' is not a graph name` };
+    } else if (taken.has(wanted)) {
+      return { refuse: `this project already has a ${wanted} graph` };
+    } else {
+      slug = wanted;
+    }
+
+    return {
+      slug,
+      members: seeds.members.map((m) => m.id),
+      cells,
+      sheetAspect: seeds.layout.aspect,
+      writesDef  : (await readGroupDef(root, SHEET_CELL_REF)) === undefined,
+    };
+  }
+
+  /**
+   * Writes the planned scaffold: the `sheet-cell` definition when the project has none yet,
+   * then the graph, instanced against whichever definition the project now holds, so an
+   * author's edits to the cell chain reach every later scaffold.
+   */
+  async scaffoldSheet(plan: SheetScaffoldPlan): Promise<string[]> {
+    const root = this.session.dir;
+    const written: string[] = [];
+    if (plan.writesDef) written.push(await writeGroupDef(root, SHEET_CELL_REF, sheetCellDef()));
+    const def = (await readGroupDef(root, SHEET_CELL_REF)) ?? sheetCellDef();
+    written.push(await writeGraph(root, plan.slug, sheetGraph(plan.cells, plan.sheetAspect, def)));
+    return written;
+  }
 
   private async loadGraphs(
     project: LoadedProject,
@@ -253,11 +359,27 @@ export class GengraphPart {
   }
 
   /**
+   * Why a forced run of this graph is refused, or undefined when it is not. A node that feeds
+   * more than one output, such as the sheet every cell of a staging graph is cut from, would
+   * be redrawn for one output and leave the others' pictures cut from a sheet that no longer
+   * exists; rerolling such a graph is done by changing the group's seed instead.
+   */
+  forceRefusal(graph: GenGraph): string | undefined {
+    const shared = sharedAncestors(graph);
+    if (shared.length === 0) return undefined;
+    return (
+      `node ${String(shared[0])} feeds more than one output, so a forced run would redraw it ` +
+      'for one output and strand the others; change the sheet group’s seed to reroll it instead'
+    );
+  }
+
+  /**
    * Run one graph interactively, through the executor and the journal the scheduler runs it
-   * through. Nothing enters the asset store here: a picture becomes an asset only on the bound
-   * path, where a task's slot names the graph that draws it. `force` invalidates every paid
-   * ancestor of the target first, so re-running an unchanged graph is a request rather than a
-   * resume that does nothing.
+   * through, seeded for the slot its target binds as the scheduler would seed it. Nothing
+   * enters the asset store here: a picture becomes an asset only on the bound path, where a
+   * task's slot names the graph that draws it. `force` invalidates every paid ancestor of the
+   * target first, so re-running an unchanged graph is a request rather than a resume that
+   * does nothing.
    */
   async runGraph(
     slug: GraphSlug,
@@ -278,6 +400,8 @@ export class GengraphPart {
     if (read.graph.nodeIdMap.get(target) === undefined) {
       return { ok: false, message: `the ${slug} graph holds no node ${target}`, written: [] };
     }
+    const refused = opts.force === true ? this.forceRefusal(read.graph) : undefined;
+    if (refused !== undefined) return { ok: false, message: refused, written: [] };
 
     return this.session.while(BUSY_RUN, async () => {
       const project = await loadProject(this.session.dir);
@@ -294,6 +418,7 @@ export class GengraphPart {
       };
       const result = await executeGenGraph(read.graph, ctx, {
         targets: [target],
+        seeds  : await graphSeeds(project, read.graph, target),
         ...(opts.force === true ? { force: true } : {}),
       });
 

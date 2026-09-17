@@ -398,6 +398,17 @@ export function menuFor(node: DocNode): MenuEntry[] {
           props: { scene: sceneId, shot: shotId },
           form : true,
         },
+        // A member of a staging-sheet group offers the group's graph, which draws every member;
+        // the command refuses by name once one already does
+        ...(node.sheet === undefined
+          ? []
+          : [
+              {
+                label: `Scaffold a sheet graph for group ${node.sheet}`,
+                id   : 'gengraph.scaffoldSheet',
+                props: { scene: sceneId, sheet: node.sheet },
+              },
+            ]),
         // The frame the storyboard recorded, where there is one, so the picture a shot stands for
         // is approvable from the row that names it
         ...(node.hash
@@ -453,8 +464,9 @@ export function menuFor(node: DocNode): MenuEntry[] {
 /**
  * One node of each kind the tree draws, and one of each branch heading, so the coverage below is
  * total rather than however much of a project happens to be on screen. Every node carries a path
- * and a hash, since several kinds offer more entries once they have one. Exported for the derived
- * model's driver, which runs `menuFor` over the same nodes.
+ * and a hash, since several kinds offer more entries once they have one, and the shot is in a
+ * sheet group for the same reason. Exported for the derived model's driver, which runs `menuFor`
+ * over the same nodes.
  */
 export const MENU_NODES: readonly DocNode[] = [
   ...(
@@ -482,6 +494,7 @@ export const MENU_NODES: readonly DocNode[] = [
     hash    : 'a1b2c3d4',
     slot    : 'plate:sample/night',
     approved: false,
+    ...(kind === 'shot' ? { sheet: 'g1' } : {}),
   })),
   ...['story', 'characters', 'locations', 'wiki', 'graphs', 'skills', 'assets'].map((key) => ({
     id   : `branch:${key}`,

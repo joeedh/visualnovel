@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-16T19:30:26.237Z",
-  "gitSha"       : "47c838a153a6e5f11035b49ee0a271d8a3bccadf",
+  "sweptAt"      : "2026-09-17T00:49:15.484Z",
+  "gitSha"       : "fb78ffd793bfc16db536b52b35d3363d26de3a62",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -74,6 +74,7 @@
     "gengraph.reorderExposed",
     "gengraph.repointExposed",
     "gengraph.run",
+    "gengraph.scaffoldSheet",
     "gengraph.setActiveOutput",
     "gengraph.setProp",
     "gengraph.unexpose",
@@ -150,6 +151,8 @@
     "story.setOutfit",
     "story.setPanels",
     "story.setSceneOutfit",
+    "story.setSheet",
+    "story.setSheetGroup",
     "story.setSpeaker",
     "story.setSubjects",
     "story.setVariant",
@@ -220,6 +223,7 @@
     "gengraph.estimate",
     "gengraph.removeNode",
     "gengraph.run",
+    "gengraph.scaffoldSheet",
     "gengraph.ungroup",
     "models.refresh",
     "notify.clear",
@@ -320,6 +324,11 @@
       "editor": "documents",
       "when"  : "shot:sample/shot1",
       "form"  : true
+    },
+    {
+      "id"    : "gengraph.scaffoldSheet",
+      "editor": "documents",
+      "when"  : "shot:sample/shot1"
     },
     {
       "id"    : "asset.accept",
@@ -3500,6 +3509,18 @@
     {
       "id"        : "notify.follow",
       "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260916-122913-5fcd-0000",
+      "widgetPath": "notifications/notify-follow~6b4ec70a"
+    },
+    {
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260916-122913-5fcd-0000",
+      "widgetPath": "notifications/notify-hide~74c2ae2b"
+    },
+    {
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
       "key"       : "cmd:notify.follow#20260916-122031-ea98-0000",
       "widgetPath": "notifications/notify-follow~f672854a"
     },
@@ -3844,18 +3865,6 @@
       "editor"    : "notifications",
       "key"       : "cmd:notify.hide#20260905-013047-5302-0083",
       "widgetPath": "notifications/notify-hide~c4a85951"
-    },
-    {
-      "id"        : "notify.follow",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.follow#20260905-013047-5302-0082",
-      "widgetPath": "notifications/notify-follow~0e438429"
-    },
-    {
-      "id"        : "notify.hide",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.hide#20260905-013047-5302-0082",
-      "widgetPath": "notifications/notify-hide~c8526158"
     },
     {
       "id"        : "pane.view",

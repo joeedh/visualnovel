@@ -145,6 +145,7 @@ function storyBranch(input: DocTreeInput, cap: number): DocNode {
               // framing is the page's overall one and says less about the row
               badge: s.panels ? `page · ${s.panels.length}` : s.framing,
               ...(s.panels ? { panels: true } : {}),
+              ...(s.sheet === undefined ? {} : { sheet: s.sheet }),
               // A shot is an address a graph can draw, so its row names the graph the way a slot
               // row does, and an open Gen Graph pane follows the click to it.
               ...boundGraphOf(input, `shot:${scene.id}/${s.id}`),

@@ -17,13 +17,13 @@ import type {
   Shot,
 } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
+import { MAX_SHEET_CELLS } from '@vn/types';
 import { hashParts } from '@vn/util';
 import { chunk, chunkList, composePrompt } from './chunks.js';
 import { resolveBinding } from './refs.js';
 import { stylePreamble, subjectWords } from './prompts.js';
 
-/** The most cells one sheet carries; a longer group is the author's to split. */
-export const MAX_SHEET_CELLS = 8;
+export { MAX_SHEET_CELLS };
 
 /** The aspect a frame's cell is laid out at, which is the frame's own default. */
 const FRAME_CELL_ASPECT = '16:9';

@@ -107,6 +107,7 @@ import {
   type NewShotOp,
   type SceneOutfitOp,
   type ScriptState,
+  type SheetsOp,
   type ShotOutfitOp,
 } from '@vn/scriptedit';
 import { sourcesOf, type SceneEditInput, type SceneSource } from '@vn/scriptedit/write';
@@ -715,7 +716,7 @@ import { ProjectPart } from './project.js';
 import { DocsPart } from './docs.js';
 import { StoryPart } from './story.js';
 import { PipelinePart } from './pipeline.js';
-import { GengraphPart } from './gengraph.js';
+import { GengraphPart, type SheetScaffoldPlan } from './gengraph.js';
 
 export class WorkspaceSession {
   agent: Agent | undefined;
@@ -2435,6 +2436,34 @@ export class WorkspaceSession {
     return this.storyPart.setPanels(sceneId, shotId, panels);
   }
 
+  async previewSheet(sceneId: string, shotId: string, sheet: string): Promise<SheetsOp<Shot>> {
+    return this.storyPart.previewSheet(sceneId, shotId, sheet);
+  }
+
+  /** Puts one shot in a staging-sheet group, or takes it out; every member re-keys. */
+  async setSheet(
+    sceneId: string,
+    shotId: string,
+    sheet: string,
+  ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
+    return this.storyPart.setSheet(sceneId, shotId, sheet);
+  }
+
+  async previewSheetGroup(
+    sceneId: string,
+    args: { sheet: string; seed?: number; notes?: string },
+  ): Promise<SheetsOp<Shot>> {
+    return this.storyPart.previewSheetGroup(sceneId, args);
+  }
+
+  /** Sets a sheet group's seed and notes; a new seed is how a sheet is rerolled. */
+  async setSheetGroup(
+    sceneId: string,
+    args: { sheet: string; seed?: number; notes?: string },
+  ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
+    return this.storyPart.setSheetGroup(sceneId, args);
+  }
+
   async previewNewShot(
     sceneId: string,
     lines: readonly string[],
@@ -2573,6 +2602,25 @@ export class WorkspaceSession {
     opts: { node?: string; force?: boolean; mock?: boolean } = {},
   ): Promise<{ ok: boolean; message: string; written: string[] }> {
     return this.gengraphPart.runGraph(slug, opts);
+  }
+
+  /** Why `runGraph` with `force` would refuse this graph, or undefined when it would run. */
+  forceRefusal(graph: GenGraph): string | undefined {
+    return this.gengraphPart.forceRefusal(graph);
+  }
+
+  /** The scaffold `gengraph.scaffoldSheet` would write for a scene's sheet group, or a refusal. */
+  async planSheet(
+    sceneId: string,
+    group: string,
+    name: string,
+  ): Promise<SheetScaffoldPlan | { refuse: string }> {
+    return this.gengraphPart.planSheet(sceneId, group, name);
+  }
+
+  /** Writes a planned sheet scaffold and reports the workspace paths it wrote. */
+  async scaffoldSheet(plan: SheetScaffoldPlan): Promise<string[]> {
+    return this.gengraphPart.scaffoldSheet(plan);
   }
 
   async runPreconditions(mock: boolean): Promise<{

@@ -18,7 +18,6 @@
 import { defineFor, prop, type CheckResult } from '@vn/commands';
 import {
   Graph,
-  bindSlots,
   decideGenEdit,
   defaultSlotGraph,
   estimateSentence,
@@ -28,7 +27,9 @@ import {
 } from '@vn/gengraph';
 import type { GenApplied, GenEdit, GenNodeMove, GenPricedEstimate, GraphId } from '@vn/gengraph';
 import {
+  claimOf,
   deleteGraph,
+  freeName,
   graphSlugs,
   isGraphSlug,
   listGraphs,
@@ -39,10 +40,10 @@ import {
   readGroupDef,
   readGroupDoc,
   readGroupLibrary,
+  slugOfName,
   writeGraph,
   writeGroupDef,
 } from '../doctree/graphs.js';
-import type { GraphSlug } from '../doctree/graphs.js';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
@@ -263,6 +264,64 @@ export const gengraphCreateForSlot = define({
   },
 });
 
+export const gengraphScaffoldSheet = define({
+  id         : 'gengraph.scaffoldSheet',
+  title      : 'Scaffold a staging-sheet graph',
+  description:
+    'Write the graph that draws one scene’s sheet group: the staging sheet drawn once from the ' +
+    'group’s prompt and references, then one `sheet-cell` instance per member shot that cuts ' +
+    'the member’s cell out and draws its frame from the cell, the whole sheet and its own ' +
+    'references. The first scaffold in a project also writes `lib/sheet-cell.json`, which every ' +
+    'later one instances, so editing that definition changes how every cell is drawn. A member ' +
+    'slot another graph already draws is refused.',
+  notes:
+    'Write `vngen/work/graphs/<name>.json` for a scene’s sheet group, and `lib/sheet-cell.json` on the project’s first scaffold. The sheet image node takes the layout’s aspect; each instance overrides its crop rectangle, its cell sentence and its frame’s aspect; both image nodes leave `model` empty so the group follows `project.setImageModel`. An empty `name` is `sheet-<scene>-<group>`, suffixed past a graph of that name. Refused when the scene has no storyboard, no shot names the group, or a member’s slot already has a claim. `open` shows the new graph in the Gen Graph editor.',
+  mutating   : true,
+  affects    : ['vngen/work/graphs'],
+  undoable   : true,
+  props: {
+    scene: prop.string('which scene the sheet group belongs to'),
+    sheet: prop.string('the sheet group id the member shots name'),
+    name: prop.string('what to call the graph; empty derives one from the scene and group', {
+      default: '',
+    }),
+    open : prop.boolean('show the new graph in the Gen Graph editor', { default: true }),
+  },
+  async check({ scene, sheet, name }, ctx) {
+    const plan = await ctx.host.session.planSheet(scene, sheet, name);
+    if ('refuse' in plan) return { ok: false, reason: plan.refuse };
+    const def = plan.writesDef ? ' and lib/sheet-cell.json' : '';
+    return {
+      ok  : true,
+      note: `writes vngen/work/graphs/${plan.slug}.json${def}, drawing ${plan.members.length} shots`,
+    };
+  },
+  async run({ scene, sheet, name, open }, ctx) {
+    const plan = await ctx.host.session.planSheet(scene, sheet, name);
+    if ('refuse' in plan) throw new Error(plan.refuse);
+
+    const written = await ctx.host.session.scaffoldSheet(plan);
+    if (open) {
+      ctx.host.ui(
+        {
+          type   : 'view',
+          action : 'open',
+          editor : 'gengraph',
+          where  : 'elsewhere',
+          subject: plan.slug,
+        },
+        ctx.origin,
+      );
+    }
+    const n = plan.members.length;
+    return {
+      message: `Created the ${plan.slug} graph, which draws sheet '${sheet}' of ${scene}: ${n} shot${n === 1 ? '' : 's'}.`,
+      data   : { slug: plan.slug, members: plan.members, written },
+      written,
+    };
+  },
+});
+
 /**
  * Decides what to call the graph a slot is about to be given, or refuses the request in one
  * sentence. The `check` and the `run` beside it both call this, so the name the check reports
@@ -280,56 +339,16 @@ async function planForSlot(
   if (bad !== undefined) return { refuse: bad };
 
   const slugs = await graphSlugs(ctx.root);
-  const claimed = await claimOf(ctx, slugs, said);
+  const claimed = await claimOf(ctx.root, slugs, said);
   if (claimed !== undefined) return { refuse: claimed };
 
   const taken = new Set<string>(slugs);
   const wanted = name.trim();
-  if (wanted === '') return { slug: freeName(slugOfSlot(said), taken) };
+  if (wanted === '') return { slug: freeName(slugOfName(said), taken) };
 
   if (!isGraphSlug(wanted)) return { refuse: `'${wanted}' is not a graph name` };
   if (taken.has(wanted)) return { refuse: `this project already has a ${wanted} graph` };
   return { slug: wanted };
-}
-
-/** Reports that another graph already draws this slot, through the rule a run binds by. */
-async function claimOf(
-  ctx: { root: string },
-  slugs: readonly GraphSlug[],
-  slot: string,
-): Promise<string | undefined> {
-  const loaded: { slug: GraphSlug; graph: Graph }[] = [];
-  for (const slug of slugs) {
-    const read = await readGraph(ctx.root, slug);
-    // An unreadable graph is reported where it is listed; what it claims cannot be read here.
-    if (read.ok) loaded.push({ slug, graph: read.graph });
-  }
-
-  const { bound, conflicts } = bindSlots(loaded);
-  const owner = bound.get(slot);
-  if (owner !== undefined) return `the ${owner.entry.slug} graph already draws ${slot}`;
-  if (conflicts.includes(slot)) {
-    return `more than one graph already claims ${slot}, so that slot is bound to none of them`;
-  }
-  return undefined;
-}
-
-/** Turns a slot address into a graph name, replacing the punctuation a name cannot carry. */
-function slugOfSlot(slot: string): string {
-  const said = slot
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-  return isGraphSlug(said) ? said : 'graph';
-}
-
-/** The first of `base`, `base-2`, `base-3` that no graph file already carries. */
-function freeName(base: string, taken: ReadonlySet<string>): string {
-  if (!taken.has(base)) return base;
-
-  let n = 2;
-  while (taken.has(`${base}-${n}`)) n += 1;
-  return `${base}-${n}`;
 }
 
 export const gengraphDelete = define({
@@ -1134,7 +1153,7 @@ export const gengraphRun = define({
     "a task's slot names the graph that draws it. `force` re-runs every paid node feeding " +
     'the target instead of resuming it.',
   notes:
-    'Execute the graph through the same executor and journal the scheduler uses, targeting the active Output or the named one. Confirmed, quoting the estimate. Not undoable: what it writes is a journal record and a blob under `vngen/state`. `force` re-runs every paid node feeding the target rather than resuming from the journal.',
+    'Execute the graph through the same executor and journal the scheduler uses, targeting the active Output or the named one, seeded for the slot that output binds the way the scheduler seeds it. Confirmed, quoting the estimate. Not undoable: what it writes is a journal record and a blob under `vngen/state`. `force` re-runs every paid node feeding the target rather than resuming from the journal, and is refused on a graph where one node feeds more than one output (a staging sheet), because redrawing it for one output strands the others; such a graph is rerolled by changing the group’s seed.',
   mutating   : true,
   affects    : ['vngen/state/graphs'],
   undoable   : false,
@@ -1147,6 +1166,8 @@ export const gengraphRun = define({
   async check({ slug, force }, ctx) {
     const read = await readGraph(ctx.root, slug);
     if (!read.ok) return { ok: false, reason: read.reason };
+    const refused = force ? ctx.host.session.forceRefusal(read.graph) : undefined;
+    if (refused !== undefined) return { ok: false, reason: refused };
 
     const counted = await ctx.host.session.graphEstimate(slug);
     if (!counted.ok) return { ok: false, reason: counted.reason };
