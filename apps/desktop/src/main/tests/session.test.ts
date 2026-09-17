@@ -1672,6 +1672,45 @@ describe('WorkspaceSession — over a generated project', () => {
  * These cases build their own project, because replacing a plate writes a second `done` for that
  * plate's task and the assertions about which bytes are in the slot only hold on an untouched run.
  */
+describe('WorkspaceSession — approving another character’s portrait', () => {
+  let p: TestProject;
+  let session: WorkspaceSession;
+
+  beforeAll(async () => {
+    p = await makeProject({
+      title     : 'Two faces',
+      script    : SCRIPTS.linear,
+      characters: ['aiko', 'ren'],
+    });
+    session = sessionFor(p);
+    await p.run();
+  }, 30_000);
+
+  afterAll(async () => {
+    await p.cleanup();
+  });
+
+  // The pairing a form can submit: one character's id with another's portrait. Blessing it
+  // would seed every sheet and shot drawn for the first character with the second's face.
+  it('refuses a portrait that belongs to another character, writing nothing', async () => {
+    const [aiko] = await session.gateCandidates('aiko');
+    const before = await p.read('characters/ren/character.md');
+    const result = await session.approveCharacter('ren', aiko!.hash);
+    expect(result).toMatchObject({ ok: false });
+    expect(result.message).toContain('not a portrait of ren');
+    expect(await p.read('characters/ren/character.md')).toBe(before);
+    expect((await session.gateCandidates('aiko'))[0]!.accepted).toBe(false);
+  });
+
+  it('refuses a picture that is not a portrait at all', async () => {
+    const { store } = await p.reload();
+    const plate = store.manifest().find((a) => a.kind === 'location_ref')!;
+    const before = await p.read('characters/aiko/character.md');
+    expect(await session.approveCharacter('aiko', plate.hash)).toMatchObject({ ok: false });
+    expect(await p.read('characters/aiko/character.md')).toBe(before);
+  });
+});
+
 describe('WorkspaceSession — replacing a picture with a file', () => {
   let p: TestProject;
   let session: WorkspaceSession;

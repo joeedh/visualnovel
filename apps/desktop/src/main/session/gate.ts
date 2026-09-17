@@ -63,16 +63,25 @@ export class GatePart {
   /** Flip a character to approved with `hash`: copy the visible portrait, accept the asset. */
   async approveCharacter(characterId: string, hash: string): Promise<ApproveResult> {
     const project = await loadProject(this.session.dir);
-    if (!project.store.has(hash)) return { ok: false, message: `No asset "${hash}" in the store.` };
+    const asset = project.store.get(hash);
+    if (!asset) return { ok: false, message: `No asset "${hash}" in the store.` };
+    // The command's `check` asks the same question, but a form can submit any pairing it likes,
+    // and a portrait approved for the wrong character seeds every sheet and shot drawn from it
+    if (asset.kind !== 'portrait' || !bindsTo(asset, { characterId })) {
+      return { ok: false, message: `${hash.slice(0, 8)} is not a portrait of ${characterId}.` };
+    }
     // Approving a suspended picture would bless bytes drawn against a reference that has moved,
     // and everything downstream would inherit it. Repin or regenerate first.
     const suspended = await this.suspensionFor(project, hash);
     if (suspended) return { ok: false, message: `${hash.slice(0, 8)} is suspended: ${suspended}.` };
     const file = entityFile(project.inputs.characterDocs, characterId);
-    if (!file || !(await setCharacterApproval(file, hash))) {
+    if (!file) return { ok: false, message: `No character file for "${characterId}".` };
+    // Read before any write, so a store that cannot produce the bytes leaves `character.md`
+    // untouched rather than approved with no portrait behind it
+    const bytes = await project.store.read({ hash, ext: asset.ext });
+    if (!(await setCharacterApproval(file, hash))) {
       return { ok: false, message: `No character file for "${characterId}".` };
     }
-    const bytes = await project.store.read({ hash, ext: project.store.get(hash)?.ext ?? 'png' });
     await writeApprovedPortrait(project.paths, characterId, bytes);
     // Asked before the accept, because which manifest answers is decided by which root holds the
     // hash, and a portrait's bytes never move between the two.
