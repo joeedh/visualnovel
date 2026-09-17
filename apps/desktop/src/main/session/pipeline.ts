@@ -21,6 +21,7 @@ export class PipelinePart {
     return buildPlayable(project.model, project.store, {
       shots,
       portraitOverlay: project.config.portrait_overlay,
+      lettering      : project.config.lettering,
     });
   }
 
@@ -31,6 +32,7 @@ export class PipelinePart {
     const playable = buildPlayable(project.model, project.store, {
       shots,
       portraitOverlay: project.config.portrait_overlay,
+      lettering      : project.config.lettering,
     });
     await writeFileAtomic(project.paths.storyPlay, JSON.stringify(playable, null, 2) + '\n');
     return { path: project.paths.storyPlay, scenes: Object.keys(playable.scenes).length };

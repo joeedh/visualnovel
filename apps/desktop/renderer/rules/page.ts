@@ -1,13 +1,14 @@
 /**
  * What the Page editor offers: the layout row, the Generate button and the shot's model, the
- * panels on the page and the corners of the selected one, the line rows, the shot's cast, and
- * the selected panel's fields. A panel edit is `story.setPanels` with the whole list the control
- * would produce, judged here by the same `setPanels` rule main runs, so a refused control says
- * the rule's own sentence before anything is sent.
+ * panels on the page and the corners of the selected one, the bubble anchors when the runner
+ * letters the page, the line rows, the shot's cast, and the selected panel's fields. A panel edit
+ * is `story.setPanels` with the whole list the control would produce, judged here by the same
+ * `setPanels` rule main runs, so a refused control says the rule's own sentence before anything
+ * is sent; a bubble edit is `story.setBubbles` the same way.
  */
 import { evenLayout, LAYOUT_TEMPLATES, type PanelShape } from '@vn/artgen/layout';
-import { letterLine, setPanels } from '@vn/scriptedit';
-import type { PagePanel, PanelBox } from '@vn/types';
+import { bubblesOf, letterLine, removeBubble, setBubbles, setPanels } from '@vn/scriptedit';
+import type { Lettering, PagePanel, PanelBox, PanelBubble } from '@vn/types';
 import type { CoverageLine, CoverageShot } from '../../src/shared/ipc.js';
 import { refuse, type Offer } from './anchors.js';
 import { startDrag, view } from './effects.js';
@@ -28,6 +29,10 @@ export interface PageState {
   characters?: readonly string[];
   /** The project's `models.image`, which the shot's model picker inherits when it says nothing. */
   imageModel?: string;
+  /** Who letters a page. The bubble layer is drawn only under `runner`. */
+  lettering?: Lettering;
+  /** The line whose bubble anchor has focus, whose tail handle is drawn, or `null`. */
+  bubble?: string | null;
 }
 
 /** One entry of the layout row: a name and the outlines it lays the page out in. */
@@ -393,6 +398,128 @@ export function enterLetters(state: PageState, lineId: string): PagePanel[] | nu
   return letterLine(shot.panels, state.selected, lineId);
 }
 
+// ---------------------------------------------------------------------------
+// Bubbles
+// ---------------------------------------------------------------------------
+
+/** How far each unplaced line's ghost anchor sits below the previous one in its panel. */
+const GHOST_STEP = 0.05;
+
+/** Whether the bubble layer is drawn: the runner letters pages, and the shot on screen is one. */
+export function bubbleLayer(state: PageState): boolean {
+  return state.lettering === 'runner' && (shotOf(state)?.panels?.length ?? 0) > 0;
+}
+
+/** The mean of an outline's corners, which is inside any panel a layout draws. */
+export function centroid(shape: readonly (readonly [number, number])[]): [number, number] {
+  const n = shape.length || 1;
+  return [shape.reduce((sum, [x]) => sum + x, 0) / n, shape.reduce((sum, [, y]) => sum + y, 0) / n];
+}
+
+/**
+ * Where a line's anchor is drawn: its bubble's anchor when one is placed, else a ghost at its
+ * panel's centroid, stepped down once for each earlier unplaced line in that panel so two ghosts
+ * never sit on each other. `null` for a line no panel letters.
+ */
+export function anchorOf(
+  panels: readonly PagePanel[],
+  bubbles: readonly PanelBubble[],
+  lineId: string,
+): { at: [number, number]; placed: boolean } | null {
+  const index = panelOfLine(panels, lineId);
+  if (index === null) return null;
+  const placed = bubbles.find((b) => b.lineId === lineId);
+  if (placed) return { at: placed.anchor, placed: true };
+  const panel = panels[index]!;
+  const unplaced = panel.coversLines.filter((id) => !bubbles.some((b) => b.lineId === id));
+  const [x, y] = centroid(panel.shape);
+  return { at: [x, Math.min(1, y + unplaced.indexOf(lineId) * GHOST_STEP)], placed: false };
+}
+
+/** The invocation `story.setBubbles` takes for a list. */
+export const bubblesProps = (
+  state: PageState,
+  bubbles: readonly PanelBubble[],
+): { scene: string; shot: string; bubbles: string } => ({
+  scene  : state.sceneId,
+  shot   : state.shotId,
+  bubbles: JSON.stringify(bubbles),
+});
+
+/** A `story.setBubbles` offer carrying `bubbles`, judged by the rule the way {@link panelsOffer} is. */
+export function bubblesOffer(
+  state: PageState,
+  control: { on: string; label: string; tooltip: string },
+  bubbles: readonly PanelBubble[],
+): Offer {
+  const base = { id: 'story.setBubbles', ...control };
+  const op = setBubbles(state.shots, { shot: state.shotId, bubbles });
+  if (!op.ok) return { ...refuse(op.error), ...base };
+  return {
+    ok   : true,
+    props: bubblesProps(state, bubbles),
+    ...base,
+    tooltip: `${control.tooltip} ${op.message}`,
+  };
+}
+
+/**
+ * A line's anchor on the page: a ghost dragged to place the bubble, a placed one dragged to move
+ * it, with the whole list read off the page on release. `index` is the line's number in the
+ * column, which the anchor shows so the two are read together.
+ */
+export function anchorAction(state: PageState, lineId: string, index: number): Offer {
+  const shot = shotOf(state);
+  const bubbles = bubblesOf(shot?.panels ?? []);
+  const placed = bubbles.some((b) => b.lineId === lineId);
+  const n = index + 1;
+  const control = {
+    id     : 'story.setBubbles',
+    on     : `bubble/${lineId}`,
+    label  : String(n),
+    tooltip: placed
+      ? `Drag to move where line ${n} is read on the page; Delete takes the bubble off, and the line goes back to the dialogue box. Nothing is drawn again.`
+      : `Drag to place line ${n}'s bubble on the page. Until it is placed the line is read in the dialogue box. Nothing is drawn again.`,
+  };
+  if (!shot) return { ...refuse('No shot is on screen.'), ...control };
+  return {
+    ok   : true,
+    props: { scene: state.sceneId, shot: state.shotId },
+    ...control,
+    supplies: ['bubbles'],
+  };
+}
+
+/** The held bubble's tail handle: dragged to point the tail at the speaker. */
+export function tailAction(state: PageState, lineId: string): Offer {
+  const shot = shotOf(state);
+  const control = {
+    id     : 'story.setBubbles',
+    on     : `bubble/${lineId}/tail`,
+    label  : '',
+    tooltip:
+      'Drag to point this bubble’s tail at whoever is speaking; drop it back on the bubble for ' +
+      'a caption with no tail. Nothing is drawn again.',
+  };
+  if (!shot) return { ...refuse('No shot is on screen.'), ...control };
+  return {
+    ok   : true,
+    props: { scene: state.sceneId, shot: state.shotId },
+    ...control,
+    supplies: ['bubbles'],
+  };
+}
+
+/** The list Delete on the held anchor writes: the page without that bubble, or `null` off one. */
+export function deleteBubble(state: PageState): PanelBubble[] | null {
+  const shot = shotOf(state);
+  if (!shot?.panels || !state.bubble) return null;
+  const bubbles = bubblesOf(shot.panels);
+  return bubbles.some((b) => b.lineId === state.bubble)
+    ? removeBubble(bubbles, state.bubble)
+    : null;
+}
+
 /** The header's one sentence about the render, or `''` when the page matched. */
 export function verdictOf(shot: CoverageShot | undefined): string {
   if (!shot) return '';
@@ -515,7 +642,8 @@ export const boxesOf = (shot: CoverageShot | undefined): readonly PanelBox[] =>
 
 /**
  * Every offer the Page editor draws: the layout row; per panel its hit area; the selected panel's
- * corners; per covered line its row; then the selected panel's fields and cast.
+ * corners; under runner lettering an anchor per lettered line and the held bubble's tail; per
+ * covered line its row; then the selected panel's fields and cast.
  */
 export function controls(state: PageState): readonly Offer[] {
   const shot = shotOf(state);
@@ -529,6 +657,15 @@ export function controls(state: PageState): readonly Offer[] {
   const selected = selectedPanel(state);
   if (selected && state.selected !== null) {
     selected.shape.forEach((_, j) => list.push(cornerAction(state, state.selected!, j)));
+  }
+  if (bubbleLayer(state)) {
+    const bubbles = bubblesOf(panels);
+    pageLines(state).forEach((line, index) => {
+      if (panelOfLine(panels, line.id) !== null) list.push(anchorAction(state, line.id, index));
+    });
+    if (state.bubble && bubbles.some((b) => b.lineId === state.bubble)) {
+      list.push(tailAction(state, state.bubble));
+    }
   }
   for (const line of pageLines(state)) list.push(lineAction(state, line));
   if (selected) {

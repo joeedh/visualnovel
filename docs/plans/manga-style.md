@@ -148,8 +148,8 @@ The following implementation details have been validated against the codebase:
     - `config.storyboard_notes: string` (default `''`): author directives supplied to the
       decomposer (e.g., "storyboard as manga pages of four to six panels; one splash per
       scene"). An empty string retains legacy single-frame decomposition.
-    - `config.lettering: 'model' | 'runner'` (default `'model'`): applies strictly to page
-      shots (Decision 10).
+    - `config.lettering: 'model' | 'runner'` (default `'model'` until Stage 5, `'runner'`
+      from it): applies strictly to page shots (Decision 10).
     - `config.image_params.page_aspect: string` (default `'3:4'`): default aspect ratio
       applied to page shots when `aspect` is omitted.
     - `project.setStoryboardNotes` and `project.setLettering` complement
@@ -494,16 +494,68 @@ done. The OpenRouter plugin the live checks need is Stage 1's first commit.
 
 ### Stage 5 — runner-drawn bubbles
 
-- Add
-  `PagePanel.bubbles?: { lineId; anchor: [number, number]; tail?: [number, number] }[]`,
-  configured via the panel editor or populated by the agent using `panelBoxes`.
-- Implement `project.setLettering runner`; clear prompt `lettering` chunks and update
-  scaffolding, pricing the resulting invalidation of all page shots.
-- The bubble editor extends the panel editor under the same design plan; the runner draws
-  the bubble for the current line inside its panel. Preserve existing text overlay
-  rendering in the standalone web player.
-- Defer implementation until Stages 2–4 have been validated on production projects to
-  confirm alignment between detected bounding boxes and intended geometries.
+Stage 2 already built the wordless half: under `lettering: runner` the `lettering` chunk
+is empty, the scaffolding sentence forbids text, and `project.setLettering` prices the
+page shots it re-keys. What remains is the bubbles themselves. The decisions below were
+taken on 2026-09-17, after the Stage 2 live check showed model lettering needs the
+expensive models and fails on the default one, which ruled it out as the thing a page
+falls back to.
+
+- **Data.** `PagePanel.bubbles?: PanelBubble[]`, with
+  `PanelBubble = { lineId; anchor: [number, number]; tail?: [number, number] }` in page
+  fractions. A bubble's line must be one the panel letters, a line has at most one bubble,
+  and both points lie on the page; nothing requires the anchor inside the panel's outline,
+  since a bubble crossing a border is a legitimate layout. Serialized under each panel in
+  `work/shots/<sceneId>.json` and omitted when empty, so a file written before this stage
+  is byte-stable. A bubble with no `tail` is a caption box, which is what a narration line
+  gets.
+- **Outside the hash.** No prompt builder reads `bubbles`, so a bubble edit re-keys
+  nothing; that is the whole point of runner lettering. `story.setPanels` keeps restating
+  panels as before and carries each panel's bubbles through unchanged, except that a line
+  moved to another panel loses its bubble (its anchor was placed against the old panel)
+  and a page made a frame loses them all.
+- **Write path.** One rule, `setBubbles` in `@vn/scriptedit`, restates a page's whole
+  bubble list and files each bubble in the panel that letters its line; it refuses a line
+  the page does not letter, a duplicate, or a point off the page, and is a no-op when the
+  list already says that. `story.setBubbles(scene, shot, bubbles)` is the command (free,
+  undoable, `affects` the shots file, no confirmation) and `set_bubbles` the agent tool
+  over the same rule. A separate command rather than a wider `setPanels`, because
+  `setPanels`'s check prices a redraw and this write never costs one.
+- **Default: no bubble, no change.** A line with no bubble is read in the dialogue box, as
+  today, with its panel lit. Nothing places a bubble automatically — not the runner, not
+  the export, not a centroid fallback — because a wrong bubble over a face is worse than
+  the box, and the box is what the author sees before placing one.
+- **`lettering` defaults to `runner`.** The Stage 2 live check found three of ten models
+  unfit for model lettering, the default image model among them, and the passing ones are
+  the expensive ones; a default that only works on a paid-up model is not a default. A
+  project that wants model lettering says so in `project.yaml`. The flip re-keys the page
+  shots of any project that never wrote the key; the example projects have none, and the
+  fixture corpus holds no page.
+- **Play.** `playablePanelSchema` gains `bubbles?: { line; anchor; tail? }[]`, emitted by
+  `buildPlayable` only under `lettering: runner` (`PlayableOptions.lettering`), so a
+  project switched back to model lettering does not draw its words twice. `framesOf` sets
+  `Frame.bubble` for a line that has one; the desktop Play draws it inside the lit panel —
+  paper at 92%, ink text in prose type, a tail to the tail point when there is one — and
+  hides the dialogue box for that frame. The standalone web player keeps its text overlay
+  and ignores the field.
+- **Editor.** The layer is drawn only under `lettering: runner`. Each panel shows one
+  anchor per line it letters: a placed bubble at its anchor, and for a line with no bubble
+  yet a ghost anchor at the panel's centroid (stacked with a small offset when several
+  lines share a panel). Dragging a ghost places the bubble where it is dropped; dragging
+  an anchor moves it; a selected anchor grows a tail handle, dragged to the speaker, and
+  Delete removes the bubble. The line row's panel glyph becomes an anchor glyph once a
+  bubble exists, so an unplaced line is visible in the list. The row drag keeps its Stage
+  3 meaning (letter this line in that panel) and is not overloaded with placement. Every
+  control goes through `act()`/`record()`, so the sweep and `ux-model.json` see it.
+- **Agent.** `set_bubbles` takes the whole list. The storyboard listing prints, for a page
+  with a render, each panel's observed box from `panelBoxes` beside its outline and any
+  bubble already placed, so the agent places inside the box the reviewer measured rather
+  than the outline it asked for. The tool's description says to leave `tail` off unless
+  the speaker's position in the panel is known, since the agent cannot see the render.
+- **Docs.** `playable-format.md` (the field and the runner rule), the Page editor's page
+  in `desktop-app-editors-story.md`, `pipeline-contracts.md` (bubbles outside the hash,
+  the new default), the `full-production` skill and `templates/basic/project.yaml`'s
+  comment.
 
 ## Designing the editor surfaces
 
@@ -1123,3 +1175,31 @@ decided something it left open:
   cast's identity on the sheet itself. `storyboard_notes` stays the switch. Six cells
   staged correctly where the model could stage at all, and two groups rolled the room
   twice, so one group per continuous sequence up to eight is the recommendation.
+
+### Stage 5
+
+Shipped on 2026-09-17 in one commit, as the stage section above describes it. Where the
+build decided something the section left open:
+
+- **Bubbles are filed per panel and restated per page.** `setBubbles` takes the page's
+  whole list and files each bubble under the panel lettering its line, in that panel's
+  line order (`filed`), so an unchanged restatement compares equal and the editor's
+  one-anchor drag can send the list without knowing which panel it is in.
+- **Delete is one key for three things.** The Page editor's Delete binding keeps its
+  `Remove corner` row in the shortcut table; the handler takes the held tail, else the
+  held bubble, else the held corner. A second Delete row for the bubble family would have
+  put two `HotKey`s on one key in one keymap, and only the first would fire.
+- **The Play bubble is laid out in pixels, not fractions.** The anchor is a page fraction,
+  but the bubble's paper, its tail's width and its clamp to the picture's edge are pixel
+  measurements made at fit time and refitted with the panel dim as the pane resizes, so a
+  tail is the same width on a 3:4 page and a 16:9 one.
+- **The agent reads the observed box per panel.** `read_shots` prints
+  `rendered at x a–b, y c–d` under a panel whose page has `panelBoxes`, and each bubble
+  already placed; nothing else about the tool surface changed.
+- **The example project's pages predate the default.** `examples/mySampleRepo` drew its
+  two pages under model lettering, so under the new default they re-key on the next run
+  unless its `project.yaml` says `lettering: model`; it is a local repo and was left as it
+  was. The Page editor was checked against it live (anchors placed and aimed by pointer,
+  the file written, Play drawing the bubble over the lit panel with the dialogue box
+  gone); the critique is in
+  [`manga-style-design.md`](manga-style-design.md#screenshot-critique).

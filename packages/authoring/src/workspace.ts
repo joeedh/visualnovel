@@ -15,6 +15,7 @@ import {
   letteredPagesNote,
   moveShot,
   newShot as planNewShot,
+  setBubbles,
   setCoverage,
   setPanels,
   setSceneOutfit,
@@ -42,6 +43,7 @@ import type {
   Diagnostic,
   Lettering,
   PagePanel,
+  PanelBubble,
   ProjectModel,
   Shot,
 } from '@vn/types';
@@ -491,6 +493,31 @@ export class Workspace {
       };
     }
     const op = setPanels(loaded.shots, { shot: shotId, panels, lineOrder });
+    return op.ok
+      ? { ok: true, shots: op.shots, message: op.message }
+      : { ok: false, error: op.error };
+  }
+
+  /**
+   * The bubble rule over a fresh load of the board, so `set_bubbles` and the desktop's
+   * `story.setBubbles` decide against the same shots. Mirrors `session.setBubbles` up to the write.
+   */
+  async shotBubbles(
+    sceneId: string,
+    shotId: string,
+    bubbles: readonly PanelBubble[],
+  ): Promise<{ ok: false; error: string } | { ok: true; shots: Shot[]; message: string }> {
+    const { model } = await this.load();
+    const scene = model.scenes.get(sceneId);
+    if (!scene) return { ok: false, error: `No scene "${sceneId}".` };
+    const loaded = await readShots(this.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
+    if (!loaded) {
+      return {
+        ok   : false,
+        error: `Scene "${sceneId}" has no shots yet — decompose it or place one by hand first.`,
+      };
+    }
+    const op = setBubbles(loaded.shots, { shot: shotId, bubbles });
     return op.ok
       ? { ok: true, shots: op.shots, message: op.message }
       : { ok: false, error: op.error };

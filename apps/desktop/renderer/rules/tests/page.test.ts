@@ -3,9 +3,15 @@ import { SITUATIONS } from '../situations/page.js';
 import {
   LAYOUTS,
   acceptAction,
+  anchorAction,
+  anchorOf,
+  bubbleLayer,
+  bubblesOffer,
   castAction,
+  centroid,
   controls,
   defectsOf,
+  deleteBubble,
   enterLetters,
   generateAction,
   inLayout,
@@ -18,6 +24,7 @@ import {
   shotCastOf,
   shotModelAction,
   summaryOf,
+  tailAction,
   verdictOf,
   withCorner,
   withCornerAfter,
@@ -205,7 +212,80 @@ describe('the head’s actions', () => {
   });
 });
 
+describe('the bubble layer', () => {
+  const lettered = state('runner-lettered');
+  const panels = lettered.shots[1]!.panels!;
+  const bubbles = panels.flatMap((p) => p.bubbles ?? []);
+
+  it('is drawn only when the runner letters a page', () => {
+    expect(bubbleLayer(lettered)).toBe(true);
+    expect(bubbleLayer({ ...lettered, lettering: 'model' })).toBe(false);
+    expect(bubbleLayer({ ...lettered, shotId: 'arrival__s1' })).toBe(false);
+    expect(bubbleLayer(state('page'))).toBe(false);
+  });
+
+  it('puts a placed bubble’s anchor where it is, a ghost at its panel’s centre, and none on an unlettered line', () => {
+    expect(centroid(panels[0]!.shape)).toEqual([0.5, 0.25]);
+    expect(anchorOf(panels, bubbles, 'arrival:L1')).toEqual({ at: [0.5, 0.25], placed: false });
+    expect(anchorOf(panels, bubbles, 'arrival:L2')).toEqual({ at: [0.5, 0.7], placed: true });
+    expect(anchorOf(panels, bubbles, 'arrival:L3')).toBeNull();
+    // Two unplaced lines in one panel step down so the ghosts do not sit on each other
+    const shared = [{ ...panels[0]!, coversLines: ['arrival:L1', 'arrival:L3'] }];
+    expect(anchorOf(shared, [], 'arrival:L3')!.at[1]).toBeCloseTo(0.3);
+  });
+
+  it('offers each anchor as story.setBubbles supplied by the drag, worded for a ghost or a placed bubble', () => {
+    expect(anchorAction(lettered, 'arrival:L1', 0)).toMatchObject({
+      ok      : true,
+      id      : 'story.setBubbles',
+      on      : 'bubble/arrival:L1',
+      label   : '1',
+      supplies: ['bubbles'],
+      tooltip : expect.stringContaining('Drag to place line 1'),
+    });
+    expect(anchorAction(lettered, 'arrival:L2', 1).tooltip).toContain(
+      'Delete takes the bubble off',
+    );
+    expect(tailAction(lettered, 'arrival:L2')).toMatchObject({
+      ok: true,
+      on: 'bubble/arrival:L2/tail',
+    });
+    expect(anchorAction(state('no-shot'), 'arrival:L1', 0).ok).toBe(false);
+  });
+
+  it('judges a list by the rule, and Delete writes the page without the held bubble', () => {
+    const ok = bubblesOffer(lettered, { on: 'x', label: '', tooltip: 'Moved.' }, [
+      { lineId: 'arrival:L1', anchor: [0.5, 0.2] },
+    ]);
+    expect(ok).toMatchObject({
+      ok     : true,
+      props  : { scene: 'arrival', shot: 'arrival__page1' },
+      tooltip: expect.stringContaining('Nothing is drawn again'),
+    });
+    expect(
+      bubblesOffer(lettered, { on: 'x', label: '', tooltip: '' }, [
+        { lineId: 'arrival:L3', anchor: [0.5, 0.2] },
+      ]),
+    ).toMatchObject({ ok: false, refusal: { reason: expect.stringContaining('in no panel') } });
+    expect(deleteBubble(lettered)).toEqual([]);
+    expect(deleteBubble({ ...lettered, bubble: 'arrival:L1' })).toBeNull();
+    expect(deleteBubble({ ...lettered, bubble: null })).toBeNull();
+  });
+});
+
 describe('controls', () => {
+  it('draws an anchor per lettered line and the held bubble’s tail under runner lettering, and none otherwise', () => {
+    const keys = controls(state('runner-lettered')).map(keyOf);
+    expect(keys.filter((k) => k.startsWith('cmd:story.setBubbles#bubble/'))).toEqual([
+      'cmd:story.setBubbles#bubble/arrival:L1',
+      'cmd:story.setBubbles#bubble/arrival:L2',
+      'cmd:story.setBubbles#bubble/arrival:L2/tail',
+    ]);
+    expect(controls(state('page')).some((o) => o.id === 'story.setBubbles')).toBe(false);
+    const unheld = controls({ ...state('runner-lettered'), bubble: null }).map(keyOf);
+    expect(unheld).not.toContain('cmd:story.setBubbles#bubble/arrival:L2/tail');
+  });
+
   it('draws nothing with no shot, and no corner or field until a panel is selected', () => {
     expect(controls(state('no-shot'))).toEqual([]);
     const page = controls(state('page')).map(keyOf);

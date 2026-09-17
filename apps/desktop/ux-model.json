@@ -421,6 +421,12 @@
       "why": "The page was drawn but the reviewers kept blocking it: the head names the defects, Regenerate draws it again, and Accept keeps it as it stands."
     },
     {
+      "module": "page",
+      "editor": "page",
+      "name"  : "runner-lettered",
+      "why": "The runner letters this project’s pages: each lettered line has an anchor on the page — line 1 a ghost at its panel’s centre, line 2 placed — and line 2’s bubble is held, so its tail handle is drawn too. Line 3 is in no panel and has no anchor."
+    },
+    {
       "module": "play",
       "editor": "play",
       "name"  : "start",
@@ -21551,6 +21557,633 @@
       "editor"    : "page",
       "module"    : "page",
       "situation" : "flagged",
+      "key"       : "fx:drag.start#line/arrival:L3",
+      "widgetPath": "page/drag-start~da35cb1c",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "It was.",
+        "tooltip": "Drag onto a panel to letter this line there; Enter letters it in the selected panel. The page is drawn again on the next run.",
+        "on"     : "line/arrival:L3",
+        "ok"     : true,
+        "props": {
+          "interaction": "page.letter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "page.letter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "cmd:story.setPanels#layout/two-tier",
+      "widgetPath": "page/story-setpanels~584427d9",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "two tiers of two",
+        "tooltip": "Lay this page out as two tiers of two. arrival__page1 has 4 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/two-tier",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"],\"bubbles\":[{\"lineId\":\"arrival:L2\",\"anchor\":[0.5,0.7],\"tail\":[0.4,0.85]}]},{\"shape\":[[0,0.5],[0.5,0.5],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.5],[1,0.5],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"],\"bubbles\":[{\"lineId\":\"arrival:L2\",\"anchor\":[0.5,0.7],\"tail\":[0.4,0.85]}]},{\"shape\":[[0,0.5],[0.5,0.5],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.5],[1,0.5],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "cmd:story.setPanels#layout/three-tier",
+      "widgetPath": "page/story-setpanels~76c68c7b",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "three tiers of two",
+        "tooltip": "Lay this page out as three tiers of two. arrival__page1 has 6 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/three-tier",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"],\"bubbles\":[{\"lineId\":\"arrival:L2\",\"anchor\":[0.5,0.7],\"tail\":[0.4,0.85]}]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[0.5,0.6666666666666666],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.6666666666666666],[1,0.6666666666666666],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"],\"bubbles\":[{\"lineId\":\"arrival:L2\",\"anchor\":[0.5,0.7],\"tail\":[0.4,0.85]}]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[0.5,0.6666666666666666],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.6666666666666666],[1,0.6666666666666666],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "cmd:story.setPanels#layout/diagonal-split",
+      "widgetPath": "page/story-setpanels~e1f8952a",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "two panels split on a diagonal",
+        "tooltip": "Lay this page out as two panels split on a diagonal. arrival__page1 has 2 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/diagonal-split",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[1,0],[1,0.35],[0,0.65]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0,0.65],[1,0.35],[1,1],[0,1]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"],\"bubbles\":[{\"lineId\":\"arrival:L2\",\"anchor\":[0.5,0.7],\"tail\":[0.4,0.85]}]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[1,0],[1,0.35],[0,0.65]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0,0.65],[1,0.35],[1,1],[0,1]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"],\"bubbles\":[{\"lineId\":\"arrival:L2\",\"anchor\":[0.5,0.7],\"tail\":[0.4,0.85]}]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "cmd:story.setPanels#layout/splash-over-two",
+      "widgetPath": "page/story-setpanels~63f2ae6d",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "a splash over a row of two",
+        "tooltip": "Lay this page out as a splash over a row of two. arrival__page1 has 3 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/splash-over-two",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[1,0],[1,0.6],[0,0.6]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0,0.6],[0.5,0.6],[0.5,1],[0,1]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"],\"bubbles\":[{\"lineId\":\"arrival:L2\",\"anchor\":[0.5,0.7],\"tail\":[0.4,0.85]}]},{\"shape\":[[0.5,0.6],[1,0.6],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[1,0],[1,0.6],[0,0.6]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0,0.6],[0.5,0.6],[0.5,1],[0,1]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"],\"bubbles\":[{\"lineId\":\"arrival:L2\",\"anchor\":[0.5,0.7],\"tail\":[0.4,0.85]}]},{\"shape\":[[0.5,0.6],[1,0.6],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "cmd:story.setPanels#layout/even-2",
+      "widgetPath": "page/story-setpanels~ac911e1d",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "2 panels in tiers of two",
+        "tooltip": "Lay this page out as 2 panels in tiers of two. arrival__page1 has 2 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/even-2",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,1],[0,1]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,1],[0.5,1]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"],\"bubbles\":[{\"lineId\":\"arrival:L2\",\"anchor\":[0.5,0.7],\"tail\":[0.4,0.85]}]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,1],[0,1]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,1],[0.5,1]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"],\"bubbles\":[{\"lineId\":\"arrival:L2\",\"anchor\":[0.5,0.7],\"tail\":[0.4,0.85]}]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "cmd:story.setPanels#layout/even-3",
+      "widgetPath": "page/story-setpanels~b03b2624",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "3 panels in tiers of two",
+        "tooltip": "Lay this page out as 3 panels in tiers of two. arrival__page1 has 3 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/even-3",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"],\"bubbles\":[{\"lineId\":\"arrival:L2\",\"anchor\":[0.5,0.7],\"tail\":[0.4,0.85]}]},{\"shape\":[[0,0.5],[1,0.5],[1,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"],\"bubbles\":[{\"lineId\":\"arrival:L2\",\"anchor\":[0.5,0.7],\"tail\":[0.4,0.85]}]},{\"shape\":[[0,0.5],[1,0.5],[1,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "cmd:story.setPanels#layout/even-4",
+      "widgetPath": "page/story-setpanels~b3e52e2b",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "4 panels in tiers of two",
+        "tooltip": "Lay this page out as 4 panels in tiers of two. arrival__page1 has 4 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/even-4",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"],\"bubbles\":[{\"lineId\":\"arrival:L2\",\"anchor\":[0.5,0.7],\"tail\":[0.4,0.85]}]},{\"shape\":[[0,0.5],[0.5,0.5],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.5],[1,0.5],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.5],[0,0.5]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.5],[0.5,0.5]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"],\"bubbles\":[{\"lineId\":\"arrival:L2\",\"anchor\":[0.5,0.7],\"tail\":[0.4,0.85]}]},{\"shape\":[[0,0.5],[0.5,0.5],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.5],[1,0.5],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "cmd:story.setPanels#layout/even-5",
+      "widgetPath": "page/story-setpanels~b78f3632",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "5 panels in tiers of two",
+        "tooltip": "Lay this page out as 5 panels in tiers of two. arrival__page1 has 5 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/even-5",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"],\"bubbles\":[{\"lineId\":\"arrival:L2\",\"anchor\":[0.5,0.7],\"tail\":[0.4,0.85]}]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[1,0.6666666666666666],[1,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"],\"bubbles\":[{\"lineId\":\"arrival:L2\",\"anchor\":[0.5,0.7],\"tail\":[0.4,0.85]}]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[1,0.6666666666666666],[1,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "cmd:story.setPanels#layout/even-6",
+      "widgetPath": "page/story-setpanels~bb393e39",
+      "offer": {
+        "id"     : "story.setPanels",
+        "label"  : "6 panels in tiers of two",
+        "tooltip": "Lay this page out as 6 panels in tiers of two. arrival__page1 has 6 panel(s). arrival:L3 is in no panel and will not be lettered. The page is drawn again on the next run.",
+        "on"     : "layout/even-6",
+        "ok"     : true,
+        "props": {
+          "scene" : "arrival",
+          "shot"  : "arrival__page1",
+          "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"],\"bubbles\":[{\"lineId\":\"arrival:L2\",\"anchor\":[0.5,0.7],\"tail\":[0.4,0.85]}]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[0.5,0.6666666666666666],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.6666666666666666],[1,0.6666666666666666],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setPanels",
+          "props": {
+            "scene" : "arrival",
+            "shot"  : "arrival__page1",
+            "panels": "[{\"shape\":[[0,0],[0.5,0],[0.5,0.3333333333333333],[0,0.3333333333333333]],\"framing\":\"wide\",\"subjects\":[],\"coversLines\":[\"arrival:L1\"]},{\"shape\":[[0.5,0],[1,0],[1,0.3333333333333333],[0.5,0.3333333333333333]],\"framing\":\"close\",\"subjects\":[{\"characterId\":\"aiko\"}],\"coversLines\":[\"arrival:L2\"],\"bubbles\":[{\"lineId\":\"arrival:L2\",\"anchor\":[0.5,0.7],\"tail\":[0.4,0.85]}]},{\"shape\":[[0,0.3333333333333333],[0.5,0.3333333333333333],[0.5,0.6666666666666666],[0,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.3333333333333333],[1,0.3333333333333333],[1,0.6666666666666666],[0.5,0.6666666666666666]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0,0.6666666666666666],[0.5,0.6666666666666666],[0.5,1],[0,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]},{\"shape\":[[0.5,0.6666666666666666],[1,0.6666666666666666],[1,1],[0.5,1]],\"framing\":\"medium\",\"subjects\":[],\"coversLines\":[]}]"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "cmd:pipeline.draw",
+      "widgetPath": "page/pipeline-draw~dc2be709",
+      "offer": {
+        "id"     : "pipeline.draw",
+        "label"  : "Regenerate",
+        "tooltip": "Draw this shot again: its own task and whatever it still needs upstream, nothing else in the project. Spends real image calls.",
+        "ok"     : true,
+        "props": {
+          "slot": "shot:arrival/arrival__page1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pipeline.draw",
+          "props": {
+            "slot": "shot:arrival/arrival__page1"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "cmd:art.setModel",
+      "widgetPath": "page/art-setmodel~017083fe",
+      "offer": {
+        "id"      : "art.setModel",
+        "label"   : "(mock-image)",
+        "tooltip": "Which image model draws this shot, in place of the project’s. Pictures already drawn stay; Generate draws with it. Inherit takes mock-image.",
+        "supplies": ["model"],
+        "ok"      : true,
+        "props": {
+          "target": "shot:arrival/arrival__page1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "art.setModel",
+          "props": {
+            "target": "shot:arrival/arrival__page1"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "cmd:story.setSubjects#drop/aiko",
+      "widgetPath": "page/story-setsubjects~4daf2d67",
+      "offer": {
+        "id"     : "story.setSubjects",
+        "label"  : "×",
+        "tooltip": "Take aiko out of this shot. Their sheet stops being one of the references the frame is drawn from, and their outfit override goes with them.",
+        "on"     : "drop/aiko",
+        "ok"     : true,
+        "props": {
+          "scene"   : "arrival",
+          "shot"    : "arrival__page1",
+          "subjects": "ren"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setSubjects",
+          "props": {
+            "scene"   : "arrival",
+            "shot"    : "arrival__page1",
+            "subjects": "ren"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "cmd:story.setSubjects#drop/ren",
+      "widgetPath": "page/story-setsubjects~8dbd42ea",
+      "offer": {
+        "id"     : "story.setSubjects",
+        "label"  : "×",
+        "tooltip": "Take ren out of this shot. Their sheet stops being one of the references the frame is drawn from, and their outfit override goes with them.",
+        "on"     : "drop/ren",
+        "ok"     : true,
+        "props": {
+          "scene"   : "arrival",
+          "shot"    : "arrival__page1",
+          "subjects": "aiko"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setSubjects",
+          "props": {
+            "scene"   : "arrival",
+            "shot"    : "arrival__page1",
+            "subjects": "aiko"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "cmd:story.setSubjects#add",
+      "widgetPath": "page/story-setsubjects~c2457003",
+      "offer": {
+        "id"      : "story.setSubjects",
+        "label"   : "add",
+        "tooltip": "Put another character in this shot. Their sheet becomes one of the references the frame is drawn from, so the frame is drawn again.",
+        "on"      : "add",
+        "supplies": ["subjects"],
+        "ok"      : true,
+        "props": {
+          "scene": "arrival",
+          "shot" : "arrival__page1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setSubjects",
+          "props": {
+            "scene": "arrival",
+            "shot" : "arrival__page1"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "fx:pane.view#panel/1",
+      "widgetPath": "page/pane-view~887495cc",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Panel 1",
+        "tooltip": "Select panel 1 to move its corners and edit its framing, camera and cast. Double-click an edge to add a corner there.",
+        "on"     : "panel/1",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "fx:pane.view#panel/2",
+      "widgetPath": "page/pane-view~7d767db7",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Panel 2",
+        "tooltip": "Select panel 2 to move its corners and edit its framing, camera and cast. Double-click an edge to add a corner there.",
+        "on"     : "panel/2",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "cmd:story.setBubbles#bubble/arrival:L1",
+      "widgetPath": "page/story-setbubbles~4599971f",
+      "offer": {
+        "id"      : "story.setBubbles",
+        "label"   : "1",
+        "tooltip": "Drag to place line 1's bubble on the page. Until it is placed the line is read in the dialogue box. Nothing is drawn again.",
+        "on"      : "bubble/arrival:L1",
+        "supplies": ["bubbles"],
+        "ok"      : true,
+        "props": {
+          "scene": "arrival",
+          "shot" : "arrival__page1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setBubbles",
+          "props": {
+            "scene": "arrival",
+            "shot" : "arrival__page1"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "cmd:story.setBubbles#bubble/arrival:L2",
+      "widgetPath": "page/story-setbubbles~d890d7cc",
+      "offer": {
+        "id"      : "story.setBubbles",
+        "label"   : "2",
+        "tooltip": "Drag to move where line 2 is read on the page; Delete takes the bubble off, and the line goes back to the dialogue box. Nothing is drawn again.",
+        "on"      : "bubble/arrival:L2",
+        "supplies": ["bubbles"],
+        "ok"      : true,
+        "props": {
+          "scene": "arrival",
+          "shot" : "arrival__page1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setBubbles",
+          "props": {
+            "scene": "arrival",
+            "shot" : "arrival__page1"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "cmd:story.setBubbles#bubble/arrival:L2/tail",
+      "widgetPath": "page/story-setbubbles~ce25e593",
+      "offer": {
+        "id"      : "story.setBubbles",
+        "label"   : "",
+        "tooltip": "Drag to point this bubble’s tail at whoever is speaking; drop it back on the bubble for a caption with no tail. Nothing is drawn again.",
+        "on"      : "bubble/arrival:L2/tail",
+        "supplies": ["bubbles"],
+        "ok"      : true,
+        "props": {
+          "scene": "arrival",
+          "shot" : "arrival__page1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setBubbles",
+          "props": {
+            "scene": "arrival",
+            "shot" : "arrival__page1"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "fx:drag.start#line/arrival:L1",
+      "widgetPath": "page/drag-start~d2e1bb0e",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "Aiko stops at the gate.",
+        "tooltip": "Drag onto a panel to letter this line there; Enter letters it in the selected panel. The page is drawn again on the next run.",
+        "on"     : "line/arrival:L1",
+        "ok"     : true,
+        "props": {
+          "interaction": "page.letter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "page.letter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
+      "key"       : "fx:drag.start#line/arrival:L2",
+      "widgetPath": "page/drag-start~d68bc315",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "Is this the place?",
+        "tooltip": "Drag onto a panel to letter this line there; Enter letters it in the selected panel. The page is drawn again on the next run.",
+        "on"     : "line/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "interaction": "page.letter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "page.letter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
       "key"       : "fx:drag.start#line/arrival:L3",
       "widgetPath": "page/drag-start~da35cb1c",
       "offer": {

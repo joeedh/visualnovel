@@ -182,6 +182,35 @@ describe('shots file', () => {
     expect('panels' in plain.shots[0]).toBe(false);
   });
 
+  it('round-trips a panel’s bubbles, writes no key for a panel without one, and drops a bubble with its line', async () => {
+    const paths = await tempPaths();
+    const lettered = page();
+    lettered.panels![1]!.bubbles = [{ lineId: 'arrival:L2', anchor: [0.5, 0.8], tail: [0.4, 0.7] }];
+    await writeShots(paths, 'arrival', [lettered]);
+
+    const raw = JSON.parse(await readFile(paths.shotsFile('arrival'), 'utf8'));
+    expect('bubbles' in raw.shots[0].panels[0]).toBe(false);
+    expect(raw.shots[0].panels[1].bubbles).toEqual([
+      { lineId: 'arrival:L2', anchor: [0.5, 0.8], tail: [0.4, 0.7] },
+    ]);
+    expect((await readShots(paths, 'arrival'))?.shots).toEqual([lettered]);
+
+    // The line leaves the scene, and its bubble follows it out of the panel.
+    const cut = await readShots(paths, 'arrival', new Set(['arrival:L1']));
+    expect(cut?.shots[0]?.panels?.[1]).toEqual({ ...page().panels![1], coversLines: [] });
+
+    // An empty list is written as no key, so the file matches one that never had bubbles.
+    lettered.panels![1]!.bubbles = [];
+    await writeShots(paths, 'arrival', [lettered]);
+    expect(await readFile(paths.shotsFile('arrival'), 'utf8')).toBe(
+      await (async () => {
+        const other = await tempPaths();
+        await writeShots(other, 'arrival', [page()]);
+        return readFile(other.shotsFile('arrival'), 'utf8');
+      })(),
+    );
+  });
+
   it('cuts a panel’s lines down to the shot’s, and reports the lines no panel letters', async () => {
     const paths = await tempPaths();
     const wide = page();

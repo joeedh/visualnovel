@@ -2,7 +2,7 @@
 import { z } from 'zod';
 import { decomposeScene, realizeDecomposition } from '@vn/artgen';
 import { readShots, writeShots } from '@vn/store';
-import type { Scene, Shot, ShotSubject } from '@vn/types';
+import type { PanelBox, PanelBubble, Scene, Shot, ShotSubject } from '@vn/types';
 import { ok, fail, type Tool } from './core.js';
 
 /**
@@ -23,7 +23,7 @@ function formatStoryboard(scene: Scene, shots: readonly Shot[]): string {
     const panels = (s.panels ?? []).map((p, i) => {
       const who = p.subjects.map((x) => x.characterId).join(', ') || 'nobody';
       const held = p.coversLines.length ? p.coversLines.join(', ') : 'no lines';
-      return `\n    panel ${i + 1} (${p.framing}): ${who} — ${held}`;
+      return `\n    panel ${i + 1} (${p.framing}): ${who} — ${held}${placement(p, s.panelBoxes?.[i])}`;
     });
     return `${s.id}  [${kind} @${s.location}]  ${cast}\n    ${lines}${panels.join('')}`;
   });
@@ -32,6 +32,30 @@ function formatStoryboard(scene: Scene, shots: readonly Shot[]): string {
     ? `Uncovered: ${gaps.join(', ')} — the runner holds the previous image over them.`
     : 'Every line is covered.';
   return [...rows, tail].join('\n');
+}
+
+const point = ([x, y]: readonly [number, number]): string => `${x.toFixed(2)},${y.toFixed(2)}`;
+
+/**
+ * Where a panel's bubbles go: the box the reviewer measured in the render, when there is one, and
+ * each bubble already placed. Printed only for a rendered page or a page with bubbles, so a frame
+ * and an undrawn page read as before.
+ */
+function placement(
+  panel: { coversLines: string[]; bubbles?: PanelBubble[] },
+  box: PanelBox | undefined,
+): string {
+  const parts: string[] = [];
+  if (box) {
+    parts.push(
+      `rendered at x ${box.x.toFixed(2)}–${(box.x + box.w).toFixed(2)}, ` +
+        `y ${box.y.toFixed(2)}–${(box.y + box.h).toFixed(2)}`,
+    );
+  }
+  for (const b of panel.bubbles ?? []) {
+    parts.push(`${b.lineId} bubble at ${point(b.anchor)}${b.tail ? ` tail ${point(b.tail)}` : ''}`);
+  }
+  return parts.length ? `\n      ${parts.join('; ')}` : '';
 }
 
 /**
@@ -256,6 +280,50 @@ const setPanelsTool: Tool<z.infer<typeof setPanelsShape>> = {
   },
 };
 
+const pointShape = z.tuple([fraction, fraction]);
+
+const setBubblesShape = z
+  .object({
+    scene  : z.string().min(1).describe('the scene the shot belongs to'),
+    shot   : z.string().min(1).describe('the page shot whose bubbles are being restated'),
+    bubbles: z
+      .array(
+        z
+          .object({
+            lineId: z.string().min(1).describe('a line one of the page’s panels letters'),
+            anchor: pointShape.describe('where the bubble sits, in page fractions'),
+            tail: pointShape
+              .optional()
+              .describe('where the tail points, at the speaker; leave out for a caption box'),
+          })
+          .strict(),
+      )
+      .describe('the whole bubble list; an empty list removes every bubble'),
+  })
+  .strict();
+
+const setBubblesTool: Tool<z.infer<typeof setBubblesShape>> = {
+  name       : 'set_bubbles',
+  description:
+    'Restate where the runner draws a page shot’s speech bubbles — the whole list, not a delta: ' +
+    'one per lettered line, an anchor in page fractions and an optional tail. Bubbles are read ' +
+    'by the runner under lettering: runner and by no prompt, so nothing is drawn again. Place ' +
+    'each bubble inside the box read_shots prints as "rendered at" for its panel when the page ' +
+    'has been drawn — that is where the panel actually landed — else inside the panel’s outline; ' +
+    'leave tail out unless you know where the speaker stands in the panel, since a tail to the ' +
+    'wrong place is worse than none. A line no panel letters, a line named twice and a point off ' +
+    'the page are refused; a lettered line with no bubble keeps the dialogue box.',
+  mutating   : true,
+  args       : setBubblesShape,
+  async run(a, ctx) {
+    const op = await ctx.workspace.shotBubbles(a.scene, a.shot, a.bubbles);
+    if (!op.ok) return fail(op.error);
+    await writeShots(ctx.workspace.paths, a.scene, op.shots);
+    const shotsFile = `vngen/work/shots/${a.scene}.json`;
+    return ok(op.message, { written: [shotsFile], data: { paths: [shotsFile] } });
+  },
+};
+
 const storyboardShotShape = z
   .object({
     id: z.string().min(1).describe('the shot id from the proposal, e.g. arrival__establishing'),
@@ -380,6 +448,7 @@ export {
   readShotsTool,
   setCoverageTool,
   setPanelsTool,
+  setBubblesTool,
   proposeStoryboardTool,
   writeStoryboardTool,
 };

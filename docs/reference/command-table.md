@@ -2,8 +2,8 @@
 
 # Registered commands
 
-180 commands, in 23 namespaces. 104 are `mutating`;
-117 declare a precondition; 70 are undoable; 21 ask
+181 commands, in 23 namespaces. 105 are `mutating`;
+118 declare a precondition; 71 are undoable; 21 ask
 for confirmation.
 
 ✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
@@ -145,6 +145,7 @@ for confirmation.
 | `story.removeChoice` ✍ ↺ ✓ | `scene`, `index` | Writes `scenes`. Deletes the marker line; the prose is untouched. |
 | `story.requireCast` ✍ ↺ ✓ | `scene`, `shot`, `required` (default `true`) | Writes `vngen/work/shots`. Turn the reviewer's demand that a shot show its cast on or off. Off keeps the reference sheets and only stops an absence counting as a defect, which is how a frame the refine loop cannot satisfy is unstuck. |
 | `story.screenplay` ✍ ✓ | `clean` (default `false`) | Writes `screenplay.fountain`. Project the scenes back to one Fountain file at the project root (`vngen screenplay`). `clean` drops the `[[…]]` markers, which makes it one-way. |
+| `story.setBubbles` ✍ ↺ ✓ | `scene`, `shot`, `bubbles` (digest) | Writes `vngen/work/shots`. Replace a page’s whole bubble list as JSON (`[{lineId, anchor: [x, y], tail?: [x, y]}]`); empty removes them all. Bubbles are outside the prompt, so the page is not drawn again. The list is a string prop because `@vn/commands` has no JSON kind. |
 | `story.setChoice` ✍ ↺ ✓ | `scene`, `goto`, `label`, `index` (default `-1`) | Writes `scenes`. `-1` appends. Rewrites one `[[choice:]]` marker. |
 | `story.setCoverage` ✍ ↺ ✓ | `scene`, `shot`, `lines` (default `''`) | Writes `vngen/work/shots`. Comma-separated line ids; claimed lines leave every other shot. |
 | `story.setHeading` ✍ ↺ ✓ | `scene`, `heading` | Writes `scenes`, `vngen/work/shots`. Move a scene somewhere else. No line id changes, but a location is in every shot's task inputs, so the check says how many rendered shots will be drawn again — and the prose it leaves behind is the agent's to rewrite. Deliberately not `confirm`: the check **is** the warning. |

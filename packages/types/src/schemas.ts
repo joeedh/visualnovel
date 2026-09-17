@@ -320,7 +320,7 @@ export const projectConfig = z.object({
    * single-frame storyboard.
    */
   storyboard_notes   : z.string().default(''),
-  lettering          : z.enum(LETTERING_MODES).default('model'),
+  lettering          : z.enum(LETTERING_MODES).default('runner'),
   /**
    * The entry scene's id. Optional here rather than required, because a project missing it is
    * reported as an error diagnostic by the model, which can list the available scene ids where
@@ -438,6 +438,18 @@ const shotSubject = z.object({
 /** A panel outline: page fractions, clockwise, at least three points. */
 const panelShape = z.array(z.tuple([pageFraction, pageFraction])).min(3);
 
+/** A point on the page, in page fractions. */
+const pagePoint = z.tuple([pageFraction, pageFraction]);
+
+/** One speech bubble the runner draws — see {@link PanelBubble}. */
+const panelBubble = z.object({
+  lineId: z.string().min(1),
+  anchor: pagePoint,
+  tail  : pagePoint.optional(),
+});
+/** A bubble list as a command or a tool receives it, parsed before any rule reads it. */
+export const panelBubblesSchema = z.array(panelBubble);
+
 /** One panel of a page shot as persisted — see {@link PagePanel}. */
 const pagePanel = z.object({
   shape      : panelShape,
@@ -446,6 +458,8 @@ const pagePanel = z.object({
   subjects   : z.array(shotSubject.omit({ outfit: true })).default([]),
   coversLines: z.array(z.string()).default([]),
   artNotes   : z.string().optional(),
+  /** Authored; not in the prompt, so a bubble edit re-renders nothing. */
+  bubbles    : z.array(panelBubble).optional(),
 });
 /** A panel list as a command or a tool receives it, parsed before any rule reads it. */
 export const pagePanelsSchema = z.array(pagePanel);

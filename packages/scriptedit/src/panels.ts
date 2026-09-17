@@ -6,9 +6,11 @@
  * Page editor that previews it, and the agent's `set_panels` must give the same answer. Every part
  * of a panel is in the page's prompt, so any change re-hashes the shot and the next run draws the
  * page again. Moving a line between two panels of one page is this rule's, not `setCoverage`'s,
- * since the shot's own line set does not change.
+ * since the shot's own line set does not change. Bubbles are the one part of a panel this rule
+ * does not take: they are `setBubbles`'s, and a restatement carries the page's own through.
  */
-import { SHOT_FRAMINGS, type PagePanel } from '@vn/types';
+import { SHOT_FRAMINGS, type PagePanel, type PanelBubble } from '@vn/types';
+import { filed } from './bubbles.js';
 
 /**
  * Just enough of a `Shot` to reason about its panels. `subjects` may be character ids or the
@@ -52,6 +54,23 @@ function panelFault(
     return `${at} casts ${listed(strangers)}, who the page does not frame. Add them to the shot's cast first.`;
   }
   return undefined;
+}
+
+/**
+ * The bubbles that survive a restatement: a line's bubble was placed against the panel that
+ * lettered it, so it stays only while the line stays in the panel at that index, and a page made
+ * a frame keeps none. Any `bubbles` on the incoming panels are ignored; `setBubbles` is their
+ * write path.
+ */
+function carried(
+  before: readonly PagePanel[] | undefined,
+  after: readonly PagePanel[],
+): PanelBubble[] {
+  return after.flatMap((panel, i) => {
+    const old = before?.[i];
+    if (!old) return [];
+    return (old.bubbles ?? []).filter((b) => panel.coversLines.includes(b.lineId));
+  });
 }
 
 /**
@@ -107,10 +126,11 @@ export function setPanels<S extends PanelShot>(
   }
 
   const byRank = (a: string, b: string): number => (rank.get(a) ?? 0) - (rank.get(b) ?? 0);
-  const panels: PagePanel[] = args.panels.map((p) => ({
+  const restated: PagePanel[] = args.panels.map((p) => ({
     ...p,
     coversLines: [...p.coversLines].sort(byRank),
   }));
+  const panels = filed(restated, carried(shot.panels, restated));
   if (shot.panels && JSON.stringify(shot.panels) === JSON.stringify(panels)) {
     return { ok: false, error: `${args.shot} already has exactly those panels.`, noop: true };
   }

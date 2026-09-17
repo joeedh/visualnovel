@@ -593,7 +593,7 @@ holding the shot's lines and the selected panel's fields. It is the manga plan's
 surface is `story.setPanels`, and every control is an `Offer` judged by the same
 `setPanels` rule in `@vn/scriptedit`'s `panels.ts` that the command runs, so a tooltip
 says what the write would do before it does it. The pure (side-effect-free) rules live in
-`renderer/rules/page.ts`; five situations in `rules/situations/page.ts` feed
+`renderer/rules/page.ts`; six situations in `rules/situations/page.ts` feed
 `ux-model.json`.
 
 - **A frame opens here too, with one way in.** The editor claims a shot whose `DocNode`
@@ -650,6 +650,21 @@ says what the write would do before it does it. The pure (side-effect-free) rule
   Both are `story.setSubjects` with the whole list, built from the same `ShotCast` shape
   (`shotCastOf` in `rules/page.ts`) Shot Coverage's strip uses, so the two agree on every
   refusal. A panel's own cast, further down, is chosen from this list.
+- **Bubbles are placed on the page, under runner lettering.** When `project.yaml` says
+  `lettering: runner` (the default), every line a panel letters has an anchor on the page:
+  a placed bubble at its anchor, or a ghost at its panel's centroid until one is placed
+  (`anchorOf`; ghosts in one panel step down by `GHOST_STEP` so they never overlap). Both
+  carry the line's number from the column. Dragging a ghost places the bubble where it is
+  dropped, dragging an anchor moves it, and a held anchor grows a tail handle, dragged to
+  the speaker; dropped back within `TAIL_SNAP` of the bubble the tail comes off, which
+  makes a caption box. Delete removes the held tail, else the held bubble, else the held
+  corner, in that order. Every write is `story.setBubbles` with the page's whole list
+  (`bubblesProps`), judged by `setBubbles` in `@vn/scriptedit`'s `bubbles.ts`, and none of
+  it re-keys the page, because no prompt reads a bubble; a line's panel glyph in the
+  column rounds once its bubble is placed. The line row's drag keeps its meaning (letter
+  this line in that panel), so placement never rides on it. Under `lettering: model` the
+  layer is not drawn. The runner's side is in
+  [`playable-format.md`](playable-format.md#contracts).
 - **The render's one sentence sits at the right of the head.** `verdictOf` is "Not drawn
   yet" with no image, the failure's sentence on a flagged render, the reviewer's `layout`
   sentence when it wrote one, and nothing otherwise. The reviewer's measured boxes
@@ -663,6 +678,6 @@ says what the write would do before it does it. The pure (side-effect-free) rule
   in `load()`, so a page opened from another shot of the same scene keeps its selected
   panel across its first write.
 - **Ten page-scoped shortcuts.** Nudge in four directions, the same by two with shift,
-  Delete for the held corner, and Escape to deselect. The shortcut table's `on` field may
-  end in `/`, which matches every control whose target sits under that family, so one row
-  covers every corner.
+  Delete for the held tail, bubble or corner, and Escape to deselect. The shortcut table's
+  `on` field may end in `/`, which matches every control whose target sits under that
+  family, so one row covers every corner.

@@ -82,6 +82,15 @@ export {
 export { setShotVariant } from './variants.js';
 export { requireShotCast, setShotSubjects } from './cast.js';
 export { letterLine, setPanels, type PanelShot, type PanelsOp } from './panels.js';
+export {
+  aimBubble,
+  bubblesOf,
+  placeBubble,
+  removeBubble,
+  setBubbles,
+  type BubbleShot,
+  type BubblesOp,
+} from './bubbles.js';
 export { setSheet, setSheetGroup, type SheetShot, type SheetsOp } from './sheets.js';
 export {
   scenesTouchedBy,

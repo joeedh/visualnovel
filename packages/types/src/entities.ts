@@ -210,6 +210,19 @@ export interface PanelBox {
  * panel is a region of it with its own framing, camera and cast; outfits come from the parent
  * shot's cast, so a character wears one outfit across the page.
  */
+/**
+ * A speech bubble the runner draws over a page under `lettering: runner`. Authored on the panel
+ * that letters the line, in page fractions; not in the prompt, so placing one re-renders nothing.
+ */
+export interface PanelBubble {
+  /** One of the parent panel's {@link PagePanel.coversLines}; a line has at most one bubble. */
+  lineId: string;
+  /** Where the bubble sits. */
+  anchor: [number, number];
+  /** Where the tail points, at the speaker. Absent draws a caption box with no tail. */
+  tail?: [number, number];
+}
+
 export interface PagePanel {
   /** The panel's outline in page fractions, clockwise, at least three points. */
   shape: [number, number][];
@@ -224,6 +237,8 @@ export interface PagePanel {
   coversLines: string[];
   /** Art direction for this panel alone, appended to the panel's own sentence. */
   artNotes?: string;
+  /** The bubbles the runner draws for this panel's lines. Absent or empty means none is placed. */
+  bubbles?: PanelBubble[];
 }
 
 /** A single rendered image within a scene (report §3, §P5). */

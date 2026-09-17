@@ -272,6 +272,11 @@
 .pg-paint .outline.refused {
   fill: rgba(229, 83, 75, 0.1);
 }
+.pg-paint .tail {
+  stroke: rgba(244, 162, 76, 0.85);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
 .pg-hit {
   position: absolute;
   cursor: pointer;
@@ -319,6 +324,60 @@
 }
 .pg-page.dragging .pg-hit {
   cursor: copy;
+}
+/* The bubble layer: an anchor per lettered line, a ghost until the bubble is placed. */
+.pg-anchor {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--sodium);
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--sodium);
+  font-family: var(--disp);
+  font-weight: 800;
+  font-size: 10px;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+}
+.pg-anchor.ghost {
+  border-style: dashed;
+  color: var(--mist);
+  border-color: var(--mist);
+  background: rgba(14, 17, 22, 0.7);
+}
+.pg-anchor:active,
+.pg-anchor.held {
+  cursor: grabbing;
+  background: var(--sodium);
+  color: var(--ink);
+}
+.pg-tail {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  padding: 0;
+  border: 1.5px solid var(--sodium);
+  background: var(--ink);
+  transform: rotate(45deg);
+  cursor: grab;
+  touch-action: none;
+}
+.pg-tail.unaimed {
+  margin: -5px 0 0 9px;
+  border-style: dashed;
+}
+.pg-tail:active,
+.pg-tail.held {
+  cursor: grabbing;
+  background: var(--sodium);
 }
 
 /* The column. Section heads are sentence case in mist; nothing is set in capitals. */
@@ -376,6 +435,9 @@
   font-size: 10px;
   color: var(--ink);
   background: var(--sodium);
+}
+.pg-line .in.bubbled {
+  border-radius: 50%;
 }
 .pg-line .none {
   justify-self: end;

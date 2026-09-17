@@ -108,6 +108,38 @@ describe('framesOf', () => {
     // not, and absent once the next shot's frame arrives
     expect(frames.map((f) => f.page)).toEqual([true, true, true, true, undefined]);
   });
+
+  it('carries a line’s bubble onto its frame, and none onto a line without one', () => {
+    const shape: [number, number][] = [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [0, 1],
+    ];
+    const frames = framesOf({
+      beats: [
+        {
+          type  : 'show',
+          shot  : 'a.page',
+          panels: [
+            {
+              shape,
+              lines  : ['a:L1', 'a:L2'],
+              bubbles: [{ line: 'a:L1', anchor: [0.3, 0.2], tail: [0.4, 0.5] }],
+            },
+          ],
+        },
+        { type: 'say', who: 'aiko', text: 'Hello.', line: 'a:L1' },
+        { type: 'say', who: 'aiko', text: 'Still here.', line: 'a:L2' },
+      ],
+      choices: [],
+    });
+    expect(frames[0]).toMatchObject({
+      panel : shape,
+      bubble: { anchor: [0.3, 0.2], tail: [0.4, 0.5] },
+    });
+    expect('bubble' in frames[1]!).toBe(false);
+  });
 });
 
 describe('dimPath', () => {

@@ -246,6 +246,49 @@ describe('persisted decompositions', () => {
     expect('panels' in frame.scenes['arrival']!.beats[0]!).toBe(false);
   });
 
+  it('carries a panel’s bubbles only when the runner letters the page', () => {
+    const [first, ...rest] = lines;
+    const page: Shot = {
+      ...llmShots()[0]!,
+      panels: [
+        {
+          shape: [
+            [0, 0],
+            [1, 0],
+            [1, 1],
+            [0, 1],
+          ],
+          framing    : 'wide',
+          subjects   : [],
+          coversLines: [first!, ...rest],
+          bubbles: [
+            { lineId: first!, anchor: [0.3, 0.2], tail: [0.4, 0.5] },
+            { lineId: rest[0]!, anchor: [0.7, 0.2] },
+          ],
+        },
+      ],
+    };
+    const shots = new Map([['arrival', [page]]]);
+    const runner = buildPlayable(model, fakeStore(), { shots, lettering: 'runner' });
+    expect(() => playableSchema.parse(runner)).not.toThrow();
+    expect(runner.scenes['arrival']!.beats[0]).toMatchObject({
+      panels: [
+        {
+          bubbles: [
+            { line: first, anchor: [0.3, 0.2], tail: [0.4, 0.5] },
+            { line: rest[0], anchor: [0.7, 0.2] },
+          ],
+        },
+      ],
+    });
+    // The words are in the picture under model lettering, so no bubble is exported, and a
+    // project that says nothing exports none either.
+    for (const opts of [{ shots, lettering: 'model' as const }, { shots }]) {
+      const show = buildPlayable(model, fakeStore(), opts).scenes['arrival']!.beats[0]!;
+      expect(show.type === 'show' && 'bubbles' in show.panels![0]!).toBe(false);
+    }
+  });
+
   it('reads them off disk, dropping line ids the screenplay no longer has', async () => {
     const paths = new ProjectPaths(await mkdtemp(join(tmpdir(), 'vn-export-')));
     const stale = llmShots();

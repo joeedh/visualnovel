@@ -847,6 +847,44 @@ describe('WorkspaceSession — outfits', () => {
     expect((await readShots(p.paths, 'arrival'))?.shots[0]!.castOptional).toBeUndefined();
   });
 
+  it('places a page’s bubbles without re-keying it, and refuses them on a frame', async () => {
+    expect(await session.previewBubbles('arrival', 'arrival__beat1', [])).toMatchObject({
+      ok   : false,
+      error: expect.stringContaining('single frame'),
+    });
+
+    const lines = (await session.sceneCoverage('arrival')).shots[0]!.coversLines;
+    const whole: [number, number][] = [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [0, 1],
+    ];
+    const paged = await session.setPanels('arrival', 'arrival__beat1', [
+      { shape: whole, framing: 'medium', subjects: [], coversLines: [lines[0]!] },
+    ]);
+    expect(paged.ok).toBe(true);
+    const keyed = (await session.sceneCoverage('arrival')).shots[0]!;
+
+    const placed = await session.setBubbles('arrival', 'arrival__beat1', [
+      { lineId: lines[0]!, anchor: [0.5, 0.3], tail: [0.4, 0.6] },
+    ]);
+    expect(placed).toMatchObject({
+      ok     : true,
+      message: expect.stringContaining('Nothing is drawn again'),
+      written: ['vngen/work/shots/arrival.json'],
+    });
+    const after = placed.coverage!.shots[0]!;
+    expect(after.panels![0]!.bubbles).toEqual([
+      { lineId: lines[0]!, anchor: [0.5, 0.3], tail: [0.4, 0.6] },
+    ]);
+    // A bubble is outside the prompt, so the shot's status and drift are as they were
+    expect([after.status, after.drift]).toEqual([keyed.status, keyed.drift]);
+
+    expect(await session.setBubbles('arrival', 'arrival__beat1', [])).toMatchObject({ ok: true });
+    expect(await session.setPanels('arrival', 'arrival__beat1', [])).toMatchObject({ ok: true });
+  });
+
   /** The variant control on the strip needs both, and a select built from anything else would
    * offer refusals. */
   it('carries the shot’s variant and the ones it could be moved to', async () => {
@@ -1284,16 +1322,18 @@ describe('WorkspaceSession — project settings', () => {
   });
 
   it('writes the lettering mode and prices the page shots it re-keys', async () => {
-    const preview = await session.previewLettering('runner');
+    // The runner letters by default, so the change with a price is to the model
+    expect(await session.previewLettering('runner')).toMatchObject({ ok: false });
+    const preview = await session.previewLettering('model');
     expect(preview.ok).toBe(true);
     expect(preview.message).toMatch(/re-keys \d+ of them/);
 
-    expect(await session.setProjectLettering('runner')).toMatchObject({
+    expect(await session.setProjectLettering('model')).toMatchObject({
       ok     : true,
       written: ['project.yaml'],
     });
-    expect(await p.read('project.yaml')).toContain('lettering: runner');
-    expect(await session.previewLettering('runner')).toMatchObject({ ok: false });
+    expect(await p.read('project.yaml')).toContain('lettering: model');
+    expect(await session.previewLettering('model')).toMatchObject({ ok: false });
   });
 });
 

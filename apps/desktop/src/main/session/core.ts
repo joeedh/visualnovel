@@ -118,6 +118,7 @@ import type {
   LocationVariant,
   Outfit,
   PagePanel,
+  PanelBubble,
   Playable,
   ProjectModel,
   PromptOverride,
@@ -2461,6 +2462,23 @@ export class WorkspaceSession {
     panels: readonly PagePanel[],
   ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
     return this.storyPart.setPanels(sceneId, shotId, panels);
+  }
+
+  async previewBubbles(
+    sceneId: string,
+    shotId: string,
+    bubbles: readonly PanelBubble[],
+  ): Promise<ShotOutfitOp> {
+    return this.storyPart.previewBubbles(sceneId, shotId, bubbles);
+  }
+
+  /** Restates where the runner draws one page's bubbles; nothing re-hashes. */
+  async setBubbles(
+    sceneId: string,
+    shotId: string,
+    bubbles: readonly PanelBubble[],
+  ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
+    return this.storyPart.setBubbles(sceneId, shotId, bubbles);
   }
 
   async previewSheet(sceneId: string, shotId: string, sheet: string): Promise<SheetsOp<Shot>> {

@@ -2,7 +2,13 @@
  * The runner's rules, with no widget in them: folding a scene's beats into frames, where a click
  * or a key goes next, and what a save file is. The path.ux editor holds only the rendering.
  */
-import type { Beat, Playable, PlayablePanel, PlayableScene } from '../../../src/shared/ipc.js';
+import type {
+  Beat,
+  Playable,
+  PlayableBubble,
+  PlayablePanel,
+  PlayableScene,
+} from '../../../src/shared/ipc.js';
 
 /** A content-addressed asset ref, as it appears in the playable. */
 export interface Ref {
@@ -40,6 +46,12 @@ export interface Frame {
    * is a page and one of its panels names the line; a line no panel letters shows the page whole.
    */
   panel?: PanelShape;
+  /**
+   * Where this frame's line is read on the page, when the author placed a bubble for it. The
+   * text is drawn in the bubble and the dialogue box is left out; a line with no bubble keeps the
+   * box, so a half-lettered page still reads.
+   */
+  bubble?: Pick<PlayableBubble, 'anchor' | 'tail'>;
 }
 
 /** Fold a scene's beats into displayable frames. */
@@ -52,8 +64,16 @@ export function framesOf(scene: PlayableScene | undefined): Frame[] {
   let panels: PlayablePanel[] | undefined;
   let lastWho: string | undefined;
 
-  const panelOf = (line: string | undefined): PanelShape | undefined =>
-    line === undefined ? undefined : panels?.find((p) => p.lines.includes(line))?.shape;
+  const panelOf = (line: string | undefined): PlayablePanel | undefined =>
+    line === undefined ? undefined : panels?.find((p) => p.lines.includes(line));
+  const bubbleOf = (
+    panel: PlayablePanel | undefined,
+    line: string | undefined,
+  ): Frame['bubble'] => {
+    const found = panel?.bubbles?.find((b) => b.line === line);
+    if (!found) return undefined;
+    return { anchor: found.anchor, ...(found.tail ? { tail: found.tail } : {}) };
+  };
 
   for (const beat of scene.beats as Beat[]) {
     if (beat.type === 'show') {
@@ -63,7 +83,12 @@ export function framesOf(scene: PlayableScene | undefined): Frame[] {
       continue;
     }
     const panel = panelOf(beat.line);
-    const lit = { ...(panels ? { page: true as const } : {}), ...(panel ? { panel } : {}) };
+    const bubble = bubbleOf(panel, beat.line);
+    const lit = {
+      ...(panels ? { page: true as const } : {}),
+      ...(panel ? { panel: panel.shape } : {}),
+      ...(bubble ? { bubble } : {}),
+    };
     if (beat.type === 'say') {
       lastWho = beat.who;
       frames.push({ bg, shotId, portraitWho: lastWho, speaker: beat.who, text: beat.text, ...lit });

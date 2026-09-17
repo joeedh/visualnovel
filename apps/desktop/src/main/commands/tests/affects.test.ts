@@ -7,7 +7,7 @@
  * command's own `written` list, which catch different things. The diff misses media, since a
  * capture skips it wherever it sits; `written` misses whatever the command forgot to report.
  *
- * `RUNS` and `SKIPS` partition the 94 mutating commands, and a test says so, since a command
+ * `RUNS` and `SKIPS` partition the 95 mutating commands, and a test says so, since a command
  * added later that is in neither table would otherwise pass by being invisible.
  */
 import { rm } from 'node:fs/promises';
@@ -315,6 +315,17 @@ const STORY_RUNS: Run[] = [
       ]),
     }),
   },
+  // After setPanels, so the shot is a page with a lettered line to place a bubble on
+  {
+    id   : 'story.setBubbles',
+    props: async (ctx) => ({
+      scene  : 'arrival',
+      shot   : (await shotIds(ctx, 'arrival'))[0]!,
+      bubbles: JSON.stringify([
+        { lineId: (await lineIds(ctx, 'arrival'))[0]!, anchor: [0.5, 0.3], tail: [0.4, 0.6] },
+      ]),
+    }),
+  },
   {
     id   : 'story.setOutfit',
     props: async (ctx) => ({
@@ -402,7 +413,7 @@ const OTHER_RUNS: Run[] = [
   },
   { id: 'project.setArtStyle', props: { style: 'soft watercolour' } },
   { id: 'project.setStoryboardNotes', props: { notes: 'pages of four to six panels' } },
-  { id: 'project.setLettering', props: { lettering: 'runner' } },
+  { id: 'project.setLettering', props: { lettering: 'model' } },
   { id: 'view.resetLayout', props: { scope: 'shipped' } },
   { id: 'workspace.reindex', props: {} },
 ];
@@ -472,7 +483,7 @@ const RUNS: Run[] = [...GRAPH_RUNS, ...STORY_RUNS, ...OTHER_RUNS];
 /**
  * The mutating commands the executed tier does not reach, each with the reason. A skip is a
  * written-down limit rather than an omission: the declaration lint and the undo rule still cover
- * all 94, and only this tier is partial.
+ * all 95, and only this tier is partial.
  */
 const SKIPS: Record<string, string> = {
   'agent.compact'         : 'summarizes a live conversation through a real text model',

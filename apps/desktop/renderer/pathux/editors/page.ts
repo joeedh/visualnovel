@@ -1,14 +1,17 @@
 /**
  * The Page editor: one page shot, its panels drawn over the render (or over a pale sheet before
  * one), the reviewer's measured boxes under them, the shot's lines in a column beside it, and the
- * selected panel's framing, camera, cast and notes. Every edit is `story.setPanels` with the
- * whole list; the page is edited on the page, and the column only says which panel it is about.
+ * selected panel's framing, camera, cast and notes. Every panel edit is `story.setPanels` with
+ * the whole list; the page is edited on the page, and the column only says which panel it is
+ * about. When the runner letters the project's pages, each lettered line has an anchor on the
+ * page as well, dragged to place its bubble, and those writes are `story.setBubbles`.
  */
 import { KeyMap, type Container } from 'pathux';
 import type { Invocation } from '@vn/commands';
 import { boxOf } from '@vn/artgen/layout';
 import { imageModelChoices, modelCatalog } from '@vn/gengraph';
-import { SHOT_FRAMINGS, type PagePanel } from '@vn/types';
+import { aimBubble, bubblesOf, placeBubble } from '@vn/scriptedit';
+import { SHOT_FRAMINGS, type PagePanel, type PanelBubble } from '@vn/types';
 import { api } from '../../api.js';
 import type { CoverageLine, CoverageShot, SceneCoverage } from '../../../src/shared/ipc.js';
 import type { Notice } from '../../../src/shared/lineedit.js';
@@ -24,11 +27,16 @@ import {
 import {
   LAYOUTS,
   acceptAction,
+  anchorAction,
+  anchorOf,
   boxesOf,
+  bubbleLayer,
+  bubblesProps,
   cameraAction,
   castAction,
   cornerAction,
   defectsOf,
+  deleteBubble,
   enterLetters,
   framingAction,
   generateAction,
@@ -46,6 +54,7 @@ import {
   shotOf,
   subjectFieldAction,
   summaryOf,
+  tailAction,
   verdictOf,
   withCast,
   withCorner,
@@ -81,10 +90,14 @@ const NUDGE_SETTLE_MS = 300;
 const NARROW_PX = 640;
 /** A panel keeps at least this many corners; Delete refuses below it. */
 const MIN_CORNERS = 3;
+/** A tail dropped within this much of its bubble, as a page fraction, is a tail removed. */
+const TAIL_SNAP = 0.03;
 /** The aspect a frame's layout glyphs are drawn at, which is the project default for a page. */
 const PAGE_ASPECT = '3:4';
 
 type Corner = { panel: number; corner: number };
+/** A bubble anchor with keyboard focus, or its tail handle. */
+type Held = { line: string; tail: boolean };
 
 export class PageEditor extends VnEditor {
   private bar!: Container;
@@ -108,6 +121,10 @@ export class PageEditor extends VnEditor {
    */
   private draft: PagePanel[] | null = null;
   private nudgeTimer: ReturnType<typeof setTimeout> | undefined;
+  /** The bubble anchor or tail handle with focus, which Delete removes. */
+  private heldBubble: Held | null = null;
+  /** The bubble list as the pointer has moved it, ahead of the write; null when it shows disk. */
+  private bubbleDraft: PanelBubble[] | null = null;
 
   private letter: Letter | null = null;
   private notice: Notice | null = null;
@@ -162,7 +179,7 @@ export class PageEditor extends VnEditor {
         'Nudge right by two': () => this.nudge(NUDGE_SHIFT, 0),
         'Nudge up by two'   : () => this.nudge(0, -NUDGE_SHIFT),
         'Nudge down by two' : () => this.nudge(0, NUDGE_SHIFT),
-        'Remove corner'     : () => this.removeCorner(),
+        'Remove corner'     : () => this.removeHeld(),
         Deselect            : () => this.selectPanel(null),
       }),
     );
@@ -180,7 +197,7 @@ export class PageEditor extends VnEditor {
   override update() {
     super.update();
     // Never mid-gesture: the panel under the pointer is read from the DOM
-    if (this.letter || this.draft) return;
+    if (this.letter || this.draft || this.bubbleDraft) return;
     this.follow();
     const scene = this.ui.shotId ? sceneOfShot(this.ui.shotId) : '';
     if (scene !== this.loading) return void this.load();
@@ -193,10 +210,17 @@ export class PageEditor extends VnEditor {
     this.shown = this.ui.shotId;
     this.selected = null;
     this.held = null;
+    this.heldBubble = null;
   }
 
   private stateKey(): string {
-    return [this.failure, this.revision, this.ui.shotId, this.selected ?? ''].join('|');
+    return [
+      this.failure,
+      this.revision,
+      this.ui.shotId,
+      this.selected ?? '',
+      this.heldBubble?.line ?? '',
+    ].join('|');
   }
 
   private state(): PageState {
@@ -206,9 +230,14 @@ export class PageEditor extends VnEditor {
       shotId  : this.ui.shotId,
       lines   : this.data?.lines ?? [],
       selected: this.selected,
+      bubble  : this.heldBubble?.line ?? null,
       ...(this.data === undefined
         ? {}
-        : { characters: this.data.characters, imageModel: this.data.imageModel }),
+        : {
+            characters: this.data.characters,
+            imageModel: this.data.imageModel,
+            lettering : this.data.lettering,
+          }),
     };
   }
 
@@ -219,6 +248,11 @@ export class PageEditor extends VnEditor {
   /** The panels on screen: the draft while a corner is moving, else the storyboard's. */
   private panelList(): PagePanel[] {
     return this.draft ?? this.shot()?.panels ?? [];
+  }
+
+  /** The bubbles on screen: the draft while an anchor is moving, else the storyboard's. */
+  private bubbleList(): PanelBubble[] {
+    return this.bubbleDraft ?? bubblesOf(this.shot()?.panels ?? []);
   }
 
   // -------------------------------------------------------------------------
@@ -246,6 +280,7 @@ export class PageEditor extends VnEditor {
     const count = this.shot()?.panels?.length ?? 0;
     if (this.selected !== null && this.selected >= count) this.selected = null;
     this.draft = null;
+    this.bubbleDraft = null;
     this.revision += 1;
     this.rebuild();
   }
@@ -470,8 +505,9 @@ export class PageEditor extends VnEditor {
   }
 
   /**
-   * Redraw the paint layer, the hit areas, the numbers and the corners from the current panels.
-   * Called on every corner move, so it rebuilds only the page's own children.
+   * Redraw the paint layer, the hit areas, the numbers, the corners and the bubble anchors from
+   * the current panels. Called on every corner or anchor move, so it rebuilds only the page's own
+   * children.
    */
   private repaint(): void {
     const page = this.pageEl;
@@ -500,8 +536,21 @@ export class PageEditor extends VnEditor {
       poly.setAttribute('points', panel.shape.map(([x, y]) => `${x},${y}`).join(' '));
       paint.appendChild(poly);
     });
+    const layer = bubbleLayer(state);
+    const bubbles = layer ? this.bubbleList() : [];
+    for (const bubble of bubbles) {
+      if (!bubble.tail) continue;
+      const tail = document.createElementNS(SVG, 'line');
+      tail.setAttribute('class', 'tail');
+      tail.setAttribute('x1', String(bubble.anchor[0]));
+      tail.setAttribute('y1', String(bubble.anchor[1]));
+      tail.setAttribute('x2', String(bubble.tail[0]));
+      tail.setAttribute('y2', String(bubble.tail[1]));
+      paint.appendChild(tail);
+    }
 
-    for (const old of page.querySelectorAll('.pg-hit, .pg-num, .pg-corner')) old.remove();
+    for (const old of page.querySelectorAll('.pg-hit, .pg-num, .pg-corner, .pg-anchor, .pg-tail'))
+      old.remove();
     this.pagePass = redrawing('page', 'page');
     panels.forEach((panel, i) => {
       // The hit area is the panel's bounding box with the outline as its clip, so its rect is
@@ -555,6 +604,60 @@ export class PageEditor extends VnEditor {
         page.appendChild(corner);
       });
     }
+
+    if (layer) this.anchors(page, panels, bubbles, state);
+  }
+
+  /**
+   * The bubble layer: one anchor per lettered line, numbered as the column numbers it, a ghost
+   * until the bubble is placed; and the held bubble's tail handle. Drawn on top of the corners,
+   * so an anchor is reached even inside a selected panel.
+   */
+  private anchors(
+    page: HTMLElement,
+    panels: readonly PagePanel[],
+    bubbles: readonly PanelBubble[],
+    state: PageState,
+  ): void {
+    pageLines(state).forEach((line, index) => {
+      const spot = anchorOf(panels, bubbles, line.id);
+      if (!spot) return;
+      const held = this.heldBubble?.line === line.id && !this.heldBubble.tail;
+      const anchor = document.createElement('button');
+      anchor.className = `pg-anchor${spot.placed ? '' : ' ghost'}${held ? ' held' : ''}`;
+      anchor.textContent = String(index + 1);
+      anchor.style.left = pct(spot.at[0]);
+      anchor.style.top = pct(spot.at[1]);
+      anchor.setAttribute('aria-label', `Bubble for line ${index + 1}`);
+      this.pagePass.record(anchor, anchorAction(state, line.id, index));
+      anchor.addEventListener('focus', () => this.holdBubble({ line: line.id, tail: false }));
+      anchor.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        anchor.focus();
+        this.dragAnchor(line.id);
+      });
+      page.appendChild(anchor);
+    });
+
+    const held = this.heldBubble?.line;
+    const placed = held === undefined ? undefined : bubbles.find((b) => b.lineId === held);
+    if (!placed || held === undefined) return;
+    const at = placed.tail ?? placed.anchor;
+    const handle = document.createElement('button');
+    handle.className = `pg-tail${placed.tail ? '' : ' unaimed'}${this.heldBubble?.tail ? ' held' : ''}`;
+    handle.style.left = pct(at[0]);
+    handle.style.top = pct(at[1]);
+    handle.setAttribute('aria-label', 'Bubble tail');
+    this.pagePass.record(handle, tailAction(state, held));
+    handle.addEventListener('focus', () => this.holdBubble({ line: held, tail: true }));
+    handle.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      handle.focus();
+      this.dragTail(held, placed.anchor);
+    });
+    page.appendChild(handle);
   }
 
   private side(shot: CoverageShot): HTMLElement {
@@ -611,7 +714,9 @@ export class PageEditor extends VnEditor {
       row.appendChild(el('span', 'none'));
       row.appendChild(el('span', 'gap', 'no panel letters this line'));
     } else {
-      row.appendChild(el('span', 'in', String(panel + 1)));
+      // The glyph rounds once the line has a bubble, so an unplaced line stands out in the list
+      const bubbled = bubbleLayer(state) && this.bubbleList().some((b) => b.lineId === line.id);
+      row.appendChild(el('span', `in${bubbled ? ' bubbled' : ''}`, String(panel + 1)));
     }
     // Recorded rather than acted: the row is grabbed on pointerdown, and Enter is its own key
     this.sidePass.record(row, offer);
@@ -805,6 +910,26 @@ export class PageEditor extends VnEditor {
     }, NUDGE_SETTLE_MS);
   }
 
+  /**
+   * Delete: the held tail comes off its bubble, the held bubble comes off the page, else the held
+   * corner comes off its panel. Whichever has focus is what was last touched.
+   */
+  private removeHeld(): void {
+    const bubble = this.heldBubble;
+    if (bubble) {
+      const list = this.bubbleList();
+      if (bubble.tail && list.find((b) => b.lineId === bubble.line)?.tail) {
+        this.heldBubble = { line: bubble.line, tail: false };
+        return void this.commitBubbles(aimBubble(list, bubble.line, undefined), 'Removing tail');
+      }
+      const without = deleteBubble(this.state());
+      if (!without) return;
+      this.heldBubble = null;
+      return void this.commitBubbles(without, 'Removing bubble');
+    }
+    this.removeCorner();
+  }
+
   private removeCorner(): void {
     const at = this.held;
     if (!at) return;
@@ -837,6 +962,60 @@ export class PageEditor extends VnEditor {
     });
     this.selected = panel;
     void this.commitPanels(withCornerAfter(this.panelList(), panel, best), 'Adding corner');
+  }
+
+  // -------------------------------------------------------------------------
+  // Bubbles
+  // -------------------------------------------------------------------------
+
+  private holdBubble(held: Held): void {
+    this.held = null;
+    if (this.heldBubble?.line === held.line && this.heldBubble.tail === held.tail) return;
+    this.heldBubble = held;
+    this.repaint();
+  }
+
+  /** A drag of one page point, drafted on every move and handed over on release when it moved. */
+  private dragPoint(
+    draft: (to: [number, number]) => PanelBubble[],
+    onDrop: (list: PanelBubble[]) => void,
+  ): void {
+    let moved = false;
+    const onMove = (event: PointerEvent): void => {
+      moved = true;
+      this.bubbleDraft = draft(this.fraction(event.clientX, event.clientY));
+      this.repaint();
+    };
+    const onUp = (): void => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      const list = this.bubbleDraft;
+      this.bubbleDraft = null;
+      if (!moved || !list) return void this.repaint();
+      onDrop(list);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }
+
+  /** An anchor dragged: a ghost places the line's bubble where it is dropped, a placed one moves. */
+  private dragAnchor(line: string): void {
+    const start = this.bubbleList();
+    this.dragPoint(
+      (to) => placeBubble(start, line, to),
+      (list) => void this.commitBubbles(list, 'Placing bubble'),
+    );
+  }
+
+  /** The tail handle dragged: dropped back on the bubble it comes off, elsewhere it points there. */
+  private dragTail(line: string, anchor: [number, number]): void {
+    const start = this.bubbleList();
+    const nearAnchor = (to: [number, number]): boolean =>
+      Math.hypot(to[0] - anchor[0], to[1] - anchor[1]) < TAIL_SNAP;
+    this.dragPoint(
+      (to) => aimBubble(start, line, nearAnchor(to) ? undefined : to),
+      (list) => void this.commitBubbles(list, 'Aiming tail'),
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -886,6 +1065,11 @@ export class PageEditor extends VnEditor {
     return this.run({ id: 'story.setPanels', props }, progress);
   }
 
+  private commitBubbles(bubbles: PanelBubble[], progress: string): Promise<void> {
+    const props = bubblesProps(this.state(), bubbles);
+    return this.run({ id: 'story.setBubbles', props }, progress);
+  }
+
   /** Every write goes through here; the outcome's own sentence is what the author reads. */
   private async run(invocation: Invocation, progress: string): Promise<void> {
     this.beginBusy(progress);
@@ -893,6 +1077,7 @@ export class PageEditor extends VnEditor {
     this.settleBusy();
     if (!outcome.ok) {
       this.draft = null;
+      this.bubbleDraft = null;
       this.repaint();
       return this.say({ tone: 'refused', text: outcome.error });
     }

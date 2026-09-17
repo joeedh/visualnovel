@@ -268,10 +268,13 @@ One row, two columns. The page takes what the pane gives it and the column is fi
 ### The bubble editor (Stage 5)
 
 - One more layer on the Page editor, drawn only under `lettering: runner`: a bubble anchor
-  per line inside its panel, a circle in sodium with the line index, and a tail handle.
-  Dropping the anchor sets `PagePanel.bubbles[].anchor`; dragging the tail sets `tail`.
-  The line list's panel glyph becomes the anchor's glyph, so a line with no bubble yet is
-  visible in the list.
+  per line inside its panel, a circle in sodium with the line index, and a tail handle. A
+  line with no bubble yet shows a ghost anchor at its panel's centroid; dragging it places
+  the bubble and sets `PagePanel.bubbles[].anchor`, dragging the tail sets `tail`, and
+  Delete on a selected anchor removes the bubble. The row drag keeps its meaning from the
+  panel editor (letter this line in that panel); placement never rides on it. The line
+  list's panel glyph becomes the anchor's glyph, so a line with no bubble yet is visible
+  in the list.
 - Play draws the current line's bubble in the panel: paper at 92%, ink text in prose type,
   a tail to the anchor's tail point; the dialogue box is hidden for that frame. The
   standalone web player keeps its text overlay.
@@ -442,6 +445,21 @@ What the build changed beyond the two moves above:
   another shot of the same scene: `load()` reset the selection when the shot changed, and
   `update()` had skipped `load()` because the scene had not. The selection follows the
   shot in `update()`.
+
+Stage 5's layer, looked at on 2026-09-17 over `examples/mySampleRepo`'s `arrival__beat1`
+in a 330px-wide pane:
+
+- A ghost anchor reads as a ghost: dashed mist ring, the line's number, sitting at the
+  panel's centre. Held, it fills sodium, which is the same signal a held corner gives.
+- Placed, the ring is sodium on ink and the tail is a 1.5px sodium line to a small rotated
+  square; the unaimed handle sits just right of the anchor so it is reachable without
+  covering the number. Both are small at this pane width but were hit by a synthetic
+  pointer at their centres, which is what the sweep measures.
+- In Play the bubble's paper at 92% over the lit panel is readable, and the line's own
+  panel stays lit while the rest dims, so the bubble and the lighting agree about where
+  the reader is. At 44% of a narrow picture the bubble is tall; on a stage of ordinary
+  width it is a line or two. The example's pages carry model-drawn text, so its bubbles
+  double the words — a data mismatch, since the pages predate the runner default.
 
 What is left, none of it blocking:
 

@@ -255,10 +255,10 @@ describe('setImageModel', () => {
 });
 
 describe('loadConfig — the storyboard keys', () => {
-  it('defaults storyboard_notes to nothing, lettering to the model and page_aspect to 3:4', async () => {
+  it('defaults storyboard_notes to nothing, lettering to the runner and page_aspect to 3:4', async () => {
     const config = await loadConfig(await tempProject('title: T\n'));
     expect(config.storyboard_notes).toBe('');
-    expect(config.lettering).toBe('model');
+    expect(config.lettering).toBe('runner');
     expect(config.image_params.page_aspect).toBe('3:4');
   });
 

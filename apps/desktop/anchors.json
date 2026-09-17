@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-17T06:01:12.481Z",
-  "gitSha"       : "9e4c5ce855b129cee335047ac7e06f1a9f549588",
+  "sweptAt"      : "2026-09-17T09:43:54.564Z",
+  "gitSha"       : "e1e7b5515e05cd80728277165ddd25aef4da0784",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -145,6 +145,7 @@
     "story.removeChoice",
     "story.requireCast",
     "story.screenplay",
+    "story.setBubbles",
     "story.setChoice",
     "story.setCoverage",
     "story.setHeading",
@@ -255,6 +256,7 @@
     "story.newShot",
     "story.requireCast",
     "story.screenplay",
+    "story.setBubbles",
     "story.setCoverage",
     "story.setHeading",
     "story.setLineText",
@@ -1564,6 +1566,20 @@
       "editor"    : "page",
       "key"       : "fx:pane.view#panel/2",
       "widgetPath": "page/pane-view~7d767db7"
+    },
+    {
+      "id"        : "story.setBubbles",
+      "editor"    : "page",
+      "key"       : "cmd:story.setBubbles#bubble/arrival:L2",
+      "widgetPath": "page/story-setbubbles~d890d7cc",
+      "supplies"  : ["bubbles"]
+    },
+    {
+      "id"        : "story.setBubbles",
+      "editor"    : "page",
+      "key"       : "cmd:story.setBubbles#bubble/arrival:L3",
+      "widgetPath": "page/story-setbubbles~ea3930fd",
+      "supplies"  : ["bubbles"]
     },
     {
       "id"        : "drag.start",
@@ -5710,7 +5726,11 @@
     }
   ],
   "disagreements": [],
-  "strays"       : ["convo cmd:agent.setEffort", "documents item:link/scene/arrival"],
+  "strays": [
+    "asset cmd:asset.export",
+    "documents item:link/scene/arrival",
+    "play fx:pane.view#save"
+  ],
   "untagged"     : [],
   "unwalked"     : []
 }

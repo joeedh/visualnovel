@@ -291,6 +291,11 @@ describe('storyboard tools', () => {
   it('write_storyboard takes a page, places its panels by layout, and reads it back as one', async () => {
     const { ctx, dir, cleanup } = await tempProject();
     try {
+      // Model lettering, so the coverage take below has a page to price
+      await writeFile(
+        join(dir, 'project.yaml'),
+        'title: Test Project\nstart: arrival\nlettering: model\n',
+      );
       const r = await run(
         'write_storyboard',
         {

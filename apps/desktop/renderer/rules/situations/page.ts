@@ -1,7 +1,8 @@
 /**
  * The Page editor's situations: no shot, a frame, a page with nothing selected, a page with a
- * panel selected — which is when the corners and the side column's fields are drawn — and a page
- * the reviewers kept blocking, which is when Accept joins Generate in the head.
+ * panel selected — which is when the corners and the side column's fields are drawn — a page the
+ * reviewers kept blocking, which is when Accept joins Generate in the head, and a page the runner
+ * letters, with one bubble placed and held, which is when the anchors and the tail are drawn.
  */
 import { situations } from './situation.js';
 import type { PageState } from '../page.js';
@@ -71,6 +72,17 @@ const flagged: CoverageShot = {
   },
 };
 
+const lettered: CoverageShot = {
+  ...page,
+  panels: [
+    page.panels![0]!,
+    {
+      ...page.panels![1]!,
+      bubbles: [{ lineId: 'arrival:L2', anchor: [0.5, 0.7], tail: [0.4, 0.85] }],
+    },
+  ],
+};
+
 const characters = ['aiko', 'ren', 'sato'];
 const imageModel = 'mock-image';
 
@@ -130,6 +142,21 @@ export const SITUATIONS = situations<PageState>(
       selected: null,
       characters,
       imageModel,
+    },
+  },
+  {
+    name : 'runner-lettered',
+    why: 'The runner letters this project’s pages: each lettered line has an anchor on the page — line 1 a ghost at its panel’s centre, line 2 placed — and line 2’s bubble is held, so its tail handle is drawn too. Line 3 is in no panel and has no anchor.',
+    state: {
+      sceneId: 'arrival',
+      shots  : [frame, lettered],
+      shotId : 'arrival__page1',
+      lines,
+      selected: null,
+      characters,
+      imageModel,
+      lettering: 'runner',
+      bubble   : 'arrival:L2',
     },
   },
 );

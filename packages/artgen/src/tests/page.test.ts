@@ -7,9 +7,11 @@ import { character, location, model, scene } from '@vn/testkit';
 import { rect } from '../layout.js';
 import { buildShotChunks, buildShotPrompt, imageParams, shotInputs, shotSpec } from '../prompts.js';
 
+// Model lettering, which these prompts were written against; the default is the runner's
 const config = projectConfig.parse({
   title    : 'Test',
   art_style: 'full-colour manga',
+  lettering: 'model',
   models   : { vision: ['gemini', 'claude'] },
 });
 
@@ -70,8 +72,9 @@ describe('a page shot’s prompt', () => {
     );
   });
 
-  it('draws the page wordless under runner lettering, and says so', () => {
-    const runner = projectConfig.parse({ ...config, lettering: 'runner' });
+  it('draws the page wordless under runner lettering, which is the default, and says so', () => {
+    const runner = projectConfig.parse({ ...config, lettering: undefined });
+    expect(runner.lettering).toBe('runner');
     const prompt = buildShotPrompt(page(), s, m, runner);
     expect(prompt).not.toContain('Lettering');
     expect(prompt).toContain('no text or lettering of any kind.');

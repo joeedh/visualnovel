@@ -144,6 +144,12 @@ exists, you can work on it:
   outline, framing, cast and the lines it letters — and an empty list makes the shot a
   frame again. Every part of a panel is in the page's prompt, so the page is drawn again.
   A line moving between two panels of one page is `set_panels`, not `set_coverage`.
+- **Bubbles are free.** Under `lettering: runner` (the default) a page is drawn wordless
+  and the runner draws each line in a bubble where the author placed one. `set_bubbles`
+  restates a page's whole bubble list — one per lettered line, an anchor and an optional
+  tail in page fractions — and redraws nothing. Place each inside the box `read_shots`
+  prints as "rendered at" once the page is drawn, and leave the tail off unless you know
+  where the speaker stands. A line with no bubble is read in the dialogue box.
 - To direct a frame, `set_art_notes rung=shot:<sceneId>/<shotId>` ("the speaker in the
   near third, listener over-shoulder") and `set_outfit shot=…`. Framing and subjects are
   set at birth (`newShot`/`write_storyboard`); to change them afterwards, delete the shot

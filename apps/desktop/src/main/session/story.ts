@@ -22,6 +22,7 @@ import {
   moveShot,
   requireShotCast,
   newShot as planNewShot,
+  setBubbles,
   setCoverage,
   setPanels,
   setSceneOutfit,
@@ -50,7 +51,7 @@ import {
   type ScenePlan,
   type SceneSource,
 } from '@vn/scriptedit/write';
-import type { DefectReport, PagePanel, Scene, Shot } from '@vn/types';
+import type { DefectReport, PagePanel, PanelBubble, Scene, Shot } from '@vn/types';
 import type {
   BranchEditResult,
   SceneCoverage,
@@ -824,6 +825,44 @@ export class StoryPart {
     panels: readonly PagePanel[],
   ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
     const { project, op } = await this.panelsRule(sceneId, shotId, panels);
+    if (!op.ok) return { ok: false, message: op.error, written: [] };
+
+    await writeShots(project.paths, sceneId, op.shots);
+    return {
+      ok      : true,
+      message : op.message,
+      written : [`vngen/work/shots/${sceneId}.json`],
+      coverage: await this.session.sceneCoverage(sceneId),
+    };
+  }
+
+  /** What `story.setBubbles` would do, without writing it. */
+  async previewBubbles(
+    sceneId: string,
+    shotId: string,
+    bubbles: readonly PanelBubble[],
+  ): Promise<ShotOutfitOp> {
+    return (await this.bubblesRule(sceneId, shotId, bubbles)).op;
+  }
+
+  private bubblesRule(
+    sceneId: string,
+    shotId: string,
+    bubbles: readonly PanelBubble[],
+  ): Promise<{ project: LoadedProject; op: ShotOutfitOp }> {
+    return this.shotsRule(sceneId, (shots) => setBubbles(shots, { shot: shotId, bubbles }));
+  }
+
+  /**
+   * Restate where the runner draws one page's bubbles. No prompt reads a bubble, so nothing
+   * re-hashes and nothing is drawn again; the page's lines without one keep the dialogue box.
+   */
+  async setBubbles(
+    sceneId: string,
+    shotId: string,
+    bubbles: readonly PanelBubble[],
+  ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
+    const { project, op } = await this.bubblesRule(sceneId, shotId, bubbles);
     if (!op.ok) return { ok: false, message: op.error, written: [] };
 
     await writeShots(project.paths, sceneId, op.shots);

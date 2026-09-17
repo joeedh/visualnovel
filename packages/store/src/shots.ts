@@ -41,19 +41,23 @@ export interface LoadedShots {
 /**
  * The file's panels as the flat shot carries them, each panel's lines cut down to the lines the
  * shot still covers. The shot's own `coversLines` is the authority on coverage, so a panel line
- * the shot lost (to a screenplay edit, or a hand edit of the file) follows it out silently.
+ * the shot lost (to a screenplay edit, or a hand edit of the file) follows it out silently, and
+ * its bubble with it.
  */
 function panelsOf(raw: ShotsFile['shots'][number], kept: readonly string[]): PagePanel[] {
   const covered = new Set(kept);
   return raw.panels!.map((p) => {
+    const lines = p.coversLines.filter((id) => covered.has(id));
     const panel: PagePanel = {
       shape      : p.shape,
       framing    : p.framing,
       subjects   : p.subjects,
-      coversLines: p.coversLines.filter((id) => covered.has(id)),
+      coversLines: lines,
     };
     if (p.camera !== undefined) panel.camera = p.camera;
     if (p.artNotes !== undefined) panel.artNotes = p.artNotes;
+    const bubbles = (p.bubbles ?? []).filter((b) => lines.includes(b.lineId));
+    if (bubbles.length) panel.bubbles = bubbles;
     return panel;
   });
 }
@@ -180,6 +184,8 @@ function panelDoc(p: PagePanel): Record<string, unknown> {
     subjects   : p.subjects,
     coversLines: p.coversLines,
     ...(p.artNotes !== undefined ? { artNotes: p.artNotes } : {}),
+    // Only once one is placed, so a page written before bubbles existed stays byte-stable
+    ...(p.bubbles?.length ? { bubbles: p.bubbles } : {}),
   };
 }
 

@@ -18,13 +18,29 @@ export const playableAssetRefSchema = z.object({
   ext : z.string().min(1),
 });
 
+/** A point on the page, in page fractions. */
+const pagePoint = z.tuple([z.number(), z.number()]);
+
+/**
+ * A speech bubble the runner draws for one of a panel's lines: where it sits and, when it has
+ * one, where its tail points. Present only when the project letters its pages in the runner; a
+ * runner that ignores the field reads the line in its dialogue box.
+ */
+export const playableBubbleSchema = z.object({
+  line  : z.string().min(1),
+  anchor: pagePoint,
+  tail  : pagePoint.optional(),
+});
+export type PlayableBubble = z.infer<typeof playableBubbleSchema>;
+
 /**
  * One panel of a page shot, as the runner needs it: its outline in page fractions and the ids of
  * the lines it letters, so a runner can light the panel whose line is being read.
  */
 export const playablePanelSchema = z.object({
-  shape: z.array(z.tuple([z.number(), z.number()])).min(3),
-  lines: z.array(z.string().min(1)),
+  shape  : z.array(pagePoint).min(3),
+  lines  : z.array(z.string().min(1)),
+  bubbles: z.array(playableBubbleSchema).optional(),
 });
 export type PlayablePanel = z.infer<typeof playablePanelSchema>;
 

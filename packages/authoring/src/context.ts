@@ -95,6 +95,9 @@ only chance to say otherwise — nothing changes a shot's cast afterwards. A pag
 panels, each panel lettering some of the page's lines; set_panels restates the whole panel list
 (outlines, framing, cast, lines), and since every part of a panel is in the page's prompt, it
 redraws the page. Moving a line between two panels of one page is set_panels, not set_coverage.
+Where the runner draws a page's speech bubbles (lettering: runner, the default) is set_bubbles,
+which restates the page's whole bubble list and redraws nothing; a line with no bubble is read in
+the dialogue box.
 propose_storyboard drafts a whole storyboard for an undecomposed scene (one model call, writes
 nothing), and write_storyboard persists one — after which the file wins forever.
 

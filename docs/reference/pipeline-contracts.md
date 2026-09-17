@@ -325,7 +325,16 @@ These implement the system design in
       `buildPageChunks`, and under `lettering: model` its lettered lines are in the prompt
       verbatim, so the text and its panel assignment are in the task hash: a coverage take
       on a page, or a line edit inside one, re-keys the page. Every host's coverage take
-      says so through `letteredPagesNote`.
+      says so through `letteredPagesNote`. `lettering` defaults to `runner`, since the
+      Stage 2 live check found the default image model unfit for lettering and only the
+      expensive ones fit; a project that wants the model to letter says so.
+    - A panel's `bubbles` (`PanelBubble`: the line, an anchor, an optional tail, in page
+      fractions) are authored and outside the prompt: no builder reads them, so
+      `story.setBubbles` and the agent's `set_bubbles` (one rule, `setBubbles` in
+      `@vn/scriptedit`) re-key nothing. A bubble's line must be one its panel letters;
+      `readShots` drops a bubble whose line left the panel, and `setPanels` drops one
+      whose line it moved to another panel, since the anchor was placed against the old
+      one. The exporter copies them into the playable only under `lettering: runner`.
     - `shotData.panelBoxes` holds the panel boxes the reviewer measured on the accepted
       image, from `DefectReport.observed`, which the reviewer fills only for a page. It is
       derived, like `proseHash`, and a rerun that reports the same image leaves it alone.

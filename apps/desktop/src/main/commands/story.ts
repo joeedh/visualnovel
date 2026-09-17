@@ -42,7 +42,14 @@ import {
   type SceneMap,
   type ScriptState,
 } from '@vn/scriptedit';
-import { SHOT_FRAMINGS, pagePanelsSchema, type PagePanel, type Scene } from '@vn/types';
+import {
+  SHOT_FRAMINGS,
+  pagePanelsSchema,
+  panelBubblesSchema,
+  type PagePanel,
+  type PanelBubble,
+  type Scene,
+} from '@vn/types';
 import { scenesOf } from '../../shared/interactions.js';
 import type { CommandHost } from './host.js';
 
@@ -831,6 +838,61 @@ export const storySetPanels = define({
     const read = panelsOf(panels);
     if ('refuse' in read) throw new Error(read.refuse);
     const result = await ctx.host.session.setPanels(scene, shot, read.panels);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result.coverage, written: result.written };
+  },
+});
+
+/** The bubble list a `story.setBubbles` call carries, parsed like {@link panelsOf}. */
+function bubblesOf(json: string): { bubbles: PanelBubble[] } | { refuse: string } {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch (err) {
+    return { refuse: `bubbles is not JSON: ${(err as Error).message}` };
+  }
+  const read = panelBubblesSchema.safeParse(parsed);
+  if (!read.success) {
+    const issue = read.error.issues[0];
+    return {
+      refuse: `bubbles ${issue ? `at ${issue.path.join('.')}: ${issue.message}` : 'do not parse'}`,
+    };
+  }
+  return { bubbles: read.data };
+}
+
+export const storySetBubbles = define({
+  id         : 'story.setBubbles',
+  title      : 'Place a page’s speech bubbles',
+  description:
+    'Restate where the runner draws a page shot’s speech bubbles: one per lettered line, an ' +
+    'anchor in page fractions and an optional tail toward the speaker; a bubble with no tail is ' +
+    'a caption box. Read by the runner under lettering: runner and by no prompt, so nothing is ' +
+    'drawn again. A line no panel letters, a line named twice and a point off the page are each ' +
+    'refused by name; a lettered line with no bubble keeps the dialogue box.',
+  notes:
+    'Replace a page’s whole bubble list as JSON (`[{lineId, anchor: [x, y], tail?: [x, y]}]`); empty removes them all. Bubbles are outside the prompt, so the page is not drawn again. The list is a string prop because `@vn/commands` has no JSON kind.',
+  mutating   : true,
+  affects    : ['vngen/work/shots'],
+  undoable   : true,
+  props: {
+    scene  : prop.string('the scene the shot belongs to'),
+    shot   : prop.string('the page shot id, e.g. arrival__beat1'),
+    bubbles: prop.string('the whole bubble list, as JSON; `[]` removes every bubble', {
+      digest   : true,
+      multiline: true,
+    }),
+  },
+  async check({ scene, shot, bubbles }, ctx) {
+    const read = bubblesOf(bubbles);
+    if ('refuse' in read) return { ok: false, reason: read.refuse };
+    const op = await ctx.host.session.previewBubbles(scene, shot, read.bubbles);
+    return op.ok ? { ok: true, note: op.message } : { ok: false, reason: op.error };
+  },
+  async run({ scene, shot, bubbles }, ctx) {
+    const read = bubblesOf(bubbles);
+    if ('refuse' in read) throw new Error(read.refuse);
+    const result = await ctx.host.session.setBubbles(scene, shot, read.bubbles);
     if (!result.ok) throw new Error(result.message);
     return { message: result.message, data: result.coverage, written: result.written };
   },

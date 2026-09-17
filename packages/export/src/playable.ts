@@ -19,6 +19,7 @@ import type {
   PlayablePanel,
   PlayableScene,
   Beat,
+  Lettering,
   ProjectModel,
   Scene,
   SceneLine,
@@ -38,9 +39,25 @@ interface CoveringShot {
   panels?: PlayablePanel[];
 }
 
-/** A page's panels as the playable carries them; `undefined` for a single frame. */
-function panelsOf(shot: Shot): PlayablePanel[] | undefined {
-  return shot.panels?.map((p) => ({ shape: p.shape, lines: p.coversLines }));
+/**
+ * A page's panels as the playable carries them; `undefined` for a single frame. Bubbles ride
+ * along only when the runner letters the page: under `lettering: model` the words are in the
+ * picture, and a bubble over them would say each line twice.
+ */
+function panelsOf(shot: Shot, bubbles: boolean): PlayablePanel[] | undefined {
+  return shot.panels?.map((p) => ({
+    shape: p.shape,
+    lines: p.coversLines,
+    ...(bubbles && p.bubbles?.length
+      ? {
+          bubbles: p.bubbles.map((b) => ({
+            line  : b.lineId,
+            anchor: b.anchor,
+            ...(b.tail ? { tail: b.tail } : {}),
+          })),
+        }
+      : {}),
+  }));
 }
 
 /**
@@ -75,11 +92,15 @@ export async function loadSceneShots(
  * over that character's dialogue lines. The reconstructed ids match the pipeline's
  * `${sceneId}__<raw>` scheme so images from a deterministic run resolve.
  */
-function coveringShots(scene: Scene, persisted?: readonly Shot[]): CoveringShot[] {
+function coveringShots(
+  scene: Scene,
+  persisted: readonly Shot[] | undefined,
+  bubbles: boolean,
+): CoveringShot[] {
   const own = persisted?.length ? persisted : scene.shots;
   if (own.length > 0) {
     return own.map((s) => {
-      const panels = panelsOf(s);
+      const panels = panelsOf(s, bubbles);
       return { id: s.id, coversLines: s.coversLines, ...(panels ? { panels } : {}) };
     });
   }
@@ -132,8 +153,13 @@ class AssetIndex {
 }
 
 /** Flatten one scene's lines into an ordered beat list. */
-function sceneBeats(scene: Scene, assets: AssetIndex, persisted?: readonly Shot[]): Beat[] {
-  const shots = coveringShots(scene, persisted);
+function sceneBeats(
+  scene: Scene,
+  assets: AssetIndex,
+  persisted: readonly Shot[] | undefined,
+  bubbles: boolean,
+): Beat[] {
+  const shots = coveringShots(scene, persisted, bubbles);
   const beats: Beat[] = [];
   let currentShotId: string | undefined;
 
@@ -167,6 +193,11 @@ export interface PlayableOptions {
   shots?: ReadonlyMap<string, readonly Shot[]>;
   /** `project.yaml`'s `portrait_overlay`; see {@link Playable.portraitOverlay}. */
   portraitOverlay?: boolean;
+  /**
+   * `project.yaml`'s `lettering`. Bubbles are exported only under `runner`; left out, none are,
+   * which is what every playable carried before the field existed.
+   */
+  lettering?: Lettering;
 }
 
 /**
@@ -178,7 +209,8 @@ export function buildPlayable(
   store: AssetStore,
   opts: PlayableOptions = {},
 ): Playable {
-  const { shots, portraitOverlay = false } = opts;
+  const { shots, portraitOverlay = false, lettering } = opts;
+  const bubbles = lettering === 'runner';
   const assets = new AssetIndex(store.manifest());
 
   const characters: Playable['characters'] = {};
@@ -190,7 +222,7 @@ export function buildPlayable(
   const scenes: Record<string, PlayableScene> = {};
   for (const scene of model.scenes.values()) {
     scenes[scene.id] = {
-      beats  : sceneBeats(scene, assets, shots?.get(scene.id)),
+      beats  : sceneBeats(scene, assets, shots?.get(scene.id), bubbles),
       choices: scene.choices.map((c) => ({ label: c.label, goto: c.goto })),
       ...(scene.next ? { next: scene.next } : {}),
     };

@@ -242,8 +242,10 @@ export type { Prereq, SlotNode };
 export type {
   PagePanel,
   PanelBox,
+  PanelBubble,
   Playable,
   Beat,
+  PlayableBubble,
   PlayablePanel,
   PlayableScene,
   TaskKind,
