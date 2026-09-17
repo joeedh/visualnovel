@@ -72,7 +72,7 @@ export class GatePart {
     if (!file || !(await setCharacterApproval(file, hash))) {
       return { ok: false, message: `No character file for "${characterId}".` };
     }
-    const bytes = await project.store.read({ hash, ext: 'png' });
+    const bytes = await project.store.read({ hash, ext: project.store.get(hash)?.ext ?? 'png' });
     await writeApprovedPortrait(project.paths, characterId, bytes);
     // Asked before the accept, because which manifest answers is decided by which root holds the
     // hash, and a portrait's bytes never move between the two.

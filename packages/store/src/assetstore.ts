@@ -116,8 +116,14 @@ export class AssetRoot {
     return this.index.size;
   }
 
+  /**
+   * The manifest's extension wins over the ref's, because a ref rebuilt from a bare hash (an
+   * `approved_portrait`, a task's `output`) guesses `png`, and an image model may have answered
+   * with a jpg.
+   */
   fileOf(ref: AssetRef): string {
-    return join(this.dir, `${ref.hash}.${ref.ext}`);
+    const ext = this.index.get(ref.hash)?.ext ?? ref.ext;
+    return join(this.dir, `${ref.hash}.${ext}`);
   }
 
   assets(): readonly Asset[] {
@@ -247,6 +253,10 @@ export class AssetStore implements IAssetStore {
 
   has(hash: string): boolean {
     return this.baseRoot.has(hash) || this.projectRoot.has(hash);
+  }
+
+  get(hash: string): Asset | undefined {
+    return this.baseRoot.get(hash) ?? this.projectRoot.get(hash);
   }
 
   async write(bytes: Uint8Array, ext: string, meta: AssetMeta): Promise<AssetRef> {

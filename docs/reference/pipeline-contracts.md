@@ -203,6 +203,11 @@ These implement the system design in
           `attempts.length` (on a `needs_human` shot that field is a refine counter).
         - `needs_human` is never auto-retried, because it requests human attention rather
           than reporting a fault.
+        - A planned task the log left at `running` is put back to `pending` at the same
+          point, before the failed requeue. A run owns the graph while it lasts and hosts
+          refuse a second run, so that state can only be a process that died mid-task;
+          left alone, `ready()` never offers it again and `pipeline.draw` refuses it as
+          "being drawn now". It spends no attempt budget, because no attempt was recorded.
         - A dry run requeues in memory and writes nothing, so `vngen cost` counts the
           retry that the dry run would perform and leaves no divergent log.
     - **The report is derived from the last planning pass, not from what this process

@@ -12,6 +12,7 @@ const MODEL = 'openai/gpt-image-2';
 
 /** Bytes that pass the reference guard. */
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]);
+const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
 
 interface SentBody {
   model: string;
@@ -105,7 +106,7 @@ describe('what the request carries', () => {
   it('carries each reference as a data url, the edit base first', async () => {
     const { image, sent } = backend([() => drew('a drawing')]);
     const base = { bytes: new Uint8Array([...PNG, 9]), ext: 'png' };
-    const ref = { bytes: new Uint8Array([...PNG, 8]), ext: 'jpg' };
+    const ref = { bytes: new Uint8Array([...JPEG, 8]), ext: 'jpg' };
 
     await image.edit(base, 'a cat', [ref], { modelId: MODEL });
 

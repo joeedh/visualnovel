@@ -12,18 +12,12 @@ import type {
 } from '../backend.js';
 import { captureRequest } from './capture.js';
 import { buildConvoRequest, CACHE_TTL_MS } from './convo-request.js';
+import { imageMime } from './mime.js';
 import { callWithRetry } from './transient.js';
 
 // Room for the answer. Thinking gets more because `max_tokens` caps thinking + text together.
 const MAX_TOKENS = 10_000;
 const MAX_TOKENS_THINKING = 16_000;
-
-const MIME: Record<string, string> = {
-  png : 'image/png',
-  jpg : 'image/jpeg',
-  jpeg: 'image/jpeg',
-  webp: 'image/webp',
-};
 
 /**
  * What the response says it cost. Cache reads and cache writes are billed input, so they are
@@ -109,7 +103,7 @@ export function createAnthropicChat(
         type  : 'image',
         source: {
           type      : 'base64',
-          media_type: MIME[img.ext.toLowerCase()] ?? 'image/png',
+          media_type: imageMime(img),
           data      : Buffer.from(img.bytes).toString('base64'),
         },
       });
@@ -156,7 +150,7 @@ export function createAnthropicChat(
           type  : 'image',
           source: {
             type      : 'base64',
-            media_type: MIME[img.ext.toLowerCase()] ?? 'image/png',
+            media_type: imageMime(img),
             data      : Buffer.from(img.bytes).toString('base64'),
           },
         });

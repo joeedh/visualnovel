@@ -9,16 +9,10 @@ import { ProviderError, RetryableProviderError } from '@vn/util';
 import type { ImageBackend, ImageInput } from '../backend.js';
 import { refGuard } from '../image.js';
 import { captureRequest } from './capture.js';
+import { imageMime } from './mime.js';
 import { callWithRetry, retryAfterMs } from './transient.js';
 
 export const OPENROUTER_IMAGES_URL = 'https://openrouter.ai/api/v1/images';
-
-const MIME: Record<string, string> = {
-  png : 'image/png',
-  jpg : 'image/jpeg',
-  jpeg: 'image/jpeg',
-  webp: 'image/webp',
-};
 
 /** How much of a refused response is quoted back, so an error stays readable. */
 export const ERROR_CHARS = 400;
@@ -55,7 +49,7 @@ const retryableStatus = (status: number): boolean =>
 /** One reference as the request carries it: a data URL, which OpenRouter takes in place of a hosted one. */
 function reference(img: ImageInput): { type: 'image_url'; image_url: { url: string } } {
   refGuard(img);
-  const mime = MIME[img.ext.toLowerCase()] ?? 'image/png';
+  const mime = imageMime(img);
   const data = Buffer.from(img.bytes).toString('base64');
   return { type: 'image_url', image_url: { url: `data:${mime};base64,${data}` } };
 }

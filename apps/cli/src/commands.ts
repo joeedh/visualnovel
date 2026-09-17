@@ -596,7 +596,7 @@ async function approveCharacter(
   if (!file || !(await setCharacterApproval(file, hash))) {
     return { ok: false, message: `No character file for "${characterId}".` };
   }
-  const bytes = await project.store.read({ hash, ext: 'png' });
+  const bytes = await project.store.read({ hash, ext: project.store.get(hash)?.ext ?? 'png' });
   await writeApprovedPortrait(project.paths, characterId, bytes);
   await project.store.accept(hash);
   return { ok: true, message: `Approved ${characterId} → ${hash}.` };

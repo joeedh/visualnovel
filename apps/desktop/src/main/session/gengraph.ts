@@ -611,12 +611,31 @@ export class GengraphPart {
       });
     }
 
+    // A failure inherited from an earlier run is at its retry budget and was not attempted
+    // again, so its error is not re-reported as if this run had produced it
+    const attempted = new Set(summary.ran.map((t) => t.hash));
+    const inherited: string[] = [];
     for (const task of summary.failed) {
+      if (!attempted.has(task.hash)) {
+        inherited.push(`${task.kind} ${task.hash.slice(0, 8)}`);
+        continue;
+      }
       void notify({
         category: 'error',
         level   : 'error',
         source  : 'pipeline',
         message: `${task.kind} ${task.hash.slice(0, 8)} failed: ${task.error ?? 'no reason recorded'}.`,
+      });
+    }
+    if (inherited.length > 0) {
+      void notify({
+        category: 'pipeline',
+        level   : 'warn',
+        source  : 'pipeline',
+        message:
+          `${inherited.length} task${inherited.length === 1 ? '' : 's'} still failed from an ` +
+          `earlier run and out of retries, not attempted again: ${inherited.join(', ')}. ` +
+          'Regenerate one to try it again.',
       });
     }
 

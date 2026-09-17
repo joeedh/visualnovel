@@ -3,7 +3,7 @@ import { planTasks } from '@vn/pipeline';
 import { StubImageBackend, createMockProviders, type ImageBackend } from '@vn/providers';
 import { TaskGraph, loadGraph, makeTask } from '@vn/taskgraph';
 import { SCRIPTS, makeProject } from '@vn/testkit';
-import { closureOf, requeueFailed } from '../scheduler.js';
+import { closureOf, requeueAbandoned, requeueFailed } from '../scheduler.js';
 
 /** Shot ids of the `shot_image` tasks in a run. `Task` is generic, so `inputs` needs a cast. */
 const shotIds = (tasks: AnyTask[]): string[] =>
@@ -249,6 +249,19 @@ describe('requeueFailed', () => {
     expect(graph.get(live.hash)?.error).toBeUndefined();
     // An edited prompt rehashes the task; the node it left behind must never be paid for again.
     expect(graph.get(orphan.hash)?.status).toBe('failed');
+  });
+
+  it('puts a planned node a dead process left at running back to pending', () => {
+    const live = node('live', 'running');
+    const orphan = node('orphan', 'running');
+    const done = node('done', 'done');
+    const graph = graphOf(live, orphan, done);
+
+    const hashes = requeueAbandoned(graph, new Set([live.hash, done.hash])).map((t) => t.hash);
+    expect(hashes).toEqual([live.hash]);
+    expect(graph.get(live.hash)?.status).toBe('pending');
+    expect(graph.get(orphan.hash)?.status).toBe('running');
+    expect(graph.get(done.hash)?.status).toBe('done');
   });
 
   it('counts only attempts that carry an error, and never requeues needs_human', () => {

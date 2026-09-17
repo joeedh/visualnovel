@@ -13,14 +13,8 @@ import type {
 } from '../backend.js';
 import { refGuard } from '../image.js';
 import { captureRequest } from './capture.js';
+import { imageMime } from './mime.js';
 import { callWithRetry } from './transient.js';
-
-const MIME: Record<string, string> = {
-  png : 'image/png',
-  jpg : 'image/jpeg',
-  jpeg: 'image/jpeg',
-  webp: 'image/webp',
-};
 
 /**
  * A lazily-constructed `@google/genai` client. Injectable because the real one arrives through
@@ -46,7 +40,7 @@ function imagePart(img: ImageInput): any {
   refGuard(img);
   return {
     inlineData: {
-      mimeType: MIME[img.ext.toLowerCase()] ?? 'image/png',
+      mimeType: imageMime(img),
       data    : Buffer.from(img.bytes).toString('base64'),
     },
   };

@@ -41,6 +41,20 @@ describe('AssetStore — content addressing', () => {
     expect(new TextDecoder().decode(await reopened.read(ref1))).toBe('IMG');
   });
 
+  it('reads a jpg by hash when the ref guessed png', async () => {
+    const paths = new ProjectPaths(await tempRoot());
+    const store = await AssetStore.open(paths);
+    const ref = await store.write(bytes('JPG'), 'jpg', {
+      kind      : 'portrait',
+      sourceTask: 't1',
+      modelId   : 'gemini',
+    });
+    expect(store.get(ref.hash)?.ext).toBe('jpg');
+    expect(store.pathOf({ hash: ref.hash, ext: 'png' })).toMatch(/\.jpg$/);
+    const read = await store.read({ hash: ref.hash, ext: 'png' });
+    expect(new TextDecoder().decode(read)).toBe('JPG');
+  });
+
   it('records provenance and supports accept()', async () => {
     const paths = new ProjectPaths(await tempRoot());
     const store = await AssetStore.open(paths);

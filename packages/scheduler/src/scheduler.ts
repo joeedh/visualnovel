@@ -145,6 +145,22 @@ export function requeueFailed(
 }
 
 /**
+ * Put back to `pending` every planned task still marked `running`. `ready()` never offers one,
+ * and a host refuses to draw a slot it believes is being drawn, so a task a killed process left
+ * in that state is otherwise stuck for the life of the project. Bounded to `plannedHashes` on
+ * the same reasoning as {@link requeueFailed}.
+ */
+export function requeueAbandoned(graph: TaskGraph, plannedHashes: ReadonlySet<string>): AnyTask[] {
+  const requeued: AnyTask[] = [];
+  for (const task of graph.all()) {
+    if (task.status !== 'running' || !plannedHashes.has(task.hash)) continue;
+    graph.setStatus(task.hash, 'pending');
+    requeued.push(task);
+  }
+  return requeued;
+}
+
+/**
  * Put back to `pending` every task whose bound generation graph has been edited since it drew
  * the slot, so this run redraws it. Editing a graph does not move the task's hash, so without
  * this the `done` record keeps its picture for the life of the project and the edit shows up
@@ -281,6 +297,12 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
       refused,
     };
   }
+
+  // A run owns the graph while it lasts, so a planned task the log left at `running` was
+  // abandoned by a process that died mid-task; nothing else would ever pick it up again
+  const abandoned = requeueAbandoned(graph, inScope(firstPass));
+  if (!dryRun) for (const node of abandoned) await logTask(paths, node);
+  if (abandoned.length) logger?.info('task.resume', { hashes: abandoned.map((t) => t.hash) });
 
   // Once per run, before the loop. Requeueing inside it would re-run a task that just failed,
   // in the same process, against the same transient condition — and could spin.
