@@ -60,8 +60,8 @@ to touch.
 skill tools and the REPL) doesn't distinguish "user" from "builtin" either. Landing this
 needs three separate, sequenced changes: (1) add the two new roots, (2) tag each `Skill`
 with which tier/root it resolved from, (3) filter the builtin root's contents by the
-project's `builtin_skills` list before or during discovery. Rollout item 2 lists these
-as separate work; call that out up front too so it isn't read as a one-line change.
+project's `builtin_skills` list before or during discovery. Rollout item 2 lists these as
+separate work; call that out up front too so it isn't read as a one-line change.
 
 ## Enablement: `project.yaml`
 
@@ -69,9 +69,9 @@ New key, a list of builtin skill ids:
 
 ```yaml
 builtin_skills:
-  - new-character
-  - branching
-  - full-production
+    - new-character
+    - branching
+    - full-production
 ```
 
 - Schema: extend `projectConfig` (`@vn/types`, `packages/types/src/schemas.ts:314-374`)
@@ -81,7 +81,7 @@ builtin_skills:
   only that each entry is a string — it has no notion of "known builtin id" and cannot
   drop an unknown one itself. Filtering the list against the real catalog (so a
   `project.yaml` surviving a builtin skill's removal from the app doesn't start failing to
-  parse) has to happen where the list is *consumed* — in `skillRoots`/`discoverSkills` —
+  parse) has to happen where the list is _consumed_ — in `skillRoots`/`discoverSkills` —
   not in the schema. Silently ignore an id the catalog doesn't have; don't refuse.
 - Splice helper: needs its own function, `withBuiltinSkills`, modeled on
   `withImageModel`'s header-plus-block handling (`packages/config/src/config.ts:130-171`),
@@ -119,19 +119,19 @@ project or user skill: editable, and no longer tracked as "from" the builtin.
   framework, so split it. `<user>/skills` as an affects-root path is otherwise sound —
   `<user>/plugins` and `<user>/models.json` are already precedented siblings under
   `USER_ROOT` (`affects.ts:39`).
-  - Both refuse if the target already has a skill at that id (same "won't overwrite
-    silently" rule `writeSkill` already enforces) — surface it as a rename prompt, not a
-    silent skip.
-  - A script-bearing builtin skill clones its script too. The clone is **not**
-    pre-vetted: `run_skill`'s confirm-before-first-script-run gate applies to the clone
-    the same as any script a person just added, per the existing rule that a script must
-    arrive by a person's own act (`docs/reference/vnauthor.md:534-536`). Cloning is that
-    act for the copy, same as it would be for a hand-authored one — the builtin original
-    having already been vetted once does not carry over.
-  - Not exposed as an agent tool. The agent can already write project skills via
-    `create_skill`; cloning a specific builtin into the project or into the *user's own*
-    folder is an author decision about their own machine, not something `vnauthor` should
-    initiate. (Open question below.)
+    - Both refuse if the target already has a skill at that id (same "won't overwrite
+      silently" rule `writeSkill` already enforces) — surface it as a rename prompt, not a
+      silent skip.
+    - A script-bearing builtin skill clones its script too. The clone is **not**
+      pre-vetted: `run_skill`'s confirm-before-first-script-run gate applies to the clone
+      the same as any script a person just added, per the existing rule that a script must
+      arrive by a person's own act (`docs/reference/vnauthor.md:534-536`). Cloning is that
+      act for the copy, same as it would be for a hand-authored one — the builtin original
+      having already been vetted once does not carry over.
+    - Not exposed as an agent tool. The agent can already write project skills via
+      `create_skill`; cloning a specific builtin into the project or into the _user's own_
+      folder is an author decision about their own machine, not something `vnauthor`
+      should initiate. (Open question below.)
 
 ## `discover_skills`, `create_skill`, `edit_skill`, `run_skill`
 
@@ -140,16 +140,16 @@ project or user skill: editable, and no longer tracked as "from" the builtin.
   can't be edited.
 - `create_skill` / `edit_skill` refuse a builtin id outright — "`<id>` is a builtin skill
   and can't be edited here; clone it into the project first" — the same shape as the
-  existing `write_file` → `.aiagent/skills/` refusal that names `create_skill`/`edit_skill`
-  instead. A project skill that happens to share an id with a builtin (shadowing it, per
-  discovery order above) is still editable — the refusal is keyed to *which root* the
-  resolved skill actually came from, not the id string. This is precedented, not new
-  invention: `edit_skill` already refuses this way for the project-vs-outside case, by
-  comparing `skill.dir` against the project skills root (`packages/authoring/src/tools/skills.ts:133-140`)
-  rather than a stored tier field. Extending it to the builtin/user case is
-  straightforward, but only once the tier tagging above exists — today's mechanism works
-  by path comparison, not by an already-tracked tier, so it isn't "already implementable"
-  on its own.
+  existing `write_file` → `.aiagent/skills/` refusal that names
+  `create_skill`/`edit_skill` instead. A project skill that happens to share an id with a
+  builtin (shadowing it, per discovery order above) is still editable — the refusal is
+  keyed to _which root_ the resolved skill actually came from, not the id string. This is
+  precedented, not new invention: `edit_skill` already refuses this way for the
+  project-vs-outside case, by comparing `skill.dir` against the project skills root
+  (`packages/authoring/src/tools/skills.ts:133-140`) rather than a stored tier field.
+  Extending it to the builtin/user case is straightforward, but only once the tier tagging
+  above exists — today's mechanism works by path comparison, not by an already-tracked
+  tier, so it isn't "already implementable" on its own.
 - `run_skill` is unaffected: a builtin skill runs exactly like a project one once
   discovered, prose-only or script-with-confirm.
 
@@ -159,7 +159,7 @@ project or user skill: editable, and no longer tracked as "from" the builtin.
 `docs/reference/desktop-app-editors-misc.md#skills`)
 
 - The skill tree groups by tier, or at minimum marks each row's tier (a lock glyph on
-  builtin rows, per the existing tooltip convention — the row says *why* it's locked, not
+  builtin rows, per the existing tooltip convention — the row says _why_ it's locked, not
   just that it is).
 - Opening a builtin skill shows its body read-only (no field edits, no rename, no delete)
   and two actions in place of the edit controls: **Clone into project** / **Clone into
@@ -202,7 +202,7 @@ project or user skill: editable, and no longer tracked as "from" the builtin.
   tool later, if wanted, is mechanically cheap and doesn't need deciding now.
 - **Versioning a builtin skill across app updates.** If `full-production`'s body changes
   in a later app release, a project that already cloned it keeps the old copy (correct —
-  it's an independent file now), but a project that only has it *enabled* picks up the new
+  it's an independent file now), but a project that only has it _enabled_ picks up the new
   wording automatically next run. Worth a line in the release notes template when a
   builtin skill's body changes, but no code is needed for it.
 - **Script-bearing builtin skills.** None of the three today ship a script. If one ever

@@ -3,31 +3,34 @@
 [ ]: DEFERRED: create a system where we can have default skills for the vn agent  that 
      are bundled with the app.  these are readonly, but the users are given 
 	 the option to copy the skill into their project repo.  skill with the 
-	 same name in the project override the default skills.
-[x]: make sure the debug agent can access the bundled source tree in installed
-     builds
-[x]: you should be able to click 'accept' on old versions of assets, in which case the 
-     existing asset and its prompts will become stale and the old one (including its
-	 prompt chunks) will be set at the latest one in the slot.
-[x]: the asset editor should have a download button for the rendered image
-[x]: when showing things in editors (e.g. double clicking shots in shot coverage 
-     editor to show the shot in the asset editor) the largest available non-document-tree-holding
-	 area should be used according to the normal editor swapping rules, which are documented 
-	 somewhere. currently double clicking a shot swaps it with the document tree editor.
-	 make a node in CLAUDE.md to avoid this mistake in the future.
-[x]: you should be able to edit the characters list in the shot coverage editor's 
-     'in this shot' section.
-[x]: you should also be able to disable the enforcement of characters appearing in 
-     the shot altogether.
-[x]: make it so you can select the shot variant in the shot coverage editor too.
-[x]: if the active asset in the asset editor is blocked a red question mark icon 
-     should display next to the task button in the header, with a tooltip explaining
-	 to click on the task button to see what's blocking the task.
-[x]: clicking the notification button can take a while to pop up notifications, 
-     add support for paging notifications so we're not instantiating all of them 
-	 at once into  the DOM.
-	 
+	 same name in the project override the default skills.	 
 [ ]: DEFERRED: have a tour keep a record of what the author actually did while it ran
      — which step they were on, what they ran instead, where it diverged — and let them
      ask the agent about it ('what did I do wrong'). the agent reads the record and
      writes a new tour from it. only produced when the author asks for it.
+[ ]: when the desktop app refreshes it doesn't layout to the current window size
+[ ]: in the project editor the text/vision model ids should be configurable
+[ ]: the text model selector should query gemini for latest models (if a gemini key exists)
+     and should also include openrouter models.
+[ ]: create report on our options to support deleting assets/scenes/locations/wiki-pages/etc.
+     a plan will be created from this report later after I've reviewed it.
+[ ]: use an agent to write a feature requirements report for a new git editor pane.  
+     consult the frontend design skill to help you design the overall workflows, think
+	 about what users will need here.
+[ ]: the unsaved work on exit dialog should highlight an editor with the unsaved work
+[ ]: create a 'save all' command in the main menu
+[ ]: the task pane should show what a given task is currently doing (e.g. 'retry 1 of x') 
+     there seems to be plenty of room in task boxes for a status line.
+[ ]: think about what other ux from the assets editor we should replicate in the page editor
+[ ]: clicking stop twice on the pipeline should pop up a dialog asking if you want to abort 
+     the active tasks, if used affirms active tasks are aborted.
+[ ]: write a report on formalizing our emergent design that assets form a linear history inside
+     'slots'.  there's a lot of confusion right now, e.g. the approval popup lists stale assets.
+[ ]: clamp the image aspect ratio per model.  openrouter's openai/gpt-5-image and
+     gpt-5-image-mini reject aspect_ratio "16:9" (accepted: 1:1, 3:2, 2:3, auto), so
+     every portrait planned with them fails with a 400 (18 orphaned tasks in dadsStory's
+     tasks.jsonl from 2026-09-17).  snap the project's aspect to the nearest one the
+     model accepts, or refuse up front naming the accepted list, rather than failing
+     per task.
+[ ]: in the convo editor, the edit and write tools should show a diff of changes, truncated at 
+     100 lines.
