@@ -335,6 +335,7 @@ describe('moveStateOf', () => {
     variants  : ['day'],
     decomposed: false,
     lettering : 'model',
+    imageModel: 'mock-image',
   };
 
   it('invents no line-id allocator — an insert has to go through the command', () => {
@@ -371,6 +372,7 @@ describe('a drag, from a pointer position to an invocation', () => {
     variants  : ['day'],
     decomposed: false,
     lettering : 'model',
+    imageModel: 'mock-image',
   };
   const boxes = lines.map((l, i) => ({ id: l.id, top: i * 20, bottom: i * 20 + 20 }));
   const dropAt = (carried: string, y: number) => {

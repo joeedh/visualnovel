@@ -440,6 +440,26 @@ export function seedAction(rung: ArtRungInfo, configSeed?: number): Offer {
   };
 }
 
+/**
+ * One rung's image-model picker. The rows are the catalog's, with an inherit row first; the model
+ * is not in the task hash, so picking one changes nothing on screen until the picture is
+ * regenerated, and the tooltip says so.
+ */
+export function modelAction(rung: ArtRungInfo, projectModel?: string): Offer {
+  return {
+    ok      : true,
+    id      : 'art.setModel',
+    props   : { target: rung.target },
+    label   : rung.imageModel ?? (projectModel === undefined ? 'model' : `(${projectModel})`),
+    tooltip:
+      `Draw ${rung.label} with this image model instead of the project's. Pictures already ` +
+      'drawn stay; Regenerate draws with it. Inherit takes ' +
+      (projectModel === undefined ? 'the wider rung, then the project.' : `${projectModel}.`),
+    on      : rung.target,
+    supplies: ['model'],
+  };
+}
+
 /** The promote strip's variant field, beside `promoteAction`; the label is its placeholder. */
 export function promoteBox(info: AssetInfo): Offer {
   return {
@@ -555,7 +575,11 @@ export function controls(info: AssetInfo | undefined, back = ''): readonly Offer
     ...(promote.ok ? [promoteBox(info)] : []),
     ...(redraw.ok ? [redrawBox(info), redrawGo(info)] : []),
     ...(info.failure ? [failureTaskAction(info, info.failure), fixAction(info)] : []),
-    ...info.rungs.flatMap((rung) => [notesAction(rung), seedAction(rung, info.configSeed)]),
+    ...info.rungs.flatMap((rung) => [
+      notesAction(rung),
+      seedAction(rung, info.configSeed),
+      modelAction(rung, info.projectModel),
+    ]),
     ...(back === '' ? [] : [backAction(back)]),
     ...info.prereqs.map(prereqAction),
   ];

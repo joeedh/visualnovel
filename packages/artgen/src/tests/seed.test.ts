@@ -11,6 +11,7 @@ import {
   aspectFor,
   imageParams,
   locationInputs,
+  modelFor,
   modelSheetInputs,
   portraitInputs,
   seedFor,
@@ -72,6 +73,20 @@ describe('seedFor', () => {
   });
 });
 
+describe('modelFor', () => {
+  it('takes the narrowest rung that authored one, and reads an empty string as none', () => {
+    expect(modelFor(base, 'a', 'b').modelId).toBe('b');
+    expect(modelFor(base, 'a', undefined).modelId).toBe('a');
+    expect(modelFor(base, 'a', '').modelId).toBe('a');
+    expect(modelFor(base, undefined, 'b').modelId).toBe('b');
+  });
+
+  it('returns the very same params when no rung authored one', () => {
+    expect(modelFor(base)).toBe(base);
+    expect(modelFor(base, undefined, '')).toBe(base);
+  });
+});
+
 describe('the four builders', () => {
   const aiko = character('aiko', 'approved', 'sha-portrait');
   const cafe = location('cafe');
@@ -120,6 +135,37 @@ describe('the four builders', () => {
     const m = model([c], [scene('s1', ['aiko'], 'cafe')], [cafe]);
     const s = m.scenes.get('s1')!;
     expect(shotInputs(shotOf(6), s, m, config, base, []).params.seed).toBe(6);
+    expect(shotInputs(shotOf(), s, m, config, base, []).params).toBe(base);
+  });
+
+  it('reads the image model off the same rungs as the seed', () => {
+    const c = {
+      ...aiko,
+      imageModel: 'char-model',
+      outfits: [
+        { id: 'default', characterId: 'aiko', description: '', imageModel: 'outfit-model' },
+      ],
+    };
+    const l = {
+      ...cafe,
+      imageModel: 'loc-model',
+      variants: [
+        { id: 'day', description: '' },
+        { id: 'night', description: '', imageModel: 'night-model' },
+      ],
+    };
+    const m = model([c], [scene('s1', ['aiko'], 'cafe')], [l]);
+    const s = m.scenes.get('s1')!;
+    expect(portraitInputs(c, config, base).params.modelId).toBe('char-model');
+    expect(
+      modelSheetInputs(c, 'default', 'front', { hash: 'sha-portrait', ext: 'png' }, config, base)
+        .params.modelId,
+    ).toBe('outfit-model');
+    expect(locationInputs(l, 'day', config, base).params.modelId).toBe('loc-model');
+    expect(locationInputs(l, 'night', config, base).params.modelId).toBe('night-model');
+    expect(
+      shotInputs({ ...shotOf(), imageModel: 'shot-model' }, s, m, config, base, []).params.modelId,
+    ).toBe('shot-model');
     expect(shotInputs(shotOf(), s, m, config, base, []).params).toBe(base);
   });
 

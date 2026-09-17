@@ -7,6 +7,7 @@
 import { KeyMap, type Container } from 'pathux';
 import type { Invocation } from '@vn/commands';
 import { boxOf } from '@vn/artgen/layout';
+import { imageModelChoices, modelCatalog } from '@vn/gengraph';
 import { SHOT_FRAMINGS, type PagePanel } from '@vn/types';
 import { api } from '../../api.js';
 import type { CoverageLine, CoverageShot, SceneCoverage } from '../../../src/shared/ipc.js';
@@ -22,12 +23,15 @@ import {
 } from '../../rules/timeline/busy.js';
 import {
   LAYOUTS,
+  acceptAction,
   boxesOf,
   cameraAction,
   castAction,
   cornerAction,
+  defectsOf,
   enterLetters,
   framingAction,
+  generateAction,
   inLayout,
   layoutAction,
   lineAction,
@@ -37,6 +41,8 @@ import {
   panelOfLine,
   panelsProps,
   selectedPanel,
+  shotCastOf,
+  shotModelAction,
   shotOf,
   subjectFieldAction,
   summaryOf,
@@ -50,6 +56,12 @@ import {
   type PageState,
 } from '../../rules/page.js';
 import { sceneOfShot } from '../../rules/selection.js';
+import {
+  addCastAction,
+  removeCastAction,
+  subjectsInvocation,
+  withCharacter,
+} from '../../rules/timeline/cast.js';
 import { exec, onInvalidate } from '../app/bridge.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { hotkeys } from '../app/keymap.js';
@@ -194,6 +206,9 @@ export class PageEditor extends VnEditor {
       shotId  : this.ui.shotId,
       lines   : this.data?.lines ?? [],
       selected: this.selected,
+      ...(this.data === undefined
+        ? {}
+        : { characters: this.data.characters, imageModel: this.data.imageModel }),
     };
   }
 
@@ -317,11 +332,115 @@ export class PageEditor extends VnEditor {
       row.appendChild(button);
     }
     head.appendChild(row);
+    head.appendChild(this.actions(state, shot));
 
     const verdict = verdictOf(shot);
-    const sentence = el('span', `pg-verdict${shot.image && !shot.layout ? ' quiet' : ''}`, verdict);
-    head.appendChild(sentence);
+    const tone = shot.failure ? ' flagged' : shot.image && !shot.layout ? ' quiet' : '';
+    head.appendChild(el('span', `pg-verdict${tone}`, verdict));
+    const defects = defectsOf(shot);
+    if (defects.length > 0) {
+      const list = el('ul', 'pg-defects');
+      for (const defect of defects) list.appendChild(el('li', '', defect));
+      head.appendChild(list);
+    }
     return head;
+  }
+
+  /**
+   * The row under the layouts: Generate, the shot's model, and Accept on a render the reviewers
+   * kept blocking. `pipeline.draw` and `asset.accept` both confirm, so a click opens the card
+   * with the cost or the consequence before anything runs.
+   */
+  private actions(state: PageState, shot: CoverageShot): HTMLElement {
+    const row = el('div', 'pg-actions');
+
+    const generate = generateAction(state);
+    const button = document.createElement('button');
+    button.className = 'pg-generate';
+    button.textContent = generate.label;
+    this.headPass.act(button, generate, () => {
+      if (generate.ok) void this.run({ id: generate.id, props: generate.props }, 'Drawing');
+    });
+    row.appendChild(button);
+
+    const model = shotModelAction(state);
+    const select = document.createElement('select');
+    select.className = 'pg-model';
+    const current = shot.imageModel ?? '';
+    for (const choice of imageModelChoices(modelCatalog(), current, { inherit: true })) {
+      const item = option(
+        choice.id,
+        choice.id === '' ? `inherit (${state.imageModel ?? 'project'})` : choice.label,
+      );
+      item.title = choice.tooltip;
+      select.appendChild(item);
+    }
+    select.value = current;
+    this.headPass.record(select, model);
+    select.addEventListener('change', () => {
+      if (!model.ok || select.value === current) return;
+      void this.run(
+        { id: model.id, props: { ...model.props, model: select.value } },
+        'Setting model',
+      );
+    });
+    row.appendChild(select);
+
+    const accept = acceptAction(state);
+    if (accept.ok) {
+      const keep = document.createElement('button');
+      keep.className = 'pg-accept';
+      keep.textContent = accept.label;
+      this.headPass.act(keep, accept, () => {
+        void this.run({ id: accept.id, props: accept.props }, 'Accepting');
+      });
+      row.appendChild(keep);
+    }
+    return row;
+  }
+
+  /**
+   * The shot's cast: who it frames, each with a button taking them out, and a select putting
+   * one more in. The same `story.setSubjects` controls Shot Coverage draws, so the two agree on
+   * every refusal. A panel's own cast, drawn under the panel fields, is chosen from this list.
+   */
+  private shotCast(state: PageState): HTMLElement {
+    const section = el('section', 'pg-shot-cast');
+    section.appendChild(el('h3', '', 'Cast'));
+    const cast = shotCastOf(state);
+    if (!cast) return section;
+
+    const chips = el('div', 'pg-cast');
+    if (cast.framed.length === 0) chips.appendChild(el('span', 'hint', 'nobody in this shot'));
+    for (const characterId of cast.framed) {
+      const chip = el('span', 'chip');
+      chip.appendChild(document.createTextNode(characterId));
+      const drop = document.createElement('button');
+      drop.className = 'drop';
+      const offer = removeCastAction(cast, characterId);
+      drop.textContent = offer.label;
+      this.sidePass.act(drop, offer, () => {
+        if (offer.ok) void this.run({ id: offer.id, props: offer.props }, 'Uncasting');
+      });
+      chip.appendChild(drop);
+      chips.appendChild(chip);
+    }
+    section.appendChild(chips);
+
+    if (cast.spare.length > 0) {
+      const add = document.createElement('select');
+      add.className = 'pg-add-cast';
+      add.appendChild(option('', 'add a character…'));
+      for (const id of cast.spare) add.appendChild(option(id, id));
+      this.sidePass.record(add, addCastAction(cast));
+      add.addEventListener('change', () => {
+        if (add.value === '') return;
+        const invocation = subjectsInvocation(cast, withCharacter(cast, add.value));
+        void this.run(invocation, 'Casting');
+      });
+      section.appendChild(add);
+    }
+    return section;
   }
 
   /** The page: the render or a sheet, the paint layer, one hit area per panel, the corners. */
@@ -452,6 +571,7 @@ export class PageEditor extends VnEditor {
       lines.appendChild(el('div', 'hint', 'This shot covers no lines.'));
     }
     side.appendChild(lines);
+    side.appendChild(this.shotCast(state));
 
     const panel = el('section', 'pg-panel');
     const chosen = selectedPanel(state);

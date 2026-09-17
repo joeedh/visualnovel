@@ -10,6 +10,7 @@ import {
   addCastAction,
   removeCastAction,
   requireCastAction,
+  shotModelAction,
   variantAction,
   type ShotCast,
 } from './cast.js';
@@ -178,13 +179,13 @@ export function doorAction(door: Door, check: CommandCheck): Offer {
 /**
  * The wardrobe strip's offers in draw order: the scene rows, then the selected shot's variant,
  * its rows with their remove buttons, the add select while someone is left to add, and the
- * checkbox.
+ * checkbox. The shot's image-model select sits after the variant, where the strip draws it.
  */
 export function wardrobeControls(rows: readonly OutfitRow[], cast: ShotCast | null): Offer[] {
   if (rows.length === 0) return [];
   const list: Offer[] = rows.filter((row) => row.level === 'scene').map(outfitAction);
   if (!cast) return list;
-  list.push(variantAction(cast));
+  list.push(variantAction(cast), shotModelAction(cast));
   for (const row of rows.filter((row) => row.level === 'shot')) {
     list.push(outfitAction(row), removeCastAction(cast, row.character));
   }

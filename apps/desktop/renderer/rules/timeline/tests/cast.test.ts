@@ -38,6 +38,7 @@ const coverage = (shots: CoverageShot[]): SceneCoverage => ({
   variants  : ['day', 'night'],
   decomposed: true,
   lettering : 'model',
+  imageModel: 'mock-image',
 });
 
 describe('shotCast', () => {
@@ -130,13 +131,14 @@ describe('requireCastTitle', () => {
 
 describe('the strip’s offers', () => {
   const cast: ShotCast = {
-    scene   : 'arrival',
-    shot    : 'arrival__s1',
-    framed  : ['aiko'],
-    spare   : ['ren'],
-    required: true,
-    variant : 'day',
-    variants: ['day', 'night'],
+    scene       : 'arrival',
+    shot        : 'arrival__s1',
+    framed      : ['aiko'],
+    spare       : ['ren'],
+    required    : true,
+    variant     : 'day',
+    variants    : ['day', 'night'],
+    projectModel: 'mock-image',
   };
 
   it('name the shot and leave the value to the widget', () => {

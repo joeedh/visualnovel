@@ -198,6 +198,9 @@ export function promptOverrideIsEmpty(o: PromptOverride | undefined): boolean {
  */
 const imageSeed = z.number().int().nonnegative();
 
+/** An image model id authored at a rung, in place of the project's `models.image`. */
+const imageModel = z.string().min(1);
+
 /**
  * An authored aspect ratio, `<width>:<height>` in whole numbers, which is the form every image
  * backend takes. Whether a model honours a given ratio is the provider's answer, not this
@@ -214,6 +217,7 @@ const outfitEntry = z
     description    : z.string().default(''),
     art_notes      : z.string().optional(),
     seed           : imageSeed.optional(),
+    image_model    : imageModel.optional(),
     prompt_override: promptOverrideSchema.optional(),
   })
   .strict();
@@ -224,6 +228,7 @@ const variantEntry = z
     description    : z.string().default(''),
     art_notes      : z.string().optional(),
     seed           : imageSeed.optional(),
+    image_model    : imageModel.optional(),
     prompt_override: promptOverrideSchema.optional(),
   })
   .strict();
@@ -251,6 +256,8 @@ export const characterFrontMatter = z.object({
   art_notes        : z.string().optional(),
   /** Image seed for every prompt this character reaches; an outfit entry's own seed is narrower. */
   seed             : imageSeed.optional(),
+  /** Image model for every picture this character reaches; an outfit entry's own is narrower. */
+  image_model      : imageModel.optional(),
   /** Overrides the derived portrait prompt. A sheet's override lives on its outfit entry. */
   prompt_override  : promptOverrideSchema.optional(),
   approved_portrait: z.string().optional(),
@@ -259,22 +266,24 @@ export type CharacterFrontMatter = z.infer<typeof characterFrontMatter>;
 
 /** Front-matter of a set-location sheet — `locations/<id>.md`, or any `type: location`. */
 export const locationFrontMatter = z.object({
-  id       : z.string().min(1),
+  id         : z.string().min(1),
   /** Optional in the conventional directory, which carries the tag implicitly. */
-  type     : z.literal(ENTITY_TAGS.location).optional(),
-  name     : z.string().min(1),
-  mood     : z.string().optional(),
-  lighting : z.string().optional(),
-  palette  : z.array(hexColor).default([]),
+  type       : z.literal(ENTITY_TAGS.location).optional(),
+  name       : z.string().min(1),
+  mood       : z.string().optional(),
+  lighting   : z.string().optional(),
+  palette    : z.array(hexColor).default([]),
   /**
    * The variants plates are generated for, in the order written. A bare string is the id alone;
    * a variant that describes itself or carries art direction is written as an object.
    */
-  variants : z.array(z.union([z.string(), variantEntry])).default(['day']),
+  variants   : z.array(z.union([z.string(), variantEntry])).default(['day']),
   /** Free-form art direction appended to every plate of this location. */
-  art_notes: z.string().optional(),
+  art_notes  : z.string().optional(),
   /** Image seed for every plate of this location; a variant entry's own seed is narrower. */
-  seed     : imageSeed.optional(),
+  seed       : imageSeed.optional(),
+  /** Image model for every plate of this location; a variant entry's own is narrower. */
+  image_model: imageModel.optional(),
 });
 export type LocationFrontMatter = z.infer<typeof locationFrontMatter>;
 
@@ -550,6 +559,8 @@ export const shotsFileSchema = z.object({
         seed          : imageSeed.optional(),
         /** Authored aspect ratio for this frame; in the task hash, like `seed`. */
         aspect        : aspectRatio.optional(),
+        /** Authored image model for this frame; not in the hash, so it applies on the next render. */
+        imageModel    : imageModel.optional(),
         /** Authored; present on a page shot and absent on a frame — see {@link Shot.panels}. */
         panels        : z.array(pagePanel).min(1).optional(),
         /** Authored; the staging-sheet group, one of the file's `sheets` keys. */

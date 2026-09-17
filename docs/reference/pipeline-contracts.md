@@ -379,6 +379,12 @@ These implement the system design in
       `Shot`, each `Outfit`, each `LocationVariant`. The builders append it to what they
       derived, entity note first and the specific rung second, so the style preamble, the
       reference scaffolding and the closing "single illustrated frame" clause all survive.
+    - The same five rungs carry an optional `seed` (`seedFor`, narrowest wins, in the
+      hash) and an optional `imageModel` (`modelFor`, narrowest wins, outside the hash;
+      front-matter key `image_model`). `art.setSeed` and `art.setModel` write them the way
+      `art.setNotes` writes a note, and an empty value clears the rung back to inheriting.
+      A slot a generation graph binds takes the graph node's own model and seed, so the
+      override does not reach it.
     - Setting a note costs money by design, like the outfit and unlike every scene edit.
       The note is in the prompt, so setting one re-keys precisely the tasks that rung
       reaches, and the next run re-renders them.

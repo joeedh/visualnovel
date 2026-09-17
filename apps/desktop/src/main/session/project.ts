@@ -159,8 +159,9 @@ export class ProjectPart {
 
   /**
    * What `project.setImageModel` would do, without writing it. A model whose vendor has no key is
-   * refused here rather than at the first task that would draw with it, and the count is the same
-   * one the art style reports, because `models.image` is in every image task's hash too.
+   * refused here rather than at the first task that would draw with it. The count is of the
+   * image tasks still to draw, which are the ones the new model reaches: the model is not in a
+   * task's hash, so a rendered one keeps its picture.
    */
   async previewImageModel(modelId: string): Promise<PromptResult> {
     const id = modelId.trim();
@@ -180,10 +181,12 @@ export class ProjectPart {
       return { ok: false, message: `no ${named} key is set; provide one in Setup first` };
     }
 
-    const count = project.graph.all().filter((task) => IMAGE_KINDS.has(task.kind)).length;
+    const count = project.graph
+      .all()
+      .filter((task) => IMAGE_KINDS.has(task.kind) && task.status !== 'done').length;
     return {
       ok     : true,
-      message: `Set the image model to \`${id}\`. It is in every image task's hash, so it re-keys ${count} image task(s).`,
+      message: `Set the image model to \`${id}\`. Pictures already drawn stay; ${count} image task(s) still to draw, and anything regenerated, will use it.`,
     };
   }
 

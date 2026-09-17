@@ -44,9 +44,10 @@ const cast = (framed: string[], spare: string[]): ShotCast => ({
   shot : 'arrival__s1',
   framed,
   spare,
-  required: true,
-  variant : 'day',
-  variants: ['day', 'night'],
+  required    : true,
+  variant     : 'day',
+  variants    : ['day', 'night'],
+  projectModel: 'mock-image',
 });
 
 export const SITUATIONS = situations<TimelineState>(

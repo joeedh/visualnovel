@@ -10,6 +10,7 @@ import {
   adoptSlot,
   adoptionForSlot,
   artNotesOf,
+  artModelOf,
   artSeedOf,
   assetApproved,
   assetPrereqs,
@@ -23,12 +24,15 @@ import {
   promotionOf,
   redrawConcept,
   redrawOf,
+  resolveSlot,
   rungsFor,
   setArtNotes as writeArtNotes,
+  setArtModel as writeArtModel,
   setArtSeed as writeArtSeed,
   slotKey,
   slotLabel,
   slotOf,
+  slotTaskHash,
   supersededBy,
   subjectEntity,
   uploadOf,
@@ -142,7 +146,8 @@ export class AssetPart {
       ...(failure ? { failure } : {}),
       prereqs,
       ...(unapproved ? { unapproved } : {}),
-      rungs: rungsFor(asset, { model: project.model, shots }),
+      rungs       : rungsFor(asset, { model: project.model, shots }),
+      projectModel: project.config.models.image,
       ...(project.config.image_params.seed === undefined
         ? {}
         : { configSeed: project.config.image_params.seed }),
@@ -407,24 +412,100 @@ export class AssetPart {
    */
   async regenerateAsset(
     hash: string,
-  ): Promise<{ ok: boolean; message: string; written: string[] }> {
+  ): Promise<{ ok: boolean; message: string; written: string[]; task?: string }> {
     const decided = await this.regeneration(hash);
     if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
     const project = await loadProject(this.session.dir);
+    const written = await this.requeue(project, decided.task);
+    return {
+      ok     : true,
+      message: `Queued ${decided.task.kind} ${decided.task.hash.slice(0, 8)} for re-run.`,
+      written,
+      task: decided.task.hash,
+    };
+  }
+
+  /** Puts one task back to `pending`, invalidates the graph bound to it, and reports the writes. */
+  private async requeue(project: LoadedProject, task: AnyTask): Promise<string[]> {
     await logTask(project.paths, {
-      ...decided.task,
+      ...task,
       status: 'pending',
       output: undefined,
       error : undefined,
     });
     const written = [relPath(this.session.dir, project.paths.tasksLog)];
-    const invalidated = await this.invalidateBound(project, decided.task);
+    const invalidated = await this.invalidateBound(project, task);
     if (invalidated !== undefined) written.push(invalidated);
+    return written;
+  }
+
+  /**
+   * The task one slot's picture is, as the project states it today, and what drawing it would do:
+   * a first render where nothing has run, a re-render where one has. Refused with the resolver's
+   * own sentence when the slot's identity cannot be stated yet — a shot whose sheets are not
+   * drawn, an unknown address.
+   */
+  async drawing(
+    slot: string,
+  ): Promise<
+    | { ok: true; task: string; queued: AnyTask | undefined; note: string }
+    | { ok: false; reason: string }
+  > {
+    const binding = parseSlot(slot);
+    if (!binding) return { ok: false, reason: `"${slot}" is not a slot address.` };
+    const project = await loadProject(this.session.dir);
+    const refused = baseRefusal(project.store.base);
+    if (refused) return { ok: false, reason: refused };
+    const shots = await readAllShots(project);
+    const decided = resolveSlot(binding, {
+      model: project.model,
+      shots,
+      config: project.config,
+      graph : project.graph,
+    });
+    if (!decided.ok) return { ok: false, reason: decided.reason };
+    const hash = slotTaskHash(decided.plan);
+    const task = project.graph.get(hash);
+    const label = slotLabel(binding);
+    if (task === undefined || task.status === 'pending') {
+      return { ok: true, task: hash, queued: undefined, note: `Would draw ${label}.` };
+    }
+    if (task.status === 'running') {
+      return { ok: false, reason: `${label} is being drawn now.` };
+    }
+    const seeded = project.config.image_params.seed !== undefined;
     return {
-      ok     : true,
-      message: `Queued ${decided.task.kind} ${decided.task.hash.slice(0, 8)} for re-run.`,
-      written,
+      ok    : true,
+      task  : hash,
+      queued: task,
+      note: seeded
+        ? `Would draw ${label} again — image_params.seed is fixed, so expect the same picture unless the model or the art notes changed.`
+        : `Would draw ${label} again.`,
     };
+  }
+
+  /** What `pipeline.draw` would do, without doing it. */
+  async previewDraw(slot: string): Promise<{ ok: boolean; message: string }> {
+    const decided = await this.drawing(slot);
+    return decided.ok
+      ? { ok: true, message: decided.note }
+      : { ok: false, message: decided.reason };
+  }
+
+  /**
+   * Draw one slot: requeue its task where it has already run, then run the pipeline for that
+   * task and what it needs alone.
+   */
+  async drawSlot(
+    slot: string,
+  ): Promise<{ ok: boolean; message: string; written: string[]; task?: string }> {
+    const decided = await this.drawing(slot);
+    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
+    const written =
+      decided.queued === undefined
+        ? []
+        : await this.requeue(await loadProject(this.session.dir), decided.queued);
+    return { ok: true, message: decided.note, written, task: decided.task };
   }
 
   /**
@@ -503,6 +584,28 @@ export class AssetPart {
     const decided = await artSeedOf(deps, { target, seed });
     if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
     const plan = await writeArtSeed(deps, { target, seed });
+    return { ok: true, message: plan.note, written: [relPath(this.session.dir, plan.file)] };
+  }
+
+  /** What `art.setModel` would do, without writing it. */
+  async previewArtModel(target: string, model: string): Promise<{ ok: boolean; message: string }> {
+    const { config, paths } = await loadProject(this.session.dir);
+    const decided = await artModelOf({ config, paths }, { target, model });
+    return decided.ok
+      ? { ok: true, message: decided.plan.note }
+      : { ok: false, message: decided.reason };
+  }
+
+  /** Write one rung's image model, into the same two files `setArtNotes` writes. */
+  async setArtModel(
+    target: string,
+    model: string,
+  ): Promise<{ ok: boolean; message: string; written: string[] }> {
+    const { config, paths } = await loadProject(this.session.dir);
+    const deps = { config, paths };
+    const decided = await artModelOf(deps, { target, model });
+    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
+    const plan = await writeArtModel(deps, { target, model });
     return { ok: true, message: plan.note, written: [relPath(this.session.dir, plan.file)] };
   }
 

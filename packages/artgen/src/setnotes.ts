@@ -266,6 +266,119 @@ export async function setArtSeed(deps: SetNotesDeps, req: SetSeedRequest): Promi
   return plan;
 }
 
+export interface SetModelRequest {
+  /** A rung, in the same vocabulary {@link SetNotesRequest.target} uses. */
+  target: string;
+  /** The image model id to author, or `''` to clear the rung back to whatever it inherits. */
+  model: string;
+}
+
+/** What writing an image model would do. The mirror of {@link SetSeedPlan}, one field over. */
+export interface SetModelPlan {
+  target: ArtTarget;
+  rung: ArtRung;
+  /** The model id that will be authored there; `''` removes it. */
+  model: string;
+  file: string;
+  note: string;
+}
+
+/**
+ * Every refusal writing an image model can give: the rung refusals {@link locateRung} supplies.
+ * The id itself is not checked against a catalog here, because which ids a vendor serves is the
+ * provider's answer and changes without this package knowing.
+ */
+export async function artModelOf(
+  deps: SetNotesDeps,
+  req: SetModelRequest,
+): Promise<Decided<SetModelPlan>> {
+  const located = await locateRung(deps, req.target);
+  if (!located.ok) return located;
+  const { target, rung, file } = located.plan;
+  const model = req.model.trim();
+  const note =
+    model === ''
+      ? `Cleared the image model on ${rung.label}; it inherits again.`
+      : `Set ${rung.label} to draw with ${model}. Pictures already drawn keep until regenerated.`;
+  return { ok: true, plan: { target, rung, model, file, note } };
+}
+
+/** Write one rung's image model, into the same files {@link setArtSeed} writes. */
+export async function setArtModel(deps: SetNotesDeps, req: SetModelRequest): Promise<SetModelPlan> {
+  const decided = await artModelOf(deps, req);
+  if (!decided.ok) throw new VnError(decided.code, decided.reason);
+  const { plan } = decided;
+  const target = plan.target;
+  const model = plan.model === '' ? undefined : plan.model;
+
+  if (target.kind === 'shot') {
+    const { model: project } = await loadFor(deps, target);
+    const scene = project.scenes.get(target.sceneId);
+    if (!scene) throw new VnError('NO_SCENE', `No scene "${target.sceneId}".`);
+    const loaded = await readShots(deps.paths, scene.id, new Set(scene.lines.map((l) => l.id)));
+    if (!loaded)
+      throw new VnError('NO_SHOTS', `Scene "${scene.id}" has no storyboard to write to.`);
+    const next = loaded.shots.map((s) => (s.id === target.shotId ? withModel(s, model) : s));
+    await writeShots(deps.paths, scene.id, next);
+    return plan;
+  }
+
+  const { model: project, docs } = await loadFor(deps, target);
+  const found = entityDoc(docs, target.id);
+  if (!found) throw new VnError('NO_SHEET', `No sheet on disk for ${target.kind} "${target.id}".`);
+  const edited =
+    target.kind === 'character'
+      ? applyCharacterEdit(
+          found.doc,
+          characterModelEdit(project.characters.get(target.id)?.outfits ?? [], target, plan.model),
+        )
+      : applyLocationEdit(
+          found.doc,
+          locationModelEdit(project.locations.get(target.id)?.variants ?? [], target, plan.model),
+        );
+  if (!edited.ok) throw new VnError('EDIT_REJECTED', `Edit rejected: ${edited.diagnostic.message}`);
+  await writeFileAtomic(found.file, docToMarkdown(edited.value.doc));
+  return plan;
+}
+
+/** A shot with its image model set, or removed when the rung is cleared. */
+function withModel(shot: Shot, model: string | undefined): Shot {
+  const { imageModel: _drop, ...rest } = shot;
+  return model === undefined ? rest : { ...rest, imageModel: model };
+}
+
+/** {@link characterSeedEdit}, one field over. */
+function characterModelEdit(
+  outfits: readonly Outfit[],
+  target: Extract<ArtTarget, { kind: 'character' }>,
+  model: string,
+): CharacterEdit {
+  if (!target.outfit) return { imageModel: model };
+  return {
+    outfits: wardrobeEntries(
+      outfits.map((o) =>
+        o.id === target.outfit ? withOutfit(o, { imageModel: model || undefined }) : o,
+      ),
+    ),
+  };
+}
+
+/** The same for a location. */
+function locationModelEdit(
+  variants: readonly LocationVariant[],
+  target: Extract<ArtTarget, { kind: 'location' }>,
+  model: string,
+): LocationEdit {
+  if (!target.variant) return { imageModel: model };
+  return {
+    variants: variantEntries(
+      variants.map((v) =>
+        v.id === target.variant ? withVariant(v, { imageModel: model || undefined }) : v,
+      ),
+    ),
+  };
+}
+
 /** A shot with its seed set, or removed when the rung is cleared. */
 function withSeed(shot: Shot, seed: number | undefined): Shot {
   const { seed: _drop, ...rest } = shot;
@@ -348,6 +461,7 @@ function withOutfit(outfit: Outfit, patch: Partial<Outfit>): Outfit {
   // Tested against undefined rather than falsiness: 0 is a valid seed, and only an absent seed
   // means "inherit"
   if (next.seed === undefined) delete next.seed;
+  if (!next.imageModel) delete next.imageModel;
   if (!next.promptOverride) delete next.promptOverride;
   return next;
 }
@@ -357,6 +471,7 @@ function withVariant(variant: LocationVariant, patch: Partial<LocationVariant>):
   const next = { ...variant, ...patch };
   if (!next.artNotes) delete next.artNotes;
   if (next.seed === undefined) delete next.seed;
+  if (!next.imageModel) delete next.imageModel;
   if (!next.promptOverride) delete next.promptOverride;
   return next;
 }

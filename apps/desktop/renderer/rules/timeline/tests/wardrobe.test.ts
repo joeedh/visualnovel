@@ -35,6 +35,7 @@ const coverage = (cast: CoverageCast[], shots: CoverageShot[]): SceneCoverage =>
   variants  : ['day'],
   decomposed: shots.length > 0,
   lettering : 'model',
+  imageModel: 'mock-image',
 });
 
 describe('outfitRows', () => {

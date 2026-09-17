@@ -53,6 +53,8 @@ export interface Outfit {
   artNotes?: string;
   /** Image seed for this outfit's sheets — see {@link Character.seed}. */
   seed?: number;
+  /** Image model for this outfit's sheets — see {@link Character.imageModel}. */
+  imageModel?: string;
   /**
    * Override of this outfit's derived model-sheet prompt. The angle is recorded only on the task
    * and never on a rung, so one override covers all four angles of the sheet. The asset pane states that
@@ -92,6 +94,13 @@ export interface Character {
    */
   seed?: number;
   /**
+   * The image model every picture this character reaches is drawn with, in place of the
+   * project's `models.image`. Not in the task hash — a rendered picture stays until it is
+   * regenerated, and the next render uses this model. `@vn/artgen`'s `modelFor` resolves the
+   * same narrowest-rung-wins chain `seedFor` does.
+   */
+  imageModel?: string;
+  /**
    * Override of this character's derived portrait prompt, the one picture this rung names.
    * A sheet's override lives on its {@link Outfit}, which is the rung that names that picture.
    */
@@ -109,6 +118,8 @@ export interface LocationVariant {
   artNotes?: string;
   /** Image seed for this variant's plate — see {@link Character.seed}. */
   seed?: number;
+  /** Image model for this variant's plate — see {@link Character.imageModel}. */
+  imageModel?: string;
   /** Override of this variant's derived plate prompt — the one picture this rung names. */
   promptOverride?: PromptOverride;
   /** Establishing/reference image once generated. */
@@ -128,6 +139,8 @@ export interface Location {
   artNotes?: string;
   /** Image seed for every plate of this location — see {@link Character.seed}. */
   seed?: number;
+  /** Image model for every plate of this location — see {@link Character.imageModel}. */
+  imageModel?: string;
   /** True when mined from the screenplay rather than user-authored. */
   mined: boolean;
 }
@@ -235,6 +248,8 @@ export interface Shot {
   artNotes?: string;
   /** Image seed for this frame alone — see {@link Character.seed}. Authored, like {@link artNotes}. */
   seed?: number;
+  /** Image model for this frame alone — see {@link Character.imageModel}. */
+  imageModel?: string;
   /**
    * Aspect ratio for this frame alone, such as `3:4`, in place of `image_params.aspect`. Authored,
    * like {@link seed}, and in the task's params, so setting it re-renders this shot and nothing

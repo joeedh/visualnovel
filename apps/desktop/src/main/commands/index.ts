@@ -30,7 +30,7 @@ import {
   agentStop,
   agentThreads,
 } from './agent.js';
-import { artGenerate, artPromote, artRedraw, artSetNotes, artSetSeed } from './art.js';
+import { artGenerate, artPromote, artRedraw, artSetModel, artSetNotes, artSetSeed } from './art.js';
 import {
   assetAccept,
   assetAdopt,
@@ -87,7 +87,13 @@ import {
   notifyUnhide,
 } from './notify.js';
 import { modelsRefresh } from './models.js';
-import { pipelineApproveAndRun, pipelineRun, pipelineStatus, pipelineStop } from './pipeline.js';
+import {
+  pipelineApproveAndRun,
+  pipelineDraw,
+  pipelineRun,
+  pipelineStatus,
+  pipelineStop,
+} from './pipeline.js';
 import { pluginInstall, pluginList, pluginPrices, pluginRemove } from './plugin.js';
 import {
   promptAddRef,
@@ -217,6 +223,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     artRedraw,
     artSetNotes,
     artSetSeed,
+    artSetModel,
     assetAccept,
     assetAdopt,
     assetExport,
@@ -274,6 +281,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     notifyUnhide,
     pipelineApproveAndRun,
     pipelineRun,
+    pipelineDraw,
     pipelineStatus,
     pipelineStop,
     pluginInstall,

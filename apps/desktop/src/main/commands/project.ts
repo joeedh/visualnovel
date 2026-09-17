@@ -83,15 +83,17 @@ export const projectSetImageModel = define({
     "Set the project's image model, `models.image` — the model every image task and every " +
     'graph node with an empty model prop draws with. A `<vendor>/<model>` id draws through ' +
     'OpenRouter and any other id through Gemini, and the vendor needs a key before the change is ' +
-    "accepted. The id is in every image task's hash, so setting it re-keys every image task and " +
-    'the next `pipeline.run` renders the whole library again. The row is spliced into ' +
-    "`project.yaml`'s `models:` block, so comments and key order survive.",
+    "accepted. The id is not part of a task's identity, so pictures already drawn stay; the " +
+    'new model is used for whatever is drawn next — an unrendered slot, a regenerate, or a slot ' +
+    "the art style re-keys. The row is spliced into `project.yaml`'s `models:` block, so " +
+    'comments and key order survive.',
   notes:
-    "The model every image task and every inherit node draws with. A `<vendor>/<model>` id goes through OpenRouter, anything else through Gemini, and the vendor needs a key first. In every image task's hash, so it re-keys **every** image task. Spliced into `project.yaml`, so comments and key order survive.",
+    'The model every image task and every inherit node draws with. A `<vendor>/<model>` id goes through OpenRouter, anything else through Gemini, and the vendor needs a key first. Not in the task hash: what is drawn stays, and the next render uses the new model. Spliced into `project.yaml`, so comments and key order survive.',
   mutating   : true,
   affects    : ['project.yaml'],
   undoable   : true,
-  // Confirmed for the same reason the art style is: the next run redraws the whole library
+  // Confirmed because a model change moves what every later render costs, even though nothing
+  // is redrawn by it
   confirm    : true,
   props: {
     model: prop.string('the image model id, such as openai/gpt-image-2'),

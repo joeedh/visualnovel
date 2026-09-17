@@ -277,7 +277,7 @@ export function rowAction(
   if (row.expandable && (unchanged || reselected)) {
     return { ok: true, ...expand(node.id), ...control };
   }
-  const open = unchanged ? null : openOf(routeFor({ node, visible }));
+  const open = unchanged ? null : openOf(routeFor({ node, visible, shotId: selection.shotId }));
   const then: Action[] = open ? [open] : [];
   return {
     ok: true,

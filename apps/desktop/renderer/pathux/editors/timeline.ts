@@ -1,5 +1,6 @@
 import type { Container, MenuTemplate } from 'pathux';
 import { api } from '../../api.js';
+import { imageModelChoices, modelCatalog } from '@vn/gengraph';
 import { spansFor, type Edge } from '@vn/scriptedit';
 import type { CommandCheck, Coverage, ShotSpan } from '../../../src/shared/ipc.js';
 import { commitOf, noticeForCheck, type Notice } from '../../../src/shared/lineedit.js';
@@ -18,6 +19,8 @@ import {
   requireCastAction,
   requireCastInvocation,
   shotCast,
+  shotModelAction,
+  shotModelInvocation,
   subjectsInvocation,
   variantAction,
   variantInvocation,
@@ -747,6 +750,7 @@ export class TimelineEditor extends VnEditor {
       [],
     );
     section.appendChild(this.variantRow(cast));
+    section.appendChild(this.modelRow(cast));
     for (const row of rows) section.appendChild(this.wardrobeRow(row, cast));
     if (cast.spare.length > 0) section.appendChild(this.addCastRow(cast));
     section.appendChild(this.requireCastRow(cast));
@@ -773,6 +777,33 @@ export class TimelineEditor extends VnEditor {
       'change',
       () => void this.run(variantInvocation(cast, select.value), 'Setting variant', 'Variant set.'),
     );
+    line.appendChild(select);
+    return line;
+  }
+
+  /** Which image model this one shot is drawn with, inheriting the project's unless it says. */
+  private modelRow(cast: ShotCast): HTMLElement {
+    const line = el('div', 'wd-row');
+    line.appendChild(el('span', 'who', 'drawn with'));
+
+    const select = document.createElement('select');
+    select.className = 'wd-pick';
+    select.setAttribute('aria-label', `Which image model ${cast.shot} is drawn with`);
+    this.wardrobePass.record(select, shotModelAction(cast));
+    const current = cast.imageModel ?? '';
+    for (const choice of imageModelChoices(modelCatalog(), current, { inherit: true })) {
+      const item = option(
+        choice.id,
+        choice.id === '' ? `inherit (${cast.projectModel})` : choice.label,
+      );
+      item.title = choice.tooltip;
+      select.appendChild(item);
+    }
+    select.value = current;
+    select.addEventListener('change', () => {
+      if (select.value === current) return;
+      void this.run(shotModelInvocation(cast, select.value), 'Setting model', 'Model set.');
+    });
     line.appendChild(select);
     return line;
   }

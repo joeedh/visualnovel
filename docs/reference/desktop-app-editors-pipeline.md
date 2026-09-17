@@ -326,6 +326,12 @@ result. `art.redraw` opens the sketch it produces in the same way.
   orphan) unless the slot's current identity is `failed` or `needs_human`. For those two
   identities, `asset.regenerate` queues that task, and the picture on screen stays until
   the new render lands.
+- **Regenerate runs the one task and what it needs.** `asset.regenerate` requeues the
+  asset's task and runs the scheduler with `only: [task]`, so a plate is redrawn without
+  the rest of the plan starting alongside it; a shot's stale sheets still run first,
+  because they are in the task's closure. `pipeline.draw(slot)` is the same act addressed
+  by slot rather than by hash — it resolves the slot, requeues its task where one has run,
+  and runs that closure — and is what the Page editor's Generate button sends.
 - **Regenerate starts the run instead of reporting the refusal.** `asset.regenerate`
   refuses a stale asset because the asset's own task is an orphan. The re-key already
   produced a fresh task that plans the picture the author asked for, and a pipeline run
@@ -363,7 +369,11 @@ result. `art.redraw` opens the sketch it produces in the same way.
   location, then the outfit or variant, then the shot. Each box commits on Ctrl+S or when
   you leave it, calling `art.setNotes` with the tree's own `kind:key` target vocabulary.
   The same edit is therefore reachable from the palette, from CDP and (for the entity
-  rungs) from `vnauthor`.
+  rungs) from `vnauthor`. Beside each box sit the rung's seed field (`art.setSeed`) and
+  its image-model select (`art.setModel`, `modelAction` in `rules/assetview.ts`): the
+  select lists the catalog's image models with an `inherit (<project model>)` row, and an
+  empty choice clears the rung. The model is not in the task hash, so choosing one changes
+  nothing on screen; the tooltip says so, and Regenerate is what draws with it.
 - **`asset.info` shows what is derived today, not only what was recorded.** It re-derives
   the prompt for the same binding and compares it with the one stored in the bytes. If the
   two differ, `asset.info` shows the `stale` badge and a banner. An art-notes edit leaves

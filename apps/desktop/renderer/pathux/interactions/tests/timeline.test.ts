@@ -50,6 +50,7 @@ const data: SceneCoverage = {
   variants  : ['day'],
   decomposed: true,
   lettering : 'model',
+  imageModel: 'mock-image',
 };
 
 const cov = spansFor(LINES, SHOTS);

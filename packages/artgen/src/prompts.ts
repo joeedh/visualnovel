@@ -59,6 +59,17 @@ export function seedFor(params: ImageParams, ...rungs: (number | undefined)[]): 
 }
 
 /**
+ * `params` with the narrowest authored image model applied, over the same rungs as
+ * {@link seedFor}. Unlike the seed, the model is not part of the task hash, so authoring one
+ * changes nothing until the picture is next drawn; a rung that authored none returns `params`
+ * untouched.
+ */
+export function modelFor(params: ImageParams, ...rungs: (string | undefined)[]): ImageParams {
+  const authored = rungs.filter((m): m is string => m !== undefined && m !== '').at(-1);
+  return authored === undefined ? params : { ...params, modelId: authored };
+}
+
+/**
  * `params` with the shot's own aspect ratio applied, where it authored one, and otherwise the
  * project's `page_aspect` on a page shot. A frame that authored none returns `params` untouched,
  * so every existing task keeps the hash it had — the same guarantee {@link seedFor} gives.
@@ -179,7 +190,7 @@ export function portraitInputs(
     prompt     : buildPortraitPrompt(character, config),
     refs       : portraitRefs(character, config),
     // A portrait is the character rung and nothing narrower — it wears no outfit of its own.
-    params     : seedFor(params, character.seed),
+    params     : modelFor(seedFor(params, character.seed), character.imageModel),
   };
 }
 
@@ -275,7 +286,11 @@ export function locationInputs(
     variant,
     prompt: buildLocationPrompt(location, variant, config),
     refs  : locationRefs(location, variant, config),
-    params: seedFor(params, location.seed, location.variants.find((v) => v.id === variant)?.seed),
+    params: modelFor(
+      seedFor(params, location.seed, location.variants.find((v) => v.id === variant)?.seed),
+      location.imageModel,
+      location.variants.find((v) => v.id === variant)?.imageModel,
+    ),
   };
 }
 
@@ -394,7 +409,11 @@ export function modelSheetInputs(
     refs  : [portrait, ...modelSheetRefs(character, outfit, angle, config)],
     // The angle is not a rung, so one outfit seed covers all three sheets, as the outfit's art
     // notes do
-    params: seedFor(params, character.seed, character.outfits.find((o) => o.id === outfit)?.seed),
+    params: modelFor(
+      seedFor(params, character.seed, character.outfits.find((o) => o.id === outfit)?.seed),
+      character.imageModel,
+      character.outfits.find((o) => o.id === outfit)?.imageModel,
+    ),
   };
 }
 
@@ -597,7 +616,11 @@ export function shotInputs(
   sheet?: string,
 ): TaskInputs['shot_image'] {
   // A frame is its own rung: the cast it draws is carried in as references, not as a seed.
-  const own = aspectFor(seedFor(params, shot.seed), shot, config.image_params.page_aspect);
+  const own = aspectFor(
+    modelFor(seedFor(params, shot.seed), shot.imageModel),
+    shot,
+    config.image_params.page_aspect,
+  );
   return {
     shotId: shot.id,
     prompt: buildShotPrompt(shot, scene, model, config),

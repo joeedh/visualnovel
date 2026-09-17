@@ -11,12 +11,17 @@
  */
 import { CLAIMS, type ClaimTier, type EditorId, type OpenWhere } from '../../src/shared/editors.js';
 import type { DocNode } from '../../src/shared/ipc.js';
-import { nodeKey } from './selection.js';
+import { nodeKey, splitShot } from './selection.js';
 
 export interface RouteRequest {
   node: DocNode;
   /** The editors some pane is showing, popups included. */
   visible: readonly EditorId[];
+  /**
+   * `ui.shotId` as it stands, read only while a Page editor is visible: a shot's picture opens
+   * the Asset editor only when it is that shot's. Absent reads as no shot selected.
+   */
+  shotId?: string;
 }
 
 /**
@@ -54,6 +59,7 @@ interface Claimant {
  * the click came from.
  */
 export function routeFor(req: RouteRequest): Route {
+  if (heldByPage(req)) return { action: 'select' };
   const claimants: Claimant[] = [];
   for (const [order, editor] of CLAIMS.entries()) {
     const tier = editor.claims(req.node);
@@ -86,6 +92,27 @@ export function openOf(route: Route): { id: 'view.open'; props: Record<string, s
     id   : 'view.open',
     props: { editor: route.editor, where: route.where, subject: route.subject },
   };
+}
+
+/**
+ * The shot whose picture this row is, for an asset row a shot slot claims or the slot row
+ * itself; `undefined` for every other row.
+ */
+export function shotOfNode(node: DocNode): string | undefined {
+  const slot = node.kind === 'asset' ? node.slot : node.kind === 'slot' ? nodeKey(node) : undefined;
+  if (slot === undefined || !slot.startsWith('shot:')) return undefined;
+  return splitShot(slot.slice('shot:'.length)).shotId;
+}
+
+/**
+ * Whether a visible Page editor keeps the click from opening anything. Its pane is usually the
+ * biggest one, so another shot's picture would replace the page on screen; the click therefore
+ * only selects, and the Asset editor opens only on the page's own shot.
+ */
+function heldByPage(req: RouteRequest): boolean {
+  if (!req.visible.includes('page')) return false;
+  const shot = shotOfNode(req.node);
+  return shot !== undefined && shot !== (req.shotId ?? '');
 }
 
 /**

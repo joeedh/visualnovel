@@ -86,6 +86,7 @@ describe('the desktop registry', () => {
       'art.generate',
       'art.promote',
       'art.redraw',
+      'art.setModel',
       'art.setNotes',
       'art.setSeed',
       'asset.accept',
@@ -125,6 +126,7 @@ describe('the desktop registry', () => {
       'models.refresh',
       'notify.deleteAll',
       'pipeline.approveAndRun',
+      'pipeline.draw',
       'pipeline.run',
       'plugin.install',
       'plugin.prices',
@@ -210,6 +212,7 @@ describe('the desktop registry', () => {
    */
   it('opts only the document writers into undo, and nothing non-mutating', () => {
     expect(commands.filter((c) => c.undoable).map((c) => c.id)).toEqual([
+      'art.setModel',
       'art.setNotes',
       'art.setSeed',
       'doc.create',
@@ -346,6 +349,7 @@ describe('the desktop registry', () => {
       'art.generate',
       'art.promote',
       'art.redraw',
+      'art.setModel',
       'art.setNotes',
       'art.setSeed',
       'asset.accept',
@@ -385,6 +389,7 @@ describe('the desktop registry', () => {
       'models.refresh',
       'notify.deleteAll',
       'pipeline.approveAndRun',
+      'pipeline.draw',
       'pipeline.run',
       'pipeline.stop',
       'plugin.install',

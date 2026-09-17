@@ -1,6 +1,6 @@
 import { EDITOR_IDS, isTextPath } from '../../../src/shared/editors.js';
 import type { DocNode, DocNodeKind, EditorId } from '../../../src/shared/ipc.js';
-import { routeFor, type Route } from '../route.js';
+import { routeFor, shotOfNode, type Route } from '../route.js';
 
 const documents: EditorId[] = ['documents'];
 
@@ -176,6 +176,47 @@ describe('the subject that travels with the open', () => {
 
   test('is empty for an editor whose subject needs more than one string', () => {
     expect(routeFor({ node: NODES.shot, visible: documents })).toMatchObject({ subject: '' });
+  });
+});
+
+describe('a visible Page editor holds its pane', () => {
+  const frame = node('asset', { id: 'asset:f1', slot: 'shot:greet/greet__s2' });
+  const empty = node('slot', { id: 'slot:shot:greet/greet__s2' });
+  const page: EditorId[] = [...documents, 'page'];
+
+  test('names the shot behind a shot picture, and nothing behind any other row', () => {
+    expect(shotOfNode(frame)).toBe('greet__s2');
+    expect(shotOfNode(empty)).toBe('greet__s2');
+    expect(shotOfNode(NODES.asset)).toBeUndefined();
+    expect(shotOfNode(NODES.slot)).toBeUndefined();
+    expect(shotOfNode(NODES.shot)).toBeUndefined();
+  });
+
+  test("another shot's picture only selects", () => {
+    expect(routeFor({ node: frame, visible: page, shotId: 'greet__s1' })).toEqual({
+      action: 'select',
+    });
+    expect(routeFor({ node: frame, visible: page })).toEqual({ action: 'select' });
+    expect(routeFor({ node: empty, visible: page, shotId: 'greet__s1' })).toEqual({
+      action: 'select',
+    });
+  });
+
+  test("the page's own shot opens the asset editor as before", () => {
+    expect(routeFor({ node: frame, visible: page, shotId: 'greet__s2' })).toMatchObject({
+      action : 'open',
+      editor : 'asset',
+      subject: 'f1',
+    });
+  });
+
+  test('a picture no shot claims, and any row with the page closed, route as before', () => {
+    expect(opened(routeFor({ node: NODES.asset, visible: page, shotId: 'greet__s1' }))).toBe(
+      'asset',
+    );
+    expect(opened(routeFor({ node: frame, visible: documents, shotId: 'greet__s1' }))).toBe(
+      'asset',
+    );
   });
 });
 

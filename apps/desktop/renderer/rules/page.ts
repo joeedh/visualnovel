@@ -1,8 +1,9 @@
 /**
- * What the Page editor offers: the layout row, the panels on the page and the corners of the
- * selected one, the line rows, and the selected panel's fields. Every edit is `story.setPanels`
- * with the whole list the control would produce, judged here by the same `setPanels` rule main
- * runs, so a refused control says the rule's own sentence before anything is sent.
+ * What the Page editor offers: the layout row, the Generate button and the shot's model, the
+ * panels on the page and the corners of the selected one, the line rows, the shot's cast, and
+ * the selected panel's fields. A panel edit is `story.setPanels` with the whole list the control
+ * would produce, judged here by the same `setPanels` rule main runs, so a refused control says
+ * the rule's own sentence before anything is sent.
  */
 import { evenLayout, LAYOUT_TEMPLATES, type PanelShape } from '@vn/artgen/layout';
 import { letterLine, setPanels } from '@vn/scriptedit';
@@ -10,6 +11,7 @@ import type { PagePanel, PanelBox } from '@vn/types';
 import type { CoverageLine, CoverageShot } from '../../src/shared/ipc.js';
 import { refuse, type Offer } from './anchors.js';
 import { startDrag, view } from './effects.js';
+import { addCastAction, removeCastAction, type ShotCast } from './timeline/cast.js';
 
 /** What the Page editor reads when it draws. */
 export interface PageState {
@@ -22,6 +24,10 @@ export interface PageState {
   lines: readonly CoverageLine[];
   /** The index of the selected panel, or `null`. */
   selected: number | null;
+  /** Every character the project describes, which is who the shot could be given. */
+  characters?: readonly string[];
+  /** The project's `models.image`, which the shot's model picker inherits when it says nothing. */
+  imageModel?: string;
 }
 
 /** One entry of the layout row: a name and the outlines it lays the page out in. */
@@ -390,8 +396,108 @@ export function enterLetters(state: PageState, lineId: string): PagePanel[] | nu
 /** The header's one sentence about the render, or `''` when the page matched. */
 export function verdictOf(shot: CoverageShot | undefined): string {
   if (!shot) return '';
+  if (shot.failure) {
+    return shot.failure.status === 'needs_human'
+      ? 'Drawn, but the reviewers kept blocking it. Accept it as it stands, or change it and generate again.'
+      : `The pipeline failed on it${shot.failure.error ? `: ${shot.failure.error}` : ''}`;
+  }
   if (!shot.image) return 'Not drawn yet';
   return shot.layout ?? '';
+}
+
+/** The blocking defects the last review named, for the strip under a flagged render. */
+export const defectsOf = (shot: CoverageShot | undefined): readonly string[] =>
+  shot?.failure?.defects ?? [];
+
+/** The slot address `pipeline.draw` and `art.setModel` take for the shot on screen. */
+export const slotOf = (state: PageState): string => `shot:${state.sceneId}/${state.shotId}`;
+
+/**
+ * The Generate button: draw this shot, and nothing else, through `pipeline.draw`. The command
+ * confirms, so the click opens its form with the cost. Before a render the button reads Generate;
+ * after one, Regenerate, since the same command requeues a drawn slot first. A shot whose plate
+ * or sheets are not drawn is refused with the resolver's sentence, which is what the command's
+ * own check would say.
+ */
+export function generateAction(state: PageState): Offer {
+  const shot = shotOf(state);
+  const label = shot?.image ? 'Regenerate' : 'Generate';
+  const control = {
+    id: 'pipeline.draw',
+    label,
+    tooltip:
+      `${shot?.image ? 'Draw this shot again' : 'Draw this shot'}: its own task and whatever it ` +
+      'still needs upstream, nothing else in the project. Spends real image calls.',
+  };
+  if (!shot) return { ...refuse('No shot is on screen.'), ...control };
+  if (shot.undrawable) return { ...refuse(shot.undrawable), ...control };
+  return { ok: true, props: { slot: slotOf(state) }, ...control };
+}
+
+/**
+ * Accept a render the reviewers kept blocking, as it stands. Only offered on such a render: an
+ * accepted or undrawn page has nothing to accept. `asset.accept` is what the Asset editor's
+ * Approve runs, so the two agree.
+ */
+export function acceptAction(state: PageState): Offer {
+  const shot = shotOf(state);
+  const control = { id: 'asset.accept', label: 'Accept as is' };
+  if (!shot?.image || shot.failure?.status !== 'needs_human') {
+    return { ...refuse('Nothing here is waiting on a human.'), ...control, tooltip: '' };
+  }
+  return {
+    ok   : true,
+    props: { hash: shot.image.hash },
+    ...control,
+    tooltip:
+      'Keep this render despite the defects the reviewers named. It becomes the accepted frame ' +
+      'for this shot.',
+  };
+}
+
+/** The shot's image-model picker: `art.setModel` on the shot's own rung, the select supplying the id. */
+export function shotModelAction(state: PageState): Offer {
+  const shot = shotOf(state);
+  const inherits = state.imageModel ?? 'the project’s';
+  const control = {
+    id      : 'art.setModel',
+    label   : shot?.imageModel ?? `(${inherits})`,
+    tooltip:
+      'Which image model draws this shot, in place of the project’s. Pictures already drawn ' +
+      `stay; Generate draws with it. Inherit takes ${inherits}.`,
+    supplies: ['model'],
+  };
+  if (!shot) return { ...refuse('No shot is on screen.'), ...control };
+  return { ok: true, props: { target: slotOf(state) }, ...control };
+}
+
+/** The shot's cast as the coverage strip's cast rules read it, or `undefined` off a shot. */
+export function shotCastOf(state: PageState): ShotCast | undefined {
+  const shot = shotOf(state);
+  if (!shot) return undefined;
+  const framed = [...shot.subjects];
+  return {
+    scene: state.sceneId,
+    shot : shot.id,
+    framed,
+    spare   : (state.characters ?? []).filter((id) => !framed.includes(id)),
+    required: shot.castOptional !== true,
+    variant : shot.location,
+    variants: [],
+    ...(shot.imageModel === undefined ? {} : { imageModel: shot.imageModel }),
+    projectModel: state.imageModel ?? '',
+  };
+}
+
+/**
+ * The shot's cast row: one button per framed character taking them out, and the select that puts
+ * one in. Both are `story.setSubjects` with the whole list, the same controls Shot Coverage draws,
+ * so a page's cast is edited where its panels are.
+ */
+export function shotCastActions(state: PageState): Offer[] {
+  const cast = shotCastOf(state);
+  if (!cast) return [];
+  return [...cast.framed.map((id) => removeCastAction(cast, id)), addCastAction(cast)];
 }
 
 /** The header's summary: the layout name if any, the aspect, the panel count. */
@@ -415,6 +521,9 @@ export function controls(state: PageState): readonly Offer[] {
   const shot = shotOf(state);
   if (!shot) return [];
   const list: Offer[] = LAYOUTS.map((layout) => layoutAction(state, layout));
+  list.push(generateAction(state), shotModelAction(state));
+  if (shot.failure?.status === 'needs_human' && shot.image) list.push(acceptAction(state));
+  list.push(...shotCastActions(state));
   const panels = shot.panels ?? [];
   panels.forEach((_, i) => list.push(panelAction(i)));
   const selected = selectedPanel(state);

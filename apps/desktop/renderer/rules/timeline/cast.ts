@@ -23,6 +23,10 @@ export interface ShotCast {
   variant: string;
   /** The variant ids the scene's location offers, in authored order. */
   variants: string[];
+  /** The image model the shot's own rung names; absent means it inherits. */
+  imageModel?: string;
+  /** The project's `models.image`, which the shot inherits when its rung says nothing. */
+  projectModel: string;
 }
 
 /**
@@ -42,6 +46,8 @@ export function shotCast(data: SceneCoverage | null, selected: string | null): S
     required: shot.castOptional !== true,
     variant : shot.location,
     variants: [...data.variants],
+    ...(shot.imageModel === undefined ? {} : { imageModel: shot.imageModel }),
+    projectModel: data.imageModel,
   };
 }
 
@@ -118,6 +124,32 @@ export function variantAction(cast: ShotCast): Offer {
       'so the frame is drawn again.',
     supplies: ['variant'],
   };
+}
+
+/**
+ * The shot's image-model select: `art.setModel` on the shot's own rung, the select supplying the
+ * id. The model is not in the task hash, so the tooltip says the frame on screen stays until it
+ * is drawn again.
+ */
+export function shotModelAction(cast: ShotCast): Offer {
+  return {
+    ok      : true,
+    id      : 'art.setModel',
+    props   : { target: `shot:${cast.scene}/${cast.shot}` },
+    label   : 'drawn with',
+    tooltip:
+      'Which image model draws this shot, in place of the project’s. The frame already drawn ' +
+      `stays; the next render uses it. Inherit takes ${cast.projectModel}.`,
+    supplies: ['model'],
+  };
+}
+
+/** The invocation that writes the shot's image model; `''` clears it back to inheriting. */
+export function shotModelInvocation(
+  cast: ShotCast,
+  model: string,
+): { id: string; props: Record<string, string> } {
+  return { id: 'art.setModel', props: { target: `shot:${cast.scene}/${cast.shot}`, model } };
 }
 
 /**

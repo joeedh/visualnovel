@@ -437,14 +437,38 @@ export interface CoverageShot {
    */
   aspect: string;
   status: Shot['status'];
-  /** The accepted frame, for the thumbnail. Absent until a run produced one. */
+  /**
+   * The frame on file for this shot: the accepted one, or the last attempt of a render the
+   * reviewers kept blocking, so a flagged page is still seen with its defects beside it. Absent
+   * until a run produced anything.
+   */
   image?: AssetRef;
+  /** Why the pipeline stopped on this shot's current task, when it did. */
+  failure?: ShotFailure;
+  /**
+   * Why the shot cannot be drawn yet, in the slot resolver's words — a plate or a sheet it is
+   * built on has not been rendered. Absent when a draw would run.
+   */
+  undrawable?: string;
+  /** The image model this shot's own rung names; absent means it inherits. */
+  imageModel?: string;
   /**
    * Whether that frame still illustrates the lines it covers. Derived in main, because the
    * comparison is a sha256 over line text and the renderer has no crypto — and because the task
    * list and the inspector must give the same answer as this strip.
    */
   drift: Drift;
+}
+
+/** The pipeline's last word on a shot it could not finish. */
+export interface ShotFailure {
+  /** The task that stopped, so a surface can open it in the inspector or requeue it. */
+  task: string;
+  /** `failed` is a fault; `needs_human` means the frame was drawn and review kept blocking it. */
+  status: 'failed' | 'needs_human';
+  error?: string;
+  /** The blocking defects the last review named, one sentence each. */
+  defects: string[];
 }
 
 /**
@@ -500,6 +524,8 @@ export interface SceneCoverage {
    * take on a page re-keys it; the strip's check has to price that.
    */
   lettering: Lettering;
+  /** The project's `models.image`, which a shot's own model picker inherits when it says nothing. */
+  imageModel: string;
   /**
    * The storyboard's persisted shot-id high-water mark, when the file records one — so a surface
    * previewing `story.newShot` names the id the write would actually mint, not a derived guess.
@@ -632,6 +658,8 @@ export interface ArtRungInfo {
   notes?: string;
   /** The seed authored here; absent means the rung inherits, down to the project config. */
   seed?: number;
+  /** The image model authored here; absent means the rung inherits, down to `models.image`. */
+  imageModel?: string;
 }
 
 /** The pipeline gave up on the picture an asset fills, and what it recorded when it did. */
@@ -739,6 +767,8 @@ export interface AssetInfo {
    * placeholder in an empty seed box, so "inherits" says what it inherits.
    */
   configSeed?: number;
+  /** The project's `models.image`, which every rung's model picker inherits when it says nothing. */
+  projectModel?: string;
   /**
    * The composed prompt: the clauses, what the override does to them, and the string that would
    * be sent. Folded in here so the pane makes one round trip and there is one invalidation path.

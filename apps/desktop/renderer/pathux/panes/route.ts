@@ -14,6 +14,8 @@ export { SUBJECT_OF, type Route } from '../../rules/route.js';
 export interface RouteRequest {
   node: DocNode;
   panes: readonly Pane[];
+  /** `ui.shotId` as it stands; see the rule's `RouteRequest`. */
+  shotId?: string;
 }
 
 /** The editors some pane is showing. Floating popups count, as `paneShowing` reads them. */
@@ -23,5 +25,9 @@ export function visibleEditors(panes: readonly Pane[]): EditorId[] {
 
 /** Where a click on this node lands, given the mesh as it stands. */
 export function routeFor(req: RouteRequest): Route {
-  return routeVisible({ node: req.node, visible: visibleEditors(req.panes) });
+  return routeVisible({
+    node   : req.node,
+    visible: visibleEditors(req.panes),
+    ...(req.shotId === undefined ? {} : { shotId: req.shotId }),
+  });
 }

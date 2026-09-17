@@ -1,8 +1,10 @@
+import { imageModelChoices, modelCatalog } from '@vn/gengraph';
 import { exec, report } from '../../app/bridge.js';
 import {
   REQUEST_ANCHOR,
   backAction,
   badgesOf,
+  modelAction,
   notesAction,
   prereqAction,
   promoteBox,
@@ -291,6 +293,7 @@ export class AssetFraming {
     head.appendChild(el('span', 'as-rung-label', rung.label));
     head.appendChild(el('span', 'as-rung-target', rung.target));
     head.appendChild(this.seedField(rung));
+    head.appendChild(this.modelField(rung));
     box.appendChild(head);
 
     const text = document.createElement('textarea');
@@ -356,6 +359,41 @@ export class AssetFraming {
       if (this.editor.dirty.has(key)) void this.commitSeed(rung, field.value, field);
     });
     return field;
+  }
+
+  /**
+   * The image-model picker beside the seed box. Its rows are the catalog the Project pane's
+   * picker draws, with an inherit row first; a rung whose model is not in the catalog is still
+   * listed, so it is shown rather than silently reset.
+   */
+  private modelField(rung: ArtRungInfo): HTMLSelectElement {
+    const select = document.createElement('select');
+    select.className = 'as-rung-model';
+    const current = rung.imageModel ?? '';
+    const project = this.editor.info?.projectModel;
+    const rows = imageModelChoices(modelCatalog(), current, { inherit: true });
+    for (const row of rows) {
+      const item = option(
+        row.id,
+        row.id === '' ? `inherit${project ? ` (${project})` : ''}` : row.label,
+      );
+      item.title = row.tooltip;
+      select.appendChild(item);
+    }
+    select.value = current;
+    select.setAttribute('aria-label', `Image model for ${rung.label}`);
+    this.editor.drawing.record(select, modelAction(rung, project));
+    select.addEventListener('change', () => void this.commitModel(rung, select.value));
+    return select;
+  }
+
+  /** Commit one rung's image model. The inherit row clears it. */
+  private async commitModel(rung: ArtRungInfo, model: string): Promise<void> {
+    if (model === (rung.imageModel ?? '')) return;
+    const outcome = await exec('art.setModel', { target: rung.target, model });
+    report(outcome);
+    if (!outcome.ok) return;
+    void this.editor.load(this.editor.shown);
   }
 
   /** Commit one rung's seed. An empty box clears it, which is the rung inheriting again. */

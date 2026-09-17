@@ -229,13 +229,14 @@ describe('wardrobeControls', () => {
     inherits : sheet,
   });
   const cast: ShotCast = {
-    scene   : 'intro',
-    shot    : 'intro__s1',
-    framed  : ['aiko'],
-    spare   : ['ren'],
-    required: true,
-    variant : 'day',
-    variants: ['day'],
+    scene       : 'intro',
+    shot        : 'intro__s1',
+    framed      : ['aiko'],
+    spare       : ['ren'],
+    required    : true,
+    variant     : 'day',
+    variants    : ['day'],
+    projectModel: 'mock-image',
   };
 
   it('lists the strip in draw order, each key once', () => {
@@ -244,6 +245,7 @@ describe('wardrobeControls', () => {
       'cmd:story.setSceneOutfit#scene/aiko',
       'cmd:story.setSceneOutfit#scene/ren',
       'cmd:story.setVariant',
+      'cmd:art.setModel',
       'cmd:story.setOutfit#shot/aiko',
       'cmd:story.setSubjects#drop/aiko',
       'cmd:story.setSubjects#add',
@@ -270,6 +272,7 @@ describe('wardrobeControls', () => {
       'fx:pane.view#reload',
       'cmd:story.setSceneOutfit#scene/aiko',
       'cmd:story.setVariant',
+      'cmd:art.setModel',
       'cmd:story.setSubjects#add',
       'cmd:story.requireCast',
     ]);

@@ -15,6 +15,7 @@ const scene: SceneCoverage = {
   variants  : [],
   decomposed: true,
   lettering : 'model',
+  imageModel: 'mock-image',
 };
 
 function failed(over: Partial<AssetFailure> = {}): AssetFailure {

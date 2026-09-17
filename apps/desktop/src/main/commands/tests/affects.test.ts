@@ -484,9 +484,11 @@ const SKIPS: Record<string, string> = {
   'art.setNotes':
     'keys off an asset hash, so it needs the rendered fixture the prompt commands use',
   'art.setSeed'           : 'keys off an asset hash, the same way art.setNotes does',
+  'art.setModel'          : 'keys off an asset hash, the same way art.setNotes does',
   'asset.accept'          : 'accepts a take a run has to have produced and a slot has to want',
   'asset.adopt'           : 'points a slot at bytes already in the store',
   'asset.regenerate'      : 'requeues a planned task and then runs it for real',
+  'pipeline.draw'         : 'requeues one slot’s task and then runs it for real',
   'asset.replace'         : 'replaces a slot from a file outside the workspace',
   'asset.restore'         : 'restores a superseded take, which needs two of them',
   'asset.unapprove'       : 'takes approval back off an approved asset',

@@ -1,6 +1,6 @@
 /**
- * Art rungs: which rung an authored field is written at, and which rungs reach a given asset. Two
- * fields ride the same five rungs — art notes, and the image seed.
+ * Art rungs: which rung an authored field is written at, and which rungs reach a given asset.
+ * Three fields ride the same five rungs — art notes, the image seed, and the image model.
  *
  * A note is authored input, the one thing an author can say about how generated art should look,
  * and it goes into the prompt, so setting one re-keys the tasks it reaches. There are five rungs,
@@ -31,6 +31,12 @@ export interface ArtRung {
    * the same words. `seedFor` resolves the chain.
    */
   seed?: number;
+  /**
+   * The image model authored at this rung; absent means it inherits, down to the project's
+   * `models.image`. Not in the task hash, so it takes effect on the next render. `modelFor`
+   * resolves the chain.
+   */
+  imageModel?: string;
 }
 
 /** `art.setNotes`'s target string for a rung. The inverse of {@link parseArtTarget}. */
@@ -99,13 +105,14 @@ export function rungAt(target: ArtTarget, ctx: ArtNotesContext): ArtRung | undef
 function rung(
   target: string,
   label: string,
-  authored: { artNotes?: string; seed?: number },
+  authored: { artNotes?: string; seed?: number; imageModel?: string },
 ): ArtRung {
   return {
     target,
     label,
     ...(authored.artNotes === undefined ? {} : { notes: authored.artNotes }),
     ...(authored.seed === undefined ? {} : { seed: authored.seed }),
+    ...(authored.imageModel === undefined ? {} : { imageModel: authored.imageModel }),
   };
 }
 

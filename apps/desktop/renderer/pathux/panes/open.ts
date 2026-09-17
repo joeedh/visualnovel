@@ -14,10 +14,15 @@ import { panesOf } from './view.js';
 
 /**
  * Show whatever answers for `node`. Does nothing when no editor claims the node, because such a
- * click has already done its whole job by moving the selection.
+ * click has already done its whole job by moving the selection. `shotId` is the selection's, for
+ * the rule that keeps another shot's picture from covering a visible Page editor.
  */
-export function openNode(screen: VnScreen | undefined, node: DocNode): void {
-  const route = routeFor({ node, panes: screen ? panesOf(screen) : [] });
+export function openNode(screen: VnScreen | undefined, node: DocNode, shotId?: string): void {
+  const route = routeFor({
+    node,
+    panes: screen ? panesOf(screen) : [],
+    ...(shotId === undefined ? {} : { shotId }),
+  });
   if (route.action !== 'open') return;
   void exec('view.open', { editor: route.editor, where: route.where, subject: route.subject });
 }

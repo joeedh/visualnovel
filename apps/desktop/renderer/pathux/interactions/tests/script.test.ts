@@ -27,6 +27,7 @@ const scene: SceneCoverage = {
   variants  : ['day'],
   decomposed: false,
   lettering : 'model',
+  imageModel: 'mock-image',
 };
 
 describe('what a grab captures', () => {

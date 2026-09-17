@@ -1208,7 +1208,7 @@ describe('WorkspaceSession — project settings', () => {
     const preview = await session.previewImageModel('openai/gpt-image-2');
     expect(preview.ok).toBe(true);
     expect(preview.message).toMatch(
-      /^Set the image model to `openai\/gpt-image-2`\. It is in every image task's hash, so it re-keys \d+ image task\(s\)\.$/,
+      /^Set the image model to `openai\/gpt-image-2`\. Pictures already drawn stay; \d+ image task\(s\) still to draw, and anything regenerated, will use it\.$/,
     );
 
     const result = await session.setProjectImageModel('openai/gpt-image-2');
@@ -1324,6 +1324,18 @@ describe('WorkspaceSession — over a generated project', () => {
     await p.run(); // the gate is clear: model sheets + the remaining shots render
     expect((await session.status()).tasks.every((t) => t.status === 'done')).toBe(true);
   }, 30_000);
+
+  it('draws one slot: a drawn plate is requeued and named as the one task to run', async () => {
+    const slot = 'plate:rooftop/evening';
+    expect(await session.previewDraw(slot)).toMatchObject({ ok: true });
+    const queued = await session.drawSlot(slot);
+    expect(queued).toMatchObject({ ok: true, written: ['vngen/state/tasks.jsonl'] });
+    const task = (await session.status()).tasks.find((t) => t.hash === queued.task);
+    expect(task).toMatchObject({ kind: 'location_ref', status: 'pending' });
+    // Already pending, so a second draw has nothing to requeue and writes nothing
+    expect(await session.drawSlot(slot)).toMatchObject({ ok: true, written: [] });
+    expect(await session.previewDraw('nonsense')).toMatchObject({ ok: false });
+  });
 
   it('rejects an approval for a hash the store does not hold', async () => {
     const result = await session.approveCharacter('aiko', 'not-a-real-hash');
@@ -1493,6 +1505,29 @@ describe('WorkspaceSession — over a generated project', () => {
     // `null` is the only clear, because a seed of 0 is one an author chose
     expect(await session.setArtSeed('location:classroom/day', null)).toMatchObject({ ok: true });
     expect(await p.read('locations/classroom.md')).not.toContain('seed:');
+  });
+
+  it('writes an image model on a rung, reads it back on the asset, and clears it with an empty id', async () => {
+    expect(await session.previewArtModel('location:classroom/day', 'other-image')).toMatchObject({
+      ok: true,
+    });
+    expect(await session.setArtModel('location:classroom/day', 'other-image')).toMatchObject({
+      ok     : true,
+      written: ['locations/classroom.md'],
+    });
+    expect(await p.read('locations/classroom.md')).toContain('image_model: other-image');
+    const info = (await session.assetInfo(await plate()))!;
+    expect(info.rungs.find((r) => r.target === 'location:classroom/day')!.imageModel).toBe(
+      'other-image',
+    );
+    expect(info.projectModel).toBe('gemini-2.5-flash-image');
+
+    expect(await session.setArtModel('location:classroom/day', '')).toMatchObject({ ok: true });
+    expect(await p.read('locations/classroom.md')).not.toContain('image_model:');
+    expect(await session.setArtModel('character:nobody', 'x')).toMatchObject({
+      ok     : false,
+      written: [],
+    });
   });
 
   it('refuses a seed an image backend cannot take, and a rung that is not there', async () => {

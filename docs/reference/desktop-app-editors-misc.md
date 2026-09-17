@@ -212,11 +212,13 @@ clause in the Asset pane opens this editor `elsewhere` and scrolls to the field.
   OpenRouter listing, plus the file's current value when the list lacks it) and a tooltip
   per row saying which vendor draws it, and for an OpenRouter row its price, ratios and
   seed. Picking a row runs `project.setImageModel` at once, with the command's own
-  confirmation, which refuses an id whose vendor has no key and otherwise counts the image
-  tasks it re-keys, the way the art style does. `withImageModel` splices the `image:` line
-  inside the `models:` block, or inserts the block after `title:` when the file has none.
-  The control is recorded through one Offer that supplies `model`, since a `MenuTemplate`
-  row cannot carry an Offer of its own.
+  confirmation, which refuses an id whose vendor has no key. The model id is not in the
+  task hash, so nothing is re-keyed: pictures already drawn stay, and the confirmation
+  counts the image tasks still to draw, which — with anything regenerated — will use the
+  new model. `withImageModel` splices the `image:` line inside the `models:` block, or
+  inserts the block after `title:` when the file has none. The control is recorded through
+  one Offer that supplies `model`, since a `MenuTemplate` row cannot carry an Offer of its
+  own.
 - **Refresh models, beside the dropdown,** runs `models.refresh`, which fetches
   OpenRouter's image-model listing into `<user>/models.json`; its tooltip says the cached
   listing's date, or that there is none. Nothing refreshes on its own: the Gen Graph pane

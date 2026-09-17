@@ -325,13 +325,13 @@ export const assetRegenerate = define({
   id         : 'asset.regenerate',
   title      : 'Regenerate asset',
   description:
-    "Put this asset's task back to pending so the next run re-renders it. With `run` the " +
-    'pipeline is run for real straight afterwards — and it is run anyway when the requeue left ' +
-    'exactly one task plannable, because a one-task run is not worth a second trip. A fixed ' +
-    'image seed makes a plain re-roll deterministic — art notes are how the picture actually ' +
-    'changes.',
+    "Put this asset's task back to pending so the next run re-renders it. With `run` that task " +
+    'alone, and whatever upstream it still needs, is run for real straight afterwards — and it ' +
+    'is run anyway when the requeue left exactly one task plannable, because a one-task run is ' +
+    'not worth a second trip. A fixed image seed makes a plain re-roll deterministic — art notes, ' +
+    'or a different image model, are how the picture actually changes.',
   notes:
-    "Put the asset's task back to `pending`; with `run`, run the pipeline for real straight afterwards. A fixed image seed makes a plain re-roll deterministic, and the refusal text says so. A **concept** is refused by name — the planner never made one, so there is no task to requeue: `art.redraw` is what draws it again. An **upload** is refused for the same reason, pointing at `asset.upload` for a different image.",
+    "Put the asset's task back to `pending`; with `run`, run that task and its upstream needs for real straight afterwards, nothing else. A fixed image seed makes a plain re-roll deterministic, and the refusal text says so. A **concept** is refused by name — the planner never made one, so there is no task to requeue: `art.redraw` is what draws it again. An **upload** is refused for the same reason, pointing at `asset.upload` for a different image.",
   mutating   : true,
   affects: [
     'assets/objects',
@@ -358,7 +358,10 @@ export const assetRegenerate = define({
     const why = run ? 'asked for' : autoRunReason(await session.runPreconditions(false));
     if (!why) return { message: queued.message, data: queued, written: queued.written };
 
-    const result = await session.runPipeline(false);
+    const result = await session.runPipeline(
+      false,
+      queued.task === undefined ? undefined : [queued.task],
+    );
     const failed = result.failed ? `, ${result.failed} failed` : '';
     return {
       message: `${queued.message} ${result.ran} task(s) ran${failed}.`,

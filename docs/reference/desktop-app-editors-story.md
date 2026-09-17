@@ -567,18 +567,21 @@ between the page's panels by the rule in `@vn/scriptedit`'s `coverage.ts`.
   refusal comes back from that command. A `set in` select moves the shot to another
   variant of the scene's location (`story.setVariant`); a variant the location has since
   dropped is added to the select by name, so the editor never silently shows a value the
-  author never chose. A `×` on each subject row takes that character out, and an `add`
-  select puts another one in — both are `story.setSubjects`, which replaces the whole
-  list, so the editor sends the full list rather than a delta. A character that stays
-  keeps its outfit override, and removing a character drops that character's override with
-  it. A `must appear in the frame` checkbox is `story.requireCast`: when it is cleared,
-  the shot's cast still reaches the generator as reference sheets, but `shotSpec` hands
-  the reviewer an empty `characters`, so an absence is no longer a blocking defect and the
-  refine loop stops spending attempts on a frame it cannot satisfy. The checkbox is
-  disabled on a shot that frames nobody, and states that reason. All four controls read
-  the `shotCast` shape in `timeline/cast.ts`; the two writes are `setShotSubjects` and
-  `requireShotCast` in `@vn/scriptedit`'s `cast.ts`, placed beside the outfit and variant
-  rules for the same reason those rules are there.
+  author never chose. A `drawn with` select under it is `art.setModel` on the shot's own
+  rung, with an `inherit (<project model>)` row; the model is outside the task hash, so
+  the frame on screen stays until the shot is drawn again. A `×` on each subject row takes
+  that character out, and an `add` select puts another one in — both are
+  `story.setSubjects`, which replaces the whole list, so the editor sends the full list
+  rather than a delta. A character that stays keeps its outfit override, and removing a
+  character drops that character's override with it. A `must appear in the frame` checkbox
+  is `story.requireCast`: when it is cleared, the shot's cast still reaches the generator
+  as reference sheets, but `shotSpec` hands the reviewer an empty `characters`, so an
+  absence is no longer a blocking defect and the refine loop stops spending attempts on a
+  frame it cannot satisfy. The checkbox is disabled on a shot that frames nobody, and
+  states that reason. All four controls read the `shotCast` shape in `timeline/cast.ts`;
+  the two writes are `setShotSubjects` and `requireShotCast` in `@vn/scriptedit`'s
+  `cast.ts`, placed beside the outfit and variant rules for the same reason those rules
+  are there.
 
 ## Page
 
@@ -590,7 +593,7 @@ holding the shot's lines and the selected panel's fields. It is the manga plan's
 surface is `story.setPanels`, and every control is an `Offer` judged by the same
 `setPanels` rule in `@vn/scriptedit`'s `panels.ts` that the command runs, so a tooltip
 says what the write would do before it does it. The pure (side-effect-free) rules live in
-`renderer/rules/page.ts`; four situations in `rules/situations/page.ts` feed
+`renderer/rules/page.ts`; five situations in `rules/situations/page.ts` feed
 `ux-model.json`.
 
 - **A frame opens here too, with one way in.** The editor claims a shot whose `DocNode`
@@ -629,11 +632,30 @@ says what the write would do before it does it. The pure (side-effect-free) rule
   list), pose and expression for each subject in the panel, and art notes each commit on
   blur or change through `story.setPanels` with the whole panel list. Nothing on the
   surface is a delta.
+- **A flagged render is shown, with what was held against it.** `sceneCoverage` resolves
+  each shot's slot: when its current task is `failed` or `needs_human`, the shot's `image`
+  falls back to that task's last attempt and `CoverageShot.failure` carries the status,
+  the error and the blocking defects the reviewers named, so a page the reviewers kept
+  blocking is drawn here with its defects listed under the head rather than waiting on an
+  approval in the Asset editor. `Accept as is` (`asset.accept` on that hash) appears only
+  on a `needs_human` render. When the slot cannot be resolved at all — a plate or a sheet
+  it is built on is not drawn — `CoverageShot.undrawable` carries the resolver's sentence.
+- **Generate and the shot's model sit under the layouts.** Generate is `pipeline.draw` on
+  `shot:<scene>/<shot>`: it draws this shot and whatever it still needs upstream, and
+  nothing else, and reads Regenerate once a render exists. It is refused with the
+  `undrawable` sentence, which is what the command's own check would say. The model select
+  is `art.setModel` on the shot's rung, as in Shot Coverage.
+- **The shot's cast is edited here too.** A `Cast` section in the side column lists who
+  the shot frames, each with a `×`, and an add select over the project's other characters.
+  Both are `story.setSubjects` with the whole list, built from the same `ShotCast` shape
+  (`shotCastOf` in `rules/page.ts`) Shot Coverage's strip uses, so the two agree on every
+  refusal. A panel's own cast, further down, is chosen from this list.
 - **The render's one sentence sits at the right of the head.** `verdictOf` is "Not drawn
-  yet" with no image, the reviewer's `layout` sentence when it wrote one, and nothing
-  otherwise. The reviewer's measured boxes (`CoverageShot.panelBoxes`, via `boxesOf`) are
-  drawn dashed in signal beneath the authored outlines in sodium, so a panel that came out
-  in the wrong place is visible as two shapes that disagree.
+  yet" with no image, the failure's sentence on a flagged render, the reviewer's `layout`
+  sentence when it wrote one, and nothing otherwise. The reviewer's measured boxes
+  (`CoverageShot.panelBoxes`, via `boxesOf`) are drawn dashed in signal beneath the
+  authored outlines in sodium, so a panel that came out in the wrong place is visible as
+  two shapes that disagree.
 - **A write locks the surface the way the strip's does.** `rules/timeline/busy.ts` is
   reused: the notice row becomes a progress bar after `BUSY_DELAY_MS` and resolves into
   the outcome. `update()` returns early during a drag, because the panel under the pointer

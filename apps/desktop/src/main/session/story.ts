@@ -13,7 +13,7 @@ import {
 } from '@vn/store';
 import { exists, readText } from '@vn/util';
 import { fileCache } from '../workspace/filecache.js';
-import { aspectFor, imageParams, layoutDefect } from '@vn/artgen';
+import { aspectFor, imageParams, layoutDefect, resolveSlot, slotTaskHash } from '@vn/artgen';
 import { driftOf } from '@vn/pipeline';
 import {
   applyCoverage,
@@ -50,11 +50,12 @@ import {
   type ScenePlan,
   type SceneSource,
 } from '@vn/scriptedit/write';
-import type { PagePanel, Scene, Shot } from '@vn/types';
+import type { DefectReport, PagePanel, Scene, Shot } from '@vn/types';
 import type {
   BranchEditResult,
   SceneCoverage,
   SceneEditResult,
+  ShotFailure,
   StoryGraph,
 } from '../../shared/ipc.js';
 import { storyGraphOf } from '../doctree/storygraph.js';
@@ -389,6 +390,27 @@ export class StoryPart {
 
     const loaded = await readShots(project.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
     const exts = new Map(project.store.manifest().map((a) => [a.hash, a.ext]));
+    const shotsById = new Map<string, Shot[] | null>([[sceneId, loaded?.shots ?? []]]);
+    // The slot's current task, for the frame a blocked render left and the sentence saying why
+    const outcomeOf = (s: Shot): { image?: string; failure?: ShotFailure; undrawable?: string } => {
+      const decided = resolveSlot(
+        { kind: 'shot', sceneId, shotId: s.id },
+        { model: project.model, shots: shotsById, config: project.config, graph: project.graph },
+      );
+      if (!decided.ok) return { undrawable: decided.reason };
+      const task = project.graph.get(slotTaskHash(decided.plan));
+      if (!task || (task.status !== 'failed' && task.status !== 'needs_human')) return {};
+      const last = task.attempts[task.attempts.length - 1];
+      return {
+        ...(last?.output === undefined ? {} : { image: last.output }),
+        failure: {
+          task  : task.hash,
+          status: task.status,
+          ...(task.error === undefined ? {} : { error: task.error }),
+          defects: blockingDefects(last?.reviews),
+        },
+      };
+    };
     const wardrobes = wardrobesOf(project.model.characters);
     const params = imageParams(project.config);
     const pageAspect = project.config.image_params.page_aspect;
@@ -408,28 +430,35 @@ export class StoryPart {
         ...(l.speaker ? { speaker: l.speaker } : {}),
         text: l.text,
       })),
-      shots: (loaded?.shots ?? []).map((s) => ({
-        id      : s.id,
-        framing : s.framing,
-        subjects: s.subjects.map((sub) => sub.characterId),
-        location: s.location,
-        ...(s.castOptional ? { castOptional: true } : {}),
-        // Only the subjects that state one: the strip resolves the rest through `outfitFor`,
-        // and a map that pre-filled the inherited answer would erase the distinction.
-        outfits: Object.fromEntries(
-          s.subjects.filter((sub) => sub.outfit).map((sub) => [sub.characterId, sub.outfit!]),
-        ),
-        coversLines: s.coversLines,
-        ...(s.panels ? { panels: s.panels } : {}),
-        ...(s.panelBoxes ? { panelBoxes: s.panelBoxes } : {}),
-        ...layoutVerdict(s),
-        aspect: aspectFor(params, s, pageAspect).aspect ?? project.config.image_params.aspect,
-        status: s.status,
-        ...(s.image ? { image: { hash: s.image, ext: exts.get(s.image) ?? 'png' } } : {}),
-        // Against `scene` as just loaded, so an edit made anywhere — this app, the CLI, the
-        // agent, a hand-edit — shows up the next time the strip is read.
-        drift: driftOf(scene, s),
-      })),
+      shots: (loaded?.shots ?? []).map((s) => {
+        const outcome = outcomeOf(s);
+        const image = s.image ?? outcome.image;
+        return {
+          id      : s.id,
+          framing : s.framing,
+          subjects: s.subjects.map((sub) => sub.characterId),
+          location: s.location,
+          ...(s.castOptional ? { castOptional: true } : {}),
+          // Only the subjects that state one: the strip resolves the rest through `outfitFor`,
+          // and a map that pre-filled the inherited answer would erase the distinction.
+          outfits: Object.fromEntries(
+            s.subjects.filter((sub) => sub.outfit).map((sub) => [sub.characterId, sub.outfit!]),
+          ),
+          coversLines: s.coversLines,
+          ...(s.panels ? { panels: s.panels } : {}),
+          ...(s.panelBoxes ? { panelBoxes: s.panelBoxes } : {}),
+          ...layoutVerdict(s),
+          aspect: aspectFor(params, s, pageAspect).aspect ?? project.config.image_params.aspect,
+          status: s.status,
+          ...(image ? { image: { hash: image, ext: exts.get(image) ?? 'png' } } : {}),
+          ...(outcome.failure ? { failure: outcome.failure } : {}),
+          ...(outcome.undrawable ? { undrawable: outcome.undrawable } : {}),
+          ...(s.imageModel ? { imageModel: s.imageModel } : {}),
+          // Against `scene` as just loaded, so an edit made anywhere — this app, the CLI, the
+          // agent, a hand-edit — shows up the next time the strip is read.
+          drift: driftOf(scene, s),
+        };
+      }),
       // A character with no sheet has no wardrobe to offer, so it gets no row rather than a
       // control whose every option the command would refuse.
       cast: [...cast].flatMap((id) => {
@@ -444,6 +473,7 @@ export class StoryPart {
       variants  : (project.model.locations.get(scene.location)?.variants ?? []).map((v) => v.id),
       decomposed: loaded !== null,
       lettering : project.config.lettering,
+      imageModel: project.config.models.image,
       ...(loaded?.nextShot !== undefined ? { nextShot: loaded.nextShot } : {}),
     };
   }
@@ -997,4 +1027,15 @@ export class StoryPart {
   }
 
   /** Build the playable live from the current model + asset store (no file needed). */
+}
+
+/** The blocking defects a review round named, deduplicated, in the reviewers' own words. */
+function blockingDefects(reviews: unknown[] | undefined): string[] {
+  const out = new Set<string>();
+  for (const report of (reviews ?? []) as Partial<DefectReport>[]) {
+    for (const defect of report.defects ?? []) {
+      if (defect.severity === 'blocking') out.add(`${defect.category}: ${defect.description}`);
+    }
+  }
+  return [...out];
 }

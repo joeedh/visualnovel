@@ -72,6 +72,33 @@ export const artSetSeed = define({
   },
 });
 
+export const artSetModel = define({
+  id         : 'art.setModel',
+  title      : 'Set image model',
+  description:
+    'Set the image model on one rung — the same five `art.setNotes` writes — in place of the ' +
+    "project's `models.image`. The model is not part of a task's identity, so a picture already " +
+    'drawn stays until it is regenerated, and the next render of anything the rung reaches uses ' +
+    'this model. An empty model clears the rung, leaving it to inherit.',
+  mutating   : true,
+  affects    : ['characters', 'locations', 'wiki', 'vngen/work/shots'],
+  undoable   : true,
+  props: {
+    target: prop.string('the rung to write: kind:id[/outfit|variant|shotId]'),
+    model: prop.string('the image model id; empty clears it, leaving the rung to inherit', {
+      default: '',
+    }),
+  },
+  async check({ target, model }, ctx) {
+    return verdict(await ctx.host.session.previewArtModel(target, model));
+  },
+  async run({ target, model }, ctx) {
+    const result = await ctx.host.session.setArtModel(target, model);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
 /** Maps the prop's negative sentinel to the `null` the session uses for no seed at this rung. */
 function seedOrClear(seed: number): number | null {
   return seed < 0 ? null : seed;

@@ -1,10 +1,15 @@
 /** Commands for the generative pipeline: run to the next gate, stop a run, or read the state. */
-import { defineFor, prop } from '@vn/commands';
+import { defineFor, prop, type CheckResult } from '@vn/commands';
 import { BUSY_PASS, BUSY_RUN, stopsWhat } from '../../shared/ipc.js';
 import type { CommandHost } from './host.js';
 import type { Approvable } from '@vn/authoring';
 
 const define = defineFor<CommandHost>();
+
+/** A session preview as a `check` answer: the note when it would go ahead, the reason when not. */
+function verdict(result: { ok: boolean; message: string }): CheckResult {
+  return result.ok ? { ok: true, note: result.message } : { ok: false, reason: result.message };
+}
 
 export const pipelineStatus = define({
   id         : 'pipeline.status',
@@ -88,6 +93,52 @@ export const pipelineRun = define({
       message: `${what}${failed}${how}`,
       data   : result,
       ...(mock ? {} : { written: ['vngen/build/', 'vngen/state/tasks.jsonl'] }),
+    };
+  },
+});
+
+export const pipelineDraw = define({
+  id         : 'pipeline.draw',
+  title      : 'Draw one slot',
+  description:
+    'Draw one picture — a shot, a plate, a sheet or a portrait, by its slot address — and nothing ' +
+    'the rest of the project is waiting on. A slot already drawn is queued again first, so this ' +
+    'is also how a picture is redrawn with a changed model or art notes. The run covers the ' +
+    "slot's own task and whatever upstream it still needs, and stops there. Refused while the " +
+    'slot cannot be planned yet, with the sentence saying why.',
+  notes:
+    'Draw one slot, requeuing it first if it has been drawn: the run is the slot’s task and its upstream needs alone. The Page editor’s Generate button and Shot Coverage’s draw are this command.',
+  mutating   : true,
+  affects: [
+    'assets/objects',
+    'assets/manifest.json',
+    'vngen/build',
+    'vngen/state/tasks.jsonl',
+    'vngen/state/graphs',
+  ],
+  // Spends real image calls, like a regenerate, and the gate is on the command rather than the
+  // props
+  confirm    : true,
+  props: {
+    slot: prop.string(
+      'the slot address: shot:<scene>/<shot>, plate:<location>/<variant>, sheet:<character>/<outfit>/<angle>, portrait:<character>',
+    ),
+  },
+  async check({ slot }, ctx) {
+    const busy = ctx.host.session.busy();
+    if (busy) return { ok: false, reason: `${busy} is already in progress.` };
+    return verdict(await ctx.host.session.previewDraw(slot));
+  },
+  async run({ slot }, ctx) {
+    const { session } = ctx.host;
+    const queued = await session.drawSlot(slot);
+    if (!queued.ok || queued.task === undefined) throw new Error(queued.message);
+    const result = await session.runPipeline(false, [queued.task]);
+    const failed = result.failed ? `, ${result.failed} failed` : '';
+    return {
+      message: `${result.ran} task(s) ran${failed}.`,
+      data   : { queued, run: result },
+      written: [...queued.written, 'vngen/build/', 'vngen/state/tasks.jsonl'],
     };
   },
 });

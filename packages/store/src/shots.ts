@@ -143,6 +143,7 @@ export async function readShots(
     if (s.artNotes !== undefined) shot.artNotes = s.artNotes;
     if (s.seed !== undefined) shot.seed = s.seed;
     if (s.aspect !== undefined) shot.aspect = s.aspect;
+    if (s.imageModel !== undefined) shot.imageModel = s.imageModel;
     if (s.panels) {
       shot.panels = panelsOf(s, kept);
       const lettered = new Set(shot.panels.flatMap((p) => p.coversLines));
@@ -203,6 +204,7 @@ function serialize(sceneId: string, shots: readonly Shot[], marks: FileMarks): s
       ...(s.artNotes !== undefined ? { artNotes: s.artNotes } : {}),
       ...(s.seed !== undefined ? { seed: s.seed } : {}),
       ...(s.aspect !== undefined ? { aspect: s.aspect } : {}),
+      ...(s.imageModel !== undefined ? { imageModel: s.imageModel } : {}),
       ...(s.panels !== undefined ? { panels: s.panels.map(panelDoc) } : {}),
       ...(s.sheet !== undefined ? { sheet: s.sheet } : {}),
       // An override that says nothing is not written: it would change nothing about the prompt,

@@ -44,7 +44,8 @@ export function imageModelAction(opened: boolean, imageModel: string): Offer {
     label   : imageModel || 'model…',
     tooltip:
       'Which image model every image task, and every graph node whose model is empty, draws ' +
-      'with. Picking one re-keys every image task; a node that names a model overrides it.',
+      'with. Pictures already drawn stay; the next render uses it. A rung or a node that names ' +
+      'a model overrides it.',
     supplies: ['model'],
   };
   if (!opened) return { ...refuse('No project is open.'), ...control };

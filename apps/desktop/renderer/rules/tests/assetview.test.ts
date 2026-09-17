@@ -23,6 +23,7 @@ import {
   redrawGo,
   regenerateAction,
   replaceAction,
+  modelAction,
   seedAction,
   taskAction,
   watchSlot,
@@ -606,6 +607,30 @@ describe('notesAction', () => {
   });
 });
 
+describe('modelAction', () => {
+  const rung = { target: 'character:aiko', label: 'Aiko' };
+
+  it('shows the inherited model in brackets and names it as what inherit takes', () => {
+    expect(modelAction(rung, 'mock-image')).toEqual({
+      ok      : true,
+      id      : 'art.setModel',
+      props   : { target: 'character:aiko' },
+      label   : '(mock-image)',
+      tooltip:
+        "Draw Aiko with this image model instead of the project's. Pictures already drawn " +
+        'stay; Regenerate draws with it. Inherit takes mock-image.',
+      on      : 'character:aiko',
+      supplies: ['model'],
+    });
+  });
+
+  it('shows the rung’s own model when it has one', () => {
+    expect(modelAction({ ...rung, imageModel: 'other-image' }, 'mock-image').label).toBe(
+      'other-image',
+    );
+  });
+});
+
 describe('seedAction', () => {
   const rung = { target: 'character:aiko', label: 'Aiko' };
 
@@ -755,6 +780,7 @@ describe('controls', () => {
         ...(one?.rungs ?? []).flatMap((rung) => [
           notesAction(rung),
           seedAction(rung, one?.configSeed),
+          modelAction(rung, one?.projectModel),
         ]),
         ...(one?.prereqs ?? []).map(prereqAction),
       ];

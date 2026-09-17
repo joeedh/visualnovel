@@ -2,15 +2,21 @@ import { LAYOUT_TEMPLATES, evenLayout } from '@vn/artgen/layout';
 import { SITUATIONS } from '../situations/page.js';
 import {
   LAYOUTS,
+  acceptAction,
   castAction,
   controls,
+  defectsOf,
   enterLetters,
+  generateAction,
   inLayout,
   layoutAction,
   lineAction,
   pageLines,
   panelOfLine,
   relaid,
+  shotCastActions,
+  shotCastOf,
+  shotModelAction,
   summaryOf,
   verdictOf,
   withCorner,
@@ -129,6 +135,74 @@ describe('the page', () => {
     expect(summaryOf(laidOut('diagonal-split').shots[1])).toBe('diagonal-split · 3:4 · 2 panels');
     expect(summaryOf(state('frame').shots[0])).toBe('16:9 · single frame');
   });
+
+  it('says what the reviewers or the pipeline held against a render, and lists the defects', () => {
+    const page = state('flagged').shots[1]!;
+    expect(verdictOf(page)).toContain('reviewers kept blocking it');
+    expect(defectsOf(page)).toEqual(['Panel 2 shows ren, who is not in it.']);
+    const failed = {
+      ...page,
+      failure: { task: 't1', status: 'failed' as const, error: 'boom', defects: [] },
+    };
+    expect(verdictOf(failed)).toBe('The pipeline failed on it: boom');
+    expect(defectsOf(state('page').shots[1])).toEqual([]);
+  });
+});
+
+describe('the head’s actions', () => {
+  it('generates the shot on screen through pipeline.draw, and reads Regenerate once drawn', () => {
+    expect(generateAction(state('page'))).toMatchObject({
+      ok   : true,
+      id   : 'pipeline.draw',
+      props: { slot: 'shot:arrival/arrival__page1' },
+      label: 'Regenerate',
+    });
+    expect(generateAction(state('frame'))).toMatchObject({
+      ok     : false,
+      label  : 'Generate',
+      refusal: { reason: expect.stringContaining('has not been rendered') },
+    });
+    expect(generateAction(state('no-shot')).ok).toBe(false);
+  });
+
+  it('accepts only a render waiting on a human, by its hash', () => {
+    expect(acceptAction(state('flagged'))).toMatchObject({
+      ok   : true,
+      id   : 'asset.accept',
+      props: { hash: 'a1b2c3d4' },
+    });
+    expect(acceptAction(state('page')).ok).toBe(false);
+    expect(acceptAction(state('no-shot')).ok).toBe(false);
+  });
+
+  it('sets the shot’s own image model, the select supplying it', () => {
+    expect(shotModelAction(state('page'))).toMatchObject({
+      ok      : true,
+      id      : 'art.setModel',
+      props   : { target: 'shot:arrival/arrival__page1' },
+      supplies: ['model'],
+    });
+    expect(shotModelAction(state('page')).tooltip).toContain('mock-image');
+    expect(shotModelAction(state('no-shot')).ok).toBe(false);
+  });
+
+  it('reads the shot’s cast the way Shot Coverage does, and offers the same controls', () => {
+    expect(shotCastOf(state('page'))).toMatchObject({
+      scene       : 'arrival',
+      shot        : 'arrival__page1',
+      framed      : ['aiko', 'ren'],
+      spare       : ['sato'],
+      projectModel: 'mock-image',
+    });
+    const keys = shotCastActions(state('page')).map(keyOf);
+    expect(keys).toEqual([
+      'cmd:story.setSubjects#drop/aiko',
+      'cmd:story.setSubjects#drop/ren',
+      'cmd:story.setSubjects#add',
+    ]);
+    expect(shotCastOf(state('no-shot'))).toBeUndefined();
+    expect(shotCastActions(state('no-shot'))).toEqual([]);
+  });
 });
 
 describe('controls', () => {
@@ -139,6 +213,14 @@ describe('controls', () => {
     expect(page.some((k) => k.includes('/framing'))).toBe(false);
     expect(page.filter((k) => k.startsWith('fx:pane.view#panel/'))).toHaveLength(2);
     expect(page.filter((k) => k.startsWith('fx:drag.start#line/'))).toHaveLength(3);
+  });
+
+  it('draws Generate and the model on every shot, and Accept only on a flagged one', () => {
+    const page = controls(state('page')).map(keyOf);
+    expect(page).toContain('cmd:pipeline.draw');
+    expect(page).toContain('cmd:art.setModel');
+    expect(page).not.toContain('cmd:asset.accept');
+    expect(controls(state('flagged')).map(keyOf)).toContain('cmd:asset.accept');
   });
 
   it('draws the selected panel’s corners, its fields, and pose and expression for who is in it', () => {

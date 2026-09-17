@@ -50,7 +50,7 @@ import {
 import { readModelCatalog } from '@vn/gengraph/state';
 
 import { loadGraph, type TaskGraph } from '@vn/taskgraph';
-import { driftOf, type DecomposeAllResult, type LoadedGraph } from '@vn/pipeline';
+import { driftOf, repairAccepted, type DecomposeAllResult, type LoadedGraph } from '@vn/pipeline';
 import { suspensionMap, type PromptRung, type Suspension } from '@vn/artgen';
 import {
   chatBackendFor,
@@ -607,7 +607,7 @@ export async function loadProject(dir: string): Promise<LoadedProject> {
   const model = modelFromInputs(inputs, { title: config.title, start: config.start });
   const store = await AssetStore.open(paths);
   const graph = await loadGraph(paths);
-  return {
+  const project: LoadedProject = {
     dir,
     config,
     paths,
@@ -617,6 +617,10 @@ export async function loadProject(dir: string): Promise<LoadedProject> {
     sources: sourcesOf(inputs),
     inputs,
   };
+  // A slot holding two accepted takes resolves to nothing, so every surface reading this
+  // project would show it as unrendered; the manifest is put right as it is read
+  await repairAccepted({ model, store, graph, readShots: () => readAllShots(project) });
+  return project;
 }
 
 /** One loaded graph, keyed by the slug its document and its journal are both filed under. */
@@ -1654,8 +1658,20 @@ export class WorkspaceSession {
    */
   async regenerateAsset(
     hash: string,
-  ): Promise<{ ok: boolean; message: string; written: string[] }> {
+  ): Promise<{ ok: boolean; message: string; written: string[]; task?: string }> {
     return this.assetPart.regenerateAsset(hash);
+  }
+
+  /** What `pipeline.draw` would do, without doing it. */
+  async previewDraw(slot: string): Promise<{ ok: boolean; message: string }> {
+    return this.assetPart.previewDraw(slot);
+  }
+
+  /** Requeue one slot's task where it has run, and answer the task hash a targeted run takes. */
+  async drawSlot(
+    slot: string,
+  ): Promise<{ ok: boolean; message: string; written: string[]; task?: string }> {
+    return this.assetPart.drawSlot(slot);
   }
 
   async previewArtNotes(target: string, notes: string): Promise<{ ok: boolean; message: string }> {
@@ -1685,6 +1701,17 @@ export class WorkspaceSession {
     seed: number | null,
   ): Promise<{ ok: boolean; message: string; written: string[] }> {
     return this.assetPart.setArtSeed(target, seed);
+  }
+
+  async previewArtModel(target: string, model: string): Promise<{ ok: boolean; message: string }> {
+    return this.assetPart.previewArtModel(target, model);
+  }
+
+  async setArtModel(
+    target: string,
+    model: string,
+  ): Promise<{ ok: boolean; message: string; written: string[] }> {
+    return this.assetPart.setArtModel(target, model);
   }
 
   /**
@@ -2665,7 +2692,7 @@ export class WorkspaceSession {
     return this.gengraphPart.decomposeAllScenes();
   }
 
-  async runPipeline(mock: boolean): Promise<PipelineRunResult> {
-    return this.gengraphPart.runPipeline(mock);
+  async runPipeline(mock: boolean, only?: readonly string[]): Promise<PipelineRunResult> {
+    return this.gengraphPart.runPipeline(mock, only);
   }
 }

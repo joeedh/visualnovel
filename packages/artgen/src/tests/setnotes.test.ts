@@ -6,7 +6,14 @@
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
 import { readShots, writeShots } from '@vn/store';
 import type { Shot } from '@vn/types';
-import { artNotesOf, artSeedOf, setArtNotes, setArtSeed } from '../setnotes.js';
+import {
+  artModelOf,
+  artNotesOf,
+  artSeedOf,
+  setArtModel,
+  setArtNotes,
+  setArtSeed,
+} from '../setnotes.js';
 
 async function depsOf(p: TestProject) {
   const { config } = await p.reload();
@@ -235,6 +242,45 @@ describe('the seed half', () => {
       });
       await setArtSeed(deps, { target: 'shot:rooftop/s1', seed: null });
       expect((await readShots(p.paths, 'rooftop'))?.shots[0]?.seed).toBeUndefined();
+    } finally {
+      await p.cleanup();
+    }
+  });
+});
+
+describe('the image-model half', () => {
+  it('shares the rung refusals, and writes the model at each rung and clears it back', async () => {
+    const p = await fixture();
+    try {
+      const deps = await depsOf(p);
+      expect(await artModelOf(deps, { target: 'character:aiko/tuxedo', model: 'm' })).toMatchObject(
+        { code: 'NO_SUCH_RUNG' },
+      );
+
+      const plan = await setArtModel(deps, {
+        target: 'character:aiko/gala',
+        model : 'openai/gpt-5-image',
+      });
+      expect(plan.note).toMatch(/^Set Aiko — gala to draw with openai\/gpt-5-image\./);
+      expect((await p.reload()).model.characters.get('aiko')?.outfits[1]?.imageModel).toBe(
+        'openai/gpt-5-image',
+      );
+
+      await setArtModel(deps, { target: 'character:aiko', model: ' gemini-3-pro-image ' });
+      expect((await p.reload()).model.characters.get('aiko')?.imageModel).toBe(
+        'gemini-3-pro-image',
+      );
+      await setArtModel(deps, { target: 'character:aiko', model: '' });
+      expect((await p.reload()).model.characters.get('aiko')?.imageModel).toBeUndefined();
+
+      const shot = await setArtModel(deps, { target: 'shot:rooftop/s1', model: 'm' });
+      expect(shot.file).toBe(p.paths.shotsFile('rooftop'));
+      expect((await readShots(p.paths, 'rooftop'))?.shots[0]).toMatchObject({
+        camera    : 'slow push in',
+        imageModel: 'm',
+      });
+      await setArtModel(deps, { target: 'shot:rooftop/s1', model: '' });
+      expect((await readShots(p.paths, 'rooftop'))?.shots[0]?.imageModel).toBeUndefined();
     } finally {
       await p.cleanup();
     }

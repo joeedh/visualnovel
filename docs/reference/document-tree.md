@@ -162,6 +162,13 @@ Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
   hidden one, and an open Gen Graph pane would otherwise receive clicks on pictures
   instead of the Asset editor. [`gen-graphs.md`](gen-graphs.md#slots-and-outputs)
   describes what a graph is and how one binds a slot.
+- **A visible Page editor keeps another shot's picture from opening over it.** Its pane is
+  usually the biggest one, which is where `elsewhere` would put the Asset editor. So while
+  a Page editor is on screen, clicking a shot's picture (an `asset` row whose `slot` is
+  `shot:…`, or the `slot` row itself) only selects unless the shot is the one the page
+  shows (`ui.shotId`), in which case the Asset editor opens as before.
+  `RouteRequest.shotId` carries the selection into `routeFor` for this one rule;
+  `shotOfNode` reads the shot off the row.
 - **A node identifies a selection, not a click action.** Shipping the command invocation a
   click runs (the way an interaction target does) would be tidy, but selection is renderer
   state (`ui.sceneId`, `ui.shotId`, `ui.characterId`, `ui.docPath`, `ui.assetHash`) rather

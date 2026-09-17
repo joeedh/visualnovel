@@ -532,7 +532,11 @@ export class GengraphPart {
     });
   }
 
-  async runPipeline(mock: boolean): Promise<PipelineRunResult> {
+  /**
+   * Run the pipeline, or with `only` just those tasks and what they need — the scheduler's own
+   * `only`, which is what a regenerate and a slot's Generate button ask for.
+   */
+  async runPipeline(mock: boolean, only?: readonly string[]): Promise<PipelineRunResult> {
     // The whole method, loads included: `busy()` has to be true from the call, not from the
     // moment the scheduler starts, or a switch could land in the gap.
     const outer = this.session.cancel;
@@ -553,6 +557,7 @@ export class GengraphPart {
           dryRun   : mock,
           now      : () => new Date().toISOString(),
           signal   : cancel.signal,
+          ...(only === undefined ? {} : { only }),
           ...(graphs === undefined ? {} : { graphs }),
           onProgress: (p) => {
             this.session.progress = { ran: p.ran, pending: p.pending };

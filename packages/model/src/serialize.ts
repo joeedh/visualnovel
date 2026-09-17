@@ -49,7 +49,12 @@ export function wardrobeEntries(outfits: readonly Outfit[]): NonNullable<Charact
   return Object.fromEntries(
     outfits.map((o) => {
       const override = overrideData(o.promptOverride);
-      if (o.artNotes === undefined && o.seed === undefined && !override)
+      if (
+        o.artNotes === undefined &&
+        o.seed === undefined &&
+        o.imageModel === undefined &&
+        !override
+      )
         return [o.id, o.description];
       return [
         o.id,
@@ -57,6 +62,7 @@ export function wardrobeEntries(outfits: readonly Outfit[]): NonNullable<Charact
           description: o.description,
           ...(o.artNotes === undefined ? {} : { art_notes: o.artNotes }),
           ...(o.seed === undefined ? {} : { seed: o.seed }),
+          ...(o.imageModel === undefined ? {} : { image_model: o.imageModel }),
           ...(override ? { prompt_override: override } : {}),
         },
       ];
@@ -84,6 +90,7 @@ function wardrobeData(character: Character): Record<string, unknown> | undefined
     !outfits[0]?.description &&
     !outfits[0]?.artNotes &&
     outfits[0]?.seed === undefined &&
+    outfits[0]?.imageModel === undefined &&
     promptOverrideIsEmpty(outfits[0]?.promptOverride);
   if (outfits.length === 0 || synthesized) return undefined;
   return wardrobeEntries(outfits);
@@ -96,6 +103,7 @@ function variantData(variant: LocationVariant): NonNullable<LocationEdit['varian
     !variant.description &&
     variant.artNotes === undefined &&
     variant.seed === undefined &&
+    variant.imageModel === undefined &&
     !override;
   if (bare) return variant.id;
   return {
@@ -103,6 +111,7 @@ function variantData(variant: LocationVariant): NonNullable<LocationEdit['varian
     ...(variant.description ? { description: variant.description } : {}),
     ...(variant.artNotes === undefined ? {} : { art_notes: variant.artNotes }),
     ...(variant.seed === undefined ? {} : { seed: variant.seed }),
+    ...(variant.imageModel === undefined ? {} : { image_model: variant.imageModel }),
     ...(override ? { prompt_override: override } : {}),
   };
 }
@@ -120,6 +129,7 @@ export function characterToDoc(character: Character): FrontMatterDoc {
       palette          : character.palette,
       art_notes        : character.artNotes,
       seed             : character.seed,
+      image_model      : character.imageModel,
       prompt_override  : overrideData(character.promptOverride),
       approved_portrait: character.approvedPortrait,
     }),
@@ -131,14 +141,15 @@ export function characterToDoc(character: Character): FrontMatterDoc {
 export function locationToDoc(location: Location): FrontMatterDoc {
   return {
     data: compact({
-      id       : location.id,
-      name     : location.name,
-      mood     : location.mood,
-      lighting : location.lighting,
-      palette  : location.palette,
-      variants : location.variants.map(variantData),
-      art_notes: location.artNotes,
-      seed     : location.seed,
+      id         : location.id,
+      name       : location.name,
+      mood       : location.mood,
+      lighting   : location.lighting,
+      palette    : location.palette,
+      variants   : location.variants.map(variantData),
+      art_notes  : location.artNotes,
+      seed       : location.seed,
+      image_model: location.imageModel,
     }),
     body: location.description,
   };
@@ -319,6 +330,7 @@ export interface CharacterEdit {
         description?: string;
         art_notes?: string;
         seed?: number;
+        image_model?: string;
         prompt_override?: PromptOverrideFrontMatter;
       }
   >;
@@ -328,6 +340,8 @@ export interface CharacterEdit {
   artNotes?: string;
   /** Image seed for every prompt this character reaches; `null` clears it. */
   seed?: number | null;
+  /** Image model for every picture this character reaches; `''` clears it. */
+  imageModel?: string;
   /** The portrait's prompt override; an empty override removes the key. */
   promptOverride?: PromptOverride;
   approvedPortrait?: string;
@@ -373,6 +387,7 @@ export function applyCharacterEdit(
   if (edit.palette !== undefined) data['palette'] = edit.palette;
   if (edit.artNotes !== undefined) setOrClear(data, 'art_notes', edit.artNotes);
   if (edit.seed !== undefined) setSeed(data, edit.seed);
+  if (edit.imageModel !== undefined) setOrClear(data, 'image_model', edit.imageModel);
   if (edit.promptOverride !== undefined) {
     setOrClear(data, 'prompt_override', overrideData(edit.promptOverride));
   }
@@ -399,6 +414,7 @@ export interface LocationEdit {
         description?: string;
         art_notes?: string;
         seed?: number;
+        image_model?: string;
         prompt_override?: PromptOverrideFrontMatter;
       }
   )[];
@@ -406,6 +422,8 @@ export interface LocationEdit {
   artNotes?: string;
   /** Image seed for every plate of this location; `null` clears it. */
   seed?: number | null;
+  /** Image model for every plate of this location; `''` clears it. */
+  imageModel?: string;
 }
 
 /** Apply a partial edit to an existing `locations/<id>.md` doc, re-validating the result. */
@@ -421,6 +439,7 @@ export function applyLocationEdit(
   if (edit.variants !== undefined) data['variants'] = edit.variants;
   if (edit.artNotes !== undefined) setOrClear(data, 'art_notes', edit.artNotes);
   if (edit.seed !== undefined) setSeed(data, edit.seed);
+  if (edit.imageModel !== undefined) setOrClear(data, 'image_model', edit.imageModel);
   const body = edit.description !== undefined ? edit.description : doc.body;
   const next: FrontMatterDoc = { data, body };
   const res = locationFromDoc(next);

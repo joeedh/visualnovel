@@ -51,6 +51,59 @@
 .pg-head .pg-verdict.quiet {
   color: var(--mist-dim);
 }
+.pg-head .pg-verdict.flagged {
+  color: var(--vermilion);
+}
+/* The defects a flagged render was blocked for, one line each, under the verdict. */
+.pg-defects {
+  flex-basis: 100%;
+  margin: 0;
+  padding: 0 0 0 18px;
+  color: var(--vermilion);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Generate, the shot's model, and Accept on a flagged render. */
+.pg-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.pg-generate,
+.pg-accept {
+  padding: 3px 10px;
+  border: 1px solid var(--sodium);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--sodium);
+  font: inherit;
+  cursor: pointer;
+}
+.pg-generate:hover:not(:disabled),
+.pg-accept:hover:not(:disabled) {
+  background: rgba(244, 162, 76, 0.16);
+}
+.pg-generate:disabled,
+.pg-accept:disabled {
+  border-color: var(--ink-line);
+  color: var(--mist-dim);
+  cursor: default;
+}
+.pg-accept {
+  border-color: var(--jade);
+  color: var(--jade);
+}
+.pg-model,
+.pg-add-cast {
+  max-width: 180px;
+  font: inherit;
+  color: var(--paper);
+  background: var(--ink-raised);
+  border: 1px solid var(--ink-line);
+  border-radius: 3px;
+  padding: 3px 6px;
+}
 .pg-layouts {
   display: inline-flex;
   align-items: center;
@@ -382,6 +435,29 @@
 .pg-cast input {
   width: auto;
   margin: 0;
+}
+/* The shot's own cast: a chip per framed character, its × taking them out. */
+.pg-shot-cast .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px 3px 8px;
+  border: 1px solid var(--ink-line);
+  border-radius: 3px;
+}
+.pg-shot-cast .chip .drop {
+  padding: 0 5px;
+  border: 0;
+  background: transparent;
+  color: var(--mist);
+  font: inherit;
+  cursor: pointer;
+}
+.pg-shot-cast .chip .drop:hover {
+  color: var(--vermilion);
+}
+.pg-shot-cast .pg-add-cast {
+  margin-top: 8px;
 }
 .pg-subject {
   display: grid;

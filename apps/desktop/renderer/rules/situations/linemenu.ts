@@ -41,6 +41,7 @@ const scene: SceneCoverage = {
   variants  : ['day'],
   decomposed: true,
   lettering : 'model',
+  imageModel: 'mock-image',
 };
 
 export const SITUATIONS = situations<LineMenuState>(

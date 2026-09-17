@@ -627,7 +627,7 @@ export class DocumentsEditor extends VnEditor {
    * the tree it was clicked in.
    */
   private route(node: DocNode): void {
-    openNode(this.ctx?.screen as VnScreen | undefined, node);
+    openNode(this.ctx?.screen as VnScreen | undefined, node, this.ui.shotId);
   }
 
   private publish(next: Selection): void {

@@ -42,6 +42,7 @@ const data: SceneCoverage = {
   variants  : ['day'],
   decomposed: true,
   lettering : 'model',
+  imageModel: 'mock-image',
 };
 
 describe('the letter drag', () => {
