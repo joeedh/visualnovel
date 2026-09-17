@@ -1,4 +1,4 @@
-import { KeyMap, type Container } from 'pathux';
+import { KeyMap, type Check, type Container } from 'pathux';
 import { api } from '../../api.js';
 import type { Playable, PlayableScene } from '../../../src/shared/ipc.js';
 import type { Offer } from '../../rules/anchors.js';
@@ -11,6 +11,7 @@ import {
   backAction,
   choiceAction,
   continueAction,
+  dimAction,
   loadAction,
   resetAction,
   saveAction,
@@ -89,6 +90,8 @@ export class PlayEditor extends VnEditor {
   private revision = 0;
   /** The panel lit on the last draw, so the next draw of the same page can fade from it. */
   private lit: { hash: string; panel: NonNullable<Frame['panel']> } | undefined;
+  /** Whether the rest of a page is darkened around the lit panel. Persisted with the pane. */
+  dimPanels = false;
   /** Keeps the overlays on the picture's box as the pane resizes; one per drawn frame. */
   private fitOverlay: ResizeObserver | undefined;
   /** What {@link fitOverlay} refits: the dim and the bubble, each drawn over the picture. */
@@ -204,6 +207,7 @@ export class PlayEditor extends VnEditor {
       cur?.sceneId ?? '',
       cur?.frameIndex ?? -1,
       this.notice,
+      this.dimPanels,
     ].join('|');
   }
 
@@ -334,6 +338,14 @@ export class PlayEditor extends VnEditor {
       },
     );
 
+    // Recorded rather than acted: a tick's flip arrives through `on_change`, path.ux's own hook
+    const dim = anchors.record(this.bar.check(undefined, 'Dim panels') as Check, dimAction());
+    dim.checked = this.dimPanels;
+    dim.on_change = (next: unknown) => {
+      this.dimPanels = next === true;
+      this.rebuild();
+    };
+
     this.bar.flushUpdate();
   }
 
@@ -458,11 +470,11 @@ export class PlayEditor extends VnEditor {
    * Dims the page around the panel that letters the current line. The overlay is fitted to the
    * picture's own box rather than the stage, since the picture is letterboxed inside it, and is
    * refitted as the pane resizes. Moving between two panels of one page crossfades the two dims;
-   * under reduced motion the new dim is simply drawn.
+   * under reduced motion the new dim is simply drawn. Draws nothing while `dimPanels` is off.
    */
   private lightPanel(wrap: HTMLElement, img: HTMLImageElement, frame: Frame | undefined): void {
     const previous = this.lit;
-    const panel = frame?.panel;
+    const panel = this.dimPanels ? frame?.panel : undefined;
     this.lit = panel && frame?.bg ? { hash: frame.bg.hash, panel } : undefined;
     if (!panel) return;
 
@@ -696,4 +708,4 @@ export class PlayEditor extends VnEditor {
   }
 }
 
-registerEditor(PlayEditor, 'vn.PlayEditor');
+registerEditor(PlayEditor, 'vn.PlayEditor', ['dimPanels : bool']);

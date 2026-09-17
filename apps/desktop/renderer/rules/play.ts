@@ -1,7 +1,8 @@
 /**
  * What the Play pane offers. Every control here is a `pane.view` effect: the runner reads a
  * playable and moves through it, and nothing it does reaches a command. The stage and the choice
- * buttons step; Save, Load and Reset move the bookmark and the page.
+ * buttons step; Save, Load and Reset move the bookmark and the page; Dim panels changes how a
+ * page is drawn.
  */
 import { refuse, type Offer } from './anchors.js';
 import { view } from './effects.js';
@@ -68,6 +69,20 @@ export function resetAction(): Offer {
   };
 }
 
+/**
+ * The header's checkbox for darkening the rest of a page while one panel is read. Off by
+ * default: a page is drawn to be seen whole, and the dim is a reading aid an author opts into.
+ */
+export function dimAction(): Offer {
+  return {
+    ok: true,
+    ...view('mode'),
+    on     : 'dim',
+    label  : 'Dim panels',
+    tooltip: 'Darken the rest of the page while one panel is read, so the lit panel stands out',
+  };
+}
+
 /** One choice at the end of a branching scene. */
 export function choiceAction(choice: { label: string; goto: string }): Offer {
   return {
@@ -91,7 +106,7 @@ export function continueAction(): Offer {
 }
 
 /**
- * Every offer the Play pane draws from this module, in draw order: the stage, the bar's four,
+ * Every offer the Play pane draws from this module, in draw order: the stage, the bar's five,
  * then the end-of-scene panel's choices or its Continue.
  */
 export function controls(state: PlayState): readonly Offer[] {
@@ -102,6 +117,7 @@ export function controls(state: PlayState): readonly Offer[] {
     saveAction(),
     loadAction(),
     resetAction(),
+    dimAction(),
     ...(ended ? ended.choices.map(choiceAction) : []),
     ...(ended && ended.next && ended.choices.length === 0 ? [continueAction()] : []),
   ];

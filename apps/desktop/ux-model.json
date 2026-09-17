@@ -22337,6 +22337,32 @@
       "via"       : "control",
       "editor"    : "play",
       "module"    : "play",
+      "situation" : "start",
+      "key"       : "fx:pane.view#dim",
+      "widgetPath": "play/pane-view~ba858754",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Dim panels",
+        "tooltip": "Darken the rest of the page while one panel is read, so the lit panel stands out",
+        "on"     : "dim",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "play",
+      "module"    : "play",
       "situation" : "mid-story",
       "key"       : "fx:pane.view#forward",
       "widgetPath": "play/pane-view~35b451ff",
@@ -22469,6 +22495,32 @@
       "via"       : "control",
       "editor"    : "play",
       "module"    : "play",
+      "situation" : "mid-story",
+      "key"       : "fx:pane.view#dim",
+      "widgetPath": "play/pane-view~ba858754",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Dim panels",
+        "tooltip": "Darken the rest of the page while one panel is read, so the lit panel stands out",
+        "on"     : "dim",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "play",
+      "module"    : "play",
       "situation" : "choice",
       "key"       : "fx:pane.view#forward",
       "widgetPath": "play/pane-view~35b451ff",
@@ -22593,6 +22645,32 @@
           "id"   : "pane.view",
           "props": {
             "what": "page"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "play",
+      "module"    : "play",
+      "situation" : "choice",
+      "key"       : "fx:pane.view#dim",
+      "widgetPath": "play/pane-view~ba858754",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Dim panels",
+        "tooltip": "Darken the rest of the page while one panel is read, so the lit panel stands out",
+        "on"     : "dim",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
           }
         }
       ]
@@ -22777,6 +22855,32 @@
           "id"   : "pane.view",
           "props": {
             "what": "page"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "play",
+      "module"    : "play",
+      "situation" : "scene-end",
+      "key"       : "fx:pane.view#dim",
+      "widgetPath": "play/pane-view~ba858754",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Dim panels",
+        "tooltip": "Darken the rest of the page while one panel is read, so the lit panel stands out",
+        "on"     : "dim",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
           }
         }
       ]

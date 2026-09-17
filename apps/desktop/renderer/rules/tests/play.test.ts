@@ -45,6 +45,7 @@ describe('controls', () => {
       'fx:pane.view#save',
       'fx:pane.view#load',
       'fx:pane.view#reset',
+      'fx:pane.view#dim',
     ];
     expect(controls({ canBack: false }).map(keyOf)).toEqual(bar);
     const choices = [{ label: 'Go in', goto: 'cafe' }];

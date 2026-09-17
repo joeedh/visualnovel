@@ -106,10 +106,11 @@ Contracts. Each scene flattens into ordered beats plus its branch edges:
 - **Every `say` and `narrate` beat names its line.** `line` is the `SceneLine` id the beat
   was made from, which is how a runner finds the panel that letters it: the desktop
   runner's `framesOf` gives a frame `panel` when the current page has a panel whose
-  `lines` include the frame's `line`, and the stage dims the rest of the page around it. A
-  line no panel letters, and a beat with no `line`, show the page whole. Both fields are
-  optional in the schema so a playable written before them still parses, and the static
-  site renderer ignores them
+  `lines` include the frame's `line`, and the stage can dim the rest of the page around it
+  (off by default; the Play pane's **Dim panels** checkbox turns it on). A line no panel
+  letters, and a beat with no `line`, show the page whole. Both fields are optional in the
+  schema so a playable written before them still parses, and the static site renderer
+  ignores them
   ([`../plans/manga-style.md#stage-3--panel-stepping-and-the-panel-editor`](../plans/manga-style.md#stage-3--panel-stepping-and-the-panel-editor)).
 - **A panel's `bubbles` say where the runner reads its lines.** Under `lettering: runner`
   the page is drawn wordless and the author places a bubble per line in the Page editor
