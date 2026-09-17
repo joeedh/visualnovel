@@ -513,6 +513,25 @@ These implement the system design in
     - See [`gen-graphs.md`](gen-graphs.md#groups) for the reference and
       [`../plans/archive/group-nodes-in-the-gen-graph-editor.md`](../plans/archive/group-nodes-in-the-gen-graph-editor.md)
       for the plan.
+- **A staging sheet is in every member's identity, and is rerolled by its seed, never by
+  force.**
+    - A shot in a sheet group (`Shot.sheet`) carries
+      `params.extra.sheet = sha256(sheet prompt, sheet ref hashes in order, group seed)`
+      (`sheetKey` over `sheetSeeds`, in `@vn/artgen`), so anything the sheet is drawn from
+      — the members and their order, each member's framing, cast and camera, the plate,
+      the group's notes and seed — re-keys every member's task at once, and nothing else
+      does. A shot outside a group carries no `extra`, so no pre-existing hash moved when
+      the field arrived.
+    - The seeds are derived from the project and the manifest, never from a task graph:
+      the planner, the scheduled runner and `gengraph.run` call the same `sheetSeeds`, so
+      the key the planner hashed is the sheet the runner seeds.
+    - `gengraph.run` refuses `force` on a graph where a node feeds more than one output
+      (`sharedAncestors`). The sheet feeds every member's crop and a crop spends nothing,
+      so a forced run to one output would redraw the sheet for it alone while the other
+      members' frames stayed cut from the old one, with nothing to re-key them. The reroll
+      path is `story.setSheetGroup` changing the seed, which re-keys every member.
+    - Reference: [`gen-graphs.md`](gen-graphs.md#slots-and-outputs). Plan:
+      [`../plans/manga-style.md`](../plans/manga-style.md) (Decisions 14 to 17).
 - **Renaming a node type's socket or prop requires a migration in the same commit.**
     - path.ux reconciles a loaded node against its definition by key. A file written
       before a rename loads with the old key kept as an orphaned socket, the link into

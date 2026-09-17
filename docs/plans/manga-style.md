@@ -1047,3 +1047,58 @@ from this plan or decided something it left open.
   desktop doc had been split by concern since the plan was written; the Page section sits
   with the other story editors, and `command-system.md` and `guided-tours.md` carry the
   ninth interaction and the `on` family rule.
+
+### Stage 4
+
+Shipped on 2026-09-17 in three commits: the sheet in a member's identity; the sheet nodes,
+the pixel service and the scheduled runner's seeding; then the scaffold, the seeded
+interactive run and the force refusal. The live check is still owed (below). Where the
+build departed from the plan or decided something it left open:
+
+- **`sheetSeeds` reads the manifest, not `upstreamByShot`.** Decision 17 gave the helper
+  the planner's resolved upstream. It takes the manifest instead, resolving the plate with
+  `resolveBinding` and each cast member's `approvedPortrait`, because the planner, the
+  scheduled runner and `gengraph.run` all hold a manifest and only the planner holds a
+  task graph; the three now agree by construction. The planner is handed
+  `store.manifest()` by the scheduler for it. An outfit sheet is not among a sheet's
+  references: the sheet is about staging, and the cell chain's task refs carry the outfit.
+- **The cell sentence lives in the `sheet-cell` definition, with the index inlined.** The
+  plan's template took the cell number through `{varA}`; the scaffold overrides the
+  template text per instance ("This is cell _i_ of _n_ on the attached staging sheet…")
+  and keeps `{varB}` for the derived prompt, because an instance overrides a prop, not an
+  unconnected input's default. The derived prompt and task refs are read inside the group
+  rather than through boundary inputs, since both are seeded per run for the output the
+  run targets; the group's one input is the sheet.
+- **The reviewer sees the cell and the sheet as bytes.** `VisionReviewer.review` takes a
+  `ReviewRef` that is an asset or `{bytes, ext}`; the runner reads the blob refs the image
+  node recorded (`GraphDraw.refs`, new in the journal record) and appends a sentence to
+  `spec.description` naming the cell and the `staging` category. The plan said "auxiliary
+  references"; nothing in the manifest addresses a blob, so bytes it is.
+- **The image nodes record what they were shown.** `refs` on a `GenImage`/`GenEditImage`
+  record is what lets a host find the cell and the sheet without re-running the graph.
+- **`gengraph.run` seeds every host-seeded node, not only the sheet's.** Before this stage
+  the interactive run seeded nothing, although the docs said otherwise; now it derives the
+  prompt through the planner's `*Inputs` builders and the references from the manifest. An
+  interactive run therefore resumes what a scheduled run drew and vice versa, and a graph
+  run interactively before this stage re-runs its paid nodes once, because its run keys
+  held empty seeds.
+- **`story.setSheet` and `story.setSheetGroup` are the author's reconfiguration.**
+  Decision 13 said authors "can reconfigure" groups without naming a write path; commands
+  are the only write path to a shots file, and the force refusal names the group seed as
+  the reroll, so both exist, through `@vn/scriptedit`'s `sheets.ts` (a full group is
+  refused at `MAX_SHEET_CELLS`, now in `@vn/types`; the last member leaving takes the
+  group's settings with it). Both are palette-only until a sheet surface exists.
+- **Decision 20's previous-sheet chaining is not built.** `GenSheetRefs` does not read the
+  previous group's sheet from the journal; a sequence past eight shots is two independent
+  groups. It waits on the live check, which decides whether sheets are proposed by default
+  at all.
+- **jimp decodes by magic number, not by its own sniffing.** `Jimp.read` loads `file-type`
+  through a dynamic import, which a CommonJS VM without ESM support (jest) refuses; the
+  pixel service reads the PNG or JPEG magic and calls the codec directly, and refuses any
+  other format by name.
+- **The scaffold is offered from a shot row.** `DocNode.sheet` carries the group; the
+  shot's menu offers _Scaffold a sheet graph for group g_. No sheet appears in Shot
+  Coverage yet; that is a surface for after the live check.
+- **The live check has not run.** It spends money on two models and is the decision input
+  for the decomposer's default; it is the next step, and its results go to
+  [`../research/manga-live-tests.md`](../research/manga-live-tests.md).

@@ -227,9 +227,15 @@ path.ux's coercion.
   repository composites two pictures.
 - The Derived-prompt node reproduces byte for byte what the fixed runner composes for a
   slot, and the first bullet of this page rests on that reproduction. The scheduled runner
-  seeds the node from the task. In `gengraph.run`, the session computes it from the bound
-  slot through the existing `build*Chunks` derivation, because the derivation needs the
-  project model, which `GenServices` deliberately does not carry.
+  seeds the node from the task. In `gengraph.run`, the session computes the seeds for the
+  slot the target output binds (`apps/desktop/src/main/session/graphseeds.ts`): the prompt
+  through the same `*Inputs` builders the planner hashes, the references as the manifest
+  resolves them now (`resolveBinding` for the plate and a non-default outfit's front
+  sheet, the approved portrait for each subject), and a sheet member's sheet prompt and
+  refs through `sheetSeeds`. The derivation needs the project model, which `GenServices`
+  deliberately does not carry. A reference the manifest cannot resolve yet is absent
+  rather than an error, so an interactive run before the plate exists draws without it and
+  its run key differs from the scheduled run's.
 - `defaultSlotGraph(slot)` builds the graph an author gets when they ask for one rather
   than wiring it. It holds Derived prompt and Task refs feeding Generate image, and the
   picture from Generate image fills the slot. Every host builds the same four nodes, so a
@@ -373,6 +379,25 @@ implementation. The testkit passes a mock.
 - `gengraph.createForSlot` starts a graph that draws one slot, wired the way the pipeline
   draws it, and refuses a slot another graph already draws. The document tree's _Create a
   graph for this slot_ runs this command.
+- `gengraph.scaffoldSheet(scene, sheet)` starts the graph that draws one staging-sheet
+  group ([`manga-style.md`](../plans/manga-style.md), Decision 16): Sheet prompt and Sheet
+  refs feed one Generate image at the layout's aspect, and per member one instance of the
+  `sheet-cell` group feeds an output bound to the member's `shot:` slot, the first output
+  active. `sheetGraph` and `sheetCellDef` in `@vn/gengraph` build both, so every host
+  scaffolds the same graph. The definition is written to `lib/sheet-cell.json` on the
+  project's first scaffold and instanced from the file after that, so an author's edit to
+  the cell chain reaches every later scaffold. Inside it: Crop → Reference list (`list`
+  the task refs, `a` the cell, `b` the sheet) → Text ("This is cell _i_ of _n_ on the
+  attached staging sheet; match its staging and camera. {varB}", `varB` the derived
+  prompt) → Generate image → the group's `image` output; the derived prompt and task refs
+  are read inside the group because they are seeded per run for the output the run
+  targets. Each instance overrides the crop's `rect`, the text's `template` and the
+  image's `aspect` (`aspectFor` for the member); both image nodes leave `model` empty, so
+  the group follows the project's image model. The command refuses a scene with no
+  storyboard, a group no shot names, and a member slot another graph draws; a shot row in
+  a group offers it from its menu. The seed a sheet is drawn with is the group's, carried
+  through the seeded inputs rather than a `seed` prop, and `story.setSheetGroup` is how it
+  changes.
 
 ## Running a graph
 
@@ -423,11 +448,20 @@ implementation. The testkit passes a mock.
   `p.run({ graphs })` binds graphs for one run
   ([`../guides/testkit.md`](../guides/testkit.md)).
 - **An interactive run**, `gengraph.run`, goes through the same executor and journal, and
-  targets the active output or a named one. The confirmation quotes the estimate. It
-  writes journal records and blobs but never an asset, because a picture enters the store
-  only through the bound or scheduled path, so `adoptSlot` remains the one `done` record
+  targets the active output or a named one, seeded for the slot that output binds (see the
+  Derived-prompt bullet under node types). The confirmation quotes the estimate. It writes
+  journal records and blobs but never an asset, because a picture enters the store only
+  through the bound or scheduled path, so `adoptSlot` remains the one `done` record
   produced outside the scheduler. The agent's `run_asset_graph` performs the same run
   behind the same confirmation. A failed run's message names the node by key.
+- **`force` is refused where a node feeds more than one output** (`sharedAncestors`, in
+  the executor; the command's `check` declares the refusal). On a staging-sheet graph the
+  sheet feeds every member's crop, and the crops spend nothing, so a forced run to one
+  output would redraw the sheet for that output alone and leave the other outputs' frames
+  cut from a sheet no longer in the journal, with nothing to re-key them. Such a graph is
+  rerolled by changing the group's seed (`story.setSheetGroup`), which re-keys every
+  member's task at once. `PipelineControl.regenerate` on a member slot is unaffected: it
+  re-runs the member's task, which resumes the sheet from the journal.
 
 ## Cost
 
@@ -496,7 +530,7 @@ message that a refused run would report.
 
 | Group       | Commands                                                                                  |
 | ----------- | ----------------------------------------------------------------------------------------- |
-| Documents   | `list`, `create`, `createForSlot`, `delete`                                               |
+| Documents   | `list`, `create`, `createForSlot`, `scaffoldSheet`, `delete`                              |
 | Structure   | `addNode`, `duplicateNode`, `removeNode`, `link`, `unlink`, `moveNodes`                   |
 | Values      | `setProp`, `setActiveOutput`                                                              |
 | Whole graph | `apply`                                                                                   |
