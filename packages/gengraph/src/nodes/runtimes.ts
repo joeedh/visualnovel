@@ -1,6 +1,6 @@
 /**
  * What each built-in node does when it runs. A runtime reaches the outside world only
- * through the {@link GenServices} it is handed, so the same twelve types run against real
+ * through the {@link GenServices} it is handed, so the same fifteen types run against real
  * providers in the app and against mocks in a test.
  */
 import type { ImageParams, ImageResult } from '@vn/types';
@@ -8,8 +8,9 @@ import type { NodeTypeConstructor } from 'pathux-graph';
 
 import { registerGenRuntime } from '../registry.js';
 import type { GenInputs, GenNodeRun, GenProps } from '../registry.js';
-import type { GenImageInput, GenImageService, GenServices } from '../services.js';
+import type { GenImageInput, GenImageService, GenServices, PixelRect } from '../services.js';
 import {
+  GenCrop,
   GenDerivedPrompt,
   GenEditImage,
   GenImage,
@@ -18,6 +19,8 @@ import {
   GenRefList,
   GenRefinePrompt,
   GenRewrite,
+  GenSheetPrompt,
+  GenSheetRefs,
   GenSlotRef,
   GenSwitch,
   GenTaskRefs,
@@ -133,25 +136,43 @@ function seededRefs(raw: string): GenImageRef[] {
   });
 }
 
+/** A crop rectangle as the prop spells it, refused rather than clamped when it is not one. */
+export function rectOf(value: unknown): PixelRect {
+  const parts = text(value)
+    .split(',')
+    .map((p) => Number(p.trim()));
+  const [x, y, w, h] = parts;
+  if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) {
+    throw new Error(`the rectangle '${text(value)}' is not four numbers x,y,w,h`);
+  }
+  if (x! < 0 || y! < 0 || w! <= 0 || h! <= 0 || x! + w! > 1 + 1e-9 || y! + h! > 1 + 1e-9) {
+    throw new Error(`the rectangle '${text(value)}' does not lie within the picture`);
+  }
+  return { x: x!, y: y!, w: w!, h: h! };
+}
+
 function bind(cls: NodeTypeConstructor, run: GenNodeRun): void {
   registerGenRuntime(cls.graphDef().typeName, run);
 }
 
 /**
- * Turns the model's picture into a blob every node below it can read. The model id and the
- * prompt ride along in the journal record rather than on a socket, because a host stamping
- * the picture's provenance needs to know what drew it and what it was asked for.
+ * Turns the model's picture into a blob every node below it can read. The model id, the prompt
+ * and the pictures the model was shown ride along in the journal record rather than on a
+ * socket, because a host stamping the picture's provenance needs to know what drew it, what it
+ * was asked for, and what it was drawn from.
  */
 async function storeImage(
   services: GenServices,
   result: ImageResult,
   prompt: string,
-): Promise<{ image: GenImageRef; modelId: string; prompt: string }> {
+  refs: readonly GenImageRef[],
+): Promise<{ image: GenImageRef; modelId: string; prompt: string; refs: GenImageRef[] }> {
   const ref = await services.blobs.write(result.bytes, result.ext);
   return {
     image  : { store: 'blob', hash: ref.hash, ext: ref.ext },
     modelId: result.modelId,
     prompt,
+    refs: [...refs],
   };
 }
 
@@ -173,6 +194,18 @@ export function registerGenRuntimes(): void {
   bind(GenDerivedPrompt, async (inputs) => ({ prompt: text(inputs.prompt) }));
 
   bind(GenTaskRefs, async (inputs) => ({ refs: seededRefs(text(inputs.assets)) }));
+
+  bind(GenSheetPrompt, async (inputs) => ({ prompt: text(inputs.prompt) }));
+
+  bind(GenSheetRefs, async (inputs) => ({ refs: seededRefs(text(inputs.assets)) }));
+
+  bind(GenCrop, async (inputs, props, services) => {
+    const source = requireImage(inputs, 'image', 'this crop node');
+    const picture = await readImageBytes(services, source);
+    const cut = await services.pixels.crop(picture.bytes, picture.ext, rectOf(props.rect));
+    const ref = await services.blobs.write(cut.bytes, cut.ext);
+    return { image: { store: 'blob', hash: ref.hash, ext: ref.ext } };
+  });
 
   bind(GenSlotRef, async (_inputs, props, services) => {
     const key = text(props.slot).trim();
@@ -215,7 +248,7 @@ export function registerGenRuntimes(): void {
       await readRefs(services, inputs.refs),
       imageParamsOf(props, services.image),
     );
-    return storeImage(services, result, prompt);
+    return storeImage(services, result, prompt, refsOf(inputs.refs));
   });
 
   bind(GenEditImage, async (inputs, props, services) => {
@@ -227,7 +260,7 @@ export function registerGenRuntimes(): void {
       await readRefs(services, inputs.refs),
       imageParamsOf(props, services.image),
     );
-    return storeImage(services, result, prompt);
+    return storeImage(services, result, prompt, [base, ...refsOf(inputs.refs)]);
   });
 
   bind(GenRefList, async (inputs) => {

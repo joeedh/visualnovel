@@ -11,6 +11,7 @@ import type {
   GenFetchResult,
   GenImageInput,
   GenServices,
+  PixelRect,
 } from '../../../index.js';
 
 export interface MockImageCall {
@@ -32,6 +33,11 @@ export interface MockFetchCall {
   init: GenFetchInit;
 }
 
+export interface MockCropCall {
+  ext: string;
+  rect: PixelRect;
+}
+
 /** What a scripted request answers with. An absent status counts as 200. */
 export interface MockFetchReply {
   status?: number;
@@ -42,6 +48,7 @@ export interface MockServices extends GenServices {
   images: MockImageCall[];
   texts: MockTextCall[];
   fetches: MockFetchCall[];
+  crops: MockCropCall[];
   blobs: GenServices['blobs'] & { stored: Map<string, Uint8Array> };
   /** Bytes keyed by `<hash>.<ext>`, the way the asset store addresses them. */
   assetBytes: Map<string, Uint8Array>;
@@ -86,6 +93,7 @@ export function mockServices(options: MockOptions = {}): MockServices {
     images : [],
     texts  : [],
     fetches: [],
+    crops  : [],
     assetBytes,
     slotAssets,
     reply: options.reply ?? 'a rewritten line',
@@ -139,6 +147,19 @@ export function mockServices(options: MockOptions = {}): MockServices {
       read: (ref: AssetRef) => Promise.resolve(assetBytes.get(`${ref.hash}.${ref.ext}`)),
       has : (ref: AssetRef) => Promise.resolve(assetBytes.has(`${ref.hash}.${ref.ext}`)),
       slot: (slotKey: string) => Promise.resolve(slotAssets.get(slotKey)),
+    },
+
+    // A crop stands in for the pixels: the bytes come back with the rectangle written after them,
+    // so a test can tell a cell apart from the sheet it was cut from
+    pixels: {
+      crop: (data: Uint8Array, ext: string, rect: PixelRect): Promise<GenImageInput> => {
+        mock.crops.push({ ext, rect });
+        const tag = bytes(`@${rect.x},${rect.y},${rect.w},${rect.h}`);
+        const out = new Uint8Array(data.length + tag.length);
+        out.set(data);
+        out.set(tag, data.length);
+        return Promise.resolve({ bytes: out, ext });
+      },
     },
 
     fetch: (url: string, init: GenFetchInit = {}): Promise<GenFetchResult> => {

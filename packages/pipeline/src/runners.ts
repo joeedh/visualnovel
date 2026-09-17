@@ -4,6 +4,7 @@ import type {
   AssetRef,
   DefectReport,
   ImageParams,
+  ReviewRef,
   Scene,
   Shot,
   ShotSpec,
@@ -14,12 +15,23 @@ import type {
 } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import { mergeReports } from '@vn/providers';
-import { layoutDefect, supersededBy } from '@vn/artgen';
+import { layoutDefect, sheetSeeds, supersededBy } from '@vn/artgen';
+import type { SheetSeeds } from '@vn/artgen';
 import { refinePrompt } from './p6.js';
 import { shotSpec } from './prompts.js';
-import { boundGraph, refinesThroughNode, runBoundGraph, storeGraphImage } from './graphrun.js';
-import type { GraphBinding } from './graphrun.js';
+import {
+  boundGraph,
+  readDrawn,
+  refinesThroughNode,
+  runBoundGraph,
+  storeGraphImage,
+} from './graphrun.js';
+import type { GraphBinding, GraphDraw, GraphRunOptions } from './graphrun.js';
 import type { RunDeps } from './pipeline.js';
+
+/** The type names of the two nodes a staging sheet is seeded through. */
+const SHEET_PROMPT = 'GenSheetPrompt';
+const SHEET_REFS = 'GenSheetRefs';
 
 /** The half of an asset's metadata a runner knows before the picture exists. */
 type AssetWriteMeta = Omit<AssetMeta, 'prompt' | 'refs' | 'modelId'>;
@@ -59,7 +71,8 @@ async function generateAsset(
 /**
  * One picture drawn through the graph bound to the task's slot. The graph's own image nodes
  * carry the aspect and seed an unbound task takes from `task.inputs.params`, which is why
- * the parameters are not passed on: the node is where an author sets them.
+ * the parameters are not passed on: the node is where an author sets them. Answers the stored
+ * asset and what the graph reported drawing it from, which a sheet member's review reads.
  */
 async function drawThroughGraph(
   deps: RunDeps,
@@ -67,14 +80,64 @@ async function drawThroughGraph(
   prompt: string,
   refs: AssetRef[],
   meta: AssetWriteMeta,
-  critique?: string,
-): Promise<AssetRef> {
-  const draw = await runBoundGraph(deps, binding, {
-    prompt,
-    refs,
-    ...(critique === undefined ? {} : { critique }),
-  });
-  return storeGraphImage(deps, binding, draw, { prompt, refs }, meta);
+  extra: Pick<GraphRunOptions, 'critique' | 'seeds'> = {},
+): Promise<{ ref: AssetRef; draw: GraphDraw }> {
+  const draw = await runBoundGraph(deps, binding, { prompt, refs, ...extra });
+  const ref = await storeGraphImage(deps, binding, draw, { prompt, refs }, meta);
+  return { ref, draw };
+}
+
+/**
+ * What a staging sheet's graph is seeded with for this shot: the group's prompt and references,
+ * derived from the project as the planner derived the member's key. A shot in no group, or one
+ * whose group the scene no longer has, seeds nothing, and the graph's sheet nodes carry empty
+ * values.
+ */
+function sheetSeedsFor(
+  found: { shot: Shot; scene: Scene } | undefined,
+  deps: RunDeps,
+  config: ProjectConfig,
+): SheetSeeds | undefined {
+  if (found?.shot.sheet === undefined) return undefined;
+  return sheetSeeds(found.scene, found.shot.sheet, deps.model, config, deps.store.manifest());
+}
+
+function graphSeedsOf(seeds: SheetSeeds | undefined): Pick<GraphRunOptions, 'seeds'> {
+  if (!seeds) return {};
+  return {
+    seeds: {
+      [SHEET_PROMPT]: { prompt: seeds.prompt },
+      [SHEET_REFS]  : { assets: JSON.stringify(seeds.refs) },
+    },
+  };
+}
+
+/**
+ * The sentence a sheet member's reviewer reads, naming the cell the frame was cut from and the
+ * pictures that follow the task's own references: the cell, then the whole sheet.
+ */
+export function sheetReviewNote(seeds: SheetSeeds, shotId: string): string {
+  const cell = seeds.members.findIndex((m) => m.id === shotId) + 1;
+  return (
+    `This frame was drawn from cell ${cell} of a ${seeds.members.length}-cell staging sheet of ` +
+    'the scene. After the ordinary references come that cell and then the whole sheet: the ' +
+    "frame's room, furniture, camera and staging should match the cell; a difference there is " +
+    'a blocking defect in category "staging".'
+  );
+}
+
+/**
+ * The pictures the graph drew the frame from that the reviewers cannot read as assets: the
+ * intermediates a bound graph wrote as blobs, such as a sheet cell and the sheet. Read into
+ * bytes here, because a reviewer loads assets and nothing else by reference.
+ */
+async function graphReviewRefs(binding: GraphBinding, draw: GraphDraw): Promise<ReviewRef[]> {
+  const out: ReviewRef[] = [];
+  for (const ref of draw.refs) {
+    if (ref.store !== 'blob') continue;
+    out.push({ bytes: await readDrawn(binding.services, ref), ext: ref.ext });
+  }
+  return out;
 }
 
 const runLocationRef: Runner<'location_ref'> = async (task, deps) => {
@@ -86,7 +149,7 @@ const runLocationRef: Runner<'location_ref'> = async (task, deps) => {
   };
   const binding = boundGraph(task, deps);
   const ref = binding
-    ? await drawThroughGraph(deps, binding, prompt, refs, meta)
+    ? (await drawThroughGraph(deps, binding, prompt, refs, meta)).ref
     : await generateAsset(deps, prompt, refs, params, meta);
   return { status: 'done', output: ref.hash };
 };
@@ -100,7 +163,7 @@ const runPortrait: Runner<'portrait'> = async (task, deps) => {
   };
   const binding = boundGraph(task, deps);
   const ref = binding
-    ? await drawThroughGraph(deps, binding, prompt, refs, meta)
+    ? (await drawThroughGraph(deps, binding, prompt, refs, meta)).ref
     : await generateAsset(deps, prompt, refs, params, meta);
   // The portrait is a candidate; it is not accepted until a human approves it (§P3 gate).
   return { status: 'done', output: ref.hash };
@@ -116,7 +179,7 @@ const runModelSheet: Runner<'model_sheet'> = async (task, deps) => {
 
   const binding = boundGraph(task, deps);
   if (binding) {
-    const ref = await drawThroughGraph(deps, binding, prompt, refs, meta);
+    const { ref } = await drawThroughGraph(deps, binding, prompt, refs, meta);
     return { status: 'done', output: ref.hash };
   }
 
@@ -175,6 +238,10 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
       ? shotSpec(found.shot, found.scene, deps.model, config.lettering)
       : { description: task.inputs.prompt, characters: [], location: '' };
     const refs = task.inputs.refs;
+    const sheet = sheetSeedsFor(found, deps, config);
+    if (sheet && found) {
+      spec.description = `${spec.description} ${sheetReviewNote(sheet, found.shot.id)}`;
+    }
     const maxAttempts = Math.max(1, config.max_refine_attempts);
     const meta: AssetWriteMeta = {
       kind      : 'shot_image',
@@ -195,13 +262,22 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       tried.add(throughNode ? critique : prompt);
-      const ref = binding
-        ? await drawThroughGraph(deps, binding, prompt, refs, meta, critique)
-        : await generateAsset(deps, prompt, refs, task.inputs.params, meta);
+      let ref: AssetRef;
+      let shown: ReviewRef[] = refs;
+      if (binding) {
+        const drawn = await drawThroughGraph(deps, binding, prompt, refs, meta, {
+          critique,
+          ...graphSeedsOf(sheet),
+        });
+        ref = drawn.ref;
+        if (sheet) shown = [...refs, ...(await graphReviewRefs(binding, drawn.draw))];
+      } else {
+        ref = await generateAsset(deps, prompt, refs, task.inputs.params, meta);
+      }
       lastRef = ref;
 
       const reviewed: DefectReport[] = await Promise.all(
-        deps.providers.reviewers.map((r) => r.review(ref, spec, refs)),
+        deps.providers.reviewers.map((r) => r.review(ref, spec, shown)),
       );
       const reports = [...reviewed, ...layoutReport(found?.shot, reviewed)];
       const merged = mergeReports(reports);

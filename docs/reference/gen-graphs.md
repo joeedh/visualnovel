@@ -164,7 +164,7 @@ reading an asset does not copy it into the blob store first. `RefsSocket` carrie
 of `GenImageRef`s, and an image output feeds a refs input as a one-item list through
 path.ux's coercion.
 
-`registerGenNodes` registers the twelve built-in types:
+`registerGenNodes` registers the fifteen built-in types:
 
 | Type               | Shown as       | What it does                                                                                                                                                | Spec                                                    |
 | ------------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
@@ -180,12 +180,22 @@ path.ux's coercion.
 | `GenRefList`       | Reference list | Collects pictures into one ordered list: the list input first, then `a`, `b` and `c`.                                                                       |                                                         |
 | `GenSwitch`        | Switch         | Passes on picture `a` or picture `b`, so a branch is tried without rewiring.                                                                                |                                                         |
 | `GenOutput`        | Output image   | Fills the named slot with the picture feeding it. Declares no output socket; its runtime returns the terminal picture.                                      | slot prop `slot`, `active`                              |
+| `GenSheetPrompt`   | Sheet prompt   | Passes through the prompt the host derived for the staging sheet the bound shot belongs to; empty for a shot in no sheet group.                             | seeded `prompt`                                         |
+| `GenSheetRefs`     | Sheet refs     | Passes through the sheet's reference pictures (the plate, then each cast member's portrait), seeded as the JSON an `AssetRef[]` writes to.                  | seeded `assets`                                         |
+| `GenCrop`          | Crop           | Cuts the rectangle `rect` (`x,y,w,h` as fractions of the picture) out of the picture feeding it, and writes the cut as a blob.                              |                                                         |
 
-- The three host-seeded nodes take their value on an input socket rather than in a prop.
+- The five host-seeded nodes take their value on an input socket rather than in a prop.
   Taking the value on a socket lets `graphHashes` read a seeded value through the socket's
   default with no special case, and keeps the seeded prompt out of the document's authored
-  state. `seedInputs` refuses to seed an input the type does not declare, so a fourth
-  seeded type cannot count task state as authored.
+  state. `seedInputs` refuses to seed an input the type does not declare, so a further
+  seeded type cannot count task state as authored. Every run seeds the derived prompt, the
+  task refs and the refine prompt; the two sheet nodes are seeded only for a shot in a
+  sheet group, from `sheetSeeds` in `@vn/artgen`, and stay empty otherwise
+  ([`manga-style.md`](../plans/manga-style.md), Stage 4).
+- The image nodes record the pictures they were shown beside the picture they drew (`refs`
+  in the journal record), so a host can tell what a frame was drawn from. The scheduled
+  runner reads that for a sheet member: the cell and the sheet, which are blobs rather
+  than assets, are handed to the reviewers as bytes.
 - The image nodes' `model` prop defaults to empty, which means the project's
   `models.image`. The runtime resolves it to `GenServices.image.defaultModel` before the
   call, so no backend and no cache sees an empty id; the run hash carries the resolved
@@ -249,6 +259,8 @@ a test:
 - The Slot-ref and Image-file nodes read the asset store through `assets.read(ref)` and
   `assets.slot(slotKey)`; `assets.has(ref)` is the same existence check for a picture the
   asset store holds.
+- `pixels.crop(bytes, ext, rect)` cuts a rectangle out of a picture, for the Crop node.
+  `@vn/pipeline` implements it with jimp; `@vn/gengraph` itself decodes no pixels.
 - Calls `fetch(url, init?)` through the provider request ring, so a fault can be read
   against the body that caused it.
 - `key(name)` returns the value of a declared key through the ordinary `resolveKeys`

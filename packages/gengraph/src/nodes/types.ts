@@ -79,6 +79,79 @@ export class GenTaskRefs extends Node<{ assets: TextSocket }, { refs: RefsSocket
   }
 }
 
+/**
+ * The staging sheet's prompt, seeded by the host for the group the bound slot's shot belongs to.
+ * Empty on a graph whose slot is in no group, so a sheet drawn from it draws nothing useful.
+ */
+export class GenSheetPrompt extends Node<{ prompt: TextSocket }, { prompt: TextSocket }> {
+  static override graphDef(): NodeDef {
+    return {
+      typeName   : 'GenSheetPrompt',
+      uiName     : 'Sheet prompt',
+      description: "Carries the staging sheet's prompt the host derived for this slot's group.",
+      inputs: {
+        prompt: new TextSocket('in', {
+          uiName     : 'Prompt',
+          description: 'The sheet prompt the host seeds this graph with.',
+        }),
+      },
+      outputs: {
+        prompt: new TextSocket('out', { description: 'The sheet prompt, unchanged.' }),
+      },
+      typeVersion: 1,
+    };
+  }
+}
+
+/** The staging sheet's reference pictures, seeded by the host as a JSON list of assets. */
+export class GenSheetRefs extends Node<{ assets: TextSocket }, { refs: RefsSocket }> {
+  static override graphDef(): NodeDef {
+    return {
+      typeName   : 'GenSheetRefs',
+      uiName     : 'Sheet refs',
+      description:
+        "Carries the reference pictures the host resolved for this slot's staging sheet.",
+      inputs: {
+        assets: new TextSocket('in', {
+          uiName     : 'Assets',
+          description: 'The sheet references the host seeds, as a JSON list of assets.',
+        }),
+      },
+      outputs: {
+        refs: new RefsSocket('out', {
+          description: "The sheet's reference pictures: the plate, then each cast portrait.",
+        }),
+      },
+      typeVersion: 1,
+    };
+  }
+}
+
+/** Keeps one rectangle of the picture feeding it, named in fractions of its width and height. */
+export class GenCrop extends Node<{ image: ImageSocket }, { image: ImageSocket }> {
+  static override graphDef(): NodeDef {
+    return {
+      typeName   : 'GenCrop',
+      uiName     : 'Crop',
+      description: 'Keeps one rectangle of the picture feeding it, such as one cell of a sheet.',
+      inputs: {
+        image: new ImageSocket('in', { description: 'The picture to cut the rectangle from.' }),
+      },
+      outputs: {
+        image: new ImageSocket('out', { description: 'The rectangle, as a picture of its own.' }),
+      },
+      props: {
+        rect: str(
+          '0,0,1,1',
+          'Rectangle',
+          'The part to keep, as x,y,w,h fractions of the picture’s width and height.',
+        ),
+      },
+      typeVersion: 1,
+    };
+  }
+}
+
 /** Reads whatever asset another slot currently holds. */
 export class GenSlotRef extends Node<Sockets, { image: ImageSocket }> {
   static override graphDef(): NodeDef {
@@ -426,12 +499,15 @@ export class GenOutput extends Node<{ image: ImageSocket }, Sockets> {
 }
 
 /**
- * Registers all twelve types and their specs. Safe to call twice, because each
+ * Registers all fifteen types and their specs. Safe to call twice, because each
  * registration overwrites the one before it.
  */
 export function registerGenNodes(): void {
   registerGenNode({ cls: GenDerivedPrompt, seededInput: 'prompt', refineFallback: true });
   registerGenNode({ cls: GenTaskRefs, seededInput: 'assets' });
+  registerGenNode({ cls: GenSheetPrompt, seededInput: 'prompt' });
+  registerGenNode({ cls: GenSheetRefs, seededInput: 'assets' });
+  registerGenNode({ cls: GenCrop });
   registerGenNode({ cls: GenSlotRef, live: true });
   registerGenNode({ cls: GenTemplate, migrations: [TEMPLATE_VARS] });
   registerGenNode({

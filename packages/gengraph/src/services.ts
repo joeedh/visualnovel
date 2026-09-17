@@ -63,6 +63,23 @@ export interface GenBlobService {
   write(bytes: Uint8Array, ext: string): Promise<GenBlobRef>;
 }
 
+/** A rectangle in fractions of a picture's width and height, origin top-left. */
+export interface PixelRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * Deterministic work on a picture's pixels. The host implements it with an image library the
+ * renderer never loads, which is why it is a service rather than code in a node.
+ */
+export interface GenPixelService {
+  /** The rectangle as a picture of its own, re-encoded in the source's format where it can be. */
+  crop(bytes: Uint8Array, ext: string, rect: PixelRect): Promise<GenImageInput>;
+}
+
 export interface GenAssetService {
   read(ref: AssetRef): Promise<Uint8Array | undefined>;
   /** Whether the store still holds the asset, answered without reading its bytes. */
@@ -82,6 +99,7 @@ export interface GenServices {
   text: GenTextService;
   blobs: GenBlobService;
   assets: GenAssetService;
+  pixels: GenPixelService;
   /** Recorded in the request ring, so a fault can be read against the body that caused it. */
   fetch(url: string, init?: GenFetchInit): Promise<GenFetchResult>;
   /** The value of the named key, or undefined when no source supplies one. */

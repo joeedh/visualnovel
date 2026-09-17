@@ -5,6 +5,7 @@ import { PropFlags } from 'pathux-toolprop';
 import type { ToolProperty } from 'pathux-toolprop';
 
 import {
+  GenCrop,
   GenDerivedPrompt,
   GenEditImage,
   GenImage,
@@ -13,11 +14,14 @@ import {
   GenRefList,
   GenRefinePrompt,
   GenRewrite,
+  GenSheetPrompt,
+  GenSheetRefs,
   GenSlotRef,
   GenSwitch,
   GenTaskRefs,
   GenTemplate,
   Graph,
+  rectOf,
   genNodeRuntime,
   genNodeSpec,
   genNodeTypes,
@@ -130,6 +134,47 @@ describe('the seeded input nodes', () => {
     await expect(run(GenRefinePrompt, { text: 'the hands are wrong' })).resolves.toEqual({
       text: 'the hands are wrong',
     });
+  });
+
+  it('carries the sheet prompt and the sheet refs the way the task’s own are carried', async () => {
+    await expect(run(GenSheetPrompt, { prompt: 'A staging sheet of 3 cells.' })).resolves.toEqual({
+      prompt: 'A staging sheet of 3 cells.',
+    });
+    await expect(run(GenSheetPrompt)).resolves.toEqual({ prompt: '' });
+    await expect(
+      run(GenSheetRefs, { assets: JSON.stringify([{ hash: 'pp', ext: 'png' }]) }),
+    ).resolves.toEqual({ refs: [{ store: 'asset', hash: 'pp', ext: 'png' }] });
+    expect(genNodeSpec('GenSheetPrompt')?.seededInput).toBe('prompt');
+    expect(genNodeSpec('GenSheetRefs')?.seededInput).toBe('assets');
+  });
+});
+
+describe('the crop node', () => {
+  it('cuts the named rectangle out through the pixel service and stores it as a blob', async () => {
+    const sheet = putAsset(mock, 'sheet bytes');
+    const out = await run(
+      GenCrop,
+      { image: { store: 'asset', ...sheet } satisfies GenImageRef },
+      { rect: '0.5,0,0.5,0.5' },
+    );
+    const image = out.image as GenImageRef;
+    expect(image.store).toBe('blob');
+    expect(mock.crops).toEqual([{ ext: 'png', rect: { x: 0.5, y: 0, w: 0.5, h: 0.5 } }]);
+    expect(new TextDecoder().decode(mock.blobs.stored.get(image.hash))).toBe(
+      'sheet bytes@0.5,0,0.5,0.5',
+    );
+  });
+
+  it('refuses a rectangle that is not four numbers, or one outside the picture', () => {
+    expect(rectOf('0,0,1,1')).toEqual({ x: 0, y: 0, w: 1, h: 1 });
+    expect(() => rectOf('0,0,1')).toThrow('not four numbers');
+    expect(() => rectOf('0.5,0,0.6,1')).toThrow('does not lie within');
+    expect(() => rectOf('0,0,0,1')).toThrow('does not lie within');
+  });
+
+  it('refuses a crop with nothing feeding it, and spends nothing', async () => {
+    await expect(run(GenCrop)).rejects.toThrow("no picture on its 'image' input");
+    expect(genNodeSpec('GenCrop')?.spends).toBeUndefined();
   });
 });
 

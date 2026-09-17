@@ -74,11 +74,17 @@ export interface ShotSpec {
   lettering?: { panel: number; lines: string[] }[];
 }
 
+/**
+ * A picture handed to a reviewer beside the result: an asset the store holds, or bytes that
+ * never entered it, such as the staging-sheet cell a bound graph drew a frame from.
+ */
+export type ReviewRef = AssetRef | { bytes: Uint8Array; ext: string };
+
 /** Reads an image back and reports defects against the spec (Gemini and Claude). */
 export interface VisionReviewer {
   /** Stable id, e.g. `gemini` or `claude`. */
   readonly id: string;
-  review(image: AssetRef, spec: ShotSpec, refs: AssetRef[]): Promise<DefectReport>;
+  review(image: AssetRef, spec: ShotSpec, refs: readonly ReviewRef[]): Promise<DefectReport>;
 }
 
 /** Text LLM for mining, decomposition, and prompt refinement (report §8). */

@@ -18,6 +18,7 @@ import type {
   GenServices,
   GenTextService,
 } from '@vn/gengraph';
+import { pixelService } from './pixels.js';
 
 export interface GenServicesDeps {
   model: ProjectModel;
@@ -155,6 +156,7 @@ export function createGenServices(deps: GenServicesDeps): GenServices {
     text  : textService(deps.providers),
     blobs : deps.blobs ?? noBlobs(),
     assets: assetService(deps.model, deps.store),
+    pixels: pixelService,
     fetch : ringFetch,
     key   : (name: string) => Promise.resolve(deps.keys?.[name as keyof ResolvedKeys]),
   };

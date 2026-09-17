@@ -1,4 +1,4 @@
-import type { AssetRef, DefectReport, ShotSpec, VisionReviewer } from '@vn/types';
+import type { AssetRef, DefectReport, ReviewRef, ShotSpec, VisionReviewer } from '@vn/types';
 import { defectReportSchema } from '@vn/types';
 import type { ChatBackend, RefLoader } from './backend.js';
 import { withStructuredRetry } from './structured.js';
@@ -60,8 +60,10 @@ export class ChatVisionReviewer implements VisionReviewer {
     this.id = id;
   }
 
-  async review(image: AssetRef, spec: ShotSpec, refs: AssetRef[]): Promise<DefectReport> {
-    const images = await Promise.all([image, ...refs].map((r) => this.loadRef(r)));
+  async review(image: AssetRef, spec: ShotSpec, refs: readonly ReviewRef[]): Promise<DefectReport> {
+    const images = await Promise.all(
+      [image, ...refs].map((r) => ('bytes' in r ? Promise.resolve(r) : this.loadRef(r))),
+    );
     const prompt = [
       'SHOT SPECIFICATION:',
       JSON.stringify(spec, null, 2),

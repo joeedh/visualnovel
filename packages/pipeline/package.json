@@ -15,6 +15,7 @@
     "@vn/artgen": "workspace:*",
     "@vn/taskgraph": "workspace:*",
     "@vn/providers": "workspace:*",
-    "@vn/gengraph": "workspace:*"
+    "@vn/gengraph": "workspace:*",
+    "jimp": "^1.6.0"
   }
 }
