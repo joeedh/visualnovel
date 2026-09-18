@@ -36,3 +36,4 @@
      100 lines.
 [ ]: the report difficult agent editor should have somewhere for users to input feedback prior 
      to running the agent for the first time.
+[ ]: DEFERRED: execute the builtin skills plan.
