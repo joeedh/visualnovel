@@ -91,6 +91,8 @@ describe('loadContext', () => {
       const composed = composeSystem(ctx);
       expect(composed.indexOf('PROJECT MAP')).toBeLessThan(composed.indexOf('PROJECT CONTEXT'));
       expect(composed).toContain('AICONTEXT.md overrides it');
+      // The author's rules are framed as rules that beat a built-in default, not as a file dump
+      expect(composed).toContain("the author's rule wins");
     } finally {
       await cleanup();
     }
@@ -170,6 +172,17 @@ describe('SYSTEM_PROMPT', () => {
   // is the first segment of a byte-stable cached prefix and cannot be quietly trimmed.
   it('stays inside its character budget', () => {
     expect(SYSTEM_PROMPT.length).toBeLessThanOrEqual(25_000);
+  });
+
+  // The writing guidance sits with the format, before the storyboard mechanics: a model reading
+  // top down learns what a line is for before it learns what a shot does with one.
+  it('teaches what a scene is for between the markers and the storyboard', () => {
+    const markers = SYSTEM_PROMPT.indexOf('FOUNTAIN + BRANCH MARKERS');
+    const writing = SYSTEM_PROMPT.indexOf('WRITING SCENES');
+    const shots = SYSTEM_PROMPT.indexOf('SHOTS AND COVERAGE');
+    expect(markers).toBeGreaterThan(-1);
+    expect(writing).toBeGreaterThan(markers);
+    expect(shots).toBeGreaterThan(writing);
   });
 });
 

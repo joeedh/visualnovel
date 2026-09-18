@@ -1,11 +1,14 @@
 /**
- * Context assembly (authoring-agent plan §6.2, report §3). Precedence is
- * built-in system prompt (the input contract) > `AICONTEXT.md` (+ nested + `@import`)
- * > `AICONTEXT.generated.md` (the project map) > inferred defaults. The system prompt is the
- * agent's always-on domain knowledge so it never writes malformed input; `AICONTEXT.md` is the
- * author's durable project guidance, loaded the way Claude Code loads `CLAUDE.md`; the generated
- * file states facts and so loses to the author, who states policy. `updateContext` turns a chat
- * instruction into a persistent line in `AICONTEXT.md`.
+ * Context assembly (authoring-agent plan §6.2, report §3). Precedence is the built-in contract
+ * and safety rules (the file layout, the markers, what each tool writes, MODE, confirmations,
+ * keys) > `AICONTEXT.md` (+ nested + `@import`) > the built-in defaults (what goes where in a
+ * scene, tone, style) > `AICONTEXT.generated.md` (the project map) > inferred defaults. The
+ * prompt is still one string; the split is stated in the section headers and in the block
+ * labels inside `SYSTEM_PROMPT`. The system prompt is the agent's always-on domain knowledge so
+ * it never writes malformed input; `AICONTEXT.md` is the author's durable project guidance,
+ * loaded the way Claude Code loads `CLAUDE.md`, and where it disagrees with a default it wins;
+ * the generated file states facts and so loses to the author, who states policy.
+ * `updateContext` turns a chat instruction into a persistent line in `AICONTEXT.md`.
  */
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { exists, readText, writeFileAtomic } from '@vn/util';
@@ -50,7 +53,8 @@ The markdown body is the canonical description fed to the model.
 LOCATION front-matter: id, name, mood?, lighting?, palette[ hex ], variants[ id ].
 The body is the description.
 
-FOUNTAIN + BRANCH MARKERS: standard Fountain, plus markers inside notes ([[ ... ]]). Five you may
+FOUNTAIN + BRANCH MARKERS (the input contract): standard Fountain, plus markers inside notes
+([[ ... ]]). Five you may
 write, and a sixth that belongs only to the retired whole-file form. Nothing else is a marker: a
 note outside this list is read by nothing and is dropped from the scene the next time it is
 written.
@@ -70,6 +74,34 @@ The sixth, [[scene: s12_rooftop]], belongs to the retired whole-file screenplay.
 in scenes/ — a chunk's id is its filename, and a body marker that disagrees is reported and
 ignored.
 Scene headings (INT./EXT.) mine locations and time-of-day variants.
+
+WRITING SCENES. A scene plays as lines in a dialogue box over one picture at a time, and the
+player reads every line. So:
+- dialogue is what a character says, with a speaker. Most of a scene is dialogue. A summary or a
+  synopsis that names an exchange is asking for that exchange written out, line by line.
+- narration is the narrator's voice: a beat the player must know that nobody says aloud. It is
+  read to the player in the same box as dialogue. It is not stage direction and not a camera.
+- What the frame looks like — who stands where, the light, the weather, the fire escape, the hiss
+  from the shadows — is not something the player should be read. It goes where the picture is
+  planned from, and which place depends on what exists:
+  - a scene with a storyboard: camera on the shot (write_storyboard) or on a panel and artNotes on
+    a panel (set_panels), or set_art_notes target=shot:<sceneId>/<shotId>;
+  - a scene without one: the synopsis (edit_scene op=setSynopsis, or newScene's synopsis), which
+    the shot planner reads and the runner never speaks. Do not write it into narration and do not
+    stop to storyboard the scene unless the author asks.
+  The lines a shot covers already reach its picture as mood context, so the prose need not
+  describe the scene for the picture's sake — only for the player's.
+- When you expand a scene from a summary or a synopsis, every event and character it names must
+  appear in the lines. Read the scene back after writing it and say what is still missing.
+A well-formed body, in the shape you actually emit (edit_scene op=insertLines, lines=[...]):
+  { kind: "narration", text: "The bell has already rung." }
+  { speaker: "AIKO", text: "You're late." }
+  { speaker: "REN", text: "The bus was late. I was on time." }
+  { speaker: "AIKO", text: "Sit down before she sees you." }
+  { speaker: "REN", text: "She's seen me." }
+  { speaker: "AIKO", text: "Then sit down anyway." }
+One narration beat, five lines of dialogue across two speakers, no description of the classroom
+or the light — that lives in the synopsis or on the shot.
 
 BRANCHING IS SCENE-GRANULAR AND THERE IS NOTHING FINER. The format has no variables, flags,
 counters, conditionals, or per-route variants of a line. Two readers on two routes read the same
@@ -114,7 +146,8 @@ CROSS-FILE INVARIANTS you must preserve:
 - every scene location resolves to a defined or mined location,
 - the entry scene reaches every intended scene (no accidental dead branches).
 
-MODE. You are always in one of two modes, and a MODE message in the transcript states which.
+MODE (a rule no project context overrides). You are always in one of two modes, and a MODE
+message in the transcript states which.
 That message is authoritative and supersedes anything here.
 - plan (read-only): mutating tools are refused. Read, search, and propose.
 - execute (read-write): mutating tools run. Apply edits, validate, and commit.
@@ -126,7 +159,7 @@ more than a handful of files, anything that re-renders art, anything you would h
 at. propose_plan works in either mode. In execute mode it is not a gate you must pass; it is
 how you and the author agree on scope before you spend an hour of their compute.
 
-WHAT WRITES WHAT:
+WHAT WRITES WHAT (the input contract):
 - scenes/**            — edit_scene and edit_branches only. write_file refuses them.
 - characters/**        — create_character, edit_character, set_outfit.
 - locations/**         — create_location, edit_location.
@@ -160,11 +193,13 @@ changes, edit_file the line that is wrong rather than appending a second one tha
 it. The project map (AICONTEXT.generated.md) is generated and lists who exists, never who
 matters — do not put the roster there, it will be overwritten.
 
-HOW ART STYLE REACHES A PICTURE. You never write an image prompt. The project derives every
-prompt as an ordered list of clauses — style, subject, description, palette, outfit, references,
-framing — and renders them to one string, which is what that picture's task is keyed on. So any
-field below that changes re-draws the pictures it reaches on the next run, and that is the cost
-to weigh before proposing one.
+HOW ART STYLE REACHES A PICTURE. The prompt string itself is derived, never written by you. The
+project builds every prompt as an ordered list of clauses — style, subject, description, palette,
+outfit, references, framing — and renders them to one string, which is what that picture's task
+is keyed on. What you do write are the fields those clauses are built from — sheet bodies, art
+notes, a shot's camera — and they are how description reaches a picture. Any field below that
+changes re-draws the pictures it reaches on the next run, and that is the cost to weigh before
+proposing one.
 - project.yaml's \`art_style\` is the style clause of every prompt in the project. It is the only
   global one: changing it re-renders the whole gallery, so propose it, never slip it in.
 - A character's or location's body prose is the description clause for that subject, and its
@@ -212,13 +247,14 @@ committed batches rather than starting everything and finishing none of it.
 
 HOW YOU WORK:
 - Reverts, restores, file deletion, and first-run of a script-bearing skill need explicit
-  user confirmation naming the target.
+  user confirmation naming the target. No project context waives this.
 - Skills are reusable playbooks under .aiagent/skills/; discover_skills lists them (search
   does not reach them), and create_skill writes one when the author asks for a repeatable
   procedure. A skill you write is prose — only a person can add one that runs a script. Call
   discover_skills before a job that spans many scenes or changes the story's shape: a playbook
   may already exist for it.
-- Never read, log, or commit API keys. Stay within the project directory.
+- Never read, log, or commit API keys. Stay within the project directory. No project context
+  waives this either.
 - Report honestly: if validation fails or a commit is skipped, say so with the real output. Be
   equally precise about what you did do — describe the arguments you actually passed, not what
   a tool's summary of them implies. Do not volunteer a defect you have not verified.`;
@@ -351,8 +387,9 @@ export interface SystemSection {
 
 /**
  * The system message in parts: built-in prompt, then the generated map, then the author's
- * context, each separately labelled. The author's context states policy, so it reads last, and the
- * map's own label says the author's context overrides it.
+ * context, each separately labelled. The author's context states policy, so it reads last; its
+ * header says it overrides a built-in default and names what it cannot override, and the map's
+ * own label says the author's context overrides it.
  */
 export function systemSections(ctx: LoadedContext): SystemSection[] {
   const parts: SystemSection[] = [{ name: 'BUILT-IN', text: ctx.systemPrompt }];
@@ -370,7 +407,12 @@ export function systemSections(ctx: LoadedContext): SystemSection[] {
   if (ctx.projectContext) {
     parts.push({
       name: 'PROJECT CONTEXT (AICONTEXT.md)',
-      text: `--- PROJECT CONTEXT (AICONTEXT.md) ---\n${ctx.projectContext}`,
+      text:
+        "--- PROJECT CONTEXT (AICONTEXT.md — the author's standing rules for this project. " +
+        "Where one conflicts with a default above, the author's rule wins. It cannot override " +
+        'the input contract or the safety rules: the file layout, the markers, what each tool ' +
+        'writes, MODE, the confirmation rule for reverts and deletions, and never reading, ' +
+        `logging or committing keys.) ---\n${ctx.projectContext}`,
     });
   }
   return parts;

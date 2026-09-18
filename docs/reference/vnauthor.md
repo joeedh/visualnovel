@@ -70,6 +70,15 @@ project guidance that the agent follows.
 
 ## How it works
 
+- **The built-in prompt says what a scene is for, not only how it is formatted.** Its
+  `WRITING SCENES` block (`context.ts`) states that a scene plays as lines in a dialogue
+  box the player reads every one of, that most of a scene is dialogue with a speaker, that
+  narration is the narrator's voice rather than stage direction, and that what the frame
+  looks like goes on the shot (`camera`, a panel's `artNotes`, `set_art_notes`) or, before
+  a storyboard exists, in the scene's synopsis (`edit_scene op=setSynopsis`) — never into
+  narration. An `AICONTEXT.md` rule about prose refines that default; without the default
+  there was nothing for the rule to attach to, and a rule the model cannot map to a tool
+  is the easiest one to drop.
 - **Two-mode state machine (`@vn/authoring` `loop.ts`).** The agent starts in plan mode,
   which is read-only: only non-mutating tools dispatch, and mutating tools are blocked
   until the user approves a proposed plan. Approving a plan switches to execute mode,
@@ -165,19 +174,25 @@ project guidance that the agent follows.
   so restating a mode the conversation is already in costs nothing. On a model without the
   system role the builder down-renders those turns to user turns at request time, so a
   mid-session `/model` switch leaves a conversation that can still be sent.
-- **Context precedence:** built-in input contract > `AICONTEXT.md` (+ nested per-dir files
-  and `@import` lines; `AGENTS.md`/`CLAUDE.md` as fallbacks) > `AICONTEXT.generated.md`
-  (the project map) > inferred defaults. `update_context` writes a chat instruction as a
-  durable line in `AICONTEXT.md`; `regenerate_context` rebuilds the map. The map states
-  facts and `AICONTEXT.md` states policy, so `AICONTEXT.md` takes precedence. The two are
-  separately labelled sections of the system message, and a file at the generated path
-  without the generator's banner is ignored rather than trusted. The desktop host keeps
-  the map current without walking the project every turn. It marks the map stale at the
-  start of a session (so the first turn covers opening a workspace that has never had one
-  written) and marks it stale again whenever a finished turn wrote under `characters/`,
-  `locations/`, `scenes/` or `wiki/`, the four directories the map is derived from.
-  Rebuilding it is best-effort and never throws: a map that could not be regenerated
-  degrades the prompt but does not fail the turn.
+- **Context precedence:** the built-in contract and safety rules (the file layout, the
+  markers, what each tool writes, MODE, the confirmation rule for reverts and deletions,
+  keys) > `AICONTEXT.md` (+ nested per-dir files and `@import` lines;
+  `AGENTS.md`/`CLAUDE.md` as fallbacks) > the built-in defaults (what goes where in a
+  scene, tone, style) > `AICONTEXT.generated.md` (the project map) > inferred defaults.
+  The prompt is one string; the split is stated in the `AICONTEXT.md` section's header,
+  which says the author's rule wins over a default above it and names what it cannot
+  override, and in the labels on the contract blocks inside the built-in prompt.
+  `update_context` writes a chat instruction as a durable line in `AICONTEXT.md`;
+  `regenerate_context` rebuilds the map. The map states facts and `AICONTEXT.md` states
+  policy, so `AICONTEXT.md` takes precedence. The two are separately labelled sections of
+  the system message, and a file at the generated path without the generator's banner is
+  ignored rather than trusted. The desktop host keeps the map current without walking the
+  project every turn. It marks the map stale at the start of a session (so the first turn
+  covers opening a workspace that has never had one written) and marks it stale again
+  whenever a finished turn wrote under `characters/`, `locations/`, `scenes/` or `wiki/`,
+  the four directories the map is derived from. Rebuilding it is best-effort and never
+  throws: a map that could not be regenerated degrades the prompt but does not fail the
+  turn.
 - **Every file the agent wrote is committed.** The loop unions `git_commit`'s `paths`
   argument with the paths the tools reported writing rather than letting the argument
   replace them. The tool record is complete and the model's recollection is not: an
