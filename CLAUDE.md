@@ -459,7 +459,7 @@ See ['docs/reference/proseStyle.md'](docs/reference/proseStyle.md).
 ## Euphemeral UI data (saveUIData/loadUIData)
 
 See
-[vendor\path.ux\scripts\core\base\ui_savedata.ts](vendor\path.ux\scripts\core\base\ui_savedata.ts)
+[`vendor/path.ux/scripts/core/base/ui_savedata.ts`](vendor/path.ux/scripts/core/base/ui_savedata.ts)
 
 Path.ux has a system to store 'euphemeral' data, such as:
 
