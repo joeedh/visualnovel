@@ -1,4 +1,5 @@
 import {
+  DEFAULT_AGENT_EFFORT,
   DEFAULT_EFFORT,
   EFFORT_CHOICES,
   chatVendorFor,
@@ -90,6 +91,13 @@ describe('the stated default', () => {
     expect(DEFAULT_EFFORT).toBe('low');
     for (const id of ['claude-opus-4-8', 'claude-sonnet-4-6', 'claude-fable-5', 'claude-opus-5']) {
       expect(resolveEffort(id, DEFAULT_EFFORT)).toBe('low');
+    }
+  });
+
+  it('starts the agent one level up, and every curated model takes that too', () => {
+    expect(DEFAULT_AGENT_EFFORT).toBe('medium');
+    for (const id of ['claude-opus-4-8', 'claude-sonnet-4-6', 'claude-fable-5', 'claude-opus-5']) {
+      expect(resolveEffort(id, DEFAULT_AGENT_EFFORT)).toBe('medium');
     }
   });
 });

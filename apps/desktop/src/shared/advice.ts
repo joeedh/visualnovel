@@ -31,8 +31,8 @@ export function stronger(a: EffortChoice, b: EffortChoice): EffortChoice {
 
 /**
  * The effort this dialog opens on: what the author has bound, raised to at least medium and then
- * clamped to what the model takes. `DEFAULT_EFFORT` is `low`, so without the raise nearly every
- * author would meet the `low` note the first time they opened the dialog.
+ * clamped to what the model takes. An author who bound `low` would otherwise meet the `low`
+ * note the first time they opened the dialog.
  */
 export function analysisEffort(modelId: string, bound: EffortChoice): EffortChoice | undefined {
   return resolveEffort(modelId, stronger(bound, 'medium'));

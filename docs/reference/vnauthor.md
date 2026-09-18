@@ -40,14 +40,14 @@ REPL commands: `/help`, `/mode` (plan vs. execute), `/model [id]` (switch the te
 no arg → interactive menu), `/effort [level]` (set reasoning — `low`…`max` map to
 Anthropic `output_config.effort` + adaptive thinking, `no thinking` sends
 `thinking: disabled`, and the menu lists only the levels the model supports; the level
-starts at `low` and is ignored on models that have no such setting; no arg → interactive
-menu), `/clear` (reset the conversation context and return to plan mode), `/status` (show
-the project index), `/skills` (list the available skills), `/makeimage <what to draw>`
-(generate a concept image directly — see [Concept images](#concept-images)),
-`/upload <file…>` (archive documents and ask what to do with them — see
-[The archive](#the-archive)), `/exit` (or `/quit`). **Shift-Tab** cycles between plan and
-execute mode. `/model` and `/effort` rebuild the backend and hot-swap it into the running
-agent, preserving conversation state.
+starts at `medium` (`DEFAULT_AGENT_EFFORT`; the pipeline's own calls stay at `low`) and is
+ignored on models that have no such setting; no arg → interactive menu), `/clear` (reset
+the conversation context and return to plan mode), `/status` (show the project index),
+`/skills` (list the available skills), `/makeimage <what to draw>` (generate a concept
+image directly — see [Concept images](#concept-images)), `/upload <file…>` (archive
+documents and ask what to do with them — see [The archive](#the-archive)), `/exit` (or
+`/quit`). **Shift-Tab** cycles between plan and execute mode. `/model` and `/effort`
+rebuild the backend and hot-swap it into the running agent, preserving conversation state.
 
 The REPL keeps no transcript. A conversation exists only while the process runs, and
 `/clear` ends it without writing anything to disk. The desktop app writes two files per

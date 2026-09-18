@@ -33,7 +33,7 @@ import {
   effortLabel,
   resolveEffort,
   supportsEffort,
-  DEFAULT_EFFORT,
+  DEFAULT_AGENT_EFFORT,
   EFFORT_CHOICES,
   TEXT_MODELS,
   BUDGET_CHOICES,
@@ -274,7 +274,7 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
 
   // Live model/effort settings; `/model` and `/effort` rebuild the backend and swap it in.
   let currentModel = session.model;
-  let currentEffort: EffortChoice = DEFAULT_EFFORT;
+  let currentEffort: EffortChoice = DEFAULT_AGENT_EFFORT;
 
   /** Rebuild the backend with the current model+effort and hot-swap it into the agent. */
   async function applySettings(model: string, effort: EffortChoice): Promise<boolean> {

@@ -3,7 +3,12 @@
  * allowed to bind to directly. Document state never lands here — `@vn/commands` stays the
  * one write path, so a widget that would change the project dispatches a command instead.
  */
-import { DEFAULT_BUDGET, DEFAULT_EFFORT, type BudgetChoice, type EffortChoice } from '@vn/types';
+import {
+  DEFAULT_AGENT_EFFORT,
+  DEFAULT_BUDGET,
+  type BudgetChoice,
+  type EffortChoice,
+} from '@vn/types';
 import type { AgentMode } from '../../../src/shared/ipc.js';
 
 /** Names the fields that say what the author is looking at; these are the only fields that report a write. */
@@ -123,7 +128,7 @@ export class ShellState {
   projectRoot = '';
   model = 'claude-opus-4-8';
   /** How hard the model is asked to think. Mirrors `WorkspaceSession.effort`, same default. */
-  effort: EffortChoice = DEFAULT_EFFORT;
+  effort: EffortChoice = DEFAULT_AGENT_EFFORT;
   /**
    * What one agent turn may spend, in non-cached tokens. Unlike everything else here this is
    * persisted, in the install's session file and restored at boot by `installBridge`, because it

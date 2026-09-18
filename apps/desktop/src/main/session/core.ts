@@ -128,7 +128,7 @@ import type {
 } from '@vn/types';
 import {
   DEFAULT_BUDGET,
-  DEFAULT_EFFORT,
+  DEFAULT_AGENT_EFFORT,
   TEXT_MODELS,
   type BudgetChoice,
   type TaskKind,
@@ -738,7 +738,7 @@ export class WorkspaceSession {
   model = '';
   /** The reasoning effort the backend is built with. Always an explicit value, so the app never
    * silently inherits a vendor default. */
-  effort: EffortChoice = DEFAULT_EFFORT;
+  effort: EffortChoice = DEFAULT_AGENT_EFFORT;
   /**
    * Caps the non-cached tokens a single turn may spend. Unlike the model and the effort, this
    * is not something the backend is built with; it is the loop's own meter, so setting it

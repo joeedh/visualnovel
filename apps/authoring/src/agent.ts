@@ -19,7 +19,7 @@ import {
 // desktop app can offer the same menus without importing a package that loads a vendor SDK.
 // `@vn/providers` re-exports them, which is the import used here.
 export {
-  DEFAULT_EFFORT,
+  DEFAULT_AGENT_EFFORT,
   EFFORT_CHOICES,
   EFFORT_LEVELS,
   TEXT_MODELS,

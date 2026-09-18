@@ -52,11 +52,21 @@ export const EFFORT_CHOICES = ['none', ...EFFORT_LEVELS] as const;
 export type EffortChoice = (typeof EFFORT_CHOICES)[number];
 
 /**
- * The choice every surface starts at. Deliberately a level rather than the absence of one: on
- * Opus 4.7/4.8 and Sonnet 4.6 a request with no `thinking` field runs with no thinking at all,
- * so omitting the field is the least capable setting rather than a neutral one.
+ * The choice a text call runs at when nothing sets one: every pipeline call — decomposition,
+ * reviews, refine critiques, gate triage — and the provider's own fallback. Deliberately a level
+ * rather than the absence of one: on Opus 4.7/4.8 and Sonnet 4.6 a request with no `thinking`
+ * field runs with no thinking at all, so omitting the field is the least capable setting rather
+ * than a neutral one.
  */
 export const DEFAULT_EFFORT: EffortChoice = 'low';
+
+/**
+ * The choice the authoring agent's hosts start a conversation at. Higher than `DEFAULT_EFFORT`
+ * because the agent reads a prompt of some 20,000 characters and is expected to apply a rule
+ * placed at the end of it; at `low` the one thread that had such a rule in place did not. The
+ * author binds another level per conversation; the pipeline's calls are not affected.
+ */
+export const DEFAULT_AGENT_EFFORT: EffortChoice = 'medium';
 
 /** Curated text models offered by the `/model` menu and the convo pane; any id also works. */
 export const TEXT_MODELS: readonly string[] = [
