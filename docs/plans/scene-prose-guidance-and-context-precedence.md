@@ -1,6 +1,9 @@
 # Scene prose guidance, and making AICONTEXT.md rules reach the model
 
-Status: **planned**
+Status: **partial** — changes 1–8 are implemented and committed (branch `scene-prose`,
+2026-09-17), each with its unit tests, and `pnpm check && pnpm test && pnpm lint` is
+green. What remains is the live verification below: the three runs on `examples/dadsStory`
+and the agent-report check, which spend model calls and so are the author's to start.
 
 Origin: GitHub issue #4
 (`AGENTREPORT: Agent wrote an incomplete and badly formatted scene`), generated from
