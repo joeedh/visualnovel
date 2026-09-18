@@ -78,11 +78,15 @@ moves.
 
 ## Phase 7 — the scenes, headed and wired
 
-For each row: `edit_scene op=newScene scene=<id> heading=<INT. CLASSROOM - EVENING>`.
+For each row:
+`edit_scene op=newScene scene=<id> heading=<INT. CLASSROOM - EVENING> synopsis=<one line>`.
 
 - **The heading carries the location**, so get it right now. Changing it later with
   `setHeading` re-renders the scene and restages every shot in it — that is a re-render
   bill, not an edit.
+- **`newScene` takes a `synopsis` and no `lines`.** The synopsis is the row's one-line
+  beat; it is read by the shot planner and never spoken to the player. Passing `lines`
+  here is refused — the body is phase 8's, written with `insertLines`.
 - `newScene` leaves the scene **unreachable on purpose**. Follow the whole batch with
   `edit_branches` (`setChoice`, `setNext`) to wire the graph from phase 4, then
   `story_graph` to prove nothing is orphaned and every path reaches an ending.
@@ -98,6 +102,24 @@ whole route.
 Ids are allocated for you and reading never writes. Keep each scene inside what the
 treatment said it does; if the scene wants to grow past that, say so and update
 `wiki/treatment.md` in the same plan rather than letting the two disagree.
+
+What goes in the lines:
+
+- **Dialogue first.** A scene plays as lines in a dialogue box, and the player reads every
+  one. Most of a scene is `dialogue` with a `speaker`. A treatment row that names an
+  exchange is asking for that exchange written out, line by line.
+- **Narration is the narrator's voice.** A `narration` line is a beat the player must know
+  that nobody says aloud, read in the same box as dialogue. It is not stage direction and
+  not a camera: "From the fire escape above, a single sharp hiss" is a picture, not a
+  line.
+- **Description goes in the synopsis during this phase.** No scene has a storyboard until
+  the hand-off, and this skill does not storyboard for the author, so what the frame looks
+  like — who stands where, the light, the weather — goes into the scene's one-line
+  synopsis (`edit_scene op=setSynopsis`), which the shot planner reads when the storyboard
+  is made. Never into narration.
+- **The row is a checklist.** Every event and character the treatment row names must
+  appear in the lines. Read each scene back after writing it and say what is still
+  missing.
 
 ## Phase 9 — the locations
 
