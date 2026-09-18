@@ -1,6 +1,6 @@
 {
   "name": "@vn/desktop",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "VN Studio — write, generate and play a visual novel.",
   "type": "module",
