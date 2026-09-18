@@ -25,7 +25,10 @@ export const analysisSchema = z.object({
     .array(
       z.object({
         behaviour: z.string().min(1).describe('what the agent should do instead, stated as a rule'),
-        where: z.string().optional().describe('the file or tool it belongs in, if you know one'),
+        where: z
+          .string()
+          .optional()
+          .describe('the tool it belongs to, or the file if you have read it'),
         rationale: z.string().min(1).describe('what it prevents'),
       }),
     )

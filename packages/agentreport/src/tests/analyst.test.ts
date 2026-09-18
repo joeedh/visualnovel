@@ -272,6 +272,8 @@ describe('granting the analyst more to read', () => {
 
     await analyst.ask('what went wrong?');
     expect(backend.requests[0]!.system).not.toContain("You can read the tool's own source code");
+    // Until then the analyst is told it cannot, so it does not invent a path
+    expect(backend.requests[0]!.system).toContain("You cannot read the tool's source code");
 
     await analyst.ask('look at the source');
     // The prompt is the front of the cached prefix, so a grant arrives as a message behind it

@@ -330,6 +330,7 @@ describe('with the requests but not the source', () => {
       ctx     : {} as ToolContext,
     });
     expect(systems[0]).toContain('Never quote its content');
+    expect(systems[0]).toContain("You cannot read the tool's source code");
 
     systems.length = 0;
     await analyze({
@@ -338,6 +339,9 @@ describe('with the requests but not the source', () => {
       redactor: redactor(),
     });
     expect(systems[0]).not.toContain('Never quote its content');
+    // The direct path has no tools at all, so the no-source paragraph reaches it too
+    expect(systems[0]).toContain("You cannot read the tool's source code");
+    expect(systems[0]).toContain('[cut at 600 of 1743 chars]');
   });
 });
 

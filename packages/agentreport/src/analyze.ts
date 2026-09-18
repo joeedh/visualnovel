@@ -57,6 +57,11 @@ const SYSTEM = [
   'What the author says went wrong is the claim you are testing, not a finding. Check it against',
   'the conversation and whatever else you can read. Where the evidence does not settle it, write',
   '"the author reports X" rather than X, and say what would settle it.',
+  '',
+  "A tool call's arguments and its output are cut in the transcript at a fixed length, and a cut",
+  'value says so where it was cut: "… [cut at 600 of 1743 chars]". A cut value is not evidence of',
+  'what came after it — a scene whose text ends mid-word was clipped, not written that way. A',
+  'finding that depends on the missing part must say so and set confidence accordingly.',
 ].join('\n');
 
 /**
@@ -88,6 +93,16 @@ const SOURCE_ACCESS = [
   'author was working on. Use it to check what the agent was actually able to do before you',
   'conclude what it should have done, and to point each recommendation at the file that would',
   'have to change. Read what you need and no more.',
+].join('\n');
+
+/**
+ * The paragraph in force until a source grant supersedes it. It carries the same section name as
+ * {@link SOURCE_ACCESS} so the grant replaces it rather than leaving both standing. Without it the
+ * analyst has cited a path it invented for a file it could not have read.
+ */
+const NO_SOURCE = [
+  "You cannot read the tool's source code. Do not cite a file path you have not read: name the",
+  'behaviour to change and the tool it belongs to, and leave the file to the maintainer.',
 ].join('\n');
 
 /**
@@ -268,7 +283,9 @@ async function analyzeDirectly(opts: AnalyzeOptions): Promise<Analysis> {
     '  recommendations[{behaviour, where?, rationale}], confidence, evidence[]',
   ].join('\n');
 
-  return withStructuredRetry(analysisArgs, () => opts.backend.message({ system: SYSTEM, prompt }));
+  return withStructuredRetry(analysisArgs, () =>
+    opts.backend.message({ system: `${SYSTEM}\n\n${NO_SOURCE}`, prompt }),
+  );
 }
 
 /**
@@ -435,7 +452,7 @@ export function createAnalyst(opts: AnalystOptions): Analyst {
   // of the cached prefix alone.
   const sections = (): SystemSection[] => [
     { name: 'analyst', text: SYSTEM },
-    ...(offered.source ? [{ name: 'source access', text: SOURCE_ACCESS }] : []),
+    { name: 'source access', text: offered.source ? SOURCE_ACCESS : NO_SOURCE },
     ...(offered.detail ? [{ name: 'request access', text: REQUEST_ACCESS }] : []),
     { name: 'protocol', text: attending ? CHAT_PROTOCOL : LOOP_PROTOCOL },
   ];

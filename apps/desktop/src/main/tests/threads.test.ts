@@ -214,6 +214,9 @@ describe('threads', () => {
     expect(stored!.detail!.ok).toBe(false);
     expect(stored!.detail!.args!.length).toBeLessThan(700);
     expect(stored!.detail!.output!.length).toBeLessThan(2100);
+    // A cut names both lengths, so a reader can tell a short call from a clipped one
+    expect(stored!.detail!.args!.endsWith('… [cut at 600 of 911 chars]')).toBe(true);
+    expect(stored!.detail!.output!.endsWith('… [cut at 2000 of 5000 chars]')).toBe(true);
     expect(stored!.full).toBeUndefined();
   });
 

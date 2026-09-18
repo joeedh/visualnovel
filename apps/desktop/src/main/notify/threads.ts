@@ -91,15 +91,25 @@ function clamp(text: string, max = TEXT_MAX): string {
 }
 
 /**
+ * Evidence cut for the log says so, and says how much is gone. An analyst reading the args of an
+ * `insertLines` call otherwise reads the cut as the end of the scene and reports a scene that
+ * stops short; the marker is what lets it tell a short call from a clipped one.
+ */
+function clampEvidence(text: string, max: number): string {
+  if (text.length <= max) return text;
+  return `${text.slice(0, max).trimEnd()}… [cut at ${max} of ${text.length} chars]`;
+}
+
+/**
  * A tool's evidence, sized for the log. Absent fields stay absent rather than becoming empty
  * strings: an item written before this format existed and one whose tool took no arguments should
  * read the same way, because they mean the same thing.
  */
 function clampDetail(detail: ToolDetail): ToolDetail {
   return {
-    ...(detail.args === undefined ? {} : { args: clamp(detail.args, ARGS_MAX) }),
+    ...(detail.args === undefined ? {} : { args: clampEvidence(detail.args, ARGS_MAX) }),
     ...(detail.ok === undefined ? {} : { ok: detail.ok }),
-    ...(detail.output === undefined ? {} : { output: clamp(detail.output, OUTPUT_MAX) }),
+    ...(detail.output === undefined ? {} : { output: clampEvidence(detail.output, OUTPUT_MAX) }),
   };
 }
 

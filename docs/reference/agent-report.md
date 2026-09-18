@@ -250,10 +250,17 @@ cheap unlooped path remains available under `report.agent`.
 
 Both reading permissions can also be granted part way through, with `report.grant`. `run`
 builds its tool catalog once per turn, so a grant takes effect on the next turn and its
-box says so. Granting is one-way, because tools already used stay in the transcript.
-Everything the analyst says is redacted before it reaches the pane, by the same `Redactor`
-that scans the report: a chat that shows "Yuki" beside a report that shows "Character A"
-reads as a bug, and one rule is easier to keep than two.
+box says so. Granting is one-way, because tools already used stay in the transcript. Until
+the source is granted, the prompt carries a paragraph saying the analyst cannot read it
+and must not cite a path it has not read; it sits under the same section name as the
+source-access paragraph, so the grant supersedes it rather than leaving both in force. The
+single-call path gets the same paragraph, since it has no tools at all. The prompt also
+says that a tool call's arguments and output are cut in the transcript at a fixed length
+and marked where the cut is (`… [cut at 600 of 1743 chars]`), so a value that ends
+mid-word is read as clipped rather than as what the agent wrote. Everything the analyst
+says is redacted before it reaches the pane, by the same `Redactor` that scans the report:
+a chat that shows "Yuki" beside a report that shows "Character A" reads as a bug, and one
+rule is easier to keep than two.
 
 `LOOP_PROTOCOL`'s "call `submit_report` exactly once" is kept verbatim for `report.agent`.
 On the conversational path it is replaced with an instruction to file a report before
