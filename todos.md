@@ -34,3 +34,5 @@
      per task.
 [ ]: in the convo editor, the edit and write tools should show a diff of changes, truncated at 
      100 lines.
+[ ]: the report difficult agent editor should have somewhere for users to input feedback prior 
+     to running the agent for the first time.
