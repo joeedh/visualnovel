@@ -13,6 +13,7 @@ import {
   setHeading,
   setLineText,
   setSpeaker,
+  setSynopsis,
   splitScene,
   type LineOp,
   type ScriptState,
@@ -344,6 +345,63 @@ describe('newScene', () => {
       'Scene ids are slugs — "The Roof" would be "the_roof".',
     );
     expect(error(newScene(state(), { scene: 'garden', heading: '' }))).toMatch(/needs a heading/);
+  });
+
+  it('carries a one-line synopsis, and refuses one that spans lines', () => {
+    const op = newScene(state(), {
+      scene   : 'garden',
+      heading : 'EXT. WALLED GARDEN - DAWN',
+      synopsis: '  Aiko finds the gate unlocked.  ',
+    });
+    expect(written(op, 'garden').synopsis).toBe('Aiko finds the gate unlocked.');
+    expect(written(op, 'garden').lines).toEqual([]);
+    expect(op.ok && op.message).toMatch(/with a synopsis/);
+
+    const blank = newScene(state(), {
+      scene   : 'garden',
+      heading : 'EXT. GARDEN - DAWN',
+      synopsis: ' ',
+    });
+    expect(written(blank, 'garden').synopsis).toBeUndefined();
+    expect(blank.ok && blank.message).not.toMatch(/synopsis/);
+
+    expect(
+      error(
+        newScene(state(), { scene: 'garden', heading: 'EXT. GARDEN - DAWN', synopsis: 'a\nb' }),
+      ),
+    ).toBe('A synopsis is one line; put a longer beat in the prose.');
+  });
+});
+
+describe('setSynopsis', () => {
+  it('sets, replaces and clears the synopsis without touching the lines', () => {
+    const set = setSynopsis(state(), { scene: 'arrival', text: 'Aiko arrives late.' });
+    expect(written(set, 'arrival').synopsis).toBe('Aiko arrives late.');
+    expect(ids(written(set, 'arrival'))).toEqual(['arrival:L1', 'arrival:L2']);
+    expect(set.ok && set.retyped).toEqual([]);
+
+    const next: ScriptState = {
+      ...state(),
+      scenes: new Map([['arrival', written(set, 'arrival')]]),
+    };
+    const replaced = setSynopsis(next, { scene: 'arrival', text: 'Late again.' });
+    expect(written(replaced, 'arrival').synopsis).toBe('Late again.');
+    const cleared = setSynopsis(next, { scene: 'arrival', text: '' });
+    expect(written(cleared, 'arrival').synopsis).toBeUndefined();
+    expect('synopsis' in written(cleared, 'arrival')).toBe(false);
+    expect(cleared.ok && cleared.message).toBe('Cleared the synopsis of arrival.');
+  });
+
+  it('refuses an unknown scene, a multi-line text, and a no-op', () => {
+    expect(error(setSynopsis(state(), { scene: 'nowhere', text: 'x' }))).toBe(
+      'No scene "nowhere".',
+    );
+    expect(error(setSynopsis(state(), { scene: 'arrival', text: 'one\ntwo' }))).toBe(
+      'A synopsis is one line; put a longer beat in the prose.',
+    );
+    expect(error(setSynopsis(state(), { scene: 'arrival', text: '' }))).toBe(
+      'arrival has no synopsis to clear.',
+    );
   });
 });
 

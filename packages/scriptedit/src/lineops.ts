@@ -369,15 +369,30 @@ export function setSpeaker(state: ScriptState, args: { line: string; speaker: st
 }
 
 // ---------------------------------------------------------------------------
-// The five scene edits. Line ids can change scope here, and a scene can change location, so these
+// The scene edits. Line ids can change scope here, and a scene can change location, so these
 // are where the consequence has to be stated before the author commits.
 // ---------------------------------------------------------------------------
 
 /**
- * Creates an empty chunk, deliberately not wired to anything. A new scene stays unreachable
- * until something points at it, and inventing an edge is `story.setNext`'s job, not this one's.
+ * A synopsis fit for the one `= …` line the serializer writes, or the reason it is not. Empty
+ * means "no synopsis"; the caller decides whether that clears or is simply absent.
  */
-export function newScene(state: ScriptState, args: { scene: string; heading: string }): LineOp {
+function synopsisOf(text: string): { synopsis?: string } | string {
+  const trimmed = text.trim();
+  if (/[\r\n]/.test(trimmed)) return 'A synopsis is one line; put a longer beat in the prose.';
+  return trimmed ? { synopsis: trimmed } : {};
+}
+
+/**
+ * Creates a chunk with no lines, deliberately not wired to anything. A new scene stays
+ * unreachable until something points at it, and inventing an edge is `story.setNext`'s job, not
+ * this one's. A `synopsis` is the one-line `= …` beat the decomposer reads and the runner never
+ * speaks; the body is written afterwards with `insertLines`.
+ */
+export function newScene(
+  state: ScriptState,
+  args: { scene: string; heading: string; synopsis?: string },
+): LineOp {
   const id = args.scene.trim();
   if (!id) return refuse('A scene needs an id.');
   if (id !== slug(id)) return refuse(`Scene ids are slugs — "${id}" would be "${slug(id)}".`);
@@ -388,21 +403,53 @@ export function newScene(state: ScriptState, args: { scene: string; heading: str
   const mined = parseHeading(heading);
   if (!mined.id) return refuse(`"${heading}" names no location.`);
 
+  const synopsis = synopsisOf(args.synopsis ?? '');
+  if (typeof synopsis === 'string') return refuse(synopsis);
+
   const prefix = headingPrefixOf(heading);
   const scene: Scene = {
     id,
     location       : mined.id,
     locationVariant: mined.variant,
     ...(prefix ? { headingPrefix: prefix } : {}),
+    ...synopsis,
     characters: [],
     lines     : [],
     nextLineId: 1,
     choices   : [],
     shots     : [],
   };
-  return done(`Created ${id} (${mined.id}/${mined.variant}); nothing points at it yet.`, {
+  const how = synopsis.synopsis ? ' with a synopsis' : '';
+  return done(`Created ${id} (${mined.id}/${mined.variant})${how}; nothing points at it yet.`, {
     writes: [scene],
   });
+}
+
+/**
+ * Replaces the scene's `= …` synopsis: the one-line beat the decomposer plans shots from and the
+ * runner never reads aloud. An empty text clears it. No line id changes and no art drifts, since
+ * `buildShotPrompt` never reads the synopsis either.
+ */
+export function setSynopsis(state: ScriptState, args: { scene: string; text: string }): LineOp {
+  const scene = state.scenes.get(args.scene);
+  if (!scene) return refuse(`No scene "${args.scene}".`);
+
+  const synopsis = synopsisOf(args.text);
+  if (typeof synopsis === 'string') return refuse(synopsis);
+  if ((synopsis.synopsis ?? '') === (scene.synopsis ?? '')) {
+    return refuse(
+      synopsis.synopsis
+        ? `${scene.id} already has that synopsis.`
+        : `${scene.id} has no synopsis to clear.`,
+    );
+  }
+
+  const written: Scene = { ...scene, ...synopsis };
+  if (!synopsis.synopsis) delete written.synopsis;
+  return done(
+    synopsis.synopsis ? `Set the synopsis of ${scene.id}.` : `Cleared the synopsis of ${scene.id}.`,
+    { writes: [written] },
+  );
 }
 
 /**

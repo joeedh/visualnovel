@@ -37,6 +37,7 @@ export {
   setHeading,
   setLineText,
   setSpeaker,
+  setSynopsis,
   splitScene,
   type AppliedLineOp,
   type LineOp,

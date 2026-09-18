@@ -15,6 +15,7 @@ import {
   setLineText,
   setNext,
   setSpeaker,
+  setSynopsis,
   spliceScene,
   splitScene,
   type BranchOp,
@@ -38,9 +39,10 @@ import { ok, fail, rel, type Tool } from './core.js';
 /**
  * The scene ops, named exactly as the desktop's `story.*` commands are, because each op invokes
  * the same decision its command does: an agent transcript and a command history should read as
- * the same vocabulary. `insertLines` and `deleteLines` have no button behind them — a person
- * types or removes one line at a time while a model rewrites forty, and `@vn/scriptedit` still
- * allocates every id. `newShot` and `deleteShot` write the storyboard rather than prose — they are here,
+ * the same vocabulary. `insertLines`, `deleteLines` and `setSynopsis` have no button behind them
+ * — a person types or removes one line at a time while a model rewrites forty, and the synopsis
+ * is the model's parking place for description it must not read aloud; `@vn/scriptedit` still
+ * decides every one. `newShot` and `deleteShot` write the storyboard rather than prose — they are here,
  * not their own tools, because the author experiences making a shot as a scene edit, and the
  * shared-vocabulary rule above outranks which file the write lands in.
  */
@@ -60,6 +62,7 @@ const SCENE_OPS = [
   'deleteScene',
   'splitScene',
   'mergeScene',
+  'setSynopsis',
 ] as const;
 
 type SceneOp = (typeof SCENE_OPS)[number];
@@ -73,72 +76,89 @@ const LINE_KINDS = [
   'centered',
 ] as const;
 
-const sceneEditShape = z.object({
-  op      : z.enum(SCENE_OPS).describe('which act; the arguments each one needs are listed below'),
-  scene: z
-    .string()
-    .optional()
-    .describe(
-      'insertLine, moveShot, newShot, deleteShot, newScene, setHeading, deleteScene, ' +
-        'splitScene, mergeScene',
-    ),
-  line    : z.string().optional().describe('a line id like arrival:L3 — the four line edits'),
-  shot: z
-    .string()
-    .optional()
-    .describe('moveShot: the shot id to move, e.g. arrival__beat1; deleteShot: the one to remove'),
-  text    : z.string().optional().describe('setLineText, insertLine'),
-  lines: z
-    .array(
-      z.object({
-        kind   : z.enum(LINE_KINDS).optional().describe('defaults to dialogue'),
-        speaker: z.string().optional().describe('the character cue; omit for narration'),
-        text   : z.string().min(1),
-      }),
-    )
-    .optional()
-    .describe('insertLines: a run of lines to add in order, each after the one before it'),
-  lineIds: z
-    .array(z.string().min(1))
-    .optional()
-    .describe(
-      'deleteLines: the line ids to remove, in any order; all of them or none. ' +
-        'newShot: the lines the shot covers from birth — at least one, and only uncovered ones',
-    ),
-  framing: z
-    .enum(['wide', 'medium', 'close', 'establishing'])
-    .optional()
-    .describe('newShot: how the frame is composed; defaults to medium'),
-  subjects: z
-    .array(z.string().min(1))
-    .optional()
-    .describe(
-      'newShot: the character ids on screen. Defaults to the speakers of the covered lines, ' +
-        'which is wrong for a reaction on a listener, an establishing frame over narration, or ' +
-        'anyone present and silent. Nothing can change a shot’s cast afterwards',
-    ),
-  after: z
-    .string()
-    .optional()
-    .describe(
-      'insertLine, moveLine: the line to sit after; moveShot: the shot to sit after; ' +
-        'omit for the top of the scene',
-    ),
-  kind    : z.enum(LINE_KINDS).optional().describe('insertLine; defaults to dialogue'),
-  speaker: z
-    .string()
-    .optional()
-    .describe('insertLine, setSpeaker: the character cue; empty makes the line narration'),
-  heading: z
-    .string()
-    .optional()
-    .describe(
-      'newScene, setHeading: e.g. INT. CLASSROOM - EVENING. setHeading moves the scene, so its ' +
-        'rendered shots are drawn again and its prose is left describing the old place',
-    ),
-  at      : z.string().optional().describe('splitScene: the line id that starts the second half'),
-  into: z.string().optional().describe('splitScene: the new scene id; mergeScene: the absorber'),
-});
+const sceneEditShape = z
+  .object({
+    op: z.enum(SCENE_OPS).describe('which act; the arguments each one needs are listed below'),
+    scene: z
+      .string()
+      .optional()
+      .describe(
+        'insertLine, insertLines, moveShot, newShot, deleteShot, newScene, setHeading, ' +
+          'deleteScene, splitScene, mergeScene, setSynopsis',
+      ),
+    line    : z.string().optional().describe('a line id like arrival:L3 — the four line edits'),
+    shot: z
+      .string()
+      .optional()
+      .describe(
+        'moveShot: the shot id to move, e.g. arrival__beat1; deleteShot: the one to remove',
+      ),
+    text: z
+      .string()
+      .optional()
+      .describe('setLineText, insertLine; setSynopsis: one line, empty to clear'),
+    lines: z
+      .array(
+        z.object({
+          kind   : z.enum(LINE_KINDS).optional().describe('defaults to dialogue'),
+          speaker: z.string().optional().describe('the character cue; omit for narration'),
+          text   : z.string().min(1),
+        }),
+      )
+      .optional()
+      .describe(
+        'insertLines only: a run of lines to add in order, each after the one before it. ' +
+          'newScene takes no lines',
+      ),
+    lineIds: z
+      .array(z.string().min(1))
+      .optional()
+      .describe(
+        'deleteLines: the line ids to remove, in any order; all of them or none. ' +
+          'newShot: the lines the shot covers from birth — at least one, and only uncovered ones',
+      ),
+    framing: z
+      .enum(['wide', 'medium', 'close', 'establishing'])
+      .optional()
+      .describe('newShot: how the frame is composed; defaults to medium'),
+    subjects: z
+      .array(z.string().min(1))
+      .optional()
+      .describe(
+        'newShot: the character ids on screen. Defaults to the speakers of the covered lines, ' +
+          'which is wrong for a reaction on a listener, an establishing frame over narration, or ' +
+          'anyone present and silent. Nothing can change a shot’s cast afterwards',
+      ),
+    after: z
+      .string()
+      .optional()
+      .describe(
+        'insertLine, moveLine: the line to sit after; moveShot: the shot to sit after; ' +
+          'omit for the top of the scene',
+      ),
+    kind    : z.enum(LINE_KINDS).optional().describe('insertLine; defaults to dialogue'),
+    speaker: z
+      .string()
+      .optional()
+      .describe('insertLine, setSpeaker: the character cue; empty makes the line narration'),
+    heading: z
+      .string()
+      .optional()
+      .describe(
+        'newScene, setHeading: e.g. INT. CLASSROOM - EVENING. setHeading moves the scene, so its ' +
+          'rendered shots are drawn again and its prose is left describing the old place',
+      ),
+    synopsis: z
+      .string()
+      .optional()
+      .describe(
+        'newScene: a one-line beat for the scene, read by the shot planner and never spoken to ' +
+          'the player; setSynopsis changes it later',
+      ),
+    at      : z.string().optional().describe('splitScene: the line id that starts the second half'),
+    into: z.string().optional().describe('splitScene: the new scene id; mergeScene: the absorber'),
+  })
+  .strict();
 
 type SceneEditArgs = z.infer<typeof sceneEditShape>;
 
@@ -164,7 +184,55 @@ const SCENE_OP_ARGS: Record<SceneOp, readonly (keyof SceneEditArgs)[]> = {
   deleteScene: ['scene'],
   splitScene : ['scene', 'at', 'into'],
   mergeScene : ['scene', 'into'],
+  setSynopsis: ['scene', 'text'],
 };
+
+/**
+ * The arguments each op reads. One it does not read is refused rather than dropped, because a
+ * dropped argument is a silent loss: `newScene` once took a `lines` array and wrote an empty
+ * scene, and the observation said nothing. `scene` is redundant on a line op (the id names its
+ * scene) and is accepted everywhere, since refusing it would cost a round trip for nothing.
+ */
+const SCENE_OP_TAKES: Record<SceneOp, readonly (keyof SceneEditArgs)[]> = {
+  setLineText: ['line', 'text'],
+  insertLine : ['scene', 'text', 'after', 'kind', 'speaker'],
+  insertLines: ['scene', 'lines', 'after'],
+  deleteLine : ['line'],
+  deleteLines: ['lineIds'],
+  moveLine   : ['line', 'after'],
+  moveShot   : ['scene', 'shot', 'after'],
+  newShot    : ['scene', 'lineIds', 'framing', 'subjects'],
+  deleteShot : ['scene', 'shot'],
+  setSpeaker : ['line', 'speaker'],
+  newScene   : ['scene', 'heading', 'synopsis'],
+  setHeading : ['scene', 'heading'],
+  deleteScene: ['scene'],
+  splitScene : ['scene', 'at', 'into'],
+  mergeScene : ['scene', 'into'],
+  setSynopsis: ['scene', 'text'],
+};
+
+/** Why `op` will not run with `a`, or nothing: a required argument missing, or a surplus one. */
+function argFault<Op extends string, A extends { op: Op }>(
+  a: A,
+  needs: Record<Op, readonly (keyof A)[]>,
+  takes: Record<Op, readonly (keyof A)[]>,
+): string | undefined {
+  const missing = needs[a.op].filter((name) => a[name] === undefined);
+  if (missing.length > 0) return `${a.op} needs: ${missing.map(String).join(', ')}`;
+  const surplus = (Object.keys(a) as (keyof A)[]).filter(
+    (name) =>
+      name !== 'op' && name !== 'scene' && a[name] !== undefined && !takes[a.op].includes(name),
+  );
+  if (surplus.length === 0) return undefined;
+  if (a.op === 'newScene' && surplus.includes('lines' as keyof A)) {
+    return (
+      'newScene does not take lines; create the scene, then edit_scene op=insertLines to ' +
+      'write its body, or pass synopsis for a one-line summary.'
+    );
+  }
+  return `${a.op} does not take ${surplus.map(String).join(', ')}`;
+}
 
 /**
  * The one `@vn/scriptedit` decision an op names, with the tool's defaults filled in. Async only
@@ -213,7 +281,7 @@ async function sceneDecider(
     case 'setSpeaker':
       return (s) => setSpeaker(s, { line, speaker });
     case 'newScene':
-      return (s) => newScene(s, { scene, heading: a.heading ?? '' });
+      return (s) => newScene(s, { scene, heading: a.heading ?? '', synopsis: a.synopsis });
     case 'setHeading':
       return (s) => setHeading(s, { scene, heading: a.heading ?? '' });
     case 'deleteScene':
@@ -222,6 +290,8 @@ async function sceneDecider(
       return (s) => splitScene(s, { scene, at: a.at ?? '', into });
     case 'mergeScene':
       return (s) => mergeScene(s, { scene, into });
+    case 'setSynopsis':
+      return (s) => setSynopsis(s, { scene, text });
   }
 }
 
@@ -244,14 +314,18 @@ const editSceneTool: Tool<SceneEditArgs> = {
     'to say who is on screen; ' +
     'deleting a shot releases its lines as gaps and orphans any art already paid for; deleting ' +
     'the last one deletes the file, so the scene is decomposed again. ' +
-    'newScene leaves the scene unreachable on purpose: follow it with edit_branches to link it in. ' +
+    'newScene takes a heading and an optional one-line synopsis, never lines, and leaves the ' +
+    'scene unreachable on purpose: follow it with edit_branches to link it in. setSynopsis ' +
+    'replaces that one line later; it is where description the player must not hear goes when ' +
+    'the scene has no storyboard yet. ' +
     'Drafting a run of prose is insertLines and clearing one is deleteLines, one call for the ' +
-    'whole run — do not call insertLine or deleteLine forty times.',
+    'whole run — do not call insertLine or deleteLine forty times. An argument the op does not ' +
+    'read is refused, not ignored.',
   mutating   : true,
   args       : sceneEditShape,
   async run(a, ctx) {
-    const missing = SCENE_OP_ARGS[a.op].filter((name) => a[name] === undefined);
-    if (missing.length > 0) return fail(`${a.op} needs: ${missing.join(', ')}`);
+    const fault = argFault(a, SCENE_OP_ARGS, SCENE_OP_TAKES);
+    if (fault) return fail(fault);
 
     // Both storyboard ops write `work/shots/<scene>.json` rather than prose, so they take
     // `set_outfit`'s write path and run the `shotcreate` rules behind `story.newShot` and
@@ -296,29 +370,31 @@ const BRANCH_OPS = ['setChoice', 'removeChoice', 'setNext', 'spliceScene'] as co
 
 type BranchOpName = (typeof BRANCH_OPS)[number];
 
-const branchEditShape = z.object({
-  op   : z.enum(BRANCH_OPS).describe('which rewire; the arguments each one needs are listed below'),
-  scene: z
-    .string()
-    .min(1)
-    .describe('the scene being wired; for spliceScene, the one going in the middle'),
-  goto: z
-    .string()
-    .optional()
-    .describe('setChoice: where the choice leads. setNext: the continuation; omit to clear it'),
-  label: z.string().optional().describe('setChoice: what the player reads on the button'),
-  index: z
-    .number()
-    .int()
-    .optional()
-    .describe('setChoice: which choice to replace, omit to append. removeChoice: which to drop'),
-  from : z.string().optional().describe('spliceScene: the scene whose outgoing edge is being cut'),
-  edge: z
-    .number()
-    .int()
-    .optional()
-    .describe("spliceScene: which of `from`'s choices to splice into; omit for its next"),
-});
+const branchEditShape = z
+  .object({
+    op: z.enum(BRANCH_OPS).describe('which rewire; the arguments each one needs are listed below'),
+    scene: z
+      .string()
+      .min(1)
+      .describe('the scene being wired; for spliceScene, the one going in the middle'),
+    goto: z
+      .string()
+      .optional()
+      .describe('setChoice: where the choice leads. setNext: the continuation; omit to clear it'),
+    label: z.string().optional().describe('setChoice: what the player reads on the button'),
+    index: z
+      .number()
+      .int()
+      .optional()
+      .describe('setChoice: which choice to replace, omit to append. removeChoice: which to drop'),
+    from: z.string().optional().describe('spliceScene: the scene whose outgoing edge is being cut'),
+    edge: z
+      .number()
+      .int()
+      .optional()
+      .describe("spliceScene: which of `from`'s choices to splice into; omit for its next"),
+  })
+  .strict();
 
 type BranchEditArgs = z.infer<typeof branchEditShape>;
 
@@ -328,6 +404,14 @@ const BRANCH_OP_ARGS: Record<BranchOpName, readonly (keyof BranchEditArgs)[]> = 
   removeChoice: ['index'],
   setNext     : [],
   spliceScene : ['from'],
+};
+
+/** As with {@link SCENE_OP_TAKES}: what each rewire reads; anything else is refused by name. */
+const BRANCH_OP_TAKES: Record<BranchOpName, readonly (keyof BranchEditArgs)[]> = {
+  setChoice   : ['goto', 'label', 'index'],
+  removeChoice: ['index'],
+  setNext     : ['goto'],
+  spliceScene : ['from', 'edge'],
 };
 
 const branchDecider =
@@ -377,8 +461,8 @@ const editBranchesTool: Tool<BranchEditArgs> = {
   mutating   : true,
   args       : branchEditShape,
   async run(a, ctx) {
-    const missing = BRANCH_OP_ARGS[a.op].filter((name) => a[name] === undefined);
-    if (missing.length > 0) return fail(`${a.op} needs: ${missing.join(', ')}`);
+    const fault = argFault(a, BRANCH_OP_ARGS, BRANCH_OP_TAKES);
+    if (fault) return fail(fault);
 
     const { op, sources } = await ctx.workspace.branchEdit(branchDecider(a));
     if (!op.ok) return fail(op.error);

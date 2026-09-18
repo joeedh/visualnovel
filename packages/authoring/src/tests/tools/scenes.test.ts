@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { ProjectPaths, readShots, writeShots } from '@vn/store';
 import type { Shot } from '@vn/types';
-import { CHUNKS, run, tempProject } from './testkit.js';
+import { CHUNKS, run, tempProject, tool } from './testkit.js';
 
 /**
  * `edit_scene` is the agent's only prose write path, and it is the same write path the desktop's
@@ -100,6 +100,63 @@ describe('edit_scene', () => {
     }
   });
 
+  it('creates a scene with a synopsis, and sets or clears one later', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      const made = await run(
+        'edit_scene',
+        {
+          op      : 'newScene',
+          scene   : 'rooftop',
+          heading : 'EXT. ROOFTOP - DUSK',
+          synopsis: 'Ren waits on the roof while the city lights come on.',
+        },
+        ctx,
+      );
+      expect(made.ok).toBe(true);
+      expect(made.output).toContain('with a synopsis');
+      const file = join(dir, 'scenes', 'rooftop.md');
+      expect(await fs.readFile(file, 'utf8')).toContain(
+        '= Ren waits on the roof while the city lights come on.',
+      );
+      // The synopsis round-trips through the parser the tool reads scenes back with.
+      const shown = await run('parse_fountain', {}, ctx);
+      expect(shown.data).toContainEqual(
+        expect.objectContaining({
+          id      : 'rooftop',
+          synopsis: 'Ren waits on the roof while the city lights come on.',
+        }),
+      );
+
+      const set = await run(
+        'edit_scene',
+        { op: 'setSynopsis', scene: 'rooftop', text: 'Ren gives up waiting.' },
+        ctx,
+      );
+      expect(set.ok).toBe(true);
+      expect(await fs.readFile(file, 'utf8')).toContain('= Ren gives up waiting.');
+      expect(await fs.readFile(file, 'utf8')).not.toContain('city lights');
+
+      const multi = await run(
+        'edit_scene',
+        { op: 'setSynopsis', scene: 'rooftop', text: 'one\ntwo' },
+        ctx,
+      );
+      expect(multi.ok).toBe(false);
+      expect(multi.output).toBe('A synopsis is one line; put a longer beat in the prose.');
+
+      const cleared = await run(
+        'edit_scene',
+        { op: 'setSynopsis', scene: 'rooftop', text: '' },
+        ctx,
+      );
+      expect(cleared.ok).toBe(true);
+      expect(await fs.readFile(file, 'utf8')).not.toContain('= ');
+    } finally {
+      await cleanup();
+    }
+  });
+
   it('names the arguments an op needs instead of guessing them', async () => {
     const { ctx, dir, cleanup } = await tempProject();
     try {
@@ -107,6 +164,59 @@ describe('edit_scene', () => {
       expect(r.ok).toBe(false);
       expect(r.output).toBe('splitScene needs: at, into');
       expect(await fs.readFile(join(dir, 'scenes', 'arrival.md'), 'utf8')).toBe(CHUNKS.arrival);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('refuses an argument the op does not read rather than dropping it', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      // The case that happened: a scaffold passed its summary as `lines`, and 24 scenes were
+      // written empty with nothing said.
+      const scaffold = await run(
+        'edit_scene',
+        {
+          op     : 'newScene',
+          scene  : 'rooftop',
+          heading: 'EXT. ROOFTOP - DUSK',
+          lines  : [{ kind: 'narration', text: 'Ren waits.' }],
+        },
+        ctx,
+      );
+      expect(scaffold.ok).toBe(false);
+      expect(scaffold.output).toBe(
+        'newScene does not take lines; create the scene, then edit_scene op=insertLines to ' +
+          'write its body, or pass synopsis for a one-line summary.',
+      );
+      await expect(fs.access(join(dir, 'scenes', 'rooftop.md'))).rejects.toThrow();
+
+      const surplus = await run(
+        'edit_scene',
+        { op: 'deleteLine', line: 'arrival:L1', after: 'arrival:L2' },
+        ctx,
+      );
+      expect(surplus.ok).toBe(false);
+      expect(surplus.output).toBe('deleteLine does not take after');
+      expect(await fs.readFile(join(dir, 'scenes', 'arrival.md'), 'utf8')).toBe(CHUNKS.arrival);
+
+      // A key the schema has never heard of is refused before the tool runs.
+      const unknown = tool('edit_scene').args.safeParse({
+        op     : 'newScene',
+        scene  : 'rooftop',
+        heading: 'EXT. ROOFTOP - DUSK',
+        summary: 'Ren waits.',
+      });
+      expect(unknown.success).toBe(false);
+      expect(unknown.success || unknown.error.issues[0]?.message).toMatch(/summary/);
+
+      // A redundant `scene` on a line op is harmless and accepted.
+      const redundant = await run(
+        'edit_scene',
+        { op: 'setLineText', scene: 'arrival', line: 'arrival:L1', text: 'Good afternoon.' },
+        ctx,
+      );
+      expect(redundant.ok).toBe(true);
     } finally {
       await cleanup();
     }
@@ -300,12 +410,19 @@ describe('edit_branches', () => {
     }
   });
 
-  it('names the arguments an op needs instead of guessing them', async () => {
+  it('names the arguments an op needs, and refuses one the op does not read', async () => {
     const { ctx, dir, cleanup } = await tempProject();
     try {
       const r = await run('edit_branches', { op: 'setChoice', scene: 'arrival' }, ctx);
       expect(r.ok).toBe(false);
       expect(r.output).toBe('setChoice needs: goto, label');
+      const surplus = await run(
+        'edit_branches',
+        { op: 'setNext', scene: 'arrival', goto: 'ending', label: 'Go' },
+        ctx,
+      );
+      expect(surplus.ok).toBe(false);
+      expect(surplus.output).toBe('setNext does not take label');
       expect(await fs.readFile(join(dir, 'scenes', 'arrival.md'), 'utf8')).toBe(CHUNKS.arrival);
     } finally {
       await cleanup();
