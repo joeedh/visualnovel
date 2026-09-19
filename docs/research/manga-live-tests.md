@@ -1,5 +1,37 @@
 # Manga style: live-model tests
 
+<!-- toc -->
+
+- [Stage 1 — aspect is honoured (2026-09-14)](#stage-1--aspect-is-honoured-2026-09-14)
+    - [What was checked](#what-was-checked)
+    - [Budget and spend](#budget-and-spend)
+    - [The built-in backend did not send the ratio](#the-built-in-backend-did-not-send-the-ratio)
+    - [OpenRouter, model by model](#openrouter-model-by-model)
+    - [What the table says](#what-the-table-says)
+    - [Decisions settled](#decisions-settled)
+- [Stage 2 — layout and lettering (2026-09-15)](#stage-2--layout-and-lettering-2026-09-15)
+    - [What was checked](#what-was-checked-1)
+    - [Budget and spend](#budget-and-spend-1)
+    - [Per model (the four templates, three seeds, at 3:4)](#per-model-the-four-templates-three-seeds-at-34)
+    - [Per template (all models, at 3:4)](#per-template-all-models-at-34)
+    - [The ratio, the threshold and the reviewers](#the-ratio-the-threshold-and-the-reviewers)
+    - [What the tables say](#what-the-tables-say)
+    - [Decisions settled](#decisions-settled-1)
+- [Image model default — OpenRouter as a backend (2026-09-15)](#image-model-default--openrouter-as-a-backend-2026-09-15)
+    - [What was checked](#what-was-checked-2)
+    - [Budget and spend](#budget-and-spend-2)
+    - [What came back](#what-came-back)
+    - [Decisions settled](#decisions-settled-2)
+- [Stage 4 — perspective coherence (2026-09-17)](#stage-4--perspective-coherence-2026-09-17)
+    - [What was checked](#what-was-checked-3)
+    - [Budget and spend](#budget-and-spend-3)
+    - [Two defects found before the first sheet frame](#two-defects-found-before-the-first-sheet-frame)
+    - [Per model and way](#per-model-and-way)
+    - [What the tables say](#what-the-tables-say-1)
+    - [Decisions settled](#decisions-settled-3)
+
+<!-- tocstop -->
+
 The live checks the [manga-style plan](../plans/manga-style.md#live-model-testing) asks
 for, one section per stage, run against real models after the stage's mock tests were
 green. Each section records what was drawn, on which models, what came back, and what it
