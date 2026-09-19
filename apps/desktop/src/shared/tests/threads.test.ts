@@ -1,4 +1,10 @@
-import { NATIVE_VERSION, resumeNote, resumeRefusal } from '../threads.js';
+import {
+  NATIVE_VERSION,
+  continuingTransport,
+  headerTransport,
+  resumeNote,
+  resumeRefusal,
+} from '../threads.js';
 import type { ResumeState } from '../threads.js';
 import type { ResumeHeader } from '../convo.js';
 
@@ -52,6 +58,42 @@ describe('resumeRefusal', () => {
     expect(refusal).toContain('Bind a Claude model');
   });
 
+  it('refuses a transport the thread was not recorded through, naming the key to provide', () => {
+    const viaOpenRouter = recorded({ transport: 'openrouter' });
+    const refusal = resumeRefusal('Casting', viaOpenRouter, {
+      model    : 'claude-opus-5',
+      transport: 'anthropic',
+    });
+    expect(refusal).toContain('recorded through OpenRouter');
+    expect(refusal).toContain("continue it through Anthropic's own API");
+    expect(refusal).toContain('Provide an OpenRouter key first');
+
+    const native = recorded({ transport: 'anthropic' });
+    expect(
+      resumeRefusal('Casting', native, { model: 'claude-opus-5', transport: 'openrouter' }),
+    ).toContain('Provide an Anthropic key first');
+  });
+
+  it('allows the transport the thread was recorded through, and reads an old header as its vendor', () => {
+    expect(
+      resumeRefusal('Casting', recorded({ transport: 'openrouter' }), {
+        model    : 'claude-opus-5',
+        transport: 'openrouter',
+      }),
+    ).toBe(undefined);
+    expect(
+      resumeRefusal('Casting', recorded(), { model: 'claude-opus-5', transport: 'anthropic' }),
+    ).toBe(undefined);
+    expect(headerTransport(header())).toBe('anthropic');
+    expect(headerTransport(header({ transport: 'openrouter' }))).toBe('openrouter');
+  });
+
+  it('skips the transport check when main did not fill one in', () => {
+    expect(
+      resumeRefusal('Casting', recorded({ transport: 'openrouter' }), { model: 'claude-opus-5' }),
+    ).toBe(undefined);
+  });
+
   it('refuses a protocol the bound backend does not speak', () => {
     const refusal = resumeRefusal('Casting', recorded(), {
       model  : 'claude-opus-5',
@@ -71,6 +113,28 @@ describe('resumeRefusal', () => {
       model: 'gemini-3-pro',
     });
     expect(refusal).toContain('recorded on Claude');
+  });
+});
+
+describe('continuingTransport', () => {
+  const all = { anthropic: true, gemini: true, openrouter: true };
+
+  it('keeps the recorded transport while its key resolves, over the free route', () => {
+    expect(continuingTransport('claude-opus-5', all, 'openrouter')).toBe('openrouter');
+    expect(continuingTransport('claude-opus-5', all, 'anthropic')).toBe('anthropic');
+  });
+
+  it('falls back to the free route when the recorded key is gone, or nothing was recorded', () => {
+    expect(continuingTransport('claude-opus-5', { ...all, openrouter: false }, 'openrouter')).toBe(
+      'anthropic',
+    );
+    expect(continuingTransport('claude-opus-5', all)).toBe('anthropic');
+    expect(continuingTransport('claude-opus-5', { ...all, anthropic: false })).toBe('openrouter');
+  });
+
+  it('answers nothing when no key can carry the model at all', () => {
+    const none = { anthropic: false, gemini: false, openrouter: false };
+    expect(continuingTransport('claude-opus-5', none, 'openrouter')).toBeUndefined();
   });
 });
 

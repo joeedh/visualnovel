@@ -11,7 +11,7 @@
  * carries the counter over, so a cleared conversation never reuses an id.
  */
 import { charge } from '@vn/types';
-import type { ChatVendor } from '@vn/types';
+import type { ChatVendor, Transport } from '@vn/types';
 // Type-only, for the reason `ipc.ts` gives: `@vn/authoring` reads the filesystem, and these
 // shapes are named here only as data that has already crossed the wire.
 import type { BackendKind, CacheVerdict, SystemSection } from '@vn/authoring';
@@ -155,6 +155,12 @@ export interface ResumeHeader {
    * model the current table has forgotten would answer `gemini` without saying it was guessing.
    */
   vendor: ChatVendor;
+  /**
+   * The key the thread's messages were sent through, which is what their format belongs to: a
+   * thread carried by OpenRouter holds Chat Completions messages whatever `vendor` says. Absent
+   * on a thread written before routing existed, and then read as `vendor`.
+   */
+  transport?: Transport;
   model?: string;
   effort?: string;
   /** The system prompt as named sections, in `joinSections` order. */

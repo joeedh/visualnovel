@@ -7,6 +7,7 @@
  * imported from those apps, which aren't libraries.
  */
 import {
+  keysPresent,
   loadConfig,
   resolveKeys,
   secretDirsFor,
@@ -18,6 +19,7 @@ import {
 import { readdir, stat } from 'node:fs/promises';
 import { isAbsolute, join, relative, sep } from 'node:path';
 import { openGit } from '@vn/git';
+import { ConfigError } from '@vn/util';
 import {
   characterFromDoc,
   locationFromDoc,
@@ -132,8 +134,11 @@ import {
   DEFAULT_BUDGET,
   DEFAULT_AGENT_EFFORT,
   TEXT_MODELS,
+  chatRouteFor,
   type BudgetChoice,
+  type Route,
   type TaskKind,
+  type Transport,
 } from '@vn/types';
 import { type Analyst, type AnalystGrant, type Redactor, type Report } from '@vn/agentreport';
 import { BUSY_AGENT, BUSY_PASS, BUSY_REPORT, busyName } from '../../shared/ipc.js';
@@ -194,7 +199,12 @@ import {
   type ThreadHeader,
   type ThreadRecord,
 } from '../notify/threads.js';
-import { type OpenedThread } from '../../shared/threads.js';
+import {
+  TRANSPORTS,
+  continuingTransport,
+  narrowedTo,
+  type OpenedThread,
+} from '../../shared/threads.js';
 import type { PromptView } from '../../shared/prompt.js';
 import { type AnalysisParts, type AnalysisRequest, type Transcript } from '../agent/agentreport.js';
 
@@ -775,6 +785,13 @@ export class WorkspaceSession {
     sections   : [] as SystemSection[],
     n          : 0,
     opened     : false,
+    /**
+     * The key the open thread's messages go through. Set when the backend is built and written
+     * into the header with the first message; once the header is written, `chooseBackend` keeps
+     * the backend on it, because a rebuild (`setEffort`, a key pasted mid-thread) that moved the
+     * thread to another transport would send messages in a format the model cannot read.
+     */
+    transport  : undefined as Transport | undefined,
     /** The highest `n` the newest summary replaces. Undefined until the author compacts. */
     compactedTo: undefined as number | undefined,
   };
@@ -1062,6 +1079,7 @@ export class WorkspaceSession {
         backend : this.native.kind,
         vendor  : chatVendorFor(this.model),
         sections: this.native.sections,
+        ...(this.native.transport === undefined ? {} : { transport: this.native.transport }),
         ...(this.model === '' ? {} : { model: this.model }),
         ...(this.effort === undefined ? {} : { effort: this.effort }),
       });
@@ -1098,8 +1116,33 @@ export class WorkspaceSession {
     if (this.mock) return new MockAgentBackend();
     const modelId = model ?? config.models.text;
     const keys = await resolveKeys(config, { secretsDirs: await secretDirsFor(this.dir) });
-    const chat = chatBackendFor(chatRoute(config, keys, modelId), keys, this.effort).backend;
+    const pin = this.native.opened ? this.native.transport : undefined;
+    let route: Route;
+    if (pin === undefined) {
+      route = chatRoute(config, keys, modelId);
+    } else {
+      const pinned = chatRouteFor(modelId, narrowedTo(pin, keysPresent(keys)));
+      if (!pinned) {
+        throw new ConfigError(
+          `This conversation was recorded through ${TRANSPORTS[pin]}, and no key for it ` +
+            'resolves now. Provide one, or open the conversation for reading.',
+        );
+      }
+      route = pinned;
+    }
+    this.native.transport = route.transport;
+    const chat = chatBackendFor(route, keys, this.effort).backend;
     return chat.chatConversation ? new NativeAgentBackend(chat) : new StructuredAgentBackend(chat);
+  }
+
+  /** What a resume binding is checked against: see {@link continuingTransport}. */
+  async continuingTransport(
+    config: ProjectConfig,
+    recorded: Transport | undefined,
+  ): Promise<Transport | undefined> {
+    if (this.mock || this.model === '') return undefined;
+    const keys = await resolveKeys(config, { secretsDirs: await secretDirsFor(this.dir) });
+    return continuingTransport(this.model, keysPresent(keys), recorded);
   }
 
   /**

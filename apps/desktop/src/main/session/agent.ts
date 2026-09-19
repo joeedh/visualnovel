@@ -54,7 +54,13 @@ import {
   type ThreadHeader,
   type ThreadRecord,
 } from '../notify/threads.js';
-import { resumeRefusal, type OpenedThread, type ResumeState } from '../../shared/threads.js';
+import {
+  headerTransport,
+  resumeRefusal,
+  type OpenedThread,
+  type ResumeBinding,
+  type ResumeState,
+} from '../../shared/threads.js';
 import type { WorkspaceSession } from './core.js';
 import { wroteAuthoredInput, resumedNote } from './core.js';
 
@@ -275,6 +281,7 @@ export class AgentPart {
       n          : 0,
       opened     : false,
       compactedTo: undefined,
+      transport  : undefined,
     };
   }
 
@@ -383,10 +390,20 @@ export class AgentPart {
     }
     await this.session.ensureAgent();
     const { state } = await this.resumeState(id);
-    return resumeRefusal(record.title, state, {
+    return resumeRefusal(record.title, state, await this.binding(state));
+  }
+
+  /** The binding a stored conversation is checked against, with what main alone can fill in. */
+  private async binding(state: ResumeState): Promise<ResumeBinding> {
+    const transport = await this.session.continuingTransport(
+      await loadConfig(this.session.dir),
+      state.header === undefined ? undefined : headerTransport(state.header),
+    );
+    return {
       model  : this.session.model,
       backend: this.session.native.kind,
-    });
+      ...(transport === undefined ? {} : { transport }),
+    };
   }
 
   /**
@@ -402,10 +419,7 @@ export class AgentPart {
     const record = await readThread(paths, id);
     const agent = await this.session.ensureAgent();
     const { state, log } = await this.resumeState(id);
-    const refusal = resumeRefusal(record.title, state, {
-      model  : this.session.model,
-      backend: this.session.native.kind,
-    });
+    const refusal = resumeRefusal(record.title, state, await this.binding(state));
     if (refusal) throw new Error(refusal);
     if (!log) throw new Error(`“${record.title}” has no history to continue from`);
 
@@ -429,7 +443,18 @@ export class AgentPart {
       n          : highest + 1,
       opened     : true,
       compactedTo: log.compaction?.covers.to,
+      transport  : headerTransport(log.header),
     };
+    // Rebuilt under the pin just set, so the next turn goes through the transport the messages
+    // were recorded in rather than the one the free route picked when the agent was built
+    if (!this.session.mock) {
+      agent.setBackend(
+        await this.session.buildBackend(
+          await loadConfig(this.session.dir),
+          this.session.model || undefined,
+        ),
+      );
+    }
     return record;
   }
 

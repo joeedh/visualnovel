@@ -5,8 +5,8 @@
  * Continue button on this and main refuses `agent.resumeThread` on it, and a greyed control has to
  * say what the command would say.
  */
-import { chatVendorFor } from '@vn/types';
-import type { ChatVendor } from '@vn/types';
+import { chatRouteFor, chatVendorFor } from '@vn/types';
+import type { ChatVendor, KeysPresent, Transport } from '@vn/types';
 // Type-only, for the reason `convo.ts` gives: `@vn/authoring` reads the filesystem, and this shape
 // is named here only as data that has already crossed the wire.
 import type { BackendKind } from '@vn/authoring';
@@ -41,12 +41,56 @@ export interface OpenedThread extends ThreadRecord {
 /**
  * What the agent is bound to now, which is what a stored conversation is checked against.
  *
- * `backend` is what main knows and the renderer does not: only a built backend says which protocol
- * it speaks. The pane therefore runs the first four checks and main runs all five.
+ * `transport` and `backend` are what main knows and the renderer does not: only the side with the
+ * keys can say which one would carry the next turn, and only a built backend says which protocol
+ * it speaks. The pane therefore runs the first four checks and main runs all six.
  */
 export interface ResumeBinding {
   model: string;
+  /** What {@link continuingTransport} answered for `model`. */
+  transport?: Transport;
   backend?: BackendKind;
+}
+
+/** How each transport reads in a refusal. */
+export const TRANSPORTS: Record<Transport, string> = {
+  anthropic : "Anthropic's own API",
+  gemini    : "Google's own API",
+  openrouter: 'OpenRouter',
+};
+
+/** The key a transport needs, with its article, for a sentence telling the author what to provide. */
+const TRANSPORT_KEYS: Record<Transport, string> = {
+  anthropic : 'an Anthropic key',
+  gemini    : 'a Gemini key',
+  openrouter: 'an OpenRouter key',
+};
+
+/** The transport a header recorded. A header from before routing existed recorded its vendor only. */
+export function headerTransport(header: Pick<ResumeHeader, 'vendor' | 'transport'>): Transport {
+  return header.transport ?? header.vendor;
+}
+
+/** `present` with every key but `only` read as absent, which routes a model through that key alone. */
+export function narrowedTo(only: Transport, present: KeysPresent): KeysPresent {
+  return { anthropic: false, gemini: false, openrouter: false, [only]: present[only] };
+}
+
+/**
+ * The transport the next turn of `modelId` would go through: the one the thread was `recorded` on
+ * while its key still resolves, else whatever the keys present route it to, else nothing. The pin
+ * comes first because a thread's messages are in that transport's format, and the free route is
+ * only for a thread that has not been written yet.
+ */
+export function continuingTransport(
+  modelId: string,
+  present: KeysPresent,
+  recorded?: Transport,
+): Transport | undefined {
+  if (recorded !== undefined && chatRouteFor(modelId, narrowedTo(recorded, present))) {
+    return recorded;
+  }
+  return chatRouteFor(modelId, present)?.transport;
 }
 
 /** How each protocol reads in a refusal. */
@@ -97,6 +141,15 @@ export function resumeRefusal(
       `to ${bound.model}. The two vendors do not share a message format, so continuing would ` +
       `send blocks the model cannot read. Bind a ${VENDORS[header.vendor]} model first, or open ` +
       'the conversation for reading.'
+    );
+  }
+  if (bound.transport !== undefined && headerTransport(header) !== bound.transport) {
+    const was = headerTransport(header);
+    return (
+      `${named} was recorded through ${TRANSPORTS[was]} and the agent would now continue it ` +
+      `through ${TRANSPORTS[bound.transport]}. The two do not share a message format, so ` +
+      `continuing would send blocks the model cannot read. Provide ${TRANSPORT_KEYS[was]} first, ` +
+      'or open the conversation for reading.'
     );
   }
   if (bound.backend && header.backend !== bound.backend) {

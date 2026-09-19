@@ -468,7 +468,7 @@ export async function appendNative(
 
 /** Line 0's fields, without the `type` that belongs only in the file. */
 function resumeHeaderOf(line: { type: 'resume' } & ResumeHeader): ResumeHeader {
-  const { v, thread, at, backend, vendor, model, effort, sections } = line;
+  const { v, thread, at, backend, vendor, transport, model, effort, sections } = line;
   return {
     v,
     thread,
@@ -476,6 +476,7 @@ function resumeHeaderOf(line: { type: 'resume' } & ResumeHeader): ResumeHeader {
     backend,
     vendor,
     sections: sections ?? [],
+    ...(transport === undefined ? {} : { transport }),
     ...(model === undefined ? {} : { model }),
     ...(effort === undefined ? {} : { effort }),
   };
