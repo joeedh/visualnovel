@@ -22,34 +22,13 @@
   line-height: 1.5;
 }
 
-/* The whole document, monospaced: this is markdown with front-matter in it, and column
-   alignment is the only thing standing in for a preview. */
-.wk-text {
+/* The document, in path.ux's rich text editor: the editor is a flex column of its own (toolbar
+   over a scrolling root), so it takes the height the surface leaves and scrolls inside. Its look
+   is the `richtext` theme block in `app/theme.ts`, not this sheet. */
+.wk-rich {
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
-  resize: none;
-  border: none;
-  outline: none;
-  padding: 14px 16px;
-  background: var(--ink-sunken);
-  color: var(--paper);
-  font-family: var(--mono);
-  font-size: 13px;
-  line-height: 1.65;
-  tab-size: 2;
-  /* Soft-wrapped, not clipped: a sheet is prose, and a hard-wrapped column read in a narrow pane
-     would otherwise scroll sideways one paragraph at a time. `wrap="soft"` on the element means
-     the wrap is only where it is drawn -- the value saved to disk keeps the author's own newlines.
-     `overflow-wrap` is the backstop for the one thing `pre-wrap` cannot break: a URL or a path
-     longer than the pane is wide. */
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
-  overflow: auto;
-}
-
-.wk-text:disabled {
-  color: var(--mist-dim);
 }
 
 .wk-empty {
@@ -118,4 +97,20 @@
 
 .wk-note.bad {
   color: var(--vermilion);
+}
+
+/* The one control on the footer line, shown only while a closed form's answers block the save. */
+.wk-discard {
+  flex: 0 0 auto;
+  padding: 1px 8px;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: var(--ink);
+  color: var(--paper);
+  font: inherit;
+  cursor: pointer;
+}
+
+.wk-discard:hover {
+  background: var(--ink-raised);
 }

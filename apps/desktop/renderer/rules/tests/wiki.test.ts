@@ -1,4 +1,4 @@
-import { RELOAD_TIP, TEXT_TIP, controls, type WikiState } from '../wiki.js';
+import { RELOAD_TIP, TEXT_TIP, controls, discardOffer, type WikiState } from '../wiki.js';
 import { reloadOffer, saveOffer, textBox } from '../docbuffer.js';
 import { cellAction } from '../assetstrip.js';
 import { duplicateKeys, keyOf } from '../anchors.js';
@@ -50,5 +50,14 @@ describe('controls', () => {
       'cmd:doc.write#text',
       'item:link/asset/a1b2c3d4',
     ]);
+  });
+
+  it('offers to discard detached form answers only while there are some', () => {
+    expect(controls(state()).map(keyOf)).not.toContain('fx:pane.view#discard');
+    const listed = controls(state({ detached: 2 }));
+    expect(listed).toContainEqual(discardOffer(2));
+    expect(duplicateKeys(listed)).toEqual([]);
+    expect(discardOffer(1).tooltip).toContain('the answer a form');
+    expect(discardOffer(2).tooltip).toContain('the 2 answers');
   });
 });

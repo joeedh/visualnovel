@@ -393,7 +393,8 @@ documentation is the reference; this plan only names what the app calls.
 6. **path.ux tooltips** on `FormControl`'s buttons (D8), committed in the submodule,
    gitlink bumped. Then **the Wiki pane on the rich editor** (D6): toolbar, editor,
    `widgetOptions` from `nativeFormWidgets`, `onDiagnostic` into the footer, `viewState`
-   across `wrote()`, detached-draft recovery and the Discard control.
+   across `wrote()`, detached-draft recovery and the Discard control. Done; see As shipped
+   (recovery is reported and discardable rather than recovered).
 7. **Raw toggle** (D5), as `pane.view(what='mode')`.
 8. **Sweep and model**: re-run the CDP anchor sweep (`anchors.json`) and
    `pnpm gen:uxmodel` (`rules/wiki.ts` gains the Raw and Discard offers), per
@@ -524,6 +525,46 @@ documentation is the reference; this plan only names what the app calls.
   not re-run. `pnpm gen:command-table` was, for the new prop.
 - The quit guard's `window` check also tests `window.addEventListener`, because
   path-controller's headless polyfill aliases `window` to `globalThis` under node.
+
+### Task 6
+
+- Two path.ux commits, not one. `096b6146` is D8's: `FormControl`'s Apply, Discard,
+  Validate and each Omit carry a `title`, and `forms.spec` asserts every button in a
+  native form has one. `4241b7f3` fixes a bug the first bind in the app exposed: an
+  embedded widget reads the editor's editable state once, when it mounts, and one mounted
+  while an ancestor was disabled (the Wiki pane's first paint after the workspace loads)
+  stayed locked — form boxes read-only, Apply greyed — for good. `applyEditable` now
+  refreshes the widget host when `contenteditable` flips; `editor.test` covers it.
+- Detached-draft recovery (D4) is not what shipped. `recoverDraft` returns a
+  `FormControl`'s `{ base, edits }`, and `FormControl` has no way to take them back, so
+  "the answers come back into the new control" needs a path.ux API this stage does not
+  add. What the pane does instead: while the session holds a detached draft the footer
+  says so and shows **Discard pending edits**, which runs `discardDraft` on each. A save
+  is refused until then, with the sentence `docsession.ts` gives. Recovery into a new
+  control goes to stage 2, with a `FormControl.restore` in path.ux. The case itself is
+  rare: a control is disposed with typed answers only when its block is replaced under it,
+  which one pane's raw commit does to the other pane's form.
+- The Discard control is recorded as `pane.view(what='reload')` with `on: 'discard'`,
+  because the closed effect vocabulary has nothing closer and the control changes what the
+  pane shows without touching the project. `rules/wiki.ts` gains `discardOffer` and
+  `WikiState.detached`; the `open-detached` situation joins `ux-model.json`.
+- D1's filter is a `picked` field the pane's `select` sets (`note`, `sheet`, `conflict`)
+  and a `codec.read` wrapper resets, since path.ux reads before it selects on every
+  resolve; `onDiagnostic` is dropped only when the last answer was `note`.
+- The blank-line-before-the-fence case says
+  `Not front matter: the fence must open at the first line` in the footer and keeps the
+  raw block, from the pane's `select` over `retainedSource.prefix` (D3).
+- `viewState` across a `wrote()` swap is remapped by block index and clamped to the new
+  block's text, because block ids are fresh per parse; a block the new document lacks
+  drops the selection and keeps the scroll.
+- The rich editor's host element is the `textBox` anchor (D8), recorded on every paint
+  like the textarea was; its `keydown` stops propagation and takes Ctrl+S, as the textarea
+  did.
+- Verified over CDP against a copy of `templates/basic`: a form edit to `name:` patches
+  one line and saves as a one-line commit; the session survives its own save, so undo
+  still works after it; a note keeps its raw block with no note; an `entity_tag_conflict`
+  sheet keeps its raw block with the conflict sentence; a blank line before `---` keeps
+  the raw block with the fence sentence.
 
 ## Pressure-test findings
 
