@@ -398,7 +398,7 @@ documentation is the reference; this plan only names what the app calls.
 7. **Raw toggle** (D5), as `pane.view(what='mode')`. Done; see As shipped.
 8. **Sweep and model**: re-run the CDP anchor sweep (`anchors.json`) and
    `pnpm gen:uxmodel` (`rules/wiki.ts` gains the Raw and Discard offers), per
-   `docs/reference/guided-tours.md`.
+   `docs/reference/guided-tours.md`. Done; see As shipped.
 9. **Migration cases** (path.ux V4), scripted over CDP against `templates/basic`: a
    metadata-only edit with a comment and an unknown key leaves the body byte-identical; a
    body-only edit keeps the YAML prefix; a note with no front matter stays a note; an
@@ -603,6 +603,17 @@ documentation is the reference; this plan only names what the app calls.
   without replacing the session; leaving for another document applies the typed source,
   the new document opens rich, and the old one is found dirty on return with no detached
   draft.
+
+### Task 8
+
+- Swept against `examples/mySampleRepo` (the project every committed `anchors.json` was
+  measured on; `templates/basic` holds no assets, so a sweep there loses the strip's
+  coverage). The Wiki pane gains `fx:pane.view#raw`; the text box keeps its
+  `cmd:doc.write#text` record on the rich editor. The Discard control is not in the file,
+  because a sweep never has a detached draft or stale source to draw it over, and the
+  other differences are the sample project's own notifications since the last sweep.
+- `ux-model.json` was regenerated with each of tasks 6 and 7 (the `open-detached`,
+  `open-raw` and `open-raw-stale` situations); a regeneration here changes nothing.
 
 ## Pressure-test findings
 

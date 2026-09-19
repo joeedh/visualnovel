@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-19T20:54:48.430Z",
-  "gitSha"       : "85ca34f5cbcc0d9f68284488ddf186d07260f275",
+  "sweptAt"      : "2026-09-19T22:38:22.389Z",
+  "gitSha"       : "df807c389f603eb14693438fe15d4b6dc2a2d917",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -3756,6 +3756,12 @@
       "refused"   : "Nothing to save"
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "wiki",
+      "key"       : "fx:pane.view#raw",
+      "widgetPath": "wiki/pane-view~8a156d00"
+    },
+    {
       "id"        : "doc.write",
       "editor"    : "wiki",
       "key"       : "cmd:doc.write#text",
@@ -6868,9 +6874,7 @@
     }
   ],
   "strays": [
-    "asset cmd:view.open#style",
-    "documents item:link/asset/fc80c6eba9cb0d134428bb7c0bd8bb65effa5be3379a763df6cb0467f5ebbae9",
-    "gengraph cmd:models.refresh"
+    "documents item:link/asset/fc80c6eba9cb0d134428bb7c0bd8bb65effa5be3379a763df6cb0467f5ebbae9"
   ],
   "untagged"     : [],
   "unwalked"     : []
