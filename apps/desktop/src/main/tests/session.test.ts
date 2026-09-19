@@ -1099,6 +1099,16 @@ describe('WorkspaceSession — documents', () => {
     expect(await fs.readFile(join(p.dir, ...sheet.split('/')), 'utf8')).toContain('Still thinking');
   });
 
+  it('saves a sheet whose tag contradicts its directory, with the conflict beside it', async () => {
+    const sheet = 'characters/aiko/character.md';
+    const saved = await roundTrip(sheet, '---\nid: aiko\nname: Aiko\ntype: location\n---\n');
+    expect(saved.ok).toBe(true);
+    if (!saved.ok) return;
+    expect(saved.diagnostic).toBe(
+      `${sheet} is a character by its location but declares type: location; move the file or fix the tag`,
+    );
+  });
+
   it('refuses a save that drops a type: tag, because that deletes the entity', async () => {
     const path = 'wiki/cast/ada.md';
     await fs.mkdir(join(p.dir, 'wiki', 'cast'), { recursive: true });

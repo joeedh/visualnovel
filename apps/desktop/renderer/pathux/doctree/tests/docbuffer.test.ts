@@ -30,7 +30,10 @@ class FakeIo implements DocIo {
     if (this.hold) await new Promise<void>((done) => this.parked.push(done));
     const file = this.files.get(path);
     if (!file) return { ok: false, error: `no such document: ${path}` };
-    return { ok: true, file: { path, text: file.text, hash: file.hash, bytes: file.text.length } };
+    return {
+      ok  : true,
+      file: { path, text: file.text, hash: file.hash, bytes: file.text.length, implied: undefined },
+    };
   }
 
   async write(

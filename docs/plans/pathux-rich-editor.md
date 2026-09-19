@@ -455,6 +455,21 @@ documentation is the reference; this plan only names what the app calls.
 - `pnpm test` completes with a "worker process has failed to exit gracefully" notice that
   predates this branch.
 
+### Task 2
+
+- "No behaviour change" held for discovery and `checkDocWrite` and not quite for the two
+  app callers, which had no conflict branch at all: `entityDiagnostic` validated a
+  `characters/` sheet tagged `type: location` as a location, and `renameInText` renamed it
+  as a character. Both now report the conflict — the save lands with the conflict sentence
+  as its diagnostic (the sentence discovery would raise on the next load), and the rename
+  is refused with it. Each has a test.
+- `docKind`'s `reason` is a predicate on the document
+  (`is a character by its location but declares type: location; move the file or fix the tag`),
+  so every surface writes `${file} ${reason}`; the discovery diagnostic reads exactly as
+  it did before.
+- `DocFile.implied` is set by `readDocFile` itself rather than by `doc.read`, so the
+  agent's `read_file` result carries it too.
+
 ## Pressure-test findings
 
 A fresh-context reviewer read the first draft against the code on 2026-09-19. What it

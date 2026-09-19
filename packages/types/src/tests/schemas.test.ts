@@ -1,8 +1,10 @@
 import {
   characterFrontMatter,
+  docKind,
   ENTITY_TAG_KEY,
   ENTITY_TAGS,
   locationFrontMatter,
+  taggedKind,
   projectConfig,
   sceneFrontMatter,
 } from '../index.js';
@@ -24,6 +26,34 @@ describe('the entity tag', () => {
   ])('lets a %s state its own tag and refuses the other one', (_kind, schema, own, other) => {
     expect(schema.safeParse({ id: 'x', name: 'X', [ENTITY_TAG_KEY]: own }).success).toBe(true);
     expect(schema.safeParse({ id: 'x', name: 'X', [ENTITY_TAG_KEY]: other }).success).toBe(false);
+  });
+});
+
+describe('docKind', () => {
+  it('reads a stated tag and ignores one it does not know', () => {
+    expect(taggedKind({ [ENTITY_TAG_KEY]: 'location' })).toBe('location');
+    expect(taggedKind({ [ENTITY_TAG_KEY]: 'prop' })).toBeUndefined();
+    expect(taggedKind({})).toBeUndefined();
+  });
+
+  it('is a note when neither the location nor the tag says otherwise', () => {
+    expect(docKind(undefined, {})).toEqual({ kind: 'note' });
+    expect(docKind(undefined, { [ENTITY_TAG_KEY]: 'prop' })).toEqual({ kind: 'note' });
+  });
+
+  it('takes the kind from whichever of the two speaks', () => {
+    expect(docKind('character', {})).toEqual({ kind: 'character' });
+    expect(docKind(undefined, { [ENTITY_TAG_KEY]: 'location' })).toEqual({ kind: 'location' });
+    expect(docKind('location', { [ENTITY_TAG_KEY]: 'location' })).toEqual({ kind: 'location' });
+  });
+
+  it('is a conflict when the tag contradicts the location, with the sentence to show', () => {
+    const kind = docKind('character', { [ENTITY_TAG_KEY]: 'location' });
+    expect(kind.kind).toBe('conflict');
+    if (kind.kind !== 'conflict') return;
+    expect(kind.reason).toBe(
+      'is a character by its location but declares type: location; move the file or fix the tag',
+    );
   });
 });
 

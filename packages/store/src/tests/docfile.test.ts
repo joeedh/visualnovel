@@ -40,6 +40,20 @@ describe('reading a document', () => {
     });
   });
 
+  it('says which kind the path implies, so a reader can classify the text it gets', async () => {
+    const root = await tempRoot();
+    for (const path of ['characters/ada/character.md', 'locations/lab.md', 'wiki/lab.md']) {
+      await writeFileAtomic(join(root, path), '---\nname: x\n---\n');
+    }
+    const implied = async (path: string) => {
+      const read = await readDocFile(root, path);
+      return read.ok ? read.file.implied : read.reason;
+    };
+    expect(await implied('characters/ada/character.md')).toBe('character');
+    expect(await implied('locations/lab.md')).toBe('location');
+    expect(await implied('wiki/lab.md')).toBeUndefined();
+  });
+
   it('refuses a path outside the workspace', async () => {
     const root = await tempRoot();
     expect(reason(await readDocFile(root, '../elsewhere.md'))).toMatch(/outside the workspace/);

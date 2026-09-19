@@ -18,7 +18,7 @@
  */
 import { applyCharacterEdit, applyLocationEdit, docToMarkdown } from '@vn/model';
 import { parseFrontMatter, splitFrontMatter } from '@vn/parse';
-import { conventionalKind, taggedKind } from '@vn/store';
+import { conventionalKind, docKind } from '@vn/store';
 
 export type RenameResult =
   /** `what` names the field that changed, for the sentence a check and a record report. */
@@ -37,23 +37,25 @@ function spliceAt(text: string, at: number, length: number, replacement: string)
 
 /**
  * Rewrite a document so it is known by `name`. `path` is workspace-relative and decides only
- * whether a conventional home makes this an entity sheet, falling back to a `type:` tag — the same
- * order `checkDocWrite` asks in.
+ * whether a conventional home makes this an entity sheet; `docKind` weighs it against the `type:`
+ * tag, and a conflict between the two is refused, since neither kind's name is clearly the one
+ * meant.
  */
 export function renameInText(path: string, text: string, name: string): RenameResult {
   const next = name.trim();
   if (!next) return { ok: false, reason: 'A name cannot be blank.' };
 
   const doc = parseFrontMatter(text);
-  const kind = conventionalKind(path) ?? taggedKind(doc.data);
+  const kind = docKind(conventionalKind(path), doc.data);
+  if (kind.kind === 'conflict') return { ok: false, reason: `${path} ${kind.reason}` };
 
-  if (kind) {
+  if (kind.kind !== 'note') {
     const applied =
-      kind === 'character'
+      kind.kind === 'character'
         ? applyCharacterEdit(doc, { name: next })
         : applyLocationEdit(doc, { name: next });
     if (!applied.ok) return { ok: false, reason: applied.diagnostic.message };
-    return { ok: true, text: docToMarkdown(applied.value.doc), what: `the ${kind}'s name` };
+    return { ok: true, text: docToMarkdown(applied.value.doc), what: `the ${kind.kind}'s name` };
   }
 
   const { prefix, body } = splitFrontMatter(text);

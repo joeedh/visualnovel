@@ -13,9 +13,9 @@
 import { promises as fs } from 'node:fs';
 import { basename, join } from 'node:path';
 import { parseFrontMatter, type EntityDoc } from '@vn/parse';
-import { ENTITY_TAG_KEY, ENTITY_TAGS, type Diagnostic, type EntityTag } from '@vn/types';
+import { docKind, ENTITY_TAGS, taggedKind, type Diagnostic, type EntityTag } from '@vn/types';
 import { exists, pool, readText } from '@vn/util';
-import { READ_CONCURRENCY, taggedKind } from './docfile.js';
+import { READ_CONCURRENCY } from './docfile.js';
 import type { ProjectPaths } from './paths.js';
 import { listWikiFiles } from './tree.js';
 
@@ -53,17 +53,16 @@ async function readCandidate(
 }
 
 /**
- * A conventional sheet's tag comes from its directory. Stating the opposite kind there is a
- * conflict rather than an override: moving a file is how a document changes kind, and honouring
- * the tag would make `locations/` hold a character while every location path still named it.
+ * A conventional sheet's tag comes from its directory, and `docKind` says whether the stated tag
+ * agrees; a disagreement is an error here, with the sentence `docKind` gives it.
  */
 function tagConflict(doc: EntityDoc, kind: EntityTag, diagnostics: Diagnostic[]): boolean {
-  const stated = taggedKind(doc.doc.data);
-  if (stated === undefined || stated === kind) return false;
+  const resolved = docKind(kind, doc.doc.data);
+  if (resolved.kind !== 'conflict') return false;
   diagnostics.push({
     severity: 'error',
     code    : 'entity_tag_conflict',
-    message: `${doc.file} is a ${kind} by its location but declares ${ENTITY_TAG_KEY}: ${stated}; move the file or fix the tag`,
+    message : `${doc.file} ${resolved.reason}`,
     where   : doc.id,
   });
   return true;

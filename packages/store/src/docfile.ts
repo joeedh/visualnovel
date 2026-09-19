@@ -11,7 +11,7 @@
 import { promises as fs } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { parseFrontMatter, type FrontMatterDoc } from '@vn/parse';
-import { ENTITY_TAG_KEY, ENTITY_TAGS, type EntityTag } from '@vn/types';
+import { ENTITY_TAG_KEY, ENTITY_TAGS, taggedKind, type EntityTag } from '@vn/types';
 import { sha256, writeFileAtomic } from '@vn/util';
 
 /**
@@ -94,6 +94,8 @@ export interface DocFile {
   /** sha256 of the bytes on disk — the token a save presents to prove what it edited. */
   hash: string;
   bytes: number;
+  /** The kind the path implies (`conventionalKind`), the first input a reader gives `docKind`. */
+  implied: EntityTag | undefined;
 }
 
 export type DocResult<T> = ({ ok: true } & T) | { ok: false; reason: string };
@@ -142,20 +144,27 @@ export async function readDocFile(
   const bytes = await fs.readFile(abs);
   const text = decode(bytes);
   if (text === null) return refuse(`${rel} is not a text file`);
-  return { ok: true, file: { path: rel, text, hash: sha256(bytes), bytes: bytes.length } };
+  return {
+    ok  : true,
+    file: {
+      path: rel,
+      text,
+      hash   : sha256(bytes),
+      bytes  : bytes.length,
+      implied: conventionalKind(rel),
+    },
+  };
 }
 
-/** The `type:` tag a document states, or undefined when it states none. */
-export function taggedKind(data: Record<string, unknown>): EntityTag | undefined {
-  const tag = data[ENTITY_TAG_KEY];
-  return tag === ENTITY_TAGS.character || tag === ENTITY_TAGS.location ? tag : undefined;
-}
+// The two-input resolver lives beside the tags it reads; both halves are this package's API too
+export { docKind, taggedKind } from '@vn/types';
+export type { DocKind } from '@vn/types';
 
 /**
- * The kind a conventional location on disk implies. Discovery takes a sheet's kind from its
- * directory and treats a `type:` tag there as a conflict rather than an override, so a surface
- * validating an incoming save asks the question the same way round. Asking it the other way round
- * would skip the check on the one sheet the whole project is built on.
+ * The kind a conventional location on disk implies, the first input to `docKind`. Discovery takes
+ * a sheet's kind from its directory and treats a `type:` tag there as a conflict rather than an
+ * override, so a surface validating an incoming save asks the question the same way round. Asking
+ * it the other way round would skip the check on the one sheet the whole project is built on.
  */
 export function conventionalKind(path: string): EntityTag | undefined {
   const parts = path.replace(/\\/g, '/').split('/');

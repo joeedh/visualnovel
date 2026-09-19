@@ -34,9 +34,9 @@ import {
   AssetStore,
   ProjectPaths,
   conventionalKind,
+  docKind,
   loadInputs,
   readShots,
-  taggedKind,
   type DocFile,
   type DocResult,
   type DocWritePlan,
@@ -550,14 +550,15 @@ export type NewDocKind = 'character' | 'location' | 'note' | 'skill';
 
 /**
  * What the model will make of a document that has already been saved — a diagnostic sentence, or
- * nothing. Dispatch is by the tag the incoming text carries, falling back to the conventional
- * directory — the same rule entity discovery uses. A file that claims to be neither kind is a
- * note and is not checked.
+ * nothing. The kind comes from `docKind`, the rule entity discovery uses, so a tag that disagrees
+ * with the directory is reported as the conflict discovery would raise rather than validated as
+ * either kind. A note is not checked.
  */
 export function entityDiagnostic(path: string, doc: FrontMatterDoc): string | undefined {
-  const kind = taggedKind(doc.data) ?? conventionalKind(path);
-  if (kind === undefined) return undefined;
-  const res = kind === 'character' ? characterFromDoc(doc) : locationFromDoc(doc);
+  const kind = docKind(conventionalKind(path), doc.data);
+  if (kind.kind === 'note') return undefined;
+  if (kind.kind === 'conflict') return `${path} ${kind.reason}`;
+  const res = kind.kind === 'character' ? characterFromDoc(doc) : locationFromDoc(doc);
   return res.ok ? undefined : res.diagnostic.message;
 }
 

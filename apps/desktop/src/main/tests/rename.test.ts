@@ -72,6 +72,14 @@ describe('renameInText', () => {
     });
   });
 
+  it('refuses a sheet whose tag contradicts its directory, naming the conflict', () => {
+    const tagged = sheet.replace('type: character', 'type: location');
+    expect(renameInText('characters/aiko/character.md', tagged, 'New')).toEqual({
+      ok    : false,
+      reason: expect.stringContaining('is a character by its location but declares type: location'),
+    });
+  });
+
   it('trims the name it was given', () => {
     expect(renamed('wiki/note.md', '# Old\n', '  New  ')).toBe('# New\n');
   });

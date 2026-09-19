@@ -21,6 +21,37 @@ export const ENTITY_TAG_KEY = 'type';
 export const ENTITY_TAGS = { character: 'character', location: 'location' } as const;
 export type EntityTag = (typeof ENTITY_TAGS)[keyof typeof ENTITY_TAGS];
 
+/** The `type:` tag a document states, or undefined when it states none. */
+export function taggedKind(data: Record<string, unknown>): EntityTag | undefined {
+  const tag = data[ENTITY_TAG_KEY];
+  return tag === ENTITY_TAGS.character || tag === ENTITY_TAGS.location ? tag : undefined;
+}
+
+/**
+ * What a document is: a sheet of one kind, a note, or a conflict between the kind its location
+ * implies and the kind its tag states. A conflict's `reason` is a predicate on the document
+ * (`is a character by its location but …`), so a surface writes `${file} ${reason}`.
+ */
+export type DocKind = { kind: EntityTag } | { kind: 'note' } | { kind: 'conflict'; reason: string };
+
+/**
+ * Resolves a document's kind from the kind its conventional location implies (`undefined`
+ * outside `characters/` and `locations/`) and its front-matter. The location wins where it
+ * speaks, a stated tag counts only where it does not, and the two disagreeing is a conflict
+ * rather than an override, because a document changes kind only when the file moves.
+ */
+export function docKind(implied: EntityTag | undefined, data: Record<string, unknown>): DocKind {
+  const stated = taggedKind(data);
+  if (implied !== undefined && stated !== undefined && stated !== implied) {
+    return {
+      kind  : 'conflict',
+      reason: `is a ${implied} by its location but declares ${ENTITY_TAG_KEY}: ${stated}; move the file or fix the tag`,
+    };
+  }
+  const kind = implied ?? stated;
+  return kind === undefined ? { kind: 'note' } : { kind };
+}
+
 /**
  * One authored chunk edit. The bare-string form is what nearly every edit is; the object form
  * carries `of`, the derived text the edit was written against, so a later change underneath can be
