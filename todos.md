@@ -47,5 +47,11 @@
      the asset editor.
 [ ]: Add an option in the play pane header to show all dialog bubbles at once.
 [ ]: reserve space in the page editor's notification box (that's below the header) for 
-     3 lines of text, the goal is to prevent most layout jank.  it's still acceptable for longer 
-	 notifications (e.g. errors) to expand the box.
+     3 lines of text, the goal is to prevent most layout jank.  as such the progress bar 
+	 that shares the same space should *not* expand it.
+	 it's still acceptable for longer notifications (e.g. errors) to expand the box.
+	   - do the same thing for the script editor
+[ ]: the page editor should show the final bubbles when editing, with the existing two handles 
+     drawn on top.
+[ ]: add a project option to show the names of characters in speech bubbles (not including the narrator).
+     this option should be overridable per-bubble.

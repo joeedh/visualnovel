@@ -165,7 +165,7 @@ describe('cloneOffer', () => {
     });
     expect(cloneOffer(USER, 'project')).toMatchObject({ ok: true, props: { id: 'casting' } });
     expect(cloneOffer(PROJECT, 'user')).toMatchObject({
-      ok: true,
+      ok   : true,
       props: { id: 'continuity-pass' },
     });
   });

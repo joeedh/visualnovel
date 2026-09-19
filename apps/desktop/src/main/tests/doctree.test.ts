@@ -564,7 +564,7 @@ describe('the Skills branch', () => {
       skill(),
       skill({ id: 'lint', name: 'Lint', script: true }),
       skill({
-        id: 'branching',
+        id  : 'branching',
         name: 'Branch',
         tier: 'builtin',
         file: '<builtin>/branching/SKILL.md',
