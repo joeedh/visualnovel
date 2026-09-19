@@ -30,7 +30,10 @@ These implement the system design in
       own `model` override names it. A node that has not run yet takes the inputs of the
       latest planning pass (`TaskGraph.add`), so a pending task follows the project's
       current model; a `done` node keeps the inputs it ran with, and the asset records the
-      model that drew it (`Asset.modelId`).
+      model that drew it (`Asset.modelId`, always the author's spelling, never
+      OpenRouter's) and, optionally, the key that carried the call (`Asset.transport`). A
+      picture drawn through OpenRouter has the same identity as one drawn natively, so
+      adding a vendor's key later redraws nothing.
     - `params` is `image_params` with the narrowest authored seed applied (`seedFor`) and,
       for a shot, its own `aspect` in place of the project's (`aspectFor`). Both return
       the project's params by identity when nothing was authored, so a project that
@@ -221,10 +224,10 @@ These implement the system design in
           either pay again for art that no plan asks for or leave the exit code failing
           forever.
         - `vngen status` does not plan, so its counts include orphans.
-    - Below these layers, the Gemini and Claude backends retry a transient failure in
-      place (429/5xx/transport, 3 attempts). They do not retry other failures: an
-      unrecognized error is terminal by default, because three refusals cost three times
-      what one refusal costs.
+    - Below these layers, the Gemini, Claude and OpenRouter backends retry a transient
+      failure in place (429/5xx/transport, 3 attempts). They do not retry other failures:
+      an unrecognized error is terminal by default, because three refusals cost three
+      times what one refusal costs.
     - Plan:
       [`../plans/archive/INDEX.md#task-failure-visibility-and-retry`](../plans/archive/INDEX.md#task-failure-visibility-and-retry).
 
@@ -723,12 +726,20 @@ These implement the system design in
     - The scheduler imports `Task`, `deps`, and `status`, and never imports a concrete
       provider.
     - Changing model ids in `project.yaml` swaps backends, and nothing else needs to
-      change. An image model id picks its vendor: `imageVendorOf` in `@vn/types` reads a
-      `<vendor>/<model>` id as OpenRouter's and anything else as Gemini's, and the image
-      seam `createImageBackend` builds is a router that sends each call to the backend for
-      the `modelId` on its params, so a graph node naming another model draws with that
-      model rather than the project's. A vendor whose key is missing is refused with the
-      `ConfigError` `resolveKeys` raises, before anything is paid for.
+      change. A model id names its native vendor (`chatVendorFor`, `imageVendorOf` in
+      `@vn/types`: a `<vendor>/<model>` id is OpenRouter's, `claude-…` is Anthropic's,
+      anything else is Gemini's) and gains a transport from the keys that resolve
+      (`chatRouteFor`, `imageRouteFor`): the native vendor's key when it resolves, else
+      OpenRouter under the id's OpenRouter spelling (`openRouterIdFor`), else no route.
+      Every table above the seam stays keyed by the native spelling (`nativeIdFor`). The
+      image seam `createImageBackend` builds is a router that routes the `modelId` on each
+      call's params, so a graph node naming another model draws with that model rather
+      than the project's, and hands every result back under the id the caller sent. A
+      model no key carries is refused with the `ConfigError` `missingRouteError` raises,
+      naming both keys, before anything is paid for; `resolveRoutes` is the same refusal
+      ahead of a run. An open conversation keeps the transport it started on, because the
+      two APIs do not share a message format. Plan:
+      [`../plans/openrouter-as-a-fallback-transport.md`](../plans/openrouter-as-a-fallback-transport.md).
     - Tests inject `RecordedChatBackend`/`StubImageBackend` (see `@vn/providers` `mock.ts`
       / `createMockProviders`) to exercise the contracts without network access. See
       [`../guides/testkit.md`](../guides/testkit.md).

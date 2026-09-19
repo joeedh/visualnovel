@@ -6,8 +6,8 @@ import { ConfigError, exists, readText } from '@vn/util';
 
 /**
  * The vendors a key is resolved for. Ordered, so a UI can offer them without inventing a list.
- * Every `ChatVendor` and every `ImageVendor` is one; `openrouter` is an image vendor only, read by
- * the OpenRouter image backend for a `models.image` or a node model named `<vendor>/<model>`.
+ * Every `ChatVendor` and every `ImageVendor` is one; `openrouter` also carries any other vendor's
+ * model when that vendor's key is absent (`chatRouteFor` / `imageRouteFor` in `@vn/types`).
  */
 export const KEY_VENDORS = ['gemini', 'anthropic', 'openrouter'] as const;
 

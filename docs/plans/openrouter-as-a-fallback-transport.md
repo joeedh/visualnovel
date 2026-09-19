@@ -1,7 +1,8 @@
 # OpenRouter as a fallback transport
 
-**Status: planned.** Written 2026-09-19; pressure-tested the same day, findings at the
-end.
+**Status: partial.** Written 2026-09-19; pressure-tested the same day, findings at the
+end. Stages 1–6 shipped 2026-09-19; stage 7, the live check, is still owed. See
+[As shipped](#as-shipped).
 
 An author with only an OpenRouter key gets nothing today except image generation through a
 `<vendor>/<model>` id: every chat call reads the Anthropic or Gemini key its model id
@@ -30,6 +31,7 @@ optional field.
 - [What cannot be tested without a key](#what-cannot-be-tested-without-a-key)
 - [Verified and unverified facts](#verified-and-unverified-facts)
 - [Review findings](#review-findings)
+- [As shipped](#as-shipped)
 
 <!-- tocstop -->
 
@@ -561,3 +563,43 @@ thirty-six findings. Each is fixed above or answered here.
   Claude id while `chatBackendFor` still built on an empty key — the image stage now
   routes image ids only, and chat `require`s survive until the stage that replaces
   `chatBackendFor`. (35) `convobar.ts` is no longer touched.
+
+## As shipped
+
+Stages 1–6 landed on 2026-09-19 as six commits on `openrouter-fallback`, each green under
+`pnpm check`, `pnpm test` and `pnpm lint`. Deviations from the text above:
+
+- **`resolveRoutes` takes a `RouteRequest`** (`{ chat?: string[]; image?: string[] }`)
+  rather than a flat list of ids, because a chat id and an image id route through
+  different rules and the caller is the one that knows which is which.
+  `projectModels(config)` is the request for every configured model,
+  `chatRoute(config, keys, id)` is the one-id form, and `buildProviders`'s option is
+  `routes?: RouteRequest` rather than `models?: string[]`: `vngen decompose` and
+  `decomposePreconditions` pass `{ chat: [config.models.text] }`, which is the intent
+  Decision 1 states.
+- **`createProviders` does not refuse.** A model no key carries gets a backend that
+  rejects every call with `missingRouteError`'s sentence, so `vngen decompose` can build
+  the bundle for a project whose reviewer has no key, as it could when `require` listed
+  only `anthropic`. The refusal ahead of a run is `resolveRoutes` in each host's pre-run
+  check, which is where Decision 1 put it.
+- **`openRouterIdFor` returns `undefined`** for an id under no known vendor rather than
+  guessing a prefix, so `missingRouteError` can add the OpenRouter clause only when the
+  rule can spell the id, as Decision 7 asks.
+- **`Route.native` for an author-spelled id** is what its prefix names (`anthropic/` →
+  `anthropic`, `google/` → `gemini`, else `undefined`), per Decision 1; Decision 5's aside
+  that `native` would read `openrouter` for such an id was loose and the manifest carries
+  only `transport`, which does read `openrouter`.
+- **`ResumeHeader.transport` is optional in the type**, because an existing header lacks
+  it; `headerTransport` in `shared/threads.ts` is the one place the fallback to `vendor`
+  is written. A resume also rebuilds the backend under the pin, because the backend built
+  when the agent was created may have taken the free route.
+- **The Setup pane's notes** come from `routingNotes` in
+  `apps/desktop/src/main/session/routing.ts`, carried as `VendorKeyView.routing` and
+  `KeyStatusView.unrouted`; the startup notice reads `unrouted`.
+- **The tools block is not cache-marked** through OpenRouter, since whether
+  `cache_control` is accepted on a tool definition is unverified; it is cached only as
+  part of the prefix ahead of the system message's breakpoint.
+- The anchor sweep for `onboarding.ts` and stage 7
+  (`scripts/verify-prompt-cache.mjs --via openrouter`, run by hand against Claude and
+  against Gemini, with the four unverified rows above answered from its output) are still
+  owed.

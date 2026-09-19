@@ -299,7 +299,9 @@ write-up.
   var named in `project.yaml`, the project's own `keys/`, the enclosing repo root's
   `keys/`, then the user-level directory. A project carrying its own key therefore wins
   over the machine's, and a set environment variable wins over a file that was just
-  written, which explains why the app can keep asking for a key that was just saved.
+  written, which explains why the app can keep asking for a key that was just saved. A
+  model whose vendor's key is absent runs through OpenRouter when that key resolves
+  (`chatRouteFor` / `imageRouteFor` in `@vn/types`); nothing in `project.yaml` chooses.
   ([`docs/guides/api-keys.md`](docs/guides/api-keys.md))
 - **User-level state.** User-level state lives in one directory, outside any repo:
   `%LOCALAPPDATA%\vnauthor` on Windows, `~/Library/Application Support/vnauthor` on macOS,

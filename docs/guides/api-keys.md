@@ -16,11 +16,13 @@ frame. This page walks through the steps, and no other copy of that walkthrough 
 the desktop app's Setup pane renders this file, and anything printable is generated from
 it. Fixing a step here fixes every place that shows it.
 
-You need both the Gemini and the Anthropic keys. Claude writes and revises the screenplay,
-and Gemini draws. With a key for only one of them, half the app works. The OpenRouter key
-is optional: it is read only when `models.image` in `project.yaml`, or an image node in a
-generation graph, names an OpenRouter model (`<vendor>/<model>`, such as
-`openai/gpt-image-2`), and nothing else in the app stops working without one.
+Claude writes and revises the screenplay, and Gemini draws, so the default project needs
+both a Gemini and an Anthropic key, or one OpenRouter key in place of either or both. A
+model always prefers its own vendor's key; when that key is absent and an OpenRouter key
+resolves, the same model runs through OpenRouter instead, and nothing in `project.yaml`
+changes. With a key for only one of Gemini and Anthropic and no OpenRouter key, half the
+app works. The OpenRouter key on its own runs everything except a generation-graph plugin
+node, which asks for its vendor's key by name.
 
 ## Gemini
 
@@ -78,22 +80,33 @@ vendor: openrouter
 name: OpenRouter
 console: https://openrouter.ai/settings/keys
 docs: https://openrouter.ai/docs/api/reference/authentication
-billing: https://openrouter.ai/models?output_modalities=image
+billing: https://openrouter.ai/models
 env: OPENROUTER_API_KEY
 freeTier: false
 ```
 
 1. Open the console link above and sign in, or create an account.
 2. Choose **Create Key**. A key can carry a spending limit; set one, because the app calls
-   whichever OpenRouter image model `models.image` or a graph node names, and the models
-   differ in price by more than an order of magnitude.
+   whichever OpenRouter model `project.yaml` or a graph node names, and the models differ
+   in price by more than an order of magnitude.
 3. Copy the key. It begins with `sk-or-`, and it is shown once.
 4. Paste it into the Setup pane, or write it to a file yourself (see
    [Where a key goes](#where-a-key-goes)).
 
-**Money.** There is no free tier for image models. OpenRouter bills per image or per token
-depending on the model, at each provider's own price plus its fee, and a call that fails
-is not charged. Buy credit under **Credits** in the console before the first call.
+**Fallback.** Every model in `project.yaml` runs through OpenRouter when its own vendor's
+key is absent and this one resolves: `claude-opus-4-8` is sent as
+`anthropic/claude-opus-4.8`, `gemini-2.5-flash-image` as `google/gemini-2.5-flash-image`.
+The preference is per model and per vendor: adding an Anthropic key later moves every
+Claude call back onto Anthropic's own API without touching the project, and the Gemini
+calls stay on OpenRouter until a Gemini key appears. An open conversation is the one thing
+that does not move; it keeps the key it started on, because the two APIs do not share a
+message format. A model named `<vendor>/<model>` (`openai/gpt-image-2`) always goes
+through OpenRouter, whatever else resolves. The Setup pane says, under each vendor, which
+models OpenRouter is carrying right now.
+
+**Money.** There is no free tier. OpenRouter bills per image or per token depending on the
+model, at each provider's own price plus its fee, and a call that fails is not charged.
+Buy credit under **Credits** in the console before the first call.
 
 ## Where a key goes
 

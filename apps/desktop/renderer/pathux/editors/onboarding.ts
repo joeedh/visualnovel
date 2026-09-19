@@ -163,6 +163,8 @@ export class OnboardingEditor extends VnEditor {
 
     const body = el('div', 'ob-body');
     body.appendChild(this.statusRow(vendor, view));
+    const routing = view && this.routingRow(view);
+    if (routing) body.appendChild(routing);
     if (view?.envShadow) {
       const warn = el(
         'div',
@@ -186,7 +188,20 @@ export class OnboardingEditor extends VnEditor {
     row.appendChild(el('span', '', view?.source ?? 'No project open, so no key was looked for.'));
     row.title = view?.resolved
       ? 'Which source answered. Never the key itself.'
-      : `Nothing answers for ${vendor.vendor} yet — paste a key below, or set $${vendor.env}.`;
+      : `Nothing answers for ${vendor.vendor} yet — paste a key below, or set $${vendor.env}.` +
+        (view?.routing ? ` Right now: ${view.routing}.` : '');
+    return row;
+  }
+
+  /** What this key's absence means for the project's models, when there is something to say. */
+  private routingRow(view: VendorKeyView): HTMLElement | undefined {
+    if (!view.routing) return undefined;
+    const row = el(
+      'div',
+      'ob-routing',
+      `${view.routing[0]!.toUpperCase()}${view.routing.slice(1)}.`,
+    );
+    row.title = 'Which of this project’s models this key carries, or would carry, right now';
     return row;
   }
 

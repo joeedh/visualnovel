@@ -212,6 +212,14 @@
   font-size: 12px;
 }
 
+.ob-routing {
+  padding: 6px 8px;
+  border-left: 2px solid var(--mist-dim);
+  background: var(--ink-sunken);
+  color: var(--mist);
+  font-size: 12px;
+}
+
 .ob-money {
   color: var(--mist);
   font-size: 12px;

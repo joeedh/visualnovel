@@ -856,6 +856,11 @@ export interface VendorKeyView {
   /** Where `project.setKey` would put a key at each scope. Absolute for `user`, relative for the
    *  project, because one is in the workspace and the other deliberately is not. */
   writesTo: Record<KeyScope, string>;
+  /**
+   * What this key's absence means for the project's models right now: which will run through
+   * OpenRouter instead, and which cannot run at all. Empty when there is nothing to say.
+   */
+  routing: string;
 }
 
 /** What the Setup pane draws: one row per vendor, in `KEY_VENDORS` order. */
@@ -863,6 +868,8 @@ export interface KeyStatusView {
   vendors: VendorKeyView[];
   /** The user-level `keys/` directory, so the pane can name it once rather than per vendor. */
   userKeysDir: string;
+  /** Configured model ids no resolved key can carry, which is what the startup notice names. */
+  unrouted: string[];
 }
 
 /**

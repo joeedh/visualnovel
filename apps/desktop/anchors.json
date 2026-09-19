@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-19T19:26:22.280Z",
-  "gitSha"       : "b2ddccf54ca5e435024c68c3faab342a4a057155",
+  "sweptAt"      : "2026-09-19T20:54:48.430Z",
+  "gitSha"       : "85ca34f5cbcc0d9f68284488ddf186d07260f275",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -196,11 +196,15 @@
     "workspace.skilltree"
   ],
   "anchored": [
+    "agent.compact",
     "agent.editLine",
     "agent.newThread",
     "agent.openThread",
     "agent.run",
+    "agent.setBudget",
+    "agent.setEffort",
     "agent.setMode",
+    "agent.setModel",
     "app.checkForUpdates",
     "app.copy",
     "app.openKeyLink",
@@ -1521,6 +1525,53 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "agent.setMode",
+      "editor"    : "convo",
+      "key"       : "cmd:agent.setMode",
+      "widgetPath": "convo/agent-setmode~12ef4d33"
+    },
+    {
+      "id"        : "agent.setModel",
+      "editor"    : "convo",
+      "key"       : "cmd:agent.setModel",
+      "widgetPath": "convo/agent-setmodel~a6e2e715",
+      "supplies"  : ["modelId"]
+    },
+    {
+      "id"        : "agent.setEffort",
+      "editor"    : "convo",
+      "key"       : "cmd:agent.setEffort",
+      "widgetPath": "convo/agent-seteffort~b6d4c3b8",
+      "supplies"  : ["effort"]
+    },
+    {
+      "id"        : "agent.openThread",
+      "editor"    : "convo",
+      "key"       : "cmd:agent.openThread",
+      "widgetPath": "convo/agent-openthread~2c98574d",
+      "supplies"  : ["id"]
+    },
+    {
+      "id"        : "agent.newThread",
+      "editor"    : "convo",
+      "key"       : "cmd:agent.newThread",
+      "widgetPath": "convo/agent-newthread~373761f0"
+    },
+    {
+      "id"        : "agent.setBudget",
+      "editor"    : "convo",
+      "key"       : "cmd:agent.setBudget",
+      "widgetPath": "convo/agent-setbudget~e80486e0",
+      "supplies"  : ["budget"]
+    },
+    {
+      "id"        : "agent.compact",
+      "editor"    : "convo",
+      "key"       : "cmd:agent.compact",
+      "widgetPath": "convo/agent-compact~a458e835",
+      "refused"   : "This conversation is open for reading. Continue it before compacting it."
     },
     {
       "id"        : "story.setPanels",
@@ -5190,6 +5241,114 @@
     {
       "id"        : "notify.follow",
       "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260919-135403-3ce0-0000",
+      "widgetPath": "notifications/notify-follow~eabdc03e"
+    },
+    {
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260919-135403-3ce0-0000",
+      "widgetPath": "notifications/notify-hide~5ae7672f"
+    },
+    {
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260919-131147-70eb-0000",
+      "widgetPath": "notifications/notify-follow~e2c3c5a2"
+    },
+    {
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260919-131147-70eb-0000",
+      "widgetPath": "notifications/notify-hide~334cd863"
+    },
+    {
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260919-122458-fa45-0006",
+      "widgetPath": "notifications/notify-follow~cd5449d3"
+    },
+    {
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260919-122458-fa45-0006",
+      "widgetPath": "notifications/notify-hide~182f1972"
+    },
+    {
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260919-122458-fa45-0005",
+      "widgetPath": "notifications/notify-follow~d85261e8"
+    },
+    {
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260919-122458-fa45-0005",
+      "widgetPath": "notifications/notify-hide~1bd92179"
+    },
+    {
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260919-122458-fa45-0004",
+      "widgetPath": "notifications/notify-follow~d4a859e1"
+    },
+    {
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260919-122458-fa45-0004",
+      "widgetPath": "notifications/notify-hide~1f832980"
+    },
+    {
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260919-122458-fa45-0003",
+      "widgetPath": "notifications/notify-follow~c25631be"
+    },
+    {
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260919-122458-fa45-0003",
+      "widgetPath": "notifications/notify-hide~05dcf14f"
+    },
+    {
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260919-122458-fa45-0002",
+      "widgetPath": "notifications/notify-follow~beac29b7"
+    },
+    {
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260919-122458-fa45-0002",
+      "widgetPath": "notifications/notify-hide~0986f956"
+    },
+    {
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260919-122458-fa45-0001",
+      "widgetPath": "notifications/notify-follow~c9aa41cc"
+    },
+    {
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260919-122458-fa45-0001",
+      "widgetPath": "notifications/notify-hide~0d31015d"
+    },
+    {
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260919-122458-fa45-0000",
+      "widgetPath": "notifications/notify-follow~c60039c5"
+    },
+    {
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260919-122458-fa45-0000",
+      "widgetPath": "notifications/notify-hide~10db0964"
+    },
+    {
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
       "key"       : "cmd:notify.follow#20260917-163130-54bb-0019",
       "widgetPath": "notifications/notify-follow~4dd26442"
     },
@@ -5438,114 +5597,6 @@
       "editor"    : "notifications",
       "key"       : "cmd:notify.hide#20260917-155813-2fe4-0009",
       "widgetPath": "notifications/notify-hide~548a3753"
-    },
-    {
-      "id"        : "notify.follow",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.follow#20260917-155813-2fe4-0008",
-      "widgetPath": "notifications/notify-follow~41c0181b"
-    },
-    {
-      "id"        : "notify.hide",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.hide#20260917-155813-2fe4-0008",
-      "widgetPath": "notifications/notify-hide~58343f5a"
-    },
-    {
-      "id"        : "notify.follow",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.follow#20260917-155813-2fe4-0007",
-      "widgetPath": "notifications/notify-follow~20c5cfdc"
-    },
-    {
-      "id"        : "notify.hide",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.hide#20260917-155813-2fe4-0007",
-      "widgetPath": "notifications/notify-hide~6a86677d"
-    },
-    {
-      "id"        : "notify.follow",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.follow#20260917-155813-2fe4-0006",
-      "widgetPath": "notifications/notify-follow~1d1bc7d5"
-    },
-    {
-      "id"        : "notify.hide",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.hide#20260917-155813-2fe4-0006",
-      "widgetPath": "notifications/notify-hide~6e306f84"
-    },
-    {
-      "id"        : "notify.follow",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.follow#20260917-155813-2fe4-0005",
-      "widgetPath": "notifications/notify-follow~1971bfce"
-    },
-    {
-      "id"        : "notify.hide",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.hide#20260917-155813-2fe4-0005",
-      "widgetPath": "notifications/notify-hide~6332576f"
-    },
-    {
-      "id"        : "notify.follow",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.follow#20260917-155813-2fe4-0004",
-      "widgetPath": "notifications/notify-follow~15c7b7c7"
-    },
-    {
-      "id"        : "notify.hide",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.hide#20260917-155813-2fe4-0004",
-      "widgetPath": "notifications/notify-hide~66dc5f76"
-    },
-    {
-      "id"        : "notify.follow",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.follow#20260917-155813-2fe4-0003",
-      "widgetPath": "notifications/notify-follow~2f6deff8"
-    },
-    {
-      "id"        : "notify.hide",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.hide#20260917-155813-2fe4-0003",
-      "widgetPath": "notifications/notify-hide~792e8799"
-    },
-    {
-      "id"        : "notify.follow",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.follow#20260917-155813-2fe4-0002",
-      "widgetPath": "notifications/notify-follow~2bc3e7f1"
-    },
-    {
-      "id"        : "notify.hide",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.hide#20260917-155813-2fe4-0002",
-      "widgetPath": "notifications/notify-hide~7cd88fa0"
-    },
-    {
-      "id"        : "notify.follow",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.follow#20260917-155813-2fe4-0001",
-      "widgetPath": "notifications/notify-follow~2819dfea"
-    },
-    {
-      "id"        : "notify.hide",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.hide#20260917-155813-2fe4-0001",
-      "widgetPath": "notifications/notify-hide~71da778b"
-    },
-    {
-      "id"        : "notify.follow",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.follow#20260917-155813-2fe4-0000",
-      "widgetPath": "notifications/notify-follow~246fd7e3"
-    },
-    {
-      "id"        : "notify.hide",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.hide#20260917-155813-2fe4-0000",
-      "widgetPath": "notifications/notify-hide~75847f92"
     },
     {
       "id"        : "pane.view",
@@ -6817,7 +6868,9 @@
     }
   ],
   "strays": [
-    "documents item:link/asset/fc80c6eba9cb0d134428bb7c0bd8bb65effa5be3379a763df6cb0467f5ebbae9"
+    "asset cmd:view.open#style",
+    "documents item:link/asset/fc80c6eba9cb0d134428bb7c0bd8bb65effa5be3379a763df6cb0467f5ebbae9",
+    "gengraph cmd:models.refresh"
   ],
   "untagged"     : [],
   "unwalked"     : []

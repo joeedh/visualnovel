@@ -253,7 +253,8 @@ async function noticeMissingGit(): Promise<void> {
 }
 
 /**
- * Say once, per project, that this install cannot call a model yet.
+ * Say once, per project, that this install cannot call one of the project's models yet: no key of
+ * the model's own vendor resolves, and no OpenRouter key does either.
  *
  * A brand-new install looks healthy right up to the first run, which fails somewhere deep in a
  * task with a message about a provider. This notice states the same fact earlier and more plainly,
@@ -269,8 +270,8 @@ async function noticeMissingKeys(ctx: AppContext): Promise<void> {
   const view = await getSession(ctx)
     .keyStatusView()
     .catch(() => undefined);
-  const missing = view?.vendors.filter((vendor) => !vendor.resolved) ?? [];
-  if (missing.length === 0) return;
+  const unrouted = view?.unrouted ?? [];
+  if (unrouted.length === 0) return;
 
   // Posted once per project, whether or not it was read: the notification log is the only
   // record of having said it, so the guard reads the log.
@@ -282,8 +283,8 @@ async function noticeMissingKeys(ctx: AppContext): Promise<void> {
     level   : 'warn',
     source  : 'main',
     message:
-      `No API key for ${missing.map((vendor) => vendor.vendor).join(' or ')}, so anything that ` +
-      `needs ${missing.length > 1 ? 'them' : 'it'} fails at the first call. Setup has the steps.`,
+      `No API key can carry ${unrouted.join(' or ')}, so anything that needs ` +
+      `${unrouted.length > 1 ? 'them' : 'it'} fails at the first call. Setup has the steps.`,
     link    : { editor: 'onboarding' },
   });
 }

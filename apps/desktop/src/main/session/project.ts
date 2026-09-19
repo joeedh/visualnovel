@@ -52,6 +52,7 @@ import {
   type UpdateCheck,
 } from '../distribution/updates.js';
 import { ensureIgnored } from '../workspace/workspace.js';
+import { routingNotes } from './routing.js';
 import type { WorkspaceSession, LoadedProject, PromptResult, PromptWriteResult } from './core.js';
 import {
   IMAGE_KINDS,
@@ -429,8 +430,13 @@ export class ProjectPart {
     const config = await loadConfig(this.session.dir);
     const status = await keyStatus(config, { secretsDirs: await secretDirsFor(this.session.dir) });
     const byVendor = new Map<string, VendorKeyStatus>(status.map((s) => [s.vendor, s]));
+    const present = Object.fromEntries(
+      status.map((s) => [s.vendor, s.resolved]),
+    ) as unknown as KeysPresent;
+    const { notes, unrouted } = routingNotes(config, present);
     return {
       userKeysDir: userKeysDir(),
+      unrouted,
       vendors: KEY_VENDORS.map((vendor) => {
         const s = byVendor.get(vendor);
         return {
@@ -443,6 +449,7 @@ export class ProjectPart {
             project: `keys/${secretFileFor(vendor)}`,
             user   : join(userKeysDir(), secretFileFor(vendor)),
           },
+          routing  : notes[vendor],
         };
       }),
     };

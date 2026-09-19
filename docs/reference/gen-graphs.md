@@ -811,9 +811,12 @@ in the same three ways a built-in node type is split.
   `node bin/esbuild`, which a packaged app cannot assume is on `PATH`.
 - **Keys and requests use the ordinary mechanisms.** A plugin's keys resolve through the
   four-place `resolveKeys` chain and are set by `project.setKey`, and its model calls go
-  through the provider ring like every other request. The agent's raw file writers
-  (`write_file`, `edit_file`) refuse the plugins root outright. That check compares the
-  absolute path and runs before the workspace check, so the refusal applies.
+  through the provider ring like every other request. A plugin is handed the key it asks
+  for by vendor name and is not routed: one that asks for `gemini` under an
+  OpenRouter-only key gets nothing, because a plugin knows its own endpoint and the
+  routing rule cannot rewrite its request. The agent's raw file writers (`write_file`,
+  `edit_file`) refuse the plugins root outright. That check compares the absolute path and
+  runs before the workspace check, so the refusal applies.
 - **Prices.** A plugin whose vendor publishes no pricing API may declare `priceAgent`. On
   `plugin.prices` the plugin fetches the vendor's published page through `services.fetch`
   and reads it with `services.text`, using the author's own key. It fetches at no other

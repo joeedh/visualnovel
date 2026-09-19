@@ -60,8 +60,10 @@ once per project, refuses over an existing `scenes/`, and moves the original asi
 `--mock` makes `run` a dry run. It plans, writes the story graph, and previews the work
 (as `cost` does) but calls no model and writes no assets, so it needs no API keys.
 
-Without `--mock`, `run` constructs real Gemini/Claude clients and requires a Gemini key.
-It checks four places in order and uses the first one that supplies a key:
+Without `--mock`, `run` constructs real clients and refuses before the first call unless
+every configured model has a key to run on: its own vendor's, or an OpenRouter key when
+that one is absent (the fallback rule is in [`api-keys.md`](api-keys.md#openrouter)). It
+checks four places in order and uses the first one that supplies a key:
 
 1. The environment variable named in `project.yaml` (`config.keys.<vendor>`).
 2. A secret file under `<dir>/keys/`.
