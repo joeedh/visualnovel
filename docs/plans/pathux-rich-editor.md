@@ -133,10 +133,14 @@ documentation is the reference; this plan only names what the app calls.
   (`moduleResolution: bundler`, `apps/desktop/package.json` dependency); no `tsconfig`
   path is needed.
 - Fence grammar is `@vn/parse`'s `FENCE` (`---` at offset 0 after an optional BOM), not
-  path.ux's looser one (leading blank lines, `...` closer). path.ux may recognise a
-  front-matter block that `doc.write`, `entityDiagnostic` and the model would read as
-  body; on such a file `codec.read` throws, the block stays raw, and the footer says why.
-  The two readers of the same bytes therefore never disagree about whether a form applies.
+  path.ux's looser one (leading blank lines). path.ux may recognise a front-matter block
+  that `doc.write`, `entityDiagnostic` and the model would read as body, and the block
+  source it hands the codec never shows it: `markdownSourceDoc` moves the BOM and any
+  leading blank lines into `retainedSource.prefix` and gives the block the fence alone. So
+  the codec accepts every block path.ux hands it, and the pane's `select` (task 4) is what
+  refuses a document whose retained prefix holds a line ending, with the reason in the
+  footer. The two readers of the same bytes therefore never disagree about whether a form
+  applies.
 - YAML policy is the example codec's: ≤ 64 KiB, `core` schema, strict, unique keys, no
   anchors / aliases / tags, ≤ 10 000 nodes and depth ≤ 32, root must be a mapping. The
   node and depth limits are the codec's own; path.ux applies `widgetJson` again at its
@@ -149,7 +153,7 @@ documentation is the reference; this plan only names what the app calls.
   local interface and tsgo checks the shape at the call site.
 - Tests in `packages/parse/src/tests/frontmatterCodec.test.ts`: round-trip on the sheets
   in `templates/basic` (the only committed fixtures; `examples/` is gitignored and seeded
-  at launch); a scalar patch keeps a comment on the next line; CRLF in, CRLF out; a file
+  at launch); a scalar patch keeps a comment on the next line; CRLF in, CRLF out; a block
   with a blank line before `---` is refused; each YAML refusal by name.
 - `parseFrontMatter` / `stringifyFrontMatter` stay for `doc.write`, `doc.create` and the
   model's serializers; nothing routes a form edit through them.
@@ -370,7 +374,7 @@ documentation is the reference; this plan only names what the app calls.
 2. **`docKind`** in `@vn/types`, re-exported by `@vn/store`; `tagConflict`, `core.ts` and
    `rename.ts` rewritten over it; `DocFile.implied` from `doc.read`. Tests for the three
    outcomes. No behaviour change.
-3. **`@vn/parse` codec** (D3) with its tests.
+3. **`@vn/parse` codec** (D3) with its tests. Done; see As shipped.
 4. **`FORMS`, presentation and `select`** (D1, D2, D6) in
    `apps/desktop/renderer/pathux/doctree/docforms.ts`, with the schema-coverage test.
 5. **`docsession.ts` and `DocBuffer { rich }`** (D4) with tests: two buffers on one path
@@ -469,6 +473,25 @@ documentation is the reference; this plan only names what the app calls.
   it did before.
 - `DocFile.implied` is set by `readDocFile` itself rather than by `doc.read`, so the
   agent's `read_file` result carries it too.
+
+### Task 3
+
+- `packages/parse/src/frontmatterCodec.ts` exports `frontmatterCodec`, its
+  `FrontmatterCodec` and `JsonValue` types, `isJsonObject` and `MAX_FRONT_MATTER_BYTES`;
+  `frontmatter.ts` gains `frontMatterSpan`, the YAML's offsets under the app's fence,
+  which the codec patches through. `FENCE`'s capture now includes the YAML's final line
+  ending (the grammar is unchanged; `parseFrontMatter` is indifferent to it), so an
+  appended key lands before the closer rather than a blank line before it.
+- One departure from the example codec: a block collection's `range` runs through its
+  final line ending, and replacing it wholesale with flow YAML would swallow the closer's
+  line break, so a replacement's end is clamped to the last non-blank character. The
+  example has the same hazard.
+- A comment-free collection whose shape changed is rewritten whole as flow YAML (the
+  example codec's rule); only a commented collection, a block scalar and a flow-map key
+  change refuse. D3 said "anything else throws", which overstated it; the test states the
+  rule.
+- The fence-position case moved to the pane's `select` (D3), because the block source
+  path.ux hands the codec never carries the file's leading blank lines.
 
 ## Pressure-test findings
 
