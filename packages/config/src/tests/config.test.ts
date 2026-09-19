@@ -7,6 +7,7 @@ import {
   resolveKeys,
   secretDirsFor,
   setArtStyle,
+  setBuiltinSkills,
   setImageModel,
   setLettering,
   setStartScene,
@@ -14,7 +15,10 @@ import {
   userConfigDir,
   userConfigDirs,
   userKeysDir,
+  userSkillsDir,
+  userSkillsDirs,
   withArtStyle,
+  withBuiltinSkills,
   withConfigKey,
   withImageModel,
   withStartScene,
@@ -191,6 +195,75 @@ describe('setStoryboardNotes and setLettering', () => {
     const dir = await tempProject('title: T\n');
     await expect(setLettering(dir, 'stencil' as never)).rejects.toThrow(/could not set lettering/);
     expect(await readFile(join(dir, 'project.yaml'), 'utf8')).toBe('title: T\n');
+  });
+});
+
+describe('withBuiltinSkills', () => {
+  it('replaces an indented list, row for row, leaving the keys around it alone', () => {
+    const before = 'title: T\nbuiltin_skills:\n  - branching\n  - new-character\nconcurrency: 2\n';
+    expect(withBuiltinSkills(before, ['full-production'])).toBe(
+      'title: T\nbuiltin_skills:\n  - full-production\nconcurrency: 2\n',
+    );
+  });
+
+  it('replaces rows written at the header column, which YAML also allows', () => {
+    const before = 'title: T\nbuiltin_skills:\n- branching\n- new-character\nconcurrency: 2\n';
+    expect(withBuiltinSkills(before, ['branching'])).toBe(
+      'title: T\nbuiltin_skills:\n  - branching\nconcurrency: 2\n',
+    );
+  });
+
+  it('replaces a flow-form list and writes an empty one in flow form', () => {
+    expect(withBuiltinSkills('title: T\nbuiltin_skills: [branching]\nart_style: ink\n', [])).toBe(
+      'title: T\nbuiltin_skills: []\nart_style: ink\n',
+    );
+  });
+
+  it('adds the key after the title when the file has none', () => {
+    expect(withBuiltinSkills('title: T\nart_style: ink\n', ['branching'])).toBe(
+      'title: T\nbuiltin_skills:\n  - branching\nart_style: ink\n',
+    );
+  });
+
+  it('keeps a blank line that separates the list from the next key', () => {
+    const before = 'title: T\nbuiltin_skills:\n  - branching\n\nconcurrency: 2\n';
+    expect(withBuiltinSkills(before, ['new-character'])).toBe(
+      'title: T\nbuiltin_skills:\n  - new-character\n\nconcurrency: 2\n',
+    );
+  });
+});
+
+describe('setBuiltinSkills', () => {
+  it('writes the list, and a file without the key reads back as every skill enabled', async () => {
+    const dir = await tempProject('title: T\n');
+    expect((await loadConfig(dir)).builtin_skills).toEqual([
+      'branching',
+      'full-production',
+      'new-character',
+    ]);
+    expect(await setBuiltinSkills(dir, ['branching'])).toBe(true);
+    expect((await loadConfig(dir)).builtin_skills).toEqual(['branching']);
+    expect(await setBuiltinSkills(dir, [])).toBe(true);
+    expect((await loadConfig(dir)).builtin_skills).toEqual([]);
+  });
+
+  it('leaves a config that already lists those ids untouched', async () => {
+    const dir = await tempProject('title: T\nbuiltin_skills:\n  - branching\n');
+    expect(await setBuiltinSkills(dir, ['branching'])).toBe(false);
+  });
+
+  it('writes an id the catalog does not have: filtering is the reader’s job', async () => {
+    const dir = await tempProject('title: T\n');
+    expect(await setBuiltinSkills(dir, ['branching', 'retired-skill'])).toBe(true);
+    expect((await loadConfig(dir)).builtin_skills).toEqual(['branching', 'retired-skill']);
+  });
+});
+
+describe('userSkillsDir', () => {
+  it('sits beside keys under the user config directory, and lists in userConfigDirs order', () => {
+    const opts = { env: { VNAUTHOR_HOME: 'C:\\cfg' } };
+    expect(userSkillsDir(opts)).toBe(join(userConfigDir(opts), 'skills'));
+    expect(userSkillsDirs(opts)).toEqual(userConfigDirs(opts).map((dir) => join(dir, 'skills')));
   });
 });
 

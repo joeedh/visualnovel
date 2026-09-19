@@ -310,6 +310,15 @@ export const LETTERING_MODES = ['model', 'runner'] as const;
 
 export type Lettering = (typeof LETTERING_MODES)[number];
 
+/**
+ * The skills that ship with the app, by id. The catalog itself lives in `@vn/authoring`
+ * (`builtin-skills/<id>/`), which a test there checks against this list; it is spelt here so the
+ * `project.yaml` schema can default `builtin_skills` to every one of them.
+ */
+export const BUILTIN_SKILL_IDS = ['branching', 'full-production', 'new-character'] as const;
+
+export type BuiltinSkillId = (typeof BUILTIN_SKILL_IDS)[number];
+
 /** `project.yaml` (report §8, §11). */
 export const projectConfig = z.object({
   title              : z.string().min(1),
@@ -371,6 +380,13 @@ export const projectConfig = z.object({
    * a keyed cutout (docs/plans/archive/INDEX.md#portrait-overlay-opt-in).
    */
   portrait_overlay   : z.boolean().default(false),
+  /**
+   * Which builtin skills this project enables, by id. A file written before the key existed
+   * enables all of them. The schema checks only that each entry is a string: an id the catalog
+   * no longer carries is ignored where the list is read, never refused here, so a project that
+   * outlives a skill's removal still parses.
+   */
+  builtin_skills     : z.array(z.string()).default([...BUILTIN_SKILL_IDS]),
 });
 export type ProjectConfig = z.infer<typeof projectConfig>;
 

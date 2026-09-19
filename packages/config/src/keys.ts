@@ -128,6 +128,20 @@ export function userKeysDirs(opts: UserDirEnv = {}): string[] {
   return userConfigDirs(opts).map((dir) => join(dir, 'keys'));
 }
 
+/**
+ * Where a user-level skill is written: `<user config dir>/skills`, beside `keys`. Local rather
+ * than roaming for the same reason as a key: a skill an author wrote for themselves reaches
+ * another machine only by being cloned there.
+ */
+export function userSkillsDir(opts: UserDirEnv = {}): string {
+  return join(userConfigDir(opts), 'skills');
+}
+
+/** Every `skills/` directory a user-level skill is read from, in {@link userConfigDirs} order. */
+export function userSkillsDirs(opts: UserDirEnv = {}): string[] {
+  return userConfigDirs(opts).map((dir) => join(dir, 'skills'));
+}
+
 /** Files that mark the root of a repo/workspace when walking up from a project dir. */
 const ROOT_MARKERS = ['pnpm-workspace.yaml', '.git'];
 

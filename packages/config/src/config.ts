@@ -170,6 +170,78 @@ export function withImageModel(text: string, modelId: string): string {
   return text === '' || text.endsWith('\n') ? text + entry : `${text}\n${entry}`;
 }
 
+/** A top-level `builtin_skills:` line, with whatever terminated it. */
+const BUILTIN_SKILLS_LINE = /^builtin_skills:[^\r\n]*(?:\r?\n|$)/m;
+
+/**
+ * Replace or add `builtin_skills` in `project.yaml` text, leaving every other byte alone. The
+ * value is a list, so the entry it replaces is the header line plus the rows under it — and YAML
+ * lets a list's rows sit at the header's own column (`- id` with no indent), so a row is any
+ * line that is indented or begins with `-`, not only an indented one the way {@link withConfigKey}
+ * counts. An empty list is written in flow form (`builtin_skills: []`), which is what the
+ * serializer emits for it and what reads back as "none enabled" rather than as the default.
+ */
+export function withBuiltinSkills(text: string, ids: readonly string[]): string {
+  const entry = stringifyYaml({ builtin_skills: [...ids] });
+  const header = BUILTIN_SKILLS_LINE.exec(text);
+  if (header) {
+    const start = header.index + header[0].length;
+    const lines = keepLines(text.slice(start));
+    let end = start;
+    const isRow = (line: string): boolean => /^[ \t]/.test(line) || /^-(?:\s|$)/.test(line);
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]!;
+      const blankBeforeRow = !line.trim() && lines.slice(i + 1).some(isRow);
+      if (!isRow(line) && !blankBeforeRow) break;
+      end += line.length;
+    }
+    // The serialized entry always ends in a newline; the entry it replaces only does if the file
+    // did, so an unterminated last line stays unterminated.
+    const terminated = text.slice(header.index, end).endsWith('\n');
+    return text.slice(0, header.index) + (terminated ? entry : entry.trimEnd()) + text.slice(end);
+  }
+  const title = TITLE_LINE.exec(text);
+  if (title) {
+    const at = title.index + title[0].length;
+    return text.slice(0, at) + entry + text.slice(at);
+  }
+  return text === '' || text.endsWith('\n') ? text + entry : `${text}\n${entry}`;
+}
+
+/**
+ * Write which builtin skills a project enables. Returns false when the file already lists exactly
+ * those ids in that order. The result is re-parsed and read back before it is written, so a
+ * splice the schema would refuse never lands. Ids are written as given: filtering them against
+ * the catalog is the reader's job (`@vn/authoring`'s skill roots), which is also what lets a
+ * project keep naming a skill a later app no longer ships.
+ */
+export async function setBuiltinSkills(
+  projectDir: string,
+  ids: readonly string[],
+): Promise<boolean> {
+  const path = join(projectDir, CONFIG_FILENAME);
+  const before = await readText(path);
+  const after = withBuiltinSkills(before, ids);
+  if (after === before) return false;
+
+  let raw: unknown;
+  try {
+    raw = parseYaml(after);
+  } catch {
+    raw = undefined;
+  }
+  const parsed = projectConfig.safeParse(raw ?? {});
+  const same =
+    parsed.success &&
+    parsed.data.builtin_skills.length === ids.length &&
+    parsed.data.builtin_skills.every((id, i) => id === ids[i]);
+  if (!same) {
+    throw new ConfigError(`could not set builtin_skills in ${path}; set it by hand`);
+  }
+  await writeFileAtomic(path, after);
+  return true;
+}
+
 /**
  * Set one top-level key of a project's config. Returns false when it already said that — a
  * committed config that would not change must not be rewritten. The result is re-parsed before
