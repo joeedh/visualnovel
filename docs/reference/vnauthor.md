@@ -525,19 +525,52 @@ one archive and one layout. The plan is
 
 ## Skills
 
-Reusable authoring playbooks live under `<dir>/.aiagent/skills/<id>/SKILL.md`, whose front
-matter carries `name`, `description`, and `when-to-use`. A pure-prose skill returns its
-body as guidance. A skill with a `run.{mjs,js,cjs,sh}` script runs a vetted command
+A skill is a reusable authoring playbook: a `SKILL.md` whose front matter carries `name`,
+`description` and `when-to-use`, with the procedure below it. A pure-prose skill returns
+its body as guidance. A skill with a `run.{mjs,js,cjs,sh}` script runs a vetted command
 instead, and every run is permissioned (always-confirm) before it executes in the
-workspace root with the workspace path as its first argument. Three skills ship with the
-sample. [`new-character`](../../packages/authoring/builtin-skills/new-character) is a
-playbook for one act. [`branching`](../../packages/authoring/builtin-skills/branching)
-covers the three shapes a fork can take, how to split a shared scene into per-route
-chunks, and the refusal to hand back when the author asks for something that would need a
-conditional. [`full-production`](../../packages/authoring/builtin-skills/full-production)
-runs nine phases from premise to storyboard, each with its own plan and its own commit,
-and ends at the choice of how a scene gets its shots (batch decomposition, a proposal the
-agent drafts, or by hand), which stays the author's.
+workspace root with the workspace path as its first argument.
+
+The agent reads skills from three places, and a project skill wins over a user skill of
+the same id, which wins over a builtin one:
+
+| Tier      | Where                                           | Who edits it                                                        |
+| --------- | ----------------------------------------------- | ------------------------------------------------------------------- |
+| `project` | `<dir>/.aiagent/skills/<id>/`                   | The author or the agent; committed with the project.                |
+| `user`    | `<userConfigDir>/skills/<id>/` (beside `keys/`) | The author, in that folder; shared by every project on the machine. |
+| `builtin` | `packages/authoring/builtin-skills/<id>/`       | Nobody. Shipped with the app and read-only; cloned to make a copy.  |
+
+`userConfigDir` is the directory `@vn/config` names for user-level state
+(`%LOCALAPPDATA%\vnauthor` on Windows; see the conventions in `CLAUDE.md`). The builtin
+tier is supplied by the host: `vnauthor` walks up from its own bundle to the checkout, and
+the desktop app resolves it through `builtinSkillsDir()` in the same place it resolves the
+other files it ships, so a packaged build carries the catalog under `resources/` at the
+same relative path. A host that finds no catalog runs with two tiers and no error.
+
+`discover_skills` lists every skill the agent can use with its tier
+(`[builtin; guide; when: …]`), and `run_skill` runs whichever copy wins. A shadowed skill
+is not listed. `create_skill` refuses an id that a user or builtin skill already holds,
+since a project skill of that id would silently replace it, and names the clone actions
+instead; `edit_skill` refuses anything but a project skill. Cloning — into the project or
+into the user folder — is the author's action, from the desktop app's Skills pane or
+palette (`skill.cloneToProject`, `skill.cloneToUser`), and is deliberately not a tool.
+
+Three skills ship in the builtin catalog.
+[`new-character`](../../packages/authoring/builtin-skills/new-character) is a playbook for
+one act. [`branching`](../../packages/authoring/builtin-skills/branching) covers the three
+shapes a fork can take, how to split a shared scene into per-route chunks, and the refusal
+to hand back when the author asks for something that would need a conditional.
+[`full-production`](../../packages/authoring/builtin-skills/full-production) runs nine
+phases from premise to storyboard, each with its own plan and its own commit, and ends at
+the choice of how a scene gets its shots (batch decomposition, a proposal the agent
+drafts, or by hand), which stays the author's.
+
+A project chooses which builtin skills it sees through `builtin_skills` in `project.yaml`,
+a list of ids. Absent, every builtin skill is on; `builtin_skills: []` turns them all off.
+The desktop app's Project pane draws the list as one checkbox per skill
+(`project.setBuiltinSkills`). A builtin skill that is off is invisible to the agent, but
+still listed, marked `off`, in the Skills pane, so the author can find it to turn back on
+or to clone.
 
 The agent can write a skill, and it writes only prose. `create_skill` scaffolds
 `.aiagent/skills/<id>/SKILL.md` from a name, a description, an optional "when to use" and

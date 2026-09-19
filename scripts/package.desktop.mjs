@@ -155,6 +155,12 @@ await cp(
   join(REPO_ROOT, 'docs', 'guides', 'api-keys.md'),
   join(SCRATCH, 'docs', 'guides', 'api-keys.md'),
 );
+// The builtin skill catalog keeps its checkout path, which is the one `builtinSkillsDir()` joins.
+await cp(
+  join(REPO_ROOT, 'packages', 'authoring', 'builtin-skills'),
+  join(SCRATCH, 'packages', 'authoring', 'builtin-skills'),
+  { recursive: true },
+);
 
 // `sourceRoot()` looks for `<resourcesPath>/source`, so the directory name is part of the contract
 // with `@vn/agentreport`, not a choice made here.

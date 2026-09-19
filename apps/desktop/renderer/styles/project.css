@@ -126,6 +126,45 @@
   color: var(--mist-dim);
 }
 
+/* The builtin catalog: a label per skill, its name and what it is for on one line each, with the
+   box the only control. Nothing else marks a switched-off skill; the empty box is the fact. */
+.pj-skills {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+}
+
+.pj-skill {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 8px;
+  align-items: baseline;
+  cursor: pointer;
+}
+
+.pj-skill > input {
+  accent-color: var(--signal);
+  cursor: pointer;
+}
+
+.pj-skill-name {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.pj-skill-desc {
+  grid-column: 2;
+  color: var(--mist-dim);
+  font-size: 12px;
+}
+
+.pj-empty-skills {
+  padding: 10px;
+  color: var(--mist-dim);
+  font-size: 12px;
+}
+
 .pj-note {
   min-height: 18px;
   color: var(--mist-dim);

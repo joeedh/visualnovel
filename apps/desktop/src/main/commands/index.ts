@@ -113,6 +113,7 @@ import {
   projectKeyStatus,
   projectPagesStatus,
   projectSetArtStyle,
+  projectSetBuiltinSkills,
   projectSetImageModel,
   projectSetKey,
   projectSetLettering,
@@ -128,6 +129,7 @@ import {
   reportState,
   reportStop,
 } from './report.js';
+import { skillCloneToProject, skillCloneToUser } from './skill.js';
 import {
   storyAssignLineIds,
   storyCoverage,
@@ -304,6 +306,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     projectKeyStatus,
     projectPagesStatus,
     projectSetArtStyle,
+    projectSetBuiltinSkills,
     projectSetImageModel,
     projectSetKey,
     projectSetLettering,
@@ -316,6 +319,8 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     reportSay,
     reportState,
     reportStop,
+    skillCloneToProject,
+    skillCloneToUser,
     storyAssignLineIds,
     storyCoverage,
     storyDecomposeAll,

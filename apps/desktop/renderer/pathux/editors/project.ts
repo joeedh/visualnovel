@@ -5,6 +5,7 @@ import { redrawing, type AnchorPass } from '../tour/anchors.js';
 import { refreshModelsAction } from '../../rules/models.js';
 import {
   applyStyleAction,
+  builtinSkillAction,
   imageModelAction,
   imageModelRows,
   reloadAction,
@@ -24,12 +25,16 @@ import type { ProjectView } from '../../../src/shared/ipc.js';
  * `confirm: true` and say how many image tasks they re-key before they write. The other model
  * ids and the image params are read-only here because changing them is a deliberate, file-level
  * act.
+ *
+ * The third card is the builtin skill catalog, one checkbox per skill, each writing the whole
+ * `builtin_skills` list through `project.setBuiltinSkills` as it is ticked.
  */
 export class ProjectEditor extends VnEditor {
   private surface!: HTMLDivElement;
   private styleBox!: HTMLTextAreaElement;
   private warn!: HTMLDivElement;
   private rows!: HTMLDivElement;
+  private skillRows!: HTMLDivElement;
   private titleEl!: HTMLDivElement;
   private rootEl!: HTMLDivElement;
   private noteEl!: HTMLDivElement;
@@ -93,6 +98,12 @@ export class ProjectEditor extends VnEditor {
     settings.appendChild(this.rows);
     this.surface.appendChild(settings);
 
+    const skills = el('div', 'pj-card');
+    skills.appendChild(el('h2', '', 'Builtin skills'));
+    this.skillRows = el('div', 'pj-skills') as HTMLDivElement;
+    skills.appendChild(this.skillRows);
+    this.surface.appendChild(skills);
+
     this.noteEl = el('div', 'pj-note') as HTMLDivElement;
     this.surface.appendChild(this.noteEl);
 
@@ -155,6 +166,18 @@ export class ProjectEditor extends VnEditor {
     await this.load();
   }
 
+  /**
+   * Write one checkbox's tick, as the whole list `project.yaml` will hold. The pane is not marked
+   * dirty by it: the write lands at once, and the re-read that follows redraws every box from the
+   * file rather than from what was clicked.
+   */
+  private async setBuiltinSkills(ids: string[]): Promise<void> {
+    const outcome = await exec('project.setBuiltinSkills', { ids });
+    if (!outcome.ok) return void this.note(outcome.error, true);
+    report(outcome);
+    await this.load();
+  }
+
   /** Fetch the OpenRouter listing again. The bridge re-reads the project view once it lands. */
   private async refreshModels(): Promise<void> {
     const outcome = await exec('models.refresh');
@@ -197,6 +220,7 @@ export class ProjectEditor extends VnEditor {
         : '';
 
     this.rows.textContent = '';
+    this.skillRows.textContent = '';
     if (!view) return;
     row(this.rows, 'title', view.title);
     row(this.rows, 'start', view.start);
@@ -205,6 +229,33 @@ export class ProjectEditor extends VnEditor {
     row(this.rows, 'models.vision', view.models.vision.join(', '));
     row(this.rows, 'image_params.aspect', view.imageParams.aspect);
     row(this.rows, 'image_params.seed', view.imageParams.seed?.toString() ?? '');
+    this.skillBoxes(anchors, view);
+  }
+
+  /**
+   * One checkbox per builtin skill, ticked as `project.yaml` has it. The box is recorded rather
+   * than acted: a checkbox's click is its own `change`, and what that change runs is the list the
+   * offer already computed — the catalog with this one flipped.
+   */
+  private skillBoxes(anchors: AnchorPass, view: ProjectView): void {
+    if (view.builtinSkills.length === 0) {
+      this.skillRows.appendChild(el('div', 'pj-empty-skills', 'No builtin catalog was found.'));
+      return;
+    }
+    for (const skill of view.builtinSkills) {
+      const offer = builtinSkillAction(true, skill, view.builtinSkills);
+      const label = el('label', 'pj-skill') as HTMLLabelElement;
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.checked = skill.enabled;
+      box.addEventListener('change', () => {
+        if (offer.ok) void this.setBuiltinSkills(offer.props['ids'] as string[]);
+      });
+      label.append(box, el('span', 'pj-skill-name', skill.name));
+      label.appendChild(el('span', 'pj-skill-desc', skill.description));
+      anchors.record(label, offer);
+      this.skillRows.appendChild(label);
+    }
   }
 
   /**

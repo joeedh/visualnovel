@@ -6,6 +6,7 @@
  */
 import { join } from 'node:path';
 import { READABLE } from '@vn/agentreport';
+import { BUILTIN_SKILLS_PATH } from '@vn/authoring';
 import { formatSmoke, missingRoots, runSmoke, SMOKE_PREFIX } from '../distribution/smoke.js';
 
 class Fake {
@@ -28,16 +29,24 @@ const foundSource = async () => '/resources/source';
 const noSource = async () => undefined;
 /** A snapshot holding every readable root. The packaged binary is what checks the real one. */
 const wholeSource = async () => [];
+/**
+ * The checkout's own catalog. Under jest `builtinSkillsDir()` finds nothing, since `__dirname`
+ * is not `dist/main`, so the lookup is handed in the way the source lookup is.
+ */
+const CHECKOUT = join(__dirname, '..', '..', '..', '..', '..');
+const foundSkills = () => join(CHECKOUT, ...BUILTIN_SKILLS_PATH);
+const noSkills = () => undefined;
 
 describe('runSmoke', () => {
   it('passes when both modules resolve and the source is there', async () => {
-    const report = await runSmoke(good, foundSource, wholeSource);
+    const report = await runSmoke(good, foundSource, wholeSource, foundSkills);
     expect(report.ok).toBe(true);
     expect(report.checks.map((c) => c.what)).toEqual([
       '@anthropic-ai/sdk',
       '@google/genai',
       'esbuild',
       'source',
+      'skills',
     ]);
   });
 
@@ -126,6 +135,20 @@ describe('runSmoke', () => {
     expect(await missingRoots(join(__dirname, 'no-such-snapshot'))).toEqual([...READABLE]);
   });
 
+  // The failure the check exists for: a build that runs and shipped no catalog
+  it('fails an image whose skill catalog is missing, with everything else fine', async () => {
+    const report = await runSmoke(good, foundSource, wholeSource, noSkills);
+    expect(report.ok).toBe(false);
+    expect(report.checks.slice(0, 4).every((c) => c.ok)).toBe(true);
+    expect(report.checks[4]).toMatchObject({ what: 'skills', ok: false });
+  });
+
+  it('fails a catalog directory that lost one of its skills', async () => {
+    const report = await runSmoke(good, foundSource, wholeSource, () => __dirname);
+    expect(report.ok).toBe(false);
+    expect(report.checks[4]!.detail).toMatch(/missing branching, full-production, new-character/);
+  });
+
   it('treats a source lookup that threw as a missing source', async () => {
     const report = await runSmoke(
       good,
@@ -140,7 +163,7 @@ describe('runSmoke', () => {
 
   // The placeholder key stays inside the smoke module, so the formatted line cannot carry it out
   it('says nothing about the placeholder key it constructed with', async () => {
-    const line = formatSmoke(await runSmoke(good, foundSource, wholeSource));
+    const line = formatSmoke(await runSmoke(good, foundSource, wholeSource, foundSkills));
     expect(line.startsWith(SMOKE_PREFIX)).toBe(true);
     expect(line).not.toMatch(/apiKey|smoke-test-not-a-key/);
     expect(JSON.parse(line.slice(SMOKE_PREFIX.length)).ok).toBe(true);

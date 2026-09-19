@@ -181,9 +181,50 @@ export type EditorClaim = (node: ClaimNode) => ClaimTier | undefined;
  */
 export const SKILLS_DIR = '.aiagent/skills';
 
-/** Whether a workspace-relative path names something inside a skill. */
+/** Where a skill was read from: the project, the user's own folder, or the app's catalog. */
+export type SkillTier = 'project' | 'user' | 'builtin';
+
+/**
+ * What a document path under each tier begins with. A user or builtin skill sits outside the
+ * workspace, so its files travel under a prefix no workspace-relative path can spell — the
+ * `<user>` root is the one `affects.ts` already uses — and `doc.read` maps the prefix back to the
+ * directory it stands for. Only the project prefix is a real path.
+ */
+export const SKILL_TIER_DIRS: Readonly<Record<SkillTier, string>> = {
+  project: SKILLS_DIR,
+  user   : '<user>/skills',
+  builtin: '<builtin>',
+};
+
+/** What the Skills pane heads each tier with. */
+export const SKILL_TIER_LABELS: Readonly<Record<SkillTier, string>> = {
+  project: 'Project',
+  user   : 'User',
+  builtin: 'Builtin',
+};
+
+/** Which tier a document path names a skill file in, or undefined for any other path. */
+export function skillTierOf(path: string | undefined): SkillTier | undefined {
+  if (path === undefined) return undefined;
+  for (const tier of ['project', 'user', 'builtin'] as const) {
+    if (path.startsWith(`${SKILL_TIER_DIRS[tier]}/`)) return tier;
+  }
+  return undefined;
+}
+
+/** Whether a document path names something inside a skill, of any tier. */
 export function underSkills(path: string | undefined): boolean {
-  return path !== undefined && path.startsWith(`${SKILLS_DIR}/`);
+  return skillTierOf(path) !== undefined;
+}
+
+/**
+ * The path of a skill file relative to its tier's directory — `branching/SKILL.md` for
+ * `<builtin>/branching/SKILL.md` — or undefined for a path in no tier.
+ */
+export function skillTierPath(path: string): { tier: SkillTier; rest: string } | undefined {
+  const tier = skillTierOf(path);
+  if (tier === undefined) return undefined;
+  return { tier, rest: path.slice(SKILL_TIER_DIRS[tier].length + 1) };
 }
 
 const TEXT_SUFFIXES = ['.md', '.txt', '.fountain', '.yaml', '.yml', '.json'] as const;

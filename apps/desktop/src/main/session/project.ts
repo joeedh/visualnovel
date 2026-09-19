@@ -7,6 +7,7 @@ import {
   secretDirsFor,
   secretFileFor,
   setArtStyle,
+  setBuiltinSkills,
   setImageModel,
   setLettering,
   setStoryboardNotes,
@@ -26,12 +27,13 @@ import {
   type FetchImpl,
   type OpenRouterListing,
 } from '@vn/providers';
+import { discoverSkills, skillRoots } from '@vn/authoring';
 import { shippedImageModels } from '@vn/gengraph';
 import { readModelCatalog, writeModelCatalog } from '@vn/gengraph/state';
 import type { Lettering, ProjectConfig, TextLLM } from '@vn/types';
-import type { KeyScope, KeyStatusView, ProjectView } from '../../shared/ipc.js';
+import type { BuiltinSkillView, KeyScope, KeyStatusView, ProjectView } from '../../shared/ipc.js';
 import { parseKeyGuide, type GuideUrlField, type KeyGuide } from '../../shared/apikeys.js';
-import { readResource } from '../distribution/resources.js';
+import { builtinSkillsDir, readResource } from '../distribution/resources.js';
 import {
   CHECK_TIMEOUT_MS,
   RELEASES_API,
@@ -78,19 +80,85 @@ export class ProjectPart {
     const { config } = project;
     const cached = await readModelCatalog();
     return {
-      root       : this.session.dir,
-      title      : config.title,
-      artStyle   : config.art_style,
-      start      : config.start ?? '',
-      models     : { ...config.models },
-      imageParams: { ...config.image_params },
-      imageTasks : project.graph.all().filter((task) => IMAGE_KINDS.has(task.kind)).length,
+      root         : this.session.dir,
+      title        : config.title,
+      artStyle     : config.art_style,
+      start        : config.start ?? '',
+      models       : { ...config.models },
+      imageParams  : { ...config.image_params },
+      imageTasks   : project.graph.all().filter((task) => IMAGE_KINDS.has(task.kind)).length,
       imageModels: {
         shipped   : shippedImageModels(),
         openrouter: cached?.openrouter ?? [],
         default   : config.models.image,
         ...(cached === undefined ? {} : { asOf: cached.asOf }),
       },
+      builtinSkills: await this.builtinSkills(),
+    };
+  }
+
+  /**
+   * The builtin catalog as this project sees it: every shipped skill, on or off. Read from the
+   * catalog root alone rather than through the three-tier roots, so a project skill that shadows
+   * a builtin one still leaves the builtin one listed here — the checkbox is about the catalog,
+   * not about which copy the agent would run.
+   */
+  private async builtinSkills(): Promise<BuiltinSkillView[]> {
+    const roots = await skillRoots(this.session.dir, { builtinDir: builtinSkillsDir() });
+    const builtin = roots.filter((root) => root.tier === 'builtin');
+    const skills = await discoverSkills(builtin, { keepDisabled: true });
+    return skills.map((skill) => ({
+      id         : skill.id,
+      name       : skill.name,
+      description: skill.description,
+      enabled    : skill.enabled,
+    }));
+  }
+
+  /**
+   * What `project.setBuiltinSkills` would do, without writing it. The list is compared as a set:
+   * the order in the file is the order the author last ticked things in, and re-saving it in
+   * another order is not a change.
+   */
+  async previewBuiltinSkills(ids: readonly string[]): Promise<PromptResult> {
+    const catalog = await this.builtinSkills();
+    const known = new Set(catalog.map((skill) => skill.id));
+    const unknown = ids.filter((id) => !known.has(id));
+    if (unknown.length > 0) {
+      return { ok: false, message: `Not a builtin skill: ${unknown.join(', ')}.` };
+    }
+    const wanted = new Set(ids);
+    const before = new Set(catalog.filter((skill) => skill.enabled).map((skill) => skill.id));
+    const turnedOn = catalog.filter((s) => wanted.has(s.id) && !before.has(s.id)).map((s) => s.id);
+    const turnedOff = catalog.filter((s) => before.has(s.id) && !wanted.has(s.id)).map((s) => s.id);
+    if (turnedOn.length === 0 && turnedOff.length === 0) {
+      return { ok: false, message: 'The project already says that.' };
+    }
+    const parts = [
+      turnedOn.length > 0 ? `turns on ${turnedOn.join(', ')}` : '',
+      turnedOff.length > 0 ? `turns off ${turnedOff.join(', ')}` : '',
+    ].filter(Boolean);
+    return {
+      ok     : true,
+      message: `This ${parts.join(' and ')}. The agent sees a builtin skill only while it is on.`,
+    };
+  }
+
+  /**
+   * Write which builtin skills the project enables, spliced into `project.yaml` like the art
+   * style. Ids the catalog does not have are refused here rather than dropped, since a checkbox
+   * cannot send one and the palette should hear about a typo.
+   */
+  async setProjectBuiltinSkills(ids: readonly string[]): Promise<PromptWriteResult> {
+    const preview = await this.previewBuiltinSkills(ids);
+    if (!preview.ok) return { ...preview, written: [] };
+    if (!(await setBuiltinSkills(this.session.dir, ids))) {
+      return { ok: false, message: 'The project already says that.', written: [] };
+    }
+    return {
+      ok     : true,
+      message: preview.message,
+      written: [relPath(this.session.dir, join(this.session.dir, CONFIG_FILENAME))],
     };
   }
 

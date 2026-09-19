@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-17T23:36:30.243Z",
-  "gitSha"       : "f1da8a48eecd7c5e5a4590899910f7b75f4cf260",
+  "sweptAt"      : "2026-09-19T19:26:22.280Z",
+  "gitSha"       : "b2ddccf54ca5e435024c68c3faab342a4a057155",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -105,6 +105,7 @@
     "project.keyStatus",
     "project.pagesStatus",
     "project.setArtStyle",
+    "project.setBuiltinSkills",
     "project.setImageModel",
     "project.setKey",
     "project.setLettering",
@@ -127,6 +128,8 @@
     "report.say",
     "report.state",
     "report.stop",
+    "skill.cloneToProject",
+    "skill.cloneToUser",
     "story.assignLineIds",
     "story.coverage",
     "story.decomposeAll",
@@ -193,15 +196,11 @@
     "workspace.skilltree"
   ],
   "anchored": [
-    "agent.compact",
     "agent.editLine",
     "agent.newThread",
     "agent.openThread",
     "agent.run",
-    "agent.setBudget",
-    "agent.setEffort",
     "agent.setMode",
-    "agent.setModel",
     "app.checkForUpdates",
     "app.copy",
     "app.openKeyLink",
@@ -240,6 +239,7 @@
     "pipeline.run",
     "project.installPages",
     "project.setArtStyle",
+    "project.setBuiltinSkills",
     "project.setImageModel",
     "project.setKey",
     "project.testKey",
@@ -250,6 +250,8 @@
     "prompt.setChunk",
     "prompt.setCustom",
     "report.open",
+    "skill.cloneToProject",
+    "skill.cloneToUser",
     "story.assignLineIds",
     "story.deleteScene",
     "story.deleteShot",
@@ -1519,53 +1521,6 @@
           }
         }
       ]
-    },
-    {
-      "id"        : "agent.setMode",
-      "editor"    : "convo",
-      "key"       : "cmd:agent.setMode",
-      "widgetPath": "convo/agent-setmode~12ef4d33"
-    },
-    {
-      "id"        : "agent.setModel",
-      "editor"    : "convo",
-      "key"       : "cmd:agent.setModel",
-      "widgetPath": "convo/agent-setmodel~a6e2e715",
-      "supplies"  : ["modelId"]
-    },
-    {
-      "id"        : "agent.setEffort",
-      "editor"    : "convo",
-      "key"       : "cmd:agent.setEffort",
-      "widgetPath": "convo/agent-seteffort~b6d4c3b8",
-      "supplies"  : ["effort"]
-    },
-    {
-      "id"        : "agent.openThread",
-      "editor"    : "convo",
-      "key"       : "cmd:agent.openThread",
-      "widgetPath": "convo/agent-openthread~2c98574d",
-      "supplies"  : ["id"]
-    },
-    {
-      "id"        : "agent.newThread",
-      "editor"    : "convo",
-      "key"       : "cmd:agent.newThread",
-      "widgetPath": "convo/agent-newthread~373761f0"
-    },
-    {
-      "id"        : "agent.setBudget",
-      "editor"    : "convo",
-      "key"       : "cmd:agent.setBudget",
-      "widgetPath": "convo/agent-setbudget~e80486e0",
-      "supplies"  : ["budget"]
-    },
-    {
-      "id"        : "agent.compact",
-      "editor"    : "convo",
-      "key"       : "cmd:agent.compact",
-      "widgetPath": "convo/agent-compact~a458e835",
-      "refused"   : "This conversation is open for reading. Continue it before compacting it."
     },
     {
       "id"        : "story.setPanels",
@@ -3707,7 +3662,19 @@
       "key"       : "cmd:doc.write",
       "widgetPath": "skills/doc-write~1ab13660",
       "supplies"  : ["text", "seenHash"],
-      "refused"   : "No document is open."
+      "refused"   : "This is a builtin skill and is read-only. Clone it to edit a copy."
+    },
+    {
+      "id"        : "skill.cloneToProject",
+      "editor"    : "skills",
+      "key"       : "cmd:skill.cloneToProject",
+      "widgetPath": "skills/skill-clonetoproject~1fa8d287"
+    },
+    {
+      "id"        : "skill.cloneToUser",
+      "editor"    : "skills",
+      "key"       : "cmd:skill.cloneToUser",
+      "widgetPath": "skills/skill-clonetouser~ffc2a80b"
     },
     {
       "id"        : "doc.write",
@@ -3715,7 +3682,7 @@
       "key"       : "cmd:doc.write#text",
       "widgetPath": "skills/doc-write~b0b7797d",
       "supplies"  : ["text", "seenHash"],
-      "refused"   : "No document is open."
+      "refused"   : "This is a builtin skill and is read-only. Clone it to edit a copy."
     },
     {
       "id"        : "pane.view",
@@ -4448,10 +4415,58 @@
       ]
     },
     {
+      "id"        : "tree.expand",
+      "editor"    : "documents",
+      "key"       : "fx:tree.expand#branch/skills",
+      "widgetPath": "documents/tree-expand~95d9d5ba"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "documents",
-      "key"       : "item:branch/skills",
-      "widgetPath": "documents/ui-publish~1f2e4447"
+      "key"       : "item:skill/branching",
+      "widgetPath": "documents/ui-publish~7af863bc",
+      "then": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "skills",
+            "where"  : "elsewhere",
+            "subject": "<builtin>/branching/SKILL.md"
+          }
+        }
+      ]
+    },
+    {
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:skill/full-production",
+      "widgetPath": "documents/ui-publish~f4da128d",
+      "then": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "skills",
+            "where"  : "elsewhere",
+            "subject": "<builtin>/full-production/SKILL.md"
+          }
+        }
+      ]
+    },
+    {
+      "id"        : "ui.publish",
+      "editor"    : "documents",
+      "key"       : "item:skill/new-character",
+      "widgetPath": "documents/ui-publish~051f1030",
+      "then": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "skills",
+            "where"  : "elsewhere",
+            "subject": "<builtin>/new-character/SKILL.md"
+          }
+        }
+      ]
     },
     {
       "id"        : "tree.expand",
@@ -5011,6 +5026,24 @@
       "widgetPath": "project/models-refresh~471a93d2"
     },
     {
+      "id"        : "project.setBuiltinSkills",
+      "editor"    : "project",
+      "key"       : "cmd:project.setBuiltinSkills#branching",
+      "widgetPath": "project/project-setbuiltinskills~a62b313b"
+    },
+    {
+      "id"        : "project.setBuiltinSkills",
+      "editor"    : "project",
+      "key"       : "cmd:project.setBuiltinSkills#full-production",
+      "widgetPath": "project/project-setbuiltinskills~43bcb7da"
+    },
+    {
+      "id"        : "project.setBuiltinSkills",
+      "editor"    : "project",
+      "key"       : "cmd:project.setBuiltinSkills#new-character",
+      "widgetPath": "project/project-setbuiltinskills~dae9b0d7"
+    },
+    {
       "id"        : "pane.view",
       "editor"    : "systemprompt",
       "key"       : "fx:pane.view#reload",
@@ -5109,16 +5142,16 @@
     {
       "id"        : "project.setKey",
       "editor"    : "onboarding",
-      "key"       : "cmd:project.setKey#openrouter",
-      "widgetPath": "onboarding/project-setkey~e338045b",
+      "key"       : "cmd:project.setKey#anthropic",
+      "widgetPath": "onboarding/project-setkey~b45dc248",
       "supplies"  : ["key"],
       "refused"   : "Paste a key first"
     },
     {
       "id"        : "project.setKey",
       "editor"    : "onboarding",
-      "key"       : "cmd:project.setKey#anthropic",
-      "widgetPath": "onboarding/project-setkey~b45dc248",
+      "key"       : "cmd:project.setKey#openrouter",
+      "widgetPath": "onboarding/project-setkey~e338045b",
       "supplies"  : ["key"],
       "refused"   : "Paste a key first"
     },
@@ -6784,8 +6817,6 @@
     }
   ],
   "strays": [
-    "branches fx:popup.open#label/arrival#choice:0",
-    "branches fx:popup.open#label/arrival#choice:1",
     "documents item:link/asset/fc80c6eba9cb0d134428bb7c0bd8bb65effa5be3379a763df6cb0467f5ebbae9"
   ],
   "untagged"     : [],

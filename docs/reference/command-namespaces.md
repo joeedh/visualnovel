@@ -171,6 +171,7 @@
 | `project.keyStatus` | — | — |
 | `project.pagesStatus` | `branch` (default `'gh-pages'`) | Whether this project carries the GitHub page builder, and whether the copy it carries came from this build of the app. Read by the menu, which reads Install or Update accordingly. |
 | `project.setArtStyle` ✍ ⚠ ↺ ✓ | `style` (default `''`) | Writes `project.yaml`. The sentence every image prompt opens with. Not art notes on one rung: it reaches every portrait, sheet, plate and shot, so it re-keys **every** image task. Spliced into `project.yaml`, so comments and key order survive. |
+| `project.setBuiltinSkills` ✍ ↺ ✓ | `ids` | Writes `project.yaml`. Which shipped skills this project turns on, as the whole list. Off means absent from the agent, not deleted; on again is instant. Spliced into `project.yaml`, so comments and key order survive. |
 | `project.setImageModel` ✍ ⚠ ↺ ✓ | `model` | Writes `project.yaml`. The model every image task and every inherit node draws with. A `<vendor>/<model>` id goes through OpenRouter, anything else through Gemini, and the vendor needs a key first. Not in the task hash: what is drawn stays, and the next render uses the new model. Spliced into `project.yaml`, so comments and key order survive. |
 | `project.setKey` ✍ ✓ | `provider` (`gemini`\|`anthropic`\|`openrouter`), `key` (**secret**), `scope` (`project`\|`user`, default `'project'`) | Writes `keys`, `.gitignore`, `<user>/keys`. Store one model provider's API key in `keys/`, the file `resolveKeys` reads when the matching environment variable is unset — and it says so when one is set, because the variable wins. The value goes to that file and nowhere else: the history records `<secret>`, and `keys` is added to `.gitignore` **before** the write, because commit-on-save runs `git commit -A`. Deliberately **not undoable**: `keys/` is outside the class a snapshot covers, which is what keeps an undo from writing over or deleting the credential this command exists to store. |
 | `project.setLettering` ✍ ↺ ✓ | `lettering` (`model`\|`runner`) | Writes `project.yaml`. Who letters a page shot: the image model, or the runner over a wordless page. Applies to page shots alone, so the check prices the pages it re-keys and a plain frame is untouched. Spliced into `project.yaml`, so comments and key order survive. |
@@ -203,6 +204,13 @@
 | `report.say` ✓ | `text` (default `''`) | One more message to the open debug conversation, and its turn. Refused while the analyst is answering ("The debug agent is still on the last turn."), with nothing open, and with nothing to say — the composer's send button shows whichever applies. |
 | `report.state` | — | The debug conversation so far, so a pane opened part way through shows what it missed. Reads nothing and spends nothing; the pane reduces these rows through the same reducer it reduces live `report:event`s with. |
 | `report.stop` ✓ | — | End the turn the debug agent is on after the step it is on; what it said is kept. Cooperative: the flag is read at the top of each step and no backend streams, so it lands when the request in flight returns. The one command accepted mid-turn. Refuses with "The debug agent is idle." |
+
+## `skill.`
+
+| Command | Props | Notes |
+| ------- | ----- | ----- |
+| `skill.cloneToProject` ✍ ↺ ✓ | `id` | Writes `.aiagent/skills`. Copy a user or builtin skill into `.aiagent/skills/` as an editable skill of the same id, which shadows the original. A script it carries is not pre-vetted: `run_skill` asks before its first run. Refuses over an existing id. |
+| `skill.cloneToUser` ✍ ✓ | `id` | Writes `<user>/skills`. Copy a project or builtin skill into the user-level `skills/` folder, beside `keys/`, for every project on this machine. **Not undoable**: the folder is outside every workspace, so no snapshot covers it. Refuses over an existing id. |
 
 ## `story.`
 

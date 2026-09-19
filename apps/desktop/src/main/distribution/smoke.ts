@@ -1,7 +1,7 @@
 /**
  * `--smoke` checks what a packaged build cannot answer by opening a window: whether the three
  * packages left out of the bundle still resolve, whether the plugin bundler can transform, and
- * whether the source the debug agent reads is in the image.
+ * whether the source the debug agent reads and the builtin skill catalog are in the image.
  *
  * Everything in this app is bundled into `dist/` except three packages. `scripts/aliases.mjs`
  * leaves `@google/genai`, `@anthropic-ai/sdk` and `esbuild` external, and each is reached
@@ -29,6 +29,8 @@
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { READABLE, sourceRoot } from '@vn/agentreport';
+import { BUILTIN_SKILL_IDS } from '@vn/types';
+import { builtinSkillsDir } from './resources.js';
 
 /** The dynamic `import()`, as a parameter — because it is the only part a test cannot run. */
 export type Loader = (spec: string) => Promise<unknown>;
@@ -110,6 +112,7 @@ export async function runSmoke(
   load: Loader,
   findSource: () => Promise<string | undefined> = sourceRoot,
   findMissing: (root: string) => Promise<string[]> = missingRoots,
+  findSkills: () => string | undefined = builtinSkillsDir,
 ): Promise<SmokeReport> {
   const checks: SmokeCheck[] = [];
   for (const { spec, pick } of SDKS) {
@@ -133,7 +136,33 @@ export async function runSmoke(
 
   checks.push(await sourceCheck(findSource, findMissing));
 
+  checks.push(await skillsCheck(findSkills));
+
   return { ok: checks.every((c) => c.ok), checks };
+}
+
+/**
+ * Whether the builtin skill catalog shipped whole. `extraResources` and `builtinSkillsDir()` have
+ * to agree on one path the same way the source snapshot does, and a build that lost it runs
+ * correctly with every project silently down to its own skills.
+ */
+async function skillsCheck(findSkills: () => string | undefined): Promise<SmokeCheck> {
+  const root = findSkills();
+  if (root === undefined) {
+    return { what: 'skills', ok: false, detail: 'not found — no project will see a builtin skill' };
+  }
+  const gone: string[] = [];
+  for (const id of BUILTIN_SKILL_IDS) {
+    try {
+      await fs.stat(join(root, id, 'SKILL.md'));
+    } catch {
+      gone.push(id);
+    }
+  }
+  if (gone.length > 0) {
+    return { what: 'skills', ok: false, detail: `${root} — missing ${gone.join(', ')}` };
+  }
+  return { what: 'skills', ok: true, detail: root };
 }
 
 async function sourceCheck(

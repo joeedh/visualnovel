@@ -100,7 +100,14 @@
   overflow: auto;
 }
 
-/* One line under the file: the path, the dirty mark, and whatever the last save said. */
+/* A user or builtin skill: the text is still selectable, but the box says it takes no edit. */
+.sk-text.readonly {
+  color: var(--mist);
+  cursor: default;
+}
+
+/* One line under the file: the path, the tier for a skill from outside the project, the dirty
+   mark, and whatever the last save said. */
 .sk-foot {
   flex: 0 0 auto;
   display: flex;
@@ -128,6 +135,13 @@
   text-transform: uppercase;
   background: rgba(244, 162, 76, 0.16);
   color: var(--sodium);
+}
+
+/* Quiet where the dirty mark is loud: a tier is a fact about the file, not something to act on. */
+.sk-badge.tier {
+  background: transparent;
+  border: 1px solid var(--ink-line);
+  color: var(--mist);
 }
 
 .sk-note {

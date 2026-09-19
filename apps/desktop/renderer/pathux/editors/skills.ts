@@ -1,8 +1,17 @@
 import type { Button, Container } from 'pathux';
 import { api } from '../../api.js';
-import { RELOAD_TIP, TEXT_TIP, askSkillAction, underSkills } from '../../rules/skills.js';
-import { reloadOffer, textBox } from '../../rules/docbuffer.js';
-import { onInvalidate, onWrote } from '../app/bridge.js';
+import {
+  RELOAD_TIP,
+  askSkillAction,
+  cloneOffer,
+  readOnlyReason,
+  skillSaveOffer,
+  skillTextBox,
+  tierBadge,
+  underSkills,
+} from '../../rules/skills.js';
+import { reloadOffer } from '../../rules/docbuffer.js';
+import { exec, onInvalidate, onWrote } from '../app/bridge.js';
 import { openCommandDialog } from '../chrome/dialog.js';
 import { DocBuffer } from '../doctree/docbuffer.js';
 import { redrawing } from '../tour/anchors.js';
@@ -21,13 +30,19 @@ import SKILLS_CSS from '../../styles/skills.css?inline';
 import type { DocNode } from '../../../src/shared/ipc.js';
 
 /**
- * The project's skills — the playbooks under `.aiagent/skills`, as a tree of the files inside them
- * beside the file being edited. It is the one pane that shows the contents of a skill: the document
- * tree carries identity (one row per skill, `docs/reference/document-tree.md`), and the content is here.
+ * The skills the agent can reach — the project's own under `.aiagent/skills`, the user's under
+ * their config directory, and the builtin catalog shipped with the app — as a tree of the files
+ * inside them, grouped by tier, beside the file being shown. It is the one pane that shows the
+ * contents of a skill: the document tree carries identity (one row per skill,
+ * `docs/reference/document-tree.md`), and the content is here.
  *
  * The text half is `DocBuffer`, exactly as Wiki's is — `doc.read` in, `doc.write` out, with the
  * draft, the `seenHash` refusal and the quit guard all coming from that one module rather than
  * being retyped here. What this pane owns is the tree beside it, its expansion, and the hint.
+ *
+ * Only a project skill takes an edit. A user or builtin skill is shown read-only, with Save and
+ * the box refused for the reason `readOnlyReason` gives, and the two Clone buttons in the bar are
+ * how it becomes a copy the author can edit: `skill.cloneToProject` and `skill.cloneToUser`.
  *
  * The hint is functional rather than decorative. A skill is the one thing in the app the agent can
  * author, and an author who has not read `docs/` has no way to know that. So the sentence and its
@@ -47,7 +62,10 @@ export class SkillsEditor extends VnEditor {
   private pathEl!: HTMLSpanElement;
   private badge!: HTMLSpanElement;
   private noteEl!: HTMLSpanElement;
+  private tierEl!: HTMLSpanElement;
   private saveBtn!: Button;
+  private cloneProjectBtn!: Button;
+  private cloneUserBtn!: Button;
 
   /**
    * The file in the box, which trails `ui.docPath` by one async read. The draft it files, the
@@ -56,7 +74,7 @@ export class SkillsEditor extends VnEditor {
    */
   private readonly buf = new DocBuffer(() => this.paint());
 
-  /** The walk of `.aiagent/skills`, or undefined while it has yet to answer. */
+  /** The three tier headings and what is under them, or undefined while the walk has yet to answer. */
   private roots: DocNode[] | undefined;
   private failure = '';
   /** The pane's own, not the tree widget's: `renderTree` draws rows and decides nothing. */
@@ -87,6 +105,10 @@ export class SkillsEditor extends VnEditor {
       reload,
       () => void this.buf.reload(),
     );
+    // Wired in `paint()`'s pass, with Save: which tier the open skill is in decides what each
+    // one offers, and that changes with the buffer.
+    this.cloneProjectBtn = bar.button(cloneOffer('', 'project').label, () => {});
+    this.cloneUserBtn = bar.button(cloneOffer('', 'user').label, () => {});
     bar.flushUpdate();
 
     this.adoptStyle(SKILLS_CSS);
@@ -121,8 +143,8 @@ export class SkillsEditor extends VnEditor {
   override update() {
     super.update();
 
-    // Only a path under `.aiagent/skills` — a wiki note selected in another pane must not blank
-    // this one, and the shared selection carries one `docPath` for every pane that watches it.
+    // Only a skill path, of any tier — a wiki note selected in another pane must not blank this
+    // one, and the shared selection carries one `docPath` for every pane that watches it.
     const path = this.ui.docPath;
     if (underSkills(path) && path !== this.buf.path) void this.buf.open(path);
   }
@@ -168,7 +190,7 @@ export class SkillsEditor extends VnEditor {
       event.stopPropagation();
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
         event.preventDefault();
-        void this.buf.save();
+        if (!this.text.readOnly) void this.buf.save();
       }
     });
     body.appendChild(this.text);
@@ -179,9 +201,10 @@ export class SkillsEditor extends VnEditor {
   private buildFoot(): HTMLElement {
     const foot = el('div', 'sk-foot');
     this.pathEl = el('span', 'sk-path') as HTMLSpanElement;
+    this.tierEl = el('span', 'sk-badge tier') as HTMLSpanElement;
     this.badge = el('span', 'sk-badge', 'unsaved') as HTMLSpanElement;
     this.noteEl = el('span', 'sk-note') as HTMLSpanElement;
-    foot.append(this.pathEl, this.badge, this.noteEl);
+    foot.append(this.pathEl, this.tierEl, this.badge, this.noteEl);
     return foot;
   }
 
@@ -190,9 +213,10 @@ export class SkillsEditor extends VnEditor {
   // -------------------------------------------------------------------------
 
   /**
-   * Walk `.aiagent/skills`. Its own channel rather than a filter over the file tree: that one is
-   * capped across the whole project, so on a large one the skills could be truncated away and this
-   * pane would draw nothing with no way to say why.
+   * Walk the three skill roots. Its own channel rather than a filter over the file tree: that one
+   * is capped across the whole project, so on a large one the skills could be truncated away and
+   * this pane would draw nothing with no way to say why — and two of the roots are outside the
+   * project altogether.
    */
   private async loadTree(): Promise<void> {
     const mine = ++this.token;
@@ -213,23 +237,41 @@ export class SkillsEditor extends VnEditor {
   }
 
   private paint(): void {
-    const open = this.buf.path !== '';
+    const path = this.buf.path;
+    const open = path !== '';
+    const readOnly = open ? readOnlyReason(path) : '';
     this.text.disabled = !open;
+    // Read-only rather than disabled, so the text of a builtin skill can still be selected and
+    // copied out of the box.
+    this.text.readOnly = readOnly !== '';
+    this.text.classList.toggle('readonly', readOnly !== '');
     // This assigns `text.value` only when it actually differs from the buffer, because assigning
     // `value` moves the caret, and the buffer already holds what the author is typing
     if (this.text.value !== this.buf.text) this.text.value = this.buf.text;
-    this.pathEl.textContent = open ? this.buf.path : '';
+    this.pathEl.textContent = open ? path : '';
     this.pathEl.title = this.pathEl.textContent;
+    const tier = tierBadge(path);
+    this.tierEl.textContent = tier;
+    this.tierEl.title = readOnly;
+    this.tierEl.style.display = tier === '' ? 'none' : 'inline-block';
     this.badge.style.display = this.buf.dirty ? 'inline-block' : 'none';
     // Re-recorded on every paint rather than once with the bar: the bar is built at init and
-    // the offer changes with the buffer, so a record kept from init would say `Nothing to save`
+    // the offers change with the buffer, so a record kept from init would say `Nothing to save`
     // for the life of the pane.
     const anchors = redrawing('skills', 'bar');
-    anchors.act(this.saveBtn, this.buf.saveOffer, () => void this.buf.save());
-    anchors.record(this.text, textBox(this.buf.path, TEXT_TIP));
-    this.noteEl.textContent = this.buf.note;
+    anchors.act(this.saveBtn, skillSaveOffer(path, this.buf.dirty), () => void this.buf.save());
+    for (const [button, into] of [
+      [this.cloneProjectBtn, 'project'],
+      [this.cloneUserBtn, 'user'],
+    ] as const) {
+      anchors.act(button, cloneOffer(path, into), (action) => void exec(action.id, action.props));
+    }
+    anchors.record(this.text, skillTextBox(path));
+    // A failed read outranks the read-only reason
+    const note = this.buf.note || readOnly;
+    this.noteEl.textContent = note;
     this.noteEl.className = this.buf.bad ? 'sk-note bad' : 'sk-note';
-    this.noteEl.title = this.buf.note;
+    this.noteEl.title = note;
     this.paintTree();
   }
 

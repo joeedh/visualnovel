@@ -289,8 +289,8 @@ independent, and the minimum; 4–8 each stand alone.
   the author. Phase 7 (`SKILL.md:81`) says `newScene` takes a `synopsis` and no `lines`.
 - `examples/dadsStory` has no `.aiagent/skills`, so this change is not exercised by the
   verification below; it is reviewed by reading.
-- `docs/plans/builtin-skills.md` moves these skills into a builtin catalog; the edit is
-  made to the file where it lives at the time and carries across the move.
+- `docs/plans/archive/builtin-skills.md` moved these skills into a builtin catalog; the
+  edit is made to the file where it lives at the time and carries across the move.
 - Undo cost: none.
 
 ### 8. `setSynopsis`, and `newScene` takes a `synopsis`

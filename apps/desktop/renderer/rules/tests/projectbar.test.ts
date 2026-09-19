@@ -1,6 +1,7 @@
 import { setModelCatalog } from '@vn/gengraph';
 import {
   applyStyleAction,
+  builtinSkillAction,
   controls,
   imageModelAction,
   imageModelRows,
@@ -9,6 +10,41 @@ import {
 } from '../projectbar.js';
 import { refreshModelsAction } from '../models.js';
 import { duplicateKeys, keyOf } from '../anchors.js';
+import type { BuiltinSkillView } from '../../../src/shared/ipc.js';
+
+const CATALOG: BuiltinSkillView[] = [
+  { id: 'branching', name: 'Branching', description: 'Add a choice.', enabled: true },
+  { id: 'full-production', name: 'Full production', description: 'Premise to VN.', enabled: false },
+  { id: 'new-character', name: 'New character', description: 'Add a character.', enabled: true },
+];
+
+describe('builtinSkillAction', () => {
+  it('offers the list the file will hold, with this skill flipped, in catalog order', () => {
+    expect(builtinSkillAction(true, CATALOG[0]!, CATALOG)).toEqual({
+      ok     : true,
+      id     : 'project.setBuiltinSkills',
+      on     : 'branching',
+      label  : 'Branching',
+      props  : { ids: ['new-character'] },
+      tooltip: 'Turn branching off — the agent stops seeing it. Add a choice.',
+    });
+    expect(builtinSkillAction(true, CATALOG[1]!, CATALOG)).toMatchObject({
+      ok     : true,
+      on     : 'full-production',
+      props  : { ids: ['branching', 'full-production', 'new-character'] },
+      tooltip: 'Turn full-production on — the agent can then follow it. Premise to VN.',
+    });
+  });
+
+  it('refuses with no project', () => {
+    expect(builtinSkillAction(false, CATALOG[0]!, CATALOG)).toMatchObject({
+      ok     : false,
+      id     : 'project.setBuiltinSkills',
+      on     : 'branching',
+      refusal: { reason: 'No project is open.' },
+    });
+  });
+});
 
 describe('applyStyleAction', () => {
   it('writes the style the box supplies once something in it has changed', () => {
@@ -121,15 +157,16 @@ describe('refreshModelsAction', () => {
 });
 
 describe('controls', () => {
-  it('lists Apply, reload, the box, the picker and the refresh, each key once', () => {
+  it('lists Apply, reload, the box, the picker, the refresh and a box per skill, each key once', () => {
     for (const state of [
       {
-        opened     : true,
-        dirty      : true,
-        imageModel : 'gemini-2.5-flash-image',
-        catalogAsOf: '2026-09-15',
+        opened       : true,
+        dirty        : true,
+        imageModel   : 'gemini-2.5-flash-image',
+        catalogAsOf  : '2026-09-15',
+        builtinSkills: CATALOG,
       },
-      { opened: false, dirty: false, imageModel: '' },
+      { opened: false, dirty: false, imageModel: '', builtinSkills: CATALOG },
     ]) {
       const listed = controls(state);
       expect(listed).toEqual([
@@ -138,17 +175,26 @@ describe('controls', () => {
         styleBox(state.opened),
         imageModelAction(state.opened, state.imageModel),
         refreshModelsAction(state.opened, state.catalogAsOf),
+        ...CATALOG.map((skill) => builtinSkillAction(state.opened, skill, CATALOG)),
       ]);
       expect(duplicateKeys(listed)).toEqual([]);
     }
     expect(
-      controls({ opened: true, dirty: true, imageModel: 'gemini-2.5-flash-image' }).map(keyOf),
+      controls({
+        opened       : true,
+        dirty        : true,
+        imageModel   : 'gemini-2.5-flash-image',
+        builtinSkills: CATALOG,
+      }).map(keyOf),
     ).toEqual([
       'cmd:project.setArtStyle',
       'fx:pane.view#reload',
       'cmd:project.setArtStyle#style',
       'cmd:project.setImageModel',
       'cmd:models.refresh',
+      'cmd:project.setBuiltinSkills#branching',
+      'cmd:project.setBuiltinSkills#full-production',
+      'cmd:project.setBuiltinSkills#new-character',
     ]);
   });
 });

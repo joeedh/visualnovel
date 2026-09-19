@@ -2,9 +2,11 @@
  * The document tree is a projection, so most of it is testable with no filesystem at all — the
  * end-to-end case at the bottom is what proves the projection is fed the real thing.
  */
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
+import { BUILTIN_SKILL_IDS } from '@vn/types';
+import { userSkillsDir } from '@vn/config';
 import type { SlotGraph, SlotNode } from '@vn/artgen';
 import type { Asset, ProjectModel, RefBinding, Shot } from '@vn/types';
 import type { LoadedInputs } from '@vn/parse';
@@ -494,6 +496,8 @@ describe('the Skills branch', () => {
     description: 'Re-read a scene against the bible and list what contradicts it.',
     file       : '.aiagent/skills/continuity-pass/SKILL.md',
     script     : false,
+    tier       : 'project',
+    enabled    : true,
     ...over,
   });
 
@@ -555,12 +559,19 @@ describe('the Skills branch', () => {
     expect(leaf!.children).toBeUndefined();
   });
 
-  it('badges the ones a person gave a script', () => {
+  it('badges the ones a person gave a script, and the ones from outside the project by tier', () => {
     const children = skills([
       skill(),
       skill({ id: 'lint', name: 'Lint', script: true }),
+      skill({
+        id: 'branching',
+        name: 'Branch',
+        tier: 'builtin',
+        file: '<builtin>/branching/SKILL.md',
+      }),
+      skill({ id: 'shared', name: 'Shared', tier: 'user', file: '<user>/skills/shared/SKILL.md' }),
     ])!.children!;
-    expect(children.map((n) => n.badge)).toEqual([undefined, 'script']);
+    expect(children.map((n) => n.badge)).toEqual([undefined, 'script', 'builtin', 'user']);
   });
 
   // Every row carries a tooltip, and a skill with no description is the row that most needs one.
@@ -883,20 +894,119 @@ describe('WorkspaceSession — the tree over a real project', () => {
     expect(portraits.every((a) => a.kind === 'portrait' && a.base)).toBe(true);
   });
 
-  it('walks the skills directory on its own, with workspace-relative ids', async () => {
+  it('walks the skills directory on its own, under a heading per tier', async () => {
     const roots = await new WorkspaceSession(p.dir, true, deps).skillTree();
-    expect(roots.map((n) => n.id)).toEqual(['dir:.aiagent/skills/continuity-pass']);
-    expect(roots[0]!.children!.map((n) => n.path)).toEqual([
+    expect(roots.map((n) => n.id)).toEqual([
+      'skilltier:project',
+      'skilltier:user',
+      'skilltier:builtin',
+    ]);
+    expect(roots.every((n) => n.kind === 'branch' && n.note)).toBe(true);
+    const [project] = roots;
+    expect(project!.children!.map((n) => n.id)).toEqual(['dir:.aiagent/skills/continuity-pass']);
+    expect(project!.children![0]!.children!.map((n) => n.path)).toEqual([
       '.aiagent/skills/continuity-pass/SKILL.md',
     ]);
   });
 
   // Every project starts here — `skeleton()` writes no `.aiagent/` at all — so a missing
-  // directory is the ordinary case and must be `[]` rather than the walk's rejection.
-  it('answers with nothing at all where no skills directory exists', async () => {
+  // directory is the ordinary case: three headings with nothing under them, not the walk's
+  // rejection. The builtin heading is empty too, because under jest no catalog resolves.
+  it('answers with empty headings where no skills directory exists', async () => {
     const bare = join(p.dir, 'empty-workspace');
     await mkdir(bare, { recursive: true });
-    expect(await new WorkspaceSession(bare, true, deps).skillTree()).toEqual([]);
+    const roots = await new WorkspaceSession(bare, true, deps).skillTree();
+    expect(roots.map((n) => [n.id, n.children])).toEqual([
+      ['skilltier:project', []],
+      ['skilltier:user', []],
+      ['skilltier:builtin', []],
+    ]);
+  });
+
+  describe('with the catalog and a user folder', () => {
+    const CHECKOUT = join(__dirname, '..', '..', '..', '..', '..');
+
+    beforeAll(async () => {
+      process.env.VN_RESOURCES = CHECKOUT;
+      const shared = join(userSkillsDir(), 'shared');
+      await mkdir(shared, { recursive: true });
+      await writeFile(join(shared, 'SKILL.md'), SKILL_MD.replace('continuity-pass', 'shared'));
+    });
+
+    afterAll(() => {
+      delete process.env.VN_RESOURCES;
+    });
+
+    it('lists the user and builtin skills under tier-prefixed paths the pane can open', async () => {
+      const roots = await new WorkspaceSession(p.dir, true, deps).skillTree();
+      const [, user, builtin] = roots;
+      expect(user!.children!.map((n) => n.path)).toEqual(['<user>/skills/shared']);
+      expect(user!.children![0]!.children!.map((n) => n.path)).toEqual([
+        '<user>/skills/shared/SKILL.md',
+      ]);
+      expect(builtin!.children!.map((n) => n.label)).toEqual([...BUILTIN_SKILL_IDS]);
+      expect(builtin!.children!.map((n) => n.path)).toEqual(
+        BUILTIN_SKILL_IDS.map((id) => `<builtin>/${id}`),
+      );
+      // The catalog ships no scripts, and every one is on by default, so no row carries a badge
+      expect(builtin!.children!.every((n) => n.badge === undefined)).toBe(true);
+    });
+
+    it('marks a builtin skill the project turned off, and drops it from the document tree', async () => {
+      const session = new WorkspaceSession(p.dir, true, deps);
+      const set = await session.setProjectBuiltinSkills(['branching']);
+      expect(set.ok).toBe(true);
+      const [, , builtin] = await session.skillTree();
+      expect(builtin!.children!.map((n) => n.badge)).toEqual([undefined, 'off', 'off']);
+      // The document tree sorts by name and badges what came from outside the project
+      const listed = branch((await session.docTree()).roots, 'branch:skills').children!;
+      expect(listed.map((n) => [n.id, n.badge])).toEqual([
+        ['skill:branching', 'builtin'],
+        ['skill:continuity-pass', undefined],
+        ['skill:shared', 'user'],
+      ]);
+      await session.setProjectBuiltinSkills([...BUILTIN_SKILL_IDS]);
+    });
+
+    it('reads a builtin skill under its virtual path and refuses to write it', async () => {
+      const session = new WorkspaceSession(p.dir, true, deps);
+      const read = await session.readDoc('<builtin>/branching/SKILL.md');
+      if (!read.ok) throw new Error(read.reason);
+      expect(read.file.path).toBe('<builtin>/branching/SKILL.md');
+      expect(read.file.text).toMatch(/^---\nname: /);
+      const write = await session.saveDoc(
+        '<builtin>/branching/SKILL.md',
+        `${read.file.text}\nedited\n`,
+        read.file.hash,
+      );
+      expect(write.ok).toBe(false);
+      if (!write.ok) expect(write.reason).toMatch(/builtin/i);
+    });
+
+    it('clones a builtin skill into the project, where it shadows the original', async () => {
+      const session = new WorkspaceSession(p.dir, true, deps);
+      const refused = await session.previewCloneSkill('continuity-pass', 'project');
+      expect(refused.ok).toBe(false);
+      const made = await session.cloneSkill('new-character', 'project');
+      if (!made.ok) throw new Error(made.reason);
+      expect(made.path).toBe('.aiagent/skills/new-character/SKILL.md');
+      expect(made.written).toEqual(['.aiagent/skills/new-character/SKILL.md']);
+      const [project] = await session.skillTree();
+      expect(project!.children!.map((n) => n.label)).toEqual(['continuity-pass', 'new-character']);
+      // A second clone finds the id taken
+      const again = await session.cloneSkill('new-character', 'project');
+      expect(again.ok).toBe(false);
+    });
+
+    it('clones into the user folder with nothing in the workspace written', async () => {
+      const session = new WorkspaceSession(p.dir, true, deps);
+      const made = await session.cloneSkill('branching', 'user');
+      if (!made.ok) throw new Error(made.reason);
+      expect(made.path).toBe('<user>/skills/branching/SKILL.md');
+      expect(made.written).toEqual([]);
+      const read = await session.readDoc(made.path);
+      expect(read.ok).toBe(true);
+    });
   });
 
   it('walks the workspace on disk, skipping .git', async () => {

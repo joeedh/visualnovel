@@ -1,6 +1,6 @@
 [x]: typing '/' in the convo editor should show available skills with proper 
      autocomplete semantics.
-[ ]: DEFERRED: create a system where we can have default skills for the vn agent  that 
+[x]: DEFERRED: create a system where we can have default skills for the vn agent  that 
      are bundled with the app.  these are readonly, but the users are given 
 	 the option to copy the skill into their project repo.  skill with the 
 	 same name in the project override the default skills.	 

@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { userSkillsDir } from '@vn/config';
 import { docToMarkdown, newCharacterTemplate, newLocationDoc, slug } from '@vn/model';
 import {
   ProjectPaths,
@@ -15,12 +16,22 @@ import { fileCache } from '../workspace/filecache.js';
 import { buildSlotGraph } from '@vn/artgen';
 import {
   PROJECT_SKILLS_DIR,
+  cloneSkill,
   discoverSkills,
   newSkillTemplate,
   skillId,
   skillRoots,
+  type Skill,
+  type SkillRoot,
 } from '@vn/authoring';
 import type { DocNode, DocSaveResult, DocTree } from '../../shared/ipc.js';
+import {
+  SKILL_TIER_DIRS,
+  SKILL_TIER_LABELS,
+  skillTierPath,
+  type SkillTier,
+} from '../../shared/editors.js';
+import { builtinSkillsDir } from '../distribution/resources.js';
 import { graphPath, graphSlugs, readGraph } from '../doctree/graphs.js';
 import { labelAssets, labelContext } from '../assets/assetlabel.js';
 import {
@@ -110,14 +121,52 @@ export class DocsPart {
    * rather than sent to the renderer and ignored there.
    */
   async skillEntries(): Promise<SkillEntry[]> {
-    const skills = await discoverSkills(await skillRoots(this.session.dir));
+    const skills = await discoverSkills(await this.skillRoots());
     return skills.map((skill) => ({
       id         : skill.id,
       name       : skill.name,
       description: skill.description,
-      file       : relPath(this.session.dir, skill.file),
+      file       : this.skillDocPath(skill, 'SKILL.md'),
       script     : skill.script !== undefined,
+      tier       : skill.tier,
+      enabled    : skill.enabled,
     }));
+  }
+
+  /**
+   * The roots every skill read in this session scans: the project, the user's folder, and the
+   * catalog the app ships. The catalog's location is the one fact `@vn/authoring` cannot know,
+   * so it is looked up here, per read — a build that lost it reads as two tiers.
+   */
+  private skillRoots(): Promise<SkillRoot[]> {
+    return skillRoots(this.session.dir, { builtinDir: builtinSkillsDir() });
+  }
+
+  /**
+   * A file of a skill as a document path: workspace-relative for a project skill, and under its
+   * tier's prefix for a user or builtin one, whose directory is not in the workspace at all.
+   */
+  private skillDocPath(skill: Skill, file: string): string {
+    return skill.tier === 'project'
+      ? relPath(this.session.dir, join(skill.dir, file))
+      : `${SKILL_TIER_DIRS[skill.tier]}/${skill.id}/${file}`;
+  }
+
+  /**
+   * The skill and the file inside it that a tier-prefixed document path names, or undefined for
+   * a path in no tier or naming no skill. Resolved through discovery rather than by joining the
+   * tier's directory, because the user tier can be read from two directories and a disabled
+   * builtin skill is still readable.
+   */
+  private async skillFileAt(path: string): Promise<{ skill: Skill; abs: string } | undefined> {
+    const at = skillTierPath(path);
+    if (!at || at.tier === 'project') return undefined;
+    const slash = at.rest.indexOf('/');
+    if (slash < 0) return undefined;
+    const id = at.rest.slice(0, slash);
+    const skills = await discoverSkills(await this.skillRoots(), { keepDisabled: true });
+    const skill = skills.find((s) => s.id === id && s.tier === at.tier);
+    return skill ? { skill, abs: join(skill.dir, at.rest.slice(slash + 1)) } : undefined;
   }
 
   /** The tree's other mode: what is actually on disk, `.git` and `node_modules` excluded. */
@@ -126,23 +175,59 @@ export class DocsPart {
   }
 
   /**
-   * Every file under `.aiagent/skills`, as the Skills pane's own tree — the content the document
-   * tree deliberately leaves out.
+   * Every skill file the project can reach, as the Skills pane's own tree: one heading per tier,
+   * a directory row per skill under it, and the files inside — the content the document tree
+   * deliberately leaves out. A builtin skill the project has turned off is drawn too, badged
+   * `off`, so the author can read and clone a skill they have switched off.
    *
    * Its own walk rather than a filter over `fileTree()`: that one is capped at `TREE_MAX_FILES`
    * across the whole project, so on a large one `.aiagent` could be truncated away and this pane
    * would draw an empty directory with nothing to say about why. It would also ship the entire
    * project's file list to paint a dozen rows.
    *
-   * No skills directory at all is `[]`, not a failure: that is the state every new project starts
-   * in, and it is the Skills branch being drawn empty that tells the author what to do about it.
+   * Every heading is drawn, empty or not: an empty Project heading is what tells a new project
+   * where its first skill goes, and an empty User heading is the one place the folder shared
+   * across projects is named.
    */
   async skillTree(): Promise<DocNode[]> {
-    const root = join(this.session.dir, PROJECT_SKILLS_DIR);
-    if (!(await exists(root))) return [];
-    // The paths come back relative to the skills directory, so the prefix is what makes each id a
-    // workspace-relative path `doc.read` would take.
-    return fileTree(await walkFiles(root), DEFAULT_CAP, `${relPath(this.session.dir, root)}/`);
+    const skills = await discoverSkills(await this.skillRoots(), { keepDisabled: true });
+    const headings: DocNode[] = [];
+    for (const tier of ['project', 'user', 'builtin'] as const) {
+      const children: DocNode[] = [];
+      for (const skill of skills.filter((s) => s.tier === tier)) {
+        const dir = this.skillDocPath(skill, '').replace(/\/$/, '');
+        const badge = skill.enabled ? (skill.script ? 'script' : '') : 'off';
+        children.push({
+          id   : `dir:${dir}`,
+          kind : 'dir',
+          label: skill.id,
+          path : dir,
+          ...(badge ? { badge } : {}),
+          ...(skill.description ? { note: skill.description } : {}),
+          children: fileTree(await walkFiles(skill.dir), DEFAULT_CAP, `${dir}/`),
+        });
+      }
+      headings.push({
+        id   : `skilltier:${tier}`,
+        kind : 'branch',
+        label: SKILL_TIER_LABELS[tier],
+        note : this.skillTierNote(tier),
+        children,
+      });
+    }
+    return headings;
+  }
+
+  /** What a tier's heading says on hover: what the tier is, and where its files live. */
+  private skillTierNote(tier: SkillTier): string {
+    switch (tier) {
+      case 'project':
+        return `This project's own skills, in ${PROJECT_SKILLS_DIR.replace(/\\/g, '/')}. Edited here, and committed with the project.`;
+      case 'user':
+        return `Your own skills, shared by every project on this machine: ${userSkillsDir()}. Cloned or edited there, not here.`;
+      case 'builtin':
+        return 'The skills that ship with the app. Read-only: clone one to edit a copy. Which are on for this project is set in the Project pane.';
+    }
   }
 
   /**
@@ -150,14 +235,95 @@ export class DocsPart {
    * `@vn/bible`: that interface has no whole-file API and that absence is what keeps the bible
    * out of an agent's context window — a human reading their own note on screen is a different
    * act, and it reads the workspace directly.
+   *
+   * A user or builtin skill file is read from its own directory and handed back under the
+   * tier-prefixed path it was asked for, so the pane that opened it can open it again.
    */
-  readDoc(path: string): Promise<DocResult<{ file: DocFile }>> {
-    return readDocFile(this.session.dir, path);
+  async readDoc(path: string): Promise<DocResult<{ file: DocFile }>> {
+    const outside = await this.skillFileAt(path);
+    if (!outside) return readDocFile(this.session.dir, path);
+    const read = await readDocFile(outside.skill.dir, outside.abs);
+    return read.ok ? { ok: true, file: { ...read.file, path } } : read;
   }
 
   /** What a save would do, decided without writing — what `doc.write`'s precondition reports. */
-  previewDoc(path: string, text: string, seenHash: string): Promise<DocResult<DocWritePlan>> {
+  async previewDoc(path: string, text: string, seenHash: string): Promise<DocResult<DocWritePlan>> {
+    const refusal = this.skillWriteRefusal(path);
+    if (refusal) return { ok: false, reason: refusal };
     return checkDocWrite(this.session.dir, path, text, seenHash, DOC_WRITERS);
+  }
+
+  /**
+   * Why a whole-file save must refuse a user or builtin skill path, or null for a project path.
+   * The words are the same ones `edit_skill` gives the agent, so a person and the agent are told
+   * the same thing about the same file.
+   */
+  private skillWriteRefusal(path: string): string | null {
+    const at = skillTierPath(path);
+    if (!at || at.tier === 'project') return null;
+    return at.tier === 'builtin'
+      ? 'This is a builtin skill and is read-only; clone it into the project to edit a copy.'
+      : `This is a user skill, shared across projects, and is edited in its own folder (${userSkillsDir()}); clone it into the project to edit a copy here.`;
+  }
+
+  /**
+   * Copy a user or builtin skill into this project's `.aiagent/skills`, or a project or builtin
+   * one into the user's folder, as a fresh skill of the same id. Refuses an id the target
+   * already holds rather than overwriting it, and a target the skill already lives in.
+   */
+  async cloneSkill(
+    id: string,
+    into: 'project' | 'user',
+  ): Promise<DocResult<{ path: string; written: string[] }>> {
+    const skills = await discoverSkills(await this.skillRoots(), { keepDisabled: true });
+    const skill = skills.find((s) => s.id === id);
+    if (!skill) return { ok: false, reason: `no such skill: ${id}` };
+    if (skill.tier === into) {
+      return { ok: false, reason: `${id} is already a ${into} skill; there is nothing to clone.` };
+    }
+    const target =
+      into === 'project' ? join(this.session.dir, PROJECT_SKILLS_DIR) : userSkillsDir();
+    const res = await cloneSkill(skill, target);
+    if (!res.ok) {
+      return {
+        ok    : false,
+        reason: `${res.reason} in the ${into} skills; rename or remove that one first.`,
+      };
+    }
+    const path =
+      into === 'project'
+        ? relPath(this.session.dir, res.file)
+        : `${SKILL_TIER_DIRS.user}/${id}/SKILL.md`;
+    // Only a project write is a workspace write: the user folder is in no repository, so nothing
+    // there is staged or snapshotted.
+    return { ok: true, path, written: into === 'project' ? [path] : [] };
+  }
+
+  /** What {@link cloneSkill} would do, without doing it. */
+  async previewCloneSkill(
+    id: string,
+    into: 'project' | 'user',
+  ): Promise<{ ok: true; note: string } | { ok: false; reason: string }> {
+    const skills = await discoverSkills(await this.skillRoots(), { keepDisabled: true });
+    const skill = skills.find((s) => s.id === id);
+    if (!skill) return { ok: false, reason: `no such skill: ${id}` };
+    if (skill.tier === into) {
+      return { ok: false, reason: `${id} is already a ${into} skill; there is nothing to clone.` };
+    }
+    const target =
+      into === 'project' ? join(this.session.dir, PROJECT_SKILLS_DIR) : userSkillsDir();
+    if (await exists(join(target, id))) {
+      return {
+        ok    : false,
+        reason: `The ${into} skills already hold ${id}; rename or remove that one first.`,
+      };
+    }
+    const shown = into === 'project' ? PROJECT_SKILLS_DIR.replace(/\\/g, '/') : userSkillsDir();
+    const script = skill.script ? ', and its script, which runs only after you confirm it' : '';
+    return {
+      ok  : true,
+      note: `Copies ${skill.tier} skill ${id} into ${shown}/${id}${script}. The ${skill.tier} one is unchanged.`,
+    };
   }
 
   /**
@@ -167,6 +333,8 @@ export class DocsPart {
    * a refusal, exactly the split `loadInputs` already draws.
    */
   async saveDoc(path: string, text: string, seenHash: string): Promise<DocResult<DocSaveResult>> {
+    const refusal = this.skillWriteRefusal(path);
+    if (refusal) return { ok: false, reason: refusal };
     const plan = await writeDocFile(this.session.dir, path, text, seenHash, DOC_WRITERS);
     if (!plan.ok) return plan;
     // `writeDocFile` is `@vn/store`'s, so the bytes are handed to the cache afterwards rather

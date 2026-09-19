@@ -1,14 +1,16 @@
 /**
  * Files the app ships, as opposed to files the author wrote.
  *
- * There is exactly one so far — `docs/guides/api-keys.md`, which the Setup pane renders — and it
- * has the awkward property of living at the repo root in a checkout and inside the installer's
- * resources directory in a packaged build. Resolving that in one place means the pane asks for a
- * document by name and never learns which kind of build it is running in.
+ * There are two — `docs/guides/api-keys.md`, which the Setup pane renders, and the builtin skill
+ * catalog — and both have the awkward property of living under the repo root in a checkout and
+ * inside the installer's resources directory in a packaged build. Resolving that in one place
+ * means a caller asks for a resource by name and never learns which kind of build it is running
+ * in.
  */
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { BUILTIN_SKILLS_PATH } from '@vn/authoring';
 
 /**
  * Candidate paths for a shipped file, in the order a build is likeliest to match.
@@ -30,6 +32,16 @@ function candidates(parts: string[]): string[] {
 /** The first candidate that exists, or `undefined` when none of them do. */
 export function resourcePath(...parts: string[]): string | undefined {
   return candidates(parts).find((path) => existsSync(path));
+}
+
+/**
+ * The builtin skill catalog, at its checkout path in every kind of build: `extraResources` in
+ * `electron-builder.yml` and `scripts/package.desktop.mjs` both copy it under that same path, so
+ * one spelling serves the checkout and the installer. Undefined in a build that lost it, which
+ * the skill roots read as "no builtin tier" rather than as an error.
+ */
+export function builtinSkillsDir(): string | undefined {
+  return resourcePath(...BUILTIN_SKILLS_PATH);
 }
 
 /**

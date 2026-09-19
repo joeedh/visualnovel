@@ -1,6 +1,6 @@
 /**
  * Commands for the project's own settings: reading what `project.yaml` says, and writing the
- * four fields in it an author edits often enough to want a pane for.
+ * five fields in it an author edits often enough to want a pane for.
  *
  * The art style and the image model are not like the other settings. The style is the first
  * clause of every image prompt and the model is in every image task's params, so both are folded
@@ -155,6 +155,34 @@ export const projectSetLettering = define({
   },
   async run({ lettering }, ctx) {
     const result = await ctx.host.session.setProjectLettering(lettering);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
+export const projectSetBuiltinSkills = define({
+  id         : 'project.setBuiltinSkills',
+  title      : 'Choose the builtin skills',
+  description:
+    'Set which of the skills that ship with the app this project turns on, as the whole list ' +
+    'of ids — the Project pane sends it with one box ticked or unticked. A builtin skill that ' +
+    'is off is absent from what the agent sees and from `discover_skills`, and back the moment ' +
+    'it is on again; nothing is copied or deleted either way. A project skill of the same id ' +
+    'shadows a builtin one whether or not it is on. The list is spliced into `project.yaml`, so ' +
+    'comments and key order survive.',
+  notes:
+    'Which shipped skills this project turns on, as the whole list. Off means absent from the agent, not deleted; on again is instant. Spliced into `project.yaml`, so comments and key order survive.',
+  mutating   : true,
+  affects    : ['project.yaml'],
+  undoable   : true,
+  props: {
+    ids: prop.stringList('the builtin skill ids to turn on; every other one is turned off'),
+  },
+  async check({ ids }, ctx) {
+    return verdict(await ctx.host.session.previewBuiltinSkills(ids));
+  },
+  async run({ ids }, ctx) {
+    const result = await ctx.host.session.setProjectBuiltinSkills(ids);
     if (!result.ok) throw new Error(result.message);
     return { message: result.message, data: result, written: result.written };
   },

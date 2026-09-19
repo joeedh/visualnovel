@@ -72,9 +72,9 @@ export type {
   NotificationLink,
 } from '@vn/types';
 
-import type { EditorId, OpenWhere } from './editors.js';
+import type { EditorId, OpenWhere, SkillTier } from './editors.js';
 
-export type { EditorId, OpenWhere } from './editors.js';
+export type { EditorId, OpenWhere, SkillTier } from './editors.js';
 
 /**
  * What `busy.what` says while the scheduler is executing tasks.
@@ -824,6 +824,12 @@ export interface ProjectView {
    * Project editor and the Gen Graph pane read one snapshot.
    */
   imageModels: ModelCatalog;
+  /**
+   * Every skill in the builtin catalog, on or off for this project, in catalog order. Empty in a
+   * build that lost the catalog, in which case the pane draws no checkboxes rather than a row
+   * that would refuse.
+   */
+  builtinSkills: BuiltinSkillView[];
 }
 
 /** The two places `project.setKey` can write a key. Keys also resolve from an env var and from
@@ -892,10 +898,29 @@ export interface SkillEntry {
   id: string;
   name: string;
   description: string;
-  /** Its `SKILL.md`, workspace-relative with `/` separators. */
+  /**
+   * Its `SKILL.md` as a document path: workspace-relative for a project skill, and under the
+   * tier's prefix (`SKILL_TIER_DIRS`) for a user or builtin one, which `doc.read` accepts and
+   * `doc.write` refuses.
+   */
   file: string;
   /** Whether a person has given it a script to run. */
   script: boolean;
+  /** Where it was read from. A project skill shadows a user or builtin one of the same id. */
+  tier: SkillTier;
+  /**
+   * Whether the project has it on. Only a builtin skill can be off — `project.yaml`'s
+   * `builtin_skills` leaves it out — and the agent does not see one that is.
+   */
+  enabled: boolean;
+}
+
+/** One builtin skill as the Project pane's checkboxes need it: identity, and whether it is on. */
+export interface BuiltinSkillView {
+  id: string;
+  name: string;
+  description: string;
+  enabled: boolean;
 }
 
 /**

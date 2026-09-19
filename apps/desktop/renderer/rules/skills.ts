@@ -1,32 +1,115 @@
 /**
- * What the Skills pane decides before it draws: which skill a path belongs to, and the sentence the
- * "ask the agent" button hands to the agent form.
+ * What the Skills pane decides before it draws: which skill and which tier a path belongs to, what
+ * Save and the two Clone buttons offer for it, and the sentence the "ask the agent" button hands
+ * to the agent form.
  *
  * This module is pure because the desktop jest project is node-only and the pane itself can only
  * be checked live over CDP, so everything that is a rule rather than markup is tested here
  * instead. `assetview.ts` sits alongside it for the same reason.
  *
- * `SKILLS_DIR` and `underSkills` are re-exported rather than defined: the Skills claim in
- * `src/shared/editors.ts` needs the same predicate, and one directory must not have two spellings
- * in one app. Everything this pane compares against came off the wire forward-slashed, which is
- * why neither of them is `@vn/authoring`'s `PROJECT_SKILLS_DIR`.
+ * `SKILLS_DIR`, `underSkills` and `skillTierOf` are re-exported rather than defined: the Skills
+ * claim in `src/shared/editors.ts` needs the same predicates, and one directory must not have two
+ * spellings in one app. Everything this pane compares against came off the wire forward-slashed,
+ * which is why none of them is `@vn/authoring`'s `PROJECT_SKILLS_DIR`.
  */
-export { SKILLS_DIR, underSkills } from '../../src/shared/editors.js';
+export {
+  SKILLS_DIR,
+  SKILL_TIER_LABELS,
+  skillTierOf,
+  underSkills,
+  type SkillTier,
+} from '../../src/shared/editors.js';
 
-import type { Offer } from './anchors.js';
+import { refuse, type Offer } from './anchors.js';
 import { reloadOffer, saveOffer, textBox } from './docbuffer.js';
-import { SKILLS_DIR, underSkills } from '../../src/shared/editors.js';
+import {
+  skillTierOf,
+  skillTierPath,
+  underSkills,
+  type SkillTier,
+} from '../../src/shared/editors.js';
 
 /**
- * Which skill a path belongs to — `.aiagent/skills/continuity-pass/SKILL.md` → `continuity-pass`.
- * `''` for anything outside, including the skills directory itself: the directory is not a skill,
- * and a caller that treated `''` as one would open a pane on nothing.
+ * Which skill a path belongs to — `.aiagent/skills/continuity-pass/SKILL.md` → `continuity-pass`,
+ * and `<builtin>/branching/SKILL.md` → `branching`. `''` for anything outside, including a tier's
+ * directory itself: the directory is not a skill, and a caller that treated `''` as one would open
+ * a pane on nothing.
  */
 export function skillIdOf(path: string | undefined): string {
   if (!underSkills(path)) return '';
-  const rest = (path as string).slice(SKILLS_DIR.length + 1);
+  const rest = skillTierPath(path as string)!.rest;
   const slash = rest.indexOf('/');
   return slash < 0 ? rest : rest.slice(0, slash);
+}
+
+/**
+ * Why the open file cannot be saved from here, or `''` for a project skill. A builtin skill ships
+ * with the app and a user skill is shared across projects; both are edited as a copy, and the
+ * sentence names the button that makes one.
+ */
+export function readOnlyReason(path: string): string {
+  switch (skillTierOf(path)) {
+    case 'builtin':
+      return 'This is a builtin skill and is read-only. Clone it to edit a copy.';
+    case 'user':
+      return 'This is a user skill, shared across projects, and is edited in its own folder. Clone it into the project to edit a copy here.';
+    default:
+      return '';
+  }
+}
+
+/**
+ * The bar's Save, which for a user or builtin skill is refused with the reason it is read-only
+ * rather than with Nothing to save — the box never becomes dirty, and a control that said
+ * "nothing to save" over a file that cannot be saved would be answering the wrong question.
+ */
+export function skillSaveOffer(path: string, dirty: boolean): Offer {
+  const reason = path === '' ? '' : readOnlyReason(path);
+  if (!reason) return saveOffer(path, dirty);
+  const plain = saveOffer('', false);
+  return { ...plain, ...refuse(reason) };
+}
+
+/** What each Clone button says, refused with why when the open skill is already in that tier. */
+export function cloneOffer(path: string, into: 'project' | 'user'): Offer {
+  const id = skillIdOf(path);
+  const tier = skillTierOf(path);
+  const control =
+    into === 'project'
+      ? {
+          id     : 'skill.cloneToProject',
+          label  : 'Clone into project',
+          tooltip:
+            'Copy this skill into this project’s .aiagent/skills so you can edit it — the ' +
+            'original is unaffected either way',
+        }
+      : {
+          id     : 'skill.cloneToUser',
+          label  : 'Clone into user folder',
+          tooltip:
+            'Copy this skill into your own skills folder, where every project on this machine ' +
+            'can use it — the original is unaffected either way',
+        };
+  if (id === '' || tier === undefined) return { ...refuse('No skill is open.'), ...control };
+  if (tier === into) {
+    return { ...refuse(`This is already a ${ALREADY[into]}.`), ...control };
+  }
+  return { ok: true, props: { id }, ...control };
+}
+
+const ALREADY: Record<'project' | 'user', string> = {
+  project: 'project skill',
+  user   : 'user skill',
+};
+
+/**
+ * The badge under the box for a skill from outside the project, or `''` for a project skill and
+ * for nothing open. A project skill is the ordinary case and carries no badge, the same way the
+ * document tree badges only what came from elsewhere.
+ */
+export function tierBadge(path: string): string {
+  const tier: SkillTier | undefined = skillTierOf(path);
+  return tier === undefined || tier === 'project' ? '' : tier;
 }
 
 /**
@@ -69,12 +152,25 @@ export function askSkillAction(): Offer {
 /** Every offer the Skills pane draws from this module. */
 export function controls(state: SkillsState): readonly Offer[] {
   return [
-    saveOffer(state.path, state.dirty),
+    skillSaveOffer(state.path, state.dirty),
     reloadOffer(RELOAD_TIP),
+    cloneOffer(state.path, 'project'),
+    cloneOffer(state.path, 'user'),
     askSkillAction(),
-    textBox(state.path, TEXT_TIP),
+    skillTextBox(state.path),
   ];
 }
 
+/**
+ * The text box: the same write Save is, for a project skill, and refused with the read-only
+ * reason for a user or builtin one, whose box shows the file without taking an edit.
+ */
+export function skillTextBox(path: string): Offer {
+  const reason = path === '' ? '' : readOnlyReason(path);
+  if (!reason) return textBox(path, TEXT_TIP);
+  return { ...textBox('', READ_TIP), ...refuse(reason) };
+}
+
 export const TEXT_TIP = 'Edit this file as text. Ctrl+S saves and commits.';
+export const READ_TIP = 'The file, as text. Read-only here.';
 export const RELOAD_TIP = 'Re-read this file from disk (discards an unsaved draft)';

@@ -7,6 +7,8 @@ const skill = (id: string, name: string): SkillEntry => ({
   description: `What ${name} does.`,
   file       : `.aiagent/skills/${id}/SKILL.md`,
   script     : false,
+  tier       : 'project',
+  enabled    : true,
 });
 
 const SKILLS = [

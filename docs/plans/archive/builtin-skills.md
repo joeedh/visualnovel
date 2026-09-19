@@ -174,7 +174,7 @@ project or user skill: editable, and no longer tracked as "from" the builtin.
   (`docs/reference/desktop-app-editors-misc.md:89-93`); it needs to also walk the resolved
   user and builtin roots and tag each row with its tier, same data `discover_skills`
   reports for the agent.
-- Use the frontend design skill to review/inform your changes to the skills editor. 
+- Use the frontend design skill to review/inform your changes to the skills editor.
 
 ## Migration
 
@@ -227,3 +227,46 @@ project or user skill: editable, and no longer tracked as "from" the builtin.
 
 This plan should be pressure-tested by a fresh-context agent before any of the above
 starts, per `CLAUDE.md`'s plan-review convention.
+
+## As shipped
+
+Three stages, one commit each, on the `builtin-skills` branch. `pnpm check`, `pnpm test`
+and `pnpm lint` are green. The Skills pane, both clone commands (with undo of the project
+clone) and `project.setBuiltinSkills` (with undo) were checked live over CDP against
+`examples/mySampleRepo`, and the anchor sweep was re-run.
+
+- Stage 1 (`packages/config`, `packages/types`): `builtin_skills` on the schema with
+  `BUILTIN_SKILL_IDS` as its default, `withBuiltinSkills` / `setBuiltinSkills`,
+  `userSkillsDir`.
+- Stage 2 (`packages/authoring`, `apps/authoring`): the catalog moved to
+  `packages/authoring/builtin-skills/`, `skillRoots` over three tiers with the builtin
+  root's `enabled` set read from the config, `tier` and `enabled` on `Skill`,
+  `discoverSkills({ keepDisabled })`, `cloneSkill`, the `create_skill` / `edit_skill`
+  refusals, the tier in `discover_skills`'s listing, and `ToolContext.builtinSkillsDir`
+  supplied by each host.
+- Stage 3 (`apps/desktop`, docs): `project.setBuiltinSkills`, `skill.cloneToProject`,
+  `skill.cloneToUser`; the Project pane's checkbox card; the Skills pane's tier headings,
+  read-only view, clone buttons and tier badge; virtual `<user>/skills/…` and
+  `<builtin>/…` doc paths; the catalog in `extraResources` with a `skills` smoke check;
+  the docs named under Rollout plus `document-tree.md`, `desktopAppState.md` and
+  `CLAUDE.md`.
+
+### Deviations
+
+- **The host supplies the builtin directory rather than `@vn/authoring` finding it.**
+  `@vn/authoring` is source-only and bundled into two apps, so it has no reliable
+  `import.meta.url` to walk from. `BUILTIN_SKILLS_PATH` is exported instead; `vnauthor`
+  walks up from its bundle and the desktop app goes through `resourcePath()`, which is
+  also how the packaged build finds it. Under jest neither resolves, so tests that need
+  the catalog set `VN_RESOURCES` to the checkout.
+- **A user skill is read-only in the Skills pane.** The plan made only builtin skills
+  read-only. Writing a user skill from the pane would need a non-undoable write command
+  (`doc.write` is undoable and covers only the workspace), so the pane shows a user skill
+  the way it shows a builtin one and names its folder; "Clone into project" gives an
+  editable copy. The agent's `edit_skill` refuses user skills for the same reason. Worth
+  its own small change if editing in place turns out to matter.
+- **The Skills pane badges the tier in its foot rather than beside each tree row.** The
+  tree already groups by heading, so a per-row tier badge would repeat the heading; the
+  row badge is kept for `script` and `off`.
+- **`skill.cloneToUser` is not undoable**, as the affects rules require for a `<user>`
+  write; the plan's "undo removes the copy" applies to the project clone only.

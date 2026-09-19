@@ -309,7 +309,9 @@ write-up.
   read when the native directory is absent, but never written. The directory is Local
   rather than Roaming deliberately, because an API key should not follow the user to
   another machine. Any future settings system writes there too, so settings and keys never
-  split across two homes.
+  split across two homes. `skills/` under it is the user tier of agent skills
+  ([`docs/reference/vnauthor.md#skills`](docs/reference/vnauthor.md#skills)), read by
+  every project and written only by `skill.cloneToUser` or by hand.
 - **Imports** use explicit `.js` extensions on relative paths (ESM +
   `verbatimModuleSyntax`). jest's `moduleNameMapper` strips them; esbuild and `tsgo`
   resolve them.

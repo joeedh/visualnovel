@@ -248,15 +248,20 @@ function wikiBranch(input: DocTreeInput): DocNode {
 function skillsBranch(input: DocTreeInput, cap: number): DocNode | undefined {
   const skills = input.skills;
   if (!skills) return undefined;
-  const children = skills.map((skill) =>
-    node(`skill:${skill.id}`, 'skill', skill.name, {
+  // One badge per row: a user or builtin skill says where it came from, since that is what
+  // decides whether it can be edited here, and a project skill says whether it runs a script
+  const badgeOf = (skill: SkillEntry): string | undefined =>
+    skill.tier !== 'project' ? skill.tier : skill.script ? 'script' : undefined;
+  const children = skills.map((skill) => {
+    const badge = badgeOf(skill);
+    return node(`skill:${skill.id}`, 'skill', skill.name, {
       path: skill.file,
-      ...(skill.script ? { badge: 'script' } : {}),
+      ...(badge ? { badge } : {}),
       // A skill with no description still gets a tooltip, so an author looking at an unfamiliar
       // playbook is told what the row is before opening it
       note: skill.description || 'A playbook the agent can follow. Open it in the Skills pane.',
-    }),
-  );
+    });
+  });
   return node('branch:skills', 'branch', 'Skills', {
     children: capped('branch:skills', children, cap),
   });

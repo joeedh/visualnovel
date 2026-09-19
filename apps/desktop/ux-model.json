@@ -454,7 +454,7 @@
       "module": "projectbar",
       "editor": "project",
       "name"  : "clean",
-      "why": "The box matches the file, so Apply is refused with No changes; the box, reload and the image-model picker stay offered."
+      "why": "The box matches the file, so Apply is refused with No changes; the box, reload, the image-model picker and the builtin-skill checkboxes stay offered, each with the list the file would hold after it."
     },
     {
       "module": "projectbar",
@@ -472,7 +472,7 @@
       "module": "projectbar",
       "editor": "project",
       "name"  : "no-project",
-      "why"   : "No project is open, so Apply, the box, the picker and Refresh models are refused."
+      "why": "No project is open, so Apply, the box, the picker, Refresh models and every checkbox are refused."
     },
     {
       "module": "reportconvo",
@@ -569,6 +569,18 @@
       "editor": "skills",
       "name"  : "open-dirty",
       "why"   : "The open skill has changed, so Save is offered."
+    },
+    {
+      "module": "skills",
+      "editor": "skills",
+      "name"  : "builtin-open",
+      "why": "A builtin skill is open, so Save and the box are refused as read-only, Clone into project and Clone into user folder are both offered."
+    },
+    {
+      "module": "skills",
+      "editor": "skills",
+      "name"  : "user-open",
+      "why": "A user skill is open, so Save and the box are refused as read-only, Clone into project is offered and Clone into user folder is refused as already there."
     },
     {
       "module": "systemprompt",
@@ -23030,6 +23042,84 @@
       "via"       : "control",
       "editor"    : "project",
       "module"    : "projectbar",
+      "situation" : "clean",
+      "key"       : "cmd:project.setBuiltinSkills#branching",
+      "widgetPath": "project/project-setbuiltinskills~a62b313b",
+      "offer": {
+        "id"     : "project.setBuiltinSkills",
+        "label"  : "Branching",
+        "tooltip": "Turn branching off — the agent stops seeing it. Add a choice and the branches it opens.",
+        "on"     : "branching",
+        "ok"     : true,
+        "props": {
+          "ids": ["new-character"]
+        }
+      },
+      "effects": [
+        {
+          "id"   : "project.setBuiltinSkills",
+          "props": {
+            "ids": ["new-character"]
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "clean",
+      "key"       : "cmd:project.setBuiltinSkills#full-production",
+      "widgetPath": "project/project-setbuiltinskills~43bcb7da",
+      "offer": {
+        "id"     : "project.setBuiltinSkills",
+        "label"  : "Full production",
+        "tooltip": "Turn full-production on — the agent can then follow it. Take a premise through to a complete, generated VN.",
+        "on"     : "full-production",
+        "ok"     : true,
+        "props": {
+          "ids": ["branching", "full-production", "new-character"]
+        }
+      },
+      "effects": [
+        {
+          "id"   : "project.setBuiltinSkills",
+          "props": {
+            "ids": ["branching", "full-production", "new-character"]
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "clean",
+      "key"       : "cmd:project.setBuiltinSkills#new-character",
+      "widgetPath": "project/project-setbuiltinskills~dae9b0d7",
+      "offer": {
+        "id"     : "project.setBuiltinSkills",
+        "label"  : "New character",
+        "tooltip": "Turn new-character off — the agent stops seeing it. Add a character with a sheet and a place in the story.",
+        "on"     : "new-character",
+        "ok"     : true,
+        "props": {
+          "ids": ["branching"]
+        }
+      },
+      "effects": [
+        {
+          "id"   : "project.setBuiltinSkills",
+          "props": {
+            "ids": ["branching"]
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
       "situation" : "dirty",
       "key"       : "cmd:project.setArtStyle",
       "widgetPath": "project/project-setartstyle~74240823",
@@ -23370,6 +23460,75 @@
       "effects": [
         {
           "id": "models.refresh"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "no-project",
+      "key"       : "cmd:project.setBuiltinSkills#branching",
+      "widgetPath": "project/project-setbuiltinskills~a62b313b",
+      "offer": {
+        "id"     : "project.setBuiltinSkills",
+        "label"  : "Branching",
+        "tooltip": "Turn branching off — the agent stops seeing it. Add a choice and the branches it opens.",
+        "on"     : "branching",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No project is open."
+        }
+      },
+      "effects": [
+        {
+          "id": "project.setBuiltinSkills"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "no-project",
+      "key"       : "cmd:project.setBuiltinSkills#full-production",
+      "widgetPath": "project/project-setbuiltinskills~43bcb7da",
+      "offer": {
+        "id"     : "project.setBuiltinSkills",
+        "label"  : "Full production",
+        "tooltip": "Turn full-production on — the agent can then follow it. Take a premise through to a complete, generated VN.",
+        "on"     : "full-production",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No project is open."
+        }
+      },
+      "effects": [
+        {
+          "id": "project.setBuiltinSkills"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "no-project",
+      "key"       : "cmd:project.setBuiltinSkills#new-character",
+      "widgetPath": "project/project-setbuiltinskills~dae9b0d7",
+      "offer": {
+        "id"     : "project.setBuiltinSkills",
+        "label"  : "New character",
+        "tooltip": "Turn new-character off — the agent stops seeing it. Add a character with a sheet and a place in the story.",
+        "on"     : "new-character",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No project is open."
+        }
+      },
+      "effects": [
+        {
+          "id": "project.setBuiltinSkills"
         }
       ]
     },
@@ -26758,6 +26917,50 @@
       "editor"    : "skills",
       "module"    : "skills",
       "situation" : "none-open",
+      "key"       : "cmd:skill.cloneToProject",
+      "widgetPath": "skills/skill-clonetoproject~1fa8d287",
+      "offer": {
+        "id"     : "skill.cloneToProject",
+        "label"  : "Clone into project",
+        "tooltip": "Copy this skill into this project’s .aiagent/skills so you can edit it — the original is unaffected either way",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No skill is open."
+        }
+      },
+      "effects": [
+        {
+          "id": "skill.cloneToProject"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "skills",
+      "module"    : "skills",
+      "situation" : "none-open",
+      "key"       : "cmd:skill.cloneToUser",
+      "widgetPath": "skills/skill-clonetouser~ffc2a80b",
+      "offer": {
+        "id"     : "skill.cloneToUser",
+        "label"  : "Clone into user folder",
+        "tooltip": "Copy this skill into your own skills folder, where every project on this machine can use it — the original is unaffected either way",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No skill is open."
+        }
+      },
+      "effects": [
+        {
+          "id": "skill.cloneToUser"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "skills",
+      "module"    : "skills",
+      "situation" : "none-open",
       "key"       : "cmd:agent.run",
       "widgetPath": "skills/agent-run~97823f35",
       "offer": {
@@ -26857,6 +27060,53 @@
       "editor"    : "skills",
       "module"    : "skills",
       "situation" : "open",
+      "key"       : "cmd:skill.cloneToProject",
+      "widgetPath": "skills/skill-clonetoproject~1fa8d287",
+      "offer": {
+        "id"     : "skill.cloneToProject",
+        "label"  : "Clone into project",
+        "tooltip": "Copy this skill into this project’s .aiagent/skills so you can edit it — the original is unaffected either way",
+        "ok"     : false,
+        "refusal": {
+          "reason": "This is already a project skill."
+        }
+      },
+      "effects": [
+        {
+          "id": "skill.cloneToProject"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "skills",
+      "module"    : "skills",
+      "situation" : "open",
+      "key"       : "cmd:skill.cloneToUser",
+      "widgetPath": "skills/skill-clonetouser~ffc2a80b",
+      "offer": {
+        "id"     : "skill.cloneToUser",
+        "label"  : "Clone into user folder",
+        "tooltip": "Copy this skill into your own skills folder, where every project on this machine can use it — the original is unaffected either way",
+        "ok"     : true,
+        "props": {
+          "id": "casting"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "skill.cloneToUser",
+          "props": {
+            "id": "casting"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "skills",
+      "module"    : "skills",
+      "situation" : "open",
       "key"       : "cmd:agent.run",
       "widgetPath": "skills/agent-run~97823f35",
       "offer": {
@@ -26893,14 +27143,14 @@
         "supplies": ["text", "seenHash"],
         "ok"      : true,
         "props": {
-          "path": ".vnauthor/skills/casting/SKILL.md"
+          "path": ".aiagent/skills/casting/SKILL.md"
         }
       },
       "effects": [
         {
           "id"   : "doc.write",
           "props": {
-            "path": ".vnauthor/skills/casting/SKILL.md"
+            "path": ".aiagent/skills/casting/SKILL.md"
           }
         }
       ]
@@ -26919,14 +27169,14 @@
         "supplies": ["text", "seenHash"],
         "ok"      : true,
         "props": {
-          "path": ".vnauthor/skills/casting/SKILL.md"
+          "path": ".aiagent/skills/casting/SKILL.md"
         }
       },
       "effects": [
         {
           "id"   : "doc.write",
           "props": {
-            "path": ".vnauthor/skills/casting/SKILL.md"
+            "path": ".aiagent/skills/casting/SKILL.md"
           }
         }
       ]
@@ -26953,6 +27203,53 @@
           "id"   : "pane.view",
           "props": {
             "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "skills",
+      "module"    : "skills",
+      "situation" : "open-dirty",
+      "key"       : "cmd:skill.cloneToProject",
+      "widgetPath": "skills/skill-clonetoproject~1fa8d287",
+      "offer": {
+        "id"     : "skill.cloneToProject",
+        "label"  : "Clone into project",
+        "tooltip": "Copy this skill into this project’s .aiagent/skills so you can edit it — the original is unaffected either way",
+        "ok"     : false,
+        "refusal": {
+          "reason": "This is already a project skill."
+        }
+      },
+      "effects": [
+        {
+          "id": "skill.cloneToProject"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "skills",
+      "module"    : "skills",
+      "situation" : "open-dirty",
+      "key"       : "cmd:skill.cloneToUser",
+      "widgetPath": "skills/skill-clonetouser~ffc2a80b",
+      "offer": {
+        "id"     : "skill.cloneToUser",
+        "label"  : "Clone into user folder",
+        "tooltip": "Copy this skill into your own skills folder, where every project on this machine can use it — the original is unaffected either way",
+        "ok"     : true,
+        "props": {
+          "id": "casting"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "skill.cloneToUser",
+          "props": {
+            "id": "casting"
           }
         }
       ]
@@ -26998,15 +27295,310 @@
         "supplies": ["text", "seenHash"],
         "ok"      : true,
         "props": {
-          "path": ".vnauthor/skills/casting/SKILL.md"
+          "path": ".aiagent/skills/casting/SKILL.md"
         }
       },
       "effects": [
         {
           "id"   : "doc.write",
           "props": {
-            "path": ".vnauthor/skills/casting/SKILL.md"
+            "path": ".aiagent/skills/casting/SKILL.md"
           }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "skills",
+      "module"    : "skills",
+      "situation" : "builtin-open",
+      "key"       : "cmd:doc.write",
+      "widgetPath": "skills/doc-write~1ab13660",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Save",
+        "tooltip" : "Write this file back to disk, and commit it",
+        "supplies": ["text", "seenHash"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "This is a builtin skill and is read-only. Clone it to edit a copy."
+        }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "skills",
+      "module"    : "skills",
+      "situation" : "builtin-open",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "skills/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this file from disk (discards an unsaved draft)",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "skills",
+      "module"    : "skills",
+      "situation" : "builtin-open",
+      "key"       : "cmd:skill.cloneToProject",
+      "widgetPath": "skills/skill-clonetoproject~1fa8d287",
+      "offer": {
+        "id"     : "skill.cloneToProject",
+        "label"  : "Clone into project",
+        "tooltip": "Copy this skill into this project’s .aiagent/skills so you can edit it — the original is unaffected either way",
+        "ok"     : true,
+        "props": {
+          "id": "branching"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "skill.cloneToProject",
+          "props": {
+            "id": "branching"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "skills",
+      "module"    : "skills",
+      "situation" : "builtin-open",
+      "key"       : "cmd:skill.cloneToUser",
+      "widgetPath": "skills/skill-clonetouser~ffc2a80b",
+      "offer": {
+        "id"     : "skill.cloneToUser",
+        "label"  : "Clone into user folder",
+        "tooltip": "Copy this skill into your own skills folder, where every project on this machine can use it — the original is unaffected either way",
+        "ok"     : true,
+        "props": {
+          "id": "branching"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "skill.cloneToUser",
+          "props": {
+            "id": "branching"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "skills",
+      "module"    : "skills",
+      "situation" : "builtin-open",
+      "key"       : "cmd:agent.run",
+      "widgetPath": "skills/agent-run~97823f35",
+      "offer": {
+        "id"     : "agent.run",
+        "label"  : "Ask the agent for a skill…",
+        "tooltip": "Open the agent form with a request for a new skill — you say what it should do",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "input": "Write a new skill under .aiagent/skills — a SKILL.md with name, description and when-to-use in its front-matter, and the procedure below it. It should: "
+        }
+      },
+      "effects": [
+        {
+          "id"   : "agent.run",
+          "props": {
+            "input": "Write a new skill under .aiagent/skills — a SKILL.md with name, description and when-to-use in its front-matter, and the procedure below it. It should: "
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "skills",
+      "module"    : "skills",
+      "situation" : "builtin-open",
+      "key"       : "cmd:doc.write#text",
+      "widgetPath": "skills/doc-write~b0b7797d",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "The file, as text",
+        "tooltip" : "The file, as text. Read-only here.",
+        "on"      : "text",
+        "supplies": ["text", "seenHash"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "This is a builtin skill and is read-only. Clone it to edit a copy."
+        }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "skills",
+      "module"    : "skills",
+      "situation" : "user-open",
+      "key"       : "cmd:doc.write",
+      "widgetPath": "skills/doc-write~1ab13660",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Save",
+        "tooltip" : "Write this file back to disk, and commit it",
+        "supplies": ["text", "seenHash"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "This is a user skill, shared across projects, and is edited in its own folder. Clone it into the project to edit a copy here."
+        }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "skills",
+      "module"    : "skills",
+      "situation" : "user-open",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "skills/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this file from disk (discards an unsaved draft)",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "skills",
+      "module"    : "skills",
+      "situation" : "user-open",
+      "key"       : "cmd:skill.cloneToProject",
+      "widgetPath": "skills/skill-clonetoproject~1fa8d287",
+      "offer": {
+        "id"     : "skill.cloneToProject",
+        "label"  : "Clone into project",
+        "tooltip": "Copy this skill into this project’s .aiagent/skills so you can edit it — the original is unaffected either way",
+        "ok"     : true,
+        "props": {
+          "id": "casting"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "skill.cloneToProject",
+          "props": {
+            "id": "casting"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "skills",
+      "module"    : "skills",
+      "situation" : "user-open",
+      "key"       : "cmd:skill.cloneToUser",
+      "widgetPath": "skills/skill-clonetouser~ffc2a80b",
+      "offer": {
+        "id"     : "skill.cloneToUser",
+        "label"  : "Clone into user folder",
+        "tooltip": "Copy this skill into your own skills folder, where every project on this machine can use it — the original is unaffected either way",
+        "ok"     : false,
+        "refusal": {
+          "reason": "This is already a user skill."
+        }
+      },
+      "effects": [
+        {
+          "id": "skill.cloneToUser"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "skills",
+      "module"    : "skills",
+      "situation" : "user-open",
+      "key"       : "cmd:agent.run",
+      "widgetPath": "skills/agent-run~97823f35",
+      "offer": {
+        "id"     : "agent.run",
+        "label"  : "Ask the agent for a skill…",
+        "tooltip": "Open the agent form with a request for a new skill — you say what it should do",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "input": "Write a new skill under .aiagent/skills — a SKILL.md with name, description and when-to-use in its front-matter, and the procedure below it. It should: "
+        }
+      },
+      "effects": [
+        {
+          "id"   : "agent.run",
+          "props": {
+            "input": "Write a new skill under .aiagent/skills — a SKILL.md with name, description and when-to-use in its front-matter, and the procedure below it. It should: "
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "skills",
+      "module"    : "skills",
+      "situation" : "user-open",
+      "key"       : "cmd:doc.write#text",
+      "widgetPath": "skills/doc-write~b0b7797d",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "The file, as text",
+        "tooltip" : "The file, as text. Read-only here.",
+        "on"      : "text",
+        "supplies": ["text", "seenHash"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "This is a user skill, shared across projects, and is edited in its own folder. Clone it into the project to edit a copy here."
+        }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
         }
       ]
     },

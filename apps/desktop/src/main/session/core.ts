@@ -162,6 +162,7 @@ import { type GuideUrlField, type KeyGuide } from '../../shared/apikeys.js';
 import { type ApprovalQueue } from '../workspace/approvals.js';
 import { type GraphSlug } from '../doctree/graphs.js';
 import { notify } from '../notify/notifications.js';
+import { builtinSkillsDir } from '../distribution/resources.js';
 import { type UpdateCheck } from '../distribution/updates.js';
 import { labelContext } from '../assets/assetlabel.js';
 import { type SkillEntry } from '../doctree/doctree.js';
@@ -1125,8 +1126,10 @@ export class WorkspaceSession {
   async ensureAgent(): Promise<Agent> {
     if (this.agent) return this.agent;
     const workspace = new Workspace(this.dir);
+    const builtin = builtinSkillsDir();
     const ctx: ToolContext = {
       workspace,
+      ...(builtin ? { builtinSkillsDir: builtin } : {}),
       git     : openGit(this.dir),
       // The agent's `generate_image` and the palette's `art.generate` draw the same picture; the
       // session's own `mock` is the only policy about whether it is real art.
@@ -1886,6 +1889,15 @@ export class WorkspaceSession {
     return this.projectPart.setProjectLettering(lettering);
   }
 
+  async previewBuiltinSkills(ids: readonly string[]): Promise<PromptResult> {
+    return this.projectPart.previewBuiltinSkills(ids);
+  }
+
+  /** Write which builtin skills the project enables, spliced into `project.yaml`. */
+  async setProjectBuiltinSkills(ids: readonly string[]): Promise<PromptWriteResult> {
+    return this.projectPart.setProjectBuiltinSkills(ids);
+  }
+
   async previewKey(vendor: keyof ResolvedKeys, scope: KeyScope = 'project'): Promise<PromptResult> {
     return this.projectPart.previewKey(vendor, scope);
   }
@@ -2163,19 +2175,28 @@ export class WorkspaceSession {
   }
 
   /**
-   * Every file under `.aiagent/skills`, as the Skills pane's own tree — the content the document
-   * tree deliberately leaves out.
-   *
-   * Its own walk rather than a filter over `fileTree()`: that one is capped at `TREE_MAX_FILES`
-   * across the whole project, so on a large one `.aiagent` could be truncated away and this pane
-   * would draw an empty directory with nothing to say about why. It would also ship the entire
-   * project's file list to paint a dozen rows.
-   *
-   * No skills directory at all is `[]`, not a failure: that is the state every new project starts
-   * in, and it is the Skills branch being drawn empty that tells the author what to do about it.
+   * Every skill file the project can reach, as the Skills pane's own tree: a heading per tier, a
+   * row per skill, and the files inside — the content the document tree deliberately leaves out.
+   * Its own walk rather than a filter over `fileTree()`, which is capped across the whole
+   * project and could truncate `.aiagent` away.
    */
   async skillTree(): Promise<DocNode[]> {
     return this.docsPart.skillTree();
+  }
+
+  /** Copy a skill into this project's `.aiagent/skills` or into the user's folder. */
+  cloneSkill(
+    id: string,
+    into: 'project' | 'user',
+  ): Promise<DocResult<{ path: string; written: string[] }>> {
+    return this.docsPart.cloneSkill(id, into);
+  }
+
+  previewCloneSkill(
+    id: string,
+    into: 'project' | 'user',
+  ): Promise<{ ok: true; note: string } | { ok: false; reason: string }> {
+    return this.docsPart.previewCloneSkill(id, into);
   }
 
   /**

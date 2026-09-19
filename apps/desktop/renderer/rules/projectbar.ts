@@ -1,4 +1,7 @@
-/** What the Project pane offers: its two writes, the box one is typed in, reload, and the refresh. */
+/**
+ * What the Project pane offers: its three writes, the box one is typed in, reload, the refresh,
+ * and a checkbox per builtin skill.
+ */
 import {
   imageModelChoices,
   modelCatalog,
@@ -8,6 +11,7 @@ import {
 import { refuse, type Offer } from './anchors.js';
 import { view } from './effects.js';
 import { refreshModelsAction } from './models.js';
+import type { BuiltinSkillView } from '../../src/shared/ipc.js';
 
 /** What the Project pane reads when it draws its bar. */
 export interface ProjectBarState {
@@ -18,6 +22,8 @@ export interface ProjectBarState {
   imageModel: string;
   /** The day the cached OpenRouter listing was fetched; absent with none. */
   catalogAsOf?: string;
+  /** The builtin catalog with each skill's switch, as `project.yaml` has it. */
+  builtinSkills: readonly BuiltinSkillView[];
 }
 
 /**
@@ -92,7 +98,36 @@ export function styleBox(opened: boolean): Offer {
   return { ok: true, props: {}, ...control };
 }
 
-/** Every offer the Project pane draws from this module: Apply, reload, the box, the picker, then the refresh. */
+/**
+ * One builtin skill's checkbox. Ticking it runs `project.setBuiltinSkills` with the whole list
+ * the file will hold afterwards — the command takes the list rather than one toggle, so the
+ * props here are that list with this skill added or removed.
+ */
+export function builtinSkillAction(
+  opened: boolean,
+  skill: BuiltinSkillView,
+  enabled: readonly BuiltinSkillView[],
+): Offer {
+  const control = {
+    id     : 'project.setBuiltinSkills',
+    on     : skill.id,
+    label  : skill.name,
+    tooltip: skill.enabled
+      ? `Turn ${skill.id} off — the agent stops seeing it. ${skill.description}`
+      : `Turn ${skill.id} on — the agent can then follow it. ${skill.description}`,
+  };
+  if (!opened) return { ...refuse('No project is open.'), ...control };
+  // Catalog order, so the file's list reads the same way the pane does whichever box was ticked
+  const ids = enabled
+    .filter((s) => (s.id === skill.id ? !skill.enabled : s.enabled))
+    .map((s) => s.id);
+  return { ok: true, props: { ids }, ...control };
+}
+
+/**
+ * Every offer the Project pane draws from this module: Apply, reload, the box, the picker, the
+ * refresh, then a checkbox per builtin skill.
+ */
 export function controls(state: ProjectBarState): readonly Offer[] {
   return [
     applyStyleAction(state.opened, state.dirty),
@@ -100,5 +135,8 @@ export function controls(state: ProjectBarState): readonly Offer[] {
     styleBox(state.opened),
     imageModelAction(state.opened, state.imageModel),
     refreshModelsAction(state.opened, state.catalogAsOf),
+    ...state.builtinSkills.map((skill) =>
+      builtinSkillAction(state.opened, skill, state.builtinSkills),
+    ),
   ];
 }

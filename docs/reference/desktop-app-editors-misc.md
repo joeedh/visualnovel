@@ -65,10 +65,13 @@ machinery of its own ([`command-system.md`](command-system.md#the-doc-namespace)
 
 ## Skills
 
-`editors/skills.ts` — edits the playbooks under `.aiagent/skills`, showing the files
-inside a skill beside the one being edited. This pane shows what a skill contains. The
-document tree identifies skills, one row per skill
-([`document-tree.md`](document-tree.md)), and the content is here.
+`editors/skills.ts` — the playbooks the agent can reach, from all three tiers
+([`vnauthor.md#skills`](vnauthor.md#skills)): the project's own under `.aiagent/skills`,
+the user's under `<userConfigDir>/skills`, and the builtin catalog shipped with the app.
+The tree groups them under one heading per tier and shows the files inside a skill beside
+the one being shown. This pane shows what a skill contains. The document tree identifies
+skills, one row per skill ([`document-tree.md`](document-tree.md)), and the content is
+here.
 
 - The text half uses `DocBuffer` (`pathux/docbuffer.ts`), the same module Wiki uses. Every
   rule in the Wiki bullets above belongs to that module and holds here unchanged: the
@@ -87,20 +90,38 @@ document tree identifies skills, one row per skill
   `agent.run` is mutating and plan-first, so it returns a proposed plan the author still
   approves. The tooltip therefore describes the form rather than a file.
 - **Has its own channel rather than filtering the file tree.** `workspace:skilltree` walks
-  `.aiagent/skills` on its own. The file tree is capped across the whole project, so on a
-  large project the skills could be truncated away and this pane would draw nothing
-  without reporting why. If there is no skills directory at all, the channel returns `[]`,
-  and the tree displays "No skills yet." above the hint that fixes it.
+  the three skill roots on its own and answers with three `branch` headings — Project,
+  User, Builtin — each holding one `dir` node per skill and the files under it. The file
+  tree is capped across the whole project, so on a large project the skills could be
+  truncated away and this pane would draw nothing without reporting why; and two of the
+  roots are outside the project altogether. A heading is drawn even when empty, so a new
+  project shows where its own skills will go. A skill row's badge is `script` when it
+  carries one and `off` for a builtin skill the project has turned off (`builtin_skills`
+  in `project.yaml`), which is still listed so the author can find it.
+- **Only a project skill takes an edit.** A user or builtin skill is opened read-only: the
+  box takes no keystroke, Save and the box are refused with the reason (`readOnlyReason`
+  in `rules/skills.ts`), and the foot shows the tier as a badge with that reason as its
+  note. Editing one means cloning it: the bar's **Clone into project** and **Clone into
+  user folder** run `skill.cloneToProject` and `skill.cloneToUser` for the open skill,
+  each refused for the tier the skill is already in. The project clone is undoable and
+  opens in this pane; the user clone is not undoable, because the user folder is in no
+  workspace and no snapshot covers it. A user skill is edited in its own folder rather
+  than here, since an in-app write there would need the same non-undoable path.
+- **User and builtin files travel under virtual paths.** `ui.docPath` and `doc.read` name
+  them as `<user>/skills/<id>/<file>` and `<builtin>/<id>/<file>` (`SKILL_TIER_DIRS` in
+  `src/shared/editors.ts`), which main resolves to the skill's real directory for a read
+  and refuses for a write. `underSkills` and `skillTierOf` read the prefix, so every rule
+  this pane runs over a project path runs the same way over the other two tiers.
 - **Two watchers, both disposed on remove.** `onWrote` covers the file in the box, which
   is written by `create_skill` and `edit_skill` from Convo, by `doc.create kind='skill'`
   from the tree, and by an undo. `onInvalidate` covers the tree beside it, because
   creating a skill changes the tree without touching the open file. The agent's writes are
   not commands, so `onInvalidate` is what covers them, and covering them is why
   `edit_skill` returns its written paths.
-- **It follows `ui.docPath` only under `.aiagent/skills/`.** One selection serves every
-  pane, so a wiki note picked in another pane must not clear the skill shown here. Clicks
-  in its own tree publish `ui.docPath` like any other pane, and a skill clicked in the
-  document tree opens in this pane by the same route.
+- **It follows `ui.docPath` only for a skill path, of any tier.** One selection serves
+  every pane, so a wiki note picked in another pane must not clear the skill shown here.
+  Clicks in its own tree publish `ui.docPath` like any other pane, and a skill clicked in
+  the document tree opens in this pane by the same route.
 - **The asset strip is omitted deliberately.** Every binding in the manifest names a
   character, a location, a scene or a shot, nothing binds to a skill file, and nothing
   ever will, so `renderAssetStrip` here would be permanently empty. An empty strip is
@@ -199,6 +220,15 @@ clause in the Asset pane opens this editor `elsewhere` and scrolls to the field.
   vision model ids and the image params are read-only here because changing one is a
   deliberate, file-level act, and making that change a two-click operation in this pane
   would encourage it.
+- **Builtin skills are a card of checkboxes.** One per skill in the shipped catalog
+  (`project.info` carries `builtinSkills`, read from the catalog root alone, so a project
+  skill that shadows a builtin one leaves the box in place), ticked as `builtin_skills` in
+  `project.yaml` has it. A tick runs `project.setBuiltinSkills` with the whole list the
+  file will hold afterwards, in catalog order — the command takes the list rather than a
+  toggle, so the palette can set it in one call — and the re-read that follows redraws
+  every box from the file. `withBuiltinSkills` splices the block the way `withArtStyle`
+  does, and undo restores the file byte-for-byte. Nothing is re-keyed: the agent simply
+  stops seeing a skill that is off.
 - **Applying.** `project.setArtStyle` confirms before it writes, and the confirmation says
   how many image tasks it will re-key, since it re-keys all of them. `withArtStyle`
   splices the line into `project.yaml` rather than re-serializing it, and it differs from

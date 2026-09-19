@@ -324,36 +324,68 @@ const MOCK_FILETREE: DocNode[] = [
  */
 const MOCK_SKILLTREE: DocNode[] = [
   {
-    id      : 'dir:.aiagent/skills/continuity-pass',
-    kind    : 'dir',
-    label   : 'continuity-pass',
-    path    : '.aiagent/skills/continuity-pass',
+    id      : 'skilltier:project',
+    kind    : 'branch',
+    label   : 'Project',
+    note    : "This project's own skills.",
     children: [
       {
-        id   : 'file:.aiagent/skills/continuity-pass/SKILL.md',
-        kind : 'file',
-        label: 'SKILL.md',
-        path : '.aiagent/skills/continuity-pass/SKILL.md',
+        id      : 'dir:.aiagent/skills/continuity-pass',
+        kind    : 'dir',
+        label   : 'continuity-pass',
+        path    : '.aiagent/skills/continuity-pass',
+        children: [
+          {
+            id   : 'file:.aiagent/skills/continuity-pass/SKILL.md',
+            kind : 'file',
+            label: 'SKILL.md',
+            path : '.aiagent/skills/continuity-pass/SKILL.md',
+          },
+        ],
+      },
+      {
+        id      : 'dir:.aiagent/skills/lint-fountain',
+        kind    : 'dir',
+        label   : 'lint-fountain',
+        path    : '.aiagent/skills/lint-fountain',
+        badge   : 'script',
+        children: [
+          {
+            id   : 'file:.aiagent/skills/lint-fountain/SKILL.md',
+            kind : 'file',
+            label: 'SKILL.md',
+            path : '.aiagent/skills/lint-fountain/SKILL.md',
+          },
+          {
+            id   : 'file:.aiagent/skills/lint-fountain/run.mjs',
+            kind : 'file',
+            label: 'run.mjs',
+            path : '.aiagent/skills/lint-fountain/run.mjs',
+          },
+        ],
       },
     ],
   },
+  { id: 'skilltier:user', kind: 'branch', label: 'User', note: 'Your own skills.', children: [] },
   {
-    id      : 'dir:.aiagent/skills/lint-fountain',
-    kind    : 'dir',
-    label   : 'lint-fountain',
-    path    : '.aiagent/skills/lint-fountain',
+    id      : 'skilltier:builtin',
+    kind    : 'branch',
+    label   : 'Builtin',
+    note    : 'The skills that ship with the app.',
     children: [
       {
-        id   : 'file:.aiagent/skills/lint-fountain/SKILL.md',
-        kind : 'file',
-        label: 'SKILL.md',
-        path : '.aiagent/skills/lint-fountain/SKILL.md',
-      },
-      {
-        id   : 'file:.aiagent/skills/lint-fountain/run.mjs',
-        kind : 'file',
-        label: 'run.mjs',
-        path : '.aiagent/skills/lint-fountain/run.mjs',
+        id      : 'dir:<builtin>/branching',
+        kind    : 'dir',
+        label   : 'branching',
+        path    : '<builtin>/branching',
+        children: [
+          {
+            id   : 'file:<builtin>/branching/SKILL.md',
+            kind : 'file',
+            label: 'SKILL.md',
+            path : '<builtin>/branching/SKILL.md',
+          },
+        ],
       },
     ],
   },

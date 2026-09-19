@@ -67,19 +67,23 @@ Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
   it).
 - **Wiki** nests `Bible.files()` back into directories. Each entry contains a path and a
   title and nothing else.
-- **Skills** lists the playbooks under `.aiagent/skills/` as one leaf each. Each leaf is
-  labelled by the skill's `name:`, points at its `SKILL.md`, carries a `script` badge when
-  a person has given it one to run, and shows its `description:` on hover. Each skill is
-  drawn as a leaf with no file children, because a skill is one thing with an id, a name
-  and a description, at the same granularity as a character, and the contents of the
-  directory are the Skills pane's own tree. Skills is the only branch drawn when it is
-  empty, and this deliberately breaks the rule that Unapproved assets follows: a skill has
-  to be findable before one exists, and the heading's own right-click menu is the only
-  always-reachable way to make the first skill. `skeleton()` writes no `.aiagent/` at all,
-  so every project created in the app starts here, and an absent branch would hide the
-  feature from exactly the authors who have not read this file. The caller still decides.
-  An undefined `DocTreeInput.skills` means the caller did not look, and leaves the branch
-  out.
+- **Skills** lists every skill the agent can use as one leaf each — the project's own
+  under `.aiagent/skills/`, the user's, and the builtin catalog the project has on
+  ([`vnauthor.md#skills`](vnauthor.md#skills)); a shadowed skill and a builtin skill that
+  is off are left out, since the agent cannot reach them. Each leaf is labelled by the
+  skill's `name:`, points at its `SKILL.md` (under `<user>/skills/…` or `<builtin>/…` for
+  the two tiers outside the project), carries a `user` or `builtin` badge when it came
+  from outside the project and a `script` badge when a person has given a project skill
+  one to run, and shows its `description:` on hover. Each skill is drawn as a leaf with no
+  file children, because a skill is one thing with an id, a name and a description, at the
+  same granularity as a character, and the contents of the directory are the Skills pane's
+  own tree. Skills is the only branch drawn when it is empty, and this deliberately breaks
+  the rule that Unapproved assets follows: a skill has to be findable before one exists,
+  and the heading's own right-click menu is the only always-reachable way to make the
+  first skill. `skeleton()` writes no `.aiagent/` at all, so every project created in the
+  app starts here, and an absent branch would hide the feature from exactly the authors
+  who have not read this file. The caller still decides. An undefined
+  `DocTreeInput.skills` means the caller did not look, and leaves the branch out.
 - **Unapproved assets** groups the two branches around it, which together cover everything
   still to be done before the project has a finished set of pictures. The
   [slot graph](../plans/archive/INDEX.md#the-full-slot-graph-and-approving-upstream-first)
@@ -236,16 +240,21 @@ directories first, excludes `.git` and `node_modules`, caps entries per level, a
 at 5000 files overall. It does not consult git, because a project that is not a repo still
 has files, and `.gitignore` semantics do not match a request to view every file.
 
-`workspace:skilltree` runs the same walk over `.aiagent/skills` alone, and it is
+`workspace:skilltree` runs the same walk over each skill's directory alone, and it is
 deliberately not a filter over the project-wide walk. That walk stops at 5000 files across
 the whole project, so on a large project `.aiagent` could be truncated away, and the
-Skills pane would then draw an empty directory without giving a reason. A filter would
-also ship the entire project's file list to paint a dozen rows. `fileTree`'s third
-argument prefixes every id and path while the structure still comes from the walked paths,
-so the rows come out `file:.aiagent/skills/<id>/SKILL.md`. Those paths are
-workspace-relative, and `selectionForNode` and `nodeIsSelected` already act on
-workspace-relative paths, so no new rule is needed. The walk returns `[]` when there is no
-skills directory at all, and every new project starts in that state.
+Skills pane would then draw an empty directory without giving a reason; a filter would
+also ship the entire project's file list to paint a dozen rows, and could not reach the
+user and builtin tiers, which are outside the project. The answer is three `branch`
+headings, `skilltier:project`, `skilltier:user` and `skilltier:builtin`, each holding a
+`dir` node per skill (badged `script` or `off`) with the walked files under it.
+`fileTree`'s third argument prefixes every id and path while the structure still comes
+from the walked paths, so the rows come out `file:.aiagent/skills/<id>/SKILL.md`,
+`file:<user>/skills/<id>/SKILL.md` or `file:<builtin>/<id>/SKILL.md`. The first is
+workspace-relative; the other two are virtual paths `doc.read` resolves and `doc.write`
+refuses. `selectionForNode` and `nodeIsSelected` act on the path as a string, so no new
+rule is needed. A heading with nothing under it is still answered, and every new project
+starts with an empty Project heading.
 
 ## Where it lives
 
@@ -255,7 +264,7 @@ skills directory at all, and every new project starts in that state.
 | The projection (`buildDocTree`, `fileTree`) — pure                                              | `apps/desktop/src/main/doctree/doctree.ts`                                                |
 | Asset display names (`assetLabel`, `labelAssets`) — pure                                        | `apps/desktop/src/main/assets/assetlabel.ts`                                              |
 | The reads (one `loadProject`, one `readShots` per scene, `bible.files()`, one `discoverSkills`) | `WorkspaceSession.docTree()` / `.fileTree()`                                              |
-| The skills walk (`walkFiles` under `.aiagent/skills`)                                           | `WorkspaceSession.skillTree()`                                                            |
+| The skills walk (`walkFiles` under each skill, across the three tiers)                          | `WorkspaceSession.skillTree()`                                                            |
 | Channels                                                                                        | `workspace:doctree`, `workspace:filetree`, `workspace:skilltree`                          |
 | Commands                                                                                        | `workspace.doctree`, `workspace.filetree`, `workspace.skilltree` (non-mutating, no props) |
 

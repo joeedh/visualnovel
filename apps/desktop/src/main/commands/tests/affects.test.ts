@@ -7,10 +7,11 @@
  * command's own `written` list, which catch different things. The diff misses media, since a
  * capture skips it wherever it sits; `written` misses whatever the command forgot to report.
  *
- * `RUNS` and `SKIPS` partition the 95 mutating commands, and a test says so, since a command
+ * `RUNS` and `SKIPS` partition the 98 mutating commands, and a test says so, since a command
  * added later that is in neither table would otherwise pass by being invisible.
  */
 import { rm } from 'node:fs/promises';
+import { join } from 'node:path';
 import { makeProject, type TestProject } from '@vn/testkit';
 import { covers } from '../../../shared/affects.js';
 import { readGroupDoc } from '../../doctree/graphs.js';
@@ -414,6 +415,11 @@ const OTHER_RUNS: Run[] = [
   { id: 'project.setArtStyle', props: { style: 'soft watercolour' } },
   { id: 'project.setStoryboardNotes', props: { notes: 'pages of four to six panels' } },
   { id: 'project.setLettering', props: { lettering: 'model' } },
+  // The catalog comes from the checkout, through `VN_RESOURCES` set for this tier
+  { id: 'project.setBuiltinSkills', props: { ids: ['branching'] } },
+  { id: 'skill.cloneToProject', props: { id: 'new-character' } },
+  // Writes only the user folder, which `$VNAUTHOR_HOME` points somewhere empty per worker
+  { id: 'skill.cloneToUser', props: { id: 'branching' } },
   { id: 'view.resetLayout', props: { scope: 'shipped' } },
   { id: 'workspace.reindex', props: {} },
 ];
@@ -581,10 +587,13 @@ describe('the executed tier', () => {
       ],
       locations : [{ id: 'classroom', variants: ['day', 'night'] }, 'rooftop', 'hall'],
     });
+    // Under jest `builtinSkillsDir()` finds no catalog on its own, and the skill commands need one
+    process.env.VN_RESOURCES = join(__dirname, '..', '..', '..', '..', '..', '..');
     harness = await openAffectsHarness(project);
   }, 120_000);
 
   afterAll(async () => {
+    delete process.env.VN_RESOURCES;
     await harness.dispose();
     await rm(project.dir, { recursive: true, force: true, maxRetries: 3 });
   });
