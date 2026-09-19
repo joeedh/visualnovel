@@ -13,7 +13,7 @@ import {
 import { reloadOffer } from '../../rules/docbuffer.js';
 import { exec, onInvalidate, onWrote } from '../app/bridge.js';
 import { openCommandDialog } from '../chrome/dialog.js';
-import { DocBuffer } from '../doctree/docbuffer.js';
+import { AUTOSAVE_MS, BRIDGE_IO, DocBuffer } from '../doctree/docbuffer.js';
 import { redrawing } from '../tour/anchors.js';
 import {
   defaultExpanded,
@@ -72,7 +72,7 @@ export class SkillsEditor extends VnEditor {
    * `seenHash` refusal it earns and the quit guard behind it are `docbuffer.ts`'s — this pane owns
    * the widgets and nothing about the text.
    */
-  private readonly buf = new DocBuffer(() => this.paint());
+  private readonly buf = new DocBuffer(() => this.paint(), BRIDGE_IO, { autosave: AUTOSAVE_MS });
 
   /** The three tier headings and what is under them, or undefined while the walk has yet to answer. */
   private roots: DocNode[] | undefined;
@@ -123,10 +123,17 @@ export class SkillsEditor extends VnEditor {
     // and `edit_skill` from the Convo pane, `doc.create kind='skill'` from the document tree, an
     // undo. What a clean and a dirty buffer each do about that is `DocBuffer.wrote`.
     this.watch(
-      () => onWrote((paths) => this.buf.wrote(paths)),
+      () => {
+        const off = onWrote((paths) => this.buf.wrote(paths));
+        // Off screen the buffer stops autosaving; a draft it holds is kept for the quit guard
+        return () => {
+          off();
+          this.buf.close();
+        };
+      },
       // Which paths moved while the pane was off screen is unknowable, so the one it is showing is
-      // re-read on the same terms.
-      () => this.buf.wrote([this.buf.path]),
+      // opened again: a draft is restored, a clean file re-read.
+      () => void this.buf.open(this.buf.path),
     );
     // And the tree beside it, which a new skill changes without touching the open file at all.
     // Coarse on purpose: a walk is cheap and a stale tree is worse than a redundant fetch — which

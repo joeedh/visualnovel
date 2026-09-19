@@ -7,7 +7,7 @@ import { reloadOffer, textBox } from '../../rules/docbuffer.js';
 import { visibleEditors } from '../panes/route.js';
 import { panesOf } from '../panes/view.js';
 import { onInvalidate, onWrote } from '../app/bridge.js';
-import { DocBuffer } from '../doctree/docbuffer.js';
+import { AUTOSAVE_MS, BRIDGE_IO, DocBuffer } from '../doctree/docbuffer.js';
 import { redrawing } from '../tour/anchors.js';
 import { assetGroups } from '../doctree/doctree.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
@@ -55,7 +55,7 @@ export class WikiEditor extends VnEditor {
    * `seenHash` refusal and the quit guard all live in `docbuffer.ts`; this pane owns the widgets
    * and nothing about the text.
    */
-  private readonly buf = new DocBuffer(() => this.paint());
+  private readonly buf = new DocBuffer(() => this.paint(), BRIDGE_IO, { autosave: AUTOSAVE_MS });
 
   static override define() {
     return {
@@ -133,10 +133,17 @@ export class WikiEditor extends VnEditor {
     // `character.md`, and so does the agent, whose writes are not commands at all.
     // `DocBuffer.wrote` decides what a clean buffer and a dirty buffer each do about it.
     this.watch(
-      () => onWrote((paths) => this.buf.wrote(paths)),
+      () => {
+        const off = onWrote((paths) => this.buf.wrote(paths));
+        // Off screen the buffer stops autosaving; a draft it holds is kept for the quit guard
+        return () => {
+          off();
+          this.buf.close();
+        };
+      },
       // The paths that moved while the pane was off screen are unknown, so the one it is showing
-      // is re-read on the same terms
-      () => this.buf.wrote([this.buf.path]),
+      // is opened again: a draft is restored, a clean document re-read
+      () => void this.buf.open(this.buf.path),
     );
 
     // Generating a portrait while the character's sheet is open should make the portrait appear,

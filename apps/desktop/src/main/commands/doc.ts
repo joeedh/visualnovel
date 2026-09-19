@@ -59,16 +59,23 @@ export const docWrite = define({
     seenHash: prop.string('the hash the text was read at; empty to create a new file', {
       default: '',
     }),
+    auto: prop.boolean(
+      'the save is an editor autosave tick rather than the author pressing Save; the record and ' +
+        'the commit say so',
+      { default: false },
+    ),
   },
   async check({ path, text, seenHash }, ctx) {
     return verdict(await ctx.host.session.previewDoc(path, text, seenHash));
   },
-  async run({ path, text, seenHash }, ctx) {
+  async run({ path, text, seenHash, auto }, ctx) {
     const saved = await ctx.host.session.saveDoc(path, text, seenHash);
     if (!saved.ok) throw new Error(saved.reason);
     const note = saved.diagnostic ? ` ${saved.diagnostic}` : '';
+    // The message is the commit subject under commit-on-save, so an autosave says it is one
+    const verb = auto ? 'Autosaved' : 'Saved';
     return {
-      message: `Saved ${saved.path} (${saved.bytes} bytes).${note}`,
+      message: `${verb} ${saved.path} (${saved.bytes} bytes).${note}`,
       data   : saved,
       written: [saved.path],
     };

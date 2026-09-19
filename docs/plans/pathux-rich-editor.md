@@ -389,6 +389,7 @@ documentation is the reference; this plan only names what the app calls.
    `prepareSave` skips and says why, a disposed entry stops ticking, and a text buffer
    ticks while open and stops on close. The Skills pane passes the option.
    `paletteonly.ts`, `pnpm gen:uxmodel` and the anchor sweep for the changed command.
+   Done; see As shipped.
 6. **path.ux tooltips** on `FormControl`'s buttons (D8), committed in the submodule,
    gitlink bumped. Then **the Wiki pane on the rich editor** (D6): toolbar, editor,
    `widgetOptions` from `nativeFormWidgets`, `onDiagnostic` into the footer, `viewState`
@@ -494,6 +495,35 @@ documentation is the reference; this plan only names what the app calls.
   rule.
 - The fence-position case moved to the pane's `select` (D3), because the block source
   path.ux hands the codec never carries the file's leading blank lines.
+
+### Task 5
+
+- D4 contradicted itself: "a successful `save()` with no dirt left" disposed the session,
+  and `wrote()` kept it so undo survives a save. The second is the rule. An entry now
+  counts the buffers holding it; it is disposed when nothing holds it and it is clean, and
+  a dirty one outlives its panes (autosaved by its own timer, counted by the quit guard,
+  re-found by the next `open`). A pane switching tabs after a save therefore loses that
+  document's undo history, which is what path.ux's note calls eviction; the alternative, a
+  map that only grows, was not taken. `reload()` still disposes, and a second buffer on
+  the path is told (`evicted`) and opens the path again, adopting whatever the reloading
+  buffer created.
+- `dirty` counts revisions (D4), so undoing back to what is on disk still reads as
+  unsaved. The save then writes identical bytes, and commit-on-save records nothing for a
+  record that changed nothing (`repos-and-commits.md` §Message shape). The test states it.
+- `docsession.ts` owns the save (`prepareSave`, then `doc.write`), not `DocBuffer`,
+  because the autosave tick has to run with no buffer holding the entry. Every holder is
+  told the result, so two panes on one document both show the diagnostic, and two callers
+  at once (the tick and Ctrl+S) share one attempt. `DocBuffer.save()` under `rich`
+  delegates and returns whether the write landed.
+- `DocBuffer` takes `{ rich?: DocumentProvider<MdDoc>; autosave?: number }` as a third
+  constructor argument, and gains `close()`, `session` and `implied`. Both panes call
+  `close()` when they leave the screen and `open(path)` on return (in place of
+  `wrote([path])`): a text buffer's timer stops and restarts with them, and a rich one
+  releases its hold. `DocIo.write` takes `auto`.
+- `pnpm gen:uxmodel` produced no change, and no control changed, so the anchor sweep was
+  not re-run. `pnpm gen:command-table` was, for the new prop.
+- The quit guard's `window` check also tests `window.addEventListener`, because
+  path-controller's headless polyfill aliases `window` to `globalThis` under node.
 
 ## Pressure-test findings
 
