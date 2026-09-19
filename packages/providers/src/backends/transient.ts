@@ -21,7 +21,7 @@ export function causeMessage(err: unknown): string {
 }
 
 /** Rate limiting and the server's own faults; a 4xx other than 429 is the caller's problem. */
-const retryableStatus = (s: number): boolean => s === 429 || (s >= 500 && s < 600);
+export const retryableStatus = (s: number): boolean => s === 429 || (s >= 500 && s < 600);
 
 /**
  * Transport failures and the vendors' symbolic names for the same conditions. The connection

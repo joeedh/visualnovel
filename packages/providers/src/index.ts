@@ -25,13 +25,17 @@ export {
   type EffortChoice,
 } from '@vn/types';
 export { createGeminiChat, createGeminiImage, type GeminiClient } from './backends/gemini.js';
+export { OpenRouterError, type FetchImpl } from './backends/openrouter-common.js';
 export {
   createOpenRouterImage,
-  OpenRouterError,
   OPENROUTER_IMAGES_URL,
-  type FetchImpl,
   type OpenRouterImageOptions,
 } from './backends/openrouter.js';
+export {
+  createOpenRouterChat,
+  OPENROUTER_CHAT_URL,
+  type OpenRouterChatOptions,
+} from './backends/openrouter-chat.js';
 export {
   listOpenRouterImageModels,
   perImagePrice,

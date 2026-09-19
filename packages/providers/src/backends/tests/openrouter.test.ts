@@ -5,7 +5,8 @@
 import { ProviderError, RetryableProviderError } from '@vn/util';
 import { capturedRequest, capturedRequests, clearCaptures } from '../capture.js';
 import { faultKind } from '../transient.js';
-import { createOpenRouterImage, OPENROUTER_IMAGES_URL, OpenRouterError } from '../openrouter.js';
+import { OpenRouterError } from '../openrouter-common.js';
+import { createOpenRouterImage, OPENROUTER_IMAGES_URL } from '../openrouter.js';
 import { placeholderPng } from '../../placeholder.js';
 
 const MODEL = 'openai/gpt-image-2';

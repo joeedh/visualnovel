@@ -9,12 +9,9 @@ import {
   type ImageModelEntry,
 } from '@vn/types';
 import { ProviderError } from '@vn/util';
-import type { FetchImpl } from './openrouter.js';
+import { ERROR_CHARS, type FetchImpl } from './openrouter-common.js';
 
 export const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/images/models';
-
-/** How much of a refused response is quoted back, so an error stays readable. */
-const ERROR_CHARS = 400;
 
 export interface OpenRouterListing {
   models: ImageModelEntry[];
