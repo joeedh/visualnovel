@@ -174,6 +174,7 @@ project or user skill: editable, and no longer tracked as "from" the builtin.
   (`docs/reference/desktop-app-editors-misc.md:89-93`); it needs to also walk the resolved
   user and builtin roots and tag each row with its tier, same data `discover_skills`
   reports for the agent.
+- Use the frontend design skill to review/inform your changes to the skills editor. 
 
 ## Migration
 
