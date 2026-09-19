@@ -1,17 +1,24 @@
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { BUILTIN_SKILL_IDS } from '@vn/types';
 import {
+  cloneSkill,
   discoverSkills,
   isSkillId,
   newSkillTemplate,
+  readSkill,
   runSkill,
   skillId,
   skillRoots,
   skillWriteRefusal,
   writeSkill,
+  BUILTIN_SKILLS_PATH,
   PROJECT_SKILLS_DIR,
 } from '../skills.js';
+
+/** The catalog that ships with the app, reached from this test file's place in the checkout. */
+const BUILTIN_DIR = join(__dirname, '..', '..', '..', '..', ...BUILTIN_SKILLS_PATH);
 
 /** Create a workspace with the given skill directories laid out under `.aiagent/skills`. */
 async function tempWorkspace(
@@ -55,7 +62,7 @@ describe('discoverSkills', () => {
       },
     });
     try {
-      const skills = await discoverSkills(skillRoots(root));
+      const skills = await discoverSkills(await skillRoots(root));
       expect(skills.map((s) => s.id)).toEqual(['echo-root', 'name-character']);
 
       const prose = skills.find((s) => s.id === 'name-character')!;
@@ -74,9 +81,133 @@ describe('discoverSkills', () => {
   it('returns nothing when there is no skills directory', async () => {
     const { root, cleanup } = await tempWorkspace({});
     try {
-      expect(await discoverSkills(skillRoots(root))).toEqual([]);
+      expect(await discoverSkills(await skillRoots(root))).toEqual([]);
     } finally {
       await cleanup();
+    }
+  });
+
+  it('tags each skill with its tier, project first, and a project id shadows the rest', async () => {
+    const { root, cleanup } = await tempWorkspace({
+      'name-character': { 'SKILL.md': PROSE_SKILL },
+      branching       : { 'SKILL.md': PROSE_SKILL },
+    });
+    const user = await fs.mkdtemp(join(tmpdir(), 'vn-userskills-'));
+    try {
+      await fs.mkdir(join(user, 'shared'));
+      await fs.writeFile(join(user, 'shared', 'SKILL.md'), PROSE_SKILL);
+      await fs.mkdir(join(user, 'new-character'));
+      await fs.writeFile(join(user, 'new-character', 'SKILL.md'), PROSE_SKILL);
+
+      const roots = await skillRoots(root, { userDirs: [user], builtinDir: BUILTIN_DIR });
+      expect(roots.map((r) => r.tier)).toEqual(['project', 'user', 'builtin']);
+      // No `project.yaml` at all reads as every builtin enabled, not as none.
+      expect(roots[2]!.enabled).toBeUndefined();
+
+      const skills = await discoverSkills(roots);
+      expect(skills.map((s) => [s.id, s.tier])).toEqual([
+        ['branching', 'project'],
+        ['full-production', 'builtin'],
+        ['name-character', 'project'],
+        ['new-character', 'user'],
+        ['shared', 'user'],
+      ]);
+      expect(skills.every((s) => s.enabled)).toBe(true);
+    } finally {
+      await fs.rm(user, { recursive: true, force: true });
+      await cleanup();
+    }
+  });
+
+  it('leaves out a builtin skill the project turned off, unless asked to keep it', async () => {
+    const { root, cleanup } = await tempWorkspace({});
+    try {
+      await fs.writeFile(join(root, 'project.yaml'), 'title: T\nbuiltin_skills: [branching]\n');
+      const roots = await skillRoots(root, { userDirs: [], builtinDir: BUILTIN_DIR });
+      expect([...roots[1]!.enabled!]).toEqual(['branching']);
+
+      expect((await discoverSkills(roots)).map((s) => s.id)).toEqual(['branching']);
+      const kept = await discoverSkills(roots, { keepDisabled: true });
+      expect(kept.map((s) => [s.id, s.enabled])).toEqual([
+        ['branching', true],
+        ['full-production', false],
+        ['new-character', false],
+      ]);
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+describe('the builtin catalog', () => {
+  it('holds exactly the ids the project.yaml schema defaults to, each a complete skill', async () => {
+    const dirs = (await fs.readdir(BUILTIN_DIR, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort();
+    expect(dirs).toEqual([...BUILTIN_SKILL_IDS].sort());
+    for (const id of dirs) {
+      const skill = await readSkill(join(BUILTIN_DIR, id), id, { tier: 'builtin', enabled: true });
+      expect(skill?.issues).toEqual([]);
+      expect(skill?.script).toBeUndefined();
+    }
+  });
+});
+
+describe('cloneSkill', () => {
+  it('copies a skill into another skills directory as the same SKILL.md, script beside it', async () => {
+    const { root, cleanup } = await tempWorkspace({
+      'echo-root': {
+        'SKILL.md': `---\nname: Echo Root\ndescription: Prints the root.\nscript: run.mjs\n---\n\nRun it.\n`,
+        'run.mjs' : 'console.log("hi");',
+      },
+    });
+    const target = await fs.mkdtemp(join(tmpdir(), 'vn-clone-'));
+    try {
+      const [source] = await discoverSkills(await skillRoots(root));
+      const res = await cloneSkill(source!, target);
+      expect(res).toEqual({
+        ok  : true,
+        id  : 'echo-root',
+        file: join(target, 'echo-root', 'SKILL.md'),
+      });
+      // The unmodeled `script:` key survives the round trip, and so does the script itself.
+      expect(await fs.readFile(join(target, 'echo-root', 'SKILL.md'), 'utf8')).toBe(
+        `---\nname: Echo Root\ndescription: Prints the root.\nscript: run.mjs\n---\n\nRun it.\n`,
+      );
+      expect(await fs.readFile(join(target, 'echo-root', 'run.mjs'), 'utf8')).toBe(
+        'console.log("hi");',
+      );
+      const copy = await readSkill(join(target, 'echo-root'), 'echo-root');
+      expect(copy?.script).toBe(join(target, 'echo-root', 'run.mjs'));
+
+      // A second clone refuses rather than overwriting the copy.
+      expect(await cloneSkill(source!, target)).toEqual({
+        ok    : false,
+        reason: 'skill echo-root already exists',
+      });
+    } finally {
+      await fs.rm(target, { recursive: true, force: true });
+      await cleanup();
+    }
+  });
+
+  it('writes a builtin skill the way create_skill would have, so the copy is an ordinary skill', async () => {
+    const target = await fs.mkdtemp(join(tmpdir(), 'vn-clone-'));
+    try {
+      const source = (await readSkill(join(BUILTIN_DIR, 'branching'), 'branching', {
+        tier   : 'builtin',
+        enabled: true,
+      }))!;
+      const res = await cloneSkill(source, target);
+      expect(res.ok).toBe(true);
+      const copy = (await readSkill(join(target, 'branching'), 'branching'))!;
+      expect(copy.tier).toBe('project');
+      expect(copy.name).toBe(source.name);
+      expect(copy.body).toBe(source.body);
+      expect(copy.whenToUse).toBe(source.whenToUse);
+    } finally {
+      await fs.rm(target, { recursive: true, force: true });
     }
   });
 });
@@ -87,7 +218,7 @@ describe('runSkill', () => {
       'name-character': { 'SKILL.md': PROSE_SKILL },
     });
     try {
-      const skill = (await discoverSkills(skillRoots(root)))[0]!;
+      const skill = (await discoverSkills(await skillRoots(root)))[0]!;
       const result = await runSkill(skill, { workspaceRoot: root });
       expect(result.ok).toBe(true);
       expect(result.ranScript).toBe(false);
@@ -102,7 +233,7 @@ describe('runSkill', () => {
       'echo-root': { 'SKILL.md': SCRIPT_SKILL, 'run.mjs': 'console.log("ran");' },
     });
     try {
-      const skill = (await discoverSkills(skillRoots(root)))[0]!;
+      const skill = (await discoverSkills(await skillRoots(root)))[0]!;
       const result = await runSkill(skill, { workspaceRoot: root });
       expect(result.ok).toBe(false);
       expect(result.ranScript).toBe(false);
@@ -117,7 +248,7 @@ describe('runSkill', () => {
       'echo-root': { 'SKILL.md': SCRIPT_SKILL, 'run.mjs': 'console.log("ran");' },
     });
     try {
-      const skill = (await discoverSkills(skillRoots(root)))[0]!;
+      const skill = (await discoverSkills(await skillRoots(root)))[0]!;
       const result = await runSkill(skill, {
         workspaceRoot: root,
         confirm      : () => Promise.resolve(false),
@@ -138,7 +269,7 @@ describe('runSkill', () => {
       },
     });
     try {
-      const skill = (await discoverSkills(skillRoots(root)))[0]!;
+      const skill = (await discoverSkills(await skillRoots(root)))[0]!;
       const result = await runSkill(skill, {
         workspaceRoot: root,
         confirm      : () => Promise.resolve(true),
@@ -204,7 +335,7 @@ describe('writeSkill', () => {
       const res = await writeSkill(root, INPUT);
       expect(res.ok).toBe(true);
 
-      const [skill] = await discoverSkills(skillRoots(root));
+      const [skill] = await discoverSkills(await skillRoots(root));
       expect(skill!.id).toBe('pace-a-scene');
       expect(skill!.name).toBe('Pace a Scene');
       expect(skill!.description).toBe('How long a beat should run.');
@@ -258,7 +389,7 @@ describe('writeSkill', () => {
     try {
       const res = await writeSkill(root, { ...INPUT, id: 'Pace_A_Scene' }, { overwrite: true });
       expect(res.ok).toBe(true);
-      expect((await discoverSkills(skillRoots(root)))[0]!.name).toBe('Pace a Scene');
+      expect((await discoverSkills(await skillRoots(root)))[0]!.name).toBe('Pace a Scene');
     } finally {
       await cleanup();
     }
@@ -275,11 +406,11 @@ describe('writeSkill', () => {
     try {
       expect((await writeSkill(root, INPUT)).ok).toBe(false);
 
-      const before = (await discoverSkills(skillRoots(root)))[0]!;
+      const before = (await discoverSkills(await skillRoots(root)))[0]!;
       const res = await writeSkill(root, INPUT, { overwrite: true, preserve: before.raw });
       expect(res.ok).toBe(true);
 
-      const after = (await discoverSkills(skillRoots(root)))[0]!;
+      const after = (await discoverSkills(await skillRoots(root)))[0]!;
       expect(after.name).toBe('Pace a Scene');
       expect(after.raw['script']).toBe('run.mjs');
       expect(after.raw['author']).toBe('Joe');
@@ -294,7 +425,7 @@ describe('writeSkill', () => {
     const { root, cleanup } = await tempWorkspace({});
     try {
       await writeSkill(root, { ...INPUT, whenToUse: '   ' });
-      const [skill] = await discoverSkills(skillRoots(root));
+      const [skill] = await discoverSkills(await skillRoots(root));
       expect(skill!.whenToUse).toBeUndefined();
       expect('when-to-use' in skill!.raw).toBe(false);
     } finally {
@@ -309,7 +440,7 @@ describe('newSkillTemplate', () => {
       'pace-a-scene': { 'SKILL.md': newSkillTemplate('Pace a Scene') },
     });
     try {
-      const [skill] = await discoverSkills(skillRoots(root));
+      const [skill] = await discoverSkills(await skillRoots(root));
       expect(skill!.name).toBe('Pace a Scene');
       expect(skill!.description).toBeTruthy();
       expect(skill!.whenToUse).toBeTruthy();
@@ -333,7 +464,7 @@ describe('skillIssues', () => {
       },
     });
     try {
-      const skills = await discoverSkills(skillRoots(root));
+      const skills = await discoverSkills(await skillRoots(root));
       const by = (id: string) => skills.find((s) => s.id === id)!;
 
       expect(by('nameless').issues.join(' ')).toContain('no name');
@@ -356,7 +487,7 @@ describe('skillIssues', () => {
       'name-character': { 'SKILL.md': PROSE_SKILL },
     });
     try {
-      expect((await discoverSkills(skillRoots(root)))[0]!.issues).toEqual([]);
+      expect((await discoverSkills(await skillRoots(root)))[0]!.issues).toEqual([]);
     } finally {
       await cleanup();
     }

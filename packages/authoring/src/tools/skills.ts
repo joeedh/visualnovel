@@ -1,5 +1,4 @@
 // ── Skills ────────────────────────────────────────────────────────────────────
-import { join, relative } from 'node:path';
 import { z } from 'zod';
 import {
   discoverSkills,
@@ -7,21 +6,48 @@ import {
   skillId,
   skillRoots,
   writeSkill,
-  PROJECT_SKILLS_DIR,
+  type Skill,
 } from '../skills.js';
-import { ok, fail, rel, type Tool } from './core.js';
+import { ok, fail, rel, type Tool, type ToolContext } from './core.js';
+
+/** Every skill the agent can see from this context, project first. */
+function visibleSkills(ctx: ToolContext, opts: { keepDisabled?: boolean } = {}): Promise<Skill[]> {
+  return skillRoots(ctx.workspace.root, { builtinDir: ctx.builtinSkillsDir }).then((roots) =>
+    discoverSkills(roots, opts),
+  );
+}
+
+/**
+ * Why a skill outside the project cannot be written here. A builtin skill ships with the app and
+ * a user skill is shared across projects; both are edited as a copy, which the desktop's Clone
+ * actions make. Named by tier rather than by path, because a project skill that shadows a
+ * builtin one is still the project's to edit.
+ */
+function notProject(skill: Skill, verb: string): string {
+  return skill.tier === 'builtin'
+    ? `${skill.id} is a builtin skill and can't be ${verb} here; clone it into the project first ` +
+        '(Skills pane ▸ Clone into project), then edit the copy.'
+    : `${skill.id} is a user skill (${skill.dir}), shared across projects; ${verb} only reaches ` +
+        "this project's .aiagent/skills/. Clone it into the project first, then edit the copy.";
+}
 
 const discoverSkillsTool: Tool<Record<string, never>> = {
   name       : 'discover_skills',
-  description: 'List available authoring skills (reusable playbooks) and when to use them.',
+  description:
+    'List available authoring skills (reusable playbooks) and when to use them. Each is tagged ' +
+    'with where it comes from: this project, your user folder, or the builtin catalog.',
   mutating   : false,
   args       : z.object({}).strict(),
   async run(_a, ctx) {
-    const skills = await discoverSkills(skillRoots(ctx.workspace.root, ctx.skillDirs));
-    if (skills.length === 0) return ok('No skills found under .aiagent/skills.', { data: [] });
+    const skills = await visibleSkills(ctx);
+    if (skills.length === 0) return ok('No skills found.', { data: [] });
     const body = skills
       .map((s) => {
-        const tags = [s.script ? 'script' : 'guide', s.whenToUse ? `when: ${s.whenToUse}` : '']
+        const tags = [
+          s.tier,
+          s.script ? 'script' : 'guide',
+          s.whenToUse ? `when: ${s.whenToUse}` : '',
+        ]
           .filter(Boolean)
           .join('; ');
         // A degraded skill — no description, no body, a `script:` naming a missing file — would
@@ -34,6 +60,7 @@ const discoverSkillsTool: Tool<Record<string, never>> = {
       data: skills.map((s) => ({
         id    : s.id,
         name  : s.name,
+        tier  : s.tier,
         script: !!s.script,
         issues: s.issues,
       })),
@@ -89,6 +116,17 @@ const createSkillTool: Tool<{
           'name with Latin letters or digits in it.',
       );
     }
+    // A project skill would shadow a user or builtin one of the same id, and the agent would
+    // have written a new playbook where the author expected the old one. Disabled builtins count
+    // too: turning a skill back on must not reveal a different one under its name.
+    const taken = (await visibleSkills(ctx, { keepDisabled: true })).find((s) => s.id === id);
+    if (taken && taken.tier !== 'project') {
+      const where = taken.tier === 'user' ? ` (${taken.dir})` : '';
+      return fail(
+        `${id} is already a ${taken.tier} skill${where}, and a project skill of that id would ` +
+          'shadow it. Clone it into the project to edit a copy, or give this one another name.',
+      );
+    }
     const res = await writeSkill(ctx.workspace.root, {
       id,
       name       : a.name,
@@ -127,17 +165,12 @@ const editSkillTool: Tool<{
     })
     .strict(),
   async run(a, ctx) {
-    const skills = await discoverSkills(skillRoots(ctx.workspace.root, ctx.skillDirs));
+    const skills = await visibleSkills(ctx);
     const skill = skills.find((s) => s.id === a.id || s.name === a.id);
     if (!skill) return fail(`no such skill: ${a.id}`);
-    // `ctx.skillDirs` roots can point outside the workspace, and `writeSkill` resolves an id
-    // against this project, so editing one of those would silently fork it into the project.
-    const inProject = relative(join(ctx.workspace.root, PROJECT_SKILLS_DIR), skill.dir);
-    if (inProject !== skill.id) {
-      return fail(
-        `skill ${skill.id} lives outside this project (${skill.dir}); edit_skill only writes .aiagent/skills/.`,
-      );
-    }
+    // `writeSkill` resolves an id against this project, so editing a user or builtin skill
+    // would silently fork it into the project under the same name.
+    if (skill.tier !== 'project') return fail(notProject(skill, 'edited'));
     const res = await writeSkill(
       ctx.workspace.root,
       {
@@ -168,7 +201,7 @@ const runSkillTool: Tool<{ name: string }> = {
   mutating   : true,
   args       : z.object({ name: z.string().min(1) }),
   async run(a, ctx) {
-    const skills = await discoverSkills(skillRoots(ctx.workspace.root, ctx.skillDirs));
+    const skills = await visibleSkills(ctx);
     const skill = skills.find((s) => s.id === a.name || s.name === a.name);
     if (!skill) return fail(`no such skill: ${a.name}`);
     const result = await runSkill(skill, {

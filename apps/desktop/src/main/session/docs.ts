@@ -110,7 +110,7 @@ export class DocsPart {
    * rather than sent to the renderer and ignored there.
    */
   async skillEntries(): Promise<SkillEntry[]> {
-    const skills = await discoverSkills(skillRoots(this.session.dir));
+    const skills = await discoverSkills(await skillRoots(this.session.dir));
     return skills.map((skill) => ({
       id         : skill.id,
       name       : skill.name,

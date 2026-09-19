@@ -5,6 +5,9 @@
  * backend, and assembles the system prompt from the built-in contract + `AICONTEXT.md`.
  * `--mock` swaps in an offline backend so the REPL runs end-to-end without API keys.
  */
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
 import { openGit } from '@vn/git';
 import {
@@ -34,6 +37,7 @@ export { BUDGET_CHOICES, DEFAULT_BUDGET, budgetLabel, type BudgetChoice } from '
 import { type BudgetChoice } from '@vn/types';
 import {
   Agent,
+  BUILTIN_SKILLS_PATH,
   NativeAgentBackend,
   StructuredAgentBackend,
   Workspace,
@@ -48,6 +52,25 @@ import {
   type Permission,
   type ToolContext,
 } from '@vn/authoring';
+
+/**
+ * The builtin skill catalog, found by walking up from the bundle this runs as: `vnauthor` is
+ * built to `apps/authoring/dist/`, so the checkout root is above it. `import.meta.url` is the
+ * bundle's own path under node and is empty under jest's CommonJS transform, where a test gets
+ * project and user skills only unless it names the directory itself.
+ */
+export function builtinSkillsDir(): string | undefined {
+  const url = (import.meta as { url?: string }).url;
+  if (!url) return undefined;
+  let dir = dirname(fileURLToPath(url));
+  for (;;) {
+    const candidate = join(dir, ...BUILTIN_SKILLS_PATH);
+    if (existsSync(candidate)) return candidate;
+    const parent = dirname(dir);
+    if (parent === dir) return undefined;
+    dir = parent;
+  }
+}
 
 /** A backend that does no LLM work: it just acknowledges, so the REPL runs offline. */
 class MockAgentBackend implements AgentBackend {
@@ -122,11 +145,13 @@ export async function createAuthoringAgent(
   } = {},
 ): Promise<AuthoringSession> {
   const workspace = new Workspace(dir);
+  const builtin = builtinSkillsDir();
   const ctx: ToolContext = {
     workspace,
     git : openGit(dir),
     art : workspaceArtGen(workspace, { mock: opts.mock }),
     text: workspaceTextLLM(workspace, { mock: opts.mock }),
+    ...(builtin ? { builtinSkillsDir: builtin } : {}),
   };
   const context = await loadContext(dir);
   const model = (await loadConfig(dir)).models.text;

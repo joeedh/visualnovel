@@ -1,10 +1,17 @@
 /**
  * Skill discovery, writing, and (permissioned) execution (authoring-agent plan §6.5). A skill
- * is a directory under `.aiagent/skills/<id>/` containing `SKILL.md` (front-matter `name`,
- * `description`, `when-to-use`) and an optional script. Skills are reusable authoring
- * playbooks: a pure-prose skill returns its body as guidance for the agent; a script-bearing
- * skill runs a vetted command, and every run is permissioned (the plan's always-confirm rule)
- * because a script can do arbitrary work.
+ * is a directory `<id>/` containing `SKILL.md` (front-matter `name`, `description`,
+ * `when-to-use`) and an optional script. Skills are reusable authoring playbooks: a pure-prose
+ * skill returns its body as guidance for the agent; a script-bearing skill runs a vetted command,
+ * and every run is permissioned (the plan's always-confirm rule) because a script can do
+ * arbitrary work.
+ *
+ * Skills come from three tiers, read in this order: the project's own `.aiagent/skills/`, the
+ * user's `<userConfigDir>/skills/`, and the builtin catalog that ships with the app
+ * (`packages/authoring/builtin-skills/`). The first tier to hold an id wins, so a project skill
+ * shadows a user or builtin one of the same name. A project enables builtin skills by id in
+ * `project.yaml` (`builtin_skills`); a builtin skill the project has turned off is absent from
+ * discovery unless the caller asks to keep it, the way the Skills pane does.
  *
  * The writer lives here, beside the reader, so the two cannot drift: `readSkill` parses with
  * `@vn/parse`'s `parseFrontMatter` and `skillDoc` emits through its exact inverse,
@@ -18,6 +25,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { basename, join, posix } from 'node:path';
 import { promises as fs } from 'node:fs';
+import { loadConfig, userSkillsDirs } from '@vn/config';
 import { parseFrontMatter, stringifyFrontMatter, type FrontMatterDoc } from '@vn/parse';
 import { exists, readText, writeFileAtomic } from '@vn/util';
 
@@ -26,11 +34,23 @@ const run = promisify(execFile);
 /** The default per-project skills directory (relative to the workspace root). */
 export const PROJECT_SKILLS_DIR = join('.aiagent', 'skills');
 
+/**
+ * Where the builtin catalog sits under the repository root, as segments. A host that knows its
+ * own layout joins them: the desktop app under `process.resourcesPath` in a packaged build and
+ * under the checkout otherwise, `vnauthor` under the checkout its bundle sits in.
+ */
+export const BUILTIN_SKILLS_PATH = ['packages', 'authoring', 'builtin-skills'] as const;
+
 /** The one file that makes a directory a skill. */
 export const SKILL_FILE = 'SKILL.md';
 
 /** Candidate script filenames inside a skill directory, in precedence order. */
 const SCRIPT_FILES = ['run.mjs', 'run.js', 'run.cjs', 'run.sh'];
+
+/** Where a skill was read from, in discovery order. */
+export const SKILL_TIERS = ['project', 'user', 'builtin'] as const;
+
+export type SkillTier = (typeof SKILL_TIERS)[number];
 
 /** A discovered skill. */
 export interface Skill {
@@ -39,6 +59,14 @@ export interface Skill {
   name: string;
   description: string;
   whenToUse?: string;
+  /** Which root it was read from, which is what decides whether `edit_skill` may write it. */
+  tier: SkillTier;
+  /**
+   * Whether the project has this skill on. Always true for a project or user skill; false for a
+   * builtin skill `project.yaml` leaves out of `builtin_skills`, which discovery lists only when
+   * asked to keep disabled skills.
+   */
+  enabled: boolean;
   /** The skill directory. */
   dir: string;
   /** The `SKILL.md` path. */
@@ -57,9 +85,47 @@ export interface Skill {
   issues: string[];
 }
 
-/** Resolve the skill roots to scan for a workspace. */
-export function skillRoots(workspaceRoot: string, extraDirs: string[] = []): string[] {
-  return [join(workspaceRoot, PROJECT_SKILLS_DIR), ...extraDirs];
+/** One directory {@link discoverSkills} scans. */
+export interface SkillRoot {
+  dir: string;
+  tier: SkillTier;
+  /** The ids the project has on. Absent means every skill under this root is enabled. */
+  enabled?: ReadonlySet<string>;
+}
+
+/** What a host knows about where skills live, beyond the workspace itself. */
+export interface SkillHosting {
+  /**
+   * The builtin catalog on disk. A host that has not located it gets project and user skills
+   * only, which is also the state every test runs in unless it names the directory.
+   */
+  builtinDir?: string;
+  /** The user-level roots, most specific first. Defaults to `userSkillsDirs()`. */
+  userDirs?: readonly string[];
+}
+
+/**
+ * The roots to scan for a workspace, project first. The builtin root carries the ids
+ * `project.yaml` enables; a file with no `builtin_skills` key enables all of them, and a
+ * workspace with no readable `project.yaml` is treated the same way, because a missing config is
+ * reported elsewhere and must not also hide the catalog.
+ */
+export async function skillRoots(
+  workspaceRoot: string,
+  hosting: SkillHosting = {},
+): Promise<SkillRoot[]> {
+  const roots: SkillRoot[] = [{ dir: join(workspaceRoot, PROJECT_SKILLS_DIR), tier: 'project' }];
+  for (const dir of hosting.userDirs ?? userSkillsDirs()) roots.push({ dir, tier: 'user' });
+  if (hosting.builtinDir) {
+    let enabled: ReadonlySet<string> | undefined;
+    try {
+      enabled = new Set((await loadConfig(workspaceRoot)).builtin_skills);
+    } catch {
+      enabled = undefined;
+    }
+    roots.push({ dir: hosting.builtinDir, tier: 'builtin', ...(enabled ? { enabled } : {}) });
+  }
+  return roots;
 }
 
 async function findScript(dir: string, fromFrontMatter: unknown): Promise<string | undefined> {
@@ -74,8 +140,15 @@ async function findScript(dir: string, fromFrontMatter: unknown): Promise<string
   return undefined;
 }
 
-/** Read a single skill directory into a {@link Skill}, or null if it has no `SKILL.md`. */
-export async function readSkill(dir: string, id: string): Promise<Skill | null> {
+/**
+ * Read a single skill directory into a {@link Skill}, or null if it has no `SKILL.md`. Read on
+ * its own, a directory is a project skill; discovery passes the root it came from.
+ */
+export async function readSkill(
+  dir: string,
+  id: string,
+  from: { tier: SkillTier; enabled: boolean } = { tier: 'project', enabled: true },
+): Promise<Skill | null> {
   const file = join(dir, SKILL_FILE);
   if (!(await exists(file))) return null;
   const doc = parseFrontMatter(await readText(file));
@@ -91,6 +164,8 @@ export async function readSkill(dir: string, id: string): Promise<Skill | null> 
     name,
     description,
     whenToUse,
+    tier   : from.tier,
+    enabled: from.enabled,
     dir,
     file,
     body: doc.body.trim(),
@@ -133,22 +208,35 @@ export function skillIssues(skill: Skill): string[] {
   return issues;
 }
 
-/** Discover every skill across the given roots (later roots do not override earlier ids). */
-export async function discoverSkills(roots: string[]): Promise<Skill[]> {
+/**
+ * Discover every skill across the given roots. The first root to hold an id wins and later roots'
+ * copies are skipped, not merged. A builtin skill the project has turned off is left out, unless
+ * `keepDisabled`, in which case it is listed with `enabled: false` — what the Skills pane wants,
+ * so an author can still read and clone a skill they have switched off.
+ */
+export async function discoverSkills(
+  roots: readonly SkillRoot[],
+  opts: { keepDisabled?: boolean } = {},
+): Promise<Skill[]> {
   const skills: Skill[] = [];
   const seen = new Set<string>();
   for (const root of roots) {
-    if (!(await exists(root))) continue;
+    if (!(await exists(root.dir))) continue;
     let entries: import('node:fs').Dirent[];
     try {
-      entries = await fs.readdir(root, { withFileTypes: true });
+      entries = await fs.readdir(root.dir, { withFileTypes: true });
     } catch {
       continue;
     }
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
       if (seen.has(entry.name)) continue;
-      const skill = await readSkill(join(root, entry.name), entry.name);
+      const enabled = root.enabled?.has(entry.name) ?? true;
+      if (!enabled && !opts.keepDisabled) continue;
+      const skill = await readSkill(join(root.dir, entry.name), entry.name, {
+        tier: root.tier,
+        enabled,
+      });
       if (skill) {
         seen.add(entry.name);
         skills.push(skill);
@@ -284,7 +372,16 @@ export async function writeSkill(
       reason: `"${input.id}" is not a skill id: give the skill a name with Latin letters or digits in it.`,
     };
   }
-  const dir = join(root, PROJECT_SKILLS_DIR, input.id);
+  return writeSkillInto(join(root, PROJECT_SKILLS_DIR), input, opts);
+}
+
+/** {@link writeSkill} for a skills directory named outright rather than a workspace. */
+async function writeSkillInto(
+  skillsDir: string,
+  input: SkillInput,
+  opts: { overwrite?: boolean; preserve?: Record<string, unknown> } = {},
+): Promise<SkillWriteResult> {
+  const dir = join(skillsDir, input.id);
   if (!opts.overwrite && (await exists(dir))) {
     return { ok: false, reason: `skill ${input.id} already exists` };
   }
@@ -293,6 +390,30 @@ export async function writeSkill(
   // `writeFileAtomic` makes the directory, so scaffolding a skill needs no mkdir of its own.
   await writeFileAtomic(file, stringifyFrontMatter(doc.data, doc.body));
   return { ok: true, id: input.id, file };
+}
+
+/**
+ * Copy a skill into another skills directory as an independent skill: the same `SKILL.md` the
+ * writer above would emit for it, front-matter it does not model carried over, and its script
+ * beside it when it has one. Refuses a directory already there rather than overwriting it. The
+ * copy is not vetted by having been cloned — a script it carries still takes `run_skill`'s
+ * confirmation on its first run, the same as one a person just added.
+ */
+export async function cloneSkill(skill: Skill, skillsDir: string): Promise<SkillWriteResult> {
+  const written = await writeSkillInto(
+    skillsDir,
+    {
+      id         : skill.id,
+      name       : skill.name,
+      description: skill.description,
+      whenToUse  : skill.whenToUse,
+      body       : skill.body,
+    },
+    { preserve: skill.raw },
+  );
+  if (!written.ok || !skill.script) return written;
+  await fs.copyFile(skill.script, join(skillsDir, skill.id, basename(skill.script)));
+  return written;
 }
 
 /** The one sentence `write_file` refuses `.aiagent/skills/**` with. */

@@ -1,8 +1,12 @@
 import { promises as fs } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { userSkillsDir } from '@vn/config';
 import { exists } from '@vn/util';
+import { BUILTIN_SKILLS_PATH } from '../../skills.js';
 import { run, tempProject, tool } from './testkit.js';
+
+/** The catalog that ships with the app, reached from this test file's place in the checkout. */
+const BUILTIN_DIR = join(__dirname, '..', '..', '..', '..', '..', ...BUILTIN_SKILLS_PATH);
 
 describe('skills', () => {
   const NEW_SKILL = {
@@ -80,7 +84,7 @@ describe('skills', () => {
       expect(listed.output).toContain('Tighter.');
       // The name it was not asked to change survived, and so did the script.
       expect(listed.output).toContain('"Pace a Scene"');
-      expect(listed.output).toContain('[script;');
+      expect(listed.output).toContain('[project; script;');
     } finally {
       await cleanup();
     }
@@ -97,26 +101,92 @@ describe('skills', () => {
     }
   });
 
-  it('edit_skill refuses a skill that came from ctx.skillDirs', async () => {
+  it('edit_skill refuses a user skill, and copies nothing into the project', async () => {
     const { ctx, cleanup } = await tempProject();
-    const outside = await fs.mkdtemp(join(tmpdir(), 'vn-skilldir-'));
+    // `$VNAUTHOR_HOME` is per jest worker, so this is a directory no other test reads.
+    const shared = join(userSkillsDir(), 'shared');
     try {
-      await fs.mkdir(join(outside, 'shared'), { recursive: true });
+      await fs.mkdir(shared, { recursive: true });
       await fs.writeFile(
-        join(outside, 'shared', 'SKILL.md'),
+        join(shared, 'SKILL.md'),
         '---\nname: Shared\ndescription: Not this project.\n---\n\nDo it.\n',
       );
-      const res = await run(
-        'edit_skill',
-        { id: 'shared', description: 'Mine now.' },
-        { ...ctx, skillDirs: [outside] },
-      );
+      const listed = await run('discover_skills', {}, ctx);
+      expect(listed.output).toContain('- shared "Shared" [user; guide]');
+
+      const res = await run('edit_skill', { id: 'shared', description: 'Mine now.' }, ctx);
       expect(res.ok).toBe(false);
-      expect(res.output).toContain('outside this project');
-      // Refusing also copied no skill into the project.
+      expect(res.output).toContain('shared is a user skill');
+      expect(res.output).toContain('Clone it into the project');
+      expect(await exists(join(ctx.workspace.root, '.aiagent', 'skills', 'shared'))).toBe(false);
+    } finally {
+      await fs.rm(shared, { recursive: true, force: true });
+      await cleanup();
+    }
+  });
+
+  it('lists the builtin catalog when the host names it, tagged builtin', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const listed = await run('discover_skills', {}, { ...ctx, builtinSkillsDir: BUILTIN_DIR });
+      expect(listed.output).toContain('- branching "Branch the Story" [builtin; guide;');
+      expect(listed.output).toContain('- full-production ');
+      expect(listed.output).toContain('- new-character ');
+      // And nothing without the host's say-so: a bare context has no catalog to read.
       expect(await run('discover_skills', {}, ctx)).toMatchObject({ data: [] });
     } finally {
-      await fs.rm(outside, { recursive: true, force: true });
+      await cleanup();
+    }
+  });
+
+  it('edit_skill and create_skill refuse a builtin id; a project skill of that id is still editable', async () => {
+    const { ctx, cleanup } = await tempProject();
+    const hosted = { ...ctx, builtinSkillsDir: BUILTIN_DIR };
+    try {
+      const edit = await run('edit_skill', { id: 'branching', body: 'Mine.' }, hosted);
+      expect(edit.ok).toBe(false);
+      expect(edit.output).toContain('branching is a builtin skill');
+      expect(edit.output).toContain('clone it into the project first');
+
+      const create = await run('create_skill', { ...NEW_SKILL, name: 'Branching' }, hosted);
+      expect(create.ok).toBe(false);
+      expect(create.output).toContain('branching is already a builtin skill');
+      expect(await exists(join(ctx.workspace.root, '.aiagent', 'skills', 'branching'))).toBe(false);
+
+      // A project skill written under that id — by a person, or by cloning — shadows the
+      // builtin one and is the project's to edit.
+      await fs.mkdir(join(ctx.workspace.root, '.aiagent', 'skills', 'branching'), {
+        recursive: true,
+      });
+      await fs.writeFile(
+        join(ctx.workspace.root, '.aiagent', 'skills', 'branching', 'SKILL.md'),
+        '---\nname: My Branching\ndescription: Mine.\n---\n\nFork it my way.\n',
+      );
+      const listed = await run('discover_skills', {}, hosted);
+      expect(listed.output).toContain('- branching "My Branching" [project; guide]');
+      expect(listed.output).not.toContain('Branch the Story');
+      const again = await run('edit_skill', { id: 'branching', body: 'Still mine.' }, hosted);
+      expect(again.ok).toBe(true);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('a builtin skill project.yaml leaves out of builtin_skills is absent', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    const hosted = { ...ctx, builtinSkillsDir: BUILTIN_DIR };
+    try {
+      await fs.writeFile(
+        join(dir, 'project.yaml'),
+        'title: Test Project\nstart: arrival\nbuiltin_skills:\n  - new-character\n  - retired\n',
+      );
+      const listed = await run('discover_skills', {}, hosted);
+      expect(listed.data).toMatchObject([{ id: 'new-character', tier: 'builtin' }]);
+      // Off is off for creation too: enabling it later must not reveal a different skill.
+      const create = await run('create_skill', { ...NEW_SKILL, name: 'Branching' }, hosted);
+      expect(create.ok).toBe(false);
+      expect(create.output).toContain('already a builtin skill');
+    } finally {
       await cleanup();
     }
   });

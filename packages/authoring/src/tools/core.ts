@@ -74,8 +74,12 @@ export interface ToolContext {
    * which case elevated tools refuse rather than assume consent.
    */
   confirm?: (message: string) => Promise<boolean>;
-  /** Extra directories to scan for skills, beyond the workspace's `.aiagent/skills`. */
-  skillDirs?: string[];
+  /**
+   * Where the builtin skill catalog is on disk, supplied by the host that knows its own layout
+   * (`BUILTIN_SKILLS_PATH`). Absent in bare contexts, where discovery lists the project's and
+   * the user's skills only.
+   */
+  builtinSkillsDir?: string;
   /**
    * Image generation, wired by the host that knows whether this run is mocked and where the keys
    * are. Absent in bare contexts, in which case `generate_image` and `edit_image` refuse rather

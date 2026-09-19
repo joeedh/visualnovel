@@ -575,15 +575,17 @@ async function printStatus(session: AuthoringSession, channel: Channel): Promise
 
 async function printSkills(session: AuthoringSession, channel: Channel): Promise<void> {
   const skills = await discoverSkills(
-    skillRoots(session.ctx.workspace.root, session.ctx.skillDirs),
+    await skillRoots(session.ctx.workspace.root, {
+      builtinDir: session.ctx.builtinSkillsDir,
+    }),
   );
   if (skills.length === 0) {
-    channel.write(dim('No skills found under .aiagent/skills.'));
+    channel.write(dim('No skills found.'));
     return;
   }
   for (const s of skills) {
     const kind = s.script ? yellow('script') : dim('guide');
-    channel.write(`${bold(s.id)} [${kind}] — ${s.description}`);
+    channel.write(`${bold(s.id)} [${dim(s.tier)}, ${kind}] — ${s.description}`);
     if (s.whenToUse) channel.write(dim(`    when: ${s.whenToUse}`));
   }
 }

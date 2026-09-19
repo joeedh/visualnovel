@@ -530,11 +530,11 @@ matter carries `name`, `description`, and `when-to-use`. A pure-prose skill retu
 body as guidance. A skill with a `run.{mjs,js,cjs,sh}` script runs a vetted command
 instead, and every run is permissioned (always-confirm) before it executes in the
 workspace root with the workspace path as its first argument. Three skills ship with the
-sample. [`new-character`](../../templates/basic/.aiagent/skills/new-character) is a
-playbook for one act. [`branching`](../../templates/basic/.aiagent/skills/branching)
+sample. [`new-character`](../../packages/authoring/builtin-skills/new-character) is a
+playbook for one act. [`branching`](../../packages/authoring/builtin-skills/branching)
 covers the three shapes a fork can take, how to split a shared scene into per-route
 chunks, and the refusal to hand back when the author asks for something that would need a
-conditional. [`full-production`](../../templates/basic/.aiagent/skills/full-production)
+conditional. [`full-production`](../../packages/authoring/builtin-skills/full-production)
 runs nine phases from premise to storyboard, each with its own plan and its own commit,
 and ends at the choice of how a scene gets its shots (batch decomposition, a proposal the
 agent drafts, or by hand), which stays the author's.

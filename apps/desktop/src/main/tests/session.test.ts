@@ -1138,7 +1138,7 @@ describe('WorkspaceSession — documents', () => {
     );
     expect(text).toBe(newSkillTemplate('Continuity Pass'));
     // The scaffolded skill is one the agent can find, not a file nothing reads
-    expect((await discoverSkills(skillRoots(p.dir))).map((skill) => skill.id)).toContain(
+    expect((await discoverSkills(await skillRoots(p.dir))).map((skill) => skill.id)).toContain(
       'continuity-pass',
     );
   });
