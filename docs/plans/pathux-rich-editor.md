@@ -240,10 +240,17 @@ documentation is the reference; this plan only names what the app calls.
   reaches what `pathux.ts` reaches, and the barrel reaches none of these), and, where a
   jest test imports it, a `moduleNameMapper` row:
     - `pathux-richtext-markdown` → `scripts/widgets/richtext/markdown.ts`
-    - `pathux-richtext-forms` → `scripts/widgets/richtext/form_native.ts` (which
-      re-exports the source helpers)
+    - `pathux-richtext-forms` → `scripts/widgets/richtext/form_native.ts`
     - `pathux-richtext-zod` → `scripts/widgets/richtext/form_zod.ts`
     - `pathux-richtext-schema` → `scripts/widgets/richtext/form_schema.ts`
+    - `pathux-richtext-headless` → `scripts/widgets/richtext/headless.ts`: the document
+      without the editor (`DocumentSession`, `ToolStack`, the `MdDoc` model,
+      `markdownDocFromText`, `markdownText`, `markdownSourceDoc`,
+      `markdownSourceCommand`). Added to path.ux by task 1, because `markdown.ts` reaches
+      `RichTextArea` and `form_native.ts` reaches `FormControl`, both of which reach
+      `ui_base` and the DOM; `docsession.ts` imports only this entry, so its test loads
+      under node. The barrel's `DocumentSession` and this entry's are the same module
+      file, so a session made here is what `RichTextEditor` takes.
 - The mdast packages resolve from `vendor/path.ux/node_modules` because the importing file
   lives there; `pnpm check:setup` already fails when that install is owed.
 - `form_zod.ts` types against path.ux's own `zod` declarations, the app's schemas against
@@ -294,15 +301,18 @@ documentation is the reference; this plan only names what the app calls.
       `form_schema.ts` import no DOM. `docforms.ts` therefore imports only those two;
       `nativeFormWidgets(...)` is assembled in the pane, which is not unit-tested.
     - `DocBuffer` with a session: the session logic goes in `docsession.ts` behind the
-      same `io` seam, and its test maps `pathux-richtext-forms` (for `markdownSourceDoc`,
-      `markdownText`, `markdownSourceCommand`) and `DocumentSession` / `ToolStack`. The
-      mdast chain is ESM under `vendor/path.ux/node_modules`, which jest's default
-      `transformIgnorePatterns` skips; task 1 adds a `transformIgnorePatterns` exception
-      for `vendor/path.ux/node_modules/(mdast|micromark|unist|…)` to the desktop project
-      and proves `markdownSourceDoc` loads under jest before anything else is built. If
-      that cannot be made to work in a bounded time, `docsession.ts` takes its three
-      markdown functions through the seam and the test supplies a stub; the real functions
-      are then covered only by task 9.
+      same `io` seam, importing path.ux only through `pathux-richtext-headless` (D7), and
+      the provider a session needs comes in through the seam too: the Wiki pane passes
+      `MarkdownProvider`, the test a replace-only provider (`replaceBlocks` is the one op
+      `markdownSourceCommand` issues). The mdast chain is ESM under
+      `vendor/path.ux/node_modules`, which jest's default `transformIgnorePatterns` skips;
+      task 1 replaces the default with one that ignores every `node_modules` except
+      path.ux's own, by directory rather than by package name, because jest resolves
+      pnpm's symlinks to their `.pnpm` targets. Proven in task 1: `markdownSourceDoc`,
+      `DocumentSession` and `ToolStack` load and run under jest and the process exits
+      cleanly. The editor entries also load under node once path.ux's worker shim is
+      fixed, but leave module-scope intervals (`ui_lasttool.ts`) ticking, so a single-file
+      run never exits; they stay unmapped, like the barrel.
     - The pane itself (rich ↔ raw, anchors): no editor has a jest test and there is no
       jsdom project. Task 7's cases run through the CDP sweep (`scripts/vn-cdp.mjs`)
       against the built app, scripted, not as jest.
@@ -350,13 +360,13 @@ documentation is the reference; this plan only names what the app calls.
 
 ## Tasks
 
-1. **Bump the gitlink** to `53d4fd61` (path-controller `6de53ad`), add the four aliases /
+1. **Bump the gitlink** to `53d4fd61` (path-controller `6de53ad`), add the five aliases /
    paths / `files` rows (D7), the jest mapper rows and the `transformIgnorePatterns`
    exception (D9), and prove three things with throwaway code that does not ship: the
    markdown module bundles (record the renderer bundle's size delta in the As-shipped
    section), `zodFormSchema(characterFrontMatter)` type-checks (D7), and
    `markdownSourceDoc` runs under jest (D9). No UI change. `pnpm check`, `pnpm test`,
-   `pnpm lint`, `pnpm build` green.
+   `pnpm lint`, `pnpm build` green. Done; see As shipped.
 2. **`docKind`** in `@vn/types`, re-exported by `@vn/store`; `tagConflict`, `core.ts` and
    `rename.ts` rewritten over it; `DocFile.implied` from `doc.read`. Tests for the three
    outcomes. No behaviour change.
@@ -421,6 +431,29 @@ documentation is the reference; this plan only names what the app calls.
   snapshot per autosave. Both are accepted: the repo history is the author's own and a
   commit that says `Autosaved` is honest about being one; the undo stack is bounded
   already. If either turns out noisy in use, the tick is a constant.
+
+## As shipped
+
+### Task 1
+
+- path.ux is on a branch named `pathux-rich-editor`, like the superproject, so its master
+  is not advanced from here; it lands into path.ux master when this branch lands. Its
+  first commit (`0c83c4cb`) adds `scripts/widgets/richtext/headless.ts`, its
+  node-environment test, a paragraph in `documentation/richtext.md`, and fixes
+  `ui_worker_shim.ts` to shim through `globalThis` (it wrote `window.HTMLElement`, and a
+  worker has no `window`, so it threw in exactly the places it exists for; under node it
+  threw before path-controller's polyfill could alias `window`).
+- Five aliases, not four (D7). The mapped jest entries are `pathux-richtext-headless`,
+  `-zod` and `-schema`; `-markdown` and `-forms` are unmapped.
+- `zodFormSchema(characterFrontMatter)` and `zodFormSchema(locationFrontMatter)`
+  type-check under tsgo with no cast, and both adapt with empty `diagnostics`; the two
+  `zod` declaration trees are structurally compatible.
+- Bundle: the markdown chain, the forms and the Zod adapter together are 214 kB minified,
+  64 kB gzipped, measured as a chunk of their own (the proof reached them by dynamic
+  import; the rest of the renderer was unchanged at 1,781 kB). Small enough to import
+  statically from the Wiki pane; the dynamic-import fallback in Risks is not taken.
+- `pnpm test` completes with a "worker process has failed to exit gracefully" notice that
+  predates this branch.
 
 ## Pressure-test findings
 

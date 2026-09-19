@@ -36,11 +36,18 @@ const shared = {
   testEnvironment         : 'node',
   // The `.js` half covers path.ux's vendored ESM (lz-string, reached through toolprop),
   // which node cannot require and jest would otherwise hand to its runtime untransformed.
-  // node_modules stays out of it through jest's default transformIgnorePatterns.
   transform: {
     '^.+\\.tsx?$': '<rootDir>/scripts/jest-esbuild.cjs',
     '^.+\\.m?js$': '<rootDir>/scripts/jest-esbuild.cjs',
   },
+  // node_modules stays untransformed, as under jest's default, except path.ux's own install:
+  // the mdast and micromark chain behind `pathux-richtext-markdown` is ESM-only, and jest
+  // resolves pnpm's symlinks to their `.pnpm` targets, so the exception is by directory rather
+  // than by package name.
+  transformIgnorePatterns: [
+    '^(?!.*[\\\\/]vendor[\\\\/]path\\.ux[\\\\/]node_modules[\\\\/]).*[\\\\/]node_modules[\\\\/]',
+    '\\.pnp\\.[^\\\\/]+$',
+  ],
   // Points $VNAUTHOR_HOME somewhere empty, so a test that resolves keys cannot read the
   // developer's own. See the file for why the default has to be on for everything else.
   setupFiles              : ['<rootDir>/scripts/jest-setup.cjs'],
@@ -61,24 +68,32 @@ const shared = {
   ],
   moduleNameMapper: {
     // Strip the explicit .js extension used in source so jest resolves the .ts file.
-    '^(\\.{1,2}/.*)\\.js$' : '$1',
+    '^(\\.{1,2}/.*)\\.js$'      : '$1',
     // Workspace packages resolve straight to source.
-    '^@vn/cli$'            : '<rootDir>/apps/cli/src/index.ts',
-    '^@vn/([^/]+)$'        : '<rootDir>/packages/$1/src/index.ts',
+    '^@vn/cli$'                 : '<rootDir>/apps/cli/src/index.ts',
+    '^@vn/([^/]+)$'             : '<rootDir>/packages/$1/src/index.ts',
     // A subpath export names its source file: `@vn/scriptedit/write` → `src/write.ts`.
-    '^@vn/([^/]+)/([^/]+)$': '<rootDir>/packages/$1/src/$2.ts',
+    '^@vn/([^/]+)/([^/]+)$'     : '<rootDir>/packages/$1/src/$2.ts',
     // @vn/gengraph's door to path.ux's graph module and the ToolProperty classes node
     // specs are authored with; source here, declarations in the root tsconfig's paths.
-    '^pathux-graph$'       : '<rootDir>/vendor/path.ux/scripts/graph/index.ts',
-    '^pathux-toolprop$'    : '<rootDir>/vendor/path.ux/scripts/path-controller/toolsys/toolprop.ts',
-    '^pathux-base-types$'  : '<rootDir>/vendor/path.ux/scripts/core/base/ui_base_types.ts',
+    '^pathux-graph$'            : '<rootDir>/vendor/path.ux/scripts/graph/index.ts',
+    '^pathux-toolprop$': '<rootDir>/vendor/path.ux/scripts/path-controller/toolsys/toolprop.ts',
+    '^pathux-base-types$'       : '<rootDir>/vendor/path.ux/scripts/core/base/ui_base_types.ts',
     // The meta-tag half, which imports nothing at runtime but nstructjs, so a node-only rules
     // test can build the same tag a live widget carries. The widget barrel stays unmapped.
-    '^pathux-meta$'        : '<rootDir>/vendor/path.ux/scripts/core/base/ui_meta_tags.ts',
+    '^pathux-meta$'             : '<rootDir>/vendor/path.ux/scripts/core/base/ui_meta_tags.ts',
+    // The rich text document's headless entry and the form schema modules, for the desktop
+    // tests of the document session and the form schemas. The headless entry pulls the mdast
+    // chain from `vendor/path.ux/node_modules`, which `transformIgnorePatterns` below lets
+    // through. The editor entries (`pathux-richtext-markdown`, `-forms`) stay unmapped like the
+    // barrel: they load under node, but leave path.ux's module-scope intervals ticking.
+    '^pathux-richtext-headless$': '<rootDir>/vendor/path.ux/scripts/widgets/richtext/headless.ts',
+    '^pathux-richtext-zod$'     : '<rootDir>/vendor/path.ux/scripts/widgets/richtext/form_zod.ts',
+    '^pathux-richtext-schema$': '<rootDir>/vendor/path.ux/scripts/widgets/richtext/form_schema.ts',
     // nstructjs names an ESM bundle as its `main`, which this CJS runner cannot load; the
     // same build ships beside it in CommonJS. Shared because both the desktop app and
     // @vn/gengraph depend on it, always as the `vendor/nstructjs` submodule.
-    '^nstructjs$'          : '<rootDir>/vendor/nstructjs/build/nstructjs-jest.js',
+    '^nstructjs$'               : '<rootDir>/vendor/nstructjs/build/nstructjs-jest.js',
   },
 };
 

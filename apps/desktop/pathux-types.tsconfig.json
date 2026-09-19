@@ -23,5 +23,14 @@
       "nstructjs": ["../../vendor/nstructjs/build/structjs.d.ts"]
     }
   },
-  "files"          : ["../../vendor/path.ux/scripts/pathux.ts"]
+  // The barrel reaches none of the rich text editor's markdown or form modules, so each one
+  // the renderer aliases is listed here, or its declarations are never emitted.
+  "files": [
+    "../../vendor/path.ux/scripts/pathux.ts",
+    "../../vendor/path.ux/scripts/widgets/richtext/markdown.ts",
+    "../../vendor/path.ux/scripts/widgets/richtext/form_native.ts",
+    "../../vendor/path.ux/scripts/widgets/richtext/form_zod.ts",
+    "../../vendor/path.ux/scripts/widgets/richtext/form_schema.ts",
+    "../../vendor/path.ux/scripts/widgets/richtext/headless.ts"
+  ]
 }
