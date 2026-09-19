@@ -23,7 +23,7 @@ location sheet, whatever `ui.docPath` names) in path.ux's rich text editor over 
 author saves it and saving commits to git, with no machinery of its own
 ([`command-system.md`](command-system.md#the-doc-namespace)). The plan that put the pane
 on the rich editor, with every decision and what shipped against each, is
-[`plans/pathux-rich-editor.md`](../plans/pathux-rich-editor.md).
+[`plans/archive/pathux-rich-editor.md`](../plans/archive/pathux-rich-editor.md).
 
 - **A sheet's front matter is a form inside the document, not a form instead of it.** An
   earlier version of this page said the pane "is not a form over `Character`", written

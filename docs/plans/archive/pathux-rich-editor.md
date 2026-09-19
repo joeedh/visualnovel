@@ -1,7 +1,8 @@
 # The Wiki pane on path.ux's rich text editor
 
-Status: planned. Stage 1 is specified here; stage 2 (custom widgets) is a separate plan
-that stage 1's last task writes.
+Status: shipped, 2026-09-19. Stage 1 is specified here; stage 2 (custom widgets) is
+[`pathux-rich-editor-widgets.md`](../pathux-rich-editor-widgets.md), which stage 1's last
+task wrote.
 
 ## Goal
 
@@ -420,6 +421,7 @@ documentation is the reference; this plan only names what the app calls.
     skill before designing any control and records in the plan where it applied, and the
     plan itself directs its implementer to the same skill where a control's look is
     decided. It is pressure-tested by a fresh-context agent the same way this one was.
+    Done; see As shipped.
 
 ## Risks
 
@@ -667,6 +669,23 @@ answers** button) and read the footer; disk was checked with `git diff` in the c
 - `pnpm markdown-toc` rewrites every TOC in markdown-toc's own bullet style, which
   prettier then puts back; run `pnpm exec prettier --write "docs/**/*.md"` after it, or
   the format check fails on forty unrelated files.
+
+### Task 11
+
+- [`../pathux-rich-editor-widgets.md`](../pathux-rich-editor-widgets.md) is written, with
+  the `frontend-design` skill loaded first and its section "Where the design skill
+  applied" recording what the skill changed (the tokens and faces pinned to the app's, the
+  wardrobe as the one element with weight, no numbering, words as controls, no motion) and
+  a wireframe of the wardrobe. Its task 2 directs the implementer to load the skill again
+  before deciding any control's look.
+- A fresh-context reviewer returned eighteen findings, four of which reversed a decision:
+  the `art.*` commands re-serialise the whole sheet and lose its comments, so art
+  direction stays in the form rather than going through them; `md-image-x` runs `safeUrl`
+  and drops `vnasset://`; path.ux already parses `[[…]]` and has `onWikilinkStart`; the
+  provider is per session and shared by panes, so a closure over the pane's path is wrong.
+  Each finding and its answer is in that plan's "Pressure-test findings".
+- Task 11's other half is filing: this plan's status flips to shipped, the file moves to
+  `archive/`, and the index gains the stage 2 row.
 
 ## Pressure-test findings
 
