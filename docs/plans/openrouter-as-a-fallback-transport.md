@@ -1,8 +1,9 @@
 # OpenRouter as a fallback transport
 
-**Status: partial.** Written 2026-09-19; pressure-tested the same day, findings at the
-end. Stages 1–6 shipped 2026-09-19; stage 7, the live check, is still owed. See
-[As shipped](#as-shipped).
+**Status: done.** Written 2026-09-19; pressure-tested the same day, findings at the end.
+All seven stages shipped 2026-09-19; the live check's output is in
+[`../research/openrouter-prompt-cache-live-run.md`](../research/openrouter-prompt-cache-live-run.md).
+See [As shipped](#as-shipped).
 
 An author with only an OpenRouter key gets nothing today except image generation through a
 `<vendor>/<model>` id: every chat call reads the Anthropic or Gemini key its model id
@@ -509,10 +510,10 @@ Checked on 2026-09-19 against OpenRouter's live model listing and its documentat
 | `cache_control` on content parts is forwarded to Anthropic; four-breakpoint limit; `ttl: '1h'`       | verified (docs)              |
 | Gemini 2.5+ caches implicitly; OpenRouter honours the last `cache_control` breakpoint                | verified (docs)              |
 | `usage.prompt_tokens_details.cached_tokens` and `.cache_write_tokens`, sent without opt-in           | verified (docs)              |
-| `prompt_tokens` includes `cache_write_tokens`                                                        | UNVERIFIED; stage 7          |
+| `prompt_tokens` includes `cache_write_tokens`                                                        | verified live (stage 7)      |
 | `reasoning.effort` accepts `max, xhigh, high, medium, low, minimal, none`; `enabled: false` disables | verified (docs)              |
 | `reasoning_details` must be echoed back on the assistant message across a tool call                  | verified (docs)              |
-| OpenRouter maps effort to `budget_tokens` on Anthropic, which current Claude models refuse           | docs say so; UNVERIFIED live |
+| OpenRouter maps effort to `budget_tokens` on Anthropic, which current Claude models refuse           | not seen: `low` accepted     |
 | `cache_control` is accepted on a tool definition                                                     | UNVERIFIED                   |
 | A mid-array `system` message is passed as system-role rather than folded into the system prompt      | UNVERIFIED; not relied on    |
 | `google/gemini-2.5-flash-image` takes `input_references` for an edit                                 | UNVERIFIED for the edit path |
@@ -566,8 +567,8 @@ thirty-six findings. Each is fixed above or answered here.
 
 ## As shipped
 
-Stages 1–6 landed on 2026-09-19 as six commits on `openrouter-fallback`, each green under
-`pnpm check`, `pnpm test` and `pnpm lint`. Deviations from the text above:
+All seven stages landed on 2026-09-19 as seven commits on `openrouter-fallback`, each
+green under `pnpm check`, `pnpm test` and `pnpm lint`. Deviations from the text above:
 
 - **`resolveRoutes` takes a `RouteRequest`** (`{ chat?: string[]; image?: string[] }`)
   rather than a flat list of ids, because a chat id and an image id route through
@@ -599,7 +600,11 @@ Stages 1–6 landed on 2026-09-19 as six commits on `openrouter-fallback`, each 
 - **The tools block is not cache-marked** through OpenRouter, since whether
   `cache_control` is accepted on a tool definition is unverified; it is cached only as
   part of the prefix ahead of the system message's breakpoint.
-- The anchor sweep for `onboarding.ts` and stage 7
-  (`scripts/verify-prompt-cache.mjs --via openrouter`, run by hand against Claude and
-  against Gemini, with the four unverified rows above answered from its output) are still
-  owed.
+- **The anchor sweep** for `onboarding.ts` was re-run in stage 6's commit.
+- **Stage 7 ran live** on 2026-09-19, once against Claude Opus 4.8 and once against Gemini
+  2.5 Flash, both on the OpenRouter key alone. Output and reading in
+  [`../research/openrouter-prompt-cache-live-run.md`](../research/openrouter-prompt-cache-live-run.md):
+  the breakpoints registered (2225 written, 2225 read back), `prompt_tokens` includes the
+  write so `PROMPT_INCLUDES_WRITE = true` stands, `effort: 'low'` was accepted on both
+  models without the downgrade, and Gemini's implicit cache reported one hit in five.
+  `max`/`xhigh` and a cache-marked tools block were not tried.

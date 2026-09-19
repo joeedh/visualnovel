@@ -17,6 +17,12 @@
  *
  * Usage:
  *   node scripts/verify-prompt-cache.mjs [dir]        # costs money; a handful of small calls
+ *   node scripts/verify-prompt-cache.mjs [dir] --via openrouter
+ *
+ * `--via openrouter` runs the same ritual through the OpenRouter chat backend on the OpenRouter
+ * key alone (`docs/plans/openrouter-as-a-fallback-transport.md`, stage 7), and answers the three
+ * things that plan could not verify offline: whether the breakpoints registered, whether
+ * `prompt_tokens` counts the cache write, and whether the effort level was accepted or resent.
  *
  * This script is deliberately not in `package.json`'s scripts, and `pnpm test` will not run it,
  * exactly like its sibling `scripts/verify-prompt-chunks.mjs`. The key is resolved through
@@ -29,7 +35,10 @@ import { promises as fs } from 'node:fs';
 import { resolve } from 'node:path';
 import { alias, EXTERNAL, REPO_ROOT as root } from './aliases.mjs';
 
-const dir = resolve(process.argv[2] ?? '.');
+const args = process.argv.slice(2);
+const viaAt = args.indexOf('--via');
+const via = viaAt >= 0 ? args[viaAt + 1] : undefined;
+const dir = resolve(args.find((a, i) => !a.startsWith('--') && i !== viaAt + 1) ?? '.');
 const TMP = resolve(root, 'packages/providers/.cache-entry.cjs');
 
 // Bundled into `packages/providers` because the model SDKs are `EXTERNAL` and lazy-imported, and
@@ -38,7 +47,8 @@ await build({
   stdin: {
     contents: [
       "export { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';",
-      "export { createAnthropicChat, createGeminiChat } from '@vn/providers';",
+      "export { createAnthropicChat, createGeminiChat, createOpenRouterChat, capturedRequests } from '@vn/providers';",
+      "export { chatRouteFor } from '@vn/types';",
       "export { NativeAgentBackend } from '@vn/authoring';",
     ].join('\n'),
     resolveDir: root,
@@ -114,9 +124,56 @@ const keyFor = async (mod, config, vendor) =>
     vendor
   ];
 
+/**
+ * The backend under test: the vendor's own, or the OpenRouter one carrying the same model when
+ * `--via openrouter` was given. The route is narrowed to OpenRouter alone so a native key on the
+ * machine cannot quietly take the call.
+ */
+async function chatFor(mod, config, modelId, vendor) {
+  if (via !== 'openrouter') {
+    const key = await keyFor(mod, config, vendor);
+    return vendor === 'anthropic'
+      ? mod.createAnthropicChat(key, modelId)
+      : mod.createGeminiChat(key, modelId);
+  }
+  const route = mod.chatRouteFor(modelId, { anthropic: false, gemini: false, openrouter: true });
+  if (!route)
+    throw new Error(`OpenRouter cannot carry ${modelId}: the id has no OpenRouter spelling`);
+  process.stdout.write(`via OpenRouter as ${route.wireId}\n`);
+  return mod.createOpenRouterChat(await keyFor(mod, config, 'openrouter'), route, {
+    effort: 'low',
+  });
+}
+
+/**
+ * What the OpenRouter run can answer that the plan left unverified. Printed rather than asserted:
+ * the arithmetic switch in the backend is chosen from these lines, not failed by them.
+ */
+function reportOpenRouter(mod, usage) {
+  if (via !== 'openrouter') return;
+  const read = usage.cacheRead ?? 0;
+  const write = usage.cacheWrite ?? 0;
+  if (write > 0) {
+    process.stdout.write(
+      usage.input >= read + write
+        ? `note · prompt_tokens (${usage.input}) covers the cache write (${write}), so PROMPT_INCLUDES_WRITE = true holds\n`
+        : `note · prompt_tokens (${usage.input}) is below read + write (${read + write}), so PROMPT_INCLUDES_WRITE should be false\n`,
+    );
+  }
+  const sent = mod.capturedRequests().filter((h) => h.label === 'openrouter-chat');
+  const refused = sent.filter(
+    (h) => h.error !== undefined && /reasoning|effort|budget/i.test(h.error),
+  );
+  process.stdout.write(
+    refused.length > 0
+      ? `note · the effort level was refused (${refused[0].error.slice(0, 120)}) and resent with reasoning merely enabled\n`
+      : 'note · the effort level was accepted as sent\n',
+  );
+}
+
 /** Two steps of one conversation: step 1 writes the prefix, step 2 reads it back. */
 async function verifyClaude(mod, config, modelId) {
-  const chat = mod.createAnthropicChat(await keyFor(mod, config, 'anthropic'), modelId);
+  const chat = await chatFor(mod, config, modelId, 'anthropic');
   const backend = new mod.NativeAgentBackend(chat);
   const system = fixedPrefix(12);
 
@@ -141,6 +198,7 @@ async function verifyClaude(mod, config, modelId) {
   messages.push({ role: 'user', content: 'Say "two".' });
   const second = await backend.next(system, messages, TOOLS);
   process.stdout.write(`step 2 · ${say(second.usage ?? {})}\n`);
+  reportOpenRouter(mod, first.usage ?? {});
 
   const read = ok(
     (second.usage?.cacheRead ?? 0) > 0,
@@ -168,7 +226,7 @@ async function verifyClaude(mod, config, modelId) {
  */
 async function verifyGemini(mod, config, modelId) {
   const CALLS = 5;
-  const chat = mod.createGeminiChat(await keyFor(mod, config, 'gemini'), modelId);
+  const chat = await chatFor(mod, config, modelId, 'gemini');
   // The fixed bytes lead the *prompt* rather than sitting in the system instruction, because what
   // is being tested is a prefix of the request and the numeral is the only thing that varies.
   const prefix = fixedPrefix(40);
@@ -190,6 +248,7 @@ async function verifyGemini(mod, config, modelId) {
       if (!firstHit) [firstHit, hitUsage] = [i, usage];
     }
   }
+  reportOpenRouter(mod, hitUsage ?? {});
 
   const hit = ok(
     firstHit > 0,
