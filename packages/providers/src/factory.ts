@@ -5,12 +5,12 @@ import {
   imageVendorOf,
   type EffortChoice,
   type ImageModelEntry,
+  type ImageResult,
   type Providers,
   type Route,
 } from '@vn/types';
 import {
   keysPresent,
-  missingKeyError,
   missingRouteError,
   type KeyVendor,
   type ProjectConfig,
@@ -104,25 +104,22 @@ export function resolveRoutes(
 }
 
 /**
- * The keys a pipeline run needs before it starts: the image model's vendor, and the vendor of
- * every vision and text model. Passed as `resolveKeys`'s `require`, so a project that draws
- * through OpenRouter and reviews with Claude is refused before it pays for a picture it cannot
- * review, and is not asked for a Gemini key it never uses.
+ * The keys a pipeline run needs before it starts: the vendor of every vision and text model.
+ * Passed as `resolveKeys`'s `require`, so a project that reviews with Claude is refused before
+ * it pays for a picture it cannot review, and is not asked for a Gemini key it never uses. The
+ * image model is not listed: {@link createImageBackend} routes it, and the route decides which key
+ * it needs.
  */
 export function requiredVendors(config: ProjectConfig): KeyVendor[] {
-  const vendors = new Set<KeyVendor>([imageVendorOf(config.models.image)]);
+  const vendors = new Set<KeyVendor>();
   for (const modelId of [...config.models.vision, config.models.text]) {
     vendors.add(chatVendorFor(modelId));
   }
   return [...vendors];
 }
 
-/** Builds the per-vendor backend the router keeps for one model. Injectable for the router's tests. */
-export type ImageBackendBuilder = (
-  vendor: KeyVendor,
-  apiKey: string,
-  modelId: string,
-) => ImageBackend;
+/** Builds the backend the router keeps for one route. Injectable for the router's tests. */
+export type ImageBackendBuilder = (route: Route, apiKey: string) => ImageBackend;
 
 export interface ImageBackendOptions {
   build?: ImageBackendBuilder;
@@ -136,12 +133,13 @@ export interface ImageBackendOptions {
 function imageBackendBuilder(
   catalog: readonly Pick<ImageModelEntry, 'id' | 'seed'>[],
 ): ImageBackendBuilder {
-  return (vendor, apiKey, modelId) => {
-    if (vendor !== 'openrouter') return createGeminiImage(apiKey, modelId);
-    const listed = catalog.find((entry) => entry.id === modelId);
+  return (route, apiKey) => {
+    if (route.transport !== 'openrouter') return createGeminiImage(apiKey, route.wireId);
+    // The listing names models by their OpenRouter spelling, which is what the wire id is
+    const listed = catalog.find((entry) => entry.id === route.wireId);
     return createOpenRouterImage(
       apiKey,
-      modelId,
+      route.wireId,
       listed === undefined ? {} : { seed: listed.seed },
     );
   };
@@ -151,8 +149,12 @@ function imageBackendBuilder(
  * The byte-level image seam. Its `modelId` is the project's `models.image`, and each call is
  * routed by the `modelId` on its params, so a graph node naming another model draws with that
  * model rather than the project's. A backend is built once per model and kept for the life of the
- * router. A vendor whose key is missing is refused with the `ConfigError` `resolveKeys` would have
- * raised, so a host's key-setup handling sees the fault it already knows.
+ * router. A model no resolved key can carry is refused with the `ConfigError` a pre-run check
+ * would have raised, so a host's key-setup handling sees the fault it already knows.
+ *
+ * A result comes back under the id the caller sent, whatever spelling the wire carried: the
+ * manifest holds the author's spelling, and the dedupe key already does. The route's transport
+ * is written beside it.
  *
  * Exported because a generation graph attaches references it read out of its own blob store,
  * which have no `AssetRef` to resolve, so it calls the backend rather than the `ImageProvider`
@@ -164,9 +166,10 @@ export function createImageBackend(
   opts: ImageBackendOptions = {},
 ): ImageBackend {
   const build = opts.build ?? imageBackendBuilder(opts.catalog ?? []);
-  const built = new Map<string, ImageBackend>();
+  const present = keysPresent(keys);
+  const built = new Map<string, { backend: ImageBackend; route: Route }>();
 
-  const backendFor = (modelId: string): ImageBackend => {
+  const backendFor = (modelId: string): { backend: ImageBackend; route: Route } => {
     // Nothing above the seam may send an empty id: the graph runtime resolves an inherit node
     // to the project's model, and the task runners copy `models.image` into every task
     if (modelId.trim() === '') {
@@ -177,21 +180,30 @@ export function createImageBackend(
     const found = built.get(modelId);
     if (found !== undefined) return found;
 
-    const vendor = imageVendorOf(modelId);
-    const apiKey = keys[vendor];
-    if (!apiKey) throw missingKeyError(config, vendor);
-    const backend = build(vendor, apiKey, modelId);
-    built.set(modelId, backend);
-    return backend;
+    const route = imageRouteFor(modelId, present);
+    if (route === undefined) throw missingRouteError(config, modelId, imageVendorOf(modelId));
+    const entry = { backend: build(route, keys[route.transport]), route };
+    built.set(modelId, entry);
+    return entry;
   };
+
+  const stamped = (result: ImageResult, route: Route): ImageResult => ({
+    ...result,
+    modelId  : route.modelId,
+    transport: route.transport,
+  });
 
   // Async so a refusal here surfaces as a rejected promise, the same way a backend's own does.
   return {
     modelId : config.models.image,
-    generate: async (prompt, refs, params) =>
-      backendFor(params.modelId).generate(prompt, refs, params),
-    edit: async (base, prompt, refs, params) =>
-      backendFor(params.modelId).edit(base, prompt, refs, params),
+    generate: async (prompt, refs, params) => {
+      const { backend, route } = backendFor(params.modelId);
+      return stamped(await backend.generate(prompt, refs, params), route);
+    },
+    edit: async (base, prompt, refs, params) => {
+      const { backend, route } = backendFor(params.modelId);
+      return stamped(await backend.edit(base, prompt, refs, params), route);
+    },
   };
 }
 

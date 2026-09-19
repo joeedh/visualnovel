@@ -65,6 +65,7 @@ async function generateAsset(
     prompt,
     refs   : refs.map((r) => r.hash),
     modelId: result.modelId,
+    ...(result.transport === undefined ? {} : { transport: result.transport }),
   });
 }
 
@@ -194,6 +195,7 @@ const runModelSheet: Runner<'model_sheet'> = async (task, deps) => {
     prompt,
     refs   : refs.map((r) => r.hash),
     modelId: result.modelId,
+    ...(result.transport === undefined ? {} : { transport: result.transport }),
   });
   return { status: 'done', output: ref.hash };
 };

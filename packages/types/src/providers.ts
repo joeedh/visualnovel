@@ -4,15 +4,19 @@
  * via model ids in project.yaml.
  */
 import type { AssetRef, ImageParams, PanelBox } from './entities.js';
+import type { Transport } from './textmodels.js';
 
 /** Result of an image generation or edit. */
 export interface ImageResult {
   /** Raw image bytes. */
   bytes: Uint8Array;
   ext: string;
+  /** The model as the caller named it, which is what the manifest and the dedupe key hold. */
   modelId: string;
   /** Seed actually used, when the provider reports one. */
   seed?: number;
+  /** Which key carried the call, when the router knows. */
+  transport?: Transport;
 }
 
 /** Generates and edits images (Gemini "nano banana" in practice). */

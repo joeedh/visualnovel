@@ -3,6 +3,7 @@ import {
   KEY_VENDORS,
   keyStatus,
   loadConfig,
+  missingRouteError,
   resolveKeys,
   secretDirsFor,
   secretFileFor,
@@ -30,7 +31,13 @@ import {
 import { discoverSkills, skillRoots } from '@vn/authoring';
 import { shippedImageModels } from '@vn/gengraph';
 import { readModelCatalog, writeModelCatalog } from '@vn/gengraph/state';
-import type { Lettering, ProjectConfig, TextLLM } from '@vn/types';
+import {
+  imageRouteFor,
+  type KeysPresent,
+  type Lettering,
+  type ProjectConfig,
+  type TextLLM,
+} from '@vn/types';
 import type { BuiltinSkillView, KeyScope, KeyStatusView, ProjectView } from '../../shared/ipc.js';
 import { parseKeyGuide, type GuideUrlField, type KeyGuide } from '../../shared/apikeys.js';
 import { builtinSkillsDir, readResource } from '../distribution/resources.js';
@@ -240,13 +247,15 @@ export class ProjectPart {
       return { ok: false, message: 'The project already says that.' };
     }
 
-    const vendor = imageVendorOf(id);
     const status = await keyStatus(project.config, {
       secretsDirs: await secretDirsFor(this.session.dir),
     });
-    if (!status.find((s) => s.vendor === vendor)?.resolved) {
-      const named = vendor === 'openrouter' ? 'OpenRouter' : 'Gemini';
-      return { ok: false, message: `no ${named} key is set; provide one in Setup first` };
+    const present = Object.fromEntries(
+      status.map((s) => [s.vendor, s.resolved]),
+    ) as unknown as KeysPresent;
+    if (imageRouteFor(id, present) === undefined) {
+      const refusal = missingRouteError(project.config, id, imageVendorOf(id));
+      return { ok: false, message: `${refusal.message}; provide one in Setup first` };
     }
 
     const count = project.graph

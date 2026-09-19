@@ -104,8 +104,9 @@ export async function generateConcept(
     // produced it and provenance still answers "what made this" in its usual field
     sourceTask: hashParts('concept', { prompt, params, refs: refs.map((r) => r.hash) }),
     prompt,
-    refs     : refs.map((r) => r.hash),
-    modelId  : result.modelId,
+    refs   : refs.map((r) => r.hash),
+    modelId: result.modelId,
+    ...(result.transport === undefined ? {} : { transport: result.transport }),
     satisfies: subjectBinding(subject),
     title    : conceptTitle(sentence),
   });
@@ -230,6 +231,7 @@ export async function redrawConcept(deps: ArtGenDeps, req: RedrawRequest): Promi
     prompt,
     refs   : refs.map((r) => r.hash),
     modelId: result.modelId,
+    ...(result.transport === undefined ? {} : { transport: result.transport }),
     satisfies,
     ...(title ? { title } : {}),
   });

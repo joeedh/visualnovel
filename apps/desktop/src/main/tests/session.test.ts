@@ -1225,13 +1225,14 @@ describe('WorkspaceSession — project settings', () => {
     expect(preview.message).toMatch(/re-keys \d+ image task/);
   });
 
-  it('refuses an image model whose vendor has no key, naming Setup', async () => {
+  it('refuses an image model no key can carry, naming the key and Setup', async () => {
     const had = process.env.OPENROUTER_API_KEY;
     process.env.OPENROUTER_API_KEY = '';
     try {
       expect(await session.previewImageModel('openai/gpt-image-2')).toEqual({
         ok     : false,
-        message: 'no OpenRouter key is set; provide one in Setup first',
+        message:
+          'missing openrouter API key for openai/gpt-image-2: set $OPENROUTER_API_KEY or place openrouter.txt in a keys/ dir; provide one in Setup first',
       });
       expect(await session.previewImageModel('   ')).toMatchObject({ ok: false });
       expect(await p.read('project.yaml')).not.toContain('openai/gpt-image-2');

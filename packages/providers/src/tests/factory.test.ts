@@ -6,6 +6,7 @@ import { projectConfig } from '@vn/types';
 import type { ResolvedKeys } from '@vn/config';
 import { ConfigError, ProviderError } from '@vn/util';
 import type { ImageBackend, ImageInput } from '../backend.js';
+import { requestKey } from '../cache.js';
 import { createImageBackend, projectModels, requiredVendors, resolveRoutes } from '../factory.js';
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]);
@@ -39,9 +40,9 @@ function router(keys: Partial<ResolvedKeys>) {
     config,
     { gemini: '', anthropic: '', openrouter: '', ...keys },
     {
-      build: (vendor, apiKey, modelId) => {
-        built.push(`${vendor}:${apiKey}:${modelId}`);
-        return stub(modelId, seen);
+      build: (route, apiKey) => {
+        built.push(`${route.transport}:${apiKey}:${route.wireId}`);
+        return stub(route.wireId, seen);
       },
     },
   );
@@ -95,7 +96,7 @@ describe('createImageBackend', () => {
     expect(built).toEqual([]);
   });
 
-  it('refuses a vendor with no key in resolveKeys’s own words, and never a value', async () => {
+  it('refuses a model no key can carry in the pre-run check’s own words, and never a value', async () => {
     const { backend, built } = router({ gemini: 'g-key' });
 
     const err = await backend
@@ -104,9 +105,47 @@ describe('createImageBackend', () => {
 
     expect(err).toBeInstanceOf(ConfigError);
     expect((err as Error).message).toBe(
-      'missing openrouter API key: set $OPENROUTER_API_KEY or place openrouter.txt in a keys/ dir',
+      'missing openrouter API key for openai/gpt-image-2: set $OPENROUTER_API_KEY or place openrouter.txt in a keys/ dir',
     );
     expect(built).toEqual([]);
+
+    const bare = router({ anthropic: 'a-key' });
+    const gemini = await bare.backend
+      .generate('a', [], { modelId: 'gemini-2.5-flash-image' })
+      .catch((e: unknown) => e);
+    expect((gemini as Error).message).toBe(
+      'missing gemini API key for gemini-2.5-flash-image: set $GEMINI_API_KEY or place gemini.txt in a keys/ dir, or set $OPENROUTER_API_KEY to route it through OpenRouter',
+    );
+  });
+
+  it('draws a Gemini id through OpenRouter on that key alone, under the author’s spelling', async () => {
+    const { backend, seen, built } = router({ openrouter: 'or-key' });
+
+    const result = await backend.generate('a', [], { modelId: 'gemini-2.5-flash-image' });
+
+    expect(built).toEqual(['openrouter:or-key:google/gemini-2.5-flash-image']);
+    expect(seen).toEqual(['google/gemini-2.5-flash-image:gemini-2.5-flash-image:a']);
+    // The stub answered with the wire id; the router puts the author's spelling back
+    expect(result.modelId).toBe('gemini-2.5-flash-image');
+    expect(result.transport).toBe('openrouter');
+  });
+
+  it('stamps the transport on a native draw too, and prefers the native key', async () => {
+    const { backend, built } = router(keys);
+    const result = await backend.generate('a', [], { modelId: 'gemini-2.5-flash-image' });
+    expect(built).toEqual(['gemini:g-key:gemini-2.5-flash-image']);
+    expect(result.transport).toBe('gemini');
+  });
+
+  it('keys the dedupe request identically whichever transport draws', () => {
+    const params = { modelId: 'gemini-2.5-flash-image', aspect: '16:9' };
+    expect(requestKey('generate', 'a cat', [], params)).toBe(
+      requestKey('generate', 'a cat', [], { ...params }),
+    );
+    // The key reads `params.modelId`, which the router never rewrites; a route is not an input
+    expect(requestKey('generate', 'a cat', [], params)).not.toBe(
+      requestKey('generate', 'a cat', [], { ...params, modelId: 'google/gemini-2.5-flash-image' }),
+    );
   });
 
   // The default builder is the one the hosts use, so the catalog's seed flag is checked through it
@@ -125,7 +164,7 @@ describe('createImageBackend', () => {
 });
 
 describe('requiredVendors', () => {
-  it('is the union over the image model, the reviewers and the text model', () => {
+  it('is the union over the reviewers and the text model, leaving the image model to its route', () => {
     const mixed = projectConfig.parse({
       title : 'T',
       models: {
@@ -134,7 +173,7 @@ describe('requiredVendors', () => {
         text  : 'claude-opus-4-8',
       },
     });
-    expect(requiredVendors(mixed)).toEqual(['openrouter', 'gemini', 'anthropic']);
+    expect(requiredVendors(mixed)).toEqual(['gemini', 'anthropic']);
   });
 
   it('asks for no gemini key from a project that never calls Gemini', () => {
@@ -142,7 +181,7 @@ describe('requiredVendors', () => {
       title : 'T',
       models: { image: 'openai/gpt-image-2', vision: ['claude-opus-4-8'], text: 'claude-opus-4-8' },
     });
-    expect(requiredVendors(noGemini)).toEqual(['openrouter', 'anthropic']);
+    expect(requiredVendors(noGemini)).toEqual(['anthropic']);
     expect(requiredVendors(config)).toEqual(['gemini', 'anthropic']);
   });
 });

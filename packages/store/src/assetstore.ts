@@ -148,9 +148,10 @@ export class AssetRoot {
       prompt    : meta.prompt,
       refs      : meta.refs ?? [],
       modelId   : meta.modelId,
+      ...(meta.transport === undefined ? {} : { transport: meta.transport }),
       // One byte-stream can serve several things; the second writer must not erase the first.
-      satisfies : mergeBindings(existing?.satisfies, meta.satisfies),
-      accepted  : meta.accepted ?? existing?.accepted ?? false,
+      satisfies: mergeBindings(existing?.satisfies, meta.satisfies),
+      accepted : meta.accepted ?? existing?.accepted ?? false,
       // An existing title survives a write that carries none, so promoting a concept does not
       // erase the name it was given
       ...((meta.title ?? existing?.title) ? { title: meta.title ?? existing?.title } : {}),

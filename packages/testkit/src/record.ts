@@ -18,7 +18,7 @@ import {
   StubImageBackend,
   createImageBackend,
   createMockProviders,
-  imageVendorOf,
+  resolveRoutes,
   type ImageBackend,
   type ServedRequest,
 } from '@vn/providers';
@@ -166,10 +166,10 @@ export async function recordCorpus(opts: CorpusOptions = {}): Promise<CorpusRepo
       // than inherited. This function spends real money, and it must not succeed on a
       // developer's machine by picking up their own key from an enclosing directory.
       secretsDirs: await secretDirsFor(process.cwd(), { includeUser: false }),
-      // Only the image vendor: text and vision are mocked here (see the file header), so the
-      // vendors a full run would require are never called
-      require    : [imageVendorOf(config.models.image)],
     });
+    // Only the image model is routed: text and vision are mocked here (see the file header), so
+    // the keys a full run would need are never read
+    resolveRoutes(config, keys, { image: [config.models.image] });
     backend = new CachedImageBackend(cache, createImageBackend(config, keys), {
       record: true,
       fixture,

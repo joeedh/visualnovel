@@ -14,6 +14,7 @@ import type {
 } from './entities.js';
 import type { AnyTask, Task, TaskKind } from './tasks.js';
 import type { Providers } from './providers.js';
+import type { Transport } from './textmodels.js';
 
 /** A validation diagnostic produced while building the project model (report §P0). */
 export interface Diagnostic {
@@ -53,6 +54,8 @@ export interface AssetMeta {
   prompt?: string;
   refs?: string[];
   modelId: string;
+  /** See {@link Asset.transport}. */
+  transport?: Transport;
   /** What this asset is for. One binding per write; the store merges it into the record's list. */
   satisfies?: AssetBinding;
   accepted?: boolean;

@@ -3,6 +3,7 @@
  * on disk; these are the in-memory shapes the rest of the system manipulates.
  */
 import type { PromptOverride } from './prompt.js';
+import type { Transport } from './textmodels.js';
 
 /** Lifecycle of a character's "look" through the approval gate (report §P3). */
 export type CharacterStatus = 'draft' | 'candidates' | 'approved' | 'locked';
@@ -398,7 +399,13 @@ export interface Asset {
   prompt?: string;
   /** Reference asset hashes fed into the generation, in order. */
   refs: string[];
+  /** The model as `project.yaml` or the node named it, never its OpenRouter spelling. */
   modelId: string;
+  /**
+   * Which key carried the call. Absent on a record written before routing existed, and then
+   * read as the model's own vendor.
+   */
+  transport?: Transport;
   params?: ImageParams;
   /**
    * Everything this asset satisfies, for the manifest index. A list because bytes are keyed by
