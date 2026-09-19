@@ -406,7 +406,7 @@ documentation is the reference; this plan only names what the app calls.
    before `---` shows the raw block; two panes on one document share edits and undo; a
    form draft survives a pane switch; an external rewrite between open and save is
    refused; a minute of idleness after an edit produces a commit whose subject starts
-   `Autosaved`, and the editor's undo history survives it.
+   `Autosaved`, and the editor's undo history survives it. Done; see As shipped.
 10. **Docs**: `docs/reference/desktop-app-editors-misc.md` (the Wiki section, including
     the reversed decision and autosave), `docs/reference/guided-tours.md` (D8: a rich
     editor records like a text box), `docs/reference/desktopAppState.md` (the Raw toggle
@@ -614,6 +614,41 @@ documentation is the reference; this plan only names what the app calls.
   other differences are the sample project's own notifications since the last sweep.
 - `ux-model.json` was regenerated with each of tasks 6 and 7 (the `open-detached`,
   `open-raw` and `open-raw-stale` situations); a regeneration here changes nothing.
+
+### Task 9
+
+Run on 2026-09-19 over CDP against a git-initialised copy of `templates/basic`, with
+`characters/aiko/character.md` given a YAML comment and an unknown `nickname:` key, plus
+`wiki/lore.md` (no front matter), `characters/bad/character.md` (`type: location`) and
+`characters/blank/character.md` (a blank line before the fence). The scripts drove the
+pane's own objects (`buf`, `editor`, the form's `textbox-x` boxes and its **Apply
+answers** button) and read the footer; disk was checked with `git diff` in the copy.
+
+- Metadata-only edit: `name:` through the form changes one line; the comment, the unknown
+  key and the body are byte-identical on disk, and the save is one commit
+  `Saved characters/aiko/character.md (674 bytes)`.
+- Body-only edit: a synthetic `beforeinput` (`insertText`) at the end of the prose block
+  leaves the YAML prefix, comment and unknown key included, byte-identical; the commit's
+  diff is the one prose line.
+- A note shows no form and no footer note. The conflict sheet keeps its raw block with
+  `This document is a character by its location but declares type: location; move the file or fix the tag`.
+  The blank-line sheet keeps its raw block with
+  `Not front matter: the fence must open at the first line`.
+- Two panes (`view.open … where='right'`) hold one session; a form edit applied in one
+  shows in the other's form at once, with the other's unsaved badge lit; undo in the other
+  pane reverts both.
+- A form draft (typed, not applied) survives the pane switching to Documents and back: the
+  same `WikiEditor` instance returns, its `FormControl` still mounted with the typed
+  answer and the draft still registered, not detached. path.ux keeps an area's editor
+  instances across a switch, so the D4 case (a control disposed with answers typed) does
+  not arise from a pane switch; it needs the block replaced under the form.
+- An external rewrite between an applied edit and the save is refused with
+  `changed underneath this edit (read at …, now …) — reopen it and reapply`, and the edit
+  stays in the session.
+- After an edit and 75 seconds, the log's newest subject is
+  `Autosaved characters/aiko/character.md (724 bytes)`, the badge is off, and `undo()`
+  then `redo()` in the editor still step the revision back and forward (the buffer is
+  dirty again after either, per task 5's note on undo).
 
 ## Pressure-test findings
 
