@@ -537,7 +537,8 @@ falls back to.
   `Frame.bubble` for a line that has one; the desktop Play draws it inside the lit panel —
   paper at 92%, ink text in prose type, a tail to the tail point when there is one — and
   hides the dialogue box for that frame. The standalone web player keeps its text overlay
-  and ignores the field.
+  and ignores the field (the static site draws it since
+  [`site-speech-bubbles.md`](site-speech-bubbles.md)).
 - **Editor.** The layer is drawn only under `lettering: runner`. Each panel shows one
   anchor per line it letters: a placed bubble at its anchor, and for a line with no bubble
   yet a ghost anchor at the panel's centroid (stacked with a small offset when several
@@ -1059,11 +1060,12 @@ from this plan or decided something it left open.
 
 - **The playable names lines, not just panels.** `show.panels` carries each panel's
   outline and the line ids it letters, and every `say` and `narrate` beat names its line,
-  all optional so an older `story.play.json` still parses and the static site ignores
-  them. `framesOf` gives a frame the panel that letters its line; a line no panel letters
-  shows the page whole. Play dims the rest of the page with an even-odd path over the
-  picture's own box, crossfades between two panels of one page, and cuts under reduced
-  motion.
+  all optional so an older `story.play.json` still parses and the static site ignores them
+  (until [`site-speech-bubbles.md`](site-speech-bubbles.md), which reads the lines to
+  place bubbles). `framesOf` gives a frame the panel that letters its line; a line no
+  panel letters shows the page whole. Play dims the rest of the page with an even-odd path
+  over the picture's own box, crossfades between two panels of one page, and cuts under
+  reduced motion.
 - **`setPanels` is the whole partition at once, and it is the only rule that moves a line
   between two panels.** `@vn/scriptedit`'s `panels.ts` validates the list against the
   shot's cast and covered lines, refuses a line in two panels, and reads an empty list as

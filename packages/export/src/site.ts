@@ -13,6 +13,17 @@
  */
 import type { Playable, PlayableScene, Beat } from '@vn/types';
 
+// Mirrors the Play pane's bubble constants in editors/play.ts
+const BUBBLE_PAPER = 'rgba(232, 230, 223, 0.92)';
+const BUBBLE_INK = '#0e1116';
+const BUBBLE_MARGIN_PX = 6;
+const TAIL_HALF_PX = 9;
+const BUBBLE_MAX_WIDTH = '44%';
+const BUBBLE_FONT_PX = 15;
+const BUBBLE_LINE_HEIGHT = 1.35;
+const SPEECH_RADIUS_PX = 16;
+const CAPTION_RADIUS_PX = 4;
+
 /** One rendered file, at a path relative to the site root. */
 export interface SitePage {
   path: string;
@@ -79,20 +90,142 @@ function speakerName(playable: Playable, who: string): string {
   return playable.characters[who]?.name ?? who;
 }
 
-function renderBeat(playable: Playable, beat: Beat): string {
-  if (beat.type === 'show') {
-    // A frame with no accepted asset yet renders as nothing at all. The alternative is a broken
-    // image on every page of a half-generated project.
-    if (!beat.image) return '';
-    const src = `assets/${esc(beat.image.hash)}.${esc(beat.image.ext)}`;
-    const alt = beat.shot ? esc(beat.shot) : 'Illustration';
-    return `<figure class="frame"><img src="${src}" alt="${alt}" loading="lazy"></figure>`;
+type ShowBeat = Extract<Beat, { type: 'show' }>;
+type LineBeat = Exclude<Beat, { type: 'show' }>;
+
+/** A bubble the renderer has checked: the beat it reads, and its points clamped into the page. */
+interface DrawnBubble {
+  beat: LineBeat;
+  anchor: [number, number];
+  tail?: [number, number];
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+/** A page point clamped into `[0, 1]`, or undefined unless the value is a pair of finite numbers. */
+function pointOf(value: unknown): [number, number] | undefined {
+  if (!Array.isArray(value) || value.length !== 2) return undefined;
+  const [x, y] = value as unknown[];
+  if (typeof x !== 'number' || typeof y !== 'number') return undefined;
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return undefined;
+  const clamp = (n: number) => Math.min(1, Math.max(0, n));
+  return [clamp(x), clamp(y)];
+}
+
+/**
+ * The bubbles a `show` draws over the beats read under it, following the desktop runner's rule:
+ * a beat's bubble is filed under the panel whose `lines` include the beat's line. `site-cli.ts`
+ * validates nothing below `beats`, so every shape is checked here and a malformed bubble is
+ * skipped rather than failing the publish.
+ */
+function bubblesOf(show: ShowBeat, group: LineBeat[]): DrawnBubble[] {
+  const byLine = new Map<string, LineBeat>();
+  for (const beat of group) {
+    if (beat.line !== undefined && !byLine.has(beat.line)) byLine.set(beat.line, beat);
   }
+  const drawn: DrawnBubble[] = [];
+  const panels: unknown = show.panels;
+  if (!Array.isArray(panels)) return drawn;
+  for (const panel of panels as unknown[]) {
+    if (!isRecord(panel) || !Array.isArray(panel.lines) || !Array.isArray(panel.bubbles)) continue;
+    const lines = panel.lines as unknown[];
+    for (const bubble of panel.bubbles as unknown[]) {
+      if (!isRecord(bubble) || typeof bubble.line !== 'string') continue;
+      if (!lines.includes(bubble.line)) continue;
+      const beat = byLine.get(bubble.line);
+      if (!beat) continue;
+      const anchor = pointOf(bubble.anchor);
+      if (!anchor) continue;
+      if (bubble.tail === undefined) {
+        drawn.push({ beat, anchor });
+        continue;
+      }
+      const tail = pointOf(bubble.tail);
+      if (tail) drawn.push({ beat, anchor, tail });
+    }
+  }
+  return drawn;
+}
+
+const pct = (fraction: number): string => (fraction * 100).toFixed(4);
+
+/** One bubble over the picture: centred on its anchor by CSS, clamped and tailed by the fit script. */
+function renderBubble(playable: Playable, bubble: DrawnBubble): string {
+  const { beat, anchor, tail } = bubble;
+  const kind = tail ? 'speech' : 'caption';
+  const style = `left:${pct(anchor[0])}%;top:${pct(anchor[1])}%`;
+  let data = `data-ax="${anchor[0].toFixed(4)}" data-ay="${anchor[1].toFixed(4)}"`;
+  if (tail) data += ` data-tx="${tail[0].toFixed(4)}" data-ty="${tail[1].toFixed(4)}"`;
+  const who =
+    beat.type === 'say' ? `<span class="who">${esc(speakerName(playable, beat.who))}</span>` : '';
+  return `<p class="bubble ${kind}" style="${style}" ${data}>${who}${esc(beat.text)}</p>`;
+}
+
+/**
+ * A `show` as a figure, with the bubbles of the lines read under it drawn over the picture. The
+ * beats in `drawn` are read in a bubble and must not flow as paragraphs.
+ */
+function renderFigure(
+  playable: Playable,
+  show: ShowBeat,
+  group: LineBeat[],
+): { html: string; drawn: Set<LineBeat> } {
+  const drawn = new Set<LineBeat>();
+  // A frame with no accepted asset yet renders as nothing at all. The alternative is a broken
+  // image on every page of a half-generated project. Its bubbles go with it, so the lines flow.
+  if (!show.image) return { html: '', drawn };
+  const src = `assets/${esc(show.image.hash)}.${esc(show.image.ext)}`;
+  const alt = show.shot ? esc(show.shot) : 'Illustration';
+  const img = `<img src="${src}" alt="${alt}" loading="lazy">`;
+  const bubbles = bubblesOf(show, group);
+  if (bubbles.length === 0) return { html: `<figure class="frame">${img}</figure>`, drawn };
+  for (const bubble of bubbles) drawn.add(bubble.beat);
+  // The wedges' base sits under the bubble paper, so the svg is drawn before the bubbles
+  const tails = bubbles.some((b) => b.tail) ? '<svg class="tails"></svg>' : '';
+  const overlay = bubbles.map((b) => renderBubble(playable, b)).join('');
+  return { html: `<figure class="frame page">${img}${tails}${overlay}</figure>`, drawn };
+}
+
+function renderLine(playable: Playable, beat: LineBeat): string {
   if (beat.type === 'say') {
     const who = esc(speakerName(playable, beat.who));
     return `<p class="say"><span class="who">${who}</span>“${esc(beat.text)}”</p>`;
   }
   return `<p class="narrate">${esc(beat.text)}</p>`;
+}
+
+/**
+ * A scene's beats as markup, walked in groups: a `show` and the line beats up to the next
+ * `show`. A line read in one of the figure's bubbles is left out of the flow.
+ */
+function renderBeats(playable: Playable, beats: Beat[]): { html: string[]; bubbled: boolean } {
+  const html: string[] = [];
+  let bubbled = false;
+  let i = 0;
+  while (i < beats.length) {
+    const beat = beats[i]!;
+    if (beat.type !== 'show') {
+      html.push(renderLine(playable, beat));
+      i += 1;
+      continue;
+    }
+    const group: LineBeat[] = [];
+    let j = i + 1;
+    for (; j < beats.length; j += 1) {
+      const next = beats[j]!;
+      if (next.type === 'show') break;
+      group.push(next);
+    }
+    const figure = renderFigure(playable, beat, group);
+    if (figure.drawn.size > 0) bubbled = true;
+    if (figure.html !== '') html.push(figure.html);
+    for (const line of group) {
+      if (!figure.drawn.has(line)) html.push(renderLine(playable, line));
+    }
+    i = j;
+  }
+  return { html, bubbled };
 }
 
 /** The branch footer. Renders the choices, a single continuation link, or an ending marker. */
@@ -109,8 +242,11 @@ function renderFooter(scene: PlayableScene): string {
   return `<nav class="choices">\n    <p class="ending">The End</p>\n  </nav>`;
 }
 
-/** The shell every page shares. `body` is already markup. */
-function document(title: string, body: string): string {
+/**
+ * The shell every page shares. `body` is already markup. `script` appends the bubble fit, which
+ * only a page that draws a bubble carries.
+ */
+function document(title: string, body: string, script = false): string {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -121,7 +257,7 @@ function document(title: string, body: string): string {
 </head>
 <body>
 ${body}
-</body>
+${script ? `<script>${FIT_SCRIPT}</script>\n` : ''}</body>
 </html>
 `;
 }
@@ -133,10 +269,8 @@ function renderScene(
   index: number,
   total: number,
 ): string {
-  const beats = scene.beats
-    .map((b) => renderBeat(playable, b))
-    .filter((html) => html !== '')
-    .join('\n    ');
+  const rendered = renderBeats(playable, scene.beats);
+  const beats = rendered.html.join('\n    ');
   const body = `<header class="crumb">
     <a href="index.html">${esc(playable.title)}</a>
     <span class="pos">${index + 1} / ${total}</span>
@@ -145,7 +279,7 @@ function renderScene(
     ${beats}
   </main>
   ${renderFooter(scene)}`;
-  return document(`${playable.title} — ${id}`, body);
+  return document(`${playable.title} — ${id}`, body, rendered.bubbled);
 }
 
 /**
@@ -182,7 +316,10 @@ function renderIndex(playable: Playable, order: string[]): string {
   return document(playable.title, body);
 }
 
-/** One stylesheet, no script, no request that leaves the page. */
+/**
+ * One stylesheet, no request that leaves the page; the only script is the inline bubble fit, on a
+ * page that draws one.
+ */
 const STYLESHEET = `:root {
   color-scheme: light dark;
   --ink: #1b1b1f;
@@ -224,6 +361,32 @@ h2 { font-size: 1.1rem; letter-spacing: 0.08em; text-transform: uppercase; color
 .pos { font-variant-numeric: tabular-nums; }
 .frame { margin: 2rem 0; }
 .frame img { display: block; width: 100%; height: auto; border-radius: 4px; }
+.frame.page { position: relative; }
+.bubble {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  max-width: ${BUBBLE_MAX_WIDTH};
+  padding: 8px 13px;
+  background: ${BUBBLE_PAPER};
+  color: ${BUBBLE_INK};
+  font-size: ${BUBBLE_FONT_PX}px;
+  line-height: ${BUBBLE_LINE_HEIGHT};
+  text-align: center;
+  box-shadow: 0 1px 4px rgba(14, 17, 22, 0.35);
+}
+.bubble.speech { border-radius: ${SPEECH_RADIUS_PX}px; }
+.bubble.caption { border-radius: ${CAPTION_RADIUS_PX}px; }
+.bubble .who {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.tails { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.tails polygon { fill: ${BUBBLE_PAPER}; }
 .narrate { margin: 1rem 0; }
 .say { margin: 1rem 0; }
 .say .who {
@@ -245,6 +408,47 @@ h2 { font-size: 1.1rem; letter-spacing: 0.08em; text-transform: uppercase; color
 .cast img { width: 100%; height: auto; border-radius: 4px; }
 .contents ol { padding-left: 1.25rem; }
 `;
+
+/**
+ * The bubble fit, inlined on a page that draws a bubble. It does what the Play pane's `fit` does:
+ * clamps each bubble's centre `BUBBLE_MARGIN_PX` inside the picture, writes the centre back in
+ * pixels (the stylesheet's translate keeps centring it), and draws one wedge per tailed bubble
+ * with a `TAIL_HALF_PX` base. It reads only `data-` attributes, so nothing authored is in script.
+ * A `ResizeObserver` on the picture fires once on observe and again when the lazy image decodes.
+ */
+const FIT_SCRIPT = `(function () {
+  var M = ${BUBBLE_MARGIN_PX}, T = ${TAIL_HALF_PX};
+  if (!window.ResizeObserver) return;
+  function fit(fig, img) {
+    var W = img.offsetWidth, H = img.offsetHeight;
+    if (!W || !H) return;
+    var svg = fig.querySelector('svg.tails');
+    if (svg) { svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.textContent = ''; }
+    var bubbles = fig.querySelectorAll('.bubble');
+    for (var i = 0; i < bubbles.length; i++) {
+      var b = bubbles[i], w = b.offsetWidth, h = b.offsetHeight;
+      var cx = Math.min(Math.max(b.dataset.ax * W, M + w / 2), W - M - w / 2);
+      var cy = Math.min(Math.max(b.dataset.ay * H, M + h / 2), H - M - h / 2);
+      b.style.left = cx + 'px';
+      b.style.top = cy + 'px';
+      if (!svg || b.dataset.tx === undefined) continue;
+      var tx = b.dataset.tx * W, ty = b.dataset.ty * H;
+      var len = Math.hypot(tx - cx, ty - cy) || 1;
+      var nx = (-(ty - cy) / len) * T, ny = ((tx - cx) / len) * T;
+      var wedge = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      wedge.setAttribute('points', (cx + nx) + ',' + (cy + ny) + ' ' + (cx - nx) + ',' + (cy - ny) + ' ' + tx + ',' + ty);
+      svg.appendChild(wedge);
+    }
+  }
+  var figs = document.querySelectorAll('.frame.page');
+  for (var i = 0; i < figs.length; i++) {
+    (function (fig) {
+      var img = fig.querySelector('img');
+      if (!img) return;
+      new ResizeObserver(function () { fit(fig, img); }).observe(img);
+    })(figs[i]);
+  }
+})();`;
 
 /**
  * Render a playable as a static site. Returns the files to write and the assets to copy; it

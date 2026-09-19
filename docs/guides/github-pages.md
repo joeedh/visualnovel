@@ -72,6 +72,10 @@ instead of overwriting a branch that lacks one.
   generated frames makes the branch large, and GitHub's soft limit is 1 GB per repository.
 - A frame with no accepted asset renders as no picture at all, rather than a broken image.
   A half-generated project publishes fine.
+- **Bubbles placed in the Page editor appear on the site.** Every bubble of a page shows
+  at once, its line leaves the text under the picture, and the page is never dimmed. A
+  reader with scripts off sees each bubble centred on its anchor, possibly overhanging the
+  picture's edge, with no tails.
 
 ## Rendering the site without the app
 

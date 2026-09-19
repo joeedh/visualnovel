@@ -109,9 +109,10 @@ Contracts. Each scene flattens into ordered beats plus its branch edges:
   `lines` include the frame's `line`, and the stage can dim the rest of the page around it
   (off by default; the Play pane's **Dim panels** checkbox turns it on). A line no panel
   letters, and a beat with no `line`, show the page whole. Both fields are optional in the
-  schema so a playable written before them still parses, and the static site renderer
-  ignores them
-  ([`../plans/manga-style.md#stage-3--panel-stepping-and-the-panel-editor`](../plans/manga-style.md#stage-3--panel-stepping-and-the-panel-editor)).
+  schema so a playable written before them still parses. The static site renderer reads
+  `line` and `panels[].lines` only to match bubbles, and never reads `shape`
+  ([`../plans/manga-style.md#stage-3--panel-stepping-and-the-panel-editor`](../plans/manga-style.md#stage-3--panel-stepping-and-the-panel-editor),
+  [`../plans/site-speech-bubbles.md`](../plans/site-speech-bubbles.md)).
 - **A panel's `bubbles` say where the runner reads its lines.** Under `lettering: runner`
   the page is drawn wordless and the author places a bubble per line in the Page editor
   (`PagePanel.bubbles`, `story.setBubbles`). The exporter copies each one onto the panel
@@ -122,8 +123,11 @@ Contracts. Each scene flattens into ordered beats plus its branch edges:
   tail to `tail` when there is one and as a caption box when there is not, and leaves out
   the dialogue box for that frame. A line with no bubble is read in the dialogue box with
   its panel lit, as before, so a half-lettered page still reads; nothing places a bubble
-  the author did not. The field is optional, and the static site renderer ignores it
-  ([`../plans/manga-style.md#stage-5--runner-drawn-bubbles`](../plans/manga-style.md#stage-5--runner-drawn-bubbles)).
+  the author did not. The field is optional. The static site renderer draws every bubble
+  of the lines read under a `show` over its figure at once, drops those lines from the
+  text flow, and never dims the page
+  ([`../plans/manga-style.md#stage-5--runner-drawn-bubbles`](../plans/manga-style.md#stage-5--runner-drawn-bubbles),
+  [`../plans/site-speech-bubbles.md`](../plans/site-speech-bubbles.md)).
 - **A `transition` line is coverable but produces no beat.** `CUT TO:` is an instruction
   to the reader of a screenplay rather than a line of the story. A shot may cover it, and
   covering it still changes the frame above (the `show` beat is emitted), but the
