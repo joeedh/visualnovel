@@ -36,4 +36,16 @@
      100 lines.
 [ ]: the report difficult agent editor should have somewhere for users to input feedback prior 
      to running the agent for the first time.
-[ ]: DEFERRED: execute the builtin skills plan.
+[ ]: Add a way to selete lines in the script editor, consult the frontend design skill
+[ ]: When asked to create shots the agent should ask the user if they want manga multiframe shots
+     or single frame ones.
+[ ]: right clicking on story document subtree item should have a 'sort in topological order'
+     option
+[ ]: make sure all model picking menus are sorted alphabetically
+[ ]: enable auto search menu mode for model picking menus (there's a setting in dropbox for that).
+[ ]: add a ... menu in page header that includes an item to open the page's associated asset in 
+     the asset editor.
+[ ]: Add an option in the play pane header to show all dialog bubbles at once.
+[ ]: reserve space in the page editor's notification box (that's below the header) for 
+     3 lines of text, the goal is to prevent most layout jank.  it's still acceptable for longer 
+	 notifications (e.g. errors) to expand the box.
