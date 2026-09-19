@@ -77,7 +77,7 @@ export function openSession(
 }
 
 /** The sentence a save refused by `prepareSave` carries into the footer. */
-function refusalOf(prepared: Exclude<PrepareSaveResult, { status: 'ready' }>): string {
+export function refusalOf(prepared: Exclude<PrepareSaveResult, { status: 'ready' }>): string {
   if (prepared.reason) return prepared.reason;
   switch (prepared.status) {
     case 'refused':

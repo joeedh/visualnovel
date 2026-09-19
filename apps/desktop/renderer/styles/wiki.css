@@ -31,6 +31,32 @@
   width: 100%;
 }
 
+/* The raw view, in the editor's place: the whole document as monospaced Markdown, front matter
+   included. Soft-wrapped rather than clipped, since the wrap is only where it is drawn and the
+   source keeps the author's own newlines; `overflow-wrap` breaks the one thing `pre-wrap`
+   cannot, a URL or a path wider than the pane. */
+.wk-raw {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  resize: none;
+  border: none;
+  outline: none;
+  padding: 14px 16px;
+  background: var(--ink-sunken);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.65;
+  tab-size: 2;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.wk-raw:read-only {
+  color: var(--mist-dim);
+}
+
 .wk-empty {
   flex: 1 1 auto;
   display: flex;

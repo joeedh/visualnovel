@@ -395,7 +395,7 @@ documentation is the reference; this plan only names what the app calls.
    `widgetOptions` from `nativeFormWidgets`, `onDiagnostic` into the footer, `viewState`
    across `wrote()`, detached-draft recovery and the Discard control. Done; see As shipped
    (recovery is reported and discardable rather than recovered).
-7. **Raw toggle** (D5), as `pane.view(what='mode')`.
+7. **Raw toggle** (D5), as `pane.view(what='mode')`. Done; see As shipped.
 8. **Sweep and model**: re-run the CDP anchor sweep (`anchors.json`) and
    `pnpm gen:uxmodel` (`rules/wiki.ts` gains the Raw and Discard offers), per
    `docs/reference/guided-tours.md`.
@@ -565,6 +565,44 @@ documentation is the reference; this plan only names what the app calls.
   still works after it; a note keeps its raw block with no note; an `entity_tag_conflict`
   sheet keeps its raw block with the conflict sentence; a blank line before `---` keeps
   the raw block with the fence sentence.
+
+### Task 7
+
+- The switch is a bar button acted on every paint, like Save, labelled with the view a
+  press shows (`Raw` in the rich view, `Rich` in the raw one) because the tooltip
+  describes that view. `rawOffer(raw, path)` in `rules/wiki.ts` is the offer:
+  `pane.view(what='mode')` with `on: 'raw'`, refused with nothing open. The text box is
+  recorded on whichever element is up, the editor with `TEXT_TIP` or the textarea with
+  `RAW_TIP`.
+- The draft is a `RawDraft` class in `wiki.ts`, per mount, rather than closures over pane
+  fields as in `forms_demo.ts`. It keeps the typed text itself, so when the textarea moves
+  on to another document the draft stays pending on the old session, detached, with
+  `recover()` still answering — the same shape as a closed form's answers, and the same
+  footer sentence and Discard control apply when the document is shown again. Closures
+  over the pane's fields would have made a detached draft read as clean the moment the
+  pane refilled, leaving a session neither dirty nor disposed.
+- Staleness is by session revision rather than by re-serializing the document: the draft
+  records the revision it was filled at, and `prepare` reports `conflict` (with the footer
+  sentence as its `reason`) when the revision moved. The footer shows the same sentence
+  and the Discard control while the raw view holds typed text behind such a move, through
+  `WikiState.stale`, so a raw-view conflict has a way out that is not Reload.
+  `discardOffer(detached, stale)` names whichever it is dropping.
+- Rich → raw and raw → rich both run `prepareSave()` first, as D5 says; a refusal leaves
+  the view up and puts `refusalOf`'s sentence (now exported from `docsession.ts`) in the
+  footer. Switching documents in a raw pane also runs `prepareSave()` on the one leaving,
+  so typed source is saved with its document instead of detaching; a refusal there
+  detaches it. The raw view is off for the document arriving (`rawPath`), per D5's
+  "default off on every open".
+- A commit of the typed source hands the textarea the same text back, and the refill
+  assigns `value` only when it differs, because an assignment moves the caret to the end —
+  an autosave tick mid-sentence would otherwise throw the author to the bottom.
+- Verified over CDP: raw shows the source with the fence; a typed change becomes one
+  revision on the way back and one undo step in the rich view; an edit under a dirty raw
+  view shows the stale sentence and the Discard control, the switch is refused with the
+  text intact, and Discard refills; Ctrl+S in the raw view commits the draft and saves
+  without replacing the session; leaving for another document applies the typed source,
+  the new document opens rich, and the old one is found dirty on return with no detached
+  draft.
 
 ## Pressure-test findings
 

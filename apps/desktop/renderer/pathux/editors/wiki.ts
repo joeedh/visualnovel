@@ -1,17 +1,27 @@
 import { UIBase, type Button, type Container, type ContextLike, type RichTextEditor } from 'pathux';
 import { MarkdownProvider } from 'pathux-richtext-markdown';
 import { nativeFormWidgets } from 'pathux-richtext-forms';
-import type { DocRange, DocumentSession, JsonValue, MdDoc } from 'pathux-richtext-headless';
+import {
+  markdownSourceCommand,
+  markdownText,
+  type DocRange,
+  type DocumentSession,
+  type DraftController,
+  type DraftPreparation,
+  type JsonValue,
+  type MdDoc,
+} from 'pathux-richtext-headless';
 import { frontmatterCodec } from '@vn/parse';
 import { api } from '../../api.js';
 import { ASSETSTRIP_CSS, renderAssetStrip } from '../assets/assetstrip.js';
 import { cellAction } from '../../rules/assetstrip.js';
-import { RELOAD_TIP, TEXT_TIP, discardOffer } from '../../rules/wiki.js';
+import { RAW_TIP, RELOAD_TIP, TEXT_TIP, discardOffer, rawOffer } from '../../rules/wiki.js';
 import { reloadOffer, textBox } from '../../rules/docbuffer.js';
 import { visibleEditors } from '../panes/route.js';
 import { panesOf } from '../panes/view.js';
 import { onInvalidate, onWrote } from '../app/bridge.js';
 import { AUTOSAVE_MS, BRIDGE_IO, DocBuffer } from '../doctree/docbuffer.js';
+import { refusalOf } from '../doctree/docsession.js';
 import { selectForm, type DocForm } from '../doctree/docforms.js';
 import { redrawing } from '../tour/anchors.js';
 import { assetGroups } from '../doctree/doctree.js';
@@ -34,6 +44,11 @@ import type { DocTree } from '../../../src/shared/ipc.js';
  * disagree, and a file whose fence is not on its first line keep the raw block, and the footer says
  * why. The model's own reading of a saved sheet still arrives afterwards on the same footer line.
  *
+ * The bar's Raw switch shows the same session as Markdown source in a textarea, registered on the
+ * session as a draft the way a form is: what is typed there is applied as one undoable edit when
+ * the view switches back or the document saves. The switch is per pane and forgotten when the
+ * pane closes.
+ *
  * It does not read through `@vn/bible`. That interface has no whole-file call, which is what keeps
  * whole documents out of a context window; a human reading their own note on screen is a
  * different case.
@@ -54,9 +69,24 @@ export class WikiEditor extends VnEditor {
   private noteEl!: HTMLSpanElement;
   private discardBtn!: HTMLButtonElement;
   private saveBtn!: Button;
+  private rawBtn!: Button;
+  private rawBox!: HTMLTextAreaElement;
 
   /** The tree the strip is read out of. One fetch per invalidation, not one per document. */
   private tree: DocTree | undefined;
+
+  /** Whether the source textarea stands in for the rich editor. In memory only, off on open. */
+  private raw = false;
+
+  /** The document the raw view was switched on for; showing another one switches it off. */
+  private rawPath = '';
+
+  /** The path `show` is on its way to, so a frame's `update` does not start a second trip. */
+  private showing: string | undefined;
+
+  /** The draft the textarea is typed into, on the buffer's session, and what unregisters it. */
+  private rawDraft: RawDraft | undefined;
+  private rawOff: (() => void) | undefined;
 
   /**
    * The document in the editor, which trails `ui.docPath` by one async read. The session, the
@@ -71,8 +101,8 @@ export class WikiEditor extends VnEditor {
   /** The path the editor was last bound for, so a swap on the same path keeps the view state. */
   private bound = '';
 
-  /** What path.ux said about the front-matter block of the session on screen, or nothing. */
-  private formNote = '';
+  /** What path.ux said about the front-matter block on screen, or why a switch of view was refused. */
+  private viewNote = '';
 
   /** What `selectForm` last answered, which decides whether a diagnostic is news (D1). */
   private picked: 'note' | 'sheet' | 'conflict' | undefined;
@@ -100,6 +130,8 @@ export class WikiEditor extends VnEditor {
       reload,
       () => void this.buf.reload(),
     );
+    // Acted per paint like Save: its label and tooltip name the view a press shows
+    this.rawBtn = bar.button('Raw', () => {});
     // Built once with the rest of this bar. The toggle keeps its own state, so it does not need
     // redrawing when the document changes underneath it.
     this.pinToggle(bar);
@@ -138,14 +170,26 @@ export class WikiEditor extends VnEditor {
     // keys hands the shell's gestures away mid-edit; the editor's own chords (Ctrl+Z among them)
     // ran already, in its shadow root. Ctrl+S is caught here so it saves the document rather
     // than reaching the browser's own save.
-    this.editor.addEventListener('keydown', (event) => {
+    const keys = (event: KeyboardEvent) => {
       event.stopPropagation();
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
         event.preventDefault();
         void this.buf.save();
       }
-    });
+    };
+    this.editor.addEventListener('keydown', keys);
     this.surface.appendChild(this.editor);
+
+    // The raw view: the same session as source, shown in the editor's place
+    this.rawBox = el('textarea', 'wk-raw') as HTMLTextAreaElement;
+    this.rawBox.spellcheck = false;
+    this.rawBox.wrap = 'soft';
+    this.rawBox.addEventListener('keydown', keys);
+    this.rawBox.addEventListener('input', () => {
+      this.rawDraft?.typed(this.rawBox.value);
+      this.paintFoot();
+    });
+    this.surface.appendChild(this.rawBox);
 
     // The strip sits below the text and is height-bounded, so it cannot crowd the page text off
     // the screen
@@ -194,7 +238,25 @@ export class WikiEditor extends VnEditor {
   override update() {
     super.update();
 
-    if (this.ui.docPath !== this.buf.path) void this.buf.open(this.ui.docPath);
+    if (this.ui.docPath !== this.buf.path && this.showing !== this.ui.docPath) {
+      void this.show(this.ui.docPath);
+    }
+  }
+
+  /**
+   * Show another document. Source typed into the raw view is applied to the one leaving first,
+   * so it is saved with the document rather than left detached; a refusal leaves it detached, as
+   * a closed form's answers are.
+   */
+  private async show(path: string): Promise<void> {
+    this.showing = path;
+    try {
+      const session = this.buf.session;
+      if (this.raw && this.rawDraft?.pending() && session) await session.prepareSave();
+      if (this.ui.docPath === path) await this.buf.open(path);
+    } finally {
+      this.showing = undefined;
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -225,16 +287,79 @@ export class WikiEditor extends VnEditor {
   /** Shows a diagnostic in the footer, except the expected "no form" of a note. */
   private diagnose(message: string): void {
     if (this.picked === 'note') return;
-    this.formNote = message;
+    this.viewNote = message;
     this.paintFoot();
   }
 
-  /** Drop the answers a closed form left on the session, which its save was refused over. */
+  /**
+   * Drop what refuses the save: the answers a closed form left on the session, and source typed
+   * into the raw view after the document moved under it.
+   */
   private discard(): void {
     const session = this.buf.session;
     if (!session) return;
     for (const draft of session.pendingDrafts) if (draft.detached) session.discardDraft(draft.id);
+    if (this.rawStale) this.rawDraft?.discard();
     this.paint();
+  }
+
+  // -------------------------------------------------------------------------
+  // The raw view
+  // -------------------------------------------------------------------------
+
+  /**
+   * Switch views. Either way the session's pending drafts are applied first — a form's answers
+   * before the rich editor unmounts, the typed source before the rich view shows it — and a
+   * refusal leaves the view as it is and says why.
+   */
+  private async toggleRaw(): Promise<void> {
+    const session = this.buf.session;
+    if (!session) return;
+    const prepared = await session.prepareSave();
+    if (this.buf.session !== session) return;
+    if (prepared.status !== 'ready') {
+      this.viewNote = refusalOf(prepared);
+      this.paintFoot();
+      return;
+    }
+    this.raw = !this.raw;
+    this.rawPath = this.buf.path;
+    this.viewNote = '';
+    this.paint();
+  }
+
+  /** Whether the textarea holds typed source that the document has since moved out from under. */
+  private get rawStale(): boolean {
+    return this.rawDraft?.stale ?? false;
+  }
+
+  /** Register the textarea on a session as a draft, filled from that session's document. */
+  private mountRaw(session: DocumentSession<MdDoc>): void {
+    this.unmountRaw();
+    this.rawBox.readOnly = !session.canWrite;
+    this.rawDraft = new RawDraft(session, (text) => this.filledRaw(text));
+    this.rawOff = session.registerDraft(this.rawDraft, this.ctx);
+  }
+
+  /**
+   * Take the textarea off its session. Source still typed into it stays on that session as a
+   * detached draft, as a closed form's answers do, and is reported when the document is shown
+   * again.
+   */
+  private unmountRaw(): void {
+    this.rawOff?.();
+    this.rawOff = undefined;
+    this.rawDraft = undefined;
+  }
+
+  /**
+   * The draft filled the textarea from the document. The value is only assigned when it differs,
+   * because an assignment moves the caret to the end, and a commit of the typed source hands back
+   * the same text. A refusal said about the source it replaces is over.
+   */
+  private filledRaw(text: string): void {
+    this.viewNote = '';
+    if (this.rawBox.value !== text) this.rawBox.value = text;
   }
 
   // -------------------------------------------------------------------------
@@ -268,39 +393,63 @@ export class WikiEditor extends VnEditor {
    * index, because the document underneath changed but the author's place in it did not.
    */
   private bind(): void {
-    const next = this.buf.session;
+    // Under the raw view the editor is unbound: the two views never share a pane, so a form
+    // cannot hold answers while the source is typed into
+    const next = this.raw ? undefined : this.buf.session;
     const shown = this.editor.session;
     if (shown === next) return;
     const same = shown !== undefined && next !== undefined && this.bound === this.buf.path;
     const state = same ? this.editor.viewState : undefined;
     // Cleared before the swap: path.ux reports on the new session's block while it renders
-    this.formNote = '';
+    this.viewNote = '';
     this.picked = undefined;
     this.editor.session = next;
     this.bound = this.buf.path;
     if (state && shown && next) this.editor.viewState = remap(state, shown, next);
   }
 
+  /**
+   * Keep the textarea on the buffer's session: registered on a new one, refilled when the
+   * document changed and nothing was typed, off the session when the rich view is back.
+   */
+  private bindRaw(): void {
+    const session = this.buf.session;
+    if (!this.raw || !session) {
+      if (this.rawDraft) this.unmountRaw();
+      return;
+    }
+    if (this.rawDraft?.session !== session) this.mountRaw(session);
+    else this.rawDraft.refresh();
+  }
+
   private paint(): void {
     const open = this.buf.path !== '';
+    if (this.raw && this.rawPath !== this.buf.path) this.raw = false;
     this.empty.style.display = open ? 'none' : 'flex';
-    this.editor.style.display = open ? '' : 'none';
+    this.editor.style.display = open && !this.raw ? '' : 'none';
+    this.rawBox.style.display = open && this.raw ? '' : 'none';
     this.bind();
+    this.bindRaw();
     // Re-recorded on every paint rather than once with the bar: the bar is built at init and
     // the offer changes with the buffer, so a record kept from init would say `Nothing to save`
     // for the life of the pane.
     const anchors = redrawing('wiki', 'bar');
     anchors.act(this.saveBtn, this.buf.saveOffer, () => void this.buf.save());
+    const raw = rawOffer(this.raw, this.buf.path);
+    this.rawBtn.name = raw.label;
+    anchors.act(this.rawBtn, raw, () => void this.toggleRaw());
     // The whole editor, toolbar and any form inside it, is one control: the box Save reads (D8)
-    anchors.record(this.editor, textBox(this.buf.path, TEXT_TIP));
+    if (this.raw) anchors.record(this.rawBox, textBox(this.buf.path, RAW_TIP));
+    else anchors.record(this.editor, textBox(this.buf.path, TEXT_TIP));
     this.paintFoot(anchors);
     this.paintStrip();
   }
 
   /**
    * The footer line: the path, the unsaved badge, and one note — a refusal or diagnostic from the
-   * buffer first, else what path.ux said about the front-matter block, else the answers a closed
-   * form left behind, beside the control that discards them.
+   * buffer first, else what path.ux said about the front-matter block, else what refuses the save
+   * (the answers a closed form left behind, or typed source the document moved under), beside the
+   * control that discards it.
    */
   private paintFoot(anchors = redrawing('wiki', 'foot')): void {
     const open = this.buf.path !== '';
@@ -309,14 +458,18 @@ export class WikiEditor extends VnEditor {
     this.badge.style.display = this.buf.dirty ? 'inline-block' : 'none';
 
     const detached = this.buf.session?.pendingDrafts.filter((d) => d.detached).length ?? 0;
-    const note = this.buf.note || this.formNote || (detached > 0 ? DETACHED : '');
-    const bad = this.buf.note ? this.buf.bad : this.formNote !== '' || detached > 0;
+    const stale = this.rawStale;
+    const blocked = detached > 0 ? DETACHED : stale ? RAW_STALE : '';
+    const note = this.buf.note || this.viewNote || blocked;
+    const bad = this.buf.note ? this.buf.bad : this.viewNote !== '' || blocked !== '';
     this.noteEl.textContent = note;
     this.noteEl.className = bad ? 'wk-note bad' : 'wk-note';
     this.noteEl.title = note;
 
-    this.discardBtn.hidden = detached === 0;
-    if (detached > 0) anchors.act(this.discardBtn, discardOffer(detached), () => this.discard());
+    this.discardBtn.hidden = blocked === '';
+    if (blocked !== '') {
+      anchors.act(this.discardBtn, discardOffer(detached, stale), () => this.discard());
+    }
   }
 
   /**
@@ -347,6 +500,89 @@ const BOM = '﻿';
 
 /** Said while a closed form's answers sit on the session, where they refuse every save. */
 const DETACHED = 'A form that has closed left answers unapplied; discard them to save';
+
+/** Said while the raw view holds typed source that another edit to the document has overtaken. */
+const RAW_STALE = 'The document changed under the source typed here; discard it to save';
+
+/**
+ * The raw view's draft on a session: the source typed into the textarea, applied as one edit
+ * under the precondition that the document still reads as it did when the textarea was filled.
+ * It keeps the typed text itself, so once the textarea moves on to another document the draft
+ * stays pending on this session, detached, the way a closed form's answers do.
+ */
+class RawDraft implements DraftController {
+  readonly key = 'raw-source';
+  /** What the textarea holds, kept here so the draft outlives the textarea's reuse. */
+  private text = '';
+  /** Whether anything was typed since the last fill. */
+  private dirty = false;
+  /** The source the textarea was filled from, which `prepare` expects the document to still hold. */
+  private base = '';
+  /** The session revision at the fill; a later one means the document moved under the text. */
+  private revision = 0;
+  /** Bumped by every keystroke and every fill, so a save prepared over older text is refused. */
+  private edits = 0;
+
+  constructor(
+    readonly session: DocumentSession<MdDoc>,
+    /** Called with the text each fill puts in the textarea. */
+    private readonly filled: (text: string) => void,
+  ) {
+    this.reset();
+  }
+
+  /** Whether typed source is now behind an edit to the document, which `prepare` will refuse. */
+  get stale(): boolean {
+    return this.dirty && this.session.revision !== this.revision;
+  }
+
+  typed(text: string): void {
+    this.text = text;
+    this.dirty = true;
+    this.edits++;
+  }
+
+  /** Refill from the document if it moved and nothing was typed; typed text is kept as it is. */
+  refresh(): void {
+    if (!this.dirty && this.session.revision !== this.revision) this.reset();
+  }
+
+  pending(): boolean {
+    return this.dirty;
+  }
+
+  version(): number {
+    return this.edits;
+  }
+
+  prepare(): DraftPreparation {
+    if (this.session.revision !== this.revision) return { status: 'conflict', reason: RAW_STALE };
+    return {
+      status : 'ready',
+      command: markdownSourceCommand(this.session.doc, this.base, this.text),
+    };
+  }
+
+  committed(): void {
+    this.reset();
+  }
+
+  discard(): void {
+    this.reset();
+  }
+
+  recover(): string {
+    return this.text;
+  }
+
+  private reset(): void {
+    this.dirty = false;
+    this.text = this.base = markdownText(this.session.doc);
+    this.revision = this.session.revision;
+    this.edits++;
+    this.filled(this.text);
+  }
+}
 
 /**
  * Shown for most of the bible, because every binding in the manifest names a character, a

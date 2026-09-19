@@ -711,6 +711,18 @@
     {
       "module": "wiki",
       "editor": "wiki",
+      "name"  : "open-raw",
+      "why": "The page is shown as Markdown source, so the bar offers the rich view back and the box is the source."
+    },
+    {
+      "module": "wiki",
+      "editor": "wiki",
+      "name"  : "open-raw-stale",
+      "why": "Source typed into the raw view was overtaken by an edit to the document, so the footer offers to discard it."
+    },
+    {
+      "module": "wiki",
+      "editor": "wiki",
       "name"  : "open-dirty",
       "why": "The open page has changed, so Save is offered, and one picture drawn from it opens in the asset editor."
     },
@@ -30479,6 +30491,29 @@
       "editor"    : "wiki",
       "module"    : "wiki",
       "situation" : "none-open",
+      "key"       : "fx:pane.view#raw",
+      "widgetPath": "wiki/pane-view~8a156d00",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Raw",
+        "tooltip": "Show this document as Markdown source; edits here and in the rich view share one undo history",
+        "on"     : "raw",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No document is open."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "none-open",
       "key"       : "cmd:doc.write#text",
       "widgetPath": "wiki/doc-write~b0b7797d",
       "offer": {
@@ -30552,6 +30587,32 @@
       "editor"    : "wiki",
       "module"    : "wiki",
       "situation" : "open",
+      "key"       : "fx:pane.view#raw",
+      "widgetPath": "wiki/pane-view~8a156d00",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Raw",
+        "tooltip": "Show this document as Markdown source; edits here and in the rich view share one undo history",
+        "on"     : "raw",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open",
       "key"       : "cmd:doc.write#text",
       "widgetPath": "wiki/doc-write~b0b7797d",
       "offer": {
@@ -30631,6 +30692,32 @@
       "editor"    : "wiki",
       "module"    : "wiki",
       "situation" : "open-detached",
+      "key"       : "fx:pane.view#raw",
+      "widgetPath": "wiki/pane-view~8a156d00",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Raw",
+        "tooltip": "Show this document as Markdown source; edits here and in the rich view share one undo history",
+        "on"     : "raw",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-detached",
       "key"       : "cmd:doc.write#text",
       "widgetPath": "wiki/doc-write~b0b7797d",
       "offer": {
@@ -30663,7 +30750,240 @@
       "offer": {
         "id"     : "pane.view",
         "label"  : "Discard pending edits",
-        "tooltip": "Drop the answer a form that has since closed left unapplied, so the document can be saved",
+        "tooltip": "Drop the answer a form that has since closed left unapplied so the document can be saved",
+        "on"     : "discard",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-raw",
+      "key"       : "cmd:doc.write",
+      "widgetPath": "wiki/doc-write~1ab13660",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Save",
+        "tooltip" : "Write this file back to disk, and commit it",
+        "supplies": ["text", "seenHash"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "Nothing to save"
+        }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-raw",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "wiki/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this document from disk (discards an unsaved draft)",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-raw",
+      "key"       : "fx:pane.view#raw",
+      "widgetPath": "wiki/pane-view~8a156d00",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Rich",
+        "tooltip": "Show this document in the rich view; the source typed here is applied first, as one undoable edit",
+        "on"     : "raw",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-raw",
+      "key"       : "cmd:doc.write#text",
+      "widgetPath": "wiki/doc-write~b0b7797d",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "The file, as text",
+        "tooltip": "Edit the document as Markdown source, front matter included. Ctrl+S saves and commits.",
+        "on"      : "text",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-raw-stale",
+      "key"       : "cmd:doc.write",
+      "widgetPath": "wiki/doc-write~1ab13660",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Save",
+        "tooltip" : "Write this file back to disk, and commit it",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-raw-stale",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "wiki/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this document from disk (discards an unsaved draft)",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-raw-stale",
+      "key"       : "fx:pane.view#raw",
+      "widgetPath": "wiki/pane-view~8a156d00",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Rich",
+        "tooltip": "Show this document in the rich view; the source typed here is applied first, as one undoable edit",
+        "on"     : "raw",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-raw-stale",
+      "key"       : "cmd:doc.write#text",
+      "widgetPath": "wiki/doc-write~b0b7797d",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "The file, as text",
+        "tooltip": "Edit the document as Markdown source, front matter included. Ctrl+S saves and commits.",
+        "on"      : "text",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-raw-stale",
+      "key"       : "fx:pane.view#discard",
+      "widgetPath": "wiki/pane-view~16265216",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Discard pending edits",
+        "tooltip": "Drop the source typed here, which the document has changed under, so the document can be saved",
         "on"     : "discard",
         "ok"     : true,
         "props": {
@@ -30727,6 +31047,32 @@
           "id"   : "pane.view",
           "props": {
             "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-dirty",
+      "key"       : "fx:pane.view#raw",
+      "widgetPath": "wiki/pane-view~8a156d00",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Raw",
+        "tooltip": "Show this document as Markdown source; edits here and in the rich view share one undo history",
+        "on"     : "raw",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
           }
         }
       ]

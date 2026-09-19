@@ -19,6 +19,16 @@ export const SITUATIONS = situations<WikiState>(
     state: { path: 'characters/aiko/character.md', dirty: true, detached: 1 },
   },
   {
+    name : 'open-raw',
+    why: 'The page is shown as Markdown source, so the bar offers the rich view back and the box is the source.',
+    state: { path: 'characters/aiko/character.md', dirty: false, raw: true },
+  },
+  {
+    name : 'open-raw-stale',
+    why: 'Source typed into the raw view was overtaken by an edit to the document, so the footer offers to discard it.',
+    state: { path: 'characters/aiko/character.md', dirty: true, raw: true, stale: true },
+  },
+  {
     name : 'open-dirty',
     why: 'The open page has changed, so Save is offered, and one picture drawn from it opens in the asset editor.',
     state: {
