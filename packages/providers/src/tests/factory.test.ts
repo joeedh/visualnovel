@@ -6,7 +6,7 @@ import { projectConfig } from '@vn/types';
 import type { ResolvedKeys } from '@vn/config';
 import { ConfigError, ProviderError } from '@vn/util';
 import type { ImageBackend, ImageInput } from '../backend.js';
-import { createImageBackend, requiredVendors } from '../factory.js';
+import { createImageBackend, projectModels, requiredVendors, resolveRoutes } from '../factory.js';
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]);
 
@@ -144,5 +144,78 @@ describe('requiredVendors', () => {
     });
     expect(requiredVendors(noGemini)).toEqual(['openrouter', 'anthropic']);
     expect(requiredVendors(config)).toEqual(['gemini', 'anthropic']);
+  });
+});
+
+describe('resolveRoutes', () => {
+  const mixed = projectConfig.parse({
+    title : 'T',
+    models: {
+      image : 'gemini-2.5-flash-image',
+      vision: ['gemini-2.5-flash', 'claude-opus-4-8'],
+      text  : 'claude-opus-4-8',
+    },
+  });
+
+  it('routes the default project end to end on an OpenRouter key alone', () => {
+    const routes = resolveRoutes(
+      mixed,
+      { gemini: '', anthropic: '', openrouter: 'or-key' },
+      projectModels(mixed),
+    );
+    expect([...routes.keys()]).toEqual([
+      'gemini-2.5-flash',
+      'claude-opus-4-8',
+      'gemini-2.5-flash-image',
+    ]);
+    expect(routes.get('claude-opus-4-8')).toEqual({
+      modelId  : 'claude-opus-4-8',
+      native   : 'anthropic',
+      transport: 'openrouter',
+      wireId   : 'anthropic/claude-opus-4.8',
+    });
+    expect(routes.get('gemini-2.5-flash-image')?.wireId).toBe('google/gemini-2.5-flash-image');
+  });
+
+  it('moves each vendor back onto its own key independently', () => {
+    const routes = resolveRoutes(
+      mixed,
+      { gemini: '', anthropic: 'a-key', openrouter: 'or-key' },
+      projectModels(mixed),
+    );
+    expect(routes.get('claude-opus-4-8')?.transport).toBe('anthropic');
+    expect(routes.get('gemini-2.5-flash')?.transport).toBe('openrouter');
+    expect(routes.get('gemini-2.5-flash-image')?.transport).toBe('openrouter');
+  });
+
+  it('refuses the first id no key can carry, naming both ways out', () => {
+    const err = (() => {
+      try {
+        resolveRoutes(
+          mixed,
+          { gemini: 'g-key', anthropic: '', openrouter: '' },
+          projectModels(mixed),
+        );
+        return undefined;
+      } catch (e: unknown) {
+        return e;
+      }
+    })();
+    expect(err).toBeInstanceOf(ConfigError);
+    expect((err as Error).message).toBe(
+      'missing anthropic API key for claude-opus-4-8: set $ANTHROPIC_API_KEY or place claude.txt in a keys/ dir, or set $OPENROUTER_API_KEY to route it through OpenRouter',
+    );
+  });
+
+  it('names the OpenRouter key alone for an id the author spelled for it', () => {
+    expect(() =>
+      resolveRoutes(
+        mixed,
+        { gemini: 'g-key', anthropic: 'a-key', openrouter: '' },
+        { image: ['openai/gpt-image-2'] },
+      ),
+    ).toThrow(
+      'missing openrouter API key for openai/gpt-image-2: set $OPENROUTER_API_KEY or place openrouter.txt in a keys/ dir',
+    );
   });
 });

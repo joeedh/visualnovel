@@ -1,11 +1,21 @@
 import {
+  chatRouteFor,
   chatVendorFor,
+  imageRouteFor,
   imageVendorOf,
   type EffortChoice,
   type ImageModelEntry,
   type Providers,
+  type Route,
 } from '@vn/types';
-import { missingKeyError, type KeyVendor, type ProjectConfig, type ResolvedKeys } from '@vn/config';
+import {
+  keysPresent,
+  missingKeyError,
+  missingRouteError,
+  type KeyVendor,
+  type ProjectConfig,
+  type ResolvedKeys,
+} from '@vn/config';
 import { ProviderError } from '@vn/util';
 import type { ChatBackend, ImageBackend, RefLoader } from './backend.js';
 import { createAnthropicChat } from './backends/anthropic.js';
@@ -42,6 +52,55 @@ export function chatBackendFor(
   return chatVendorFor(modelId) === 'anthropic'
     ? { backend: createAnthropicChat(keys.anthropic, modelId, { effort, record }), label: 'claude' }
     : { backend: createGeminiChat(keys.gemini, modelId, undefined, { record }), label: 'gemini' };
+}
+
+/** The ids a caller is about to use, by the seam each goes through. */
+export interface RouteRequest {
+  chat?: readonly string[];
+  image?: readonly string[];
+}
+
+/** Every model `project.yaml` configures, as a {@link RouteRequest}. */
+export function projectModels(config: ProjectConfig): RouteRequest {
+  return {
+    chat : [...config.models.vision, config.models.text],
+    image: [config.models.image],
+  };
+}
+
+/** The key a native id would need, and so the one a refusal names, by seam. */
+function nativeKeyFor(kind: keyof RouteRequest, modelId: string): KeyVendor {
+  if (kind === 'image') return imageVendorOf(modelId);
+  return modelId.includes('/') ? 'openrouter' : chatVendorFor(modelId);
+}
+
+/**
+ * Routes every id in `ids`, or throws the `ConfigError` for the first that no resolved key can
+ * carry. A pre-run check calls this over the ids a run is about to use, so a project that draws
+ * through OpenRouter and reviews with Claude is refused before it pays for a picture it cannot
+ * review, and is not asked for a key it never uses. The map is keyed by the id as spelled.
+ */
+export function resolveRoutes(
+  config: ProjectConfig,
+  keys: ResolvedKeys,
+  ids: RouteRequest,
+): Map<string, Route> {
+  const present = keysPresent(keys);
+  const routes = new Map<string, Route>();
+  const kinds = [
+    ['chat', ids.chat ?? [], chatRouteFor],
+    ['image', ids.image ?? [], imageRouteFor],
+  ] as const;
+  for (const [kind, list, routeFor] of kinds) {
+    for (const modelId of list) {
+      if (routes.has(modelId)) continue;
+      const route = routeFor(modelId, present);
+      if (route === undefined)
+        throw missingRouteError(config, modelId, nativeKeyFor(kind, modelId));
+      routes.set(modelId, route);
+    }
+  }
+  return routes;
 }
 
 /**

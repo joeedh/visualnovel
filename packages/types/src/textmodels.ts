@@ -33,6 +33,108 @@ export function imageVendorOf(modelId: string): ImageVendor {
   return id.includes('/') ? 'openrouter' : 'gemini';
 }
 
+/** The key and endpoint a call goes out through. */
+export type Transport = 'anthropic' | 'gemini' | 'openrouter';
+
+/**
+ * What a call actually does with a model id. The native vendor is what every table above the
+ * provider seam is keyed by; the transport is which key carries the request.
+ */
+export interface Route {
+  /** The id as the author spelled it; what every table above the seam is keyed by. */
+  modelId: string;
+  /** The vendor the id names, or `undefined` for an OpenRouter id under a prefix this file does not know. */
+  native: ChatVendor | ImageVendor | undefined;
+  /** The key and endpoint that carry the call. */
+  transport: Transport;
+  /** The id sent on the wire: the native id, or its OpenRouter spelling. */
+  wireId: string;
+}
+
+/** Which keys resolve. Booleans only, so the renderer can compute it from `keyStatus`. */
+export type KeysPresent = Readonly<Record<Transport, boolean>>;
+
+// The `-<major>-<minor>` tail of an Anthropic id. The minor is at most two digits so a dated id
+// (`claude-opus-4-8-20260101`) is left alone
+const ANTHROPIC_TAIL = /-(\d+)-(\d{1,2})$/;
+const OPENROUTER_TAIL = /-(\d+)\.(\d{1,2})$/;
+
+/**
+ * The OpenRouter spelling of a native id, or `undefined` for an id this rule cannot spell. An
+ * id with a slash is already an OpenRouter id and is returned as is; the `@google/genai` long
+ * form `models/<id>` has its prefix stripped first.
+ */
+export function openRouterIdFor(modelId: string): string | undefined {
+  let id = modelId.trim();
+  if (id.startsWith('models/')) id = id.slice('models/'.length);
+  if (id.includes('/')) return id;
+  const lower = id.toLowerCase();
+  if (lower.startsWith('claude')) return `anthropic/${id.replace(ANTHROPIC_TAIL, '-$1.$2')}`;
+  if (lower.startsWith('gemini')) return `google/${id}`;
+  return undefined;
+}
+
+/**
+ * The native spelling of an OpenRouter id, and the inverse of {@link openRouterIdFor}. An id
+ * under a prefix the rule does not know is returned unchanged, so the model tables answer as they
+ * do for any unknown id.
+ */
+export function nativeIdFor(wireId: string): string {
+  const id = wireId.trim();
+  if (id.startsWith('anthropic/')) {
+    return id.slice('anthropic/'.length).replace(OPENROUTER_TAIL, '-$1-$2');
+  }
+  if (id.startsWith('google/')) return id.slice('google/'.length);
+  return id;
+}
+
+/** The vendor an OpenRouter prefix names, or `undefined` for one this file does not know. */
+function nativeOfPrefix(wireId: string): ChatVendor | undefined {
+  if (wireId.startsWith('anthropic/')) return 'anthropic';
+  if (wireId.startsWith('google/')) return 'gemini';
+  return undefined;
+}
+
+/**
+ * Routes an id the author spelled as `<vendor>/<model>`. The author chose OpenRouter by spelling
+ * it, so there is no preference for the native key; without an OpenRouter key there is no route.
+ */
+function spelledRoute(modelId: string, present: KeysPresent): Route | undefined {
+  if (!present.openrouter) return undefined;
+  const wireId = modelId.trim();
+  return { modelId, native: nativeOfPrefix(wireId), transport: 'openrouter', wireId };
+}
+
+/** Routes a native id: its own key when that resolves, otherwise OpenRouter, otherwise nothing. */
+function nativeRoute(
+  modelId: string,
+  native: ChatVendor | ImageVendor,
+  present: KeysPresent,
+): Route | undefined {
+  if (present[native]) return { modelId, native, transport: native, wireId: modelId };
+  const wireId = openRouterIdFor(modelId);
+  if (present.openrouter && wireId !== undefined) {
+    return { modelId, native, transport: 'openrouter', wireId };
+  }
+  return undefined;
+}
+
+/**
+ * The route a chat call takes for a model id, or `undefined` when no resolved key can carry it.
+ * The native vendor's key wins when it resolves; OpenRouter carries the model when only its key
+ * does and {@link openRouterIdFor} can spell the id.
+ */
+export function chatRouteFor(modelId: string, present: KeysPresent): Route | undefined {
+  if (modelId.includes('/')) return spelledRoute(modelId, present);
+  return nativeRoute(modelId, chatVendorFor(modelId), present);
+}
+
+/** The route an image call takes, by the same rule as {@link chatRouteFor}. */
+export function imageRouteFor(modelId: string, present: KeysPresent): Route | undefined {
+  if (imageVendorOf(modelId) === 'openrouter') return spelledRoute(modelId, present);
+  return nativeRoute(modelId, 'gemini', present);
+}
+
 /** The effort levels a surface may offer, in order. A tuple, so a command prop can name it. */
 export const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
 

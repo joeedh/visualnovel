@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
-import type { ProjectConfig } from '@vn/types';
+import { openRouterIdFor, type KeysPresent, type ProjectConfig } from '@vn/types';
 import { ConfigError, exists, readText } from '@vn/util';
 
 /**
@@ -282,6 +282,34 @@ export function missingKeyError(config: ProjectConfig, vendor: KeyVendor): Confi
   return new ConfigError(
     `missing ${vendor} API key: set $${config.keys[vendor]} or place ${SECRET_FILES[vendor][0]} in a keys/ dir`,
   );
+}
+
+/** Which keys resolved, as booleans, so a route can be computed without seeing a key value. */
+export function keysPresent(keys: ResolvedKeys): KeysPresent {
+  return {
+    anthropic : keys.anthropic.trim() !== '',
+    gemini    : keys.gemini.trim() !== '',
+    openrouter: keys.openrouter.trim() !== '',
+  };
+}
+
+/**
+ * The refusal a model with no route gets: {@link missingKeyError}'s sentence for the native
+ * vendor's key, plus the OpenRouter way out when {@link openRouterIdFor} can spell the id. For
+ * an id the author spelled as `<vendor>/<model>`, `native` is `openrouter` and the sentence
+ * names that key alone.
+ */
+export function missingRouteError(
+  config: ProjectConfig,
+  modelId: string,
+  native: KeyVendor,
+): ConfigError {
+  const base = `missing ${native} API key for ${modelId}: set $${config.keys[native]} or place ${SECRET_FILES[native][0]} in a keys/ dir`;
+  const viaOpenRouter =
+    native !== 'openrouter' && openRouterIdFor(modelId) !== undefined
+      ? `, or set $${config.keys.openrouter} to route it through OpenRouter`
+      : '';
+  return new ConfigError(base + viaOpenRouter);
 }
 
 /**

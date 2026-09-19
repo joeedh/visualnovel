@@ -3,7 +3,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   keyStatus,
+  keysPresent,
   loadConfig,
+  missingRouteError,
   resolveKeys,
   secretDirsFor,
   setArtStyle,
@@ -553,6 +555,33 @@ describe('resolveKeys errors', () => {
     const bare = await loadConfig(await tempProject('title: T\n'));
     await expect(resolveKeys(bare, { require: ['openrouter'] })).rejects.toThrow(
       /missing openrouter API key: set \$OPENROUTER_API_KEY or place openrouter\.txt/,
+    );
+  });
+});
+
+describe('keysPresent and missingRouteError', () => {
+  it('reduces resolved keys to booleans, treating whitespace as absent', () => {
+    expect(keysPresent({ gemini: 'g', anthropic: ' ', openrouter: '' })).toEqual({
+      gemini    : true,
+      anthropic : false,
+      openrouter: false,
+    });
+  });
+
+  it('names both ways out for a model OpenRouter can carry', async () => {
+    const config = await loadConfig(await tempProject('title: T\n'));
+    expect(missingRouteError(config, 'claude-opus-4-8', 'anthropic').message).toBe(
+      'missing anthropic API key for claude-opus-4-8: set $ANTHROPIC_API_KEY or place claude.txt in a keys/ dir, or set $OPENROUTER_API_KEY to route it through OpenRouter',
+    );
+  });
+
+  it('names one key for an id spelled for OpenRouter, or one OpenRouter cannot spell', async () => {
+    const config = await loadConfig(await tempProject('title: T\n'));
+    expect(missingRouteError(config, 'openai/gpt-image-2', 'openrouter').message).toBe(
+      'missing openrouter API key for openai/gpt-image-2: set $OPENROUTER_API_KEY or place openrouter.txt in a keys/ dir',
+    );
+    expect(missingRouteError(config, 'some-local-model', 'gemini').message).toBe(
+      'missing gemini API key for some-local-model: set $GEMINI_API_KEY or place gemini.txt in a keys/ dir',
     );
   });
 });
