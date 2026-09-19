@@ -413,7 +413,7 @@ documentation is the reference; this plan only names what the app calls.
     is not persisted), `docs/reference/module-map.md` (`@vn/parse` codec, `docKind`),
     `docs/reference/repos-and-commits.md` (the `Autosaved` subject),
     `docs/reference/command-system.md` if `DocFile` is documented there, and this plan's
-    As-shipped section. `pnpm markdown-toc`, `pnpm check:doclinks`.
+    As-shipped section. `pnpm markdown-toc`, `pnpm check:doclinks`. Done; see As shipped.
 11. **Write the stage 2 plan** (`docs/plans/pathux-rich-editor-widgets.md`): custom
     widgets for portraits and plates, wardrobe / variants / `prompt_override` editing, an
     asset picker in the prose, wikilink completion. Its author loads the `frontend-design`
@@ -649,6 +649,24 @@ answers** button) and read the footer; disk was checked with `git diff` in the c
   `Autosaved characters/aiko/character.md (724 bytes)`, the badge is off, and `undo()`
   then `redo()` in the editor still step the revision back and forward (the buffer is
   dirty again after either, per task 5's note on undo).
+
+### Task 10
+
+- `desktop-app-editors-misc.md`'s Wiki section is rewritten: the "not a form over
+  `Character`" bullet now records the reversal and what replaced it (a form inside the
+  document, `docKind`, the codec), and new bullets cover the shared session, the minute's
+  autosave and its `Autosaved` subject, form drafts and the Discard control, the Raw view,
+  and what `⟳` and a rewrite on disk do to a session. The Skills bullet says it stays a
+  textarea over the text mode of the same buffer.
+- `guided-tours.md`: the rich editor is recorded like a text box, and the Raw textarea
+  takes the same offer while it is up. `desktopAppState.md`: the Raw switch is per-pane
+  memory, never `saveUIData`, and a `DocSession` outlives its pane. `module-map.md`:
+  `docKind` under `schemas.ts`, `frontmatterCodec.ts` under `@vn/parse`.
+  `repos-and-commits.md`: the `Autosaved` subject. `command-system.md`: `implied` on
+  `doc.read`'s answer and `auto` on `doc.write`.
+- `pnpm markdown-toc` rewrites every TOC in markdown-toc's own bullet style, which
+  prettier then puts back; run `pnpm exec prettier --write "docs/**/*.md"` after it, or
+  the format check fails on forty unrelated files.
 
 ## Pressure-test findings
 

@@ -42,20 +42,20 @@ the file; the authoritative package responsibilities and import rules are in
 
 ### @vn/types — zod schemas and shared value types (`packages/types`)
 
-| module             | purpose                                                                       |
-| ------------------ | ----------------------------------------------------------------------------- |
-| `schemas.ts`       | zod schemas for every parsed/machine-consumed boundary (inputs, model, tasks) |
-| `model.ts`         | the project model types: characters, locations, scenes, assets                |
-| `entities.ts`      | entity-sheet value types and tags                                             |
-| `tasks.ts`         | task-graph node and task-kind types                                           |
-| `prompt.ts`        | prompt chunk / ref types shared by artgen and providers                       |
-| `providers.ts`     | backend capability types (`ChatBackend`, `ImageBackend`, reviewers)           |
-| `textmodels.ts`    | chat message / request types for text backends                                |
-| `imagemodels.ts`   | the cached OpenRouter image-model listing and its two response schemas        |
-| `budget.ts`        | cost-budget types                                                             |
-| `playable.ts`      | `story.play.json` format types                                                |
-| `notifications.ts` | user-notification types                                                       |
-| `index.ts`         | barrel                                                                        |
+| module             | purpose                                                                                                                                                               |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schemas.ts`       | zod schemas for every parsed/machine-consumed boundary (inputs, model, tasks); `docKind`, the one resolver of a document's kind from its location and its `type:` tag |
+| `model.ts`         | the project model types: characters, locations, scenes, assets                                                                                                        |
+| `entities.ts`      | entity-sheet value types and tags                                                                                                                                     |
+| `tasks.ts`         | task-graph node and task-kind types                                                                                                                                   |
+| `prompt.ts`        | prompt chunk / ref types shared by artgen and providers                                                                                                               |
+| `providers.ts`     | backend capability types (`ChatBackend`, `ImageBackend`, reviewers)                                                                                                   |
+| `textmodels.ts`    | chat message / request types for text backends                                                                                                                        |
+| `imagemodels.ts`   | the cached OpenRouter image-model listing and its two response schemas                                                                                                |
+| `budget.ts`        | cost-budget types                                                                                                                                                     |
+| `playable.ts`      | `story.play.json` format types                                                                                                                                        |
+| `notifications.ts` | user-notification types                                                                                                                                               |
+| `index.ts`         | barrel                                                                                                                                                                |
 
 ### @vn/util — fs, hashing, concurrency primitives (`packages/util`)
 
@@ -78,12 +78,13 @@ the file; the authoritative package responsibilities and import rules are in
 
 ### @vn/parse — authored inputs (`packages/parse`)
 
-| module           | purpose                                                             |
-| ---------------- | ------------------------------------------------------------------- |
-| `fountain.ts`    | Fountain screenplay parser                                          |
-| `branch.ts`      | branch markers                                                      |
-| `frontmatter.ts` | entity-sheet front matter                                           |
-| `inputs.ts`      | `loadInputs` — the one read of authored files the model builds from |
+| module                | purpose                                                                                                                                                                                |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fountain.ts`         | Fountain screenplay parser                                                                                                                                                             |
+| `branch.ts`           | branch markers                                                                                                                                                                         |
+| `frontmatter.ts`      | entity-sheet front matter                                                                                                                                                              |
+| `frontmatterCodec.ts` | `frontmatterCodec` — reads a front-matter block as JSON and patches values back into it in place, keeping comments, quoting and unknown keys; the Wiki pane's form edits go through it |
+| `inputs.ts`           | `loadInputs` — the one read of authored files the model builds from                                                                                                                    |
 
 ## Layer 2
 

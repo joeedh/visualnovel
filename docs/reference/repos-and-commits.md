@@ -126,6 +126,12 @@ which the conversation pane renders, so the commit takes `Agent turn: <ask>`.
 An undo or redo adds a `Vn-Undo:` or `Vn-Redo:` field that names the seq it reverses. A
 sweep has `Vn-Sweep: true` and no command fields.
 
+A document the Wiki or Skills pane writes on its own timer, a minute after the last edit,
+goes through `doc.write` with `auto=true`, and its message — so its subject — starts
+`Autosaved` rather than `Saved`. Nothing else about the commit differs; the subject is how
+`git log` tells an author's Ctrl+S from the pane catching up on their behalf
+([`desktop-app-editors-misc.md`](desktop-app-editors-misc.md#wiki)).
+
 The resulting shas are written to `CommandRecord.commits` (`{ repo, sha }[]`) in
 `vngen/state/commands.jsonl`. The field is absent on a record that changed nothing, on a
 record that ran without a committer, and on a record that deferred its commit into a

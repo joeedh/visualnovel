@@ -584,17 +584,24 @@ list), and both take the same write path that `vnauthor`'s
 `edit_character`/`edit_location` take, so one authorial act still runs through one write
 path. `scenes/**` still has exactly one write path, and it is `story.*`.
 
-- **Reads are bounded and text-only.** `doc.read` answers `{ path, text, hash, bytes }`
-  for a file under the workspace, and refuses a path outside it, a file that is too large,
-  and a file that is not text. It is deliberately not `@vn/bible`'s `query`. The bible is
-  reached by ranked excerpt so it never floods a context window, whereas a human editor
-  needs the whole file in one read.
+- **Reads are bounded and text-only.** `doc.read` answers
+  `{ path, text, hash, bytes, implied }` for a file under the workspace, and refuses a
+  path outside it, a file that is too large, and a file that is not text. `implied` is the
+  entity kind the path's location implies (`conventionalKind`), computed in main so the
+  renderer can hand it to `docKind` beside the `type:` tag it reads from the front matter
+  and get the one answer main would; the Wiki pane picks its front-matter form from that
+  answer. It is deliberately not `@vn/bible`'s `query`. The bible is reached by ranked
+  excerpt so it never floods a context window, whereas a human editor needs the whole file
+  in one read.
 - **`doc.write` refuses a save by comparing content, not modification time.** It takes
   `seenHash`, the hash `doc.read` answered with, and refuses when the file on disk no
   longer hashes to it. Comparing mtime would refuse a file that was rewritten identically
   (an undo followed by a save) and would miss a write that landed inside the same second.
   An empty `seenHash` means the caller did not read the file first, which is only allowed
-  when the file does not exist.
+  when the file does not exist. `auto=true` marks a write the pane made on its own timer
+  rather than on Ctrl+S; the write is the same, and its message (so its commit subject)
+  starts `Autosaved` instead of `Saved`
+  ([`repos-and-commits.md`](repos-and-commits.md#message-shape)).
 - **A write to `scenes/**`is refused outright.** A scene has exactly one write
   path,`session.editScene`, and a text overwrite would bypass every rule in
   `@vn/scriptedit`.

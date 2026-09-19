@@ -261,7 +261,16 @@ write by dispatching commands through `@vn/commands`.
   state, persisted as one blob.
 - **Per-editor state stays in editor** (draft being typed, live gesture, scroll position).
   A redraw key excludes that state on purpose. path.ux calls `update()` every frame, so
-  keying rebuild on the draft text would replace the field under the caret
+  keying rebuild on the draft text would replace the field under the caret. The Wiki
+  pane's Raw switch is such state: it is a field on the pane, not `saveUIData` (which
+  would persist it into the layout blob), so every document opens in the rich view and a
+  pane forgets the switch when it closes.
+- **A rich document's session outlives the pane.** The Wiki pane holds its document as a
+  `DocSession` (`renderer/pathux/doctree/docsession.ts`), a module-level entry per path
+  that carries the undo history and any answers typed into a form. Two panes on one path
+  hold one entry; an entry with unsaved edits stays when its last pane closes, autosaves
+  on its own timer and counts toward the quit guard, and is dropped once it is clean and
+  unheld. Lost on restart like the rest of renderer memory.
 - **Workspace index is re-read, never remounted.** Edits made in the editor re-read
   `workspace:index`, so diagnostics and cast stay current. No revision counter remounts
   the pane mid-gesture.

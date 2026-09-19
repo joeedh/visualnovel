@@ -17,39 +17,84 @@ Wiki, Skills, Documents (the sidebar), Project, System Prompt, Setup, and Debug 
 
 ## Wiki
 
-`editors/wiki.ts` edits one markdown document as text (a story-bible note, a character
-sheet, a location sheet, whatever `ui.docPath` names). It reads through `doc.read` and
-saves through `doc.write`, so the author saves it and saving commits to git, with no
-machinery of its own ([`command-system.md`](command-system.md#the-doc-namespace)).
+`editors/wiki.ts` edits one markdown document (a story-bible note, a character sheet, a
+location sheet, whatever `ui.docPath` names) in path.ux's rich text editor over its
+`MarkdownProvider`. It reads through `doc.read` and saves through `doc.write`, so the
+author saves it and saving commits to git, with no machinery of its own
+([`command-system.md`](command-system.md#the-doc-namespace)). The plan that put the pane
+on the rich editor, with every decision and what shipped against each, is
+[`plans/pathux-rich-editor.md`](../plans/pathux-rich-editor.md).
 
-- **It is not a form over `Character`.** The requirement is that the author edits the
-  markdown, so the front-matter sits in the same box as the prose and the model's
-  assessment of it appears afterwards on the footer line. The editor saves a sheet whose
-  fields are half-typed and says so. It refuses only a save that would destroy identity
-  (unparseable front-matter, or a dropped `type:` tag). All three rules live in the
-  command, and the editor does not re-decide them.
-- **Ctrl+S, never a timer.** Every `doc.write` is undoable, so each write snapshots pre
-  and post trees in every owned repo and the `Committer` then commits; save-on-blur would
-  repeat that work on every focus change. A dirty badge shows the unsaved state, and the
-  editor stops propagation of its own keydown events, because the screen keymap is a
-  bubble-phase window listener and would otherwise let Ctrl+Z undo a command mid-sentence.
+- **A sheet's front matter is a form inside the document, not a form instead of it.** An
+  earlier version of this page said the pane "is not a form over `Character`", written
+  when the alternative was a form in place of the markdown. Now path.ux's
+  `nativeFormWidgets` mounts a form where the YAML block sits, over the same session and
+  undo history as the prose, and **Raw** in the bar shows the whole file as text. The form
+  is picked by `docKind` (`@vn/types`) from the kind the path implies (`implied` on
+  `doc.read`) and the `type:` tag in the block, so the renderer and main give one answer:
+  a character or location sheet gets its form (`doctree/docforms.ts`, hand-written
+  presentation over the entity schemas); a note gets none and no remark; a sheet whose
+  location and tag disagree, and a file whose fence is not on its first line, keep the raw
+  block and the footer says why. The form patches the YAML through `@vn/parse`'s
+  `frontmatterCodec`, so comments, quoting and unknown keys survive an edit made through
+  it, and a metadata-only edit leaves the body byte-identical. The model's assessment of a
+  saved sheet still arrives afterwards on the footer line: the editor saves a sheet whose
+  fields are half-typed and says so, and refuses only a save that would destroy identity
+  (unparseable front-matter, or a dropped `type:` tag). Those rules live in the command,
+  and the editor does not re-decide them.
+- **The document is a session shared by every pane on it.** `DocBuffer`
+  (`doctree/docbuffer.ts`) holds a `DocSession` entry (`doctree/docsession.ts`), one per
+  path, so two Wiki panes on one file show one document, one undo history and one dirty
+  state, and an edit in either appears in the other at once. The entry outlives the pane:
+  with unsaved edits it stays when its last pane closes and is found again by the next
+  pane on that path; clean and unheld, it is dropped.
+- **Ctrl+S, and a timer.** Every `doc.write` is undoable, so each write snapshots pre and
+  post trees in every owned repo and the `Committer` then commits, which is why the pane
+  does not save on blur. It does save a dirty session once a minute (`AUTOSAVE_MS`), as a
+  `doc.write` with `auto=true` whose commit subject starts `Autosaved`, so an author who
+  walks away from a half-edited sheet finds it on disk and in `git log` rather than in a
+  `beforeunload` prompt; the undo history survives the tick. A dirty badge shows the
+  unsaved state, and the editor stops propagation of its own keydown events, because the
+  screen keymap is a bubble-phase window listener and would otherwise let Ctrl+Z undo a
+  command mid-sentence. Undo makes the session dirty again even when it lands back on the
+  saved text, and the write that follows is refused as identical, so nothing is committed
+  for it.
+- **Answers typed into a form are drafts on the session.** path.ux registers each form as
+  a draft; **Apply answers** commits it as one undoable edit, and a save applies every
+  pending draft first (`prepareSave`) and is refused, with the reason in the footer, when
+  one cannot be applied. A form disposed with answers typed (its block replaced under it
+  by the Raw view in another pane, say) leaves a detached draft, which refuses every save
+  until the footer's **Discard pending edits** drops it; recovering those answers into the
+  new form is stage 2's. A pane that switches editors and comes back keeps its form and
+  its typed answers, because path.ux keeps an area's editor instances.
+- **Raw is the same session as text.** The bar's **Raw** replaces the rich editor with a
+  textarea registered on the session as a draft: what is typed there is applied as one
+  undoable edit when the view switches back, the document saves, or the pane moves on to
+  another document. Both directions apply pending drafts first and a refusal keeps the
+  view up. Source typed after another pane edited the document is reported as stale,
+  refuses the save, and is dropped from the same **Discard pending edits** control. The
+  switch is per pane and in memory (never `saveUIData`), so every document opens rich.
 - **The buffer is not authoritative.** `doc.read` returns the content hash it read at, and
   `doc.write` carries that hash back as `seenHash`. If something else rewrote the file
   underneath (`gate.approve`, the agent, an undo), the write is refused with a sentence
   rather than overwriting the file. The refusal compares content, so a file rewritten to
   identical content is not a conflict, which is why this is not an mtime check.
-- **Unsaved text is kept when a pane changes editors.** Drafts are held per path in a
-  module-level map, so a pane that switched editors and came back keeps the edit.
-  `on_remove` cannot veto its own removal, so quitting is the one remaining way to lose a
-  draft, and a `beforeunload` prompt catches it. That prompt works only if main listens
-  for `will-prevent-unload`: a `webContents` with no such listener cancels the close
-  silently, which is why the window once could not be closed at all.
-- **A file rewritten on disk is re-read, unless the buffer has unsaved edits.**
-  `bridge.onWrote` reports every path a command or an agent tool wrote. A clean buffer
-  re-reads the file; a dirty buffer does not, and its next save gets the
-  changed-underneath refusal above. `⟳` in the bar re-reads the file whatever the buffer's
-  state. It discards an unsaved draft and says so in the footer, because refusing would
-  leave the author with no way back to what is on disk.
+- **Unsaved edits are kept when a pane changes editors.** A rich session with unsaved
+  edits is held in a module-level map by path, and the Skills pane's text buffer keeps a
+  draft the same way, so a pane that switched editors and came back keeps the edit.
+  `on_remove` cannot veto its own removal, so quitting is the one remaining way to lose
+  one, and a `beforeunload` prompt counts dirty sessions and drafts alike. That prompt
+  works only if main listens for `will-prevent-unload`: a `webContents` with no such
+  listener cancels the close silently, which is why the window once could not be closed at
+  all.
+- **A file rewritten on disk is re-read, unless the session has unsaved edits.**
+  `bridge.onWrote` reports every path a command or an agent tool wrote. A clean session
+  re-reads the file, keeping the session (undo history and all) when what came back is its
+  own last save and otherwise replacing it with the caret and scroll carried over; a dirty
+  one does not, and its next save gets the changed-underneath refusal above. `⟳` in the
+  bar re-reads the file whatever the session's state. It drops the session, unsaved edits
+  and undo history included, and says so in the footer, because refusing would leave the
+  author with no way back to what is on disk.
 - **It does not read through `@vn/bible`.** That interface has no whole-file call, and the
   guarantee follows from that absence ([`story-bible.md`](story-bible.md)). A human
   reading their own note on screen does not put it into the agent's context window.
@@ -73,12 +118,15 @@ the one being shown. This pane shows what a skill contains. The document tree id
 skills, one row per skill ([`document-tree.md`](document-tree.md)), and the content is
 here.
 
-- The text half uses `DocBuffer` (`pathux/docbuffer.ts`), the same module Wiki uses. Every
-  rule in the Wiki bullets above belongs to that module and holds here unchanged: the
-  `seenHash` refusal, the draft that outlives the pane, the `beforeunload` guard, `⟳`
-  discarding and saying so, and a clean buffer after a write the buffer did not make. This
-  pane owns the tree beside it, its expansion, and the hint. A skill file is tracked
-  (`.aiagent` is not in `DEFAULT_IGNORES`), so Ctrl+S commits like any other document.
+- The text half is a textarea over `DocBuffer` (`pathux/doctree/docbuffer.ts`), the same
+  module Wiki uses, in its text mode rather than its rich one: a skill is a playbook, not
+  a sheet, so it has no form and no rich view. Every rule in the Wiki bullets above that
+  belongs to that module holds here unchanged: the `seenHash` refusal, the draft that
+  outlives the pane, the minute's autosave with its `Autosaved` subject, the
+  `beforeunload` guard, `⟳` discarding and saying so, and a clean buffer after a write the
+  buffer did not make. This pane owns the tree beside it, its expansion, and the hint. A
+  skill file is tracked (`.aiagent` is not in `DEFAULT_IGNORES`), so Ctrl+S commits like
+  any other document.
 - **Keep the hint; it is not decoration.** A skill is the one thing in the app the agent
   can author, and nothing else on screen says so. The sentence and its button therefore
   sit above the tree and are drawn whether or not any skill exists. They are needed when

@@ -218,6 +218,11 @@ fields it publishes as props and `on` set to `<kind>/<key>`. It is recorded rath
 acted, because none of those sites installs its click through the anchor: `record()` for a
 DOM row, `pick()` for a graph card. A control whose click path.ux owns (a checkbox's
 `on_change`, a handle's `pointerdown`, a box committed on blur) is recorded the same way.
+So is the Wiki pane's rich text editor: the whole `rich-text-x` element, toolbar, prose
+and any front-matter form mounted inside it, is one control recorded with the
+`doc.write#text` offer a textarea carries, because it is the box Save reads. The Raw
+view's textarea takes the same offer while it is up, so a tour that names the text box
+lands on whichever the pane is showing.
 
 ### Keys
 
