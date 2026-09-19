@@ -10,7 +10,7 @@ import {
   slotTaskHash,
   type Suspension,
 } from '@vn/artgen';
-import { chatBackendFor, chatVendorFor, type ChatBackend } from '@vn/providers';
+import { chatBackendFor, chatRoute, type ChatBackend } from '@vn/providers';
 import { TRIAGE_MODEL, type Approvable } from '@vn/authoring';
 import type { RefBinding, Shot } from '@vn/types';
 import { bindsTo } from '@vn/types';
@@ -239,11 +239,8 @@ export class GatePart {
   async triageBackend(): Promise<ChatBackend | null> {
     if (this.session.mock) return null;
     const config = await loadConfig(this.session.dir);
-    const keys = await resolveKeys(config, {
-      secretsDirs: await secretDirsFor(this.session.dir),
-      require    : [chatVendorFor(TRIAGE_MODEL)],
-    });
-    return chatBackendFor(TRIAGE_MODEL, keys).backend;
+    const keys = await resolveKeys(config, { secretsDirs: await secretDirsFor(this.session.dir) });
+    return chatBackendFor(chatRoute(config, keys, TRIAGE_MODEL), keys).backend;
   }
 
   /**

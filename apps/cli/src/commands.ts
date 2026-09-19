@@ -429,7 +429,10 @@ export async function cmdDecompose(args: Args, logger: Logger): Promise<number> 
   if (project.model.diagnostics.length) reportDiagnostics(project.model);
   assertValid(project.model);
 
-  const providers = await buildProviders(project, { logger, require: ['anthropic'] });
+  const providers = await buildProviders(project, {
+    logger,
+    routes: { chat: [project.config.models.text] },
+  });
   const result = await decomposeAll({
     model : project.model,
     config: project.config,

@@ -10,9 +10,11 @@ import {
   createImageBackend,
   createMockProviders,
   createProviders,
-  requiredVendors,
+  projectModels,
+  resolveRoutes,
   StubImageBackend,
   type ImageBackend,
+  type RouteRequest,
 } from '@vn/providers';
 
 /** A fully-loaded project: config, paths, model, persisted store + task graph. */
@@ -72,7 +74,7 @@ export interface GenDeps {
  */
 export async function buildGenDeps(
   project: LoadedProject,
-  opts: { mock?: boolean; logger?: Logger; require?: (keyof ResolvedKeys)[] } = {},
+  opts: { mock?: boolean; logger?: Logger; routes?: RouteRequest } = {},
 ): Promise<GenDeps> {
   const loadRef = async (ref: { hash: string; ext: string }) => ({
     bytes: await project.store.read(ref),
@@ -83,13 +85,13 @@ export async function buildGenDeps(
     return { providers: createMockProviders({ refLoader: loadRef, imageBackend }), imageBackend };
   }
 
-  // A run draws and reviews, so it needs every configured vendor's key; `vngen decompose` only
-  // writes text, and refusing it for a missing image key would be a refusal the author cannot
-  // act on, so it passes its own list.
+  // A run draws and reviews, so every configured model must have a route before it starts;
+  // `vngen decompose` only writes text, and refusing it for a missing image key would be a
+  // refusal the author cannot act on, so it passes its own list.
   const keys: ResolvedKeys = await resolveKeys(project.config, {
     secretsDirs: await secretDirsFor(project.dir),
-    require    : opts.require ?? requiredVendors(project.config),
   });
+  resolveRoutes(project.config, keys, opts.routes ?? projectModels(project.config));
   // The cached listing says which OpenRouter models take a seed, so the router refuses one by
   // name rather than sending it
   const catalog = (await readModelCatalog())?.openrouter ?? [];
@@ -103,7 +105,7 @@ export async function buildGenDeps(
 /** The provider bundle alone, for a command that runs no graph. */
 export async function buildProviders(
   project: LoadedProject,
-  opts: { mock?: boolean; logger?: Logger; require?: (keyof ResolvedKeys)[] } = {},
+  opts: { mock?: boolean; logger?: Logger; routes?: RouteRequest } = {},
 ): Promise<Providers> {
   return (await buildGenDeps(project, opts)).providers;
 }

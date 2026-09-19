@@ -13,10 +13,9 @@ import {
   ChatTextLLM,
   RecordedChatBackend,
   chatBackendFor,
-  chatVendorFor,
+  chatRoute,
   createMockProviders,
   createProviders,
-  requiredVendors,
   type ChatBackend,
 } from '@vn/providers';
 import type { TextLLM } from '@vn/types';
@@ -108,10 +107,7 @@ export function workspaceArtGen(workspace: Workspace, opts: { mock?: boolean } =
       ? createMockProviders({ refLoader: loadRef })
       : createProviders({
           config,
-          keys: await resolveKeys(config, {
-            secretsDirs: await secretDirsFor(workspace.root),
-            require    : requiredVendors(config),
-          }),
+          keys: await resolveKeys(config, { secretsDirs: await secretDirsFor(workspace.root) }),
           loadRef,
         });
     return providers.image;
@@ -133,11 +129,8 @@ export function workspaceArtGen(workspace: Workspace, opts: { mock?: boolean } =
     if (!modelId) {
       throw new VnError('NO_VISION_MODEL', 'project.yaml names no models.vision to look with.');
     }
-    const keys = await resolveKeys(config, {
-      secretsDirs: await secretDirsFor(workspace.root),
-      require    : [chatVendorFor(modelId)],
-    });
-    return chatBackendFor(modelId, keys).backend;
+    const keys = await resolveKeys(config, { secretsDirs: await secretDirsFor(workspace.root) });
+    return chatBackendFor(chatRoute(config, keys, modelId), keys).backend;
   }
 
   return {
@@ -207,11 +200,9 @@ export function workspaceTextLLM(workspace: Workspace, opts: { mock?: boolean } 
       return new ChatTextLLM(new RecordedChatBackend('mock-text', (req) => req.prompt));
     }
     const config = await loadConfig(workspace.root);
-    const keys = await resolveKeys(config, {
-      secretsDirs: await secretDirsFor(workspace.root),
-      require    : [chatVendorFor(config.models.text)],
-    });
-    return new ChatTextLLM(chatBackendFor(config.models.text, keys).backend);
+    const keys = await resolveKeys(config, { secretsDirs: await secretDirsFor(workspace.root) });
+    const route = chatRoute(config, keys, config.models.text);
+    return new ChatTextLLM(chatBackendFor(route, keys).backend);
   }
   return {
     complete  : async (prompt, system) => (await textOf()).complete(prompt, system),

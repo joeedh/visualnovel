@@ -10,13 +10,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
 import { openGit } from '@vn/git';
-import {
-  chatVendorFor,
-  createAnthropicChat,
-  createGeminiChat,
-  type ChatBackend,
-  type EffortChoice,
-} from '@vn/providers';
+import { chatBackendFor, chatRoute, type EffortChoice } from '@vn/providers';
 
 // The curated model list and what reasoning each model takes both live in `@vn/types`, so the
 // desktop app can offer the same menus without importing a package that loads a vendor SDK.
@@ -85,17 +79,6 @@ class MockAgentBackend implements AgentBackend {
   }
 }
 
-/** Choose the vendor backend for a text model id. */
-function chatBackendFor(
-  modelId: string,
-  keys: { gemini: string; anthropic: string },
-  effort?: EffortChoice,
-): ChatBackend {
-  return chatVendorFor(modelId) === 'anthropic'
-    ? createAnthropicChat(keys.anthropic, modelId, { effort })
-    : createGeminiChat(keys.gemini, modelId);
-}
-
 /**
  * Build the agent backend for a project, or a mock when offline. `model`/`effort` override
  * the configured defaults (used by `/model` and `/effort`). Path B (provider-native
@@ -113,11 +96,8 @@ export async function buildAgentBackend(
   if (opts.mock) return new MockAgentBackend();
   const config = await loadConfig(dir);
   const modelId = opts.model ?? config.models.text;
-  const keys = await resolveKeys(config, {
-    secretsDirs: await secretDirsFor(dir),
-    require    : [chatVendorFor(modelId)],
-  });
-  const chat = chatBackendFor(modelId, keys, opts.effort);
+  const keys = await resolveKeys(config, { secretsDirs: await secretDirsFor(dir) });
+  const chat = chatBackendFor(chatRoute(config, keys, modelId), keys, opts.effort).backend;
   if (!opts.noNative && chat.chatConversation) return new NativeAgentBackend(chat);
   return new StructuredAgentBackend(chat);
 }

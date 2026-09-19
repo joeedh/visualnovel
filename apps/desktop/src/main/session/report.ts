@@ -1,5 +1,5 @@
 import { loadConfig, resolveKeys, secretDirsFor, type ProjectConfig } from '@vn/config';
-import { captureSnapshot, chatVendorFor } from '@vn/providers';
+import { captureSnapshot, chatRoute } from '@vn/providers';
 import { createRegistry, type AgentEvent } from '@vn/authoring';
 import type { EffortChoice } from '@vn/types';
 import { EFFORT_CHOICES, resolveEffort } from '@vn/types';
@@ -93,10 +93,11 @@ export class ReportPart {
 
     const config = await loadConfig(this.session.dir);
     const { modelId, effort } = this.analysisBinding(config, ask);
-    const vendor = chatVendorFor(modelId);
     const keys = await resolveKeys(config, { secretsDirs: await secretDirsFor(this.session.dir) });
-    if (!keys[vendor]?.trim()) {
-      return { ok: false, message: `No ${vendor} key is set — use Provide Model Key… first.` };
+    try {
+      chatRoute(config, keys, modelId);
+    } catch (err) {
+      return { ok: false, message: `${(err as Error).message} — use Provide Model Key… first.` };
     }
 
     if (ask.source && !(await sourceRoot())) return { ok: false, message: NO_SOURCE };
@@ -168,8 +169,10 @@ export class ReportPart {
     const { modelId, effort } = this.analysisBinding(project.config, ask);
     const keys = await resolveKeys(project.config, {
       secretsDirs: await secretDirsFor(this.session.dir),
-      require    : [chatVendorFor(modelId)],
     });
+    // Routed here so the refusal comes before the report thread is opened; the analyst routes
+    // again at the point of use
+    chatRoute(project.config, keys, modelId);
 
     return {
       header: target.header,

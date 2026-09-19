@@ -1,13 +1,13 @@
 /**
  * The image router: which backend each call reaches, decided by the model id on its params, and
- * the vendor set a run is required to hold keys for.
+ * the route every configured model takes before a run starts.
  */
 import { projectConfig } from '@vn/types';
 import type { ResolvedKeys } from '@vn/config';
 import { ConfigError, ProviderError } from '@vn/util';
 import type { ImageBackend, ImageInput } from '../backend.js';
 import { requestKey } from '../cache.js';
-import { createImageBackend, projectModels, requiredVendors, resolveRoutes } from '../factory.js';
+import { createImageBackend, createProviders, projectModels, resolveRoutes } from '../factory.js';
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]);
 
@@ -163,29 +163,6 @@ describe('createImageBackend', () => {
   });
 });
 
-describe('requiredVendors', () => {
-  it('is the union over the reviewers and the text model, leaving the image model to its route', () => {
-    const mixed = projectConfig.parse({
-      title : 'T',
-      models: {
-        image : 'openai/gpt-image-2',
-        vision: ['gemini-2.5-flash', 'claude-opus-4-8'],
-        text  : 'claude-opus-4-8',
-      },
-    });
-    expect(requiredVendors(mixed)).toEqual(['gemini', 'anthropic']);
-  });
-
-  it('asks for no gemini key from a project that never calls Gemini', () => {
-    const noGemini = projectConfig.parse({
-      title : 'T',
-      models: { image: 'openai/gpt-image-2', vision: ['claude-opus-4-8'], text: 'claude-opus-4-8' },
-    });
-    expect(requiredVendors(noGemini)).toEqual(['anthropic']);
-    expect(requiredVendors(config)).toEqual(['gemini', 'anthropic']);
-  });
-});
-
 describe('resolveRoutes', () => {
   const mixed = projectConfig.parse({
     title : 'T',
@@ -255,6 +232,45 @@ describe('resolveRoutes', () => {
       ),
     ).toThrow(
       'missing openrouter API key for openai/gpt-image-2: set $OPENROUTER_API_KEY or place openrouter.txt in a keys/ dir',
+    );
+  });
+});
+
+describe('createProviders', () => {
+  const loadRef = async () => ({ bytes: PNG, ext: 'png' });
+  const mixed = projectConfig.parse({
+    title : 'T',
+    models: {
+      image : 'gemini-2.5-flash-image',
+      vision: ['gemini-2.5-flash', 'claude-opus-4-8'],
+      text  : 'claude-opus-4-8',
+    },
+  });
+
+  it('labels a reviewer by its native vendor whatever key carries it', () => {
+    const viaOpenRouter = createProviders({
+      config: mixed,
+      keys  : { gemini: '', anthropic: '', openrouter: 'or-key' },
+      loadRef,
+    });
+    expect(viaOpenRouter.reviewers.map((r) => r.id)).toEqual(['gemini', 'claude']);
+  });
+
+  it('builds a bundle for a model nothing carries, and refuses at the first call in the pre-run words', async () => {
+    const providers = createProviders({
+      config: mixed,
+      keys  : { gemini: '', anthropic: 'a-key', openrouter: '' },
+      loadRef,
+    });
+    expect(providers.reviewers.map((r) => r.id)).toEqual(['gemini', 'claude']);
+    await expect(
+      providers.reviewers[0]!.review(
+        { hash: 'h', ext: 'png' },
+        { description: 'x', characters: [], location: 'y' },
+        [],
+      ),
+    ).rejects.toThrow(
+      'missing gemini API key for gemini-2.5-flash: set $GEMINI_API_KEY or place gemini.txt in a keys/ dir, or set $OPENROUTER_API_KEY to route it through OpenRouter',
     );
   });
 });

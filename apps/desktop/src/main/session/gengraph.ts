@@ -35,7 +35,7 @@ import { aspectFor, assetSlotLabel, imageParams, sheetSeeds, slotKey } from '@vn
 import { SHEET_CELL_REF, sheetCellDef, sheetGraph } from '@vn/gengraph';
 import type { SheetCell } from '@vn/gengraph';
 import { readShots } from '@vn/store';
-import { requiredVendors } from '@vn/providers';
+import { projectModels, resolveRoutes } from '@vn/providers';
 import { runPipeline, type RunSummary } from '@vn/scheduler';
 import type { Asset } from '@vn/types';
 import { BUSY_RUN } from '../../shared/ipc.js';
@@ -453,10 +453,10 @@ export class GengraphPart {
     let keyError: string | null = null;
     if (!mock) {
       try {
-        await resolveKeys(project.config, {
+        const keys = await resolveKeys(project.config, {
           secretsDirs: await secretDirsFor(project.dir),
-          require    : requiredVendors(project.config),
         });
+        resolveRoutes(project.config, keys, projectModels(project.config));
       } catch (err) {
         keyError = err instanceof Error ? err.message : String(err);
       }
@@ -505,10 +505,10 @@ export class GengraphPart {
     const project = await loadProject(this.session.dir);
     let keyError: string | null = null;
     try {
-      await resolveKeys(project.config, {
+      const keys = await resolveKeys(project.config, {
         secretsDirs: await secretDirsFor(project.dir),
-        require    : ['anthropic'],
       });
+      resolveRoutes(project.config, keys, { chat: [project.config.models.text] });
     } catch (err) {
       keyError = err instanceof Error ? err.message : String(err);
     }

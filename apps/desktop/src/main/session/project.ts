@@ -32,6 +32,7 @@ import { discoverSkills, skillRoots } from '@vn/authoring';
 import { shippedImageModels } from '@vn/gengraph';
 import { readModelCatalog, writeModelCatalog } from '@vn/gengraph/state';
 import {
+  chatRouteFor,
   imageRouteFor,
   type KeysPresent,
   type Lettering,
@@ -569,11 +570,14 @@ export class ProjectPart {
     }
 
     try {
+      // This is the one caller that means a specific key: the route is narrowed to the vendor
+      // under test so the call cannot slip through OpenRouter and report the wrong key working
       const keys = await resolveKeys(config, {
         secretsDirs: await secretDirsFor(this.session.dir),
         require    : [vendor],
       });
-      const backend = chatBackendFor(modelId, keys).backend;
+      const only = { anthropic: false, gemini: false, openrouter: false, [vendor]: true };
+      const backend = chatBackendFor(chatRouteFor(modelId, only)!, keys).backend;
       await backend.message({ prompt: 'Reply with the single word OK.' });
       return { ok: true, message: `The ${vendor} key works — ${modelId} answered.` };
     } catch (err) {

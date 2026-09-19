@@ -61,6 +61,7 @@ await build({
     contents: [
       "export { KEY_VENDORS } from '@vn/config';",
       "export { chatBackendFor, chatVendorFor } from '@vn/providers';",
+      "export { chatRouteFor } from '@vn/types';",
       "export { blockText } from './apps/desktop/src/shared/markdown.js';",
       "export { parseKeyGuide } from './apps/desktop/src/shared/apikeys.js';",
       'export { AUDIT_SYSTEM, auditPrompt, hasDrift, htmlToText, pageProblem, parseReview,',
@@ -86,6 +87,7 @@ const {
   auditPrompt,
   blockText,
   chatBackendFor,
+  chatRouteFor,
   chatVendorFor,
   extractJson,
   hasDrift,
@@ -122,21 +124,26 @@ async function readPage(url) {
   }
 }
 
-// The model, and the one key it needs. The variable is read off the guide itself rather than
-// named here, so the audit authenticates through exactly the variable its own documentation tells
-// a new user to set — if that line ever goes stale, this stops working and says so.
+// The model, and the key that carries it: its own vendor's, or OpenRouter's when only that one is
+// set. The variables are read off the guide itself rather than named here, so the audit
+// authenticates through exactly the variables its own documentation tells a new user to set — if
+// that line ever goes stale, this stops working and says so.
 const dryRun = process.argv.includes('--dry-run');
 const model = flag('model', process.env.VN_AUDIT_MODEL ?? 'claude-sonnet-5');
 const keys = Object.fromEntries(guide.vendors.map((v) => [v.vendor, process.env[v.env] ?? '']));
 const need = chatVendorFor(model);
 const envName =
   guide.vendors.find((v) => v.vendor === need)?.env ?? `${need.toUpperCase()}_API_KEY`;
+const present = Object.fromEntries(
+  ['anthropic', 'gemini', 'openrouter'].map((v) => [v, Boolean(keys[v])]),
+);
+const route = chatRouteFor(model, present);
 
 let backend;
 if (dryRun) {
   backend = undefined;
-} else if (keys[need]) {
-  backend = chatBackendFor(model, keys).backend;
+} else if (route) {
+  backend = chatBackendFor(route, keys).backend;
 } else {
   // Still not an error exit. A missing secret is a repo-configuration problem, and it should
   // surface as a review saying so rather than as a red cron nobody is on the hook for. The

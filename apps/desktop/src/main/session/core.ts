@@ -54,11 +54,13 @@ import { driftOf, repairAccepted, type DecomposeAllResult, type LoadedGraph } fr
 import { suspensionMap, type PromptRung, type Suspension } from '@vn/artgen';
 import {
   chatBackendFor,
+  chatRoute,
   chatVendorFor,
   createImageBackend,
   createMockProviders,
   createProviders,
-  requiredVendors,
+  projectModels,
+  resolveRoutes,
   StubImageBackend,
   type FetchImpl,
   type ImageBackend,
@@ -692,12 +694,10 @@ export async function buildGenDeps(project: LoadedProject, mock: boolean): Promi
     const imageBackend = new StubImageBackend();
     return { providers: createMockProviders({ refLoader: loadRef, imageBackend }), imageBackend };
   }
-  // Every configured vendor is required up front, so a run is refused here rather than failing
+  // Every configured model is routed up front, so a run is refused here rather than failing
   // at its first review call after it has paid for a picture
-  const keys = await resolveKeys(project.config, {
-    secretsDirs: await secretDirsFor(project.dir),
-    require    : requiredVendors(project.config),
-  });
+  const keys = await resolveKeys(project.config, { secretsDirs: await secretDirsFor(project.dir) });
+  resolveRoutes(project.config, keys, projectModels(project.config));
   // The cached listing says which OpenRouter models take a seed, so the router refuses one by
   // name rather than sending it
   const catalog = (await readModelCatalog())?.openrouter ?? [];
@@ -1097,11 +1097,8 @@ export class WorkspaceSession {
   async chooseBackend(config: ProjectConfig, model?: string): Promise<AgentBackend> {
     if (this.mock) return new MockAgentBackend();
     const modelId = model ?? config.models.text;
-    const keys = await resolveKeys(config, {
-      secretsDirs: await secretDirsFor(this.dir),
-      require    : [chatVendorFor(modelId)],
-    });
-    const chat = chatBackendFor(modelId, keys, this.effort).backend;
+    const keys = await resolveKeys(config, { secretsDirs: await secretDirsFor(this.dir) });
+    const chat = chatBackendFor(chatRoute(config, keys, modelId), keys, this.effort).backend;
     return chat.chatConversation ? new NativeAgentBackend(chat) : new StructuredAgentBackend(chat);
   }
 

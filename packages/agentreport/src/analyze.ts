@@ -11,15 +11,9 @@
  * passes through it again before anyone sees it. The prompt also asks for general terms, which is
  * a second layer rather than the mechanism.
  */
-import { ConfigError } from '@vn/util';
-import { secretFileFor, type ResolvedKeys } from '@vn/config';
+import type { ResolvedKeys } from '@vn/config';
 import type { EffortChoice, ProjectConfig } from '@vn/types';
-import {
-  chatBackendFor,
-  chatVendorFor,
-  withStructuredRetry,
-  type ChatBackend,
-} from '@vn/providers';
+import { chatBackendFor, chatRoute, withStructuredRetry, type ChatBackend } from '@vn/providers';
 import {
   Agent,
   NativeAgentBackend,
@@ -176,11 +170,11 @@ function scrub(analysis: Analysis, redactor: Redactor): Analysis {
 }
 
 /**
- * The chat backend for the analysis model, refusing by name when its key is not resolvable.
+ * The chat backend for the analysis model, refusing by name when no key can carry it.
  *
- * `resolveKeys` only throws for a vendor the caller declared required, and the caller here cannot
- * know which vendor until the author has picked a model in the dialog — so the check belongs at
- * the point of use. It names the env var and the file, never the value.
+ * The caller cannot know which key until the author has picked a model in the dialog, so the
+ * route is computed at the point of use. The refusal names the env var and the file, never the
+ * value.
  */
 export function analystBackend(
   modelId: string,
@@ -188,16 +182,10 @@ export function analystBackend(
   keys: ResolvedKeys,
   effort?: EffortChoice,
 ): ChatBackend {
-  const vendor = chatVendorFor(modelId);
-  if (!keys[vendor]?.trim()) {
-    throw new ConfigError(
-      `no ${vendor} API key, so ${modelId} cannot analyse anything: ` +
-        `set $${config.keys[vendor]} or put ${secretFileFor(vendor)} in the project's keys/ directory`,
-    );
-  }
+  const route = chatRoute(config, keys, modelId);
   // Recording is off because the analyst runs many turns, and every one of them would push an
   // entry into the request ring it may be reading from
-  return chatBackendFor(modelId, keys, effort, { record: false }).backend;
+  return chatBackendFor(route, keys, effort, { record: false }).backend;
 }
 
 /** One tool of the agent under report, as the analyst is shown it. */

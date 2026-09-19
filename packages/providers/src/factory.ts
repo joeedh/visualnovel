@@ -16,11 +16,12 @@ import {
   type ProjectConfig,
   type ResolvedKeys,
 } from '@vn/config';
-import { ProviderError } from '@vn/util';
+import { ProviderError, type ConfigError } from '@vn/util';
 import type { ChatBackend, ImageBackend, RefLoader } from './backend.js';
 import { createAnthropicChat } from './backends/anthropic.js';
 import { createGeminiChat, createGeminiImage } from './backends/gemini.js';
 import { createOpenRouterImage } from './backends/openrouter.js';
+import { createOpenRouterChat } from './backends/openrouter-chat.js';
 import { ChatTextLLM } from './text.js';
 import { ChatVisionReviewer } from './review.js';
 import { BackendImageProvider } from './image.js';
@@ -30,9 +31,26 @@ import { BackendImageProvider } from './image.js';
 export { chatVendorFor, imageVendorOf } from '@vn/types';
 
 /**
- * Pick the vendor for a model id and a stable reviewer label. Exported because a plain chat call
- * is not always a `Providers` bundle — `describeAsset` asks one vision model one question, and
- * building the reviewers and the image provider to reach it is unnecessary.
+ * The reviewer label for a chat model: the native vendor's, because labels are compared in the
+ * manifest and a picture reviewed by Claude through OpenRouter was still reviewed by Claude. An
+ * id under a prefix the route rule does not know is labelled by that prefix.
+ */
+function labelOf(modelId: string): string {
+  if (modelId.includes('/')) {
+    const prefix = modelId.split('/')[0]!;
+    if (prefix === 'google') return 'gemini';
+    return prefix === 'anthropic' ? 'claude' : prefix;
+  }
+  return chatVendorFor(modelId) === 'anthropic' ? 'claude' : 'gemini';
+}
+
+/**
+ * Build the chat backend a route names, with a stable reviewer label. Exported because a plain
+ * chat call is not always a `Providers` bundle — `describeAsset` asks one vision model one
+ * question, and building the reviewers and the image provider to reach it is unnecessary.
+ *
+ * A caller has a `Route` because it just called {@link resolveRoutes} or {@link chatRoute}, so
+ * there is no path that builds a backend on an empty key.
  *
  * `record: false` keeps the calls out of the request ring. Only one caller wants it — the
  * difficult-agent analyst, which reads that ring and would otherwise evict the bodies it was
@@ -43,15 +61,27 @@ export { chatVendorFor, imageVendorOf } from '@vn/types';
  * and ignores it.
  */
 export function chatBackendFor(
-  modelId: string,
+  route: Route,
   keys: ResolvedKeys,
   effort?: EffortChoice,
   opts: { record?: boolean } = {},
 ): { backend: ChatBackend; label: string } {
   const { record } = opts;
-  return chatVendorFor(modelId) === 'anthropic'
-    ? { backend: createAnthropicChat(keys.anthropic, modelId, { effort, record }), label: 'claude' }
-    : { backend: createGeminiChat(keys.gemini, modelId, undefined, { record }), label: 'gemini' };
+  const label = labelOf(route.modelId);
+  switch (route.transport) {
+    case 'anthropic':
+      return {
+        backend: createAnthropicChat(keys.anthropic, route.wireId, { effort, record }),
+        label,
+      };
+    case 'gemini':
+      return {
+        backend: createGeminiChat(keys.gemini, route.wireId, undefined, { record }),
+        label,
+      };
+    case 'openrouter':
+      return { backend: createOpenRouterChat(keys.openrouter, route, { effort, record }), label };
+  }
 }
 
 /** The ids a caller is about to use, by the seam each goes through. */
@@ -103,19 +133,26 @@ export function resolveRoutes(
   return routes;
 }
 
+/** The route one chat id takes, or the `ConfigError` {@link resolveRoutes} would throw for it. */
+export function chatRoute(config: ProjectConfig, keys: ResolvedKeys, modelId: string): Route {
+  return resolveRoutes(config, keys, { chat: [modelId] }).get(modelId)!;
+}
+
 /**
- * The keys a pipeline run needs before it starts: the vendor of every vision and text model.
- * Passed as `resolveKeys`'s `require`, so a project that reviews with Claude is refused before
- * it pays for a picture it cannot review, and is not asked for a Gemini key it never uses. The
- * image model is not listed: {@link createImageBackend} routes it, and the route decides which key
- * it needs.
+ * A chat backend that refuses every call with the `ConfigError` a pre-run check would have
+ * raised. {@link createProviders} builds one for a model no key carries, so a bundle can be built
+ * for a run that never calls that model, and a run that does is refused at the first call in the
+ * same words.
  */
-export function requiredVendors(config: ProjectConfig): KeyVendor[] {
-  const vendors = new Set<KeyVendor>();
-  for (const modelId of [...config.models.vision, config.models.text]) {
-    vendors.add(chatVendorFor(modelId));
-  }
-  return [...vendors];
+function refusingChat(modelId: string, refusal: ConfigError): ChatBackend {
+  const refuse = () => Promise.reject(refusal);
+  return {
+    modelId,
+    message         : refuse,
+    messageWithUsage: refuse,
+    chatWithTools   : refuse,
+    chatConversation: refuse,
+  };
 }
 
 /** Builds the backend the router keeps for one route. Injectable for the router's tests. */
@@ -226,12 +263,23 @@ export function createProviders(opts: {
     loadRef,
   );
 
+  // The bundle is built without refusing: `vngen decompose` builds one to reach the text model
+  // and never reviews, so a reviewer nothing carries must not stop it. The host's pre-run check
+  // (`resolveRoutes`) is where a run that will call every model is refused ahead of paying
+  const present = keysPresent(keys);
+  const chat = (modelId: string): { backend: ChatBackend; label: string } => {
+    const route = chatRouteFor(modelId, present);
+    if (route !== undefined) return chatBackendFor(route, keys);
+    const refusal = missingRouteError(config, modelId, nativeKeyFor('chat', modelId));
+    return { backend: refusingChat(modelId, refusal), label: labelOf(modelId) };
+  };
+
   const reviewers = config.models.vision.map((modelId) => {
-    const { backend, label } = chatBackendFor(modelId, keys);
+    const { backend, label } = chat(modelId);
     return new ChatVisionReviewer(label, backend, loadRef);
   });
 
-  const text = new ChatTextLLM(chatBackendFor(config.models.text, keys).backend);
+  const text = new ChatTextLLM(chat(config.models.text).backend);
 
   return { image, reviewers, text };
 }
