@@ -377,6 +377,8 @@ documentation is the reference; this plan only names what the app calls.
 3. **`@vn/parse` codec** (D3) with its tests. Done; see As shipped.
 4. **`FORMS`, presentation and `select`** (D1, D2, D6) in
    `apps/desktop/renderer/pathux/doctree/docforms.ts`, with the schema-coverage test.
+   Done; `selectForm(implied, values)` is the `select` less the retained-prefix check,
+   which needs the session and so stays in the pane (task 6).
 5. **`docsession.ts` and `DocBuffer { rich }`** (D4) with tests: two buffers on one path
    share a session; `save()` honours `prepareSave` `refused` / `conflict`; a write that
    lands after further edits leaves the buffer dirty; `wrote()` on a dirty buffer is a
