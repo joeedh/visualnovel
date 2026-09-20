@@ -477,7 +477,7 @@ loses a field the form could edit before it.
    Done; see As shipped.
 6. **Wardrobe control** (D3, D4, D5). Rows, default mark, add, remove, the entry's
    art-direction boxes with the shared rung CSS, art from the tree, the empty-art and
-   rename sentences; `default_outfit` becomes `"none"` here.
+   rename sentences; `default_outfit` becomes `"none"` here. Done; see As shipped.
 7. **Variants control** (D3, D4). The same row over a list, plates for art.
 8. **Prompt override control** (D3). The sentence, the button with the dirty refusal, the
    JSON box.
@@ -748,3 +748,64 @@ findings; what changed for each:
   variant, the fields' absence on the other subjects, and a broken storyboard.
 - The strip (`renderer/pathux/assets/assetstrip.ts`) and the backlink panel read `assets`
   as before and ignore the new fields, so nothing on screen changes in this task.
+
+### Task 6
+
+- `doctree/wardrobecontrol.ts`: `wardrobeControl(field, host)`, a `FieldControl` over the
+  encoded JSON of `outfits` that `also` edits `default_outfit`, so the form's draft,
+  Apply, Discard and Omit treat the pair as fields and `default_outfit`'s own row is
+  `"none"`. It keeps rows (`id`, `loadedId`, `entry`), the default by row identity with
+  the bare id as the fallback, and encodes on every change unless an id is empty or
+  repeated, in which case the row says so ("Give this outfit an id", "Another outfit
+  already has this id") and the last encoding stands until it is fixed. A renamed row
+  stays in its position, as the codec renames in place; when a scene still wears the old
+  name the row says "Scenes wear this outfit by its old name, `<id>`". The default follows
+  a rename because it is the row, not the id. Removing the default keeps `default_outfit`
+  naming it, and the row comes back synthesized at the top ("Synthesized: no entry
+  describes it"), with no remove, no direction boxes and a description box whose
+  placeholder offers to create the entry; typing there makes it real. An emptied wardrobe
+  omits the `outfits` key rather than writing `{}`, and the empty state says "No outfits
+  yet. The pipeline draws `<default>` until one is added." Text that is not a map of
+  strings or objects is shown as "Not a wardrobe; edit it in the Raw view" and handed back
+  unchanged.
+- `doctree/entryrows.ts`: the rows themselves, shared with task 7's variants through
+  `EntryRowsHost` (`planned`, `art`, `used`, an optional `mark`, `empty`, `changed`,
+  `add`, `remove`). A row is its id box, the default mark (`● default`, refused as already
+  worn, or `○ make default`), Remove, a note line, the description in the prose face
+  growing with its text, the art drawn for the entry as the strip's own cells
+  (`assetCell`, exported from `assetstrip.ts`) or a sentence ("Nothing drawn yet" when the
+  pipeline plans it, "No scene wears this outfit, so nothing is planned for it"
+  otherwise), and the entry's own art direction: notes, seed and model, the seed and model
+  in the Asset editor's rung classes. Typing into a direction box turns a bare string into
+  the long form; clearing one drops the key. The button after the rows takes its label
+  from the offer, so "Add an outfit" and "Add a variant" are written once.
+- `SheetHost` gains `links()`, `onLinks(listener)`, `visible()` and `openAsset(hash)`;
+  `wiki.ts` answers them from the tree the strip reads (`pathIndex` then `backlinks`),
+  notifies the listeners at the end of `loadTree`, and routes a thumbnail's click as the
+  strip does. An outfit's art is the `sheet:<id>/<outfit>/<angle>` assets, plus the
+  `portrait:` ones on the default row.
+- `styles/rung.css` holds the seed box and model select that `asset.css` held, adopted by
+  the Asset editor beside its own sheet and appended, with the strip's sheet, in
+  `WikiProvider.styles()`, because the rows draw inside the editor's shadow root. A row
+  whose control is the wardrobe wraps under its label with Omit on the label's line, since
+  a tall control beside a label is two columns of nothing.
+- `rules/sheetform.ts`: `EntryKind`, `EntryRows`, `entryAdd`, `entryField` (`id`,
+  `description`, `notes`, `seed`, `model`), `entryRemove`, `defaultMark`, `entryArt` (the
+  strip's `cellAction` keyed `wardrobe/<id>/asset/<hash>`), and `controls` listing each
+  row in written order; a row with no id yet is keyed by its index as `#<n>`. Situations
+  `wardrobe`, `wardrobe-empty`, and `read-only` now with a row; `ux-model.json`
+  regenerated; `rules/tests/sheetform.test.ts` covers the offers and the listing.
+- Over CDP on the fixture: two rows with the offers' sentences as tooltips; Add an outfit
+  appends a row with the id focused and the empty-id note; a duplicate id is refused in
+  the note; renaming `track` to `sport` keeps its line; making the new row the default and
+  Apply answers makes one revision writing `default_outfit: gala` beside the comment, the
+  rename in place and `gala:` as block YAML with `description` and `seed: 7`, the unknown
+  key kept; removing `gala` brings it back synthesized; typing there creates
+  `gala: silver gown` as a bare string, appended after the kept keys, so the row moves to
+  the end after Apply because the rows follow the document's order; the editor's undo
+  takes each revision back and the rows follow.
+- The look: each row is set off by a 2px rule down its left edge rather than a frame,
+  dashed for a synthesized row; the id and notes boxes and the default mark are chrome
+  type, the description is `--prose` at 13px, the notes under the art in `--mono` at
+  `--mist-dim`, and the id-problem and synthesized sentences in `--sodium`. Remove and
+  make default are quiet words rising to `--paper` on hover and focus.

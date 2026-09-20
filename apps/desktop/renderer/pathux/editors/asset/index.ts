@@ -27,6 +27,7 @@ import type { OriginAction } from '../../../rules/promptview.js';
 import type { Action } from '../../../rules/anchors.js';
 import { VnEditor, registerEditor } from '../../app/editor.js';
 import ASSET_CSS from '../../../styles/asset.css?inline';
+import RUNG_CSS from '../../../styles/rung.css?inline';
 import type { ArtRungInfo, AssetInfo, PropValue } from '../../../../src/shared/ipc.js';
 import { el } from './dom.js';
 import { ChunkDragController } from './chunkdrag.js';
@@ -96,6 +97,7 @@ export class AssetEditor extends VnEditor {
     this.bar = (this.header as Container).row();
 
     this.adoptStyle(ASSET_CSS);
+    this.adoptStyle(RUNG_CSS);
     this.surface = document.createElement('div');
     this.surface.className = 'as-surface';
     this.appendSurface(this.surface);

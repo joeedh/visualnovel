@@ -52,7 +52,7 @@ export function paletteControl(field: FieldHost, host: SheetHost): FieldControl 
   const row = document.createElement('div');
   row.className = 'sf-swatches';
   const note = document.createElement('span');
-  note.className = 'sf-palette-note';
+  note.className = 'sf-note';
   element.append(row, note);
 
   // `null` is text the control cannot draw, kept as it is so Apply writes it back unchanged

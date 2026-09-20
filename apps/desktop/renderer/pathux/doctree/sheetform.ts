@@ -17,9 +17,12 @@ import {
 import type { DocumentSession, JsonValue, MdDoc, WidgetView } from 'pathux-richtext-headless';
 import type { FieldMeta } from 'pathux-richtext-schema';
 import type { EntityTag } from '@vn/types';
+import type { EditorId } from '../../../src/shared/editors.js';
+import type { EntityLinks } from '../../../src/shared/ipc.js';
 import type { AnchorPass } from '../tour/anchors.js';
 import { FORMS, formKind, type DocForm } from './docforms.js';
 import { paletteControl } from './palettecontrol.js';
+import { wardrobeControl } from './wardrobecontrol.js';
 
 /** The controls a pane supplies for a sheet, by field name; a field not named keeps its box. */
 export type SheetControls = Partial<Record<EntityTag, Readonly<Record<string, FieldMeta>>>>;
@@ -34,15 +37,28 @@ export interface SheetHost {
    * of that part is dropped with the rows it recorded.
    */
   anchors(part: string): AnchorPass;
+  /** What the open document is the subject of: its art and what the storyboards plan for it. */
+  links(): EntityLinks | undefined;
+  /** Called when `links` has a new answer; returns what stops the calls. */
+  onLinks(listener: () => void): () => void;
+  /** The editors on screen, which route a thumbnail's click. */
+  visible(): readonly EditorId[];
+  openAsset(hash: string): void;
 }
 
 /** The controls every pane draws over a sheet, each bound to the pane through `host`. */
 export function sheetControls(host: SheetHost): SheetControls {
-  const palette: FieldMeta = {
-    ...FORMS.character.presentation.fields!.palette,
-    control: (field) => paletteControl(field, host),
+  const fields = FORMS.character.presentation.fields!;
+  const palette: FieldMeta = { ...fields.palette, control: (field) => paletteControl(field, host) };
+  const outfits: FieldMeta = {
+    label  : 'Wardrobe',
+    help: 'The outfits scenes can dress this character in; the marked one is worn when a scene names none',
+    control: (field) => wardrobeControl(field, host),
   };
-  return { character: { palette }, location: { palette } };
+  return {
+    character: { palette, outfits, default_outfit: { ...fields.default_outfit, control: 'none' } },
+    location : { palette },
+  };
 }
 
 export class SheetForms {

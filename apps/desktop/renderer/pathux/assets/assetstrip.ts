@@ -47,7 +47,7 @@ export function renderAssetStrip(
   for (const group of drawn) {
     root.appendChild(el('div', 'as-section', group.title));
     const row = el('div', 'as-row');
-    for (const asset of group.assets) row.appendChild(cell(asset, handlers));
+    for (const asset of group.assets) row.appendChild(assetCell(asset, handlers));
     root.appendChild(row);
   }
 }
@@ -56,7 +56,7 @@ export function renderAssetStrip(
  * One stored image, by hash. Portraits and model sheets are base art, so the `vnasset://` handler
  * consults both asset roots. Without the second root this strip draws empty frames.
  */
-function cell(asset: StripCell, handlers: AssetStripHandlers): HTMLElement {
+export function assetCell(asset: StripCell, handlers: AssetStripHandlers): HTMLElement {
   const box = el('div', `as-cell${asset.accepted ? ' accepted' : ''}`);
   const img = document.createElement('img');
   img.src = `vnasset://${asset.hash}.${asset.ext}`;

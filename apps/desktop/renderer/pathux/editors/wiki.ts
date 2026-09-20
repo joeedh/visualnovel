@@ -30,7 +30,8 @@ import { assetNode, openNode } from '../panes/open.js';
 import { WikiProvider } from './wikiprovider.js';
 import type { VnScreen } from '../app/screen.js';
 import WIKI_CSS from '../../styles/wiki.css?inline';
-import type { DocTree } from '../../../src/shared/ipc.js';
+import type { DocTree, EntityLinks } from '../../../src/shared/ipc.js';
+import type { EditorId } from '../../../src/shared/editors.js';
 
 /**
  * One markdown document, in path.ux's rich text editor. The story bible, a character sheet or a
@@ -102,10 +103,20 @@ export class WikiEditor extends VnEditor {
   /** This pane's forms: the schemas with its own controls, and the form path.ux has mounted. */
   private readonly forms = new SheetForms(
     sheetControls({
-      path   : () => this.buf.path,
-      anchors: (part) => redrawing('wiki', `form/${part}`),
+      path     : () => this.buf.path,
+      anchors  : (part) => redrawing('wiki', `form/${part}`),
+      links    : () => this.links(),
+      onLinks: (listener) => {
+        this.linkListeners.add(listener);
+        return () => this.linkListeners.delete(listener);
+      },
+      visible  : () => this.visible(),
+      openAsset: (hash) => this.openAsset(hash),
     }),
   );
+
+  /** The form controls drawing art from the tree, told when it is fetched again. */
+  private readonly linkListeners = new Set<() => void>();
 
   /** The path the editor was last bound for, so a swap on the same path keeps the view state. */
   private bound = '';
@@ -388,6 +399,18 @@ export class WikiEditor extends VnEditor {
       this.tree = undefined;
     }
     this.paintStrip();
+    for (const listener of this.linkListeners) listener();
+  }
+
+  /** What the open document is the subject of, out of the tree the strip reads. */
+  private links(): EntityLinks | undefined {
+    const key = this.tree?.pathIndex[this.buf.path];
+    return key === undefined ? undefined : this.tree?.backlinks[key];
+  }
+
+  private visible(): readonly EditorId[] {
+    const screen = this.ctx?.screen as VnScreen | undefined;
+    return visibleEditors(screen ? panesOf(screen) : []);
   }
 
   /** Opens the picture for a hash. The strip carries hashes where the tree carries rows. */
@@ -498,10 +521,8 @@ export class WikiEditor extends VnEditor {
       return;
     }
     this.strip.style.display = 'block';
-    const key = this.tree?.pathIndex[this.buf.path];
-    const links = key === undefined ? undefined : this.tree?.backlinks[key];
-    const screen = this.ctx?.screen as VnScreen | undefined;
-    const visible = visibleEditors(screen ? panesOf(screen) : []);
+    const links = this.links();
+    const visible = this.visible();
     const anchors = redrawing('wiki', 'strip');
     renderAssetStrip(this.strip, links ? assetGroups(links) : [], EMPTY, {
       onPick: (hash) => this.openAsset(hash),

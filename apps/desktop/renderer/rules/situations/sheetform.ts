@@ -14,8 +14,31 @@ export const SITUATIONS = situations<SheetFormState>(
     state: { path: 'characters/aiko/character.md', palette: { swatches: 0 } },
   },
   {
+    name : 'wardrobe',
+    why: "A wardrobe of two outfits offers each row's boxes, the default mark on one and the sheet drawn for the other, and the button that adds a row.",
+    state: {
+      path    : 'characters/aiko/character.md',
+      wardrobe: {
+        ids    : ['uniform', 'gala'],
+        default: 'uniform',
+        art    : [{ id: 'gala', asset: { hash: 'a1b2c3', label: 'gala / side', accepted: false } }],
+        visible: ['wiki'],
+      },
+    },
+  },
+  {
+    name : 'wardrobe-empty',
+    why  : 'A sheet with no outfits offers only the button that adds one.',
+    state: { path: 'characters/aiko/character.md', wardrobe: { ids: [] } },
+  },
+  {
     name : 'read-only',
     why  : 'A session that refuses writes greys every control of the form with the reason.',
-    state: { path: 'characters/aiko/character.md', readOnly: true, palette: { swatches: 1 } },
+    state: {
+      path    : 'characters/aiko/character.md',
+      readOnly: true,
+      palette : { swatches: 1 },
+      wardrobe: { ids: ['uniform'], default: 'uniform' },
+    },
   },
 );

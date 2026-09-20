@@ -1,0 +1,49 @@
+/*
+ * The seed box and the model select of one rung of art direction, shared by the Asset editor's
+ * prompt ladder and the sheet form's wardrobe and variant rows, so an entry's own direction looks
+ * like the same control wherever it is edited. Adopted beside the host's own sheet: `asset.css`
+ * keeps the rung's frame, and `sheetform.css` the row the boxes sit in.
+ */
+
+/* Pushed to the far end of the heading: it belongs to the rung, but it is not what it says. */
+.as-rung-seed {
+  margin-left: auto;
+  width: 84px;
+  padding: 2px 6px;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 11px;
+  outline: none;
+}
+
+.as-rung-seed::placeholder {
+  color: var(--mist-dim);
+}
+
+.as-rung-seed:focus {
+  border-color: var(--sodium);
+}
+
+.as-rung-seed.dirty {
+  border-color: rgba(244, 162, 76, 0.55);
+}
+
+/* Beside the seed: which model draws this rung, inherited unless a row says otherwise. */
+.as-rung-model {
+  max-width: 160px;
+  padding: 2px 4px;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 11px;
+  outline: none;
+}
+
+.as-rung-model:focus {
+  border-color: var(--sodium);
+}

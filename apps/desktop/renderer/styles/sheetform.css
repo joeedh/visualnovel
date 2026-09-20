@@ -169,12 +169,204 @@
   outline: none;
 }
 
-.sf-palette-note {
+.sf-note {
   font-family: var(--mono);
   font-size: 11px;
   color: var(--sodium);
 }
 
-.sf-palette-note:empty {
+.sf-note:empty {
   display: none;
+}
+
+/*
+ * The wardrobe and the variants: one block per entry where the JSON box was. A block is set off
+ * by a rule down its left edge rather than a frame, so the rows read as a list under the label,
+ * and the description is in the prose face because it is the words every prompt starts from.
+ */
+.schema-form-row:has(> .sf-entries) {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* The rows take the whole width under the label, with Omit kept on the label's line. */
+.schema-form-row:has(> .sf-entries) > button {
+  margin-left: auto;
+}
+
+.schema-form-row > .sf-entries {
+  order: 1;
+  flex: 1 1 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 0 2px 4px;
+}
+
+.sf-entry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sf-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 0 4px 10px;
+  border-left: 2px solid var(--ink-line);
+}
+
+/* An entry the default names but the wardrobe does not hold: dashed, and its id is not a box. */
+.sf-entry.synthesized {
+  border-left-style: dashed;
+}
+
+.sf-entry-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.sf-entry-id,
+.sf-entry-notes {
+  min-width: 0;
+  padding: 2px 6px;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 12px;
+  outline: none;
+}
+
+.sf-entry-id {
+  flex: 0 1 140px;
+}
+
+.sf-entry-notes {
+  flex: 1 1 120px;
+  font-family: var(--sans);
+}
+
+.sf-entry-id::placeholder,
+.sf-entry-notes::placeholder,
+.sf-entry-desc::placeholder {
+  color: var(--mist-dim);
+}
+
+.sf-entry-id:focus,
+.sf-entry-notes:focus,
+.sf-entry-desc:focus {
+  border-color: var(--sodium);
+}
+
+.sf-entry-id-text {
+  color: var(--mist);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.sf-entry-mark,
+.sf-entry-remove,
+.sf-entry-add {
+  padding: 2px 4px;
+  border: none;
+  background: none;
+  color: var(--mist-dim);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sf-entry-mark.is-default {
+  color: var(--paper);
+  cursor: default;
+}
+
+.sf-entry-remove {
+  margin-left: auto;
+}
+
+.sf-entry-mark:not(.is-default):hover,
+.sf-entry-remove:hover,
+.sf-entry-mark:not(.is-default):focus-visible,
+.sf-entry-remove:focus-visible {
+  color: var(--paper);
+  outline: none;
+  text-decoration: underline;
+}
+
+.sf-entry-note {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--sodium);
+}
+
+.sf-entry-note:empty {
+  display: none;
+}
+
+.sf-entry-desc {
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  overflow: hidden;
+  padding: 5px 8px;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--prose);
+  font-size: 13px;
+  line-height: 1.5;
+  outline: none;
+}
+
+.sf-entry-art {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.sf-entry-none,
+.sf-entry-empty {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--mist-dim);
+}
+
+.sf-entry-dir {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+/* A select refuses to shrink below its widest option unless told it may. */
+.sf-entry-dir > .as-rung-model {
+  min-width: 0;
+}
+
+.sf-entry-dir > .as-rung-seed {
+  margin-left: 0;
+}
+
+.sf-entry-add {
+  align-self: flex-start;
+  padding: 3px 8px;
+  border: 1px dashed var(--ink-line);
+  border-radius: var(--r-chrome);
+}
+
+.sf-entry-add:hover,
+.sf-entry-add:focus-visible {
+  color: var(--paper);
+  border-color: var(--mist);
+  outline: none;
 }
