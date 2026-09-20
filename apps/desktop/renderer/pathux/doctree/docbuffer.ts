@@ -28,6 +28,8 @@ import { saveOffer } from '../../rules/docbuffer.js';
 import type { DocFile, DocSaveResult } from '../../../src/shared/ipc.js';
 import {
   dirtySessionCount,
+  dirtySessionPaths,
+  dirtySessions,
   findSession,
   openSession,
   type DocSession,
@@ -98,13 +100,82 @@ export function draftCount(): number {
   return drafts.size + dirtySessionCount();
 }
 
+/** The workspace paths of every document with unsaved edits, text drafts first. */
+export function draftPaths(): string[] {
+  return [...new Set([...drafts.keys(), ...dirtySessionPaths()])];
+}
+
+/**
+ * Every buffer built so far, weakly, so Save All can save through the buffer a pane holds — which
+ * keeps that pane's `seenHash` and dirty flag right — and write the rest of the drafts directly.
+ */
+const buffers = new Set<WeakRef<DocBuffer>>();
+
+/** The outcome of one Save All: the documents written, and the ones refused, each with the reason. */
+export interface SaveAllResult {
+  saved: string[];
+  refused: { path: string; reason: string }[];
+}
+
+/**
+ * Save every unsaved document: each dirty rich session, each text draft through the buffer
+ * showing it, and each text draft whose pane has closed through `io` directly. A refusal on one
+ * document does not stop the others.
+ */
+export async function saveAllDrafts(io: DocIo = BRIDGE_IO): Promise<SaveAllResult> {
+  const result: SaveAllResult = { saved: [], refused: [] };
+  const held = new Set<string>();
+  for (const ref of buffers) {
+    const buffer = ref.deref();
+    if (buffer === undefined) {
+      buffers.delete(ref);
+      continue;
+    }
+    if (buffer.path === '' || !buffer.dirty) continue;
+    held.add(buffer.path);
+    if (await buffer.save()) result.saved.push(buffer.path);
+    else result.refused.push({ path: buffer.path, reason: buffer.note || 'the save was refused' });
+  }
+  for (const entry of dirtySessions()) {
+    if (held.has(entry.path)) continue;
+    const saved = await entry.save(false);
+    if (saved.status === 'saved') result.saved.push(entry.path);
+    else if (saved.status === 'refused')
+      result.refused.push({ path: entry.path, reason: saved.reason });
+  }
+  for (const [path, draft] of [...drafts]) {
+    if (held.has(path)) continue;
+    const outcome = await io.write(path, draft.text, draft.seenHash, false);
+    if (outcome.ok) {
+      drafts.delete(path);
+      result.saved.push(path);
+    } else {
+      result.refused.push({ path, reason: outcome.error });
+    }
+  }
+  return result;
+}
+
+/**
+ * What the shell does when a quit was refused over unsaved edits, given their paths: it points
+ * the author at the pane holding them. Installed by the shell, since this module cannot reach
+ * the screen.
+ */
+let onUnloadRefused: ((paths: string[]) => void) | undefined;
+
+export function setUnloadRefusedHook(hook: ((paths: string[]) => void) | undefined): void {
+  onUnloadRefused = hook;
+}
+
 // Quitting is the one place a draft can still be lost: `on_remove` cannot refuse, but a
 // `beforeunload` listener can, and `preventDefault` alone is the prompt in Chromium 119+ (Electron
 // 33 is well past it). The check is for the node-only jest project importing this module, where
 // path.ux's headless polyfill has aliased `window` to a `globalThis` with no events
 if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
   window.addEventListener('beforeunload', (event) => {
-    if (draftCount() > 0) event.preventDefault();
+    if (draftCount() === 0) return;
+    event.preventDefault();
+    onUnloadRefused?.(draftPaths());
   });
 }
 
@@ -127,7 +198,9 @@ export class DocBuffer implements SessionHolder {
     private readonly onChange: () => void,
     private readonly io: DocIo = BRIDGE_IO,
     private readonly options: DocBufferOptions = {},
-  ) {}
+  ) {
+    buffers.add(new WeakRef(this));
+  }
 
   /** The document last asked for, which `text` catches up to when the read lands. */
   get path(): string {

@@ -86,6 +86,7 @@ export { letterLine, setPanels, type PanelShot, type PanelsOp } from './panels.j
 export {
   aimBubble,
   bubblesOf,
+  nameBubble,
   placeBubble,
   removeBubble,
   setBubbles,

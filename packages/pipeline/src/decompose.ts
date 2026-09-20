@@ -21,7 +21,7 @@ export interface DecomposeAllResult {
 export interface DecomposeAllOptions {
   model: ProjectModel;
   /** Read for the art style and the storyboard notes the decomposer is told. */
-  config: Pick<ProjectConfig, 'art_style' | 'storyboard_notes'>;
+  config: Pick<ProjectConfig, 'art_style' | 'storyboard_notes' | 'shot_form'>;
   providers: Providers;
   paths: ProjectPaths;
   logger?: Logger;

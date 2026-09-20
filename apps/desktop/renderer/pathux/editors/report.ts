@@ -15,6 +15,8 @@ import {
 } from '../agent/reportconvo.js';
 import {
   GRANT_LABELS,
+  NOTE_PLACEHOLDER,
+  NOTE_TIP,
   STOP_TIP,
   grantAction,
   grantBox,
@@ -58,6 +60,22 @@ const REPORT_CSS = `
   padding: 7px 10px;
 }
 .cv-surface .setup select:focus { outline: none; border-color: var(--sodium); }
+.cv-surface .setup-row.tall { align-items: flex-start; }
+.cv-surface .setup textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 58px;
+  resize: vertical;
+  background: var(--ink-sunken);
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-soft);
+  color: var(--paper);
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.4;
+  padding: 7px 10px;
+}
+.cv-surface .setup textarea:focus { outline: none; border-color: var(--sodium); }
 .cv-surface .setup-check {
   display: flex;
   align-items: flex-start;
@@ -102,6 +120,11 @@ export class ReportEditor extends VnEditor {
   private grants: Partial<Record<GrantKind, CommandCheck>> = {};
   /** The conversation and grants the two verdicts were asked about. */
   private grantKey = '';
+  /**
+   * The note as typed, ahead of the card's state. Held here because a keystroke must not rebuild
+   * the card it is typed into; it lands in the setup on blur and when Start is pressed.
+   */
+  private note: string | undefined;
   /** Whether the setup card is up while a conversation is already open. */
   private changing = false;
 
@@ -158,7 +181,8 @@ export class ReportEditor extends VnEditor {
     this.stage.setBusy(state.convo.busy);
     this.stage.setChips(state.convo.suggestions);
 
-    const key = JSON.stringify(state.setup);
+    // The note has no bearing on the verdict, so changing it asks nothing
+    const key = JSON.stringify({ ...state.setup, note: '' });
     if (key !== this.checkedKey) {
       this.checkedKey = key;
       this.verdict = undefined;
@@ -261,6 +285,7 @@ export class ReportEditor extends VnEditor {
         ),
       );
 
+    fields.appendChild(this.noteField(state));
     fields.appendChild(
       this.tick('Read the source code', state.setup.source, SOURCE_TIP, (on) =>
         setSetup({ source: on }),
@@ -289,6 +314,20 @@ export class ReportEditor extends VnEditor {
     return card;
   }
 
+  /** The author's own account of what went wrong, typed before the debug agent reads anything. */
+  private noteField(state: ReportConvo): HTMLElement {
+    const row = el('div', 'setup-row tall');
+    row.appendChild(el('span', '', 'what went wrong'));
+    const area = document.createElement('textarea');
+    area.placeholder = NOTE_PLACEHOLDER;
+    area.title = NOTE_TIP;
+    area.value = this.note ?? state.setup.note;
+    area.addEventListener('input', () => (this.note = area.value));
+    area.addEventListener('change', () => setSetup({ note: area.value }));
+    row.appendChild(area);
+    return row;
+  }
+
   /**
    * Renders the start button and what it would cost. A refusal shows `report.open`'s own
    * sentence, so the reason a greyed button will not run matches the reason the command would
@@ -298,6 +337,10 @@ export class ReportEditor extends VnEditor {
     const offer = startAction(state, this.changing, this.verdict);
     const button = this.anchors.record(this.button(offer.label, 'btn primary'), offer);
     button.addEventListener('click', () => {
+      // The field's text may not have landed in the setup yet: a click commits it first
+      if (this.note !== undefined && this.note !== reportConvo().setup.note) {
+        setSetup({ note: this.note });
+      }
       void startReport().then((view) => {
         if (view) this.changing = false;
       });

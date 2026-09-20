@@ -105,6 +105,13 @@ export function appMenu(state: HeaderMenuState): MenuEntry[] {
     REDO,
     SEPARATOR,
     {
+      label   : 'Save All',
+      id      : 'doc.saveAll',
+      shortcut: shortcutOf({ id: 'doc.saveAll', props: {} }),
+      tooltip : 'Save every wiki page and skill with unsaved edits, in every window',
+    },
+    SEPARATOR,
+    {
       label  : 'Run Pipeline',
       id     : run.id,
       tooltip: run.tooltip,
@@ -296,6 +303,28 @@ export function viewMenu(state: HeaderMenuState): MenuEntry[] {
       label: 'Split Area',
       ...arrange('split'),
       tooltip: 'Drag a line across a pane to divide it in two.',
+    },
+    SEPARATOR,
+    {
+      label   : 'Zoom In',
+      id      : 'view.zoom',
+      props   : { move: 'in' },
+      shortcut: shortcutOf({ id: 'view.zoom', props: { move: 'in' } }),
+      tooltip : 'Make text and widgets in every window one step bigger',
+    },
+    {
+      label   : 'Zoom Out',
+      id      : 'view.zoom',
+      props   : { move: 'out' },
+      shortcut: shortcutOf({ id: 'view.zoom', props: { move: 'out' } }),
+      tooltip : 'Make text and widgets in every window one step smaller',
+    },
+    {
+      label   : 'Reset Zoom',
+      id      : 'view.zoom',
+      props   : { move: 'reset' },
+      shortcut: shortcutOf({ id: 'view.zoom', props: { move: 'reset' } }),
+      tooltip : 'Put every window back at 100%',
     },
     SEPARATOR,
     {

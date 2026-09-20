@@ -5,6 +5,8 @@
  * vendor SDK.
  */
 
+import type { TextModelEntry } from './imagemodels.js';
+
 /** The vendors a chat model can belong to, and therefore the keys one can need. */
 export type ChatVendor = 'gemini' | 'anthropic';
 
@@ -179,6 +181,41 @@ export const TEXT_MODELS: readonly string[] = [
   'gemini-2.5-pro',
   'gemini-2.5-flash',
 ];
+
+/** One row of a text-model picker: the id it writes, the text it shows, and its tooltip. */
+export interface TextModelChoice {
+  id: string;
+  label: string;
+  tooltip: string;
+}
+
+/** How a curated or listed id reads on hover. */
+function textModelTooltip(id: string, listed: TextModelEntry | undefined): string {
+  if (listed?.vendor === 'openrouter') {
+    return `${listed.name || id}: routed by OpenRouter; needs an OpenRouter key.`;
+  }
+  const vendor = listed?.vendor ?? chatVendorFor(id);
+  const name = listed?.name ? `${listed.name}: ` : '';
+  return `${name}answers through ${vendor === 'anthropic' ? 'Anthropic' : 'Gemini'}, or through OpenRouter when only that key is set.`;
+}
+
+/**
+ * The rows a text-model picker draws: the curated ids, every id the cached listing holds, and
+ * `current` where it is none of them, so a model that dropped off the listing is still shown
+ * rather than silently reset. Sorted by id, with the same id listed once.
+ */
+export function textModelChoices(
+  listed: readonly TextModelEntry[] | undefined,
+  current: string,
+): TextModelChoice[] {
+  const byId = new Map<string, TextModelEntry | undefined>();
+  for (const id of TEXT_MODELS) byId.set(id, undefined);
+  for (const entry of listed ?? []) byId.set(entry.id, entry);
+  if (current !== '' && !byId.has(current)) byId.set(current, undefined);
+  return [...byId.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([id, entry]) => ({ id, label: id, tooltip: textModelTooltip(id, entry) }));
+}
 
 // `xhigh` arrived on Opus 4.7; the models before it step from `high` straight to `max`.
 const NO_XHIGH: readonly EffortChoice[] = ['none', 'low', 'medium', 'high', 'max'];

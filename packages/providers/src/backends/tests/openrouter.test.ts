@@ -6,7 +6,7 @@ import { ProviderError, RetryableProviderError } from '@vn/util';
 import { capturedRequest, capturedRequests, clearCaptures } from '../capture.js';
 import { faultKind } from '../transient.js';
 import { OpenRouterError } from '../openrouter-common.js';
-import { createOpenRouterImage, OPENROUTER_IMAGES_URL } from '../openrouter.js';
+import { createOpenRouterImage, OPENROUTER_IMAGES_URL, snapAspect } from '../openrouter.js';
 import { placeholderPng } from '../../placeholder.js';
 
 const MODEL = 'openai/gpt-image-2';
@@ -89,6 +89,30 @@ describe('what the request carries', () => {
 
     expect(sent[0]?.body.aspect_ratio).toBe('3:4');
     expect(sent[0]?.body.seed).toBe(7);
+  });
+
+  it('snaps a ratio the catalog does not list to the nearest listed one', async () => {
+    const fake = endpoint([() => drew('a drawing')]);
+    const image = createOpenRouterImage('a-key', MODEL, {
+      fetchImpl: fake.fetchImpl,
+      aspects  : ['1:1', '3:2', '2:3', 'auto'],
+    });
+
+    await image.generate('a cat', [], { modelId: MODEL, aspect: '16:9' });
+    expect(fake.sent[0]?.body.aspect_ratio).toBe('3:2');
+
+    await image.generate('a cat', [], { modelId: MODEL, aspect: '9:16' });
+    expect(fake.sent[1]?.body.aspect_ratio).toBe('2:3');
+
+    await image.generate('a cat', [], { modelId: MODEL, aspect: '1:1' });
+    expect(fake.sent[2]?.body.aspect_ratio).toBe('1:1');
+  });
+
+  it('sends the ratio as given when the catalog lists none for the model', async () => {
+    const { image, sent } = backend([() => drew('a drawing')]);
+
+    await image.generate('a cat', [], { modelId: MODEL, aspect: '16:9' });
+    expect(sent[0]?.body.aspect_ratio).toBe('16:9');
   });
 
   it('refuses a seed by name for a model the catalog says takes none, before any request', async () => {
@@ -217,5 +241,23 @@ describe('how a refusal is shaped', () => {
       `OpenRouter returned no picture (${MODEL})`,
     );
     expect(sent).toHaveLength(1);
+  });
+});
+
+describe('snapAspect', () => {
+  it('keeps a listed ratio and passes through with an empty list', () => {
+    expect(snapAspect('16:9', [])).toBe('16:9');
+    expect(snapAspect('16:9', ['16:9', '1:1'])).toBe('16:9');
+  });
+
+  it('picks the nearest ratio in log space, on either side of square', () => {
+    expect(snapAspect('16:9', ['1:1', '3:2', '2:3'])).toBe('3:2');
+    expect(snapAspect('9:16', ['1:1', '3:2', '2:3'])).toBe('2:3');
+    expect(snapAspect('4:3', ['1:1', '3:2', '2:3'])).toBe('3:2');
+  });
+
+  it('leaves a word alone, and a request when only words are listed', () => {
+    expect(snapAspect('auto', ['1:1'])).toBe('auto');
+    expect(snapAspect('16:9', ['auto'])).toBe('16:9');
   });
 });

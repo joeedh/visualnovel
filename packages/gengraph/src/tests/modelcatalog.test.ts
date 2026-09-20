@@ -54,39 +54,39 @@ describe('imageModelChoices', () => {
     expect(rows.at(-1)?.tooltip).toContain('not in the cached listing');
   });
 
-  it('orders the inherit row, the shipped ids, the listing, then a current value in none of them', () => {
+  it('puts the inherit row first, then the shipped ids, the listing and a current value in none of them, sorted', () => {
     const rows = imageModelChoices(CATALOG, 'recraft/recraft-v4', { inherit: true });
     expect(rows.map((row) => row.id)).toEqual([
       '',
-      'gemini-2.5-flash-image',
-      'openai/gpt-image-2',
-      'google/gemini-3-pro-image',
       'bytedance-seed/seedream-4.5',
+      'gemini-2.5-flash-image',
+      'google/gemini-3-pro-image',
+      'openai/gpt-image-2',
       'recraft/recraft-v4',
     ]);
     expect(rows[0]?.label).toBe('Inherit (openai/gpt-image-2)');
-    expect(rows[2]?.label).toBe('openai/gpt-image-2');
+    expect(rows[4]?.label).toBe('openai/gpt-image-2');
     expect(imageModelChoices(CATALOG, 'openai/gpt-image-2').map((row) => row.id)).toEqual([
-      'gemini-2.5-flash-image',
-      'openai/gpt-image-2',
-      'google/gemini-3-pro-image',
       'bytedance-seed/seedream-4.5',
+      'gemini-2.5-flash-image',
+      'google/gemini-3-pro-image',
+      'openai/gpt-image-2',
     ]);
   });
 
   it('says on each row how it draws: the vendor, the price, the ratios, the seed', () => {
     const rows = imageModelChoices(CATALOG, '');
-    expect(rows[0]?.tooltip).toBe('Draw with gemini-2.5-flash-image, through Gemini.');
-    expect(rows[1]?.tooltip).toBe(
+    expect(rows[1]?.tooltip).toBe('Draw with gemini-2.5-flash-image, through Gemini.');
+    expect(rows[3]?.tooltip).toBe(
       'GPT Image 2: no per-picture price listed; 1:1 16:9; no seed; routed by OpenRouter; not zero-data-retention.',
     );
     expect(rows[2]?.tooltip).toBe(
       'Gemini 3 Pro Image: no per-picture price listed; no aspect ratios declared; no seed; routed by OpenRouter.',
     );
-    expect(rows[3]?.tooltip).toBe(
+    expect(rows[0]?.tooltip).toBe(
       'Seedream 4.5: about $0.040 per picture; 1:1; takes a seed; routed by OpenRouter; not zero-data-retention.',
     );
-    expect(openRouterTooltip(CATALOG.openrouter[2]!)).toBe(rows[3]?.tooltip);
+    expect(openRouterTooltip(CATALOG.openrouter[2]!)).toBe(rows[0]?.tooltip);
   });
 
   it('names the project model in the inherit row only once a catalog says it', () => {

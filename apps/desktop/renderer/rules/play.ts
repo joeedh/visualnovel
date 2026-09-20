@@ -83,6 +83,23 @@ export function dimAction(): Offer {
   };
 }
 
+/**
+ * The header's checkbox for reading a page's bubbles all at once rather than one line at a time.
+ * Off by default: the runner reveals a page one bubble per step, and seeing every bubble is a
+ * way of checking the lettering rather than of reading the story.
+ */
+export function allBubblesAction(): Offer {
+  return {
+    ok: true,
+    ...view('mode'),
+    on     : 'bubbles',
+    label  : 'All bubbles',
+    tooltip:
+      'Draw every placed bubble on the page at once, with the current line’s outlined, ' +
+      'instead of one bubble per step',
+  };
+}
+
 /** One choice at the end of a branching scene. */
 export function choiceAction(choice: { label: string; goto: string }): Offer {
   return {
@@ -118,6 +135,7 @@ export function controls(state: PlayState): readonly Offer[] {
     loadAction(),
     resetAction(),
     dimAction(),
+    allBubblesAction(),
     ...(ended ? ended.choices.map(choiceAction) : []),
     ...(ended && ended.next && ended.choices.length === 0 ? [continueAction()] : []),
   ];

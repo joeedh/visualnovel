@@ -24,9 +24,9 @@ const shot = (id: string, covers: string[], image?: CoverageShot['image']): Cove
 });
 
 const scene: SceneCoverage = {
-  sceneId   : 'arrival',
-  location  : 'GATE',
-  heading   : 'INT. GATE - DAY',
+  sceneId    : 'arrival',
+  location   : 'GATE',
+  heading    : 'INT. GATE - DAY',
   lines: [
     { id: 'arrival:L1', kind: 'narration', text: 'The gate stands open.' },
     { id: 'arrival:L2', kind: 'dialogue', speaker: 'aiko', text: 'Um… hello.' },
@@ -36,12 +36,14 @@ const scene: SceneCoverage = {
     shot('arrival:s1', ['arrival:L1'], { hash: 'a1b2c3d4', ext: 'png' }),
     shot('arrival:s2', ['arrival:L2']),
   ],
-  cast      : [],
-  characters: [],
-  variants  : ['day'],
-  decomposed: true,
-  lettering : 'model',
-  imageModel: 'mock-image',
+  cast       : [],
+  characters : [],
+  variants   : ['day'],
+  decomposed : true,
+  lettering  : 'model',
+  bubbleNames: false,
+  names      : {},
+  imageModel : 'mock-image',
 };
 
 export const SITUATIONS = situations<LineMenuState>(

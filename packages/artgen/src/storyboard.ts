@@ -6,6 +6,7 @@ import type {
   SheetGroup,
   Shot,
   ShotDecomposition,
+  ShotForm,
   ProjectModel,
 } from '@vn/types';
 import { shotDecompositionSchema } from '@vn/types';
@@ -121,13 +122,19 @@ export interface StoryboardStyle {
   artStyle: string;
   /** `storyboard_notes`: how a scene is storyboarded, as distinct from how a frame is drawn. */
   storyboardNotes: string;
+  /** `shot_form`: whether each shot is a single frame or a page of panels. */
+  shotForm: ShotForm;
 }
 
 /** The {@link StoryboardStyle} a project config states. */
 export function storyboardStyle(
-  config: Pick<ProjectConfig, 'art_style' | 'storyboard_notes'>,
+  config: Pick<ProjectConfig, 'art_style' | 'storyboard_notes' | 'shot_form'>,
 ): StoryboardStyle {
-  return { artStyle: config.art_style, storyboardNotes: config.storyboard_notes };
+  return {
+    artStyle       : config.art_style,
+    storyboardNotes: config.storyboard_notes,
+    shotForm       : config.shot_form,
+  };
 }
 
 const DECOMP_ROLE = [
@@ -151,11 +158,12 @@ const DECOMP_FORMAT = [
 export const MAX_PANELS = 6;
 
 /**
- * What the model is told about pages, only when the author's notes are set: a project that
- * storyboards plain frames never hears the word "panel", so its decompositions do not grow them.
+ * What the model is told about pages, only under `shot_form: pages`: a project that storyboards
+ * plain frames never hears the word "panel", so its decompositions do not grow them.
  */
 const DECOMP_PAGES = [
-  `Where the notes ask for pages, a shot may be a manga page instead of one frame: give it`,
+  'The author storyboards in manga pages: make every shot a page rather than one frame, unless',
+  'the notes ask for a single frame somewhere. A page has',
   `"panels", one to ${MAX_PANELS} in reading order, each with its own framing, an optional camera`,
   '(extreme close-up, low angle, over-the-shoulder, insert, splash), the subjects in it, and the',
   '"coversLines" it letters; the page\'s own "coversLines" is the union of its panels\' and its',
@@ -164,7 +172,12 @@ const DECOMP_PAGES = [
     .map(([name, shapes]) => `${name} (${shapes.length} panels)`)
     .join(', ')};`,
   'a page whose panel count matches none of them is split into even tiers. A shot without',
-  '"panels" is a single frame as before. Where the notes ask for staging sheets, give shots',
+  '"panels" is a single frame.',
+].join(' ');
+
+/** What the model is told about staging sheets, only when the author's notes are set. */
+const DECOMP_SHEETS = [
+  'Where the notes ask for staging sheets, give shots',
   'that play out in one continuous space a shared "sheet" group id, contiguous beats up to',
   `${MAX_SHEET_CELLS} shots per group, and list each group under "sheets" with optional "notes"`,
   'on what stays fixed across it; the group is drawn once as a grid and every member is drawn',
@@ -180,18 +193,22 @@ const DECOMP_FORMAT_PAGES = [
 ].join(' ');
 
 /**
- * The decomposer's system prompt. The style sits between the role and the answer format, so
- * a project that states neither gets the prompt every decomposition before this was made with,
- * byte for byte. Storyboard notes bring the page vocabulary and the wider answer format with them.
+ * The decomposer's system prompt. The style sits between the role and the answer format, so a
+ * project that states none of it gets the prompt every decomposition before this was made with,
+ * byte for byte. `shot_form: pages` brings the page vocabulary, and storyboard notes the staging
+ * sheets; either brings the wider answer format with it.
  */
 export function decompSystem(style: StoryboardStyle): string {
   const artStyle = style.artStyle.trim();
   const notes = style.storyboardNotes.trim();
+  const pages = style.shotForm === 'pages';
   return [
     DECOMP_ROLE,
     ...(artStyle ? [`The frames will be drawn in this art style: ${artStyle}.`] : []),
-    ...(notes ? [`Storyboard notes from the author: ${notes}.`, DECOMP_PAGES] : []),
-    notes ? DECOMP_FORMAT_PAGES : DECOMP_FORMAT,
+    ...(notes ? [`Storyboard notes from the author: ${notes}.`] : []),
+    ...(pages ? [DECOMP_PAGES] : []),
+    ...(notes ? [DECOMP_SHEETS] : []),
+    pages || notes ? DECOMP_FORMAT_PAGES : DECOMP_FORMAT,
   ].join(' ');
 }
 

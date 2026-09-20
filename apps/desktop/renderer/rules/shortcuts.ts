@@ -86,6 +86,34 @@ export const SHORTCUTS: readonly Shortcut[] = [
     label: 'Close window',
     runs : command('window.close'),
   },
+  {
+    scope: 'global',
+    key  : 'S',
+    mods : ['ctrl', 'shift'],
+    label: 'Save all',
+    runs : command('doc.saveAll'),
+  },
+  {
+    scope: 'global',
+    key  : '=',
+    mods : ['ctrl'],
+    label: 'Zoom in',
+    runs : { id: 'view.zoom', props: { move: 'in' } },
+  },
+  {
+    scope: 'global',
+    key  : '-',
+    mods : ['ctrl'],
+    label: 'Zoom out',
+    runs : { id: 'view.zoom', props: { move: 'out' } },
+  },
+  {
+    scope: 'global',
+    key  : 'Key0',
+    mods : ['ctrl'],
+    label: 'Reset zoom',
+    runs : { id: 'view.zoom', props: { move: 'reset' } },
+  },
 
   { scope: 'play', key: 'Space', mods: [], label: 'Advance', runs: view('step'), on: 'forward' },
   { scope: 'play', key: 'Enter', mods: [], label: 'Advance', runs: view('step'), on: 'forward' },
@@ -168,6 +196,17 @@ export const SHORTCUTS: readonly Shortcut[] = [
     on   : 'corner/',
   },
   { scope: 'page', key: 'Escape', mods: [], label: 'Deselect', runs: view('scope'), on: 'exit' },
+
+  // The Script editor's keys act on the lines marked by their gutter numbers
+  {
+    scope: 'script',
+    key  : 'Delete',
+    mods : [],
+    label: 'Delete marked lines',
+    runs : command('story.deleteLines'),
+    on   : 'marked',
+  },
+  { scope: 'script', key: 'Escape', mods: [], label: 'Unmark lines', runs: view('mark') },
 
   {
     scope: 'gengraph',

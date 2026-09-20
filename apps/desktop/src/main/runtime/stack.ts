@@ -13,7 +13,8 @@ import type { CommandHost } from '../commands/index.js';
 import { desktopInteractions } from '../commands/interaction.js';
 import type { AppContext } from './context.js';
 import { getSession } from './sessionaccess.js';
-import { createWindow } from './windowmanager.js';
+import { applyZoom, createWindow } from './windowmanager.js';
+import { ZOOM_KEY } from '../../shared/zoom.js';
 import { scheduleApprovals, switchWorkspace } from './workspacelifecycle.js';
 import { snapshotStore } from '../workspace/filecache.js';
 import { UNDO_EXCLUDES } from '../../shared/affects.js';
@@ -35,6 +36,7 @@ export function getStack(ctx: AppContext): CommandStack<CommandHost> {
       // A `view.*` effect is targeted at the window whose palette or menu ran the command.
       // `windowFor` falls back to the focused window for the agent, CDP and main.
       ui: (effect: UiEffect, target?: WindowId) => ctx.sendTo(target, 'command:ui', effect),
+      uiAll                   : (effect: UiEffect) => ctx.broadcast('command:ui', effect),
       openWorkspace           : (next: string) => switchWorkspace(ctx, next),
       workspaceIsOpenElsewhere: async (next: string) => {
         const root = resolvePath(next);
@@ -49,6 +51,8 @@ export function getStack(ctx: AppContext): CommandStack<CommandHost> {
         return true;
       },
       quitApp                 : () => app.quit(),
+      setZoom                 : (factor: number) => applyZoom(ctx, factor),
+      zoom                    : () => ctx.getSessionState().get(ZOOM_KEY, 1),
       noteTurnWindow: (origin) => {
         ctx.turnWindow = origin;
       },

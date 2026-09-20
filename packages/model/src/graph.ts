@@ -49,3 +49,50 @@ export function toMermaid(model: ProjectModel): string {
   lines.push('  classDef dead stroke-dasharray: 5 5,stroke:#c33;');
   return lines.join('\n') + '\n';
 }
+
+/**
+ * Orders the reachable scenes so that each comes after every scene that leads to it, starting
+ * from `entry`. Among the scenes ready at once, the one a playthrough meets first goes first:
+ * `next` ahead of `choices`, in breadth-first discovery order. A loop back to an earlier scene
+ * cannot be honoured, so when nothing is ready the scene discovered earliest is released and the
+ * walk continues. Scenes the entry does not reach are absent; `computeReachable` names them.
+ */
+export function topologicalOrder(scenes: Map<string, Scene>, entry: string | undefined): string[] {
+  const reachable = computeReachable(scenes, entry);
+  if (reachable.size === 0) return [];
+
+  const discovered: string[] = [];
+  const queue = [entry as string];
+  const seen = new Set<string>();
+  while (queue.length) {
+    const id = queue.shift() as string;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    discovered.push(id);
+    const scene = scenes.get(id) as Scene;
+    if (scene.next && scenes.has(scene.next)) queue.push(scene.next);
+    for (const choice of scene.choices) if (scenes.has(choice.goto)) queue.push(choice.goto);
+  }
+
+  // How many predecessors of each scene are still unplaced. Two edges into the same scene from
+  // one source count once, so they are released together.
+  const leadsTo = (id: string): Set<string> =>
+    new Set(successors(scenes.get(id) as Scene).filter((to) => reachable.has(to)));
+  const waiting = new Map(discovered.map((id) => [id, 0]));
+  for (const id of discovered) {
+    for (const to of leadsTo(id)) waiting.set(to, (waiting.get(to) as number) + 1);
+  }
+
+  const ordered: string[] = [];
+  const placed = new Set<string>();
+  while (placed.size < discovered.length) {
+    const left = discovered.filter((id) => !placed.has(id));
+    const id = left.find((each) => waiting.get(each) === 0) ?? (left[0] as string);
+    placed.add(id);
+    ordered.push(id);
+    for (const to of leadsTo(id)) {
+      if (!placed.has(to)) waiting.set(to, (waiting.get(to) as number) - 1);
+    }
+  }
+  return ordered;
+}

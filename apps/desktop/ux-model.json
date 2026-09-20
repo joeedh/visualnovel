@@ -21,6 +21,12 @@
     {
       "module": "headerbar",
       "editor": "header",
+      "name"  : "stopping",
+      "why": "Stop was already pressed on a run, so pressing it again opens pipeline.stop with abort ticked, to cut off the tasks in flight."
+    },
+    {
+      "module": "headerbar",
+      "editor": "header",
       "name"  : "reporting",
       "why"   : "The debug agent is on a turn, so Stop offers report.stop."
     },
@@ -424,7 +430,7 @@
       "module": "page",
       "editor": "page",
       "name"  : "runner-lettered",
-      "why": "The runner letters this project’s pages: each lettered line has an anchor on the page — line 1 a ghost at its panel’s centre, line 2 placed — and line 2’s bubble is held, so its tail handle is drawn too. Line 3 is in no panel and has no anchor."
+      "why": "The runner letters this project’s pages: each lettered line has an anchor on the page — line 1 a ghost at its panel’s centre, line 2 placed — and line 2’s bubble is held, so its tail handle is drawn too, and its row carries the name select. Line 3 is in no panel and has no anchor."
     },
     {
       "module": "play",
@@ -454,13 +460,13 @@
       "module": "projectbar",
       "editor": "project",
       "name"  : "clean",
-      "why": "The box matches the file, so Apply is refused with No changes; the box, reload, the image-model picker and the builtin-skill checkboxes stay offered, each with the list the file would hold after it."
+      "why": "The box matches the file, so Apply is refused with No changes; the box, reload, the three model pickers and the builtin-skill checkboxes stay offered, each with the list the file would hold after it."
     },
     {
       "module": "projectbar",
       "editor": "project",
       "name"  : "dirty",
-      "why"   : "The box holds something the file does not, so Apply is offered."
+      "why": "The box holds something the file does not, so Apply is offered; the file storyboards in pages, which the shot-form picker shows."
     },
     {
       "module": "projectbar",
@@ -472,7 +478,7 @@
       "module": "projectbar",
       "editor": "project",
       "name"  : "no-project",
-      "why": "No project is open, so Apply, the box, the picker, Refresh models and every checkbox are refused."
+      "why": "No project is open, so Apply, the box, the pickers, Refresh models and every checkbox are refused."
     },
     {
       "module": "reportconvo",
@@ -503,6 +509,12 @@
       "editor": "script",
       "name"  : "scene",
       "why": "A scene is on the page: its heading opens the move dialog, each line has a drag handle and opens a text box, the spoken line has a cue slot, the second line offers a split, and the structure buttons add a line, merge the next scene in, or continue to a new one."
+    },
+    {
+      "module": "script",
+      "editor": "script",
+      "name"  : "marked",
+      "why": "Both lines are marked by their gutter numbers, so the bar’s Delete takes the pair, first then second, and each handle offers to unmark its line."
     },
     {
       "module": "script",
@@ -1966,6 +1978,348 @@
       "editor"    : "header",
       "module"    : "headerbar",
       "situation" : "running",
+      "key"       : "fx:popup.open#notifications",
+      "widgetPath": "header/popup-open~4edac44b",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "🔔",
+        "tooltip": "Show notifications",
+        "on"     : "notifications",
+        "ok"     : true,
+        "props": {
+          "popup": "notifications"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "notifications"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "stopping",
+      "key"       : "fx:menu.open#app",
+      "widgetPath": "header/menu-open~727d1fad",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "VN STUDIO",
+        "tooltip": "Open, create and export a project, and everything that acts on the workspace as a whole.",
+        "on"     : "app",
+        "ok"     : true,
+        "props": {
+          "menu": "app"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "app"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "stopping",
+      "key"       : "fx:menu.open#edit",
+      "widgetPath": "header/menu-open~bcc0aa88",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Edit",
+        "tooltip": "Undo and redo, and the one act that approves and renders the art in a single pass.",
+        "on"     : "edit",
+        "ok"     : true,
+        "props": {
+          "menu": "edit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "edit"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "stopping",
+      "key"       : "fx:menu.open#view",
+      "widgetPath": "header/menu-open~3633d4f9",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "View",
+        "tooltip": "Split and close panes, and switch between the saved window layouts.",
+        "on"     : "view",
+        "ok"     : true,
+        "props": {
+          "menu": "view"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "view"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "stopping",
+      "key"       : "fx:menu.open#help",
+      "widgetPath": "header/menu-open~f9eacb8d",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Help",
+        "tooltip": "Whether there is a newer VN Studio, and what to do about an agent that misbehaved.",
+        "on"     : "help",
+        "ok"     : true,
+        "props": {
+          "menu": "help"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "help"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "stopping",
+      "key"       : "cmd:view.open",
+      "widgetPath": "header/view-open~a1d8d77b",
+      "offer": {
+        "id"      : "view.open",
+        "label"   : "View",
+        "tooltip" : "Split and close panes, and switch between the saved window layouts.",
+        "supplies": ["editor"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "stopping",
+      "key"       : "cmd:view.applyLayout",
+      "widgetPath": "header/view-applylayout~ef2d7727",
+      "offer": {
+        "id"      : "view.applyLayout",
+        "label"   : "View",
+        "tooltip" : "Split and close panes, and switch between the saved window layouts.",
+        "supplies": ["name"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "view.applyLayout",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "stopping",
+      "key"       : "cmd:pipeline.run",
+      "widgetPath": "header/pipeline-run~bad6e3e8",
+      "offer": {
+        "id"     : "pipeline.run",
+        "label"  : "▶ Run",
+        "tooltip": "Plan and render everything that is ready, to the next gate",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Cannot start: a pipeline run is already in progress."
+        }
+      },
+      "effects": [
+        {
+          "id": "pipeline.run"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "stopping",
+      "key"       : "cmd:pipeline.stop",
+      "widgetPath": "header/pipeline-stop~7f3b6a8f",
+      "offer": {
+        "id"     : "pipeline.stop",
+        "label"  : "■",
+        "tooltip": "A stop is already pending: the run ends once the tasks in flight finish. Stopping again cuts those tasks off — each goes back to pending, and the model call it was in is abandoned, still paid for and its picture lost.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "abort": true
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pipeline.stop",
+          "props": {
+            "abort": true
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "stopping",
+      "key"       : "fx:history.move#undo",
+      "widgetPath": "header/history-move~6f5c70d0",
+      "offer": {
+        "id"     : "history.move",
+        "label"  : "⟲",
+        "tooltip": "Undo",
+        "on"     : "undo",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing to undo"
+        }
+      },
+      "effects": [
+        {
+          "id": "history.move"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "stopping",
+      "key"       : "fx:history.move#redo",
+      "widgetPath": "header/history-move~ceac1434",
+      "offer": {
+        "id"     : "history.move",
+        "label"  : "⟳",
+        "tooltip": "Redo",
+        "on"     : "redo",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing to redo"
+        }
+      },
+      "effects": [
+        {
+          "id": "history.move"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "stopping",
+      "key"       : "cmd:agent.setMode",
+      "widgetPath": "header/agent-setmode~12ef4d33",
+      "offer": {
+        "id"     : "agent.setMode",
+        "label"  : "PLAN",
+        "tooltip": "Plan mode: the agent reads but never writes. Click to let it apply edits.",
+        "ok"     : true,
+        "props": {
+          "mode": "execute"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setMode",
+          "props": {
+            "mode": "execute"
+          }
+        }
+      ],
+      "shortcut"  : "Shift+Tab"
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "stopping",
+      "key"       : "cmd:agent.setModel",
+      "widgetPath": "header/agent-setmodel~a6e2e715",
+      "offer": {
+        "id"      : "agent.setModel",
+        "label"   : "claude-opus-5",
+        "tooltip" : "Which model the agent answers with. Switching takes effect next turn.",
+        "supplies": ["modelId"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "agent.setModel",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "stopping",
+      "key"       : "fx:popup.open#approvals",
+      "widgetPath": "header/popup-open~ca476fa9",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "🎨",
+        "tooltip": "No art is waiting on approval",
+        "on"     : "approvals",
+        "ok"     : true,
+        "props": {
+          "popup": "approvals"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "approvals"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "stopping",
       "key"       : "fx:popup.open#notifications",
       "widgetPath": "header/popup-open~4edac44b",
       "offer": {
@@ -17976,7 +18330,7 @@
       "offer": {
         "id"     : "models.refresh",
         "label"  : "Refresh models",
-        "tooltip": "Fetch the image models OpenRouter routes to; none are cached yet, so the pickers list only the shipped ids",
+        "tooltip": "Fetch the image models OpenRouter routes to, and the text models of OpenRouter, Anthropic and Gemini; none are cached yet, so the pickers list only the shipped ids",
         "ok"     : true,
         "props"  : {}
       },
@@ -18210,7 +18564,7 @@
       "offer": {
         "id"     : "models.refresh",
         "label"  : "Refresh models",
-        "tooltip": "Fetch the image models OpenRouter routes to again; the cached list is from 2026-09-15",
+        "tooltip": "Fetch the image models OpenRouter routes to, and the text models of OpenRouter, Anthropic and Gemini, again; the cached list is from 2026-09-15",
         "ok"     : true,
         "props"  : {}
       },
@@ -18442,7 +18796,7 @@
       "offer": {
         "id"     : "models.refresh",
         "label"  : "Refresh models",
-        "tooltip": "Fetch the image models OpenRouter routes to; none are cached yet, so the pickers list only the shipped ids",
+        "tooltip": "Fetch the image models OpenRouter routes to, and the text models of OpenRouter, Anthropic and Gemini; none are cached yet, so the pickers list only the shipped ids",
         "ok"     : true,
         "props"  : {}
       },
@@ -18655,7 +19009,7 @@
       "offer": {
         "id"     : "models.refresh",
         "label"  : "Refresh models",
-        "tooltip": "Fetch the image models OpenRouter routes to; none are cached yet, so the pickers list only the shipped ids",
+        "tooltip": "Fetch the image models OpenRouter routes to, and the text models of OpenRouter, Anthropic and Gemini; none are cached yet, so the pickers list only the shipped ids",
         "ok"     : true,
         "props"  : {}
       },
@@ -19232,6 +19586,53 @@
       "via"       : "control",
       "editor"    : "page",
       "module"    : "page",
+      "situation" : "no-shot",
+      "key"       : "fx:menu.open",
+      "widgetPath": "page/menu-open~eb5b4984",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "⋯",
+        "tooltip": "Open this page’s render in the Asset editor, or delete the shot",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No shot is on screen."
+        }
+      },
+      "effects": [
+        {
+          "id": "menu.open"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "frame",
+      "key"       : "fx:menu.open",
+      "widgetPath": "page/menu-open~eb5b4984",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "⋯",
+        "tooltip": "Open this page’s render in the Asset editor, or delete the shot",
+        "ok"     : true,
+        "props": {
+          "menu": "shot"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "shot"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
       "situation" : "frame",
       "key"       : "cmd:story.setPanels#layout/two-tier",
       "widgetPath": "page/story-setpanels~584427d9",
@@ -19701,6 +20102,31 @@
       "effects": [
         {
           "id": "drag.start"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "page",
+      "key"       : "fx:menu.open",
+      "widgetPath": "page/menu-open~eb5b4984",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "⋯",
+        "tooltip": "Open this page’s render in the Asset editor, or delete the shot",
+        "ok"     : true,
+        "props": {
+          "menu": "shot"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "shot"
+          }
         }
       ]
     },
@@ -20240,6 +20666,31 @@
           "id"   : "drag.start",
           "props": {
             "interaction": "page.letter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "panel-selected",
+      "key"       : "fx:menu.open",
+      "widgetPath": "page/menu-open~eb5b4984",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "⋯",
+        "tooltip": "Open this page’s render in the Asset editor, or delete the shot",
+        "ok"     : true,
+        "props": {
+          "menu": "shot"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "shot"
           }
         }
       ]
@@ -21114,6 +21565,31 @@
       "editor"    : "page",
       "module"    : "page",
       "situation" : "flagged",
+      "key"       : "fx:menu.open",
+      "widgetPath": "page/menu-open~eb5b4984",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "⋯",
+        "tooltip": "Open this page’s render in the Asset editor, or delete the shot",
+        "ok"     : true,
+        "props": {
+          "menu": "shot"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "shot"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "flagged",
       "key"       : "cmd:story.setPanels#layout/two-tier",
       "widgetPath": "page/story-setpanels~584427d9",
       "offer": {
@@ -21679,6 +22155,31 @@
       "editor"    : "page",
       "module"    : "page",
       "situation" : "runner-lettered",
+      "key"       : "fx:menu.open",
+      "widgetPath": "page/menu-open~eb5b4984",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "⋯",
+        "tooltip": "Open this page’s render in the Asset editor, or delete the shot",
+        "ok"     : true,
+        "props": {
+          "menu": "shot"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "shot"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
       "key"       : "cmd:story.setPanels#layout/two-tier",
       "widgetPath": "page/story-setpanels~584427d9",
       "offer": {
@@ -22228,6 +22729,35 @@
       "editor"    : "page",
       "module"    : "page",
       "situation" : "runner-lettered",
+      "key"       : "cmd:story.setBubbles#bubble/arrival:L2/name",
+      "widgetPath": "page/story-setbubbles~90ef47b4",
+      "offer": {
+        "id"      : "story.setBubbles",
+        "label"   : "name: as the project says",
+        "tooltip": "Whether this bubble shows who is speaking above the line, in place of the project’s setting. Nothing is drawn again.",
+        "on"      : "bubble/arrival:L2/name",
+        "supplies": ["bubbles"],
+        "ok"      : true,
+        "props": {
+          "scene": "arrival",
+          "shot" : "arrival__page1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setBubbles",
+          "props": {
+            "scene": "arrival",
+            "shot" : "arrival__page1"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "page",
+      "module"    : "page",
+      "situation" : "runner-lettered",
       "key"       : "fx:drag.start#line/arrival:L1",
       "widgetPath": "page/drag-start~d2e1bb0e",
       "offer": {
@@ -22459,6 +22989,32 @@
       "via"       : "control",
       "editor"    : "play",
       "module"    : "play",
+      "situation" : "start",
+      "key"       : "fx:pane.view#bubbles",
+      "widgetPath": "play/pane-view~7fdb8fe9",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "All bubbles",
+        "tooltip": "Draw every placed bubble on the page at once, with the current line’s outlined, instead of one bubble per step",
+        "on"     : "bubbles",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "play",
+      "module"    : "play",
       "situation" : "mid-story",
       "key"       : "fx:pane.view#forward",
       "widgetPath": "play/pane-view~35b451ff",
@@ -22617,6 +23173,32 @@
       "via"       : "control",
       "editor"    : "play",
       "module"    : "play",
+      "situation" : "mid-story",
+      "key"       : "fx:pane.view#bubbles",
+      "widgetPath": "play/pane-view~7fdb8fe9",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "All bubbles",
+        "tooltip": "Draw every placed bubble on the page at once, with the current line’s outlined, instead of one bubble per step",
+        "on"     : "bubbles",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "play",
+      "module"    : "play",
       "situation" : "choice",
       "key"       : "fx:pane.view#forward",
       "widgetPath": "play/pane-view~35b451ff",
@@ -22757,6 +23339,32 @@
         "label"  : "Dim panels",
         "tooltip": "Darken the rest of the page while one panel is read, so the lit panel stands out",
         "on"     : "dim",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "play",
+      "module"    : "play",
+      "situation" : "choice",
+      "key"       : "fx:pane.view#bubbles",
+      "widgetPath": "play/pane-view~7fdb8fe9",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "All bubbles",
+        "tooltip": "Draw every placed bubble on the page at once, with the current line’s outlined, instead of one bubble per step",
+        "on"     : "bubbles",
         "ok"     : true,
         "props": {
           "what": "mode"
@@ -22986,6 +23594,32 @@
       "editor"    : "play",
       "module"    : "play",
       "situation" : "scene-end",
+      "key"       : "fx:pane.view#bubbles",
+      "widgetPath": "play/pane-view~7fdb8fe9",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "All bubbles",
+        "tooltip": "Draw every placed bubble on the page at once, with the current line’s outlined, instead of one bubble per step",
+        "on"     : "bubbles",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "play",
+      "module"    : "play",
+      "situation" : "scene-end",
       "key"       : "fx:pane.view#continue",
       "widgetPath": "play/pane-view~d266827d",
       "offer": {
@@ -23106,12 +23740,56 @@
       "editor"    : "project",
       "module"    : "projectbar",
       "situation" : "clean",
+      "key"       : "cmd:project.setTextModel",
+      "widgetPath": "project/project-settextmodel~2c97f7b9",
+      "offer": {
+        "id"      : "project.setTextModel",
+        "label"   : "claude-opus-4-8",
+        "tooltip": "Which text model the pipeline calls for decomposition, picture reviews and refine critiques. The authoring agent picks its own model per conversation.",
+        "supplies": ["model"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "project.setTextModel",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "clean",
+      "key"       : "cmd:project.setVisionModels",
+      "widgetPath": "project/project-setvisionmodels~f39be0b0",
+      "offer": {
+        "id"      : "project.setVisionModels",
+        "label"   : "2 model(s)",
+        "tooltip": "Which models review a generated picture against its prompt, in order. Pick a row to add it or take it off the list; at least one stays.",
+        "supplies": ["models"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "project.setVisionModels",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "clean",
       "key"       : "cmd:models.refresh",
       "widgetPath": "project/models-refresh~471a93d2",
       "offer": {
         "id"     : "models.refresh",
         "label"  : "Refresh models",
-        "tooltip": "Fetch the image models OpenRouter routes to; none are cached yet, so the pickers list only the shipped ids",
+        "tooltip": "Fetch the image models OpenRouter routes to, and the text models of OpenRouter, Anthropic and Gemini; none are cached yet, so the pickers list only the shipped ids",
         "ok"     : true,
         "props"  : {}
       },
@@ -23119,6 +23797,53 @@
         {
           "id"   : "models.refresh",
           "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "clean",
+      "key"       : "cmd:project.setShotForm",
+      "widgetPath": "project/project-setshotform~d78b99f4",
+      "offer": {
+        "id"      : "project.setShotForm",
+        "label"   : "single frames",
+        "tooltip": "Whether the decomposer and the agent storyboard a new scene as single frames or as manga pages of panels. The agent follows it unless you ask for the other form for one scene. A storyboard already written keeps its shape.",
+        "supplies": ["form"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "project.setShotForm",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "clean",
+      "key"       : "cmd:project.setBubbleNames",
+      "widgetPath": "project/project-setbubblenames~4c4ad64e",
+      "offer": {
+        "id"     : "project.setBubbleNames",
+        "label"  : "Names in bubbles",
+        "tooltip": "Write the speaker’s name above the line in every bubble the runner draws; narration never carries one, and a bubble can hide it for itself in the Page editor.",
+        "ok"     : true,
+        "props": {
+          "on": true
+        }
+      },
+      "effects": [
+        {
+          "id"   : "project.setBubbleNames",
+          "props": {
+            "on": true
+          }
         }
       ]
     },
@@ -23298,12 +24023,56 @@
       "editor"    : "project",
       "module"    : "projectbar",
       "situation" : "dirty",
+      "key"       : "cmd:project.setTextModel",
+      "widgetPath": "project/project-settextmodel~2c97f7b9",
+      "offer": {
+        "id"      : "project.setTextModel",
+        "label"   : "claude-opus-4-8",
+        "tooltip": "Which text model the pipeline calls for decomposition, picture reviews and refine critiques. The authoring agent picks its own model per conversation.",
+        "supplies": ["model"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "project.setTextModel",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "dirty",
+      "key"       : "cmd:project.setVisionModels",
+      "widgetPath": "project/project-setvisionmodels~f39be0b0",
+      "offer": {
+        "id"      : "project.setVisionModels",
+        "label"   : "1 model(s)",
+        "tooltip": "Which models review a generated picture against its prompt, in order. Pick a row to add it or take it off the list; at least one stays.",
+        "supplies": ["models"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "project.setVisionModels",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "dirty",
       "key"       : "cmd:models.refresh",
       "widgetPath": "project/models-refresh~471a93d2",
       "offer": {
         "id"     : "models.refresh",
         "label"  : "Refresh models",
-        "tooltip": "Fetch the image models OpenRouter routes to; none are cached yet, so the pickers list only the shipped ids",
+        "tooltip": "Fetch the image models OpenRouter routes to, and the text models of OpenRouter, Anthropic and Gemini; none are cached yet, so the pickers list only the shipped ids",
         "ok"     : true,
         "props"  : {}
       },
@@ -23311,6 +24080,53 @@
         {
           "id"   : "models.refresh",
           "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "dirty",
+      "key"       : "cmd:project.setShotForm",
+      "widgetPath": "project/project-setshotform~d78b99f4",
+      "offer": {
+        "id"      : "project.setShotForm",
+        "label"   : "manga pages",
+        "tooltip": "Whether the decomposer and the agent storyboard a new scene as single frames or as manga pages of panels. The agent follows it unless you ask for the other form for one scene. A storyboard already written keeps its shape.",
+        "supplies": ["form"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "project.setShotForm",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "dirty",
+      "key"       : "cmd:project.setBubbleNames",
+      "widgetPath": "project/project-setbubblenames~4c4ad64e",
+      "offer": {
+        "id"     : "project.setBubbleNames",
+        "label"  : "Names in bubbles",
+        "tooltip": "Write the speaker’s name above the line in every bubble the runner draws; narration never carries one, and a bubble can hide it for itself in the Page editor.",
+        "ok"     : true,
+        "props": {
+          "on": true
+        }
+      },
+      "effects": [
+        {
+          "id"   : "project.setBubbleNames",
+          "props": {
+            "on": true
+          }
         }
       ]
     },
@@ -23413,12 +24229,56 @@
       "editor"    : "project",
       "module"    : "projectbar",
       "situation" : "openrouter-model",
+      "key"       : "cmd:project.setTextModel",
+      "widgetPath": "project/project-settextmodel~2c97f7b9",
+      "offer": {
+        "id"      : "project.setTextModel",
+        "label"   : "gemini-2.5-pro",
+        "tooltip": "Which text model the pipeline calls for decomposition, picture reviews and refine critiques. The authoring agent picks its own model per conversation.",
+        "supplies": ["model"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "project.setTextModel",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "openrouter-model",
+      "key"       : "cmd:project.setVisionModels",
+      "widgetPath": "project/project-setvisionmodels~f39be0b0",
+      "offer": {
+        "id"      : "project.setVisionModels",
+        "label"   : "models…",
+        "tooltip": "Which models review a generated picture against its prompt, in order. Pick a row to add it or take it off the list; at least one stays.",
+        "supplies": ["models"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "project.setVisionModels",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "openrouter-model",
       "key"       : "cmd:models.refresh",
       "widgetPath": "project/models-refresh~471a93d2",
       "offer": {
         "id"     : "models.refresh",
         "label"  : "Refresh models",
-        "tooltip": "Fetch the image models OpenRouter routes to again; the cached list is from 2026-09-15",
+        "tooltip": "Fetch the image models OpenRouter routes to, and the text models of OpenRouter, Anthropic and Gemini, again; the cached list is from 2026-09-15",
         "ok"     : true,
         "props"  : {}
       },
@@ -23426,6 +24286,53 @@
         {
           "id"   : "models.refresh",
           "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "openrouter-model",
+      "key"       : "cmd:project.setShotForm",
+      "widgetPath": "project/project-setshotform~d78b99f4",
+      "offer": {
+        "id"      : "project.setShotForm",
+        "label"   : "single frames",
+        "tooltip": "Whether the decomposer and the agent storyboard a new scene as single frames or as manga pages of panels. The agent follows it unless you ask for the other form for one scene. A storyboard already written keeps its shape.",
+        "supplies": ["form"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "project.setShotForm",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "openrouter-model",
+      "key"       : "cmd:project.setBubbleNames",
+      "widgetPath": "project/project-setbubblenames~4c4ad64e",
+      "offer": {
+        "id"     : "project.setBubbleNames",
+        "label"  : "Names in bubbles",
+        "tooltip": "Write the speaker’s name above the line in every bubble the runner draws; narration never carries one, and a bubble can hide it for itself in the Page editor.",
+        "ok"     : true,
+        "props": {
+          "on": true
+        }
+      },
+      "effects": [
+        {
+          "id"   : "project.setBubbleNames",
+          "props": {
+            "on": true
+          }
         }
       ]
     },
@@ -23530,12 +24437,58 @@
       "editor"    : "project",
       "module"    : "projectbar",
       "situation" : "no-project",
+      "key"       : "cmd:project.setTextModel",
+      "widgetPath": "project/project-settextmodel~2c97f7b9",
+      "offer": {
+        "id"      : "project.setTextModel",
+        "label"   : "model…",
+        "tooltip": "Which text model the pipeline calls for decomposition, picture reviews and refine critiques. The authoring agent picks its own model per conversation.",
+        "supplies": ["model"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "No project is open."
+        }
+      },
+      "effects": [
+        {
+          "id": "project.setTextModel"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "no-project",
+      "key"       : "cmd:project.setVisionModels",
+      "widgetPath": "project/project-setvisionmodels~f39be0b0",
+      "offer": {
+        "id"      : "project.setVisionModels",
+        "label"   : "models…",
+        "tooltip": "Which models review a generated picture against its prompt, in order. Pick a row to add it or take it off the list; at least one stays.",
+        "supplies": ["models"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "No project is open."
+        }
+      },
+      "effects": [
+        {
+          "id": "project.setVisionModels"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "no-project",
       "key"       : "cmd:models.refresh",
       "widgetPath": "project/models-refresh~471a93d2",
       "offer": {
         "id"     : "models.refresh",
         "label"  : "Refresh models",
-        "tooltip": "Fetch the image models OpenRouter routes to; none are cached yet, so the pickers list only the shipped ids",
+        "tooltip": "Fetch the image models OpenRouter routes to, and the text models of OpenRouter, Anthropic and Gemini; none are cached yet, so the pickers list only the shipped ids",
         "ok"     : false,
         "refusal": {
           "reason": "No project is open."
@@ -23544,6 +24497,51 @@
       "effects": [
         {
           "id": "models.refresh"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "no-project",
+      "key"       : "cmd:project.setShotForm",
+      "widgetPath": "project/project-setshotform~d78b99f4",
+      "offer": {
+        "id"      : "project.setShotForm",
+        "label"   : "single frames",
+        "tooltip": "Whether the decomposer and the agent storyboard a new scene as single frames or as manga pages of panels. The agent follows it unless you ask for the other form for one scene. A storyboard already written keeps its shape.",
+        "supplies": ["form"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "No project is open."
+        }
+      },
+      "effects": [
+        {
+          "id": "project.setShotForm"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "project",
+      "module"    : "projectbar",
+      "situation" : "no-project",
+      "key"       : "cmd:project.setBubbleNames",
+      "widgetPath": "project/project-setbubblenames~4c4ad64e",
+      "offer": {
+        "id"     : "project.setBubbleNames",
+        "label"  : "Names in bubbles",
+        "tooltip": "Write the speaker’s name above the line in every bubble the runner draws; narration never carries one, and a bubble can hide it for itself in the Page editor.",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No project is open."
+        }
+      },
+      "effects": [
+        {
+          "id": "project.setBubbleNames"
         }
       ]
     },
@@ -23622,12 +24620,13 @@
       "module"    : "reportconvo",
       "situation" : "setup",
       "key"       : "cmd:report.open",
-      "widgetPath": "report/report-open~0bee4f69",
+      "widgetPath": "report/report-open~b269d8e9",
       "offer": {
-        "id"     : "report.open",
-        "label"  : "Start →",
-        "tooltip": "Reads 12 turns; about one model call.",
-        "ok"     : true,
+        "id"      : "report.open",
+        "label"   : "Start →",
+        "tooltip" : "Reads 12 turns; about one model call.",
+        "supplies": ["note"],
+        "ok"      : true,
         "props": {
           "thread": "",
           "model" : "",
@@ -23826,12 +24825,13 @@
       "module"    : "reportconvo",
       "situation" : "open",
       "key"       : "cmd:report.open",
-      "widgetPath": "report/report-open~0bee4f69",
+      "widgetPath": "report/report-open~b269d8e9",
       "offer": {
-        "id"     : "report.open",
-        "label"  : "Start →",
-        "tooltip": "Have the debug agent read this conversation and say what went wrong.",
-        "ok"     : true,
+        "id"      : "report.open",
+        "label"   : "Start →",
+        "tooltip" : "Have the debug agent read this conversation and say what went wrong.",
+        "supplies": ["note"],
+        "ok"      : true,
         "props": {
           "thread": "",
           "model" : "",
@@ -24032,6 +25032,30 @@
       "editor"    : "script",
       "module"    : "script",
       "situation" : "scene",
+      "key"       : "cmd:story.deleteLines#marked",
+      "widgetPath": "script/story-deletelines~de5dfe98",
+      "offer": {
+        "id"     : "story.deleteLines",
+        "label"  : "Delete",
+        "tooltip": "Remove the marked lines from the scene",
+        "on"     : "marked",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No lines are marked. Click a gutter number to mark a line, Shift+click for a run."
+        }
+      },
+      "effects": [
+        {
+          "id": "story.deleteLines"
+        }
+      ],
+      "shortcut"  : "Delete"
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "scene",
       "key"       : "cmd:story.setHeading",
       "widgetPath": "script/story-setheading~a1b1a71c",
       "offer": {
@@ -24065,18 +25089,32 @@
       "offer": {
         "id"     : "drag.start",
         "label"  : "1",
-        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it",
+        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it, click to mark it for Delete, Shift+click to mark a run",
         "on"     : "line/arrival:L1",
         "ok"     : true,
         "props": {
           "interaction": "script.moveLine"
-        }
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
       },
       "effects": [
         {
           "id"   : "drag.start",
           "props": {
             "interaction": "script.moveLine"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
           }
         }
       ]
@@ -24118,18 +25156,32 @@
       "offer": {
         "id"     : "drag.start",
         "label"  : "2",
-        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it",
+        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it, click to mark it for Delete, Shift+click to mark a run",
         "on"     : "line/arrival:L2",
         "ok"     : true,
         "props": {
           "interaction": "script.moveLine"
-        }
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
       },
       "effects": [
         {
           "id"   : "drag.start",
           "props": {
             "interaction": "script.moveLine"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
           }
         }
       ]
@@ -24296,6 +25348,377 @@
       "via"       : "control",
       "editor"    : "script",
       "module"    : "script",
+      "situation" : "marked",
+      "key"       : "fx:menu.open",
+      "widgetPath": "script/menu-open~eb5b4984",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "arrival",
+        "tooltip": "Which scene this editor shows. Every pane follows the choice.",
+        "ok"     : true,
+        "props": {
+          "menu": "scenes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "scenes"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "marked",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "script/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this scene from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "marked",
+      "key"       : "cmd:story.deleteLines#marked",
+      "widgetPath": "script/story-deletelines~de5dfe98",
+      "offer": {
+        "id"     : "story.deleteLines",
+        "label"  : "Delete 2 lines",
+        "tooltip": "Remove the 2 marked lines from the scene. A shot that covered them keeps its art and covers one line fewer — possibly none. Delete does the same.",
+        "on"     : "marked",
+        "ok"     : true,
+        "props": {
+          "lines": ["arrival:L1", "arrival:L2"]
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.deleteLines",
+          "props": {
+            "lines": ["arrival:L1", "arrival:L2"]
+          }
+        }
+      ],
+      "shortcut"  : "Delete"
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "marked",
+      "key"       : "cmd:story.setHeading",
+      "widgetPath": "script/story-setheading~a1b1a71c",
+      "offer": {
+        "id"     : "story.setHeading",
+        "label"  : "EXT. SCHOOL GATE - MORNING",
+        "tooltip": "Move this scene somewhere else by rewriting its heading. Its rendered shots are drawn again — the dialog says how many — and the prose is left describing the old place.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "scene"  : "arrival",
+          "heading": "EXT. SCHOOL GATE - MORNING"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setHeading",
+          "props": {
+            "scene"  : "arrival",
+            "heading": "EXT. SCHOOL GATE - MORNING"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "marked",
+      "key"       : "fx:drag.start#line/arrival:L1",
+      "widgetPath": "script/drag-start~d2e1bb0e",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "1",
+        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it, click to unmark it for Delete, Shift+click to mark a run",
+        "on"     : "line/arrival:L1",
+        "ok"     : true,
+        "props": {
+          "interaction": "script.moveLine"
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "script.moveLine"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "marked",
+      "key"       : "cmd:story.setLineText#arrival:L1",
+      "widgetPath": "script/story-setlinetext~0a1def10",
+      "offer": {
+        "id"      : "story.setLineText",
+        "label"   : "Aiko stops at the gate.",
+        "tooltip" : "Click to retype this line",
+        "on"      : "arrival:L1",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L1"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "marked",
+      "key"       : "fx:drag.start#line/arrival:L2",
+      "widgetPath": "script/drag-start~d68bc315",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "2",
+        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it, click to unmark it for Delete, Shift+click to mark a run",
+        "on"     : "line/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "interaction": "script.moveLine"
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "script.moveLine"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "marked",
+      "key"       : "cmd:story.setSpeaker#arrival:L2",
+      "widgetPath": "script/story-setspeaker~dcab6715",
+      "offer": {
+        "id"      : "story.setSpeaker",
+        "label"   : "Aiko",
+        "tooltip" : "Aiko says this line — click to change who does",
+        "on"      : "arrival:L2",
+        "supplies": ["speaker"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setSpeaker",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "marked",
+      "key"       : "cmd:story.setLineText#arrival:L2",
+      "widgetPath": "script/story-setlinetext~5f3115cb",
+      "offer": {
+        "id"      : "story.setLineText",
+        "label"   : "AIKO: Is this the place?",
+        "tooltip" : "Click to retype this line",
+        "on"      : "arrival:L2",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "marked",
+      "key"       : "fx:popup.open#split/arrival:L2",
+      "widgetPath": "script/popup-open~94c6985f",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "split here",
+        "tooltip": "Start a second scene at this line, and name it before anything is written",
+        "on"     : "split/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "marked",
+      "key"       : "fx:popup.open#compose/arrival:L2",
+      "widgetPath": "script/popup-open~1bb241dd",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ line",
+        "tooltip": "Write another line at the end of this scene",
+        "on"     : "compose/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "marked",
+      "key"       : "fx:popup.open#merge/departure",
+      "widgetPath": "script/popup-open~e35583be",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "merge departure in",
+        "tooltip": "Take departure's lines into this scene and delete its file",
+        "on"     : "merge/departure",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "marked",
+      "key"       : "fx:popup.open#continue",
+      "widgetPath": "script/popup-open~b935f3e4",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ scene after this one",
+        "tooltip": "Write a new scene and make this one continue into it",
+        "on"     : "continue",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
       "situation" : "empty-scene",
       "key"       : "fx:menu.open",
       "widgetPath": "script/menu-open~eb5b4984",
@@ -24342,6 +25765,30 @@
           }
         }
       ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "empty-scene",
+      "key"       : "cmd:story.deleteLines#marked",
+      "widgetPath": "script/story-deletelines~de5dfe98",
+      "offer": {
+        "id"     : "story.deleteLines",
+        "label"  : "Delete",
+        "tooltip": "Remove the marked lines from the scene",
+        "on"     : "marked",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No lines are marked. Click a gutter number to mark a line, Shift+click for a run."
+        }
+      },
+      "effects": [
+        {
+          "id": "story.deleteLines"
+        }
+      ],
+      "shortcut"  : "Delete"
     },
     {
       "via"       : "control",
@@ -24505,6 +25952,30 @@
       "editor"    : "script",
       "module"    : "script",
       "situation" : "editing-a-line",
+      "key"       : "cmd:story.deleteLines#marked",
+      "widgetPath": "script/story-deletelines~de5dfe98",
+      "offer": {
+        "id"     : "story.deleteLines",
+        "label"  : "Delete",
+        "tooltip": "Remove the marked lines from the scene",
+        "on"     : "marked",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No lines are marked. Click a gutter number to mark a line, Shift+click for a run."
+        }
+      },
+      "effects": [
+        {
+          "id": "story.deleteLines"
+        }
+      ],
+      "shortcut"  : "Delete"
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "editing-a-line",
       "key"       : "cmd:story.setHeading",
       "widgetPath": "script/story-setheading~a1b1a71c",
       "offer": {
@@ -24538,18 +26009,32 @@
       "offer": {
         "id"     : "drag.start",
         "label"  : "1",
-        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it",
+        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it, click to mark it for Delete, Shift+click to mark a run",
         "on"     : "line/arrival:L1",
         "ok"     : true,
         "props": {
           "interaction": "script.moveLine"
-        }
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
       },
       "effects": [
         {
           "id"   : "drag.start",
           "props": {
             "interaction": "script.moveLine"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
           }
         }
       ]
@@ -24591,18 +26076,32 @@
       "offer": {
         "id"     : "drag.start",
         "label"  : "2",
-        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it",
+        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it, click to mark it for Delete, Shift+click to mark a run",
         "on"     : "line/arrival:L2",
         "ok"     : true,
         "props": {
           "interaction": "script.moveLine"
-        }
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
       },
       "effects": [
         {
           "id"   : "drag.start",
           "props": {
             "interaction": "script.moveLine"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
           }
         }
       ]
@@ -24821,6 +26320,30 @@
       "editor"    : "script",
       "module"    : "script",
       "situation" : "composing",
+      "key"       : "cmd:story.deleteLines#marked",
+      "widgetPath": "script/story-deletelines~de5dfe98",
+      "offer": {
+        "id"     : "story.deleteLines",
+        "label"  : "Delete",
+        "tooltip": "Remove the marked lines from the scene",
+        "on"     : "marked",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No lines are marked. Click a gutter number to mark a line, Shift+click for a run."
+        }
+      },
+      "effects": [
+        {
+          "id": "story.deleteLines"
+        }
+      ],
+      "shortcut"  : "Delete"
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "composing",
       "key"       : "cmd:story.setHeading",
       "widgetPath": "script/story-setheading~a1b1a71c",
       "offer": {
@@ -24854,18 +26377,32 @@
       "offer": {
         "id"     : "drag.start",
         "label"  : "1",
-        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it",
+        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it, click to mark it for Delete, Shift+click to mark a run",
         "on"     : "line/arrival:L1",
         "ok"     : true,
         "props": {
           "interaction": "script.moveLine"
-        }
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
       },
       "effects": [
         {
           "id"   : "drag.start",
           "props": {
             "interaction": "script.moveLine"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
           }
         }
       ]
@@ -24907,18 +26444,32 @@
       "offer": {
         "id"     : "drag.start",
         "label"  : "2",
-        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it",
+        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it, click to mark it for Delete, Shift+click to mark a run",
         "on"     : "line/arrival:L2",
         "ok"     : true,
         "props": {
           "interaction": "script.moveLine"
-        }
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
       },
       "effects": [
         {
           "id"   : "drag.start",
           "props": {
             "interaction": "script.moveLine"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
           }
         }
       ]
@@ -25166,6 +26717,30 @@
       "editor"    : "script",
       "module"    : "script",
       "situation" : "with-frames",
+      "key"       : "cmd:story.deleteLines#marked",
+      "widgetPath": "script/story-deletelines~de5dfe98",
+      "offer": {
+        "id"     : "story.deleteLines",
+        "label"  : "Delete",
+        "tooltip": "Remove the marked lines from the scene",
+        "on"     : "marked",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No lines are marked. Click a gutter number to mark a line, Shift+click for a run."
+        }
+      },
+      "effects": [
+        {
+          "id": "story.deleteLines"
+        }
+      ],
+      "shortcut"  : "Delete"
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "with-frames",
       "key"       : "cmd:story.setHeading",
       "widgetPath": "script/story-setheading~a1b1a71c",
       "offer": {
@@ -25199,18 +26774,32 @@
       "offer": {
         "id"     : "drag.start",
         "label"  : "1",
-        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it",
+        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it, click to mark it for Delete, Shift+click to mark a run",
         "on"     : "line/arrival:L1",
         "ok"     : true,
         "props": {
           "interaction": "script.moveLine"
-        }
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
       },
       "effects": [
         {
           "id"   : "drag.start",
           "props": {
             "interaction": "script.moveLine"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
           }
         }
       ]
@@ -25252,18 +26841,32 @@
       "offer": {
         "id"     : "drag.start",
         "label"  : "2",
-        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it",
+        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it, click to mark it for Delete, Shift+click to mark a run",
         "on"     : "line/arrival:L2",
         "ok"     : true,
         "props": {
           "interaction": "script.moveLine"
-        }
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
       },
       "effects": [
         {
           "id"   : "drag.start",
           "props": {
             "interaction": "script.moveLine"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
           }
         }
       ]
@@ -25570,6 +27173,30 @@
       "editor"    : "script",
       "module"    : "script",
       "situation" : "picking-a-speaker",
+      "key"       : "cmd:story.deleteLines#marked",
+      "widgetPath": "script/story-deletelines~de5dfe98",
+      "offer": {
+        "id"     : "story.deleteLines",
+        "label"  : "Delete",
+        "tooltip": "Remove the marked lines from the scene",
+        "on"     : "marked",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No lines are marked. Click a gutter number to mark a line, Shift+click for a run."
+        }
+      },
+      "effects": [
+        {
+          "id": "story.deleteLines"
+        }
+      ],
+      "shortcut"  : "Delete"
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "picking-a-speaker",
       "key"       : "cmd:story.setHeading",
       "widgetPath": "script/story-setheading~a1b1a71c",
       "offer": {
@@ -25603,18 +27230,32 @@
       "offer": {
         "id"     : "drag.start",
         "label"  : "1",
-        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it",
+        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it, click to mark it for Delete, Shift+click to mark a run",
         "on"     : "line/arrival:L1",
         "ok"     : true,
         "props": {
           "interaction": "script.moveLine"
-        }
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
       },
       "effects": [
         {
           "id"   : "drag.start",
           "props": {
             "interaction": "script.moveLine"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
           }
         }
       ]
@@ -25656,18 +27297,32 @@
       "offer": {
         "id"     : "drag.start",
         "label"  : "2",
-        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it",
+        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it, click to mark it for Delete, Shift+click to mark a run",
         "on"     : "line/arrival:L2",
         "ok"     : true,
         "props": {
           "interaction": "script.moveLine"
-        }
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
       },
       "effects": [
         {
           "id"   : "drag.start",
           "props": {
             "interaction": "script.moveLine"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
           }
         }
       ]
@@ -25886,6 +27541,30 @@
       "editor"    : "script",
       "module"    : "script",
       "situation" : "pending-merge",
+      "key"       : "cmd:story.deleteLines#marked",
+      "widgetPath": "script/story-deletelines~de5dfe98",
+      "offer": {
+        "id"     : "story.deleteLines",
+        "label"  : "Delete",
+        "tooltip": "Remove the marked lines from the scene",
+        "on"     : "marked",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No lines are marked. Click a gutter number to mark a line, Shift+click for a run."
+        }
+      },
+      "effects": [
+        {
+          "id": "story.deleteLines"
+        }
+      ],
+      "shortcut"  : "Delete"
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "pending-merge",
       "key"       : "cmd:story.setHeading",
       "widgetPath": "script/story-setheading~a1b1a71c",
       "offer": {
@@ -25919,18 +27598,32 @@
       "offer": {
         "id"     : "drag.start",
         "label"  : "1",
-        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it",
+        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it, click to mark it for Delete, Shift+click to mark a run",
         "on"     : "line/arrival:L1",
         "ok"     : true,
         "props": {
           "interaction": "script.moveLine"
-        }
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
       },
       "effects": [
         {
           "id"   : "drag.start",
           "props": {
             "interaction": "script.moveLine"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
           }
         }
       ]
@@ -25972,18 +27665,32 @@
       "offer": {
         "id"     : "drag.start",
         "label"  : "2",
-        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it",
+        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it, click to mark it for Delete, Shift+click to mark a run",
         "on"     : "line/arrival:L2",
         "ok"     : true,
         "props": {
           "interaction": "script.moveLine"
-        }
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
       },
       "effects": [
         {
           "id"   : "drag.start",
           "props": {
             "interaction": "script.moveLine"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
           }
         }
       ]
@@ -26229,6 +27936,30 @@
       "editor"    : "script",
       "module"    : "script",
       "situation" : "pending-split",
+      "key"       : "cmd:story.deleteLines#marked",
+      "widgetPath": "script/story-deletelines~de5dfe98",
+      "offer": {
+        "id"     : "story.deleteLines",
+        "label"  : "Delete",
+        "tooltip": "Remove the marked lines from the scene",
+        "on"     : "marked",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No lines are marked. Click a gutter number to mark a line, Shift+click for a run."
+        }
+      },
+      "effects": [
+        {
+          "id": "story.deleteLines"
+        }
+      ],
+      "shortcut"  : "Delete"
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "pending-split",
       "key"       : "cmd:story.setHeading",
       "widgetPath": "script/story-setheading~a1b1a71c",
       "offer": {
@@ -26262,18 +27993,32 @@
       "offer": {
         "id"     : "drag.start",
         "label"  : "1",
-        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it",
+        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it, click to mark it for Delete, Shift+click to mark a run",
         "on"     : "line/arrival:L1",
         "ok"     : true,
         "props": {
           "interaction": "script.moveLine"
-        }
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
       },
       "effects": [
         {
           "id"   : "drag.start",
           "props": {
             "interaction": "script.moveLine"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
           }
         }
       ]
@@ -26315,18 +28060,32 @@
       "offer": {
         "id"     : "drag.start",
         "label"  : "2",
-        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it",
+        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it, click to mark it for Delete, Shift+click to mark a run",
         "on"     : "line/arrival:L2",
         "ok"     : true,
         "props": {
           "interaction": "script.moveLine"
-        }
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
       },
       "effects": [
         {
           "id"   : "drag.start",
           "props": {
             "interaction": "script.moveLine"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
           }
         }
       ]
@@ -26604,6 +28363,30 @@
       "editor"    : "script",
       "module"    : "script",
       "situation" : "pending-scene",
+      "key"       : "cmd:story.deleteLines#marked",
+      "widgetPath": "script/story-deletelines~de5dfe98",
+      "offer": {
+        "id"     : "story.deleteLines",
+        "label"  : "Delete",
+        "tooltip": "Remove the marked lines from the scene",
+        "on"     : "marked",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No lines are marked. Click a gutter number to mark a line, Shift+click for a run."
+        }
+      },
+      "effects": [
+        {
+          "id": "story.deleteLines"
+        }
+      ],
+      "shortcut"  : "Delete"
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "pending-scene",
       "key"       : "cmd:story.setHeading",
       "widgetPath": "script/story-setheading~a1b1a71c",
       "offer": {
@@ -26637,18 +28420,32 @@
       "offer": {
         "id"     : "drag.start",
         "label"  : "1",
-        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it",
+        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it, click to mark it for Delete, Shift+click to mark a run",
         "on"     : "line/arrival:L1",
         "ok"     : true,
         "props": {
           "interaction": "script.moveLine"
-        }
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
       },
       "effects": [
         {
           "id"   : "drag.start",
           "props": {
             "interaction": "script.moveLine"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
           }
         }
       ]
@@ -26690,18 +28487,32 @@
       "offer": {
         "id"     : "drag.start",
         "label"  : "2",
-        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it",
+        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it, click to mark it for Delete, Shift+click to mark a run",
         "on"     : "line/arrival:L2",
         "ok"     : true,
         "props": {
           "interaction": "script.moveLine"
-        }
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
       },
       "effects": [
         {
           "id"   : "drag.start",
           "props": {
             "interaction": "script.moveLine"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
           }
         }
       ]
@@ -33945,6 +35756,20 @@
       "editor"   : "documents",
       "module"   : "doctree",
       "situation": "every-kind",
+      "when"     : "branch:story",
+      "id"       : "pane.view",
+      "label"    : "Sort in topological order",
+      "tooltip": "List each scene after every scene that leads to it, from the start scene; scenes nothing reaches come last.",
+      "props": {
+        "what": "mode"
+      },
+      "on"       : "order"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
       "when"     : "branch:characters",
       "id"       : "doc.create",
       "label"    : "New character sheet…",
@@ -34149,6 +35974,19 @@
       "via"      : "menu",
       "editor"   : "script",
       "module"   : "linemenu",
+      "situation": "drawn",
+      "when"     : "line:arrival:L1",
+      "id"       : "story.deleteLine",
+      "label"    : "Delete line",
+      "tooltip": "Remove this line from the scene. A shot that covered it keeps its art and covers one line fewer — possibly none.",
+      "props": {
+        "line": "arrival:L1"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "script",
+      "module"   : "linemenu",
       "situation": "undrawn",
       "when"     : "line:arrival:L2",
       "id"       : "agent.editLine",
@@ -34172,6 +36010,19 @@
       "via"      : "menu",
       "editor"   : "script",
       "module"   : "linemenu",
+      "situation": "undrawn",
+      "when"     : "line:arrival:L2",
+      "id"       : "story.deleteLine",
+      "label"    : "Delete line",
+      "tooltip": "Remove this line from the scene. A shot that covered it keeps its art and covers one line fewer — possibly none.",
+      "props": {
+        "line": "arrival:L2"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "script",
+      "module"   : "linemenu",
       "situation": "uncovered",
       "when"     : "line:arrival:L3",
       "id"       : "agent.editLine",
@@ -34190,6 +36041,19 @@
       "id"       : "view.open",
       "label"    : "Open shot asset",
       "refused"  : "No shot covers arrival:L3 yet."
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "script",
+      "module"   : "linemenu",
+      "situation": "uncovered",
+      "when"     : "line:arrival:L3",
+      "id"       : "story.deleteLine",
+      "label"    : "Delete line",
+      "tooltip": "Remove this line from the scene. A shot that covered it keeps its art and covers one line fewer — possibly none.",
+      "props": {
+        "line": "arrival:L3"
+      }
     },
     {
       "via"      : "menu",
@@ -34316,6 +36180,17 @@
         "to": "redo"
       },
       "shortcut" : "Ctrl+Shift+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/app",
+      "id"       : "doc.saveAll",
+      "label"    : "Save All",
+      "tooltip"  : "Save every wiki page and skill with unsaved edits, in every window",
+      "shortcut" : "Ctrl+Shift+S"
     },
     {
       "via"      : "menu",
@@ -34842,6 +36717,48 @@
       "module"   : "headermenus",
       "situation": "fresh",
       "when"     : "header/view",
+      "id"       : "view.zoom",
+      "label"    : "Zoom In",
+      "tooltip"  : "Make text and widgets in every window one step bigger",
+      "props": {
+        "move": "in"
+      },
+      "shortcut" : "Ctrl+="
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view",
+      "id"       : "view.zoom",
+      "label"    : "Zoom Out",
+      "tooltip"  : "Make text and widgets in every window one step smaller",
+      "props": {
+        "move": "out"
+      },
+      "shortcut" : "Ctrl+-"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view",
+      "id"       : "view.zoom",
+      "label"    : "Reset Zoom",
+      "tooltip"  : "Put every window back at 100%",
+      "props": {
+        "move": "reset"
+      },
+      "shortcut" : "Ctrl+Key0"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/view",
       "id"       : "window.new",
       "label"    : "New Window",
       "tooltip"  : "Open another window onto this project — one app, panes across two monitors",
@@ -34943,6 +36860,17 @@
         "to": "redo"
       },
       "shortcut" : "Ctrl+Shift+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/app",
+      "id"       : "doc.saveAll",
+      "label"    : "Save All",
+      "tooltip"  : "Save every wiki page and skill with unsaved edits, in every window",
+      "shortcut" : "Ctrl+Shift+S"
     },
     {
       "via"      : "menu",
@@ -35501,6 +37429,48 @@
       "module"   : "headermenus",
       "situation": "project",
       "when"     : "header/view",
+      "id"       : "view.zoom",
+      "label"    : "Zoom In",
+      "tooltip"  : "Make text and widgets in every window one step bigger",
+      "props": {
+        "move": "in"
+      },
+      "shortcut" : "Ctrl+="
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view",
+      "id"       : "view.zoom",
+      "label"    : "Zoom Out",
+      "tooltip"  : "Make text and widgets in every window one step smaller",
+      "props": {
+        "move": "out"
+      },
+      "shortcut" : "Ctrl+-"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view",
+      "id"       : "view.zoom",
+      "label"    : "Reset Zoom",
+      "tooltip"  : "Put every window back at 100%",
+      "props": {
+        "move": "reset"
+      },
+      "shortcut" : "Ctrl+Key0"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/view",
       "id"       : "window.new",
       "label"    : "New Window",
       "tooltip"  : "Open another window onto this project — one app, panes across two monitors",
@@ -35602,6 +37572,17 @@
         "to": "redo"
       },
       "shortcut" : "Ctrl+Shift+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/app",
+      "id"       : "doc.saveAll",
+      "label"    : "Save All",
+      "tooltip"  : "Save every wiki page and skill with unsaved edits, in every window",
+      "shortcut" : "Ctrl+Shift+S"
     },
     {
       "via"      : "menu",
@@ -36126,6 +38107,48 @@
       "module"   : "headermenus",
       "situation": "running",
       "when"     : "header/view",
+      "id"       : "view.zoom",
+      "label"    : "Zoom In",
+      "tooltip"  : "Make text and widgets in every window one step bigger",
+      "props": {
+        "move": "in"
+      },
+      "shortcut" : "Ctrl+="
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view",
+      "id"       : "view.zoom",
+      "label"    : "Zoom Out",
+      "tooltip"  : "Make text and widgets in every window one step smaller",
+      "props": {
+        "move": "out"
+      },
+      "shortcut" : "Ctrl+-"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view",
+      "id"       : "view.zoom",
+      "label"    : "Reset Zoom",
+      "tooltip"  : "Put every window back at 100%",
+      "props": {
+        "move": "reset"
+      },
+      "shortcut" : "Ctrl+Key0"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/view",
       "id"       : "window.new",
       "label"    : "New Window",
       "tooltip"  : "Open another window onto this project — one app, panes across two monitors",
@@ -36227,6 +38250,17 @@
         "to": "redo"
       },
       "shortcut" : "Ctrl+Shift+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/app",
+      "id"       : "doc.saveAll",
+      "label"    : "Save All",
+      "tooltip"  : "Save every wiki page and skill with unsaved edits, in every window",
+      "shortcut" : "Ctrl+Shift+S"
     },
     {
       "via"      : "menu",
@@ -36750,6 +38784,48 @@
       "module"   : "headermenus",
       "situation": "no-pane",
       "when"     : "header/view",
+      "id"       : "view.zoom",
+      "label"    : "Zoom In",
+      "tooltip"  : "Make text and widgets in every window one step bigger",
+      "props": {
+        "move": "in"
+      },
+      "shortcut" : "Ctrl+="
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view",
+      "id"       : "view.zoom",
+      "label"    : "Zoom Out",
+      "tooltip"  : "Make text and widgets in every window one step smaller",
+      "props": {
+        "move": "out"
+      },
+      "shortcut" : "Ctrl+-"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view",
+      "id"       : "view.zoom",
+      "label"    : "Reset Zoom",
+      "tooltip"  : "Put every window back at 100%",
+      "props": {
+        "move": "reset"
+      },
+      "shortcut" : "Ctrl+Key0"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/view",
       "id"       : "window.new",
       "label"    : "New Window",
       "tooltip"  : "Open another window onto this project — one app, panes across two monitors",
@@ -37005,12 +39081,8 @@
       "why": "An edit the graph canvas makes through its node widgets, sockets and drags, outside `controls`."
     },
     {
-      "match": "story.deleteLine",
-      "why": "The script column runs it from a keystroke or a pending scene, not from a drawn control."
-    },
-    {
       "match": "story.setNext",
-      "why": "The script column runs it from a keystroke or a pending scene, not from a drawn control."
+      "why"  : "The script column runs it from a pending scene, not from a drawn control."
     },
     {
       "match": "story.moveLine",
@@ -37164,6 +39236,52 @@
       "runs": {
         "id"   : "window.close",
         "props": {}
+      }
+    },
+    {
+      "scope": "global",
+      "key"  : "S",
+      "mods" : ["ctrl", "shift"],
+      "label": "Save all",
+      "runs": {
+        "id"   : "doc.saveAll",
+        "props": {}
+      }
+    },
+    {
+      "scope": "global",
+      "key"  : "=",
+      "mods" : ["ctrl"],
+      "label": "Zoom in",
+      "runs": {
+        "id"   : "view.zoom",
+        "props": {
+          "move": "in"
+        }
+      }
+    },
+    {
+      "scope": "global",
+      "key"  : "-",
+      "mods" : ["ctrl"],
+      "label": "Zoom out",
+      "runs": {
+        "id"   : "view.zoom",
+        "props": {
+          "move": "out"
+        }
+      }
+    },
+    {
+      "scope": "global",
+      "key"  : "Key0",
+      "mods" : ["ctrl"],
+      "label": "Reset zoom",
+      "runs": {
+        "id"   : "view.zoom",
+        "props": {
+          "move": "reset"
+        }
       }
     },
     {
@@ -37342,6 +39460,29 @@
         }
       },
       "on"   : "exit"
+    },
+    {
+      "scope": "script",
+      "key"  : "Delete",
+      "mods" : [],
+      "label": "Delete marked lines",
+      "runs": {
+        "id"   : "story.deleteLines",
+        "props": {}
+      },
+      "on"   : "marked"
+    },
+    {
+      "scope": "script",
+      "key"  : "Escape",
+      "mods" : [],
+      "label": "Unmark lines",
+      "runs": {
+        "id"   : "pane.view",
+        "props": {
+          "what": "mark"
+        }
+      }
     },
     {
       "scope": "gengraph",

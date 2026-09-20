@@ -39,10 +39,10 @@ import { ok, fail, rel, type Tool } from './core.js';
 /**
  * The scene ops, named exactly as the desktop's `story.*` commands are, because each op invokes
  * the same decision its command does: an agent transcript and a command history should read as
- * the same vocabulary. `insertLines`, `deleteLines` and `setSynopsis` have no button behind them
- * — a person types or removes one line at a time while a model rewrites forty, and the synopsis
- * is the model's parking place for description it must not read aloud; `@vn/scriptedit` still
- * decides every one. `newShot` and `deleteShot` write the storyboard rather than prose — they are here,
+ * the same vocabulary. `insertLines` and `setSynopsis` have no button behind them — a person
+ * types one line at a time while a model rewrites forty, and the synopsis is the model's parking
+ * place for description it must not read aloud; `deleteLines` is the Script editor's Delete over
+ * its marked lines; `@vn/scriptedit` still decides every one. `newShot` and `deleteShot` write the storyboard rather than prose — they are here,
  * not their own tools, because the author experiences making a shot as a scene edit, and the
  * shared-vocabulary rule above outranks which file the write lands in.
  */

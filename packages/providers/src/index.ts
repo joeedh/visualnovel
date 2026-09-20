@@ -43,6 +43,17 @@ export {
   type OpenRouterListing,
 } from './backends/openrouterlist.js';
 export {
+  listTextModels,
+  listAnthropicTextModels,
+  listGeminiTextModels,
+  listOpenRouterTextModels,
+  ANTHROPIC_MODELS_URL,
+  GEMINI_MODELS_URL,
+  OPENROUTER_TEXT_MODELS_URL,
+  type TextListing,
+  type TextListingKeys,
+} from './backends/textlist.js';
+export {
   captureRequest,
   capturedRequest,
   capturedRequests,
@@ -52,4 +63,11 @@ export {
   type CapturedHeader,
   type CaptureSnapshot,
 } from './backends/capture.js';
-export { faultKind, isTransient, retryAfterMs, type FaultKind } from './backends/transient.js';
+export {
+  faultKind,
+  isTransient,
+  reportingRetries,
+  retryAfterMs,
+  type FaultKind,
+  type RetryListener,
+} from './backends/transient.js';

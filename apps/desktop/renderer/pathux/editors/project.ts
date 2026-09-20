@@ -5,26 +5,39 @@ import { redrawing, type AnchorPass } from '../tour/anchors.js';
 import { refreshModelsAction } from '../../rules/models.js';
 import {
   applyStyleAction,
+  bubbleNamesAction,
   builtinSkillAction,
   imageModelAction,
   imageModelRows,
   reloadAction,
+  SHOT_FORM_ROWS,
+  shotFormAction,
   styleBox,
+  textModelAction,
+  toggledVisionModels,
+  visionModelsAction,
 } from '../../rules/projectbar.js';
+import { textModelRows } from '../widgets/modelmenu.js';
+import { textModelChoices } from '@vn/types';
+import { modelCatalog } from '@vn/gengraph';
 import PROJECT_CSS from '../../styles/project.css?inline';
-import type { ProjectView } from '../../../src/shared/ipc.js';
+import type { ProjectView, PropValue } from '../../../src/shared/ipc.js';
+import type { Offer } from '../../rules/anchors.js';
 
 /**
  * `project.yaml`, as the run reads it. A singleton pane with no subject (a workspace has one
  * config), so it is deliberately absent from `SUBJECT_OF` and `view.open(editor=project)` carries
  * nothing.
  *
- * Two fields are editable. The art style is the sentence every image prompt opens with, typed
- * into a box and written by Apply through `project.setArtStyle`. The image model is picked from a
- * dropdown whose every row runs `project.setImageModel` at once. Both commands are
- * `confirm: true` and say how many image tasks they re-key before they write. The other model
- * ids and the image params are read-only here because changing them is a deliberate, file-level
- * act.
+ * Four fields are editable. The art style is the sentence every image prompt opens with, typed
+ * into a box and written by Apply through `project.setArtStyle`. The three model ids are picked
+ * from dropdowns whose every row runs the matching `project.set*Model*` command at once; the
+ * image model's is `confirm: true` and says how many image tasks it re-keys before it writes,
+ * while the text and vision models re-key nothing. The image params are read-only here because
+ * changing them is a deliberate, file-level act.
+ *
+ * The shot form and `bubble_names` are set from the settings card too: a two-row dropdown and a
+ * checkbox, each writing its key the moment it is picked.
  *
  * The third card is the builtin skill catalog, one checkbox per skill, each writing the whole
  * `builtin_skills` list through `project.setBuiltinSkills` as it is ticked.
@@ -43,6 +56,8 @@ export class ProjectEditor extends VnEditor {
   private view: ProjectView | undefined;
   /** True once the box was typed into, so a background refetch stops overwriting the draft. */
   private dirty = false;
+  /** True once this pane has fetched the model listings on its own; the button is the retry. */
+  private listedOnce = false;
 
   static override define() {
     return {
@@ -139,6 +154,13 @@ export class ProjectEditor extends VnEditor {
     this.styleBox.value = view?.artStyle ?? '';
     this.note(view === undefined ? 'No project is open.' : '', view === undefined);
     this.paint();
+    // A catalog with no text listing predates the text pickers, or was never fetched: list once,
+    // so the pickers hold more than the shipped ids. Once is enough — a listing that failed is
+    // in the note, and Refresh models is the retry.
+    if (view !== undefined && view.imageModels.text.length === 0 && !this.listedOnce) {
+      this.listedOnce = true;
+      void this.refreshModels();
+    }
   }
 
   /**
@@ -166,6 +188,23 @@ export class ProjectEditor extends VnEditor {
     await this.load();
   }
 
+  /** Write the text-model picker's row. Nothing is re-keyed, so nothing confirms. */
+  private async pickTextModel(id: string): Promise<void> {
+    const outcome = await exec('project.setTextModel', { model: id });
+    if (!outcome.ok) return void this.note(outcome.error, true);
+    report(outcome);
+    await this.load();
+  }
+
+  /** Write the vision picker's row, as the whole list with this id toggled. */
+  private async toggleVisionModel(id: string): Promise<void> {
+    const models = toggledVisionModels(this.view?.models.vision ?? [], id);
+    const outcome = await exec('project.setVisionModels', { models });
+    if (!outcome.ok) return void this.note(outcome.error, true);
+    report(outcome);
+    await this.load();
+  }
+
   /**
    * Write one checkbox's tick, as the whole list `project.yaml` will hold. The pane is not marked
    * dirty by it: the write lands at once, and the re-read that follows redraws every box from the
@@ -178,7 +217,7 @@ export class ProjectEditor extends VnEditor {
     await this.load();
   }
 
-  /** Fetch the OpenRouter listing again. The bridge re-reads the project view once it lands. */
+  /** Fetch the model listings again. The bridge re-reads the project view once they land. */
   private async refreshModels(): Promise<void> {
     const outcome = await exec('models.refresh');
     if (!outcome.ok) return void this.note(outcome.error, true);
@@ -225,11 +264,65 @@ export class ProjectEditor extends VnEditor {
     row(this.rows, 'title', view.title);
     row(this.rows, 'start', view.start);
     this.modelPicker(anchors, view);
-    row(this.rows, 'models.text', view.models.text);
-    row(this.rows, 'models.vision', view.models.vision.join(', '));
+    this.textPicker(anchors, view);
+    this.visionPicker(anchors, view);
     row(this.rows, 'image_params.aspect', view.imageParams.aspect);
     row(this.rows, 'image_params.seed', view.imageParams.seed?.toString() ?? '');
+    this.shotFormPicker(anchors, view);
+    this.flagRow(
+      anchors,
+      'bubble_names',
+      bubbleNamesAction(true, view.bubbleNames),
+      view.bubbleNames,
+    );
     this.skillBoxes(anchors, view);
+  }
+
+  /**
+   * The `shot_form` row: a two-row dropdown, frames or pages, each row running
+   * `project.setShotForm` as it is picked. Nothing is re-keyed, so nothing confirms.
+   */
+  private shotFormPicker(anchors: AnchorPass, view: ProjectView): void {
+    const frame = this.pickerRow('shot_form');
+    const offer = shotFormAction(true, view.shotForm);
+    // Rows carry their own tooltip, so the last slot has to be an explicit id: `createMenu` reads
+    // `item[5]` for any row longer than four and would otherwise file the callback under undefined
+    const template: MenuTemplate = SHOT_FORM_ROWS.map((entry) => [
+      entry.id === view.shotForm ? `✓ ${entry.label}` : entry.label,
+      () => void this.write('project.setShotForm', { form: entry.id }),
+      undefined,
+      undefined,
+      entry.tooltip,
+      entry.id,
+    ]) as MenuTemplate;
+    anchors.record(frame.menu({ title: offer.label, template }), offer);
+    frame.flushUpdate();
+  }
+
+  /**
+   * A `project.yaml` flag as a checkbox in the value column. Recorded rather than acted, the way
+   * a skill's box is: the click is the box's own `change`, which runs the offer's props.
+   */
+  private flagRow(anchors: AnchorPass, key: string, offer: Offer, checked: boolean): void {
+    this.rows.appendChild(el('span', 'pj-key', key));
+    const label = el('label', 'pj-flag') as HTMLLabelElement;
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = checked;
+    box.addEventListener('change', () => {
+      if (offer.ok) void this.write(offer.id, offer.props);
+    });
+    label.append(box, el('span', 'pj-val', offer.label));
+    anchors.record(label, offer);
+    this.rows.appendChild(label);
+  }
+
+  /** Run one key's command and re-read the view, so the control shows what the file now says. */
+  private async write(id: string, props: Record<string, PropValue>): Promise<void> {
+    const outcome = await exec(id, props);
+    if (!outcome.ok) return void this.note(outcome.error, true);
+    report(outcome);
+    await this.load();
   }
 
   /**
@@ -266,12 +359,7 @@ export class ProjectEditor extends VnEditor {
    */
   private modelPicker(anchors: AnchorPass, view: ProjectView): void {
     const current = view.models.image;
-    this.rows.appendChild(el('span', 'pj-key', 'models.image'));
-    const holder = el('span', 'pj-val');
-    const frame = UIBase.constructElement<RowFrame>('rowframe-x', this.ctx);
-    frame.ctx = this.ctx;
-    holder.appendChild(frame);
-    this.rows.appendChild(holder);
+    const frame = this.pickerRow('models.image');
 
     // Rows carry their own tooltip, so the last slot has to be an explicit id: `createMenu` reads
     // `item[5]` for any row longer than four and would otherwise file the callback under undefined
@@ -291,6 +379,58 @@ export class ProjectEditor extends VnEditor {
       refresh,
       () => void this.refreshModels(),
     );
+    frame.flushUpdate();
+  }
+
+  /** A row holding one path.ux frame, for a picker drawn in place of a value. */
+  private pickerRow(key: string): RowFrame {
+    this.rows.appendChild(el('span', 'pj-key', key));
+    const holder = el('span', 'pj-val');
+    const frame = UIBase.constructElement<RowFrame>('rowframe-x', this.ctx);
+    frame.ctx = this.ctx;
+    holder.appendChild(frame);
+    this.rows.appendChild(holder);
+    return frame;
+  }
+
+  /**
+   * The `models.text` row: the same dropdown the header's model menu is, rebuilt on every open
+   * so a refreshed listing is in it, with each row running `project.setTextModel`.
+   */
+  private textPicker(anchors: AnchorPass, view: ProjectView): void {
+    const frame = this.pickerRow('models.text');
+    const offer = textModelAction(true, view.models.text);
+    const menu = frame.menu({ title: offer.label, template: [], autoSearchMode: true });
+    menu.template = (() =>
+      textModelRows(view.models.text, (id) => void this.pickTextModel(id))) as never;
+    anchors.record(menu, offer);
+    frame.flushUpdate();
+  }
+
+  /**
+   * The `models.vision` row: the list as the file has it, then a dropdown whose rows toggle
+   * membership — a ticked row is on the list, and picking it takes it off.
+   */
+  private visionPicker(anchors: AnchorPass, view: ProjectView): void {
+    const frame = this.pickerRow('models.vision');
+    const current = view.models.vision;
+    frame.label(current.join(', ') || 'none');
+    const offer = visionModelsAction(true, current);
+    const menu = frame.menu({ title: offer.label, template: [], autoSearchMode: true });
+    // Rows carry their own tooltip, so the last slot has to be an explicit id: `createMenu` reads
+    // `item[5]` for any row longer than four and would otherwise file the callback under undefined
+    menu.template = (() =>
+      textModelChoices(modelCatalog()?.text, '').map((row) => [
+        current.includes(row.id) ? `✓ ${row.label}` : row.label,
+        () => void this.toggleVisionModel(row.id),
+        undefined,
+        undefined,
+        current.includes(row.id)
+          ? `Take ${row.id} off the list of reviewers.`
+          : `Add ${row.id} to the reviewers. ${row.tooltip}`,
+        row.id,
+      ])) as never;
+    anchors.record(menu, offer);
     frame.flushUpdate();
   }
 }

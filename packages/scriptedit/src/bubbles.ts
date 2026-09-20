@@ -98,15 +98,36 @@ export function setBubbles<S extends BubbleShot>(
   };
 }
 
-/** The bubble list with `line`'s bubble at `anchor`, keeping its tail when it had one. */
+/** The bubble list with `line`'s bubble at `anchor`, keeping its tail and name when it had them. */
 export function placeBubble(
   bubbles: readonly PanelBubble[],
   line: string,
   anchor: [number, number],
 ): PanelBubble[] {
   const had = bubbles.find((b) => b.lineId === line);
-  const placed: PanelBubble = { lineId: line, anchor, ...(had?.tail ? { tail: had.tail } : {}) };
+  const placed: PanelBubble = {
+    lineId: line,
+    anchor,
+    ...(had?.tail ? { tail: had.tail } : {}),
+    ...(had?.name === undefined ? {} : { name: had.name }),
+  };
   return [...bubbles.filter((b) => b.lineId !== line), placed];
+}
+
+/**
+ * The bubble list with `line`'s bubble saying whether it shows the speaker's name: `true` or
+ * `false` overrides the project, `undefined` inherits it again.
+ */
+export function nameBubble(
+  bubbles: readonly PanelBubble[],
+  line: string,
+  name: boolean | undefined,
+): PanelBubble[] {
+  return bubbles.map((b) => {
+    if (b.lineId !== line) return b;
+    const { name: _old, ...rest } = b;
+    return name === undefined ? rest : { ...rest, name };
+  });
 }
 
 /** The bubble list with `line`'s tail at `tail`, or with no tail when `tail` is `undefined`. */

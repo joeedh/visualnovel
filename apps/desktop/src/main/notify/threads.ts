@@ -110,6 +110,8 @@ function clampDetail(detail: ToolDetail): ToolDetail {
     ...(detail.args === undefined ? {} : { args: clampEvidence(detail.args, ARGS_MAX) }),
     ...(detail.ok === undefined ? {} : { ok: detail.ok }),
     ...(detail.output === undefined ? {} : { output: clampEvidence(detail.output, OUTPUT_MAX) }),
+    // Already cut to `DIFF_LINES` by the reducer, and a line-bounded cut reads better than a byte one
+    ...(detail.diff === undefined ? {} : { diff: detail.diff }),
   };
 }
 

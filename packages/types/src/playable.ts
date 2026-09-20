@@ -30,6 +30,8 @@ export const playableBubbleSchema = z.object({
   line  : z.string().min(1),
   anchor: pagePoint,
   tail  : pagePoint.optional(),
+  /** Whether the speaker's name is shown, in place of {@link Playable.bubbleNames}. */
+  name  : z.boolean().optional(),
 });
 export type PlayableBubble = z.infer<typeof playableBubbleSchema>;
 
@@ -124,6 +126,12 @@ export const playableSchema = z.object({
    * so every consumer reads a plain boolean, and a file written before the field still parses.
    */
   portraitOverlay: z.boolean().default(false),
+  /**
+   * Show the speaker's name above the line in a bubble drawn for a `say` beat; a `narrate`
+   * beat's caption never carries one. A bubble's own `name` overrides it. Defaulted like
+   * `portraitOverlay`, so a file written before the field still parses.
+   */
+  bubbleNames    : z.boolean().default(false),
   characters     : z.record(z.string(), playableCharacterSchema).default({}),
   scenes         : z.record(z.string(), playableSceneSchema).default({}),
 });

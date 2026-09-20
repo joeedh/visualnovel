@@ -22,6 +22,11 @@ export interface RunDeps {
    * with no graphs never reaches this.
    */
   graphs?: GraphRuntime;
+  /**
+   * Hears what a task is doing while it runs — which attempt it is on, whether it is drawing or
+   * reviewing, a retry it is waiting out. Each call replaces the last sentence for that task.
+   */
+  activity?: (task: AnyTask, doing: string) => void;
 }
 
 /** A dry-run estimate of the generative work a plan implies (report §10 cost preview). */

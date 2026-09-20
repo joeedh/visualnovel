@@ -146,11 +146,19 @@ export const pipelineDraw = define({
 export const pipelineStop = define({
   id         : 'pipeline.stop',
   title      : 'Stop pipeline',
-  description: 'Stop the run in progress after the task it is on. Finished work is kept.',
+  description:
+    'Stop the run in progress after the task it is on. Finished work is kept. With `abort`, the ' +
+    'tasks in flight are cut off as well: each goes back to pending, and the model call it was in ' +
+    'is abandoned, so what it would have drawn is lost and the call is still paid for.',
   // A stop writes nothing of its own — the run it interrupts records what it managed, and that
   // is already `pipeline.run`'s undo point.
   mutating   : false,
-  props      : {},
+  props: {
+    abort: prop.boolean(
+      'cut off the tasks in flight as well, rather than waiting for them; each goes back to pending',
+      { default: false },
+    ),
+  },
   check(_props, ctx) {
     const busy = ctx.host.session.busy();
     // An approve-and-generate pass is stopped by the same button, and reaching it is the point of
@@ -161,10 +169,27 @@ export const pipelineStop = define({
     }
     return Promise.resolve({ ok: true, note: stopsWhat(busy) });
   },
-  run(_props, ctx) {
-    const asked = ctx.host.session.stopPipeline();
+  run({ abort }, ctx) {
+    const session = ctx.host.session;
+    if (abort) {
+      const cut = session.abortPipeline();
+      return Promise.resolve({
+        message:
+          cut === undefined
+            ? 'No pipeline run is in progress.'
+            : cut === 0
+              ? 'Stopping; nothing was in flight to cut off.'
+              : `Cut off ${cut} task(s) in flight; each is pending again.`,
+      });
+    }
+    const already = session.stopping();
+    const asked = session.stopPipeline();
     return Promise.resolve({
-      message: asked ? 'Stopping after the task in progress.' : 'No pipeline run is in progress.',
+      message: !asked
+        ? 'No pipeline run is in progress.'
+        : already
+          ? 'Already stopping after the tasks in flight. Stop with abort to cut them off.'
+          : 'Stopping after the task in progress.',
     });
   },
 });

@@ -1,5 +1,4 @@
-import { AreaFlags, type Container, type Label, type MenuTemplate, type ScreenArea } from 'pathux';
-import { TEXT_MODELS } from '@vn/types';
+import { AreaFlags, type Container, type Label, type ScreenArea } from 'pathux';
 import { isLive } from '../../api.js';
 import { EDITOR_IDS, type EditorId } from '../../../src/shared/editors.js';
 import type { PropValue } from '../../../src/shared/ipc.js';
@@ -32,6 +31,7 @@ import type { VnContext } from '../app/context.js';
 import { currentLayoutFile, fetchLayouts } from '../panes/layouts.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { openDiagnostics } from '../chrome/diagnostics.js';
+import { openCommandDialog } from '../chrome/dialog.js';
 import { openApprovals } from '../chrome/approvals.js';
 import { openNotifications } from '../chrome/notifications.js';
 import { rectOf } from '../chrome/popup.js';
@@ -41,6 +41,7 @@ import { seedReport } from '../agent/reportconvo.js';
 import { NO_PANE, paneToUse } from '../panes/panes.js';
 import { panesOf } from '../panes/view.js';
 import type { GenGraphEditor } from './nodes.js';
+import { textModelMenu } from '../widgets/modelmenu.js';
 
 /** What the Edit menu's group entries ask of a Gen Graph pane. Type-only, so no import cycle. */
 type GroupActions = Pick<
@@ -202,6 +203,7 @@ export class VnHeaderEditor extends VnEditor {
       ui.undoLabel,
       ui.redoLabel,
       ui.busyWhat,
+      ui.busyStopping,
       ui.retryAttempt,
       ui.retryOf,
       this.layoutRevision,
@@ -383,11 +385,16 @@ export class VnHeaderEditor extends VnEditor {
       iterations: Infinity,
     });
 
-    const stopOffer = stopAction(controls);
+    const stopOffer = stopAction(controls, this.ui.busyStopping);
     const stop = this.anchors.act(
       this.bar.button(stopOffer.label, () => {}),
       stopOffer,
-      (action) => void exec(action.id, action.props).then(report),
+      (action) => {
+        // The second press cuts off work in flight, so it goes through the command's form and
+        // its note rather than off the bare button
+        if (stopOffer.form) openCommandDialog(action.id, action.props, undefined, controls.aborts);
+        else void exec(action.id, action.props).then(report);
+      },
     );
     stop.setCSSAfter(() => (stop.style['color'] = 'var(--vermilion, #e5534b)'));
   }
@@ -397,18 +404,16 @@ export class VnHeaderEditor extends VnEditor {
    * offers the same list; both go through `setModel`, so either one switches the other.
    */
   private modelMenu(): void {
-    // Rows carry their own tooltip, so the last slot has to be an explicit id: `createMenu` reads
-    // `item[5]` for any row longer than four and would otherwise file the callback under undefined.
-    const rows: MenuTemplate = TEXT_MODELS.map((id) => [
-      id,
-      () => void setModel(id),
-      undefined,
-      undefined,
-      `Answer with ${id} from the next turn on.`,
-      id,
-    ]) as MenuTemplate;
     const model = modelAction(this.ui.model);
-    this.anchors.record(this.bar.menu(model.label, rows), model);
+    this.anchors.record(
+      textModelMenu(
+        this.bar,
+        model.label,
+        () => this.ui.model,
+        (id) => void setModel(id),
+      ),
+      model,
+    );
   }
 
   /**
@@ -434,7 +439,11 @@ export class VnHeaderEditor extends VnEditor {
    */
   private sayProgress(): void {
     if (!this.spinner || !this.controls) return;
-    this.spinner.description = this.controls.progress(this.ui.busyRan, this.ui.busyPending);
+    this.spinner.description = this.controls.progress(
+      this.ui.busyRan,
+      this.ui.busyPending,
+      this.ui.busyStopping,
+    );
   }
 
   /** A row packs its labels flush, so each one carries its own gutter. */

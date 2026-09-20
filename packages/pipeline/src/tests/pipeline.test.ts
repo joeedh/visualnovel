@@ -355,7 +355,7 @@ describe('decomposeScene (LLM path)', () => {
   });
 
   /** A project that states no style, so the decomposer gets the plain prompt. */
-  const PLAIN = { artStyle: '', storyboardNotes: '' };
+  const PLAIN = { artStyle: '', storyboardNotes: '', shotForm: 'frames' as const };
 
   /** What `decomposeScene` sent: the prompt, then the system prompt after a rule. */
   const seeing = (providers: ReturnType<typeof providersReturning>): { seen: string } => {
@@ -391,6 +391,7 @@ describe('decomposeScene (LLM path)', () => {
     await decomposeScene(m.scenes.get('s1')!, m, providers, {
       artStyle       : 'full-colour manga',
       storyboardNotes: 'pages of four to six panels; one splash per scene',
+      shotForm       : 'pages',
     });
     const system = spy.seen.split('\n---\n')[1]!;
     const style = system.indexOf('The frames will be drawn in this art style: full-colour manga.');
@@ -403,21 +404,38 @@ describe('decomposeScene (LLM path)', () => {
     expect(format).toBeGreaterThan(notes);
   });
 
-  it('brings the page vocabulary and the wider answer format with the storyboard notes alone', async () => {
+  it('brings the page vocabulary and the wider answer format with shot_form: pages alone', async () => {
     const m = build();
     const providers = providersReturning([SHOT('a', ['s1:L1', 's1:L2'])]);
     const spy = seeing(providers);
 
     await decomposeScene(m.scenes.get('s1')!, m, providers, {
       artStyle       : 'full-colour manga',
-      storyboardNotes: 'pages of four to six panels',
+      storyboardNotes: '',
+      shotForm       : 'pages',
     });
     const system = spy.seen.split('\n---\n')[1]!;
+    expect(system).toContain('make every shot a page');
     expect(system).toContain('"panels", one to 6 in reading order');
     expect(system).toContain('two-tier (4 panels)');
     expect(system).toContain('"panels?":[{"framing"');
+    expect(system).not.toContain('staging sheets');
+    // Notes alone bring the staging sheets and the wider format, and no page vocabulary: the
+    // form is the field's to decide, so notes asking for pages under `frames` get frames
+    const noted = decompSystem({
+      artStyle       : '',
+      storyboardNotes: 'pages of four to six panels',
+      shotForm       : 'frames',
+    });
+    expect(noted).toContain('staging sheets');
+    expect(noted).toContain('"sheets?"');
+    expect(noted).not.toContain('"panels"');
     // The art style alone asks for frames drawn a certain way, not for pages
-    const styled = decompSystem({ artStyle: 'full-colour manga', storyboardNotes: '' });
+    const styled = decompSystem({
+      artStyle       : 'full-colour manga',
+      storyboardNotes: '',
+      shotForm       : 'frames',
+    });
     expect(styled).not.toContain('panel');
   });
 
@@ -503,13 +521,22 @@ describe('decomposeScene (LLM path)', () => {
 });
 
 describe('storyboardStyle', () => {
-  it('reads the two keys off the config and nothing else', () => {
-    expect(storyboardStyle(config)).toEqual({ artStyle: 'watercolor', storyboardNotes: '' });
+  it('reads the three keys off the config and nothing else', () => {
+    expect(storyboardStyle(config)).toEqual({
+      artStyle       : 'watercolor',
+      storyboardNotes: '',
+      shotForm       : 'frames',
+    });
     expect(
       storyboardStyle(
-        projectConfig.parse({ title: 'T', art_style: 'ink', storyboard_notes: 'pages' }),
+        projectConfig.parse({
+          title           : 'T',
+          art_style       : 'ink',
+          storyboard_notes: 'pages',
+          shot_form       : 'pages',
+        }),
       ),
-    ).toEqual({ artStyle: 'ink', storyboardNotes: 'pages' });
+    ).toEqual({ artStyle: 'ink', storyboardNotes: 'pages', shotForm: 'pages' });
   });
 });
 

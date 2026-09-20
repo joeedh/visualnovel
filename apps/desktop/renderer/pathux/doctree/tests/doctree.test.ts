@@ -485,6 +485,17 @@ describe('menuFor', () => {
     }
   });
 
+  it('offers the story heading a switch to the order it is not in', () => {
+    const story = node('branch:story', 'branch');
+    expect(idsOf(story)).toEqual(['story.newScene', 'story.screenplay', MENU_SEP, 'pane.view']);
+    expect(menuFor(story).at(-1)).toMatchObject({
+      props: { what: 'mode' },
+      on   : 'order',
+      label: 'Sort in topological order',
+    });
+    expect(menuFor(story, 'story').at(-1)).toMatchObject({ label: 'Sort as stored' });
+  });
+
   it('offers the cast branches the one sheet each is made of', () => {
     for (const [branch, kind] of [
       ['characters', 'character'],
@@ -511,7 +522,10 @@ describe('menuFor', () => {
   });
 
   it('offers the story branch the same acts a scene under it offers', () => {
-    expect(idsOf(node('branch:story', 'branch'))).toEqual(['story.newScene', 'story.screenplay']);
+    expect(idsOf(node('branch:story', 'branch')).slice(0, 2)).toEqual([
+      'story.newScene',
+      'story.screenplay',
+    ]);
     const scene = idsOf(node('scene:greet', 'scene', { path: 'scenes/greet.md' }));
     expect(scene).toEqual([
       'story.assignLineIds',

@@ -4,14 +4,19 @@
  * frames' `enumDef` draw the same list and the inherit row names the same model. Nothing here
  * reaches the filesystem; the file itself is read through `modelstore.ts`.
  */
-import type { ImageModelEntry } from '@vn/types';
+import type { ImageModelEntry, TextModelEntry } from '@vn/types';
 
 import { SHIPPED_PRICES } from './prices.js';
 
-/** What the pickers draw: the shipped ids, the cached OpenRouter rows, and the project's model. */
+/**
+ * What the pickers draw: the shipped ids, the cached OpenRouter rows, the project's model, and
+ * the text models the cached listing holds.
+ */
 export interface ModelCatalog {
   shipped: string[];
   openrouter: ImageModelEntry[];
+  /** The text models each vendor listed at the last refresh; absent where none has run. */
+  text?: TextModelEntry[];
   /** The project's `models.image`, which an empty node model draws with. */
   default: string;
   /** The day the OpenRouter rows were fetched; absent where no listing has been cached. */
@@ -78,8 +83,8 @@ export function openRouterTooltip(entry: ImageModelEntry): string {
 }
 
 /**
- * The rows a picker draws, in order: the inherit row where asked for, the shipped Gemini ids, the
- * cached OpenRouter ids in listing order, then `current` where it is none of those, so a model
+ * The rows a picker draws: the inherit row first where asked for, then the shipped Gemini ids,
+ * the cached OpenRouter ids and `current` where it is none of those, sorted by id, so a model
  * that dropped off the listing is still shown rather than silently reset.
  */
 export function imageModelChoices(
@@ -88,13 +93,6 @@ export function imageModelChoices(
   opts: { inherit?: boolean } = {},
 ): ImageModelChoice[] {
   const rows: ImageModelChoice[] = [];
-  if (opts.inherit) {
-    rows.push({
-      id     : INHERIT_VALUE,
-      label  : inheritLabel(catalog),
-      tooltip: 'Leave the model empty, so this node draws with the project’s image model.',
-    });
-  }
   for (const id of catalog?.shipped ?? shippedImageModels()) {
     rows.push({ id, label: id, tooltip: `Draw with ${id}, through Gemini.` });
   }
@@ -109,6 +107,14 @@ export function imageModelChoices(
       tooltip: current.includes('/')
         ? `Draw with ${current}, ${routedClause(current)}; it is not in the cached listing.`
         : `Draw with ${current}, through Gemini.`,
+    });
+  }
+  rows.sort((a, b) => a.id.localeCompare(b.id));
+  if (opts.inherit) {
+    rows.unshift({
+      id     : INHERIT_VALUE,
+      label  : inheritLabel(catalog),
+      tooltip: 'Leave the model empty, so this node draws with the project’s image model.',
     });
   }
   return rows;

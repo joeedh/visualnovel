@@ -10,8 +10,12 @@ import {
   setArtStyle,
   setBuiltinSkills,
   setImageModel,
+  setBubbleNames,
   setLettering,
+  setShotForm,
   setStoryboardNotes,
+  setTextModel,
+  setVisionModels,
   userKeysDir,
   type ResolvedKeys,
   type VendorKeyStatus,
@@ -25,6 +29,7 @@ import {
   createMockProviders,
   imageVendorOf,
   listOpenRouterImageModels,
+  listTextModels,
   type FetchImpl,
   type OpenRouterListing,
 } from '@vn/providers';
@@ -36,6 +41,7 @@ import {
   imageRouteFor,
   type KeysPresent,
   type Lettering,
+  type ShotForm,
   type ProjectConfig,
   type TextLLM,
 } from '@vn/types';
@@ -95,11 +101,14 @@ export class ProjectPart {
       start        : config.start ?? '',
       models       : { ...config.models },
       imageParams  : { ...config.image_params },
+      bubbleNames  : config.bubble_names,
+      shotForm     : config.shot_form,
       imageTasks   : project.graph.all().filter((task) => IMAGE_KINDS.has(task.kind)).length,
       imageModels: {
         shipped   : shippedImageModels(),
         openrouter: cached?.openrouter ?? [],
         default   : config.models.image,
+        text      : cached?.text ?? [],
         ...(cached === undefined ? {} : { asOf: cached.asOf }),
       },
       builtinSkills: await this.builtinSkills(),
@@ -172,9 +181,12 @@ export class ProjectPart {
   }
 
   /**
-   * Fetches OpenRouter's image-model listing and replaces the cached one. The listing is the part
-   * that has to succeed: when it fails the file is left as it was and the reason comes back. A
-   * model whose endpoints call failed is written without a price and counted in the message.
+   * Fetches OpenRouter's image-model listing and the text-model listings, and replaces the cached
+   * file. The image listing is the part that has to succeed: when it fails the file is left as it
+   * was and the reason comes back. Anthropic and Gemini are asked for their text models only
+   * when a key for them resolves; a text vendor that is skipped or fails is named in the message
+   * and the others still land. A model whose endpoints call failed is written without a price
+   * and counted in the message.
    */
   async refreshModelCatalog(
     fetchImpl: FetchImpl = fetch,
@@ -185,20 +197,37 @@ export class ProjectPart {
     } catch (err) {
       return { ok: false, reason: (err as Error).message };
     }
+    const keys = await resolveKeys(await loadConfig(this.session.dir), {
+      secretsDirs: await secretDirsFor(this.session.dir),
+    });
+    const text = await listTextModels(
+      {
+        ...(keys.anthropic ? { anthropic: keys.anthropic } : {}),
+        ...(keys.gemini ? { gemini: keys.gemini } : {}),
+      },
+      fetchImpl,
+    );
     const asOf = new Date().toISOString().slice(0, 10);
-    await writeModelCatalog({ asOf, openrouter: listing.models });
+    await writeModelCatalog({ asOf, openrouter: listing.models, text: text.models });
 
     const priced = listing.models.filter((entry) => entry.priceUsd !== undefined).length;
     const failed =
       listing.unpriced.length === 0
         ? ''
         : `; ${listing.unpriced.length} endpoints call(s) failed, so those are listed unpriced`;
+    const textNotes = [
+      ...text.skipped.map((vendor) => `${vendor} was not asked, since no key for it resolved`),
+      ...text.failed.map((f) => `${f.vendor}'s listing failed: ${f.reason}`),
+    ];
+    const textSaid =
+      ` Listed ${text.models.length} text model(s)` +
+      (textNotes.length === 0 ? '.' : ` (${textNotes.join('; ')}).`);
     return {
       ok     : true,
-      listed : listing.models.length,
+      listed : listing.models.length + text.models.length,
       message:
         `Listed ${listing.models.length} OpenRouter image model(s) as of ${asOf}, ` +
-        `${priced} with a per-picture price${failed}.`,
+        `${priced} with a per-picture price${failed}.${textSaid}`,
     };
   }
 
@@ -249,13 +278,7 @@ export class ProjectPart {
       return { ok: false, message: 'The project already says that.' };
     }
 
-    const status = await keyStatus(project.config, {
-      secretsDirs: await secretDirsFor(this.session.dir),
-    });
-    const present = Object.fromEntries(
-      status.map((s) => [s.vendor, s.resolved]),
-    ) as unknown as KeysPresent;
-    if (imageRouteFor(id, present) === undefined) {
+    if (imageRouteFor(id, await this.keysPresent(project.config)) === undefined) {
       const refusal = missingRouteError(project.config, id, imageVendorOf(id));
       return { ok: false, message: `${refusal.message}; provide one in Setup first` };
     }
@@ -274,6 +297,89 @@ export class ProjectPart {
     const preview = await this.session.previewImageModel(modelId);
     if (!preview.ok) return { ...preview, written: [] };
     if (!(await setImageModel(this.session.dir, modelId.trim()))) {
+      return { ok: false, message: 'The project already says that.', written: [] };
+    }
+    return {
+      ok     : true,
+      message: preview.message,
+      written: [relPath(this.session.dir, join(this.session.dir, CONFIG_FILENAME))],
+    };
+  }
+
+  /** Which keys resolve, as the route tables read them. */
+  private async keysPresent(config: ProjectConfig): Promise<KeysPresent> {
+    const status = await keyStatus(config, { secretsDirs: await secretDirsFor(this.session.dir) });
+    return Object.fromEntries(status.map((s) => [s.vendor, s.resolved])) as unknown as KeysPresent;
+  }
+
+  /**
+   * What `project.setTextModel` would do, without writing it. A model no resolved key can carry
+   * is refused here rather than at the first pipeline call that would use it. The pipeline's
+   * text calls read the key on their next run; the agent's own model is chosen per conversation
+   * and is not this setting.
+   */
+  async previewTextModel(modelId: string): Promise<PromptResult> {
+    const id = modelId.trim();
+    if (!id) return { ok: false, message: 'No text model given.' };
+    const project = await loadProject(this.session.dir);
+    if (project.config.models.text === id) {
+      return { ok: false, message: 'The project already says that.' };
+    }
+    if (chatRouteFor(id, await this.keysPresent(project.config)) === undefined) {
+      const refusal = missingRouteError(project.config, id, chatVendorFor(id));
+      return { ok: false, message: `${refusal.message}; provide one in Setup first` };
+    }
+    return {
+      ok     : true,
+      message: `Set the text model to \`${id}\`. The pipeline's text calls — decomposition, reviews, refine critiques — use it from the next run.`,
+    };
+  }
+
+  /** Write the project's text model, spliced into `project.yaml`'s `models:` block. */
+  async setProjectTextModel(modelId: string): Promise<PromptWriteResult> {
+    const preview = await this.previewTextModel(modelId);
+    if (!preview.ok) return { ...preview, written: [] };
+    if (!(await setTextModel(this.session.dir, modelId.trim()))) {
+      return { ok: false, message: 'The project already says that.', written: [] };
+    }
+    return {
+      ok     : true,
+      message: preview.message,
+      written: [relPath(this.session.dir, join(this.session.dir, CONFIG_FILENAME))],
+    };
+  }
+
+  /**
+   * What `project.setVisionModels` would do, without writing it. The list is the whole set of
+   * reviewers, in order; an empty list is refused because a run with no reviewer cannot judge a
+   * picture, and a model no key can carry is refused by name.
+   */
+  async previewVisionModels(modelIds: readonly string[]): Promise<PromptResult> {
+    const ids = modelIds.map((id) => id.trim()).filter(Boolean);
+    if (ids.length === 0) return { ok: false, message: 'At least one vision model is needed.' };
+    const project = await loadProject(this.session.dir);
+    const before = project.config.models.vision;
+    if (before.length === ids.length && before.every((id, i) => id === ids[i])) {
+      return { ok: false, message: 'The project already says that.' };
+    }
+    const present = await this.keysPresent(project.config);
+    const unrouted = ids.find((id) => chatRouteFor(id, present) === undefined);
+    if (unrouted !== undefined) {
+      const refusal = missingRouteError(project.config, unrouted, chatVendorFor(unrouted));
+      return { ok: false, message: `${refusal.message}; provide one in Setup first` };
+    }
+    return {
+      ok     : true,
+      message: `Set the vision models to ${ids.map((id) => `\`${id}\``).join(', ')}. The next run's picture reviews use them.`,
+    };
+  }
+
+  /** Write the project's vision reviewers, spliced into `project.yaml`'s `models:` block. */
+  async setProjectVisionModels(modelIds: readonly string[]): Promise<PromptWriteResult> {
+    const preview = await this.previewVisionModels(modelIds);
+    if (!preview.ok) return { ...preview, written: [] };
+    const ids = modelIds.map((id) => id.trim()).filter(Boolean);
+    if (!(await setVisionModels(this.session.dir, ids))) {
       return { ok: false, message: 'The project already says that.', written: [] };
     }
     return {
@@ -337,6 +443,65 @@ export class ProjectPart {
     const preview = await this.session.previewLettering(lettering);
     if (!preview.ok) return { ...preview, written: [] };
     if (!(await setLettering(this.session.dir, lettering))) {
+      return { ok: false, message: 'The project already says that.', written: [] };
+    }
+    return {
+      ok     : true,
+      message: preview.message,
+      written: [relPath(this.session.dir, join(this.session.dir, CONFIG_FILENAME))],
+    };
+  }
+
+  /** What `project.setShotForm` would do, without writing it. */
+  async previewShotForm(form: ShotForm): Promise<PromptResult> {
+    const project = await loadProject(this.session.dir);
+    if (project.config.shot_form === form) {
+      return { ok: false, message: 'The project already says that.' };
+    }
+    return {
+      ok     : true,
+      message:
+        form === 'pages'
+          ? 'Storyboard new scenes as manga pages of panels. A storyboard already written keeps its shape.'
+          : 'Storyboard new scenes as single frames. A storyboard already written keeps its shape.',
+    };
+  }
+
+  /** Write what a shot is, spliced into `project.yaml` like the art style. */
+  async setProjectShotForm(form: ShotForm): Promise<PromptWriteResult> {
+    const preview = await this.session.previewShotForm(form);
+    if (!preview.ok) return { ...preview, written: [] };
+    if (!(await setShotForm(this.session.dir, form))) {
+      return { ok: false, message: 'The project already says that.', written: [] };
+    }
+    return {
+      ok     : true,
+      message: preview.message,
+      written: [relPath(this.session.dir, join(this.session.dir, CONFIG_FILENAME))],
+    };
+  }
+
+  /** What `project.setBubbleNames` would do, without writing it. */
+  async previewBubbleNames(on: boolean): Promise<PromptResult> {
+    const project = await loadProject(this.session.dir);
+    if (project.config.bubble_names === on) {
+      return { ok: false, message: 'The project already says that.' };
+    }
+    return {
+      ok     : true,
+      message: on
+        ? "Show the speaker's name in every speech bubble the runner draws, except where a " +
+          'bubble says otherwise. Nothing is drawn again.'
+        : "Leave the speaker's name out of the bubbles the runner draws, except where a bubble " +
+          'says otherwise. Nothing is drawn again.',
+    };
+  }
+
+  /** Write whether bubbles name their speaker, spliced into `project.yaml` like the art style. */
+  async setProjectBubbleNames(on: boolean): Promise<PromptWriteResult> {
+    const preview = await this.session.previewBubbleNames(on);
+    if (!preview.ok) return { ...preview, written: [] };
+    if (!(await setBubbleNames(this.session.dir, on))) {
       return { ok: false, message: 'The project already says that.', written: [] };
     }
     return {

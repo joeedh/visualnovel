@@ -126,6 +126,14 @@ export class VnEditor extends Area {
   }
 
   /**
+   * The workspace path of a document this pane holds unsaved edits to, or nothing. The quit
+   * guard reads it to point the author at the pane whose draft refused the quit.
+   */
+  unsavedDoc(): string | undefined {
+    return undefined;
+  }
+
+  /**
    * Called once when this editor opens in a floating window rather than a pane, after `init()`.
    * Override it to start on the settings a small window over the mesh is opened for. Whatever it
    * sets is an opening state and nothing more: the author's next click owns the control.

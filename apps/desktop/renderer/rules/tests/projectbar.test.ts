@@ -1,12 +1,19 @@
 import { setModelCatalog } from '@vn/gengraph';
 import {
   applyStyleAction,
+  bubbleNamesAction,
+  shotFormAction,
+  shotFormLabel,
   builtinSkillAction,
   controls,
   imageModelAction,
   imageModelRows,
   reloadAction,
   styleBox,
+  textModelAction,
+  toggledVisionModels,
+  visionModelsAction,
+  type ProjectBarState,
 } from '../projectbar.js';
 import { refreshModelsAction } from '../models.js';
 import { duplicateKeys, keyOf } from '../anchors.js';
@@ -156,45 +163,108 @@ describe('refreshModelsAction', () => {
   });
 });
 
+describe('shotFormAction', () => {
+  it('labels the button with the file value, supplies the form, and refuses with no project', () => {
+    expect(shotFormAction(true, 'frames')).toMatchObject({
+      ok      : true,
+      id      : 'project.setShotForm',
+      label   : 'single frames',
+      supplies: ['form'],
+    });
+    expect(shotFormAction(true, 'pages').label).toBe('manga pages');
+    expect(shotFormLabel('pages')).toBe('manga pages');
+    expect(shotFormAction(false, 'frames')).toMatchObject({ ok: false });
+  });
+});
+
+describe('bubbleNamesAction', () => {
+  it('flips the flag, worded for the state it is in, and is refused with no project', () => {
+    expect(bubbleNamesAction(true, false)).toMatchObject({
+      ok   : true,
+      id   : 'project.setBubbleNames',
+      props: { on: true },
+      label: 'Names in bubbles',
+    });
+    expect(bubbleNamesAction(true, true)).toMatchObject({ ok: true, props: { on: false } });
+    expect(bubbleNamesAction(true, true).tooltip).not.toBe(bubbleNamesAction(true, false).tooltip);
+    expect(bubbleNamesAction(false, false)).toMatchObject({ ok: false });
+  });
+});
+
 describe('controls', () => {
-  it('lists Apply, reload, the box, the picker, the refresh and a box per skill, each key once', () => {
-    for (const state of [
+  it('lists Apply, reload, the box, the pickers, the refresh and a box per skill, each key once', () => {
+    const states: ProjectBarState[] = [
       {
         opened       : true,
         dirty        : true,
         imageModel   : 'gemini-2.5-flash-image',
+        textModel    : 'claude-opus-4-8',
+        visionModels : ['gemini-2.5-flash'],
         catalogAsOf  : '2026-09-15',
+        shotForm     : 'frames',
+        bubbleNames  : false,
         builtinSkills: CATALOG,
       },
-      { opened: false, dirty: false, imageModel: '', builtinSkills: CATALOG },
-    ]) {
+      {
+        opened       : false,
+        dirty        : false,
+        imageModel   : '',
+        textModel    : '',
+        visionModels : [],
+        shotForm     : 'frames',
+        bubbleNames  : false,
+        builtinSkills: CATALOG,
+      },
+    ];
+    for (const state of states) {
       const listed = controls(state);
       expect(listed).toEqual([
         applyStyleAction(state.opened, state.dirty),
         reloadAction(),
         styleBox(state.opened),
         imageModelAction(state.opened, state.imageModel),
+        textModelAction(state.opened, state.textModel),
+        visionModelsAction(state.opened, state.visionModels),
         refreshModelsAction(state.opened, state.catalogAsOf),
+        shotFormAction(state.opened, state.shotForm),
+        bubbleNamesAction(state.opened, state.bubbleNames),
         ...CATALOG.map((skill) => builtinSkillAction(state.opened, skill, CATALOG)),
       ]);
       expect(duplicateKeys(listed)).toEqual([]);
     }
-    expect(
-      controls({
-        opened       : true,
-        dirty        : true,
-        imageModel   : 'gemini-2.5-flash-image',
-        builtinSkills: CATALOG,
-      }).map(keyOf),
-    ).toEqual([
+    expect(controls(states[0]!).map(keyOf)).toEqual([
       'cmd:project.setArtStyle',
       'fx:pane.view#reload',
       'cmd:project.setArtStyle#style',
       'cmd:project.setImageModel',
+      'cmd:project.setTextModel',
+      'cmd:project.setVisionModels',
       'cmd:models.refresh',
+      'cmd:project.setShotForm',
+      'cmd:project.setBubbleNames',
       'cmd:project.setBuiltinSkills#branching',
       'cmd:project.setBuiltinSkills#full-production',
       'cmd:project.setBuiltinSkills#new-character',
     ]);
+  });
+});
+
+describe('the text and vision pickers', () => {
+  it('label the button with the file value, and refuse with no project', () => {
+    expect(textModelAction(true, 'gemini-2.5-pro')).toMatchObject({
+      ok   : true,
+      id   : 'project.setTextModel',
+      label: 'gemini-2.5-pro',
+    });
+    expect(textModelAction(true, '').label).toBe('model…');
+    expect(textModelAction(false, 'x')).toMatchObject({ ok: false });
+    expect(visionModelsAction(true, ['a', 'b']).label).toBe('2 model(s)');
+    expect(visionModelsAction(true, []).label).toBe('models…');
+    expect(visionModelsAction(false, [])).toMatchObject({ ok: false });
+  });
+
+  it('toggles one id in the vision list', () => {
+    expect(toggledVisionModels(['a', 'b'], 'b')).toEqual(['a']);
+    expect(toggledVisionModels(['a'], 'c')).toEqual(['a', 'c']);
   });
 });

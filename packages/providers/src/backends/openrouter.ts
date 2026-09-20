@@ -20,6 +20,44 @@ export interface OpenRouterImageOptions {
    * one by name, ahead of the request; absent, the seed is sent as given.
    */
   seed?: boolean;
+  /**
+   * The aspect ratios the model accepts, as the catalog lists them. A call whose ratio is not
+   * among them is sent with the nearest listed one instead of failing with a 400; absent or
+   * empty, the ratio is sent as given.
+   */
+  aspects?: readonly string[];
+}
+
+/** A `w:h` ratio as a number, or `undefined` for a word such as `auto`. */
+function ratioOf(aspect: string): number | undefined {
+  const m = /^(\d+):(\d+)$/.exec(aspect.trim());
+  if (!m) return undefined;
+  const h = Number(m[2]);
+  return h === 0 ? undefined : Number(m[1]) / h;
+}
+
+/**
+ * The listed ratio to send for a requested one. Returns the request itself when it is listed or
+ * when the list is empty; otherwise the listed `w:h` ratio nearest to it in log space, so 16:9
+ * snaps to 3:2 and 9:16 to 2:3 rather than both to 1:1. A list holding only words (`auto`) sends
+ * the request as given.
+ */
+export function snapAspect(aspect: string, accepted: readonly string[]): string {
+  if (accepted.length === 0 || accepted.includes(aspect)) return aspect;
+  const wanted = ratioOf(aspect);
+  if (wanted === undefined) return aspect;
+  let best: string | undefined;
+  let bestGap = Infinity;
+  for (const candidate of accepted) {
+    const ratio = ratioOf(candidate);
+    if (ratio === undefined) continue;
+    const gap = Math.abs(Math.log(ratio) - Math.log(wanted));
+    if (gap < bestGap) {
+      bestGap = gap;
+      best = candidate;
+    }
+  }
+  return best ?? aspect;
 }
 
 /** The first picture in a reply, or nothing where the reply carries none. */
@@ -59,10 +97,12 @@ export function createOpenRouterImage(
       );
     }
     const refs = images.map(reference);
+    const aspect =
+      params.aspect === undefined ? undefined : snapAspect(params.aspect, opts.aspects ?? []);
     const body = {
       model: modelId,
       prompt,
-      ...(params.aspect === undefined ? {} : { aspect_ratio: params.aspect }),
+      ...(aspect === undefined ? {} : { aspect_ratio: aspect }),
       ...(params.seed === undefined ? {} : { seed: params.seed }),
       ...(refs.length === 0 ? {} : { input_references: refs }),
       provider: { data_collection: 'deny' },

@@ -14,16 +14,29 @@ export interface BusyControls {
   stop: string;
   /** What stopping is about to do, for the button's tooltip. */
   stops: string;
-  /** What the spinner says, from the counts main pushes alongside the busy state. */
-  progress(ran: number, pending: number): string;
+  /**
+   * The tooltip for a second press of Stop, shown once a stop is already pending. Absent for
+   * work with nothing in flight to cut off, where a second press repeats the first.
+   */
+  aborts?: string;
+  /**
+   * What the spinner says, from the counts main pushes alongside the busy state. `stopping` adds
+   * that the end is already asked for.
+   */
+  progress(ran: number, pending: number, stopping?: boolean): string;
 }
 
 const PIPELINE: BusyControls = {
   stop    : 'pipeline.stop',
   stops   : stopsWhat(BUSY_RUN),
-  progress: (ran, pending) =>
+  aborts:
+    'A stop is already pending: the run ends once the tasks in flight finish. Stopping again ' +
+    'cuts those tasks off — each goes back to pending, and the model call it was in is ' +
+    'abandoned, still paid for and its picture lost.',
+  progress: (ran, pending, stopping = false) =>
     `The pipeline is running — ${ran} task(s) done, ` +
-    `${pending} ${pending === 1 ? 'task' : 'tasks'} left.`,
+    `${pending} ${pending === 1 ? 'task' : 'tasks'} left.` +
+    (stopping ? ' Stopping once the tasks in flight finish.' : ''),
 };
 
 /**

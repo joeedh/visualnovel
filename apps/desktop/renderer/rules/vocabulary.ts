@@ -13,7 +13,8 @@
  * the whole cast where `story.setOutfit` takes one of the shot's subjects — because the form draws
  * the command's own refusal for the rest.
  */
-import { TEXT_MODELS, effortChoicesFor, effortLabel } from '@vn/types';
+import { effortChoicesFor, effortLabel, textModelChoices } from '@vn/types';
+import { modelCatalog } from '@vn/gengraph';
 import { threadDetail, threadLabel, type ThreadHeader } from '../../src/shared/convo.js';
 import { adviseModel } from '../../src/shared/advice.js';
 import type { ChoiceRow } from './catalog.js';
@@ -163,7 +164,7 @@ function threadChoice(thread: ThreadHeader): ChoiceRow {
  * when the source box is ticked, which is why the flag reaches this far.
  */
 export function modelRows(withSource: boolean): ChoiceRow[] {
-  return TEXT_MODELS.map((id) => {
+  return textModelChoices(modelCatalog()?.text, '').map(({ id }) => {
     const advice = adviseModel(id, withSource);
     return {
       value  : id,

@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-20T08:31:48.968Z",
-  "gitSha"       : "2ff29b7ca1f3c1532ef111503ba0238a098947a1",
+  "sweptAt"      : "2026-09-21T00:07:55.011Z",
+  "gitSha"       : "df72b18cea93e2b06f2aca4524c6e6d2b66a7467",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -52,6 +52,7 @@
     "doc.create",
     "doc.read",
     "doc.rename",
+    "doc.saveAll",
     "doc.write",
     "gate.approve",
     "gate.candidates",
@@ -105,11 +106,15 @@
     "project.keyStatus",
     "project.pagesStatus",
     "project.setArtStyle",
+    "project.setBubbleNames",
     "project.setBuiltinSkills",
     "project.setImageModel",
     "project.setKey",
     "project.setLettering",
+    "project.setShotForm",
     "project.setStoryboardNotes",
+    "project.setTextModel",
+    "project.setVisionModels",
     "project.testKey",
     "prompt.addRef",
     "prompt.check",
@@ -134,6 +139,7 @@
     "story.coverage",
     "story.decomposeAll",
     "story.deleteLine",
+    "story.deleteLines",
     "story.deleteScene",
     "story.deleteShot",
     "story.export",
@@ -179,6 +185,7 @@
     "view.palette",
     "view.resetLayout",
     "view.saveLayout",
+    "view.zoom",
     "window.close",
     "window.new",
     "window.quit",
@@ -221,6 +228,7 @@
     "asset.restore",
     "asset.upload",
     "doc.create",
+    "doc.saveAll",
     "doc.write",
     "gate.approve",
     "gengraph.create",
@@ -243,9 +251,13 @@
     "pipeline.run",
     "project.installPages",
     "project.setArtStyle",
+    "project.setBubbleNames",
     "project.setBuiltinSkills",
     "project.setImageModel",
     "project.setKey",
+    "project.setShotForm",
+    "project.setTextModel",
+    "project.setVisionModels",
     "project.testKey",
     "prompt.addRef",
     "prompt.check",
@@ -257,6 +269,8 @@
     "skill.cloneToProject",
     "skill.cloneToUser",
     "story.assignLineIds",
+    "story.deleteLine",
+    "story.deleteLines",
     "story.deleteScene",
     "story.deleteShot",
     "story.newScene",
@@ -278,6 +292,7 @@
     "view.open",
     "view.resetLayout",
     "view.saveLayout",
+    "view.zoom",
     "window.close",
     "window.new",
     "window.quit",
@@ -536,6 +551,11 @@
       "when"  : "branch:story"
     },
     {
+      "id"    : "pane.view",
+      "editor": "documents",
+      "when"  : "branch:story"
+    },
+    {
       "id"    : "doc.create",
       "editor": "documents",
       "when"  : "branch:characters",
@@ -592,12 +612,22 @@
       "when"  : "line:arrival:L1"
     },
     {
+      "id"    : "story.deleteLine",
+      "editor": "script",
+      "when"  : "line:arrival:L1"
+    },
+    {
       "id"    : "agent.editLine",
       "editor": "script",
       "when"  : "line:arrival:L2"
     },
     {
       "id"    : "view.open",
+      "editor": "script",
+      "when"  : "line:arrival:L2"
+    },
+    {
+      "id"    : "story.deleteLine",
       "editor": "script",
       "when"  : "line:arrival:L2"
     },
@@ -608,6 +638,11 @@
     },
     {
       "id"    : "view.open",
+      "editor": "script",
+      "when"  : "line:arrival:L3"
+    },
+    {
+      "id"    : "story.deleteLine",
       "editor": "script",
       "when"  : "line:arrival:L3"
     },
@@ -639,6 +674,11 @@
     },
     {
       "id"    : "history.move",
+      "editor": "header",
+      "when"  : "header/app"
+    },
+    {
+      "id"    : "doc.saveAll",
       "editor": "header",
       "when"  : "header/app"
     },
@@ -761,6 +801,11 @@
     },
     {
       "id"    : "screen.arrange",
+      "editor": "header",
+      "when"  : "header/view"
+    },
+    {
+      "id"    : "view.zoom",
       "editor": "header",
       "when"  : "header/view"
     },
@@ -950,7 +995,15 @@
       "id"        : "drag.start",
       "editor"    : "script",
       "key"       : "fx:drag.start#line/arrival:L2",
-      "widgetPath": "script/drag-start~d68bc315"
+      "widgetPath": "script/drag-start~d68bc315",
+      "then": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
     },
     {
       "id"        : "story.setSpeaker",
@@ -970,7 +1023,15 @@
       "id"        : "drag.start",
       "editor"    : "script",
       "key"       : "fx:drag.start#line/arrival:L3",
-      "widgetPath": "script/drag-start~da35cb1c"
+      "widgetPath": "script/drag-start~da35cb1c",
+      "then": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
     },
     {
       "id"        : "story.setSpeaker",
@@ -996,7 +1057,15 @@
       "id"        : "drag.start",
       "editor"    : "script",
       "key"       : "fx:drag.start#line/arrival:L1",
-      "widgetPath": "script/drag-start~d2e1bb0e"
+      "widgetPath": "script/drag-start~d2e1bb0e",
+      "then": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
     },
     {
       "id"        : "story.setSpeaker",
@@ -1022,7 +1091,15 @@
       "id"        : "drag.start",
       "editor"    : "script",
       "key"       : "fx:drag.start#line/arrival:L4",
-      "widgetPath": "script/drag-start~dddfd323"
+      "widgetPath": "script/drag-start~dddfd323",
+      "then": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
     },
     {
       "id"        : "story.setSpeaker",
@@ -1048,7 +1125,15 @@
       "id"        : "drag.start",
       "editor"    : "script",
       "key"       : "fx:drag.start#line/arrival:L5",
-      "widgetPath": "script/drag-start~e189db2a"
+      "widgetPath": "script/drag-start~e189db2a",
+      "then": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
     },
     {
       "id"        : "story.setSpeaker",
@@ -1087,6 +1172,13 @@
       "editor"    : "script",
       "key"       : "fx:pane.view#reload",
       "widgetPath": "script/pane-view~a08a707d"
+    },
+    {
+      "id"        : "story.deleteLines",
+      "editor"    : "script",
+      "key"       : "cmd:story.deleteLines#marked",
+      "widgetPath": "script/story-deletelines~de5dfe98",
+      "refused": "No lines are marked. Click a gutter number to mark a line, Shift+click for a run."
     },
     {
       "id"        : "pane.pin",
@@ -1668,6 +1760,13 @@
       "supplies"  : ["bubbles"]
     },
     {
+      "id"        : "story.setBubbles",
+      "editor"    : "page",
+      "key"       : "cmd:story.setBubbles#bubble/arrival:L2/name",
+      "widgetPath": "page/story-setbubbles~90ef47b4",
+      "supplies"  : ["bubbles"]
+    },
+    {
       "id"        : "drag.start",
       "editor"    : "page",
       "key"       : "fx:drag.start#line/arrival:L2",
@@ -1691,6 +1790,12 @@
       "key"       : "cmd:story.setSubjects#add",
       "widgetPath": "page/story-setsubjects~c2457003",
       "supplies"  : ["subjects"]
+    },
+    {
+      "id"        : "menu.open",
+      "editor"    : "page",
+      "key"       : "fx:menu.open",
+      "widgetPath": "page/menu-open~eb5b4984"
     },
     {
       "id"        : "pane.pin",
@@ -3696,6 +3801,12 @@
     },
     {
       "id"        : "pane.view",
+      "editor"    : "play",
+      "key"       : "fx:pane.view#bubbles",
+      "widgetPath": "play/pane-view~7fdb8fe9"
+    },
+    {
+      "id"        : "pane.view",
       "editor"    : "skills",
       "key"       : "fx:pane.view#reload",
       "widgetPath": "skills/pane-view~a08a707d"
@@ -5349,6 +5460,33 @@
       "editor"    : "project",
       "key"       : "cmd:models.refresh",
       "widgetPath": "project/models-refresh~471a93d2"
+    },
+    {
+      "id"        : "project.setTextModel",
+      "editor"    : "project",
+      "key"       : "cmd:project.setTextModel",
+      "widgetPath": "project/project-settextmodel~2c97f7b9",
+      "supplies"  : ["model"]
+    },
+    {
+      "id"        : "project.setVisionModels",
+      "editor"    : "project",
+      "key"       : "cmd:project.setVisionModels",
+      "widgetPath": "project/project-setvisionmodels~f39be0b0",
+      "supplies"  : ["models"]
+    },
+    {
+      "id"        : "project.setShotForm",
+      "editor"    : "project",
+      "key"       : "cmd:project.setShotForm",
+      "widgetPath": "project/project-setshotform~d78b99f4",
+      "supplies"  : ["form"]
+    },
+    {
+      "id"        : "project.setBubbleNames",
+      "editor"    : "project",
+      "key"       : "cmd:project.setBubbleNames",
+      "widgetPath": "project/project-setbubblenames~4c4ad64e"
     },
     {
       "id"        : "project.setBuiltinSkills",
@@ -7141,11 +7279,7 @@
       "stack": "refuses it — The classroom — day plate is already the render b524a2d7, and nothing about it has changed — adopting 45716256 would replace real work. Adopt with replace to supersede it; the old bytes stay in the store."
     }
   ],
-  "strays": [
-    "asset cmd:view.open#style",
-    "documents item:link/asset/fc80c6eba9cb0d134428bb7c0bd8bb65effa5be3379a763df6cb0467f5ebbae9",
-    "gengraph cmd:models.refresh"
-  ],
+  "strays"       : ["documents item:location/classroom"],
   "untagged"     : [],
   "unwalked"     : []
 }

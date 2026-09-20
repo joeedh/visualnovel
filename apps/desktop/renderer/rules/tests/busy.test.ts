@@ -21,6 +21,9 @@ describe('what the header draws for the work in flight', () => {
 
   it('stops a debug turn through its own command rather than the pipeline’s', () => {
     expect(busyControls(BUSY_REPORT)?.stop).toBe('report.stop');
+    // and has nothing in flight to cut off, so no second-press sentence
+    expect(busyControls(BUSY_REPORT)?.aborts).toBeUndefined();
+    expect(busyControls(BUSY_PASS)?.aborts).toContain('cuts those tasks off');
   });
 
   it('draws nothing for an authoring turn, which the conversation editor stops', () => {
@@ -39,6 +42,11 @@ describe('what the spinner says', () => {
       'The pipeline is running — 3 task(s) done, 2 tasks left.',
     );
     expect(busyControls(BUSY_RUN)?.progress(3, 1)).toContain('1 task left.');
+  });
+
+  it('says a stop is pending once one is', () => {
+    expect(busyControls(BUSY_RUN)?.progress(3, 2, true)).toContain('Stopping once the tasks');
+    expect(busyControls(BUSY_RUN)?.progress(3, 2)).not.toContain('Stopping');
   });
 
   it('counts a debug turn up, because nothing knows how many steps are left', () => {

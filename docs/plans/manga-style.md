@@ -887,7 +887,10 @@ specification:
   manga art style and empty notes still storyboards frames, and its prompt never contains
   the word "panel". With notes set the system prompt gains a page paragraph (the template
   names with their panel counts, the camera vocabulary, the bound) and the wider answer
-  format.
+  format. _Superseded (September 2026): the gate is now `project.yaml`'s `shot_form`, so
+  frames or pages is a field rather than something inferred from the notes; the notes
+  bring only the staging-sheet paragraph. See
+  [`pipeline-contracts.md`](../reference/pipeline-contracts.md)._
 - **`panel_subject_not_in_cast` is thrown by `readShots`, and `line_in_no_panel` is a list
   it returns.** The plan filed both under "the model validator", but `@vn/model` never
   reads a shots file; the store does. A panel naming someone outside the shot's cast makes

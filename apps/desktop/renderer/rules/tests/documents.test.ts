@@ -10,6 +10,7 @@ import {
   sceneLinkAction,
   sheetLinkAction,
   shotLinkAction,
+  storyInOrder,
   type RowState,
 } from '../documents.js';
 import { duplicateKeys, keyOf } from '../anchors.js';
@@ -138,6 +139,31 @@ describe('the bar', () => {
   it('reloads and folds the tree as view effects', () => {
     expect(reloadAction()).toMatchObject({ id: 'pane.view', props: { what: 'reload' } });
     expect(collapseAction()).toMatchObject({ id: 'tree.expand', props: { node: '*' }, on: 'all' });
+  });
+});
+
+describe('storyInOrder', () => {
+  const scenes = (...ids: string[]): DocNode[] =>
+    ids.map((id) => ({ id: `scene:${id}`, kind: 'scene', label: id }));
+  const roots: DocNode[] = [
+    { id: 'branch:story', kind: 'branch', label: 'Story', children: scenes('b', 'c', 'a') },
+    { id: 'branch:characters', kind: 'branch', label: 'Characters', children: [] },
+  ];
+
+  it('leaves the tree alone in stored order', () => {
+    expect(storyInOrder(roots, 'stored', ['a', 'b', 'c'])).toBe(roots);
+  });
+
+  it('sorts only the story branch, by the order the tree carries', () => {
+    const sorted = storyInOrder(roots, 'story', ['a', 'b', 'c']);
+    expect(sorted[0]!.children!.map((n) => n.id)).toEqual(['scene:a', 'scene:b', 'scene:c']);
+    expect(sorted[1]).toBe(roots[1]);
+    expect(roots[0]!.children!.map((n) => n.id)).toEqual(['scene:b', 'scene:c', 'scene:a']);
+  });
+
+  it('keeps a scene the order does not name at the end, in its stored place', () => {
+    const sorted = storyInOrder(roots, 'story', ['a']);
+    expect(sorted[0]!.children!.map((n) => n.id)).toEqual(['scene:a', 'scene:b', 'scene:c']);
   });
 });
 

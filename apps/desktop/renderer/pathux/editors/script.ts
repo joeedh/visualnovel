@@ -1,4 +1,4 @@
-import type { Container, MenuTemplate } from 'pathux';
+import { KeyMap, type Container, type MenuTemplate } from 'pathux';
 import { isSpeakable } from '@vn/scriptedit';
 import { api } from '../../api.js';
 import { commitOf, noticeForCheck, type Notice } from '../../../src/shared/lineedit.js';
@@ -13,6 +13,7 @@ import {
   continueAction,
   continueFrom,
   cueChoices,
+  deleteMarkedAction,
   speakerAction,
   dropTarget,
   headingAction,
@@ -22,6 +23,7 @@ import {
   lineBox,
   lineTextAction,
   localLineId,
+  markedInOrder,
   mergeAction,
   mergeTarget,
   nextEditing,
@@ -36,6 +38,7 @@ import {
   splitBoundaries,
   startAction,
   stepsOf,
+  toggleMark,
   type CastMember,
   type PendingField,
   type Continue,
@@ -51,7 +54,8 @@ import { panesOf } from '../panes/view.js';
 import { shotGroups } from '../doctree/doctree.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { openCommandDialog } from '../chrome/dialog.js';
-import { redrawing, type AnchorPass } from '../tour/anchors.js';
+import { redrawing, watchKeymap, type AnchorPass } from '../tour/anchors.js';
+import { hotkeys } from '../app/keymap.js';
 import { gestureState } from '../interactions/gestures.js';
 import { moveStateOf } from '../../rules/script.js';
 import { assetNode, openNode } from '../panes/open.js';
@@ -70,7 +74,8 @@ import type { CoverageLine, DocTree, SceneCoverage, StoryGraph } from '../../../
  * React column's sheet and one copy is the point, so only two things are added here: a reset,
  * because the page's own does not cross the shadow boundary, and the notice, which appeared as
  * the bar's right edge in React and appears here as a strip above the page, because a path.ux
- * label cannot carry the tone colours.
+ * label cannot carry the tone colours. The strip reserves three lines, so a notice of up to
+ * three lines does not move the page; only a longer one grows it.
  */
 const SURFACE_CSS = `
 * { box-sizing: border-box; }
@@ -85,7 +90,8 @@ const SURFACE_CSS = `
   flex: none;
   margin-left: 0;
   padding: 7px 22px;
-  min-height: 27px;
+  line-height: 1.5;
+  min-height: calc(3 * 1.5 * 10.5px + 14px);
   border-bottom: 1px solid var(--ink-line);
   background: var(--ink-sunken);
 }
@@ -161,6 +167,8 @@ export class ScriptEditor extends VnEditor {
 
   private drag: Drag | null = null;
   private dropEl: HTMLElement | undefined;
+  /** Lines marked by their gutter numbers, last mark last. What the bar's Delete takes. */
+  private marked: string[] = [];
   // The line whose cue picker is open. Not part of `Editing`: attribution is a different command
   // with no draft, and opening it must not look like the row is being retyped.
   private attributing: string | null = null;
@@ -189,6 +197,15 @@ export class ScriptEditor extends VnEditor {
     this.surface = el('div', 'script sc-surface') as HTMLDivElement;
     this.appendSurface(this.surface);
     this.armDismissLatch();
+
+    // An open row's box stops its own keys, so these only fire on the page itself
+    this.keymap = new KeyMap(
+      hotkeys('script', {
+        'Delete marked lines': () => void this.deleteMarked(),
+        'Unmark lines'       : () => this.unmark(),
+      }),
+    );
+    watchKeymap('script', () => this.keymap);
 
     // Outlives the page it sits under: `rebuildSurface` empties the surface on every redraw, and
     // frames rebuilt with it would flicker for a keystroke that only moved the caret.
@@ -300,6 +317,7 @@ export class ScriptEditor extends VnEditor {
       editing,
       this.attributing ?? '',
       pending,
+      this.marked.join(','),
     ].join('|');
   }
 
@@ -339,6 +357,8 @@ export class ScriptEditor extends VnEditor {
     this.editing = null;
     this.attributing = null;
     this.pending = null;
+    // Marks name lines by id, so a re-read keeps the ones the scene still has
+    this.marked = markedInOrder(this.data.lines, this.marked);
     this.revision += 1;
     this.rebuild();
   }
@@ -408,6 +428,16 @@ export class ScriptEditor extends VnEditor {
       reload,
       () => void this.load(),
     );
+    // Drawn only while the page is up: with no scene there is nothing to mark
+    if (shown) {
+      const remove = deleteMarkedAction(this.marked);
+      const button = bar.act(
+        this.bar.button(remove.label, () => {}),
+        remove,
+        () => void this.deleteMarked(),
+      );
+      button.setCSSAfter(() => (button.style['color'] = 'var(--vermilion, #e5534b)'));
+    }
     this.bar.flushUpdate();
   }
 
@@ -541,7 +571,8 @@ export class ScriptEditor extends VnEditor {
   }
 
   private lineRow(scene: SceneCoverage, line: CoverageLine, at: number, cut: boolean): HTMLElement {
-    const box = el('div', `sc-line ${line.kind}`);
+    const marked = this.marked.includes(line.id);
+    const box = el('div', `sc-line ${line.kind}${marked ? ' marked' : ''}`);
     box.dataset['line'] = line.id;
     box.addEventListener('contextmenu', (event) => {
       event.preventDefault();
@@ -550,7 +581,7 @@ export class ScriptEditor extends VnEditor {
         event.clientX,
         event.clientY,
         line.id,
-        lineMenu(scene, line.id),
+        lineMenu(scene, line.id, this.marked),
       );
     });
 
@@ -558,7 +589,7 @@ export class ScriptEditor extends VnEditor {
     // stable id is in the tooltip instead: it is what a refusal names, but it stops matching the
     // count as soon as a line is inserted, so it cannot be the number on screen.
     // Recorded rather than acted: the handle is grabbed on `pointerdown`, not clicked
-    const lid = this.anchors.record(el('span', 'lid', String(at)), lidAction(line, at));
+    const lid = this.anchors.record(el('span', 'lid', String(at)), lidAction(line, at, marked));
     lid.addEventListener('pointerdown', (event) => this.grab(scene, line, event));
     box.appendChild(lid);
 
@@ -829,6 +860,7 @@ export class ScriptEditor extends VnEditor {
     this.notice = null;
     this.rebuild();
 
+    const extend = event.shiftKey;
     this.drag = grabLine(scene, line.id);
     this.page?.classList.add('dragging');
     const carried = this.page?.querySelector(`[data-line="${line.id}"]`);
@@ -850,6 +882,12 @@ export class ScriptEditor extends VnEditor {
       carried?.classList.remove('carried');
       this.dropEl?.remove();
       this.dropEl = undefined;
+      // A grab released where it was picked up is a click on the number, which marks the line
+      if (pending && pending.over === null) {
+        this.marked = toggleMark(scene.lines, this.marked, line.id, extend);
+        this.rebuild();
+        return;
+      }
       // A drop with no verdict clears the notice. A refused drop keeps the reason it was given.
       if (!pending?.verdict) return this.say(null);
       const invoke = dropOf(pending);
@@ -1058,6 +1096,26 @@ export class ScriptEditor extends VnEditor {
     const ran = await this.act(null, stepsOf(asked, scene), { open: 'none' });
     // The scene the author asked for is the one they meant to write in, so the pane follows it.
     if (ran && asked.act === 'scene') this.openScene(asked.scene);
+  }
+
+  /** Take the marks off. Escape, with nothing else open on the page. */
+  private unmark(): void {
+    if (this.marked.length === 0 || this.editing || this.pending || this.attributing) return;
+    this.marked = [];
+    this.rebuild();
+  }
+
+  /**
+   * Delete every marked line, first to last in scene order, as one command and one undo point.
+   * The re-read at the end drops the marks with the lines they named.
+   */
+  private async deleteMarked(): Promise<void> {
+    const scene = this.shown;
+    if (!scene || this.editing) return;
+    const lines = markedInOrder(scene.lines, this.marked);
+    const offer = deleteMarkedAction(lines);
+    if (!offer.ok) return this.say({ tone: 'refused', text: offer.refusal.reason });
+    await this.act(null, [{ id: offer.id, props: offer.props }], { open: 'none' });
   }
 
   private say(notice: Notice | null): void {

@@ -1,5 +1,5 @@
-import { imageModelChoices, modelCatalog } from '@vn/gengraph';
 import { exec, report } from '../../app/bridge.js';
+import { imageModelMenu } from '../../widgets/modelmenu.js';
 import {
   REQUEST_ANCHOR,
   backAction,
@@ -361,30 +361,17 @@ export class AssetFraming {
     return field;
   }
 
-  /**
-   * The image-model picker beside the seed box. Its rows are the catalog the Project pane's
-   * picker draws, with an inherit row first; a rung whose model is not in the catalog is still
-   * listed, so it is shown rather than silently reset.
-   */
-  private modelField(rung: ArtRungInfo): HTMLSelectElement {
-    const select = document.createElement('select');
-    select.className = 'as-rung-model';
-    const current = rung.imageModel ?? '';
+  /** The image-model menu beside the seed box, with an inherit row first. */
+  private modelField(rung: ArtRungInfo): HTMLElement {
     const project = this.editor.info?.projectModel;
-    const rows = imageModelChoices(modelCatalog(), current, { inherit: true });
-    for (const row of rows) {
-      const item = option(
-        row.id,
-        row.id === '' ? `inherit${project ? ` (${project})` : ''}` : row.label,
-      );
-      item.title = row.tooltip;
-      select.appendChild(item);
-    }
-    select.value = current;
-    select.setAttribute('aria-label', `Image model for ${rung.label}`);
-    this.editor.drawing.record(select, modelAction(rung, project));
-    select.addEventListener('change', () => void this.commitModel(rung, select.value));
-    return select;
+    const { frame, menu } = imageModelMenu(
+      this.editor.ctx,
+      rung.imageModel ?? '',
+      project,
+      (id) => void this.commitModel(rung, id),
+    );
+    this.editor.drawing.record(menu, modelAction(rung, project));
+    return frame;
   }
 
   /** Commit one rung's image model. The inherit row clears it. */

@@ -11,6 +11,7 @@ import {
   backAction,
   choiceAction,
   continueAction,
+  allBubblesAction,
   dimAction,
   loadAction,
   resetAction,
@@ -24,6 +25,7 @@ import {
   choose,
   dimPath,
   framesOf,
+  pageBubbles,
   jumpTo,
   parseSave,
   samePos,
@@ -31,19 +33,15 @@ import {
   startOf,
   type Frame,
   type Pos,
+  type SpokenBubble,
 } from '../play/playback.js';
+import { drawBubble } from '../play/bubble.js';
 import { TOKENS, alpha } from '../app/tokens.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 /** How far the rest of a page is darkened while one panel is read. */
 const PANEL_DIM = 0.55;
 const PANEL_FADE_MS = 180;
-/** How opaque a speech bubble's paper is over the page. */
-const BUBBLE_PAPER = 0.92;
-/** Half the width of a bubble tail where it leaves the bubble, in pixels. */
-const TAIL_HALF_PX = 9;
-/** The gap a bubble keeps from the picture's edge when its anchor would push it out, in pixels. */
-const BUBBLE_MARGIN_PX = 6;
 
 const reducedMotion = (): boolean =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -92,6 +90,8 @@ export class PlayEditor extends VnEditor {
   private lit: { hash: string; panel: NonNullable<Frame['panel']> } | undefined;
   /** Whether the rest of a page is darkened around the lit panel. Persisted with the pane. */
   dimPanels = false;
+  /** Whether a page's bubbles are all drawn at once rather than one per step. Persisted too. */
+  allBubbles = false;
   /** Keeps the overlays on the picture's box as the pane resizes; one per drawn frame. */
   private fitOverlay: ResizeObserver | undefined;
   /** What {@link fitOverlay} refits: the dim and the bubble, each drawn over the picture. */
@@ -208,6 +208,7 @@ export class PlayEditor extends VnEditor {
       cur?.frameIndex ?? -1,
       this.notice,
       this.dimPanels,
+      this.allBubbles,
     ].join('|');
   }
 
@@ -291,11 +292,21 @@ export class PlayEditor extends VnEditor {
     return this.play && cur ? this.play.scenes[cur.sceneId] : undefined;
   }
 
+  /** The current scene's frames, with the playable's say on names in bubbles. */
+  private frames(): Frame[] {
+    return framesOf(this.scene(), this.play?.bubbleNames ?? false);
+  }
+
+  /** A character's display name, or their id when the playable does not know them. */
+  private speakerName(id: string): string {
+    return this.play?.characters[id]?.name ?? id;
+  }
+
   /** The frame on stage. At the scene-end panel the last frame stays up behind it. */
   private currentFrame(): Frame | undefined {
     const cur = this.history[this.history.length - 1];
     if (!cur) return undefined;
-    const frames = framesOf(this.scene());
+    const frames = this.frames();
     return cur.frameIndex >= frames.length ? frames[frames.length - 1] : frames[cur.frameIndex];
   }
 
@@ -345,6 +356,15 @@ export class PlayEditor extends VnEditor {
       this.dimPanels = next === true;
       this.rebuild();
     };
+    const every = anchors.record(
+      this.bar.check(undefined, 'All bubbles') as Check,
+      allBubblesAction(),
+    );
+    every.checked = this.allBubbles;
+    every.on_change = (next: unknown) => {
+      this.allBubbles = next === true;
+      this.rebuild();
+    };
 
     this.bar.flushUpdate();
   }
@@ -392,7 +412,7 @@ export class PlayEditor extends VnEditor {
       );
     }
 
-    const frames = framesOf(scene);
+    const frames = this.frames();
     const atEnd = cur.frameIndex >= frames.length;
     const frame = this.currentFrame();
 
@@ -432,7 +452,7 @@ export class PlayEditor extends VnEditor {
       this.fitOverlay?.disconnect();
       this.fits = [];
       this.lightPanel(wrap, img, frame);
-      if (frame?.bubble) this.speak(wrap, img, frame.bubble, frame.text);
+      for (const spoken of this.spoken(frame)) this.speak(wrap, img, spoken);
       this.fitOverlay = new ResizeObserver(() => this.fits.forEach((fit) => fit()));
       this.fitOverlay.observe(img);
     } else {
@@ -508,71 +528,40 @@ export class PlayEditor extends VnEditor {
     wrap.appendChild(svg);
   }
 
+  /** The bubbles to draw for a frame: its own, or the whole page's under `allBubbles`. */
+  private spoken(frame: Frame | undefined): SpokenBubble[] {
+    if (!frame?.bubble) return [];
+    if (!this.allBubbles) {
+      return [
+        {
+          bubble : frame.bubble,
+          text   : frame.text,
+          current: true,
+          ...(frame.named && frame.speaker ? { who: frame.speaker } : {}),
+        },
+      ];
+    }
+    const frames = this.frames();
+    const cur = this.history[this.history.length - 1];
+    const index = Math.min(cur?.frameIndex ?? 0, frames.length - 1);
+    return pageBubbles(frames, index);
+  }
+
   /**
-   * Draws the current line in its bubble over the page: paper with the line in prose type at the
-   * anchor, and a tail to the tail point when the bubble has one. Positioned in the picture's
-   * pixels rather than page fractions so the tail keeps its width whatever the page's aspect, and
-   * refitted with the dim as the pane resizes. The bubble stays inside the picture even when its
-   * anchor sits at an edge.
+   * Draws one line in its bubble over the page, fitted to the picture's box and refitted with
+   * the dim as the pane resizes. With the page's bubbles all drawn, the current line's is outlined.
    */
-  private speak(
-    wrap: HTMLElement,
-    img: HTMLImageElement,
-    bubble: NonNullable<Frame['bubble']>,
-    text: string,
-  ): void {
-    const layer = document.createElement('div');
-    Object.assign(layer.style, { position: 'absolute', pointerEvents: 'none', overflow: 'hidden' });
-
-    const tail = document.createElementNS(SVG, 'svg');
-    Object.assign(tail.style, { position: 'absolute', inset: '0', width: '100%', height: '100%' });
-    const wedge = document.createElementNS(SVG, 'polygon');
-    wedge.setAttribute('fill', alpha(TOKENS.paper, BUBBLE_PAPER));
-    tail.appendChild(wedge);
-    if (bubble.tail) layer.appendChild(tail);
-
-    const body = document.createElement('div');
-    body.textContent = text;
-    Object.assign(body.style, {
-      position    : 'absolute',
-      maxWidth    : '44%',
-      padding     : '8px 13px',
-      background  : alpha(TOKENS.paper, BUBBLE_PAPER),
-      color       : TOKENS.ink,
-      fontFamily  : TOKENS.prose,
-      fontSize    : '15px',
-      lineHeight  : '1.35',
-      textAlign   : 'center',
-      borderRadius: bubble.tail ? '16px' : '4px',
-      boxShadow   : `0 1px 4px ${alpha(TOKENS.ink, 0.35)}`,
+  private speak(wrap: HTMLElement, img: HTMLImageElement, spoken: SpokenBubble): void {
+    const drawn = drawBubble(spoken.bubble, spoken.text, {
+      outlined: spoken.current && this.allBubbles,
+      ...(spoken.who === undefined ? {} : { name: this.speakerName(spoken.who) }),
     });
-    layer.appendChild(body);
-
     const fit = () => {
-      Object.assign(layer.style, pictureBox(img));
-      const w = img.offsetWidth;
-      const h = img.offsetHeight;
-      const [ax, ay] = [bubble.anchor[0] * w, bubble.anchor[1] * h];
-      const left = Math.min(
-        Math.max(ax - body.offsetWidth / 2, BUBBLE_MARGIN_PX),
-        w - body.offsetWidth - BUBBLE_MARGIN_PX,
-      );
-      const top = Math.min(
-        Math.max(ay - body.offsetHeight / 2, BUBBLE_MARGIN_PX),
-        h - body.offsetHeight - BUBBLE_MARGIN_PX,
-      );
-      Object.assign(body.style, { left: `${left}px`, top: `${top}px` });
-      if (!bubble.tail) return;
-      // The wedge's base is centred on the bubble and hidden under it; only the point shows
-      const [tx, ty] = [bubble.tail[0] * w, bubble.tail[1] * h];
-      const [cx, cy] = [left + body.offsetWidth / 2, top + body.offsetHeight / 2];
-      const len = Math.hypot(tx - cx, ty - cy) || 1;
-      const [nx, ny] = [(-(ty - cy) / len) * TAIL_HALF_PX, ((tx - cx) / len) * TAIL_HALF_PX];
-      tail.setAttribute('viewBox', `0 0 ${w} ${h}`);
-      wedge.setAttribute('points', `${cx + nx},${cy + ny} ${cx - nx},${cy - ny} ${tx},${ty}`);
+      Object.assign(drawn.layer.style, pictureBox(img));
+      drawn.fit(img.offsetWidth, img.offsetHeight);
     };
     this.fits.push(fit);
-    wrap.appendChild(layer);
+    wrap.appendChild(drawn.layer);
     fit();
   }
 
@@ -591,7 +580,7 @@ export class PlayEditor extends VnEditor {
 
     if (frame.speaker) {
       const who = document.createElement('div');
-      who.textContent = this.play?.characters[frame.speaker]?.name ?? frame.speaker;
+      who.textContent = this.speakerName(frame.speaker);
       Object.assign(who.style, {
         color        : TOKENS.sodium,
         fontFamily   : TOKENS.disp,
@@ -708,4 +697,4 @@ export class PlayEditor extends VnEditor {
   }
 }
 
-registerEditor(PlayEditor, 'vn.PlayEditor', ['dimPanels : bool']);
+registerEditor(PlayEditor, 'vn.PlayEditor', ['dimPanels : bool', 'allBubbles : bool']);

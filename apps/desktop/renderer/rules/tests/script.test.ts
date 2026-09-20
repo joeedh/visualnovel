@@ -3,6 +3,7 @@ import { TOP, scriptMoveLine } from '../../../src/shared/interactions.js';
 import {
   startAction,
   splitAction,
+  toggleMark,
   reloadAction,
   pickerAction,
   pendingFields,
@@ -28,6 +29,7 @@ import {
   cueFor,
   cueLabel,
   cueSlotText,
+  deleteMarkedAction,
   dropTarget,
   headingAction,
   insertOf,
@@ -35,6 +37,7 @@ import {
   keyAct,
   lineTextAction,
   localLineId,
+  markedInOrder,
   mergeTarget,
   moveStateOf,
   nextEditing,
@@ -329,13 +332,15 @@ describe('moveStateOf', () => {
     location: 'gate',
     heading : 'INT. GATE - DAY',
     lines,
-    shots     : [],
-    cast      : [],
-    characters: [],
-    variants  : ['day'],
-    decomposed: false,
-    lettering : 'model',
-    imageModel: 'mock-image',
+    shots      : [],
+    cast       : [],
+    characters : [],
+    variants   : ['day'],
+    decomposed : false,
+    lettering  : 'model',
+    bubbleNames: false,
+    names      : {},
+    imageModel : 'mock-image',
   };
 
   it('invents no line-id allocator — an insert has to go through the command', () => {
@@ -366,13 +371,15 @@ describe('a drag, from a pointer position to an invocation', () => {
     location: 'gate',
     heading : 'INT. GATE - DAY',
     lines,
-    shots     : [],
-    cast      : [],
-    characters: [],
-    variants  : ['day'],
-    decomposed: false,
-    lettering : 'model',
-    imageModel: 'mock-image',
+    shots      : [],
+    cast       : [],
+    characters : [],
+    variants   : ['day'],
+    decomposed : false,
+    lettering  : 'model',
+    bubbleNames: false,
+    names      : {},
+    imageModel : 'mock-image',
   };
   const boxes = lines.map((l, i) => ({ id: l.id, top: i * 20, bottom: i * 20 + 20 }));
   const dropAt = (carried: string, y: number) => {
@@ -696,6 +703,7 @@ describe('controls', () => {
     expect(controls(state()).map(keyOf)).toEqual([
       'fx:menu.open',
       'fx:pane.view#reload',
+      'cmd:story.deleteLines#marked',
       'cmd:story.setHeading',
       'fx:drag.start#line/a:L1',
       'cmd:story.setSpeaker#a:L1',
@@ -707,10 +715,53 @@ describe('controls', () => {
       'fx:popup.open#compose/a:L2',
     ]);
     expect(lidAction({ id: 'a:L2' }, 2)).toMatchObject({
-      props  : { interaction: 'script.moveLine' },
-      label  : '2',
-      tooltip: 'Line 2 of this scene, a:L2 — drag this handle to move it',
+      props: { interaction: 'script.moveLine' },
+      label: '2',
+      then : [{ id: 'pane.view', props: { what: 'mark' } }],
     });
+    expect(lidAction({ id: 'a:L2' }, 2).tooltip).toContain('click to mark it for Delete');
+    expect(lidAction({ id: 'a:L2' }, 2, true).tooltip).toContain('click to unmark it');
+  });
+
+  it('marks lines by their gutter numbers, and the bar deletes them first to last', () => {
+    const lines = [{ id: 'a:L1' }, { id: 'a:L2' }, { id: 'a:L3' }, { id: 'a:L4' }];
+    // A click toggles; the last mark made stays last, so Shift extends from it
+    expect(toggleMark(lines, [], 'a:L3', false)).toEqual(['a:L3']);
+    expect(toggleMark(lines, ['a:L3'], 'a:L3', false)).toEqual([]);
+    expect(toggleMark(lines, ['a:L3'], 'a:L1', true)).toEqual(['a:L2', 'a:L3', 'a:L1']);
+    expect(toggleMark(lines, ['a:L2', 'a:L3', 'a:L1'], 'a:L4', true)).toEqual([
+      'a:L1',
+      'a:L2',
+      'a:L3',
+      'a:L4',
+    ]);
+    // Shift with nothing marked yet is a plain mark; a line the scene lacks changes nothing
+    expect(toggleMark(lines, [], 'a:L2', true)).toEqual(['a:L2']);
+    expect(toggleMark(lines, ['a:L2'], 'a:L9', true)).toEqual(['a:L2']);
+    expect(markedInOrder(lines, ['a:L4', 'a:L9', 'a:L1'])).toEqual(['a:L1', 'a:L4']);
+
+    expect(deleteMarkedAction([])).toMatchObject({
+      ok     : false,
+      id     : 'story.deleteLines',
+      on     : 'marked',
+      label  : 'Delete',
+      refusal: { reason: expect.stringContaining('Click a gutter number') },
+    });
+    expect(deleteMarkedAction(['a:L1'])).toMatchObject({
+      ok   : true,
+      props: { lines: ['a:L1'] },
+      label: 'Delete 1 line',
+    });
+    // One command for the run, so the offer's shape does not change with the count
+    expect(deleteMarkedAction(['a:L1', 'a:L3'])).toMatchObject({
+      props: { lines: ['a:L1', 'a:L3'] },
+      label: 'Delete 2 lines',
+    });
+    expect(deleteMarkedAction(['a:L1', 'a:L3'])).not.toHaveProperty('then');
+    // The state's marks are put in scene order before the bar counts them
+    const keys = controls(state({ marked: ['a:L2', 'a:L1'] }));
+    const bar = keys.find((o) => o.id === 'story.deleteLines');
+    expect(bar).toMatchObject({ props: { lines: ['a:L1', 'a:L2'] }, label: 'Delete 2 lines' });
   });
 
   it('stands a box in for the line whose text is open, and keeps its cue slot', () => {
@@ -731,6 +782,7 @@ describe('controls', () => {
     expect(controls(state({ shown: empty })).map(keyOf)).toEqual([
       'fx:menu.open',
       'fx:pane.view#reload',
+      'cmd:story.deleteLines#marked',
       'cmd:story.setHeading',
       'fx:popup.open#compose/first',
     ]);
@@ -738,6 +790,7 @@ describe('controls', () => {
     expect(controls(state({ shown: empty, composing: '' })).map(keyOf)).toEqual([
       'fx:menu.open',
       'fx:pane.view#reload',
+      'cmd:story.deleteLines#marked',
       'cmd:story.setHeading',
       'cmd:story.insertLine#compose/first',
     ]);
@@ -853,6 +906,7 @@ describe('controls', () => {
       if (s.shown) {
         const last = s.shown.lines[s.shown.lines.length - 1];
         each.push(
+          deleteMarkedAction([]),
           headingAction(s.shown),
           ...s.shown.lines.flatMap((l, i) => [
             lidAction(l, i + 1),

@@ -5,6 +5,7 @@
  * without an import cycle.
  */
 import { BrowserWindow, dialog, screen } from 'electron';
+import { ZOOM_KEY } from '../../shared/zoom.js';
 import { join } from 'node:path';
 import type { AppContext } from './context.js';
 import { clampBounds, WindowList, type RememberedWindow, type WindowId } from './windows.js';
@@ -126,7 +127,18 @@ export function loadWindow(
   }
 }
 
+/**
+ * Zoom every open window to `factor` and remember it, so the next window opens at the same size.
+ * Electron persists a zoom level per origin on its own, but only for the session's life; the
+ * store is what carries it across a restart.
+ */
+export function applyZoom(ctx: AppContext, factor: number): void {
+  ctx.getSessionState().set(ZOOM_KEY, factor);
+  for (const { handle } of ctx.windows.all()) handle.webContents.setZoomFactor(factor);
+}
+
 export function createWindow(ctx: AppContext, options: NewWindowOptions = {}): WindowId {
+  const zoom = ctx.getSessionState().get(ZOOM_KEY, 1);
   const win = new BrowserWindow({
     width    : 1360,
     height   : 860,
@@ -139,11 +151,18 @@ export function createWindow(ctx: AppContext, options: NewWindowOptions = {}): W
       preload         : join(__dirname, '..', 'preload', 'index.cjs'),
       contextIsolation: true,
       nodeIntegration : false,
+      zoomFactor      : zoom,
     },
   });
   const id = ctx.windows.add(win);
 
   loadWindow(ctx, win, id, options);
+  // `zoomFactor` above is the page's default, which a reload resets; the remembered factor is
+  // re-applied after every load so a refreshed window keeps its size
+  win.webContents.on('did-finish-load', () => {
+    const remembered = ctx.getSessionState().get(ZOOM_KEY, 1);
+    if (win.webContents.getZoomFactor() !== remembered) win.webContents.setZoomFactor(remembered);
+  });
 
   win.on('focus', () => ctx.windows.touch(id));
   win.on('moved', () => rememberWindows(ctx));
@@ -182,7 +201,9 @@ export function createWindow(ctx: AppContext, options: NewWindowOptions = {}): W
       cancelId : 0,
       title    : 'Unsaved changes',
       message  : 'A document has unsaved changes.',
-      detail   : 'Closing now discards them.',
+      detail:
+        'The pane holding it is outlined in the window. Cancel to go back and save it; closing ' +
+        'now discards the changes.',
     });
     if (leave === 1) event.preventDefault();
   });

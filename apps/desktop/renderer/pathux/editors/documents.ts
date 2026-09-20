@@ -30,6 +30,8 @@ import {
   sceneLinkAction,
   sheetLinkAction,
   shotLinkAction,
+  storyInOrder,
+  type SceneOrder,
 } from '../../rules/documents.js';
 import { cellAction } from '../../rules/assetstrip.js';
 import { redrawing } from '../tour/anchors.js';
@@ -77,6 +79,8 @@ export class DocumentsEditor extends VnEditor {
    * and a plain string on purpose: a restored layout writes it straight back.
    */
   mode: DocMode = 'documents';
+  /** How the Story branch sorts its scenes. Remembered the same way `mode` is. */
+  order: SceneOrder = 'stored';
 
   private tree: DocTree | undefined;
   private files: DocNode[] | undefined;
@@ -142,7 +146,8 @@ export class DocumentsEditor extends VnEditor {
 
   /** The tree currently being drawn, or undefined until the fetch for its mode returns. */
   private roots(): readonly DocNode[] | undefined {
-    return this.mode === 'files' ? this.files : this.tree?.roots;
+    if (this.mode === 'files') return this.files;
+    return this.tree && storyInOrder(this.tree.roots, this.order, this.tree.storyOrder);
   }
 
   private async load(): Promise<void> {
@@ -189,6 +194,14 @@ export class DocumentsEditor extends VnEditor {
     if (!this.roots()) void this.load();
   }
 
+  /** Switch how the Story branch is sorted. Remembered, so it is reported like `mode`. */
+  private setOrder(order: SceneOrder): void {
+    if (order === this.order) return;
+    this.order = order;
+    layoutChanged();
+    this.rebuild();
+  }
+
   private selection(): Selection {
     const ui = this.ui;
     return {
@@ -205,6 +218,7 @@ export class DocumentsEditor extends VnEditor {
     const ui = this.ui;
     return [
       this.mode,
+      this.order,
       this.failure,
       this.token,
       this.picked,
@@ -609,7 +623,7 @@ export class DocumentsEditor extends VnEditor {
    * screen before the author has chosen anything.
    */
   private openMenu(row: DocRow, x: number, y: number): void {
-    const entries = menuFor(row.node);
+    const entries = menuFor(row.node, this.order);
     if (entries.length === 0) return;
 
     this.picked = row.node.kind === 'location' ? row.node.id : '';
@@ -618,7 +632,9 @@ export class DocumentsEditor extends VnEditor {
     if (next === current) this.rebuild();
     else this.publish(next);
 
-    void showContextMenu(this.ctx as VnContext, x, y, row.node.label, entries);
+    void showContextMenu(this.ctx as VnContext, x, y, row.node.label, entries, {
+      'pane.view#order': () => this.setOrder(this.order === 'story' ? 'stored' : 'story'),
+    });
   }
 
   /**
@@ -666,4 +682,4 @@ function el(tag: string, className: string, text?: string): HTMLElement {
   return node;
 }
 
-registerEditor(DocumentsEditor, 'vn.DocumentsEditor', ['mode : string']);
+registerEditor(DocumentsEditor, 'vn.DocumentsEditor', ['mode : string', 'order : string']);

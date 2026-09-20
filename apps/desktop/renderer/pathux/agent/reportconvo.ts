@@ -106,6 +106,7 @@ export async function seedReport(seed: ReportSeed = {}): Promise<void> {
       effort,
       source: seed.source ?? state.setup.source,
       detail: seed.detail ?? state.setup.detail,
+      note  : state.setup.note,
     },
   });
 
@@ -114,7 +115,7 @@ export async function seedReport(seed: ReportSeed = {}): Promise<void> {
 
 /** Start the analyst on what the setup card holds. */
 export async function startReport(): Promise<ReportStateView | undefined> {
-  const outcome = await exec('report.open', { ...state.setup, note: '' });
+  const outcome = await exec('report.open', { ...state.setup });
   return outcome.ok ? (outcome.data as ReportStateView) : undefined;
 }
 

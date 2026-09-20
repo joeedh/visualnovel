@@ -261,6 +261,20 @@
 .sc-line.carried {
   opacity: 0.4;
 }
+/* A marked line: the number goes sodium and the row takes a faint wash, so a run of marks reads
+   as one block down the gutter. The gutter is the control, so the whole row says so. */
+.sc-line.marked {
+  background: color-mix(in srgb, var(--sodium) 7%, transparent);
+  border-radius: var(--r-chrome);
+}
+.sc-line.marked .lid,
+.sc-line.marked:hover .lid {
+  color: var(--sodium);
+  font-weight: 600;
+}
+.sc-line .lid {
+  cursor: grab;
+}
 /* The insertion point, drawn where the drop would land. A refused drop is drawn too: an author
    holding a line over a place it cannot go should see the place, not nothing. */
 .sc-drop {

@@ -74,6 +74,10 @@ export class SkillsEditor extends VnEditor {
    */
   private readonly buf = new DocBuffer(() => this.paint(), BRIDGE_IO, { autosave: AUTOSAVE_MS });
 
+  override unsavedDoc(): string | undefined {
+    return this.buf.dirty ? this.buf.path : undefined;
+  }
+
   /** The three tier headings and what is under them, or undefined while the walk has yet to answer. */
   private roots: DocNode[] | undefined;
   private failure = '';

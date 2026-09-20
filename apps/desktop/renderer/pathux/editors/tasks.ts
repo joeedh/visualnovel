@@ -38,6 +38,10 @@ export class TaskListEditor extends VnEditor {
   private list!: HTMLDivElement;
 
   private status: PipelineStatus | undefined;
+  /** What each running task is doing, by hash, from the last busy push. */
+  private activity: Record<string, string> = {};
+  /** The busy push's counts and in-flight set as last seen, so a push that moved only what a task is doing redraws without a re-read. */
+  private seenBusy = '';
   private failure = '';
   private drawn = '';
   private anchors: AnchorPass = redrawing('tasklist', 'body');
@@ -95,7 +99,19 @@ export class TaskListEditor extends VnEditor {
       () => onInvalidate(() => void this.load()),
       () => void this.load(),
     );
-    this.watch(() => onBusy(() => void this.load()));
+    this.watch(() =>
+      onBusy((state) => {
+        this.activity = state.activity;
+        // A task starting or ending changes the record on disk; a task saying what it is doing
+        // changes nothing there, so only the first is worth a re-read
+        const key = [state.what, state.ran, state.pending, ...Object.keys(state.activity)].join(
+          '|',
+        );
+        if (key === this.seenBusy) this.rebuild();
+        else void this.load();
+        this.seenBusy = key;
+      }),
+    );
 
     void this.load();
   }
@@ -162,6 +178,7 @@ export class TaskListEditor extends VnEditor {
       // Statuses, not a count: a wave that moves five tasks from `pending` to `running` changes
       // nothing about the length, and a list that redrew only on the count would never show it.
       (this.status?.tasks ?? []).map((t) => `${t.hash.slice(0, 8)}:${t.status}`).join(','),
+      Object.entries(this.activity).join(','),
       this.status?.gatePending.join(',') ?? '',
       this.onlyDone ? 'done-only' : 'all',
       this.onlyRunning ? 'running-only' : 'all',
@@ -355,6 +372,14 @@ export class TaskListEditor extends VnEditor {
 
     box.appendChild(head);
     box.appendChild(subject(subjectOf(task), TOKENS.paper));
+    // What a running task is doing right now, from the busy push rather than the record, which
+    // only knows that it is running
+    const doing = task.status === 'running' ? this.activity[task.hash] : undefined;
+    if (doing) {
+      const line = mono(doing, TOKENS.signal, 10);
+      line.title = `What this task is doing right now, as its runner last said: ${doing}`;
+      box.appendChild(line);
+    }
     // A task that stopped records why, and this list is the surface built for scanning, so the
     // reason goes on the card rather than one click away in the inspector's attempt list.
     if (task.error) {

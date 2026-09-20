@@ -1,6 +1,6 @@
 /**
  * Commands for the project's own settings: reading what `project.yaml` says, and writing the
- * five fields in it an author edits often enough to want a pane for.
+ * seven fields in it an author edits often enough to want a pane for.
  *
  * The art style and the image model are not like the other settings. The style is the first
  * clause of every image prompt and the model is in every image task's params, so both are folded
@@ -17,7 +17,7 @@
  */
 import { defineFor, prop, type CheckResult } from '@vn/commands';
 import { KEY_VENDORS } from '@vn/config';
-import { LETTERING_MODES } from '@vn/types';
+import { LETTERING_MODES, SHOT_FORMS } from '@vn/types';
 import { openGit } from '@vn/git';
 import { notify } from '../notify/notifications.js';
 import { installPages, pagesState } from '../distribution/pages.js';
@@ -108,6 +108,62 @@ export const projectSetImageModel = define({
   },
 });
 
+export const projectSetTextModel = define({
+  id         : 'project.setTextModel',
+  title      : 'Set the text model',
+  description:
+    "Set the project's text model, `models.text` — the model the pipeline's own text calls use: " +
+    'scene decomposition, picture reviews, refine critiques and gate triage. It is not the ' +
+    "authoring agent's model, which is chosen per conversation. A `claude-*` id answers through " +
+    'Anthropic and a `gemini-*` id through Gemini, or either through OpenRouter when only that ' +
+    'key is set, and a model no resolved key can carry is refused. Nothing already generated is ' +
+    "re-keyed. The row is spliced into `project.yaml`'s `models:` block, so comments and key " +
+    'order survive.',
+  notes:
+    "The model the pipeline's text calls use — decomposition, reviews, critiques, triage — not the agent's, which is per conversation. Refused when no resolved key can carry it. Re-keys nothing. Spliced into `project.yaml`, so comments and key order survive.",
+  mutating   : true,
+  affects    : ['project.yaml'],
+  undoable   : true,
+  props: {
+    model: prop.string('the text model id, such as claude-opus-4-8 or gemini-2.5-pro'),
+  },
+  async check({ model }, ctx) {
+    return verdict(await ctx.host.session.previewTextModel(model));
+  },
+  async run({ model }, ctx) {
+    const result = await ctx.host.session.setProjectTextModel(model);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
+export const projectSetVisionModels = define({
+  id         : 'project.setVisionModels',
+  title      : 'Set the vision models',
+  description:
+    "Set the project's vision models, `models.vision`, as the whole list — the models that " +
+    'review a generated picture against its prompt. The Project pane sends the list with one ' +
+    'model added or removed. Each id needs a resolved key, and an empty list is refused because ' +
+    "a run with no reviewer cannot judge a picture. The list is spliced into `project.yaml`'s " +
+    '`models:` block, so comments and key order survive.',
+  notes:
+    'The picture reviewers, as the whole list. Each id needs a key; an empty list is refused. Spliced into `project.yaml`, so comments and key order survive.',
+  mutating   : true,
+  affects    : ['project.yaml'],
+  undoable   : true,
+  props: {
+    models: prop.stringList('the vision model ids, in review order'),
+  },
+  async check({ models }, ctx) {
+    return verdict(await ctx.host.session.previewVisionModels(models));
+  },
+  async run({ models }, ctx) {
+    const result = await ctx.host.session.setProjectVisionModels(models);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
 export const projectSetStoryboardNotes = define({
   id         : 'project.setStoryboardNotes',
   title      : 'Set the storyboard notes',
@@ -155,6 +211,59 @@ export const projectSetLettering = define({
   },
   async run({ lettering }, ctx) {
     const result = await ctx.host.session.setProjectLettering(lettering);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
+export const projectSetShotForm = define({
+  id         : 'project.setShotForm',
+  title      : 'Set what a shot is',
+  description:
+    'Set whether a scene is storyboarded as single frames or as manga pages of panels. The ' +
+    'decomposer and the authoring agent make new shots in this form unless the author asks for ' +
+    'the other for one scene. Read when a scene is decomposed, so a storyboard already written ' +
+    'keeps its shape and nothing is re-keyed. The line is spliced into `project.yaml`, so ' +
+    'comments and key order survive.',
+  notes:
+    'Frames or pages for every new storyboard; the agent follows it unless the author says otherwise for one scene. Read at decomposition alone, so it re-keys nothing. Spliced into `project.yaml`, so comments and key order survive.',
+  mutating   : true,
+  affects    : ['project.yaml'],
+  undoable   : true,
+  props: {
+    form: prop.oneOf(SHOT_FORMS, 'single frames, or manga pages of panels'),
+  },
+  async check({ form }, ctx) {
+    return verdict(await ctx.host.session.previewShotForm(form));
+  },
+  async run({ form }, ctx) {
+    const result = await ctx.host.session.setProjectShotForm(form);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
+export const projectSetBubbleNames = define({
+  id         : 'project.setBubbleNames',
+  title      : 'Show names in bubbles',
+  description:
+    "Set whether a bubble the runner draws carries the speaker's name above the line. A " +
+    'caption box (narration) never does, and a bubble can say otherwise for itself in the Page ' +
+    'editor. Read by the playable alone, so no shot is re-keyed. The line is spliced into ' +
+    '`project.yaml`, so comments and key order survive.',
+  notes:
+    "Whether a runner-drawn speech bubble names its speaker. Narration never does, and a bubble's own `name` overrides it. Read by the playable alone, so it re-keys nothing. Spliced into `project.yaml`, so comments and key order survive.",
+  mutating   : true,
+  affects    : ['project.yaml'],
+  undoable   : true,
+  props: {
+    on: prop.boolean("whether a speech bubble shows the speaker's name"),
+  },
+  async check({ on }, ctx) {
+    return verdict(await ctx.host.session.previewBubbleNames(on));
+  },
+  async run({ on }, ctx) {
+    const result = await ctx.host.session.setProjectBubbleNames(on);
     if (!result.ok) throw new Error(result.message);
     return { message: result.message, data: result, written: result.written };
   },

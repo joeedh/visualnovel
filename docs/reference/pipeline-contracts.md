@@ -306,11 +306,22 @@ These implement the system design in
       which holds generative policy shared with the agent's `propose_storyboard`.
       `propose_storyboard` cannot import the pipeline. `@vn/pipeline`'s `p5.ts` re-exports
       them.)
-    - Every caller hands `decomposeScene` the project's `art_style` and `storyboard_notes`
-      (`storyboardStyle(config)`), which `decompSystem` places between the role and the
-      answer format. A project that states neither gets the prompt every earlier
-      decomposition was made with. Because a decomposition is persisted, changing either
-      key re-keys nothing; it reaches the next scene storyboarded.
+    - Every caller hands `decomposeScene` the project's `art_style`, `storyboard_notes`
+      and `shot_form` (`storyboardStyle(config)`), which `decompSystem` places between the
+      role and the answer format. A project that states none of them gets the prompt every
+      earlier decomposition was made with. Because a decomposition is persisted, changing
+      any of the three re-keys nothing; it reaches the next scene storyboarded.
+    - `shot_form` (`frames`, the default, or `pages`) decides whether a new storyboard is
+      single frames or manga pages of panels. Under `pages` the system prompt tells the
+      model to make every shot a page and gains the page vocabulary (the template names
+      with their panel counts, the camera vocabulary, the bound); under `frames` it never
+      contains the word "panel", whatever the art style or the notes say, so the notes
+      cannot turn frames into pages on their own. The notes bring the staging-sheet
+      paragraph, and either brings the wider answer format. The agent's
+      `propose_storyboard` reads the same field and takes a `form` argument that overrides
+      it for one scene, which the agent passes only when the author explicitly asks for
+      the other form. The desktop app writes the field through `project.setShotForm`, a
+      dropdown on the Project pane.
     - The file is human-editable. A malformed file throws instead of being silently
       re-decomposed over.
     - Authored fields sit at the top level. Fields a run produced sit under `shotData`,

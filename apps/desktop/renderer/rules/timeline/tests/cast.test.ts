@@ -33,12 +33,14 @@ const coverage = (shots: CoverageShot[]): SceneCoverage => ({
   heading : 'INT. CLUB ROOM - NIGHT',
   lines   : [],
   shots,
-  cast      : [],
-  characters: ['aiko', 'ben', 'cho'],
-  variants  : ['day', 'night'],
-  decomposed: true,
-  lettering : 'model',
-  imageModel: 'mock-image',
+  cast       : [],
+  characters : ['aiko', 'ben', 'cho'],
+  variants   : ['day', 'night'],
+  decomposed : true,
+  lettering  : 'model',
+  bubbleNames: false,
+  names      : {},
+  imageModel : 'mock-image',
 });
 
 describe('shotCast', () => {

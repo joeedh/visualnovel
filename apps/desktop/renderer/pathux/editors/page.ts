@@ -9,8 +9,7 @@
 import { KeyMap, type Container } from 'pathux';
 import type { Invocation } from '@vn/commands';
 import { boxOf } from '@vn/artgen/layout';
-import { imageModelChoices, modelCatalog } from '@vn/gengraph';
-import { aimBubble, bubblesOf, placeBubble } from '@vn/scriptedit';
+import { aimBubble, bubblesOf, nameBubble, placeBubble } from '@vn/scriptedit';
 import { SHOT_FRAMINGS, type PagePanel, type PanelBubble } from '@vn/types';
 import { api } from '../../api.js';
 import type { CoverageLine, CoverageShot, SceneCoverage } from '../../../src/shared/ipc.js';
@@ -31,6 +30,8 @@ import {
   anchorOf,
   boxesOf,
   bubbleLayer,
+  bubbleNameAction,
+  bubbleNameOf,
   bubblesProps,
   cameraAction,
   castAction,
@@ -40,6 +41,11 @@ import {
   enterLetters,
   framingAction,
   generateAction,
+  menuAction,
+  NAME_CHOICES,
+  nameChoiceOf,
+  nameOfChoice,
+  type NameChoice,
   inLayout,
   layoutAction,
   lineAction,
@@ -76,8 +82,12 @@ import { VnEditor, registerEditor } from '../app/editor.js';
 import { hotkeys } from '../app/keymap.js';
 import { gestureState } from '../interactions/gestures.js';
 import { aimLine, grabLine, letterNotice, type Letter } from '../interactions/page.js';
-import { coverState } from '../interactions/timeline.js';
+import { coverState, shotMenu } from '../interactions/timeline.js';
+import { drawBubble } from '../play/bubble.js';
+import type { VnContext } from '../app/context.js';
+import { showContextMenu } from '../chrome/showmenu.js';
 import { redrawing, watchKeymap, type AnchorPass } from '../tour/anchors.js';
+import { imageModelMenu } from '../widgets/modelmenu.js';
 import PAGE_CSS from '../../styles/page.css?inline';
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -138,6 +148,8 @@ export class PageEditor extends VnEditor {
   private noticeEl: HTMLElement | undefined;
   /** Watches the surface for the narrow breakpoint and the stage for the page's fit. */
   private fit: ResizeObserver | undefined;
+  /** Re-places each drawn bubble for the page's size, which `fitPage` changes. */
+  private bubbleFits: (() => void)[] = [];
 
   private headPass: AnchorPass = redrawing('page', 'head');
   private pagePass: AnchorPass = redrawing('page', 'page');
@@ -154,9 +166,7 @@ export class PageEditor extends VnEditor {
   override init() {
     super.init();
     this.bar = (this.header as Container).row();
-    this.bar.label('PAGE').style['padding'] = '0px 8px';
-    this.pinToggle(this.bar);
-    this.bar.flushUpdate();
+    this.rebuildBar();
 
     this.adoptStyle(PAGE_CSS);
     this.surface = document.createElement('div');
@@ -234,9 +244,11 @@ export class PageEditor extends VnEditor {
       ...(this.data === undefined
         ? {}
         : {
-            characters: this.data.characters,
-            imageModel: this.data.imageModel,
-            lettering : this.data.lettering,
+            characters : this.data.characters,
+            imageModel : this.data.imageModel,
+            lettering  : this.data.lettering,
+            bubbleNames: this.data.bubbleNames,
+            names      : this.data.names,
           }),
     };
   }
@@ -291,6 +303,7 @@ export class PageEditor extends VnEditor {
 
   private rebuild(): void {
     this.drawn = this.stateKey();
+    this.rebuildBar();
     this.surface.replaceChildren();
     this.fit?.disconnect();
     this.fit?.observe(this.surface);
@@ -346,6 +359,36 @@ export class PageEditor extends VnEditor {
     }
     page.style.width = `${width}px`;
     page.style.height = `${height}px`;
+    for (const fit of this.bubbleFits) fit();
+  }
+
+  /** The pane's bar: the label, the pin, and the `⋯` menu over the shown shot. */
+  private rebuildBar(): void {
+    const anchors = redrawing('page', 'bar');
+    this.bar.clear();
+    this.bar.label('PAGE').style['padding'] = '0px 8px';
+    this.pinToggle(this.bar);
+
+    // The same entries Shot Coverage's right-click offers a bracket, dropped under the button
+    const state = this.state();
+    const menu = menuAction(state);
+    const button = anchors.act(
+      this.bar.button(menu.label, () => {}),
+      menu,
+      () => {
+        const shot = shotOf(state);
+        if (!shot) return;
+        const box = button.getBoundingClientRect();
+        void showContextMenu(
+          this.ctx as VnContext,
+          box.left,
+          box.bottom,
+          shot.id,
+          shotMenu(state.sceneId, shot),
+        );
+      },
+    );
+    this.bar.flushUpdate();
   }
 
   private head(shot: CoverageShot): HTMLElement {
@@ -399,27 +442,13 @@ export class PageEditor extends VnEditor {
     row.appendChild(button);
 
     const model = shotModelAction(state);
-    const select = document.createElement('select');
-    select.className = 'pg-model';
     const current = shot.imageModel ?? '';
-    for (const choice of imageModelChoices(modelCatalog(), current, { inherit: true })) {
-      const item = option(
-        choice.id,
-        choice.id === '' ? `inherit (${state.imageModel ?? 'project'})` : choice.label,
-      );
-      item.title = choice.tooltip;
-      select.appendChild(item);
-    }
-    select.value = current;
-    this.headPass.record(select, model);
-    select.addEventListener('change', () => {
-      if (!model.ok || select.value === current) return;
-      void this.run(
-        { id: model.id, props: { ...model.props, model: select.value } },
-        'Setting model',
-      );
+    const picker = imageModelMenu(this.ctx, current, state.imageModel, (id) => {
+      if (!model.ok || id === current) return;
+      void this.run({ id: model.id, props: { ...model.props, model: id } }, 'Setting model');
     });
-    row.appendChild(select);
+    this.headPass.record(picker.menu, model);
+    row.appendChild(picker.frame);
 
     const accept = acceptAction(state);
     if (accept.ok) {
@@ -538,18 +567,10 @@ export class PageEditor extends VnEditor {
     });
     const layer = bubbleLayer(state);
     const bubbles = layer ? this.bubbleList() : [];
-    for (const bubble of bubbles) {
-      if (!bubble.tail) continue;
-      const tail = document.createElementNS(SVG, 'line');
-      tail.setAttribute('class', 'tail');
-      tail.setAttribute('x1', String(bubble.anchor[0]));
-      tail.setAttribute('y1', String(bubble.anchor[1]));
-      tail.setAttribute('x2', String(bubble.tail[0]));
-      tail.setAttribute('y2', String(bubble.tail[1]));
-      paint.appendChild(tail);
-    }
 
-    for (const old of page.querySelectorAll('.pg-hit, .pg-num, .pg-corner, .pg-anchor, .pg-tail'))
+    for (const old of page.querySelectorAll(
+      '.pg-hit, .pg-num, .pg-corner, .pg-bubble, .pg-anchor, .pg-tail',
+    ))
       old.remove();
     this.pagePass = redrawing('page', 'page');
     panels.forEach((panel, i) => {
@@ -605,7 +626,32 @@ export class PageEditor extends VnEditor {
       });
     }
 
-    if (layer) this.anchors(page, panels, bubbles, state);
+    if (layer) {
+      this.bubbles(page, bubbles, state);
+      this.anchors(page, panels, bubbles, state);
+    }
+  }
+
+  /**
+   * Every placed bubble as the runner will draw it, paper and wedge, so the author edits over
+   * what a reader sees. Drawn under the anchors and the tail handle, which stay on top. Each is
+   * fitted to the page's pixels now and again whenever `fitPage` resizes it.
+   */
+  private bubbles(page: HTMLElement, bubbles: readonly PanelBubble[], state: PageState): void {
+    this.bubbleFits = [];
+    const lines = new Map(pageLines(state).map((line) => [line.id, line]));
+    for (const bubble of bubbles) {
+      const line = lines.get(bubble.lineId);
+      if (!line) continue;
+      const name = bubbleNameOf(state, line, bubble);
+      const drawn = drawBubble(bubble, line.text, name === undefined ? {} : { name });
+      drawn.layer.className = 'pg-bubble';
+      drawn.layer.style.inset = '0';
+      page.appendChild(drawn.layer);
+      const fit = () => drawn.fit(page.clientWidth, page.clientHeight);
+      this.bubbleFits.push(fit);
+      fit();
+    }
   }
 
   /**
@@ -715,8 +761,11 @@ export class PageEditor extends VnEditor {
       row.appendChild(el('span', 'gap', 'no panel letters this line'));
     } else {
       // The glyph rounds once the line has a bubble, so an unplaced line stands out in the list
-      const bubbled = bubbleLayer(state) && this.bubbleList().some((b) => b.lineId === line.id);
-      row.appendChild(el('span', `in${bubbled ? ' bubbled' : ''}`, String(panel + 1)));
+      const bubble = bubbleLayer(state)
+        ? this.bubbleList().find((b) => b.lineId === line.id)
+        : undefined;
+      row.appendChild(el('span', `in${bubble ? ' bubbled' : ''}`, String(panel + 1)));
+      if (bubble && line.speaker) row.appendChild(this.nameSelect(state, line, bubble));
     }
     // Recorded rather than acted: the row is grabbed on pointerdown, and Enter is its own key
     this.sidePass.record(row, offer);
@@ -732,6 +781,30 @@ export class PageEditor extends VnEditor {
       void this.commitPanels(panels, 'Lettering');
     });
     return row;
+  }
+
+  /**
+   * A placed dialogue bubble's name select, under its line. The pointer is stopped at the select
+   * so opening it does not start the row's drag.
+   */
+  private nameSelect(state: PageState, line: CoverageLine, bubble: PanelBubble): HTMLElement {
+    const offer = bubbleNameAction(state, line);
+    const select = document.createElement('select');
+    select.className = 'name';
+    for (const choice of NAME_CHOICES) select.appendChild(option(choice.value, choice.label));
+    select.value = nameChoiceOf(bubble);
+    this.sidePass.record(select, offer);
+    select.addEventListener('pointerdown', (event) => event.stopPropagation());
+    select.addEventListener('change', () => {
+      if (!offer.ok) return;
+      const named = nameBubble(
+        this.bubbleList(),
+        line.id,
+        nameOfChoice(select.value as NameChoice),
+      );
+      void this.commitBubbles(named, 'Naming bubble');
+    });
+    return select;
   }
 
   private panelFields(

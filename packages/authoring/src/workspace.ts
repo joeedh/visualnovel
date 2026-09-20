@@ -195,7 +195,7 @@ export class Workspace {
     const inputs = await loadInputs(this.paths);
     let title = 'Untitled';
     let start: string | undefined;
-    let style: StoryboardStyle = { artStyle: '', storyboardNotes: '' };
+    let style: StoryboardStyle = { artStyle: '', storyboardNotes: '', shotForm: 'frames' };
     let lettering: Lettering = 'model';
     try {
       const config = await loadConfig(this.root);

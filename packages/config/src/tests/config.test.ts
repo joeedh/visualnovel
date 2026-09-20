@@ -11,7 +11,11 @@ import {
   setArtStyle,
   setBuiltinSkills,
   setImageModel,
+  setTextModel,
+  setVisionModels,
+  setBubbleNames,
   setLettering,
+  setShotForm,
   setStartScene,
   setStoryboardNotes,
   userConfigDir,
@@ -23,6 +27,7 @@ import {
   withBuiltinSkills,
   withConfigKey,
   withImageModel,
+  withModelsKey,
   withStartScene,
 } from '../index.js';
 
@@ -173,6 +178,12 @@ describe('withConfigKey', () => {
       'title: T\nlettering: runner\nart_style: ink\nstoryboard_notes: pages\n',
     );
   });
+
+  it('writes a flag as a bare boolean', () => {
+    expect(withConfigKey('title: T\nbubble_names: false\n', 'bubble_names', true)).toBe(
+      'title: T\nbubble_names: true\n',
+    );
+  });
 });
 
 describe('setStoryboardNotes and setLettering', () => {
@@ -191,6 +202,24 @@ describe('setStoryboardNotes and setLettering', () => {
     const dir = await tempProject('title: T\nlettering: runner\nstoryboard_notes: pages\n');
     expect(await setLettering(dir, 'runner')).toBe(false);
     expect(await setStoryboardNotes(dir, 'pages')).toBe(false);
+  });
+
+  it('write bubble_names and read it back', async () => {
+    const dir = await tempProject('title: T\n');
+    expect(await setBubbleNames(dir, true)).toBe(true);
+    expect((await loadConfig(dir)).bubble_names).toBe(true);
+    expect(await setBubbleNames(dir, true)).toBe(false);
+    expect(await setBubbleNames(dir, false)).toBe(true);
+    expect((await loadConfig(dir)).bubble_names).toBe(false);
+  });
+
+  it('write shot_form and refuse a form the schema does not know', async () => {
+    const dir = await tempProject('title: T\n');
+    expect(await setShotForm(dir, 'pages')).toBe(true);
+    expect((await loadConfig(dir)).shot_form).toBe('pages');
+    expect(await setShotForm(dir, 'pages')).toBe(false);
+    await expect(setShotForm(dir, 'strips' as never)).rejects.toThrow(/could not set shot_form/);
+    expect((await loadConfig(dir)).shot_form).toBe('pages');
   });
 
   it('refuse a lettering mode the schema does not know, and write nothing', async () => {
@@ -305,6 +334,47 @@ describe('withImageModel', () => {
       'title: T\nmodels:\n  image: new',
     );
     expect(withImageModel('title: T\nmodels:', 'new')).toBe('title: T\nmodels:\n  image: new');
+  });
+});
+
+describe('withModelsKey', () => {
+  it('replaces a list row and every line indented under it', () => {
+    const before =
+      'title: T\nmodels:\n  text: claude-opus-4-8\n  vision:\n    - gemini-2.5-pro\n    - claude-opus-4-8\n  image: x\nconcurrency: 2\n';
+    expect(withModelsKey(before, 'vision', ['gemini-2.5-flash'])).toBe(
+      'title: T\nmodels:\n  text: claude-opus-4-8\n  vision:\n    - gemini-2.5-flash\n  image: x\nconcurrency: 2\n',
+    );
+  });
+
+  it('replaces a scalar row with a list, and a list with an empty flow list', () => {
+    expect(withModelsKey('models:\n  vision: []\n  text: old\n', 'text', 'new')).toBe(
+      'models:\n  vision: []\n  text: new\n',
+    );
+    expect(withModelsKey('models:\n  vision:\n    - a\n  text: old\n', 'vision', [])).toBe(
+      'models:\n  vision: []\n  text: old\n',
+    );
+  });
+
+  it('adds a list row to a block that has none, at the block indent', () => {
+    expect(withModelsKey('title: T\nmodels:\n    text: t\n', 'vision', ['a', 'b'])).toBe(
+      'title: T\nmodels:\n    vision:\n      - a\n      - b\n    text: t\n',
+    );
+  });
+});
+
+describe('setTextModel and setVisionModels', () => {
+  it('write their keys and read back through loadConfig', async () => {
+    const dir = await tempProject('title: T\nmodels:\n  image: bfl/flux-2\n');
+    expect(await setTextModel(dir, 'gemini-2.5-pro')).toBe(true);
+    expect(await setVisionModels(dir, ['gemini-2.5-flash'])).toBe(true);
+    const config = await loadConfig(dir);
+    expect(config.models).toEqual({
+      image : 'bfl/flux-2',
+      text  : 'gemini-2.5-pro',
+      vision: ['gemini-2.5-flash'],
+    });
+    expect(await setVisionModels(dir, ['gemini-2.5-flash'])).toBe(false);
+    expect(await setTextModel(dir, 'gemini-2.5-pro')).toBe(false);
   });
 });
 

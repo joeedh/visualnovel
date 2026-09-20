@@ -10,6 +10,7 @@
  * What a click selects, and what a row says on hover, live in `rules/selection.ts` and
  * `rules/documents.ts`, because the row's offer is built from them there.
  */
+import { orderEntry, type SceneOrder } from '../../rules/documents.js';
 import { NEW_SKILL_PROMPT } from '../../rules/skills.js';
 import { nodeKey, splitShot, type Selection } from '../../rules/selection.js';
 import type { DocNode, DocNodeKind, EntityLinks } from '../../../src/shared/ipc.js';
@@ -266,8 +267,10 @@ function storyActs(): MenuEntry[] {
  *
  * Kinds with nothing to offer answer with an empty list, and are named here rather than falling
  * through silently, so a new node kind shows up as a missing case.
+ *
+ * `order` is how the pane is sorting the Story branch, which its heading's menu offers to switch.
  */
-export function menuFor(node: DocNode): MenuEntry[] {
+export function menuFor(node: DocNode, order: SceneOrder = 'stored'): MenuEntry[] {
   const key = nodeKey(node);
   switch (node.kind) {
     case 'location':
@@ -424,7 +427,7 @@ export function menuFor(node: DocNode): MenuEntry[] {
     case 'branch':
       switch (key) {
         case 'story':
-          return storyActs();
+          return [...storyActs(), { label: MENU_SEP, id: MENU_SEP }, orderEntry(order)];
         case 'characters':
           return [newSheet('character', 'New character sheet…')];
         case 'locations':

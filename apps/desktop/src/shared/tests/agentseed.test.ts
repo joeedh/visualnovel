@@ -2,20 +2,22 @@ import { assetOpener, lineOpener } from '../agentseed.js';
 import type { AssetFailure, AssetInfo, SceneCoverage } from '../ipc.js';
 
 const scene: SceneCoverage = {
-  sceneId   : 'cafe_night',
-  location  : 'cafe',
-  heading   : 'INT. CAFÉ MORI - NIGHT',
+  sceneId    : 'cafe_night',
+  location   : 'cafe',
+  heading    : 'INT. CAFÉ MORI - NIGHT',
   lines: [
     { id: 's:L1', kind: 'narration', text: 'Rain on the window.' },
     { id: 's:L2', kind: 'dialogue', speaker: 'aiko', text: 'I told you not to come.' },
   ],
-  shots     : [],
-  cast      : [],
-  characters: [],
-  variants  : [],
-  decomposed: true,
-  lettering : 'model',
-  imageModel: 'mock-image',
+  shots      : [],
+  cast       : [],
+  characters : [],
+  variants   : [],
+  decomposed : true,
+  lettering  : 'model',
+  bubbleNames: false,
+  names      : {},
+  imageModel : 'mock-image',
 };
 
 function failed(over: Partial<AssetFailure> = {}): AssetFailure {

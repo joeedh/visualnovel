@@ -103,6 +103,10 @@ export class WikiEditor extends VnEditor {
   /** The path `show` is on its way to, so a frame's `update` does not start a second trip. */
   private showing: string | undefined;
 
+  override unsavedDoc(): string | undefined {
+    return this.buf.dirty ? this.buf.path : undefined;
+  }
+
   /** The draft the textarea is typed into, on the buffer's session, and what unregisters it. */
   private rawDraft: RawDraft | undefined;
   private rawOff: (() => void) | undefined;
@@ -135,6 +139,7 @@ export class WikiEditor extends VnEditor {
   private readonly forms = new SheetForms(
     sheetControls({
       path     : () => this.buf.path,
+      ctx      : () => this.ctx,
       anchors  : (part) => redrawing('wiki', `form/${part}`),
       links    : () => this.links(),
       onLinks: (listener) => {

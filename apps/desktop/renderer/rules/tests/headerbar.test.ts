@@ -54,6 +54,20 @@ describe('stopAction', () => {
     expect(stopAction(busyControls(BUSY_REPORT))).toMatchObject({ ok: true, id: 'report.stop' });
   });
 
+  it('offers the abort through the form once a stop is pending, and only for a run', () => {
+    expect(stopAction(busyControls(BUSY_RUN), true)).toMatchObject({
+      ok   : true,
+      id   : 'pipeline.stop',
+      props: { abort: true },
+      form : true,
+    });
+    expect(stopAction(busyControls(BUSY_RUN), true).tooltip).toContain('cuts those tasks off');
+    // A debug turn has nothing in flight to cut off, so a second press is the first again
+    expect(stopAction(busyControls(BUSY_REPORT), true)).toEqual(
+      stopAction(busyControls(BUSY_REPORT)),
+    );
+  });
+
   it('refuses when nothing it stops is running', () => {
     expect(stopAction(undefined)).toMatchObject({
       ok     : false,
@@ -167,7 +181,7 @@ describe('controls', () => {
         ...MENU_BUTTONS.map(menuAction),
         ...viewActions(),
         runAction(state.busyWhat, state.live),
-        stopAction(busyControls(state.busyWhat)),
+        stopAction(busyControls(state.busyWhat), state.stopping ?? false),
         ...(state.errors || state.warnings ? [problemsAction(state.errors, state.warnings)] : []),
         undoAction(state.undo),
         redoAction(state.redo),

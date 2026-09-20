@@ -29,7 +29,7 @@ import {
 import type { Graph } from '@vn/gengraph';
 import { appendGraphJournal, graphBlobStore, readGraphJournal } from '@vn/gengraph/state';
 import { createGenServices, indexGraphs, type GraphRuntime, type LoadedGraph } from '@vn/pipeline';
-import { runPipeline, type RunSummary } from '@vn/scheduler';
+import { runPipeline, type RunProgress, type RunSummary } from '@vn/scheduler';
 import {
   characterDoc,
   locationDoc,
@@ -77,6 +77,10 @@ export interface RunOptions {
   graphs?: Record<string, Graph>;
   /** Task hashes to run, with their upstream needs and nothing else — the scheduler's `only`. */
   only?: readonly string[];
+  /** The scheduler's own `abort`: cut off the tasks in flight and put them back to pending. */
+  abort?: AbortSignal;
+  /** The scheduler's own `onProgress`, for a test watching what a task says it is doing. */
+  onProgress?: (progress: RunProgress) => void;
 }
 
 export interface MakeProjectOptions {
@@ -222,6 +226,8 @@ export class TestProject {
       dryRun: opts.dryRun,
       logger: opts.logger,
       ...(opts.only === undefined ? {} : { only: opts.only }),
+      ...(opts.abort === undefined ? {} : { abort: opts.abort }),
+      ...(opts.onProgress === undefined ? {} : { onProgress: opts.onProgress }),
       ...(opts.graphs === undefined
         ? {}
         : {

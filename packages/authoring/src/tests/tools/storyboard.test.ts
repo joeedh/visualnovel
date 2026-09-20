@@ -189,6 +189,45 @@ describe('storyboard tools', () => {
       expect(r.ok).toBe(true);
       expect(system).toContain('The frames will be drawn in this art style: ink wash.');
       expect(system).toContain('Storyboard notes from the author: one splash per scene.');
+      expect(system).not.toContain('"panels"');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('propose_storyboard follows shot_form, and form overrides it for one scene', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      await writeFile(
+        join(dir, 'project.yaml'),
+        'title: Test Project\nstart: arrival\nshot_form: pages\n',
+      );
+      let system = '';
+      ctx.text = {
+        complete  : () => Promise.resolve(''),
+        structured: async (_prompt, parse, sys) => {
+          system = sys ?? '';
+          return parse(
+            JSON.stringify({
+              shots: [
+                {
+                  id         : 'opener',
+                  framing    : 'wide',
+                  location   : 'day',
+                  subjects   : [],
+                  coversLines: ['ending:L1'],
+                },
+              ],
+            }),
+          );
+        },
+      };
+      expect((await run('propose_storyboard', { scene: 'ending' }, ctx)).ok).toBe(true);
+      expect(system).toContain('make every shot a page');
+      expect((await run('propose_storyboard', { scene: 'ending', form: 'frames' }, ctx)).ok).toBe(
+        true,
+      );
+      expect(system).not.toContain('"panels"');
     } finally {
       await cleanup();
     }

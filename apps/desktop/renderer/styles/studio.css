@@ -239,6 +239,27 @@
 .action.blocked .verb {
   color: var(--vermilion);
 }
+.action-with-diff .diff {
+  margin: 4px 0 6px 10px;
+  padding: 6px 8px;
+  border-left: 2px solid var(--ink-line);
+  background: var(--ink-sunken);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--mist-dim);
+  overflow-x: auto;
+  white-space: pre;
+}
+.action-with-diff .diff .added {
+  color: var(--signal);
+}
+.action-with-diff .diff .removed {
+  color: var(--vermilion);
+}
+.action-with-diff .diff .hunk {
+  color: var(--sodium);
+}
 .empty-hint {
   align-self: center;
   color: var(--mist-dim);

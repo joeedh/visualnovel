@@ -27,6 +27,7 @@ import type {
   Diagnostic,
   Drift,
   Lettering,
+  ShotForm,
   Notification,
   NotificationInput,
   PagePanel,
@@ -126,6 +127,20 @@ export function stopsWhat(busy: string): string {
     : 'The run stops after the task it is on. Finished work is kept.';
 }
 
+/**
+ * How the work in flight is going, as main pushes it beside `busy.what`. `activity` is what each
+ * task in flight is doing, by hash, as the scheduler last heard from its runner (`attempt 2 of 3:
+ * reviewing`, `retry 1 of 2 in 30s — …`); it is empty for work that is not a pipeline run.
+ * `stopping` is set once Stop was pressed and the run has not yet reached the boundary it stops
+ * at, which is when a second press offers to abort instead.
+ */
+export interface BusyProgress {
+  ran: number;
+  pending: number;
+  activity?: Record<string, string>;
+  stopping?: boolean;
+}
+
 /** Anything the desktop session store can persist — plain JSON, nothing else. */
 export type SessionValue =
   string | number | boolean | null | SessionValue[] | { [k: string]: SessionValue };
@@ -169,6 +184,12 @@ export type UiEffect =
   | { type: 'view'; action: 'close' }
   | { type: 'view'; action: 'reset' }
   /**
+   * Save every unsaved document draft. Drafts live in the renderer, so the command that means
+   * "save all" is answered there, with one `doc.write` per document; pushed to every window,
+   * because each renderer holds its own drafts.
+   */
+  | { type: 'docs'; action: 'saveAll' }
+  /**
    * Rearrange the whole window to a layout template. Main reads the file and sends its contents,
    * because only main may read the project and only the renderer can build a mesh. `fingerprint`
    * tells the renderer whether the arrangement it is already showing is still the one on disk.
@@ -193,7 +214,7 @@ export type UiEffect =
    * rather than polled, so that the header's run button and the conversation editor's stop
    * button both read the state `WorkspaceSession.busy()` already tracks.
    */
-  | { type: 'busy'; what?: string; ran: number; pending: number }
+  | ({ type: 'busy'; what?: string } & BusyProgress)
   /**
    * A model call failed in a way the request itself explains — a rejected body, not a rate limit
    * and not a bad key — and the author picked "look into what went wrong" on the card that
@@ -330,6 +351,8 @@ export interface PipelineRunResult {
   failures: { hash: string; kind: TaskKind; error?: string }[];
   /** True when the author stopped the run. What it finished is recorded; the rest is pending. */
   stopped?: boolean;
+  /** How many tasks in flight the author cut off. Each is pending again. */
+  aborted?: number;
 }
 
 /** A portrait candidate offered for a character at the approval gate. */
@@ -526,6 +549,13 @@ export interface SceneCoverage {
    * take on a page re-keys it; the strip's check has to price that.
    */
   lettering: Lettering;
+  /**
+   * The project's `bubble_names`: whether a runner-drawn speech bubble carries the speaker's
+   * name unless the bubble says otherwise. The Page editor previews bubbles by it.
+   */
+  bubbleNames: boolean;
+  /** Every character's display name by id, for the names the Page editor draws in bubbles. */
+  names: Record<string, string>;
   /** The project's `models.image`, which a shot's own model picker inherits when it says nothing. */
   imageModel: string;
   /**
@@ -824,6 +854,10 @@ export interface ProjectView {
   start: string;
   models: { image: string; text: string; vision: string[] };
   imageParams: { aspect: string; seed?: number };
+  /** `project.yaml`'s `bubble_names`: whether a runner-drawn speech bubble names its speaker. */
+  bubbleNames: boolean;
+  /** `project.yaml`'s `shot_form`: whether a new storyboard is made of frames or of pages. */
+  shotForm: ShotForm;
   /**
    * How many image tasks the graph holds. The art style is the first clause of every image prompt,
    * so this is exactly how many task hashes change when it does — what `project.setArtStyle`
@@ -902,6 +936,12 @@ export interface DocTree {
    * document and nothing else — need not re-derive one. A file that is not a subject is absent.
    */
   pathIndex: Record<string, string>;
+  /**
+   * Every scene id, in topological order from the entry scene — each after the scenes that lead
+   * to it — with the unreachable ones last in stored order. The Story branch's rows are in stored
+   * order; a pane sorting them this way reorders by this list.
+   */
+  storyOrder: string[];
 }
 
 /**

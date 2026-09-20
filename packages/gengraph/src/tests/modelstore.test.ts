@@ -22,6 +22,7 @@ function env(): { env: { VNAUTHOR_HOME: string } } {
 
 const CATALOG: ImageModelCatalog = {
   asOf      : '2026-09-15',
+  text      : [{ id: 'claude-opus-4-8-20260101', name: 'Claude Opus 4.8', vendor: 'anthropic' }],
   openrouter: [
     { id: 'openai/gpt-image-2', name: 'GPT Image 2', aspects: ['1:1'], seed: false },
     {
@@ -51,6 +52,11 @@ describe('readModelCatalog', () => {
     await writeModelCatalog(CATALOG, env());
     expect(userModelFile(env())).toBe(join(home, 'models.json'));
     expect(await readModelCatalog(env())).toEqual(CATALOG);
+  });
+
+  it('reads a file written before the text listing existed as one with none', async () => {
+    writeFileSync(userModelFile(env()), JSON.stringify({ asOf: '2026-09-15', openrouter: [] }));
+    expect(await readModelCatalog(env())).toEqual({ asOf: '2026-09-15', openrouter: [], text: [] });
   });
 
   it('treats a file of the wrong shape as absent', async () => {

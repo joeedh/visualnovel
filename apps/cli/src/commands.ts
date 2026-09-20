@@ -218,6 +218,7 @@ export async function cmdExport(args: Args): Promise<number> {
   const playable = buildPlayable(project.model, project.store, {
     shots,
     portraitOverlay: project.config.portrait_overlay,
+    bubbleNames    : project.config.bubble_names,
     lettering      : project.config.lettering,
   });
   await writePlayable(project.paths, playable);

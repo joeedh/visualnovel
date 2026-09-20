@@ -126,6 +126,19 @@
   color: var(--mist-dim);
 }
 
+/* A flag's checkbox sits in the value column with its label, the box the only control. */
+.pj-flag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.pj-flag > input {
+  accent-color: var(--signal);
+  cursor: pointer;
+}
+
 /* The builtin catalog: a label per skill, its name and what it is for on one line each, with the
    box the only control. Nothing else marks a switched-off skill; the empty box is the fact. */
 .pj-skills {

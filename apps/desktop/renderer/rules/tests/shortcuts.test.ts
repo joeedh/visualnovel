@@ -132,10 +132,10 @@ describe('bindings', () => {
     expect(bindings('gengraph', {})).toEqual([]);
   });
 
-  it('covers the shell with seven handlers', () => {
+  it('covers the shell with eleven handlers', () => {
     const labels = [...new Set(SHORTCUTS.filter((e) => e.scope === 'global').map((e) => e.label))];
-    expect(labels).toHaveLength(7);
+    expect(labels).toHaveLength(11);
     const list = bindings('global', Object.fromEntries(labels.map((label) => [label, noop])));
-    expect(list).toHaveLength(8);
+    expect(list).toHaveLength(12);
   });
 });

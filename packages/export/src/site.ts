@@ -13,13 +13,14 @@
  */
 import type { Playable, PlayableScene, Beat } from '@vn/types';
 
-// Mirrors the Play pane's bubble constants in editors/play.ts
+// Mirrors the Play pane's bubble constants in pathux/play/bubble.ts
 const BUBBLE_PAPER = 'rgba(232, 230, 223, 0.92)';
 const BUBBLE_INK = '#0e1116';
 const BUBBLE_MARGIN_PX = 6;
 const TAIL_HALF_PX = 9;
 const BUBBLE_MAX_WIDTH = '44%';
 const BUBBLE_FONT_PX = 15;
+const BUBBLE_NAME_FONT_PX = 11;
 const BUBBLE_LINE_HEIGHT = 1.35;
 const SPEECH_RADIUS_PX = 16;
 const CAPTION_RADIUS_PX = 4;
@@ -98,6 +99,8 @@ interface DrawnBubble {
   beat: LineBeat;
   anchor: [number, number];
   tail?: [number, number];
+  /** The bubble's own say on the speaker's name; absent defers to the playable. */
+  name?: boolean;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -137,12 +140,13 @@ function bubblesOf(show: ShowBeat, group: LineBeat[]): DrawnBubble[] {
       if (!beat) continue;
       const anchor = pointOf(bubble.anchor);
       if (!anchor) continue;
+      const name = typeof bubble.name === 'boolean' ? { name: bubble.name } : {};
       if (bubble.tail === undefined) {
-        drawn.push({ beat, anchor });
+        drawn.push({ beat, anchor, ...name });
         continue;
       }
       const tail = pointOf(bubble.tail);
-      if (tail) drawn.push({ beat, anchor, tail });
+      if (tail) drawn.push({ beat, anchor, tail, ...name });
     }
   }
   return drawn;
@@ -150,10 +154,15 @@ function bubblesOf(show: ShowBeat, group: LineBeat[]): DrawnBubble[] {
 
 const pct = (fraction: number): string => (fraction * 100).toFixed(4);
 
-/** One bubble over the picture: centred on its anchor by CSS, clamped and tailed by the fit script. */
+/**
+ * One bubble over the picture: centred on its anchor by CSS, clamped and tailed by the fit
+ * script. The speaker's name is always in the markup for a reader that cannot see the picture;
+ * it is shown only when the bubble, else the playable, says so.
+ */
 function renderBubble(playable: Playable, bubble: DrawnBubble): string {
   const { beat, anchor, tail } = bubble;
-  const kind = tail ? 'speech' : 'caption';
+  const named = beat.type === 'say' && (bubble.name ?? playable.bubbleNames);
+  const kind = `${tail ? 'speech' : 'caption'}${named ? ' named' : ''}`;
   const style = `left:${pct(anchor[0])}%;top:${pct(anchor[1])}%`;
   let data = `data-ax="${anchor[0].toFixed(4)}" data-ay="${anchor[1].toFixed(4)}"`;
   if (tail) data += ` data-tx="${tail[0].toFixed(4)}" data-ty="${tail[1].toFixed(4)}"`;
@@ -384,6 +393,17 @@ h2 { font-size: 1.1rem; letter-spacing: 0.08em; text-transform: uppercase; color
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+.bubble.named .who {
+  position: static;
+  display: block;
+  width: auto;
+  height: auto;
+  clip-path: none;
+  font-family: system-ui, sans-serif;
+  font-size: ${BUBBLE_NAME_FONT_PX}px;
+  letter-spacing: 0.08em;
+  margin-bottom: 2px;
 }
 .tails { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .tails polygon { fill: ${BUBBLE_PAPER}; }

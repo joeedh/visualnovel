@@ -1,5 +1,12 @@
 import type { PagePanel, PanelBubble, Shot } from '@vn/types';
-import { aimBubble, bubblesOf, placeBubble, removeBubble, setBubbles } from '../bubbles.js';
+import {
+  aimBubble,
+  bubblesOf,
+  nameBubble,
+  placeBubble,
+  removeBubble,
+  setBubbles,
+} from '../bubbles.js';
 import { setPanels } from '../panels.js';
 
 const LINES = ['club:L1', 'club:L2', 'club:L3', 'club:L4'];
@@ -172,5 +179,15 @@ describe('the editor’s list helpers', () => {
       b3,
     ]);
     expect(removeBubble(list, 'club:L1')).toEqual([b3]);
+  });
+
+  it('names a bubble, un-names it, and keeps the name through a move', () => {
+    const named = nameBubble(list, 'club:L1', false);
+    expect(named).toEqual([{ ...b1, name: false }, b3]);
+    expect(nameBubble(named, 'club:L1', undefined)).toEqual(list);
+    expect(placeBubble(named, 'club:L1', [0.1, 0.1])).toEqual([
+      b3,
+      { lineId: 'club:L1', anchor: [0.1, 0.1], tail: [0.3, 0.4], name: false },
+    ]);
   });
 });

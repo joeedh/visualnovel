@@ -3,6 +3,7 @@ import {
   aim,
   dropOf,
   grabLine,
+  deleteEntry,
   lineMenu,
   noticeOf,
   shotAssetEntry,
@@ -21,13 +22,15 @@ const scene: SceneCoverage = {
   location: 'GATE',
   heading : 'INT. GATE - DAY',
   lines,
-  shots     : [],
-  cast      : [],
-  characters: [],
-  variants  : ['day'],
-  decomposed: false,
-  lettering : 'model',
-  imageModel: 'mock-image',
+  shots      : [],
+  cast       : [],
+  characters : [],
+  variants   : ['day'],
+  decomposed : false,
+  lettering  : 'model',
+  bubbleNames: false,
+  names      : {},
+  imageModel : 'mock-image',
 };
 
 describe('what a grab captures', () => {
@@ -101,7 +104,7 @@ describe('what right-clicking a line offers', () => {
   });
 
   test('a drawn shot opens its frame by hash, elsewhere', () => {
-    expect(lineMenu(covered, 'a:L1')).toEqual([
+    expect(lineMenu(covered, 'a:L1').slice(0, 2)).toEqual([
       { label: 'Edit with agent', id: 'agent.editLine', props: { scene: 'a', line: 'a:L1' } },
       {
         label: 'Open shot asset',
@@ -109,6 +112,30 @@ describe('what right-clicking a line offers', () => {
         props: { editor: 'asset', where: 'elsewhere', subject: 'abc123' },
       },
     ]);
+  });
+
+  test('the last entry deletes the line, or every marked line when this one is marked', () => {
+    const [, , alone] = lineMenu(covered, 'a:L1');
+    expect(alone).toMatchObject({
+      label: 'Delete line',
+      id   : 'story.deleteLine',
+      props: { line: 'a:L1' },
+    });
+    expect(alone?.then).toBeUndefined();
+
+    // Marked, and in the marks: the whole run, in the order given, as one command
+    const [, , run] = lineMenu(covered, 'a:L2', ['a:L1', 'a:L2', 'a:L3']);
+    expect(run).toMatchObject({
+      label: 'Delete 3 marked lines',
+      id   : 'story.deleteLines',
+      props: { lines: ['a:L1', 'a:L2', 'a:L3'] },
+    });
+    expect(run?.then).toBeUndefined();
+    // Marks elsewhere do not widen a delete on an unmarked line
+    expect(deleteEntry('a:L9', ['a:L1'])).toMatchObject({
+      label: 'Delete line',
+      props: { line: 'a:L9' },
+    });
   });
 
   // It names the line rather than pre-judging anything, so `check` is asked whatever the art says

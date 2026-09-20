@@ -9,6 +9,7 @@ import {
   createGeminiImage,
   faultKind,
   isTransient,
+  reportingRetries,
   retryAfterMs,
   type GeminiClient,
 } from '../index.js';
@@ -113,6 +114,27 @@ describe('createGeminiImage — retry in place', () => {
       RetryableProviderError,
     );
     expect(sdk.calls()).toBe(3);
+  }, 15_000);
+
+  it('reports each retry to the listener in scope, and to nobody outside one', async () => {
+    const unavailable = httpError(503, 'Service Unavailable');
+    const sdk = fakeSdk([unavailable, unavailable, oneImage]);
+    const backend = createGeminiImage('k', params.modelId, sdk.client);
+
+    const heard: string[] = [];
+    await reportingRetries(
+      (note) => heard.push(note),
+      () => backend.generate('a room', [], params),
+    );
+    expect(heard).toHaveLength(2);
+    expect(heard[0]).toMatch(/^retry 1 of 2 in \d+m?s — Gemini image request failed/);
+    expect(heard[0]).toContain('Service Unavailable');
+    expect(heard[1]).toMatch(/^retry 2 of 2/);
+
+    // Outside any scope the same outage is retried silently: no report, no error
+    const again = fakeSdk([unavailable, oneImage]);
+    await createGeminiImage('k', params.modelId, again.client).generate('a room', [], params);
+    expect(heard).toHaveLength(2);
   }, 15_000);
 
   // The reference is rejected before the network call, so another attempt would send the same

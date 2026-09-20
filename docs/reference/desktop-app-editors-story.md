@@ -85,6 +85,12 @@ Plan:
   and from the end of a line it also opens a composer below, so a paragraph becomes one
   `setLineText` plus one `insertLine` per line, each of them its own undo point. Backspace
   at the start of an emptied line maps to `story.deleteLine`. Escape discards.
+- **A gutter number marks its line, and Delete removes the marked run.** Clicking a gutter
+  number marks the line (Shift+click marks the run from the last mark), the bar's Delete
+  and the Delete key run one `story.deleteLines` over the marks in scene order, and a
+  line's right-click Delete takes every marked line when the line is one of them. One
+  command for the run means one undo point; the re-read that follows drops the marks with
+  the lines they named. Nothing marked refuses with the sentence that says how to mark.
 - **The gutter shows the row number and the tooltip shows the line id.** `scriptRows`
   carries an `at` (the row's 1-based place among the scene's lines, counting past an open
   composer without renumbering around it). The gutter draws that number, so it is readable
@@ -645,6 +651,10 @@ says what the write would do before it does it. The pure (side-effect-free) rule
   nothing else, and reads Regenerate once a render exists. It is refused with the
   `undrawable` sentence, which is what the command's own check would say. The model select
   is `art.setModel` on the shot's rung, as in Shot Coverage.
+- **The bar's `⋯` is the shot's menu.** It drops down the same entries Shot Coverage's
+  right-click gives a bracket (`shotMenu`): _Open shot asset_, which shows the page's
+  render in the Asset editor and is refused until one exists, and _Delete this shot_. The
+  button is refused while no shot is on screen.
 - **The shot's cast is edited here too.** A `Cast` section in the side column lists who
   the shot frames, each with a `×`, and an add select over the project's other characters.
   Both are `story.setSubjects` with the whole list, built from the same `ShotCast` shape
@@ -662,9 +672,17 @@ says what the write would do before it does it. The pure (side-effect-free) rule
   (`bubblesProps`), judged by `setBubbles` in `@vn/scriptedit`'s `bubbles.ts`, and none of
   it re-keys the page, because no prompt reads a bubble; a line's panel glyph in the
   column rounds once its bubble is placed. The line row's drag keeps its meaning (letter
-  this line in that panel), so placement never rides on it. Under `lettering: model` the
-  layer is not drawn. The runner's side is in
-  [`playable-format.md`](playable-format.md#contracts).
+  this line in that panel), so placement never rides on it. Every placed bubble is drawn
+  as the runner draws it — paper, the line's text, the wedge to its tail — by the same
+  `drawBubble` (`pathux/play/bubble.ts`) the Play pane uses, refitted with the page, with
+  the anchor and the tail handle on top of it; the author edits over what a reader will
+  see. A placed dialogue bubble's line row carries a name select (`bubbleNameAction`: as
+  the project says, shown, hidden), which writes the bubble's `name` through
+  `story.setBubbles` (`nameBubble` in `@vn/scriptedit`) and overrides the project's
+  `bubble_names` for that bubble; the preview draws the name the runner would
+  (`bubbleNameOf`, from `SceneCoverage.names`). Narration has no select, since a caption
+  carries no name. Under `lettering: model` the layer is not drawn. The runner's side is
+  in [`playable-format.md`](playable-format.md#contracts).
 - **The render's one sentence sits at the right of the head.** `verdictOf` is "Not drawn
   yet" with no image, the failure's sentence on a flagged render, the reviewer's `layout`
   sentence when it wrote one, and nothing otherwise. The reviewer's measured boxes
@@ -672,11 +690,14 @@ says what the write would do before it does it. The pure (side-effect-free) rule
   authored outlines in sodium, so a panel that came out in the wrong place is visible as
   two shapes that disagree.
 - **A write locks the surface the way the strip's does.** `rules/timeline/busy.ts` is
-  reused: the notice row becomes a progress bar after `BUSY_DELAY_MS` and resolves into
-  the outcome. `update()` returns early during a drag, because the panel under the pointer
-  is read from the DOM. The selection follows `ui.shotId` in `update()` rather than only
-  in `load()`, so a page opened from another shot of the same scene keeps its selected
-  panel across its first write.
+  reused: the notice box shows a progress strip along its bottom edge after
+  `BUSY_DELAY_MS` and resolves into the outcome. The box reserves three lines of text
+  (`.pg-notice`), so a notice of up to three lines and the strip both leave the page where
+  it is; only a longer notice, an error usually, grows the box. The script editor's
+  `.sc-notice` strip reserves the same three lines. `update()` returns early during a
+  drag, because the panel under the pointer is read from the DOM. The selection follows
+  `ui.shotId` in `update()` rather than only in `load()`, so a page opened from another
+  shot of the same scene keeps its selected panel across its first write.
 - **Ten page-scoped shortcuts.** Nudge in four directions, the same by two with shift,
   Delete for the held tail, bubble or corner, and Escape to deselect. The shortcut table's
   `on` field may end in `/`, which matches every control whose target sits under that

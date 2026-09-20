@@ -360,6 +360,15 @@ clause in the Asset pane opens this editor `elsewhere` and scrolls to the field.
   vision model ids and the image params are read-only here because changing one is a
   deliberate, file-level act, and making that change a two-click operation in this pane
   would encourage it.
+- **`shot_form` is a two-row dropdown in the value column.** Single frames or manga pages;
+  a row runs `project.setShotForm` for its form, and the re-read that follows redraws the
+  button from the file. The field is read when a scene is decomposed (`decompSystem`, and
+  the agent's `propose_storyboard`), so a storyboard already written keeps its shape and
+  nothing is re-keyed.
+- **`bubble_names` is a checkbox in the value column.** It runs `project.setBubbleNames`
+  with the flag flipped, and the re-read that follows redraws it from the file. The flag
+  reaches the playable alone (a runner-drawn bubble names its speaker; see
+  [`playable-format.md`](playable-format.md#contracts)), so nothing is re-keyed.
 - **Builtin skills are a card of checkboxes.** One per skill in the shipped catalog
   (`project.info` carries `builtinSkills`, read from the catalog root alone, so a project
   skill that shadows a builtin one leaves the box in place), ticked as `builtin_skills` in
@@ -389,12 +398,24 @@ clause in the Asset pane opens this editor `elsewhere` and scrolls to the field.
   inserts the block after `title:` when the file has none. The control is recorded through
   one Offer that supplies `model`, since a `MenuTemplate` row cannot carry an Offer of its
   own.
-- **Refresh models, beside the dropdown,** runs `models.refresh`, which fetches
-  OpenRouter's image-model listing into `<user>/models.json`; its tooltip says the cached
-  listing's date, or that there is none. Nothing refreshes on its own: the Gen Graph pane
-  draws the same button, and both pickers read the one snapshot the shell sets from every
-  `project.info` answer (`refreshProjectView` in `app/bridge.ts`, re-run after every
-  workspace refresh and after `models.refresh`).
+- **The text and vision models are dropdowns too.** The `models.text` row is the same
+  search-mode `DropBox` the header's model menu is (`textModelRows` in
+  `widgets/modelmenu.ts`, over `textModelChoices` in `@vn/types`: the shipped ids, the
+  cached text listing, plus the file's current value when the list lacks it), and picking
+  a row runs `project.setTextModel`, which re-keys nothing and confirms nothing. The
+  `models.vision` row shows the list as the file has it, and its dropdown's rows toggle
+  membership through `project.setVisionModels` — a ticked row is on the list, and picking
+  it takes it off.
+- **Refresh models, beside the dropdowns,** runs `models.refresh`, which fetches
+  OpenRouter's image-model listing, OpenRouter's text-model listing, and the text models
+  of Anthropic and Gemini for each of those whose key resolves, into `<user>/models.json`;
+  its tooltip says the cached listing's date, or that there is none. The pane runs it on
+  its own exactly once, when the cached file holds no text listing (there was none before
+  the text pickers, so an older cache offers only the shipped ids); a listing that failed
+  lands in the note, and the button is the retry. Otherwise nothing refreshes on its own:
+  the Gen Graph pane draws the same button, and every picker reads the one snapshot the
+  shell sets from every `project.info` answer (`refreshProjectView` in `app/bridge.ts`,
+  re-run after every workspace refresh and after `models.refresh`).
 - **Reads through `project.info`, not a bespoke channel.** Every other editor reads
   through a non-mutating command, and a twelfth IPC channel for the twelfth editor would
   have been the first surface in the app to reach around the registry. The shell owns the

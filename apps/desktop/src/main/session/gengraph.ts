@@ -542,6 +542,8 @@ export class GengraphPart {
     const outer = this.session.cancel;
     const cancel = outer ?? new AbortController();
     this.session.cancel = cancel;
+    const abort = new AbortController();
+    this.session.abortTasks = abort;
     const { summary, assets } = await this.session
       .while(BUSY_RUN, async () => {
         const project = await loadProject(this.session.dir);
@@ -557,10 +559,11 @@ export class GengraphPart {
           dryRun   : mock,
           now      : () => new Date().toISOString(),
           signal   : cancel.signal,
+          abort    : abort.signal,
           ...(only === undefined ? {} : { only }),
           ...(graphs === undefined ? {} : { graphs }),
           onProgress: (p) => {
-            this.session.progress = { ran: p.ran, pending: p.pending };
+            this.session.progress = { ran: p.ran, pending: p.pending, activity: p.activity };
             this.session.announceBusy();
           },
         });
@@ -573,6 +576,7 @@ export class GengraphPart {
         // A pass owns its controller for every round it still has to take, so only a run that made
         // its own clears it.
         if (!outer && this.session.cancel === cancel) this.session.cancel = undefined;
+        if (this.session.abortTasks === abort) this.session.abortTasks = undefined;
       });
     this.announceRun(summary, assets, mock);
     return {
@@ -587,6 +591,7 @@ export class GengraphPart {
       failed       : summary.failed.length,
       failures     : summary.failed.map((t) => ({ hash: t.hash, kind: t.kind, error: t.error })),
       ...(summary.stopped ? { stopped: true } : {}),
+      ...(summary.aborted ? { aborted: summary.aborted.length } : {}),
     };
   }
 

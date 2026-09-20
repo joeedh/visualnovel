@@ -1,6 +1,6 @@
 import type { Container, MenuTemplate } from 'pathux';
 import { api } from '../../api.js';
-import { imageModelChoices, modelCatalog } from '@vn/gengraph';
+import { imageModelMenu } from '../widgets/modelmenu.js';
 import { spansFor, type Edge } from '@vn/scriptedit';
 import type { CommandCheck, Coverage, ShotSpan } from '../../../src/shared/ipc.js';
 import { commitOf, noticeForCheck, type Notice } from '../../../src/shared/lineedit.js';
@@ -786,25 +786,13 @@ export class TimelineEditor extends VnEditor {
     const line = el('div', 'wd-row');
     line.appendChild(el('span', 'who', 'drawn with'));
 
-    const select = document.createElement('select');
-    select.className = 'wd-pick';
-    select.setAttribute('aria-label', `Which image model ${cast.shot} is drawn with`);
-    this.wardrobePass.record(select, shotModelAction(cast));
     const current = cast.imageModel ?? '';
-    for (const choice of imageModelChoices(modelCatalog(), current, { inherit: true })) {
-      const item = option(
-        choice.id,
-        choice.id === '' ? `inherit (${cast.projectModel})` : choice.label,
-      );
-      item.title = choice.tooltip;
-      select.appendChild(item);
-    }
-    select.value = current;
-    select.addEventListener('change', () => {
-      if (select.value === current) return;
-      void this.run(shotModelInvocation(cast, select.value), 'Setting model', 'Model set.');
+    const { frame, menu } = imageModelMenu(this.ctx, current, cast.projectModel, (id) => {
+      if (id === current) return;
+      void this.run(shotModelInvocation(cast, id), 'Setting model', 'Model set.');
     });
-    line.appendChild(select);
+    this.wardrobePass.record(menu, shotModelAction(cast));
+    line.appendChild(frame);
     return line;
   }
 

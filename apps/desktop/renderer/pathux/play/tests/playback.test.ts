@@ -7,6 +7,7 @@ import {
   dimPath,
   framesOf,
   jumpTo,
+  pageBubbles,
   parseSave,
   samePos,
   saveKeyOf,
@@ -19,6 +20,7 @@ function play(): Playable {
     title          : 'Demo',
     start          : 'a',
     portraitOverlay: false,
+    bubbleNames    : false,
     characters     : { aiko: { name: 'Aiko' } },
     scenes: {
       a: {
@@ -139,6 +141,84 @@ describe('framesOf', () => {
       bubble: { anchor: [0.3, 0.2], tail: [0.4, 0.5] },
     });
     expect('bubble' in frames[1]!).toBe(false);
+  });
+
+  it('names a bubble by its own say, else the playable’s, and never a caption', () => {
+    const shape: [number, number][] = [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [0, 1],
+    ];
+    const scene = (name?: boolean): Parameters<typeof framesOf>[0] => ({
+      beats: [
+        {
+          type  : 'show',
+          panels: [
+            {
+              shape,
+              lines  : ['a:L1', 'a:L2'],
+              bubbles: [
+                { line: 'a:L1', anchor: [0.3, 0.2], ...(name === undefined ? {} : { name }) },
+                { line: 'a:L2', anchor: [0.6, 0.2] },
+              ],
+            },
+          ],
+        },
+        { type: 'say', who: 'aiko', text: 'Hello.', line: 'a:L1' },
+        { type: 'narrate', text: 'Rain.', line: 'a:L2' },
+      ],
+      choices: [],
+    });
+    expect(framesOf(scene(), true).map((f) => f.named)).toEqual([true, undefined]);
+    expect(framesOf(scene(), false).map((f) => f.named)).toEqual([undefined, undefined]);
+    expect(framesOf(scene(false), true)[0]!.named).toBeUndefined();
+    expect(framesOf(scene(true), false)[0]!.named).toBe(true);
+  });
+});
+
+describe('pageBubbles', () => {
+  const shape: [number, number][] = [
+    [0, 0],
+    [1, 0],
+    [1, 1],
+    [0, 1],
+  ];
+  const page = (hash: string, lines: string[]) => ({
+    type  : 'show' as const,
+    shot  : `${hash}.page`,
+    image : { hash, ext: 'png' },
+    panels: [
+      {
+        shape,
+        lines,
+        bubbles: lines.map((line, at) => ({ line, anchor: [0.2 * at, 0.5] as [number, number] })),
+      },
+    ],
+  });
+  const frames = framesOf({
+    beats: [
+      page('p1', ['a:L1', 'a:L3']),
+      { type: 'say', who: 'aiko', text: 'One.', line: 'a:L1' },
+      { type: 'say', who: 'aiko', text: 'Two, in the box.', line: 'a:L2' },
+      { type: 'say', who: 'aiko', text: 'Three.', line: 'a:L3' },
+      page('p2', ['a:L4']),
+      { type: 'say', who: 'aiko', text: 'Four.', line: 'a:L4' },
+    ],
+    choices: [],
+  });
+
+  it('gathers the page’s bubbles around the frame, marking the frame’s own', () => {
+    expect(pageBubbles(frames, 2).map((b) => [b.text, b.current])).toEqual([
+      ['One.', false],
+      ['Three.', true],
+    ]);
+    expect(pageBubbles(frames, 0).map((b) => b.current)).toEqual([true, false]);
+  });
+
+  it('stops at the next page, and is empty for a line read in the box', () => {
+    expect(pageBubbles(frames, 3).map((b) => b.text)).toEqual(['Four.']);
+    expect(pageBubbles(frames, 1)).toEqual([]);
   });
 });
 

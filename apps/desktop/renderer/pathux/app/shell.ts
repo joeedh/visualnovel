@@ -19,6 +19,7 @@ import { installAnchors } from '../tour/anchors.js';
 import type { AnchorHome } from '../../rules/anchors.js';
 import { installTour, tourReadsPanes } from '../tour/tour.js';
 import { panesOf } from '../panes/view.js';
+import { showUnsavedPanes } from '../panes/unsaved.js';
 import { exec, installBridge } from './bridge.js';
 import type { AssetInfo } from '../../../src/shared/ipc.js';
 import { editorNameProblems, isOfferedEditor } from '../../../src/shared/editors.js';
@@ -68,6 +69,7 @@ import {
 } from './persist.js';
 import { prunedIds, repairedAsset, type SelectedIds } from '../../rules/uistate.js';
 import { VnScreen } from './screen.js';
+import { setUnloadRefusedHook } from '../doctree/docbuffer.js';
 import { ShellState } from './state.js';
 import { installTheme } from './theme.js';
 import { TOKENS } from './tokens.js';
@@ -126,6 +128,9 @@ class Shell implements ShellApp {
     // After the bridge, which is where `exec` and the invalidate feed come from.
     installLayoutWatch();
     installReportPreview();
+    // A quit refused over an unsaved draft outlines the pane holding it, so the OS dialog that
+    // follows is about something the author can see
+    setUnloadRefusedHook((paths) => showUnsavedPanes(this, paths));
     this.showRequestedEditor();
     void this.settleSelection(restored);
   }

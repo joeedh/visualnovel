@@ -9,7 +9,7 @@ import {
   writeDocFile,
   type GuardedWriters,
 } from '@vn/store';
-import { readText } from '@vn/util';
+import { readText, unifiedDiff } from '@vn/util';
 import { updateContext } from '../context.js';
 import { skillWriteRefusal } from '../skills.js';
 import { wrapWarning, WRAP_COLUMNS } from '../wrap.js';
@@ -66,6 +66,8 @@ const writeFileTool: Tool<{ path: string; content: string }> = {
     // and an unread overwrite is refused with `already exists` instead of quietly replacing a
     // file the conversation never read.
     const seen = ctx.seen?.get(path);
+    // What the file said before, for the diff the transcript shows; a new file diffs from nothing
+    const before = seen ? await readDocFile(ctx.workspace.root, path) : undefined;
     const written = await writeDocFile(
       ctx.workspace.root,
       path,
@@ -80,6 +82,8 @@ const writeFileTool: Tool<{ path: string; content: string }> = {
     const long = wrapWarning(a.content);
     return ok(`Wrote ${path} (${written.bytes.toLocaleString()} bytes).${long}`, {
       written: [path],
+      // For the transcript, not the model: the model wrote the content and needs no copy of it
+      data   : { diff: unifiedDiff(before?.ok ? before.file.text : '', a.content) },
     });
   },
 };
@@ -228,7 +232,10 @@ const editFileTool: Tool<{
       `Edited ${path} — ${a.edits.length} change(s), ` +
       `${Buffer.byteLength(original, 'utf8').toLocaleString()} → ` +
       `${written.bytes.toLocaleString()} bytes.`;
-    return ok(`${summary}\n\n${hunks.join('\n\n')}`, { written: [path] });
+    return ok(`${summary}\n\n${hunks.join('\n\n')}`, {
+      written: [path],
+      data   : { diff: unifiedDiff(original, text) },
+    });
   },
 };
 

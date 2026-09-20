@@ -8,6 +8,7 @@
  */
 import { message as note, error as noteError } from 'pathux';
 import { setModelCatalog } from '@vn/gengraph';
+import { saveAllDrafts } from '../doctree/docbuffer.js';
 import {
   DEFAULT_BUDGET,
   EFFORT_CHOICES,
@@ -223,6 +224,10 @@ export interface BusyState {
   what: string;
   ran: number;
   pending: number;
+  /** What each task in flight is doing, by hash. Empty for work that is not a run. */
+  activity: Record<string, string>;
+  /** Whether a stop is pending on the run. */
+  stopping: boolean;
 }
 
 const busyWatchers = new Set<(state: BusyState) => void>();
@@ -405,7 +410,15 @@ export function installBridge(app: ShellApp): void {
       ui.busyWhat = effect.what ?? '';
       ui.busyRan = effect.ran;
       ui.busyPending = effect.pending;
-      const state: BusyState = { what: ui.busyWhat, ran: effect.ran, pending: effect.pending };
+      ui.busyActivity = effect.activity ?? {};
+      ui.busyStopping = effect.stopping === true;
+      const state: BusyState = {
+        what    : ui.busyWhat,
+        ran     : effect.ran,
+        pending : effect.pending,
+        activity: ui.busyActivity,
+        stopping: ui.busyStopping,
+      };
       for (const watcher of busyWatchers) watcher(state);
       touch();
     } else if (effect.type === 'agent' && effect.action === 'diagnose') {
@@ -423,6 +436,14 @@ That is a fault in what was ` +
           'sent, not in the connection, so the debug agent is set up to read both the source and ' +
           'the requests this session sent. The requests stay on this machine — they are read on ' +
           'your own key, and nothing from them goes into the report.',
+      });
+    } else if (effect.type === 'docs') {
+      void saveAllDrafts().then((result) => {
+        const saved = result.saved.length;
+        const refused = result.refused.map((r) => `${r.path}: ${r.reason}`).join('; ');
+        if (saved === 0 && refused === '') say('Nothing to save.');
+        else if (refused === '') say(`Saved ${saved} document(s).`);
+        else say(`Saved ${saved} document(s); refused — ${refused}`, true);
       });
     } else if (effect.type === 'tour') {
       applyTour(effect);

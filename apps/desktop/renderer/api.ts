@@ -93,6 +93,7 @@ const MOCK_PLAYABLE: Playable = {
   title          : 'sample',
   start          : 'rooftop_intro',
   portraitOverlay: false,
+  bubbleNames    : false,
   characters: {
     aiko  : { name: 'Aiko' },
     haruki: { name: 'Haruki' },
@@ -280,8 +281,9 @@ const MOCK_DOCTREE: DocTree = {
       ],
     },
   ],
-  backlinks: {},
-  pathIndex: {},
+  backlinks : {},
+  pathIndex : {},
+  storyOrder: ['rooftop_intro', 'aiko_confession', 'haruki_route'],
 };
 
 /** The same workspace as files on disk, for the sidebar's other mode. */

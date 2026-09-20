@@ -4,7 +4,6 @@
  * control owning the rows keeps the list and encodes it; this module only draws it and reports
  * what the author changed.
  */
-import { imageModelChoices, modelCatalog } from '@vn/gengraph';
 import type { JsonValue } from 'pathux-richtext-headless';
 import {
   defaultMark,
@@ -16,6 +15,7 @@ import {
   type SheetFormState,
 } from '../../rules/sheetform.js';
 import { assetCell, type StripCell } from '../assets/assetstrip.js';
+import { imageModelMenu } from '../widgets/modelmenu.js';
 import type { SheetHost } from './sheetform.js';
 
 /** The long form of an entry; keys the schema does not name ride through untouched. */
@@ -267,26 +267,15 @@ function directionRow(
     else set({ seed: value });
   });
 
-  const model = document.createElement('select');
-  model.className = 'as-rung-model';
   const current = entry?.image_model ?? '';
-  for (const choice of imageModelChoices(modelCatalog(), current, { inherit: true })) {
-    const item = document.createElement('option');
-    item.value = choice.id;
-    item.textContent = choice.label;
-    item.title = choice.tooltip;
-    model.append(item);
-  }
-  model.value = current;
-  model.disabled = on.readOnly;
-  model.setAttribute('aria-label', `Image model for ${row.id}`);
-  anchors.record(model, entryField(state, kind, key, 'model'));
-  model.addEventListener('change', () => {
-    if (model.value === '') set({}, 'image_model');
-    else set({ image_model: model.value });
+  const model = imageModelMenu(on.host.ctx(), current, undefined, (id) => {
+    if (id === '') set({}, 'image_model');
+    else set({ image_model: id });
   });
+  model.menu.disabled = on.readOnly;
+  anchors.record(model.menu, entryField(state, kind, key, 'model'));
 
-  line.append(notes, seed, model);
+  line.append(notes, seed, model.frame);
   return line;
 }
 

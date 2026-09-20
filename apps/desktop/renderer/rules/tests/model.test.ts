@@ -156,6 +156,7 @@ describe('model()', () => {
       'page cmd:story.setPanels#corner/2/4 Left',
       'play fx:pane.view#back Left',
       'play fx:pane.view#forward Space',
+      'script cmd:story.deleteLines#marked Delete',
     ]);
   });
 

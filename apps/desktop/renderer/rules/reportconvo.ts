@@ -32,14 +32,28 @@ export interface FiledReport {
   file?: string;
 }
 
-/** What the setup card holds: the five things `report.open` is started with. */
+/** What the setup card holds: the six things `report.open` is started with. */
 export interface ReportSetup {
   thread: string;
   model: string;
   effort: string;
   source: boolean;
   detail: boolean;
+  /**
+   * What the author says they wanted, in their own words, before the debug agent reads anything.
+   * `report.open`'s `note`: the analyst is told it as "what the author says they wanted", and told
+   * to work it out from the conversation when it is empty.
+   */
+  note: string;
 }
+
+/** Placeholder text for the empty note field. */
+export const NOTE_PLACEHOLDER =
+  'Optional: what you asked for, and what the agent did instead, in your own words.';
+
+export const NOTE_TIP =
+  'What you had wanted the agent to do. The debug agent reads it first, so it knows what to ' +
+  'measure the conversation against; left empty, it works that out from the conversation.';
 
 export interface ReportConvo {
   /** The conversation under analysis. Absent until the analyst has been started. */
@@ -60,7 +74,7 @@ export function emptyReport(): ReportConvo {
     convo  : emptyConvo(REPORT_OPENING),
     granted: { source: false, detail: false },
     reports: [],
-    setup  : { thread: '', model: '', effort: '', source: false, detail: false },
+    setup  : { thread: '', model: '', effort: '', source: false, detail: false, note: '' },
     threads: [],
     note   : '',
   };
@@ -139,7 +153,9 @@ export function startAction(state: ReportConvo, changing: boolean, check?: Comma
   if (state.convo.busy) {
     return { ...refuse('The debug agent is still on the last turn.'), ...control };
   }
-  return { ok: true, props: { ...state.setup, note: '' }, ...control };
+  // The note is read off its field when Start is pressed, so what was typed and not yet committed
+  // still goes with the press
+  return { ok: true, props: { ...state.setup }, supplies: ['note'], ...control };
 }
 
 /** What the report pane reads when it draws its anchored controls. */

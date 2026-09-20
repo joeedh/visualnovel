@@ -1,7 +1,8 @@
 /**
- * The image-model catalog: what OpenRouter routes to, cached per user and refreshed only when the
- * author asks. The listing bills nothing and needs no key, so there is no confirmation, and the
- * file sits outside every workspace, so the command is not undoable.
+ * The model catalog: the image models OpenRouter routes to and the text models of OpenRouter,
+ * Anthropic and Gemini, cached per user and refreshed when the author asks, or once by the Project
+ * editor when the cache holds no text listing. The listing bills nothing, so there is no
+ * confirmation, and the file sits outside every workspace, so the command is not undoable.
  */
 import { defineFor } from '@vn/commands';
 import { userModelFile } from '@vn/gengraph/state';
@@ -11,11 +12,13 @@ const define = defineFor<CommandHost>();
 
 export const modelsRefresh = define({
   id         : 'models.refresh',
-  title      : 'Refresh the image-model list',
+  title      : 'Refresh the model list',
   description:
     'Fetch the image models OpenRouter routes to, with each one’s aspect ratios, seed support ' +
-    'and per-picture price, into your own model list. Every image-model picker draws that list, ' +
-    'and the graph estimate prices OpenRouter models from it. Nothing is fetched until you ask.',
+    'and per-picture price, and the text models of OpenRouter and of each vendor whose key ' +
+    'resolves, into your own model list. Every model picker draws that list, and the graph ' +
+    'estimate prices OpenRouter models from it. Fetched once by the Project editor when the list ' +
+    'holds no text models, and otherwise only when you ask.',
   mutating   : true,
   affects    : ['<user>/models.json'],
   undoable   : false,

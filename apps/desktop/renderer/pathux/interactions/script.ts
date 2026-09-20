@@ -95,7 +95,11 @@ export function shotAssetEntry(shot: CoverageShot, label: string, missing: strin
  * be put to a command, because there is no hash to name, which is what {@link MenuEntry.refused}
  * is for.
  */
-export function lineMenu(scene: SceneCoverage, lineId: string): MenuEntry[] {
+export function lineMenu(
+  scene: SceneCoverage,
+  lineId: string,
+  marked: readonly string[] = [],
+): MenuEntry[] {
   const edit: MenuEntry = {
     label: 'Edit with agent',
     id   : 'agent.editLine',
@@ -103,8 +107,34 @@ export function lineMenu(scene: SceneCoverage, lineId: string): MenuEntry[] {
   };
   const label = 'Open shot asset';
   const shot = shotCovering(scene.shots, lineId);
-  if (!shot) {
-    return [edit, { label, id: 'view.open', refused: `No shot covers ${lineId} yet.` }];
+  const asset = shot
+    ? shotAssetEntry(shot, label, `${shot.id} covers ${lineId} but has not been drawn.`)
+    : { label, id: 'view.open', refused: `No shot covers ${lineId} yet.` };
+  return [edit, asset, deleteEntry(lineId, marked)];
+}
+
+/**
+ * The menu's Delete. On a marked line it takes every marked line in one `story.deleteLines`, the
+ * way the bar's button does, so a run marked by the gutter can be deleted from where the pointer
+ * already is; on any other line it is `story.deleteLine` on that line alone, marks or no marks.
+ */
+export function deleteEntry(lineId: string, marked: readonly string[]): MenuEntry {
+  if (marked.includes(lineId)) {
+    return {
+      label  : `Delete ${marked.length} marked line${marked.length === 1 ? '' : 's'}`,
+      id     : 'story.deleteLines',
+      props  : { lines: [...marked] },
+      tooltip:
+        `Remove the ${marked.length} marked line${marked.length === 1 ? '' : 's'} from the ` +
+        'scene. A shot that covered them keeps its art and covers one line fewer — possibly none.',
+    };
   }
-  return [edit, shotAssetEntry(shot, label, `${shot.id} covers ${lineId} but has not been drawn.`)];
+  return {
+    label  : 'Delete line',
+    id     : 'story.deleteLine',
+    props  : { line: lineId },
+    tooltip:
+      'Remove this line from the scene. A shot that covered it keeps its art and covers one ' +
+      'line fewer — possibly none.',
+  };
 }

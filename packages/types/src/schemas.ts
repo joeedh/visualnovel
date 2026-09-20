@@ -342,6 +342,14 @@ export const LETTERING_MODES = ['model', 'runner'] as const;
 export type Lettering = (typeof LETTERING_MODES)[number];
 
 /**
+ * What a storyboarded shot is: a single frame, or a manga page of panels. The decomposer and the
+ * authoring agent make new shots in this form unless the author says otherwise for one scene.
+ */
+export const SHOT_FORMS = ['frames', 'pages'] as const;
+
+export type ShotForm = (typeof SHOT_FORMS)[number];
+
+/**
  * The skills that ship with the app, by id. The catalog itself lives in `@vn/authoring`
  * (`builtin-skills/<id>/`), which a test there checks against this list; it is spelt here so the
  * `project.yaml` schema can default `builtin_skills` to every one of them.
@@ -360,7 +368,18 @@ export const projectConfig = z.object({
    * single-frame storyboard.
    */
   storyboard_notes   : z.string().default(''),
+  /**
+   * Whether a scene is storyboarded as single frames or as manga pages of panels. Read when a
+   * scene is decomposed; a storyboard already written keeps its shape.
+   */
+  shot_form          : z.enum(SHOT_FORMS).default('frames'),
   lettering          : z.enum(LETTERING_MODES).default('runner'),
+  /**
+   * Whether a runner-drawn speech bubble carries the speaker's name above the line. A caption
+   * box (narration) never does. Off by default: a manga page names its speakers by who is drawn
+   * talking. A bubble's own `name` overrides it.
+   */
+  bubble_names       : z.boolean().default(false),
   /**
    * The entry scene's id. Optional here rather than required, because a project missing it is
    * reported as an error diagnostic by the model, which can list the available scene ids where
@@ -493,6 +512,7 @@ const panelBubble = z.object({
   lineId: z.string().min(1),
   anchor: pagePoint,
   tail  : pagePoint.optional(),
+  name  : z.boolean().optional(),
 });
 /** A bubble list as a command or a tool receives it, parsed before any rule reads it. */
 export const panelBubblesSchema = z.array(panelBubble);

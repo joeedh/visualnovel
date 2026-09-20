@@ -8,6 +8,7 @@ function playable(partial: Partial<Playable> = {}): Playable {
     title          : 'Test Story',
     start          : 'one',
     portraitOverlay: false,
+    bubbleNames    : false,
     characters     : {},
     scenes         : {},
     ...partial,
@@ -205,6 +206,31 @@ describe('renderSite bubbles', () => {
     );
     expect(html).not.toContain('“Hello.”');
     expect(html).toContain('<p class="say"><span class="who">Aiko</span>“Still here.”</p>');
+  });
+
+  it('shows the name when the bubble, else the playable, says so', () => {
+    const say = { type: 'say', who: 'aiko', text: 'Hello.', line: 'l1' } as const;
+    const html = (bubble: Record<string, unknown>, bubbleNames: boolean): string => {
+      const show = {
+        type: 'show',
+        shot: 'one__page',
+        image,
+        panels: [{ shape: square, lines: ['l1'], bubbles: [bubble] }],
+      } as unknown as Playable['scenes'][string]['beats'][number];
+      const build = renderSite(
+        playable({
+          bubbleNames,
+          characters: { aiko: { name: 'Aiko' } },
+          scenes    : { one: { beats: [show, say], choices: [] } },
+        }),
+      );
+      return pageFor(build, 'one.html');
+    };
+    const at = { line: 'l1', anchor: [0.5, 0.5] };
+    expect(html(at, true)).toContain('class="bubble caption named"');
+    expect(html(at, false)).toContain('class="bubble caption"');
+    expect(html({ ...at, name: false }, true)).toContain('class="bubble caption"');
+    expect(html({ ...at, name: true }, false)).toContain('class="bubble caption named"');
   });
 
   it('draws a tailless narrate as a caption with no who and no tails svg', () => {

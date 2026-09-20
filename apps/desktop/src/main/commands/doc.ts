@@ -82,6 +82,25 @@ export const docWrite = define({
   },
 });
 
+export const docSaveAll = define({
+  id         : 'doc.saveAll',
+  title      : 'Save all',
+  description:
+    'Save every document with unsaved edits — a wiki page or a skill typed into and not yet ' +
+    'saved, in any window. Each one is written through `doc.write`, so each save is recorded and ' +
+    'committed on its own; a document something else rewrote underneath is refused by name and ' +
+    'the rest still land. Scene prose and shots are written as they are edited and have nothing ' +
+    'to save.',
+  notes:
+    'Save every unsaved wiki or skill draft, in every window, one `doc.write` each. Not itself a write: the drafts live in the renderer, which answers the effect this pushes.',
+  mutating   : false,
+  props      : {},
+  run(_props, ctx) {
+    ctx.host.uiAll({ type: 'docs', action: 'saveAll' });
+    return Promise.resolve({ message: 'Saving every unsaved document.' });
+  },
+});
+
 export const docRename = define({
   id         : 'doc.rename',
   title      : 'Rename a document',

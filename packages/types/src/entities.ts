@@ -222,6 +222,11 @@ export interface PanelBubble {
   anchor: [number, number];
   /** Where the tail points, at the speaker. Absent draws a caption box with no tail. */
   tail?: [number, number];
+  /**
+   * Whether the speaker's name is shown above the line, in place of the project's
+   * `bubble_names`. Absent inherits it. Read only for a dialogue line; narration has no name.
+   */
+  name?: boolean;
 }
 
 export interface PagePanel {

@@ -61,6 +61,8 @@ export interface HeaderState {
   redo: string | null;
   /** Which long-running work is in flight, or an empty string. */
   busyWhat: string;
+  /** Whether Stop was already pressed on that work and it has not yet stopped. */
+  stopping?: boolean;
   /** Whether this window can call a model, as opposed to a browser preview. */
   live: boolean;
   agentMode: string;
@@ -165,14 +167,28 @@ export function runAction(busy: string, live: boolean): Offer {
   return { ok: true, id: 'pipeline.run', props: { mock: !live }, label, tooltip };
 }
 
-/** Stop whatever the header is showing a spinner for. Refuses when nothing it stops is running. */
-export function stopAction(controls: BusyControls | undefined): Offer {
+/**
+ * Stop whatever the header is showing a spinner for. Refuses when nothing it stops is running.
+ * Once a stop is pending, the same button offers the abort instead, through the command's own
+ * form so the author confirms before anything in flight is cut off.
+ */
+export function stopAction(controls: BusyControls | undefined, stopping = false): Offer {
   if (!controls) {
     return {
       ...refuse('Nothing is running.'),
       id     : 'pipeline.stop',
       label  : '■',
       tooltip: 'Stop the work in progress after the step it is on',
+    };
+  }
+  if (stopping && controls.aborts) {
+    return {
+      ok     : true,
+      id     : controls.stop,
+      props  : { abort: true },
+      label  : '■',
+      tooltip: controls.aborts,
+      form   : true,
     };
   }
   return { ok: true, id: controls.stop, props: {}, label: '■', tooltip: controls.stops };
@@ -216,7 +232,7 @@ export function controls(state: HeaderState): readonly Offer[] {
     ...MENU_BUTTONS.map(menuAction),
     ...viewActions(),
     runAction(state.busyWhat, state.live),
-    stopAction(busyControls(state.busyWhat)),
+    stopAction(busyControls(state.busyWhat), state.stopping ?? false),
     ...(state.errors || state.warnings ? [problemsAction(state.errors, state.warnings)] : []),
     undoAction(state.undo),
     redoAction(state.redo),

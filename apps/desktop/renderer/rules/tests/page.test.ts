@@ -4,6 +4,8 @@ import {
   LAYOUTS,
   acceptAction,
   anchorAction,
+  bubbleNameAction,
+  bubbleNameOf,
   anchorOf,
   bubbleLayer,
   bubblesOffer,
@@ -14,6 +16,9 @@ import {
   deleteBubble,
   enterLetters,
   generateAction,
+  menuAction,
+  nameChoiceOf,
+  nameOfChoice,
   inLayout,
   layoutAction,
   lineAction,
@@ -32,6 +37,7 @@ import {
   type PageState,
 } from '../page.js';
 import { keyOf } from '../anchors.js';
+import type { CoverageLine } from '../../../src/shared/ipc.js';
 
 const state = (name: string): PageState => SITUATIONS.find((s) => s.name === name)!.state;
 
@@ -156,6 +162,21 @@ describe('the page', () => {
   });
 });
 
+describe('the bar’s menu', () => {
+  it('opens the shot menu over the shown shot, and is refused without one', () => {
+    expect(menuAction(state('page'))).toMatchObject({
+      ok   : true,
+      id   : 'menu.open',
+      props: { menu: 'shot' },
+      label: '⋯',
+    });
+    expect(menuAction(state('no-shot'))).toMatchObject({
+      ok     : false,
+      refusal: { reason: 'No shot is on screen.' },
+    });
+  });
+});
+
 describe('the head’s actions', () => {
   it('generates the shot on screen through pipeline.draw, and reads Regenerate once drawn', () => {
     expect(generateAction(state('page'))).toMatchObject({
@@ -271,6 +292,42 @@ describe('the bubble layer', () => {
     expect(deleteBubble({ ...lettered, bubble: 'arrival:L1' })).toBeNull();
     expect(deleteBubble({ ...lettered, bubble: null })).toBeNull();
   });
+
+  it('names a bubble by its own say, else the project’s, and never a caption', () => {
+    const [narration, aiko] = lettered.lines as [CoverageLine, CoverageLine];
+    const placed = bubbles[0]!;
+    expect(bubbleNameOf(lettered, aiko, placed)).toBe('Aiko');
+    expect(bubbleNameOf({ ...lettered, bubbleNames: false }, aiko, placed)).toBeUndefined();
+    expect(bubbleNameOf({ ...lettered, bubbleNames: false }, aiko, { ...placed, name: true })).toBe(
+      'Aiko',
+    );
+    expect(bubbleNameOf(lettered, aiko, { ...placed, name: false })).toBeUndefined();
+    expect(bubbleNameOf(lettered, narration, placed)).toBeUndefined();
+    // An id the names list does not know is shown as itself rather than as nothing
+    expect(bubbleNameOf({ ...lettered, names: {} }, aiko, placed)).toBe('aiko');
+  });
+
+  it('offers the name select on a placed dialogue bubble alone', () => {
+    const [narration, aiko, ren] = lettered.lines as [CoverageLine, CoverageLine, CoverageLine];
+    expect(bubbleNameAction(lettered, aiko)).toMatchObject({
+      ok      : true,
+      id      : 'story.setBubbles',
+      on      : 'bubble/arrival:L2/name',
+      label   : 'name: as the project says',
+      supplies: ['bubbles'],
+    });
+    expect(bubbleNameAction(lettered, narration)).toMatchObject({
+      ok     : false,
+      refusal: { reason: expect.stringContaining('Narration') },
+    });
+    expect(bubbleNameAction(lettered, ren)).toMatchObject({
+      ok     : false,
+      refusal: { reason: 'Place this line’s bubble first.' },
+    });
+    expect(nameChoiceOf({ ...bubbles[0]!, name: false })).toBe('hidden');
+    expect(nameOfChoice('shown')).toBe(true);
+    expect(nameOfChoice('')).toBeUndefined();
+  });
 });
 
 describe('controls', () => {
@@ -280,14 +337,16 @@ describe('controls', () => {
       'cmd:story.setBubbles#bubble/arrival:L1',
       'cmd:story.setBubbles#bubble/arrival:L2',
       'cmd:story.setBubbles#bubble/arrival:L2/tail',
+      'cmd:story.setBubbles#bubble/arrival:L2/name',
     ]);
     expect(controls(state('page')).some((o) => o.id === 'story.setBubbles')).toBe(false);
     const unheld = controls({ ...state('runner-lettered'), bubble: null }).map(keyOf);
     expect(unheld).not.toContain('cmd:story.setBubbles#bubble/arrival:L2/tail');
   });
 
-  it('draws nothing with no shot, and no corner or field until a panel is selected', () => {
-    expect(controls(state('no-shot'))).toEqual([]);
+  it('draws only a refused menu with no shot, and no corner or field until a panel is selected', () => {
+    expect(controls(state('no-shot')).map(keyOf)).toEqual(['fx:menu.open']);
+    expect(controls(state('no-shot'))[0]!.ok).toBe(false);
     const page = controls(state('page')).map(keyOf);
     expect(page.some((k) => k.includes('#corner/'))).toBe(false);
     expect(page.some((k) => k.includes('/framing'))).toBe(false);

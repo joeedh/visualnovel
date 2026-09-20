@@ -143,14 +143,17 @@
   color: var(--mist-dim);
 }
 
-/* The notice row: a drop preview, an outcome, a refusal, or the write in flight. */
+/* The notice box: a drop preview, an outcome, a refusal, or the write in flight. Three lines
+   are reserved, so a notice of up to three lines and the write in flight leave the page where
+   it is; only a longer one (an error, usually) grows the box. */
 .pg-notice {
   flex: none;
-  min-height: 26px;
+  font-size: 12px;
+  line-height: 1.4;
+  min-height: calc(3 * 1.4 * 12px + 10px);
   padding: 5px 16px;
   border-bottom: 1px solid var(--ink-line-soft);
   color: var(--mist);
-  font-size: 12px;
 }
 .pg-notice.preview {
   color: var(--signal);
@@ -165,14 +168,15 @@
   position: relative;
   overflow: hidden;
 }
+/* The busy sweep is a strip along the box's bottom edge, inside the reserved lines. */
 .pg-notice.busy::after {
   content: '';
   position: absolute;
   left: 0;
-  top: 0;
   bottom: 0;
+  height: 3px;
   width: 28%;
-  background: var(--ink-line);
+  background: var(--sodium);
   opacity: 0.55;
   animation: pg-busy 1.1s linear infinite;
 }
@@ -271,11 +275,6 @@
 }
 .pg-paint .outline.refused {
   fill: rgba(229, 83, 75, 0.1);
-}
-.pg-paint .tail {
-  stroke: rgba(244, 162, 76, 0.85);
-  stroke-width: 1.5;
-  vector-effect: non-scaling-stroke;
 }
 .pg-hit {
   position: absolute;
@@ -438,6 +437,17 @@
 }
 .pg-line .in.bubbled {
   border-radius: 50%;
+}
+/* A placed bubble's name select sits under its line, across the text and glyph columns. */
+.pg-line .name {
+  grid-column: 2 / -1;
+  justify-self: start;
+  font-size: 11px;
+  color: var(--mist);
+  background: var(--ink-sunken);
+  border: 1px solid var(--ink-line);
+  border-radius: 3px;
+  padding: 1px 4px;
 }
 .pg-line .none {
   justify-self: end;

@@ -55,6 +55,13 @@ export interface RunOptions {
    */
   signal?: AbortSignal;
   /**
+   * Abort the tasks in flight as well. Each one is put back to `pending` and logged so, exactly
+   * as a task a killed process left `running` is on the next run, and the provider call it was in
+   * is left to finish on its own with its answer dropped. Implies {@link signal}: nothing further
+   * starts. The cost is the calls already made; the record stays whole.
+   */
+  abort?: AbortSignal;
+  /**
    * The generation graphs the host has loaded, indexed by the slot each active output binds
    * to. A task whose slot no graph names runs the code it ran before graphs existed.
    */
@@ -76,6 +83,11 @@ export interface RunProgress {
   pending: number;
   /** Tasks in flight at this moment. */
   running: number;
+  /**
+   * What each task in flight is doing, by hash, as its runner last said: `attempt 2 of 3:
+   * reviewing`, `retry 1 of 2 in 30s — …`. One entry per running task, from the moment it starts.
+   */
+  activity: Record<string, string>;
 }
 
 /** Outcome of a scheduler run. */
@@ -115,6 +127,34 @@ export interface RunSummary {
    * ready. Everything it did finish is recorded, so the next run resumes from there.
    */
   stopped?: boolean;
+  /** Hashes of the tasks {@link RunOptions.abort} cut off. Each is `pending` again. */
+  aborted?: string[];
+}
+
+/** What {@link raceAbort} answers in place of a result when the signal fired first. */
+const ABORTED = Symbol('aborted');
+
+/**
+ * `work`, unless `signal` fires first. The abandoned promise is still settled by its runner
+ * later, and its rejection, if it has one, is swallowed here so it cannot surface as unhandled.
+ */
+async function raceAbort<T>(
+  work: Promise<T>,
+  signal: AbortSignal | undefined,
+): Promise<T | typeof ABORTED> {
+  if (!signal) return work;
+  let onAbort = (): void => {};
+  const cut = new Promise<typeof ABORTED>((resolve) => {
+    onAbort = () => resolve(ABORTED);
+    if (signal.aborted) onAbort();
+    else signal.addEventListener('abort', onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([work, cut]);
+  } finally {
+    signal.removeEventListener('abort', onAbort);
+    work.catch(() => {});
+  }
 }
 
 /**
@@ -239,12 +279,47 @@ function inputRefHashes(task: AnyTask): string[] {
  */
 export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
   const { model, graph, store, providers, config, paths, logger, now, dryRun, onProgress } = opts;
-  const deps: RunDeps = { model, store, providers, logger, now, graphs: opts.graphs };
+  const ran: AnyTask[] = [];
+  // The unfinished half of what the current plan asked for. Derived from the plan rather than
+  // from `graph.all()`, which carries orphans `tasks.jsonl` was never pruned of — a progress
+  // count that included those would never reach zero.
+  let planned = new Set<string>();
+  const activity = new Map<string, string>();
+  const unfinished = () =>
+    [...planned].filter((hash) => {
+      const status = graph.get(hash)?.status;
+      return status === 'pending' || status === 'running';
+    }).length;
+  const progress = () =>
+    onProgress?.({
+      ran     : ran.length,
+      pending : unfinished(),
+      running : activity.size,
+      activity: Object.fromEntries(activity),
+    });
+  // A retry an earlier run's failure earned is the part of the sentence the runner cannot know
+  const attemptOf = (task: AnyTask): string => {
+    const failures = task.attempts.filter((a) => a.error).length;
+    return failures === 0 ? '' : `attempt ${failures + 1} of ${config.max_task_attempts}: `;
+  };
+  const deps: RunDeps = {
+    model,
+    store,
+    providers,
+    logger,
+    now,
+    graphs  : opts.graphs,
+    activity: (task, doing) => {
+      if (!activity.has(task.hash)) return;
+      activity.set(task.hash, `${attemptOf(task)}${doing}`);
+      progress();
+    },
+  };
+  const stopAsked = (): boolean => opts.signal?.aborted === true || opts.abort?.aborted === true;
   // A task a graph draws is priced by the graph rather than by its own call count, so the
   // preview asks the same index the runner does.
   const drawnByGraph = (task: AnyTask): boolean => boundGraph(task, deps) !== undefined;
   const runners: Record<TaskKind, Runner> = createRunners(config);
-  const ran: AnyTask[] = [];
   // What this run is allowed to touch, out of what the plan asked for
   const inScope = (planned: AnyTask[]): Set<string> => {
     const hashes = new Set(planned.map((t) => t.hash));
@@ -343,23 +418,13 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
     };
   }
 
-  // The unfinished half of what the current plan asked for. Derived from the plan rather than
-  // from `graph.all()`, which carries orphans `tasks.jsonl` was never pruned of — a progress
-  // count that included those would never reach zero.
-  let planned = inScope(firstPass);
-  let running = 0;
-  const unfinished = () =>
-    [...planned].filter((hash) => {
-      const status = graph.get(hash)?.status;
-      return status === 'pending' || status === 'running';
-    }).length;
-  const progress = () => onProgress?.({ ran: ran.length, pending: unfinished(), running });
-
+  planned = inScope(firstPass);
   progress();
 
   // Plan → run ready wave → replan, until no task is ready or the run is asked to stop.
   let stopped = false;
-  while (!opts.signal?.aborted) {
+  const aborted: string[] = [];
+  while (!stopAsked()) {
     plannedNow = await planTasks({
       model,
       graph,
@@ -378,11 +443,11 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
     await pool(ready, config.concurrency, async (task) => {
       // The cap means most of a wave is still queued when a stop arrives, and this check refuses
       // the bulk of it, since `pool` has no way to drop a task it has not started.
-      if (opts.signal?.aborted) {
+      if (stopAsked()) {
         stopped = true;
         return;
       }
-      running++;
+      activity.set(task.hash, `${attemptOf(task)}starting`);
       graph.setStatus(task.hash, 'running');
       await logTask(paths, graph.get(task.hash)!);
       // Reported at the start as well as the end. A host drawing what is in flight would
@@ -392,12 +457,25 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
 
       let result;
       try {
-        result = await runTask(task, deps, runners);
+        result = await raceAbort(runTask(task, deps, runners), opts.abort);
       } catch (err) {
         result = {
           status: 'failed' as const,
           error : err instanceof Error ? err.message : String(err),
         };
+      }
+      activity.delete(task.hash);
+
+      if (result === ABORTED) {
+        // Back to `pending` rather than `failed`: an abort is not a fault of the task's, so it
+        // must not spend the retry budget or leave a reason on the record
+        graph.setStatus(task.hash, 'pending');
+        await logTask(paths, graph.get(task.hash)!);
+        aborted.push(task.hash);
+        stopped = true;
+        progress();
+        logger?.info('task.abort', { hash: task.hash, kind: task.kind });
+        return;
       }
 
       // `error` is passed unconditionally: on `done` it is undefined, which overwrites any
@@ -419,7 +497,6 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
       }
       await logTask(paths, finished);
       ran.push(finished);
-      running--;
       progress();
       logger?.[result.status === 'failed' ? 'error' : 'info']('task.end', {
         hash  : task.hash,
@@ -429,7 +506,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
       });
     });
   }
-  if (opts.signal?.aborted) stopped = true;
+  if (stopAsked()) stopped = true;
   progress();
 
   const gate = gateStatus(model);
@@ -445,5 +522,6 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
     needsHuman: live(plannedNow, 'needs_human'),
     base      : store.base,
     ...(stopped ? { stopped } : {}),
+    ...(aborted.length ? { aborted } : {}),
   };
 }

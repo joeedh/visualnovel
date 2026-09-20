@@ -77,7 +77,7 @@ const shot = (subjects: unknown[]): Record<string, unknown> => ({
 });
 
 /** A project that states no style: the decomposer's prompt is then the plain one. */
-const PLAIN = { artStyle: '', storyboardNotes: '' };
+const PLAIN = { artStyle: '', storyboardNotes: '', shotForm: 'frames' as const };
 
 const decompose = (shots: unknown[]): ReturnType<typeof decomposeScene> =>
   decomposeScene(SCENE, MODEL, providersReturning(shots), PLAIN);

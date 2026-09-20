@@ -46,7 +46,7 @@ import {
 } from './asset.js';
 import { bibleSearch } from './bible.js';
 import { commandCheck } from './command.js';
-import { docCreate, docRead, docRename, docWrite } from './doc.js';
+import { docCreate, docRead, docRename, docSaveAll, docWrite } from './doc.js';
 import { gateApprove, gateCandidates } from './gate.js';
 import {
   gengraphAddBoundary,
@@ -115,8 +115,12 @@ import {
   projectSetArtStyle,
   projectSetBuiltinSkills,
   projectSetImageModel,
+  projectSetTextModel,
+  projectSetVisionModels,
   projectSetKey,
+  projectSetBubbleNames,
   projectSetLettering,
+  projectSetShotForm,
   projectSetStoryboardNotes,
   projectTestKey,
 } from './project.js';
@@ -135,6 +139,7 @@ import {
   storyCoverage,
   storyDecomposeAll,
   storyDeleteLine,
+  storyDeleteLines,
   storyDeleteScene,
   storyDeleteShot,
   storyExport,
@@ -177,6 +182,7 @@ import {
   viewOpen,
   viewPalette,
   viewResetLayout,
+  viewZoom,
   viewSaveLayout,
 } from './view.js';
 import { windowClose, windowNew, windowQuit } from './window.js';
@@ -242,6 +248,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     commandCheck,
     docCreate,
     docRead,
+    docSaveAll,
     docRename,
     docWrite,
     gateApprove,
@@ -308,8 +315,12 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     projectSetArtStyle,
     projectSetBuiltinSkills,
     projectSetImageModel,
+    projectSetTextModel,
+    projectSetVisionModels,
     projectSetKey,
     projectSetLettering,
+    projectSetShotForm,
+    projectSetBubbleNames,
     projectSetStoryboardNotes,
     projectTestKey,
     reportAgent,
@@ -325,6 +336,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     storyCoverage,
     storyDecomposeAll,
     storyDeleteLine,
+    storyDeleteLines,
     storyDeleteScene,
     storyDeleteShot,
     storyExport,
@@ -369,6 +381,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     viewOpen,
     viewPalette,
     viewResetLayout,
+    viewZoom,
     viewSaveLayout,
     windowClose,
     windowNew,

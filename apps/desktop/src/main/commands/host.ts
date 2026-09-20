@@ -57,6 +57,8 @@ export interface CommandHost {
    * agent, CDP and main itself get.
    */
   ui(effect: UiEffect, target?: WindowId): void;
+  /** Push a UI change to every renderer, for an effect each window answers for itself. */
+  uiAll(effect: UiEffect): void;
   /**
    * Open a different project: bootstrap it if it is not one yet, then rebuild everything that
    * was bound to the old root. `host.session` is stale the moment this resolves, which is why
@@ -85,6 +87,14 @@ export interface CommandHost {
   closeWindow(target?: WindowId): boolean;
   /** Quit the app, closing every window. Each still gets its unsaved-changes guard. */
   quitApp(): void;
+  /**
+   * Set every window's zoom factor and remember it for the windows opened later. Zoom is an
+   * install preference rather than a window's: two windows at two sizes of text is a mistake
+   * nobody makes on purpose.
+   */
+  setZoom(factor: number): void;
+  /** The zoom factor in force, `1` before any was set. */
+  zoom(): number;
   /** How many windows are open, so `window.close` can say what closing the last one does. */
   windowCount(): number;
   /**

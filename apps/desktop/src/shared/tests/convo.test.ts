@@ -1,5 +1,6 @@
 import {
   COMPACT_HINT_TOKENS,
+  DIFF_LINES,
   answered,
   answeredQuestion,
   asked,
@@ -65,6 +66,29 @@ describe('what an event does to the conversation', () => {
       ok    : false,
       output: 'no such file',
     });
+  });
+
+  test('a writing tool’s diff rides on the line, cut to DIFF_LINES with a count of the rest', () => {
+    const short = '@@ -1,1 +1,1 @@\n-old\n+new';
+    const withDiff = (diff: unknown): AgentEvent => ({
+      type  : 'tool',
+      tool  : 'edit_file',
+      args  : { path: 'wiki/a.md' },
+      result: { ok: true, output: 'Edited wiki/a.md', data: { diff } },
+    });
+    expect(received(emptyConvo(opening), withDiff(short)).feed[0]!.detail?.diff).toBe(short);
+
+    const long = Array.from({ length: DIFF_LINES + 7 }, (_, i) => `+line ${i}`).join('\n');
+    const cut = received(emptyConvo(opening), withDiff(long)).feed[0]!.detail!.diff!;
+    const lines = cut.split('\n');
+    expect(lines).toHaveLength(DIFF_LINES + 1);
+    expect(lines[DIFF_LINES]).toBe('… 7 more lines');
+
+    // No change, or a tool that reports none, leaves the field off rather than empty
+    expect(received(emptyConvo(opening), withDiff('')).feed[0]!.detail).not.toHaveProperty('diff');
+    expect(received(emptyConvo(opening), ranTool('read_file')).feed[0]!.detail).not.toHaveProperty(
+      'diff',
+    );
   });
 
   test('a tool called with nothing says nothing, rather than saying “undefined”', () => {

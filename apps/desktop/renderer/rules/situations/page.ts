@@ -146,7 +146,7 @@ export const SITUATIONS = situations<PageState>(
   },
   {
     name : 'runner-lettered',
-    why: 'The runner letters this project’s pages: each lettered line has an anchor on the page — line 1 a ghost at its panel’s centre, line 2 placed — and line 2’s bubble is held, so its tail handle is drawn too. Line 3 is in no panel and has no anchor.',
+    why: 'The runner letters this project’s pages: each lettered line has an anchor on the page — line 1 a ghost at its panel’s centre, line 2 placed — and line 2’s bubble is held, so its tail handle is drawn too, and its row carries the name select. Line 3 is in no panel and has no anchor.',
     state: {
       sceneId: 'arrival',
       shots  : [frame, lettered],
@@ -155,8 +155,10 @@ export const SITUATIONS = situations<PageState>(
       selected: null,
       characters,
       imageModel,
-      lettering: 'runner',
-      bubble   : 'arrival:L2',
+      lettering  : 'runner',
+      bubbleNames: true,
+      names      : { aiko: 'Aiko', ren: 'Ren', sato: 'Sato' },
+      bubble     : 'arrival:L2',
     },
   },
 );

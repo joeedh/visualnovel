@@ -2,8 +2,8 @@
 
 # Registered commands
 
-184 commands, in 24 namespaces. 108 are `mutating`;
-121 declare a precondition; 73 are undoable; 21 ask
+191 commands, in 24 namespaces. 113 are `mutating`;
+126 declare a precondition; 78 are undoable; 21 ask
 for confirmation.
 
 ✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
@@ -52,6 +52,7 @@ for confirmation.
 | `doc.create` ✍ ↺ ✓ | `kind` (`character`\|`location`\|`note`\|`skill`), `name`, `open` (default `true`) | Writes `characters`, `locations`, `wiki`, `.aiagent/skills`. Scaffold a sheet, a note or a skill in its conventional home, from the same templates the agent's create tools use. Refuses over an existing path. |
 | `doc.read` | `path` | The text of one workspace document, with the content hash it was read at. Bounded and text only. |
 | `doc.rename` ✍ ↺ ✓ | `path`, `name` | Writes `characters`, `locations`, `wiki`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`. Change the name a document is known by, **in place**. A sheet is renamed through its `name:` field, anything else through its title — front-matter `title:`, else the first heading — so the new name is read back from wherever the old one was. The file does not move: an id is derived from a name once, at creation, and afterwards it is what shots, cast lists and `[[goto:]]` markers point at. What the tree's double-click-to-rename dispatches. |
+| `doc.saveAll` | — | Save every unsaved wiki or skill draft, in every window, one `doc.write` each. Not itself a write: the drafts live in the renderer, which answers the effect this pushes. |
 | `doc.write` ✍ ↺ ✓ | `path`, `text` (digest), `seenHash` (default `''`), `auto` (default `false`) | Writes `characters`, `locations`, `wiki`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`. Overwrite a document. A file changed underneath the edit is refused by content. `scenes/**` is refused outright. |
 | `gate.approve` ✍ ✓ | `characterId`, `hash` | Writes `characters`, `wiki`, `vngen/work/characters`, `assets/manifest.json`, `vngen/build/manifest.json`. Flips `character.md`; writes the approved PNG + manifest. |
 | `gate.candidates` | `characterId` | Pending portrait candidates for one character. |
@@ -95,7 +96,7 @@ for confirmation.
 | `pipeline.draw` ✍ ⚠ ✓ | `slot` | Writes `assets/objects`, `assets/manifest.json`, `vngen/build`, `vngen/state/tasks.jsonl`, `vngen/state/graphs`. Draw one slot, requeuing it first if it has been drawn: the run is the slot’s task and its upstream needs alone. The Page editor’s Generate button and Shot Coverage’s draw are this command. |
 | `pipeline.run` ✍ ✓ | `mock` (default `true`) | Writes `assets/objects`, `assets/manifest.json`, `vngen/build`, `vngen/state/tasks.jsonl`, `vngen/state/graphs`. Plan and execute to the next gate. Deliberately **not** confirmed: every door to it is already a click on the words "run pipeline", and the `check` note carries the upper bound in image and review calls. |
 | `pipeline.status` | — | Task counts, gate-pending characters, gate-blocked state. |
-| `pipeline.stop` ✓ | — | — |
+| `pipeline.stop` ✓ | `abort` (default `false`) | — |
 | `plugin.install` ✍ ✓ | `source` | Writes `<user>/plugins`. |
 | `plugin.list` | — | — |
 | `plugin.prices` ✍ ✓ | `name` | Writes `<user>/prices.json`. |
@@ -105,11 +106,15 @@ for confirmation.
 | `project.keyStatus` | — | — |
 | `project.pagesStatus` | `branch` (default `'gh-pages'`) | Whether this project carries the GitHub page builder, and whether the copy it carries came from this build of the app. Read by the menu, which reads Install or Update accordingly. |
 | `project.setArtStyle` ✍ ⚠ ↺ ✓ | `style` (default `''`) | Writes `project.yaml`. The sentence every image prompt opens with. Not art notes on one rung: it reaches every portrait, sheet, plate and shot, so it re-keys **every** image task. Spliced into `project.yaml`, so comments and key order survive. |
+| `project.setBubbleNames` ✍ ↺ ✓ | `on` | Writes `project.yaml`. Whether a runner-drawn speech bubble names its speaker. Narration never does, and a bubble's own `name` overrides it. Read by the playable alone, so it re-keys nothing. Spliced into `project.yaml`, so comments and key order survive. |
 | `project.setBuiltinSkills` ✍ ↺ ✓ | `ids` | Writes `project.yaml`. Which shipped skills this project turns on, as the whole list. Off means absent from the agent, not deleted; on again is instant. Spliced into `project.yaml`, so comments and key order survive. |
 | `project.setImageModel` ✍ ⚠ ↺ ✓ | `model` | Writes `project.yaml`. The model every image task and every inherit node draws with. A `<vendor>/<model>` id goes through OpenRouter, anything else through Gemini, and the vendor needs a key first. Not in the task hash: what is drawn stays, and the next render uses the new model. Spliced into `project.yaml`, so comments and key order survive. |
 | `project.setKey` ✍ ✓ | `provider` (`gemini`\|`anthropic`\|`openrouter`), `key` (**secret**), `scope` (`project`\|`user`, default `'project'`) | Writes `keys`, `.gitignore`, `<user>/keys`. Store one model provider's API key in `keys/`, the file `resolveKeys` reads when the matching environment variable is unset — and it says so when one is set, because the variable wins. The value goes to that file and nowhere else: the history records `<secret>`, and `keys` is added to `.gitignore` **before** the write, because commit-on-save runs `git commit -A`. Deliberately **not undoable**: `keys/` is outside the class a snapshot covers, which is what keeps an undo from writing over or deleting the credential this command exists to store. |
 | `project.setLettering` ✍ ↺ ✓ | `lettering` (`model`\|`runner`) | Writes `project.yaml`. Who letters a page shot: the image model, or the runner over a wordless page. Applies to page shots alone, so the check prices the pages it re-keys and a plain frame is untouched. Spliced into `project.yaml`, so comments and key order survive. |
+| `project.setShotForm` ✍ ↺ ✓ | `form` (`frames`\|`pages`) | Writes `project.yaml`. Frames or pages for every new storyboard; the agent follows it unless the author says otherwise for one scene. Read at decomposition alone, so it re-keys nothing. Spliced into `project.yaml`, so comments and key order survive. |
 | `project.setStoryboardNotes` ✍ ↺ ✓ | `notes` (default `''`) | Writes `project.yaml`. Directives for the decomposer alone, beside `art_style`: how a scene is storyboarded rather than how a frame is drawn. In no image prompt, so it re-keys nothing; the next `story.decompose` reads it. Spliced into `project.yaml`, so comments and key order survive. |
+| `project.setTextModel` ✍ ↺ ✓ | `model` | Writes `project.yaml`. The model the pipeline's text calls use — decomposition, reviews, critiques, triage — not the agent's, which is per conversation. Refused when no resolved key can carry it. Re-keys nothing. Spliced into `project.yaml`, so comments and key order survive. |
+| `project.setVisionModels` ✍ ↺ ✓ | `models` | Writes `project.yaml`. The picture reviewers, as the whole list. Each id needs a key; an empty list is refused. Spliced into `project.yaml`, so comments and key order survive. |
 | `project.testKey` ✓ | `provider` (`gemini`\|`anthropic`\|`openrouter`) | — |
 | `prompt.addRef` ✍ ↺ ✓ | `hash`, `chunk`, `ref` | Writes `characters`, `locations`, `wiki`, `vngen/work/shots`. Attach a reference image to one clause — evidence for that clause, so muting it drops the reference too. `ref` is an asset hash (a prefix will do) or a **slot address**: `portrait:<character>`, `sheet:<character>/<outfit>/<angle>`, `plate:<location>/<variant>`, `shot:<scene>/<shot>`. A slot pins what fills it today and remembers where it came from; a bare hash pins itself and can never move. Refuses a reference that would close a cycle, naming the whole path. |
 | `prompt.check` | `hash` | Which clauses a hand-written or condensed prompt no longer appears to say. A word-overlap heuristic — "not found", never "dropped" — so it is a prompt to go and look. In chunks mode nothing can be missing. |
@@ -134,6 +139,7 @@ for confirmation.
 | `story.coverage` | `scene` | One scene's lines + persisted shots — the timeline's input. |
 | `story.decomposeAll` ✍ ⚠ ↺ ✓ | — | Writes `vngen/work/shots`. Storyboard every reachable scene that has none, so the graph is whole rather than one wave of it. One model call per scene. Additive only — a scene with a file is left alone and there is **no `force`**, because the file wins forever and re-decomposing would move shot ids, hence task identities, hence re-render art already paid for. A scene the model does not answer for is named and **not written**: an absent file is the only signal meaning "decompose this" (so a scene begun by hand with `story.newShot` already has its file, and is left alone like any other). `check` refuses mock or unresolved keys with `pipeline.run`'s own sentence, reports the count, and warns about scenes naming a character the project does not have yet. One undo point for the batch. |
 | `story.deleteLine` ✍ ↺ ✓ | `line` | Writes `scenes`, `vngen/work/shots`. A shot left covering nothing is **kept** — deleting paid-for art is the author's call. |
+| `story.deleteLines` ✍ ↺ ✓ | `lines` | Writes `scenes`, `vngen/work/shots`. The gutter marks, deleted together: one undo point rather than one per line. A shot left covering nothing is **kept**. |
 | `story.deleteScene` ✍ ↺ ✓ | `scene` | Writes `scenes`, `vngen/work/shots`. Refuses while anything still points at it, naming what. |
 | `story.deleteShot` ✍ ↺ ✓ | `scene`, `shot` | Writes `vngen/work/shots`. The covered lines become visible gaps — never handed to a neighbour — and a rendered frame is orphaned, not deleted. Removing the last shot deletes the storyboard file itself, so the scene will be decomposed again. |
 | `story.export` ✍ ✓ | — | Writes `vngen/build/story.play.json`. Write `vngen/build/story.play.json` (`vngen export`). |
@@ -179,6 +185,7 @@ for confirmation.
 | `view.palette` | `open` (default `true`) | Opens or closes the command palette. |
 | `view.resetLayout` ✍ ⚠ ↺ ✓ | `scope` (`shipped`\|`all`, default `'shipped'`) | Writes `.vnstudio/layouts`, `.vnstudio/session.json`. Puts the layouts the app ships with back the way they shipped and re-applies the one on screen. `all` also deletes the ones the author saved. |
 | `view.saveLayout` ✍ ↺ ✓ | `name`, `layout` (digest) | Writes `.vnstudio/layouts`, `.vnstudio/session.json`. Files the arrangement on screen in the project as `.vnstudio/layouts/<slug>.json`. Saving over one that exists is allowed and is one undo away. |
+| `view.zoom` | `move` (`in`\|`out`\|`reset`, default `'in'`) | Browser-style zoom of every window, remembered across launches. `in`, `out` or `reset`. |
 | `window.close` ✓ | — | Close the asking window. Its note says how many stay open, or that this is the last one and closing it quits. |
 | `window.new` | `editor` (``\|`branches`\|`script`\|`convo`\|`page`\|`timeline`\|`tasklist`\|`taskgraph`\|`gengraph`\|`inspector`\|`play`\|`skills`\|`wiki`\|`documents`\|`asset`\|`project`\|`systemprompt`\|`onboarding`\|`report`, default `''`), `subject` (default `''`) | Open another window onto the same project. A second *view*, not a second app: one process, one `WorkspaceSession`, one undo history. Both props are optional; naming an editor opens showing it. |
 | `window.quit` ✓ | — | — |

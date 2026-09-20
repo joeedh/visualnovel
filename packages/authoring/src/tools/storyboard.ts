@@ -2,7 +2,15 @@
 import { z } from 'zod';
 import { decomposeScene, realizeDecomposition } from '@vn/artgen';
 import { readShots, writeShots } from '@vn/store';
-import type { PanelBox, PanelBubble, Scene, Shot, ShotSubject } from '@vn/types';
+import {
+  SHOT_FORMS,
+  type PanelBox,
+  type PanelBubble,
+  type Scene,
+  type Shot,
+  type ShotForm,
+  type ShotSubject,
+} from '@vn/types';
 import { ok, fail, type Tool } from './core.js';
 
 /**
@@ -163,22 +171,35 @@ const setCoverageTool: Tool<z.infer<typeof coverageShape>> = {
   },
 };
 
-const proposeStoryboardTool: Tool<{ scene: string }> = {
+const proposeStoryboardTool: Tool<{ scene: string; form?: ShotForm }> = {
   name       : 'propose_storyboard',
   description:
     'Ask the decomposer for a storyboard proposal for one scene and read it back into the ' +
     'conversation — shots, coverage, and where the answer came from (the model, or the ' +
     'deterministic baseline with the reason no model answered). Writes nothing, but spends one ' +
-    'structured text call. Persisting is write_storyboard, restating the shots the author ' +
+    'structured text call. The shots take the form project.yaml’s shot_form names, single ' +
+    'frames or manga pages; pass form only when the author asked for the other one for this ' +
+    'scene. Persisting is write_storyboard, restating the shots the author ' +
     'approved — in this same conversation, because a reopened thread is read-only, so an ' +
     'unpersisted proposal dies with its conversation and a re-proposal is a new roll of the dice.',
   mutating   : false,
-  args       : z.object({ scene: z.string().min(1).describe('the scene to storyboard') }),
+  args: z.object({
+    scene: z.string().min(1).describe('the scene to storyboard'),
+    form: z
+      .enum(SHOT_FORMS)
+      .optional()
+      .describe(
+        'frames or pages for this scene alone, overriding project.yaml’s shot_form; leave it out ' +
+          'unless the author explicitly asked for the other form',
+      ),
+  }),
   async run(a, ctx) {
     if (!ctx.text) {
       return fail('no text model is wired into this session, so there is nothing to propose with.');
     }
-    const { model, style } = await ctx.workspace.load();
+    const workspace = await ctx.workspace.load();
+    const { model } = workspace;
+    const style = a.form ? { ...workspace.style, shotForm: a.form } : workspace.style;
     const scene = model.scenes.get(a.scene);
     if (!scene) return fail(`No scene "${a.scene}".`);
     const loaded = await readShots(

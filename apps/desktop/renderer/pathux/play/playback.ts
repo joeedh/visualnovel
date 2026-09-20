@@ -52,10 +52,18 @@ export interface Frame {
    * box, so a half-lettered page still reads.
    */
   bubble?: Pick<PlayableBubble, 'anchor' | 'tail'>;
+  /**
+   * Whether the bubble shows the speaker's name: the bubble's own say, else the playable's
+   * `bubbleNames`, and never for narration. Set only with {@link bubble}.
+   */
+  named?: true;
 }
 
-/** Fold a scene's beats into displayable frames. */
-export function framesOf(scene: PlayableScene | undefined): Frame[] {
+/**
+ * Fold a scene's beats into displayable frames. `bubbleNames` is the playable's setting, which
+ * a bubble's own `name` overrides.
+ */
+export function framesOf(scene: PlayableScene | undefined, bubbleNames = false): Frame[] {
   if (!scene) return [];
 
   const frames: Frame[] = [];
@@ -69,10 +77,13 @@ export function framesOf(scene: PlayableScene | undefined): Frame[] {
   const bubbleOf = (
     panel: PlayablePanel | undefined,
     line: string | undefined,
-  ): Frame['bubble'] => {
+  ): { bubble: Frame['bubble']; named: boolean } => {
     const found = panel?.bubbles?.find((b) => b.line === line);
-    if (!found) return undefined;
-    return { anchor: found.anchor, ...(found.tail ? { tail: found.tail } : {}) };
+    if (!found) return { bubble: undefined, named: false };
+    return {
+      bubble: { anchor: found.anchor, ...(found.tail ? { tail: found.tail } : {}) },
+      named : found.name ?? bubbleNames,
+    };
   };
 
   for (const beat of scene.beats as Beat[]) {
@@ -83,7 +94,7 @@ export function framesOf(scene: PlayableScene | undefined): Frame[] {
       continue;
     }
     const panel = panelOf(beat.line);
-    const bubble = bubbleOf(panel, beat.line);
+    const { bubble, named } = bubbleOf(panel, beat.line);
     const lit = {
       ...(panels ? { page: true as const } : {}),
       ...(panel ? { panel: panel.shape } : {}),
@@ -91,13 +102,56 @@ export function framesOf(scene: PlayableScene | undefined): Frame[] {
     };
     if (beat.type === 'say') {
       lastWho = beat.who;
-      frames.push({ bg, shotId, portraitWho: lastWho, speaker: beat.who, text: beat.text, ...lit });
+      frames.push({
+        bg,
+        shotId,
+        portraitWho: lastWho,
+        speaker    : beat.who,
+        text       : beat.text,
+        ...lit,
+        ...(bubble && named ? { named: true as const } : {}),
+      });
     } else {
       frames.push({ bg, shotId, portraitWho: lastWho, text: beat.text, ...lit });
     }
   }
 
   return frames;
+}
+
+/** One bubble to draw on the page: its placement, its text, and whether it belongs to the current line. */
+export interface SpokenBubble {
+  bubble: NonNullable<Frame['bubble']>;
+  text: string;
+  current: boolean;
+  /** The speaker's id, when the bubble is to carry their name. */
+  who?: string;
+}
+
+/**
+ * Every bubble on the page the frame at `index` shows, in reading order, for showing a page's
+ * dialogue all at once. The page is the run of frames around `index` on the same background;
+ * a frame with no bubble contributes nothing. Empty when the frame is not on a page, or has no
+ * bubble of its own, since then its line is read in the dialogue box.
+ */
+export function pageBubbles(frames: readonly Frame[], index: number): SpokenBubble[] {
+  const frame = frames[index];
+  if (!frame?.page || !frame.bubble || !frame.bg) return [];
+  const hash = frame.bg.hash;
+  let first = index;
+  while (first > 0 && frames[first - 1]?.bg?.hash === hash) first -= 1;
+  const spoken: SpokenBubble[] = [];
+  for (let at = first; at < frames.length && frames[at]?.bg?.hash === hash; at += 1) {
+    const each = frames[at] as Frame;
+    if (!each.bubble) continue;
+    spoken.push({
+      bubble : each.bubble,
+      text   : each.text,
+      current: at === index,
+      ...(each.named && each.speaker ? { who: each.speaker } : {}),
+    });
+  }
+  return spoken;
 }
 
 /**

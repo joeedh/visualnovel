@@ -11,7 +11,7 @@ import { bubblesOf, letterLine, removeBubble, setBubbles, setPanels } from '@vn/
 import type { Lettering, PagePanel, PanelBox, PanelBubble } from '@vn/types';
 import type { CoverageLine, CoverageShot } from '../../src/shared/ipc.js';
 import { refuse, type Offer } from './anchors.js';
-import { startDrag, view } from './effects.js';
+import { openMenu, startDrag, view } from './effects.js';
 import { addCastAction, removeCastAction, type ShotCast } from './timeline/cast.js';
 
 /** What the Page editor reads when it draws. */
@@ -31,8 +31,42 @@ export interface PageState {
   imageModel?: string;
   /** Who letters a page. The bubble layer is drawn only under `runner`. */
   lettering?: Lettering;
+  /** The project's `bubble_names`, which a bubble's own `name` overrides. */
+  bubbleNames?: boolean;
+  /** Display names by character id, for the name a bubble shows. */
+  names?: Readonly<Record<string, string>>;
   /** The line whose bubble anchor has focus, whose tail handle is drawn, or `null`. */
   bubble?: string | null;
+}
+
+/** What a bubble's name select offers: the project's say, or its own. */
+export const NAME_CHOICES = [
+  { value: '', label: 'name: as the project says' },
+  { value: 'shown', label: 'name: shown' },
+  { value: 'hidden', label: 'name: hidden' },
+] as const;
+export type NameChoice = (typeof NAME_CHOICES)[number]['value'];
+
+/** The select's value for a bubble's `name`. */
+export const nameChoiceOf = (bubble: PanelBubble): NameChoice =>
+  bubble.name === undefined ? '' : bubble.name ? 'shown' : 'hidden';
+
+/** A bubble's `name` for the select's value. */
+export const nameOfChoice = (choice: NameChoice): boolean | undefined =>
+  choice === '' ? undefined : choice === 'shown';
+
+/**
+ * The name a placed bubble shows above its line, or `undefined` for none: the bubble's own say,
+ * else the project's, and never for narration.
+ */
+export function bubbleNameOf(
+  state: PageState,
+  line: CoverageLine,
+  bubble: PanelBubble,
+): string | undefined {
+  if (!line.speaker) return undefined;
+  const shown = bubble.name ?? state.bubbleNames ?? false;
+  return shown ? (state.names?.[line.speaker] ?? line.speaker) : undefined;
 }
 
 /** One entry of the layout row: a name and the outlines it lays the page out in. */
@@ -510,6 +544,35 @@ export function tailAction(state: PageState, lineId: string): Offer {
   };
 }
 
+/**
+ * A placed dialogue bubble's name select, in its line's row: whether the runner writes the
+ * speaker's name above the line, in place of the project's `bubble_names`. The select supplies
+ * the whole list with that one bubble's `name` changed.
+ */
+export function bubbleNameAction(state: PageState, line: CoverageLine): Offer {
+  const shot = shotOf(state);
+  const bubble = bubblesOf(shot?.panels ?? []).find((b) => b.lineId === line.id);
+  const control = {
+    id     : 'story.setBubbles',
+    on     : `bubble/${line.id}/name`,
+    label  : bubble ? NAME_CHOICES.find((c) => c.value === nameChoiceOf(bubble))!.label : '',
+    tooltip:
+      'Whether this bubble shows who is speaking above the line, in place of the project’s ' +
+      'setting. Nothing is drawn again.',
+  };
+  if (!shot) return { ...refuse('No shot is on screen.'), ...control };
+  if (!line.speaker) {
+    return { ...refuse('Narration is read in a caption, which carries no name.'), ...control };
+  }
+  if (!bubble) return { ...refuse('Place this line’s bubble first.'), ...control };
+  return {
+    ok   : true,
+    props: { scene: state.sceneId, shot: state.shotId },
+    ...control,
+    supplies: ['bubbles'],
+  };
+}
+
 /** The list Delete on the held anchor writes: the page without that bubble, or `null` off one. */
 export function deleteBubble(state: PageState): PanelBubble[] | null {
   const shot = shotOf(state);
@@ -582,6 +645,21 @@ export function acceptAction(state: PageState): Offer {
   };
 }
 
+/**
+ * The bar's `⋯`, which drops down the menu Shot Coverage's right-click gives this shot: its render
+ * in the Asset editor, then deleting the shot. Refused while no shot is on screen, since the menu
+ * is built from the shown one.
+ */
+export function menuAction(state: PageState): Offer {
+  const control = {
+    ...openMenu('shot'),
+    label  : '⋯',
+    tooltip: 'Open this page’s render in the Asset editor, or delete the shot',
+  };
+  if (!shotOf(state)) return { ...refuse('No shot is on screen.'), ...control };
+  return { ok: true, ...control };
+}
+
 /** The shot's image-model picker: `art.setModel` on the shot's own rung, the select supplying the id. */
 export function shotModelAction(state: PageState): Offer {
   const shot = shotOf(state);
@@ -647,8 +725,11 @@ export const boxesOf = (shot: CoverageShot | undefined): readonly PanelBox[] =>
  */
 export function controls(state: PageState): readonly Offer[] {
   const shot = shotOf(state);
-  if (!shot) return [];
-  const list: Offer[] = LAYOUTS.map((layout) => layoutAction(state, layout));
+  if (!shot) return [menuAction(state)];
+  const list: Offer[] = [
+    menuAction(state),
+    ...LAYOUTS.map((layout) => layoutAction(state, layout)),
+  ];
   list.push(generateAction(state), shotModelAction(state));
   if (shot.failure?.status === 'needs_human' && shot.image) list.push(acceptAction(state));
   list.push(...shotCastActions(state));
@@ -665,6 +746,11 @@ export function controls(state: PageState): readonly Offer[] {
     });
     if (state.bubble && bubbles.some((b) => b.lineId === state.bubble)) {
       list.push(tailAction(state, state.bubble));
+    }
+    for (const line of pageLines(state)) {
+      if (line.speaker && bubbles.some((b) => b.lineId === line.id)) {
+        list.push(bubbleNameAction(state, line));
+      }
     }
   }
   for (const line of pageLines(state)) list.push(lineAction(state, line));

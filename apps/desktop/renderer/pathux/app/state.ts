@@ -165,6 +165,10 @@ export class ShellState {
   /** How that work is going. Both zero when nothing is running, and while a turn has no count. */
   busyRan = 0;
   busyPending = 0;
+  /** What each task in flight is doing, by hash, as its runner last said. Empty when idle. */
+  busyActivity: Record<string, string> = {};
+  /** Whether Stop was pressed and the run has not yet reached the boundary it stops at. */
+  busyStopping = false;
 
   /**
    * A model call that failed and is being tried again: which attempt of how many the author

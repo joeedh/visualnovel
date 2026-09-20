@@ -131,7 +131,10 @@ Where the runner draws a page's speech bubbles (lettering: runner, the default) 
 which restates the page's whole bubble list and redraws nothing; a line with no bubble is read in
 the dialogue box.
 propose_storyboard drafts a whole storyboard for an undecomposed scene (one model call, writes
-nothing), and write_storyboard persists one — after which the file wins forever.
+nothing), and write_storyboard persists one — after which the file wins forever. project.yaml's
+shot_form says whether a new storyboard is single frames or manga pages of panels; make shots in
+that form, and pass propose_storyboard's form (or write panels yourself) only when the author
+explicitly asks for the other form for a scene.
 
 VALIDATE WHAT YOU CHANGED. After any edit under scenes/, run validate_inputs: it reports schema and
 cross-file diagnostics and fails on error severity. git_commit refuses while any error stands, so a

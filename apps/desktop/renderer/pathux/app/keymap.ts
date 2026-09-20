@@ -8,7 +8,7 @@
  * the shell claims it.
  */
 import { HotKey, KeyMap } from 'pathux';
-import { closeWindow, exec, move, quit, toggleMode } from './bridge.js';
+import { closeWindow, exec, move, quit, report, toggleMode } from './bridge.js';
 import type { ShellApp } from './context.js';
 import { openPalette } from '../chrome/palette.js';
 import { bindings, type ShortcutScope } from '../../rules/shortcuts.js';
@@ -38,6 +38,10 @@ export function installKeymap(app: ShellApp): void {
       Quit             : () => void quit(),
       'New window'     : () => void exec('window.new'),
       'Close window'   : () => void closeWindow(),
+      'Save all'       : () => void exec('doc.saveAll'),
+      'Zoom in'        : () => void exec('view.zoom', { move: 'in' }).then(report),
+      'Zoom out'       : () => void exec('view.zoom', { move: 'out' }).then(report),
+      'Reset zoom'     : () => void exec('view.zoom', { move: 'reset' }).then(report),
     }),
   );
   watchKeymap('global', () => screen.keymap);

@@ -16,6 +16,7 @@ import {
 } from 'pathux-richtext-forms';
 import type { DocumentSession, JsonValue, MdDoc, WidgetView } from 'pathux-richtext-headless';
 import type { FieldMeta } from 'pathux-richtext-schema';
+import type { ContextLike } from 'pathux';
 import type { EntityTag } from '@vn/types';
 import type { EditorId } from '../../../src/shared/editors.js';
 import type { EntityLinks } from '../../../src/shared/ipc.js';
@@ -33,6 +34,8 @@ export type SheetControls = Partial<Record<EntityTag, Readonly<Record<string, Fi
 export interface SheetHost {
   /** The open document's path, which every offer a control records names. */
   path(): string;
+  /** The pane's context, which a path.ux widget drawn among the raw rows is built with. */
+  ctx(): ContextLike;
   /**
    * A fresh anchor pass for one control's part of the form. A control that rebuilds its rows
    * opens one, because a pass refuses a node whose offer changes inside it, and the previous pass

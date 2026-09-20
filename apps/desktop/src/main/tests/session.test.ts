@@ -1283,8 +1283,28 @@ describe('WorkspaceSession — project settings', () => {
     const priced = {
       endpoints: [{ pricing: [{ billable: 'output_image', unit: 'image', cost_usd: 0.05 }] }],
     };
-    const fetchImpl = ((url: string) =>
-      Promise.resolve(url.endsWith('/endpoints') ? answer(priced) : answer(listing))) as never;
+    const textListing = {
+      data: [
+        {
+          id          : 'anthropic/claude-opus-4.8',
+          name        : 'Claude Opus 4.8',
+          architecture: { input_modalities: ['text'], output_modalities: ['text'] },
+        },
+      ],
+    };
+    // Routed by URL: the vendor listings answer empty whatever keys this machine has set, so the
+    // count below is the OpenRouter text listing's alone
+    const fetchImpl = ((url: string) => {
+      if (url.endsWith('/endpoints')) return Promise.resolve(answer(priced));
+      if (url.startsWith('https://api.anthropic.com/'))
+        return Promise.resolve(answer({ data: [] }));
+      if (url.startsWith('https://generativelanguage.googleapis.com/')) {
+        return Promise.resolve(answer({ models: [] }));
+      }
+      if (url === 'https://openrouter.ai/api/v1/models')
+        return Promise.resolve(answer(textListing));
+      return Promise.resolve(answer(listing));
+    }) as never;
 
     const before = (await session.projectView()).imageModels;
     expect(before.openrouter).toEqual([]);
@@ -1292,9 +1312,9 @@ describe('WorkspaceSession — project settings', () => {
     expect(before.shipped).toContain('gemini-2.5-flash-image');
 
     const done = await session.refreshModelCatalog(fetchImpl);
-    expect(done).toMatchObject({ ok: true, listed: 1 });
+    expect(done).toMatchObject({ ok: true, listed: 2 });
     expect((done as { message: string }).message).toMatch(
-      /^Listed 1 OpenRouter image model\(s\) as of \d{4}-\d{2}-\d{2}, 1 with a per-picture price\.$/,
+      /^Listed 1 OpenRouter image model\(s\) as of \d{4}-\d{2}-\d{2}, 1 with a per-picture price\. Listed 1 text model\(s\)/,
     );
     const after = (await session.projectView()).imageModels;
     expect(after.openrouter).toEqual([
@@ -1308,6 +1328,9 @@ describe('WorkspaceSession — project settings', () => {
     ]);
     expect(after.asOf).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(after.default).toBe('openai/gpt-image-2');
+    expect(after.text).toEqual([
+      { id: 'anthropic/claude-opus-4.8', name: 'Claude Opus 4.8', vendor: 'openrouter' },
+    ]);
 
     const failing = (() => Promise.resolve(answer('busy', 503))) as never;
     expect(await session.refreshModelCatalog(failing)).toEqual({

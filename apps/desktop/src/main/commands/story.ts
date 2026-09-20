@@ -22,6 +22,7 @@ import {
 } from '@vn/commands';
 import {
   deleteLine,
+  deleteLines,
   deleteScene,
   insertLine,
   letteredPagesNote,
@@ -329,6 +330,28 @@ export const storyDeleteLine = define({
   },
   run({ line }, ctx) {
     return edit(ctx, (state) => deleteLine(state, { line }));
+  },
+});
+
+export const storyDeleteLines = define({
+  id         : 'story.deleteLines',
+  title      : 'Delete lines',
+  description:
+    'Remove a run of lines in one act, all of them or none: the Script editor’s Delete over the ' +
+    'lines marked in its gutter. Each id is retired and never reused, so a shot that covered ' +
+    'one covers one line fewer — possibly none, which the timeline shows rather than treating ' +
+    'as an error. One undo point for the run.',
+  notes:
+    'The gutter marks, deleted together: one undo point rather than one per line. A shot left covering nothing is **kept**.',
+  mutating   : true,
+  affects    : ['scenes', 'vngen/work/shots'],
+  undoable   : true,
+  props: { lines: prop.stringList('the line ids to remove, in any order; all of them or none') },
+  check({ lines }, ctx) {
+    return previewEdit(ctx, (state) => deleteLines(state, { lines }));
+  },
+  run({ lines }, ctx) {
+    return edit(ctx, (state) => deleteLines(state, { lines }));
   },
 });
 

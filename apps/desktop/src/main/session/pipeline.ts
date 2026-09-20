@@ -21,6 +21,7 @@ export class PipelinePart {
     return buildPlayable(project.model, project.store, {
       shots,
       portraitOverlay: project.config.portrait_overlay,
+      bubbleNames    : project.config.bubble_names,
       lettering      : project.config.lettering,
     });
   }
@@ -32,6 +33,7 @@ export class PipelinePart {
     const playable = buildPlayable(project.model, project.store, {
       shots,
       portraitOverlay: project.config.portrait_overlay,
+      bubbleNames    : project.config.bubble_names,
       lettering      : project.config.lettering,
     });
     await writeFileAtomic(project.paths.storyPlay, JSON.stringify(playable, null, 2) + '\n');

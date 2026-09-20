@@ -16,6 +16,7 @@ import {
 } from './selection.js';
 import type { EditorId } from '../../src/shared/editors.js';
 import type { DocNode } from '../../src/shared/ipc.js';
+import type { MenuEntry } from '../pathux/chrome/contextmenu.js';
 
 /** What the pane knows about a drawn row that the node does not carry. */
 export interface RowState {
@@ -43,6 +44,49 @@ export interface DocumentsState {
 
 /** The two groupings the tree can show. */
 export type DocMode = 'files' | 'documents';
+
+/**
+ * How the Story branch orders its scenes: as stored, or topologically from the entry scene, by
+ * `DocTree.storyOrder`.
+ */
+export type SceneOrder = 'stored' | 'story';
+
+/**
+ * The Story branch's right-click entry that switches {@link SceneOrder}. Labelled with the order
+ * it would switch to, since the rows above it already show the one it is in.
+ */
+export function orderEntry(order: SceneOrder): MenuEntry {
+  return {
+    ...view('mode'),
+    on     : 'order',
+    label  : order === 'story' ? 'Sort as stored' : 'Sort in topological order',
+    tooltip:
+      order === 'story'
+        ? 'List the scenes in the order their files are stored, which is how the tree starts out.'
+        : 'List each scene after every scene that leads to it, from the start scene; scenes ' +
+          'nothing reaches come last.',
+  };
+}
+
+/**
+ * The tree with the Story branch's scenes in the given order. `storyOrder` is every scene id as
+ * `DocTree.storyOrder` lists them; a scene the list does not name keeps its place at the end.
+ */
+export function storyInOrder(
+  roots: readonly DocNode[],
+  order: SceneOrder,
+  storyOrder: readonly string[],
+): readonly DocNode[] {
+  if (order === 'stored') return roots;
+  const rank = new Map(storyOrder.map((id, at) => [`scene:${id}`, at]));
+  return roots.map((root) => {
+    if (root.id !== 'branch:story' || !root.children) return root;
+    const children = [...root.children].sort(
+      (a, b) => (rank.get(a.id) ?? storyOrder.length) - (rank.get(b.id) ?? storyOrder.length),
+    );
+    return { ...root, children };
+  });
+}
 
 /** What the panel draws: the sheet, the art, and the scenes and shots the subject appears in. */
 export interface BacklinkPanel {

@@ -19,6 +19,7 @@ import {
 import { listLayouts, readLayout, resetLayouts, writeLayout } from '../workspace/layouts.js';
 import type { CommandHost } from './host.js';
 import { templateKey } from '../../shared/sessionkeys.js';
+import { ZOOM_MOVES, zoomAfter, zoomLabel } from '../../shared/zoom.js';
 
 const define = defineFor<CommandHost>();
 
@@ -103,6 +104,34 @@ export const viewFocus = define({
   run({ editor, subject }, ctx) {
     ctx.host.ui({ type: 'view', action: 'focus', editor, subject }, ctx.origin);
     return Promise.resolve({ message: `Focused ${editorTitle(editor)}${onSubject(subject)}.` });
+  },
+});
+
+export const viewZoom = define({
+  id         : 'view.zoom',
+  title      : 'Zoom the window',
+  description:
+    'Make everything in the window bigger or smaller, the way a browser does on Ctrl+plus and ' +
+    'Ctrl+minus: text, widgets and panes scale together, and the mesh relays out for the new ' +
+    'size. `in` and `out` step through the same table a browser uses, from 50% to 300%, and ' +
+    '`reset` goes back to 100%. Every window follows, and the factor is remembered for the next ' +
+    'launch.',
+  notes: 'Browser-style zoom of every window, remembered across launches. `in`, `out` or `reset`.',
+  mutating   : false,
+  props: {
+    move: prop.oneOf(ZOOM_MOVES, 'which way to zoom', { default: 'in' }),
+  },
+  run({ move }, ctx) {
+    const before = ctx.host.zoom();
+    const after = zoomAfter(before, move);
+    if (after === before) {
+      return Promise.resolve({
+        message: `Already at ${zoomLabel(after)}${move === 'reset' ? '' : `, the ${move === 'in' ? 'largest' : 'smallest'} zoom`}.`,
+        data   : { zoom: after },
+      });
+    }
+    ctx.host.setZoom(after);
+    return Promise.resolve({ message: `Zoomed to ${zoomLabel(after)}.`, data: { zoom: after } });
   },
 });
 

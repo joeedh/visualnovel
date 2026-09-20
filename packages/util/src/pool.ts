@@ -33,6 +33,9 @@ export async function pool<T, R>(
  * is used in place of the computed backoff, because a provider that names a delay is reporting
  * when its own limit resets: a shorter wait gets another 429 and a longer one wastes the
  * difference.
+ *
+ * `onRetry` hears about each wait before it starts, with the attempt that failed and how long the
+ * next one is held off, so a surface can say what a call is waiting on.
  */
 export async function retry<T>(
   fn: (attempt: number) => Promise<T>,
@@ -41,6 +44,7 @@ export async function retry<T>(
     baseMs?: number;
     shouldRetry?: (err: unknown) => boolean;
     delayFor?: (err: unknown, attempt: number) => number | undefined;
+    onRetry?: (err: unknown, attempt: number, waitMs: number) => void;
   } = {},
 ): Promise<T> {
   const attempts = opts.attempts ?? 3;
@@ -54,6 +58,7 @@ export async function retry<T>(
       if (attempt >= attempts || !(opts.shouldRetry?.(err) ?? true)) break;
       const asked = opts.delayFor?.(err, attempt);
       const wait = asked === undefined ? baseMs * 2 ** (attempt - 1) : asked;
+      opts.onRetry?.(err, attempt, wait);
       await new Promise((resolve) => setTimeout(resolve, wait));
     }
   }

@@ -423,8 +423,8 @@ export class StoryPart {
     ]);
     return {
       sceneId,
-      location  : scene.location,
-      heading   : headingOf(scene),
+      location   : scene.location,
+      heading    : headingOf(scene),
       lines: scene.lines.map((l) => ({
         id  : l.id,
         kind: l.kind,
@@ -470,11 +470,13 @@ export class StoryPart {
       }),
       // Only the ones with a wardrobe, for the reason `cast` is filtered: a shot may only be
       // given a character the subject rule would accept.
-      characters: [...wardrobes.keys()],
-      variants  : (project.model.locations.get(scene.location)?.variants ?? []).map((v) => v.id),
-      decomposed: loaded !== null,
-      lettering : project.config.lettering,
-      imageModel: project.config.models.image,
+      characters : [...wardrobes.keys()],
+      variants   : (project.model.locations.get(scene.location)?.variants ?? []).map((v) => v.id),
+      decomposed : loaded !== null,
+      lettering  : project.config.lettering,
+      bubbleNames: project.config.bubble_names,
+      names: Object.fromEntries([...project.model.characters.values()].map((c) => [c.id, c.name])),
+      imageModel : project.config.models.image,
       ...(loaded?.nextShot !== undefined ? { nextShot: loaded.nextShot } : {}),
     };
   }

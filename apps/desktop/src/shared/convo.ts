@@ -30,6 +30,28 @@ export interface ToolDetail {
   args?: string;
   ok?: boolean;
   output?: string;
+  /**
+   * The change a writing tool made, as a unified diff, already cut to {@link DIFF_LINES} lines.
+   * Drawn under the transcript line; present only for a tool that reports one (`edit_file`,
+   * `write_file`) and only when it changed something.
+   */
+  diff?: string;
+}
+
+/** The most lines of a tool's diff the transcript keeps. The rest is summarised in one line. */
+export const DIFF_LINES = 100;
+
+/** The diff cut to {@link DIFF_LINES}, with a last line saying how much was cut. */
+export function clampDiff(diff: string): string {
+  const lines = diff.split('\n');
+  if (lines.length <= DIFF_LINES) return diff;
+  return `${lines.slice(0, DIFF_LINES).join('\n')}\n… ${lines.length - DIFF_LINES} more lines`;
+}
+
+/** The diff a tool result carries, when it carries one worth showing. */
+function diffOf(data: unknown): string | undefined {
+  const diff = (data as { diff?: unknown } | undefined)?.diff;
+  return typeof diff === 'string' && diff !== '' ? clampDiff(diff) : undefined;
 }
 
 /**
@@ -464,12 +486,15 @@ export function answered(convo: Convo, final: string | null): Convo {
  */
 export function received(convo: Convo, event: AgentEvent): Convo {
   switch (event.type) {
-    case 'tool':
+    case 'tool': {
+      const diff = diffOf(event.result.data);
       return push(convo, 'tool', toolSummary(event.tool, event.args), {
         args  : stringifyArgs(event.args),
         ok    : event.result.ok,
         output: event.result.output,
+        ...(diff === undefined ? {} : { diff }),
       });
+    }
     case 'blocked':
       return push(
         convo,

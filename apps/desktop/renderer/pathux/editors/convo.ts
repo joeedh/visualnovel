@@ -1,7 +1,7 @@
 import type { Button, Container, DropBox, Label, MenuTemplate } from 'pathux';
 import { showContextMenu } from '../chrome/showmenu.js';
 import type { VnContext } from '../app/context.js';
-import { BUDGET_CHOICES, TEXT_MODELS, budgetLabel, effortChoicesFor, effortLabel } from '@vn/types';
+import { BUDGET_CHOICES, budgetLabel, effortChoicesFor, effortLabel } from '@vn/types';
 import {
   allow,
   answer,
@@ -39,6 +39,7 @@ import { openPalette } from '../chrome/palette.js';
 import { tokensDetail, uncachedTokens, type ThreadHeader } from '../../../src/shared/convo.js';
 import { redrawing, type AnchorPass } from '../tour/anchors.js';
 import { modeAction, modelAction } from '../../rules/headerbar.js';
+import { textModelMenu } from '../widgets/modelmenu.js';
 import {
   decideAction,
   allowAction,
@@ -222,19 +223,19 @@ export class ConvoEditor extends VnEditor {
       (action) => void setMode(String(action.props['mode'] ?? '')),
     );
 
+    const model = modelAction(ui.model);
+    this.anchors.record(
+      textModelMenu(
+        top,
+        model.label,
+        () => this.ui.model,
+        (id) => void setModel(id),
+      ),
+      model,
+    );
+
     // Rows carry their own tooltip, so the last slot has to be an explicit id: `createMenu` reads
     // `item[5]` for any row longer than four and would otherwise file the callback under undefined.
-    const models: MenuTemplate = TEXT_MODELS.map((id) => [
-      id,
-      () => void setModel(id),
-      undefined,
-      undefined,
-      `Answer with ${id} from the next turn on.`,
-      id,
-    ]) as MenuTemplate;
-    const model = modelAction(ui.model);
-    this.anchors.record(top.menu(model.label, models), model);
-
     // Offers only the levels this model takes: `xhigh` is not a Sonnet 4.6 level, and Fable
     // thinks unconditionally, so it is never offered `no thinking`
     const offered = effortChoicesFor(ui.model);

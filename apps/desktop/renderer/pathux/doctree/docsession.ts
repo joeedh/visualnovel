@@ -54,9 +54,19 @@ export function findSession(path: string): DocSession | undefined {
 
 /** How many documents have unsaved edits in a session. Read by the quit guard and by tests. */
 export function dirtySessionCount(): number {
-  let count = 0;
-  for (const entry of sessions.values()) if (entry.dirty) count++;
-  return count;
+  return dirtySessionPaths().length;
+}
+
+/** The paths of the documents with unsaved edits in a session. */
+export function dirtySessionPaths(): string[] {
+  const paths: string[] = [];
+  for (const [path, entry] of sessions) if (entry.dirty) paths.push(path);
+  return paths;
+}
+
+/** Every entry with unsaved edits, for a save of all of them at once. */
+export function dirtySessions(): DocSession[] {
+  return [...sessions.values()].filter((entry) => entry.dirty);
 }
 
 /**

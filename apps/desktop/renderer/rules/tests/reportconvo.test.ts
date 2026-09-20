@@ -96,7 +96,14 @@ describe('rebuilding from what main holds', () => {
       ...emptyReport(),
       note   : 'The model API refused this turn.',
       threads: [{ id: 't1', title: 'a bad turn', startedAt: '2026-08-21T10:00:00.000Z' }],
-      setup  : { thread: 't1', model: 'opus', effort: 'high', source: true, detail: true },
+      setup: {
+        thread: 't1',
+        model : 'opus',
+        effort: 'high',
+        source: true,
+        detail: true,
+        note  : 'I asked for a jacket',
+      },
     };
     const next = fromState(base, state([], { thread: { id: 't1', title: 'a bad turn' } }));
     expect(next.note).toBe(base.note);
@@ -216,24 +223,32 @@ describe('startAction', () => {
   const REFUSE: CommandCheck = { state: 'refuse', message: 'No key resolves for that model.' };
   const ready = (over: Partial<ReportConvo> = {}): ReportConvo => ({
     ...emptyReport(),
-    setup: { thread: 't1', model: 'claude-opus-5', effort: 'low', source: false, detail: true },
+    setup: {
+      thread: 't1',
+      model : 'claude-opus-5',
+      effort: 'low',
+      source: false,
+      detail: true,
+      note  : 'I asked for a jacket',
+    },
     ...over,
   });
 
   it('starts the read on the setup as it stands, before any verdict is in', () => {
     expect(startAction(ready(), false)).toEqual({
-      ok     : true,
-      id     : 'report.open',
+      ok      : true,
+      id      : 'report.open',
       props: {
         thread: 't1',
         model : 'claude-opus-5',
         effort: 'low',
         source: false,
         detail: true,
-        note  : '',
+        note  : 'I asked for a jacket',
       },
-      label  : 'Start →',
-      tooltip: 'Have the debug agent read this conversation and say what went wrong.',
+      supplies: ['note'],
+      label   : 'Start →',
+      tooltip : 'Have the debug agent read this conversation and say what went wrong.',
     });
   });
 

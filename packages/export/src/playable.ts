@@ -54,6 +54,7 @@ function panelsOf(shot: Shot, bubbles: boolean): PlayablePanel[] | undefined {
             line  : b.lineId,
             anchor: b.anchor,
             ...(b.tail ? { tail: b.tail } : {}),
+            ...(b.name === undefined ? {} : { name: b.name }),
           })),
         }
       : {}),
@@ -193,6 +194,8 @@ export interface PlayableOptions {
   shots?: ReadonlyMap<string, readonly Shot[]>;
   /** `project.yaml`'s `portrait_overlay`; see {@link Playable.portraitOverlay}. */
   portraitOverlay?: boolean;
+  /** `project.yaml`'s `bubble_names`; see {@link Playable.bubbleNames}. */
+  bubbleNames?: boolean;
   /**
    * `project.yaml`'s `lettering`. Bubbles are exported only under `runner`; left out, none are,
    * which is what every playable carried before the field existed.
@@ -209,7 +212,7 @@ export function buildPlayable(
   store: AssetStore,
   opts: PlayableOptions = {},
 ): Playable {
-  const { shots, portraitOverlay = false, lettering } = opts;
+  const { shots, portraitOverlay = false, bubbleNames = false, lettering } = opts;
   const bubbles = lettering === 'runner';
   const assets = new AssetIndex(store.manifest());
 
@@ -235,6 +238,7 @@ export function buildPlayable(
     // Written even when false, so an author reading story.play.json sees the setting present
     // and off. An omitted field would read as "not generated yet", the way a missing ref does.
     portraitOverlay,
+    bubbleNames,
     characters,
     scenes,
   };

@@ -31,11 +31,13 @@ const coverage = (cast: CoverageCast[], shots: CoverageShot[]): SceneCoverage =>
   lines   : [],
   shots,
   cast,
-  characters: [],
-  variants  : ['day'],
-  decomposed: shots.length > 0,
-  lettering : 'model',
-  imageModel: 'mock-image',
+  characters : [],
+  variants   : ['day'],
+  decomposed : shots.length > 0,
+  lettering  : 'model',
+  bubbleNames: false,
+  names      : {},
+  imageModel : 'mock-image',
 });
 
 describe('outfitRows', () => {

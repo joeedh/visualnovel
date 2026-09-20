@@ -119,6 +119,7 @@ import type {
   AssetKind,
   EffortChoice,
   Lettering,
+  ShotForm,
   LocationVariant,
   Outfit,
   PagePanel,
@@ -148,6 +149,7 @@ import type {
   AssetInfo,
   AssetListing,
   BranchEditResult,
+  BusyProgress,
   DocNode,
   DocSaveResult,
   DocTree,
@@ -260,7 +262,7 @@ export interface SessionDeps {
    * the effect is pushed while a command is still running, which is when that host has not
    * returned an outcome to attach anything to.
    */
-  pushBusy(state: { what?: string; ran: number; pending: number }): void;
+  pushBusy(state: { what?: string } & BusyProgress): void;
   /**
    * Offer to diagnose the call that just failed. Pushed for the same reason `pushBusy` is: the
    * author is answering a card that is still open inside a running turn, and there is no command
@@ -761,13 +763,18 @@ export class WorkspaceSession {
   /** What long-running work is in flight, by name; empty when the session is idle. */
   readonly inFlight = new Set<string>();
   /** How the work above is going, as the scheduler last reported it. Zeroed when it ends. */
-  progress = { ran: 0, pending: 0 };
+  progress: BusyProgress = { ran: 0, pending: 0 };
   /**
    * Set for as long as generative work is interruptible; `stopPipeline` is the one caller. A pass
    * holds one for all of its rounds, and the runs inside it share that one rather than making
    * their own.
    */
   cancel: AbortController | undefined;
+  /**
+   * Set for as long as a run has tasks that can be cut off; `abortPipeline` is the one caller.
+   * One per run rather than per pass, since only a run has tasks in flight.
+   */
+  abortTasks: AbortController | undefined;
 
   /**
    * The conversation as main sees it, reduced by the functions the renderer runs — so what is
@@ -890,9 +897,13 @@ export class WorkspaceSession {
 
   /** What `busy()` says, plus how far along it is — the shape the window is pushed. */
 
-  busyState(): { what?: string; ran: number; pending: number } {
+  busyState(): { what?: string } & BusyProgress {
     const what = this.busy();
-    return { ...(what ? { what } : {}), ...this.progress };
+    return {
+      ...(what ? { what } : {}),
+      ...this.progress,
+      ...(this.stopping() ? { stopping: true } : {}),
+    };
   }
 
   /** Push {@link busyState} to the window. Called on both edges, and on every step between. */
@@ -936,6 +947,24 @@ export class WorkspaceSession {
     if (!this.cancel) return false;
     this.cancel.abort();
     return true;
+  }
+
+  /** Whether a stop has been asked for and the work it stops is still in flight. */
+
+  stopping(): boolean {
+    return this.cancel?.signal.aborted === true;
+  }
+
+  /**
+   * Stop the generative work in flight and cut off the tasks it is on, each of which goes back
+   * to `pending`. Answers how many were in flight to cut, or `undefined` when nothing was running.
+   */
+
+  abortPipeline(): number | undefined {
+    if (!this.stopPipeline()) return undefined;
+    const cut = Object.keys(this.progress.activity ?? {}).length;
+    this.abortTasks?.abort();
+    return cut;
   }
 
   /**
@@ -1905,6 +1934,24 @@ export class WorkspaceSession {
     return this.projectPart.setProjectImageModel(modelId);
   }
 
+  async previewTextModel(modelId: string): Promise<PromptResult> {
+    return this.projectPart.previewTextModel(modelId);
+  }
+
+  /** Write the project's text model, spliced into `project.yaml`'s `models:` block. */
+  async setProjectTextModel(modelId: string): Promise<PromptWriteResult> {
+    return this.projectPart.setProjectTextModel(modelId);
+  }
+
+  async previewVisionModels(modelIds: readonly string[]): Promise<PromptResult> {
+    return this.projectPart.previewVisionModels(modelIds);
+  }
+
+  /** Write the project's vision reviewers, spliced into `project.yaml`'s `models:` block. */
+  async setProjectVisionModels(modelIds: readonly string[]): Promise<PromptWriteResult> {
+    return this.projectPart.setProjectVisionModels(modelIds);
+  }
+
   /** Fetch OpenRouter's image-model listing into `<user>/models.json`. */
   async refreshModelCatalog(
     fetchImpl?: FetchImpl,
@@ -1928,6 +1975,25 @@ export class WorkspaceSession {
   /** Write who letters a page shot, spliced into `project.yaml` like the art style. */
   async setProjectLettering(lettering: Lettering): Promise<PromptWriteResult> {
     return this.projectPart.setProjectLettering(lettering);
+  }
+
+  async previewBubbleNames(on: boolean): Promise<PromptResult> {
+    return this.projectPart.previewBubbleNames(on);
+  }
+
+  /** What `project.setShotForm` would do, without writing it. */
+  async previewShotForm(form: ShotForm): Promise<PromptResult> {
+    return this.projectPart.previewShotForm(form);
+  }
+
+  /** Write what a shot is, spliced into `project.yaml`. */
+  async setProjectShotForm(form: ShotForm): Promise<PromptWriteResult> {
+    return this.projectPart.setProjectShotForm(form);
+  }
+
+  /** Write whether bubbles name their speaker, spliced into `project.yaml` like the art style. */
+  async setProjectBubbleNames(on: boolean): Promise<PromptWriteResult> {
+    return this.projectPart.setProjectBubbleNames(on);
   }
 
   async previewBuiltinSkills(ids: readonly string[]): Promise<PromptResult> {

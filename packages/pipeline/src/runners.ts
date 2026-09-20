@@ -14,7 +14,7 @@ import type {
   TaskResult,
 } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
-import { mergeReports } from '@vn/providers';
+import { mergeReports, reportingRetries } from '@vn/providers';
 import { layoutDefect, sheetSeeds, supersededBy } from '@vn/artgen';
 import type { SheetSeeds } from '@vn/artgen';
 import { refinePrompt } from './p6.js';
@@ -265,6 +265,8 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       tried.add(throughNode ? critique : prompt);
+      const stage = maxAttempts > 1 ? `attempt ${attempt} of ${maxAttempts}: ` : '';
+      deps.activity?.(task, `${stage}drawing`);
       let ref: AssetRef;
       let shown: ReviewRef[] = refs;
       if (binding) {
@@ -279,6 +281,7 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
       }
       lastRef = ref;
 
+      deps.activity?.(task, `${stage}reviewing`);
       const reviewed: DefectReport[] = await Promise.all(
         deps.providers.reviewers.map((r) => r.review(ref, spec, shown)),
       );
@@ -360,11 +363,18 @@ export function createRunners(config: ProjectConfig): Record<TaskKind, Runner> {
   };
 }
 
-/** Dispatch a task to its kind's runner. */
+/**
+ * Dispatch a task to its kind's runner. A retry a provider call makes underneath is reported as
+ * the task's activity, since the runner cannot see it and it is the wait an author most wants
+ * explained.
+ */
 export function runTask(
   task: AnyTask,
   deps: RunDeps,
   runners: Record<TaskKind, Runner>,
 ): Promise<TaskResult> {
-  return runners[task.kind](task, deps);
+  deps.activity?.(task, 'drawing');
+  const run = () => runners[task.kind](task, deps);
+  const { activity } = deps;
+  return activity ? reportingRetries((note) => activity(task, note), run) : run();
 }

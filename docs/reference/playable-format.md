@@ -28,6 +28,7 @@ Contracts. Each scene flattens into ordered beats plus its branch edges:
     "title"          : "…",
     "start"          : "arrival", // entry scene id
     "portraitOverlay": false, // project.yaml's portrait_overlay; always written
+    "bubbleNames"    : false, // project.yaml's bubble_names; always written
     "characters": {
         "aiko": { "name": "Aiko", "portrait": { "hash": "…", "ext": "png" } },
     },
@@ -54,6 +55,7 @@ Contracts. Each scene flattens into ordered beats plus its branch edges:
                                     "line"  : "arrival:L1",
                                     "anchor": [0.5, 0.2],
                                     "tail"  : [0.4, 0.4],
+                                    "name"  : true, // optional; overrides bubbleNames for this bubble
                                 },
                             ],
                         },
@@ -123,7 +125,18 @@ Contracts. Each scene flattens into ordered beats plus its branch edges:
   tail to `tail` when there is one and as a caption box when there is not, and leaves out
   the dialogue box for that frame. A line with no bubble is read in the dialogue box with
   its panel lit, as before, so a half-lettered page still reads; nothing places a bubble
-  the author did not. The field is optional. The static site renderer draws every bubble
+  the author did not. The Play pane's **All bubbles** checkbox (`allBubbles`, a struct
+  field like `dimPanels`) draws every placed bubble of the current page at once
+  (`pageBubbles`: the run of frames on one background), with the current line's outlined;
+  a line with no bubble still takes the box. The field is optional.
+- **A bubble names its speaker when the project or the bubble says so.** `bubbleNames`
+  mirrors `project.yaml`'s `bubble_names` (default `false`, written even when off, like
+  `portraitOverlay`) and a bubble's optional `name` overrides it for that bubble
+  (`PanelBubble.name`, set from the Page editor's name select on a placed dialogue
+  bubble). A `say` beat's bubble then carries the speaker's display name above the line; a
+  `narrate` beat's caption never does. The desktop runner's `framesOf` folds the two into
+  `Frame.named`, and the static site marks such a bubble `named`, which shows the `.who`
+  span it always carries for a screen reader. The static site renderer draws every bubble
   of the lines read under a `show` over its figure at once, drops those lines from the
   text flow, and never dims the page
   ([`../plans/manga-style.md#stage-5--runner-drawn-bubbles`](../plans/manga-style.md#stage-5--runner-drawn-bubbles),

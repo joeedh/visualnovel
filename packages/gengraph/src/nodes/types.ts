@@ -6,7 +6,7 @@
 import { Node } from 'pathux-graph';
 import type { NodeDef, Sockets } from 'pathux-graph';
 import { BoolProperty, EnumProperty, PropFlags, StringProperty } from 'pathux-toolprop';
-import { TEXT_MODELS } from '@vn/types';
+import { textModelChoices } from '@vn/types';
 
 import { imageModelChoices, modelCatalog } from '../modelcatalog.js';
 import { mtok } from '../prices.js';
@@ -247,6 +247,17 @@ function imageModelEnum(current: string): EnumProperty {
   return prop;
 }
 
+/** The text picker's rows as path.ux draws them: the curated ids, the cached listing, and the node's own value. */
+function textModelEnum(current: string): EnumProperty {
+  const rows = textModelChoices(modelCatalog()?.text, current);
+  const prop = new EnumProperty(undefined, Object.fromEntries(rows.map((row) => [row.id, row.id])));
+  for (const row of rows) {
+    prop.ui_value_names[row.id] = row.label;
+    prop.descriptions[row.id] = row.tooltip;
+  }
+  return prop;
+}
+
 /**
  * Builds a `customPropUX` entry for a model prop, drawing it as a dropdown over the rows `rows`
  * answers rather than a free-text field. `rows` is called with the prop's value each time the
@@ -265,6 +276,9 @@ function modelDropdownUX(
     };
     const dropdown = row.listenum(path, { enumDef: () => rows(valueOf()), name: label });
     dropdown.setAttribute('fit-to-width', 'true');
+    // A catalog runs to hundreds of rows once a listing is cached, so the menu opens with a
+    // search box
+    dropdown.autoSearchMode = true;
   };
 }
 
@@ -287,7 +301,7 @@ export class GenRewrite extends Node<{ text: TextSocket }, { text: TextSocket }>
         system     : str('', 'System', 'The system prompt sent ahead of the instruction.'),
       },
       customPropUX: {
-        model: modelDropdownUX(() => Object.fromEntries(TEXT_MODELS.map((m) => [m, m]))),
+        model: modelDropdownUX(textModelEnum),
       },
       typeVersion : 2,
     };

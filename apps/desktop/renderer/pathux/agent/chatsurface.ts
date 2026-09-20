@@ -270,7 +270,25 @@ export function turnRow(item: FeedItem): HTMLElement {
   // blocked call reads as the same act stopped
   const action = el('div', item.role === 'blocked' ? 'action blocked' : 'action');
   action.appendChild(el('span', item.role === 'agent' ? '' : 'verb', item.text));
-  return action;
+  if (!item.detail?.diff) return action;
+  // A writing tool's change sits under its line, one row per diff line so each can take the
+  // colour of its mark. The reducer already cut it to `DIFF_LINES`.
+  const row = el('div', 'action-with-diff');
+  row.appendChild(action);
+  const diff = el('pre', 'diff');
+  diff.title = `What ${item.text} changed, as a unified diff`;
+  for (const line of item.detail.diff.split('\n')) {
+    const mark = line.startsWith('+')
+      ? 'added'
+      : line.startsWith('-')
+        ? 'removed'
+        : line.startsWith('@@')
+          ? 'hunk'
+          : '';
+    diff.appendChild(el('div', mark, line));
+  }
+  row.appendChild(diff);
+  return row;
 }
 
 /**

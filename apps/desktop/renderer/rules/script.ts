@@ -13,7 +13,7 @@ import { isSpeakable, type ScriptState } from '@vn/scriptedit';
 import type { Scene } from '@vn/types';
 import { TOP } from '../../src/shared/interactions.js';
 import { commitOf, lineOf } from '../../src/shared/lineedit.js';
-import type { Offer } from './anchors.js';
+import { refuse, type Offer } from './anchors.js';
 import { cellAction, type StripAsset } from './assetstrip.js';
 import { closePopup, openMenu, openPopup, startDrag, view } from './effects.js';
 import type { EditorId } from '../../src/shared/editors.js';
@@ -546,6 +546,81 @@ export interface ScriptPageState {
   continues?: boolean;
   /** The frames drawn from this scene, and the editors some pane shows, which routes a pick. */
   frames?: { assets: readonly StripAsset[]; visible: readonly EditorId[] };
+  /** Lines marked by their gutter numbers, for the bar's Delete. */
+  marked?: readonly string[];
+}
+
+// ---------------------------------------------------------------------------
+// Marked lines: the gutter marks them, the bar deletes them.
+// ---------------------------------------------------------------------------
+
+/**
+ * The marks after a click on `lineId`'s gutter number. A plain click toggles that line; a Shift
+ * click marks every line from the last mark made to it, so a run of lines is two clicks. The
+ * answer is in scene order, whichever order the clicks came in, because that is the order the
+ * deletes run in and the order the bar counts.
+ */
+export function toggleMark(
+  lines: readonly { id: string }[],
+  marked: readonly string[],
+  lineId: string,
+  extend: boolean,
+): string[] {
+  const order = lines.map((l) => l.id);
+  const at = order.indexOf(lineId);
+  if (at < 0) return [...marked];
+  const set = new Set(marked);
+  const anchor = marked[marked.length - 1];
+  const from = anchor === undefined ? -1 : order.indexOf(anchor);
+  if (extend && from >= 0) {
+    for (let i = Math.min(from, at); i <= Math.max(from, at); i++) set.add(order[i]!);
+  } else if (set.has(lineId)) {
+    set.delete(lineId);
+  } else {
+    set.add(lineId);
+  }
+  // The last mark made stays last, so the next Shift click extends from it
+  const sorted = order.filter((id) => set.has(id) && id !== lineId);
+  return set.has(lineId) ? [...sorted, lineId] : sorted;
+}
+
+/** The marked lines in scene order, dropping any the scene no longer has. */
+export function markedInOrder(
+  lines: readonly { id: string }[],
+  marked: readonly string[],
+): string[] {
+  const set = new Set(marked);
+  return lines.map((l) => l.id).filter((id) => set.has(id));
+}
+
+const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/**
+ * The bar's Delete, over every marked line: one `story.deleteLines` in scene order, so the run is
+ * one undo point. Refused with nothing marked, because a greyed button that says how to mark a
+ * line is the affordance's own instructions.
+ */
+export function deleteMarkedAction(marked: readonly string[]): Offer {
+  const control = { id: 'story.deleteLines', on: 'marked' };
+  if (marked.length === 0) {
+    return {
+      ...refuse(
+        'No lines are marked. Click a gutter number to mark a line, Shift+click for a run.',
+      ),
+      ...control,
+      label  : 'Delete',
+      tooltip: 'Remove the marked lines from the scene',
+    };
+  }
+  return {
+    ok: true,
+    ...control,
+    props  : { lines: [...marked] },
+    label  : `Delete ${plural(marked.length, 'line')}`,
+    tooltip:
+      `Remove the ${plural(marked.length, 'marked line')} from the scene. A shot that covered ` +
+      'them keeps its art and covers one line fewer — possibly none. Delete does the same.',
+  };
 }
 
 /** The bar's scene picker, a drop-down of every scene in the story. */
@@ -620,14 +695,20 @@ export function lineBox(line: { id: string; text: string }): Offer {
   };
 }
 
-/** The gutter number, which is also the handle a line is dragged by. */
-export function lidAction(line: { id: string }, at: number): Offer {
+/**
+ * The gutter number: the handle a line is dragged by, and the click that marks it for the bar's
+ * Delete. One control, two acts, recorded in that order.
+ */
+export function lidAction(line: { id: string }, at: number, marked = false): Offer {
   return {
     ok: true,
     ...startDrag('script.moveLine'),
     on     : `line/${line.id}`,
     label  : String(at),
-    tooltip: `Line ${at} of this scene, ${line.id} — drag this handle to move it`,
+    tooltip:
+      `Line ${at} of this scene, ${line.id} — drag this handle to move it, click to ` +
+      `${marked ? 'unmark' : 'mark'} it for Delete, Shift+click to mark a run`,
+    then   : [view('mark')],
   };
 }
 
@@ -762,7 +843,9 @@ export function pendingAction(pending: Pending, sceneId: string): Offer {
 export function controls(state: ScriptPageState): readonly Offer[] {
   const list: Offer[] = [pickerAction(state.sceneId), reloadAction()];
   const shown = state.shown;
+  const marked = new Set(state.marked ?? []);
   if (shown) {
+    list.push(deleteMarkedAction(markedInOrder(shown.lines, state.marked ?? [])));
     list.push(headingAction(shown));
     if (shown.lines.length === 0 && state.composing === undefined) {
       list.push(startAction(shown.sceneId));
@@ -770,7 +853,7 @@ export function controls(state: ScriptPageState): readonly Offer[] {
     if (state.composing === '') list.push(composeBox(shown.sceneId, ''));
     const cuts = new Set(splitBoundaries(shown.lines as CoverageLine[]));
     shown.lines.forEach((line, i) => {
-      list.push(lidAction(line, i + 1));
+      list.push(lidAction(line, i + 1, marked.has(line.id)));
       if (isSpeakable(line.kind ?? 'dialogue')) {
         list.push(speakerAction(line, state.cast ?? [], state.attributing === line.id));
       }

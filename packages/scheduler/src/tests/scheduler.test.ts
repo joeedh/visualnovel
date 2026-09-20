@@ -207,6 +207,90 @@ describe('runPipeline — gate-as-barrier end-to-end', () => {
     }
   }, 30_000);
 
+  it('reports what each task in flight is doing, and clears it when the task ends', async () => {
+    const p = await makeProject({ script: SCRIPTS.linear });
+    try {
+      const seen: string[] = [];
+      let atEnd: Record<string, string> | undefined;
+      await p.run({
+        onProgress: (progress) => {
+          seen.push(...Object.values(progress.activity));
+          atEnd = progress.activity;
+        },
+      });
+      // Every task starts by saying so, and is drawing by the time its runner runs
+      expect(seen).toContain('starting');
+      expect(seen).toContain('drawing');
+      expect(atEnd).toEqual({});
+    } finally {
+      await p.cleanup();
+    }
+  }, 30_000);
+
+  it('names the attempt a run is retrying a failed task on', async () => {
+    const p = await makeProject({ script: SCRIPTS.linear });
+    try {
+      const first = await p.run({ imageBackend: flakyImages(1, 'transient 503') });
+      const hash = first.ran.find((t) => t.status === 'failed')!.hash;
+      const said: string[] = [];
+      await p.run({
+        imageBackend: flakyImages(0, 'unused'),
+        onProgress: (progress) => {
+          const doing = progress.activity[hash];
+          if (doing) said.push(doing);
+        },
+      });
+      expect(said[0]).toBe('attempt 2 of 2: starting');
+      expect(said).toContain('attempt 2 of 2: drawing');
+    } finally {
+      await p.cleanup();
+    }
+  }, 30_000);
+
+  it('aborts the tasks in flight, putting each back to pending rather than failed', async () => {
+    const p = await makeProject({ script: SCRIPTS.linear, config: { concurrency: 1 } });
+    try {
+      const abort = new AbortController();
+      // The first call hangs until aborted; the abandoned promise settles afterwards
+      let release: () => void = () => {};
+      const stub = new StubImageBackend();
+      let calls = 0;
+      const hanging: ImageBackend = {
+        modelId : 'hanging-image',
+        generate: async (prompt, refs, params) => {
+          if (calls++ === 0) await new Promise<void>((resolve) => (release = resolve));
+          return stub.generate(prompt, refs, params);
+        },
+        edit    : (base, prompt, refs, params) => stub.edit(base, prompt, refs, params),
+      };
+      let running: Record<string, string> = {};
+      const run = p.run({
+        imageBackend: hanging,
+        abort       : abort.signal,
+        onProgress: (progress) => {
+          if (Object.keys(progress.activity).length > 0) running = progress.activity;
+        },
+      });
+      // Abort once the first task is in flight rather than before anything started
+      while (Object.keys(running).length === 0) await new Promise((r) => setTimeout(r, 5));
+      abort.abort();
+      const summary = await run;
+      release();
+
+      const [hash] = Object.keys(running);
+      expect(summary.stopped).toBe(true);
+      expect(summary.aborted).toEqual([hash]);
+      expect(summary.ran).toHaveLength(0);
+      const after = await loadGraph(p.paths);
+      expect(after.get(hash!)?.status).toBe('pending');
+      expect(after.get(hash!)?.attempts).toHaveLength(0);
+      // Nothing after the cut-off task was started
+      expect(after.all().filter((t) => t.status === 'done')).toHaveLength(0);
+    } finally {
+      await p.cleanup();
+    }
+  }, 30_000);
+
   it('dry-run previews cost without producing any assets', async () => {
     const p = await makeProject({ script: SCRIPTS.linear });
     try {

@@ -40,17 +40,19 @@ const SHOTS: CoverageShot[] = [
 ];
 
 const data: SceneCoverage = {
-  sceneId   : 's',
-  location  : 'roof',
-  heading   : 'EXT. ROOF - NIGHT',
-  lines     : LINES,
-  shots     : SHOTS,
-  cast      : [],
-  characters: [],
-  variants  : ['day'],
-  decomposed: true,
-  lettering : 'model',
-  imageModel: 'mock-image',
+  sceneId    : 's',
+  location   : 'roof',
+  heading    : 'EXT. ROOF - NIGHT',
+  lines      : LINES,
+  shots      : SHOTS,
+  cast       : [],
+  characters : [],
+  variants   : ['day'],
+  decomposed : true,
+  lettering  : 'model',
+  bubbleNames: false,
+  names      : {},
+  imageModel : 'mock-image',
 };
 
 const cov = spansFor(LINES, SHOTS);

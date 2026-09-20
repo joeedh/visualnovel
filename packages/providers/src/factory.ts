@@ -162,14 +162,17 @@ export interface ImageBackendOptions {
   build?: ImageBackendBuilder;
   /**
    * The cached OpenRouter listing, so a model it says takes no seed refuses one by name rather
-   * than sending it. A model the listing lacks is built as if it took one.
+   * than sending it, and a ratio it does not list is snapped to the nearest one it does. A model
+   * the listing lacks is built as if it took one and accepted every ratio.
    */
-  catalog?: readonly Pick<ImageModelEntry, 'id' | 'seed'>[];
+  catalog?: readonly CatalogEntry[];
 }
 
-function imageBackendBuilder(
-  catalog: readonly Pick<ImageModelEntry, 'id' | 'seed'>[],
-): ImageBackendBuilder {
+/** The two facts of a listing row the builder reads. */
+export type CatalogEntry = Pick<ImageModelEntry, 'id' | 'seed'> &
+  Partial<Pick<ImageModelEntry, 'aspects'>>;
+
+function imageBackendBuilder(catalog: readonly CatalogEntry[]): ImageBackendBuilder {
   return (route, apiKey) => {
     if (route.transport !== 'openrouter') return createGeminiImage(apiKey, route.wireId);
     // The listing names models by their OpenRouter spelling, which is what the wire id is
@@ -177,7 +180,7 @@ function imageBackendBuilder(
     return createOpenRouterImage(
       apiKey,
       route.wireId,
-      listed === undefined ? {} : { seed: listed.seed },
+      listed === undefined ? {} : { seed: listed.seed, aspects: listed.aspects ?? [] },
     );
   };
 }

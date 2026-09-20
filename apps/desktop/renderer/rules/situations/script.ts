@@ -40,6 +40,11 @@ export const SITUATIONS = situations<ScriptPageState>(
     state: base,
   },
   {
+    name : 'marked',
+    why: 'Both lines are marked by their gutter numbers, so the bar’s Delete takes the pair, first then second, and each handle offers to unmark its line.',
+    state: { ...base, marked: ['arrival:L2', 'arrival:L1'] },
+  },
+  {
     name : 'empty-scene',
     why  : 'A scene with no lines invites the first one and offers nothing to split or add to.',
     state: { ...base, shown: { ...shown, lines: [] } },

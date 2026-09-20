@@ -33,6 +33,11 @@ export const SITUATIONS = situations<HeaderState>(
     state: { ...idle, busyWhat: BUSY_RUN },
   },
   {
+    name : 'stopping',
+    why: 'Stop was already pressed on a run, so pressing it again opens pipeline.stop with abort ticked, to cut off the tasks in flight.',
+    state: { ...idle, busyWhat: BUSY_RUN, stopping: true },
+  },
+  {
     name : 'reporting',
     why  : 'The debug agent is on a turn, so Stop offers report.stop.',
     state: { ...idle, busyWhat: BUSY_REPORT, agentMode: 'execute' },

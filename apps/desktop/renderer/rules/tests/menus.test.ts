@@ -79,8 +79,11 @@ describe('menuRecords', () => {
     expect(line.map((r) => r.situation)).toEqual([
       'drawn',
       'drawn',
+      'drawn',
       'undrawn',
       'undrawn',
+      'undrawn',
+      'uncovered',
       'uncovered',
       'uncovered',
     ]);

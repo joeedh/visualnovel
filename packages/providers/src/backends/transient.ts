@@ -3,11 +3,38 @@
  * backends wrap their network calls in. This is the only layer that sees a status code, so it
  * is the only layer that can tell a rate limit from a content refusal.
  */
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { ConfigError, ProviderError, RetryableProviderError, retry } from '@vn/util';
 
 /** Attempts and backoff for one network call. Deliberately small — the scheduler retries too. */
 const ATTEMPTS = 3;
 const BASE_MS = 500;
+
+/** Hears one sentence per retry a call under {@link reportingRetries} makes. */
+export type RetryListener = (note: string) => void;
+
+/**
+ * Carries the listener from the task that made a call to the retry loop the call is in. A
+ * backend call has no argument that could carry it: `ImageParams` is hashed into the task's
+ * identity, and a reviewer's arguments are the picture and the spec.
+ */
+const listeners = new AsyncLocalStorage<RetryListener>();
+
+/**
+ * Run `fn` with every retry `callWithRetry` makes on its behalf reported to `listener`, however
+ * deep the call is. Calls made outside one report nothing.
+ */
+export function reportingRetries<T>(listener: RetryListener, fn: () => Promise<T>): Promise<T> {
+  return listeners.run(listener, fn);
+}
+
+/** `retry 1 of 2 in 30s — Gemini image request failed (…): 429 …`, for the listener in scope. */
+function noteRetry(what: string, err: unknown, attempt: number, waitMs: number): void {
+  const listener = listeners.getStore();
+  if (!listener) return;
+  const wait = waitMs >= 1000 ? `${Math.round(waitMs / 1000)}s` : `${waitMs}ms`;
+  listener(`retry ${attempt} of ${ATTEMPTS - 1} in ${wait} — ${what}: ${causeMessage(err)}`);
+}
 
 /** Best-effort one-line description of an SDK/HTTP error for the wrapped message. */
 export function causeMessage(err: unknown): string {
@@ -195,6 +222,7 @@ export function callWithRetry<T>(what: string, fn: () => Promise<T>): Promise<T>
       // Every vendor asks for the same policy: honour `retry-after` where one was sent, and back
       // off exponentially where none was. `delayFor` covers the first case and `baseMs` the second
       delayFor   : (err) => (err instanceof RetryableProviderError ? err.retryAfterMs : undefined),
+      onRetry    : (err, attempt, waitMs) => noteRetry(what, err, attempt, waitMs),
     },
   );
 }

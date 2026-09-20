@@ -140,6 +140,11 @@ describe('buildPlayable', () => {
     expect(on.portraitOverlay).toBe(true);
     expect(on.characters['aiko']!.portrait).toEqual({ hash: 'por1', ext: 'png' });
   });
+
+  it('carries bubble_names, written even when off', () => {
+    expect(buildPlayable(model, fakeStore()).bubbleNames).toBe(false);
+    expect(buildPlayable(model, fakeStore(), { bubbleNames: true }).bubbleNames).toBe(true);
+  });
 });
 
 describe('persisted decompositions', () => {
@@ -263,7 +268,7 @@ describe('persisted decompositions', () => {
           coversLines: [first!, ...rest],
           bubbles: [
             { lineId: first!, anchor: [0.3, 0.2], tail: [0.4, 0.5] },
-            { lineId: rest[0]!, anchor: [0.7, 0.2] },
+            { lineId: rest[0]!, anchor: [0.7, 0.2], name: true },
           ],
         },
       ],
@@ -276,7 +281,7 @@ describe('persisted decompositions', () => {
         {
           bubbles: [
             { line: first, anchor: [0.3, 0.2], tail: [0.4, 0.5] },
-            { line: rest[0], anchor: [0.7, 0.2] },
+            { line: rest[0], anchor: [0.7, 0.2], name: true },
           ],
         },
       ],
