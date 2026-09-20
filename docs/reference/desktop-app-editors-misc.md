@@ -138,6 +138,16 @@ on the rich editor, with every decision and what shipped against each, is
   document under `scenes/` keeps its soft breaks, because a screenplay's lines are its
   structure. The body on disk stays as written until a block is edited; the first edit
   writes every paragraph as one line, which is the one diff reflowing costs.
+- **The prose is set in two places.** The `richtext` block of `app/theme.ts` names the
+  faces and colours (the prose face at 16px, headings in the same face at weight 500,
+  links in `signal`), which path.ux writes as `--richtext-*` variables on the editor.
+  `styles/wikiprose.css`, appended by `WikiProvider.styles()` after path.ux's own markdown
+  rules, sets the measure, the leading and the space between blocks: one column of 37em,
+  centred once the pane is wider, at a leading of 1.6; half a line between paragraphs, a
+  line and a half above a heading; the sheet's form takes the same column. Every colour is
+  a token, and the caret and the quote rule are the one warm accent (`sodium`). Spacing
+  changes in the sheet; a face or a colour changes in the theme, so the Wiki pane and any
+  other rich editor in the app read alike.
 - **The buffer is not authoritative.** `doc.read` returns the content hash it read at, and
   `doc.write` carries that hash back as `seenHash`. If something else rewrote the file
   underneath (`gate.approve`, the agent, an undo), the write is refused with a sentence

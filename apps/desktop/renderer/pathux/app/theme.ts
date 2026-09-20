@@ -269,7 +269,7 @@ const VnTheme = {
     'quote-border-color'       : TOKENS.mistDim,
     'quote-text-color'         : TOKENS.mist,
     'marker-color'             : TOKENS.mist,
-    'heading-font'             : font(16, TOKENS.paper, '600', TOKENS.prose),
+    'heading-font'             : font(16, TOKENS.paper, '500', TOKENS.prose),
     'hr-color'                 : TOKENS.inkLine,
     'opaque-background'        : alpha(TOKENS.paper, 0.045),
     'toolbar-background'       : TOKENS.inkRaised,

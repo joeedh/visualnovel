@@ -16,6 +16,7 @@ import { PICTURE_TIP } from '../../rules/wiki.js';
 import ASSETSTRIP_CSS from '../../styles/assetstrip.css?inline';
 import RUNG_CSS from '../../styles/rung.css?inline';
 import SHEETFORM_CSS from '../../styles/sheetform.css?inline';
+import WIKIPROSE_CSS from '../../styles/wikiprose.css?inline';
 import type { AssetListing } from '../../../src/shared/ipc.js';
 
 /** Marks the toolbar's picture button, which the Wiki pane records on its own anchor pass. */
@@ -52,7 +53,7 @@ export class WikiProvider extends MarkdownProvider {
   }
 
   override styles(): string {
-    return super.styles() + ASSETSTRIP_CSS + RUNG_CSS + SHEETFORM_CSS;
+    return super.styles() + WIKIPROSE_CSS + ASSETSTRIP_CSS + RUNG_CSS + SHEETFORM_CSS;
   }
 
   /**

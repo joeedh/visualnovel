@@ -1,0 +1,130 @@
+/*
+ * The prose of a document in the Wiki pane. Appended to the editor's own stylesheet by
+ * `editors/wikiprovider.ts`, after path.ux's markdown rules, so these win by order inside the
+ * editor's shadow root; the tokens reach it because a custom property inherits across the
+ * boundary. The theme block in `app/theme.ts` sets the faces and colours as `--richtext-*`
+ * variables; this sheet sets the measure, the leading, and the space between blocks.
+ *
+ * One column at a reading measure, centred in the pane once the pane is wider than it, and
+ * the sheet's form shares that column. Spacing is in em of the 16px prose face, so a block's
+ * gap is a fraction of its own line: half a line between paragraphs, a line and a half above
+ * a heading and half a line under it.
+ */
+
+.rich-text-root {
+  --wk-measure: 37em;
+  line-height: 1.6;
+  padding: 20px max(24px, calc((100% - var(--wk-measure)) / 2)) 56px;
+  caret-color: var(--sodium);
+  font-optical-sizing: auto;
+}
+
+/* Blocks: the space between two is the larger of their margins, so a heading's own space
+   above it wins over the paragraph before it. */
+.rich-text-root p,
+.rich-text-root .md-quote {
+  margin: 0 0 0.8em;
+}
+
+.rich-text-root .md-li {
+  margin-top: 0;
+  margin-bottom: 0.3em;
+}
+
+.rich-text-root .md-li + :not(.md-li) {
+  margin-top: 0.8em;
+}
+
+.rich-text-root h1,
+.rich-text-root h2,
+.rich-text-root h3,
+.rich-text-root h4,
+.rich-text-root h5,
+.rich-text-root h6 {
+  line-height: 1.2;
+  margin: 1.5em 0 0.5em;
+}
+
+.rich-text-root h1 {
+  font-size: 1.75em;
+  margin-top: 1em;
+}
+
+.rich-text-root h2 {
+  font-size: 1.4em;
+}
+
+.rich-text-root h3 {
+  font-size: 1.2em;
+}
+
+.rich-text-root h4 {
+  font-size: 1.05em;
+}
+
+.rich-text-root h5,
+.rich-text-root h6 {
+  font-size: 1em;
+}
+
+.rich-text-root h6 {
+  color: var(--mist);
+}
+
+/* The first block, and the first after the sheet's form, sits at the top of its column. */
+.rich-text-root > :first-child,
+.rich-text-root > div:has(> [data-doc-widget]) + * {
+  margin-top: 0;
+}
+
+/* A quote is the author quoting: the warm rule, the text a step dimmer than the page. */
+.rich-text-root .md-quote {
+  border-left: 2px solid var(--sodium);
+  padding-left: 1em;
+  color: var(--mist);
+}
+
+.rich-text-root pre.md-code {
+  margin: 0.9em 0;
+  padding: 0.7em 0.9em;
+  font-size: 0.85em;
+  line-height: 1.5;
+}
+
+.rich-text-root code {
+  font-size: 0.85em;
+  padding: 0.05em 0.3em;
+}
+
+.rich-text-root pre.md-code code {
+  font-size: inherit;
+}
+
+.rich-text-root .md-hr {
+  padding: 0.9em 0;
+}
+
+.rich-text-root a[data-link-kind] {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+  text-decoration-color: color-mix(in srgb, var(--signal) 55%, transparent);
+}
+
+.rich-text-root a[data-link-kind]:hover {
+  text-decoration-color: var(--signal);
+}
+
+/* A picture sits on a line of its own at the column's width, on the sunken chrome radius. */
+.rich-text-root .md-image {
+  margin: 0.6em 0;
+  max-width: 100%;
+}
+
+.rich-text-root .md-image img {
+  border-radius: var(--r-chrome);
+}
+
+/* The sheet's form takes the column too, so the answers and the prose share a left edge. */
+.rich-text-root .schema-form {
+  margin-bottom: 1.6em;
+}
