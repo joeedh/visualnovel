@@ -489,7 +489,7 @@ loses a field the form could edit before it.
     the popup over the doc tree; the link builder; `linkClicked` routing; a jest test for
     the paths. Done; see As shipped.
 11. **Sweep and the CDP cases** (D8, D9): `pnpm gen:uxmodel` is already run per task; the
-    anchor sweep re-runs here.
+    anchor sweep re-runs here. Done; see As shipped.
 12. **Docs**: `desktop-app-editors-misc.md` (the Wiki section's form and prose bullets),
     `asset-picker.md` (a third opener), `pipeline-contracts.md` (D5's sentence),
     `guided-tours.md` if a new home appears, this plan's As shipped; `pnpm markdown-toc`
@@ -998,3 +998,46 @@ findings; what changed for each:
   over the path in the chrome face, the marked row carrying the `--sodium` left rule;
   `styles/linkcomplete.css`, put into the popup's shadow root since the popup floats
   outside the pane's sheets.
+
+### Task 11
+
+- The sweep (`scripts/sweep-anchors.mjs` against `examples/mySampleRepo`, swept at
+  `2ff29b7c`) re-ran and `anchors.json` gained the controls stages 1 and 2 added to the
+  Wiki pane: `cmd:doc.write#picture`; `cmd:doc.write#palette/<n>` and
+  `#palette/<n>/remove` for the four swatches, and `#palette/add`;
+  `cmd:doc.write#wardrobe/add`, `#wardrobe/uniform/description` and
+  `#wardrobe/uniform/default`; ten `item:wardrobe/uniform/asset/<hash>` thumbnails, each a
+  `ui.publish` carrying the `view.open` it would run; and `item:prompt/edit`. Every one
+  lands where it is drawn. The sweep reports one derived Wiki control it did not draw, the
+  completion's `view.open` rows, which only exist while a `[[` has been typed; task 10's
+  CDP case covers them by hand. Two strays appeared in other editors,
+  `asset cmd:view.open#style` and `gengraph cmd:models.refresh`, controls drawn but not
+  under the point the sweep clicks at the window size it ran at; neither is touched by
+  this plan, and they are recorded here rather than chased.
+- D9's CDP cases were run task by task rather than here, each on a git-initialised copy of
+  the sample project: the palette in task 4, the wardrobe and the YAML round trip in task
+  6, the variants in task 7, the prompt button's refusal and its opening in task 8, the
+  picture through Raw and back in task 9, and `[[` and Ctrl+click in task 10. The two-pane
+  recovery case is the one that did not go as D9 says, and it is written up rather than
+  made to.
+- What D7 assumed is not how the raw view commits. Its second bullet says a raw commit
+  replaces every block and so disposes the form in the other pane; but `toggleRaw` runs
+  `prepareSave` first, which prepares and commits every pending draft on the session, so
+  the form's answers land before the raw source does, in either order. Form typed in pane
+  A, then Raw pressed in pane B: B's toggle commits A's answers, the textarea fills from
+  the updated document, and a prose edit typed there commits over that cleanly; A's form
+  re-mounts already holding the answers, nothing detached, nothing to recover. Raw pressed
+  in B first, then the form typed in A, then B's source edited and Raw pressed again: both
+  drafts prepare at one revision, A's answers commit and move the revision, and B's
+  source, prepared against the old document, is refused as `RAW_STALE`; B stays in the raw
+  view with the sentence and Discard, A's form shows the answers landed, and the next
+  autosave tick (refused while the stale source sat on the session) then writes them to
+  disk; Discard in B drops the source, refills the textarea from the document, and the
+  footer clears once that save lands. The front-matter variant ends the same way, because
+  the refusal comes before the typed text matters. No answers are lost on either path, and
+  neither path reaches `restore`.
+- `restore` is kept, with path.ux's tests over it and `SheetForms.recover` walking it from
+  `paintFoot`: it still answers a form that path.ux disposes because a command replaced
+  the front-matter block while answers were typed into it. The raw view is not such a
+  command, since it applies the answers first, so D9's two-pane sentence is replaced by
+  the paragraph above.

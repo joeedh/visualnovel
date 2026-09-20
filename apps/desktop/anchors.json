@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-19T22:38:22.389Z",
-  "gitSha"       : "df807c389f603eb14693438fe15d4b6dc2a2d917",
+  "sweptAt"      : "2026-09-20T08:31:48.968Z",
+  "gitSha"       : "2ff29b7ca1f3c1532ef111503ba0238a098947a1",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -3769,6 +3769,13 @@
       "supplies"  : ["text", "seenHash"]
     },
     {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#picture",
+      "widgetPath": "wiki/doc-write~5b47a774",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "wiki",
       "key": "item:link/asset/246322f6cb8b5da4133f86e549fa0b8d60fd6cf2449ec32b8204fdb1d2b7ed0b",
@@ -3917,6 +3924,267 @@
       "editor"    : "wiki",
       "key": "item:link/asset/6f41ba9a6ea0b96fff77ed13bf2473174b91986da3b87791f0260b7da829947d",
       "widgetPath": "wiki/ui-publish~180ea8a0",
+      "then": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "6f41ba9a6ea0b96fff77ed13bf2473174b91986da3b87791f0260b7da829947d"
+          }
+        }
+      ]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#wardrobe/uniform/default",
+      "widgetPath": "wiki/doc-write~590bf3dd",
+      "supplies"  : ["text", "seenHash"],
+      "refused"   : "This is already the outfit a scene wears when it names none"
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#wardrobe/uniform/description",
+      "widgetPath": "wiki/doc-write~a7c17c80",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "ui.publish",
+      "editor"    : "wiki",
+      "key": "item:wardrobe/uniform/asset/246322f6cb8b5da4133f86e549fa0b8d60fd6cf2449ec32b8204fdb1d2b7ed0b",
+      "widgetPath": "wiki/ui-publish~e2a8c960",
+      "then": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "246322f6cb8b5da4133f86e549fa0b8d60fd6cf2449ec32b8204fdb1d2b7ed0b"
+          }
+        }
+      ]
+    },
+    {
+      "id"        : "ui.publish",
+      "editor"    : "wiki",
+      "key": "item:wardrobe/uniform/asset/76934365d6a56516fc2df91eee93c700ef4a526f8be2b868ba96152719d8c4e3",
+      "widgetPath": "wiki/ui-publish~e3932fa4",
+      "then": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "76934365d6a56516fc2df91eee93c700ef4a526f8be2b868ba96152719d8c4e3"
+          }
+        }
+      ]
+    },
+    {
+      "id"        : "ui.publish",
+      "editor"    : "wiki",
+      "key": "item:wardrobe/uniform/asset/9d06f49f75ff8c3d80da041fb7e847e8fd2fd1ed4810a347f550935ed837f5ae",
+      "widgetPath": "wiki/ui-publish~4018224a",
+      "then": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "9d06f49f75ff8c3d80da041fb7e847e8fd2fd1ed4810a347f550935ed837f5ae"
+          }
+        }
+      ]
+    },
+    {
+      "id"        : "ui.publish",
+      "editor"    : "wiki",
+      "key": "item:wardrobe/uniform/asset/afb276d1301148fd77acd108c5515f8a7f95942216a69ea7361038cdf8477872",
+      "widgetPath": "wiki/ui-publish~e1090e6b",
+      "then": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "afb276d1301148fd77acd108c5515f8a7f95942216a69ea7361038cdf8477872"
+          }
+        }
+      ]
+    },
+    {
+      "id"        : "ui.publish",
+      "editor"    : "wiki",
+      "key": "item:wardrobe/uniform/asset/b4e6e7b96475c9530f14f07cf63b59d319f74803248bf45e7164cfe69c7ac1ab",
+      "widgetPath": "wiki/ui-publish~91ce554b",
+      "then": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "b4e6e7b96475c9530f14f07cf63b59d319f74803248bf45e7164cfe69c7ac1ab"
+          }
+        }
+      ]
+    },
+    {
+      "id"        : "ui.publish",
+      "editor"    : "wiki",
+      "key": "item:wardrobe/uniform/asset/d99ebbc368ae089b7c1233819c41cfad330eb5d1cfbc1e66231ba39157727ad3",
+      "widgetPath": "wiki/ui-publish~8dc7cc4f",
+      "then": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "d99ebbc368ae089b7c1233819c41cfad330eb5d1cfbc1e66231ba39157727ad3"
+          }
+        }
+      ]
+    },
+    {
+      "id"        : "ui.publish",
+      "editor"    : "wiki",
+      "key": "item:wardrobe/uniform/asset/43cfb9ffc189d3cf3fe8cdf326f1e6dec8683c59d74b308e95dd53a3543cd5fc",
+      "widgetPath": "wiki/ui-publish~c56f753b",
+      "then": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "43cfb9ffc189d3cf3fe8cdf326f1e6dec8683c59d74b308e95dd53a3543cd5fc"
+          }
+        }
+      ]
+    },
+    {
+      "id"        : "ui.publish",
+      "editor"    : "wiki",
+      "key": "item:wardrobe/uniform/asset/6b956e77272d2666585df48cb5983f42978b0f04ded4c358761fe17037d6d9c9",
+      "widgetPath": "wiki/ui-publish~38d269bd",
+      "then": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "6b956e77272d2666585df48cb5983f42978b0f04ded4c358761fe17037d6d9c9"
+          }
+        }
+      ]
+    },
+    {
+      "id"        : "ui.publish",
+      "editor"    : "wiki",
+      "key": "item:wardrobe/uniform/asset/6f41ba9a6ea0b96fff77ed13bf2473174b91986da3b87791f0260b7da829947d",
+      "widgetPath": "wiki/ui-publish~c54b6f91",
+      "then": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "6f41ba9a6ea0b96fff77ed13bf2473174b91986da3b87791f0260b7da829947d"
+          }
+        }
+      ]
+    },
+    {
+      "id"        : "ui.publish",
+      "editor"    : "wiki",
+      "key": "item:wardrobe/uniform/asset/d6c366006abee34ea5315527ea02fd592128fb0514c0e58c911ad8201b76754c",
+      "widgetPath": "wiki/ui-publish~922a3dc5",
+      "then": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "d6c366006abee34ea5315527ea02fd592128fb0514c0e58c911ad8201b76754c"
+          }
+        }
+      ]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#wardrobe/add",
+      "widgetPath": "wiki/doc-write~71870064",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#palette/0",
+      "widgetPath": "wiki/doc-write~0e761e0a",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#palette/0/remove",
+      "widgetPath": "wiki/doc-write~fd60ec9b",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#palette/1",
+      "widgetPath": "wiki/doc-write~2d13a34b",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#palette/1/remove",
+      "widgetPath": "wiki/doc-write~12921fb2",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#palette/2",
+      "widgetPath": "wiki/doc-write~f21cd668",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#palette/2/remove",
+      "widgetPath": "wiki/doc-write~1d102a49",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#palette/3",
+      "widgetPath": "wiki/doc-write~3802d769",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#palette/3/remove",
+      "widgetPath": "wiki/doc-write~3a032be0",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#palette/add",
+      "widgetPath": "wiki/doc-write~f9d436eb",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "ui.publish",
+      "editor"    : "wiki",
+      "key"       : "item:prompt/edit",
+      "widgetPath": "wiki/ui-publish~5f06eb61",
       "then": [
         {
           "id"   : "view.open",
@@ -6874,7 +7142,9 @@
     }
   ],
   "strays": [
-    "documents item:link/asset/fc80c6eba9cb0d134428bb7c0bd8bb65effa5be3379a763df6cb0467f5ebbae9"
+    "asset cmd:view.open#style",
+    "documents item:link/asset/fc80c6eba9cb0d134428bb7c0bd8bb65effa5be3379a763df6cb0467f5ebbae9",
+    "gengraph cmd:models.refresh"
   ],
   "untagged"     : [],
   "unwalked"     : []
