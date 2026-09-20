@@ -5,6 +5,8 @@ import {
   entryArt,
   entryField,
   entryRemove,
+  promptEdit,
+  SAVE_FIRST,
   swatchAdd,
   swatchOffer,
   swatchRemove,
@@ -100,7 +102,47 @@ describe('the wardrobe offers', () => {
   });
 });
 
+describe('the prompt button', () => {
+  it("selects the portrait and opens it where the route says, as a thumbnail's click does", () => {
+    expect(promptEdit(state(), { hash: 'c3d4e5', visible: ['wiki'] })).toEqual({
+      ok     : true,
+      id     : 'ui.publish',
+      props  : { assetHash: 'c3d4e5' },
+      on     : 'prompt/edit',
+      label  : 'Edit the prompt in the Asset editor',
+      tooltip:
+        "Open the picture this sheet's prompt draws, where its clauses are edited and written back into the sheet",
+      then: [
+        { id: 'view.open', props: { editor: 'asset', where: 'elsewhere', subject: 'c3d4e5' } },
+      ],
+    });
+  });
+
+  it('refuses with nothing drawn, with unsaved edits, and with nothing open', () => {
+    expect(promptEdit(state(), {})).toMatchObject({
+      ok     : false,
+      id     : 'view.open',
+      refusal: {
+        reason: 'Nothing has been drawn for this character yet, so there is no prompt to edit',
+      },
+    });
+    expect(promptEdit(state(), { hash: 'c3d4e5', dirty: true })).toMatchObject({
+      ok     : false,
+      refusal: { reason: SAVE_FIRST },
+    });
+    expect(promptEdit(state({ path: '' }), { hash: 'c3d4e5' })).toMatchObject({
+      ok     : false,
+      refusal: { reason: 'No document is open.' },
+    });
+  });
+});
+
 describe('controls', () => {
+  it('lists the prompt button after the rows', () => {
+    const listed = controls(state({ palette: undefined, prompt: { hash: 'c3d4e5' } }));
+    expect(listed.map(keyOf)).toEqual(['item:prompt/edit']);
+  });
+
   it('lists each row in order, then the button that adds, each key once', () => {
     const listed = controls(
       state({

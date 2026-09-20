@@ -481,7 +481,7 @@ loses a field the form could edit before it.
 7. **Variants control** (D3, D4). The same row over a list, plates for art. Done; see As
    shipped.
 8. **Prompt override control** (D3). The sentence, the button with the dirty refusal, the
-   JSON box.
+   JSON box. Done; see As shipped.
 9. **Insert a picture** (D6). path.ux `resolveSrc`; `WikiProvider.buildToolbar`;
    `pickAssetPopup`; the path builder; the click route; a jest test for the paths.
 10. **Links and completion** (D6). path.ux `insertWikilink` `kind`; `onWikilinkStart` and
@@ -837,3 +837,39 @@ findings; what changed for each:
 - The id box grows from 96px to at most 220px rather than shrinking from 140px, because a
   wrapping row wraps before it shrinks anything, and the narrow pane was putting Remove on
   a second line.
+
+### Task 8
+
+- `doctree/promptcontrol.ts`: `promptControl(field, host)`, a `FieldControl` over
+  `prompt_override` that draws the sentence, the button, and then the same `textbox-x`
+  stage 1 drew, built the way path.ux's own text field builds it. The box is the field;
+  the sentence and the button read it, so the form sees one text field and Omit, Apply and
+  Discard work as before. `promptSentence(text)` says "Prompt: derived" for an absent or
+  empty override, "Prompt: custom text", "Prompt: written by the agent", or the chunk
+  edits counted ("Prompt: 2 clauses replaced, 1 muted", with "appended", "reordered" and
+  "N references" as they apply), through `promptOverrideSchema`, `promptOverrideFrom` and
+  `promptOverrideIsEmpty`; text that is not JSON or not an override says so in the same
+  place. The sentence follows typing in the box before Apply.
+- The button is `promptEdit` in `rules/sheetform.ts`: the strip's publish-then-open over
+  the portrait the sheet's prompt draws (`portrait:` slot; the accepted one, else the last
+  drawn), keyed `prompt/edit`, refused with "Nothing has been drawn for this character
+  yet, so there is no prompt to edit" when there is none, and with `SAVE_FIRST` ("Save the
+  sheet first; the Asset editor writes the prompt into it") while the buffer is dirty. The
+  buffer counts a pending form draft as dirty, so the refusal appears as soon as the
+  author types anywhere in the form, which is right: the Asset editor's write would
+  overtake that draft too. Only a character sheet has the field; a location's override
+  lives on its variant entries, which ride through the variants control.
+- `SheetHost` gains `dirty()` and `onPaint(listener)`; `wiki.ts` answers from
+  `DocBuffer.dirty` and notifies at the end of `paint()`, which is when a save or an
+  external write changes the answer. The control re-presents its button on that and on
+  `onLinks`, on a fresh `wiki/form/prompt` pass each time; the box is left alone so a
+  repaint never takes the caret.
+- Situations `prompt`, `prompt-dirty`, `prompt-undrawn`; `ux-model.json` regenerated;
+  `rules/tests/sheetform.test.ts` covers the open's shape and the three refusals.
+- Over CDP on the fixture: "Prompt: derived" and the undrawn refusal as the button's
+  tooltip; typing a chunks override into the box turns the sentence into "Prompt: 2
+  clauses replaced, 1 muted" and Apply answers writes it as block YAML under
+  `prompt_override:`; with a portrait faked into the pane's links the button enables after
+  a save, and a press publishes the hash and opens the Asset editor.
+- The look: the sentence in chrome type at `--paper`, the button in the form's own action
+  style, the box stretched under both.

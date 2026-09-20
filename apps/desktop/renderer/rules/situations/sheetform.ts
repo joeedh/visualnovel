@@ -39,6 +39,27 @@ export const SITUATIONS = situations<SheetFormState>(
     },
   },
   {
+    name : 'prompt',
+    why: "A character with a drawn portrait and a saved sheet offers the button to the portrait's prompt.",
+    state: {
+      path  : 'characters/aiko/character.md',
+      prompt: { hash: 'c3d4e5', visible: ['wiki'] },
+    },
+  },
+  {
+    name : 'prompt-dirty',
+    why: 'The button refuses while the sheet has unsaved edits, which the Asset editor would overtake.',
+    state: {
+      path  : 'characters/aiko/character.md',
+      prompt: { hash: 'c3d4e5', dirty: true, visible: ['wiki'] },
+    },
+  },
+  {
+    name : 'prompt-undrawn',
+    why  : 'With no portrait drawn there is no prompt to edit, and the button says so.',
+    state: { path: 'characters/aiko/character.md', prompt: {} },
+  },
+  {
     name : 'wardrobe-empty',
     why  : 'A sheet with no outfits offers only the button that adds one.',
     state: { path: 'characters/aiko/character.md', wardrobe: { ids: [] } },

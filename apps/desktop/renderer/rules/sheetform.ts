@@ -7,6 +7,8 @@
  */
 import { refuse, type Offer } from './anchors.js';
 import { cellAction, type StripAsset } from './assetstrip.js';
+import { publish } from './effects.js';
+import { openOf, routeFor } from './route.js';
 import type { EditorId } from '../../src/shared/editors.js';
 
 /** The two controls drawn as rows of entries: a character's outfits, a location's variants. */
@@ -24,6 +26,18 @@ export interface SheetFormState {
   wardrobe?: EntryRows;
   /** The variants' rows, when the sheet is a location's. */
   variants?: EntryRows;
+  /** The prompt override's button, when the sheet has one. */
+  prompt?: PromptState;
+}
+
+/** What the prompt control's button reads; the field is a character sheet's. */
+export interface PromptState {
+  /** The portrait whose prompt the button opens, when one has been drawn. */
+  hash?: string;
+  /** Whether the sheet has edits not yet on disk, which the Asset editor's write would overtake. */
+  dirty?: boolean;
+  /** The editors on screen, which route the button's open. */
+  visible?: readonly EditorId[];
 }
 
 /** The rows one entry control draws. */
@@ -181,6 +195,37 @@ export function entryArt(
   return { ...cellAction(asset, visible), on: `${kind}/${id}/asset/${asset.hash}` };
 }
 
+/** Said under the prompt sentence while the sheet has edits the Asset editor's write would overtake. */
+export const SAVE_FIRST = 'Save the sheet first; the Asset editor writes the prompt into it';
+
+/**
+ * The button under the prompt sentence: selects the picture the sheet's prompt draws and opens
+ * it where the route says, as a thumbnail's click does, since the clauses are edited there.
+ */
+export function promptEdit(state: SheetFormState, prompt: PromptState): Offer {
+  const control = {
+    on     : 'prompt/edit',
+    label  : 'Edit the prompt in the Asset editor',
+    tooltip:
+      "Open the picture this sheet's prompt draws, where its clauses are edited and written back into the sheet",
+  };
+  // A refusal is about the open; the click itself is the strip's publish-then-open
+  const refused = (why: string): Offer => ({ ...refuse(why), id: 'view.open', ...control });
+  if (state.path === '') return refused('No document is open.');
+  if (prompt.hash === undefined) {
+    return refused('Nothing has been drawn for this character yet, so there is no prompt to edit');
+  }
+  if (prompt.dirty === true) return refused(SAVE_FIRST);
+  const node = { id: `asset:${prompt.hash}`, kind: 'asset' as const, label: prompt.hash };
+  const open = openOf(routeFor({ node, visible: prompt.visible ?? [] }));
+  return {
+    ok: true,
+    ...publish({ assetHash: prompt.hash }),
+    ...control,
+    ...(open ? { then: [open] } : {}),
+  };
+}
+
 function entryControls(state: SheetFormState, kind: EntryKind, rows: EntryRows): Offer[] {
   const out: Offer[] = [];
   for (const id of rows.ids) {
@@ -209,5 +254,6 @@ export function controls(state: SheetFormState): readonly Offer[] {
   }
   if (state.wardrobe) out.push(...entryControls(state, 'wardrobe', state.wardrobe));
   if (state.variants) out.push(...entryControls(state, 'variants', state.variants));
+  if (state.prompt) out.push(promptEdit(state, state.prompt));
   return out;
 }

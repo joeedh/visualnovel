@@ -22,6 +22,7 @@ import type { EntityLinks } from '../../../src/shared/ipc.js';
 import type { AnchorPass } from '../tour/anchors.js';
 import { FORMS, formKind, type DocForm } from './docforms.js';
 import { paletteControl } from './palettecontrol.js';
+import { promptControl } from './promptcontrol.js';
 import { variantsControl } from './variantscontrol.js';
 import { wardrobeControl } from './wardrobecontrol.js';
 
@@ -45,6 +46,10 @@ export interface SheetHost {
   /** The editors on screen, which route a thumbnail's click. */
   visible(): readonly EditorId[];
   openAsset(hash: string): void;
+  /** Whether the document has edits not yet on disk. */
+  dirty(): boolean;
+  /** Called when the pane repaints for the buffer, which is when `dirty` may have changed. */
+  onPaint(listener: () => void): () => void;
 }
 
 /** The controls every pane draws over a sheet, each bound to the pane through `host`. */
@@ -61,8 +66,18 @@ export function sheetControls(host: SheetHost): SheetControls {
     help: 'The variants plates are drawn for, in the order written; a bare id, or an entry with its own art direction',
     control: (field) => variantsControl(field, host),
   };
+  // A location's override lives on its variant entries, so only a character sheet has the field
+  const prompt_override: FieldMeta = {
+    ...fields.prompt_override,
+    control: (field) => promptControl(field, host),
+  };
   return {
-    character: { palette, outfits, default_outfit: { ...fields.default_outfit, control: 'none' } },
+    character: {
+      palette,
+      outfits,
+      default_outfit: { ...fields.default_outfit, control: 'none' },
+      prompt_override,
+    },
     location : { palette, variants },
   };
 }

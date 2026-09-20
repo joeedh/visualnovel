@@ -579,6 +579,24 @@
     {
       "module": "sheetform",
       "editor": "wiki",
+      "name"  : "prompt",
+      "why": "A character with a drawn portrait and a saved sheet offers the button to the portrait's prompt."
+    },
+    {
+      "module": "sheetform",
+      "editor": "wiki",
+      "name"  : "prompt-dirty",
+      "why": "The button refuses while the sheet has unsaved edits, which the Asset editor would overtake."
+    },
+    {
+      "module": "sheetform",
+      "editor": "wiki",
+      "name"  : "prompt-undrawn",
+      "why"   : "With no portrait drawn there is no prompt to edit, and the button says so."
+    },
+    {
+      "module": "sheetform",
+      "editor": "wiki",
       "name"  : "wardrobe-empty",
       "why"   : "A sheet with no outfits offers only the button that adds one."
     },
@@ -27917,6 +27935,96 @@
           "props": {
             "path": "locations/cafe.md"
           }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "prompt",
+      "key"       : "item:prompt/edit",
+      "widgetPath": "wiki/ui-publish~5f06eb61",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "Edit the prompt in the Asset editor",
+        "tooltip": "Open the picture this sheet's prompt draws, where its clauses are edited and written back into the sheet",
+        "on"     : "prompt/edit",
+        "ok"     : true,
+        "props": {
+          "assetHash": "c3d4e5"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "asset",
+              "where"  : "elsewhere",
+              "subject": "c3d4e5"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "assetHash": "c3d4e5"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "c3d4e5"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "prompt-dirty",
+      "key"       : "cmd:view.open#prompt/edit",
+      "widgetPath": "wiki/view-open~d064cebd",
+      "offer": {
+        "id"     : "view.open",
+        "label"  : "Edit the prompt in the Asset editor",
+        "tooltip": "Open the picture this sheet's prompt draws, where its clauses are edited and written back into the sheet",
+        "on"     : "prompt/edit",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Save the sheet first; the Asset editor writes the prompt into it"
+        }
+      },
+      "effects": [
+        {
+          "id": "view.open"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "prompt-undrawn",
+      "key"       : "cmd:view.open#prompt/edit",
+      "widgetPath": "wiki/view-open~d064cebd",
+      "offer": {
+        "id"     : "view.open",
+        "label"  : "Edit the prompt in the Asset editor",
+        "tooltip": "Open the picture this sheet's prompt draws, where its clauses are edited and written back into the sheet",
+        "on"     : "prompt/edit",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing has been drawn for this character yet, so there is no prompt to edit"
+        }
+      },
+      "effects": [
+        {
+          "id": "view.open"
         }
       ]
     },

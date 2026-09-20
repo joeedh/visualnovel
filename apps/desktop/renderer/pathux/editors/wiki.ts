@@ -112,11 +112,19 @@ export class WikiEditor extends VnEditor {
       },
       visible  : () => this.visible(),
       openAsset: (hash) => this.openAsset(hash),
+      dirty    : () => this.buf.dirty,
+      onPaint: (listener) => {
+        this.paintListeners.add(listener);
+        return () => this.paintListeners.delete(listener);
+      },
     }),
   );
 
   /** The form controls drawing art from the tree, told when it is fetched again. */
   private readonly linkListeners = new Set<() => void>();
+
+  /** The form controls reading the buffer's state, told on each of its paints. */
+  private readonly paintListeners = new Set<() => void>();
 
   /** The path the editor was last bound for, so a swap on the same path keeps the view state. */
   private bound = '';
@@ -476,6 +484,7 @@ export class WikiEditor extends VnEditor {
     else anchors.record(this.editor, textBox(this.buf.path, TEXT_TIP));
     this.paintFoot(anchors);
     this.paintStrip();
+    for (const listener of this.paintListeners) listener();
   }
 
   /**
