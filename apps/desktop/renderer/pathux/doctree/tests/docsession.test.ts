@@ -16,7 +16,7 @@ import {
   type MdDoc,
 } from 'pathux-richtext-headless';
 import { AUTOSAVE_MS, DocBuffer, draftCount, type DocIo } from '../docbuffer.js';
-import { dirtySessionCount, findSession } from '../docsession.js';
+import { dirtySessionCount, findSession, parseOptionsFor } from '../docsession.js';
 import type { DocFile, DocSaveResult } from '../../../../src/shared/ipc.js';
 
 /** Let every queued microtask and zero-delay timer settle. */
@@ -156,7 +156,10 @@ const rich = (io: DocIo, autosave?: number): { buf: DocBuffer; painted: () => nu
 async function edit(buf: DocBuffer, from: string, to: string): Promise<void> {
   const session = buf.session!;
   const ctx = { api: {} as never, screen: {} as never, state: {}, toolstack: session.toolstack };
-  const result = await session.command(markdownSourceCommand(session.doc, from, to), ctx);
+  const result = await session.command(
+    markdownSourceCommand(session.doc, from, to, parseOptionsFor(buf.path)),
+    ctx,
+  );
   expect(result.status).toBe('applied');
 }
 
@@ -216,6 +219,38 @@ describe('a rich DocBuffer', () => {
 
     buf.close();
     findSession(path)?.dispose();
+  });
+
+  it('reflows a wrapped paragraph in prose and keeps the lines of a scene', async () => {
+    const wrapped = '---\nname: Ada\n---\n\nA line\nwrapped by hand.\n';
+    const io = new FakeIo();
+    const prose = uniq();
+    const scene = 'scenes/arrival.md';
+    io.set(prose, wrapped);
+    io.set(scene, wrapped);
+    expect(parseOptionsFor(prose)).toEqual({ softBreaks: 'reflow' });
+    expect(parseOptionsFor(scene)).toEqual({ softBreaks: 'keep' });
+
+    const { buf } = rich(io);
+    await buf.open(prose);
+    expect(buf.session!.doc.blocks[1]!.text).toBe('A line wrapped by hand.');
+    // untouched, the body on disk is kept as written, and so is source typed into the raw view
+    expect(buf.text).toBe(wrapped);
+    const typed = wrapped.replace('hand.', 'hand. Then\nmore.');
+    await edit(buf, wrapped, typed);
+    expect(buf.text).toBe(typed);
+    expect(buf.session!.doc.blocks[1]!.text).toBe('A line wrapped by hand. Then more.');
+    // a block the rich editor changes is written reflowed
+    buf.session!.doc.blocks[1]!.text += ' And more.';
+    expect(buf.text).toBe('---\nname: Ada\n---\n\nA line wrapped by hand. Then more. And more.\n');
+    buf.close();
+    findSession(prose)?.dispose();
+
+    const lines = rich(io).buf;
+    await lines.open(scene);
+    expect(lines.session!.doc.blocks[1]!.text).toBe('A line\nwrapped by hand.');
+    lines.close();
+    findSession(scene)?.dispose();
   });
 
   it('shares one session between two buffers on one path, undo included', async () => {

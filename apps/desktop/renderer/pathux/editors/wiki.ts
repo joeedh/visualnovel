@@ -29,7 +29,7 @@ import { visibleEditors } from '../panes/route.js';
 import { panesOf } from '../panes/view.js';
 import { onInvalidate, onWrote } from '../app/bridge.js';
 import { AUTOSAVE_MS, BRIDGE_IO, DocBuffer } from '../doctree/docbuffer.js';
-import { refusalOf } from '../doctree/docsession.js';
+import { parseOptionsFor, refusalOf } from '../doctree/docsession.js';
 import type { DocForm } from '../doctree/docforms.js';
 import { SheetForms, sheetControls } from '../doctree/sheetform.js';
 import { redrawing } from '../tour/anchors.js';
@@ -398,7 +398,7 @@ export class WikiEditor extends VnEditor {
   private mountRaw(session: DocumentSession<MdDoc>): void {
     this.unmountRaw();
     this.rawBox.readOnly = !session.canWrite;
-    this.rawDraft = new RawDraft(session, (text) => this.filledRaw(text));
+    this.rawDraft = new RawDraft(session, this.buf.path, (text) => this.filledRaw(text));
     this.rawOff = session.registerDraft(this.rawDraft, this.ctx);
   }
 
@@ -636,6 +636,8 @@ class RawDraft implements DraftController {
 
   constructor(
     readonly session: DocumentSession<MdDoc>,
+    /** The document's path, which decides how its paragraphs are read back. */
+    private readonly path: string,
     /** Called with the text each fill puts in the textarea. */
     private readonly filled: (text: string) => void,
   ) {
@@ -670,7 +672,12 @@ class RawDraft implements DraftController {
     if (this.session.revision !== this.revision) return { status: 'conflict', reason: RAW_STALE };
     return {
       status : 'ready',
-      command: markdownSourceCommand(this.session.doc, this.base, this.text),
+      command: markdownSourceCommand(
+        this.session.doc,
+        this.base,
+        this.text,
+        parseOptionsFor(this.path),
+      ),
     };
   }
 

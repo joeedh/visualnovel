@@ -15,6 +15,7 @@ import {
   markdownSourceDoc,
   markdownText,
   type DocumentProvider,
+  type MarkdownParseOptions,
   type MdDoc,
   type PrepareSaveResult,
 } from 'pathux-richtext-headless';
@@ -77,6 +78,15 @@ export function openSession(
   return entry;
 }
 
+/**
+ * How a document's paragraphs are read. Prose reflows, so a hard-wrapped source wraps to the
+ * pane and a line break inside a paragraph is only ever a hard one; a scene keeps its lines,
+ * because a screenplay's lines are its structure (a character name, a marker, a speech).
+ */
+export function parseOptionsFor(path: string): MarkdownParseOptions {
+  return { softBreaks: path.startsWith('scenes/') ? 'keep' : 'reflow' };
+}
+
 /** The sentence a save refused by `prepareSave` carries into the footer. */
 export function refusalOf(prepared: Exclude<PrepareSaveResult, { status: 'ready' }>): string {
   if (prepared.reason) return prepared.reason;
@@ -110,7 +120,11 @@ export class DocSession {
     private readonly write: DocWrite,
     autosave: number | undefined,
   ) {
-    this.session = new DocumentSession(markdownSourceDoc(file.text), provider, this.stack);
+    this.session = new DocumentSession(
+      markdownSourceDoc(file.text, parseOptionsFor(path)),
+      provider,
+      this.stack,
+    );
     this.seenHash = file.hash;
     this.implied = file.implied;
     this.unsubscribe = this.session.onChange((_change, info) => {

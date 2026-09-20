@@ -130,6 +130,14 @@ on the rich editor, with every decision and what shipped against each, is
   view up. Source typed after another pane edited the document is reported as stale,
   refuses the save, and is dropped from the same **Discard pending edits** control. The
   switch is per pane and in memory (never `saveUIData`), so every document opens rich.
+- **A paragraph's wrapped lines are reflowed; a scene's lines are kept.** Prose is parsed
+  with path.ux's `softBreaks: 'reflow'` (`parseOptionsFor` in `doctree/docsession.ts`,
+  used by the session's read and the Raw view's commit alike), so a source wrapped by hand
+  wraps to the pane instead of showing its own line ends, and a line break inside a
+  paragraph is only ever a hard one (Shift+Enter, written as a trailing backslash). A
+  document under `scenes/` keeps its soft breaks, because a screenplay's lines are its
+  structure. The body on disk stays as written until a block is edited; the first edit
+  writes every paragraph as one line, which is the one diff reflowing costs.
 - **The buffer is not authoritative.** `doc.read` returns the content hash it read at, and
   `doc.write` carries that hash back as `seenHash`. If something else rewrote the file
   underneath (`gate.approve`, the agent, an undo), the write is refused with a sentence
