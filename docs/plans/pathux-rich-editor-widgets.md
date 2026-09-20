@@ -460,7 +460,7 @@ loses a field the form could edit before it.
    `FieldHost`, `control: "none"`), `form_control.ts` (factory dispatch, fallback, the
    no-op `write`, `also` routing, `restore`, classes and `formStyles()`), `form_native.ts`
    (`NativeFormOptions.view`), the markdown provider's `styles()` including
-   `formStyles()`, tests, `documentation/richtext.md`.
+   `formStyles()`, tests, `documentation/richtext.md`. Done; see As shipped.
 2. **The app's per-pane forms and provider.** `doctree/sheetform.ts` (per-pane `DocForm`s,
    the `FieldHost`, the `view` factory with recovery), `editors/wikiprovider.ts`
    (`WikiProvider` with `styles()` only, for now), `DocBufferOptions.rich` as a factory
@@ -585,4 +585,31 @@ findings; what changed for each:
 
 ## As shipped
 
-Nothing yet.
+### Task 1
+
+- path.ux `23105b89` on its `pathux-rich-editor-widgets` branch. `FieldMeta.control` takes
+  `"none"` or a `FieldControlFactory`; a `FieldControl` reads and writes encoded text by
+  key, carries `also`, and gets its `oninput` from `FormControl`. The default text box is
+  the same seam (`TextFieldControl`), so `refresh`, Omit, `focus` and `dispose` walk one
+  list of controls. `FormControl.restore` and `RecoveredForm`; `NativeFormOptions.view`
+  with `NativeFormParts` and the exported `formView`. `form_native.ts` re-exports
+  `FormControl` and `RecoveredForm`, since that is the module the app's
+  `pathux-richtext-forms` alias reaches.
+- Two departures from D1. The stylesheet rides inside the form element as a `<style>`
+  rather than joining the markdown provider's `styles()`, because `FormControl` also
+  mounts standalone (the example's third section, `form_external.ts`); every selector is
+  wrapped in `:where()` so a host rule wins on specificity. And the text box's width stays
+  a widget property (`box.width = 220`), because `textbox-x` copies its inline width onto
+  its inner input and a stylesheet rule never reaches it.
+- Tests: `tests/richtext/formControl.test.ts` (a fake wardrobe control with `also`, the
+  no-op `write`, `"none"`, Omit through a control, factory fallback with the reason in the
+  status line, read-only reaching the control, `restore` accepted and each refusal, a host
+  `view` receiving the parts); the example gained `paletteControl` over the character
+  palette and `forms.spec.ts` a test that edits through it, applies, and tabs from the
+  previous row's Omit through swatch, remove, add, to Omit palette — passing in Chromium
+  and Firefox.
+- path.ux's `lint:prose` cannot run on this machine: its `.commentlintrc.jsonc` disables
+  rule `P15`, which neither the submodule's nor the root's installed `comment-lint` knows
+  (a config committed in `cbf4e70e` ahead of the tool). The changed files were checked
+  with the same settings minus that rule: 0 findings. `pnpm run format` also rewrites line
+  endings under `scripts/path-controller`; those were restored before committing.
