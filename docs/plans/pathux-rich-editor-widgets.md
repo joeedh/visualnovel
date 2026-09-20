@@ -474,6 +474,7 @@ loses a field the form could edit before it.
    check. Done; see As shipped.
 5. **`EntityLinks.assets[].slot`, `usedOutfits`, `usedVariants`** (D4). Main's
    `doctree.ts` and `DocTreeInput`; a test in `src/main/tests/`; the strip ignores them.
+   Done; see As shipped.
 6. **Wardrobe control** (D3, D4, D5). Rows, default mark, add, remove, the entry's
    art-direction boxes with the shared rung CSS, art from the tree, the empty-art and
    rename sentences; `default_outfit` becomes `"none"` here.
@@ -729,3 +730,21 @@ findings; what changed for each:
   `--mist-dim` rising to `--paper` on hover and focus. Labels now shrink to 72px in a
   narrow pane rather than holding 120px. path.ux `3add5bea` drops the `console.warn` the
   colour button logged on every press.
+
+### Task 5
+
+- `EntityLinks.assets[]` carries `slot`, the address from `@vn/artgen`'s `slotOf` and
+  `slotKey` (`portrait:aiko`, `sheet:aiko/gala/side`, `plate:cafe/night`,
+  `shot:arrival/arrival-s1`), absent for a concept or an upload. `DocTreeInput.angleOf` is
+  `labelContext`'s lookup, passed by `session/docs.ts` beside `assetLabels`, so a sheet's
+  address names the angle its task carried rather than the front.
+- `EntityLinks.usedOutfits` on a character and `usedVariants` on a location, from
+  `@vn/model`'s `usedOutfits(model, shots)` and `allLocationVariants(model)`, computed
+  once per build (`plannedFor`) over the same `shots` map the story branch walks, with a
+  storyboard that would not parse counted as no shots. A scene's links carry neither.
+- `main/tests/doctree.test.ts`: the two existing backlink shapes gained their `slot` and
+  `usedOutfits`; new cases for the angle reaching a sheet's address, a concept with no
+  address, a gala outfit worn by one shot listed after the default, a location's `day`
+  variant, the fields' absence on the other subjects, and a broken storyboard.
+- The strip (`renderer/pathux/assets/assetstrip.ts`) and the backlink panel read `assets`
+  as before and ignore the new fields, so nothing on screen changes in this task.

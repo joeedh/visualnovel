@@ -8,7 +8,8 @@ import { relative } from 'node:path';
 import type { LoadedInputs } from '@vn/parse';
 import { bindsTo, type Asset, type AssetKind, type ProjectModel, type Shot } from '@vn/types';
 import { isBaseKind } from '@vn/store';
-import { assetApproved, type SlotGraph } from '@vn/artgen';
+import { assetApproved, slotKey, slotOf, type SlotGraph } from '@vn/artgen';
+import { allLocationVariants, usedOutfits } from '@vn/model';
 import { driftOf } from '@vn/pipeline';
 import type { BibleFile } from '@vn/bible';
 import type { DocNode, DocTree, EntityLinks, SkillEntry } from '../../shared/ipc.js';
@@ -37,6 +38,11 @@ export interface DocTreeInput {
    * missing from the map falls back to `hash8.ext`.
    */
   assetLabels?: ReadonlyMap<string, string>;
+  /**
+   * The model-sheet angle a task was for, from `labelContext`. Four sheets share one binding and
+   * differ only in the angle, so without it a sheet's slot address names the front.
+   */
+  angleOf?: (sourceTask: string | undefined) => string | undefined;
   /**
    * Every picture the project implies, from `buildSlotGraph`. Optional: when it is absent the
    * Unapproved root is left out rather than drawn empty, so a caller that has not built the graph
@@ -562,7 +568,12 @@ function inScene(
  * What one subject is attached to. The shot half comes from the same storyboards the story branch
  * walked, which is why the tree and the panel are one call and not two.
  */
-function linksFor(input: DocTreeInput, binding: Subject, sheet: string | undefined): EntityLinks {
+function linksFor(
+  input: DocTreeInput,
+  binding: Subject,
+  sheet: string | undefined,
+  planned: Planned,
+): EntityLinks {
   const scenes: string[] = [];
   const shots: { scene: string; shot: string }[] = [];
   for (const scene of input.model.scenes.values()) {
@@ -587,6 +598,7 @@ function linksFor(input: DocTreeInput, binding: Subject, sheet: string | undefin
         'sceneId' in binding
           ? a.satisfies.find((b) => b.sceneId === binding.sceneId)?.shotId
           : undefined;
+      const slot = slotOf(a, input.angleOf?.(a.sourceTask));
       return {
         hash    : a.hash,
         ext     : a.ext,
@@ -595,8 +607,15 @@ function linksFor(input: DocTreeInput, binding: Subject, sheet: string | undefin
         accepted: a.accepted,
         base    : isBaseKind(a.kind),
         ...(shotId !== undefined ? { shotId } : {}),
+        ...(slot ? { slot: slotKey(slot) } : {}),
       };
     });
+  const used =
+    'characterId' in binding
+      ? { usedOutfits: [...(planned.outfits.get(binding.characterId) ?? [])] }
+      : 'locationId' in binding
+        ? { usedVariants: [...(planned.variants.get(binding.locationId) ?? [])] }
+        : {};
   // The bible link is the sheet's own path when the sheet lives under wiki/. Finding the other
   // notes that mention it is `bible.search`, which is ranked and budgeted, not an index built here
   const wiki = sheet?.startsWith(`${input.wikiDir}/`) ? sheet : undefined;
@@ -606,7 +625,20 @@ function linksFor(input: DocTreeInput, binding: Subject, sheet: string | undefin
     assets,
     scenes,
     shots,
+    ...used,
   };
+}
+
+/** What the pipeline plans per subject, so a wardrobe row can say whether art is owed. */
+interface Planned {
+  outfits: ReadonlyMap<string, ReadonlySet<string>>;
+  variants: ReadonlyMap<string, ReadonlySet<string>>;
+}
+
+/** Read once per build from the storyboards the story branch walked; a broken one counts as none. */
+function plannedFor(input: DocTreeInput): Planned {
+  const shots = new Map([...input.shots].map(([scene, list]) => [scene, list ?? []]));
+  return { outfits: usedOutfits(input.model, shots), variants: allLocationVariants(input.model) };
 }
 
 export function buildDocTree(input: DocTreeInput): DocTree {
@@ -637,6 +669,7 @@ export function buildDocTree(input: DocTreeInput): DocTree {
 
   const backlinks: Record<string, EntityLinks> = {};
   const pathIndex: Record<string, string> = {};
+  const planned = plannedFor(input);
   // A path is claimed by the first subject discovered in it. Two `type:` tags in one file is a
   // conflict the model already reports as a diagnostic; the index must not silently pick a winner.
   const claim = (path: string | undefined, key: string): void => {
@@ -655,19 +688,19 @@ export function buildDocTree(input: DocTreeInput): DocTree {
 
   for (const c of input.model.characters.values()) {
     const sheet = characterFiles.get(c.id);
-    backlinks[`character:${c.id}`] = linksFor(input, { characterId: c.id }, sheet);
+    backlinks[`character:${c.id}`] = linksFor(input, { characterId: c.id }, sheet, planned);
     claim(sheet, `character:${c.id}`);
   }
   for (const l of input.model.locations.values()) {
     const sheet = locationFiles.get(l.id);
-    backlinks[`location:${l.id}`] = linksFor(input, { locationId: l.id }, sheet);
+    backlinks[`location:${l.id}`] = linksFor(input, { locationId: l.id }, sheet, planned);
     claim(sheet, `location:${l.id}`);
   }
   // A scene is a subject too, backlinked under its own key, which is what lets a pane showing
   // prose also show the frames drawn from that prose
   for (const s of input.model.scenes.values()) {
     const sheet = sceneFiles.get(s.id);
-    backlinks[`scene:${s.id}`] = linksFor(input, { sceneId: s.id }, sheet);
+    backlinks[`scene:${s.id}`] = linksFor(input, { sceneId: s.id }, sheet, planned);
     claim(sheet, `scene:${s.id}`);
   }
   return { roots, backlinks, pathIndex };

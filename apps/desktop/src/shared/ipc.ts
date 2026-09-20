@@ -647,9 +647,19 @@ export interface EntityLinks {
      * scene's links, where it is what lets a strip group frames by the shot they illustrate.
      */
     shotId?: string;
+    /**
+     * The picture it fills, as a slot address (`sheet:aiko/uniform/front`, `portrait:aiko`,
+     * `plate:cafe/night`), which is what places it beside the outfit or variant it was drawn
+     * for. Absent for a concept, an upload, and anything else nothing plans.
+     */
+    slot?: string;
   }[];
   scenes: string[];
   shots: { scene: string; shot: string }[];
+  /** A character's outfits some scene wears, the default first; absent for the other subjects. */
+  usedOutfits?: string[];
+  /** A location's variants plates are planned for; absent for the other subjects. */
+  usedVariants?: string[];
 }
 
 /** One rung of the art rung chain as a surface shows it — see `main/artnotes.ts`. */

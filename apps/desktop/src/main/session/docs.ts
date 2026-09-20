@@ -73,6 +73,7 @@ export class DocsPart {
       bible      : bible.files(),
       wikiDir    : relPath(this.session.dir, project.paths.wikiDir),
       assetLabels: labelAssets(manifest, labels),
+      angleOf    : labels.angleOf,
       // Always an array, never undefined: the branch is drawn even with nothing in it, and only a
       // caller outside the app (a test, the CLI) leaves it out.
       skills     : await this.session.skillEntries(),

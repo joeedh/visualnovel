@@ -729,8 +729,8 @@ describe('backlinks', () => {
 
   it('join an entity to its sheet, its art, its scenes and its shots', () => {
     expect(backlinks['character:aiko']).toEqual({
-      sheet : 'wiki/cast/aiko.md',
-      wiki  : 'wiki/cast/aiko.md',
+      sheet      : 'wiki/cast/aiko.md',
+      wiki       : 'wiki/cast/aiko.md',
       assets: [
         {
           hash    : 'a'.repeat(64),
@@ -739,11 +739,51 @@ describe('backlinks', () => {
           label   : 'aaaaaaaa.png',
           accepted: true,
           base    : true,
+          slot    : 'portrait:aiko',
         },
       ],
-      scenes: ['arrival'],
-      shots : [{ scene: 'arrival', shot: 'arrival-s1' }],
+      scenes     : ['arrival'],
+      shots      : [{ scene: 'arrival', shot: 'arrival-s1' }],
+      usedOutfits: ['uniform'],
     });
+  });
+
+  // The wardrobe places art beside the outfit it was drawn for by the slot, and says whether a
+  // row with none is owed any by the outfits the storyboards wear.
+  it('address each picture by its slot, with the angle the task carried', () => {
+    const sheet = asset('c'.repeat(64), {
+      kind      : 'model_sheet',
+      sourceTask: 'side-task',
+      satisfies : [{ characterId: 'aiko', outfit: 'gala' }],
+    });
+    const concept = asset('d'.repeat(64), { kind: 'concept', sourceTask: undefined });
+    const { backlinks: links } = buildDocTree(
+      makeInput({
+        manifest: [sheet, concept],
+        angleOf : (task) => (task === 'side-task' ? 'side' : undefined),
+        shots: new Map([
+          [
+            'arrival',
+            [
+              scene('arrival', { subjects: [{ characterId: 'aiko', outfit: 'gala' }] }),
+              scene('arrival', { id: 'arrival-s2', subjects: [{ characterId: 'aiko' }] }),
+            ],
+          ],
+        ]),
+      }),
+    );
+    const aiko = links['character:aiko']!;
+    expect(aiko.assets.map((a) => a.slot)).toEqual(['sheet:aiko/gala/side', undefined]);
+    expect(aiko.usedOutfits).toEqual(['uniform', 'gala']);
+    expect(links['location:gate']!.usedVariants).toEqual(['day']);
+    expect(links['location:gate']!.usedOutfits).toBeUndefined();
+    expect(links['scene:arrival']!.usedOutfits).toBeUndefined();
+    expect(links['scene:arrival']!.usedVariants).toBeUndefined();
+  });
+
+  it('count a storyboard that would not parse as wearing nothing', () => {
+    const { backlinks: links } = buildDocTree(makeInput({ shots: new Map([['arrival', null]]) }));
+    expect(links['character:aiko']!.usedOutfits).toEqual(['uniform']);
   });
 
   it('name a wiki link only when the sheet is actually filed there', () => {
@@ -771,6 +811,7 @@ describe('backlinks', () => {
           accepted: false,
           base    : false,
           shotId  : 'arrival-s1',
+          slot    : 'shot:arrival/arrival-s1',
         },
       ],
       scenes: ['arrival'],
