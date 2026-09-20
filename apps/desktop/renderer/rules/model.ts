@@ -35,6 +35,7 @@ import * as play from './play.js';
 import * as projectbar from './projectbar.js';
 import * as reportconvo from './reportconvo.js';
 import * as script from './script.js';
+import * as sheetform from './sheetform.js';
 import * as skills from './skills.js';
 import * as systemprompt from './systemprompt.js';
 import * as taskGraph from './taskGraph.js';
@@ -59,6 +60,7 @@ import { SITUATIONS as PLAY } from './situations/play.js';
 import { SITUATIONS as PROJECTBAR } from './situations/projectbar.js';
 import { SITUATIONS as REPORTCONVO } from './situations/reportconvo.js';
 import { SITUATIONS as SCRIPT } from './situations/script.js';
+import { SITUATIONS as SHEETFORM } from './situations/sheetform.js';
 import { SITUATIONS as SKILLS } from './situations/skills.js';
 import { SITUATIONS as SYSTEMPROMPT } from './situations/systemprompt.js';
 import { SITUATIONS as TASKGRAPH } from './situations/taskGraph.js';
@@ -112,6 +114,7 @@ export const ROWS: readonly Row<unknown>[] = [
   row('projectbar', 'project', PROJECTBAR, projectbar.controls),
   row('reportconvo', 'report', REPORTCONVO, reportconvo.controls),
   row('script', 'script', SCRIPT, script.controls),
+  row('sheetform', 'wiki', SHEETFORM, sheetform.controls),
   row('skills', 'skills', SKILLS, skills.controls),
   row('systemprompt', 'systemprompt', SYSTEMPROMPT, systemprompt.controls),
   row('taskGraph', 'taskgraph', TASKGRAPH, taskGraph.controls),

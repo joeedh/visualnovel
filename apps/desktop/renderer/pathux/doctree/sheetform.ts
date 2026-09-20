@@ -17,10 +17,33 @@ import {
 import type { DocumentSession, JsonValue, MdDoc, WidgetView } from 'pathux-richtext-headless';
 import type { FieldMeta } from 'pathux-richtext-schema';
 import type { EntityTag } from '@vn/types';
+import type { AnchorPass } from '../tour/anchors.js';
 import { FORMS, formKind, type DocForm } from './docforms.js';
+import { paletteControl } from './palettecontrol.js';
 
 /** The controls a pane supplies for a sheet, by field name; a field not named keeps its box. */
 export type SheetControls = Partial<Record<EntityTag, Readonly<Record<string, FieldMeta>>>>;
+
+/** What a control closes over from the pane that draws it. */
+export interface SheetHost {
+  /** The open document's path, which every offer a control records names. */
+  path(): string;
+  /**
+   * A fresh anchor pass for one control's part of the form. A control that rebuilds its rows
+   * opens one, because a pass refuses a node whose offer changes inside it, and the previous pass
+   * of that part is dropped with the rows it recorded.
+   */
+  anchors(part: string): AnchorPass;
+}
+
+/** The controls every pane draws over a sheet, each bound to the pane through `host`. */
+export function sheetControls(host: SheetHost): SheetControls {
+  const palette: FieldMeta = {
+    ...FORMS.character.presentation.fields!.palette,
+    control: (field) => paletteControl(field, host),
+  };
+  return { character: { palette }, location: { palette } };
+}
 
 export class SheetForms {
   private readonly forms: Record<EntityTag, DocForm>;

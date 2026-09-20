@@ -471,7 +471,7 @@ loses a field the form could edit before it.
    shipped.
 4. **Palette control** (D3). The smallest control, to prove the seam end to end: swatches,
    picker, add, remove; `rules/sheetform.ts` begins; a situation; `pnpm gen:uxmodel`; CDP
-   check.
+   check. Done; see As shipped.
 5. **`EntityLinks.assets[].slot`, `usedOutfits`, `usedVariants`** (D4). Main's
    `doctree.ts` and `DocTreeInput`; a test in `src/main/tests/`; the strip ignores them.
 6. **Wardrobe control** (D3, D4, D5). Rows, default mark, add, remove, the entry's
@@ -694,3 +694,38 @@ findings; what changed for each:
   block scalar both ways, CRLF through a structural edit, and the emptied collection with
   the commented refusal. `docs/reference/desktop-app-editors-misc.md`'s Wiki bullet names
   the new behaviour and the refusal.
+
+### Task 4
+
+- `doctree/palettecontrol.ts`: `paletteControl(field, host)`, a `FieldControl` over the
+  encoded JSON of `palette`. Each swatch is a path.ux `color-picker-button-x` at 22px with
+  no label, so a click opens the colour picker the rest of the app uses; its `on_change`
+  writes `#rrggbb` into that index only, so an untouched swatch keeps its written string.
+  A `×` beside each swatch removes it and the dashed slot after the last adds one, mid
+  grey. Text that is not a JSON list of strings is shown as a sentence ("Not a list of
+  colours; edit it in the Raw view") and handed back unchanged. Read-only greys all three.
+- The pane reaches the control through `SheetHost` in `doctree/sheetform.ts` (`path()`,
+  `anchors(part)`), which `sheetControls(host)` binds into the `FieldMeta` factories
+  `SheetForms` merges; `wiki.ts` passes `() => this.buf.path` and
+  `(part) => redrawing('wiki', 'form/' + part)`. That is D8's `FieldHost.anchor` and
+  `repaint()` in one: a control that rebuilds its rows opens a fresh pass for its own part
+  (`wiki/form/palette`), so no node presents two offers in one pass and another control's
+  records are untouched; `dispose` opens an empty pass so the sweep stops seeing swatches
+  that are gone.
+- `rules/sheetform.ts`: `swatchOffer`, `swatchRemove`, `swatchAdd` and `controls`, each
+  the `doc.write` the text box records with `on` of `palette/<i>`, `palette/<i>/remove`
+  and `palette/add`, refused with nothing open or a read-only session; the colour button
+  is recorded (`record`) because the picker is the widget's own click, the two buttons are
+  acted. Situations `palette`, `palette-empty`, `read-only`; `ux-model.json` regenerated;
+  `rules/tests/sheetform.test.ts`.
+- Over CDP on the fixture: four swatches with the offers' sentences as tooltips and nine
+  anchors; the slot adds a fifth and Apply answers makes one revision that appends
+  `- "#808080"` under the block palette with the comment and the unknown key kept; the
+  editor's undo takes it back; the picker opened from a swatch writes `#336699` into the
+  first line and closes on Escape. Autosave applied that draft and wrote the file, as
+  stage 1 has it apply every pending form answer.
+- The look: the swatches sit in a row where the JSON box was and wrap in a narrow pane; a
+  1px `--ink-line` outline on each, `--r-chrome` corners, the `×` and the slot in
+  `--mist-dim` rising to `--paper` on hover and focus. Labels now shrink to 72px in a
+  narrow pane rather than holding 120px. path.ux `3add5bea` drops the `console.warn` the
+  colour button logged on every press.

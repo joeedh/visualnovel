@@ -29,7 +29,8 @@
 }
 
 .schema-form-label {
-  flex: 0 0 120px;
+  flex: 0 1 120px;
+  min-width: 72px;
   padding-top: 5px;
   color: var(--mist);
   font-size: 12px;
@@ -103,5 +104,77 @@
 }
 
 .schema-form-status:empty {
+  display: none;
+}
+
+/* The palette: a row of swatches where the JSON box was. The slot after the last one adds. */
+.schema-form-row > .sf-palette {
+  flex: 1 1 120px;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.sf-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.sf-swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.sf-swatch > color-picker-button-x {
+  border-radius: var(--r-chrome);
+  outline: 1px solid var(--ink-line);
+}
+
+.sf-swatch > color-picker-button-x:focus-visible {
+  outline: 1px solid var(--sodium);
+}
+
+.sf-swatch-remove,
+.sf-swatch-add {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--mist-dim);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sf-swatch-remove {
+  width: 14px;
+  font-size: 14px;
+}
+
+.sf-swatch-add {
+  width: 22px;
+  height: 22px;
+  border: 1px dashed var(--ink-line);
+  border-radius: var(--r-chrome);
+  font-size: 15px;
+}
+
+.sf-swatch-remove:hover,
+.sf-swatch-add:hover,
+.sf-swatch-remove:focus-visible,
+.sf-swatch-add:focus-visible {
+  color: var(--paper);
+  border-color: var(--mist);
+  outline: none;
+}
+
+.sf-palette-note {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--sodium);
+}
+
+.sf-palette-note:empty {
   display: none;
 }

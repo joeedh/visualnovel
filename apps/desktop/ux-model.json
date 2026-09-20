@@ -553,6 +553,24 @@
       "why": "A new scene is pending, so the strip’s id and heading fields and its button offer story.newScene."
     },
     {
+      "module": "sheetform",
+      "editor": "wiki",
+      "name"  : "palette",
+      "why": "A character sheet with two swatches offers each, its ✕, and the slot that adds one."
+    },
+    {
+      "module": "sheetform",
+      "editor": "wiki",
+      "name"  : "palette-empty",
+      "why"   : "A sheet whose palette is empty offers only the slot that adds a swatch."
+    },
+    {
+      "module": "sheetform",
+      "editor": "wiki",
+      "name"  : "read-only",
+      "why"   : "A session that refuses writes greys every control of the form with the reason."
+    },
+    {
       "module": "skills",
       "editor": "skills",
       "name"  : "none-open",
@@ -26878,6 +26896,240 @@
           "props": {
             "popup": "box"
           }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "palette",
+      "key"       : "cmd:doc.write#palette/0",
+      "widgetPath": "wiki/doc-write~0e761e0a",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Swatch 1",
+        "tooltip" : "Pick this swatch's colour; Apply answers writes the palette into the sheet",
+        "on"      : "palette/0",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "palette",
+      "key"       : "cmd:doc.write#palette/0/remove",
+      "widgetPath": "wiki/doc-write~fd60ec9b",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "×",
+        "tooltip": "Take this swatch out of the palette; Apply answers writes the palette into the sheet",
+        "on"      : "palette/0/remove",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "palette",
+      "key"       : "cmd:doc.write#palette/1",
+      "widgetPath": "wiki/doc-write~2d13a34b",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Swatch 2",
+        "tooltip" : "Pick this swatch's colour; Apply answers writes the palette into the sheet",
+        "on"      : "palette/1",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "palette",
+      "key"       : "cmd:doc.write#palette/1/remove",
+      "widgetPath": "wiki/doc-write~12921fb2",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "×",
+        "tooltip": "Take this swatch out of the palette; Apply answers writes the palette into the sheet",
+        "on"      : "palette/1/remove",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "palette",
+      "key"       : "cmd:doc.write#palette/add",
+      "widgetPath": "wiki/doc-write~f9d436eb",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "+",
+        "tooltip" : "Add a swatch to the palette; Apply answers writes the palette into the sheet",
+        "on"      : "palette/add",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "palette-empty",
+      "key"       : "cmd:doc.write#palette/add",
+      "widgetPath": "wiki/doc-write~f9d436eb",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "+",
+        "tooltip" : "Add a swatch to the palette; Apply answers writes the palette into the sheet",
+        "on"      : "palette/add",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "read-only",
+      "key"       : "cmd:doc.write#palette/0",
+      "widgetPath": "wiki/doc-write~0e761e0a",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Swatch 1",
+        "tooltip" : "Pick this swatch's colour; Apply answers writes the palette into the sheet",
+        "on"      : "palette/0",
+        "supplies": ["text", "seenHash"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "This document cannot be written"
+        }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "read-only",
+      "key"       : "cmd:doc.write#palette/0/remove",
+      "widgetPath": "wiki/doc-write~fd60ec9b",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "×",
+        "tooltip": "Take this swatch out of the palette; Apply answers writes the palette into the sheet",
+        "on"      : "palette/0/remove",
+        "supplies": ["text", "seenHash"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "This document cannot be written"
+        }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "read-only",
+      "key"       : "cmd:doc.write#palette/add",
+      "widgetPath": "wiki/doc-write~f9d436eb",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "+",
+        "tooltip" : "Add a swatch to the palette; Apply answers writes the palette into the sheet",
+        "on"      : "palette/add",
+        "supplies": ["text", "seenHash"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "This document cannot be written"
+        }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
         }
       ]
     },

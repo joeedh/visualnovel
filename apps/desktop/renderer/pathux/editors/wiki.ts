@@ -22,7 +22,7 @@ import { onInvalidate, onWrote } from '../app/bridge.js';
 import { AUTOSAVE_MS, BRIDGE_IO, DocBuffer } from '../doctree/docbuffer.js';
 import { refusalOf } from '../doctree/docsession.js';
 import type { DocForm } from '../doctree/docforms.js';
-import { SheetForms } from '../doctree/sheetform.js';
+import { SheetForms, sheetControls } from '../doctree/sheetform.js';
 import { redrawing } from '../tour/anchors.js';
 import { assetGroups } from '../doctree/doctree.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
@@ -100,7 +100,12 @@ export class WikiEditor extends VnEditor {
   });
 
   /** This pane's forms: the schemas with its own controls, and the form path.ux has mounted. */
-  private readonly forms = new SheetForms();
+  private readonly forms = new SheetForms(
+    sheetControls({
+      path   : () => this.buf.path,
+      anchors: (part) => redrawing('wiki', `form/${part}`),
+    }),
+  );
 
   /** The path the editor was last bound for, so a swap on the same path keeps the view state. */
   private bound = '';
