@@ -60,18 +60,19 @@ export function dirtySessionCount(): number {
 
 /**
  * The entry for `path`, created from `file` when none exists. A buffer whose read lands second
- * adopts the first buffer's entry, so two panes opening one document at once still share it.
+ * adopts the first buffer's entry, so two panes opening one document at once still share it;
+ * `provider` is only called for the entry that is created, and its answer serves every pane.
  */
 export function openSession(
   path: string,
   file: DocFile,
-  provider: DocumentProvider<MdDoc>,
+  provider: () => DocumentProvider<MdDoc>,
   write: DocWrite,
   autosave: number | undefined,
 ): DocSession {
   const existing = sessions.get(path);
   if (existing) return existing;
-  const entry = new DocSession(path, file, provider, write, autosave);
+  const entry = new DocSession(path, file, provider(), write, autosave);
   sessions.set(path, entry);
   return entry;
 }

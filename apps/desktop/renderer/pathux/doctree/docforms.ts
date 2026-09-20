@@ -131,12 +131,21 @@ export const FORMS: Record<EntityTag, DocForm> = {
 };
 
 /**
+ * Which sheet a document is: the entity tag, `undefined` for a note, and a thrown conflict whose
+ * message names why the location and the tag disagree.
+ */
+export function formKind(implied: EntityTag | undefined, values: JsonValue): EntityTag | undefined {
+  const kind = docKind(implied, formObject(values) ? values : {});
+  if (kind.kind === 'conflict') throw new Error(`This document ${kind.reason}`);
+  return kind.kind === 'note' ? undefined : kind.kind;
+}
+
+/**
  * The `select` of `nativeFormWidgets` for one document: the sheet's form, `undefined` for a note
  * (path.ux then keeps the raw block), and a thrown conflict, whose message path.ux hands back
  * through `onDiagnostic`.
  */
 export function selectForm(implied: EntityTag | undefined, values: JsonValue): DocForm | undefined {
-  const kind = docKind(implied, formObject(values) ? values : {});
-  if (kind.kind === 'conflict') throw new Error(`This document ${kind.reason}`);
-  return kind.kind === 'note' ? undefined : FORMS[kind.kind];
+  const kind = formKind(implied, values);
+  return kind === undefined ? undefined : FORMS[kind];
 }

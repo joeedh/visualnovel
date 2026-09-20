@@ -148,7 +148,7 @@ const provider = new ReplaceOnlyProvider();
 
 const rich = (io: DocIo, autosave?: number): { buf: DocBuffer; painted: () => number } => {
   let paints = 0;
-  const buf = new DocBuffer(() => void paints++, io, { rich: provider, autosave });
+  const buf = new DocBuffer(() => void paints++, io, { rich: () => provider, autosave });
   return { buf, painted: () => paints };
 };
 

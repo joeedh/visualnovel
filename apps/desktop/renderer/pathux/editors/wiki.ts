@@ -1,5 +1,4 @@
 import { UIBase, type Button, type Container, type ContextLike, type RichTextEditor } from 'pathux';
-import { MarkdownProvider } from 'pathux-richtext-markdown';
 import { nativeFormWidgets } from 'pathux-richtext-forms';
 import {
   markdownSourceCommand,
@@ -22,11 +21,13 @@ import { panesOf } from '../panes/view.js';
 import { onInvalidate, onWrote } from '../app/bridge.js';
 import { AUTOSAVE_MS, BRIDGE_IO, DocBuffer } from '../doctree/docbuffer.js';
 import { refusalOf } from '../doctree/docsession.js';
-import { selectForm, type DocForm } from '../doctree/docforms.js';
+import type { DocForm } from '../doctree/docforms.js';
+import { SheetForms } from '../doctree/sheetform.js';
 import { redrawing } from '../tour/anchors.js';
 import { assetGroups } from '../doctree/doctree.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { assetNode, openNode } from '../panes/open.js';
+import { WikiProvider } from './wikiprovider.js';
 import type { VnScreen } from '../app/screen.js';
 import WIKI_CSS from '../../styles/wiki.css?inline';
 import type { DocTree } from '../../../src/shared/ipc.js';
@@ -94,9 +95,12 @@ export class WikiEditor extends VnEditor {
    * widgets and nothing about the text.
    */
   private readonly buf = new DocBuffer(() => this.paint(), BRIDGE_IO, {
-    rich    : new MarkdownProvider(),
+    rich    : (path) => new WikiProvider(path),
     autosave: AUTOSAVE_MS,
   });
+
+  /** This pane's forms: the schemas with its own controls, and the form path.ux has mounted. */
+  private readonly forms = new SheetForms();
 
   /** The path the editor was last bound for, so a swap on the same path keeps the view state. */
   private bound = '';
@@ -164,6 +168,7 @@ export class WikiEditor extends VnEditor {
         patch: frontmatterCodec.patch,
       },
       select      : (values) => this.select(values),
+      view        : (parts) => this.forms.view(parts),
       onDiagnostic: (_block, message) => this.diagnose(message),
     });
     // The screen keymap is a bubble-phase window listener, so a box that does not stop its own
@@ -275,7 +280,7 @@ export class WikiEditor extends VnEditor {
       throw new Error('Not front matter: the fence must open at the first line');
     }
     try {
-      const form = selectForm(this.buf.implied, values);
+      const form = this.forms.select(this.buf.implied, values);
       this.picked = form ? 'sheet' : 'note';
       return form;
     } catch (error) {
@@ -455,9 +460,14 @@ export class WikiEditor extends VnEditor {
     const open = this.buf.path !== '';
     this.pathEl.textContent = open ? this.buf.path : '';
     this.pathEl.title = this.pathEl.textContent;
+
+    // A closed form's answers go back into the form that replaced it when the values still
+    // match; what cannot go back is reported below, with the control that drops it
+    const session = this.buf.session;
+    if (session && !this.raw) this.forms.recover(session);
     this.badge.style.display = this.buf.dirty ? 'inline-block' : 'none';
 
-    const detached = this.buf.session?.pendingDrafts.filter((d) => d.detached).length ?? 0;
+    const detached = session?.pendingDrafts.filter((d) => d.detached).length ?? 0;
     const stale = this.rawStale;
     const blocked = detached > 0 ? DETACHED : stale ? RAW_STALE : '';
     const note = this.buf.note || this.viewNote || blocked;

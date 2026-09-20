@@ -76,8 +76,13 @@ export const BRIDGE_IO: DocIo = {
 export const AUTOSAVE_MS = 60_000;
 
 export interface DocBufferOptions {
-  /** Hold the document as a rich session rendered through this provider rather than as text. */
-  rich?: DocumentProvider<MdDoc>;
+  /**
+   * Hold the document as a rich session rather than as text, rendered through the provider this
+   * builds for its path. Called once per session, so a provider closes over the session's own
+   * document and never over the pane's, which may be showing another one by the time a second
+   * pane adopts the session.
+   */
+  rich?: (path: string) => DocumentProvider<MdDoc>;
   /** Save a dirty buffer every this many milliseconds; a clean one is left alone. */
   autosave?: number;
 }
@@ -338,7 +343,7 @@ export class DocBuffer implements SessionHolder {
     return openSession(
       path,
       file,
-      this.options.rich!,
+      () => this.options.rich!(path),
       (target, text, seenHash, auto) => this.io.write(target, text, seenHash, auto),
       this.options.autosave,
     );

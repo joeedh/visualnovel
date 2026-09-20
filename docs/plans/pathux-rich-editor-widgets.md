@@ -465,7 +465,7 @@ loses a field the form could edit before it.
    the `FieldHost`, the `view` factory with recovery), `editors/wikiprovider.ts`
    (`WikiProvider` with `styles()` only, for now), `DocBufferOptions.rich` as a factory
    per session. The implementer loads `frontend-design` here, before the form rules and
-   each control's look, and records in As shipped what it changed.
+   each control's look, and records in As shipped what it changed. Done; see As shipped.
 3. **The codec's structural edits** (D2). `packages/parse/src/frontmatterCodec.ts` and its
    tests; `docs/reference/desktop-app-editors-misc.md`'s codec sentence.
 4. **Palette control** (D3). The smallest control, to prove the seam end to end: swatches,
@@ -613,3 +613,44 @@ findings; what changed for each:
   (a config committed in `cbf4e70e` ahead of the tool). The changed files were checked
   with the same settings minus that rule: 0 findings. `pnpm run format` also rewrites line
   endings under `scripts/path-controller`; those were restored before committing.
+
+### Task 2
+
+- `doctree/sheetform.ts`: `SheetForms`, built once per pane. It merges a pane's
+  `SheetControls` over `docforms.ts`'s field metadata, answers `select` with the pane's
+  own `DocForm`s (so `nativeFormBinding`'s identity comparison holds), mounts the default
+  form through `view` while remembering it, and `recover(session)` plays a detached
+  `frontmatter:` draft back through `FormControl.restore`, discarding the draft on
+  success. `docforms.ts` gained `formKind` so the pane and `selectForm` share the conflict
+  check. The FieldHost of D1 is path.ux's; the pane passes nothing more until task 4's
+  control needs it.
+- `editors/wikiprovider.ts`: `WikiProvider extends MarkdownProvider` with a `path` and a
+  `styles()` that appends `styles/sheetform.css`. `DocBufferOptions.rich` is a factory
+  `(path) => DocumentProvider`, called once per `openSession`, so every session's provider
+  carries its own path (checked over CDP: the mounted form's `session.provider.path` is
+  the pane's document).
+- `wiki.ts`: `paintFoot` runs `forms.recover` whenever a session is shown in rich mode,
+  before counting detached drafts for the footer, so the order path.ux disposes and
+  recreates the form in does not matter.
+- The `frontend-design` pass, over the form's rules (`styles/sheetform.css`, reaching the
+  editor's shadow root through the provider; the tokens reach it on their own because a
+  custom property inherits across the boundary). It changed: the form is a raised panel
+  (`--ink-raised` on `--ink-line`, `--r-soft`) in chrome type (`--sans`, 13px) above the
+  prose, rather than an unstyled block of the prose face; labels are a fixed 120px column
+  in `--mist` at 12px, so the answers are what read; Omit is quiet text beside the box
+  that only underlines on hover and focus, since it is a per-row escape and not the row's
+  purpose; the actions are bordered `--r-chrome` buttons, the status line is `--mono` in
+  `--sodium` (it is a sentence the codec or the form wrote) and disappears when empty. No
+  new colour, face, radius or shadow; the prose below keeps its own rules.
+- The screenshot pass found two overflows at a narrow pane, both fixed in path.ux
+  (`6960bb56`): the text box's fixed 220px, which reverses task 1's departure — the box is
+  now `width: 100%` with `min-width: 0` on the inner input, and the row's stylesheet gives
+  it `flex: 1 1 120px; min-width: 0`, so the widget follows the row and the input follows
+  the widget; and the Omit button's visible text is now the one word, with the field's
+  name kept in `aria-label` (the row's label already names it; the Playwright `getByRole`
+  names and the vitest lookup still resolve). Two more in the app's rules: the form is
+  `border-box` with no minimum width, and the action buttons wrap.
+- Tests: `docsession.test.ts` passes the provider as a factory. `sheetform.ts` and
+  `wikiprovider.ts` import `pathux-richtext-forms` and `-markdown`, which jest does not
+  map, so their coverage is the app's typecheck plus the CDP check; the merge and the
+  recovery walk are exercised by task 4's control and D9's CDP cases.

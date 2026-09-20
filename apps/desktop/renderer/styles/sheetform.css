@@ -1,0 +1,107 @@
+/*
+ * A sheet's front matter as a form, inside the document. Appended to the editor's own stylesheet
+ * by `editors/wikiprovider.ts`, so these rules reach the editor's shadow root where `wiki.css`
+ * does not; the tokens do, because a custom property inherits across the boundary.
+ *
+ * The form is a raised panel at the top of the page, in chrome type, and the prose below it is
+ * the page. Labels are dim and the answers are what read.
+ */
+
+.schema-form {
+  box-sizing: border-box;
+  min-width: 0;
+  gap: 8px;
+  margin: 0 0 1.2em;
+  padding: 12px 16px 10px;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-soft);
+  background: var(--ink-raised);
+  color: var(--paper);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.schema-form-row {
+  gap: 10px;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+
+.schema-form-label {
+  flex: 0 0 120px;
+  padding-top: 5px;
+  color: var(--mist);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schema-form-row > textbox-x {
+  box-shadow: none;
+}
+
+/* Omit is a quiet word beside the box, not a second button of the row's weight. */
+.schema-form-row > button {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border: none;
+  background: none;
+  color: var(--mist-dim);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.schema-form-row > button:hover,
+.schema-form-row > button:focus-visible {
+  color: var(--paper);
+  outline: none;
+  text-decoration: underline;
+}
+
+.schema-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.schema-form-actions > button {
+  padding: 3px 10px;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+  background: var(--ink);
+  color: var(--paper);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.schema-form-actions > button:hover {
+  background: var(--ink-sunken);
+}
+
+.schema-form-actions > button:focus-visible {
+  outline: 1px solid var(--sodium);
+  outline-offset: 1px;
+}
+
+.schema-form button:disabled {
+  color: var(--mist-dim);
+  cursor: default;
+  text-decoration: none;
+}
+
+/* What the form last said: a draft, a save, a refusal in the codec's own words. */
+.schema-form-status {
+  min-height: 1.2em;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--sodium);
+}
+
+.schema-form-status:empty {
+  display: none;
+}
