@@ -573,6 +573,12 @@
     {
       "module": "sheetform",
       "editor": "wiki",
+      "name"  : "variants",
+      "why": "A location's two variants offer each row's boxes with no default mark, the plate drawn for one, and the button that adds a row."
+    },
+    {
+      "module": "sheetform",
+      "editor": "wiki",
       "name"  : "wardrobe-empty",
       "why"   : "A sheet with no outfits offers only the button that adds one."
     },
@@ -27515,6 +27521,401 @@
           "id"   : "doc.write",
           "props": {
             "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "variants",
+      "key"       : "cmd:doc.write#variants/day/id",
+      "widgetPath": "wiki/doc-write~e057244d",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Id",
+        "tooltip": "The name scenes and prompts refer to this variant by; changing it renames the entry in place; Apply answers writes the variants into the sheet",
+        "on"      : "variants/day/id",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "locations/cafe.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "locations/cafe.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "variants",
+      "key"       : "cmd:doc.write#variants/day/description",
+      "widgetPath": "wiki/doc-write~25f52d2e",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Description",
+        "tooltip": "What this variant looks like, in the words every prompt for it starts from; Apply answers writes the variants into the sheet",
+        "on"      : "variants/day/description",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "locations/cafe.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "locations/cafe.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "variants",
+      "key"       : "cmd:doc.write#variants/day/notes",
+      "widgetPath": "wiki/doc-write~0927784b",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Art notes",
+        "tooltip": "Art direction appended to every prompt for this variant, after the sheet's own; Apply answers writes the variants into the sheet",
+        "on"      : "variants/day/notes",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "locations/cafe.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "locations/cafe.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "variants",
+      "key"       : "cmd:doc.write#variants/day/seed",
+      "widgetPath": "wiki/doc-write~bb80ebcf",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Seed",
+        "tooltip": "Image seed for every picture of this variant; empty inherits the sheet's; Apply answers writes the variants into the sheet",
+        "on"      : "variants/day/seed",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "locations/cafe.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "locations/cafe.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "variants",
+      "key"       : "cmd:doc.write#variants/day/model",
+      "widgetPath": "wiki/doc-write~a641e137",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Image model",
+        "tooltip": "Image model for every picture of this variant; inherit draws with the sheet's; Apply answers writes the variants into the sheet",
+        "on"      : "variants/day/model",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "locations/cafe.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "locations/cafe.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "variants",
+      "key"       : "cmd:doc.write#variants/day/remove",
+      "widgetPath": "wiki/doc-write~69ad2bc6",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Remove",
+        "tooltip": "Take this variant out of the variants; Apply answers writes the variants into the sheet",
+        "on"      : "variants/day/remove",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "locations/cafe.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "locations/cafe.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "variants",
+      "key"       : "cmd:doc.write#variants/night/id",
+      "widgetPath": "wiki/doc-write~ee114b9d",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Id",
+        "tooltip": "The name scenes and prompts refer to this variant by; changing it renames the entry in place; Apply answers writes the variants into the sheet",
+        "on"      : "variants/night/id",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "locations/cafe.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "locations/cafe.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "variants",
+      "key"       : "cmd:doc.write#variants/night/description",
+      "widgetPath": "wiki/doc-write~0ab132fe",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Description",
+        "tooltip": "What this variant looks like, in the words every prompt for it starts from; Apply answers writes the variants into the sheet",
+        "on"      : "variants/night/description",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "locations/cafe.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "locations/cafe.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "variants",
+      "key"       : "cmd:doc.write#variants/night/notes",
+      "widgetPath": "wiki/doc-write~5236fc1b",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Art notes",
+        "tooltip": "Art direction appended to every prompt for this variant, after the sheet's own; Apply answers writes the variants into the sheet",
+        "on"      : "variants/night/notes",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "locations/cafe.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "locations/cafe.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "variants",
+      "key"       : "cmd:doc.write#variants/night/seed",
+      "widgetPath": "wiki/doc-write~fd97c4bf",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Seed",
+        "tooltip": "Image seed for every picture of this variant; empty inherits the sheet's; Apply answers writes the variants into the sheet",
+        "on"      : "variants/night/seed",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "locations/cafe.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "locations/cafe.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "variants",
+      "key"       : "cmd:doc.write#variants/night/model",
+      "widgetPath": "wiki/doc-write~4d60f347",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Image model",
+        "tooltip": "Image model for every picture of this variant; inherit draws with the sheet's; Apply answers writes the variants into the sheet",
+        "on"      : "variants/night/model",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "locations/cafe.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "locations/cafe.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "variants",
+      "key"       : "item:variants/night/asset/b2c3d4",
+      "widgetPath": "wiki/ui-publish~3907af41",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "cafe / night",
+        "tooltip": "cafe / night · accepted — open it in the asset editor",
+        "on"     : "variants/night/asset/b2c3d4",
+        "ok"     : true,
+        "props": {
+          "assetHash": "b2c3d4"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "asset",
+              "where"  : "here",
+              "subject": "b2c3d4"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "assetHash": "b2c3d4"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "here",
+            "subject": "b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "variants",
+      "key"       : "cmd:doc.write#variants/night/remove",
+      "widgetPath": "wiki/doc-write~69064656",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Remove",
+        "tooltip": "Take this variant out of the variants; Apply answers writes the variants into the sheet",
+        "on"      : "variants/night/remove",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "locations/cafe.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "locations/cafe.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "variants",
+      "key"       : "cmd:doc.write#variants/add",
+      "widgetPath": "wiki/doc-write~8828aaea",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Add a variant",
+        "tooltip": "Append a variant with an empty id and focus it; Apply answers writes the variants into the sheet",
+        "on"      : "variants/add",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "locations/cafe.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "locations/cafe.md"
           }
         }
       ]

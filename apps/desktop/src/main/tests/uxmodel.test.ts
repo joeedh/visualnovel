@@ -222,7 +222,7 @@ describe('a mutating command reachable from a menu', () => {
  */
 describe('every view.open in the model', () => {
   // The modules whose rows come from `openOf(routeFor(...))`, and so may say `here`
-  const routed = new Set(['documents', 'diagnostics', 'script', 'wiki']);
+  const routed = new Set(['documents', 'diagnostics', 'script', 'wiki', 'sheetform']);
   const opens = model.records.flatMap((record) =>
     actionsOf(record)
       .filter((action) => action.id === 'view.open')

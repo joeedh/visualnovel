@@ -478,7 +478,8 @@ loses a field the form could edit before it.
 6. **Wardrobe control** (D3, D4, D5). Rows, default mark, add, remove, the entry's
    art-direction boxes with the shared rung CSS, art from the tree, the empty-art and
    rename sentences; `default_outfit` becomes `"none"` here. Done; see As shipped.
-7. **Variants control** (D3, D4). The same row over a list, plates for art.
+7. **Variants control** (D3, D4). The same row over a list, plates for art. Done; see As
+   shipped.
 8. **Prompt override control** (D3). The sentence, the button with the dirty refusal, the
    JSON box.
 9. **Insert a picture** (D6). path.ux `resolveSrc`; `WikiProvider.buildToolbar`;
@@ -809,3 +810,30 @@ findings; what changed for each:
   type, the description is `--prose` at 13px, the notes under the art in `--mono` at
   `--mist-dim`, and the id-problem and synthesized sentences in `--sodium`. Remove and
   make default are quiet words rising to `--paper` on hover and focus.
+
+### Task 7
+
+- `doctree/variantscontrol.ts`: `variantsControl(field, host)`, a `FieldControl` over the
+  encoded JSON of `variants`, drawing task 6's rows with no default mark. A bare string in
+  the list is a row with an empty description; an entry is a row whose `id` is lifted out
+  and whose other keys, `prompt_override` included, ride through untouched. On the way
+  back a row with an empty description and no direction of its own is written as the bare
+  id again, and any other row as an entry with `id` first — so a `{ id, description: "" }`
+  entry that was written by hand comes back as the bare id, which the schema reads the
+  same. Ids are checked as the wardrobe's are; an emptied list omits the key, and the
+  empty state says "No variants yet. Plates are drawn for `day` until one is added." since
+  `day` is what the schema supplies. Text that is not a list of strings or entries is
+  shown as "Not a list of variants; edit it in the Raw view" and handed back unchanged.
+  Art is the `plate:<location>/<variant>` assets; "No plate is planned for this variant"
+  when `usedVariants` does not name the row.
+- `sheetControls` binds it for a location; `rules/situations/sheetform.ts` gains
+  `variants` (two rows, one accepted plate, Wiki and Asset visible); `ux-model.json`
+  regenerated; `rules/tests/sheetform.test.ts` lists a variant row without the mark.
+- Over CDP on the fixture: the classroom's flow sequence `[day, afternoon, evening]`
+  becomes `[day, dusk, {"id":"evening","description":"lamps on, windows dark"}]` after a
+  rename and a description, which is the codec's inline rewrite of a flow collection that
+  gained a map; the rooftop's block sequence gains `- id: night` with its `description`
+  under it and `- dawn` as a bare item. Both panes on the same sheet show the same rows.
+- The id box grows from 96px to at most 220px rather than shrinking from 140px, because a
+  wrapping row wraps before it shrinks anything, and the narrow pane was putting Remove on
+  a second line.

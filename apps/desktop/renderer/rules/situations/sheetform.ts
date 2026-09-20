@@ -27,6 +27,18 @@ export const SITUATIONS = situations<SheetFormState>(
     },
   },
   {
+    name : 'variants',
+    why: "A location's two variants offer each row's boxes with no default mark, the plate drawn for one, and the button that adds a row.",
+    state: {
+      path    : 'locations/cafe.md',
+      variants: {
+        ids    : ['day', 'night'],
+        art: [{ id: 'night', asset: { hash: 'b2c3d4', label: 'cafe / night', accepted: true } }],
+        visible: ['wiki', 'asset'],
+      },
+    },
+  },
+  {
     name : 'wardrobe-empty',
     why  : 'A sheet with no outfits offers only the button that adds one.',
     state: { path: 'characters/aiko/character.md', wardrobe: { ids: [] } },

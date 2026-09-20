@@ -232,6 +232,7 @@
 
 .sf-entry-id,
 .sf-entry-notes {
+  box-sizing: border-box;
   min-width: 0;
   padding: 2px 6px;
   border: 1px solid var(--ink-line);
@@ -243,8 +244,10 @@
   outline: none;
 }
 
+/* Grows rather than shrinks, because a wrapping row wraps before it shrinks anything. */
 .sf-entry-id {
-  flex: 0 1 140px;
+  flex: 1 1 96px;
+  max-width: 220px;
 }
 
 .sf-entry-notes {

@@ -22,6 +22,7 @@ import type { EntityLinks } from '../../../src/shared/ipc.js';
 import type { AnchorPass } from '../tour/anchors.js';
 import { FORMS, formKind, type DocForm } from './docforms.js';
 import { paletteControl } from './palettecontrol.js';
+import { variantsControl } from './variantscontrol.js';
 import { wardrobeControl } from './wardrobecontrol.js';
 
 /** The controls a pane supplies for a sheet, by field name; a field not named keeps its box. */
@@ -55,9 +56,14 @@ export function sheetControls(host: SheetHost): SheetControls {
     help: 'The outfits scenes can dress this character in; the marked one is worn when a scene names none',
     control: (field) => wardrobeControl(field, host),
   };
+  const variants: FieldMeta = {
+    label  : 'Variants',
+    help: 'The variants plates are drawn for, in the order written; a bare id, or an entry with its own art direction',
+    control: (field) => variantsControl(field, host),
+  };
   return {
     character: { palette, outfits, default_outfit: { ...fields.default_outfit, control: 'none' } },
-    location : { palette },
+    location : { palette, variants },
   };
 }
 

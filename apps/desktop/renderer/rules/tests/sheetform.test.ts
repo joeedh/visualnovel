@@ -136,6 +136,19 @@ describe('controls', () => {
     ]);
   });
 
+  it('lists a variant row without the default mark', () => {
+    const listed = controls(state({ palette: undefined, variants: { ids: ['night'] } }));
+    expect(listed.map(keyOf)).toEqual([
+      'cmd:doc.write#variants/night/id',
+      'cmd:doc.write#variants/night/description',
+      'cmd:doc.write#variants/night/notes',
+      'cmd:doc.write#variants/night/seed',
+      'cmd:doc.write#variants/night/model',
+      'cmd:doc.write#variants/night/remove',
+      'cmd:doc.write#variants/add',
+    ]);
+  });
+
   it('lists each swatch with its ✕, then the slot that adds, each key once', () => {
     const listed = controls(state());
     expect(listed.map(keyOf)).toEqual([
