@@ -5,6 +5,7 @@ import {
   PICTURE_TIP,
   controls,
   discardOffer,
+  linkRow,
   pictureOffer,
   rawOffer,
   type WikiState,
@@ -100,6 +101,27 @@ describe('controls', () => {
     });
     expect(controls(state({ readOnly: true }))).toContainEqual(pictureOffer('wiki/lore.md', true));
     expect(controls(state({ raw: true })).map(keyOf)).not.toContain('cmd:doc.write#picture');
+  });
+
+  it('records where a completion row would lead, without opening it', () => {
+    const aiko = {
+      id   : 'character:aiko',
+      kind : 'character' as const,
+      label: 'Aiko',
+      path : 'characters/aiko/character.md',
+    };
+    expect(linkRow(aiko, ['wiki'])).toEqual({
+      ok     : true,
+      id     : 'view.open',
+      props  : { editor: 'wiki', where: 'here', subject: 'characters/aiko/character.md' },
+      on     : 'link/doc/characters/aiko/character.md',
+      label  : 'Aiko',
+      tooltip: expect.stringContaining('Enter or a click writes it'),
+    });
+    expect(linkRow(aiko, [])).toMatchObject({ props: { where: 'elsewhere' } });
+    const listed = controls(state({ completion: { targets: [aiko], visible: ['wiki'] } }));
+    expect(listed.map(keyOf)).toContain('cmd:view.open#link/doc/characters/aiko/character.md');
+    expect(duplicateKeys(listed)).toEqual([]);
   });
 
   it('offers to discard detached form answers only while there are some', () => {

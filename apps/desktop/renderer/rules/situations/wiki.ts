@@ -34,6 +34,26 @@ export const SITUATIONS = situations<WikiState>(
     state: { path: 'characters/aiko/character.md', dirty: true, raw: true, stale: true },
   },
   {
+    name : 'open-completing',
+    why: 'A `[[` was typed, so the completion lists documents a link could lead to, each recording where it would open.',
+    state: {
+      path      : 'wiki/world.md',
+      dirty     : true,
+      completion: {
+        targets: [
+          {
+            id   : 'character:aiko',
+            kind : 'character',
+            label: 'Aiko',
+            path : 'characters/aiko/character.md',
+          },
+          { id: 'scene:arrival', kind: 'scene', label: 'arrival', path: 'scenes/arrival.md' },
+        ],
+        visible: ['wiki'],
+      },
+    },
+  },
+  {
     name : 'open-dirty',
     why: 'The open page has changed, so Save is offered, and one picture drawn from it opens in the asset editor.',
     state: {

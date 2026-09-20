@@ -8,8 +8,10 @@ import {
   type DraftController,
   type DraftPreparation,
   type JsonValue,
+  type LinkClick,
   type MdDoc,
 } from 'pathux-richtext-headless';
+import type { WikilinkStart } from 'pathux-richtext-markdown';
 import { frontmatterCodec } from '@vn/parse';
 import { api } from '../../api.js';
 import { ASSETSTRIP_CSS, renderAssetStrip } from '../assets/assetstrip.js';
@@ -32,9 +34,11 @@ import type { DocForm } from '../doctree/docforms.js';
 import { SheetForms, sheetControls } from '../doctree/sheetform.js';
 import { redrawing } from '../tour/anchors.js';
 import { assetGroups } from '../doctree/doctree.js';
+import { linkedNode } from '../doctree/doclinks.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { assetNode, openNode } from '../panes/open.js';
 import { PICTURE_BUTTON, WikiProvider } from './wikiprovider.js';
+import { LinkCompletion } from './wikilinks.js';
 import type { VnScreen } from '../app/screen.js';
 import WIKI_CSS from '../../styles/wiki.css?inline';
 import type { DocTree, EntityLinks } from '../../../src/shared/ipc.js';
@@ -67,6 +71,12 @@ import type { EditorId } from '../../../src/shared/editors.js';
  * saying so is how an author sees that no art comes from the page. Which notes mention the subject
  * is a separate, ranked and budgeted question answered by `bible.search`, and is deliberately not
  * asked here.
+ *
+ * Links between documents are ordinary markdown links to document-relative paths. Typing `[[`
+ * opens a completion over the tree's documents (`wikilinks.ts`), and Ctrl+click (Cmd on macOS),
+ * or a plain click while the document cannot be written, follows a link that names a document or
+ * a stored picture through the same route a tree click takes; a plain click keeps path.ux's own
+ * popup, which edits the link. A `[[marker]]` the screenplay uses, or a url, leads nowhere here.
  */
 export class WikiEditor extends VnEditor {
   private surface!: HTMLDivElement;
@@ -103,8 +113,22 @@ export class WikiEditor extends VnEditor {
    * widgets and nothing about the text.
    */
   private readonly buf = new DocBuffer(() => this.paint(), BRIDGE_IO, {
-    rich    : (path) => new WikiProvider(path),
+    // One provider serves every pane on the session, so the `[[` finds its pane from the key
+    rich: (path) =>
+      new WikiProvider(path, {
+        onWikilinkStart: (start) => paneOf(start)?.completion.show(start),
+      }),
     autosave: AUTOSAVE_MS,
+  });
+
+  /** The popup a typed `[[` opens, over the documents in the tree. Built with the pane, read late. */
+  private readonly completion = new LinkCompletion({
+    editor : () => this.editor,
+    screen : () => this.ctx?.screen as VnScreen | undefined,
+    path   : () => this.buf.path,
+    roots  : () => this.tree?.roots ?? [],
+    visible: () => this.visible(),
+    anchors: () => redrawing('wiki', 'complete'),
   });
 
   /** This pane's forms: the schemas with its own controls, and the form path.ux has mounted. */
@@ -214,6 +238,7 @@ export class WikiEditor extends VnEditor {
       }
     };
     this.editor.addEventListener('keydown', keys);
+    this.editor.addEventListener('linkclick', (e) => this.follow(e as CustomEvent<LinkClick>));
     this.surface.appendChild(this.editor);
 
     // The raw view: the same session as source, shown in the editor's place
@@ -428,6 +453,22 @@ export class WikiEditor extends VnEditor {
     return visibleEditors(screen ? panesOf(screen) : []);
   }
 
+  /**
+   * A click on a link in the text. Followed under a modifier, or on a plain click when the
+   * document cannot be written, when the link names a document or a stored picture; anything
+   * else is left to path.ux, whose edit-mode default is the popup that edits the link.
+   */
+  private follow(e: CustomEvent<LinkClick>): void {
+    const link = e.detail;
+    const readOnly = this.buf.session?.canWrite === false || this.editor.readOnly;
+    const modified = link.event.ctrlKey || link.event.metaKey;
+    if (link.kind !== 'url' || !(modified || readOnly)) return;
+    const node = linkedNode(this.buf.path, link.target, this.tree?.roots ?? []);
+    if (!node) return;
+    e.preventDefault();
+    openNode(this.ctx?.screen as VnScreen | undefined, node);
+  }
+
   /** Opens the picture for a hash. The strip carries hashes where the tree carries rows. */
   private openAsset(hash: string): void {
     this.ui.assetHash = hash;
@@ -451,6 +492,7 @@ export class WikiEditor extends VnEditor {
     // Cleared before the swap: path.ux reports on the new session's block while it renders
     this.viewNote = '';
     this.picked = undefined;
+    this.completion.close();
     this.editor.session = next;
     this.bound = this.buf.path;
     if (state && shown && next) this.editor.viewState = remap(state, shown, next);
@@ -553,6 +595,15 @@ export class WikiEditor extends VnEditor {
       anchor: (box, asset, run) => anchors.act(box, cellAction(asset, visible), run),
     });
   }
+}
+
+/**
+ * The pane a `[[` was typed in. The provider that hears the key is the session's, not any pane's,
+ * and the key's path crosses the editor's shadow root up to the pane's host, so the event is what
+ * names the pane.
+ */
+function paneOf(start: WikilinkStart): WikiEditor | undefined {
+  return start.event.composedPath().find((n): n is WikiEditor => n instanceof WikiEditor);
 }
 
 /** The only prefix allowed before the fence, matching what `parseFrontMatter` skips. */

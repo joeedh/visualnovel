@@ -783,6 +783,12 @@
     {
       "module": "wiki",
       "editor": "wiki",
+      "name"  : "open-completing",
+      "why": "A `[[` was typed, so the completion lists documents a link could lead to, each recording where it would open."
+    },
+    {
+      "module": "wiki",
+      "editor": "wiki",
       "name"  : "open-dirty",
       "why": "The open page has changed, so Save is offered, and one picture drawn from it opens in the asset editor."
     },
@@ -32643,6 +32649,198 @@
           "id"   : "pane.view",
           "props": {
             "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-completing",
+      "key"       : "cmd:doc.write",
+      "widgetPath": "wiki/doc-write~1ab13660",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Save",
+        "tooltip" : "Write this file back to disk, and commit it",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "wiki/world.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "wiki/world.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-completing",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "wiki/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this document from disk (discards an unsaved draft)",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-completing",
+      "key"       : "fx:pane.view#raw",
+      "widgetPath": "wiki/pane-view~8a156d00",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Raw",
+        "tooltip": "Show this document as Markdown source; edits here and in the rich view share one undo history",
+        "on"     : "raw",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-completing",
+      "key"       : "cmd:doc.write#text",
+      "widgetPath": "wiki/doc-write~b0b7797d",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "The file, as text",
+        "tooltip": "Edit the document; a sheet shows its front matter as a form. Ctrl+S saves and commits.",
+        "on"      : "text",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "wiki/world.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "wiki/world.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-completing",
+      "key"       : "cmd:doc.write#picture",
+      "widgetPath": "wiki/doc-write~5b47a774",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Insert a picture",
+        "tooltip" : "Pick a picture from the project's assets and place it at the cursor",
+        "on"      : "picture",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "wiki/world.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "wiki/world.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-completing",
+      "key"       : "cmd:view.open#link/doc/characters/aiko/character.md",
+      "widgetPath": "wiki/view-open~c7cc9a72",
+      "offer": {
+        "id"     : "view.open",
+        "label"  : "Aiko",
+        "tooltip": "Link to Aiko (characters/aiko/character.md) — Enter or a click writes it into the text",
+        "on"     : "link/doc/characters/aiko/character.md",
+        "ok"     : true,
+        "props": {
+          "editor" : "wiki",
+          "where"  : "here",
+          "subject": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "wiki",
+            "where"  : "here",
+            "subject": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-completing",
+      "key"       : "cmd:view.open#link/doc/scenes/arrival.md",
+      "widgetPath": "wiki/view-open~fac6a7ac",
+      "offer": {
+        "id"     : "view.open",
+        "label"  : "arrival",
+        "tooltip": "Link to arrival (scenes/arrival.md) — Enter or a click writes it into the text",
+        "on"     : "link/doc/scenes/arrival.md",
+        "ok"     : true,
+        "props": {
+          "editor" : "script",
+          "where"  : "elsewhere",
+          "subject": ""
+        }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "script",
+            "where"  : "elsewhere",
+            "subject": ""
           }
         }
       ]

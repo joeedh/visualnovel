@@ -1,9 +1,11 @@
 /** What the Wiki pane offers: one write over the buffer it holds, its bar, and the art strip. */
 import type { EditorId } from '../../src/shared/editors.js';
+import type { DocNode } from '../../src/shared/ipc.js';
 import { refuse, type Offer } from './anchors.js';
 import { cellAction, type StripAsset } from './assetstrip.js';
 import { reloadOffer, saveOffer, textBox } from './docbuffer.js';
-import { view } from './effects.js';
+import { publish, view } from './effects.js';
+import { openOf, routeFor } from './route.js';
 
 export const TEXT_TIP =
   'Edit the document; a sheet shows its front matter as a form. Ctrl+S saves and commits.';
@@ -27,6 +29,8 @@ export interface WikiState {
   stale?: boolean;
   /** The art drawn from the open page, and the editors some pane shows, which routes a pick. */
   strip?: { assets: readonly StripAsset[]; visible: readonly EditorId[] };
+  /** The documents a typed `[[` is offering links to, while the completion is open. */
+  completion?: { targets: readonly DocNode[]; visible: readonly EditorId[] };
 }
 
 /**
@@ -74,6 +78,24 @@ export function pictureOffer(path: string, readOnly = false): Offer {
 }
 
 /**
+ * One row of the link completion. Enter or a click writes a link to the document into the prose
+ * and opens nothing, so the row records where the link would lead: the `view.open` its route
+ * gives, or the selection alone for a document nothing claims, so the sweep sees what a pick
+ * writes to. Keyed `link/doc/<path>`.
+ */
+export function linkRow(target: DocNode, visible: readonly EditorId[]): Offer {
+  const path = target.path ?? '';
+  const open = openOf(routeFor({ node: target, visible }));
+  return {
+    ok: true,
+    ...(open ?? publish({ docPath: path })),
+    on     : `link/doc/${path}`,
+    label  : target.label,
+    tooltip: `Link to ${target.label} (${path}) — Enter or a click writes it into the text`,
+  };
+}
+
+/**
  * The footer's way out of a refused save: drop the answers a closed form left behind, or source
  * typed into the raw view after the document moved under it. Shown only while there is something
  * to drop, so it is never refused.
@@ -96,6 +118,7 @@ export function discardOffer(detached: number, stale = false): Offer {
 /** Every offer the Wiki pane draws from this module: the bar, the box, its toolbar, the footer, the strip. */
 export function controls(state: WikiState): readonly Offer[] {
   const strip = state.strip;
+  const completion = state.completion;
   const detached = state.detached ?? 0;
   const raw = state.raw === true;
   const stale = state.stale === true;
@@ -107,5 +130,6 @@ export function controls(state: WikiState): readonly Offer[] {
     ...(raw ? [] : [pictureOffer(state.path, state.readOnly === true)]),
     ...(detached > 0 || stale ? [discardOffer(detached, stale)] : []),
     ...(strip ? strip.assets.map((asset) => cellAction(asset, strip.visible)) : []),
+    ...(completion ? completion.targets.map((target) => linkRow(target, completion.visible)) : []),
   ];
 }

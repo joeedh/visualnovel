@@ -1,0 +1,60 @@
+/*
+ * The link completion under a typed `[[`. Put into the popup's own shadow root by
+ * `editors/wikilinks.ts`, since the popup floats on the screen, outside the pane's sheets.
+ *
+ * Warm, like the prose it writes into: the row the author is on is marked with the `--sodium`
+ * rule the wardrobe's entries use, and the path under each name is in the chrome face so the
+ * name reads first.
+ */
+
+.lc-list {
+  display: flex;
+  flex-direction: column;
+  min-width: 240px;
+  max-width: 360px;
+  padding: 4px;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--paper);
+}
+
+.lc-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 8px 5px 10px;
+  border-left: 2px solid transparent;
+  border-radius: var(--r-chrome);
+  cursor: pointer;
+  user-select: none;
+}
+
+.lc-row:hover {
+  background: var(--ink-raised);
+}
+
+.lc-row.active {
+  border-left-color: var(--sodium);
+  background: var(--ink-raised);
+}
+
+.lc-name {
+  font-family: var(--prose);
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.lc-path {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--mist);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lc-none {
+  padding: 6px 10px;
+  color: var(--mist-dim);
+  font-style: italic;
+}

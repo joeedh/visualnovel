@@ -487,7 +487,7 @@ loses a field the form could edit before it.
    see As shipped.
 10. **Links and completion** (D6). path.ux `insertWikilink` `kind`; `onWikilinkStart` and
     the popup over the doc tree; the link builder; `linkClicked` routing; a jest test for
-    the paths.
+    the paths. Done; see As shipped.
 11. **Sweep and the CDP cases** (D8, D9): `pnpm gen:uxmodel` is already run per task; the
     anchor sweep re-runs here.
 12. **Docs**: `desktop-app-editors-misc.md` (the Wiki section's form and prose bullets),
@@ -936,3 +936,65 @@ findings; what changed for each:
   records the command its pick completes (`prompt.addRef` with `supplies: ['ref']`), and
   the picture's counterpart is the write its pick lands in, so the offer is a `doc.write`
   with a `supplies` of its own, as the form's controls record theirs (D8).
+
+### Task 10
+
+- path.ux (one commit on `pathux-rich-editor-widgets`): `markdownOps.insertWikilink` takes
+  a sixth argument, `kind`, `"wiki"` by default; `"url"` writes an ordinary
+  `[text](target)` link mark, so a completion lands as one op and one undo entry either
+  way. The `linkclick` event's detail is now `LinkClick`, the `LinkInfo` plus the
+  `MouseEvent` itself, because a consumer that follows a link only under a modifier needs
+  the click and the event carried only the link. `richtext.md` and the tests cover both.
+- `doctree/docpath.ts` is the link builder: `relativePath(docPath, file)` and
+  `resolvePath(docPath, href)`, the two directions between the document-relative form
+  prose is written in and the workspace-relative paths the app names documents by.
+  `assets/picturepath.ts` now calls them rather than carrying its own copy.
+  `doctree/doclinks.ts` reads the tree: `linkTargets(roots)` is every node with a markdown
+  file behind it, once per path and in tree order; `filterTargets(targets, query)` matches
+  the name before the path and keeps `COMPLETION_ROWS` (8); `linkHref(docPath, target)` is
+  what a pick writes; `linkedNode(docPath, href, roots)` is what a click resolves, a
+  stored picture as an asset node, a document as its tree node, and nothing for a url, a
+  path outside the workspace, or a file the tree does not show.
+  `doctree/tests/docpath.test.ts` covers the round trips, the refusals, the ordering and
+  the cap.
+- `editors/wikilinks.ts` is the completion, `LinkCompletion`, owned by the pane and opened
+  by the session's provider through `onWikilinkStart`; the provider serves every pane on
+  the session, so the pane is found from the key's `composedPath()`, which crosses the
+  editor's shadow root up to the pane's host (`paneOf` in `wiki.ts`). The popup is
+  `screen.popup` at the caret's own rect (the shadow root's `getSelection()`, else the
+  block), in `click` mode with `window` as the close source, and never takes focus: typing
+  goes on in the editor, and after each `change` the query is re-read as the text between
+  the `[[` and the caret; a caret elsewhere, a deleted bracket or a typed `]` closes it.
+  ArrowUp and ArrowDown move the marked row, Enter picks it, Escape closes and leaves the
+  `[[` as typed; the keys are heard on the editor's host in the capture phase, ahead of
+  the pane's own key handler, which stops every keydown from reaching the window the
+  popup's Escape listener sits on. A pick dispatches
+  `insertWikilink(block, offset − 2, caret, linkHref(path, target), target.label, 'url')`
+  through the bridge. A press on a row `preventDefault`s so the caret stays; the popup's
+  own `onRemove` (which unregisters it from the screen) is chained rather than replaced.
+- Rows record, they do not run: `linkRow(target, visible)` in `rules/wiki.ts` is the
+  `view.open` the target's route gives (`openOf(routeFor(...))`), or the selection alone
+  for a document nothing claims, keyed `link/doc/<path>`, drawn on a fresh `wiki/complete`
+  pass per rebuild through `act()`, whose click is the pick. `WikiState.completion` lists
+  them in `controls()`; situation `open-completing`; `ux-model.json` regenerated;
+  `rules/tests/wiki.test.ts` checks the shape and the keys.
+- Clicks: the pane listens for `linkclick`. A `url`-kind link is followed under Ctrl or
+  Cmd, or on a plain click when the session cannot be written, when `linkedNode` resolves
+  it: `openNode` with the node, which is the route a tree click takes, so a document opens
+  in the Wiki pane (`here` when one is visible, as a browser would, the document left
+  behind kept as its session) and a picture opens the Asset editor elsewhere. Everything
+  else is left to path.ux, whose edit-mode default is the popup that edits the link; a
+  `[[marker]]` and a url therefore lead nowhere, as D6 says.
+- Over CDP on the sample copy, with Playwright's keyboard: typing `[[` at offset 5 of the
+  first paragraph opens the popup under the caret with the first eight documents (the
+  scenes, in tree order), the first marked; `ai` narrows it to Aiko; Enter writes
+  `[Aiko](../characters/aiko/character.md)` over the `[[ai`, the mark
+  `{from: 5, to: 9, kind: 'url'}`, and the caret lands after it; autosave then wrote
+  exactly that markdown to disk. `[[` then Escape leaves `[[` in the text and typing on
+  does not reopen it. A plain click on the link opens path.ux's link popup; Ctrl+click
+  opens Aiko's sheet in the pane; Ctrl+click on a `[pic](../assets/objects/<hash>.png)`
+  link opens the Asset editor on that hash elsewhere and leaves the note where it was.
+- Look: the popup's rows are the wardrobe's entry vocabulary, a name in the prose face
+  over the path in the chrome face, the marked row carrying the `--sodium` left rule;
+  `styles/linkcomplete.css`, put into the popup's shadow root since the popup floats
+  outside the pane's sheets.
