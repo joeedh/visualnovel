@@ -483,7 +483,8 @@ loses a field the form could edit before it.
 8. **Prompt override control** (D3). The sentence, the button with the dirty refusal, the
    JSON box. Done; see As shipped.
 9. **Insert a picture** (D6). path.ux `resolveSrc`; `WikiProvider.buildToolbar`;
-   `pickAssetPopup`; the path builder; the click route; a jest test for the paths.
+   `pickAssetPopup`; the path builder; the click route; a jest test for the paths. Done;
+   see As shipped.
 10. **Links and completion** (D6). path.ux `insertWikilink` `kind`; `onWikilinkStart` and
     the popup over the doc tree; the link builder; `linkClicked` routing; a jest test for
     the paths.
@@ -873,3 +874,65 @@ findings; what changed for each:
   a save, and a press publishes the hash and opens the Asset editor.
 - The look: the sentence in chrome type at `--paper`, the button in the form's own action
   style, the box stretched under both.
+
+### Task 9
+
+- path.ux (branch `pathux-rich-editor-widgets`, two commits):
+  `markdownOps.insertImage(block, offset, image)` is a new custom op that splices an image
+  atom into an editable block, shifting the marks and atoms after it, with the caret
+  landing after the atom; it refuses an opaque block, a fence, and an empty `src`.
+  `MarkdownRenderOptions.resolveSrc?: (src) => string | undefined` runs after `safeUrl` in
+  `MdImageWidget.setAtom`, so what is checked is the authored text and what is loaded is
+  the host's answer, and the atom keeps the path as written. The markdown entry re-exports
+  `addToolButton`, `addSeparator` and `ToolButton` so a `MarkdownProvider` subclass can
+  extend the toolbar it inherits without a deep import. `richtext.md` documents all three;
+  the vitest covers the op, the shift and the refusals.
+- `AssetListing` gains `file`: where the bytes are, workspace-relative, from whichever
+  root holds the hash (`project.store.pathOf`), so a legacy project whose base art still
+  lives under `vngen/build/assets/` gets a path to a file that exists. The plan's "kind
+  decides the root" is main's rule, applied once, in main; the renderer never restates it.
+- `renderer/pathux/assets/picturepath.ts` is the path builder: `pictureSrc(docPath, file)`
+  is the document-relative path (`../../assets/objects/<hash>.png` from
+  `characters/aiko/character.md`, `../vngen/build/assets/<hash>.webp` from `wiki/lore.md`,
+  no prefix from a root-level file), and `pictureAsset(docPath, src)` reads one back to
+  `{hash, ext}`, answering `undefined` for a url, an absolute path, a path climbing out of
+  the workspace, a file under neither root, or a nested or extensionless name.
+  `assets/tests/picturepath.test.ts` round-trips both roots from four documents.
+- `WikiProvider` now constructs its base with `resolveSrc` closed over the session's
+  document path (`pictureAsset` then `assetThumbUrl`, which is the `vnasset://` url), and
+  overrides `buildToolbar`: the inherited row, a separator, then **Insert a picture**
+  (`&#9635;`, tooltip `PICTURE_TIP`). The button reads the selection from
+  `ctx.editor.selection()` when pressed and the document from the sync it wraps, the way
+  the Link button does, so the closure holds the only per-editor state and one provider
+  serves two panes. A press with no caret, or a caret in a fence or an opaque block, says
+  "Place the cursor in a paragraph where the picture should go first." rather than doing
+  nothing. Otherwise it reads `asset.list` once, opens `pickAssetPopup` at the button's
+  corner with the provider's own `ThumbnailCache` (kept with the session, so a reopened
+  popup redraws from decoded thumbnails), and a confirmed pick dispatches `insertImage`
+  with `src: pictureSrc(path, asset.file)` and `alt: asset.label`. Cancel inserts nothing.
+- The button is anchored by the pane, not the provider: `paint()` finds it after `bind()`
+  through the editor's `[data-richtext-toolbar]` row (the buttons live in the row's shadow
+  root, not the editor's) and `record`s it with `pictureOffer(path, readOnly)` on the
+  `wiki/bar` pass. Recorded rather than acted, because the provider wires the press.
+  `pictureOffer` in `rules/wiki.ts` is the `doc.write` the pick lands in, under
+  `on: 'picture'` with `supplies: ['text', 'seenHash']`, refused "No document is open."
+  then "This document cannot be written"; `WikiState.readOnly` carries the second, and
+  `controls()` lists the button in the rich view only, since the raw view has no toolbar.
+  Situation `open-read-only`; `ux-model.json` regenerated; `rules/tests/wiki.test.ts`
+  covers the shape, the refusals, and the raw view leaving it out.
+- Over CDP on a copy of `examples/mySampleRepo` (inputs and `assets/` only): the button's
+  tooltip is the offer's; a press with the caret at offset 5 of the first paragraph opens
+  the gallery under the button; OK with nothing selected closes it and inserts nothing;
+  picking "Aiko — uniform" inserts an atom
+  `{src: '../assets/objects/246322f6….png', alt: 'Aiko — uniform (246322f6)'}` at offset
+  5, the widget's `img` loads `vnasset://246322f6….png` at its full 1536 width, the raw
+  view shows `![Aiko — uniform (246322f6)](../assets/objects/246322f6….png)`, and Ctrl+Z
+  takes the whole insert out as one entry. A press before the editor was ever focused
+  shows the sentence above.
+- Two things the plan said differently. It named `renderMedia` for the render; the
+  widget's own `setAtom` with `resolveSrc` is enough, so the app registers no
+  `renderMedia` and the resize and move gestures are untouched. It said the button
+  "records `pickAssetPopup`'s own offer the way the Asset editor's Attach… does"; Attach
+  records the command its pick completes (`prompt.addRef` with `supplies: ['ref']`), and
+  the picture's counterpart is the write its pick lands in, so the offer is a `doc.write`
+  with a `supplies` of its own, as the form's controls record theirs (D8).

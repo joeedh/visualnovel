@@ -5,6 +5,7 @@ const listing = (over: Partial<AssetListing> = {}): AssetListing => ({
   hash    : 'a'.repeat(64),
   ext     : 'png',
   kind    : 'portrait',
+  file    : `assets/objects/${'a'.repeat(64)}.png`,
   label   : 'Aiko',
   accepted: false,
   ...over,

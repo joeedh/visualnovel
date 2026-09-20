@@ -759,6 +759,12 @@
     {
       "module": "wiki",
       "editor": "wiki",
+      "name"  : "open-read-only",
+      "why"   : "The open page cannot be written, so the toolbar refuses to place a picture in it."
+    },
+    {
+      "module": "wiki",
+      "editor": "wiki",
       "name"  : "open-detached",
       "why": "A form the author typed into has closed with its answers unapplied, so the footer offers to discard them."
     },
@@ -31975,6 +31981,30 @@
       "via"       : "control",
       "editor"    : "wiki",
       "module"    : "wiki",
+      "situation" : "none-open",
+      "key"       : "cmd:doc.write#picture",
+      "widgetPath": "wiki/doc-write~5b47a774",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Insert a picture",
+        "tooltip" : "Pick a picture from the project's assets and place it at the cursor",
+        "on"      : "picture",
+        "supplies": ["text", "seenHash"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "No document is open."
+        }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
       "situation" : "open",
       "key"       : "cmd:doc.write",
       "widgetPath": "wiki/doc-write~1ab13660",
@@ -32077,6 +32107,159 @@
       "via"       : "control",
       "editor"    : "wiki",
       "module"    : "wiki",
+      "situation" : "open",
+      "key"       : "cmd:doc.write#picture",
+      "widgetPath": "wiki/doc-write~5b47a774",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Insert a picture",
+        "tooltip" : "Pick a picture from the project's assets and place it at the cursor",
+        "on"      : "picture",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-read-only",
+      "key"       : "cmd:doc.write",
+      "widgetPath": "wiki/doc-write~1ab13660",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Save",
+        "tooltip" : "Write this file back to disk, and commit it",
+        "supplies": ["text", "seenHash"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "Nothing to save"
+        }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-read-only",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "wiki/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this document from disk (discards an unsaved draft)",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-read-only",
+      "key"       : "fx:pane.view#raw",
+      "widgetPath": "wiki/pane-view~8a156d00",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Raw",
+        "tooltip": "Show this document as Markdown source; edits here and in the rich view share one undo history",
+        "on"     : "raw",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-read-only",
+      "key"       : "cmd:doc.write#text",
+      "widgetPath": "wiki/doc-write~b0b7797d",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "The file, as text",
+        "tooltip": "Edit the document; a sheet shows its front matter as a form. Ctrl+S saves and commits.",
+        "on"      : "text",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-read-only",
+      "key"       : "cmd:doc.write#picture",
+      "widgetPath": "wiki/doc-write~5b47a774",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Insert a picture",
+        "tooltip" : "Pick a picture from the project's assets and place it at the cursor",
+        "on"      : "picture",
+        "supplies": ["text", "seenHash"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "This document cannot be written"
+        }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
       "situation" : "open-detached",
       "key"       : "cmd:doc.write",
       "widgetPath": "wiki/doc-write~1ab13660",
@@ -32163,6 +32346,33 @@
         "label"   : "The file, as text",
         "tooltip": "Edit the document; a sheet shows its front matter as a form. Ctrl+S saves and commits.",
         "on"      : "text",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-detached",
+      "key"       : "cmd:doc.write#picture",
+      "widgetPath": "wiki/doc-write~5b47a774",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Insert a picture",
+        "tooltip" : "Pick a picture from the project's assets and place it at the cursor",
+        "on"      : "picture",
         "supplies": ["text", "seenHash"],
         "ok"      : true,
         "props": {
@@ -32527,6 +32737,33 @@
         "label"   : "The file, as text",
         "tooltip": "Edit the document; a sheet shows its front matter as a form. Ctrl+S saves and commits.",
         "on"      : "text",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-dirty",
+      "key"       : "cmd:doc.write#picture",
+      "widgetPath": "wiki/doc-write~5b47a774",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Insert a picture",
+        "tooltip" : "Pick a picture from the project's assets and place it at the cursor",
+        "on"      : "picture",
         "supplies": ["text", "seenHash"],
         "ok"      : true,
         "props": {

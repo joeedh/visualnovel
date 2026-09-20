@@ -2,8 +2,10 @@ import {
   RAW_TIP,
   RELOAD_TIP,
   TEXT_TIP,
+  PICTURE_TIP,
   controls,
   discardOffer,
+  pictureOffer,
   rawOffer,
   type WikiState,
 } from '../wiki.js';
@@ -49,6 +51,7 @@ describe('controls', () => {
         reloadOffer(RELOAD_TIP),
         rawOffer(false, s.path),
         textBox(s.path, TEXT_TIP),
+        pictureOffer(s.path),
         ...(s.strip ? s.strip.assets.map((a) => cellAction(a, s.strip!.visible)) : []),
       ]);
       expect(duplicateKeys(listed)).toEqual([]);
@@ -58,6 +61,7 @@ describe('controls', () => {
       'fx:pane.view#reload',
       'fx:pane.view#raw',
       'cmd:doc.write#text',
+      'cmd:doc.write#picture',
       'item:link/asset/a1b2c3d4',
     ]);
   });
@@ -78,6 +82,24 @@ describe('controls', () => {
     expect(listed).toContainEqual(rawOffer(true, 'wiki/lore.md'));
     expect(listed).toContainEqual(textBox('wiki/lore.md', RAW_TIP));
     expect(listed).not.toContainEqual(textBox('wiki/lore.md', TEXT_TIP));
+  });
+
+  it('offers the picture as the write the pick lands in, only in the rich view', () => {
+    expect(pictureOffer('wiki/lore.md')).toEqual({
+      ok      : true,
+      id      : 'doc.write',
+      props   : { path: 'wiki/lore.md' },
+      on      : 'picture',
+      label   : 'Insert a picture',
+      tooltip : PICTURE_TIP,
+      supplies: ['text', 'seenHash'],
+    });
+    expect(pictureOffer('')).toMatchObject({ refusal: { reason: 'No document is open.' } });
+    expect(pictureOffer('wiki/lore.md', true)).toMatchObject({
+      refusal: { reason: 'This document cannot be written' },
+    });
+    expect(controls(state({ readOnly: true }))).toContainEqual(pictureOffer('wiki/lore.md', true));
+    expect(controls(state({ raw: true })).map(keyOf)).not.toContain('cmd:doc.write#picture');
   });
 
   it('offers to discard detached form answers only while there are some', () => {

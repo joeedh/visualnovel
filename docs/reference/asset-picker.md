@@ -40,6 +40,7 @@ The picker takes a snapshot of the manifest when it opens, in one command round 
   manifest at once. The document tree draws those same names, so the picker shows a
   picture under the name the rest of the app uses.
 - `AssetListing` (`apps/desktop/src/shared/ipc.ts`) carries only `hash`, `ext`, `kind`,
+  `file` (where the bytes are, workspace-relative, from whichever root holds them),
   `label`, `accepted`, and `slot` when the asset fills one. The detailed read for a single
   asset stays in `asset.info`, because a picker that needed everything about every asset
   would repeat that read every time it opens.

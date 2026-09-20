@@ -10,6 +10,7 @@ export const TEXT_TIP =
 export const RAW_TIP =
   'Edit the document as Markdown source, front matter included. Ctrl+S saves and commits.';
 export const RELOAD_TIP = 'Re-read this document from disk (discards an unsaved draft)';
+export const PICTURE_TIP = "Pick a picture from the project's assets and place it at the cursor";
 
 /** What the Wiki pane reads when it draws its bar, its box and its strip. */
 export interface WikiState {
@@ -18,6 +19,8 @@ export interface WikiState {
   dirty: boolean;
   /** Whether the pane shows Markdown source in place of the rich view. Off on every open. */
   raw?: boolean;
+  /** Whether the open document cannot be written, which refuses the toolbar's picture. */
+  readOnly?: boolean;
   /** Form answers typed into a view that has since closed, which a save refuses until resolved. */
   detached?: number;
   /** Whether the document moved under source typed into the raw view, which a save then refuses. */
@@ -53,6 +56,24 @@ export function rawOffer(raw: boolean, path: string): Offer {
 }
 
 /**
+ * The rich view's Insert a picture. The pick lands in the text Save writes, so the button is the
+ * same write as the box under its own `on`; refused with nothing open, then for a document the
+ * app cannot write.
+ */
+export function pictureOffer(path: string, readOnly = false): Offer {
+  const control = {
+    id      : 'doc.write',
+    on      : 'picture',
+    label   : 'Insert a picture',
+    tooltip : PICTURE_TIP,
+    supplies: ['text', 'seenHash'],
+  };
+  if (path === '') return { ...refuse('No document is open.'), ...control };
+  if (readOnly) return { ...refuse('This document cannot be written'), ...control };
+  return { ok: true, props: { path }, ...control };
+}
+
+/**
  * The footer's way out of a refused save: drop the answers a closed form left behind, or source
  * typed into the raw view after the document moved under it. Shown only while there is something
  * to drop, so it is never refused.
@@ -72,7 +93,7 @@ export function discardOffer(detached: number, stale = false): Offer {
   };
 }
 
-/** Every offer the Wiki pane draws from this module: the bar, the box, the footer, the strip. */
+/** Every offer the Wiki pane draws from this module: the bar, the box, its toolbar, the footer, the strip. */
 export function controls(state: WikiState): readonly Offer[] {
   const strip = state.strip;
   const detached = state.detached ?? 0;
@@ -83,6 +104,7 @@ export function controls(state: WikiState): readonly Offer[] {
     reloadOffer(RELOAD_TIP),
     rawOffer(raw, state.path),
     textBox(state.path, raw ? RAW_TIP : TEXT_TIP),
+    ...(raw ? [] : [pictureOffer(state.path, state.readOnly === true)]),
     ...(detached > 0 || stale ? [discardOffer(detached, stale)] : []),
     ...(strip ? strip.assets.map((asset) => cellAction(asset, strip.visible)) : []),
   ];

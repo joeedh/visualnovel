@@ -69,6 +69,7 @@ export class AssetPart {
         hash    : asset.hash,
         ext     : asset.ext,
         kind    : asset.kind,
+        file    : relPath(this.session.dir, project.store.pathOf(asset)),
         label   : names.get(asset.hash) ?? asset.hash,
         accepted: assetApproved(asset, project.model),
         ...(slot ? { slot: slotKey(slot) } : {}),

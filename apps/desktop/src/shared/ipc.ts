@@ -800,6 +800,8 @@ export interface AssetListing {
   hash: string;
   ext: string;
   kind: AssetKind;
+  /** Where the bytes are, workspace-relative and forward-slashed, from whichever root holds them. */
+  file: string;
   /** Display name from `labelAssets` — the same words the document tree shows. */
   label: string;
   accepted: boolean;

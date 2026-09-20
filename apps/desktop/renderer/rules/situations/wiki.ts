@@ -14,6 +14,11 @@ export const SITUATIONS = situations<WikiState>(
     state: { path: 'characters/aiko/character.md', dirty: false },
   },
   {
+    name : 'open-read-only',
+    why  : 'The open page cannot be written, so the toolbar refuses to place a picture in it.',
+    state: { path: 'characters/aiko/character.md', dirty: false, readOnly: true },
+  },
+  {
     name : 'open-detached',
     why: 'A form the author typed into has closed with its answers unapplied, so the footer offers to discard them.',
     state: { path: 'characters/aiko/character.md', dirty: true, detached: 1 },

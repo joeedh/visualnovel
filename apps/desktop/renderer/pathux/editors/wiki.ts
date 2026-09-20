@@ -14,7 +14,14 @@ import { frontmatterCodec } from '@vn/parse';
 import { api } from '../../api.js';
 import { ASSETSTRIP_CSS, renderAssetStrip } from '../assets/assetstrip.js';
 import { cellAction } from '../../rules/assetstrip.js';
-import { RAW_TIP, RELOAD_TIP, TEXT_TIP, discardOffer, rawOffer } from '../../rules/wiki.js';
+import {
+  RAW_TIP,
+  RELOAD_TIP,
+  TEXT_TIP,
+  discardOffer,
+  pictureOffer,
+  rawOffer,
+} from '../../rules/wiki.js';
 import { reloadOffer, textBox } from '../../rules/docbuffer.js';
 import { visibleEditors } from '../panes/route.js';
 import { panesOf } from '../panes/view.js';
@@ -27,7 +34,7 @@ import { redrawing } from '../tour/anchors.js';
 import { assetGroups } from '../doctree/doctree.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { assetNode, openNode } from '../panes/open.js';
-import { WikiProvider } from './wikiprovider.js';
+import { PICTURE_BUTTON, WikiProvider } from './wikiprovider.js';
 import type { VnScreen } from '../app/screen.js';
 import WIKI_CSS from '../../styles/wiki.css?inline';
 import type { DocTree, EntityLinks } from '../../../src/shared/ipc.js';
@@ -482,6 +489,14 @@ export class WikiEditor extends VnEditor {
     // The whole editor, toolbar and any form inside it, is one control: the box Save reads (D8)
     if (this.raw) anchors.record(this.rawBox, textBox(this.buf.path, RAW_TIP));
     else anchors.record(this.editor, textBox(this.buf.path, TEXT_TIP));
+    // Recorded rather than acted: the provider wires the press, and the toolbar row it sits in
+    // was built by `bind` above, so the node is this paint's
+    const toolbar = this.editor.shadow.querySelector<UIBase>('[data-richtext-toolbar]');
+    const picture = toolbar?.shadow.querySelector<HTMLElement>(`[data-testid="${PICTURE_BUTTON}"]`);
+    if (picture) {
+      const readOnly = this.buf.session?.canWrite === false;
+      anchors.record(picture, pictureOffer(this.buf.path, readOnly));
+    }
     this.paintFoot(anchors);
     this.paintStrip();
     for (const listener of this.paintListeners) listener();
