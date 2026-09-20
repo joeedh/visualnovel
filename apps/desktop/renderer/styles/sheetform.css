@@ -43,6 +43,11 @@
   box-shadow: none;
 }
 
+/* A field the form only shows (the entity tag) reads as the sunken chrome text it is. */
+.schema-form-row > textbox-x[readonly] {
+  opacity: 0.55;
+}
+
 /* Omit is a quiet word beside the box, not a second button of the row's weight. */
 .schema-form-row > button {
   flex: 0 0 auto;

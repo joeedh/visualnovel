@@ -126,10 +126,21 @@ const VnTheme = {
 
   label: { LabelText: body },
 
+  linkpopup: {
+    ...surface,
+    'background-color': TOKENS.inkRaised,
+  },
+
   listbox: {
     ListActive         : alpha(TOKENS.signalDeep, 0.5),
     ListActiveHighlight: alpha(TOKENS.signal, 0.5),
     ListHighlight      : alpha(TOKENS.signal, 0.2),
+  },
+
+  mdimage: {
+    'handle-color'    : TOKENS.signal,
+    'outline-color'   : alpha(TOKENS.signal, 0.6),
+    'drop-caret-color': TOKENS.signal,
   },
 
   menu: {
@@ -244,9 +255,26 @@ const VnTheme = {
     'box-shadow'      : POPUP_SHADOW,
   },
 
+  // Every key path.ux's editor reads, because its own values are a light theme's
   richtext: {
-    DefaultText       : font(16, TOKENS.paper, 'normal', TOKENS.prose),
-    'background-color': TOKENS.ink,
+    DefaultText                : font(16, TOKENS.paper, 'normal', TOKENS.prose),
+    'background-color'         : TOKENS.ink,
+    'readonly-background'      : TOKENS.inkSunken,
+    'selection-background'     : alpha(TOKENS.signal, 0.35),
+    'link-color'               : TOKENS.signal,
+    'link-underline'           : true,
+    'code-font'                : font(14, TOKENS.paper, 'normal', TOKENS.mono),
+    'code-background'          : alpha(TOKENS.paper, 0.08),
+    'code-border-radius'       : TOKENS.radiusChrome,
+    'quote-border-color'       : TOKENS.mistDim,
+    'quote-text-color'         : TOKENS.mist,
+    'marker-color'             : TOKENS.mist,
+    'heading-font'             : font(16, TOKENS.paper, '600', TOKENS.prose),
+    'hr-color'                 : TOKENS.inkLine,
+    'opaque-background'        : alpha(TOKENS.paper, 0.045),
+    'toolbar-background'       : TOKENS.inkRaised,
+    'toolbar-border'           : TOKENS.inkLine,
+    'toolbar-active-background': alpha(TOKENS.signal, 0.3),
   },
 
   screenborder: {

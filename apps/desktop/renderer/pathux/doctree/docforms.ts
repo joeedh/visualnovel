@@ -23,9 +23,11 @@ const SHARED: Fields = {
     label: 'Id',
     help: 'The identifier every scene and prompt refers to this entity by; renaming the file is how it changes',
   },
+  // Read-only because a save that drops or changes the tag deletes the entity, and is refused
   type: {
-    label: 'Type',
-    help: 'Optional in the conventional directory, which carries the tag implicitly; elsewhere it is what makes the file an entity',
+    label   : 'Type',
+    help: 'What makes the file an entity; optional in the conventional directory, which carries the tag implicitly. Only the Raw view changes it',
+    readOnly: true,
   },
   name       : { label: 'Name', help: 'The display name prompts and the playable use' },
   palette: {

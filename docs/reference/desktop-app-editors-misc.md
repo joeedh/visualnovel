@@ -108,16 +108,21 @@ on the rich editor, with every decision and what shipped against each, is
 - **Answers typed into a form are drafts on the session.** path.ux registers each form as
   a draft; **Apply answers** commits it as one undoable edit, and a save applies every
   pending draft first (`prepareSave`) and is refused, with the reason in the footer, when
-  one cannot be applied. A form disposed with answers typed (its block replaced under it
-  by a command that replaced the front-matter block) leaves a detached draft. The form
-  that replaces it takes those answers back (`FormControl.restore`, walked from the pane's
-  `paintFoot`) when the document's values still match what they were typed over; when they
-  do not, the draft stays detached, refuses every save, and the footer's **Discard pending
-  edits** drops it. The Raw view in another pane is not such a command: switching it
-  applies every pending draft first, so a form's answers land before the typed source
-  does, in either order, and source typed before the answers landed is the stale case
-  below. A pane that switches editors and comes back keeps its form and its typed answers,
-  because path.ux keeps an area's editor instances.
+  one cannot be applied. The answers are checked against the sheet's schema before they
+  are applied, so an omitted required field never reaches the document: the draft stays,
+  the issue is on the form's status line, and a row's **Omit** reads **Keep** while the
+  field is omitted, which puts the value back. `type` is shown read-only with no Omit,
+  because a save that drops or changes the tag deletes the entity and `doc.write` refuses
+  it; the Raw view is the way to change it. A form disposed with answers typed (its block
+  replaced under it by a command that replaced the front-matter block) leaves a detached
+  draft. The form that replaces it takes those answers back (`FormControl.restore`, walked
+  from the pane's `paintFoot`) when the document's values still match what they were typed
+  over; when they do not, the draft stays detached, refuses every save, and the footer's
+  **Discard pending edits** drops it. The Raw view in another pane is not such a command:
+  switching it applies every pending draft first, so a form's answers land before the
+  typed source does, in either order, and source typed before the answers landed is the
+  stale case below. A pane that switches editors and comes back keeps its form and its
+  typed answers, because path.ux keeps an area's editor instances.
 - **Raw is the same session as text.** The bar's **Raw** replaces the rich editor with a
   textarea registered on the session as a draft: what is typed there is applied as one
   undoable edit when the view switches back, the document saves, or the pane moves on to

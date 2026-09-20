@@ -16,6 +16,8 @@ describe('the sheet forms', () => {
     expect(missing).toEqual([]);
     // A described field the schema lacks would be a typo FormControl never shows
     for (const name of Object.keys(presentation.fields ?? {})) expect(fields).toContain(name);
+    // A save that drops or changes the entity tag is refused, so the form shows `type` read-only
+    expect(presentation.fields?.type?.readOnly).toBe(true);
   });
 });
 
