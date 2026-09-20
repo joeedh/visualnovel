@@ -1,7 +1,7 @@
 # The Wiki pane on path.ux's rich text editor
 
 Status: shipped, 2026-09-19. Stage 1 is specified here; stage 2 (custom widgets) is
-[`pathux-rich-editor-widgets.md`](../pathux-rich-editor-widgets.md), which stage 1's last
+[`pathux-rich-editor-widgets.md`](pathux-rich-editor-widgets.md), which stage 1's last
 task wrote.
 
 ## Goal
@@ -672,11 +672,11 @@ answers** button) and read the footer; disk was checked with `git diff` in the c
 
 ### Task 11
 
-- [`../pathux-rich-editor-widgets.md`](../pathux-rich-editor-widgets.md) is written, with
-  the `frontend-design` skill loaded first and its section "Where the design skill
-  applied" recording what the skill changed (the tokens and faces pinned to the app's, the
-  wardrobe as the one element with weight, no numbering, words as controls, no motion) and
-  a wireframe of the wardrobe. Its task 2 directs the implementer to load the skill again
+- [`pathux-rich-editor-widgets.md`](pathux-rich-editor-widgets.md) is written, with the
+  `frontend-design` skill loaded first and its section "Where the design skill applied"
+  recording what the skill changed (the tokens and faces pinned to the app's, the wardrobe
+  as the one element with weight, no numbering, words as controls, no motion) and a
+  wireframe of the wardrobe. Its task 2 directs the implementer to load the skill again
   before deciding any control's look.
 - A fresh-context reviewer returned eighteen findings, four of which reversed a decision:
   the `art.*` commands re-serialise the whole sheet and lose its comments, so art

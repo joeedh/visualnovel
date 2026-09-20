@@ -160,16 +160,18 @@ derived model's driver iterates (`renderer/rules/model.ts`, Part III).
 | `tasklist`          | `rules/tasklist.ts`          | `TaskListState`                                   |
 | `timeline`          | `rules/timeline/controls.ts` | `TimelineState`                                   |
 | `wiki`              | `rules/wiki.ts`              | `WikiState`                                       |
+|                     | `rules/sheetform.ts`         | `SheetFormState`, the sheet form's controls       |
 | every pinnable pane | `rules/pin.ts`               | `PinState`, over the pane's `PinField`            |
 
 The three toolbar popups are homes like the header: present whenever the app is, drawn
 under a pass that is replaced on render, and swept by pressing the toolbar control that
 opens each. The asset home has two modules, one for the bytes and one for the prompt, and
-a driver concatenates them. The pin toggle is one module drawn by the base editor in each
-of the six panes that declare `pins`. The wiki and skills panes share
-`rules/docbuffer.ts`, whose `saveOffer` is what `DocBuffer.saveOffer` delegates to. A
-module runs under the node-only desktop jest project, which maps no `pathux` module, so it
-imports from `pathux` type-only.
+the wiki home has two, one for the pane and one for the sheet form inside its document; a
+driver concatenates them. The pin toggle is one module drawn by the base editor in each of
+the six panes that declare `pins`. The wiki and skills panes share `rules/docbuffer.ts`,
+whose `saveOffer` is what `DocBuffer.saveOffer` delegates to. A module runs under the
+node-only desktop jest project, which maps no `pathux` module, so it imports from `pathux`
+type-only.
 
 ### Recording anchors
 
@@ -727,10 +729,10 @@ keeps `context` and `spent` below 1000, because two of its tooltips go through
 ### The driver
 
 `renderer/rules/model.ts` holds a table (`ROWS`) with one row per rule module: its name,
-its anchor home, its source path, its situations and its `controls`. The asset home's two
-modules are two rows, and the pin toggle is one module, `rules/pin.ts`, with a row per
-pinnable pane. A second table, `MENU_ROWS` in `rules/menus.ts`, holds the menus: the
-document tree's right-click over the exported `MENU_NODES`
+its anchor home, its source path, its situations and its `controls`. The asset and wiki
+homes' two modules are two rows each, and the pin toggle is one module, `rules/pin.ts`,
+with a row per pinnable pane. A second table, `MENU_ROWS` in `rules/menus.ts`, holds the
+menus: the document tree's right-click over the exported `MENU_NODES`
 (`renderer/pathux/doctree/doctree.ts`, one node of each kind, under the situation
 `every-kind`), the shot, line and card menus over a fixture each, the conversation bar's
 Threads menu, and the header's four menus from `rules/headermenus.ts`. `model()` emits

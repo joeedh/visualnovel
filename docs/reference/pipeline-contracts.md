@@ -402,6 +402,13 @@ These implement the system design in
       `art.setNotes` writes a note, and an empty value clears the rung back to inheriting.
       A slot a generation graph binds takes the graph node's own model and seed, so the
       override does not reach it.
+    - The Wiki pane's sheet form is a second writer of the same keys, at every rung a
+      sheet holds (`art_notes`, `seed`, `image_model` at the root and inside an outfit or
+      a variant). It writes through `@vn/parse`'s front-matter codec rather than the
+      `art.*` commands because those re-serialise the whole front matter and lose the
+      author's comments, and the model reads the keys back identically from either writer;
+      a blank box removes the key, so the byte-identical test below holds for a sheet
+      edited through the form.
     - Setting a note costs money by design, like the outfit and unlike every scene edit.
       The note is in the prompt, so setting one re-keys precisely the tasks that rung
       reaches, and the next run re-renders them.

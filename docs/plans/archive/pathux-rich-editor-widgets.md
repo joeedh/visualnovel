@@ -1,10 +1,9 @@
 # Custom widgets in the Wiki pane (rich editor, stage 2)
 
-Status: planned. Stage 1 —
-[`archive/pathux-rich-editor.md`](archive/pathux-rich-editor.md) — put the Wiki pane on
-path.ux's rich text editor, with a sheet's front matter as path.ux's generic form. This
-stage replaces the generic boxes for the fields that are not text, puts art beside the
-wardrobe it was drawn for, and lets prose refer to pictures and other documents.
+Status: shipped. Stage 1 — [`pathux-rich-editor.md`](pathux-rich-editor.md) — put the Wiki
+pane on path.ux's rich text editor, with a sheet's front matter as path.ux's generic form.
+This stage replaces the generic boxes for the fields that are not text, puts art beside
+the wardrobe it was drawn for, and lets prose refer to pictures and other documents.
 
 ## Goal
 
@@ -494,7 +493,7 @@ loses a field the form could edit before it.
     `asset-picker.md` (a third opener), `pipeline-contracts.md` (D5's sentence),
     `guided-tours.md` if a new home appears, this plan's As shipped; `pnpm markdown-toc`
     then `pnpm exec prettier --write "docs/**/*.md"`, `pnpm check:doclinks`; move this
-    plan to `archive/` and flip its row in `docs/plans/index.md`.
+    plan to `archive/` and flip its row in `docs/plans/index.md`. Done; see As shipped.
 
 ## Risks
 
@@ -1041,3 +1040,26 @@ findings; what changed for each:
   the front-matter block while answers were typed into it. The raw view is not such a
   command, since it applies the answers first, so D9's two-pane sentence is replaced by
   the paragraph above.
+
+### Task 12
+
+- `desktop-app-editors-misc.md`'s Wiki section gained five bullets after the form's: the
+  three custom controls and what each writes through the codec, art direction written by
+  the form at both rungs, the art beside an entry from the tree, `prompt_override`'s
+  sentence and button with its refusals, and, after the strip, the picture as a
+  document-relative path and the link completed on `[[` and followed with Ctrl+click. Its
+  drafts bullet no longer defers recovery to stage 2: it says when a closed form's answers
+  come back, when they stay detached, and that the Raw view in another pane applies every
+  pending draft first (task 11's finding).
+- `asset-picker.md` names the Wiki toolbar's **Insert a picture** as the third opener,
+  with the cache kept on the session and the `doc.write` its pick is recorded as, and its
+  table gains `wikiprovider.ts` and `picturepath.ts`. `pipeline-contracts.md`'s
+  art-direction contract gains D5's sentence: the form is a second writer of the same
+  keys, through the codec, read back identically. `guided-tours.md` lists
+  `rules/sheetform.ts` as the wiki home's second module beside `rules/wiki.ts`, in the
+  table and in the two sentences that said only the asset home had two.
+- This plan moved to `archive/`, its status line and its row in `docs/plans/index.md`
+  flipped to shipped with the summary rewritten to what shipped (the row had said art
+  direction goes through the `art.*` commands, which D5 reversed), and stage 1's links to
+  it re-pointed. `pnpm markdown-toc`, prettier over `docs/**/*.md` and
+  `pnpm check:doclinks` are clean.

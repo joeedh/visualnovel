@@ -45,7 +45,49 @@ on the rich editor, with every decision and what shipped against each, is
   saved sheet still arrives afterwards on the footer line: the editor saves a sheet whose
   fields are half-typed and says so, and refuses only a save that would destroy identity
   (unparseable front-matter, or a dropped `type:` tag). Those rules live in the command,
-  and the editor does not re-decide them.
+  and the editor does not re-decide them. The plan that replaced the generic boxes for the
+  fields that are not text is
+  [`plans/archive/pathux-rich-editor-widgets.md`](../plans/archive/pathux-rich-editor-widgets.md).
+- **Three fields are custom controls inside that form, and they write through it.**
+  path.ux's `FormControl` takes a per-field control factory (`FieldMeta.control`), and the
+  pane binds three (`doctree/sheetform.ts`, `sheetControls`): `palette` as a row of
+  swatches (`doctree/palettecontrol.ts`), each opening the app's colour picker, with a `×`
+  to remove one and a slot to add one; `outfits` as the wardrobe
+  (`doctree/wardrobecontrol.ts` over `doctree/entryrows.ts`), one row per entry in the
+  order written, with the id, the default mark (the control that writes `default_outfit`,
+  which the wardrobe also owns and so has no row of its own), the description in the prose
+  face, the art drawn for that outfit, and the entry's own `art_notes`, `seed` and
+  `image_model`; and a location's `variants` as the same rows over a list
+  (`doctree/variantscontrol.ts`). A control reads and writes the same encoded text the
+  form keeps as its draft, so Apply answers, Discard and Omit treat it as a field, and
+  every change lands as one undoable edit through the codec, which is why an added outfit
+  is appended as block YAML after a commented one instead of the map being rewritten. A
+  rename keeps its lines and its position; when a scene still wears the old name the row
+  says so. Removing the default outfit keeps `default_outfit` naming it and the row comes
+  back synthesized, with a description box that recreates the entry. Text a control cannot
+  read ("Not a wardrobe") is shown as a sentence and handed back unchanged, and the Raw
+  view is the way round it.
+- **Art direction is written by the form, at both rungs.** The root `art_notes`, `seed`
+  and `image_model` boxes and the ones in an outfit's or a variant's row all go through
+  the codec, because the `art.*` commands re-serialise the whole front matter and lose the
+  author's comments. The model reads the keys back identically from either writer
+  ([`pipeline-contracts.md`](pipeline-contracts.md)). A blank box removes the key, so a
+  sheet that authors no notes keeps producing byte-identical prompts.
+- **The art beside an entry comes from the tree.** `EntityLinks.assets[]` carries the
+  asset's slot address and a character's links carry `usedOutfits`, a location's
+  `usedVariants` (all computed in main, `main/doctree.ts`), so a wardrobe row shows the
+  `sheet:<id>/<outfit>/<angle>` assets, the default row the `portrait:` ones, and a
+  variant row its `plate:`; a click on a thumbnail routes to the Asset editor the way the
+  strip's does. A row with nothing drawn says whether the pipeline plans it ("Nothing
+  drawn yet") or no scene wears it. The strip under the document stays for what the rows
+  cannot place.
+- **`prompt_override` says what it is before its JSON.** `doctree/promptcontrol.ts` draws
+  a sentence ("Prompt: derived", "Prompt: 2 clauses replaced, 1 muted", "Prompt: written
+  by the agent") from the box's text, and **Edit the prompt in the Asset editor**, which
+  publishes the sheet's portrait and opens the Asset editor on it. The button is refused
+  while the buffer is dirty ("Save the sheet first; the Asset editor writes the prompt
+  into it"), because that editor's write would land on disk under the unsaved session, and
+  while nothing has been drawn for the character.
 - **The document is a session shared by every pane on it.** `DocBuffer`
   (`doctree/docbuffer.ts`) holds a `DocSession` entry (`doctree/docsession.ts`), one per
   path, so two Wiki panes on one file show one document, one undo history and one dirty
@@ -67,10 +109,15 @@ on the rich editor, with every decision and what shipped against each, is
   a draft; **Apply answers** commits it as one undoable edit, and a save applies every
   pending draft first (`prepareSave`) and is refused, with the reason in the footer, when
   one cannot be applied. A form disposed with answers typed (its block replaced under it
-  by the Raw view in another pane, say) leaves a detached draft, which refuses every save
-  until the footer's **Discard pending edits** drops it; recovering those answers into the
-  new form is stage 2's. A pane that switches editors and comes back keeps its form and
-  its typed answers, because path.ux keeps an area's editor instances.
+  by a command that replaced the front-matter block) leaves a detached draft. The form
+  that replaces it takes those answers back (`FormControl.restore`, walked from the pane's
+  `paintFoot`) when the document's values still match what they were typed over; when they
+  do not, the draft stays detached, refuses every save, and the footer's **Discard pending
+  edits** drops it. The Raw view in another pane is not such a command: switching it
+  applies every pending draft first, so a form's answers land before the typed source
+  does, in either order, and source typed before the answers landed is the stale case
+  below. A pane that switches editors and comes back keeps its form and its typed answers,
+  because path.ux keeps an area's editor instances.
 - **Raw is the same session as text.** The bar's **Raw** replaces the rich editor with a
   textarea registered on the session as a draft: what is typed there is applied as one
   undoable edit when the view switches back, the document saves, or the pane moves on to
@@ -99,6 +146,24 @@ on the rich editor, with every decision and what shipped against each, is
   bar re-reads the file whatever the session's state. It drops the session, unsaved edits
   and undo history included, and says so in the footer, because refusing would leave the
   author with no way back to what is on disk.
+- **A picture in the prose is a document-relative path to the asset's file.** The
+  toolbar's **Insert a picture** (`editors/wikiprovider.ts`, the pane's `MarkdownProvider`
+  subclass) opens the asset picker ([`asset-picker.md`](asset-picker.md#opening-it)) and
+  inserts an image whose `src` is the path from the document to the file that holds the
+  bytes (`../../assets/objects/<hash>.png`, or under `vngen/build/assets/` for a legacy
+  project; `assets/picturepath.ts`), and whose `alt` is the asset's label. The path is
+  real, so a markdown viewer over the checkout shows the same picture; in the pane it is
+  loaded through `vnasset://` by the provider's `resolveSrc`. The picture pins the bytes
+  it showed: a re-render makes a new hash, and the prose keeps pointing at the old one.
+- **A link to another document is a markdown link, completed on `[[`.** Typing `[[` opens
+  a popup under the caret (`editors/wikilinks.ts`) over every document in the tree
+  (`doctree/doclinks.ts`), filtered as the author types on; Enter or a click writes
+  `[Aiko](../characters/aiko/character.md)` over the typed text as one undo entry, and
+  Escape leaves the brackets. Ctrl+click (Cmd on macOS), or a plain click when the
+  document cannot be written, follows a link to a document or a stored picture through the
+  route a tree click takes; a plain click keeps path.ux's popup that edits the link. A
+  `[[marker]]` the screenplay's syntax uses, and any url, lead nowhere. The bible still
+  indexes a link as plain text; there are no backlinks between notes.
 - **It does not read through `@vn/bible`.** That interface has no whole-file call, and the
   guarantee follows from that absence ([`story-bible.md`](story-bible.md)). A human
   reading their own note on screen does not put it into the agent's context window.

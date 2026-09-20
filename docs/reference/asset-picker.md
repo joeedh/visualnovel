@@ -76,7 +76,13 @@ closing the pane releases those bitmaps.
 ## Opening it
 
 `pickRef` in apps/desktop/renderer/pathux/editors/asset.ts opens the popup and awaits it,
-and `CommandForm.pickAsset` does the same from a command form.
+`CommandForm.pickAsset` does the same from a command form, and the Wiki pane's **Insert a
+picture** (`WikiProvider.insertPicture` in
+apps/desktop/renderer/pathux/editors/wikiprovider.ts) opens it from the rich editor's
+toolbar and inserts the picked asset into the prose as a document-relative image
+([`desktop-app-editors-misc.md`](desktop-app-editors-misc.md#wiki)). That one is opened by
+the session's provider, which serves every pane on the document, so its `ThumbnailCache`
+is kept with the session rather than the pane.
 
 The Attach button is a raw DOM node in an `appendSurface` root, not a path.ux widget, so
 it cannot own the popup. The editor owns the popup, and the button supplies only the
@@ -94,7 +100,9 @@ whatever was under the popup.
 Confirming resolves with the chosen item, and `pickRef` runs `prompt.addRef` with its hash
 through the same act record the button was drawn from. The picker therefore adds a value
 to a command the UI had already declared instead of using a second write path
-([`command-system.md`](command-system.md)).
+([`command-system.md`](command-system.md)). The Wiki toolbar's pick lands in the document
+instead, as an edit on the session, so its button records the `doc.write` that edit is
+saved by, with `supplies: ['text', 'seenHash']`.
 
 The button records `supplies: ['ref']`, which tells the anchor layer that the entry is
 deliberately incomplete. The author fills in `ref` later, so a tour or the anchor sweep
@@ -115,14 +123,16 @@ Three limits are deliberate, not unfinished work.
 
 ## Where the pieces are
 
-| Path                                                   | What it holds                                    |
-| ------------------------------------------------------ | ------------------------------------------------ |
-| `apps/desktop/src/main/commands/asset.ts`              | `asset.list`                                     |
-| `apps/desktop/src/main/session.ts`                     | `assetLibrary`, over `labelAssets`               |
-| `apps/desktop/src/shared/ipc.ts`                       | `AssetListing`                                   |
-| `apps/desktop/renderer/pathux/assets/assetthumb.ts`    | `assetThumbUrl`, `loadAssetThumb`, `galleryItem` |
-| `apps/desktop/renderer/rules/promptview.ts`            | the `attach` clause act and `REF_SUPPLIES`       |
-| `apps/desktop/renderer/pathux/editors/asset.ts`        | `pickRef`, and the pane's `ThumbnailCache`       |
-| `apps/desktop/renderer/pathux/commands/commandform.ts` | `pickAsset`, and the form's own `ThumbnailCache` |
-| `apps/desktop/renderer/rules/vocabulary.ts`            | `picksAnAsset` — which props get the button      |
-| `vendor/path.ux/scripts/gallery/`                      | the widget, its cache, and `pickAssetPopup`      |
+| Path                                                   | What it holds                                       |
+| ------------------------------------------------------ | --------------------------------------------------- |
+| `apps/desktop/src/main/commands/asset.ts`              | `asset.list`                                        |
+| `apps/desktop/src/main/session.ts`                     | `assetLibrary`, over `labelAssets`                  |
+| `apps/desktop/src/shared/ipc.ts`                       | `AssetListing`                                      |
+| `apps/desktop/renderer/pathux/assets/assetthumb.ts`    | `assetThumbUrl`, `loadAssetThumb`, `galleryItem`    |
+| `apps/desktop/renderer/rules/promptview.ts`            | the `attach` clause act and `REF_SUPPLIES`          |
+| `apps/desktop/renderer/pathux/editors/asset.ts`        | `pickRef`, and the pane's `ThumbnailCache`          |
+| `apps/desktop/renderer/pathux/editors/wikiprovider.ts` | `insertPicture`, and the session's `ThumbnailCache` |
+| `apps/desktop/renderer/pathux/assets/picturepath.ts`   | `pictureSrc` and `pictureAsset`, the path both ways |
+| `apps/desktop/renderer/pathux/commands/commandform.ts` | `pickAsset`, and the form's own `ThumbnailCache`    |
+| `apps/desktop/renderer/rules/vocabulary.ts`            | `picksAnAsset` — which props get the button         |
+| `vendor/path.ux/scripts/gallery/`                      | the widget, its cache, and `pickAssetPopup`         |
