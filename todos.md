@@ -17,7 +17,7 @@
      there seems to be plenty of room in task boxes for a status line.
 [ ]: clicking stop twice on the pipeline should pop up a dialog asking if you want to abort 
      the active tasks, if used affirms active tasks are aborted.
-[ ]: use an agent to write a report on formalizing our emergent design that assets form a linear history inside
+[ ]: use an agent to write a report on formalizing our emergent design that assets form a history inside
      'slots'.  there's a lot of confusion right now, e.g. the approval popup lists stale assets.
 [ ]: clamp the image aspect ratio per model.  openrouter's openai/gpt-5-image and
      gpt-5-image-mini reject aspect_ratio "16:9" (accepted: 1:1, 3:2, 2:3, auto), so
