@@ -37,7 +37,11 @@ on the rich editor, with every decision and what shipped against each, is
   location and tag disagree, and a file whose fence is not on its first line, keep the raw
   block and the footer says why. The form patches the YAML through `@vn/parse`'s
   `frontmatterCodec`, so comments, quoting and unknown keys survive an edit made through
-  it, and a metadata-only edit leaves the body byte-identical. The model's assessment of a
+  it, and a metadata-only edit leaves the body byte-identical. Inside a block map or
+  sequence the codec adds, removes and renames entries line by line, rewrites a flow
+  sequence of scalars as one and a block scalar at its own indent, and refuses to remove
+  or rename an entry that carries a comment; the refusal's sentence is what the form's
+  status line shows, and the Raw view is the way round it. The model's assessment of a
   saved sheet still arrives afterwards on the footer line: the editor saves a sheet whose
   fields are half-typed and says so, and refuses only a save that would destroy identity
   (unparseable front-matter, or a dropped `type:` tag). Those rules live in the command,

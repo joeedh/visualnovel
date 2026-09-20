@@ -467,7 +467,8 @@ loses a field the form could edit before it.
    per session. The implementer loads `frontend-design` here, before the form rules and
    each control's look, and records in As shipped what it changed. Done; see As shipped.
 3. **The codec's structural edits** (D2). `packages/parse/src/frontmatterCodec.ts` and its
-   tests; `docs/reference/desktop-app-editors-misc.md`'s codec sentence.
+   tests; `docs/reference/desktop-app-editors-misc.md`'s codec sentence. Done; see As
+   shipped.
 4. **Palette control** (D3). The smallest control, to prove the seam end to end: swatches,
    picker, add, remove; `rules/sheetform.ts` begins; a situation; `pnpm gen:uxmodel`; CDP
    check.
@@ -654,3 +655,42 @@ findings; what changed for each:
   `wikiprovider.ts` import `pathux-richtext-forms` and `-markdown`, which jest does not
   map, so their coverage is the app's typecheck plus the CDP check; the merge and the
   recovery walk are exercised by task 4's control and D9's CDP cases.
+
+### Task 3
+
+- `frontmatterCodec.patch` now gathers edits through three walkers. `patchMap` over a
+  block map: a key at the same position with a new name and an equal value is renamed in
+  the key scalar's own range (the author's quoting kept through `scalarText`), a kept key
+  recurses, a dropped key loses its lines, and an added key is written after the last
+  entry at the column of the last key, as YAML from `yaml`'s `stringify` rather than the
+  JSON-quoted `"seed": 7` the top level used to append (that test changed). `patchSeq`
+  over a block sequence: a longest-common-subsequence alignment by value, then a dropped
+  item next to an added one is patched in place, a dropped item alone loses its lines, and
+  an added item is written before the next kept item or after the last, as `- ` block YAML
+  (a map item lands as `- id: noon` with its keys under it). `patchBlockScalar`: a changed
+  block scalar is rewritten as a literal block at the content's own indent, and as a
+  quoted line when the new text has no line break. A flow sequence whose items are all
+  scalars is rewritten as a flow sequence, plain where the text can be.
+- Refusals, each in a sentence the form's status line shows: "Removing this field requires
+  raw source editing" and "…this item…" when the entry or its value carries a comment or
+  shares its line with anything but indentation (the first key of a `- id: x` sequence
+  item, for one); "Renaming this field requires raw source editing"; "This collection
+  requires raw source editing" for a commented collection the codec would have to rewrite
+  inline; "This block scalar requires raw source editing" for one with a comment, or one
+  replaced by a non-string. A collection emptied outright is rewritten inline as `[]` or
+  `{}`.
+- Two things the plan did not say. Values compare by a key-sorted canonical JSON, so the
+  round-trip check and the rename test do not depend on the order a form wrote keys in,
+  which the written order never follows anyway. Two insertions at one offset (a key
+  appended inside the last entry, and one appended after it) keep the order they were
+  gathered in.
+- Tests: the fixed block, the CRLF block and the template sheets as before, plus a sheet
+  with a commented outfit, a block palette, a flow tag list, a literal bio and mixed
+  variants: append after the commented entry, a nested entry as block YAML, removal from
+  the middle (refused with the comment, done without it), a rename byte for byte, a
+  refused rename, a rename with a changed value read as removal plus addition, sequence
+  append and removal, insertion before a kept item and replacement in place, a map item
+  appended and an existing one edited entry by entry, flow rewrite with a quoted item, the
+  block scalar both ways, CRLF through a structural edit, and the emptied collection with
+  the commented refusal. `docs/reference/desktop-app-editors-misc.md`'s Wiki bullet names
+  the new behaviour and the refusal.
