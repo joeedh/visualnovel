@@ -89,7 +89,6 @@ describe('what right-clicking a line offers', () => {
     outfits    : {},
     coversLines: covers,
     aspect     : '16:9',
-    status     : 'accepted',
     image,
     drift: 'current',
   });

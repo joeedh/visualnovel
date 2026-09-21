@@ -65,7 +65,6 @@ describe('set_outfit', () => {
         location   : 'classroom',
         subjects   : [{ characterId: 'aiko' }],
         coversLines: ['arrival:L1'],
-        status     : 'pending',
       };
       await writeShots(paths, 'arrival', [shot]);
 
@@ -112,7 +111,6 @@ describe('set_variant', () => {
         location   : variant,
         subjects   : [{ characterId: 'aiko' }],
         coversLines: ['arrival:L1'],
-        status     : 'pending',
       },
     ]);
 

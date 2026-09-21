@@ -23,7 +23,6 @@ const shot = (id: string, subjects: string[], castOptional?: boolean): CoverageS
   outfits    : {},
   coversLines: ['club:L1'],
   aspect     : '16:9',
-  status     : 'accepted',
   drift      : 'current',
 });
 

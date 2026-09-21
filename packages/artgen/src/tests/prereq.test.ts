@@ -106,7 +106,6 @@ describe('assetPrereqs', () => {
       location      : 'night',
       subjects      : [],
       coversLines   : [],
-      status        : 'pending',
       promptOverride: {
         mode: 'chunks',
         ...(mute ? { mute } : {}),

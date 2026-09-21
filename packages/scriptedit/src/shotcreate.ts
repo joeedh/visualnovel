@@ -176,7 +176,6 @@ export function newShot<S extends CoverShot>(
     location,
     subjects,
     coversLines,
-    status: 'pending',
   };
   const shots = [...applyCoverage(existing, op.changed), shot];
 

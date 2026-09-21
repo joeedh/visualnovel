@@ -39,7 +39,6 @@ const scene = (id: string, over: Partial<Shot> = {}): Shot => ({
   location   : 'gate',
   subjects   : [{ characterId: 'aiko' }],
   coversLines: [],
-  status     : 'pending',
   ...over,
 });
 

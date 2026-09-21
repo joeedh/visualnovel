@@ -397,6 +397,18 @@ that read it to answer "is it approved" reads `assetApproved`.
   `linemenu.ts:21`, `page.test.ts:88,107,127`, `shots.test.ts:49`). The situations mean
   `pnpm gen:uxmodel` runs in this commit, and `timeline.ts` is an editor, so the anchor
   sweep is re-run.
+- As built: about seventy literals across forty-five test and situation files, not
+  twenty-five; `artgen/storyboard.ts` and `scriptedit/shotcreate.ts` stamped
+  `status: 'pending'` on every new shot and stop. `readShots` writes `shotData` only when
+  the shot has a `prompt` or an `image`, since `status` was the third thing that used to
+  earn it a block. The legacy `status: 'accepted'` in `pipeline/src/tests/shots.test.ts`
+  and `page.test.ts` stays as a read-only input, and the tests assert a rewrite drops it.
+- As built: the re-swept `anchors.json` lists sixteen approvals-popup rows where the
+  master sweep listed seventy-seven. The popup lists at most one row per slot since stage
+  1, so the sixty-one that left were the older takes of slots that already hold a newer
+  one; `asset.restore` gives way to `asset.accept` in the Asset pane for the same reason,
+  and the `asset.replace` disagreement the master sweep recorded is no longer reported.
+  The strays list differs by layout only.
 
 ## Stage 4 — an interactive graph run files a take
 
@@ -592,7 +604,7 @@ Stages landed, each as its own green commit on the `slot-history` branch:
 - [x] Stage 0 — cross-root adoption visible to its slot.
 - [x] Stage 1 — the model.
 - [x] Stage 2 — export refusal, `vngen accept`, `acceptAll`.
-- [ ] Stage 3 — `Shot.status` removed.
+- [x] Stage 3 — `Shot.status` removed.
 - [ ] Stage 4 — interactive graph run files a take.
 - [ ] Stage 5 — portrait gate reads the row.
 

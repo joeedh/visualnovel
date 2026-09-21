@@ -22,7 +22,6 @@ const shots = (variant: string): Shot[] => [
     location   : variant,
     subjects   : [],
     coversLines: ['club:L1'],
-    status     : 'generated',
   },
   {
     id         : 'club__beat2',
@@ -31,7 +30,6 @@ const shots = (variant: string): Shot[] => [
     location   : variant,
     subjects   : [],
     coversLines: ['club:L2'],
-    status     : 'generated',
   },
 ];
 

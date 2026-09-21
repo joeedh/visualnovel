@@ -57,7 +57,6 @@ describe('refsOfSlot', () => {
       location   : 'night',
       subjects   : [{ characterId: 'aiko', outfit: 'gala' }],
       coversLines: [],
-      status     : 'pending',
     };
     const ctx = ctxOf(cafe({}), [shot]);
     expect(

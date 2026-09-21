@@ -38,7 +38,6 @@ function rendered(coversLines: string[], from: Scene = SCENE): Shot {
     coversLines,
     image    : 'abc',
     proseHash: proseHash(from, coversLines),
-    status   : 'accepted',
   };
 }
 
@@ -128,7 +127,6 @@ describe('the stamp a run leaves', () => {
         coversLines: persisted.coversLines,
         image      : persisted.shotData!.image,
         proseHash  : stamped,
-        status     : 'accepted',
       };
       expect(driftOf(after, shot)).toBe('drifted');
 

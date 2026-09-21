@@ -166,7 +166,6 @@ describe('unapprovedTakes', () => {
           location   : 'evening',
           subjects   : [],
           coversLines: lines,
-          status     : 'pending',
         },
       ],
     ],
@@ -231,7 +230,6 @@ describe('persisted decompositions', () => {
       location   : 'evening',
       subjects   : [],
       coversLines: lines,
-      status     : 'accepted',
     },
   ];
 

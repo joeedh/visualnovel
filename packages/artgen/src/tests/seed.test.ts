@@ -34,7 +34,6 @@ function shotOf(seed?: number, aspect?: string): Shot {
     location   : 'day',
     subjects   : [{ characterId: 'aiko' }],
     coversLines: [],
-    status     : 'pending',
     ...(seed === undefined ? {} : { seed }),
     ...(aspect === undefined ? {} : { aspect }),
   };

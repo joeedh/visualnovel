@@ -20,7 +20,6 @@ const shot = (outfits: Record<string, string>, subjects = ['aiko', 'ren']): Cove
   outfits,
   coversLines: ['club:L1'],
   aspect     : '16:9',
-  status     : 'accepted',
   drift      : 'current',
 });
 

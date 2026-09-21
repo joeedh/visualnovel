@@ -344,7 +344,6 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
         // The clean frame is the take the slot holds; the reviewers' verdict gates retries and
         // approves nothing, which stays a person's act
         await holdTake(deps, ref, at);
-        if (found) found.shot.status = 'accepted';
         return { status: 'done', output: ref.hash };
       }
 
@@ -368,7 +367,6 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
 
     // The flawed frame holds the slot too: it is what the author needs to see and fix
     if (lastRef) await holdTake(deps, lastRef, deps.now?.());
-    if (found) found.shot.status = 'needs_human';
     return {
       status: 'needs_human',
       output: lastRef?.hash,

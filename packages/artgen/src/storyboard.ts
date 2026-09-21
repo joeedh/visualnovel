@@ -77,7 +77,6 @@ export function deterministicShots(scene: Scene, model: ProjectModel): Shot[] {
       // later scene marker or a change of default reaches this shot instead of being shadowed.
       subjects   : scene.characters.map((characterId) => ({ characterId })),
       coversLines: establishingLines,
-      status     : 'pending',
     },
   ];
   scene.characters.forEach((characterId, i) => {
@@ -91,7 +90,6 @@ export function deterministicShots(scene: Scene, model: ProjectModel): Shot[] {
       location: variant,
       subjects: [{ characterId }],
       coversLines,
-      status: 'pending',
     });
   });
   return shots;
@@ -311,7 +309,6 @@ export function realizeDecomposition(
       camera: s.camera,
       aspect: s.aspect,
       coversLines,
-      status: 'pending' as const,
     };
     if (panels) shot.panels = panels;
     if (s.sheet !== undefined) shot.sheet = s.sheet;

@@ -614,8 +614,7 @@ describe('WorkspaceSession — prose editing', () => {
       location: 'rooftop/sunset',
       subjects: [],
       coversLines,
-      image : `image-of-${id}`,
-      status: 'accepted',
+      image: `image-of-${id}`,
     }));
     await writeShots(p.paths, sceneId, shots);
   };
@@ -719,7 +718,6 @@ describe('WorkspaceSession — outfits', () => {
         location   : 'classroom/day',
         subjects   : [{ characterId: 'aiko' }],
         coversLines: ['arrival:L2'],
-        status     : 'pending',
       },
     ]);
   });
@@ -878,8 +876,8 @@ describe('WorkspaceSession — outfits', () => {
     expect(after.panels![0]!.bubbles).toEqual([
       { lineId: lines[0]!, anchor: [0.5, 0.3], tail: [0.4, 0.6] },
     ]);
-    // A bubble is outside the prompt, so the shot's status and drift are as they were
-    expect([after.status, after.drift]).toEqual([keyed.status, keyed.drift]);
+    // A bubble is outside the prompt, so the shot's drift is as it was
+    expect(after.drift).toEqual(keyed.drift);
 
     expect(await session.setBubbles('arrival', 'arrival__beat1', [])).toMatchObject({ ok: true });
     expect(await session.setPanels('arrival', 'arrival__beat1', [])).toMatchObject({ ok: true });

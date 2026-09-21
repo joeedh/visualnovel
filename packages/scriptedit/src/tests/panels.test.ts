@@ -36,7 +36,6 @@ const shots = (panels?: PagePanel[]): Shot[] => [
     location   : 'day',
     subjects   : [{ characterId: 'aiko' }, { characterId: 'ben' }],
     coversLines: ['club:L1', 'club:L2', 'club:L3'],
-    status     : 'generated',
     ...(panels ? { panels } : {}),
   },
   {
@@ -46,7 +45,6 @@ const shots = (panels?: PagePanel[]): Shot[] => [
     location   : 'day',
     subjects   : [{ characterId: 'ben' }],
     coversLines: ['club:L4'],
-    status     : 'generated',
   },
 ];
 

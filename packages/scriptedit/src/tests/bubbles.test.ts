@@ -44,7 +44,6 @@ const page = (panels?: PagePanel[]): Shot[] => [
     location   : 'day',
     subjects   : [{ characterId: 'aiko' }],
     coversLines: ['club:L1', 'club:L2', 'club:L3'],
-    status     : 'generated',
     ...(panels ? { panels } : {}),
   },
 ];

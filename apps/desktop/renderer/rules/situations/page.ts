@@ -35,7 +35,6 @@ const drawn: CoverageShot = {
   outfits    : {},
   coversLines: ['arrival:L1', 'arrival:L2', 'arrival:L3'],
   aspect     : '16:9',
-  status     : 'accepted',
   drift      : 'current',
 };
 
@@ -64,7 +63,6 @@ const page: CoverageShot = {
 
 const flagged: CoverageShot = {
   ...page,
-  status : 'pending',
   failure: {
     task   : 't1',
     status : 'needs_human',

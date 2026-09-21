@@ -357,7 +357,10 @@ These implement the system design in
     - Authored fields sit at the top level. Fields a run produced sit under `shotData`,
       which each pass rewrites wholesale. `tasks.jsonl` and `manifest.json` remain the
       authority, so the pipeline does not treat work as done when a shots file is restored
-      from an old commit.
+      from an old commit. `shotData` carries no `status`: whether a frame is drawn, held
+      or approved is read from the manifest row (`current`, `accepted`) and the task log,
+      and a file that still says `status` from before that change is parsed and never
+      rewritten with it. The timeline colours a strip by `failure.status` alone.
     - Line ids the scene no longer contains are dropped with a warning. `buildShotPrompt`
       ignores `coversLines` on a frame, so coverage edits to a frame do not trigger a
       rehash. A page under `lettering: model` is the exception, below.

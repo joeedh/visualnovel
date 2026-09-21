@@ -602,7 +602,10 @@ export class TimelineEditor extends VnEditor {
     const shot = span.shot;
     const stale = driftTag(shot.drift);
     const selected = this.ui.shotId === shotId ? ' sel' : '';
-    const box = el('div', `tl-shot ${shot.status}${stale ? ` ${stale.state}` : ''}${selected}`);
+    const box = el(
+      'div',
+      `tl-shot ${shot.failure?.status ?? ''}${stale ? ` ${stale.state}` : ''}${selected}`,
+    );
     box.dataset['shotId'] = shotId;
     box.style.gridColumn = String(span.lane + 2);
     box.style.gridRow = `${segment.from + 1} / ${segment.to + 2}`;

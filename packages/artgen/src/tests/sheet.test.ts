@@ -23,7 +23,6 @@ const frame = (id: string, extra: Partial<Shot> = {}): Shot => ({
   location   : 'day',
   subjects   : [{ characterId: 'aiko' }],
   coversLines: [],
-  status     : 'pending',
   ...extra,
 });
 

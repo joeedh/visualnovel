@@ -61,7 +61,6 @@ const SHOT: Shot = {
   location   : 'dawn',
   subjects   : [],
   coversLines: [],
-  status     : 'pending',
 };
 
 /**

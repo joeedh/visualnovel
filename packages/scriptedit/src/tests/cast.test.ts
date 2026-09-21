@@ -13,7 +13,6 @@ const shots = (subjects: ShotSubject[], castOptional?: boolean): Shot[] => [
     subjects,
     ...(castOptional ? { castOptional: true } : {}),
     coversLines: ['club:L1'],
-    status     : 'generated',
   },
   {
     id         : 'club__beat2',
@@ -22,7 +21,6 @@ const shots = (subjects: ShotSubject[], castOptional?: boolean): Shot[] => [
     location   : 'day',
     subjects   : [{ characterId: 'ben' }],
     coversLines: ['club:L2'],
-    status     : 'generated',
   },
 ];
 

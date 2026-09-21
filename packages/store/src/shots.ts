@@ -140,7 +140,6 @@ export async function readShots(
       location   : s.location,
       subjects   : s.subjects,
       coversLines: kept,
-      status     : s.shotData?.status ?? 'pending',
     };
     if (s.castOptional !== undefined) shot.castOptional = s.castOptional;
     if (s.camera !== undefined) shot.camera = s.camera;
@@ -221,7 +220,7 @@ function serialize(sceneId: string, shots: readonly Shot[], marks: FileMarks): s
       coversLines: s.coversLines,
       // Omitted until a run has produced something, so a freshly decomposed file holds only
       // authored material.
-      ...(s.prompt !== undefined || s.image !== undefined || s.status !== 'pending'
+      ...(s.prompt !== undefined || s.image !== undefined
         ? {
             shotData: {
               ...(s.prompt !== undefined ? { prompt: s.prompt } : {}),
@@ -235,7 +234,6 @@ function serialize(sceneId: string, shots: readonly Shot[], marks: FileMarks): s
               ...(s.image !== undefined && s.panelBoxes !== undefined
                 ? { panelBoxes: s.panelBoxes }
                 : {}),
-              status: s.status,
             },
           }
         : {}),

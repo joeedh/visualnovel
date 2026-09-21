@@ -15,7 +15,6 @@ const shot = (id: string, sceneId: string, subjects: Shot['subjects']): Shot => 
   location: 'day',
   subjects,
   coversLines: [],
-  status     : 'pending',
 });
 
 describe('reachableScenes', () => {

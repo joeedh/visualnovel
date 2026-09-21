@@ -19,7 +19,6 @@ const bare: CoverageShot = {
   outfits    : {},
   coversLines: ['arrival:L1'],
   aspect     : '16:9',
-  status     : 'accepted',
   drift      : 'current',
 };
 

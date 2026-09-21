@@ -50,7 +50,6 @@ describe('art notes', () => {
       location   : 'day',
       subjects   : [{ characterId: 'aiko' }],
       coversLines: [],
-      status     : 'pending',
     };
     const sc = scene('s1', ['aiko'], 'cafe');
     expect(buildPortraitPrompt(c, config)).toBe(
@@ -112,7 +111,6 @@ describe('art notes', () => {
       location   : 'day',
       subjects   : [{ characterId: 'aiko' }],
       coversLines: [],
-      status     : 'pending',
       artNotes   : 'low angle, long lens',
     };
     const prompt = buildShotPrompt(s, sc, model([c], [sc], [location('cafe')]), config);
@@ -129,7 +127,6 @@ describe('buildShotPrompt — the outfit it says', () => {
     location: 'day',
     subjects,
     coversLines: [],
-    status     : 'pending',
   });
   const build = (subjects: Shot['subjects'], sceneOutfits?: Record<string, string>): string => {
     const c = character('aiko', 'approved', 'h1');
@@ -180,7 +177,6 @@ describe('shotSpec', () => {
         location   : 'day',
         subjects   : [{ characterId: 'aiko', outfit: 'default' }],
         coversLines: ['s1:L2'],
-        status     : 'pending',
       },
       s,
     );
@@ -200,7 +196,6 @@ describe('shotSpec', () => {
         location   : 'day',
         subjects   : [],
         coversLines: ['s1:L1'],
-        status     : 'pending',
       },
       s,
     );
@@ -221,7 +216,6 @@ describe('shotSpec', () => {
         subjects    : [{ characterId: 'aiko' }],
         castOptional: true,
         coversLines : ['s1:L2'],
-        status      : 'pending',
       },
       s,
     );

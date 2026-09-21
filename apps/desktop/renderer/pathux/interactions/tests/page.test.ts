@@ -27,7 +27,6 @@ const PAGE: CoverageShot = {
     { shape: half(0.5, 1), framing: 'close', subjects: [], coversLines: ['s:L2', 's:L3'] },
   ],
   aspect     : '3:4',
-  status     : 'accepted',
   drift      : 'current',
 };
 

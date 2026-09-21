@@ -173,19 +173,16 @@ function refreshShotData(shot: Shot, task: AnyTask, scene: Scene): void {
     else delete shot.panelBoxes;
   };
   if (task.status === 'done' && task.output) {
-    shot.status = 'accepted';
     shot.image = task.output;
     stamp();
     return;
   }
   if (task.status === 'needs_human') {
-    shot.status = 'needs_human';
     const last = task.attempts[task.attempts.length - 1]?.output;
     if (last) shot.image = last;
     stamp();
     return;
   }
-  shot.status = 'prompted';
   delete shot.image;
   // No image, so nothing the hash could describe; `serialize` would drop it anyway.
   delete shot.proseHash;

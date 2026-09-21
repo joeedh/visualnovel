@@ -10,7 +10,6 @@ const shot = (id: string, drift: Drift): CoverageShot => ({
   outfits    : {},
   coversLines: [],
   aspect     : '16:9',
-  status     : 'accepted',
   drift,
 });
 

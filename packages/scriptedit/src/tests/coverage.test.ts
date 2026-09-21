@@ -295,7 +295,6 @@ interface RichShot {
   subjects: string[];
   outfits: Record<string, string>;
   coversLines: string[];
-  status: string;
   drift: string;
 }
 
@@ -312,8 +311,7 @@ const drawn = (id: string, coversLines: string[]): RichShot => ({
   subjects: [],
   outfits : {},
   coversLines,
-  status: 'accepted',
-  drift : 'current',
+  drift: 'current',
 });
 
 const SHOTS: RichShot[] = [

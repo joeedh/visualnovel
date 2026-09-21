@@ -46,7 +46,8 @@ describe('persisted shot decompositions', () => {
       const { store } = await p.reload();
       for (const shot of file.shots) {
         expect(shot.sceneId).toBe('arrival');
-        expect(shot.shotData?.status).toBe('accepted');
+        // No `status` is written any more: the manifest row says which take the slot holds
+        expect(shot.shotData?.status).toBeUndefined();
         // The manifest stays the authority for the bytes; this is a readable copy of the ref.
         expect(store.has(shot.shotData!.image!)).toBe(true);
       }
@@ -85,6 +86,7 @@ describe('persisted shot decompositions', () => {
             location   : 'day',
             subjects   : [],
             coversLines: [],
+            // `status` as an older tool wrote it: read, and never written back
             shotData   : { image: 'not-a-real-hash', status: 'accepted' },
           },
         ],
@@ -106,9 +108,11 @@ describe('persisted shot decompositions', () => {
         .find((t) => (t.inputs as { shotId?: string }).shotId === 'arrival__handwritten')!;
       expect(task.status).toBe('done');
 
-      // The stale `accepted` did not stop the work; the file now records what actually ran.
+      // The stale image did not stop the work; the file now records what actually ran, and the
+      // status an older tool wrote is gone with the rewrite.
       const persisted = (await shotsFile(p)).shots[0]!;
       expect(persisted.shotData?.image).toBe(task.output);
+      expect(persisted.shotData?.status).toBeUndefined();
       expect(persisted.shotData?.image).not.toBe('not-a-real-hash');
     } finally {
       await p.cleanup();

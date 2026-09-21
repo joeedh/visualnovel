@@ -19,7 +19,6 @@ const shot = (id: string, coversLines: string[], extra: Partial<Shot> = {}): Sho
   location: 'day',
   subjects: [],
   coversLines,
-  status: 'pending',
   ...extra,
 });
 

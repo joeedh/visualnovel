@@ -51,7 +51,6 @@ const SHOT: Shot = {
   location   : 'day',
   subjects   : [{ characterId: 'aiko' }],
   coversLines: [],
-  status     : 'pending',
 };
 
 /**

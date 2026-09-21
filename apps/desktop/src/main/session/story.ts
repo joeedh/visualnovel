@@ -450,7 +450,6 @@ export class StoryPart {
           ...(s.panelBoxes ? { panelBoxes: s.panelBoxes } : {}),
           ...layoutVerdict(s),
           aspect: aspectFor(params, s, pageAspect).aspect ?? project.config.image_params.aspect,
-          status: s.status,
           ...(image ? { image: { hash: image, ext: exts.get(image) ?? 'png' } } : {}),
           ...(outcome.failure ? { failure: outcome.failure } : {}),
           ...(outcome.undrawable ? { undrawable: outcome.undrawable } : {}),

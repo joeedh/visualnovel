@@ -85,7 +85,8 @@ describe('a page shot through the pipeline', () => {
     try {
       await p.run({ reviewResponses: [seeing(TWO_TIERS)] });
       const shot = await pageShot(p);
-      expect(shot.shotData?.status).toBe('accepted');
+      expect(shot.shotData?.status).toBeUndefined();
+      expect(shot.shotData?.image).toBeDefined();
       expect(shot.shotData?.panelBoxes).toEqual(TWO_TIERS);
       // The page was drawn at the project's page ratio, not the frame ratio
       const { graph } = await p.reload();
@@ -104,7 +105,8 @@ describe('a page shot through the pipeline', () => {
       // One box where two panels were meant, every attempt
       await p.run({ reviewResponses: [seeing([{ x: 0, y: 0, w: 1, h: 1 }])] });
       const shot = await pageShot(p);
-      expect(shot.shotData?.status).toBe('needs_human');
+      // The flawed page is still on file; whether review kept blocking it is the task's to say
+      expect(shot.shotData?.image).toBeDefined();
       const { graph } = await p.reload();
       const task = graph
         .all()
@@ -124,7 +126,7 @@ describe('a page shot through the pipeline', () => {
     try {
       await p.run();
       const shot = await pageShot(p);
-      expect(shot.shotData?.status).toBe('accepted');
+      expect(shot.shotData?.image).toBeDefined();
       expect(shot.shotData?.panelBoxes).toBeUndefined();
     } finally {
       await p.cleanup();

@@ -75,7 +75,6 @@ describe('overrideAt', () => {
     location      : 'day',
     subjects      : [],
     coversLines   : [],
-    status        : 'pending',
     promptOverride: MUTE,
   };
   const ctx = { model: model([c], [sc], [l]), shots: new Map([['s1', [shot]]]) };

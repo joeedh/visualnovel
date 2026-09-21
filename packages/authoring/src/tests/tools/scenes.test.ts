@@ -248,7 +248,6 @@ describe('edit_scene', () => {
         location   : 'classroom',
         subjects   : [{ characterId: 'aiko', outfit: 'uniform' }],
         coversLines: ['arrival:L1'],
-        status     : 'pending',
       };
       await writeShots(paths, 'arrival', [shot]);
 
@@ -283,7 +282,6 @@ describe('edit_scene', () => {
         location: 'classroom',
         subjects: [],
         coversLines,
-        status: 'pending',
       });
       const shots = [
         shot('ending__a', ['ending:L1']),

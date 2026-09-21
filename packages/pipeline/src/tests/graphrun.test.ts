@@ -251,7 +251,6 @@ async function shotProject(maxAttempts: number): Promise<TestProject> {
     subjects   : [{ characterId: 'aiko' }],
     camera     : 'static',
     coversLines: [],
-    status     : 'pending',
   };
   await writeShots(p.paths, 'arrival', [shot]);
   await p.run();

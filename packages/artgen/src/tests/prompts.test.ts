@@ -43,7 +43,6 @@ const shot: Shot = {
   subjects   : [{ characterId: 'aiko' }],
   camera     : 'low angle',
   coversLines: [],
-  status     : 'pending',
 };
 
 describe('chunked builders', () => {

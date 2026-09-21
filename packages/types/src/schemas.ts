@@ -603,7 +603,9 @@ export const shotDataSchema = z.object({
    * on a frame and on a page no reviewer measured.
    */
   panelBoxes: z.array(panelBoxSchema).optional(),
-  status    : z.enum(['pending', 'prompted', 'generated', 'accepted', 'needs_human']),
+  // Written by every storyboard before the manifest row carried the take; read so those files
+  // still parse, and never written again
+  status    : z.enum(['pending', 'prompted', 'generated', 'accepted', 'needs_human']).optional(),
 });
 
 /**

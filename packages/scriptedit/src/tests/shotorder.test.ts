@@ -38,7 +38,6 @@ const shot = (id: string, lines: string[]): Shot => ({
   location   : 'classroom/evening',
   subjects   : [],
   coversLines: lines.map((n) => `arrival:${n}`),
-  status     : 'pending',
 });
 
 /** Three shots, each over a contiguous pair — the shape a reorder is defined on. */

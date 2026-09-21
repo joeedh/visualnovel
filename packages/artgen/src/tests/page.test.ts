@@ -53,7 +53,6 @@ function page(over: Partial<Shot> = {}): Shot {
     camera     : 'ignored on a page',
     coversLines: ['s1:L1', 's1:L2', 's1:L3'],
     panels,
-    status: 'pending',
     ...over,
   };
 }

@@ -101,7 +101,6 @@ const frame = (id: string, sheet?: string): Shot => ({
   subjects   : [{ characterId: 'aiko' }],
   camera     : `static, take ${id}`,
   coversLines: [],
-  status     : 'pending',
   ...(sheet === undefined ? {} : { sheet }),
 });
 

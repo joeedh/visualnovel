@@ -18,7 +18,6 @@ const shot = (id: string, covers: string[], image?: CoverageShot['image']): Cove
   outfits    : {},
   coversLines: covers,
   aspect     : '16:9',
-  status     : 'accepted',
   drift      : 'current',
   ...(image ? { image } : {}),
 });

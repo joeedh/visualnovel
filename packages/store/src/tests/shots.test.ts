@@ -17,7 +17,6 @@ function shot(overrides: Partial<Shot> = {}): Shot {
     location   : 'evening',
     subjects   : [],
     coversLines: ['arrival:L1', 'arrival:L2'],
-    status     : 'pending',
     ...overrides,
   };
 }
@@ -48,14 +47,13 @@ describe('shots file', () => {
 
   it('nests run state under shotData and reads it back onto the flat shot', async () => {
     const paths = await tempPaths();
-    const ran = shot({ prompt: 'an evening street', image: 'deadbeef', status: 'accepted' });
+    const ran = shot({ prompt: 'an evening street', image: 'deadbeef' });
     await writeShots(paths, 'arrival', [ran]);
 
     const raw = JSON.parse(await readFile(paths.shotsFile('arrival'), 'utf8'));
     expect(raw.shots[0].shotData).toEqual({
       prompt: 'an evening street',
       image : 'deadbeef',
-      status: 'accepted',
     });
     // The derived fields live only under shotData on disk.
     expect(raw.shots[0].prompt).toBeUndefined();
@@ -251,7 +249,7 @@ describe('shots file', () => {
     // No image, so no boxes: they describe bytes that do not exist.
     expect(raw.shots[1].shotData).toBeUndefined();
 
-    const drawn = { ...page(), image: 'deadbeef', status: 'accepted' as const, panelBoxes: boxes };
+    const drawn = { ...page(), image: 'deadbeef', panelBoxes: boxes };
     await writeShots(paths, 'arrival', [drawn]);
     raw = JSON.parse(await readFile(paths.shotsFile('arrival'), 'utf8'));
     expect(raw.shots[0].panelBoxes).toBeUndefined();

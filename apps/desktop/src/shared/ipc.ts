@@ -34,7 +34,6 @@ import type {
   PanelBox,
   Playable,
   SceneLine,
-  Shot,
   TakeVia,
   Task as PipelineTask,
   TaskAttempt as PipelineTaskAttempt,
@@ -462,7 +461,6 @@ export interface CoverageShot {
    * thumbnail by it.
    */
   aspect: string;
-  status: Shot['status'];
   /**
    * The frame on file for this shot: the accepted one, or the last attempt of a render the
    * reviewers kept blocking, so a flagged page is still seen with its defects beside it. Absent

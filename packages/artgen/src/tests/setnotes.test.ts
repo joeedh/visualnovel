@@ -37,7 +37,6 @@ async function fixture(): Promise<TestProject> {
     subjects   : [{ characterId: 'aiko' }],
     camera     : 'slow push in',
     coversLines: [],
-    status     : 'pending',
   };
   await writeShots(p.paths, 'rooftop', [shot]);
   return p;

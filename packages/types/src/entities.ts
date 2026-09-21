@@ -312,7 +312,6 @@ export interface Shot {
    * reviewer measured.
    */
   panelBoxes?: PanelBox[];
-  status: 'pending' | 'prompted' | 'generated' | 'accepted' | 'needs_human';
 }
 
 /** A subject (character + outfit + pose/expression) appearing in a shot. */

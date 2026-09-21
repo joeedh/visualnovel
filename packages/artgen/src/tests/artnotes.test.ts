@@ -28,7 +28,6 @@ const shot: Shot = {
   subjects   : [],
   coversLines: [],
   artNotes   : 'wider than the last one',
-  status     : 'pending',
 };
 
 const ctx = {

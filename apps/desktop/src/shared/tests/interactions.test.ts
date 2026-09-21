@@ -239,7 +239,6 @@ describe('timeline.cover', () => {
     outfits : {},
     coversLines,
     aspect: '16:9',
-    status: 'accepted',
     drift : 'current',
   });
 
@@ -302,7 +301,6 @@ describe('timeline.create', () => {
     outfits : {},
     coversLines,
     aspect: '16:9',
-    status: 'accepted',
     drift : 'current',
   });
 
@@ -366,7 +364,6 @@ describe('timeline.reorder', () => {
     outfits : {},
     coversLines,
     aspect: '16:9',
-    status: 'accepted',
     drift : 'current',
   });
 
@@ -562,7 +559,6 @@ describe('page.letter', () => {
       },
     ],
     aspect     : '3:4',
-    status     : 'accepted',
     drift      : 'current',
   };
   const frame: CoverageShot = { ...page, id: 'arrival__frame', panels: undefined };

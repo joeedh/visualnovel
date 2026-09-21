@@ -26,7 +26,6 @@ const shots = (subjects: { characterId: string; outfit?: string }[]): Shot[] => 
     location: 'club_room_day',
     subjects,
     coversLines: ['club:L1'],
-    status     : 'generated',
   },
 ];
 

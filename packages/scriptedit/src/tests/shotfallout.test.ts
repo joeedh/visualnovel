@@ -75,7 +75,6 @@ const shot = (id: string, sceneId: string, lines: string[], image?: string): Sho
   location   : 'classroom/evening',
   subjects   : [],
   coversLines: lines,
-  status     : image ? 'accepted' : 'pending',
   ...(image ? { image } : {}),
 });
 

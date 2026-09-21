@@ -50,7 +50,6 @@ const shot = (image: string): Shot => ({
   subjects   : [],
   camera     : 'static',
   coversLines: [],
-  status     : 'accepted',
   image,
 });
 
