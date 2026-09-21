@@ -31,6 +31,7 @@
     - [The checkpoint list](#the-checkpoint-list)
     - [The sync view](#the-sync-view)
     - [The conflict view](#the-conflict-view)
+        - [Sync is a rebase](#sync-is-a-rebase)
 - [The command set](#the-command-set)
     - [Reads](#reads)
     - [Writes](#writes)
@@ -50,6 +51,8 @@
     - [Loading states](#loading-states)
     - [What the notification box says](#what-the-notification-box-says)
 - [Plumbing the pane needs](#plumbing-the-pane-needs)
+- [Deferred: viewing the project at a save](#deferred-viewing-the-project-at-a-save)
+- [Future: history inside the Wiki and Script panes](#future-history-inside-the-wiki-and-script-panes)
 - [Non-goals and risks](#non-goals-and-risks)
     - [Non-goals](#non-goals)
     - [Risks](#risks)
@@ -80,9 +83,12 @@ follows the author's vocabulary or the engineer's is the first open question at 
 - The pane is read-mostly. Its main job is to let an author see what changed, who changed
   it, and to recover from a bad change without a terminal. The write operations it needs
   are a manual save, a named checkpoint, three recoveries (take back one save, go back to
-  a save, bring back one file), and sync with a collaborator.
+  a save, bring back one file), and sync with a collaborator through one or more remotes.
 - Every recovery is a new save. The pane never rewrites history that exists, which is the
-  rule undo already follows (`docs/reference/repos-and-commits.md:312-315`).
+  rule undo already follows (`docs/reference/repos-and-commits.md:312-315`). The one
+  exception is sync: getting a collaborator's saves rebases the author's unsent saves on
+  top of them, so a save that has not left the machine can be rewritten, and a save that
+  has cannot. (Decided 2026-09-20; see [Sync is a rebase](#sync-is-a-rebase).)
 - The `@vn/git` wrapper needs five additions before the pane can be built: a log that
   returns trailers, parents and per-file stats; a per-commit change list; a blob read; the
   three network verbs; and the merge and conflict verbs. None exist today
@@ -179,8 +185,8 @@ commands, which is `gengraph.setProp` and `gengraph.moveNodes` today, flushed by
 non-deferring mutator, undo, redo, a workspace switch, quit or 1500 ms of idleness
 (`packages/commands/src/stack.ts:30`, `188-196`, `245`). A dirty worktree the pane
 observes therefore means one of three things: a deferred batch is pending, something
-changed outside the app since the last act, or a merge is in progress. The status view has
-to say which.
+changed outside the app since the last act, or a rebase, merge or revert is in progress.
+The status view has to say which.
 
 ### Undo, and how it differs from history
 
@@ -284,12 +290,18 @@ and a control that needs a word not in it is a sign the feature needs redesignin
 | take back this save                  | `git revert`, committed with trailers          |
 | go back to here                      | restore the tree of a commit as a new commit   |
 | bring back this file                 | `git restore --source <sha> -- <path>`         |
-| the shared copy                      | the `origin` remote                            |
+| a shared copy                        | a remote                                       |
+| the shared copy you sync with        | the current branch's upstream remote           |
 | send my saves                        | `git push`                                     |
-| get their saves                      | `git fetch` + `git merge`                      |
+| get their saves                      | `git fetch` + `git rebase`                     |
 | both of you changed this             | a conflicted path                              |
-| keep mine / take theirs              | `checkout --ours` / `--theirs` then `add`      |
+| keep mine / take theirs              | the author's side / the collaborator's side    |
 | the app's housekeeping               | sweep and scaffolding commits                  |
+
+"Keep mine" and "take theirs" are named from the author's point of view, not git's. During
+a rebase git's `--ours` is the upstream side and `--theirs` is the author's own save being
+replayed, the reverse of what the words suggest, so the command maps the author's choice
+to the flag rather than exposing the flag.
 
 Branch is deliberately absent. The pane shows the current branch name in the repo strip
 because a collaborator's `git` shows it too, but it never asks the author to create or
@@ -373,22 +385,33 @@ land on a dirty tree. [`git.status`, `git.save`]
 ### 9. Working with a collaborator
 
 Two collaborators. The repo strip shows "Shared copy: github.com/… · 3 saves to send · 1
-to get". "Get their saves" fetches and merges. If nothing collides, the list gains their
-saves and a note says so. If a path collides, the pane switches to the conflict view: one
+to get". "Get their saves" fetches and rebases the author's three unsent saves onto the
+collaborator's one. If nothing collides, the list shows their save beneath the author's
+three and a note says so. If a path collides, the pane switches to the conflict view: one
 row per file with "Keep mine" and "Take theirs", and for a text document a third choice,
 "Open both", which opens two Wiki panes side by side. A layout template, a graph or a
-thread log gets only the two buttons, because those files are marked `-merge`. "Finish" is
-refused until every row is decided, and it is refused for a scene that still holds
-conflict markers. Then "Send my saves" pushes. [`git.fetch`, `git.pull`, `git.resolve`,
-`git.finishMerge`, `git.push`]
+thread log gets only the two buttons, because those files are marked `-merge`. "Continue"
+is refused until every row is decided, and it is refused for a scene that still holds
+conflict markers. Because a rebase replays one save at a time, "Continue" may bring a
+second round of collisions from the next unsent save; the view says which save is being
+replayed ("Replaying 2 of 3: Moved line L4 into rooftop") so the author knows how far
+along they are. Then "Send my saves" pushes. [`git.fetch`, `git.pull`, `git.resolve`,
+`git.continueSync`, `git.push`]
 
 ### 10. First time connecting to GitHub
 
-Two collaborators, day one. The repo strip reads "No shared copy yet". "Connect a shared
-copy…" takes a URL. The pane does not create the repository on GitHub and does not hold a
-token; the author's own git credential helper answers the first push. If it cannot, the
-refusal is git's own sentence and a link to the keys guide's GitHub section.
-[`git.setRemote`, `git.push`]
+Two collaborators, day one. The repo strip reads "No shared copy yet". "Add a shared
+copy…" takes a name and a URL; the first one added becomes the copy the project syncs
+with. The pane does not create the repository on GitHub and does not hold a token; the
+author's own git credential helper answers the first push. If it cannot, the refusal is
+git's own sentence and a link to the keys guide's GitHub section. [`git.addRemote`,
+`git.push`]
+
+A project can have more than one shared copy: a GitHub repository the collaborator reads,
+and a second on a NAS or a USB drive as a backup. The sync view lists them all with their
+own counts, "Send my saves" is offered per copy, and "Get their saves" comes from the one
+marked as the copy the project syncs with, which the author can change. [`git.addRemote`,
+`git.removeRemote`, `git.setRemoteUrl`, `git.syncWith`]
 
 ## Required views
 
@@ -401,7 +424,9 @@ One line at the top of the pane, per repository the project spans. It is the onl
 the branch name and the remote appear.
 
 - Role (Project, Story bible, Base art), root path on hover, branch, "N saves to send · M
-  to get" when a remote is known, "No shared copy yet" otherwise.
+  to get" against the remote the branch syncs with when one is known, "No shared copy yet"
+  otherwise. With more than one remote the strip names the one it is counting against and
+  the sync view lists the rest.
 - A project inside a foreign repository (`owned: false`) shows the enclosing root and the
   sentence the app already logs: the app does not write history there
   (`workspacelifecycle.ts:202`). The list is read-only for that repo and every write
@@ -418,7 +443,8 @@ three causes applies and offers the one act that clears it.
 | ----------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------- | ----------------------- |
 | A deferred batch is pending   | The stack's pending record count, exposed on `git.status`                 | "Saving 4 graph edits…"                           | none; it clears itself  |
 | Files changed outside the app | `status --porcelain` entries with no pending batch and no merge in flight | "2 files changed outside the app", with the paths | Save these…             |
-| A merge is in progress        | `.git/MERGE_HEAD` exists                                                  | "Getting their saves: 3 files need a decision"    | opens the conflict view |
+| A rebase is in progress       | `.git/rebase-merge/` exists                                               | "Getting their saves: 3 files need a decision"    | opens the conflict view |
+| A merge is in progress        | `.git/MERGE_HEAD` exists; only a terminal can start one                   | "A merge started outside the app is unfinished"   | Give up                 |
 | A revert stopped part way     | `.git/REVERT_HEAD` exists                                                 | "Taking back a save stopped part way"             | Give up / Finish        |
 
 ### The history list
@@ -482,25 +508,68 @@ selected save, or on the latest when nothing is selected.
 
 ### The sync view
 
-Reached from the repo strip. It shows the remote URL, the last fetch time, the counts, the
-saves waiting to be sent as a short list, and the two verbs. It is the only view with a
-progress state that can last seconds, and it is the only view whose refusals come from
-outside the app (authentication, network). Every refusal is git's stderr sentence,
-trimmed, in the footer, and a durable notification when the act was a push or a pull.
+Reached from the repo strip. It lists every remote of the chosen repository: name, URL,
+last fetch time, saves to send and to get, and a "Send my saves" control per remote. One
+is marked as the copy the project syncs with ("Get their saves" comes from it), and a
+control on each of the others makes it the one. Below the list are "Add a shared copy…"
+(name and URL), and per row "Change address…" and "Remove". Removing a remote removes
+nothing from the project; the sentence says so. It is the only view with a progress state
+that can last seconds, and it is the only view whose refusals come from outside the app
+(authentication, network). Every refusal is git's stderr sentence, trimmed, in the footer,
+and a durable notification when the act was a push or a pull.
+
+The remote list is git's own (`git remote -v` and `branch.<name>.remote`), so a remote
+added from a terminal appears, and one the pane adds is visible to a terminal. The app
+keeps no list of its own.
 
 ### The conflict view
 
-Replaces the change view while a merge is in progress. One row per conflicted path from
-the porcelain codes (`DD`, `AU`, `UD`, `UA`, `DU`, `AA`, `UU`), grouped by kind as above.
+Replaces the change view while a rebase is in progress. One row per conflicted path from
+the porcelain codes (`DD`, `AU`, `UD`, `UA`, `DU`, `AA`, `UU`), grouped by kind as above,
+under a heading that names the save being replayed and its position ("Replaying 2 of 3:
+Moved line L4 into rooftop").
 
-- A `-merge` path (layouts, graphs, thread logs) gets Keep mine and Take theirs.
-- A text document gets those two plus Open both, which opens two panes: the local side
-  from the worktree and the other side through the blob read, both read-only until a side
-  is chosen.
-- A scene gets the same three, and Finish is refused while `<<<<<<<` markers remain in any
-  file under `scenes/`, because the Script pane would fail to parse it.
+- A `-merge` path (layouts, graphs, thread logs) gets Keep mine and Take theirs. During a
+  rebase git's `-merge` fallback leaves the _upstream_ side in the worktree (git's "ours"
+  is the branch being rebased onto), so the worktree holds the collaborator's version, not
+  the author's, until a side is chosen. The row must not describe the file on disk as
+  "mine".
+- A text document gets those two plus Open both, which opens two panes: the collaborator's
+  side from the worktree and the author's side through the blob read of the save being
+  replayed, both read-only until a side is chosen.
+- A scene gets the same three, and Continue is refused while `<<<<<<<` markers remain in
+  any file under `scenes/`, because the Script pane would fail to parse it.
 - Notifications never appear, because union merge resolves them.
-- Give up (`git.abandonMerge`) restores the pre-merge state and says so.
+- Continue (`git.continueSync`) stages the decided paths and runs `rebase --continue`. If
+  the next replayed save collides too, the view stays up with the new heading; otherwise
+  the list returns with a note saying how many saves were replayed.
+- Give up (`git.abandonSync`) runs `rebase --abort`, which puts the author's saves back
+  exactly as they were, and says so.
+
+#### Sync is a rebase
+
+The first draft of this report proposed a `--no-rebase` merge on pull, on the grounds that
+a rebase replays one save at a time and so can raise the same `-merge` conflict once per
+unsent save. The owner chose rebase (2026-09-20). What that buys and costs:
+
+- An author's history stays a single line, which is what the list draws. There is no merge
+  commit to explain, no row with two parents, and "go back to here" has one meaning at
+  every row.
+- A `-merge` file that both sides touched can conflict on each replayed save that touched
+  it. In practice these files (layouts, graphs, thread logs) are written by the app in
+  bursts, so a run of unsent saves rarely each touch the same one; the view's "Replaying N
+  of M" heading is what keeps the repeated case legible rather than mysterious.
+- The author's unsent saves get new shas. That is the exception to "the pane never
+  rewrites history", and it is safe only because those saves have never left the machine.
+  It breaks the sha-keyed link from a commit to its record in `commands.jsonl`
+  (`CommandRecord.commits[]`), so `git.pull`'s own record carries a rewrite table, old sha
+  to new, built by pairing `ORIG_HEAD`'s unsent commits with the replayed ones by their
+  `Vn-Seq` trailer (trailers survive a rebase; shas do not). The pane resolves a sha
+  through every rewrite table on file before it gives up. See
+  [The provenance log](#the-provenance-log).
+- `git.push` refuses while the branch is behind its remote ("Get their saves first"),
+  which under rebase is the only way an author's line can carry the collaborator's saves.
+  A force push is never offered.
 
 ## The command set
 
@@ -521,14 +590,14 @@ declares `ANY_DOCUMENT` plus `<git>`.
 
 ### Reads
 
-| Command       | Props                                                                                   | Returns                                                                                                                                         |
-| ------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `git.repos`   | none                                                                                    | One entry per repo: role, root, owned, branch, head, dirty count, merge/revert in progress, remote URL, ahead, behind, last fetch               |
-| `git.history` | `repo`, `limit=50`, `before`, `path`, `entity`, `who=all`, `checkpoints=false`, `query` | Commits with parsed trailers, parents, author, date, per-file counts, maker, the checkpoint names on each, and whether it is sent               |
-| `git.changes` | `repo`, `sha`                                                                           | Files touched: path, status, kind, entity, old and new blob ids, line counts                                                                    |
-| `git.diff`    | `repo`, `sha`, `path`, `against=parent`                                                 | The structured diff for one path in the shape the kind table above needs                                                                        |
-| `git.blob`    | `repo`, `sha`, `path`                                                                   | Text for a text file, refused over a size cap; for a binary, a `vngit://<repo>/<sha>/<path>` URL served by a protocol handler like `vnasset://` |
-| `git.status`  | `repo`                                                                                  | The status view's data: cause, entries, pending batch count, conflicted paths                                                                   |
+| Command       | Props                                                                                   | Returns                                                                                                                                                                                                |
+| ------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `git.repos`   | none                                                                                    | One entry per repo: role, root, owned, branch, head, dirty count, rebase/merge/revert in progress, and `remotes[]` (name, URL, ahead, behind, last fetch, whether it is the one the branch syncs with) |
+| `git.history` | `repo`, `limit=50`, `before`, `path`, `entity`, `who=all`, `checkpoints=false`, `query` | Commits with parsed trailers, parents, author, date, per-file counts, maker, the checkpoint names on each, and whether it is sent                                                                      |
+| `git.changes` | `repo`, `sha`                                                                           | Files touched: path, status, kind, entity, old and new blob ids, line counts                                                                                                                           |
+| `git.diff`    | `repo`, `sha`, `path`, `against=parent`                                                 | The structured diff for one path in the shape the kind table above needs                                                                                                                               |
+| `git.blob`    | `repo`, `sha`, `path`                                                                   | Text for a text file, refused over a size cap; for a binary, a `vngit://<repo>/<sha>/<path>` URL served by a protocol handler like `vnasset://`                                                        |
+| `git.status`  | `repo`                                                                                  | The status view's data: cause, entries, pending batch count, conflicted paths                                                                                                                          |
 
 Reads are non-mutating and run concurrently. Each is one spawn where git allows it:
 `git.history` is one `log` with `--numstat` and a `%(trailers)` format; `git.changes` is
@@ -538,19 +607,22 @@ one `show --numstat --format=`; results are cached by sha, since a commit is imm
 
 | Command              | Props                                 | Undoable | `affects`               | `check` refuses when                                                                                                                                          | Confirm |
 | -------------------- | ------------------------------------- | -------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `git.save`           | `repo`, `message`                     | no       | `<git>`                 | busy; not owned; the worktree is clean ("Nothing has changed since the last save"); a merge is in progress                                                    | no      |
+| `git.save`           | `repo`, `message`                     | no       | `<git>`                 | busy; not owned; the worktree is clean ("Nothing has changed since the last save"); a rebase or merge is in progress                                          | no      |
 | `git.checkpoint`     | `repo`, `name`, `sha=HEAD`, `note=''` | no       | `<git>`                 | busy; not owned; the name is taken; the sha is unknown                                                                                                        | no      |
 | `git.dropCheckpoint` | `repo`, `name`                        | no       | `<git>`                 | not owned; no such checkpoint                                                                                                                                 | no      |
 | `git.takeBack`       | `repo`, `sha`                         | no       | `ANY_DOCUMENT`, `<git>` | busy; not owned; dirty; the sha is a merge, a sweep or the first commit; a dry run reports a conflict, naming the files and the later saves that touched them | yes     |
-| `git.goBack`         | `repo`, `sha`                         | no       | `ANY_DOCUMENT`, `<git>` | busy; not owned; dirty; a merge is in progress; the sha is `HEAD` ("The project is already here")                                                             | yes     |
+| `git.goBack`         | `repo`, `sha`                         | no       | `ANY_DOCUMENT`, `<git>` | busy; not owned; dirty; a rebase or merge is in progress; the sha is `HEAD` ("The project is already here")                                                   | yes     |
 | `git.restoreFile`    | `repo`, `sha`, `path`                 | yes      | `ANY_DOCUMENT`          | busy; not owned; the path is under `keys/` or is the session file; a scene that would not parse; a document with unsaved edits in an open pane                | no      |
-| `git.setRemote`      | `repo`, `url`                         | no       | `<git>`                 | not owned; the URL is empty or not `https://` or `git@`                                                                                                       | no      |
-| `git.fetch`          | `repo`                                | no       | `<git>`                 | not owned; no remote                                                                                                                                          | no      |
-| `git.pull`           | `repo`                                | no       | `ANY_DOCUMENT`, `<git>` | busy; not owned; no remote; dirty; a merge is in progress; nothing to get                                                                                     | no      |
-| `git.push`           | `repo`                                | no       | `<git>`                 | not owned; no remote; nothing to send; behind the remote ("Get their saves first")                                                                            | no      |
-| `git.resolve`        | `repo`, `path`, `side=mine\|theirs`   | no       | `ANY_DOCUMENT`          | no merge in progress; the path is not conflicted                                                                                                              | no      |
-| `git.finishMerge`    | `repo`                                | no       | `ANY_DOCUMENT`, `<git>` | no merge in progress; conflicted paths remain; a `scenes/**` file holds markers                                                                               | no      |
-| `git.abandonMerge`   | `repo`                                | no       | `ANY_DOCUMENT`, `<git>` | no merge in progress                                                                                                                                          | yes     |
+| `git.addRemote`      | `repo`, `name`, `url`                 | no       | `<git>`                 | not owned; the name is taken or not a valid ref component; the URL is empty or not `https://`, `git@` or a filesystem path                                    | no      |
+| `git.removeRemote`   | `repo`, `name`                        | no       | `<git>`                 | not owned; no such remote                                                                                                                                     | yes     |
+| `git.setRemoteUrl`   | `repo`, `name`, `url`                 | no       | `<git>`                 | not owned; no such remote; the URL fails the same test as `addRemote`                                                                                         | no      |
+| `git.syncWith`       | `repo`, `name`                        | no       | `<git>`                 | not owned; no such remote; not on a branch                                                                                                                    | no      |
+| `git.fetch`          | `repo`, `remote=<upstream>`           | no       | `<git>`                 | not owned; no such remote                                                                                                                                     | no      |
+| `git.pull`           | `repo`                                | no       | `ANY_DOCUMENT`, `<git>` | busy; not owned; no upstream remote; dirty; a rebase, merge or revert is in progress; nothing to get                                                          | no      |
+| `git.push`           | `repo`, `remote=<upstream>`           | no       | `<git>`                 | not owned; no such remote; nothing to send; behind that remote ("Get their saves first"); a rebase is in progress                                             | no      |
+| `git.resolve`        | `repo`, `path`, `side=mine\|theirs`   | no       | `ANY_DOCUMENT`          | no rebase in progress; the path is not conflicted                                                                                                             | no      |
+| `git.continueSync`   | `repo`                                | no       | `ANY_DOCUMENT`, `<git>` | no rebase in progress; conflicted paths remain; a `scenes/**` file holds markers                                                                              | no      |
+| `git.abandonSync`    | `repo`                                | no       | `ANY_DOCUMENT`, `<git>` | no rebase or merge in progress                                                                                                                                | yes     |
 
 Notes on the table:
 
@@ -566,11 +638,19 @@ Notes on the table:
   the `seenHash` refusal, `onWrote` and the undo journal all see it. A scene is parsed
   first through `@vn/parse`. The file is outside `UNDO_EXCLUDES` in every case the check
   allows.
-- `git.pull` is fetch plus a `--no-rebase` merge. The choice is discussed under open
-  questions.
-- `git.finishMerge` stages every resolved path and commits with a fixed subject ("Combined
-  with the shared copy") and `Vn-Command: git.finishMerge`. The merge commit is the one
-  place the pane makes a commit with two parents.
+- `git.pull` is `fetch` of the upstream remote plus `rebase <remote>/<branch>`. It runs
+  with `commitsItself: true`, because the rebase moves the branch itself and there is
+  nothing left for the committer to record; its record instead carries the rewrite table
+  described under [Sync is a rebase](#sync-is-a-rebase). When the rebase stops on a
+  conflict the command returns normally with the conflict state, since the stopped rebase
+  is what the conflict view is for; it is `git.abandonSync` that must never be skipped on
+  the failure path of anything else.
+- `git.continueSync` stages every resolved path and runs `rebase --continue`. The replayed
+  saves keep their own subjects and trailers; the pane makes no commit of its own for a
+  sync, and no commit in an author's history ever has two parents unless a terminal made
+  it.
+- `git.syncWith` sets `branch.<current>.remote` and `branch.<current>.merge`, which is
+  where git itself keeps the answer, so a terminal `git pull` agrees with the pane.
 - The `affects` executed test tier
   (`apps/desktop/src/main/commands/tests/affects.test.ts`) runs commands over two testkit
   projects. The network commands go in `SKIPS` with the reason that they need a remote;
@@ -588,8 +668,8 @@ Notes on the table:
 | `git.takeBack`                                                     | yes, confirm | Already `git_revert` with `confirm: true` (`tools/git.ts:74-84`); the dry-run refusal is an improvement                                       |
 | `git.save`                                                         | no           | The loop's `git_commit` remains the agent's commit; two save verbs would give the model two ways to commit                                    |
 | `git.goBack`                                                       | no           | Whole-tree restore reverses the author's own work as well as the agent's; a person does this                                                  |
-| `git.pull`, `git.push`, `git.setRemote`, `git.fetch`               | no           | Publication and collaboration are the author's acts; a model must not send saves anywhere                                                     |
-| `git.resolve`, `git.finishMerge`, `git.abandonMerge`               | no           | Choosing a side of a collision is a judgement the author makes once, with both sides open                                                     |
+| `git.pull`, `git.push`, `git.fetch`, and the four remote commands  | no           | Publication and collaboration are the author's acts; a model must not send saves anywhere or decide where they go                             |
+| `git.resolve`, `git.continueSync`, `git.abandonSync`               | no           | Choosing a side of a collision is a judgement the author makes once, with both sides open                                                     |
 
 The tools share the command's rule and refusal sentence without reaching the registry, on
 the pattern `edit_scene` uses (`command-system.md:1048-1054`).
@@ -629,6 +709,11 @@ the pattern `edit_scene` uses (`command-system.md:1048-1054`).
   tree. The pane must not treat a seq that later records reuse as the same act. The record
   the pane shows for a commit is the one whose `commits[]` names that sha, found by sha,
   and `Vn-Seq` is a hint rather than a key.
+- A `git.pull` rebases the unsent saves, so the shas in their records' `commits[]` stop
+  naming anything on the branch. The pull's own record carries `rewrote: {from, to}[]`,
+  and the lookup from a commit to its record is: the sha itself, then the sha mapped back
+  through every `rewrote` table in the log, newest first. A record is never edited after
+  it is written.
 
 ### The pipeline running
 
@@ -636,8 +721,9 @@ the pattern `edit_scene` uses (`command-system.md:1048-1054`).
   report (`apps/desktop/src/shared/ipc.ts:85-101`). Every worktree-changing git command
   refuses while any of them runs, with the sentence `project.installPages` already uses
   ("… is still running; wait for it to finish", `project.ts:353-354`).
-- The reverse also holds. `pipeline.run`'s check must refuse while a merge or a revert is
-  in progress, because a run plans from a tree that is half one thing and half another.
+- The reverse also holds. `pipeline.run`'s check must refuse while a rebase, a merge or a
+  revert is in progress, because a run plans from a tree that is half one thing and half
+  another.
 - After `git.goBack`, `vngen/build`, `vngen/state/tasks.jsonl` and `assets/manifest.json`
   are the versions at that save, because the restore covers the whole tree. The content
   store under `assets/objects` and `vngen/build/assets` is never pruned by git, so a
@@ -789,29 +875,102 @@ as follows.
 These are additions to code that exists, each cited to where it goes. None is an
 implementation plan; each is a requirement the pane depends on.
 
-| Need                                                                                                                                    | Where                                                               | Why                                                                          |
-| --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `Git.log` returning trailers, parents, body, `--numstat`, with `before`, `path` and `author` filters                                    | `packages/git/src/git.ts:214-231`                                   | The list, the maker rule and the per-file history                            |
-| `Git.changes(sha)` and `Git.diffPath(sha, path)`                                                                                        | new methods beside `show`/`diff`, `git.ts:245-256`                  | The change view and the per-kind diff                                        |
-| `Git.blob(sha, path)` and a `vngit://` protocol handler                                                                                 | `git.ts`; beside `assetprotocol.ts:29-43`                           | A deleted picture's old side; the other side of a conflict                   |
-| `Git.tag`, `Git.listTags`, `Git.deleteTag` for annotated tags                                                                           | `git.ts:301-320` area                                               | Checkpoints with notes; `update-ref` makes lightweight tags with no message  |
-| `Git.fetch`, `Git.pull`, `Git.push`, `Git.remoteAdd`, `Git.aheadBehind`                                                                 | new; `run` gains `GIT_TERMINAL_PROMPT=0` (`git.ts:20-42`)           | Sync; a prompt for a password must fail rather than hang a hidden subprocess |
-| `Git.mergeState`, `Git.checkoutSide`, `Git.mergeAbort`, `Git.revertDryRun`                                                              | new                                                                 | The conflict view and the take-back refusal                                  |
-| Trailers on the agent's `git_commit`: `Vn-Source: agent`, `Vn-Thread: <id>`, `Vn-Plan: <n>`                                             | `packages/authoring/src/tools/git.ts:67`, `loop.ts:1024-1029`       | Removes the adjacency heuristic for the agent's own save                     |
-| A `<git>` sentinel in the `affects` vocabulary                                                                                          | `apps/desktop/src/shared/affects.ts:39-71`, `116-119`               | History-only commands need a legal, non-snapshotted declaration              |
-| `pipeline.run` refusing mid-merge and mid-revert                                                                                        | `apps/desktop/src/main/commands/pipeline.ts:51`, `128`, `155`       | A run must not plan from a half-merged tree                                  |
-| A `history` entry in `EDITORS` with `pins: 'docPath'` and a `claims` on `file`, `scene`, `wiki`, `character`, `location` as `secondary` | `apps/desktop/src/shared/editors.ts:22-149`                         | So the tree, the pin and `view.open` reach it                                |
-| "Show history" in the document tree's right-click table                                                                                 | `renderer/pathux/doctree/doctree.ts`                                | The per-file history entry point                                             |
-| A maker classifier, a per-kind diff renderer and the status-cause rule as pure modules with tests                                       | `renderer/rules/history.ts`, `renderer/rules/situations/history.ts` | The rule-module pattern; `pnpm gen:uxmodel` and the anchor sweep follow      |
+| Need                                                                                                                                        | Where                                                               | Why                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `Git.log` returning trailers, parents, body, `--numstat`, with `before`, `path` and `author` filters                                        | `packages/git/src/git.ts:214-231`                                   | The list, the maker rule and the per-file history                            |
+| `Git.changes(sha)` and `Git.diffPath(sha, path)`                                                                                            | new methods beside `show`/`diff`, `git.ts:245-256`                  | The change view and the per-kind diff                                        |
+| `Git.blob(sha, path)` and a `vngit://` protocol handler                                                                                     | `git.ts`; beside `assetprotocol.ts:29-43`                           | A deleted picture's old side; the other side of a conflict                   |
+| `Git.tag`, `Git.listTags`, `Git.deleteTag` for annotated tags                                                                               | `git.ts:301-320` area                                               | Checkpoints with notes; `update-ref` makes lightweight tags with no message  |
+| `Git.fetch`, `Git.push`, `Git.rebase`, `Git.remotes`, `Git.remoteAdd/Remove/SetUrl`, `Git.upstream`, `Git.setUpstream`, `Git.aheadBehind`   | new; `run` gains `GIT_TERMINAL_PROMPT=0` (`git.ts:20-42`)           | Sync; a prompt for a password must fail rather than hang a hidden subprocess |
+| `Git.inProgress` (rebase, merge, revert), `Git.checkoutSide`, `Git.rebaseContinue`, `Git.rebaseAbort`, `Git.mergeAbort`, `Git.revertDryRun` | new                                                                 | The status and conflict views and the take-back refusal                      |
+| The open-time sweep leaving a stopped rebase, merge or revert alone                                                                         | `apps/desktop/src/main/runtime/workspacelifecycle.ts:207`           | A sweep commit on top of a half-replayed tree would bury the conflict        |
+| `rewrote: {from, to}[]` on `CommandRecord`, written by `git.pull`                                                                           | `packages/commands/src/command.ts`; `stack.ts:291-292`              | The commit-to-record lookup survives the rebase of unsent saves              |
+| Trailers on the agent's `git_commit`: `Vn-Source: agent`, `Vn-Thread: <id>`, `Vn-Plan: <n>`                                                 | `packages/authoring/src/tools/git.ts:67`, `loop.ts:1024-1029`       | Removes the adjacency heuristic for the agent's own save                     |
+| A `<git>` sentinel in the `affects` vocabulary                                                                                              | `apps/desktop/src/shared/affects.ts:39-71`, `116-119`               | History-only commands need a legal, non-snapshotted declaration              |
+| `pipeline.run` refusing mid-rebase, mid-merge and mid-revert                                                                                | `apps/desktop/src/main/commands/pipeline.ts:51`, `128`, `155`       | A run must not plan from a half-replayed tree                                |
+| A `history` entry in `EDITORS` with `pins: 'docPath'` and a `claims` on `file`, `scene`, `wiki`, `character`, `location` as `secondary`     | `apps/desktop/src/shared/editors.ts:22-149`                         | So the tree, the pin and `view.open` reach it                                |
+| "Show history" in the document tree's right-click table                                                                                     | `renderer/pathux/doctree/doctree.ts`                                | The per-file history entry point                                             |
+| A maker classifier, a per-kind diff renderer and the status-cause rule as pure modules with tests                                           | `renderer/rules/history.ts`, `renderer/rules/situations/history.ts` | The rule-module pattern; `pnpm gen:uxmodel` and the anchor sweep follow      |
+
+## Deferred: viewing the project at a save
+
+Requested 2026-09-20: a "View project at this save" control on a row, which opens the
+whole project as it stood at that commit, read-only, so the author can walk it in the
+ordinary editors rather than one diff at a time. It is deferred to a plan of its own
+because it touches the workspace lifecycle rather than the pane, but the shape is recorded
+here so the pane's plumbing does not cut it off.
+
+- **What it is.** The project at commit X, opened in the app with every editor in
+  read-only mode: Script, Wiki, Shot Coverage, the asset editors, the playable. No command
+  that writes runs, `stack.check` refuses every mutator with one sentence ("Viewing the
+  project as it was on 18 Sep at 18:42; changes are not possible here"), the agent is not
+  offered, and the pipeline does not run.
+- **The two ways to build it.** (a) A detached worktree:
+  `git worktree add --detach <cache-dir>/<sha> <sha>` and open that directory as the
+  workspace. Every editor works unchanged because it is reading a real directory, and
+  pictures resolve because the content store under `assets/objects` is by hash. (b) A
+  virtual workspace: a document source that answers reads from `git.blob` at X instead of
+  the filesystem. Nothing is written to disk, but every editor and every read path in
+  `WorkspaceSession` has to accept a second source, which is a far larger change.
+- **The recommendation is (a)**, with these consequences the plan has to take on:
+    - Only one workspace is open at a time (`desktop-app.md:48-49`), so viewing at X
+      either replaces the live workspace for the duration, with a persistent banner and
+      one control ("Back to now"), or the single-workspace rule is relaxed for a read-only
+      second one in its own window (`window.*` exists, `plans/multiple-windows.md`).
+      Replacing is the smaller change and is enough for the workflow; the author is
+      looking, not comparing side by side.
+    - The open-time sweep and the scaffolding commits must not run in a detached worktree.
+      A read-only open mode already exists for the no-git case (`workspacelifecycle.ts`,
+      `noticeMissingGit`); the plan generalizes it into a mode the lifecycle takes as an
+      argument rather than infers from the machine.
+    - `.vnstudio/session.json` and `keys/` are gitignored, so the detached worktree has
+      neither; the layout comes from the committed template and the session file is not
+      written. Keys are not needed because nothing generative runs.
+    - A checkout of `vngen/build` at X copies every asset at X into the cache dir. For a
+      large project that is hundreds of megabytes per viewed save, so the cache is bounded
+      (the last two or three views) and cleared on quit with `git worktree remove`; a
+      sparse checkout that excludes `vngen/build/assets` and lets `vnasset://` resolve
+      pictures by hash from the live store is the optimization if the copy proves slow.
+- **What the pane does now** so this stays open: `git.blob` and the `vngit://` handler are
+  built as general reads rather than diff helpers, and rows carry their sha in a form
+  `view.open` can later take (`view.open(editor=… subject=… at=<sha>)` is the likely
+  spelling).
+
+## Future: history inside the Wiki and Script panes
+
+Also requested 2026-09-20, and out of scope for this pane: a history menu on the editors
+themselves, so an author in the Wiki pane can pick an earlier version of the page they are
+looking at without going to History. The pane's plumbing is what makes this cheap later.
+
+- **Wiki, sheets, notes.** Easy. The editor asks `git.history(path=…)` for the list,
+  `git.blob(sha, path)` for a version, and lands the text in memory as an unsaved edit.
+  The author's next save is an ordinary document write, committed as a new save through
+  the usual path, and undoable. No new command is needed beyond the two reads; the editor
+  already owns an in-memory buffer and a save.
+- **Script.** Harder, for reasons that are the scene round-trip's, not git's. A scene's
+  text carries `[[line:]]` ids that the storyboard, `work/shots/<sceneId>.json` and the
+  approved assets are keyed on; an older version of the scene may hold ids that have since
+  been moved to another scene by `story.moveLine`, or lack ids that later work depends on.
+  Landing old text in memory is fine; writing it back is where `seenHash`, the lossless
+  round-trip refusal and the line-id contract all have a say, and the write may need to be
+  a reconciliation (keep the current ids where the elements match, flag the ones that do
+  not) rather than a byte-for-byte restore. That reconciliation is the work of the future
+  plan; `git.restoreFile`'s parse check is its first, coarse form.
+- **Pictures.** An earlier take of a slot is already reachable through the manifest's
+  history and the content store, and the Asset editor's own history is the slot's, not the
+  file's. `docs/research/slots-as-asset-history.md` is the relevant thread.
 
 ## Non-goals and risks
 
 ### Non-goals
 
-- **Rewriting history.** No amend, rebase, reset or force-push. A save that is wrong is
-  taken back by a new save. This is the rule undo already follows and the rule the
-  provenance log depends on (`repos-and-commits.md:349-351`). Renaming a save's subject is
-  therefore out too; a checkpoint's note is where an author names a moment.
+- **Rewriting history that has left the machine.** No amend, reset or force-push, and no
+  rebase of anything a remote already holds. A save that is wrong is taken back by a new
+  save. This is the rule undo already follows and the rule the provenance log depends on
+  (`repos-and-commits.md:349-351`). Renaming a save's subject is therefore out too; a
+  checkpoint's note is where an author names a moment. The one rewrite the pane performs
+  is the rebase of unsent saves inside `git.pull`, and the rewrite table in its record is
+  what keeps the provenance log honest about it.
 - **Branches.** The pane shows the current branch name and creates none. An author's
   branching is the story's, and the app's own files (layouts, graphs, thread logs) are
   marked `-merge` because they cannot be merged, so a workflow built on merging branches
@@ -844,14 +1003,20 @@ implementation plan; each is a requirement the pane depends on.
   or fails. On Windows Git Credential Manager opens its own window, which works. On a
   machine with no helper the failure sentence names nothing an author can act on, so the
   refusal must link to a written guide.
-- **The merge strategy.** A `--no-rebase` merge on pull produces a merge commit in the
-  author's project. That is the right choice for a project whose files cannot be rebased
-  one commit at a time through `-merge` conflicts, and it conflicts with nothing in the
-  app, but it means an author's history is not linear. The monorepo's own linear-master
-  rule is a rule for this codebase, not for an author's project.
+- **Repeated conflicts under rebase.** A `-merge` file both sides touched conflicts once
+  per replayed save that touched it, so an author with ten unsent saves that each moved a
+  graph node could answer the same question ten times. The mitigation is the "Replaying N
+  of M" heading and the fact that the app's own files are written in bursts; if it proves
+  common in practice, `rerere` (`git config rerere.enabled true` in the project repo)
+  records each answer and replays it, at the cost of a resolution the author did not see
+  being applied on their behalf.
+- **A rebase interrupted by a crash or a quit.** `.git/rebase-merge/` outlives the
+  process. The open-time sweep must not commit on top of a stopped rebase; it has to see
+  the state and leave the worktree to the status view, which offers Continue and Give up.
+  That is a change to `workspacelifecycle.ts:207`, listed under plumbing.
 - **Conflict markers in prose.** A scene that merges textually and ends up with markers is
   a file the Script pane cannot parse. The conflict view refuses to finish while any file
-  under `scenes/` holds them, and `pipeline.run` refuses mid-merge, but an author who
+  under `scenes/` holds them, and `pipeline.run` refuses mid-rebase, but an author who
   resolves from a terminal bypasses both. The sweep commit would then commit the markers.
   That is an existing exposure the pane narrows but does not close.
 - **The provenance seq after a restore.** `git.goBack` restores an older `commands.jsonl`,
@@ -872,20 +1037,21 @@ implementation plan; each is a requirement the pane depends on.
 1. **Title.** "History" (the author's word) or "Git" (the engineer's, and what the task
    named)? The report uses History; the editor id is `history` and the commands are
    `git.*` either way.
-2. **Pull strategy.** `--no-rebase` merge, as this report proposes, or rebase with the
-   author's unsent saves replayed on top? Rebase keeps history linear but multiplies the
-   conflict states for `-merge` files.
+2. ~~**Pull strategy.**~~ Decided 2026-09-20: rebase. The report is written to it; see
+   [Sync is a rebase](#sync-is-a-rebase) for what the choice costs and how the provenance
+   log absorbs the rewrite.
 3. **Trailers on the agent's commit.** Should `git_commit` in `@vn/authoring` write `Vn-*`
    trailers, which puts desktop provenance vocabulary into a package `vnauthor` also runs?
    The alternative is `commitsItself: true` on `agent.run` so a turn makes one save, which
    changes the shape of every agent commit today.
-4. **Whole-tree scope of Go back.** Should `git.goBack` restore `vngen/build` and
-   `vngen/state` with the documents, as this report proposes, or only the document class
-   like undo does? The whole tree is consistent by construction; the document class keeps
-   generated work but leaves the manifest and the task log ahead of the documents they
-   describe.
+4. ~~**Whole-tree scope of Go back.**~~ Decided 2026-09-20: the whole tree. `git.goBack`
+   restores `vngen/build` and `vngen/state` with the documents. The per-editor history
+   menus described under [Future](#future-history-inside-the-wiki-and-script-panes) are
+   where a narrower, one-file restore will live.
 5. **Rename a save.** Is amending the latest save's subject, only while it is unsent,
-   worth an exception to the no-rewrite rule? The report says no.
+   worth an exception to the no-rewrite rule? The report says no. The rebase decision
+   makes the exception smaller than it was, since an unsent save is already one the pane
+   may rewrite, but the answer stays no until a workflow needs it.
 6. **Repository size.** Should the pane warn at a threshold, and is Git LFS ever going to
    be an option for `vngen/build/assets`?
 7. **Agent tool for `git.goBack`.** The report withholds it. Is there a workflow where the
@@ -895,3 +1061,11 @@ implementation plan; each is a requirement the pane depends on.
    in the strip, or two?
 9. **The document tree's history entry.** Should "Show history" be on every node, or only
    on files and entities with a sheet?
+10. **Where "View project at this save" lands.** Replace the live workspace for the
+    duration with a banner and "Back to now", or relax the one-workspace rule for a
+    read-only second window? The deferred section recommends replacing; the multiple
+    windows plan may have moved the ground by the time the plan is written.
+11. **`rerere`.** Turn it on in an author's repository so a `-merge` conflict answered
+    once is answered the same way on every replayed save, at the cost of a resolution the
+    author does not see applied? The report leaves it off until the repeated case is seen
+    in practice.
