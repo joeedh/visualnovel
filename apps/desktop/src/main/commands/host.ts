@@ -1,3 +1,4 @@
+import type { Git } from '@vn/git';
 import type { WorkspaceSession } from '../session.js';
 import type { SessionAccess } from '../workspace/sessionstate.js';
 import type { UiEffect } from '../../shared/ipc.js';
@@ -124,4 +125,14 @@ export interface CommandHost {
     id: string,
     props: Record<string, unknown>,
   ): Promise<{ state: 'accept' | 'refuse' | 'undeclared'; message: string }>;
+  /**
+   * The repositories commit-on-save writes to, by root. `ctx.git` is only the project's; a wiki
+   * with its own repository is a second one, and a project inside a foreign repository has none.
+   */
+  ownedRepos(): Git[];
+  /**
+   * How many acts are waiting in the deferred commit batch. A dirty worktree with a pending batch
+   * is the app's own doing; one with none was changed outside it.
+   */
+  pendingCommits(): number;
 }

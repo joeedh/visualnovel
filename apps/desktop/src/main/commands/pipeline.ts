@@ -2,6 +2,7 @@
 import { defineFor, prop, type CheckResult } from '@vn/commands';
 import { BUSY_PASS, BUSY_RUN, stopsWhat } from '../../shared/ipc.js';
 import type { CommandHost } from './host.js';
+import { syncRefusal } from './syncstate.js';
 import type { Approvable } from '@vn/authoring';
 
 const define = defineFor<CommandHost>();
@@ -50,6 +51,8 @@ export const pipelineRun = define({
     // turn, because either would race the graph this command is about to plan against.
     const busy = ctx.host.session.busy();
     if (busy) return { ok: false, reason: `${busy} is already in progress.` };
+    const syncing = await syncRefusal(ctx.git);
+    if (syncing) return { ok: false, reason: syncing };
     const state = await ctx.host.session.runPreconditions(mock);
     if (state.keyError) return { ok: false, reason: state.keyError };
 
@@ -127,6 +130,8 @@ export const pipelineDraw = define({
   async check({ slot }, ctx) {
     const busy = ctx.host.session.busy();
     if (busy) return { ok: false, reason: `${busy} is already in progress.` };
+    const syncing = await syncRefusal(ctx.git);
+    if (syncing) return { ok: false, reason: syncing };
     return verdict(await ctx.host.session.previewDraw(slot));
   },
   async run({ slot }, ctx) {
@@ -288,6 +293,8 @@ export const pipelineApproveAndRun = define({
   async check(_props, ctx) {
     const busy = ctx.host.session.busy();
     if (busy) return { ok: false, reason: `${busy} is already in progress.` };
+    const syncing = await syncRefusal(ctx.git);
+    if (syncing) return { ok: false, reason: syncing };
     const state = await ctx.host.session.runPreconditions(false);
     if (state.keyError) return { ok: false, reason: state.keyError };
     const waiting = toApprove(await ctx.host.session.approvable()).length;

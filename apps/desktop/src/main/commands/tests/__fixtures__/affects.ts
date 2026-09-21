@@ -116,6 +116,9 @@ export async function openAffectsHarness(project: TestProject): Promise<AffectsH
       coerce     : coerceProps,
     },
     check                   : (id, props) => stack.check(id, props),
+    // No committer, so nothing is owned and nothing is ever pending
+    ownedRepos              : () => [],
+    pendingCommits          : () => 0,
   };
 
   const records: CommandRecord[] = [];

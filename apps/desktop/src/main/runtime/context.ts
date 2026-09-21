@@ -133,7 +133,11 @@ export class AppContext {
   }
 
   committer(): Committer {
-    return new Committer({ repos: () => this.ownedRepos });
+    return new Committer({
+      repos : () => this.ownedRepos,
+      onSkip: (repo, operation) =>
+        console.warn(`[vnstudio] ${repo}: a ${operation} is in progress; not committing there`),
+    });
   }
 
   /** End every parked turn when nobody is left to ask, rather than leaving one blocked forever. */

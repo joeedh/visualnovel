@@ -30,11 +30,16 @@ if (CDP_PORT) {
   app.commandLine.appendSwitch('remote-debugging-address', '127.0.0.1');
 }
 
-// Must be declared before `app.ready`: teaches Electron that `vnasset://` is a real,
-// image-loadable scheme (standard + secure) so `<img src="vnasset://…">` is allowed.
+// Must be declared before `app.ready`: teaches Electron that `vnasset://` and `vngit://` are
+// real, image-loadable schemes (standard + secure) so `<img src="vnasset://…">` is allowed.
+// `vngit://` serves a file as it was at a commit, for the History pane's picture diffs.
 protocol.registerSchemesAsPrivileged([
   {
     scheme    : 'vnasset',
+    privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true },
+  },
+  {
+    scheme    : 'vngit',
     privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true },
   },
 ]);

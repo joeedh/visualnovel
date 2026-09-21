@@ -175,6 +175,34 @@ describe('CommandStack.exec', () => {
     });
   });
 
+  it('carries a rewrite table from the output onto the record, and omits it otherwise', async () => {
+    const { stack, persisted, registry } = setup();
+    registry.register(
+      define({
+        id         : 'demo.pull',
+        title      : 'Pull',
+        description: 'Rebases unsent saves.',
+        mutating   : true,
+        props      : {},
+        run: () =>
+          Promise.resolve({
+            message: 'rebased',
+            rewrote: [
+              { from: 'a'.repeat(40), to: 'b'.repeat(40) },
+              { from: 'c'.repeat(40), to: null },
+            ],
+          }),
+      }),
+    );
+    await stack.exec('demo.pull', {}, 'ui');
+    await stack.exec('demo.greet', { who: 'aiko' }, 'ui');
+    expect(persisted[0]?.rewrote).toEqual([
+      { from: 'a'.repeat(40), to: 'b'.repeat(40) },
+      { from: 'c'.repeat(40), to: null },
+    ]);
+    expect('rewrote' in persisted[1]!).toBe(false);
+  });
+
   /**
    * The bytes are in the file and in the undo snapshot, and `commands.jsonl` keeps a fingerprint.
    * The second assertion matters most: it checks that the command itself is not digested.

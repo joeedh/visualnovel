@@ -46,6 +46,7 @@ import {
   writeGroupDef,
 } from '../doctree/graphs.js';
 import type { CommandHost } from './host.js';
+import { syncRefusal } from './syncstate.js';
 
 const define = defineFor<CommandHost>();
 
@@ -1173,6 +1174,8 @@ export const gengraphRun = define({
     force: prop.boolean('re-run the paid nodes rather than resuming them', { default: false }),
   },
   async check({ slug, node, force }, ctx) {
+    const syncing = await syncRefusal(ctx.git);
+    if (syncing) return { ok: false, reason: syncing };
     const planned = await ctx.host.session.runTarget(
       slug,
       node.trim().length === 0 ? undefined : node.trim(),

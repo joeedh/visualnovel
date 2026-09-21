@@ -56,6 +56,11 @@ describe('snapshotted', () => {
     expect(snapshotted('keys/openai.key')).toBe(false);
   });
 
+  it('answers false for the repository itself, which is history rather than documents', () => {
+    expect(declarable('<git>')).toBe(true);
+    expect(snapshotted('<git>')).toBe(false);
+  });
+
   it('answers false for a user-level prefix, which no workspace snapshot reaches', () => {
     expect(snapshotted('<user>')).toBe(false);
     expect(snapshotted('<user>/plugins')).toBe(false);

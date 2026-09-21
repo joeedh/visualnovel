@@ -102,6 +102,8 @@ export function getStack(ctx: AppContext): CommandStack<CommandHost> {
       // Lazily through `getStack`, not the local `stack`: the host is built while the stack is
       // still being constructed, so capturing it here would capture `undefined`.
       check                   : (id, props) => getStack(ctx).check(id, props),
+      ownedRepos              : () => ctx.ownedRepos,
+      pendingCommits          : () => getStack(ctx).pendingCount(),
     };
     ctx.stack = new CommandStack<CommandHost>({
       registry     : ctx.registry,

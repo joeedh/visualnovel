@@ -10,7 +10,12 @@ import { openGit } from '@vn/git';
 import { ProjectPaths } from '@vn/store';
 import { Workspace } from '@vn/authoring';
 import { installNotifications, notifications } from '../notify/notifications.js';
-import { gitHealth, GIT_DOWNLOAD_URL, GIT_MISSING_MESSAGE } from '../bootstrap/doctor.js';
+import {
+  gitHealth,
+  GIT_DOWNLOAD_URL,
+  GIT_MISSING_MESSAGE,
+  GIT_OLD_MESSAGE,
+} from '../bootstrap/doctor.js';
 import { sameApprovals } from '../workspace/approvals.js';
 import { acquireWorkspace, focusOwner } from '../bootstrap/instancelock.js';
 import {
@@ -237,18 +242,20 @@ export async function askAboutGit(): Promise<void> {
 /**
  * File the startup doctor's finding as a durable notification. The dialog has already said it,
  * but a dismissed modal leaves no trace, and this is the sort of news an author reads once and
- * then needs to find again a day later.
+ * then needs to find again a day later. An old git gets no dialog, only the note.
  */
 async function noticeMissingGit(): Promise<void> {
-  if (gitHealth().ok) return;
+  const health = gitHealth();
+  const message = !health.ok ? GIT_MISSING_MESSAGE : health.old ? GIT_OLD_MESSAGE : null;
+  if (!message) return;
   const already = await notifications().list();
-  if (already.some((note) => note.message === GIT_MISSING_MESSAGE)) return;
+  if (already.some((note) => note.message === message)) return;
 
   await notifications().post({
     category: 'workspace',
     level   : 'warn',
     source  : 'main',
-    message : GIT_MISSING_MESSAGE,
+    message,
   });
 }
 

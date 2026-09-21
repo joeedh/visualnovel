@@ -280,6 +280,7 @@ export class CommandStack<Host = unknown> {
         message   : output.message,
         ...(output.subject ? { subject: output.subject } : {}),
         ...(output.written ? { written: output.written } : {}),
+        ...(output.rewrote ? { rewrote: output.rewrote } : {}),
         ...(journal && pre && post ? { undo: journal.point(pre, post) } : {}),
         ...(checkpoint ? { checkpoint: checkpoint.seq } : {}),
       };
@@ -784,6 +785,11 @@ export class CommandStack<Host = unknown> {
    */
   async flushCommits(): Promise<CommitResult[]> {
     return this.serialize(() => this.flush());
+  }
+
+  /** How many acts are waiting in the deferred batch; a dirty worktree with none is somebody else's. */
+  pendingCount(): number {
+    return this.pending.length;
   }
 
   /**

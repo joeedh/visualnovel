@@ -20,10 +20,23 @@ export const GIT_MISSING_MESSAGE =
   'Git is not on this machine’s PATH. The app still opens and plays, but saving, undo and ' +
   'project history all rest on git, so none of them will work until it is installed.';
 
+/**
+ * The oldest git the history reads work on: `%(trailers:only)` in a log format arrived in 2.13.
+ * `status --porcelain=v2` (2.11) and `push --follow-tags` (1.8.3) are older.
+ */
+export const GIT_MIN_VERSION = '2.13';
+
+/** The sentence shown when git is present but older than `GIT_MIN_VERSION`. */
+export const GIT_OLD_MESSAGE =
+  `This machine’s git is older than ${GIT_MIN_VERSION}. Saving works, but the History pane ` +
+  'cannot read a save’s provenance from it; updating git fixes that.';
+
 export interface GitHealth {
   ok: boolean;
   /** What `git --version` reported, when it could be read — for a bug report, not for logic. */
   version?: string;
+  /** Set when the version parsed and is below `GIT_MIN_VERSION`. */
+  old?: true;
 }
 
 /** The one impure part, injected so the check itself is testable without a machine. */
@@ -44,12 +57,30 @@ export function gitVersionOf(stdout: string): string | undefined {
   return /\b(\d+\.\d+(?:\.\d+)*)/.exec(stdout)?.[1];
 }
 
-/** Whether `git` is on PATH. A probe that throws counts as absent, like a non-zero exit. */
+/** Is `version` (`2.45.1`) below `floor` (`2.13`)? Compares number by number, missing parts as 0. */
+export function olderThan(version: string, floor: string): boolean {
+  const a = version.split('.').map(Number);
+  const b = floor.split('.').map(Number);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const x = a[i] ?? 0;
+    const y = b[i] ?? 0;
+    if (x !== y) return x < y;
+  }
+  return false;
+}
+
+/**
+ * Whether `git` is on PATH, and whether it is new enough. A probe that throws counts as absent,
+ * like a non-zero exit. An unparseable version is not old: a git that ran is a git that works.
+ */
 export async function checkGit(run: VersionProbe = spawnGit): Promise<GitHealth> {
   const { code, stdout } = await run().catch(() => ({ code: 1, stdout: '' }));
   if (code !== 0) return { ok: false };
   const version = gitVersionOf(stdout);
-  return version ? { ok: true, version } : { ok: true };
+  if (!version) return { ok: true };
+  return olderThan(version, GIT_MIN_VERSION)
+    ? { ok: true, version, old: true }
+    : { ok: true, version };
 }
 
 /**

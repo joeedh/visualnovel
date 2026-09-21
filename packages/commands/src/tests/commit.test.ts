@@ -1,3 +1,4 @@
+import { execFile } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,6 +9,15 @@ import { prop } from '../props.js';
 import { CommandRegistry } from '../registry.js';
 import { BATCH_IDLE_MS, CommandStack } from '../stack.js';
 import { UndoJournal } from '../undo.js';
+
+/** Runs git directly, for the one verb (`checkout -b`) the wrapper has no method for. */
+function runGit(dir: string, args: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    execFile('git', args, { cwd: dir, windowsHide: true }, (err) =>
+      err ? reject(err) : resolve(),
+    );
+  });
+}
 
 /** A repo with a deterministic identity (no global config bleed). */
 async function initRepo(dir: string): Promise<Git> {
@@ -139,6 +149,36 @@ describe('Committer', () => {
       expect(body).toContain('Changes made outside the app');
       expect(body).toContain('Vn-Sweep: true');
       expect(body).not.toContain('Vn-Command:');
+    } finally {
+      await cleanup();
+    }
+  }, 20_000);
+
+  it('leaves a repo alone while a rebase is stopped there, and says which', async () => {
+    const { dir, git, cleanup } = await tempProject();
+    try {
+      // A conflicting side branch, rebased onto main, stops with markers in doc.md
+      const main = await git.branch();
+      const base = (await git.head())!;
+      await fs.writeFile(join(dir, 'doc.md'), 'main side\n');
+      await git.commit({ message: 'main edit', paths: ['-A'] });
+      await runGit(dir, ['checkout', '-q', '-b', 'side', base]);
+      await fs.writeFile(join(dir, 'doc.md'), 'side edit\n');
+      await git.commit({ message: 'side edit', paths: ['-A'] });
+      expect(await git.rebase(main)).toBe(false);
+      const stopped = (await git.head())!;
+
+      const skipped: string[] = [];
+      const committer = new Committer({
+        repos : () => [git],
+        onSkip: (repo, operation) => skipped.push(`${repo}:${operation}`),
+      });
+      expect(await committer.commit(record())).toEqual([]);
+      expect(await committer.sweep('Changes made outside the app')).toEqual([]);
+      expect(skipped).toEqual([`${dir}:rebase`, `${dir}:rebase`]);
+      expect(await git.head()).toBe(stopped);
+      expect(await fs.readFile(join(dir, 'doc.md'), 'utf8')).toContain('<<<<<<<');
+      await git.rebaseAbort();
     } finally {
       await cleanup();
     }

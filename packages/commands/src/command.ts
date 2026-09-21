@@ -48,6 +48,17 @@ export interface CommandOutput {
   data?: unknown;
   /** Workspace-relative paths written — provenance now, undo input later. */
   written?: string[];
+  /** Commits this act rewrote, when it rebased unsent saves. See `CommandRecord.rewrote`. */
+  rewrote?: Rewrite[];
+}
+
+/**
+ * One commit a rebase replaced. `to` is null when the rebase dropped it, as it does an unsent
+ * save whose change the remote already holds.
+ */
+export interface Rewrite {
+  from: string;
+  to: string | null;
 }
 
 /**
@@ -205,6 +216,13 @@ export interface CommandRecord {
    * two.
    */
   commits?: { repo: string; sha: string }[];
+  /**
+   * The shas this act rewrote, old to new, when it rebased unsent saves onto a collaborator's.
+   * A record's `commits` name shas that may since have been rewritten; a reader resolving a sha
+   * walks these tables, newest first, before giving up. The log stays append-only: the record
+   * that named the old sha is never edited.
+   */
+  rewrote?: Rewrite[];
   /** Set when this act's commit was held back to be folded into a later flush. */
   commitDeferred?: true;
   /**

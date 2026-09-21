@@ -2,7 +2,13 @@
  * The startup doctor, and how a version is written down. Both are pure given their probe, which
  * is why the probe is a parameter.
  */
-import { checkGit, gitHealth, gitVersionOf, noteGitHealth } from '../bootstrap/doctor.js';
+import {
+  checkGit,
+  gitHealth,
+  gitVersionOf,
+  noteGitHealth,
+  olderThan,
+} from '../bootstrap/doctor.js';
 import { describeVersion } from '../bootstrap/version.js';
 
 describe('checkGit', () => {
@@ -14,6 +20,18 @@ describe('checkGit', () => {
   it('accepts a git it could not parse, because a git that ran is a git that works', async () => {
     const health = await checkGit(async () => ({ code: 0, stdout: 'git version (unreleased)\n' }));
     expect(health).toEqual({ ok: true });
+  });
+
+  it('marks a git below the floor as old, and one at it as fine', async () => {
+    expect(await checkGit(async () => ({ code: 0, stdout: 'git version 2.9.5\n' }))).toEqual({
+      ok     : true,
+      version: '2.9.5',
+      old    : true,
+    });
+    expect(await checkGit(async () => ({ code: 0, stdout: 'git version 2.13.0\n' }))).toEqual({
+      ok     : true,
+      version: '2.13.0',
+    });
   });
 
   it('counts a non-zero exit as absent', async () => {
@@ -36,6 +54,16 @@ describe('gitVersionOf', () => {
 
   it('answers undefined rather than guessing', () => {
     expect(gitVersionOf('')).toBeUndefined();
+  });
+});
+
+describe('olderThan', () => {
+  it('compares number by number rather than as text', () => {
+    expect(olderThan('2.9.5', '2.13')).toBe(true);
+    expect(olderThan('2.13', '2.13')).toBe(false);
+    expect(olderThan('2.13.0', '2.13')).toBe(false);
+    expect(olderThan('2.45.1', '2.13')).toBe(false);
+    expect(olderThan('1.8.3', '2.13')).toBe(true);
   });
 });
 

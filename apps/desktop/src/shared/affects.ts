@@ -39,6 +39,14 @@ export const UNDO_EXCLUDES = [
 export const USER_ROOT = '<user>';
 
 /**
+ * The repository's own state — refs, tags, remotes, the index — which no snapshot holds and no
+ * workspace path names. A command that writes only history (a checkpoint, a push) declares this
+ * alone and is non-undoable by the same rule as `<user>`; one that also moves the worktree
+ * declares it beside `ANY_DOCUMENT`.
+ */
+export const GIT_ROOT = '<git>';
+
+/**
  * Directories a command may declare, at the project root. `keys` is here because `project.setKey`
  * exists to write it; the consequence of declaring it is `undoable: false`, since `keys` is
  * excluded from every snapshot.
@@ -68,7 +76,7 @@ export const AFFECTS_FILES = [
 ];
 
 /** Every root a declared prefix must be, or be under. */
-export const AFFECTS_ROOTS = [...AFFECTS_DIRS, ...AFFECTS_FILES, USER_ROOT];
+export const AFFECTS_ROOTS = [...AFFECTS_DIRS, ...AFFECTS_FILES, USER_ROOT, GIT_ROOT];
 
 /**
  * Every workspace root except `keys`, which only `project.setKey` writes.
@@ -108,13 +116,14 @@ export function declarable(prefix: string): boolean {
 
 /**
  * Would an undo snapshot hold this prefix? False for a prefix that is an exclusion, for one
- * nested inside an exclusion, and for every `<user>` prefix, which no workspace snapshot reaches.
+ * nested inside an exclusion, and for every `<user>` and `<git>` prefix, which no workspace
+ * snapshot reaches.
  *
  * A prefix that merely contains an exclusion answers true: `vngen` holds `vngen/work`, which is
  * snapshotted, as well as the two excluded subtrees under it.
  */
 export function snapshotted(prefix: string): boolean {
-  if (under(prefix, USER_ROOT)) return false;
+  if (under(prefix, USER_ROOT) || under(prefix, GIT_ROOT)) return false;
   return !UNDO_EXCLUDES.some((exclude) => under(prefix, exclude));
 }
 

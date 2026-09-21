@@ -8,7 +8,7 @@
 import { execFile } from 'node:child_process';
 import { readFile, rm, stat } from 'node:fs/promises';
 import { join, resolve as resolvePath } from 'node:path';
-import { GitError } from './errors.js';
+import { GitError, InProgressError } from './errors.js';
 import {
   CHECKPOINT_FORMAT,
   CHECKPOINT_PREFIX,
@@ -30,6 +30,15 @@ interface RunResult {
   stderr: string;
 }
 
+/**
+ * A prompt from git or from ssh has nowhere to go under a hidden subprocess, so both are told to
+ * fail instead. A credential helper with its own window (Git Credential Manager) still runs.
+ */
+const NO_PROMPT_ENV = {
+  GIT_TERMINAL_PROMPT: '0',
+  GIT_SSH_COMMAND    : 'ssh -oBatchMode=yes',
+};
+
 /** Run a git subcommand in `cwd`, capturing output. Never throws on non-zero exit. */
 function run(cwd: string, args: string[], indexFile?: string): Promise<RunResult> {
   return new Promise((resolve) => {
@@ -40,7 +49,11 @@ function run(cwd: string, args: string[], indexFile?: string): Promise<RunResult
         cwd,
         windowsHide: true,
         maxBuffer  : 64 * 1024 * 1024,
-        ...(indexFile ? { env: { ...process.env, GIT_INDEX_FILE: indexFile } } : {}),
+        env: {
+          ...process.env,
+          ...NO_PROMPT_ENV,
+          ...(indexFile ? { GIT_INDEX_FILE: indexFile } : {}),
+        },
       },
       (err, stdout, stderr) => {
         const code =
@@ -113,6 +126,28 @@ export interface InProgress {
   rebase: RebaseState | null;
   merge: boolean;
   revert: boolean;
+}
+
+const NOTHING_IN_PROGRESS: InProgress = { rebase: null, merge: false, revert: false };
+
+/** The one operation `state` reports, or null for a quiet repository. */
+export function operationOf(state: InProgress): 'rebase' | 'merge' | 'revert' | null {
+  if (state.rebase) return 'rebase';
+  if (state.merge) return 'merge';
+  if (state.revert) return 'revert';
+  return null;
+}
+
+/** Which side of a conflicted path to keep, in git's own words; see `resolveSide` for the mapping. */
+export type ConflictSide = 'ours' | 'theirs';
+
+/** What `revertDryRun` learned without leaving anything behind. */
+export interface RevertPreview {
+  clean: boolean;
+  /** The paths that would conflict; empty when `clean`. */
+  conflicts: string[];
+  /** Git's sentence when the revert failed for a reason other than a conflict, such as a merge commit. */
+  reason?: string;
 }
 
 /** One entry from `git log`. */
@@ -260,6 +295,10 @@ export class Git {
     paths?: string[];
     trailers?: Record<string, string>;
   }): Promise<string | null> {
+    // Before the add: `add -A` mid-rebase marks every conflicted path resolved, markers and all,
+    // and the commit that followed would be adopted as the replayed save
+    const busy = operationOf(await this.inProgress());
+    if (busy) throw new InProgressError(busy);
     if (opts.paths && opts.paths.length > 0) await this.add(opts.paths);
     const before = await this.head();
     const entries = Object.entries(opts.trailers ?? {});
@@ -380,14 +419,19 @@ export class Git {
       .map((l) => resolvePath(this.root, l.trim()));
   }
 
-  /** Whether a rebase, merge or revert is in progress, and where a rebase stopped. */
+  /**
+   * Whether a rebase, merge or revert is in progress, and where a rebase stopped. Nothing is in
+   * progress outside a repository.
+   */
   async inProgress(): Promise<InProgress> {
-    const [merging, applying, mergeHead, revertHead] = await this.gitPaths(
+    const paths = await this.gitPaths(
       'rebase-merge',
       'rebase-apply',
       'MERGE_HEAD',
       'REVERT_HEAD',
-    );
+    ).catch(() => null);
+    if (!paths) return NOTHING_IN_PROGRESS;
+    const [merging, applying, mergeHead, revertHead] = paths;
     const exists = async (p: string | undefined): Promise<boolean> =>
       p !== undefined &&
       (await stat(p).then(
@@ -501,6 +545,116 @@ export class Git {
   /** Restore a path to its state at `ref` (defaults to HEAD). */
   async restore(path: string, ref = 'HEAD'): Promise<void> {
     await this.ok(['restore', '--source', ref, '--', path]);
+  }
+
+  // ---- remotes and sync ----
+
+  /** Adds a remote. Git refuses a name already taken. */
+  async remoteAdd(name: string, url: string): Promise<void> {
+    await this.ok(['remote', 'add', name, url]);
+  }
+
+  /** Removes a remote and its tracking refs; the commits they named stay. */
+  async remoteRemove(name: string): Promise<void> {
+    await this.ok(['remote', 'remove', name]);
+  }
+
+  /** Changes a remote's URL. */
+  async remoteSetUrl(name: string, url: string): Promise<void> {
+    await this.ok(['remote', 'set-url', name, url]);
+  }
+
+  /** Makes `remote/branch` the upstream of the current branch, where `git pull` reads it too. */
+  async setUpstream(remote: string, branch: string): Promise<void> {
+    await this.ok(['branch', `--set-upstream-to=${remote}/${branch}`]);
+  }
+
+  /** Fetches one remote, tags included. */
+  async fetch(remote: string): Promise<void> {
+    await this.ok(['fetch', '--tags', remote]);
+  }
+
+  /** Pushes `branch` to `remote`, with any annotated tag reachable from it. Never forces. */
+  async push(remote: string, branch: string): Promise<void> {
+    await this.ok(['push', '--follow-tags', remote, branch]);
+  }
+
+  /**
+   * Rebases the current branch onto `onto`. Answers whether it completed; false means it stopped
+   * on a conflict and `inProgress()` now describes where.
+   */
+  async rebase(onto: string): Promise<boolean> {
+    const r = await this.run(['rebase', onto]);
+    if (r.code === 0) return true;
+    if ((await this.inProgress()).rebase) return false;
+    throw new GitError(`git rebase failed: ${r.stderr.trim() || r.stdout.trim()}`);
+  }
+
+  /**
+   * Continues a stopped rebase with whatever is staged. Answers whether it completed; false means
+   * the next replayed commit stopped on a conflict of its own.
+   */
+  async rebaseContinue(): Promise<boolean> {
+    // No editor: the replayed commit keeps its message
+    const r = await this.run(['-c', 'core.editor=true', 'rebase', '--continue']);
+    if (r.code === 0) return true;
+    if ((await this.inProgress()).rebase) return false;
+    throw new GitError(`git rebase --continue failed: ${r.stderr.trim() || r.stdout.trim()}`);
+  }
+
+  /** Abandons a rebase, putting the branch back where it started. */
+  async rebaseAbort(): Promise<void> {
+    await this.ok(['rebase', '--abort']);
+  }
+
+  /** Abandons a merge someone started from a terminal. */
+  async mergeAbort(): Promise<void> {
+    await this.ok(['merge', '--abort']);
+  }
+
+  /**
+   * Resolves one conflicted path to one side and stages it. `ours` and `theirs` are git's: during
+   * a rebase `ours` is the branch being rebased onto (the collaborator's) and `theirs` the commit
+   * being replayed (the author's). A side that deleted the path is resolved by deleting it.
+   */
+  async resolveSide(path: string, side: ConflictSide): Promise<void> {
+    const r = await this.run(['checkout', `--${side}`, '--', path]);
+    if (r.code === 0) {
+      await this.add([path]);
+      return;
+    }
+    // `checkout --ours` has no blob to write when that side deleted the path
+    const stage = side === 'ours' ? '2' : '3';
+    const listed = await this.ok(['ls-files', '-u', '--', path]);
+    const present = listed.split('\n').some((l) => l.split('\t')[0]?.endsWith(` ${stage}`));
+    if (present) throw new GitError(`git checkout --${side} failed: ${r.stderr.trim()}`);
+    await this.ok(['rm', '--quiet', '--', path]);
+  }
+
+  /**
+   * Whether reverting `sha` would apply cleanly, and which paths would conflict if not. Leaves
+   * the worktree and index as they were. Callers must start from a clean tree: the fallback
+   * for a git that leaves no `REVERT_HEAD` behind a clean dry run is `reset --hard HEAD`.
+   */
+  async revertDryRun(sha: string): Promise<RevertPreview> {
+    const r = await this.run(['revert', '--no-commit', sha]);
+    const conflicts =
+      r.code === 0
+        ? []
+        : (await this.status()).entries
+            .filter(
+              (e) =>
+                /U/.test(e.x + e.y) || (e.x === 'A' && e.y === 'A') || (e.x === 'D' && e.y === 'D'),
+            )
+            .map((e) => e.path);
+    const aborted = await this.run(['revert', '--abort']);
+    if (aborted.code !== 0) await this.ok(['reset', '--hard', 'HEAD']);
+    if (r.code === 0) return { clean: true, conflicts: [] };
+    return {
+      clean: false,
+      conflicts,
+      ...(conflicts.length === 0 ? { reason: r.stderr.trim() || r.stdout.trim() } : {}),
+    };
   }
 
   // ---- object plumbing: snapshots that never move HEAD or the index ----

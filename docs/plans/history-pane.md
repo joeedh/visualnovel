@@ -245,6 +245,28 @@ given a full refname creates `refs/tags/refs/tags/…`. `Git.log` is untouched.
 - `apps/desktop/src/main/index.ts:33-37`: `vngit` joins `registerSchemesAsPrivileged`
   before `app.ready`, so Stage 3's handler can be registered.
 
+**As built (2026-09-21).** Everything above, with these particulars:
+
+- `Git.commit`'s refusal is a thrown `InProgressError` (a `GitError` subclass carrying the
+  operation), which `Committer.run` catches and reports through a new
+  `CommitterOptions.onSkip(repo, operation)`; the desktop's committer logs it. One
+  `inProgress()` spawn per commit, in `Git.commit` only.
+- `Git.resolveSide(path, side)` is the method name (`checkoutSide` in the text); it takes
+  git's `ours`/`theirs` and the command layer maps the author's words. `Git.rebase` and
+  `rebaseContinue` answer a boolean: false is "stopped on a conflict", anything else
+  throws. `rebaseContinue` runs with `core.editor=true` so the replayed commit keeps its
+  message without opening an editor. `revertDryRun` reports `reason` when the failure was
+  not a conflict (a merge commit, say).
+- The host members are `ownedRepos()` and `pendingCommits()`; the affects fixture answers
+  `[]` and `0`.
+- The doctor gained `GIT_MIN_VERSION = '2.13'`, `olderThan`, `GitHealth.old` and
+  `GIT_OLD_MESSAGE`, filed through the same notice as a missing git.
+- The one refusal sentence lives in `commands/syncstate.ts` (`SYNC_UNFINISHED`,
+  `syncRefusal(git)`), so the four checks and Stage 6's commands share it.
+- The rebase fixtures clone with `-c core.autocrlf=false`; set after the clone, a global
+  `autocrlf=true` has already left every file modified in the clone's worktree, and the
+  "conflict" the test then sees is a line-ending one.
+
 ### Stage 3 — The read commands and the pure modules
 
 - `packages/git/src/history.ts` (new, in `@vn/git` so both hosts read it): the `Save` row

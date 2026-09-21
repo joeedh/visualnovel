@@ -13,7 +13,7 @@
  * dirty is then what the whole run did, which is exactly what `commitBatch` describes. The stack
  * flushes the run before any other act runs, so no act's commit ever holds another's files.
  */
-import type { Git } from '@vn/git';
+import { InProgressError, type Git } from '@vn/git';
 import type { CommandRecord } from './command.js';
 
 /** One commit this act produced. */
@@ -29,6 +29,11 @@ export interface CommitterOptions {
    * a `git init` in `wiki/`) is picked up without rebuilding the stack.
    */
   repos(): Promise<Git[]> | Git[];
+  /**
+   * Called for a repo left uncommitted because a rebase, merge or revert is in progress there.
+   * The edits are on disk and the next commit after the operation ends picks them up.
+   */
+  onSkip?(repo: string, operation: 'rebase' | 'merge' | 'revert'): void;
 }
 
 /** Git subjects are read in one line; anything longer belongs in the body. */
@@ -150,8 +155,15 @@ export class Committer {
     const commits: CommitResult[] = [];
     for (const git of await this.opts.repos()) {
       if (!(await git.isRepo())) continue;
-      const sha = await git.commit({ message: subject, paths: ['-A'], trailers });
-      if (sha) commits.push({ repo: git.root, sha });
+      try {
+        const sha = await git.commit({ message: subject, paths: ['-A'], trailers });
+        if (sha) commits.push({ repo: git.root, sha });
+      } catch (err) {
+        // A stopped rebase is a state the author resolves in the History pane; committing into it
+        // would fold the conflict markers into the replayed save
+        if (!(err instanceof InProgressError)) throw err;
+        this.opts.onSkip?.(git.root, err.operation);
+      }
     }
     return commits;
   }
