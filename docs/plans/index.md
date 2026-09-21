@@ -274,4 +274,15 @@ them.
   `## As shipped` section). This table restates the status each plan declares. If a plan
   and the table disagree, the plan wins and the table is stale.
 - Update the row in the same commit that finishes the plan, alongside the plan's
-  As-shipped section and the edits to `CLAUDE.md` that the plan's final step calls for.
+  As-shipped section and the edits to `CLAUDE.md` that the plan's final step calls for. |
+  [`history-pane.md`](history-pane.md) | planned | The History pane over the project's git
+  repositories, built from
+  [`../research/git-editor-pane.md`](../research/git-editor-pane.md) in eight stages:
+  `@vn/git` reads and writes, the `<git>` affects sentinel and `rewrote` on the command
+  record, a `Committer` that never commits mid-rebase, the six read commands and the pure
+  maker and status rules in `@vn/git`, the pane (list, change view with per-kind diffs,
+  checkpoints, sync as a rebase of unsent saves, a conflict view), local recoveries and
+  the agent's tool wrappers, and multi-remote sync. Names what is decided up front
+  (formats, ids, refnames) and what is decided against the running pane (title, the
+  agent-turn fold, diff kinds, layout), with three frontend-design reviews as stage gates.
+  Pressure-tested; 22 findings folded in |

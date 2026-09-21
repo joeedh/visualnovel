@@ -96,7 +96,7 @@ follows the author's vocabulary or the engineer's is the first open question at 
   `docs/research/git-library-vs-git-process.md:174-181`).
 - Every worktree-changing git command refuses while the session is busy, on the pattern
   `project.installPages` already uses
-  (`apps/desktop/src/main/commands/project.ts:353-354`).
+  (`apps/desktop/src/main/commands/project.ts:462-463`).
 - The agent gets tool wrappers for reads, checkpoints and the two per-file or per-save
   recoveries it already has (`git_restore`, `git_revert`). It gets no wrapper for
   whole-tree restore, push, pull or conflict resolution.
@@ -563,10 +563,11 @@ unsent save. The owner chose rebase (2026-09-20). What that buys and costs:
   rewrites history", and it is safe only because those saves have never left the machine.
   It breaks the sha-keyed link from a commit to its record in `commands.jsonl`
   (`CommandRecord.commits[]`), so `git.pull`'s own record carries a rewrite table, old sha
-  to new, built by pairing `ORIG_HEAD`'s unsent commits with the replayed ones by their
-  `Vn-Seq` trailer (trailers survive a rebase; shas do not). The pane resolves a sha
-  through every rewrite table on file before it gives up. See
-  [The provenance log](#the-provenance-log).
+  to new, built by listing the unsent saves before and after the rebase and pairing them
+  by what a rebase preserves: author name, email, author date and the full message.
+  (`Vn-Seq` is not usable as the key: it restarts at 1 each session.) A save the rebase
+  dropped is recorded with no new sha. The pane resolves a sha through every rewrite table
+  on file before it gives up. See [The provenance log](#the-provenance-log).
 - `git.push` refuses while the branch is behind its remote ("Get their saves first"),
   which under rebase is the only way an author's line can carry the collaborator's saves.
   A force push is never offered.
@@ -620,7 +621,7 @@ one `show --numstat --format=`; results are cached by sha, since a commit is imm
 | `git.fetch`          | `repo`, `remote=<upstream>`           | no       | `<git>`                 | not owned; no such remote                                                                                                                                     | no      |
 | `git.pull`           | `repo`                                | no       | `ANY_DOCUMENT`, `<git>` | busy; not owned; no upstream remote; dirty; a rebase, merge or revert is in progress; nothing to get                                                          | no      |
 | `git.push`           | `repo`, `remote=<upstream>`           | no       | `<git>`                 | not owned; no such remote; nothing to send; behind that remote ("Get their saves first"); a rebase is in progress                                             | no      |
-| `git.resolve`        | `repo`, `path`, `side=mine\|theirs`   | no       | `ANY_DOCUMENT`          | no rebase in progress; the path is not conflicted                                                                                                             | no      |
+| `git.resolve`        | `repo`, `path`, `side=mine\|theirs`   | no       | `ANY_DOCUMENT`, `<git>` | no rebase in progress; the path is not conflicted                                                                                                             | no      |
 | `git.continueSync`   | `repo`                                | no       | `ANY_DOCUMENT`, `<git>` | no rebase in progress; conflicted paths remain; a `scenes/**` file holds markers                                                                              | no      |
 | `git.abandonSync`    | `repo`                                | no       | `ANY_DOCUMENT`, `<git>` | no rebase or merge in progress                                                                                                                                | yes     |
 
@@ -720,7 +721,7 @@ the pattern `edit_scene` uses (`command-system.md:1048-1054`).
 - `session.busy()` names a pipeline run, an approve-and-generate pass, an agent turn or a
   report (`apps/desktop/src/shared/ipc.ts:85-101`). Every worktree-changing git command
   refuses while any of them runs, with the sentence `project.installPages` already uses
-  ("… is still running; wait for it to finish", `project.ts:353-354`).
+  ("… is still running; wait for it to finish", `project.ts:462-463`).
 - The reverse also holds. `pipeline.run`'s check must refuse while a rebase, a merge or a
   revert is in progress, because a run plans from a tree that is half one thing and half
   another.
@@ -875,22 +876,22 @@ as follows.
 These are additions to code that exists, each cited to where it goes. None is an
 implementation plan; each is a requirement the pane depends on.
 
-| Need                                                                                                                                        | Where                                                               | Why                                                                          |
-| ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `Git.log` returning trailers, parents, body, `--numstat`, with `before`, `path` and `author` filters                                        | `packages/git/src/git.ts:214-231`                                   | The list, the maker rule and the per-file history                            |
-| `Git.changes(sha)` and `Git.diffPath(sha, path)`                                                                                            | new methods beside `show`/`diff`, `git.ts:245-256`                  | The change view and the per-kind diff                                        |
-| `Git.blob(sha, path)` and a `vngit://` protocol handler                                                                                     | `git.ts`; beside `assetprotocol.ts:29-43`                           | A deleted picture's old side; the other side of a conflict                   |
-| `Git.tag`, `Git.listTags`, `Git.deleteTag` for annotated tags                                                                               | `git.ts:301-320` area                                               | Checkpoints with notes; `update-ref` makes lightweight tags with no message  |
-| `Git.fetch`, `Git.push`, `Git.rebase`, `Git.remotes`, `Git.remoteAdd/Remove/SetUrl`, `Git.upstream`, `Git.setUpstream`, `Git.aheadBehind`   | new; `run` gains `GIT_TERMINAL_PROMPT=0` (`git.ts:20-42`)           | Sync; a prompt for a password must fail rather than hang a hidden subprocess |
-| `Git.inProgress` (rebase, merge, revert), `Git.checkoutSide`, `Git.rebaseContinue`, `Git.rebaseAbort`, `Git.mergeAbort`, `Git.revertDryRun` | new                                                                 | The status and conflict views and the take-back refusal                      |
-| The open-time sweep leaving a stopped rebase, merge or revert alone                                                                         | `apps/desktop/src/main/runtime/workspacelifecycle.ts:207`           | A sweep commit on top of a half-replayed tree would bury the conflict        |
-| `rewrote: {from, to}[]` on `CommandRecord`, written by `git.pull`                                                                           | `packages/commands/src/command.ts`; `stack.ts:291-292`              | The commit-to-record lookup survives the rebase of unsent saves              |
-| Trailers on the agent's `git_commit`: `Vn-Source: agent`, `Vn-Thread: <id>`, `Vn-Plan: <n>`                                                 | `packages/authoring/src/tools/git.ts:67`, `loop.ts:1024-1029`       | Removes the adjacency heuristic for the agent's own save                     |
-| A `<git>` sentinel in the `affects` vocabulary                                                                                              | `apps/desktop/src/shared/affects.ts:39-71`, `116-119`               | History-only commands need a legal, non-snapshotted declaration              |
-| `pipeline.run` refusing mid-rebase, mid-merge and mid-revert                                                                                | `apps/desktop/src/main/commands/pipeline.ts:51`, `128`, `155`       | A run must not plan from a half-replayed tree                                |
-| A `history` entry in `EDITORS` with `pins: 'docPath'` and a `claims` on `file`, `scene`, `wiki`, `character`, `location` as `secondary`     | `apps/desktop/src/shared/editors.ts:22-149`                         | So the tree, the pin and `view.open` reach it                                |
-| "Show history" in the document tree's right-click table                                                                                     | `renderer/pathux/doctree/doctree.ts`                                | The per-file history entry point                                             |
-| A maker classifier, a per-kind diff renderer and the status-cause rule as pure modules with tests                                           | `renderer/rules/history.ts`, `renderer/rules/situations/history.ts` | The rule-module pattern; `pnpm gen:uxmodel` and the anchor sweep follow      |
+| Need                                                                                                                                        | Where                                                                    | Why                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `Git.log` returning trailers, parents, body, `--numstat`, with `before`, `path` and `author` filters                                        | `packages/git/src/git.ts:214-231`                                        | The list, the maker rule and the per-file history                                                                    |
+| `Git.changes(sha)` and `Git.diffPath(sha, path)`                                                                                            | new methods beside `show`/`diff`, `git.ts:245-256`                       | The change view and the per-kind diff                                                                                |
+| `Git.blob(sha, path)` and a `vngit://` protocol handler                                                                                     | `git.ts`; beside `assetprotocol.ts:29-43`                                | A deleted picture's old side; the other side of a conflict                                                           |
+| `Git.tag`, `Git.listTags`, `Git.deleteTag` for annotated tags                                                                               | `git.ts:301-320` area                                                    | Checkpoints with notes; `update-ref` makes lightweight tags with no message                                          |
+| `Git.fetch`, `Git.push`, `Git.rebase`, `Git.remotes`, `Git.remoteAdd/Remove/SetUrl`, `Git.upstream`, `Git.setUpstream`, `Git.aheadBehind`   | new; `run` gains `GIT_TERMINAL_PROMPT=0` (`git.ts:20-42`)                | Sync; a prompt for a password must fail rather than hang a hidden subprocess                                         |
+| `Git.inProgress` (rebase, merge, revert), `Git.checkoutSide`, `Git.rebaseContinue`, `Git.rebaseAbort`, `Git.mergeAbort`, `Git.revertDryRun` | new                                                                      | The status and conflict views and the take-back refusal                                                              |
+| `Committer` skipping a repository with a rebase, merge or revert in progress, and `Git.commit` refusing in that state                       | `packages/commands/src/commit.ts:149-157`; `packages/git/src/git.ts:184` | `add -A` mid-rebase marks conflicted paths resolved, markers and all, and the commit is adopted as the replayed save |
+| `rewrote: {from, to}[]` on `CommandRecord`, written by `git.pull`                                                                           | `packages/commands/src/command.ts`; `stack.ts:291-292`                   | The commit-to-record lookup survives the rebase of unsent saves                                                      |
+| Trailers on the agent's `git_commit`: `Vn-Source: agent`, `Vn-Thread: <id>`, `Vn-Plan: <n>`                                                 | `packages/authoring/src/tools/git.ts:67`, `loop.ts:1024-1029`            | Removes the adjacency heuristic for the agent's own save                                                             |
+| A `<git>` sentinel in the `affects` vocabulary                                                                                              | `apps/desktop/src/shared/affects.ts:39-71`, `116-119`                    | History-only commands need a legal, non-snapshotted declaration                                                      |
+| `pipeline.run` refusing mid-rebase, mid-merge and mid-revert                                                                                | `apps/desktop/src/main/commands/pipeline.ts:51`, `128`, `155`            | A run must not plan from a half-replayed tree                                                                        |
+| A `history` entry in `EDITORS` with `pins: 'docPath'` and a `claims` on `file`, `scene`, `wiki`, `character`, `location` as `secondary`     | `apps/desktop/src/shared/editors.ts:22-149`                              | So the tree, the pin and `view.open` reach it                                                                        |
+| "Show history" in the document tree's right-click table                                                                                     | `renderer/pathux/doctree/doctree.ts`                                     | The per-file history entry point                                                                                     |
+| A maker classifier, a per-kind diff renderer and the status-cause rule as pure modules with tests                                           | `renderer/rules/history.ts`, `renderer/rules/situations/history.ts`      | The rule-module pattern; `pnpm gen:uxmodel` and the anchor sweep follow                                              |
 
 ## Deferred: viewing the project at a save
 
