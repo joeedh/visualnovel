@@ -494,7 +494,11 @@ that opened this pane would have landed on a subject the pane does not cover.
   tries `$VN_RESOURCES`, then Electron's `process.resourcesPath` (where `extraResources`
   puts it in a packaged build), then the repo root. The same command therefore answers
   from a checkout and from an installed app, and the pane displays the doc itself, so the
-  two cannot diverge. `shared/markdown.ts` parses the subset the file uses (headings,
+  two cannot diverge. One shipped tree is resolved differently: `uxDocsDir()` in the same
+  module finds the UX docs pages the agent reads at `join(__dirname, '..', 'ux')`, because
+  `build:uxdocs` writes them under `dist/`, which ships inside the asar, and `__dirname`
+  is `dist/main` in a checkout and in the asar alike; an `extraResources` path would ship
+  the tree a second time. `shared/markdown.ts` parses the subset the file uses (headings,
   paragraphs, lists, tables, fenced code, and inline `code`/**strong**/links), and
   `shared/apikeys.ts` converts the result into a `KeyGuide` holding an intro, one section
   per vendor keyed by its heading slug, and the remaining sections as notes.

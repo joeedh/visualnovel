@@ -553,7 +553,7 @@ has refused the command. The lookup reads a cache the caller owns: `stack.check`
 asynchronous and runs in main, while `guide` remains a pure function of what is drawn.
 
 `renderer/pathux/tour/tour.ts` fills that cache. For each anchor a step points at, it
-calls `checkFor(anchor, props)` (`renderer/rules/precheck.ts`) to build the invocation to
+calls `checkFor(anchor, props)` (`src/shared/precheck.ts`) to build the invocation to
 check, then issues `command:check`, and stores the refusal under the anchor key. The
 answer arrives asynchronously, and the overlay reads it on the next re-resolve. An entry
 is checked again whenever an anchor's recorded props change.
@@ -571,7 +571,8 @@ precondition. A check that omits a prop the widget has not supplied yet reports
 Passing the missing prop explicitly as an empty value reaches the precondition, which is
 written for that case. `checkFor` adds no information of its own: a required prop with no
 empty value, such as a number or an enum, cannot be checked at that anchor, and a secret
-is never filled in even with a blank.
+is never filled in even with a blank. It lives under `src/shared/` because the agent's
+`ux_check` (below) blanks the props it was not given the same way.
 
 ### The overlay
 
@@ -654,6 +655,43 @@ fault, only later.
   `gesture`, because a gesture step needs a scene or shot id from a specific project.
 - Agent-written tours come from the `show_me` tool (`src/main/agent/showme.ts`), which the
   agent uses for anything the curated tours do not cover.
+
+Before writing a tour the agent can read what the app draws. `pnpm build` (and the start
+of `pnpm dev`) runs `scripts/gen-ux-docs.mjs`, which folds `ux-model.json`, `anchors.json`
+and the registry into a tree of Markdown pages under `apps/desktop/dist/ux/`, one page per
+command (`commands/<namespace>/<name>.md`), per effect, per editor, per rule module's
+situations and per interaction, plus `shortcuts.md` and a `README.md` that explains the
+columns. A command page says which pane draws a control for it and in which situations,
+which props the control already knows, every refusal a fixture produced (verbatim, so an
+id in a sentence is the fixture's), what runs it as a later step of a click, and whether
+the sweep, a shortcut, a menu entry or only the palette reaches it. The fold and the
+render are `src/shared/uxdocs.ts`, typed as a strict `UxDocs` so a rule module emitting a
+shape the fold does not expect fails the build by name;
+`renderer/rules/tests/uxdocs.test.ts` and `src/main/tests/uxdocs.test.ts` run both
+in-process, with golden pages, and nothing reads `dist/`. The tree is not committed:
+`ux-model.json` is the committed derivative.
+
+Four read-only tools serve it, registered by the desktop session beside `show_me`
+(`src/main/agent/uxdocs.ts`), deferred like every tool outside the always-loaded six:
+
+| Tool        | Args                        | Returns                                                                 |
+| ----------- | --------------------------- | ----------------------------------------------------------------------- |
+| `ux_list`   | `dir?`                      | the entries under `ux/<dir>`, directories marked with `/`               |
+| `ux_read`   | `path`, `offset?`, `limit?` | the page, or a line range of it; a path that leaves the tree is refused |
+| `ux_search` | `query`, `regex?`           | `path:line: text` hits, at most `UX_SEARCH_CAP`, then "… and N more"    |
+| `ux_check`  | `command`, `props?`         | `accept`, `refuse`, `undeclared` or `unjudged`, and the sentence        |
+
+The pages say when a command is refused in a fixture; `ux_check` says whether it is
+refused in the open project now, through `SessionDeps.checkCommand`, which the app wires
+from `stack.check`. It fills the props it was not given with `checkFor`'s blanks, so the
+answer is the precondition's rather than a coercion failure about the call; a required
+prop with no blank value leaves the command `unjudged`, and the sentence names the prop.
+The three readers are registered only where `uxDocsDir()`
+(`main/distribution/resources.ts`) finds the tree, and main logs the path it looked at
+when it does not, so a dev launch that skipped the generator says so; `ux_check` is
+registered only where the host supplies the check, so `vnauthor` lists none of the four.
+With the tree present, `show_me`'s description (`describeShowMe`) says to `ux_read` the
+command's page before writing a step; without it, it reads as it did before.
 
 `show_me` exists only in the desktop app. It needs a window to display in, and `vnauthor`
 has none, so the window push is a session dependency, and the tool returns an error when
@@ -874,7 +912,10 @@ produces identical bytes.
 | `renderer/rules/ring.ts`                   | Ring geometry: `ringRect`, `union`, `outset`, `RING_PAD`                                                                                                                                                                                         |
 | `renderer/rules/tour.ts`                   | `TourState`, `guide`, `satisfies`; pure, no DOM                                                                                                                                                                                                  |
 | `renderer/rules/anchormap.ts`              | `ANCHOR_MAP`, loaded from `anchors.json`                                                                                                                                                                                                         |
-| `renderer/rules/precheck.ts`               | `checkFor`, `askedAs`: which invocation a ringed anchor is checked with                                                                                                                                                                          |
+| `src/shared/precheck.ts`                   | `checkFor`, `askedAs`, `canBlank`: which invocation a ringed anchor, or the agent's `ux_check`, is checked with                                                                                                                                  |
+| `src/shared/uxdocs.ts`                     | `UxDocs`, `fold`, `render`, `pagePath`: the UX docs tree the agent reads, derived from the model, the sweep and the registry                                                                                                                     |
+| `src/main/agent/uxdocs.ts`                 | `ux_list`, `ux_read`, `ux_search` and `ux_check`                                                                                                                                                                                                 |
+| `scripts/gen-ux-docs.mjs`                  | `build:uxdocs`, which writes `apps/desktop/dist/ux/`                                                                                                                                                                                             |
 | `renderer/pathux/tour/anchors.ts`          | The registry: `redrawing`, `AnchorPass` (`act`, `record`, `pick`), `anchorSnapshot`, `dumpAnchors`, `walkedAnchors`, `landsOn`, `strayAnchors`, `press`, `menuAnchors`, `shortcutReport`, `popupOpened`, `popupClosed`                           |
 | `renderer/pathux/chrome/showmenu.ts`       | `menuTemplate` and `showContextMenu`: the one menu builder the header and the right-click menus share                                                                                                                                            |
 | `renderer/pathux/interactions/hittest.ts`  | `elementsAt`, `reaches`, `hitFor`: hit testing through shadow roots                                                                                                                                                                              |

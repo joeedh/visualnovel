@@ -240,7 +240,10 @@ one or two tools over the registry rather than one tool per command. There is no
 no confirm problem, no undo interleaving, no secrets and no mode. This buys items 4 and 6
 of the pros list (the planning oracle and "show me"), which are the two the agent cannot
 approximate today. `view.*` is non-mutating and non-undoable by construction, so it adds
-no record-keeping work.
+no record-keeping work. The `check` half of B has since shipped as the agent's `ux_check`,
+beside three tools that read a page tree folded from the UX model
+([`../plans/agent-reads-the-ux-model.md`](../plans/agent-reads-the-ux-model.md));
+`targets` is left as a one-tool follow-up there.
 
 **C — allow-listed mutating bridge.** C covers everything B covers, plus a named set of
 commands that have no tool equivalent: `prompt.*`, `asset.adopt`, `art.promote`,

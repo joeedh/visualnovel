@@ -228,6 +228,15 @@ through the permission gate, in every mode).
 | Git (write)         | `git_commit` **M**, `git_init` **M**, `git_revert` **M C**, `git_restore` **M C**                                                                                                                                            |
 | Skills              | `discover_skills`, `create_skill` **M**, `edit_skill` **M**, `run_skill` **M** (**C** on the first run of a script-bearing skill)                                                                                            |
 
+The desktop app registers a few tools of its own beside these, which the table omits
+because `vnauthor` never lists them: `show_me`, which writes a guided tour for the app to
+walk the author through; `search_history` and `read_history`, over the conversation log
+the app keeps; and `ux_list`, `ux_read`, `ux_search` and `ux_check`, which read the UX
+docs tree the app builds from its own UX model and ask whether a command is refused in the
+open project. All are read-only and deferred like every tool outside the always-loaded
+six. [`guided-tours.md#sources-of-tours`](guided-tours.md#sources-of-tours) covers the
+five that concern tours.
+
 `edit_file` changes part of a long document rather than restating the whole file. It
 replaces exact strings and writes through the same `writeDocFile` the Wiki pane saves
 through, so both refuse bad front-matter the same way. It rests on a read ledger,
