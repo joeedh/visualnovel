@@ -148,6 +148,7 @@ import {
   type Transport,
 } from '@vn/types';
 import { type Analyst, type AnalystGrant, type Redactor, type Report } from '@vn/agentreport';
+import { catalogProps, type PropValue } from '@vn/commands';
 import { BUSY_AGENT, BUSY_PASS, BUSY_REPORT, busyName } from '../../shared/ipc.js';
 import type {
   AgentSystem,
@@ -183,7 +184,7 @@ import { labelContext } from '../assets/assetlabel.js';
 import { type SkillEntry } from '../doctree/doctree.js';
 import { confirmDetail } from '../agent/toolconfirm.js';
 import { showMeTool } from '../agent/showme.js';
-import { uxDocsTools } from '../agent/uxdocs.js';
+import { uxCheckTool, uxDocsTools } from '../agent/uxdocs.js';
 import { createDesktopInteractions } from '../../shared/interactions.js';
 import { createDesktopRegistry } from '../commands/index.js';
 import type { Tour } from '../../shared/tours.js';
@@ -282,6 +283,15 @@ export interface SessionDeps {
    * where there is no window, and `show_me` then refuses rather than claim it showed anything.
    */
   showTour?(tour: Tour): void;
+  /**
+   * The stack's verdict for one invocation, for the agent's `ux_check`. The session does not hold
+   * the stack, so the host wires it the way {@link showTour} is wired. Absent where there is no
+   * stack, and the tool is then not registered, so `vnauthor` never lists it.
+   */
+  checkCommand?(
+    id: string,
+    props: Record<string, PropValue>,
+  ): Promise<{ state: 'accept' | 'refuse' | 'undeclared'; message: string }>;
 }
 
 /** A loaded project: config, paths, validated model, persisted store + task graph. */
@@ -1251,6 +1261,17 @@ export class WorkspaceSession {
       registry: createRegistry([
         ...historyTools(this.history()),
         ...(uxDocs === undefined ? [] : uxDocsTools(uxDocs)),
+        ...(this.deps.checkCommand === undefined
+          ? []
+          : [
+              uxCheckTool({
+                check: this.deps.checkCommand.bind(this.deps),
+                props: (id) => {
+                  const command = createDesktopRegistry().get(id);
+                  return command === undefined ? undefined : catalogProps(command.props);
+                },
+              }) as Tool,
+            ]),
         showMeTool({
           ...(this.deps.showTour ? { show: this.deps.showTour.bind(this.deps) } : {}),
           commands    : createDesktopRegistry(),

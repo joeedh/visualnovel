@@ -15,7 +15,7 @@ import { readTour } from '../../../src/shared/tourcheck.js';
 import { tourById } from '../../../src/shared/tours.js';
 import { api } from '../../api.js';
 import { ANCHOR_MAP, SWEPT } from '../../rules/anchormap.js';
-import { askedAs, checkFor } from '../../rules/precheck.js';
+import { askedAs, checkFor } from '../../../src/shared/precheck.js';
 import {
   guide,
   opens,

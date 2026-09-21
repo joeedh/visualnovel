@@ -1,25 +1,15 @@
 /**
- * Which invocation a ringed anchor is checked with.
+ * Which invocation a ringed anchor, or the agent's `ux_check`, is checked with.
  *
  * The cases that matter are the partial ones: `stack.check` coerces before it reaches a command's
  * precondition, so a missing required prop answers about the blank instead of about the project.
  */
-import { askedAs, checkFor } from '../precheck.js';
-import { commandKey, itemKey, type Anchor } from '../anchors.js';
-import type { CatalogProp } from '../../../src/shared/ipc.js';
-import type { EditorId } from '../../../src/shared/editors.js';
+import type { CatalogProp } from '@vn/commands';
+import { askedAs, canBlank, checkFor, type Asked } from '../precheck.js';
 
-const node = {
-  getBoundingClientRect: () => ({ left: 0, top: 0, right: 10, bottom: 10, width: 10, height: 10 }),
-};
-
-const anchor = (over: Partial<Anchor> = {}): Anchor => ({
-  key    : commandKey('gate.approve'),
-  id     : 'gate.approve',
-  props  : { characterId: 'aiko' },
-  enabled: true,
-  editor : 'taskgraph' as EditorId,
-  via    : { kind: 'dom', node },
+const anchor = (over: Partial<Asked> = {}): Asked => ({
+  id   : 'gate.approve',
+  props: { characterId: 'aiko' },
   ...over,
 });
 
@@ -73,10 +63,20 @@ describe('checkFor', () => {
   });
 
   it('answers nothing for an effect, which has no precondition in the stack', () => {
-    const reload = anchor({ key: 'fx:pane.view', id: 'pane.view', props: { what: 'reload' } });
+    const reload = anchor({ id: 'pane.view', props: { what: 'reload' } });
     expect(checkFor(reload, [])).toBeUndefined();
-    const row = anchor({ key: itemKey('scene', 'greet'), id: 'ui.publish', props: {} });
+    const row = anchor({ id: 'ui.publish', props: {} });
     expect(checkFor(row, [])).toBeUndefined();
+    expect(checkFor({ props: {} }, [])).toBeUndefined();
+  });
+
+  it('says which kinds can be asked about as a blank', () => {
+    expect(
+      ['string', 'directory', 'string[]'].map((kind) => canBlank({ kind } as CatalogProp)),
+    ).toEqual([true, true, true]);
+    expect(
+      ['number', 'enum', 'boolean', 'secret'].map((kind) => canBlank({ kind } as CatalogProp)),
+    ).toEqual([false, false, false, false]);
   });
 });
 

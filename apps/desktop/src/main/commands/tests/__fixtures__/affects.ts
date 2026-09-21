@@ -63,6 +63,8 @@ export interface AffectsHarness {
   /** Every `UiEffect` a command pushed, in order. */
   effects: UiEffect[];
   run(id: string, props: Record<string, unknown>): Promise<RunResult>;
+  /** `stack.check`, for a tool that asks rather than runs. */
+  check(id: string, props: Record<string, unknown>): Promise<{ state: string; message: string }>;
   dispose(): Promise<void>;
 }
 
@@ -150,6 +152,7 @@ export async function openAffectsHarness(project: TestProject): Promise<AffectsH
         ...(outcome.ok && outcome.data !== undefined ? { data: outcome.data } : {}),
       };
     },
+    check: (id, props) => stack.check(id, props),
     async dispose() {
       await stack.dispose();
       await state.closeProject();

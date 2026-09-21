@@ -1,21 +1,25 @@
 /**
- * The tools that let the agent read the UX docs tree (`docs/plans/agent-reads-the-ux-model.md`):
+ * The four tools that let the agent read the UX docs tree (`docs/plans/agent-reads-the-ux-model.md`):
  * `ux_list`, `ux_read` and `ux_search` over the pages `scripts/gen-ux-docs.mjs` wrote under
- * `uxDocsDir()`.
+ * `uxDocsDir()`, and `ux_check`, which asks the stack whether a command is refused in the open
+ * project right now.
  *
- * They are separate from `read_file` and `search` because the tree is not in the workspace:
- * `read_file` feeds `edit_file`'s ledger and every write tool refuses a path outside the
- * workspace, so a virtual root under them would need an exception in each. Three small read-only
- * tools cost less, and the deferred catalog makes their schemas free until searched for.
+ * The readers are separate from `read_file` and `search` because the tree is not in the
+ * workspace: `read_file` feeds `edit_file`'s ledger and every write tool refuses a path outside
+ * the workspace, so a virtual root under them would need an exception in each. Three small
+ * read-only tools cost less, and the deferred catalog makes their schemas free until searched for.
  *
- * All three are `mutating: false`, so plan mode allows them. They take the tree's root, and the
- * host registers them only where the root exists.
+ * All four are `mutating: false`, so plan mode allows them. The readers take the tree's root, and
+ * the host registers them only where the root exists; `ux_check` takes the stack's check, and the
+ * host registers it only where it holds a stack.
  */
 import { promises as fs } from 'node:fs';
 import { join, relative } from 'node:path';
 import { z } from 'zod';
 import type { Tool, ToolResult } from '@vn/authoring';
+import type { CatalogProp, PropValue } from '@vn/commands';
 import { resolveInWorkspace } from '@vn/store';
+import { canBlank, checkFor } from '../../shared/precheck.js';
 
 /** Hits one search returns before it says how many more there were. */
 export const UX_SEARCH_CAP = 200;
@@ -144,4 +148,64 @@ function searchTool(root: string): Tool<{ query: string; regex?: boolean }> {
 /** The three readers over a tree at `root`. */
 export function uxDocsTools(root: string): Tool[] {
   return [listTool(root), readTool(root), searchTool(root)] as Tool[];
+}
+
+/** What `ux_check` answers with: the stack's three states, and a fourth of its own. */
+export type UxCheckState = 'accept' | 'refuse' | 'undeclared' | 'unjudged';
+
+export interface UxCheckDeps {
+  /** The stack's verdict for one invocation, as `stack.check` gives it. */
+  check(id: string, props: Record<string, PropValue>): Promise<{ state: string; message: string }>;
+  /** The command's props, for the blanks {@link checkFor} fills in; nothing for an unknown id. */
+  props(id: string): readonly CatalogProp[] | undefined;
+}
+
+const propValue = z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]);
+
+/**
+ * `ux_check`. The props the model leaves out are blanked the way the tour blanks them, so the
+ * precondition is reached rather than a coercion failure about the call. A prop with no blank
+ * (a number, an enum, a secret) leaves the command `unjudged`, and the sentence names it so the
+ * model asks for the value rather than reads a refusal it cannot act on.
+ */
+export function uxCheckTool(deps: UxCheckDeps): Tool<{
+  command: string;
+  props?: Record<string, PropValue>;
+}> {
+  return {
+    name       : 'ux_check',
+    description:
+      'Ask whether a command would be refused in the open project right now, and why, in the ' +
+      "command's own words. The pages say when a command is refused in a fixture; this says " +
+      'whether it is refused now. Props you leave out are blanked, so a refusal about a blank is ' +
+      'about the project; a prop that cannot be blanked leaves the command unjudged, and the ' +
+      'answer names it.',
+    mutating   : false,
+    args: z.object({
+      command: z.string().describe('the command id'),
+      props  : z.record(propValue).describe('the props already known').optional(),
+    }),
+    async run(a) {
+      const specs = deps.props(a.command);
+      if (specs === undefined) return fail(`${a.command} is not a command.`);
+      const props = a.props ?? {};
+      const asked = checkFor({ id: a.command, props }, specs);
+      if (asked === undefined) {
+        const state: UxCheckState = 'unjudged';
+        const blank = specs.find(
+          (spec) => spec.required && !(spec.name in props) && !canBlank(spec),
+        );
+        const name = blank?.name ?? a.command;
+        return ok(
+          `${a.command}: ${state} — "${name}" is required and has no blank value, so give it ` +
+            'to be judged.',
+          { data: { state, prop: name } },
+        );
+      }
+      const verdict = await deps.check(asked.id, asked.props);
+      return ok(`${a.command}: ${verdict.state} — ${verdict.message}`, {
+        data: { state: verdict.state, message: verdict.message },
+      });
+    },
+  };
 }

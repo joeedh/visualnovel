@@ -10,6 +10,7 @@ import { WorkspaceSession, type SessionDeps } from '../session.js';
 import { SessionStore } from '../workspace/sessionstore.js';
 import { SessionState } from '../workspace/sessionstate.js';
 import { MOCK } from '../bootstrap/cliargs.js';
+import { getStack } from './stack.js';
 import type { AskRequest, ConfirmRequest, PlanRequest, SessionValue } from '../../shared/ipc.js';
 
 function buildDeps(ctx: AppContext): SessionDeps {
@@ -55,6 +56,7 @@ function buildDeps(ctx: AppContext): SessionDeps {
         tour  : '',
         steps : JSON.stringify(tour),
       }),
+    checkCommand  : (id, props) => getStack(ctx).check(id, props),
   };
 }
 
