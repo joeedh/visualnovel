@@ -78,6 +78,16 @@ function shutdown(code) {
 process.on('SIGINT', () => shutdown(0));
 process.on('SIGTERM', () => shutdown(0));
 
+// The UX docs tree the agent reads is a build product, so it is written once here: a rules
+// change during a dev session needs a relaunch, as a command change needs one for the catalog.
+const docs = spawnSync('node', [resolve(root, 'scripts/gen-ux-docs.mjs')], {
+  cwd  : root,
+  stdio: 'inherit',
+});
+if (docs.status !== 0) {
+  process.stderr.write('dev: gen-ux-docs.mjs failed; the agent will have no UX pages\n');
+}
+
 // 1 + 2: start the bundler watch and the renderer server side by side.
 run('node', [resolve(root, 'scripts/esbuild.desktop.mjs'), '--watch'], { cwd: root });
 run('pnpm', ['exec', 'vite', '--port', port, '--strictPort'], { cwd: desktop });

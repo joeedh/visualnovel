@@ -11,12 +11,12 @@ pnpm-lock.yaml
 coverage/**
 keys/**
 
-# The author's running list. Hand-written shorthand, deliberately not markdown checkboxes —
+# The author's running list. Hand-written shorthand, deliberately not markdown checkboxes â€”
 # reformatting it loses the shape it is kept in. See CLAUDE.md's Plans conventions.
 todos.md
 
 # Standalone, hand-authored design reference (compact single-line HTML/CSS kept on purpose).
-# It's an artifact, not source — don't let prettier reflow it into thousands of lines.
+# It's an artifact, not source â€” don't let prettier reflow it into thousands of lines.
 apps/desktop/prototype.html
 
 # Authored project inputs are serialized by @vn/parse's round-trip YAML front-matter writer
@@ -33,7 +33,7 @@ docs/reference/command-table.md
 docs/reference/command-namespaces.md
 
 # A run's output tree, written by @vn/store and @vn/pipeline. It's committed (it's the
-# reproducible result of a run), but its writers own its formatting — a prettier pass here
+# reproducible result of a run), but its writers own its formatting â€” a prettier pass here
 # would show up as a spurious diff after every single run.
 **/vngen/build/**
 **/vngen/state/**
@@ -42,3 +42,7 @@ docs/reference/command-namespaces.md
 # The recorded fixture-art corpus. `index.json` is written by AssetCache on every re-record,
 # so a prettier pass over it would be undone by the next one.
 packages/testkit/assets/**
+
+# Golden pages of the UX docs tree, compared byte for byte by
+# apps/desktop/src/main/tests/uxdocs.test.ts; the renderer writes unpadded tables on purpose.
+apps/desktop/src/main/tests/__fixtures__/uxdocs/**

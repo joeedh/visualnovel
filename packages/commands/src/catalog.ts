@@ -71,6 +71,7 @@ export interface DocCommandEntry {
   id: string;
   namespace: string;
   title: string;
+  description: string;
   mutating: boolean;
   confirm: boolean;
   undoable: boolean;
@@ -84,13 +85,14 @@ export interface DocCommandEntry {
 
 export function toDocIndex(registry: CommandRegistry<any>): DocCommandEntry[] {
   return registry.list().map<DocCommandEntry>((command) => ({
-    id       : command.id,
-    namespace: command.id.split('.')[0]!,
-    title    : command.title,
-    mutating : command.mutating,
-    confirm  : command.confirm ?? false,
-    undoable : command.undoable ?? false,
-    checkable: Boolean(command.check),
+    id         : command.id,
+    namespace  : command.id.split('.')[0]!,
+    title      : command.title,
+    description: command.description,
+    mutating   : command.mutating,
+    confirm    : command.confirm ?? false,
+    undoable   : command.undoable ?? false,
+    checkable  : Boolean(command.check),
     ...(command.affects ? { affects: [...command.affects] } : {}),
     ...(command.notes ? { notes: command.notes } : {}),
     props: Object.entries(command.props).map(([name, spec]) => ({
