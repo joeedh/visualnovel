@@ -72,14 +72,24 @@ const listed = (value: string | undefined): string[] =>
 export type FileKind =
   'picture' | 'scene' | 'sheet' | 'wiki' | 'storyboard' | 'project' | 'log' | 'other';
 
+/** One slot whose accepted picture a save moved; null where the slot had none on that side. */
+export interface SlotChange {
+  slot: string;
+  before: string | null;
+  after: string | null;
+}
+
 /** A diff shaped for its file kind. */
 export type Diff =
   /** A line diff, for `other`, `storyboard` and `project` files. */
   | { kind: 'lines'; lines: DiffLine[] }
   /** A word diff by paragraph, for `wiki`, `sheet` and `scene` files. */
   | { kind: 'prose'; paragraphs: DiffParagraph[] }
-  /** A log only grows; the line counts are the whole story. */
-  | { kind: 'log'; added: number; removed: number }
+  /**
+   * A log only grows; the line counts are the whole story. The manifest is the one log whose
+   * lines an author would ask about, so it also lists the slots whose accepted picture moved.
+   */
+  | { kind: 'log'; added: number; removed: number; slots?: SlotChange[] }
   /** A picture on either side, as a URL the renderer can draw; null where the side lacks it. */
   | { kind: 'picture'; before: string | null; after: string | null }
   /** Bytes git could not diff, sized per side; null where the side lacks the file. */

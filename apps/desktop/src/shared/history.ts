@@ -102,8 +102,9 @@ const LOG = /^(vngen\/state\/.+\.jsonl|assets\/manifest\.json)$/;
 export function kindOf(path: string): FileKind {
   if (PICTURE.test(path)) return 'picture';
   if (LOG.test(path)) return 'log';
-  if (path.startsWith('scenes/') && path.endsWith('.fountain')) return 'scene';
-  if (path === 'screenplay.fountain') return 'scene';
+  // A scene is `scenes/<id>.md` since the import; the one-file screenplay is the retired form
+  if (path.startsWith('scenes/') && /\.(md|fountain)$/.test(path)) return 'scene';
+  if (/^(screenplay\/[^/]+|screenplay)\.(md|fountain)$/.test(path)) return 'scene';
   if (path.startsWith('characters/') || path.startsWith('locations/')) {
     return path.endsWith('.md') ? 'sheet' : 'other';
   }

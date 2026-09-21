@@ -36,7 +36,7 @@ Nothing runs it as a later step of a click.
 
 ## Reaching it
 
-- Sweep: a control or menu entry ran it in the sweep of 2026-09-21 at 533168d.
+- Sweep: a control or menu entry ran it in the sweep of 2026-09-21 at dd9dda7.
 - Palette-only rule: none.
 - Shortcut: none.
 - Menu: doctree (documents) on `shot:sample/shot1` — "Approve as a portrait…" with `hash=a1b2c3d4`

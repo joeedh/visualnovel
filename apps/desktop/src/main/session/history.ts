@@ -3,6 +3,7 @@
  * diff of one file, over `@vn/git`. Per-commit answers are held for the session, since a commit's
  * contents never change; the list is not, since HEAD does.
  */
+import { slotKey, slotLabel, slotsOf } from '@vn/artgen';
 import { Workspace } from '@vn/authoring';
 import {
   makerOf,
@@ -15,7 +16,9 @@ import {
   type HistoryEntry,
   type Maker,
   type Save,
+  type SlotChange,
 } from '@vn/git';
+import type { Asset } from '@vn/types';
 import type { DiffLine } from '@vn/util';
 import {
   blobUrl,
@@ -89,6 +92,49 @@ function hunkLines(unified: string): DiffLine[] {
 }
 
 const countLines = (text: string): number => (text === '' ? 0 : text.split('\n').length);
+
+const MANIFEST = 'assets/manifest.json';
+
+/**
+ * The picture each slot holds in one manifest, by slot key: the row marked `current`, or the
+ * accepted row in a manifest written before takes were held. A manifest that does not parse
+ * holds nothing, so a save that corrupted it reads as emptying every slot rather than failing.
+ */
+export function heldTakes(manifest: Buffer | null): Map<string, { label: string; hash: string }> {
+  const held = new Map<string, { label: string; hash: string }>();
+  if (manifest === null) return held;
+  let assets: Asset[];
+  try {
+    const parsed = JSON.parse(manifest.toString('utf8')) as { assets?: unknown };
+    if (!Array.isArray(parsed.assets)) return held;
+    assets = parsed.assets as Asset[];
+  } catch {
+    return held;
+  }
+  const holds = assets.some((a) => a.current === true);
+  for (const asset of assets) {
+    if (!(holds ? asset.current === true : asset.accepted === true)) continue;
+    if (!Array.isArray(asset.satisfies)) continue;
+    for (const binding of slotsOf(asset)) {
+      held.set(slotKey(binding), { label: slotLabel(binding), hash: asset.hash });
+    }
+  }
+  return held;
+}
+
+/** The slots that hold a different picture after the save than before it, in slot-key order. */
+export function slotChanges(before: Buffer | null, after: Buffer | null): SlotChange[] {
+  const was = heldTakes(before);
+  const now = heldTakes(after);
+  const out: SlotChange[] = [];
+  for (const key of [...new Set([...was.keys(), ...now.keys()])].sort()) {
+    const a = was.get(key);
+    const b = now.get(key);
+    if (a?.hash === b?.hash) continue;
+    out.push({ slot: (a ?? b)!.label, before: a?.hash ?? null, after: b?.hash ?? null });
+  }
+  return out;
+}
 
 export class HistoryPart {
   constructor(private readonly session: WorkspaceSession) {}
@@ -209,8 +255,15 @@ export class HistoryPart {
     const change = (await this.changes(role, sha)).find((c) => c.path === path);
     if (!change) return null;
     const kind = kindOf(path);
-    if (kind === 'log')
-      return { kind: 'log', added: change.added ?? 0, removed: change.removed ?? 0 };
+    if (kind === 'log') {
+      const counts = { added: change.added ?? 0, removed: change.removed ?? 0 };
+      if (path !== MANIFEST) return { kind: 'log', ...counts };
+      const [before, after] = await Promise.all([
+        change.oldBlob ? git.catBlob(change.oldBlob) : null,
+        change.newBlob ? git.catBlob(change.newBlob) : null,
+      ]);
+      return { kind: 'log', ...counts, slots: slotChanges(before, after) };
+    }
     if (kind === 'picture') {
       return {
         kind  : 'picture',

@@ -1,15 +1,19 @@
 import {
   clearAction,
   dayHeading,
+  detailControls,
   emptySentence,
   groupByDay,
   moreAction,
   NO_FILTER,
+  onlyLogs,
   pathAction,
+  ranSentence,
   resolvePath,
   shown,
   statusSentence,
   stripSentence,
+  threadOf,
   timeOf,
   type HistoryState,
 } from '../history.js';
@@ -147,6 +151,80 @@ describe('the refused controls', () => {
       refusal: { reason: 'Every save is listed.' },
     });
     expect(moreAction('a'.repeat(40)).ok).toBe(true);
+  });
+});
+
+describe('the detail column', () => {
+  const open = state('agent-save-open');
+  const agent = open.saves[1]!;
+  const mine = open.saves[0]!;
+
+  it('finds the conversation in the transcript an agent turn appended to, and nowhere else', () => {
+    expect(threadOf(agent)).toBe('20260921-133000');
+    expect(threadOf(mine)).toBeUndefined();
+    expect(
+      threadOf({
+        ...agent,
+        files: [{ path: 'vngen/state/threads/x.native.jsonl', added: 1, removed: 0 }],
+      }),
+    ).toBeUndefined();
+  });
+
+  it('says what the app ran, from the trailers', () => {
+    expect(ranSentence(mine)).toBe("story.moveLine(lineId='L4' toScene='rooftop')");
+    expect(
+      ranSentence({
+        ...mine,
+        trailers: { 'Vn-Batch': '30 seqs 12-41', 'Vn-Command': 'story.editLine, story.setSpeaker' },
+      }),
+    ).toBe('30 acts: story.editLine, story.setSpeaker');
+    expect(ranSentence({ ...mine, trailers: {} })).toBe('');
+  });
+
+  it('knows a save that touched only logs', () => {
+    expect(onlyLogs(agent)).toBe(false);
+    expect(onlyLogs({ ...agent, files: agent.files.slice(1) })).toBe(true);
+    expect(onlyLogs({ ...agent, files: [] })).toBe(false);
+  });
+
+  it('offers the conversation on an agent save and refuses it on the author’s own', () => {
+    const [convo] = detailControls(open);
+    expect(convo).toMatchObject({
+      ok   : true,
+      id   : 'agent.openThread',
+      props: { id: '20260921-133000' },
+      then : [{ id: 'view.open', props: { editor: 'convo', where: 'elsewhere' } }],
+    });
+    expect(detailControls(state('one-repo'))[0]).toMatchObject({
+      ok     : false,
+      id     : 'agent.openThread',
+      refusal: { reason: 'This save did not come from a conversation.' },
+    });
+    const { selected: _selected, ...unselected } = open;
+    expect(detailControls(unselected)).toEqual([]);
+  });
+
+  it('folds the logs behind their count, and lists them once unfolded', () => {
+    const folded = detailControls(open).map((o) => o.label);
+    expect(folded).toEqual(['Open the conversation', 'scenes/rooftop.fountain', 'Logs (2)']);
+    const unfolded = detailControls(state('mid-diff-open')).map((o) => o.label);
+    expect(unfolded).toEqual([
+      'Open the conversation',
+      '← Files',
+      'scenes/rooftop.fountain',
+      'vngen/state/commands.jsonl',
+      'vngen/state/threads/20260921-133000.jsonl',
+      'Logs',
+    ]);
+  });
+
+  it('offers the way back to the files only where the diff took their place', () => {
+    const labels = (s: HistoryState) => detailControls(s).map((o) => o.label);
+    expect(labels(open)).not.toContain('← Files');
+    expect(labels({ ...open, size: 'mid' })).toContain('← Files');
+    expect(labels({ ...open, size: 'small' })).toContain('← Files');
+    const { file: _file, ...noFile } = open;
+    expect(labels({ ...noFile, size: 'small' })).not.toContain('← Files');
   });
 });
 

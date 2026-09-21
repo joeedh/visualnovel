@@ -364,13 +364,25 @@
       "module": "history",
       "editor": "history",
       "name"  : "one-repo",
-      "why": "One repository, so no chooser is drawn; three rows of three makers, one selected; every filter off, so Show all is refused; more saves remain, so Earlier saves is offered."
+      "why": "One repository, so no chooser is drawn; three rows of three makers, one selected; every filter off, so Show all is refused; more saves remain, so Earlier saves is offered. The selected save is the author’s own, so opening a conversation is refused."
     },
     {
       "module": "history",
       "editor": "history",
       "name"  : "two-repos-filtered",
       "why": "The story bible is its own repository, so the chooser lists both; the list is narrowed to one file and to the agent, so the chip and Show all are offered; the history has ended, so Earlier saves is refused."
+    },
+    {
+      "module": "history",
+      "editor": "history",
+      "name"  : "agent-save-open",
+      "why": "An agent’s save is selected at full width with a diff open beneath its files: the conversation is offered, the logs are folded behind their count, and no way back is drawn because the file list is still on screen."
+    },
+    {
+      "module": "history",
+      "editor": "history",
+      "name"  : "mid-diff-open",
+      "why": "Two narrow columns with a diff open in the file list’s place, and the logs unfolded: the way back to the files is offered, and every file including the logs is listed."
     },
     {
       "module": "history",
@@ -19280,7 +19292,7 @@
       "offer": {
         "id"     : "pane.view",
         "label"  : "Agent turn: make the rooftop scene tenser",
-        "tooltip": "Show what this save changed. Agent · 2 files · bbbbbbb",
+        "tooltip": "Show what this save changed. Agent · 3 files · bbbbbbb",
         "on"     : "save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "ok"     : true,
         "props": {
@@ -19344,6 +19356,54 @@
           "id"   : "pane.view",
           "props": {
             "what": "page"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "one-repo",
+      "key"       : "cmd:agent.openThread",
+      "widgetPath": "history/agent-openthread~927b3990",
+      "offer": {
+        "id"     : "agent.openThread",
+        "label"  : "Open the conversation",
+        "tooltip": "Replay the conversation this save came from, read-only, in the Convo pane.",
+        "ok"     : false,
+        "refusal": {
+          "reason": "This save did not come from a conversation."
+        }
+      },
+      "effects": [
+        {
+          "id": "agent.openThread"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "one-repo",
+      "key"       : "fx:pane.view#file/scenes/rooftop.fountain",
+      "widgetPath": "history/pane-view~643539e6",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "scenes/rooftop.fountain",
+        "tooltip": "Show how this save changed scenes/rooftop.fountain.",
+        "on"     : "file/scenes/rooftop.fountain",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
           }
         }
       ]
@@ -19566,7 +19626,7 @@
       "offer": {
         "id"     : "pane.view",
         "label"  : "Agent turn: make the rooftop scene tenser",
-        "tooltip": "Show what this save changed. Agent · 2 files · bbbbbbb",
+        "tooltip": "Show what this save changed. Agent · 3 files · bbbbbbb",
         "on"     : "save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "ok"     : true,
         "props": {
@@ -19602,6 +19662,774 @@
       "effects": [
         {
           "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "agent-save-open",
+      "key"       : "fx:pane.view#who",
+      "widgetPath": "history/pane-view~f13e92ac",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Everyone",
+        "tooltip": "Narrow the list to the saves one kind of maker made: you, the agent, the pipeline, or the app’s housekeeping.",
+        "on"     : "who",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "agent-save-open",
+      "key"       : "fx:pane.view#path",
+      "widgetPath": "history/pane-view~f5ccb359",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Any file",
+        "tooltip": "Right-click a file or a scene in the document tree and choose Show history to narrow the list to it.",
+        "on"     : "path",
+        "ok"     : false,
+        "refusal": {
+          "reason": "The list is not narrowed to a file."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "agent-save-open",
+      "key"       : "fx:pane.view#checkpoints",
+      "widgetPath": "history/pane-view~0d942c3d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Checkpoints",
+        "tooltip": "Show only the saves you named as a checkpoint.",
+        "on"     : "checkpoints",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "agent-save-open",
+      "key"       : "fx:pane.view#text",
+      "widgetPath": "history/pane-view~34dea019",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Search saves…",
+        "tooltip": "Narrow the list to the saves whose description contains these words.",
+        "on"     : "text",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "agent-save-open",
+      "key"       : "fx:pane.view#clear",
+      "widgetPath": "history/pane-view~13059a85",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Show all",
+        "tooltip": "Take every filter off and show every save.",
+        "on"     : "clear",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing narrows the list."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "agent-save-open",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "history/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Read the saves again, in case something changed outside the app.",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "agent-save-open",
+      "key"       : "fx:pane.view#save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "widgetPath": "history/pane-view~c2eee052",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Moved line L4 into rooftop",
+        "tooltip": "Show what this save changed. You · 1 file · aaaaaaa",
+        "on"     : "save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "agent-save-open",
+      "key"       : "fx:pane.view#save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "widgetPath": "history/pane-view~946708b2",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Agent turn: make the rooftop scene tenser",
+        "tooltip": "Showing this save. Agent · 3 files · bbbbbbb",
+        "on"     : "save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "agent-save-open",
+      "key"       : "fx:pane.view#save/cccccccccccccccccccccccccccccccccccccccc",
+      "widgetPath": "history/pane-view~442baf92",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Generated 14 assets",
+        "tooltip": "Show what this save changed. Pipeline · 1 file · ccccccc",
+        "on"     : "save/cccccccccccccccccccccccccccccccccccccccc",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "agent-save-open",
+      "key"       : "fx:pane.view#more",
+      "widgetPath": "history/pane-view~bab7f4e9",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Earlier saves",
+        "tooltip": "Read the next fifty saves.",
+        "on"     : "more",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Every save is listed."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "agent-save-open",
+      "key"       : "cmd:agent.openThread#20260921-133000",
+      "widgetPath": "history/agent-openthread~250aad50",
+      "offer": {
+        "id"     : "agent.openThread",
+        "label"  : "Open the conversation",
+        "tooltip": "Replay the conversation this save came from, read-only, in the Convo pane.",
+        "on"     : "20260921-133000",
+        "ok"     : true,
+        "props": {
+          "id": "20260921-133000"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor": "convo",
+              "where" : "elsewhere"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "agent.openThread",
+          "props": {
+            "id": "20260921-133000"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor": "convo",
+            "where" : "elsewhere"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "agent-save-open",
+      "key"       : "fx:pane.view#file/scenes/rooftop.fountain",
+      "widgetPath": "history/pane-view~643539e6",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "scenes/rooftop.fountain",
+        "tooltip": "Showing how this save changed scenes/rooftop.fountain.",
+        "on"     : "file/scenes/rooftop.fountain",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "agent-save-open",
+      "key"       : "fx:pane.view#logs",
+      "widgetPath": "history/pane-view~c1b358eb",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Logs (2)",
+        "tooltip": "List the 2 log files this save also touched: the command log, the task log, and a conversation’s transcript.",
+        "on"     : "logs",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "mid-diff-open",
+      "key"       : "fx:pane.view#who",
+      "widgetPath": "history/pane-view~f13e92ac",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Everyone",
+        "tooltip": "Narrow the list to the saves one kind of maker made: you, the agent, the pipeline, or the app’s housekeeping.",
+        "on"     : "who",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "mid-diff-open",
+      "key"       : "fx:pane.view#path",
+      "widgetPath": "history/pane-view~f5ccb359",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Any file",
+        "tooltip": "Right-click a file or a scene in the document tree and choose Show history to narrow the list to it.",
+        "on"     : "path",
+        "ok"     : false,
+        "refusal": {
+          "reason": "The list is not narrowed to a file."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "mid-diff-open",
+      "key"       : "fx:pane.view#checkpoints",
+      "widgetPath": "history/pane-view~0d942c3d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Checkpoints",
+        "tooltip": "Show only the saves you named as a checkpoint.",
+        "on"     : "checkpoints",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "mid-diff-open",
+      "key"       : "fx:pane.view#text",
+      "widgetPath": "history/pane-view~34dea019",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Search saves…",
+        "tooltip": "Narrow the list to the saves whose description contains these words.",
+        "on"     : "text",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "mid-diff-open",
+      "key"       : "fx:pane.view#clear",
+      "widgetPath": "history/pane-view~13059a85",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Show all",
+        "tooltip": "Take every filter off and show every save.",
+        "on"     : "clear",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing narrows the list."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "mid-diff-open",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "history/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Read the saves again, in case something changed outside the app.",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "mid-diff-open",
+      "key"       : "fx:pane.view#save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "widgetPath": "history/pane-view~c2eee052",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Moved line L4 into rooftop",
+        "tooltip": "Show what this save changed. You · 1 file · aaaaaaa",
+        "on"     : "save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "mid-diff-open",
+      "key"       : "fx:pane.view#save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "widgetPath": "history/pane-view~946708b2",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Agent turn: make the rooftop scene tenser",
+        "tooltip": "Showing this save. Agent · 3 files · bbbbbbb",
+        "on"     : "save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "mid-diff-open",
+      "key"       : "fx:pane.view#save/cccccccccccccccccccccccccccccccccccccccc",
+      "widgetPath": "history/pane-view~442baf92",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Generated 14 assets",
+        "tooltip": "Show what this save changed. Pipeline · 1 file · ccccccc",
+        "on"     : "save/cccccccccccccccccccccccccccccccccccccccc",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "mid-diff-open",
+      "key"       : "fx:pane.view#more",
+      "widgetPath": "history/pane-view~bab7f4e9",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Earlier saves",
+        "tooltip": "Read the next fifty saves.",
+        "on"     : "more",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Every save is listed."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "mid-diff-open",
+      "key"       : "cmd:agent.openThread#20260921-133000",
+      "widgetPath": "history/agent-openthread~250aad50",
+      "offer": {
+        "id"     : "agent.openThread",
+        "label"  : "Open the conversation",
+        "tooltip": "Replay the conversation this save came from, read-only, in the Convo pane.",
+        "on"     : "20260921-133000",
+        "ok"     : true,
+        "props": {
+          "id": "20260921-133000"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor": "convo",
+              "where" : "elsewhere"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "agent.openThread",
+          "props": {
+            "id": "20260921-133000"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor": "convo",
+            "where" : "elsewhere"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "mid-diff-open",
+      "key"       : "fx:pane.view#files",
+      "widgetPath": "history/pane-view~4f7446a1",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "← Files",
+        "tooltip": "Go back to the list of files this save changed.",
+        "on"     : "files",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "mid-diff-open",
+      "key"       : "fx:pane.view#file/scenes/rooftop.fountain",
+      "widgetPath": "history/pane-view~643539e6",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "scenes/rooftop.fountain",
+        "tooltip": "Showing how this save changed scenes/rooftop.fountain.",
+        "on"     : "file/scenes/rooftop.fountain",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "mid-diff-open",
+      "key"       : "fx:pane.view#file/vngen/state/commands.jsonl",
+      "widgetPath": "history/pane-view~a572d348",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "vngen/state/commands.jsonl",
+        "tooltip": "Show how this save changed vngen/state/commands.jsonl.",
+        "on"     : "file/vngen/state/commands.jsonl",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "mid-diff-open",
+      "key"       : "fx:pane.view#file/vngen/state/threads/20260921-133000.jsonl",
+      "widgetPath": "history/pane-view~22517a76",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "vngen/state/threads/20260921-133000.jsonl",
+        "tooltip": "Show how this save changed vngen/state/threads/20260921-133000.jsonl.",
+        "on"     : "file/vngen/state/threads/20260921-133000.jsonl",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "mid-diff-open",
+      "key"       : "fx:pane.view#logs",
+      "widgetPath": "history/pane-view~c1b358eb",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Logs",
+        "tooltip": "Fold the app’s own logs away again.",
+        "on"     : "logs",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
         }
       ]
     },
@@ -19817,7 +20645,7 @@
       "offer": {
         "id"     : "pane.view",
         "label"  : "Agent turn: make the rooftop scene tenser",
-        "tooltip": "Showing this save. Agent · 2 files · bbbbbbb",
+        "tooltip": "Showing this save. Agent · 3 files · bbbbbbb",
         "on"     : "save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "ok"     : true,
         "props": {
@@ -19879,6 +20707,100 @@
       "effects": [
         {
           "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "narrow-detail",
+      "key"       : "cmd:agent.openThread#20260921-133000",
+      "widgetPath": "history/agent-openthread~250aad50",
+      "offer": {
+        "id"     : "agent.openThread",
+        "label"  : "Open the conversation",
+        "tooltip": "Replay the conversation this save came from, read-only, in the Convo pane.",
+        "on"     : "20260921-133000",
+        "ok"     : true,
+        "props": {
+          "id": "20260921-133000"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor": "convo",
+              "where" : "elsewhere"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "agent.openThread",
+          "props": {
+            "id": "20260921-133000"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor": "convo",
+            "where" : "elsewhere"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "narrow-detail",
+      "key"       : "fx:pane.view#file/scenes/rooftop.fountain",
+      "widgetPath": "history/pane-view~643539e6",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "scenes/rooftop.fountain",
+        "tooltip": "Show how this save changed scenes/rooftop.fountain.",
+        "on"     : "file/scenes/rooftop.fountain",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "narrow-detail",
+      "key"       : "fx:pane.view#logs",
+      "widgetPath": "history/pane-view~c1b358eb",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Logs (2)",
+        "tooltip": "List the 2 log files this save also touched: the command log, the task log, and a conversation’s transcript.",
+        "on"     : "logs",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
         }
       ]
     },

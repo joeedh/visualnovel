@@ -28,8 +28,11 @@ describe('parseGitUrl', () => {
 
 describe('kindOf', () => {
   it.each([
+    ['scenes/rooftop.md', 'scene'],
     ['scenes/rooftop.fountain', 'scene'],
     ['screenplay.fountain', 'scene'],
+    ['screenplay/script.fountain', 'scene'],
+    ['scenes/notes.txt', 'other'],
     ['characters/mara/mara.md', 'sheet'],
     ['locations/rooftop.md', 'sheet'],
     ['characters/mara/portrait.png', 'picture'],

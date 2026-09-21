@@ -1,6 +1,7 @@
 /**
  * The History pane's situations: one repository with saves of every maker, two repositories with
- * a filter on, a project inside a foreign repository, and an empty history.
+ * a filter on, a project inside a foreign repository, an empty history, and a save with a diff
+ * open in each width.
  */
 import { situations } from './situation.js';
 import { NO_FILTER, type HistoryState } from '../history.js';
@@ -30,7 +31,11 @@ const save = (over: Partial<Save> & { sha: string }): Save => ({
   date       : '2026-09-21T14:02:00+00:00',
   subject    : 'Moved line L4 into rooftop',
   body       : '',
-  trailers   : { 'Vn-Command': 'story.moveLine', 'Vn-Source': 'ui' },
+  trailers: {
+    'Vn-Command'   : 'story.moveLine',
+    'Vn-Invocation': "story.moveLine(lineId='L4' toScene='rooftop')",
+    'Vn-Source'    : 'ui',
+  },
   files      : [{ path: 'scenes/rooftop.fountain', added: 3, removed: 1 }],
   maker      : 'author',
   checkpoints: [],
@@ -43,12 +48,17 @@ const SAVES: Save[] = [
   save({
     sha     : 'b'.repeat(40),
     subject : 'Agent turn: make the rooftop scene tenser',
-    trailers: { 'Vn-Command': 'agent.run', 'Vn-Source': 'ui' },
+    trailers: {
+      'Vn-Command'   : 'agent.run',
+      'Vn-Invocation': "agent.run(input='make the rooftop scene tenser')",
+      'Vn-Source'    : 'ui',
+    },
     maker   : 'agent',
     date    : '2026-09-21T13:40:00+00:00',
     files: [
       { path: 'scenes/rooftop.fountain', added: 12, removed: 4 },
       { path: 'vngen/state/commands.jsonl', added: 2, removed: 0 },
+      { path: 'vngen/state/threads/20260921-133000.jsonl', added: 6, removed: 0 },
     ],
   }),
   save({
@@ -66,7 +76,7 @@ const SAVES: Save[] = [
 export const SITUATIONS = situations<HistoryState>(
   {
     name : 'one-repo',
-    why: 'One repository, so no chooser is drawn; three rows of three makers, one selected; every filter off, so Show all is refused; more saves remain, so Earlier saves is offered.',
+    why: 'One repository, so no chooser is drawn; three rows of three makers, one selected; every filter off, so Show all is refused; more saves remain, so Earlier saves is offered. The selected save is the author’s own, so opening a conversation is refused.',
     state: {
       repos        : [PROJECT],
       repo         : 'project',
@@ -75,7 +85,8 @@ export const SITUATIONS = situations<HistoryState>(
       saves        : SAVES,
       next         : 'c'.repeat(40),
       selected     : 'a'.repeat(40),
-      narrow       : false,
+      logsOpen     : false,
+      size         : 'large',
       showingDetail: false,
     },
   },
@@ -89,7 +100,42 @@ export const SITUATIONS = situations<HistoryState>(
       status       : CLEAN,
       saves        : [SAVES[1]!],
       next         : null,
-      narrow       : false,
+      logsOpen     : false,
+      size         : 'large',
+      showingDetail: false,
+    },
+  },
+  {
+    name : 'agent-save-open',
+    why: 'An agent’s save is selected at full width with a diff open beneath its files: the conversation is offered, the logs are folded behind their count, and no way back is drawn because the file list is still on screen.',
+    state: {
+      repos        : [PROJECT],
+      repo         : 'project',
+      filter       : NO_FILTER,
+      status       : CLEAN,
+      saves        : SAVES,
+      next         : null,
+      selected     : 'b'.repeat(40),
+      file         : 'scenes/rooftop.fountain',
+      logsOpen     : false,
+      size         : 'large',
+      showingDetail: false,
+    },
+  },
+  {
+    name : 'mid-diff-open',
+    why: 'Two narrow columns with a diff open in the file list’s place, and the logs unfolded: the way back to the files is offered, and every file including the logs is listed.',
+    state: {
+      repos        : [PROJECT],
+      repo         : 'project',
+      filter       : NO_FILTER,
+      status       : CLEAN,
+      saves        : SAVES,
+      next         : null,
+      selected     : 'b'.repeat(40),
+      file         : 'scenes/rooftop.fountain',
+      logsOpen     : true,
+      size         : 'mid',
       showingDetail: false,
     },
   },
@@ -104,7 +150,8 @@ export const SITUATIONS = situations<HistoryState>(
       saves        : SAVES,
       next         : null,
       selected     : 'b'.repeat(40),
-      narrow       : true,
+      logsOpen     : false,
+      size         : 'small',
       showingDetail: true,
     },
   },
@@ -118,7 +165,8 @@ export const SITUATIONS = situations<HistoryState>(
       status       : { ...CLEAN, upstream: null, ahead: null, behind: null, remotes: [] },
       saves        : [],
       next         : null,
-      narrow       : false,
+      logsOpen     : false,
+      size         : 'large',
       showingDetail: false,
     },
   },
@@ -131,7 +179,8 @@ export const SITUATIONS = situations<HistoryState>(
       filter       : NO_FILTER,
       saves        : [],
       next         : null,
-      narrow       : false,
+      logsOpen     : false,
+      size         : 'large',
       showingDetail: false,
     },
   },

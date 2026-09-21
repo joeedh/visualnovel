@@ -2,17 +2,23 @@ import type { Container } from 'pathux';
 import { exec, onInvalidate } from '../app/bridge.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { layoutChanged } from '../app/persist.js';
-import { redrawing } from '../tour/anchors.js';
+import { redrawing, type AnchorPass } from '../tour/anchors.js';
 import {
   backAction,
   checkpointsAction,
   clearAction,
+  conversationAction,
   emptySentence,
+  fileAction,
+  filesBackAction,
   groupByDay,
+  logsAction,
   MAKER_SAYS,
   moreAction,
   NO_FILTER,
+  onlyLogs,
   pathAction,
+  ranSentence,
   reloadAction,
   repoAction,
   resolvePath,
@@ -21,16 +27,19 @@ import {
   shown,
   statusSentence,
   stripSentence,
+  threadOf,
   timeOf,
   WHO_ROWS,
   whoAction,
   type HistoryFilter,
   type HistoryState,
+  type PaneSize,
 } from '../../rules/history.js';
 import {
   KIND_ORDER,
   kindOf,
   REPO_ROLES,
+  type Diff,
   type FileKind,
   type HistoryPage,
   type Maker,
@@ -39,6 +48,7 @@ import {
   type RepoStatus,
   type Save,
 } from '../../../src/shared/history.js';
+import { drawDiff } from './history/diffs/index.js';
 import HISTORY_CSS from '../../styles/history.css?inline';
 
 /** Below this width the pane is one column; below `LARGE` the list column is the narrower one. */
@@ -89,7 +99,12 @@ export class HistoryEditor extends VnEditor {
   private saves: Save[] = [];
   private next: string | null = null;
   private selected: string | undefined;
-  private narrow = false;
+  /** The file of the selected save whose diff is open, and the diff once it has been read. */
+  private file: string | undefined;
+  private diff: Diff | undefined;
+  private diffFailure = '';
+  private logsOpen = false;
+  private width: PaneSize = 'large';
   private showingDetail = false;
 
   /** What `ui.docPath` was the last time the pane looked, so only a change narrows the list. */
@@ -229,7 +244,9 @@ export class HistoryEditor extends VnEditor {
       saves: shown(this.saves, this.filter),
       next : this.next,
       ...(this.selected === undefined ? {} : { selected: this.selected }),
-      narrow       : this.narrow,
+      ...(this.file === undefined ? {} : { file: this.file }),
+      logsOpen     : this.logsOpen,
+      size         : this.width,
       showingDetail: this.showingDetail,
     };
   }
@@ -392,17 +409,52 @@ export class HistoryEditor extends VnEditor {
   }
 
   private select(sha: string): void {
+    if (sha !== this.selected) {
+      this.file = undefined;
+      this.diff = undefined;
+      this.logsOpen = false;
+    }
     this.selected = sha;
     this.showingDetail = true;
     this.rebuild();
   }
 
+  /** Open one file's diff, reading it if this is the first look. The file list stays as it is. */
+  private openFile(path: string): void {
+    if (path === this.file) return;
+    this.file = path;
+    this.diff = undefined;
+    this.diffFailure = '';
+    this.rebuild();
+    void this.loadDiff(path);
+  }
+
+  private closeFile(): void {
+    this.file = undefined;
+    this.diff = undefined;
+    this.diffFailure = '';
+    this.rebuild();
+  }
+
+  private async loadDiff(path: string): Promise<void> {
+    const sha = this.selected;
+    if (sha === undefined) return;
+    try {
+      const diff = await this.read<Diff>('git.diff', { repo: this.repo, sha, path });
+      if (this.selected !== sha || this.file !== path) return;
+      this.diff = diff;
+    } catch (err) {
+      if (this.selected !== sha || this.file !== path) return;
+      this.diffFailure = err instanceof Error ? err.message : String(err);
+    }
+    this.rebuild();
+  }
+
   private resized(width: number): void {
-    const size = width < SMALL ? 'small' : width < LARGE ? 'mid' : 'large';
+    const size: PaneSize = width < SMALL ? 'small' : width < LARGE ? 'mid' : 'large';
     if (this.surface.dataset['size'] !== size) this.surface.dataset['size'] = size;
-    const narrow = size === 'small';
-    if (narrow === this.narrow) return;
-    this.narrow = narrow;
+    if (size === this.width) return;
+    this.width = size;
     this.rebuild();
   }
 
@@ -415,7 +467,11 @@ export class HistoryEditor extends VnEditor {
       this.filter.checkpointsOnly,
       this.token,
       this.selected,
-      this.narrow,
+      this.file,
+      this.diff === undefined ? '' : this.diff.kind,
+      this.diffFailure,
+      this.logsOpen,
+      this.width,
       this.showingDetail,
       this.failure,
     ].join('|');
@@ -428,7 +484,9 @@ export class HistoryEditor extends VnEditor {
   private rebuild(): void {
     this.drawn = this.stateKey();
     const state = this.state();
-    this.surface.classList.toggle('detail', state.narrow && state.showingDetail);
+    this.surface.classList.toggle('detail', state.size === 'small' && state.showingDetail);
+    // In the two narrower layouts the diff takes the file list's place
+    this.surface.classList.toggle('diff', state.size !== 'large' && state.file !== undefined);
     this.rebuildStrip(state);
     this.rebuildFilters(state);
     this.rebuildList(state);
@@ -450,7 +508,11 @@ export class HistoryEditor extends VnEditor {
       this.strip.appendChild(chooser);
     }
     const entry = state.repos.find((r) => r.role === state.repo);
-    const line = el('div', 'hs-strip-line', stripSentence(entry, state.status, state.narrow));
+    const line = el(
+      'div',
+      'hs-strip-line',
+      stripSentence(entry, state.status, state.size === 'small'),
+    );
     line.title = entry ? entry.root : '';
     this.strip.appendChild(line);
   }
@@ -592,7 +654,7 @@ export class HistoryEditor extends VnEditor {
   private rebuildDetail(state: HistoryState): void {
     this.detail.textContent = '';
     const anchors = redrawing('history', 'detail');
-    if (state.narrow && state.showingDetail) {
+    if (state.size === 'small' && state.showingDetail) {
       const back = backAction();
       const holder = el('div', 'hs-back');
       holder.appendChild(
@@ -614,6 +676,15 @@ export class HistoryEditor extends VnEditor {
       return;
     }
 
+    this.detail.appendChild(this.detailHead(save, anchors));
+    this.detail.appendChild(this.fileList(save, state, anchors));
+    if (state.file !== undefined) {
+      this.detail.appendChild(this.diffView(save, state.file, state, anchors));
+    }
+  }
+
+  /** The subject, who made it and when, what the app ran, the message body, the conversation. */
+  private detailHead(save: Save, anchors: AnchorPass): HTMLElement {
     const head = el('div', 'hs-head');
     head.appendChild(el('div', 'hs-head-subject', save.subject));
     const line = el('div', 'hs-head-line');
@@ -623,15 +694,54 @@ export class HistoryEditor extends VnEditor {
     when.title = save.sha;
     line.append(`${MAKER_SAYS[save.maker]} · `, when, ` · ${files} file${files === 1 ? '' : 's'}`);
     head.appendChild(line);
+    const ran = ranSentence(save);
+    if (ran !== '') {
+      const row = el('div', 'hs-head-ran');
+      row.append('Ran ', el('code', 'hs-ran', ran));
+      head.appendChild(row);
+    }
     if (save.body.trim() !== '') head.appendChild(el('div', 'hs-head-body', save.body.trim()));
-    this.detail.appendChild(head);
-
-    this.detail.appendChild(this.fileList(save));
+    // Greyed with its reason on a save that is not an agent's, like every refused control here
+    const convo = conversationAction(threadOf(save));
+    const row = el('div', 'hs-head-acts');
+    row.appendChild(
+      anchors.act(el('button', 'hs-btn', convo.label) as HTMLButtonElement, convo, (action) => {
+        void exec(action.id, action.props).then(() => {
+          if (convo.ok) for (const next of convo.then ?? []) void exec(next.id, next.props);
+        });
+      }),
+    );
+    head.appendChild(row);
+    return head;
   }
 
-  /** The files a save touched, grouped by kind in the report's order. The diffs come next stage. */
-  private fileList(save: Save): HTMLElement {
+  /**
+   * The files a save touched, grouped by kind in the report's order, the logs folded behind
+   * their count. A save that touched only logs says so in the list's place, with the fold as the
+   * one thing to do.
+   */
+  private fileList(save: Save, state: HistoryState, anchors: AnchorPass): HTMLElement {
     const list = el('div', 'hs-files');
+    const logs = save.files.filter((f) => kindOf(f.path) === 'log');
+    const logsFold = (alone: boolean) => {
+      const offer = logsAction(state.logsOpen, logs.length, alone);
+      const button = el('button', alone ? 'hs-btn' : 'hs-kind hs-kind-fold', offer.label);
+      button.appendChild(el('span', 'hs-fold-mark', state.logsOpen ? '▾' : '▸'));
+      return anchors.act(button as HTMLButtonElement, offer, () => {
+        this.logsOpen = !this.logsOpen;
+        this.rebuild();
+      });
+    };
+    if (onlyLogs(save) && !state.logsOpen) {
+      const empty = el('div', 'hs-detail-empty');
+      empty.appendChild(
+        el('div', '', 'This save changed nothing an author edits; it updated the task log.'),
+      );
+      empty.appendChild(logsFold(true));
+      list.appendChild(empty);
+      return list;
+    }
+
     const byKind = new Map<FileKind, Save['files']>();
     for (const file of save.files) {
       const kind = kindOf(file.path);
@@ -642,34 +752,83 @@ export class HistoryEditor extends VnEditor {
     for (const kind of KIND_ORDER) {
       const group = byKind.get(kind);
       if (!group) continue;
-      list.appendChild(el('div', 'hs-kind', KIND_SAYS[kind]));
+      if (kind === 'log') {
+        list.appendChild(logsFold(false));
+        if (!state.logsOpen) continue;
+      } else {
+        list.appendChild(el('div', 'hs-kind', KIND_SAYS[kind]));
+      }
       for (const file of group) {
+        const open = file.path === state.file;
         const row = el('div', 'hs-file');
+        row.classList.toggle('open', open);
         const path = el('span', 'hs-file-path', file.path);
-        path.title = file.path;
         row.appendChild(path);
         // Uncoloured on purpose: jade and vermilion are for the words a diff adds and removes
-        const counts =
-          file.added === null || file.removed === null
-            ? 'binary'
-            : `+${file.added} −${file.removed}`;
-        row.appendChild(el('span', 'hs-file-counts', counts));
-        list.appendChild(row);
+        row.appendChild(el('span', 'hs-file-counts', countsOf(file)));
+        list.appendChild(
+          anchors.act(row, fileAction(file.path, open), () => this.openFile(file.path)),
+        );
       }
     }
     return list;
+  }
+
+  /** One file's diff under its own heading, drawn for its kind once `git.diff` has answered. */
+  private diffView(
+    save: Save,
+    path: string,
+    state: HistoryState,
+    anchors: AnchorPass,
+  ): HTMLElement {
+    const view = el('div', 'hs-diff');
+    // Under the file list the lit row and the footer already name the file; the bar is for the
+    // two layouts where the diff has taken the list's place
+    if (state.size !== 'large') {
+      const bar = el('div', 'hs-diff-bar');
+      const back = filesBackAction();
+      bar.appendChild(
+        anchors.act(el('button', 'hs-btn', back.label) as HTMLButtonElement, back, () =>
+          this.closeFile(),
+        ),
+      );
+      const name = el('span', 'hs-diff-path', path);
+      name.title = path;
+      bar.appendChild(name);
+      const file = save.files.find((f) => f.path === path);
+      if (file) bar.appendChild(el('span', 'hs-file-counts', countsOf(file)));
+      view.appendChild(bar);
+    }
+
+    if (this.diffFailure !== '') {
+      view.appendChild(el('div', 'hs-diff-note bad', this.diffFailure));
+    } else if (this.diff === undefined) {
+      view.appendChild(el('div', 'hs-diff-note', 'Reading the change…'));
+    } else {
+      view.appendChild(drawDiff(this.diff, kindOf(path)));
+    }
+    return view;
   }
 
   private rebuildFoot(): void {
     this.foot.textContent = '';
     this.foot.classList.toggle('bad', this.failure !== '');
     const left = el('div', 'hs-foot-left');
-    // Only the reading and failure sentences until the change view gives it a file to name
     if (this.failure !== '') left.textContent = this.failure;
     else if (this.reading) left.textContent = 'Reading history…';
+    else if (this.file !== undefined && this.selected !== undefined) {
+      left.textContent = `${this.file} · ${this.selected.slice(0, 7)}`;
+    }
     left.title = left.textContent;
     this.foot.appendChild(left);
   }
+}
+
+/** `+3 −1`, or the word for a file git could not count. */
+function countsOf(file: Save['files'][number]): string {
+  return file.added === null || file.removed === null
+    ? 'binary'
+    : `+${file.added} −${file.removed}`;
 }
 
 /** `Today 14:02`, or the date and time for an older save. */

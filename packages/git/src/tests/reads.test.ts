@@ -52,7 +52,10 @@ describe('Git.history', () => {
       expect((await git.history({ before: third })).map((e) => e.sha)).toEqual([second, first]);
       expect((await git.history({ before: third, limit: 1 })).map((e) => e.sha)).toEqual([second]);
       expect(await git.history({ before: first })).toEqual([]);
-      expect((await git.history({ path: 'bin.dat' })).map((e) => e.sha)).toEqual([first]);
+      const byPath = await git.history({ path: 'bin.dat' });
+      expect(byPath.map((e) => e.sha)).toEqual([first]);
+      // The path picks the commits; each still lists every file it touched
+      expect(byPath[0]!.files.map((f) => f.path)).toEqual(['a.txt', 'bin.dat']);
       expect(await git.history({ author: 'nobody' })).toEqual([]);
       expect((await git.history({ author: 'test@example' })).length).toBe(3);
       expect((await git.history({ grep: 'body LINE' })).map((e) => e.sha)).toEqual([second]);

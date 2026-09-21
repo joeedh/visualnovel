@@ -468,6 +468,61 @@ given a full refname creates `refs/tags/refs/tags/…`. `Git.log` is untouched.
 - **UX review 2.** Decisions taken here: field-table and key-path diffs; the wipe handle;
   `vngit://` versus a data URL; the middle and small layouts for the detail column.
 
+**As built (2026-09-21).** Everything above, with these particulars:
+
+- The renderers are in `renderer/pathux/editors/history/diffs/`: `scene.ts` (script form),
+  `prose.ts` (paragraphs), `lines.ts` (mono), `picture.ts`, `log.ts` (logs and the binary
+  sentence), with `spans.ts` holding what they share — the struck and underlined runs, the
+  context rule, and a paragraph's spans split into lines. `index.ts` picks by the diff's
+  kind, and by the file's kind for a `prose` diff, since `git.diff` shapes a scene and a
+  note the same way. The context rule is two unchanged paragraphs (or lines) either side
+  of a change, with a run shorter than four shown rather than folded, because "1 unchanged
+  line" hides less than it says. Whole added or removed paragraphs take the colour and a 2
+  px rail, not a decoration on every word; the strike and the underline are for the words
+  that changed inside a paragraph. That was UX review 2's first finding: a note added in
+  one save had underlined 480 lines.
+- **The scene file is `scenes/<id>.md`**, not `.fountain` — the report's detection table
+  predates the import. `kindOf` reads `scenes/*.md` and `scenes/*.fountain` as scenes, and
+  the one-file screenplay under `screenplay/` as well. The script renderer classifies each
+  line of a paragraph from its text with the marks dropped: front matter (a paragraph
+  opening with `---`) as data in the mono face, `[[line: L7]]` as the gutter id of the
+  line under it, any other `[[…]]` as a marker, an uppercase first line with dialogue
+  under it as a cue, `(…)` under a cue as a parenthetical, `INT.`/`EXT.` as a heading,
+  `… TO:` as a transition, and the rest as dialogue or action. The classes mirror
+  `script.css`.
+- **"Ran …" comes from the trailers, not from `commands.jsonl`.** `Vn-Invocation` is on
+  every single-act commit; a batch has `Vn-Batch` and the command list, shown as "30 acts:
+  story.editLine, story.setSpeaker". No read of the log was needed.
+- **"Open the conversation" finds the thread in the save's files.** No trailer names it,
+  and `agent.run`'s record carries no thread id, but every agent turn appends to
+  `vngen/state/threads/<id>.jsonl`, so that path is the thread. The control is
+  `agent.openThread(id)` then `view.open(editor='convo' where='elsewhere')`, and it is
+  drawn greyed with its reason on every other save, like the pane's other refused
+  controls. It cannot fire in the anchor sweep, which opens the pane with nothing
+  selected; the sweep reports it as derived but not drawn.
+- **`--full-diff` on a path-filtered history.** `git log --numstat -- <path>` lists only
+  that path under each commit, so a row's count and its file list were wrong whenever the
+  chip was on. The path now picks the commits and each still lists every file.
+- **The manifest's log diff lists the slots that hold a different picture**, from
+  `heldTakes` in `session/history.ts`: the `current` row per slot, or the accepted row in
+  a manifest written before takes were held. `Diff`'s `log` variant carries `slots?` for
+  it. A manifest that does not parse holds nothing.
+- **Layouts.** At full width the diff sits beneath the file list and there is no diff bar
+  — UX review 2's second finding was the path written three times (the lit row, a bar, the
+  footer). In the two narrower layouts the diff takes the file list's place under a bar
+  with "← Files" and the path. The footer names `path · sha` while a diff is open.
+- **Decided at the review.** No field table and no key-path diff: a sheet's front matter
+  is one mono data paragraph, so a changed field is a changed word on a `key: value` line,
+  and the JSON line diff shows `"nextShot": 3,` → `6,` on its own. `vngit://` serves both
+  sides of a picture; `vnasset://` would only ever be a cache of the same bytes. The wipe
+  is built for a modified picture path (`M`), with the new take clipped over the old at a
+  handle that follows the pointer; no example project has a modified picture, so it is
+  unverified live. A save that touched only logs says so with "Show logs" as the one
+  control. The invocation wraps with `overflow-wrap: anywhere` (it had broken mid-word).
+- The plan's report was wrong in one more place: `Vn-Thread` does not exist. The trailer
+  Stage 6 adds to the agent's own commit should carry the thread id, so the files rule
+  above becomes a fallback for history written before then.
+
 ### Stage 6 — Local writes and the agent's tools
 
 - `git.save`, `git.checkpoint`, `git.dropCheckpoint`, `git.takeBack`, `git.goBack`,

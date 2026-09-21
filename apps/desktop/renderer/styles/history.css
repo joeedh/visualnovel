@@ -406,14 +406,54 @@ button.hs-btn:disabled {
   white-space: pre-wrap;
 }
 
+/* What the app ran: the one invocation an engineer would paste back, so it keeps the mono face. */
+.hs-head-ran {
+  margin-top: 4px;
+  color: var(--mist);
+}
+
+.hs-ran {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--paper);
+  overflow-wrap: anywhere;
+}
+
+.hs-head-acts {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
 .hs-files {
+  flex: 0 0 auto;
   padding: 6px 0;
 }
 
 .hs-kind {
+  display: block;
+  width: 100%;
   padding: 8px 16px 2px;
+  border: 0;
+  background: none;
   color: var(--mist);
+  font: inherit;
   font-size: 11px;
+  text-align: left;
+}
+
+/* The logs heading is also the fold, so it takes the pointer and says how many it hides. */
+.hs-kind-fold {
+  cursor: pointer;
+}
+
+.hs-kind-fold:hover {
+  color: var(--paper);
+}
+
+.hs-fold-mark {
+  margin-left: 6px;
+  color: var(--mist-dim);
 }
 
 .hs-file {
@@ -422,6 +462,15 @@ button.hs-btn:disabled {
   padding: 2px 16px 2px 24px;
   font-family: var(--mono);
   font-size: 11px;
+  cursor: pointer;
+}
+
+.hs-file:hover {
+  background: var(--ink-raised);
+}
+
+.hs-file.open {
+  background: rgba(69, 200, 214, 0.1);
 }
 
 .hs-file-path {
@@ -434,12 +483,305 @@ button.hs-btn:disabled {
 .hs-file-counts {
   flex: 0 0 auto;
   color: var(--mist-dim);
+  font-family: var(--mono);
+  font-size: 11px;
 }
 
 .hs-detail-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
   padding: 24px 16px;
   color: var(--mist-dim);
   text-align: center;
+}
+
+/* ------------------------------------------------------------------ diff */
+
+/* Beneath the file list at full width; in its place in the two narrower layouts. */
+.hs-diff {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--ink-line);
+}
+
+.hs-surface.diff .hs-files {
+  display: none;
+}
+
+.hs-surface.diff .hs-diff {
+  border-top: 0;
+}
+
+.hs-diff-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--ink-line);
+  background: var(--ink-raised);
+}
+
+.hs-diff-path {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.hs-diff-note {
+  padding: 16px;
+  color: var(--mist-dim);
+}
+
+.hs-diff-note.bad {
+  color: var(--vermilion);
+}
+
+/* The diff bodies sit on the sunken ink; the words, not the lines, carry the two diff colours. */
+.hd-prose,
+.hd-scene,
+.hd-lines,
+.hd-log,
+.hd-pictures {
+  padding: 12px 16px 24px;
+  background: var(--ink-sunken);
+}
+
+.hd-removed {
+  color: var(--vermilion);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.hd-added {
+  color: var(--jade);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* A paragraph that is wholly new or wholly gone takes the colour and a rail, not a decoration on
+   every word: the strike and the underline are for the words that changed inside a paragraph. */
+.hd-p-added,
+.hd-p-removed {
+  border-left: 2px solid var(--jade);
+  padding-left: 10px;
+}
+
+.hd-p-removed {
+  border-left-color: var(--vermilion);
+}
+
+.hd-p-added .hd-added,
+.hd-p-removed .hd-removed {
+  text-decoration: none;
+}
+
+.hd-fold {
+  margin: 8px 0;
+  color: var(--mist-dim);
+  font-size: 11px;
+}
+
+/* Prose at the Wiki pane's measure, so a changed sentence reads as the sentence it is. */
+.hd-prose {
+  font-family: var(--prose);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.hd-p {
+  max-width: 70ch;
+  margin: 0 0 12px;
+  white-space: pre-wrap;
+}
+
+.hd-p.hd-data {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--mist);
+}
+
+/* The scene as the Script pane draws it: the id in a gutter, the cue over its lines. */
+.hd-block {
+  max-width: 76ch;
+  margin: 0 0 12px;
+}
+
+.hd-line {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  padding: 2px 0;
+}
+
+.hd-lid {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  line-height: 2.2;
+  color: var(--mist-dim);
+  text-align: right;
+  user-select: none;
+}
+
+.hd-text {
+  font-family: var(--prose);
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--paper);
+  white-space: pre-wrap;
+}
+
+.hd-cue .hd-text {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sodium);
+}
+
+.hd-heading .hd-text {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--signal);
+}
+
+.hd-parenthetical .hd-text {
+  color: var(--mist-dim);
+  font-size: 13px;
+}
+
+.hd-transition .hd-text {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mist-dim);
+  text-align: right;
+}
+
+.hd-marker .hd-text,
+.hd-data .hd-text {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--mist);
+}
+
+/* Data and code: the mono face, one line per row, colour on the changed line's text only. */
+.hd-lines {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.hd-code {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.hd-code.hd-removed {
+  text-decoration: none;
+}
+
+.hd-code.hd-added {
+  text-decoration: none;
+}
+
+.hd-sentence {
+  margin-bottom: 6px;
+  color: var(--mist);
+}
+
+.hd-slot {
+  display: flex;
+  gap: 10px;
+  padding: 2px 0 2px 12px;
+}
+
+.hd-slot-name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hd-slot-move {
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--mist-dim);
+}
+
+.hd-pictures {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.hd-picture {
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+  border: 1px solid var(--ink-line);
+  border-radius: var(--r-chrome);
+}
+
+.hd-picture.removed {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+
+.hd-caption {
+  color: var(--mist);
+  font-size: 11px;
+}
+
+/* The wipe: the new take clipped over the old one at the handle, which is where the pointer is. */
+.hd-wipe {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.hd-wipe .hd-picture.over {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hd-wipe-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--paper);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.hd-wipe-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
 }
 
 /* ------------------------------------------------------------------ foot */

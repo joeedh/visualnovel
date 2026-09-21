@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-21T17:21:54.344Z",
-  "gitSha"       : "533168d41c0c50c1de52a14b1b3060990b3aeba1",
+  "sweptAt"      : "2026-09-21T17:52:44.657Z",
+  "gitSha"       : "dd9dda7236058984081484066f5b511097f4c446",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -5083,6 +5083,37 @@
       "widgetPath": "history/pane-view~13059a85"
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "history",
+      "key"       : "fx:pane.view#save/4b7abbef0c5faeef6002432493b9ee53574eab6a",
+      "widgetPath": "history/pane-view~1783811b"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "history",
+      "key"       : "fx:pane.view#save/465058cbc3fac8f3582a37249e3228d84c96d253",
+      "widgetPath": "history/pane-view~0502242f"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "history",
+      "key"       : "fx:pane.view#save/2aadcc84813fddf92d1226e6453ff1ffde479c62",
+      "widgetPath": "history/pane-view~1901637e"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "history",
+      "key"       : "fx:pane.view#save/7c179204ded073fe156ef1054317139f1fd3dcb7",
+      "widgetPath": "history/pane-view~9c152dfe"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "history",
+      "key"       : "fx:pane.view#more",
+      "widgetPath": "history/pane-view~bab7f4e9",
+      "refused"   : "Every save is listed."
+    },
+    {
       "id"        : "asset.replace",
       "editor"    : "asset",
       "key"       : "cmd:asset.replace",
@@ -6341,6 +6372,9 @@
   ],
   "disagreements": [],
   "strays": [
+    "branches fx:pane.view#reload",
+    "documents item:link/asset/613746984653b37b24cb935b82ab56bb760fc7e4958b418321d082007d25f613",
+    "documents item:link/asset/cba46728a12ad297aa87e02c58e7ebb28c16e7e01113922ccecdf8ec9c8968df",
     "documents item:link/asset/fc80c6eba9cb0d134428bb7c0bd8bb65effa5be3379a763df6cb0467f5ebbae9"
   ],
   "untagged"     : [],

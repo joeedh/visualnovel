@@ -4,7 +4,14 @@
  * over what `git.repos`, `git.status` and `git.history` answered, so the derived model and the
  * pane draw from one place.
  */
-import type { Maker, RepoEntry, RepoRole, RepoStatus, Save } from '../../src/shared/history.js';
+import {
+  kindOf,
+  type Maker,
+  type RepoEntry,
+  type RepoRole,
+  type RepoStatus,
+  type Save,
+} from '../../src/shared/history.js';
 import { refuse, type Offer } from './anchors.js';
 import { view } from './effects.js';
 
@@ -67,10 +74,54 @@ export interface HistoryState {
   /** The sha the next page starts after; null once the history ended. */
   next: string | null;
   selected?: string;
-  /** Whether the pane is one column wide, where the detail replaces the list. */
-  narrow: boolean;
-  /** Whether the pane is showing the detail in the list's place, in the narrow layout. */
+  /** The file of the selected save whose diff is open, if one is. */
+  file?: string;
+  /** Whether the selected save's logs are listed rather than folded behind their count. */
+  logsOpen: boolean;
+  /**
+   * The pane's width class. `small` is one column, where the detail replaces the list; `mid`
+   * is two, where a diff replaces the file list; `large` is two with the diff beneath the files.
+   */
+  size: PaneSize;
+  /** Whether the pane is showing the detail in the list's place, in the small layout. */
   showingDetail: boolean;
+}
+
+export type PaneSize = 'small' | 'mid' | 'large';
+
+/**
+ * The file in a save's list that holds its conversation, when the save is an agent's turn. The
+ * native log beside it is `<id>.native.jsonl`, which the dot in the id's place keeps out.
+ */
+const THREAD_LOG = /^vngen\/state\/threads\/([^/.]+)\.jsonl$/;
+
+/** The conversation an agent's save belongs to, read from the transcript the turn appended to. */
+export function threadOf(save: Save): string | undefined {
+  if (save.maker !== 'agent') return undefined;
+  for (const file of save.files) {
+    const match = THREAD_LOG.exec(file.path);
+    if (match) return match[1];
+  }
+  return undefined;
+}
+
+/** Whether a save changed nothing an author edits, only the app's logs. */
+export function onlyLogs(save: Save): boolean {
+  return save.files.length > 0 && save.files.every((f) => kindOf(f.path) === 'log');
+}
+
+/**
+ * What the app ran to make this save, from the commit's trailers: the invocation for one act, the
+ * count and the commands for a batch, and nothing for a save the app did not make.
+ */
+export function ranSentence(save: Save): string {
+  const invocation = save.trailers['Vn-Invocation'];
+  if (invocation !== undefined) return invocation;
+  const batch = save.trailers['Vn-Batch'];
+  const commands = save.trailers['Vn-Command'];
+  if (batch === undefined || commands === undefined) return commands ?? '';
+  const n = batch.split(' ')[0] ?? '';
+  return `${n} acts: ${commands}`;
 }
 
 /** Whether the repository the pane is on is one the app writes history in. */
@@ -248,6 +299,70 @@ export function backAction(): Offer {
   };
 }
 
+/** One file of the selected save. Clicking it shows how the save changed it. */
+export function fileAction(path: string, open: boolean): Offer {
+  return {
+    ok: true,
+    ...view('scope'),
+    on     : `file/${path}`,
+    label  : path,
+    tooltip: open
+      ? `Showing how this save changed ${path}.`
+      : `Show how this save changed ${path}.`,
+  };
+}
+
+/**
+ * The fold on a save's logs: the count while folded, the same row to fold them again. `alone` is
+ * the save that touched nothing else, where the fold is a button under a sentence instead of a
+ * heading in a list.
+ */
+export function logsAction(open: boolean, count: number, alone = false): Offer {
+  return {
+    ok: true,
+    ...view('mode'),
+    on     : 'logs',
+    label  : alone ? 'Show logs' : open ? 'Logs' : `Logs (${count})`,
+    tooltip: open
+      ? 'Fold the app’s own logs away again.'
+      : `List the ${count} log file${count === 1 ? '' : 's'} this save also touched: the command log, the task log, and a conversation’s transcript.`,
+  };
+}
+
+/** The way back from a diff to the file list, where the diff took the list's place. */
+export function filesBackAction(): Offer {
+  return {
+    ok: true,
+    ...view('mode'),
+    on     : 'files',
+    label  : '← Files',
+    tooltip: 'Go back to the list of files this save changed.',
+  };
+}
+
+/**
+ * Open the conversation an agent's save came from, read-only, in the Convo pane. Refused on any
+ * other save, since only an agent's turn has one.
+ */
+export function conversationAction(thread: string | undefined): Offer {
+  const control = { id: 'agent.openThread', label: 'Open the conversation' };
+  if (thread === undefined) {
+    return {
+      ...refuse('This save did not come from a conversation.'),
+      ...control,
+      tooltip: 'Replay the conversation this save came from, read-only, in the Convo pane.',
+    };
+  }
+  return {
+    ok: true,
+    ...control,
+    props  : { id: thread },
+    on     : thread,
+    tooltip: 'Replay the conversation this save came from, read-only, in the Convo pane.',
+    then   : [{ id: 'view.open', props: { editor: 'convo', where: 'elsewhere' } }],
+  };
+}
+
 // -----------------------------------------------------------------------------
 // Sentences
 // -----------------------------------------------------------------------------
@@ -390,8 +505,29 @@ export function controls(state: HistoryState): readonly Offer[] {
     searchBox(state.filter.text),
     clearAction(state.filter),
     reloadAction(),
-    ...(state.narrow && state.showingDetail ? [backAction()] : []),
+    ...(state.size === 'small' && state.showingDetail ? [backAction()] : []),
     ...state.saves.map((save) => rowAction(save, save.sha === state.selected)),
     ...(state.saves.length > 0 ? [moreAction(state.next)] : []),
+    ...detailControls(state),
+  ];
+}
+
+/** The detail column's offers: the conversation, one row per file, the logs fold, the way back. */
+export function detailControls(state: HistoryState): readonly Offer[] {
+  const save = state.saves.find((s) => s.sha === state.selected);
+  if (!save) return [];
+  const logs = save.files.filter((f) => kindOf(f.path) === 'log');
+  const alone = onlyLogs(save) && !state.logsOpen;
+  const listed = alone
+    ? []
+    : state.logsOpen
+      ? save.files
+      : save.files.filter((f) => kindOf(f.path) !== 'log');
+  return [
+    conversationAction(threadOf(save)),
+    // Beneath the list at full width, the diff needs no way back; in the list's place it does
+    ...(state.file !== undefined && state.size !== 'large' ? [filesBackAction()] : []),
+    ...listed.map((f) => fileAction(f.path, f.path === state.file)),
+    ...(logs.length > 0 ? [logsAction(state.logsOpen, logs.length, alone)] : []),
   ];
 }

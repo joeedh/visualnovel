@@ -369,7 +369,9 @@ export class Git {
     if (opts.author) args.push(`--author=${opts.author}`);
     if (opts.grep) args.push('--fixed-strings', '--regexp-ignore-case', `--grep=${opts.grep}`);
     args.push(opts.before ?? 'HEAD');
-    if (opts.path) args.push('--', opts.path);
+    // A path narrows which commits are listed, not which files each lists: the count on a row
+    // and the file list under it are the whole save either way
+    if (opts.path) args.push('--full-diff', '--', opts.path);
     const r = await this.run(args);
     if (r.code !== 0) return []; // unborn repo, or a sha that no longer exists
     const entries = parseHistory(r.stdout);
