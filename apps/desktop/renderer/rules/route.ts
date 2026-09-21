@@ -40,6 +40,7 @@ export const SUBJECT_OF: Partial<Record<EditorId, 'docPath' | 'assetHash' | 'gra
   wiki     : 'docPath',
   skills   : 'docPath',
   documents: 'docPath',
+  history  : 'docPath',
   asset    : 'assetHash',
   gengraph : 'graphSlug',
 };

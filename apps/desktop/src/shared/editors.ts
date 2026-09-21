@@ -19,6 +19,14 @@ import type { DocNodeKind } from './ipc.js';
  * {@link PinField}. An editor with no `pins` shows the same thing whatever is selected and has
  * nothing a pin could hold still.
  */
+/** The document-tree kinds whose node names a document the History pane can narrow to. */
+const HISTORY_KINDS: ReadonlySet<DocNodeKind> = new Set<DocNodeKind>([
+  'scene',
+  'wiki',
+  'character',
+  'location',
+]);
+
 export const EDITORS = [
   {
     id    : 'branches',
@@ -113,6 +121,20 @@ export const EDITORS = [
     pins  : 'docPath',
   },
   { id: 'documents', title: 'Documents', what: "the project's documents and what links to them" },
+  {
+    id    : 'history',
+    title : 'History',
+    what  : 'every save of the project, who made it and what it changed',
+    // Secondary for a document with a path: the pane narrows to that file's saves, but the file's
+    // own editor is still where a click should land. An entity without a sheet has no history,
+    // and a binary in file mode opens nothing, as it does for Wiki.
+    claims: (node: ClaimNode) => {
+      if (node.path === undefined) return undefined;
+      if (node.kind === 'file') return isTextPath(node.path) ? 'secondary' : undefined;
+      return HISTORY_KINDS.has(node.kind) ? 'secondary' : undefined;
+    },
+    pins  : 'docPath',
+  },
   {
     id    : 'asset',
     title : 'Asset',

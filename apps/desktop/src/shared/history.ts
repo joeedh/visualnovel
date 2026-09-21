@@ -90,7 +90,9 @@ export type { Change, Checkpoint, Diff, Maker, StatusCause } from '@vn/git';
 export type { DiffLine, DiffParagraph, DiffSpan } from '@vn/util';
 
 const PICTURE = /\.(png|jpe?g|webp|gif|bmp|avif)$/i;
-const LOG = /^(vngen\/state\/[^/]+\.jsonl|assets\/manifest\.json)$/;
+// Every `.jsonl` under `vngen/state/`: the command log, the notifications, and the conversation
+// transcripts under `threads/`, which an agent turn appends to as it goes
+const LOG = /^(vngen\/state\/.+\.jsonl|assets\/manifest\.json)$/;
 
 /**
  * The kind of one workspace-relative path. The pictures test runs first so a `.png` under
@@ -110,6 +112,9 @@ export function kindOf(path: string): FileKind {
     return 'storyboard';
   }
   if (path === 'project.yaml' || path.startsWith('.vnstudio/')) return 'project';
+  // A story bible that is a submodule shows up in the project's history as the bare `wiki`
+  // path (its gitlink) and as `.gitmodules`, both of which are the project's wiring
+  if (path === 'wiki' || path === '.gitmodules') return 'project';
   return 'other';
 }
 

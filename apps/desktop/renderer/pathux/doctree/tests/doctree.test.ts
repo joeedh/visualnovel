@@ -459,10 +459,11 @@ describe('menuFor', () => {
       'art.setNotes',
       'app.copy',
       'view.open',
+      'view.open',
     ]);
   });
 
-  it('leaves out the sheet entry for a location with no sheet of its own', () => {
+  it('leaves out the sheet and history entries for a location with no sheet of its own', () => {
     expect(idsOf(node('location:cafe', 'location'))).toEqual([
       'art.generate',
       'art.setNotes',
@@ -532,6 +533,7 @@ describe('menuFor', () => {
       'agent.run',
       MENU_SEP,
       'app.copy',
+      'view.open',
       MENU_SEP,
       'story.newScene',
       'story.screenplay',
@@ -660,6 +662,24 @@ describe('menuFor', () => {
     for (const kind of ['assetkind', 'wiki', 'dir', 'file', 'more'] as const) {
       expect(menuFor(node(`${kind}:x`, kind))).toEqual([]);
     }
+  });
+
+  // A folder is left out on purpose: the tree asks after one file's past, and a folder's menu is
+  // where new pages are made. An entity with no sheet has no file to have a history of.
+  it('offers the history of anything that names one file, and of nothing else', () => {
+    const history = {
+      label: 'Show history',
+      id   : 'view.open',
+      props: { editor: 'history', where: 'elsewhere', subject: 'wiki/x.md' },
+    };
+    for (const kind of ['wiki', 'file'] as const) {
+      expect(menuFor(node(`${kind}:x`, kind, { path: 'wiki/x.md' }))).toEqual([history]);
+    }
+    for (const kind of ['scene', 'character', 'location'] as const) {
+      expect(menuFor(node(`${kind}:x`, kind, { path: 'wiki/x.md' }))).toContainEqual(history);
+      expect(menuFor(node(`${kind}:x`, kind))).not.toContainEqual(history);
+    }
+    expect(menuFor(node('dir:x', 'dir', { path: 'wiki' }))).toEqual([]);
   });
 
   // The second entry is a form on purpose. Asking to change a skill without saying how starts a

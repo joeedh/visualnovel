@@ -194,6 +194,22 @@ function openSheet(path: string): MenuEntry {
   };
 }
 
+/**
+ * `view.open` on the History pane, narrowed to this node's file. Only a node naming one file
+ * offers it: a folder's history is a question the tree does not ask, and an entity without a
+ * sheet has no file to have a history of.
+ */
+function showHistory(path: string | undefined): MenuEntry[] {
+  if (path === undefined || path === '') return [];
+  return [
+    {
+      label: 'Show history',
+      id   : 'view.open',
+      props: { editor: 'history', where: 'elsewhere', subject: path },
+    },
+  ];
+}
+
 /** One `doc.create` entry. Spelled once, so the wiki tree and the cast branches agree. */
 function newSheet(kind: 'note' | 'character' | 'location' | 'skill', label: string): MenuEntry {
   return { label, id: 'doc.create', props: { kind }, form: true };
@@ -291,6 +307,7 @@ export function menuFor(node: DocNode, order: SceneOrder = 'stored'): MenuEntry[
         },
         copyId('location', key),
         ...(node.path ? [openSheet(node.path)] : []),
+        ...showHistory(node.path),
       ];
     case 'character':
       return [
@@ -308,6 +325,7 @@ export function menuFor(node: DocNode, order: SceneOrder = 'stored'): MenuEntry[
         },
         copyId('character', key),
         ...(node.path ? [openSheet(node.path)] : []),
+        ...showHistory(node.path),
       ];
     case 'wikidir':
       return wikiCreate();
@@ -383,6 +401,7 @@ export function menuFor(node: DocNode, order: SceneOrder = 'stored'): MenuEntry[
         },
         { label: MENU_SEP, id: MENU_SEP },
         copyId('scene', key),
+        ...showHistory(node.path),
         { label: MENU_SEP, id: MENU_SEP },
         ...storyActs(),
       ];
@@ -452,13 +471,13 @@ export function menuFor(node: DocNode, order: SceneOrder = 'stored'): MenuEntry[
         default:
           return [];
       }
-    // None of these names a subject a command takes. Nothing binds to a wiki note (see
-    // `assetstrip.ts`) and `doc.write` needs the text, so the only act it has is the one a plain
-    // click already performs
-    case 'assetkind':
+    // A page or a file names no subject a write takes: nothing binds to a wiki note (see
+    // `assetstrip.ts`) and `doc.write` needs the text. Its history is the one thing left to ask
     case 'wiki':
-    case 'dir':
     case 'file':
+      return showHistory(node.path);
+    case 'assetkind':
+    case 'dir':
     case 'more':
       return [];
   }

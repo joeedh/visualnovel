@@ -77,7 +77,7 @@ describe('fold', () => {
 
   it('puts each refusal sentence on exactly the pages whose first action carries it', () => {
     const expected = refusalsInModel();
-    expect(expected.size).toBe(84);
+    expect(expected.size).toBe(87);
     const found = new Map<string, Set<string>>();
     for (const page of byId.values()) {
       for (const refusal of page.refused) {
@@ -100,7 +100,7 @@ describe('fold', () => {
 
   it('folds the model to a stated number of drawn rows', () => {
     const drawn = [...byId.values()].reduce((n, page) => n + page.drawn.length, 0);
-    expect(drawn).toBe(447);
+    expect(drawn).toBe(466);
     // Every accepted control lands on its page under its own situation; twins in one situation
     // (the page editor's four corners) fold into one row
     for (const record of file.records) {

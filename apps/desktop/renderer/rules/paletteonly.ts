@@ -71,7 +71,7 @@ const READS = [
 
 const GIT = ['git.repos', 'git.history', 'git.changes', 'git.diff', 'git.blob'].map((match) => ({
   match,
-  why: 'A history read the History pane fetches for itself; the pane’s filters draw controls for it from its own stage on.',
+  why: 'A read the History pane fetches for itself. Its filters and rows are `pane.view` effects over what was read, so no control names the read.',
 }));
 
 const VIEW = ['view.close', 'view.focus', 'view.layout', 'view.layouts', 'view.palette'].map(

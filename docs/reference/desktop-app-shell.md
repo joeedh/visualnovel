@@ -24,7 +24,7 @@ editor. There is no React and no room vocabulary. path.ux is a git submodule at
 `vendor/path.ux`, so a fresh clone needs `git submodule update --init --recursive`
 (`pnpm check:setup` reports this by name). Seven rules cause the most mistakes:
 
-- The eighteen editors are named in one place (`apps/desktop/src/shared/editors.ts`), and
+- The nineteen editors are named in one place (`apps/desktop/src/shared/editors.ts`), and
   `registerEditor(cls, 'vn.Name')` is the only way to register one, because a hand-written
   name string breaks under minification. That list also holds each editor's `claims`
   predicate (ranked in `renderer/pathux/panes/route.ts`) and a `pins` field for the one
@@ -207,18 +207,18 @@ subscribes to `onExec`, and the bridge owns both.
   `WorkspaceSession`, one `CommandStack` and one undo history. A window is a
   `BrowserWindow` with a mesh of panes in it, and one process
 - **A pane shows an editor, and the list of editors is written down once.**
-  `apps/desktop/src/shared/editors.ts` holds all seventeen (`branches`, `script`, `convo`,
-  `timeline`, `tasklist`, `taskgraph`, `gengraph`, `inspector`, `play`, `skills`, `wiki`,
-  `documents`, `asset`, `project`, `systemprompt`, `onboarding`, `report`) with their
-  titles. The list lives in `src/shared/` because `view.*` runs in main like every other
-  command and builds its props from that list, while the renderer registers each editor
-  class under the matching area name. `checkEditorNames()` warns at boot if the two
-  disagree. Each entry also declares what it will show for a clicked document-tree node
-  (see [Documents](desktop-app-editors-misc.md#documents)). An eighteenth editor that
-  omits that declaration shows up as an incomplete entry in the same file that names it,
-  instead of being silently unreachable from the tree. The list deliberately omits the
-  header bar, which is "chrome" (surrounding UI) rather than a place the author navigates
-  to.
+  `apps/desktop/src/shared/editors.ts` holds all nineteen (`branches`, `script`, `convo`,
+  `page`, `timeline`, `tasklist`, `taskgraph`, `gengraph`, `inspector`, `play`, `skills`,
+  `wiki`, `documents`, `history`, `asset`, `project`, `systemprompt`, `onboarding`,
+  `report`) with their titles. The list lives in `src/shared/` because `view.*` runs in
+  main like every other command and builds its props from that list, while the renderer
+  registers each editor class under the matching area name. `checkEditorNames()` warns at
+  boot if the two disagree. Each entry also declares what it will show for a clicked
+  document-tree node (see [Documents](desktop-app-editors-misc.md#documents)). A twentieth
+  editor that omits that declaration shows up as an incomplete entry in the same file that
+  names it, instead of being silently unreachable from the tree. The list deliberately
+  omits the header bar, which is "chrome" (surrounding UI) rather than a place the author
+  navigates to.
 - **An editor can be named without being listed** — `offered: false` on its entry, which
   today Setup, System Prompt and Debug Agent carry. `view.open(editor='onboarding')` still
   works, the palette still finds it, and a saved layout that holds it still restores; what
@@ -228,12 +228,12 @@ subscribes to `onExec`, and the bridge owns both.
   dropdown — a menu path.ux builds from its registry rather than from ours, so nothing on
   our side could have filtered it. This is deliberately **not** `AreaFlags.HIDDEN`: hidden
   is a property of the editor, and being uninteresting to browse is a property of _this_
-  application. `EDITOR_IDS` still covers all seventeen, so `view.*`'s props are
-  unaffected. Once a Setup that is really a preferences window has somewhere to be, it
-  stops being a pane at all and the flag goes with it; System Prompt keeps the flag for
-  the opposite reason — it is a place to look when a turn misbehaves, and it will never be
-  a place to work. Debug Agent keeps it for the same reason as System Prompt, and is
-  reached from Help ▸ Report a Difficult Agent… and from the card an API fault raises.
+  application. `EDITOR_IDS` still covers all nineteen, so `view.*`'s props are unaffected.
+  Once a Setup that is really a preferences window has somewhere to be, it stops being a
+  pane at all and the flag goes with it; System Prompt keeps the flag for the opposite
+  reason — it is a place to look when a turn misbehaves, and it will never be a place to
+  work. Debug Agent keeps it for the same reason as System Prompt, and is reached from
+  Help ▸ Report a Difficult Agent… and from the card an API fault raises.
 - **Navigation is `view.*`, and the mesh corrects it.** `view.open(editor, where)` shows
   an editor in the active pane or in a new pane split off it (`here` | `left` | `right` |
   `above` | `below` | `elsewhere` | `window`); asking for one already open `here` is a

@@ -11,6 +11,7 @@ describe('PINNABLE', () => {
       { editor: 'gengraph', field: 'graphSlug' },
       { editor: 'inspector', field: 'taskHash' },
       { editor: 'wiki', field: 'docPath' },
+      { editor: 'history', field: 'docPath' },
       { editor: 'asset', field: 'assetHash' },
     ]);
   });

@@ -26,6 +26,8 @@
 | inspector | pin | pinned | pin task | Pinned to this task. Click to follow the selection again. | pinned=false |  |
 | wiki | pin | following | pin document | Keep this pane on this document while the rest of the app moves on. | pinned=true |  |
 | wiki | pin | pinned | pin document | Pinned to this document. Click to follow the selection again. | pinned=false |  |
+| history | pin | following | pin document | Keep this pane on this document while the rest of the app moves on. | pinned=true |  |
+| history | pin | pinned | pin document | Pinned to this document. Click to follow the selection again. | pinned=false |  |
 | asset | pin | following | pin asset | Keep this pane on this asset while the rest of the app moves on. | pinned=true |  |
 | asset | pin | pinned | pin asset | Pinned to this asset. Click to follow the selection again. | pinned=false |  |
 
@@ -39,7 +41,7 @@ Nothing runs it as a later step of a click.
 
 ## Reaching it
 
-- Sweep: a control or menu entry ran it in the sweep of 2026-09-21 at e3e2451.
+- Sweep: a control or menu entry ran it in the sweep of 2026-09-21 at 533168d.
 - Palette-only rule: none.
 - Shortcut: none.
 - Menu: none.

@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-21T07:23:42.471Z",
-  "gitSha"       : "e3e245150d977533d5e5a579eaac4b304f35c7ea",
+  "sweptAt"      : "2026-09-21T17:21:54.344Z",
+  "gitSha"       : "533168d41c0c50c1de52a14b1b3060990b3aeba1",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -56,6 +56,7 @@
     "doc.write",
     "gate.approve",
     "gate.candidates",
+    "gate.lock",
     "gengraph.addBoundary",
     "gengraph.addGroup",
     "gengraph.addNode",
@@ -231,7 +232,6 @@
     "asset.export",
     "asset.regenerate",
     "asset.replace",
-    "asset.restore",
     "asset.upload",
     "doc.create",
     "doc.saveAll",
@@ -337,6 +337,11 @@
       "when"  : "scene:sample"
     },
     {
+      "id"    : "view.open",
+      "editor": "documents",
+      "when"  : "scene:sample"
+    },
+    {
       "id"    : "story.newScene",
       "editor": "documents",
       "when"  : "scene:sample",
@@ -435,6 +440,11 @@
       "editor": "documents",
       "when"  : "wikidir:sample",
       "form"  : true
+    },
+    {
+      "id"    : "view.open",
+      "editor": "documents",
+      "when"  : "wiki:sample"
     },
     {
       "id"    : "asset.regenerate",
@@ -544,6 +554,11 @@
       "editor": "documents",
       "when"  : "graph:sample",
       "form"  : true
+    },
+    {
+      "id"    : "view.open",
+      "editor": "documents",
+      "when"  : "file:sample"
     },
     {
       "id"    : "story.newScene",
@@ -2060,6 +2075,13 @@
       "editor"    : "tasklist",
       "key"       : "fx:pane.view#reload",
       "widgetPath": "tasklist/pane-view~a08a707d"
+    },
+    {
+      "id"        : "gate.approve",
+      "editor"    : "tasklist",
+      "key"       : "cmd:gate.approve#haruki",
+      "widgetPath": "tasklist/gate-approve~de1932f9",
+      "form"      : true
     },
     {
       "id"        : "ui.publish",
@@ -3692,6 +3714,14 @@
       "widgetPath": "taskgraph/pane-view~a08a707d"
     },
     {
+      "id"        : "gate.approve",
+      "editor"    : "taskgraph",
+      "key"       : "cmd:gate.approve#haruki",
+      "widgetPath": "taskgraph/gate-approve~0cfd68c3",
+      "supplies"  : ["hash"],
+      "form"      : true
+    },
+    {
       "id"        : "pane.pin",
       "editor"    : "gengraph",
       "key"       : "fx:pane.pin",
@@ -3893,6 +3923,13 @@
       "supplies"  : ["text", "seenHash"]
     },
     {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#link",
+      "widgetPath": "wiki/doc-write~b83db750",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "wiki",
       "key": "item:link/asset/246322f6cb8b5da4133f86e549fa0b8d60fd6cf2449ec32b8204fdb1d2b7ed0b",
@@ -4051,69 +4088,6 @@
           }
         }
       ]
-    },
-    {
-      "id"        : "doc.write",
-      "editor"    : "wiki",
-      "key"       : "cmd:doc.write#palette/0",
-      "widgetPath": "wiki/doc-write~0e761e0a",
-      "supplies"  : ["text", "seenHash"]
-    },
-    {
-      "id"        : "doc.write",
-      "editor"    : "wiki",
-      "key"       : "cmd:doc.write#palette/0/remove",
-      "widgetPath": "wiki/doc-write~fd60ec9b",
-      "supplies"  : ["text", "seenHash"]
-    },
-    {
-      "id"        : "doc.write",
-      "editor"    : "wiki",
-      "key"       : "cmd:doc.write#palette/1",
-      "widgetPath": "wiki/doc-write~2d13a34b",
-      "supplies"  : ["text", "seenHash"]
-    },
-    {
-      "id"        : "doc.write",
-      "editor"    : "wiki",
-      "key"       : "cmd:doc.write#palette/1/remove",
-      "widgetPath": "wiki/doc-write~12921fb2",
-      "supplies"  : ["text", "seenHash"]
-    },
-    {
-      "id"        : "doc.write",
-      "editor"    : "wiki",
-      "key"       : "cmd:doc.write#palette/2",
-      "widgetPath": "wiki/doc-write~f21cd668",
-      "supplies"  : ["text", "seenHash"]
-    },
-    {
-      "id"        : "doc.write",
-      "editor"    : "wiki",
-      "key"       : "cmd:doc.write#palette/2/remove",
-      "widgetPath": "wiki/doc-write~1d102a49",
-      "supplies"  : ["text", "seenHash"]
-    },
-    {
-      "id"        : "doc.write",
-      "editor"    : "wiki",
-      "key"       : "cmd:doc.write#palette/3",
-      "widgetPath": "wiki/doc-write~3802d769",
-      "supplies"  : ["text", "seenHash"]
-    },
-    {
-      "id"        : "doc.write",
-      "editor"    : "wiki",
-      "key"       : "cmd:doc.write#palette/3/remove",
-      "widgetPath": "wiki/doc-write~3a032be0",
-      "supplies"  : ["text", "seenHash"]
-    },
-    {
-      "id"        : "doc.write",
-      "editor"    : "wiki",
-      "key"       : "cmd:doc.write#palette/add",
-      "widgetPath": "wiki/doc-write~f9d436eb",
-      "supplies"  : ["text", "seenHash"]
     },
     {
       "id"        : "doc.write",
@@ -4295,6 +4269,76 @@
       "editor"    : "wiki",
       "key"       : "cmd:doc.write#wardrobe/add",
       "widgetPath": "wiki/doc-write~71870064",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#palette/0",
+      "widgetPath": "wiki/doc-write~0e761e0a",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#palette/0/remove",
+      "widgetPath": "wiki/doc-write~fd60ec9b",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#palette/1",
+      "widgetPath": "wiki/doc-write~2d13a34b",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#palette/1/remove",
+      "widgetPath": "wiki/doc-write~12921fb2",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#palette/2",
+      "widgetPath": "wiki/doc-write~f21cd668",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#palette/2/remove",
+      "widgetPath": "wiki/doc-write~1d102a49",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#palette/3",
+      "widgetPath": "wiki/doc-write~3802d769",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#palette/3/remove",
+      "widgetPath": "wiki/doc-write~3a032be0",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#palette/add",
+      "widgetPath": "wiki/doc-write~f9d436eb",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#model",
+      "widgetPath": "wiki/doc-write~38fcd30f",
       "supplies"  : ["text", "seenHash"]
     },
     {
@@ -4997,6 +5041,48 @@
       "widgetPath": "documents/tree-expand~0b485fd4"
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "history",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "history/pane-view~a08a707d"
+    },
+    {
+      "id"        : "pane.pin",
+      "editor"    : "history",
+      "key"       : "fx:pane.pin",
+      "widgetPath": "history/pane-pin~3ef17e3e"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "history",
+      "key"       : "fx:pane.view#who",
+      "widgetPath": "history/pane-view~f13e92ac"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "history",
+      "key"       : "fx:pane.view#path",
+      "widgetPath": "history/pane-view~f5ccb359"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "history",
+      "key"       : "fx:pane.view#checkpoints",
+      "widgetPath": "history/pane-view~0d942c3d"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "history",
+      "key"       : "fx:pane.view#text",
+      "widgetPath": "history/pane-view~34dea019"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "history",
+      "key"       : "fx:pane.view#clear",
+      "widgetPath": "history/pane-view~13059a85"
+    },
+    {
       "id"        : "asset.replace",
       "editor"    : "asset",
       "key"       : "cmd:asset.replace",
@@ -5392,10 +5478,10 @@
       "supplies"  : ["notes"]
     },
     {
-      "id"        : "asset.restore",
+      "id"        : "asset.accept",
       "editor"    : "asset",
-      "key"       : "cmd:asset.restore",
-      "widgetPath": "asset/asset-restore~235255c3"
+      "key"       : "cmd:asset.accept",
+      "widgetPath": "asset/asset-accept~5d2fdc3b"
     },
     {
       "id"        : "asset.regenerate",
@@ -5603,16 +5689,16 @@
     {
       "id"        : "project.setKey",
       "editor"    : "onboarding",
-      "key"       : "cmd:project.setKey#anthropic",
-      "widgetPath": "onboarding/project-setkey~b45dc248",
+      "key"       : "cmd:project.setKey#gemini",
+      "widgetPath": "onboarding/project-setkey~83f4e4d5",
       "supplies"  : ["key"],
       "refused"   : "Paste a key first"
     },
     {
       "id"        : "project.setKey",
       "editor"    : "onboarding",
-      "key"       : "cmd:project.setKey#gemini",
-      "widgetPath": "onboarding/project-setkey~83f4e4d5",
+      "key"       : "cmd:project.setKey#anthropic",
+      "widgetPath": "onboarding/project-setkey~b45dc248",
       "supplies"  : ["key"],
       "refused"   : "Paste a key first"
     },
@@ -6057,150 +6143,6 @@
     {
       "id"        : "popup.close",
       "editor"    : "approvals",
-      "key": "fx:popup.close#201c6278ca3b62ba5cf68f80f946e7f2b6e03269656343bec07bb6672dce678b",
-      "widgetPath": "approvals/popup-close~d1af71d2",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "201c6278ca3b62ba5cf68f80f946e7f2b6e03269656343bec07bb6672dce678b"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#46ae351869f6a56ff3770993c772aa9a29616c31c60499a44bae8b5087234c35",
-      "widgetPath": "approvals/popup-close~238268df",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "46ae351869f6a56ff3770993c772aa9a29616c31c60499a44bae8b5087234c35"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#aeddfc36ec8329d2566d935ee514c24539112ce5df9aace46a9fe317de6231fd",
-      "widgetPath": "approvals/popup-close~61c6f8f2",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "aeddfc36ec8329d2566d935ee514c24539112ce5df9aace46a9fe317de6231fd"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#043e8b97e172c12eb365ce1a52430cdb33305833559e61927fbdc33f0da97b33",
-      "widgetPath": "approvals/popup-close~ffef4e19",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "043e8b97e172c12eb365ce1a52430cdb33305833559e61927fbdc33f0da97b33"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#d79afab2c439c6bbfdcd1778f9d00c0ead2f2cf111d234996ecc0f5cc8589489",
-      "widgetPath": "approvals/popup-close~3fcc466d",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "d79afab2c439c6bbfdcd1778f9d00c0ead2f2cf111d234996ecc0f5cc8589489"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#4e0bde1dd304350105c0f9799a535b63641e19aecc55e1e0593c67b96bf33469",
-      "widgetPath": "approvals/popup-close~bf8077c3",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "4e0bde1dd304350105c0f9799a535b63641e19aecc55e1e0593c67b96bf33469"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#b7a5f3ede88c737d443c61d9b37d987aec8e2ff61a00a30049267dded9364ec0",
-      "widgetPath": "approvals/popup-close~b31b5ca0",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "b7a5f3ede88c737d443c61d9b37d987aec8e2ff61a00a30049267dded9364ec0"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#7e8a93c40449be5f4b0bce06ee9e5504b1d34ec22704fa9a2b5ec101c8ea91f5",
-      "widgetPath": "approvals/popup-close~a4b8c365",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "7e8a93c40449be5f4b0bce06ee9e5504b1d34ec22704fa9a2b5ec101c8ea91f5"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#af65006624b823ba4dd06442583740bb49216ffa2c48bcd2923923953bfe3231",
-      "widgetPath": "approvals/popup-close~186204ee",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "af65006624b823ba4dd06442583740bb49216ffa2c48bcd2923923953bfe3231"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
       "key": "fx:popup.close#06a7cf92b114695175a0e2730df1bf009404270de2f9d57eeda301587c6a7732",
       "widgetPath": "approvals/popup-close~f62ee41d",
       "then": [
@@ -6297,118 +6239,6 @@
     {
       "id"        : "popup.close",
       "editor"    : "approvals",
-      "key": "fx:popup.close#88b2ecb538d39f60df5542ac954d5b2dc6cc921200a9aa89ad95d1d8e18fef82",
-      "widgetPath": "approvals/popup-close~5baf74b7",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "88b2ecb538d39f60df5542ac954d5b2dc6cc921200a9aa89ad95d1d8e18fef82"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#ed9f4427c214956c2eced5ae4a47d26385908a10f09051dd3ccf3e6824cdf4c4",
-      "widgetPath": "approvals/popup-close~ed80a3c6",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "ed9f4427c214956c2eced5ae4a47d26385908a10f09051dd3ccf3e6824cdf4c4"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#d246bdcc4e4d2b1ca7c3140060d60f4bfbf2af7fdc32d612497d296b4c3f16c7",
-      "widgetPath": "approvals/popup-close~8aa7cfd0",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "d246bdcc4e4d2b1ca7c3140060d60f4bfbf2af7fdc32d612497d296b4c3f16c7"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#fc51011e927894adec38bd8bb374c4fa472d5d31708aeadde9230898bd162063",
-      "widgetPath": "approvals/popup-close~c5a6cea2",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "fc51011e927894adec38bd8bb374c4fa472d5d31708aeadde9230898bd162063"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#e0758c7d2a48128f5ef31d13398f5c60d04ceffaedd02db627c7c5c09d5b0668",
-      "widgetPath": "approvals/popup-close~b05702b2",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "e0758c7d2a48128f5ef31d13398f5c60d04ceffaedd02db627c7c5c09d5b0668"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#43a28d257358fca3e3e61ce98b3338cc4970dc30868ea374e53ccbea3a0bee93",
-      "widgetPath": "approvals/popup-close~180cd2ef",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "43a28d257358fca3e3e61ce98b3338cc4970dc30868ea374e53ccbea3a0bee93"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#1c78453d60137ba2ba68a0628a068661d5ce9fe79a050bd0e7354f5beb943325",
-      "widgetPath": "approvals/popup-close~476e4905",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "1c78453d60137ba2ba68a0628a068661d5ce9fe79a050bd0e7354f5beb943325"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
       "key": "fx:popup.close#b524a2d7f6fdad640706ee8a7dc45f7956f01141f9a46e49f84d63ad43cac129",
       "widgetPath": "approvals/popup-close~b6b30384",
       "then": [
@@ -6473,22 +6303,6 @@
     {
       "id"        : "popup.close",
       "editor"    : "approvals",
-      "key": "fx:popup.close#f11583b5ba0d2bdfe8b441b14556ec473c03a0ef29c727258226e0a127de07a8",
-      "widgetPath": "approvals/popup-close~3c9f563a",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "f11583b5ba0d2bdfe8b441b14556ec473c03a0ef29c727258226e0a127de07a8"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
       "key": "fx:popup.close#24dea8784c9bd8e856a0c0d5b8d930c2e47a28e80128396c9c4f9be2e7677eee",
       "widgetPath": "approvals/popup-close~aeeabe37",
       "then": [
@@ -6498,758 +6312,6 @@
             "editor" : "asset",
             "where"  : "elsewhere",
             "subject": "24dea8784c9bd8e856a0c0d5b8d930c2e47a28e80128396c9c4f9be2e7677eee"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#b4e6e7b96475c9530f14f07cf63b59d319f74803248bf45e7164cfe69c7ac1ab",
-      "widgetPath": "approvals/popup-close~5ad1084b",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "b4e6e7b96475c9530f14f07cf63b59d319f74803248bf45e7164cfe69c7ac1ab"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#246322f6cb8b5da4133f86e549fa0b8d60fd6cf2449ec32b8204fdb1d2b7ed0b",
-      "widgetPath": "approvals/popup-close~abab7c60",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "246322f6cb8b5da4133f86e549fa0b8d60fd6cf2449ec32b8204fdb1d2b7ed0b"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#d99ebbc368ae089b7c1233819c41cfad330eb5d1cfbc1e66231ba39157727ad3",
-      "widgetPath": "approvals/popup-close~56ca7f4f",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "d99ebbc368ae089b7c1233819c41cfad330eb5d1cfbc1e66231ba39157727ad3"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#4a908f00c5ccf55352d6616dc54ab349d0f8efa1ead83c662e64a05864846b0b",
-      "widgetPath": "approvals/popup-close~b6863cd9",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "4a908f00c5ccf55352d6616dc54ab349d0f8efa1ead83c662e64a05864846b0b"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#4a9e0df23c2942b13be66ffc53f712456cec1388771bce5f50b913c49210772c",
-      "widgetPath": "approvals/popup-close~9a8876b5",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "4a9e0df23c2942b13be66ffc53f712456cec1388771bce5f50b913c49210772c"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#9d78b424f22bd31f9e6efc135087a11e66f808ae22427c5afe16768e77f7098e",
-      "widgetPath": "approvals/popup-close~c822bfe6",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "9d78b424f22bd31f9e6efc135087a11e66f808ae22427c5afe16768e77f7098e"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#bf4306e8d00723e968b3320a1e663e5ebb0bd357d909cec8d22d8461fe5962ca",
-      "widgetPath": "approvals/popup-close~956ccdf0",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "bf4306e8d00723e968b3320a1e663e5ebb0bd357d909cec8d22d8461fe5962ca"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#163ad341aabf3b76d51a763839b64a7624ce689dfde60f115f178bc8d76762fd",
-      "widgetPath": "approvals/popup-close~08b52bb9",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "163ad341aabf3b76d51a763839b64a7624ce689dfde60f115f178bc8d76762fd"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#2999d74d18471505f921063cd6c470fca8a8299e6f2d1b26eb9f542f977a0a8a",
-      "widgetPath": "approvals/popup-close~3fdbe972",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "2999d74d18471505f921063cd6c470fca8a8299e6f2d1b26eb9f542f977a0a8a"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#45d895c6e5dcf4df56a8114bbd00a83767731ff4d27973ce6e8da9b1ef04b98c",
-      "widgetPath": "approvals/popup-close~87bbf05a",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "45d895c6e5dcf4df56a8114bbd00a83767731ff4d27973ce6e8da9b1ef04b98c"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#3a0c9c8ef564a16b192a284bdff243e93e56d16c054a19a39cab4d603ae3038a",
-      "widgetPath": "approvals/popup-close~3fc0b5b0",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "3a0c9c8ef564a16b192a284bdff243e93e56d16c054a19a39cab4d603ae3038a"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#dd85c2e09c9b853d1045643632cf4d7a42c5aff50eab74f694eaad54c11c2650",
-      "widgetPath": "approvals/popup-close~836b51e5",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "dd85c2e09c9b853d1045643632cf4d7a42c5aff50eab74f694eaad54c11c2650"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#44b5d3e40a8fb268ee5f9aede15d59ff07e6914b2b73d2c9e1bb2ec29daf925a",
-      "widgetPath": "approvals/popup-close~cc0c5951",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "44b5d3e40a8fb268ee5f9aede15d59ff07e6914b2b73d2c9e1bb2ec29daf925a"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#37b7c41514b930e989019b7d2ddd0de403c238c64a60c19e371a1bcd102c5b3e",
-      "widgetPath": "approvals/popup-close~a154d357",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "37b7c41514b930e989019b7d2ddd0de403c238c64a60c19e371a1bcd102c5b3e"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#fbfb962631b3996816124dd24dfcf7fa825516a92bd31d70c17b0d74f7e89b4f",
-      "widgetPath": "approvals/popup-close~241b121d",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "fbfb962631b3996816124dd24dfcf7fa825516a92bd31d70c17b0d74f7e89b4f"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#bd2b8aafa907ea6efb85208a3f5d296abe2b80883828a7f44b348eb2514efe8c",
-      "widgetPath": "approvals/popup-close~55d78206",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "bd2b8aafa907ea6efb85208a3f5d296abe2b80883828a7f44b348eb2514efe8c"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#480bcec72842be3e440a12c4654f2951a9e7aeb94f6f621de7e2e3387cd16eef",
-      "widgetPath": "approvals/popup-close~2dbab7aa",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "480bcec72842be3e440a12c4654f2951a9e7aeb94f6f621de7e2e3387cd16eef"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#5f237282d1073ffaa36bb05c785a57f86e6319e2a75188631bf50f2d26e36aa2",
-      "widgetPath": "approvals/popup-close~6effe25f",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "5f237282d1073ffaa36bb05c785a57f86e6319e2a75188631bf50f2d26e36aa2"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#8ad6e3ed6f53d61b485164c665388f90f11f88aa3f239c106a18d49f0c5bf6df",
-      "widgetPath": "approvals/popup-close~ac9af5cc",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "8ad6e3ed6f53d61b485164c665388f90f11f88aa3f239c106a18d49f0c5bf6df"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#090cf29abda01a0cade1e7c7ad814e464dc80b92eecc3c5ffbbc2d0a25318a45",
-      "widgetPath": "approvals/popup-close~767b264b",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "090cf29abda01a0cade1e7c7ad814e464dc80b92eecc3c5ffbbc2d0a25318a45"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#45716256e5c7c8441a4277c9dcb11265bdd6c70be4c9a7d45dc6a00e64df8652",
-      "widgetPath": "approvals/popup-close~662443b6",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "45716256e5c7c8441a4277c9dcb11265bdd6c70be4c9a7d45dc6a00e64df8652"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#f638d127908afa069251c69c7d9da227767305f2aeca4eac570317233ad0747d",
-      "widgetPath": "approvals/popup-close~6dc0f764",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "f638d127908afa069251c69c7d9da227767305f2aeca4eac570317233ad0747d"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#b7b682910f0d8413e25f49b26c43fedb73d8705d54f3f217dd828ff721707c01",
-      "widgetPath": "approvals/popup-close~c5e1d95a",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "b7b682910f0d8413e25f49b26c43fedb73d8705d54f3f217dd828ff721707c01"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#4f22a7748c47e310e8db21feb4e482effea950b2064786ec3daf91f6ec2f0faf",
-      "widgetPath": "approvals/popup-close~377844a2",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "4f22a7748c47e310e8db21feb4e482effea950b2064786ec3daf91f6ec2f0faf"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#67c74c13e2a9c0e2b4b61b271c9bc037a46653642f4c066417aabb4694c2b184",
-      "widgetPath": "approvals/popup-close~f084e93f",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "67c74c13e2a9c0e2b4b61b271c9bc037a46653642f4c066417aabb4694c2b184"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#04569172e474da9b8aa0d8b7b821095b0d5e76b745591f6251b6eb79eb74001c",
-      "widgetPath": "approvals/popup-close~b7e42a7e",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "04569172e474da9b8aa0d8b7b821095b0d5e76b745591f6251b6eb79eb74001c"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#b1fb1572afeb22a9af111cd5ce3139f4f07874f0973ec257174de1f4d7394383",
-      "widgetPath": "approvals/popup-close~73b06c43",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "b1fb1572afeb22a9af111cd5ce3139f4f07874f0973ec257174de1f4d7394383"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#f310f44eefbe2da6727af39d38a0cf1b5d9aa0a012da85c9ade8ba2445ee8036",
-      "widgetPath": "approvals/popup-close~f72c8c6b",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "f310f44eefbe2da6727af39d38a0cf1b5d9aa0a012da85c9ade8ba2445ee8036"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#0833176ecab1693ff73584f7e9a79c83108a221d3331f21098aefa3496b6aef1",
-      "widgetPath": "approvals/popup-close~59439557",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "0833176ecab1693ff73584f7e9a79c83108a221d3331f21098aefa3496b6aef1"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#9a7a35f3a1faf3b0b48482b6679632e67a65fb675bed3314335cf3866f0196d6",
-      "widgetPath": "approvals/popup-close~19d2cf30",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "9a7a35f3a1faf3b0b48482b6679632e67a65fb675bed3314335cf3866f0196d6"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#b3ef01ea863e32b91a8440cfa6cdd3a98b93214dc0d867387bdb799a5749acab",
-      "widgetPath": "approvals/popup-close~018001ed",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "b3ef01ea863e32b91a8440cfa6cdd3a98b93214dc0d867387bdb799a5749acab"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#ce2e39d45ef3e6e2c4c61b67e47751ea2b21e8883c3d78fc45615b6eac954e5f",
-      "widgetPath": "approvals/popup-close~64ca01b1",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "ce2e39d45ef3e6e2c4c61b67e47751ea2b21e8883c3d78fc45615b6eac954e5f"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#73270aeca0f2a35f51c601769c6c16575ffc809f0eff1bde37b4b4d5c8c857c0",
-      "widgetPath": "approvals/popup-close~e397448c",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "73270aeca0f2a35f51c601769c6c16575ffc809f0eff1bde37b4b4d5c8c857c0"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#e0205990dce5fe0ae048375704d3ce65d5062be5afb56f5bf28ce32093413cfa",
-      "widgetPath": "approvals/popup-close~d1f1a902",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "e0205990dce5fe0ae048375704d3ce65d5062be5afb56f5bf28ce32093413cfa"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#f0062fe9d300a1dce46a489ffb03b4ee1f8d3e61e96a44f6d408e0771efa106e",
-      "widgetPath": "approvals/popup-close~2502befe",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "f0062fe9d300a1dce46a489ffb03b4ee1f8d3e61e96a44f6d408e0771efa106e"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#2b3c3c6690313c7308d64cdb57f32caa5f3516fef310c2ed1ae6316a09215226",
-      "widgetPath": "approvals/popup-close~bc83e28f",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "2b3c3c6690313c7308d64cdb57f32caa5f3516fef310c2ed1ae6316a09215226"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#4eb15265281fc8fffb08806e75c1ed524b37c379355a1ec23f2c7b388c5cf418",
-      "widgetPath": "approvals/popup-close~48102389",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "4eb15265281fc8fffb08806e75c1ed524b37c379355a1ec23f2c7b388c5cf418"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#011b281aee20cdec4e83ae6525d4dda83ae8fdafacedf31b6d490e9547b18c8b",
-      "widgetPath": "approvals/popup-close~41fb9207",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "011b281aee20cdec4e83ae6525d4dda83ae8fdafacedf31b6d490e9547b18c8b"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#9b979b83f3f40a0b6678c24c29824f73f7b3454c3af70bb1f224cd029e09b0c0",
-      "widgetPath": "approvals/popup-close~ec3b576f",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "9b979b83f3f40a0b6678c24c29824f73f7b3454c3af70bb1f224cd029e09b0c0"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#ecb9bbcf9145c5f6873ed496880d84da77bd886846cb6baafbd801f2643990ff",
-      "widgetPath": "approvals/popup-close~83954158",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "ecb9bbcf9145c5f6873ed496880d84da77bd886846cb6baafbd801f2643990ff"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#6c2828f231a59a151c8cd856b370f27333d1af78ffff40f2a5d01e5d6980fa69",
-      "widgetPath": "approvals/popup-close~9c50f00b",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "6c2828f231a59a151c8cd856b370f27333d1af78ffff40f2a5d01e5d6980fa69"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#ce00bfbc8b93c673a588bf3a2ee960d6ec17ec7980f9bae8863485b339e56491",
-      "widgetPath": "approvals/popup-close~1519a9a4",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "ce00bfbc8b93c673a588bf3a2ee960d6ec17ec7980f9bae8863485b339e56491"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#d767c3af07a5b1933c0205900bf9aab284bcd51391c3014a9b50b327c2c2d48a",
-      "widgetPath": "approvals/popup-close~c8bc7322",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "d767c3af07a5b1933c0205900bf9aab284bcd51391c3014a9b50b327c2c2d48a"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#f202f3f3f8d11b5d461c1af135dfc6eb1eda1a2e3fec78ca7d9bf5227d6647b0",
-      "widgetPath": "approvals/popup-close~a7548890",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "f202f3f3f8d11b5d461c1af135dfc6eb1eda1a2e3fec78ca7d9bf5227d6647b0"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#09dd119889947568f797a00ae8a5d4d1bc811da6a6047fc68a2ad2785d05929a",
-      "widgetPath": "approvals/popup-close~ef0a627d",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "09dd119889947568f797a00ae8a5d4d1bc811da6a6047fc68a2ad2785d05929a"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#a3fa8452f484e88ddd6f814474f3b6263a6d49ad192c8eba14a5e5244381eec2",
-      "widgetPath": "approvals/popup-close~34794c66",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "a3fa8452f484e88ddd6f814474f3b6263a6d49ad192c8eba14a5e5244381eec2"
-          }
-        }
-      ]
-    },
-    {
-      "id"        : "popup.close",
-      "editor"    : "approvals",
-      "key": "fx:popup.close#6e9fbd3e4a65e6c591fa2b25444014f61da042341a165c0fd583a853773f7539",
-      "widgetPath": "approvals/popup-close~8f39907b",
-      "then": [
-        {
-          "id"   : "view.open",
-          "props": {
-            "editor" : "asset",
-            "where"  : "elsewhere",
-            "subject": "6e9fbd3e4a65e6c591fa2b25444014f61da042341a165c0fd583a853773f7539"
           }
         }
       ]
@@ -7277,21 +6339,9 @@
       ]
     }
   ],
-  "disagreements": [
-    {
-      "editor": "asset",
-      "key"   : "cmd:asset.replace",
-      "pane"  : "offers it",
-      "stack": "refuses it — The classroom — day plate is already the render b524a2d7, and nothing about it has changed — adopting 45716256 would replace real work. Adopt with replace to supersede it; the old bytes stay in the store."
-    }
-  ],
+  "disagreements": [],
   "strays": [
-    "asset cmd:prompt.check",
-    "documents item:link/asset/9d78b424f22bd31f9e6efc135087a11e66f808ae22427c5afe16768e77f7098e",
-    "documents item:link/asset/d246bdcc4e4d2b1ca7c3140060d60f4bfbf2af7fdc32d612497d296b4c3f16c7",
-    "documents item:link/asset/ed9f4427c214956c2eced5ae4a47d26385908a10f09051dd3ccf3e6824cdf4c4",
-    "play fx:pane.view#dim",
-    "timeline fx:pane.view#reload"
+    "documents item:link/asset/fc80c6eba9cb0d134428bb7c0bd8bb65effa5be3379a763df6cb0467f5ebbae9"
   ],
   "untagged"     : [],
   "unwalked"     : []

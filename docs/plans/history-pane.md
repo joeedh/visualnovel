@@ -18,6 +18,7 @@
     - [Stage 7 — Sync](#stage-7--sync)
     - [Stage 8 — Docs and finishing](#stage-8--docs-and-finishing)
 - [Risks specific to the build order](#risks-specific-to-the-build-order)
+- [A wiki that is a submodule](#a-wiki-that-is-a-submodule)
 - [What it costs to undo](#what-it-costs-to-undo)
 - [Pressure test](#pressure-test)
 
@@ -379,6 +380,78 @@ given a full refname creates `refs/tags/refs/tags/…`. `Git.log` is untouched.
   both shapes and look at the fourteen-conversation project's history); the entity filter;
   "Show history" placement; the base-art role.
 
+**As built (2026-09-21).** Everything above, with these particulars:
+
+- The editor is `HistoryEditor` in `editors/history.ts`, registered as `vn.HistoryEditor`
+  (the struct name follows the class, as the other panes do), area name `history`. It pins
+  `docPath`, and `SUBJECT_OF` in `rules/route.ts` maps it there so
+  `view.open(editor='history' subject=<path>)` works. The pane adopts `ui.docPath` on its
+  first sighting and on every change, because `view.open` publishes the subject before the
+  pane's first frame; clearing the chip does not publish, so the tree's selection is
+  untouched. `claims` returns `secondary` for `scene`, `wiki`, `character` and `location`
+  nodes with a path, and for a `file` node only when `isTextPath` — a `.png` in file mode
+  had routed to History, which `route.test` caught. Under the existing visibility-first
+  rule, a wiki clicked with History visible and Wiki hidden focuses History; that is the
+  rule working, not a special case.
+- **The five decisions.** The title is **History**. **The agent fold** — evidence from
+  test4: every writing agent turn is two commits, a trailerless one whose subject is the
+  agent's own summary (`00739d3 c10_the_world_breaks: split monologues…`) a few seconds
+  before `Agent turn: <ask>` with `Vn-Command: agent.run` / `Vn-Source: ui`; today the
+  first shows as "Made outside the app". `Close conversation: …` is trailerless too.
+  Adjacency (the `agent.run` commit's first parent, same identity, within seconds) folds
+  every one of them cleanly and misfires on none, but the durable fix is trailers on the
+  agent's own commit, and that lands in Stage 6 with `git_commit`'s trailers. **No entity
+  dropdown**: the document tree is the picker (test4 has 52 scenes, and a dropdown would
+  duplicate the tree's search); the file filter is a chip set from the tree, and the one
+  thing to do with it in the pane is take it off. **"Show history"** is on any tree node
+  that names one file — `scene`, `character`, `location`, `wiki` and `file` — and on
+  nothing else (folders, `wikidir`, skills, assets); `git.history(path=<dir>)` would
+  answer, but the row would open a pane narrowed to a folder that no other surface can
+  name. **Base art** is a third strip role handled generically; no example project has
+  one, so nothing was designed for it.
+- **Reading.** `load()` reads `git.repos`, resolves the chip's path to a repo through the
+  owned roots (`resolvePath`, longest root wins, slashes normalised because each
+  `rev-parse` prints its own), then `git.status` and `git.history` together. A read
+  carries a token so a stale answer is dropped. A read slower than `SLOW_MS` dims the body
+  and the footer says "Reading history…"; a failure goes to the footer in `--vermilion`.
+  `onInvalidate` reloads after every mutating command; while `git.status` says `pending`
+  the pane polls it every `PENDING_POLL_MS` for the deferred batch's commit.
+- **Filters.** Who and the checkpoint tick filter what was read; text and path re-read.
+  The repo, `who` and `checkpointsOnly` persist through `saveData` (spread over
+  `super.saveData()`, since `Area`'s carries `_area_id`); the search text and the path do
+  not, because the path follows the tree and a stale search would hide saves silently.
+  Times are on the 24-hour clock (`hourCycle: 'h23'`).
+- **UX review 1** ran over screenshots at 320, 560 and 940 px against the report's Visual
+  design section and `tokens.css`. Fixed in this stage: the sha was invisible (now the
+  time's tooltip, so the footer stays free for Stage 5's path·sha); the `+a −r` counts
+  were coloured like a diff (now `--mist-dim`, since a count is not a change); the time
+  column borrowed `--mono` (now `--sans` with tabular figures — `--mono` is for paths and
+  hashes only); day and kind headings were uppercase (now sentence case, 11 px `--mist`);
+  the strip overflowed at 320 px (a narrow form drops the shared copy's name); the empty
+  path chip drew a border with nothing in it (now borderless, greyed, with a tooltip
+  saying how to narrow); the maker rail sat under the window's left edge (now an inset
+  `::before`). Kept against the review, per the brief: the `·`-joined strip (the report's
+  own wording), the uppercase `AGENT` badge (the report's vocabulary table), and the
+  per-row `⇡` (moved inline into the count column; whether it belongs on every unsent row
+  is Stage 7's call once the strip can send). Pre-existing and left alone: the pane
+  header's label ("HISTORY", like "BRANCHES") clips at the window's left edge — app
+  chrome, outside this plan.
+- **Submodule items done here** (from the section below): path→repo resolution for "Show
+  history" on a wiki node; the detached-HEAD strip sentence says what to do ("check one
+  out in `<root>` to save there"); `kindOf` answers `project` for the bare `wiki` path and
+  for `.gitmodules`. Not done, because `RepoRef.missing` does not exist on this branch
+  yet: the strip's "never checked out" entry, and skipping submodule entries in the
+  project's porcelain status.
+- `vngen/state/**/*.jsonl` are all logs (the transcripts under `threads/` too, since an
+  agent turn appends to them), so a turn's file count does not include its own transcript.
+- Observed, not fixed: opening test4 with `--mock` rewrites `assets/manifest.json` and
+  `vngen/build/manifest.json` (`accepted: true → false`) without a commit, so the status
+  view reports "2 files changed outside the app" on every mock launch. That is the mock
+  path writing where a real run would not, outside this plan.
+- The editor count is nineteen in `CLAUDE.md`, `desktop-app-shell.md` (whose parenthetical
+  list had also dropped `page`) and `module-map.md`. The anchor sweep and
+  `pnpm gen:uxmodel` were re-run.
+
 ### Stage 5 — The change view and the diffs
 
 - The detail column: header (subject, maker, time, "Ran: …" from the record found by sha),
@@ -509,6 +582,69 @@ given a full refname creates `refs/tags/refs/tags/…`. `Git.log` is untouched.
   `status --porcelain=v2 --branch` needs 2.11, `%(trailers:only,unfold)` 2.13, and
   `--follow-tags` 1.8.3; the doctor gains a version probe in Stage 2 that warns below 2.13
   and the guide names it.
+
+## A wiki that is a submodule
+
+Added 2026-09-21 from `docs/plans/wiki-submodule.md`, a separate plan on `master` (not on
+this branch yet, so named rather than linked) that makes `wiki/` work as a git submodule
+of the project. The repo map already treats a submodule as an owned `wiki` repo, so the
+pane's second strip entry is a submodule in practice. That plan fixes commit ordering
+(nested repos commit first, so the parent's gitlink is current), puts a detached submodule
+on a branch at open, reports a submodule that was never checked out (`RepoRef.missing`),
+and makes `vnauthor`'s `git_commit` span repos. Its Stage 1 (commit order, `byDepth`
+exported from `@vn/git`) is independent; its Stages 2 and 3 wait for this plan's Stages
+1–3 to be on `master`, because they read `inProgress()` and add a parser to `parse.ts`.
+What is left touches this plan, stage by stage; none of it changes a command id or a
+refname.
+
+- **Stage 3/4 — the parser and the strip.** `diff-tree --raw` prints a submodule bump with
+  mode `160000` and a _commit_ sha in the blob columns. `parseChanges` discards the modes,
+  `git.blob`/`catBlob` on that sha fails, and `diffPath` for it is the two-line
+  `-Subproject commit a…`/`+Subproject commit b…`. Keep the modes, give `Change` a way to
+  say "gitlink", and give `kindOf` answers for a bare `wiki` path and for `.gitmodules`
+  (both project kind). The strip reads `RepoRef.missing` to show a wiki entry that has no
+  history, with the reason.
+- **Stage 3/4 — the project's status.** `status --porcelain=v2` prints a submodule as an
+  ordinary entry with `S<C><M><U>` in the sub field, which `parseStatusV2` drops. A moved
+  or dirty wiki then makes `statusCause` on the project say "changed outside the app"
+  about `wiki`. Keep the sub field; skip submodule entries in the project's status, or
+  attribute them to the wiki role.
+- **Stage 4 — "Show history" on a wiki node must ask the wiki repo.**
+  `git.history(path=…)` against the project returns nothing for a path under a submodule.
+  Resolve the node's path to a role through the owned-repo roots (the longest root that
+  prefixes the path) before choosing `repo=`. `git.diff` and Stage 6's `git.restoreFile`
+  on a path take the same resolution.
+- **Stage 4 — the detached-HEAD refusal.** A submodule checks out detached, and until the
+  other plan lands that is what the pane sees for the wiki. The refusal's sentence should
+  say what to do ("check out a branch in `wiki/`") rather than only what is wrong.
+- **Stage 5 — a sixth diff.** The change view needs a shape for a gitlink bump: "the story
+  bible moved from save X to save Y", opening the wiki repo's history at Y.
+- **Stage 6 — `git.goBack` on the project does not move the wiki.** `read-tree -u --reset`
+  changes the gitlink in the index and leaves the submodule's worktree alone, and the next
+  act's `add -A` re-stages the wiki's real HEAD. The confirm text for a project with a
+  wiki repo should say so: "The story bible keeps its own history; go back there
+  separately."
+- **Stage 6 — `git_commit` is path-scoped, and the other plan partitions its paths by
+  repo.** `loop.ts:1039-1043` unions `editedPaths` into the tool's `paths`, so a
+  workspace-relative `git add wiki/x.md` in the project stages the gitlink (no gitlink
+  yet) or fatals (gitlink present). The other plan's Stage 3 splits the paths with
+  `RepoResolver.group`, commits nested repos first and adds each nested path to the
+  parent's pathspec; `result.data` becomes `{ root, sha, paths }[]`. The trailers this
+  stage adds to `git_commit` (`Vn-Source: agent`, `Vn-Thread`, `Vn-Plan`) go on every
+  repo's commit, and `git_log`'s `repo` argument should default to the project.
+- **Stage 6 — a checkpoint pins a wiki sha through the gitlink but does not tag the
+  wiki.** Either tag both repos under one slug when the project has a wiki repo, or say in
+  the checkpoint's tooltip that it covers the project only.
+- **Stage 7 — sync order.** Pushing the parent before the wiki publishes a gitlink to a
+  commit the remote does not have. Push nested repos first (`@vn/git` will export a
+  `byDepth` order for the committer; reuse it), and refuse to push the parent while the
+  wiki has unsent saves. Pulling the parent brings a gitlink the wiki's worktree may not
+  match; the wiki's own pull, along its branch, catches it up, and the parent's gitlink
+  follows at the next act. `git.pull` never runs `submodule update`, and the app never
+  moves the wiki to match the parent.
+- **Stage 7 — the collaborating guide** says a clone needs `--recurse-submodules`, and
+  names the other plan's "not checked out" notification as what a clone without it looks
+  like.
 
 ## What it costs to undo
 
