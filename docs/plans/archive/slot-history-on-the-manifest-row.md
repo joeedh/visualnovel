@@ -1,7 +1,7 @@
 # Slot history on the manifest row
 
 Plan, 2026-09-20. Implements the model the owner chose in
-[`../research/slots-as-asset-history.md`](../research/slots-as-asset-history.md#decisions):
+[`../research/slots-as-asset-history.md`](../../research/slots-as-asset-history.md#decisions):
 which take a slot holds and whether a human approved it become two bits on the manifest
 row, `current` and `accepted`, and every surface reads them through one rule. The research
 doc holds the findings and the twelve decisions; this plan holds the work. Where the two
@@ -36,7 +36,7 @@ disagree the research doc's decisions win and this plan is wrong.
 
 - One definition of "the take a slot holds": the manifest row with `current` set among the
   rows bound to the slot. Today there are six
-  ([research §Six answers](../research/slots-as-asset-history.md#six-answers-to-which-take-is-current)).
+  ([research §Six answers](../../research/slots-as-asset-history.md#six-answers-to-which-take-is-current)).
 - `accepted` means one thing: a person approved this take. No runner sets it.
 - A current, unapproved take is shown everywhere the author works and refused where the
   output leaves the app.
@@ -556,8 +556,8 @@ Each sentence lands with the stage that makes it true; this list is the checklis
 ## Review findings
 
 A fresh-context review of the first draft, per
-[`../reference/conventions.md#plans`](../reference/conventions.md#plans). Each finding and
-what the plan does about it.
+[`../reference/conventions.md#plans`](../../reference/conventions.md#plans). Each finding
+and what the plan does about it.
 
 - **Stages 1–3 of the draft were not green on their own.** Removing `accept`'s `supersede`
   broke three callers assigned to later stages, and a `pick` reading `current` before any
@@ -641,9 +641,9 @@ Stages landed, each as its own green commit on the `slot-history` branch:
 - [x] Stage 4 — interactive graph run files a take.
 - [x] Stage 5 — portrait gate reads the row.
 
-- [ ] Comments audited in every file touched; no `CLAUDENOTE:` remains.
-- [ ] `docs/reference/pipeline-contracts.md`, `asset-stores.md`, `document-tree.md`,
+- [x] Comments audited in every file touched; no `CLAUDENOTE:` remains.
+- [x] `docs/reference/pipeline-contracts.md`, `asset-stores.md`, `document-tree.md`,
       `gen-graphs.md`, `cli.md` and `CLAUDE.md`'s one-line summaries match the code.
-- [ ] `pnpm gen:uxmodel` run in every stage that touched a rule or a situation; the anchor
-      sweep re-run after stage 3.
-- [ ] `docs/plans/index.md` row flipped and the file moved to `archive/`.
+- [x] `pnpm gen:uxmodel` run in every stage that touched a rule or a situation; the anchor
+      sweep re-run after stages 3 and 5.
+- [x] `docs/plans/index.md` row flipped and the file moved to `archive/`.

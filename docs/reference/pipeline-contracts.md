@@ -215,7 +215,7 @@ These implement the system design in
       (`VnError('UNAPPROVED')`) alike. `vngen accept --hash | --all` and the testkit's
       `acceptAll` accept through `acceptTake`, the same rule `asset.accept` applies.
     - Plan:
-      [`../plans/slot-history-on-the-manifest-row.md`](../plans/slot-history-on-the-manifest-row.md).
+      [`../plans/archive/slot-history-on-the-manifest-row.md`](../plans/archive/slot-history-on-the-manifest-row.md).
 - **A storyboard is fetched only on an explicit request, and a fallback is never
   persisted.**
     - Once `work/shots/<sceneId>.json` is written it takes precedence permanently, and an

@@ -3,7 +3,7 @@
 Research, 2026-09-20. Names the model the code has today for "a slot holds a history of
 takes", lists where the code disagrees with itself about that model, and lays out options
 for a formal one. The plan written from it is
-[`../plans/slot-history-on-the-manifest-row.md`](../plans/slot-history-on-the-manifest-row.md);
+[`../plans/archive/slot-history-on-the-manifest-row.md`](../plans/archive/slot-history-on-the-manifest-row.md);
 nothing here changes code.
 
 <!-- toc -->
