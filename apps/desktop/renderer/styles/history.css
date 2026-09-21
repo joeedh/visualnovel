@@ -235,6 +235,17 @@ button.hs-btn:disabled {
   display: none;
 }
 
+.hs-status-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hs-status-line .hs-btn {
+  flex: 0 0 auto;
+}
+
 .hs-status-paths {
   margin-top: 2px;
   color: var(--mist);
@@ -536,6 +547,12 @@ button.hs-btn:disabled {
   color: var(--mist-dim);
 }
 
+.hs-diff-acts {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 16px 0;
+}
+
 .hs-diff-note.bad {
   color: var(--vermilion);
 }
@@ -806,6 +823,11 @@ button.hs-btn:disabled {
   flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.hs-foot-right {
+  flex: 0 0 auto;
+  color: var(--sodium);
 }
 
 .hs-foot.bad {

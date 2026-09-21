@@ -52,6 +52,7 @@ describe('Git.history', () => {
       expect((await git.history({ before: third })).map((e) => e.sha)).toEqual([second, first]);
       expect((await git.history({ before: third, limit: 1 })).map((e) => e.sha)).toEqual([second]);
       expect(await git.history({ before: first })).toEqual([]);
+      expect((await git.history({ from: second, limit: 1 })).map((e) => e.sha)).toEqual([second]);
       const byPath = await git.history({ path: 'bin.dat' });
       expect(byPath.map((e) => e.sha)).toEqual([first]);
       // The path picks the commits; each still lists every file it touched

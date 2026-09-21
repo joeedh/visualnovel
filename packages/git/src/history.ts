@@ -37,12 +37,21 @@ export interface MakerContext {
 }
 
 /**
+ * How long before an `agent.run` commit its own trailerless commit may sit and still be read as
+ * the same turn's. The agent commits at the end of its plan and the app commits the turn's logs
+ * moments later; an author's own commit in that window would carry a trailer.
+ */
+export const AGENT_FOLD_MS = 5 * 60 * 1000;
+
+/**
  * Attributes one commit. A collaborator's identity wins over every trailer, since their app
  * writes the same trailers; then the trailerless housekeeping shapes; then the source and the
  * command the trailers name. A commit with no trailer that is none of those was made outside
- * the app.
+ * the app — unless `child`, the commit whose first parent it is, is an agent turn's that followed
+ * it within `AGENT_FOLD_MS`, which is the shape the agent's own commit took before it carried
+ * trailers.
  */
-export function makerOf(commit: HistoryEntry, ctx: MakerContext): Maker {
+export function makerOf(commit: HistoryEntry, ctx: MakerContext, child?: HistoryEntry): Maker {
   const { local } = ctx;
   const mine =
     (local.email !== null && commit.email === local.email) ||
@@ -59,7 +68,30 @@ export function makerOf(commit: HistoryEntry, ctx: MakerContext): Maker {
   if (listed(t['Vn-Source']).includes('agent') || commands.includes('agent.run')) return 'agent';
   if (commands.some((c) => PIPELINE.test(c))) return 'pipeline';
   if (t[COMMAND] !== undefined || 'Vn-Undo' in t || 'Vn-Redo' in t) return 'author';
+  // A closed conversation is filed under its thread alone
+  if ('Vn-Thread' in t) return 'housekeeping';
+  if (child && foldsInto(commit, child)) return 'agent';
   return 'unknown';
+}
+
+/**
+ * `makerOf` over a run of commits newest first, each read beside the one above it. `newer` is the
+ * commit just above the first, for a run that is a later page of a longer listing.
+ */
+export function makersOf(
+  entries: readonly HistoryEntry[],
+  ctx: MakerContext,
+  newer?: HistoryEntry,
+): Maker[] {
+  return entries.map((e, i) => makerOf(e, ctx, i === 0 ? newer : entries[i - 1]));
+}
+
+/** Whether a trailerless commit is an agent turn's own, by its place just under the turn's. */
+function foldsInto(commit: HistoryEntry, child: HistoryEntry): boolean {
+  if (child.parents[0] !== commit.sha || child.email !== commit.email) return false;
+  if (!listed(child.trailers[COMMAND]).includes('agent.run')) return false;
+  const gap = Date.parse(child.date) - Date.parse(commit.date);
+  return gap >= 0 && gap <= AGENT_FOLD_MS;
 }
 
 const listed = (value: string | undefined): string[] =>

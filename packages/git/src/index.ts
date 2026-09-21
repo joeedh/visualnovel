@@ -3,3 +3,4 @@ export * from './repos.js';
 export * from './errors.js';
 export * from './parse.js';
 export * from './history.js';
+export * from './recovery.js';

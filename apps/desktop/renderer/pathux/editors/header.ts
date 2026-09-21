@@ -202,6 +202,7 @@ export class VnHeaderEditor extends VnEditor {
       ui.canRedo,
       ui.undoLabel,
       ui.redoLabel,
+      ui.undoBlocked,
       ui.busyWhat,
       ui.busyStopping,
       ui.retryAttempt,
@@ -290,7 +291,7 @@ export class VnHeaderEditor extends VnEditor {
     this.badge(`project ${ui.projectTitle || '—'}`, true);
     this.runControls();
 
-    const undo = undoAction(ui.canUndo ? ui.undoLabel : null);
+    const undo = undoAction(ui.canUndo ? ui.undoLabel : null, ui.undoBlocked);
     this.anchors.act(
       this.bar.button(undo.label, () => {}),
       undo,

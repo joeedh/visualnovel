@@ -12,7 +12,7 @@ import {
   type Outfit,
   type Scene,
 } from '@vn/types';
-import { parseFountain, type FrontMatterDoc } from '@vn/parse';
+import { parseFountain, parseFrontMatter, type FrontMatterDoc } from '@vn/parse';
 import { splitScenes, type MinedLocation } from './scenes.js';
 
 /** A parsed entity, or the diagnostic explaining why a doc was rejected. */
@@ -143,6 +143,22 @@ export function sceneFromDoc(doc: FrontMatterDoc, id: string): EntityResult<Load
     };
   }
   return { ok: true, value: { scene, mined: split.mined, diagnostics: split.diagnostics } };
+}
+
+/**
+ * Why `text` would not load as `scenes/<id>.md`, or undefined when it would. What a restore of an
+ * earlier version asks before writing it, since a chunk that will not load takes the scene out
+ * of the model rather than putting an older one in.
+ */
+export function sceneTextProblem(id: string, text: string): string | undefined {
+  let doc: FrontMatterDoc;
+  try {
+    doc = parseFrontMatter(text);
+  } catch (err) {
+    return `front-matter will not parse: ${(err as Error).message}`;
+  }
+  const result = sceneFromDoc(doc, id);
+  return result.ok ? undefined : result.diagnostic.message;
 }
 
 /**

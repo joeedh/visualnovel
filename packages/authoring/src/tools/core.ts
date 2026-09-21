@@ -116,6 +116,12 @@ export interface ToolContext {
    * comes from the author's words.
    */
   said?: () => readonly string[];
+  /**
+   * Trailers for every commit the agent makes, read at commit time: the host names the
+   * conversation (`Vn-Thread`), and the loop adds the plan the commit carries out (`Vn-Plan`).
+   * `git_commit` writes `Vn-Source: agent` on its own, so a bare context still marks its commits.
+   */
+  trailers?: () => Record<string, string>;
 }
 
 /** A registered tool: a typed, gated shim over a reused function. */

@@ -48,6 +48,7 @@ import {
   gitCommitTool,
   gitRevertTool,
   gitRestoreTool,
+  gitCheckpointTool,
   gitInitTool,
 } from './git.js';
 
@@ -105,6 +106,7 @@ export const ALL_TOOLS: Tool[] = [
   gitCommitTool,
   gitRevertTool,
   gitRestoreTool,
+  gitCheckpointTool,
   gitInitTool,
 ] as Tool[];
 

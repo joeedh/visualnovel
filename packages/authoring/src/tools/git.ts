@@ -1,51 +1,176 @@
 // ── Git ─────────────────────────────────────────────────────────────────────
 import { z } from 'zod';
-import { ok, fail, type Tool } from './core.js';
+import {
+  makersOf,
+  operationOf,
+  previewCheckpoint,
+  previewTakeBack,
+  statusCause,
+  type Git,
+  type Maker,
+  type MakerContext,
+} from '@vn/git';
+import { sceneTextProblem } from '@vn/model';
+import { inSecretsDir, SECRETS_REFUSAL } from '@vn/store';
+import { ok, fail, type Tool, type ToolContext } from './core.js';
+
+const short = (sha: string): string => sha.slice(0, 7);
+
+/** The identity commits are made with here, so a collaborator's save can be told from the author's. */
+async function makerContext(git: Git): Promise<MakerContext> {
+  return {
+    local: { name: await git.configGet('user.name'), email: await git.configGet('user.email') },
+  };
+}
+
+const MAKER_SAYS: Record<Maker, string> = {
+  author      : 'author',
+  agent       : 'agent',
+  pipeline    : 'pipeline',
+  housekeeping: 'housekeeping',
+  other       : 'someone else',
+  unknown     : 'outside the app',
+};
 
 const gitStatusTool: Tool<Record<string, never>> = {
   name       : 'git_status',
-  description: 'Show the working-tree status.',
+  description:
+    'Where the project stands: whether everything is saved and if not why, the branch, and how ' +
+    'many saves are unsent or unfetched against its shared copy.',
   mutating   : false,
   args       : z.object({}).strict(),
   async run(_a, ctx) {
     if (!(await ctx.git.isRepo())) return ok('Not a git repository.');
-    const s = await ctx.git.status();
-    const body = s.dirty ? s.entries.map((e) => `${e.x}${e.y} ${e.path}`).join('\n') : 'clean';
-    return ok(`On ${s.branch}\n${body}`, { data: s });
+    const [branch, inProgress] = await Promise.all([ctx.git.branchStatus(), ctx.git.inProgress()]);
+    const status = statusCause(branch.entries, 0, inProgress);
+    const data = {
+      ...status,
+      branch  : branch.head ?? inProgress.rebase?.branch ?? null,
+      upstream: branch.upstream,
+      ahead   : branch.ahead,
+      behind  : branch.behind,
+    };
+    const lines = [`On ${data.branch ?? 'no branch'}`];
+    if (branch.upstream)
+      lines.push(
+        `Shared copy ${branch.upstream}: ${branch.ahead ?? '?'} to send, ${branch.behind ?? '?'} to get.`,
+      );
+    const busy = operationOf(inProgress);
+    if (busy) lines.push(`A ${busy} is in progress.`);
+    if (status.cause === 'outside') {
+      lines.push('Changed on disk and not yet saved:', ...status.outside.map((p) => `  ${p}`));
+    } else if (status.cause === 'clean') lines.push('Everything is saved.');
+    if (status.conflicted.length > 0) {
+      lines.push('Conflicted:', ...status.conflicted.map((p) => `  ${p}`));
+    }
+    return ok(lines.join('\n'), { data });
   },
 };
 
-const gitLogTool: Tool<{ limit?: number }> = {
+const gitLogTool: Tool<{ limit?: number; path?: string; who?: string }> = {
   name       : 'git_log',
-  description: 'Show recent commit history.',
+  description:
+    'The project’s saves, newest first: who made each (author, agent, pipeline, housekeeping), ' +
+    'when, what it says, how many files it touched, and any checkpoint naming it. `path` narrows ' +
+    'to the saves that touched one file; `who` to one maker.',
   mutating   : false,
-  args       : z.object({ limit: z.number().optional() }),
+  args: z.object({
+    limit: z.number().optional(),
+    path : z.string().optional().describe('workspace-relative path'),
+    who  : z.enum(['author', 'agent', 'pipeline', 'housekeeping', 'other', 'unknown']).optional(),
+  }),
   async run(a, ctx) {
     if (!(await ctx.git.isRepo())) return ok('Not a git repository.');
-    const log = await ctx.git.log(a.limit ?? 20);
-    const body = log.map((c) => `${c.shortHash} ${c.date} ${c.subject}`).join('\n');
-    return ok(body || '(no commits)', { data: log });
+    const limit = a.limit ?? 20;
+    const [entries, checkpoints, mc] = await Promise.all([
+      ctx.git.history({ limit, ...(a.path ? { path: a.path } : {}) }),
+      ctx.git.checkpoints(),
+      makerContext(ctx.git),
+    ]);
+    const makers = makersOf(entries, mc);
+    const rows = entries
+      .map((e, i) => ({
+        sha        : e.sha,
+        date       : e.date,
+        author     : e.author,
+        subject    : e.subject,
+        maker      : makers[i]!,
+        files      : e.files.length,
+        checkpoints: checkpoints.filter((c) => c.sha === e.sha).map((c) => c.name),
+      }))
+      .filter((row) => !a.who || row.maker === a.who);
+    const body = rows
+      .map((r) => {
+        const marks = r.checkpoints.length ? ` ⚑ ${r.checkpoints.join(', ')}` : '';
+        return `${short(r.sha)} ${r.date.slice(0, 16)} [${MAKER_SAYS[r.maker]}] ${r.subject} (${r.files} file${r.files === 1 ? '' : 's'})${marks}`;
+      })
+      .join('\n');
+    return ok(body || '(no saves)', { data: rows });
   },
 };
 
 const gitShowTool: Tool<{ ref: string }> = {
   name       : 'git_show',
-  description: 'Show a commit (metadata + patch).',
+  description:
+    'One save in full: its message, who made it, what the app ran, and every file it touched ' +
+    'with the line counts.',
   mutating   : false,
   args       : z.object({ ref: z.string().min(1) }),
   async run(a, ctx) {
-    return ok(await ctx.git.show(a.ref));
+    const [entry] = await ctx.git.history({ from: a.ref, limit: 1 });
+    if (!entry) return fail(`No save ${a.ref} in this repository.`);
+    const [changes, mc] = await Promise.all([ctx.git.changes(entry.sha), makerContext(ctx.git)]);
+    const [maker] = makersOf([entry], mc);
+    const data = { ...entry, maker, changes };
+    const lines = [
+      `${short(entry.sha)} ${entry.subject}`,
+      `${entry.author} · ${entry.date} · ${MAKER_SAYS[maker!]}`,
+    ];
+    for (const [key, value] of Object.entries(entry.trailers)) lines.push(`${key}: ${value}`);
+    if (entry.body) lines.push('', entry.body);
+    lines.push('');
+    for (const c of changes) {
+      const counts = c.added === null ? 'binary' : `+${c.added} −${c.removed}`;
+      const renamed = c.oldPath ? ` (was ${c.oldPath})` : '';
+      lines.push(`${c.status} ${c.path}${renamed} ${counts}`);
+    }
+    return ok(lines.join('\n'), { data });
   },
 };
 
-const gitDiffTool: Tool<{ ref?: string; staged?: boolean }> = {
+const gitDiffTool: Tool<{ ref?: string; path?: string }> = {
   name       : 'git_diff',
-  description: 'Show a unified diff of the working tree (or against a ref).',
+  description:
+    'With `ref`, how that save changed its files — every file with its counts, and the full ' +
+    'text of the change for `path` when one is named. Without `ref`, what is changed on disk ' +
+    'and not yet saved.',
   mutating   : false,
-  args       : z.object({ ref: z.string().optional(), staged: z.boolean().optional() }),
+  args: z.object({
+    ref : z.string().optional(),
+    path: z.string().optional().describe('workspace-relative path'),
+  }),
   async run(a, ctx) {
-    const diff = await ctx.git.diff({ ref: a.ref, staged: a.staged });
-    return ok(diff || '(no changes)', { data: diff });
+    if (a.ref) {
+      const changes = await ctx.git.changes(a.ref);
+      const listed = changes
+        .map(
+          (c) =>
+            `${c.status} ${c.path} ${c.added === null ? 'binary' : `+${c.added} −${c.removed}`}`,
+        )
+        .join('\n');
+      if (!a.path) return ok(listed || '(no changes)', { data: { changes } });
+      const diff = await ctx.git.diffPath(a.ref, a.path);
+      return ok(diff.binary ? `${a.path}: binary` : diff.text || '(no changes)', {
+        data: { changes, path: a.path, ...diff },
+      });
+    }
+    const status = await ctx.git.status();
+    const text = await ctx.git.diff(a.path ? { paths: [a.path] } : {});
+    const entries = status.entries.filter((e) => !a.path || e.path === a.path);
+    const listed = entries.map((e) => `${e.x}${e.y} ${e.path}`).join('\n');
+    return ok([listed, text].filter((s) => s !== '').join('\n\n') || '(no changes)', {
+      data: { entries, text },
+    });
   },
 };
 
@@ -64,7 +189,10 @@ const gitCommitTool: Tool<{ message: string; paths?: string[] }> = {
   }),
   async run(a, ctx) {
     if (!(await ctx.git.isRepo())) return fail('Not a git repository (offer git_init).');
-    const hash = await ctx.git.commit({ message: a.message, paths: a.paths });
+    // The source is this tool's to state; the conversation and the plan are the host's and the
+    // loop's, read now so the commit names the thread it was made in
+    const trailers = { 'Vn-Source': 'agent', ...(ctx.trailers?.() ?? {}) };
+    const hash = await ctx.git.commit({ message: a.message, paths: a.paths, trailers });
     return hash
       ? ok(`Committed ${hash.slice(0, 8)}: ${a.message}`, { data: hash })
       : ok('Nothing to commit.');
@@ -73,25 +201,96 @@ const gitCommitTool: Tool<{ message: string; paths?: string[] }> = {
 
 const gitRevertTool: Tool<{ ref: string }> = {
   name       : 'git_revert',
-  description: 'Revert a commit (new commit undoing it). Always confirmed.',
+  description:
+    'Take one save back: reverse what it changed, as a new save. Refused when a later save ' +
+    'changed the same lines, when the save is a merge or the first, and while anything is ' +
+    'changed on disk. Always confirmed.',
   mutating   : true,
   confirm    : true,
   args       : z.object({ ref: z.string().min(1) }),
   async run(a, ctx) {
-    await ctx.git.revert(a.ref);
-    return ok(`Reverted ${a.ref}.`);
+    const preview = await previewTakeBack(ctx.git, a.ref);
+    if (!preview.ok) return fail(preview.reason);
+    if (!(await ctx.git.revertIntoTree(preview.entry.sha))) {
+      return fail('Taking the save back conflicted after all; nothing was changed.');
+    }
+    const written = preview.entry.files.map((f) => f.path);
+    const trailers = { 'Vn-Source': 'agent', ...(ctx.trailers?.() ?? {}) };
+    const hash = await ctx.git.commit({
+      message: `Took back: ${preview.entry.subject}`,
+      paths  : ['-A'],
+      trailers,
+    });
+    return ok(
+      `Took back ${short(preview.entry.sha)} (${preview.entry.subject}) as ${hash ? short(hash) : 'no change'}.`,
+      {
+        written,
+        data: hash,
+      },
+    );
   },
 };
 
 const gitRestoreTool: Tool<{ path: string; ref?: string }> = {
   name       : 'git_restore',
-  description: 'Restore a file to an earlier commit. Always confirmed.',
+  description:
+    'Bring one file back as it was at an earlier save (HEAD when no ref is given). A scene is ' +
+    'checked to load before it is written; keys/ is never touched. Always confirmed.',
   mutating   : true,
   confirm    : true,
   args       : z.object({ path: z.string().min(1), ref: z.string().optional() }),
   async run(a, ctx) {
-    await ctx.git.restore(a.path, a.ref ?? 'HEAD');
-    return ok(`Restored ${a.path} to ${a.ref ?? 'HEAD'}.`);
+    const ref = a.ref ?? 'HEAD';
+    const refusal = await restoreRefusal(ctx, a.path, ref);
+    if (refusal) return fail(refusal);
+    await ctx.git.restore(a.path, ref);
+    return ok(`Restored ${a.path} to ${ref}.`, { written: [a.path] });
+  },
+};
+
+/** Why `path` at `ref` may not be written over the working copy, or undefined when it may. */
+export async function restoreRefusal(
+  ctx: ToolContext,
+  path: string,
+  ref: string,
+): Promise<string | undefined> {
+  if (inSecretsDir(path)) return SECRETS_REFUSAL;
+  const bytes = await ctx.git.blob(ref, path);
+  if (bytes === null) return `That save has no ${path}.`;
+  const scene = /^scenes\/([^/]+)\.md$/.exec(path.replace(/\\/g, '/'));
+  if (!scene) return undefined;
+  const problem = sceneTextProblem(scene[1]!, bytes.toString('utf8'));
+  return problem === undefined ? undefined : `${path} as it was then would not load: ${problem}`;
+}
+
+const gitCheckpointTool: Tool<{ name: string; note?: string; ref?: string }> = {
+  name       : 'git_checkpoint',
+  description:
+    'Name a save as a checkpoint, so the author can find it and go back to it later. Names the ' +
+    'latest save unless `ref` picks another. Refused when the name is taken.',
+  mutating   : true,
+  args: z.object({
+    name: z.string().min(1),
+    note: z.string().optional().describe('why this point is worth keeping'),
+    ref : z.string().optional(),
+  }),
+  async run(a, ctx) {
+    const sha = a.ref ?? (await ctx.git.head());
+    if (!sha) return fail('There is no save to name yet.');
+    const preview = await previewCheckpoint(ctx.git, a.name, sha);
+    if (!preview.ok) return fail(preview.reason);
+    const note = a.note?.trim();
+    await ctx.git.tag(
+      preview.slug,
+      preview.entry.sha,
+      note ? `${a.name.trim()}\n\n${note}` : a.name.trim(),
+    );
+    return ok(
+      `Checkpoint “${a.name.trim()}” on ${short(preview.entry.sha)}: ${preview.entry.subject}`,
+      {
+        data: { slug: preview.slug, sha: preview.entry.sha },
+      },
+    );
   },
 };
 
@@ -115,5 +314,6 @@ export {
   gitCommitTool,
   gitRevertTool,
   gitRestoreTool,
+  gitCheckpointTool,
   gitInitTool,
 };

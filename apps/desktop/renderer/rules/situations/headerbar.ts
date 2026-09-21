@@ -62,4 +62,9 @@ export const SITUATIONS = situations<HeaderState>(
     why: 'A change was made and one was undone, so both arrows are offered naming what each moves.',
     state: { ...idle, undo: 'set speaker', redo: 'retype line' },
   },
+  {
+    name : 'undo-blocked',
+    why: 'A save was taken back, which cannot be undone, so the undo arrow is refused naming it rather than reaching past it to an older edit.',
+    state: { ...idle, undoBlocked: "git.takeBack(repo='project' sha='4f1a2b3')" },
+  },
 );

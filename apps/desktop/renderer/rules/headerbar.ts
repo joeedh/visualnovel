@@ -57,6 +57,8 @@ export function menuAction(button: MenuButton): Offer {
 export interface HeaderState {
   /** What Undo would take back, or `null` while there is nothing to undo. */
   undo: string | null;
+  /** The act undo stops at when `undo` is null and something has changed; empty otherwise. */
+  undoBlocked?: string;
   /** What Redo would put back, or `null` while there is nothing to redo. */
   redo: string | null;
   /** Which long-running work is in flight, or an empty string. */
@@ -208,10 +210,17 @@ export function modeAction(mode: string): Offer {
   };
 }
 
-/** The `⟲` arrow, refused with nothing to undo. */
-export function undoAction(undo: string | null): Offer {
+/**
+ * The `⟲` arrow, refused with nothing to undo. Refused by name when the newest change cannot be
+ * undone, since undo does not reach past it: after a save is taken back, the undo history from
+ * before no longer applies.
+ */
+export function undoAction(undo: string | null, blocked = ''): Offer {
   const control = { ...move('undo'), on: 'undo', label: '⟲' };
-  if (undo === null) return { ...refuse('Nothing to undo'), ...control, tooltip: 'Undo' };
+  if (undo === null) {
+    const why = blocked ? `Undo stops at ${blocked}, which cannot be undone` : 'Nothing to undo';
+    return { ...refuse(why), ...control, tooltip: 'Undo' };
+  }
   return { ok: true, ...control, tooltip: undo ? `Undo ${undo}` : 'Undo' };
 }
 
@@ -234,7 +243,7 @@ export function controls(state: HeaderState): readonly Offer[] {
     runAction(state.busyWhat, state.live),
     stopAction(busyControls(state.busyWhat), state.stopping ?? false),
     ...(state.errors || state.warnings ? [problemsAction(state.errors, state.warnings)] : []),
-    undoAction(state.undo),
+    undoAction(state.undo, state.undoBlocked),
     redoAction(state.redo),
     modeAction(state.agentMode),
     modelAction(state.model),

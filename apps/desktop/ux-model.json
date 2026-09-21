@@ -55,6 +55,12 @@
       "why": "A change was made and one was undone, so both arrows are offered naming what each moves."
     },
     {
+      "module": "headerbar",
+      "editor": "header",
+      "name"  : "undo-blocked",
+      "why": "A save was taken back, which cannot be undone, so the undo arrow is refused naming it rather than reaching past it to an older edit."
+    },
+    {
       "module": "notifications",
       "editor": "notifications",
       "name"  : "empty",
@@ -401,6 +407,24 @@
       "editor": "history",
       "name"  : "no-repo",
       "why": "The project is not under version control, so the filters are drawn but there is nothing to list and no repository to choose."
+    },
+    {
+      "module": "history",
+      "editor": "history",
+      "name"  : "outside-edits",
+      "why": "Two files were changed outside the app, so the status view offers Save these…; the selected save was written over by a later one, so the check refuses taking it back by name while going back is accepted, and the open file can be brought back."
+    },
+    {
+      "module": "history",
+      "editor": "history",
+      "name"  : "checkpointed",
+      "why": "The selected save carries a checkpoint, so its name can be dropped from the detail header; the checkpoint button names this save rather than the latest; a take-back was just run, so the footer says the undo history from before no longer applies."
+    },
+    {
+      "module": "history",
+      "editor": "history",
+      "name"  : "foreign-repo",
+      "why": "The project sits inside a repository that is not its own, so every write is refused with the one sentence while the reads still work."
     },
     {
       "module": "inspector",
@@ -4138,6 +4162,347 @@
       "editor"    : "header",
       "module"    : "headerbar",
       "situation" : "history",
+      "key"       : "fx:popup.open#notifications",
+      "widgetPath": "header/popup-open~4edac44b",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "🔔",
+        "tooltip": "Show notifications",
+        "on"     : "notifications",
+        "ok"     : true,
+        "props": {
+          "popup": "notifications"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "notifications"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "undo-blocked",
+      "key"       : "fx:menu.open#app",
+      "widgetPath": "header/menu-open~727d1fad",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "VN STUDIO",
+        "tooltip": "Open, create and export a project, and everything that acts on the workspace as a whole.",
+        "on"     : "app",
+        "ok"     : true,
+        "props": {
+          "menu": "app"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "app"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "undo-blocked",
+      "key"       : "fx:menu.open#edit",
+      "widgetPath": "header/menu-open~bcc0aa88",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Edit",
+        "tooltip": "Undo and redo, and the one act that approves and renders the art in a single pass.",
+        "on"     : "edit",
+        "ok"     : true,
+        "props": {
+          "menu": "edit"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "edit"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "undo-blocked",
+      "key"       : "fx:menu.open#view",
+      "widgetPath": "header/menu-open~3633d4f9",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "View",
+        "tooltip": "Split and close panes, and switch between the saved window layouts.",
+        "on"     : "view",
+        "ok"     : true,
+        "props": {
+          "menu": "view"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "view"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "undo-blocked",
+      "key"       : "fx:menu.open#help",
+      "widgetPath": "header/menu-open~f9eacb8d",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "Help",
+        "tooltip": "Whether there is a newer VN Studio, and what to do about an agent that misbehaved.",
+        "on"     : "help",
+        "ok"     : true,
+        "props": {
+          "menu": "help"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "help"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "undo-blocked",
+      "key"       : "cmd:view.open",
+      "widgetPath": "header/view-open~a1d8d77b",
+      "offer": {
+        "id"      : "view.open",
+        "label"   : "View",
+        "tooltip" : "Split and close panes, and switch between the saved window layouts.",
+        "supplies": ["editor"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "undo-blocked",
+      "key"       : "cmd:view.applyLayout",
+      "widgetPath": "header/view-applylayout~ef2d7727",
+      "offer": {
+        "id"      : "view.applyLayout",
+        "label"   : "View",
+        "tooltip" : "Split and close panes, and switch between the saved window layouts.",
+        "supplies": ["name"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "view.applyLayout",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "undo-blocked",
+      "key"       : "cmd:pipeline.run",
+      "widgetPath": "header/pipeline-run~bad6e3e8",
+      "offer": {
+        "id"     : "pipeline.run",
+        "label"  : "▶ Run",
+        "tooltip": "Plan and render everything that is ready, to the next gate",
+        "ok"     : true,
+        "props": {
+          "mock": false
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pipeline.run",
+          "props": {
+            "mock": false
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "undo-blocked",
+      "key"       : "cmd:pipeline.stop",
+      "widgetPath": "header/pipeline-stop~504d3be9",
+      "offer": {
+        "id"     : "pipeline.stop",
+        "label"  : "■",
+        "tooltip": "Stop the work in progress after the step it is on",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing is running."
+        }
+      },
+      "effects": [
+        {
+          "id": "pipeline.stop"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "undo-blocked",
+      "key"       : "fx:history.move#undo",
+      "widgetPath": "header/history-move~6f5c70d0",
+      "offer": {
+        "id"     : "history.move",
+        "label"  : "⟲",
+        "tooltip": "Undo",
+        "on"     : "undo",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Undo stops at git.takeBack(repo='project' sha='4f1a2b3'), which cannot be undone"
+        }
+      },
+      "effects": [
+        {
+          "id": "history.move"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "undo-blocked",
+      "key"       : "fx:history.move#redo",
+      "widgetPath": "header/history-move~ceac1434",
+      "offer": {
+        "id"     : "history.move",
+        "label"  : "⟳",
+        "tooltip": "Redo",
+        "on"     : "redo",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing to redo"
+        }
+      },
+      "effects": [
+        {
+          "id": "history.move"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "undo-blocked",
+      "key"       : "cmd:agent.setMode",
+      "widgetPath": "header/agent-setmode~12ef4d33",
+      "offer": {
+        "id"     : "agent.setMode",
+        "label"  : "PLAN",
+        "tooltip": "Plan mode: the agent reads but never writes. Click to let it apply edits.",
+        "ok"     : true,
+        "props": {
+          "mode": "execute"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "agent.setMode",
+          "props": {
+            "mode": "execute"
+          }
+        }
+      ],
+      "shortcut"  : "Shift+Tab"
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "undo-blocked",
+      "key"       : "cmd:agent.setModel",
+      "widgetPath": "header/agent-setmodel~a6e2e715",
+      "offer": {
+        "id"      : "agent.setModel",
+        "label"   : "claude-opus-5",
+        "tooltip" : "Which model the agent answers with. Switching takes effect next turn.",
+        "supplies": ["modelId"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "agent.setModel",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "undo-blocked",
+      "key"       : "fx:popup.open#approvals",
+      "widgetPath": "header/popup-open~ca476fa9",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "🎨",
+        "tooltip": "No art is waiting on approval",
+        "on"     : "approvals",
+        "ok"     : true,
+        "props": {
+          "popup": "approvals"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "approvals"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "header",
+      "module"    : "headerbar",
+      "situation" : "undo-blocked",
       "key"       : "fx:popup.open#notifications",
       "widgetPath": "header/popup-open~4edac44b",
       "offer": {
@@ -19235,6 +19600,34 @@
       "editor"    : "history",
       "module"    : "history",
       "situation" : "one-repo",
+      "key"       : "cmd:git.checkpoint",
+      "widgetPath": "history/git-checkpoint~21f68b45",
+      "offer": {
+        "id"     : "git.checkpoint",
+        "label"  : "⚑ Checkpoint…",
+        "tooltip": "Name the selected save as a checkpoint, so it can be found and gone back to later.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.checkpoint",
+          "props": {
+            "repo": "project",
+            "sha" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "one-repo",
       "key"       : "fx:pane.view#reload",
       "widgetPath": "history/pane-view~a08a707d",
       "offer": {
@@ -19379,6 +19772,62 @@
       "effects": [
         {
           "id": "agent.openThread"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "one-repo",
+      "key"       : "cmd:git.takeBack",
+      "widgetPath": "history/git-takeback~488d6c9f",
+      "offer": {
+        "id"     : "git.takeBack",
+        "label"  : "Take back this save",
+        "tooltip": "Reverse what this save did, as a new save. Nothing in history is deleted, and the undo history from before no longer applies.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.takeBack",
+          "props": {
+            "repo": "project",
+            "sha" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "one-repo",
+      "key"       : "cmd:git.goBack",
+      "widgetPath": "history/git-goback~31bd8a1c",
+      "offer": {
+        "id"     : "git.goBack",
+        "label"  : "Go back to here",
+        "tooltip": "Put every file back to how it was at this save, as a new save. Nothing in history is deleted, and the undo history from before no longer applies.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.goBack",
+          "props": {
+            "repo": "project",
+            "sha" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
         }
       ]
     },
@@ -19595,6 +20044,34 @@
       "editor"    : "history",
       "module"    : "history",
       "situation" : "two-repos-filtered",
+      "key"       : "cmd:git.checkpoint",
+      "widgetPath": "history/git-checkpoint~21f68b45",
+      "offer": {
+        "id"     : "git.checkpoint",
+        "label"  : "⚑ Checkpoint…",
+        "tooltip": "Name the latest save as a checkpoint, so it can be found and gone back to later.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : ""
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.checkpoint",
+          "props": {
+            "repo": "project",
+            "sha" : ""
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "two-repos-filtered",
       "key"       : "fx:pane.view#reload",
       "widgetPath": "history/pane-view~a08a707d",
       "offer": {
@@ -19794,6 +20271,34 @@
       "editor"    : "history",
       "module"    : "history",
       "situation" : "agent-save-open",
+      "key"       : "cmd:git.checkpoint",
+      "widgetPath": "history/git-checkpoint~21f68b45",
+      "offer": {
+        "id"     : "git.checkpoint",
+        "label"  : "⚑ Checkpoint…",
+        "tooltip": "Name the selected save as a checkpoint, so it can be found and gone back to later.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.checkpoint",
+          "props": {
+            "repo": "project",
+            "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "agent-save-open",
       "key"       : "fx:pane.view#reload",
       "widgetPath": "history/pane-view~a08a707d",
       "offer": {
@@ -19963,6 +20468,62 @@
       "editor"    : "history",
       "module"    : "history",
       "situation" : "agent-save-open",
+      "key"       : "cmd:git.takeBack",
+      "widgetPath": "history/git-takeback~488d6c9f",
+      "offer": {
+        "id"     : "git.takeBack",
+        "label"  : "Take back this save",
+        "tooltip": "Reverse what this save did, as a new save. Nothing in history is deleted, and the undo history from before no longer applies.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.takeBack",
+          "props": {
+            "repo": "project",
+            "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "agent-save-open",
+      "key"       : "cmd:git.goBack",
+      "widgetPath": "history/git-goback~31bd8a1c",
+      "offer": {
+        "id"     : "git.goBack",
+        "label"  : "Go back to here",
+        "tooltip": "Put every file back to how it was at this save, as a new save. Nothing in history is deleted, and the undo history from before no longer applies.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.goBack",
+          "props": {
+            "repo": "project",
+            "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "agent-save-open",
       "key"       : "fx:pane.view#file/scenes/rooftop.fountain",
       "widgetPath": "history/pane-view~643539e6",
       "offer": {
@@ -20006,6 +20567,35 @@
           "id"   : "pane.view",
           "props": {
             "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "agent-save-open",
+      "key"       : "cmd:git.restoreFile",
+      "widgetPath": "history/git-restorefile~48c646e7",
+      "offer": {
+        "id"     : "git.restoreFile",
+        "label"  : "Bring back this file",
+        "tooltip": "Rewrite scenes/rooftop.fountain as it was at this save. Undo reverses it.",
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "path": "scenes/rooftop.fountain"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.restoreFile",
+          "props": {
+            "repo": "project",
+            "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "path": "scenes/rooftop.fountain"
           }
         }
       ]
@@ -20139,6 +20729,34 @@
       "editor"    : "history",
       "module"    : "history",
       "situation" : "mid-diff-open",
+      "key"       : "cmd:git.checkpoint",
+      "widgetPath": "history/git-checkpoint~21f68b45",
+      "offer": {
+        "id"     : "git.checkpoint",
+        "label"  : "⚑ Checkpoint…",
+        "tooltip": "Name the selected save as a checkpoint, so it can be found and gone back to later.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.checkpoint",
+          "props": {
+            "repo": "project",
+            "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "mid-diff-open",
       "key"       : "fx:pane.view#reload",
       "widgetPath": "history/pane-view~a08a707d",
       "offer": {
@@ -20299,6 +20917,62 @@
           "props": {
             "editor": "convo",
             "where" : "elsewhere"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "mid-diff-open",
+      "key"       : "cmd:git.takeBack",
+      "widgetPath": "history/git-takeback~488d6c9f",
+      "offer": {
+        "id"     : "git.takeBack",
+        "label"  : "Take back this save",
+        "tooltip": "Reverse what this save did, as a new save. Nothing in history is deleted, and the undo history from before no longer applies.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.takeBack",
+          "props": {
+            "repo": "project",
+            "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "mid-diff-open",
+      "key"       : "cmd:git.goBack",
+      "widgetPath": "history/git-goback~31bd8a1c",
+      "offer": {
+        "id"     : "git.goBack",
+        "label"  : "Go back to here",
+        "tooltip": "Put every file back to how it was at this save, as a new save. Nothing in history is deleted, and the undo history from before no longer applies.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.goBack",
+          "props": {
+            "repo": "project",
+            "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
           }
         }
       ]
@@ -20437,6 +21111,35 @@
       "via"       : "control",
       "editor"    : "history",
       "module"    : "history",
+      "situation" : "mid-diff-open",
+      "key"       : "cmd:git.restoreFile",
+      "widgetPath": "history/git-restorefile~48c646e7",
+      "offer": {
+        "id"     : "git.restoreFile",
+        "label"  : "Bring back this file",
+        "tooltip": "Rewrite scenes/rooftop.fountain as it was at this save. Undo reverses it.",
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "path": "scenes/rooftop.fountain"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.restoreFile",
+          "props": {
+            "repo": "project",
+            "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "path": "scenes/rooftop.fountain"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
       "situation" : "narrow-detail",
       "key"       : "fx:pane.view#who",
       "widgetPath": "history/pane-view~f13e92ac",
@@ -20554,6 +21257,34 @@
       "effects": [
         {
           "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "narrow-detail",
+      "key"       : "cmd:git.checkpoint",
+      "widgetPath": "history/git-checkpoint~21f68b45",
+      "offer": {
+        "id"     : "git.checkpoint",
+        "label"  : "⚑ Checkpoint…",
+        "tooltip": "Name the selected save as a checkpoint, so it can be found and gone back to later.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.checkpoint",
+          "props": {
+            "repo": "project",
+            "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
         }
       ]
     },
@@ -20757,6 +21488,62 @@
       "editor"    : "history",
       "module"    : "history",
       "situation" : "narrow-detail",
+      "key"       : "cmd:git.takeBack",
+      "widgetPath": "history/git-takeback~488d6c9f",
+      "offer": {
+        "id"     : "git.takeBack",
+        "label"  : "Take back this save",
+        "tooltip": "Reverse what this save did, as a new save. Nothing in history is deleted, and the undo history from before no longer applies.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.takeBack",
+          "props": {
+            "repo": "project",
+            "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "narrow-detail",
+      "key"       : "cmd:git.goBack",
+      "widgetPath": "history/git-goback~31bd8a1c",
+      "offer": {
+        "id"     : "git.goBack",
+        "label"  : "Go back to here",
+        "tooltip": "Put every file back to how it was at this save, as a new save. Nothing in history is deleted, and the undo history from before no longer applies.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.goBack",
+          "props": {
+            "repo": "project",
+            "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "narrow-detail",
       "key"       : "fx:pane.view#file/scenes/rooftop.fountain",
       "widgetPath": "history/pane-view~643539e6",
       "offer": {
@@ -20936,6 +21723,29 @@
       "editor"    : "history",
       "module"    : "history",
       "situation" : "empty",
+      "key"       : "cmd:git.checkpoint",
+      "widgetPath": "history/git-checkpoint~21f68b45",
+      "offer": {
+        "id"     : "git.checkpoint",
+        "label"  : "⚑ Checkpoint…",
+        "tooltip": "Name the latest save as a checkpoint, so it can be found and gone back to later.",
+        "form"   : true,
+        "ok"     : false,
+        "refusal": {
+          "reason": "There is no save to name yet."
+        }
+      },
+      "effects": [
+        {
+          "id": "git.checkpoint"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "empty",
       "key"       : "fx:pane.view#reload",
       "widgetPath": "history/pane-view~a08a707d",
       "offer": {
@@ -21086,6 +21896,29 @@
       "editor"    : "history",
       "module"    : "history",
       "situation" : "no-repo",
+      "key"       : "cmd:git.checkpoint",
+      "widgetPath": "history/git-checkpoint~21f68b45",
+      "offer": {
+        "id"     : "git.checkpoint",
+        "label"  : "⚑ Checkpoint…",
+        "tooltip": "Name the latest save as a checkpoint, so it can be found and gone back to later.",
+        "form"   : true,
+        "ok"     : false,
+        "refusal": {
+          "reason": "This project sits inside a repository that is not its own; the app does not write history there."
+        }
+      },
+      "effects": [
+        {
+          "id": "git.checkpoint"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "no-repo",
       "key"       : "fx:pane.view#reload",
       "widgetPath": "history/pane-view~a08a707d",
       "offer": {
@@ -21103,6 +21936,1264 @@
           "id"   : "pane.view",
           "props": {
             "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "outside-edits",
+      "key"       : "fx:pane.view#who",
+      "widgetPath": "history/pane-view~f13e92ac",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Everyone",
+        "tooltip": "Narrow the list to the saves one kind of maker made: you, the agent, the pipeline, or the app’s housekeeping.",
+        "on"     : "who",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "outside-edits",
+      "key"       : "fx:pane.view#path",
+      "widgetPath": "history/pane-view~f5ccb359",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Any file",
+        "tooltip": "Right-click a file or a scene in the document tree and choose Show history to narrow the list to it.",
+        "on"     : "path",
+        "ok"     : false,
+        "refusal": {
+          "reason": "The list is not narrowed to a file."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "outside-edits",
+      "key"       : "fx:pane.view#checkpoints",
+      "widgetPath": "history/pane-view~0d942c3d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Checkpoints",
+        "tooltip": "Show only the saves you named as a checkpoint.",
+        "on"     : "checkpoints",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "outside-edits",
+      "key"       : "fx:pane.view#text",
+      "widgetPath": "history/pane-view~34dea019",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Search saves…",
+        "tooltip": "Narrow the list to the saves whose description contains these words.",
+        "on"     : "text",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "outside-edits",
+      "key"       : "fx:pane.view#clear",
+      "widgetPath": "history/pane-view~13059a85",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Show all",
+        "tooltip": "Take every filter off and show every save.",
+        "on"     : "clear",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing narrows the list."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "outside-edits",
+      "key"       : "cmd:git.checkpoint",
+      "widgetPath": "history/git-checkpoint~21f68b45",
+      "offer": {
+        "id"     : "git.checkpoint",
+        "label"  : "⚑ Checkpoint…",
+        "tooltip": "Name the selected save as a checkpoint, so it can be found and gone back to later.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.checkpoint",
+          "props": {
+            "repo": "project",
+            "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "outside-edits",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "history/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Read the saves again, in case something changed outside the app.",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "outside-edits",
+      "key"       : "cmd:git.save",
+      "widgetPath": "history/git-save~d8cb04b6",
+      "offer": {
+        "id"     : "git.save",
+        "label"  : "Save these…",
+        "tooltip": "Save the files changed outside the app as one save, under a message you type.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.save",
+          "props": {
+            "repo": "project"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "outside-edits",
+      "key"       : "fx:pane.view#save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "widgetPath": "history/pane-view~c2eee052",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Moved line L4 into rooftop",
+        "tooltip": "Show what this save changed. You · 1 file · aaaaaaa",
+        "on"     : "save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "outside-edits",
+      "key"       : "fx:pane.view#save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "widgetPath": "history/pane-view~946708b2",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Agent turn: make the rooftop scene tenser",
+        "tooltip": "Showing this save. Agent · 3 files · bbbbbbb",
+        "on"     : "save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "outside-edits",
+      "key"       : "fx:pane.view#save/cccccccccccccccccccccccccccccccccccccccc",
+      "widgetPath": "history/pane-view~442baf92",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Generated 14 assets",
+        "tooltip": "Show what this save changed. Pipeline · 1 file · ccccccc",
+        "on"     : "save/cccccccccccccccccccccccccccccccccccccccc",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "outside-edits",
+      "key"       : "fx:pane.view#more",
+      "widgetPath": "history/pane-view~bab7f4e9",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Earlier saves",
+        "tooltip": "Read the next fifty saves.",
+        "on"     : "more",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Every save is listed."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "outside-edits",
+      "key"       : "cmd:agent.openThread#20260921-133000",
+      "widgetPath": "history/agent-openthread~250aad50",
+      "offer": {
+        "id"     : "agent.openThread",
+        "label"  : "Open the conversation",
+        "tooltip": "Replay the conversation this save came from, read-only, in the Convo pane.",
+        "on"     : "20260921-133000",
+        "ok"     : true,
+        "props": {
+          "id": "20260921-133000"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor": "convo",
+              "where" : "elsewhere"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "agent.openThread",
+          "props": {
+            "id": "20260921-133000"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor": "convo",
+            "where" : "elsewhere"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "outside-edits",
+      "key"       : "cmd:git.takeBack",
+      "widgetPath": "history/git-takeback~488d6c9f",
+      "offer": {
+        "id"     : "git.takeBack",
+        "label"  : "Take back this save",
+        "tooltip": "Reverse what this save did, as a new save. Nothing in history is deleted, and the undo history from before no longer applies.",
+        "form"   : true,
+        "ok"     : false,
+        "refusal": {
+          "reason": "scenes/rooftop.fountain was changed again in 1 later save; go back to a save instead, or bring back the file."
+        }
+      },
+      "effects": [
+        {
+          "id": "git.takeBack"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "outside-edits",
+      "key"       : "cmd:git.goBack",
+      "widgetPath": "history/git-goback~31bd8a1c",
+      "offer": {
+        "id"     : "git.goBack",
+        "label"  : "Go back to here",
+        "tooltip": "Put every file back to how it was at this save, as a new save. Nothing in history is deleted, and the undo history from before no longer applies.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.goBack",
+          "props": {
+            "repo": "project",
+            "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "outside-edits",
+      "key"       : "fx:pane.view#file/scenes/rooftop.fountain",
+      "widgetPath": "history/pane-view~643539e6",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "scenes/rooftop.fountain",
+        "tooltip": "Showing how this save changed scenes/rooftop.fountain.",
+        "on"     : "file/scenes/rooftop.fountain",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "outside-edits",
+      "key"       : "fx:pane.view#logs",
+      "widgetPath": "history/pane-view~c1b358eb",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Logs (2)",
+        "tooltip": "List the 2 log files this save also touched: the command log, the task log, and a conversation’s transcript.",
+        "on"     : "logs",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "outside-edits",
+      "key"       : "cmd:git.restoreFile",
+      "widgetPath": "history/git-restorefile~48c646e7",
+      "offer": {
+        "id"     : "git.restoreFile",
+        "label"  : "Bring back this file",
+        "tooltip": "Rewrite scenes/rooftop.fountain as it was at this save. Undo reverses it.",
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "path": "scenes/rooftop.fountain"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.restoreFile",
+          "props": {
+            "repo": "project",
+            "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "path": "scenes/rooftop.fountain"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "checkpointed",
+      "key"       : "fx:pane.view#who",
+      "widgetPath": "history/pane-view~f13e92ac",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Everyone",
+        "tooltip": "Narrow the list to the saves one kind of maker made: you, the agent, the pipeline, or the app’s housekeeping.",
+        "on"     : "who",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "checkpointed",
+      "key"       : "fx:pane.view#path",
+      "widgetPath": "history/pane-view~f5ccb359",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Any file",
+        "tooltip": "Right-click a file or a scene in the document tree and choose Show history to narrow the list to it.",
+        "on"     : "path",
+        "ok"     : false,
+        "refusal": {
+          "reason": "The list is not narrowed to a file."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "checkpointed",
+      "key"       : "fx:pane.view#checkpoints",
+      "widgetPath": "history/pane-view~0d942c3d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Checkpoints",
+        "tooltip": "Show only the saves you named as a checkpoint.",
+        "on"     : "checkpoints",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "checkpointed",
+      "key"       : "fx:pane.view#text",
+      "widgetPath": "history/pane-view~34dea019",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Search saves…",
+        "tooltip": "Narrow the list to the saves whose description contains these words.",
+        "on"     : "text",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "checkpointed",
+      "key"       : "fx:pane.view#clear",
+      "widgetPath": "history/pane-view~13059a85",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Show all",
+        "tooltip": "Take every filter off and show every save.",
+        "on"     : "clear",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing narrows the list."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "checkpointed",
+      "key"       : "cmd:git.checkpoint",
+      "widgetPath": "history/git-checkpoint~21f68b45",
+      "offer": {
+        "id"     : "git.checkpoint",
+        "label"  : "⚑ Checkpoint…",
+        "tooltip": "Name the selected save as a checkpoint, so it can be found and gone back to later.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "cccccccccccccccccccccccccccccccccccccccc"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.checkpoint",
+          "props": {
+            "repo": "project",
+            "sha" : "cccccccccccccccccccccccccccccccccccccccc"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "checkpointed",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "history/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Read the saves again, in case something changed outside the app.",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "checkpointed",
+      "key"       : "fx:pane.view#save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "widgetPath": "history/pane-view~c2eee052",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Moved line L4 into rooftop",
+        "tooltip": "Show what this save changed. You · 1 file · aaaaaaa",
+        "on"     : "save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "checkpointed",
+      "key"       : "fx:pane.view#save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "widgetPath": "history/pane-view~946708b2",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Agent turn: make the rooftop scene tenser",
+        "tooltip": "Show what this save changed. Agent · 3 files · bbbbbbb",
+        "on"     : "save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "checkpointed",
+      "key"       : "fx:pane.view#save/cccccccccccccccccccccccccccccccccccccccc",
+      "widgetPath": "history/pane-view~442baf92",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Generated 14 assets",
+        "tooltip": "Showing this save. Pipeline · 1 file · ccccccc",
+        "on"     : "save/cccccccccccccccccccccccccccccccccccccccc",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "checkpointed",
+      "key"       : "fx:pane.view#more",
+      "widgetPath": "history/pane-view~bab7f4e9",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Earlier saves",
+        "tooltip": "Read the next fifty saves.",
+        "on"     : "more",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Every save is listed."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "checkpointed",
+      "key"       : "cmd:agent.openThread",
+      "widgetPath": "history/agent-openthread~927b3990",
+      "offer": {
+        "id"     : "agent.openThread",
+        "label"  : "Open the conversation",
+        "tooltip": "Replay the conversation this save came from, read-only, in the Convo pane.",
+        "ok"     : false,
+        "refusal": {
+          "reason": "This save did not come from a conversation."
+        }
+      },
+      "effects": [
+        {
+          "id": "agent.openThread"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "checkpointed",
+      "key"       : "cmd:git.takeBack",
+      "widgetPath": "history/git-takeback~488d6c9f",
+      "offer": {
+        "id"     : "git.takeBack",
+        "label"  : "Take back this save",
+        "tooltip": "Reverse what this save did, as a new save. Nothing in history is deleted, and the undo history from before no longer applies.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "cccccccccccccccccccccccccccccccccccccccc"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.takeBack",
+          "props": {
+            "repo": "project",
+            "sha" : "cccccccccccccccccccccccccccccccccccccccc"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "checkpointed",
+      "key"       : "cmd:git.goBack",
+      "widgetPath": "history/git-goback~31bd8a1c",
+      "offer": {
+        "id"     : "git.goBack",
+        "label"  : "Go back to here",
+        "tooltip": "Put every file back to how it was at this save, as a new save. Nothing in history is deleted, and the undo history from before no longer applies.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "cccccccccccccccccccccccccccccccccccccccc"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.goBack",
+          "props": {
+            "repo": "project",
+            "sha" : "cccccccccccccccccccccccccccccccccccccccc"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "checkpointed",
+      "key"       : "cmd:git.dropCheckpoint#before-the-rain-pass",
+      "widgetPath": "history/git-dropcheckpoint~fa07b35a",
+      "offer": {
+        "id"     : "git.dropCheckpoint",
+        "label"  : "Drop checkpoint “before-the-rain-pass”",
+        "tooltip": "Take this name off the save. The save itself stays in history.",
+        "on"     : "before-the-rain-pass",
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "name": "before-the-rain-pass"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.dropCheckpoint",
+          "props": {
+            "repo": "project",
+            "name": "before-the-rain-pass"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "checkpointed",
+      "key"       : "fx:pane.view#file/vngen/build/assets/ab12.png",
+      "widgetPath": "history/pane-view~1197862c",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "vngen/build/assets/ab12.png",
+        "tooltip": "Show how this save changed vngen/build/assets/ab12.png.",
+        "on"     : "file/vngen/build/assets/ab12.png",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "foreign-repo",
+      "key"       : "fx:pane.view#who",
+      "widgetPath": "history/pane-view~f13e92ac",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Everyone",
+        "tooltip": "Narrow the list to the saves one kind of maker made: you, the agent, the pipeline, or the app’s housekeeping.",
+        "on"     : "who",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "foreign-repo",
+      "key"       : "fx:pane.view#path",
+      "widgetPath": "history/pane-view~f5ccb359",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Any file",
+        "tooltip": "Right-click a file or a scene in the document tree and choose Show history to narrow the list to it.",
+        "on"     : "path",
+        "ok"     : false,
+        "refusal": {
+          "reason": "The list is not narrowed to a file."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "foreign-repo",
+      "key"       : "fx:pane.view#checkpoints",
+      "widgetPath": "history/pane-view~0d942c3d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Checkpoints",
+        "tooltip": "Show only the saves you named as a checkpoint.",
+        "on"     : "checkpoints",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "foreign-repo",
+      "key"       : "fx:pane.view#text",
+      "widgetPath": "history/pane-view~34dea019",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Search saves…",
+        "tooltip": "Narrow the list to the saves whose description contains these words.",
+        "on"     : "text",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "foreign-repo",
+      "key"       : "fx:pane.view#clear",
+      "widgetPath": "history/pane-view~13059a85",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Show all",
+        "tooltip": "Take every filter off and show every save.",
+        "on"     : "clear",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing narrows the list."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "foreign-repo",
+      "key"       : "cmd:git.checkpoint",
+      "widgetPath": "history/git-checkpoint~21f68b45",
+      "offer": {
+        "id"     : "git.checkpoint",
+        "label"  : "⚑ Checkpoint…",
+        "tooltip": "Name the selected save as a checkpoint, so it can be found and gone back to later.",
+        "form"   : true,
+        "ok"     : false,
+        "refusal": {
+          "reason": "This project sits inside a repository that is not its own; the app does not write history there."
+        }
+      },
+      "effects": [
+        {
+          "id": "git.checkpoint"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "foreign-repo",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "history/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Read the saves again, in case something changed outside the app.",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "foreign-repo",
+      "key"       : "fx:pane.view#save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "widgetPath": "history/pane-view~c2eee052",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Moved line L4 into rooftop",
+        "tooltip": "Showing this save. You · 1 file · aaaaaaa",
+        "on"     : "save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "foreign-repo",
+      "key"       : "fx:pane.view#save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "widgetPath": "history/pane-view~946708b2",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Agent turn: make the rooftop scene tenser",
+        "tooltip": "Show what this save changed. Agent · 3 files · bbbbbbb",
+        "on"     : "save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "foreign-repo",
+      "key"       : "fx:pane.view#save/cccccccccccccccccccccccccccccccccccccccc",
+      "widgetPath": "history/pane-view~442baf92",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Generated 14 assets",
+        "tooltip": "Show what this save changed. Pipeline · 1 file · ccccccc",
+        "on"     : "save/cccccccccccccccccccccccccccccccccccccccc",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "foreign-repo",
+      "key"       : "fx:pane.view#more",
+      "widgetPath": "history/pane-view~bab7f4e9",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Earlier saves",
+        "tooltip": "Read the next fifty saves.",
+        "on"     : "more",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Every save is listed."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "foreign-repo",
+      "key"       : "cmd:agent.openThread",
+      "widgetPath": "history/agent-openthread~927b3990",
+      "offer": {
+        "id"     : "agent.openThread",
+        "label"  : "Open the conversation",
+        "tooltip": "Replay the conversation this save came from, read-only, in the Convo pane.",
+        "ok"     : false,
+        "refusal": {
+          "reason": "This save did not come from a conversation."
+        }
+      },
+      "effects": [
+        {
+          "id": "agent.openThread"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "foreign-repo",
+      "key"       : "cmd:git.takeBack",
+      "widgetPath": "history/git-takeback~488d6c9f",
+      "offer": {
+        "id"     : "git.takeBack",
+        "label"  : "Take back this save",
+        "tooltip": "Reverse what this save did, as a new save. Nothing in history is deleted, and the undo history from before no longer applies.",
+        "form"   : true,
+        "ok"     : false,
+        "refusal": {
+          "reason": "This project sits inside a repository that is not its own; the app does not write history there."
+        }
+      },
+      "effects": [
+        {
+          "id": "git.takeBack"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "foreign-repo",
+      "key"       : "cmd:git.goBack",
+      "widgetPath": "history/git-goback~31bd8a1c",
+      "offer": {
+        "id"     : "git.goBack",
+        "label"  : "Go back to here",
+        "tooltip": "Put every file back to how it was at this save, as a new save. Nothing in history is deleted, and the undo history from before no longer applies.",
+        "form"   : true,
+        "ok"     : false,
+        "refusal": {
+          "reason": "This project sits inside a repository that is not its own; the app does not write history there."
+        }
+      },
+      "effects": [
+        {
+          "id": "git.goBack"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "foreign-repo",
+      "key"       : "fx:pane.view#file/scenes/rooftop.fountain",
+      "widgetPath": "history/pane-view~643539e6",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "scenes/rooftop.fountain",
+        "tooltip": "Show how this save changed scenes/rooftop.fountain.",
+        "on"     : "file/scenes/rooftop.fountain",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
           }
         }
       ]

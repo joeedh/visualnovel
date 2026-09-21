@@ -7,10 +7,11 @@
  * command's own `written` list, which catch different things. The diff misses media, since a
  * capture skips it wherever it sits; `written` misses whatever the command forgot to report.
  *
- * `RUNS` and `SKIPS` partition the 98 mutating commands, and a test says so, since a command
- * added later that is in neither table would otherwise pass by being invisible.
+ * `RUNS`, `PROMPT_RUNS`, `GIT_RUNS` and `SKIPS` partition the mutating commands, and a test says
+ * so, since a command added later that is in none of the tables would otherwise pass by being
+ * invisible.
  */
-import { rm } from 'node:fs/promises';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { userSkillsDir } from '@vn/config';
 import { makeProject, type TestProject } from '@vn/testkit';
@@ -494,6 +495,37 @@ async function someChunk(ctx: Context): Promise<string> {
 const RUNS: Run[] = [...GRAPH_RUNS, ...STORY_RUNS, ...OTHER_RUNS];
 
 /**
+ * The `git.*` writes, over a project under git with a committer on the stack. The order is what
+ * gives each one something to act on: an edit made outside the app is saved, a checkpoint is
+ * named on it, the project goes back to before it, that going-back is taken back, the file is
+ * brought back from the first save, and the checkpoint is dropped.
+ */
+const GIT_RUNS: Run[] = [
+  {
+    id   : 'git.save',
+    props: async ({ harness }) => {
+      const file = join(harness.root, 'project.yaml');
+      await writeFile(file, `${await readFile(file, 'utf8')}# edited outside the app\n`);
+      return { message: 'Edited outside the app' };
+    },
+  },
+  { id: 'git.checkpoint', props: { name: 'Before the rain pass', note: 'Safe.' } },
+  { id: 'git.goBack', props: async (ctx) => ({ sha: await firstSave(ctx) }) },
+  { id: 'git.takeBack', props: async (ctx) => ({ sha: await latestSave(ctx) }) },
+  {
+    id   : 'git.restoreFile',
+    props: async (ctx) => ({ sha: await firstSave(ctx), path: 'project.yaml' }),
+  },
+  { id: 'git.dropCheckpoint', props: { name: 'before-the-rain-pass' } },
+];
+
+const firstSave = async (ctx: Context): Promise<string> =>
+  (await ctx.harness.session.gitHistory('project')).saves.at(-1)!.sha;
+
+const latestSave = async (ctx: Context): Promise<string> =>
+  (await ctx.harness.session.gitHistory('project')).saves[0]!.sha;
+
+/**
  * The mutating commands the executed tier does not reach, each with the reason. A skip is a
  * written-down limit rather than an omission: the declaration lint and the undo rule still cover
  * all 95, and only this tier is partial.
@@ -672,6 +704,42 @@ describe('the prompt commands, over a project the pipeline has run', () => {
   }, 120_000);
 });
 
+describe('the git writes, over a project under git with a committer', () => {
+  let project: TestProject;
+  let harness: AffectsHarness;
+
+  beforeAll(async () => {
+    project = await makeProject({ title: 'Recovery', git: true });
+    harness = await openAffectsHarness(project, { committed: true });
+  }, 120_000);
+
+  afterAll(async () => {
+    await harness.dispose();
+    await rm(project.dir, { recursive: true, force: true, maxRetries: 3 });
+  });
+
+  it('runs each git write and finds nothing written outside its declaration', async () => {
+    expect(await drive(harness, GIT_RUNS)).toEqual([]);
+    // Each write that moved the tree landed as its own save, under the subject the command gave
+    const { saves } = await harness.session.gitHistory('project');
+    expect(saves.map((s) => s.subject)).toEqual([
+      expect.stringMatching(/^Brought back project\.yaml from save [0-9a-f]{7}$/),
+      'Took back: Went back to: Fixture inputs',
+      'Went back to: Fixture inputs',
+      'Edited outside the app',
+      'Fixture inputs',
+    ]);
+    expect(saves.map((s) => s.trailers['Vn-Command'])).toEqual([
+      'git.restoreFile',
+      'git.takeBack',
+      'git.goBack',
+      'git.save',
+      undefined,
+    ]);
+    expect(await project.git!.checkpoints()).toEqual([]);
+  }, 120_000);
+});
+
 describe('RUNS and SKIPS', () => {
   const mutating = registry
     .list()
@@ -679,7 +747,7 @@ describe('RUNS and SKIPS', () => {
     .map((command) => command.id);
 
   it('partition the mutating commands exactly', () => {
-    const runs = new Set([...RUNS, ...PROMPT_RUNS].map((run) => run.id));
+    const runs = new Set([...RUNS, ...PROMPT_RUNS, ...GIT_RUNS].map((run) => run.id));
     const skips = new Set(Object.keys(SKIPS));
     expect([...runs].filter((id) => skips.has(id))).toEqual([]);
     expect(mutating.filter((id) => !runs.has(id) && !skips.has(id))).toEqual([]);

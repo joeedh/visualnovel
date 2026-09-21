@@ -1,8 +1,12 @@
 import {
+  checkpointAction,
   clearAction,
+  controls,
   dayHeading,
   detailControls,
+  dropCheckpointAction,
   emptySentence,
+  goBackAction,
   groupByDay,
   moreAction,
   NO_FILTER,
@@ -10,15 +14,25 @@ import {
   pathAction,
   ranSentence,
   resolvePath,
+  restoreFileAction,
+  saveAction,
   shown,
   statusSentence,
   stripSentence,
+  takeBackAction,
   threadOf,
   timeOf,
+  undoSentence,
   type HistoryState,
 } from '../history.js';
+import { duplicateKeys } from '../anchors.js';
 import { SITUATIONS } from '../situations/history.js';
-import type { RepoEntry, RepoStatus } from '../../../src/shared/history.js';
+import {
+  NOT_OWNED,
+  SYNC_UNFINISHED,
+  type RepoEntry,
+  type RepoStatus,
+} from '../../../src/shared/history.js';
 
 const PROJECT: RepoEntry = { role: 'project', root: 'C:\\stories\\rooftop', owned: true };
 const WIKI: RepoEntry = { role: 'wiki', root: 'C:/stories/rooftop/wiki', owned: true };
@@ -159,7 +173,7 @@ describe('the detail column', () => {
   const agent = open.saves[1]!;
   const mine = open.saves[0]!;
 
-  it('finds the conversation in the transcript an agent turn appended to, and nowhere else', () => {
+  it('finds the conversation in the trailer, else in the transcript the turn appended to', () => {
     expect(threadOf(agent)).toBe('20260921-133000');
     expect(threadOf(mine)).toBeUndefined();
     expect(
@@ -168,6 +182,13 @@ describe('the detail column', () => {
         files: [{ path: 'vngen/state/threads/x.native.jsonl', added: 1, removed: 0 }],
       }),
     ).toBeUndefined();
+    expect(
+      threadOf({
+        ...agent,
+        files   : [],
+        trailers: { 'Vn-Source': 'agent', 'Vn-Thread': 'thread-9' },
+      }),
+    ).toBe('thread-9');
   });
 
   it('says what the app ran, from the trailers', () => {
@@ -206,15 +227,25 @@ describe('the detail column', () => {
 
   it('folds the logs behind their count, and lists them once unfolded', () => {
     const folded = detailControls(open).map((o) => o.label);
-    expect(folded).toEqual(['Open the conversation', 'scenes/rooftop.fountain', 'Logs (2)']);
+    expect(folded).toEqual([
+      'Open the conversation',
+      'Take back this save',
+      'Go back to here',
+      'scenes/rooftop.fountain',
+      'Logs (2)',
+      'Bring back this file',
+    ]);
     const unfolded = detailControls(state('mid-diff-open')).map((o) => o.label);
     expect(unfolded).toEqual([
       'Open the conversation',
+      'Take back this save',
+      'Go back to here',
       '← Files',
       'scenes/rooftop.fountain',
       'vngen/state/commands.jsonl',
       'vngen/state/threads/20260921-133000.jsonl',
       'Logs',
+      'Bring back this file',
     ]);
   });
 
@@ -225,6 +256,100 @@ describe('the detail column', () => {
     expect(labels({ ...open, size: 'small' })).toContain('← Files');
     const { file: _file, ...noFile } = open;
     expect(labels({ ...noFile, size: 'small' })).not.toContain('← Files');
+  });
+});
+
+describe('the recovery controls', () => {
+  const outside = state('outside-edits');
+  const save = outside.saves[1]!;
+
+  it('draw the check’s own refusal, and accept while it has not answered', () => {
+    expect(takeBackAction(outside, save)).toMatchObject({
+      ok     : false,
+      id     : 'git.takeBack',
+      form   : true,
+      refusal: { reason: expect.stringContaining('changed again in 1 later save') },
+    });
+    expect(goBackAction(outside, save)).toMatchObject({
+      ok   : true,
+      form : true,
+      props: { repo: 'project', sha: save.sha },
+    });
+    expect(restoreFileAction(outside, save, 'scenes/rooftop.fountain')).toMatchObject({
+      ok   : true,
+      id   : 'git.restoreFile',
+      props: { repo: 'project', sha: save.sha, path: 'scenes/rooftop.fountain' },
+    });
+    const unasked = { ...outside, verdicts: {} };
+    expect(takeBackAction(unasked, save).ok).toBe(true);
+  });
+
+  it('refuse every write in a repository the app does not own, with the one sentence', () => {
+    const foreign = state('foreign-repo');
+    const mine = foreign.saves[0]!;
+    for (const offer of [
+      saveAction(foreign),
+      checkpointAction(foreign),
+      dropCheckpointAction(foreign, 'x'),
+      takeBackAction(foreign, mine),
+      goBackAction(foreign, mine),
+      restoreFileAction(foreign, mine, 'project.yaml'),
+    ]) {
+      expect(offer).toMatchObject({ ok: false, refusal: { reason: NOT_OWNED } });
+    }
+  });
+
+  it('refuse a take-back and a go-back while a sync is unfinished', () => {
+    const rebasing = { ...outside, status: { ...outside.status!, cause: 'rebase' as const } };
+    expect(takeBackAction(rebasing, save)).toMatchObject({ refusal: { reason: SYNC_UNFINISHED } });
+    expect(goBackAction(rebasing, save)).toMatchObject({ refusal: { reason: SYNC_UNFINISHED } });
+    expect(saveAction(rebasing)).toMatchObject({ refusal: { reason: SYNC_UNFINISHED } });
+  });
+
+  it('offer Save these… only over edits made outside the app', () => {
+    expect(saveAction(outside)).toMatchObject({ ok: true, form: true, props: { repo: 'project' } });
+    expect(saveAction(state('one-repo'))).toMatchObject({
+      ok     : false,
+      refusal: { reason: 'Nothing has changed since the last save.' },
+    });
+    const pending = { ...outside, status: { ...outside.status!, cause: 'pending' as const } };
+    expect(saveAction(pending)).toMatchObject({
+      refusal: { reason: 'The app is saving these edits itself.' },
+    });
+  });
+
+  it('name the selected save as a checkpoint, or the latest with none selected', () => {
+    const picked = state('checkpointed');
+    expect(checkpointAction(picked)).toMatchObject({
+      ok   : true,
+      props: { repo: 'project', sha: 'c'.repeat(40) },
+    });
+    const { selected: _selected, ...none } = picked;
+    expect(checkpointAction(none)).toMatchObject({ ok: true, props: { sha: '' } });
+    expect(checkpointAction(state('empty'))).toMatchObject({
+      refusal: { reason: 'There is no save to name yet.' },
+    });
+    expect(detailControls(picked).map((o) => o.label)).toContain(
+      'Drop checkpoint “before-the-rain-pass”',
+    );
+    expect(dropCheckpointAction(picked, 'before-the-rain-pass')).toMatchObject({
+      ok   : true,
+      on   : 'before-the-rain-pass',
+      props: { repo: 'project', name: 'before-the-rain-pass' },
+    });
+  });
+
+  it('say in the footer when the undo history from before no longer applies', () => {
+    expect(undoSentence(state('checkpointed'))).toBe(
+      'Undo history from before this save no longer applies.',
+    );
+    expect(undoSentence(state('one-repo'))).toBe('');
+  });
+
+  it('draw no key twice in any situation', () => {
+    for (const situation of SITUATIONS) {
+      expect(duplicateKeys(controls(situation.state))).toEqual([]);
+    }
   });
 });
 

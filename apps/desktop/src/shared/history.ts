@@ -19,6 +19,20 @@ export interface RepoEntry {
   owned: boolean;
 }
 
+/**
+ * What every `git.*` write says over a repository the project merely sits inside. Both the
+ * commands' checks and the pane's own refusals say it, so a greyed control and a refused command
+ * read the same.
+ */
+export const NOT_OWNED =
+  'This project sits inside a repository that is not its own; the app does not write history there.';
+
+/**
+ * What every command that plans from the worktree says while a rebase, merge or revert is in
+ * progress, in the author's words; a merge or a revert is folded into "getting their saves".
+ */
+export const SYNC_UNFINISHED = 'Getting their saves is unfinished; finish or give it up first.';
+
 /** What `git.status` answers: the worktree's cause plus the branch and its remotes. */
 export interface RepoStatus extends WorktreeStatus {
   /** Null on an unborn branch, or when HEAD is detached outside a rebase. */

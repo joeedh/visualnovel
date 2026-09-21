@@ -156,6 +156,10 @@ describe('the menu buttons and the arrows', () => {
       tooltip: 'Undo set speaker',
     });
     expect(undoAction(null)).toMatchObject({ ok: false, refusal: { reason: 'Nothing to undo' } });
+    expect(undoAction(null, "git.takeBack(sha='abc')")).toMatchObject({
+      ok     : false,
+      refusal: { reason: "Undo stops at git.takeBack(sha='abc'), which cannot be undone" },
+    });
     expect(redoAction('retype line')).toMatchObject({
       props  : { to: 'redo' },
       tooltip: 'Redo retype line',

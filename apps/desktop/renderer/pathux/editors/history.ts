@@ -1,16 +1,21 @@
-import type { Container } from 'pathux';
-import { exec, onInvalidate } from '../app/bridge.js';
+import type { Button, Container } from 'pathux';
+import { check, exec, onInvalidate } from '../app/bridge.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { layoutChanged } from '../app/persist.js';
+import { openCommandDialog } from '../chrome/dialog.js';
 import { redrawing, type AnchorPass } from '../tour/anchors.js';
+import type { Offer } from '../../rules/anchors.js';
 import {
   backAction,
+  checkpointAction,
   checkpointsAction,
   clearAction,
   conversationAction,
+  dropCheckpointAction,
   emptySentence,
   fileAction,
   filesBackAction,
+  goBackAction,
   groupByDay,
   logsAction,
   MAKER_SAYS,
@@ -22,18 +27,24 @@ import {
   reloadAction,
   repoAction,
   resolvePath,
+  restoreFileAction,
   rowAction,
+  saveAction,
   searchBox,
   shown,
   statusSentence,
   stripSentence,
+  takeBackAction,
   threadOf,
   timeOf,
+  undoSentence,
   WHO_ROWS,
   whoAction,
   type HistoryFilter,
   type HistoryState,
   type PaneSize,
+  type RecoveryId,
+  type Verdict,
 } from '../../rules/history.js';
 import {
   KIND_ORDER,
@@ -71,9 +82,13 @@ const KIND_SAYS: Record<FileKind, string> = {
   log       : 'Logs',
 };
 
+/** The commands whose run leaves the undo history from before it no longer applying. */
+const BLOCKS_UNDO = /^git\.(takeBack|goBack)\(/;
+
 /**
  * Every save of the project, newest first, and what each one changed. It reads through the
- * `git.*` commands and writes nothing: the recovery controls arrive with their commands.
+ * `git.*` commands, and every write it offers is one of the `git.*` recovery commands: a
+ * confirmed one opens the command's own form, where the check's verdict is read before Run.
  *
  * The list follows `ui.docPath` the way the Wiki pane does, so clicking a document in the tree
  * narrows this pane to that document's saves, and a pinned History pane is one file's history.
@@ -90,6 +105,8 @@ export class HistoryEditor extends VnEditor {
   private more!: HTMLDivElement;
   private detail!: HTMLDivElement;
   private foot!: HTMLDivElement;
+  /** Built once with the bar and re-presented on every rebuild, since its offer moves. */
+  private checkpointButton!: Button;
 
   /** Which repository the list shows, remembered with the pane. */
   private repo: RepoRole = 'project';
@@ -106,6 +123,8 @@ export class HistoryEditor extends VnEditor {
   private logsOpen = false;
   private width: PaneSize = 'large';
   private showingDetail = false;
+  /** What `check` answered for the recovery commands on the selection; emptied when it moves. */
+  private verdicts: Partial<Record<RecoveryId, Verdict>> = {};
 
   /** What `ui.docPath` was the last time the pane looked, so only a change narrows the list. */
   private seenDocPath: string | undefined;
@@ -132,6 +151,9 @@ export class HistoryEditor extends VnEditor {
     bar.label('HISTORY').style['padding'] = '0px 8px';
     // Its own pass: the button is built once with the pane, so a record in a redrawn pass would
     // be dropped by that pass's next paint
+    const checkpoint = checkpointAction(this.state());
+    this.checkpointButton = bar.button(checkpoint.label, () => {});
+    this.presentCheckpoint(checkpoint);
     const reload = reloadAction();
     redrawing('history', 'reload').act(
       bar.button(reload.label, () => {}),
@@ -248,7 +270,43 @@ export class HistoryEditor extends VnEditor {
       logsOpen     : this.logsOpen,
       size         : this.width,
       showingDetail: this.showingDetail,
+      verdicts     : this.verdicts,
+      ...(BLOCKS_UNDO.test(this.ui.undoBlocked) ? { undoBlocked: this.ui.undoBlocked } : {}),
     };
+  }
+
+  /**
+   * Ask `check` about the recovery commands on the selected save and the open file, and draw
+   * again once it has answered. The control is drawn accepted until then, since the command's
+   * own check runs again on the click; a verdict for a selection that has moved on is dropped.
+   */
+  private async askVerdicts(ids: readonly RecoveryId[]): Promise<void> {
+    const sha = this.selected;
+    const file = this.file;
+    if (sha === undefined || !this.repos.some((r) => r.role === this.repo && r.owned)) return;
+    const asked = ids.filter((id) => id !== 'git.restoreFile' || file !== undefined);
+    if (asked.length === 0) return;
+    const answers = await Promise.all(
+      asked.map(async (id) => {
+        const props: Record<string, string> =
+          id === 'git.restoreFile'
+            ? { repo: this.repo, sha, path: file! }
+            : { repo: this.repo, sha };
+        return [id, await check(id, props)] as const;
+      }),
+    );
+    if (this.selected !== sha || this.file !== file) return;
+    for (const [id, answer] of answers) {
+      this.verdicts[id] = { ok: answer.state !== 'refuse', message: answer.message };
+    }
+    this.rebuild();
+  }
+
+  /** Re-present the bar's checkpoint button on its own pass, since the bar is built once. */
+  private presentCheckpoint(offer: Offer): void {
+    redrawing('history', 'checkpoint').act(this.checkpointButton, offer, (action) =>
+      openCommandDialog(action.id, action.props),
+    );
   }
 
   /** Read everything the pane draws: the repositories, the status and the first page. */
@@ -283,6 +341,9 @@ export class HistoryEditor extends VnEditor {
         this.selected = undefined;
         this.showingDetail = false;
       }
+      // The worktree may have moved with whatever invalidated the list, so the verdicts are stale
+      this.verdicts = {};
+      void this.askVerdicts(['git.takeBack', 'git.goBack', 'git.restoreFile']);
       this.pollWhilePending();
     } catch (err) {
       if (mine !== this.token) return;
@@ -413,10 +474,12 @@ export class HistoryEditor extends VnEditor {
       this.file = undefined;
       this.diff = undefined;
       this.logsOpen = false;
+      this.verdicts = {};
     }
     this.selected = sha;
     this.showingDetail = true;
     this.rebuild();
+    void this.askVerdicts(['git.takeBack', 'git.goBack']);
   }
 
   /** Open one file's diff, reading it if this is the first look. The file list stays as it is. */
@@ -425,14 +488,17 @@ export class HistoryEditor extends VnEditor {
     this.file = path;
     this.diff = undefined;
     this.diffFailure = '';
+    delete this.verdicts['git.restoreFile'];
     this.rebuild();
     void this.loadDiff(path);
+    void this.askVerdicts(['git.restoreFile']);
   }
 
   private closeFile(): void {
     this.file = undefined;
     this.diff = undefined;
     this.diffFailure = '';
+    delete this.verdicts['git.restoreFile'];
     this.rebuild();
   }
 
@@ -474,6 +540,8 @@ export class HistoryEditor extends VnEditor {
       this.width,
       this.showingDetail,
       this.failure,
+      ...Object.entries(this.verdicts).map(([id, v]) => `${id}=${v.ok}:${v.message}`),
+      this.ui.undoBlocked,
     ].join('|');
   }
 
@@ -487,11 +555,12 @@ export class HistoryEditor extends VnEditor {
     this.surface.classList.toggle('detail', state.size === 'small' && state.showingDetail);
     // In the two narrower layouts the diff takes the file list's place
     this.surface.classList.toggle('diff', state.size !== 'large' && state.file !== undefined);
+    this.presentCheckpoint(checkpointAction(state));
     this.rebuildStrip(state);
     this.rebuildFilters(state);
     this.rebuildList(state);
     this.rebuildDetail(state);
-    this.rebuildFoot();
+    this.rebuildFoot(state);
   }
 
   private rebuildStrip(state: HistoryState): void {
@@ -639,12 +708,24 @@ export class HistoryEditor extends VnEditor {
     );
   }
 
-  /** The cause the worktree is not clean, with the paths where there are some. No control yet. */
+  /**
+   * The cause the worktree is not clean, with the paths where there are some, and the one thing
+   * to do about edits made outside the app: save them under a message, in `git.save`'s form.
+   */
   private rebuildStatus(state: HistoryState): void {
     this.status.textContent = '';
     const sentence = statusSentence(state.status);
     if (sentence === '') return;
-    this.status.appendChild(el('div', '', sentence));
+    const anchors = redrawing('history', 'status');
+    const line = el('div', 'hs-status-line');
+    line.appendChild(el('span', '', sentence));
+    const save = saveAction(state);
+    line.appendChild(
+      anchors.act(el('button', 'hs-btn', save.label) as HTMLButtonElement, save, (action) =>
+        openCommandDialog(action.id, action.props),
+      ),
+    );
+    this.status.appendChild(line);
     const paths = state.status?.cause === 'outside' ? state.status.outside : [];
     if (paths.length > 0) {
       this.status.appendChild(el('div', 'hs-status-paths', paths.join('\n')));
@@ -676,15 +757,18 @@ export class HistoryEditor extends VnEditor {
       return;
     }
 
-    this.detail.appendChild(this.detailHead(save, anchors));
+    this.detail.appendChild(this.detailHead(save, state, anchors));
     this.detail.appendChild(this.fileList(save, state, anchors));
     if (state.file !== undefined) {
       this.detail.appendChild(this.diffView(save, state.file, state, anchors));
     }
   }
 
-  /** The subject, who made it and when, what the app ran, the message body, the conversation. */
-  private detailHead(save: Save, anchors: AnchorPass): HTMLElement {
+  /**
+   * The subject, who made it and when, what the app ran, the message body, the conversation, and
+   * the recovery controls: take the save back, go back to it, and drop each checkpoint it carries.
+   */
+  private detailHead(save: Save, state: HistoryState, anchors: AnchorPass): HTMLElement {
     const head = el('div', 'hs-head');
     head.appendChild(el('div', 'hs-head-subject', save.subject));
     const line = el('div', 'hs-head-line');
@@ -712,6 +796,25 @@ export class HistoryEditor extends VnEditor {
       }),
     );
     head.appendChild(row);
+
+    // Both are confirmed, so the click opens the form, where the check's verdict is read first
+    const recovery = el('div', 'hs-head-acts');
+    for (const offer of [takeBackAction(state, save), goBackAction(state, save)]) {
+      recovery.appendChild(
+        anchors.act(el('button', 'hs-btn', offer.label) as HTMLButtonElement, offer, (action) =>
+          openCommandDialog(action.id, action.props),
+        ),
+      );
+    }
+    for (const name of save.checkpoints) {
+      const drop = dropCheckpointAction(state, name);
+      recovery.appendChild(
+        anchors.act(el('button', 'hs-btn', drop.label) as HTMLButtonElement, drop, (action) => {
+          void exec(action.id, action.props);
+        }),
+      );
+    }
+    head.appendChild(recovery);
     return head;
   }
 
@@ -800,6 +903,16 @@ export class HistoryEditor extends VnEditor {
       view.appendChild(bar);
     }
 
+    // An ordinary document write, run outright: undo is what reverses it
+    const restore = restoreFileAction(state, save, path);
+    const acts = el('div', 'hs-diff-acts');
+    acts.appendChild(
+      anchors.act(el('button', 'hs-btn', restore.label) as HTMLButtonElement, restore, (action) => {
+        void exec(action.id, action.props);
+      }),
+    );
+    view.appendChild(acts);
+
     if (this.diffFailure !== '') {
       view.appendChild(el('div', 'hs-diff-note bad', this.diffFailure));
     } else if (this.diff === undefined) {
@@ -810,7 +923,7 @@ export class HistoryEditor extends VnEditor {
     return view;
   }
 
-  private rebuildFoot(): void {
+  private rebuildFoot(state: HistoryState = this.state()): void {
     this.foot.textContent = '';
     this.foot.classList.toggle('bad', this.failure !== '');
     const left = el('div', 'hs-foot-left');
@@ -821,6 +934,8 @@ export class HistoryEditor extends VnEditor {
     }
     left.title = left.textContent;
     this.foot.appendChild(left);
+    const undo = undoSentence(state);
+    if (undo !== '') this.foot.appendChild(el('div', 'hs-foot-right', undo));
   }
 }
 

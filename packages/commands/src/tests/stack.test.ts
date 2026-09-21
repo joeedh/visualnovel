@@ -701,6 +701,7 @@ describe('undo/redo', () => {
     });
     expect(world.value).toBe('w1');
     expect(stack.canUndo()).toBe(false);
+    expect(stack.undoState()).toMatchObject({ undoLabel: null, blocked: 'demo.generate()' });
   });
 
   it('refuses when the workspace moved since the command ran', async () => {
@@ -774,6 +775,7 @@ describe('undo/redo', () => {
       canRedo  : false,
       undoLabel: null,
       redoLabel: null,
+      blocked  : null,
     });
     expect(await stack.undo()).toMatchObject({ ok: false, error: 'nothing to undo' });
   });

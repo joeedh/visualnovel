@@ -219,6 +219,42 @@ describe('revertDryRun', () => {
   });
 });
 
+describe('revertIntoTree, changedBetween and countCommits', () => {
+  it('reverts into a dirty tree with no revert in progress, or puts the tree back', async () => {
+    const { git, dir, cleanup } = await tempRepo();
+    try {
+      await write(dir, 'a.txt', 'one\n');
+      await write(dir, 'b.txt', 'b\n');
+      const first = (await git.commit({ message: 'First', paths: ['-A'] }))!;
+      await write(dir, 'a.txt', 'two\n');
+      await write(dir, 'c.txt', 'c\n');
+      const second = (await git.commit({ message: 'Second', paths: ['-A'] }))!;
+      expect(await git.changedBetween(first, second)).toEqual(['a.txt', 'c.txt']);
+      expect(await git.countCommits(`${first}..${second}`)).toBe(1);
+      expect(await git.countCommits(`${first}..${second}`, 'b.txt')).toBe(0);
+
+      expect(await git.revertIntoTree(second)).toBe(true);
+      expect(await fs.readFile(join(dir, 'a.txt'), 'utf8')).toBe('one\n');
+      expect((await git.inProgress()).revert).toBe(false);
+      expect(await git.head()).toBe(second);
+      const status = await git.status();
+      expect(status.entries.map((e) => `${e.x}${e.y} ${e.path}`)).toEqual([' M a.txt', ' D c.txt']);
+      expect(await git.commit({ message: 'Took back', paths: ['-A'] })).not.toBeNull();
+      expect(await git.isDirty()).toBe(false);
+
+      await write(dir, 'a.txt', 'three\n');
+      const third = (await git.commit({ message: 'Third', paths: ['-A'] }))!;
+      expect(await git.revertIntoTree(second)).toBe(false);
+      expect(await git.isDirty()).toBe(false);
+      expect((await git.inProgress()).revert).toBe(false);
+      expect(await git.head()).toBe(third);
+      expect(await fs.readFile(join(dir, 'a.txt'), 'utf8')).toBe('three\n');
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
 /** `[ahead, behind]` against the branch's upstream. */
 async function aheadBehind(git: Git): Promise<[number | null, number | null]> {
   const s = await git.branchStatus();

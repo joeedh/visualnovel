@@ -14,7 +14,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openGit } from '@vn/git';
 import { ContentStore, diffTrees } from '@vn/commands/snapshot';
-import { CommandStack, coerceProps, type CommandRecord } from '@vn/commands';
+import { CommandStack, Committer, coerceProps, type CommandRecord } from '@vn/commands';
 import type { TestProject } from '@vn/testkit';
 import type { UiEffect } from '../../../../shared/ipc.js';
 import { SessionStore } from '../../../workspace/sessionstore.js';
@@ -76,13 +76,20 @@ function unavailable(member: string): never {
 /**
  * Open a stack over `project`. The session is built with `mock: true`, so `story.decomposeAll`,
  * `prompt.condense` and `gengraph.run` refuse a model call rather than attempting one, and the
- * stack is given neither a journal nor a committer, so nothing writes `.git` or `commands.jsonl`.
+ * stack is given no journal and, unless `committed`, no committer, so nothing writes `.git` or
+ * `commands.jsonl`. With `committed` the project's own repository is owned and every mutator
+ * commits on save, which is what the `git.*` writes need to have something to take back.
  */
-export async function openAffectsHarness(project: TestProject): Promise<AffectsHarness> {
+export async function openAffectsHarness(
+  project: TestProject,
+  opts: { committed?: boolean } = {},
+): Promise<AffectsHarness> {
   const root = project.dir;
   const session = new WorkspaceSession(root, true, deps);
   const registry = createDesktopRegistry();
   const effects: UiEffect[] = [];
+  const git = openGit(root);
+  const owned = opts.committed ? [git] : [];
 
   // Outside the workspace: the install-global session file is written eagerly, and one inside the
   // project would land in the diff of whichever command happened to be running.
@@ -116,8 +123,8 @@ export async function openAffectsHarness(project: TestProject): Promise<AffectsH
       coerce     : coerceProps,
     },
     check                   : (id, props) => stack.check(id, props),
-    // No committer, so nothing is owned and nothing is ever pending
-    ownedRepos              : () => [],
+    ownedRepos              : () => owned,
+    // Every commit here lands before the outcome returns, so nothing is ever pending
     pendingCommits          : () => 0,
   };
 
@@ -126,13 +133,14 @@ export async function openAffectsHarness(project: TestProject): Promise<AffectsH
     registry,
     context: {
       root,
-      git: openGit(root),
+      git,
       host,
       log    : () => {},
       // Six of the runnable commands are `confirm: true`, and `exec` refuses outright rather than
       // assuming consent when no gate is wired.
       confirm: () => Promise.resolve(true),
     },
+    ...(opts.committed ? { committer: new Committer({ repos: () => owned }) } : {}),
     onRecord: (record) => void records.push(record),
   });
 

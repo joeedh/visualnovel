@@ -519,9 +519,9 @@ given a full refname creates `refs/tags/refs/tags/…`. `Git.log` is untouched.
   handle that follows the pointer; no example project has a modified picture, so it is
   unverified live. A save that touched only logs says so with "Show logs" as the one
   control. The invocation wraps with `overflow-wrap: anywhere` (it had broken mid-word).
-- The plan's report was wrong in one more place: `Vn-Thread` does not exist. The trailer
-  Stage 6 adds to the agent's own commit should carry the thread id, so the files rule
-  above becomes a fallback for history written before then.
+- This note first claimed `Vn-Thread` did not exist. It did, on the "Close conversation"
+  commit only; Stage 6 puts it on the agent's own commit too, and the files rule above is
+  now the fallback for history written before then.
 
 ### Stage 6 — Local writes and the agent's tools
 
@@ -565,6 +565,86 @@ given a full refname creates `refs/tags/refs/tags/…`. `Git.log` is untouched.
   `Vn-Thread`, `Vn-Plan`) or `commitsItself: true` on `agent.run`. Whichever it is,
   `makerOf` and the fold handle both the new shape and the trailerless history that
   already exists.
+
+**As built (2026-09-21).** Everything above, with these particulars:
+
+- **The rules live in `@vn/git`, in a new `packages/git/src/recovery.ts`**, so the desktop
+  commands and the agent's tools give one refusal for one situation: `entryOf`,
+  `dirtyOutsideLogs`, `previewTakeBack`, `previewGoBack`, `previewCheckpoint`,
+  `checkpointNamed`, with `OWN_LOGS` and `DIRTY_TREE` beside them. `Git` gained `resolve`
+  (`rev-parse --verify`, refusing an empty or `-`-led ref), `revertIntoTree`
+  (`revert --no-commit`, then `reset` to drop `REVERT_HEAD`; a revert that does not apply
+  is aborted before it returns), `changedBetween` and `countCommits`, and
+  `HistoryOptions.from` (start at a commit and include it). `status()` and
+  `branchStatus()` now pass `--untracked-files=all`: the porcelain listing collapsed an
+  untracked `vngen/state/` to `?? vngen/`, which the own-logs exclusion could not see
+  through, so a project whose first read had appended a log read as dirty.
+- **The desktop half is `RecoveryPart` in `session/recovery.ts`**, one preview and one run
+  per command, the run repeating the preview since the tree may have moved. Every check
+  refuses busy first, then a repository the project merely sits inside (`NOT_OWNED` in
+  `shared/history.ts`, which the pane's own rules say too), then the sync state
+  (`SYNC_UNFINISHED`, moved to `shared/history.ts` for the same reason), then the rule.
+  `git.save` is `mutating: true` over `<git>` alone and returns `{message, subject}`; the
+  committer commits every owned repository, not only `repo`. A tree the flush emptied
+  before the run is answered "Nothing was left to save." rather than refused. `git.goBack`
+  is `applyTree(treeOf('HEAD'), treeOf(sha))` with no exclusions, as decided; its subject
+  is "Went back to checkpoint: <name>" when the save carries one.
+- **`git.restoreFile` is text-only and drops the "unsaved edits in an open pane"
+  refusal.** Main cannot see a renderer draft, and the Wiki pane's `DocBuffer` already
+  handles a file rewritten under a dirty draft, so the refusal would have been a guess. It
+  also refuses a picture or any other non-text file, a path under `UNDO_EXCLUDES` (caches
+  the app rebuilds), the session file, and a path outside `ANY_DOCUMENT`, since the
+  declaration is an upper bound the affects tier measures. A scene is checked with
+  `sceneTextProblem` (new in `@vn/model`) and written verbatim through `writeFileAtomic`;
+  anything else goes through `writeDocFile` with the current hash, so `checkDocWrite`'s
+  refusals (a guarded `graphs/` path, the size cap, a dropped `type:`) apply unchanged. A
+  file that already reads as it did at the save is refused, so the control greys rather
+  than recording a write that changed nothing. For the `wiki` role the path is translated
+  to `<wikiRootRel>/<path>` before the write. The `.vnstudio/session.json` refusal is
+  reachable only by name, since the file is gitignored and no save holds it.
+- **Undo after a take-back or a go-back.** `UndoState` gained `blocked`, the label of the
+  newest change when it cannot be undone (`undoCandidate` already stopped there rather
+  than reaching past it). The header's arrow refuses with "Undo stops at <invocation>,
+  which cannot be undone", and the History footer says "Undo history from before this save
+  no longer applies." while `ui.undoBlocked` names one of the two commands.
+- **The pane asks `check` before it draws.** On selecting a row it asks `git.takeBack` and
+  `git.goBack`; on opening a file, `git.restoreFile`; after every reload, all three again,
+  since whatever invalidated the list may have moved the tree. Verdicts are held in
+  `HistoryState.verdicts` and the rules draw a refusal with the check's own sentence; a
+  verdict not yet answered draws the control accepted, because the command's check runs
+  again on the click. The four commands that take typed props or a confirmation
+  (`git.save`, `git.checkpoint`, `git.takeBack`, `git.goBack`) are `form: true` and open
+  the command's dialog, which shows the verdict above Run; the desktop stack's `confirm`
+  auto-resolves, so the dialog's Run is the confirmation. `git.dropCheckpoint` and
+  `git.restoreFile` run outright. "⚑ Checkpoint…" sits in the pane's bar beside reload,
+  re-presented on every rebuild since the bar is built once; "Save these…" is in the
+  status view, refused with the reason while the cause is not `outside`; the detail header
+  has "Take back this save", "Go back to here" and one "Drop checkpoint “<slug>”" per
+  checkpoint; the diff view has "Bring back this file" in every layout.
+- **`threadOf` reads `Vn-Thread` first.** The Stage 5 note was wrong: `Vn-Thread` did
+  exist, on the "Close conversation" commit (`session/agent.ts`). The agent's own commit
+  now carries it too, with `Vn-Source: agent` and `Vn-Plan` (the approved plan's summary,
+  one line, capped at `TRAILER_MAX`), from a `trailers()` hook on `ToolContext` that the
+  desktop session fills with the thread id and the loop extends with the plan. A commit
+  carrying only `Vn-Thread` is `housekeeping`; a trailerless commit whose first child is
+  an `agent.run` commit by the same identity within `AGENT_FOLD_MS` (five minutes) reads
+  as `agent`, which is how the history written before the trailer is attributed.
+  `makersOf(entries, ctx, newer)` folds a whole page, and `HistoryPart.history` re-reads
+  the one commit above a page that starts after `before` so the fold does not break at a
+  page boundary; a path or text filter drops the neighbour, so under either an old agent
+  commit reads as made outside the app.
+- **The agent's tools return structured data.** `git_log` rows carry `maker` (via
+  `makersOf`) and `checkpoints`; `git_show` is one entry with its changes; `git_diff` with
+  a `ref` is that save's changes (and one file's text diff with `path`), without one the
+  disk against the last save; `git_status` carries `cause` and the paths. `git_revert` and
+  `git_restore` share the `@vn/git` rules and `restoreRefusal`; `git_checkpoint` is new.
+  The report's "path-scoped `git_commit`" note stands: the agent commits what it wrote,
+  the app commits `-A`.
+- **The affects tier** has a third describe over `makeProject({ git: true })` with
+  `openAffectsHarness(project, { committed: true })`, which owns the project's repository
+  and puts a `Committer` on the stack. `GIT_RUNS` runs the six in an order that gives each
+  something to act on and then pins the five subjects and trailers the run left in
+  history. The network commands go in `SKIPS` at Stage 7.
 
 ### Stage 7 — Sync
 

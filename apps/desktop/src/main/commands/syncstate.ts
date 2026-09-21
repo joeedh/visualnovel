@@ -3,9 +3,9 @@
  * that is half one save and half another.
  */
 import { operationOf, type Git } from '@vn/git';
+import { SYNC_UNFINISHED } from '../../shared/history.js';
 
-/** The sentence, in the author's words; a merge or a revert is folded into "getting their saves". */
-export const SYNC_UNFINISHED = 'Getting their saves is unfinished; finish or give it up first.';
+export { SYNC_UNFINISHED };
 
 /** `SYNC_UNFINISHED` while a rebase, merge or revert is in progress in `git`, else undefined. */
 export async function syncRefusal(git: Git): Promise<string | undefined> {

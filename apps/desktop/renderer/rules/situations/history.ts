@@ -1,7 +1,7 @@
 /**
  * The History pane's situations: one repository with saves of every maker, two repositories with
- * a filter on, a project inside a foreign repository, an empty history, and a save with a diff
- * open in each width.
+ * a filter on, a project inside a foreign repository, an empty history, a save with a diff open
+ * in each width, and the recovery controls answered by their checks.
  */
 import { situations } from './situation.js';
 import { NO_FILTER, type HistoryState } from '../history.js';
@@ -88,6 +88,7 @@ export const SITUATIONS = situations<HistoryState>(
       logsOpen     : false,
       size         : 'large',
       showingDetail: false,
+      verdicts     : {},
     },
   },
   {
@@ -103,6 +104,7 @@ export const SITUATIONS = situations<HistoryState>(
       logsOpen     : false,
       size         : 'large',
       showingDetail: false,
+      verdicts     : {},
     },
   },
   {
@@ -120,6 +122,7 @@ export const SITUATIONS = situations<HistoryState>(
       logsOpen     : false,
       size         : 'large',
       showingDetail: false,
+      verdicts     : {},
     },
   },
   {
@@ -137,6 +140,7 @@ export const SITUATIONS = situations<HistoryState>(
       logsOpen     : true,
       size         : 'mid',
       showingDetail: false,
+      verdicts     : {},
     },
   },
   {
@@ -153,6 +157,7 @@ export const SITUATIONS = situations<HistoryState>(
       logsOpen     : false,
       size         : 'small',
       showingDetail: true,
+      verdicts     : {},
     },
   },
   {
@@ -168,6 +173,7 @@ export const SITUATIONS = situations<HistoryState>(
       logsOpen     : false,
       size         : 'large',
       showingDetail: false,
+      verdicts     : {},
     },
   },
   {
@@ -182,6 +188,75 @@ export const SITUATIONS = situations<HistoryState>(
       logsOpen     : false,
       size         : 'large',
       showingDetail: false,
+      verdicts     : {},
+    },
+  },
+  {
+    name : 'outside-edits',
+    why: 'Two files were changed outside the app, so the status view offers Save these…; the selected save was written over by a later one, so the check refuses taking it back by name while going back is accepted, and the open file can be brought back.',
+    state: {
+      repos        : [PROJECT],
+      repo         : 'project',
+      filter       : NO_FILTER,
+      status       : { ...CLEAN, cause: 'outside', outside: ['wiki/houses.md', 'project.yaml'] },
+      saves        : SAVES,
+      next         : null,
+      selected     : 'b'.repeat(40),
+      file         : 'scenes/rooftop.fountain',
+      logsOpen     : false,
+      size         : 'large',
+      showingDetail: false,
+      verdicts: {
+        'git.takeBack': {
+          ok     : false,
+          message:
+            'scenes/rooftop.fountain was changed again in 1 later save; go back to a save instead, or bring back the file.',
+        },
+        'git.goBack': {
+          ok     : true,
+          message:
+            'Restores 2 files to how they were at that save, as a new save. Nothing in history is deleted.',
+        },
+        'git.restoreFile': {
+          ok     : true,
+          message: 'Rewrites scenes/rooftop.fountain as it was at save bbbbbbb.',
+        },
+      },
+    },
+  },
+  {
+    name : 'checkpointed',
+    why: 'The selected save carries a checkpoint, so its name can be dropped from the detail header; the checkpoint button names this save rather than the latest; a take-back was just run, so the footer says the undo history from before no longer applies.',
+    state: {
+      repos        : [PROJECT],
+      repo         : 'project',
+      filter       : NO_FILTER,
+      status       : CLEAN,
+      saves        : SAVES,
+      next         : null,
+      selected     : 'c'.repeat(40),
+      logsOpen     : false,
+      size         : 'large',
+      showingDetail: false,
+      verdicts     : {},
+      undoBlocked  : "git.takeBack(repo='project' sha='aaaaaaa')",
+    },
+  },
+  {
+    name : 'foreign-repo',
+    why: 'The project sits inside a repository that is not its own, so every write is refused with the one sentence while the reads still work.',
+    state: {
+      repos        : [{ ...PROJECT, root: 'C:/stories', owned: false }],
+      repo         : 'project',
+      filter       : NO_FILTER,
+      status       : CLEAN,
+      saves        : SAVES,
+      next         : null,
+      selected     : 'a'.repeat(40),
+      logsOpen     : false,
+      size         : 'large',
+      showingDetail: false,
+      verdicts     : {},
     },
   },
 );

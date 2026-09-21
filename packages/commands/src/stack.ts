@@ -112,6 +112,11 @@ export interface UndoState {
   /** The invocation undo would reverse, for a tooltip. Null when there is nothing to undo. */
   undoLabel: string | null;
   redoLabel: string | null;
+  /**
+   * The act undo stops at: the newest change, when it cannot be undone. Null when undo is
+   * possible or when there is nothing to undo.
+   */
+  blocked: string | null;
 }
 
 export class CommandStack<Host = unknown> {
@@ -627,6 +632,7 @@ export class CommandStack<Host = unknown> {
       canRedo  : Boolean(this.opts.journal && redo),
       undoLabel: undoable ? (undo!.label ?? undo!.invocation) : null,
       redoLabel: redo ? (redo.label ?? redo.invocation) : null,
+      blocked  : this.opts.journal && undo && !undo.undo ? (undo.label ?? undo.invocation) : null,
     };
   }
 

@@ -9,7 +9,7 @@
 import { parseFountain, parseFrontMatter } from '@vn/parse';
 import type { HeadingPrefix, Scene, SceneLine } from '@vn/types';
 import { SCRIPTS } from '@vn/testkit';
-import { sceneFromDoc } from '../entities.js';
+import { sceneFromDoc, sceneTextProblem } from '../entities.js';
 import { splitScenes } from '../scenes.js';
 import { docToMarkdown, sceneToDoc, sceneToFountain } from '../serialize.js';
 
@@ -240,6 +240,17 @@ describe('sceneFromDoc — what a chunk is allowed to be', () => {
     expect(result.value.mined).toEqual([
       { id: 'school_gate', name: 'SCHOOL GATE', variant: 'afternoon' },
     ]);
+  });
+
+  it('says why a chunk’s text would not load, from the fence to the body', () => {
+    expect(sceneTextProblem('arrival', `---\nscene: arrival\n---\n${HEADING}`)).toBeUndefined();
+    expect(sceneTextProblem('arrival', '---\nscene: [\n---\nx\n')).toMatch(/front-matter/);
+    expect(sceneTextProblem('arrival', `---\nscene: rooftop\n---\n${HEADING}`)).toContain(
+      'must agree',
+    );
+    expect(sceneTextProblem('arrival', '---\nscene: arrival\n---\nJust prose.\n')).toContain(
+      'no scene heading',
+    );
   });
 });
 

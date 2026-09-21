@@ -741,7 +741,9 @@ import { StoryPart } from './story.js';
 import { PipelinePart } from './pipeline.js';
 import { GengraphPart, type SheetScaffoldPlan } from './gengraph.js';
 import { HistoryPart, type HistoryFilter } from './history.js';
-import type { Change, Diff } from '@vn/git';
+import { RecoveryPart } from './recovery.js';
+import type { Change, Checkpoint, Diff, HistoryEntry } from '@vn/git';
+import type { CheckResult } from '@vn/commands';
 import type {
   BlobRead,
   HistoryPage,
@@ -883,6 +885,7 @@ export class WorkspaceSession {
   readonly pipelinePart: PipelinePart = new PipelinePart(this);
   readonly gengraphPart: GengraphPart = new GengraphPart(this);
   readonly historyPart: HistoryPart = new HistoryPart(this);
+  readonly recoveryPart: RecoveryPart = new RecoveryPart(this);
 
   constructor(
     readonly dir: string,
@@ -1215,6 +1218,8 @@ export class WorkspaceSession {
       workspace,
       ...(builtin ? { builtinSkillsDir: builtin } : {}),
       git     : openGit(this.dir),
+      // Read at commit time: the thread opens on the turn's first message, after the agent is built
+      trailers: (): Record<string, string> => (this.thread ? { 'Vn-Thread': this.thread.id } : {}),
       // The agent's `generate_image` and the palette's `art.generate` draw the same picture; the
       // session's own `mock` is the only policy about whether it is real art.
       art     : workspaceArtGen(workspace, { mock: this.mock }),
@@ -2937,5 +2942,65 @@ export class WorkspaceSession {
 
   async gitStatus(role: RepoRole, pending: number): Promise<RepoStatus> {
     return this.historyPart.status(role, pending);
+  }
+
+  previewSave(role: RepoRole): Promise<CheckResult> {
+    return this.recoveryPart.previewSave(role);
+  }
+
+  gitSave(role: RepoRole): Promise<{ saved: boolean }> {
+    return this.recoveryPart.save(role);
+  }
+
+  previewCheckpoint(role: RepoRole, name: string, sha: string): Promise<CheckResult> {
+    return this.recoveryPart.previewCheckpoint(role, name, sha);
+  }
+
+  gitCheckpoint(
+    role: RepoRole,
+    name: string,
+    sha: string,
+    note: string,
+  ): Promise<{ entry: HistoryEntry; slug: string; name: string }> {
+    return this.recoveryPart.checkpoint(role, name, sha, note);
+  }
+
+  previewDropCheckpoint(role: RepoRole, name: string): Promise<CheckResult> {
+    return this.recoveryPart.previewDropCheckpoint(role, name);
+  }
+
+  gitDropCheckpoint(role: RepoRole, name: string): Promise<Checkpoint> {
+    return this.recoveryPart.dropCheckpoint(role, name);
+  }
+
+  previewTakeBack(role: RepoRole, sha: string): Promise<CheckResult> {
+    return this.recoveryPart.previewTakeBack(role, sha);
+  }
+
+  gitTakeBack(role: RepoRole, sha: string): Promise<{ entry: HistoryEntry; written: string[] }> {
+    return this.recoveryPart.takeBack(role, sha);
+  }
+
+  previewGoBack(role: RepoRole, sha: string): Promise<CheckResult> {
+    return this.recoveryPart.previewGoBack(role, sha);
+  }
+
+  gitGoBack(
+    role: RepoRole,
+    sha: string,
+  ): Promise<{ entry: HistoryEntry; written: string[]; checkpoint?: string }> {
+    return this.recoveryPart.goBack(role, sha);
+  }
+
+  previewRestoreFile(role: RepoRole, sha: string, path: string): Promise<CheckResult> {
+    return this.recoveryPart.previewRestore(role, sha, path);
+  }
+
+  gitRestoreFile(
+    role: RepoRole,
+    sha: string,
+    path: string,
+  ): Promise<{ path: string; diagnostic?: string }> {
+    return this.recoveryPart.restoreFile(role, sha, path);
   }
 }

@@ -154,6 +154,8 @@ export class ShellState {
   canRedo = false;
   undoLabel = '';
   redoLabel = '';
+  /** The act undo stops at when `canUndo` is false and something has changed; empty otherwise. */
+  undoBlocked = '';
 
   /**
    * What long-running work main has in flight, named the way its refusals are (`BUSY_RUN`,

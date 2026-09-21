@@ -1,11 +1,14 @@
 /**
  * What the History pane offers and says: the repository chooser, the four filters, reload, the
- * rows, paging, and the sentences the strip, the status line and the empty states carry. Pure
- * over what `git.repos`, `git.status` and `git.history` answered, so the derived model and the
- * pane draw from one place.
+ * rows, paging, the recovery controls, and the sentences the strip, the status line and the
+ * empty states carry. Pure over what `git.repos`, `git.status` and `git.history` answered, and
+ * over the verdicts `check` gave the recovery commands, so the derived model and the pane draw
+ * from one place.
  */
 import {
   kindOf,
+  NOT_OWNED,
+  SYNC_UNFINISHED,
   type Maker,
   type RepoEntry,
   type RepoRole,
@@ -85,9 +88,29 @@ export interface HistoryState {
   size: PaneSize;
   /** Whether the pane is showing the detail in the list's place, in the small layout. */
   showingDetail: boolean;
+  /**
+   * What `check` answered for the recovery commands, by id, on the selected save and the open
+   * file. One not yet answered is absent, and its control is drawn as if accepted, since the
+   * command's own check runs again on the click.
+   */
+  verdicts: Readonly<Partial<Record<RecoveryId, Verdict>>>;
+  /**
+   * What the last command run from this pane did to undo: the invocation of a take-back or a
+   * go-back, after which the undo history from before no longer applies; empty otherwise.
+   */
+  undoBlocked?: string;
 }
 
 export type PaneSize = 'small' | 'mid' | 'large';
+
+/** The commands the pane asks `check` about before it draws their controls. */
+export type RecoveryId = 'git.takeBack' | 'git.goBack' | 'git.restoreFile';
+
+/** One command's verdict as `check` gave it: the note when accepted, the reason when refused. */
+export interface Verdict {
+  ok: boolean;
+  message: string;
+}
 
 /**
  * The file in a save's list that holds its conversation, when the save is an agent's turn. The
@@ -95,9 +118,14 @@ export type PaneSize = 'small' | 'mid' | 'large';
  */
 const THREAD_LOG = /^vngen\/state\/threads\/([^/.]+)\.jsonl$/;
 
-/** The conversation an agent's save belongs to, read from the transcript the turn appended to. */
+/**
+ * The conversation an agent's save belongs to: the `Vn-Thread` trailer the agent's own commit
+ * carries, or for a turn's commit from before it did, the transcript the turn appended to.
+ */
 export function threadOf(save: Save): string | undefined {
   if (save.maker !== 'agent') return undefined;
+  const thread = save.trailers['Vn-Thread'];
+  if (thread !== undefined && thread !== '') return thread;
   for (const file of save.files) {
     const match = THREAD_LOG.exec(file.path);
     if (match) return match[1];
@@ -364,6 +392,131 @@ export function conversationAction(thread: string | undefined): Offer {
 }
 
 // -----------------------------------------------------------------------------
+// Recovery
+// -----------------------------------------------------------------------------
+
+/** What every recovery control says over a repository the app does not write history in. */
+const notOwned = (state: HistoryState) => (ownedRepo(state) ? undefined : NOT_OWNED);
+
+/** Whether a rebase, merge or revert is in progress, as the sentence the commands refuse with. */
+function unfinished(status: RepoStatus | undefined): string | undefined {
+  const cause = status?.cause;
+  return cause === 'rebase' || cause === 'merge' || cause === 'revert'
+    ? SYNC_UNFINISHED
+    : undefined;
+}
+
+/**
+ * The status view's button for the files changed outside the app. Opens `git.save`'s own form,
+ * where the message is typed. Refused with the reason while there is nothing of the kind to
+ * save: edits the app is saving itself are not the author's to name.
+ */
+export function saveAction(state: HistoryState): Offer {
+  const control = {
+    id     : 'git.save',
+    label  : 'Save these…',
+    form   : true,
+    tooltip: 'Save the files changed outside the app as one save, under a message you type.',
+  };
+  const why =
+    notOwned(state) ??
+    unfinished(state.status) ??
+    (state.status?.cause === 'pending'
+      ? 'The app is saving these edits itself.'
+      : state.status?.cause === 'outside'
+        ? undefined
+        : 'Nothing has changed since the last save.');
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { repo: state.repo } };
+}
+
+/**
+ * The bar's checkpoint button. Names the selected save, or the latest with none selected, in
+ * `git.checkpoint`'s own form, where the name and the note are typed.
+ */
+export function checkpointAction(state: HistoryState): Offer {
+  const selected = state.saves.find((s) => s.sha === state.selected);
+  const control = {
+    id     : 'git.checkpoint',
+    label  : '⚑ Checkpoint…',
+    form   : true,
+    tooltip: selected
+      ? 'Name the selected save as a checkpoint, so it can be found and gone back to later.'
+      : 'Name the latest save as a checkpoint, so it can be found and gone back to later.',
+  };
+  const why =
+    notOwned(state) ?? (state.saves.length === 0 ? 'There is no save to name yet.' : undefined);
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { repo: state.repo, sha: selected?.sha ?? '' } };
+}
+
+/** The button under a checkpoint's flag in the detail header, which takes the name off. */
+export function dropCheckpointAction(state: HistoryState, name: string): Offer {
+  const control = {
+    id     : 'git.dropCheckpoint',
+    on     : name,
+    label  : `Drop checkpoint “${name}”`,
+    tooltip: 'Take this name off the save. The save itself stays in history.',
+  };
+  const why = notOwned(state);
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { repo: state.repo, name } };
+}
+
+/**
+ * The detail header's Take back this save, which reverses the selected save as a new save.
+ * Refused with the check's own reason, which names the later saves that stand in the way; the
+ * click opens the command's form, where the check's note is read before the run.
+ */
+export function takeBackAction(state: HistoryState, save: Save): Offer {
+  const control = {
+    id     : 'git.takeBack',
+    label  : 'Take back this save',
+    form   : true,
+    tooltip:
+      'Reverse what this save did, as a new save. Nothing in history is deleted, and the undo history from before no longer applies.',
+  };
+  const why = notOwned(state) ?? unfinished(state.status) ?? refusedBy(state, 'git.takeBack');
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { repo: state.repo, sha: save.sha } };
+}
+
+/** The detail header's Go back to here, which puts every file back to how it was at the save. */
+export function goBackAction(state: HistoryState, save: Save): Offer {
+  const control = {
+    id     : 'git.goBack',
+    label  : 'Go back to here',
+    form   : true,
+    tooltip:
+      'Put every file back to how it was at this save, as a new save. Nothing in history is deleted, and the undo history from before no longer applies.',
+  };
+  const why = notOwned(state) ?? unfinished(state.status) ?? refusedBy(state, 'git.goBack');
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { repo: state.repo, sha: save.sha } };
+}
+
+/**
+ * The diff bar's Bring back this file, which rewrites the open file as it was at the selected
+ * save. An ordinary document write, so undo reverses it.
+ */
+export function restoreFileAction(state: HistoryState, save: Save, path: string): Offer {
+  const control = {
+    id     : 'git.restoreFile',
+    label  : 'Bring back this file',
+    tooltip: `Rewrite ${path} as it was at this save. Undo reverses it.`,
+  };
+  const why = notOwned(state) ?? refusedBy(state, 'git.restoreFile');
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { repo: state.repo, sha: save.sha, path } };
+}
+
+/** The check's reason for refusing `id`, or undefined while it accepted or has not answered. */
+function refusedBy(state: HistoryState, id: RecoveryId): string | undefined {
+  const verdict = state.verdicts[id];
+  return verdict !== undefined && !verdict.ok ? verdict.message : undefined;
+}
+
+// -----------------------------------------------------------------------------
 // Sentences
 // -----------------------------------------------------------------------------
 
@@ -417,6 +570,11 @@ export function statusSentence(status: RepoStatus | undefined): string {
     case 'revert':
       return 'Taking back a save stopped part way';
   }
+}
+
+/** What the footer's right side says about undo after a take-back or a go-back. */
+export function undoSentence(state: HistoryState): string {
+  return state.undoBlocked ? 'Undo history from before this save no longer applies.' : '';
 }
 
 /** What an empty list says, given why it is empty. */
@@ -504,15 +662,20 @@ export function controls(state: HistoryState): readonly Offer[] {
     checkpointsAction(state.filter.checkpointsOnly),
     searchBox(state.filter.text),
     clearAction(state.filter),
+    checkpointAction(state),
     reloadAction(),
     ...(state.size === 'small' && state.showingDetail ? [backAction()] : []),
+    ...(statusSentence(state.status) !== '' ? [saveAction(state)] : []),
     ...state.saves.map((save) => rowAction(save, save.sha === state.selected)),
     ...(state.saves.length > 0 ? [moreAction(state.next)] : []),
     ...detailControls(state),
   ];
 }
 
-/** The detail column's offers: the conversation, one row per file, the logs fold, the way back. */
+/**
+ * The detail column's offers: the conversation, the three recovery controls and one per
+ * checkpoint, one row per file, the logs fold, the way back, and the diff's own control.
+ */
 export function detailControls(state: HistoryState): readonly Offer[] {
   const save = state.saves.find((s) => s.sha === state.selected);
   if (!save) return [];
@@ -525,9 +688,13 @@ export function detailControls(state: HistoryState): readonly Offer[] {
       : save.files.filter((f) => kindOf(f.path) !== 'log');
   return [
     conversationAction(threadOf(save)),
+    takeBackAction(state, save),
+    goBackAction(state, save),
+    ...save.checkpoints.map((name) => dropCheckpointAction(state, name)),
     // Beneath the list at full width, the diff needs no way back; in the list's place it does
     ...(state.file !== undefined && state.size !== 'large' ? [filesBackAction()] : []),
     ...listed.map((f) => fileAction(f.path, f.path === state.file)),
     ...(logs.length > 0 ? [logsAction(state.logsOpen, logs.length, alone)] : []),
+    ...(state.file !== undefined ? [restoreFileAction(state, save, state.file)] : []),
   ];
 }

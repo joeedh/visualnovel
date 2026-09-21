@@ -16,8 +16,10 @@ export async function tempRepo(): Promise<{ git: Git; dir: string; cleanup: () =
   return { git, dir, cleanup: () => fs.rm(dir, { recursive: true, force: true }) };
 }
 
-export const write = (dir: string, name: string, body: string | Buffer): Promise<void> =>
-  fs.writeFile(join(dir, name), body);
+export async function write(dir: string, name: string, body: string | Buffer): Promise<void> {
+  await fs.mkdir(join(dir, name, '..'), { recursive: true });
+  await fs.writeFile(join(dir, name), body);
+}
 
 /** Runs git directly, for the verbs the wrapper does not expose yet (rebase, remote). */
 export function sh(dir: string, args: string[]): Promise<{ code: number; out: string }> {

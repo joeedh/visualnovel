@@ -1,5 +1,6 @@
 import {
   makerOf,
+  makersOf,
   statusCause,
   textDiff,
   type HistoryEntry,
@@ -83,6 +84,39 @@ describe('makerOf', () => {
 
   it('reads a commit with no trailer and no known shape as unknown', () => {
     expect(makerOf(commit({ subject: 'Hand-edited' }), ctx)).toBe('unknown');
+  });
+
+  it('reads a closed conversation, filed under its thread alone, as housekeeping', () => {
+    expect(makerOf(commit({ trailers: { 'Vn-Thread': '20260921-133000' } }), ctx)).toBe(
+      'housekeeping',
+    );
+  });
+
+  it('folds a trailerless commit just under an agent turn’s into the agent', () => {
+    const own = commit({ sha: 'c'.repeat(40), date: '2026-09-21T10:00:00+00:00' });
+    const turn = commit({
+      sha     : 'd'.repeat(40),
+      parents : [own.sha],
+      date    : '2026-09-21T10:00:07+00:00',
+      trailers: { 'Vn-Command': 'agent.run', 'Vn-Source': 'ui' },
+    });
+    expect(makerOf(own, ctx, turn)).toBe('agent');
+    expect(makerOf(own, ctx)).toBe('unknown');
+    // Not its parent, another identity, too long before, or not a turn at all
+    expect(makerOf(own, ctx, { ...turn, parents: ['e'.repeat(40)] })).toBe('unknown');
+    expect(makerOf(own, ctx, { ...turn, email: 'other@example.com' })).toBe('unknown');
+    expect(makerOf(own, ctx, { ...turn, date: '2026-09-21T11:00:00+00:00' })).toBe('unknown');
+    expect(
+      makerOf(own, ctx, { ...turn, trailers: { 'Vn-Command': 'doc.write', 'Vn-Source': 'ui' } }),
+    ).toBe('unknown');
+    // The fold applies only to a trailerless commit
+    expect(makerOf({ ...own, trailers: { 'Vn-Sweep': 'true' } }, ctx, turn)).toBe('housekeeping');
+    expect(makersOf([turn, own, commit({ sha: 'b'.repeat(40) })], ctx)).toEqual([
+      'agent',
+      'agent',
+      'unknown',
+    ]);
+    expect(makersOf([own], ctx, turn)).toEqual(['agent']);
   });
 
   it('cannot say who made it when no identity is configured, so nothing is someone else', () => {

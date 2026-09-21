@@ -369,6 +369,14 @@ function withdrawMessage(name: string): string {
   );
 }
 
+/** A git trailer holds one line; a plan summary is written in paragraphs. */
+const TRAILER_MAX = 200;
+
+function oneLine(text: string): string {
+  const line = text.replace(/\s+/g, ' ').trim();
+  return line.length > TRAILER_MAX ? `${line.slice(0, TRAILER_MAX - 1)}…` : line;
+}
+
 const planSchema = z.object({
   summary: z.string().min(1),
   steps  : z.array(z.string()).default([]),
@@ -528,6 +536,8 @@ export class Agent {
   private readonly messages: AgentMessage[] = [];
   /** Workspace-relative paths the agent has written since the last commit (commit scope). */
   private readonly editedPaths = new Set<string>();
+  /** The approved plan the edits since the last commit carry out, named on that commit. */
+  private plan: Plan | undefined;
   /** What the agent has been shown of each file this conversation — `edit_file`'s staleness check. */
   private readonly seen: ReadLedger = new Map();
   private mode: AgentMode;
@@ -549,7 +559,7 @@ export class Agent {
       ...opts.ctx,
       // The ledger belongs to the conversation, so the agent owns it rather than the host: a
       // context passed in fresh each turn would forget every read between one turn and the next.
-      seen   : this.seen,
+      seen    : this.seen,
       // The author's own turns, read live rather than copied: a tool that asks what they said
       // must see what they said this turn, not what the context held when the agent was built.
       said: () =>
@@ -561,6 +571,11 @@ export class Agent {
       confirm:
         opts.ctx.confirm ??
         ((message: string) => opts.permission.confirmAction('run_skill', { message })),
+      // The host's trailers name the conversation; the plan a commit carries out is the loop's
+      trailers: () => ({
+        ...(opts.ctx.trailers?.() ?? {}),
+        ...(this.plan ? { 'Vn-Plan': oneLine(this.plan.summary) } : {}),
+      }),
     };
     this.permission = opts.permission;
     this.system = opts.system;
@@ -636,6 +651,7 @@ export class Agent {
   clear(): void {
     this.messages.length = 0;
     this.editedPaths.clear();
+    this.plan = undefined;
     this.seen.clear();
     this.mode = 'plan';
     // The transcript is gone, so no mode or section has been stated to it; the next
@@ -1047,7 +1063,10 @@ export class Agent {
     emit({ type: 'tool', tool: name, args: parsed.data, result });
     for (const p of result.written ?? []) this.editedPaths.add(p);
     // One commit per approved plan: a successful commit closes out the tracked edit set.
-    if (name === 'git_commit' && result.ok && result.data) this.editedPaths.clear();
+    if (name === 'git_commit' && result.ok && result.data) {
+      this.editedPaths.clear();
+      this.plan = undefined;
+    }
     return result.output;
   }
 
@@ -1063,6 +1082,7 @@ export class Agent {
     const decision = await this.permission.approvePlan(plan);
     emit({ type: 'plan', plan, decision });
     if (decision.approved) {
+      this.plan = plan;
       this.mode = 'execute';
       emit({ type: 'mode', mode: 'execute' });
       return 'Plan approved. You are now in execute mode: apply the edits, run validate_inputs, then git_commit.';

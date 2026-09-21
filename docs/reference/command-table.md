@@ -2,8 +2,8 @@
 
 # Registered commands
 
-198 commands, in 25 namespaces. 114 are `mutating`;
-127 declare a precondition; 78 are undoable; 21 ask
+204 commands, in 25 namespaces. 120 are `mutating`;
+133 declare a precondition; 79 are undoable; 23 ask
 for confirmation.
 
 ✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
@@ -85,10 +85,16 @@ for confirmation.
 | `gengraph.unlink` ✍ ↺ ✓ | `slug`, `to`, `toSocket`, `from` (default `''`), `fromSocket` (default `''`), `group` (default `''`) | Writes `vngen/work/graphs`. Sever what feeds an input. Naming a source severs that one edge; naming none severs every edge into the socket. |
 | `git.blob` | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha`, `path` | — |
 | `git.changes` | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha` | — |
+| `git.checkpoint` ✍ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `name`, `sha` (default `''`), `note` (default `''`) | Writes `<git>`. An annotated tag under `refs/tags/vn/checkpoint/<slug>`; the name is the tag message’s first line, the note its body. Refused on a slug collision, by name. |
 | `git.diff` | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha`, `path` | — |
+| `git.dropCheckpoint` ✍ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `name` | Writes `<git>`. Deletes the tag. The commit is untouched. |
+| `git.goBack` ✍ ⚠ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha` | Writes `characters`, `locations`, `wiki`, `scenes`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`, `<git>`. `applyTree(treeOf(HEAD), treeOf(sha))` over the whole tree, no exclusions; commit-on-save makes the save. Undo history from before it no longer applies. |
 | `git.history` | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `who` (``\|`author`\|`agent`\|`pipeline`\|`housekeeping`\|`other`\|`unknown`, default `''`), `path` (default `''`), `text` (default `''`), `before` (default `''`) | — |
 | `git.repos` | — | — |
+| `git.restoreFile` ✍ ↺ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha`, `path` | Writes `characters`, `locations`, `wiki`, `scenes`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`. Through the ordinary whole-file write, so the write is hashed, cached and snapshotted. A scene is validated through `@vn/model` and then written verbatim, since `scenes/` has no whole-file writer. |
+| `git.save` ✍ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `message` | Writes `<git>`. Commits the dirty tree under the author’s message. Writes nothing itself: commit-on-save makes the commit, with `Vn-Command: git.save` and the message as the subject. |
 | `git.status` | `repo` (`project`\|`wiki`\|`base`, default `'project'`) | — |
+| `git.takeBack` ✍ ⚠ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha` | Writes `characters`, `locations`, `wiki`, `scenes`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`, `<git>`. `revert --no-commit` then a reset of the index, so the committer sees a plain dirty tree rather than a revert in progress. A revert that conflicts is aborted before this returns. Undo history from before it no longer applies. |
 | `interaction.list` | — | The gestures the app offers — see below. |
 | `interaction.targets` | `interaction` (`branch.connect`\|`branch.splice`\|`branch.unwire`\|`page.letter`\|`prompt.reorder`\|`script.moveLine`\|`timeline.cover`\|`timeline.create`\|`timeline.reorder`), `carried`, `scene` (default `''`), `asset` (default `''`) | Every target of a gesture, accepted or refused with why. `scene` and `asset` build the state the named gesture is judged against. |
 | `models.refresh` ✍ ✓ | — | Writes `<user>/models.json`. |

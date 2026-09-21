@@ -94,6 +94,8 @@ export interface HistoryOptions {
   limit?: number;
   /** Only commits older than this sha, which is what a page after it starts from. */
   before?: string;
+  /** Start at this commit and include it; `HEAD` when neither this nor `before` is given. */
+  from?: string;
   /** Only commits that touched this path. */
   path?: string;
   /** Only commits whose author name or email matches this pattern. */
@@ -261,9 +263,13 @@ export class Git {
     return r.code === 0 ? r.stdout.trim() : 'HEAD';
   }
 
-  /** Parse `git status --porcelain` into structured entries. */
+  /**
+   * Parse `git status --porcelain` into structured entries. Untracked files are listed one by
+   * one rather than as their directory, so a prefix rule reads the same for a new file as for a
+   * changed one.
+   */
   async status(): Promise<GitStatus> {
-    const out = await this.ok(['status', '--porcelain']);
+    const out = await this.ok(['status', '--porcelain', '--untracked-files=all']);
     const entries = out
       .split('\n')
       .filter((l) => l.length > 0)
@@ -325,6 +331,13 @@ export class Git {
     return r.code === 0 ? r.stdout.trim() : null;
   }
 
+  /** The full sha a ref, a short sha or a tag names, or null when it names no commit. */
+  async resolve(ref: string): Promise<string | null> {
+    if (ref.trim() === '' || ref.startsWith('-')) return null;
+    const r = await this.run(['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]);
+    return r.code === 0 ? r.stdout.trim() : null;
+  }
+
   /** Recent commits (newest first). */
   async log(limit = 20): Promise<CommitInfo[]> {
     const fmt = ['%H', '%h', '%an', '%ad', '%s'].join(FIELD_SEP);
@@ -368,7 +381,7 @@ export class Git {
     const args = ['log', `--format=${HISTORY_FORMAT}`, '--numstat', `-n${limit + 1}`];
     if (opts.author) args.push(`--author=${opts.author}`);
     if (opts.grep) args.push('--fixed-strings', '--regexp-ignore-case', `--grep=${opts.grep}`);
-    args.push(opts.before ?? 'HEAD');
+    args.push(opts.before ?? opts.from ?? 'HEAD');
     // A path narrows which commits are listed, not which files each lists: the count on a row
     // and the file list under it are the whole save either way
     if (opts.path) args.push('--full-diff', '--', opts.path);
@@ -510,9 +523,14 @@ export class Git {
     return { remote, branch: merge.replace(/^refs\/heads\//, '') };
   }
 
-  /** The branch header and the worktree entries in one spawn (`status --porcelain=v2 --branch`). */
+  /**
+   * The branch header and the worktree entries in one spawn (`status --porcelain=v2 --branch`),
+   * untracked files listed one by one as `status` lists them.
+   */
   async branchStatus(): Promise<BranchStatus> {
-    return parseStatusV2(await this.ok(['status', '--porcelain=v2', '--branch']));
+    return parseStatusV2(
+      await this.ok(['status', '--porcelain=v2', '--branch', '--untracked-files=all']),
+    );
   }
 
   /** Creates the annotated tag `CHECKPOINT_PREFIX + slug` at `sha` with `message`. */
@@ -566,6 +584,36 @@ export class Git {
   /** Restore a path to its state at `ref` (defaults to HEAD). */
   async restore(path: string, ref = 'HEAD'): Promise<void> {
     await this.ok(['restore', '--source', ref, '--', path]);
+  }
+
+  /**
+   * Reverts `sha` into the worktree without committing, and leaves no revert in progress behind:
+   * the plain `reset` afterwards unstages the change and removes `REVERT_HEAD`, so a committer
+   * sees an ordinary dirty tree. Answers false, with the tree put back, when the revert conflicts.
+   * Callers start from a clean tree, as `revertDryRun` does.
+   */
+  async revertIntoTree(sha: string): Promise<boolean> {
+    const r = await this.run(['revert', '--no-commit', sha]);
+    if (r.code !== 0) {
+      const aborted = await this.run(['revert', '--abort']);
+      if (aborted.code !== 0) await this.ok(['reset', '--hard', 'HEAD']);
+      return false;
+    }
+    await this.ok(['reset', '--quiet']);
+    return true;
+  }
+
+  /** The paths whose contents differ between two commits, as the newer one spells them. */
+  async changedBetween(from: string, to: string): Promise<string[]> {
+    const out = await this.ok(['diff', '--name-only', from, to]);
+    return out.split('\n').filter((l) => l.length > 0);
+  }
+
+  /** How many commits `range` (`a..b`) holds, or how many of them touched `path`. */
+  async countCommits(range: string, path?: string): Promise<number> {
+    const args = ['rev-list', '--count', range];
+    if (path) args.push('--', path);
+    return Number((await this.ok(args)).trim());
   }
 
   // ---- remotes and sync ----

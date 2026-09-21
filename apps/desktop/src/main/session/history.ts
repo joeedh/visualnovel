@@ -6,8 +6,9 @@
 import { slotKey, slotLabel, slotsOf } from '@vn/artgen';
 import { Workspace } from '@vn/authoring';
 import {
-  makerOf,
+  makersOf,
   openGit,
+  OWN_LOGS,
   statusCause,
   textDiff,
   type Change,
@@ -15,6 +16,7 @@ import {
   type Git,
   type HistoryEntry,
   type Maker,
+  type MakerContext,
   type Save,
   type SlotChange,
 } from '@vn/git';
@@ -43,8 +45,6 @@ export const TEXT_CAP = 2 * 1024 * 1024;
  * whose table is quadratic in the line count.
  */
 export const LINE_DIFF_CAP = 3000;
-/** The app's own logs, which a read appends to without a commit; dirt there is not the author's. */
-const OWN_LOGS = ['vngen/state/'];
 
 export interface HistoryFilter {
   /** Only saves by this maker; empty for all of them. */
@@ -58,7 +58,7 @@ export interface HistoryFilter {
 }
 
 /** Whether the bytes read as text: valid UTF-8 with no NUL, under the cap. */
-function isText(bytes: Buffer): boolean {
+export function isText(bytes: Buffer): boolean {
   if (bytes.length > TEXT_CAP) return false;
   const head = bytes.subarray(0, 8192);
   if (head.includes(0)) return false;
@@ -151,7 +151,7 @@ export class HistoryPart {
   }
 
   /** The handle for one role, or null when the project has no repository in that role. */
-  private async repo(role: RepoRole): Promise<{ git: Git; root: string } | null> {
+  async repo(role: RepoRole): Promise<{ git: Git; root: string; owned: boolean } | null> {
     const ref = (await this.repos()).find((r) => r.role === role);
     if (!ref) return null;
     let git = this.handles.get(ref.root);
@@ -159,10 +159,10 @@ export class HistoryPart {
       git = openGit(ref.root);
       this.handles.set(ref.root, git);
     }
-    return { git, root: ref.root };
+    return { git, root: ref.root, owned: ref.owned };
   }
 
-  private async need(role: RepoRole): Promise<{ git: Git; root: string }> {
+  async need(role: RepoRole): Promise<{ git: Git; root: string; owned: boolean }> {
     const found = await this.repo(role);
     if (!found) throw new Error(`This project has no ${role} repository.`);
     return found;
@@ -178,28 +178,42 @@ export class HistoryPart {
     return id;
   }
 
+  /** How commits in this repository are attributed. */
+  async makerContext(role: RepoRole): Promise<MakerContext> {
+    const { git, root } = await this.need(role);
+    return { local: await this.identity(git, root), housekeeping: SCAFFOLDING_SUBJECTS };
+  }
+
   /**
    * One page of saves, newest first. A `who` filter is applied after the read, since git filters
    * on author only, so the read continues in pages until `PAGE` rows match, the history ends, or
    * `SCAN_CAP` commits have been read.
+   *
+   * Each commit is attributed beside the one above it, since an agent's own commit from before it
+   * carried trailers is known by the turn's commit that follows it. A page that starts after
+   * `before` reads that one commit again for the same reason; a path or text filter drops the
+   * neighbour, so under either an old agent commit reads as made outside the app.
    */
   async history(role: RepoRole, filter: HistoryFilter = {}): Promise<HistoryPage> {
-    const { git, root } = await this.need(role);
-    const local = await this.identity(git, root);
-    const ctx = { local, housekeeping: SCAFFOLDING_SUBJECTS };
+    const { git } = await this.need(role);
+    const ctx = await this.makerContext(role);
     const [unsent, checkpoints] = await Promise.all([git.unsent(), git.checkpoints()]);
     const marks = new Map<string, string[]>();
     for (const c of checkpoints) marks.set(c.sha, [...(marks.get(c.sha) ?? []), c.slug]);
 
-    const save = (e: HistoryEntry): Save => ({
+    const save = (e: HistoryEntry, maker: Maker): Save => ({
       ...e,
-      maker      : makerOf(e, ctx),
+      maker,
       checkpoints: marks.get(e.sha) ?? [],
       sent       : unsent === null ? null : !unsent.has(e.sha),
     });
 
     const saves: Save[] = [];
     let before = filter.before;
+    let newer: HistoryEntry | undefined =
+      before && !filter.path && !filter.text
+        ? (await git.history({ from: before, limit: 1 }))[0]
+        : undefined;
     let scanned = 0;
     // The last commit read, matched or not, so the next page rescans nothing
     let next: string | null = null;
@@ -211,9 +225,10 @@ export class HistoryPart {
         ...(filter.text ? { grep: filter.text } : {}),
       });
       scanned += page.length;
-      for (const e of page) {
+      const makers = makersOf(page, ctx, newer);
+      for (const [i, e] of page.entries()) {
         next = e.sha;
-        const row = save(e);
+        const row = save(e, makers[i]!);
         if (!filter.who || row.maker === filter.who) saves.push(row);
         if (saves.length === PAGE) break scan;
       }
@@ -221,7 +236,8 @@ export class HistoryPart {
         next = null;
         break;
       }
-      before = page[page.length - 1]!.sha;
+      newer = page[page.length - 1];
+      before = newer!.sha;
     }
     return { saves, next };
   }

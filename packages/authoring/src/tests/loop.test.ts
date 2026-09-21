@@ -677,7 +677,8 @@ describe('commit gate', () => {
     try {
       initRepo(dir);
       const agent = agentWith(
-        ctx,
+        // The host names the conversation the way the desktop does
+        { ...ctx, trailers: () => ({ 'Vn-Thread': 'thread-1' }) },
         [
           JSON.stringify({
             tool: 'propose_plan',
@@ -707,6 +708,14 @@ describe('commit gate', () => {
       // The untracked siblings were not swept in: the tree is still dirty after the commit.
       const status = await openGit(dir).status();
       expect(status.dirty).toBe(true);
+      // The commit says who made it, which conversation it was made in, and which plan it carries
+      // out, so a history reader attributes it without guessing from its neighbours
+      const [entry] = await openGit(dir).history({ limit: 1 });
+      expect(entry?.trailers).toEqual({
+        'Vn-Source': 'agent',
+        'Vn-Thread': 'thread-1',
+        'Vn-Plan'  : 'Approve Aiko',
+      });
     } finally {
       await cleanup();
     }
