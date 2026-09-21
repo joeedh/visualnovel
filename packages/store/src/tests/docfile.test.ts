@@ -33,10 +33,11 @@ describe('reading a document', () => {
     expect(read.ok).toBe(true);
     if (!read.ok) return;
     expect(read.file).toEqual({
-      path : 'wiki/history.md',
-      text : '# History\n',
-      hash : sha256('# History\n'),
-      bytes: 10,
+      path    : 'wiki/history.md',
+      text    : '# History\n',
+      hash    : sha256('# History\n'),
+      bytes   : 10,
+      encoding: 'utf-8',
     });
   });
 
@@ -95,6 +96,38 @@ describe('reading a document', () => {
     const root = await tempRoot();
     await writeFile(join(root, 'portrait.png'), Buffer.from([0x89, 0x50, 0x00, 0xff, 0xfe]));
     expect(reason(await readDocFile(root, 'portrait.png'))).toBe('portrait.png is not a text file');
+  });
+
+  it('reads a Windows-1252 file, the way Word and Notepad save "ANSI" text', async () => {
+    const root = await tempRoot();
+    // Smart quotes (0x93/0x94) and é (0xe9), none of them valid UTF-8.
+    await writeFile(
+      join(root, 'rev 2.txt'),
+      Buffer.from([0x93, 0x48, 0x69, 0x94, 0x20, 0x63, 0x61, 0x66, 0xe9]),
+    );
+    const read = await readDocFile(root, 'rev 2.txt');
+    expect(read.ok && read.file.text).toBe('“Hi” café');
+    expect(read.ok && read.file.encoding).toBe('windows-1252');
+  });
+
+  it('reads UTF-16 by its byte-order mark, despite the null bytes', async () => {
+    const root = await tempRoot();
+    await writeFile(join(root, 'le.txt'), Buffer.from([0xff, 0xfe, 0x48, 0x00, 0x69, 0x00]));
+    await writeFile(join(root, 'be.txt'), Buffer.from([0xfe, 0xff, 0x00, 0x48, 0x00, 0x69]));
+    const le = await readDocFile(root, 'le.txt');
+    const be = await readDocFile(root, 'be.txt');
+    expect(le.ok && [le.file.text, le.file.encoding]).toEqual(['Hi', 'utf-16le']);
+    expect(be.ok && [be.file.text, be.file.encoding]).toEqual(['Hi', 'utf-16be']);
+  });
+
+  it('drops a UTF-8 byte-order mark from the text but hashes the bytes on disk', async () => {
+    const root = await tempRoot();
+    const bytes = Buffer.from([0xef, 0xbb, 0xbf, 0x48, 0x69]);
+    await writeFile(join(root, 'bom.md'), bytes);
+    const read = await readDocFile(root, 'bom.md');
+    expect(read.ok && read.file.text).toBe('Hi');
+    expect(read.ok && read.file.encoding).toBe('utf-8');
+    expect(read.ok && read.file.hash).toBe(sha256(bytes));
   });
 });
 

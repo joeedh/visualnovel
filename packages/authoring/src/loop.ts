@@ -538,6 +538,8 @@ export class Agent {
   private sections = new Map<string, string>();
   /** System messages owed to the model, filed after the next user turn (never before one). */
   private readonly pendingSystem: string[] = [];
+  /** Context the host learned between turns, filed ahead of the next user turn. */
+  private readonly pendingContext: string[] = [];
   /** Set by {@link stop}, cleared when a turn starts. Read between steps, never inside one. */
   private stopped = false;
 
@@ -640,6 +642,7 @@ export class Agent {
     // `refreshSystem` rebuilds the prompt outright instead of filing supersede messages.
     this.filedMode = undefined;
     this.pendingSystem.length = 0;
+    this.pendingContext.length = 0;
     // The backend survives the clear, so anything it remembers about the previous prefix would be
     // compared against a conversation that no longer exists
     this.backend.reset?.();
@@ -755,11 +758,22 @@ export class Agent {
   }
 
   /**
+   * File something the host learned between turns — an upload that just landed, say — as a
+   * `context` message ahead of the next user turn, so the words that turn uses for it ("this",
+   * "the file") have a referent. Dropped by {@link clear}, because a note owed to a conversation
+   * that was abandoned is not owed to the next one.
+   */
+  noteContext(text: string): void {
+    this.pendingContext.push(text);
+  }
+
+  /**
    * Run one user turn to completion (a final message), driving tool calls in between.
    *
    * `focus` is what the host knew when the turn started — the scene on screen, typically. It is
    * filed as a `context` message ahead of the user's, so "rewrite this line" has a referent; a
    * host that knows nothing passes nothing, and the transcript reads exactly as it did before.
+   * Anything queued by {@link noteContext} is filed the same way, before the focus.
    */
   async run(userInput: string, focus?: string): Promise<RunResult> {
     const events: AgentEvent[] = [];
@@ -769,6 +783,7 @@ export class Agent {
     };
 
     this.repairDanglingCalls();
+    for (const content of this.pendingContext.splice(0)) this.append({ role: 'context', content });
     if (focus) this.append({ role: 'context', content: focus });
     this.append({ role: 'user', content: userInput });
     // Filed after the user's message, never before it: a system message may not open a

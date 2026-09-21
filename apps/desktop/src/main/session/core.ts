@@ -1425,6 +1425,11 @@ export class WorkspaceSession {
     return this.agentPart.uploadFiles(files);
   }
 
+  /** Tell the model something ahead of the author's next turn. */
+  async noteAgentContext(text: string): Promise<void> {
+    return this.agentPart.noteAgentContext(text);
+  }
+
   async threads(): Promise<{ threads: ThreadHeader[]; active?: string }> {
     return this.agentPart.threads();
   }

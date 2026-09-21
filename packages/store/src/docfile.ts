@@ -94,8 +94,30 @@ export interface DocFile {
   /** sha256 of the bytes on disk — the token a save presents to prove what it edited. */
   hash: string;
   bytes: number;
+  /** The encoding the bytes were read in. A save always writes UTF-8, whatever this was. */
+  encoding: TextEncoding;
   /** The kind the path implies (`conventionalKind`), the first input a reader gives `docKind`. */
   implied: EntityTag | undefined;
+}
+
+/** The encodings a document is read in. */
+export type TextEncoding = 'utf-8' | 'utf-16le' | 'utf-16be' | 'windows-1252';
+
+/** Text decoded from a file, and the encoding it was decoded in. */
+export interface DecodedText {
+  text: string;
+  encoding: TextEncoding;
+}
+
+const BOMS: ReadonlyArray<readonly [TextEncoding, readonly number[]]> = [
+  ['utf-8', [0xef, 0xbb, 0xbf]],
+  ['utf-16le', [0xff, 0xfe]],
+  ['utf-16be', [0xfe, 0xff]],
+];
+
+/** The encoding a byte-order mark at the start of `bytes` names, or undefined without one. */
+function bomEncoding(bytes: Uint8Array): TextEncoding | undefined {
+  return BOMS.find(([, bom]) => bom.every((b, i) => bytes[i] === b))?.[0];
 }
 
 export type DocResult<T> = ({ ok: true } & T) | { ok: false; reason: string };
@@ -107,13 +129,22 @@ function tooBig(path: string, bytes: number): string {
   return `${path} is ${mb} MB, past the ${MAX_DOC_BYTES / 1_000_000} MB a document surface reads`;
 }
 
-/** Decode UTF-8 strictly; a file that is not text is refused rather than shown as mojibake. */
-function decode(bytes: Buffer): string | null {
+/**
+ * Decodes a file's bytes as text, or returns null for a file that is not text. A byte-order
+ * mark names the encoding outright and is dropped from the text. Without one, the bytes are
+ * read as strict UTF-8, and a file that is not valid UTF-8 is read as Windows-1252, the
+ * codepage a `.txt` saved as "ANSI" from Word or Notepad is in. Windows-1252 decodes every
+ * byte, so the binary test is a null byte outside a UTF-16 file, which is refused rather than
+ * shown as mojibake.
+ */
+export function decodeText(bytes: Uint8Array): DecodedText | null {
+  const marked = bomEncoding(bytes);
+  if (marked) return { text: new TextDecoder(marked).decode(bytes), encoding: marked };
   if (bytes.includes(0)) return null;
   try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    return { text: new TextDecoder('utf-8', { fatal: true }).decode(bytes), encoding: 'utf-8' };
   } catch {
-    return null;
+    return { text: new TextDecoder('windows-1252').decode(bytes), encoding: 'windows-1252' };
   }
 }
 
@@ -142,16 +173,17 @@ export async function readDocFile(
   if (stat.size > MAX_DOC_BYTES) return refuse(tooBig(rel, stat.size));
 
   const bytes = await fs.readFile(abs);
-  const text = decode(bytes);
-  if (text === null) return refuse(`${rel} is not a text file`);
+  const decoded = decodeText(bytes);
+  if (decoded === null) return refuse(`${rel} is not a text file`);
   return {
     ok  : true,
     file: {
-      path: rel,
-      text,
-      hash   : sha256(bytes),
-      bytes  : bytes.length,
-      implied: conventionalKind(rel),
+      path    : rel,
+      text    : decoded.text,
+      hash    : sha256(bytes),
+      bytes   : bytes.length,
+      encoding: decoded.encoding,
+      implied : conventionalKind(rel),
     },
   };
 }

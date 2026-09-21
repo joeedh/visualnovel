@@ -521,13 +521,24 @@ one archive and one layout. The plan is
   and the rest are copied unchanged and reported as "archived, not yet readable: no
   converter for …". Copying preserves the bytes, and the converter that writes a text
   sidecar beside the original is a later step that needs no change to this layout.
-  `readable` means what `read_file` serves today: strict UTF-8, under its own size bound.
+  `readable` means what `read_file` serves today: a text file under its own size bound.
+  Text is decided by `decodeText` in `@vn/store`: a byte-order mark names UTF-8 or UTF-16,
+  otherwise strict UTF-8, and a file that is neither is read as Windows-1252, which is
+  what a `.txt` saved as "ANSI" from Word or Notepad is. Only a null byte outside a UTF-16
+  file makes a file binary.
 - **Uploading ends in plan mode with a question rather than an edit.** The REPL prints the
   batch and a short numbered list of ways to phrase the next prompt; the desktop opens a
   fresh conversation on the same sentence and shows the same openers as chips. The
   suggestions are built from the file list alone (count, extensions, whether names look
   like scenes) and never from the contents, because reading them to propose a sentence the
   author will rewrite costs a model call for nothing.
+- **The model is told what landed, ahead of the author's next turn.** The sentence the
+  author sees is never sent to the model, so both hosts queue `uploadFocus(batch)` with
+  `Agent.noteContext`, and the next `run` files it as a `context` message before the
+  author's words. It names every archived path (so `read_file` needs no `list_archive`
+  first), carries each unreadable file's note, and says that "this", "the file" and "the
+  revision" mean the upload. A `clear` drops a queued note, so the desktop queues it after
+  the clear that opens the fresh conversation.
 
 ## Skills
 

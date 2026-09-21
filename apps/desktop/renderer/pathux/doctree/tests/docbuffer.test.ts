@@ -32,7 +32,14 @@ class FakeIo implements DocIo {
     if (!file) return { ok: false, error: `no such document: ${path}` };
     return {
       ok  : true,
-      file: { path, text: file.text, hash: file.hash, bytes: file.text.length, implied: undefined },
+      file: {
+        path,
+        text    : file.text,
+        hash    : file.hash,
+        bytes   : file.text.length,
+        encoding: 'utf-8',
+        implied : undefined,
+      },
     };
   }
 

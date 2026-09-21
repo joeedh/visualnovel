@@ -334,6 +334,15 @@ export class AgentPart {
     return archiveUpload(new Workspace(this.session.dir), files);
   }
 
+  /**
+   * Tell the model something ahead of the author's next turn. What the conversation pane shows
+   * the author is never sent to the model, so a fact the pane states — the upload that just
+   * opened it — has to be filed this way for "this file" to mean anything.
+   */
+  async noteAgentContext(text: string): Promise<void> {
+    (await this.session.ensureAgent()).noteContext(text);
+  }
+
   /** Every saved conversation in this project, newest first, and which one is being written to. */
   async threads(): Promise<{ threads: ThreadHeader[]; active?: string }> {
     const threads = await listThreads(new ProjectPaths(this.session.dir));

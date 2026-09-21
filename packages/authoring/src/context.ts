@@ -239,7 +239,10 @@ FINDING THINGS: list_workspace is the index of what exists — reach for it befo
 a character or a location by name. search covers the authored inputs only (characters/,
 locations/, scenes/); the story bible is search_bible and nothing else reaches it; uploads are
 list_archive. A "no matches" from one of them is not evidence the thing is absent — it is
-evidence about that one door.
+evidence about that one door. When the author points at something they supplied — "the file I
+uploaded", "this revision", "this is a new draft of", a document to compare against — call
+list_archive before asking which file they mean, and if you still have to ask, put the newest
+upload among the choices.
 
 WORKING AT SCALE: a turn has a token budget, and every call spends against it what could not
 be served from cache. Do not re-read a file you just wrote — you know what is in it. Do not

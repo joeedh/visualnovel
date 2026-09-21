@@ -7,6 +7,7 @@ import {
   archiveUpload,
   createRegistry,
   listArchive,
+  uploadFocus,
   uploadSuggestions,
   Workspace,
   type Tool,
@@ -105,6 +106,22 @@ describe('archiving an upload', () => {
         'archived, not yet readable: no converter for Word document',
       );
       expect(await fs.readFile(join(dir, batch.files[0]!.stored))).toEqual(bytes);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('archives an "ANSI" .txt from Word as readable, and read_file then serves it', async () => {
+    const { ctx, inbox, cleanup } = await tempProject();
+    try {
+      // Windows-1252 smart quotes and an accented e, none of it valid UTF-8.
+      const bytes = Buffer.from([0x93, 0x48, 0x69, 0x94, 0x20, 0x63, 0x61, 0x66, 0xe9]);
+      const batch = await archiveUpload(ctx.workspace, [await drop(inbox, 'rev 2.txt', bytes)], AT);
+
+      expect(batch.files[0]!.readable).toBe(true);
+      expect(batch.files[0]!.note).toBeUndefined();
+      const read = await run('read_file', { path: batch.files[0]!.stored }, ctx);
+      expect(read.output).toBe('“Hi” café');
     } finally {
       await cleanup();
     }
@@ -217,6 +234,37 @@ describe('what the agent can see of the archive', () => {
     } finally {
       await cleanup();
     }
+  });
+});
+
+describe('what the model is told', () => {
+  it('names every path, so the first turn can read one without listing the archive', () => {
+    const batch: UploadBatch = {
+      dir    : 'archive/20260920-184838-rev-2',
+      files: [
+        {
+          source  : 'C:/in/rev 2.txt',
+          stored  : 'archive/20260920-184838-rev-2/rev 2.txt',
+          bytes   : 15730,
+          readable: true,
+        },
+        {
+          source  : 'C:/in/draft.docx',
+          stored  : 'archive/20260920-184838-rev-2/draft.docx',
+          bytes   : 900,
+          readable: false,
+          note    : 'archived, not yet readable: no converter for Word document',
+        },
+      ],
+      skipped: [],
+    };
+    const told = uploadFocus(batch);
+    expect(told).toContain('uploaded 2 files to `archive/20260920-184838-rev-2/`');
+    expect(told).toContain('archive/20260920-184838-rev-2/rev 2.txt (15730 bytes)');
+    expect(told).toContain(
+      'draft.docx (900 bytes; archived, not yet readable: no converter for Word document)',
+    );
+    expect(told).toContain('Read them with read_file before asking what they mean.');
   });
 });
 

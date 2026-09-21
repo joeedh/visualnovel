@@ -11,7 +11,10 @@ import { ok, fail, rel, type Tool } from './core.js';
 
 const readFileTool: Tool<{ path: string; offset?: number; limit?: number }> = {
   name       : 'read_file',
-  description: 'Read a workspace file, optionally a line range.',
+  description:
+    'Read a workspace file, optionally a line range. A refusal (binary, too large, outside the ' +
+    'workspace) is about the file itself, so retrying with a line range cannot change it — ' +
+    'tell the author instead.',
   mutating   : false,
   args: z.object({ path: z.string(), offset: z.number().optional(), limit: z.number().optional() }),
   async run(a, ctx) {

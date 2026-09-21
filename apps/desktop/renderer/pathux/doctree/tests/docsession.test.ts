@@ -109,10 +109,11 @@ class FakeIo implements DocIo {
       ok  : true,
       file: {
         path,
-        text   : file.text,
-        hash   : file.hash,
-        bytes  : file.text.length,
-        implied: 'character',
+        text    : file.text,
+        hash    : file.hash,
+        bytes   : file.text.length,
+        encoding: 'utf-8',
+        implied : 'character',
       },
     };
   }

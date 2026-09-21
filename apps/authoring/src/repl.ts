@@ -12,6 +12,7 @@ import {
   apiRecoveryQuestion,
   archiveUpload,
   describeUpload,
+  uploadFocus,
   discoverSkills,
   formatIndex,
   formatSubject,
@@ -524,9 +525,9 @@ async function makeImage(
  * `/upload <file...>` — copy the author's own documents into `archive/`, then ask about them.
  *
  * Runs the same `archiveUpload` the desktop's `upload.pick` does, so a file uploaded from either
- * place lands in the same layout. No turn is run: the model is told nothing here, and hears next
- * only whichever suggestion the author picks. Ends in plan mode, because the answer to "what
- * should I do with these" is a plan rather than an edit.
+ * place lands in the same layout. No turn is run: the model hears what landed ahead of the
+ * author's next message, whichever suggestion that is. Ends in plan mode, because the answer to
+ * "what should I do with these" is a plan rather than an edit.
  */
 async function upload(session: AuthoringSession, channel: Channel, rest: string): Promise<void> {
   const paths = splitPaths(rest);
@@ -550,6 +551,7 @@ async function upload(session: AuthoringSession, channel: Channel, rest: string)
   channel.write(dim('What next? For example:'));
   suggestions.forEach((s, i) => channel.write(`  ${i + 1}. ${s}`));
   channel.write('');
+  session.agent.noteContext(uploadFocus(batch));
   session.agent.setMode('plan');
 }
 

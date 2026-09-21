@@ -585,14 +585,16 @@ list), and both take the same write path that `vnauthor`'s
 path. `scenes/**` still has exactly one write path, and it is `story.*`.
 
 - **Reads are bounded and text-only.** `doc.read` answers
-  `{ path, text, hash, bytes, implied }` for a file under the workspace, and refuses a
-  path outside it, a file that is too large, and a file that is not text. `implied` is the
-  entity kind the path's location implies (`conventionalKind`), computed in main so the
-  renderer can hand it to `docKind` beside the `type:` tag it reads from the front matter
-  and get the one answer main would; the Wiki pane picks its front-matter form from that
-  answer. It is deliberately not `@vn/bible`'s `query`. The bible is reached by ranked
-  excerpt so it never floods a context window, whereas a human editor needs the whole file
-  in one read.
+  `{ path, text, hash, bytes, encoding, implied }` for a file under the workspace, and
+  refuses a path outside it, a file that is too large, and a file that is not text.
+  `encoding` is what the bytes were decoded as (UTF-8, UTF-16 by its byte-order mark, or
+  Windows-1252 when they are not valid UTF-8); a save always writes UTF-8, so editing an
+  "ANSI" file transcodes it. `implied` is the entity kind the path's location implies
+  (`conventionalKind`), computed in main so the renderer can hand it to `docKind` beside
+  the `type:` tag it reads from the front matter and get the one answer main would; the
+  Wiki pane picks its front-matter form from that answer. It is deliberately not
+  `@vn/bible`'s `query`. The bible is reached by ranked excerpt so it never floods a
+  context window, whereas a human editor needs the whole file in one read.
 - **`doc.write` refuses a save by comparing content, not modification time.** It takes
   `seenHash`, the hash `doc.read` answered with, and refuses when the file on disk no
   longer hashes to it. Comparing mtime would refuse a file that was rewritten identically

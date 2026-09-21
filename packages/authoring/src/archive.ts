@@ -13,7 +13,7 @@
  */
 import { promises as fs } from 'node:fs';
 import { basename, extname, join, resolve } from 'node:path';
-import { MAX_DOC_BYTES, resolveInWorkspace, workspacePath } from '@vn/store';
+import { MAX_DOC_BYTES, decodeText, resolveInWorkspace, workspacePath } from '@vn/store';
 import { exists, writeFileAtomic } from '@vn/util';
 import type { Workspace } from './workspace.js';
 
@@ -130,8 +130,8 @@ export async function archiveUpload(
 /**
  * Whether `read_file` would serve this file. A container format is refused by extension; every
  * other file is decided against the bytes just copied. `readDocFile` refuses on two grounds (past
- * {@link MAX_DOC_BYTES}, or not strict UTF-8) so asking the same two questions here means
- * `readable` cannot claim something the reader will then refuse, whatever the file is called.
+ * {@link MAX_DOC_BYTES}, or bytes `decodeText` calls binary) so asking the same two questions here
+ * means `readable` cannot claim something the reader will then refuse, whatever the file is called.
  */
 function verdict(name: string, bytes: Buffer): { readable: boolean; note?: string } {
   const kind = NO_CONVERTER[extname(name).toLowerCase()];
@@ -143,20 +143,9 @@ function verdict(name: string, bytes: Buffer): { readable: boolean; note?: strin
       note: `archived, but ${mb(bytes.length)} is past the ${mb(MAX_DOC_BYTES)} read_file serves`,
     };
   }
-  if (!isText(bytes))
-    return { readable: false, note: 'archived, not yet readable: not UTF-8 text' };
+  if (decodeText(bytes) === null)
+    return { readable: false, note: 'archived, not yet readable: not a text file' };
   return { readable: true };
-}
-
-/** The same strict decode `readDocFile` performs, asked as a yes/no. */
-function isText(bytes: Buffer): boolean {
-  if (bytes.includes(0)) return false;
-  try {
-    new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 /**
@@ -214,6 +203,26 @@ export function describeUpload(batch: UploadBatch): string {
 
 function count(n: number, noun: string): string {
   return `${n} ${noun}${n === 1 ? '' : 's'}`;
+}
+
+/**
+ * What the model is told about an upload, ahead of the author's next turn. `describeUpload` is
+ * the sentence the author sees; the model never sees that one, and without this it would hear
+ * "compare this with the treatment" in a conversation that never mentioned a file. Names every
+ * path so `read_file` can be called without a `list_archive` first, and carries each unreadable
+ * file's note so the model does not try to read one.
+ */
+export function uploadFocus(batch: UploadBatch): string {
+  const files = batch.files.map(
+    (f) => `${f.stored} (${f.bytes} bytes${f.readable ? '' : `; ${f.note}`})`,
+  );
+  const it = batch.files.length === 1 ? 'it' : 'them';
+  return (
+    `The author just uploaded ${count(batch.files.length, 'file')} to \`${batch.dir}/\`: ` +
+    `${files.join(', ')}. Nothing has read ${it} yet. Their next message is about ${it} unless ` +
+    `it says otherwise — "this", "the file", "the revision", "compare it with" refer to ${it}. ` +
+    `Read ${it} with read_file before asking what they mean.`
+  );
 }
 
 /** One directory of the archive as {@link listArchive} reports it. */

@@ -10,7 +10,7 @@
  * `vngen/state` is outside it by design.
  */
 import { defineFor, prop, type CommandContext } from '@vn/commands';
-import { describeUpload, uploadSuggestions } from '@vn/authoring';
+import { describeUpload, uploadFocus, uploadSuggestions } from '@vn/authoring';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
@@ -53,6 +53,9 @@ async function upload(
   // lands is typing at an agent that cannot yet edit anything.
   await ctx.host.session.setMode('plan');
   await ctx.host.session.clearAgent();
+  // After the clear, which drops anything queued for the conversation just closed. The pane's
+  // sentence never reaches the model, so this is how the first turn knows what "this file" is.
+  await ctx.host.session.noteAgentContext(uploadFocus(batch));
 
   ctx.host.ui(
     { type: 'view', action: 'open', editor: 'convo', where: 'elsewhere', flash: true },

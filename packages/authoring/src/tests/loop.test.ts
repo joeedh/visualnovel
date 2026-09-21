@@ -279,6 +279,44 @@ describe('what the host knew when the turn started', () => {
     }
   });
 
+  it('files a note queued between turns once, ahead of the focus, and drops it on clear', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const prompts: string[] = [];
+      const chat = new RecordedChatBackend('mock', (req) => {
+        prompts.push(req.prompt);
+        return JSON.stringify({ final: 'ok' });
+      });
+      const agent = new Agent({
+        backend: new StructuredAgentBackend(chat),
+        ctx,
+        permission: scriptPermission(),
+        system    : 'SYS',
+      });
+      agent.noteContext('The author just uploaded rev-2.txt.');
+      await agent.run(
+        'compare this with the treatment',
+        'The author is looking at scene "arrival".',
+      );
+      const first = prompts[0]!;
+      expect(first.indexOf('CONTEXT: The author just uploaded')).toBeLessThan(
+        first.indexOf('CONTEXT: The author is looking'),
+      );
+      expect(first.indexOf('CONTEXT: The author is looking')).toBeLessThan(first.indexOf('USER:'));
+
+      // The second turn carries the note in its history, not as a fresh context message
+      await agent.run('and the scenes?');
+      expect(prompts[1]!.match(/CONTEXT: The author just uploaded/g)).toHaveLength(1);
+
+      agent.noteContext('abandoned');
+      agent.clear();
+      await agent.run('hello');
+      expect(prompts[2]).not.toContain('abandoned');
+    } finally {
+      await cleanup();
+    }
+  });
+
   it('focusOnScene names the scene, its cast and the file it is in', async () => {
     const { ctx, cleanup } = await tempProject();
     try {
