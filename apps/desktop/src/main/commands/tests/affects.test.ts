@@ -12,6 +12,7 @@
  */
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import { userSkillsDir } from '@vn/config';
 import { makeProject, type TestProject } from '@vn/testkit';
 import { covers } from '../../../shared/affects.js';
 import { readGroupDoc } from '../../doctree/graphs.js';
@@ -424,7 +425,7 @@ const OTHER_RUNS: Run[] = [
   // The catalog comes from the checkout, through `VN_RESOURCES` set for this tier
   { id: 'project.setBuiltinSkills', props: { ids: ['branching'] } },
   { id: 'skill.cloneToProject', props: { id: 'new-character' } },
-  // Writes only the user folder, which `$VNAUTHOR_HOME` points somewhere empty per worker
+  // Writes only the user folder under `$VNAUTHOR_HOME`, which `afterAll` empties again
   { id: 'skill.cloneToUser', props: { id: 'branching' } },
   { id: 'view.resetLayout', props: { scope: 'shipped' } },
   { id: 'workspace.reindex', props: {} },
@@ -606,6 +607,9 @@ describe('the executed tier', () => {
     delete process.env.VN_RESOURCES;
     await harness.dispose();
     await rm(project.dir, { recursive: true, force: true, maxRetries: 3 });
+    // `$VNAUTHOR_HOME` is per worker, not per file: a skill left here is a user skill to every
+    // later suite on the same worker
+    await rm(userSkillsDir(), { recursive: true, force: true, maxRetries: 3 });
   });
 
   it('runs each command in RUNS and finds nothing written outside its declaration', async () => {
