@@ -2,7 +2,9 @@
 
 Research, 2026-09-20. Names the model the code has today for "a slot holds a history of
 takes", lists where the code disagrees with itself about that model, and lays out options
-for a formal one. A plan will be written from this; nothing here changes code.
+for a formal one. The plan written from it is
+[`../plans/slot-history-on-the-manifest-row.md`](../plans/slot-history-on-the-manifest-row.md);
+nothing here changes code.
 
 <!-- toc -->
 
@@ -37,6 +39,8 @@ for a formal one. A plan will be written from this; nothing here changes code.
     - [Option C. A current-pointer file per slot; everything else is archive](#option-c-a-current-pointer-file-per-slot-everything-else-is-archive)
     - [Comparison](#comparison)
 - [Open questions for the owner](#open-questions-for-the-owner)
+- [Decisions](#decisions)
+    - [The chosen model](#the-chosen-model)
 
 <!-- tocstop -->
 
@@ -646,3 +650,207 @@ manifest's other rows for the slot are archive with no order.
 12. Should `attemptOutcome`'s `accepted` label be renamed to `kept` or read from the
     history, given that list position no longer implies acceptance once attempts
     accumulate across regenerations?
+
+## Decisions
+
+Answers from the owner, 2026-09-20, one per open question, corrected after a fresh-context
+review of the options (below). The plan starts from this list; nothing is left open.
+
+1. **No.** A clean render is not accepted by the machine. The shot runner sets the slot's
+   current take, as every other runner will, and accepts nothing. The reviewers' verdict
+   only gates retries. Consequences the plan carries: `Shot.status` stops claiming
+   `accepted` on `done` (decision 10 removes the field); `attemptOutcome`'s
+   `done → accepted` label is wrong and goes with it (question 12 follows); the CLI needs
+   a way to accept a frame, since `vngen approve` is portraits-only and
+   `vngen run && vngen export` would otherwise always refuse under the rule in decision 3.
+2. **Only current takes.** The approval popup, the tree's _Awaiting approval_ group and
+   the agent's `approve_assets` card list `current ∧ ¬accepted`, drifted frames still
+   excluded: at most one row per slot. `Approvable.settled` goes away, the sentences in
+   `pipeline.approveAndRun`'s description about listing losing takes are rewritten, and
+   `approvedAssets()` mirrors the filter as `current ∧ accepted`. A losing take is
+   reachable only from the tree's fold and the Asset editor's take strip, and
+   `asset.restore` is the act that brings one back.
+3. **Yes.** Which take a slot holds and whether a human approved it are two bits on the
+   manifest row: `current` and `accepted`. `pick` reads `current` and never `accepted`.
+   `AssetStore.accept(hash, supersede)` splits into `hold(hash, supersede)`, which is
+   exclusive per slot, and `accept(hash)`, which supersedes nothing because it no longer
+   selects; a superseded take keeps its `accepted` bit as history. The runner,
+   `asset.adopt` and `art.promote` hold; `asset.restore` holds and accepts; `asset.accept`
+   on a take that is not current refuses and names `asset.restore`. `overAccepted` and
+   `repairAccepted` move over to `current`. Migration is one pass, in the order the steady
+   state uses: the identity's output when its task is `done`, else the accepted take, else
+   the sole candidate. The other order would make the old accepted plate current on day
+   one while the planner draws frames from the new output, which is the split this
+   decision removes.
+    - A current, unapproved take is shown wherever the author works: the editors, the page
+      pane, the storyboard, the tree's row head, and the in-app player, which is not an
+      export.
+    - It is refused, as a hard error naming the slot, where the output leaves the app:
+      `vngen export`, the `export.*` commands and the Pages publish. The whole export
+      fails rather than a frame going blank. Nothing else asks: the planner already flows
+      plates and sheets into shots from task output regardless of acceptance, and the only
+      planning gate is the portrait gate.
+    - A `needs_human` frame holds the slot too: the runner's last attempt is what the
+      author needs to see and fix, and the popup lists it as current and unapproved.
+    - `assetApproved` becomes `current ∧ accepted` for every non-portrait kind, so a
+      superseded take that kept its `accepted` bit is neither an approved prerequisite nor
+      an approved tree row.
+    - `current` is a cache of the task log, and the repair rule says so: where the slot's
+      identity is `done`, its `output` wins and `current` is rewritten to it; otherwise
+      the row is authoritative, because `requeue` clears `output` and decision 4 keeps the
+      old take current through that window.
+    - A row is per hash per root, and one hash can serve two slots (`satisfies` is a
+      list). `current` on such a row is one bit for two facts, the wart `accepted` already
+      has; `hold` takes the slot it is holding for and the plan states the limit rather
+      than moving the bit onto the `satisfies` entry.
+
+4. **Per slot.** The identity is the planner's cache key; the slot is what the author has
+   a name for. The bindings already make it so for plates, portraits and shots:
+   `candidatesFor` filters the manifest by `satisfies`, which is why the tree's fold shows
+   old-identity takes today. A `sheet:` slot is the exception, filtering through
+   `angleOf(sourceTask)` (finding 12), which is why the angle moves onto the binding.
+   `current` fixes finding 6 only if it is per slot, since the point of the bit is that
+   the old take stays current after a re-key until the new identity lands. `asset.restore`
+   has already answered the same way, by re-recording an old-identity take under the
+   current identity (`packages/artgen/src/adoptslot.ts:271`). The one dissenter,
+   `asset.regenerate`'s orphan refusal (`apps/desktop/src/main/session/asset.ts:324`,
+   `:382`), is about the task rather than the history: regenerate on any take of a slot
+   means regenerate the slot, and the refusal becomes a sentence in the same command.
+    - Order across identities depends on the orphan task records surviving, because `at`
+      lives on `TaskAttempt` and an old identity's task is one the planner no longer
+      emits. `loadGraph` keeps them today, and nothing promises it, so `at` and `via` are
+      stamped onto the manifest row when a take is filed. That is additive and also covers
+      adoption, which has no scheduler stamp. The row's `at` is "most recently held",
+      which is what the order in decision 6 means; a restored take is therefore newest.
+    - "Rendered from an older prompt" stays as a per-take badge, which is the prompt half
+      of finding 13, and `newerTake` reads the slot's current take rather than the
+      identity's output.
+5. **The shared facts go on the base manifest row; attempts stay per project; a project
+   opening a base it did not render reconciles on open.** The base manifest lives in
+   `assets/` and the task log in `vngen/state/`, so everything the chosen model derives
+   from the log is invisible to a second project sharing the base, and the worst case is
+   not lost history: the second project's planner finds no `doneOutput` for any base slot
+   and re-renders the library.
+    - The base row carries `current`, `accepted`, `at` and `via` (decision 4), plus the
+      sheet angle in `satisfies`, which closes finding 12. A sharing project can then
+      order takes and tell an adopted one from a rendered one without a log.
+    - Attempt history (per-attempt prompts and reviews) stays in the rendering project's
+      `tasks.jsonl`. A sharing project sees the takes and their order, not the attempts,
+      which are a record of that project's spending.
+    - On opening a project against a base it did not render, a reconcile pass logs, for
+      every base slot whose identity has no terminal record here but whose `current` row
+      exists, a `done` record with the row's hash as output and `via: 'shared'`. This is
+      the don't-forge-work bound `regenerate=false` and adoption already rest on
+      (`docs/reference/pipeline-contracts.md:494-496`): existing bytes recorded as a
+      task's output. An identity mismatch, from different art notes in the second
+      project's sheet, is the re-key state of decision 4 rather than a failure.
+        - Approval is per base repo by construction, since the bit is on the shared row;
+          this is the answer decision 8 waits on. Stated plainly: a project whose art
+          notes differ from the base's has a portrait identity of its own with no output,
+          the shared row is current and accepted, and the gate passes on a portrait this
+          project's prompt did not draw. That is what sharing means. The character-sheet
+          mirror is written by the same reconcile pass, so each project's `character.md`
+          says what the base says.
+    - Option C's answer, for the record: route the pointer files by kind as the bytes are
+      routed, `assets/slots/<key>.json` for base kinds and `vngen/state/slots/<key>.json`
+      for shots, with the angle in the key. C's planner change (upstream refs read the
+      pointer rather than `doneOutput`) then makes the reconcile pass unnecessary, and the
+      base repo's history gains one file per slot. The same planner change grafted onto
+      the chosen model would remove the reconcile pass at the blast radius the option
+      notes; the reconcile pass is one function at open that writes ordinary records, so
+      it is preferred. Sharing has no UI today (`docs/reference/asset-stores.md:144-146`),
+      so the pass lands with sharing; the row fields and the sheet angle are in this plan.
+      The angle is stage one rather than sharing's: `hold` needs it to tell four angles of
+      one outfit apart, and a runner has no task graph to read `angleOf` from.
+6. **Newest first.** The tree orders folded takes newest first, by the row's `at` from
+   decision 4, meaning most recently held. Attempt records carry `at` and `via` as well,
+   and since the plate, portrait and sheet runners push no attempt on success
+   (`packages/pipeline/src/runners.ts:145-201`; the scheduler pushes one only on `failed`,
+   `packages/scheduler/src/scheduler.ts:490-497`), that is new records, not new fields.
+7. **Deferred.** Deleting a take is a separate plan and is not solved here.
+8. **Fold it, in a second stage.** The manifest becomes the authority for a portrait's
+   approval and the character sheet becomes the mirror: `accept` on a portrait row writes
+   `approved_portrait:` and `status: approved` onto the sheet and copies `approved.png`,
+   so the text file and its git history keep saying what they say today. `status: locked`
+   stays on the sheet, since it has no slot equivalent. `sceneUnblocked` and `gateStatus`
+   read the slot rather than the sheet, which gives them a manifest argument. `current`
+   behaves for a portrait as for every other kind from stage one, so a new portrait shows
+   in the editor while the gate still blocks planning. Once stage two lands, a portrait
+   re-render makes the current portrait unapproved and the gate closes until the author
+   accepts the new draft or restores the old one; that is the gate doing what it is for,
+   and it follows from choosing hold-wins over human-wins in decision 3. Decision 5
+   settles the shared-base semantics stage two needed: approval is per base repo.
+9. **In place, with the concept's prompt kept.** The manifest is one row per hash in a
+   root and a concept and a plate share the base root, so a second row for the same bytes
+   has nowhere to go, and a history that outlives the row needs Option A's ledger, which
+   is not the chosen model (see below). Promotion keeps rewriting `kind`, `sourceTask` and
+   the bindings, and the attempt record's `via: 'promote'` plus the surviving concept
+   binding say what the bytes were. Two things change. Promotion records the concept's own
+   prompt through `keepPrompt`, as `asset.restore` does, because the derived prompt did
+   not draw the bytes and stamping it forges the picture's provenance. And the Asset
+   editor's prompt staleness (`AssetInfo.stale`,
+   `apps/desktop/src/main/session/asset.ts:97`) ignores a row whose `via` is `promote` or
+   `adopt`, since neither has a derived prompt to have gone stale against. `via` is the
+   row's origin, stamped by the first hold and kept by later ones, so a restore does not
+   turn the exemption off; the restore is recorded on the attempt instead. Without the
+   exemption a promoted plate reads `stale` until it is regenerated, which is why
+   promotion stamps the derived prompt today. Finding 13 splits `stale` in two anyway, and
+   this is the prompt half's rule.
+10. **Derive it.** `Shot.status` has one reader, the strip's CSS class
+    (`apps/desktop/renderer/pathux/editors/timeline.ts:605`, styling `needs_human`), which
+    `shot.failure.status` already carries; every rule decides from `shot.image` and
+    `ShotFailure`, the tree's shot badge is the slot node's task status, and the CLI, the
+    agent's tools and the testkit never look at it. It is a stale mirror of the task
+    status stamped into a committed file by two writers (`refreshShotData` and the shot
+    runner), with `generated` never assigned and `accepted` about to become false under
+    decision 1. So `status` is dropped from `shotData`: `writeShots` stops writing it, the
+    schema keeps accepting it on read so old files parse, and `Shot.status` in memory goes
+    with it. A shot's state is asked of the slot: `current` and `accepted` on the row,
+    `needs_human` on the task, `proseHash` for drift, no identity for not yet planned.
+    `image`, `proseHash` and `panelBoxes` stay in the file because they record what was
+    drawn rather than state, and `image` is what `repairAccepted`'s shot tie-break and
+    drift read. The two tests asserting `'accepted'` assert the row's bits instead. This
+    makes the `generated` value in decision 1 moot.
+11. **Yes, for a bound slot's active output.** An interactive run of that target writes
+    the identity's `done` record and the manifest row with `via: 'graph'`, and holds the
+    slot, which is what `asset.regenerate` through the graph does but with the pane's
+    seeds and no scheduler. The tree, the storyboard and the popup show it at once.
+    Dependents re-key and wait for the next pipeline run, as they do after `asset.adopt`
+    or `asset.restore`; that run resumes the graph's nodes from the journal and spends
+    only on the dependents. Any other target, an unbound graph, a non-active output or an
+    intermediate node, stays journal-only, since there is no slot for it to be a take of.
+    The one-writer sentence in `docs/reference/gen-graphs.md`, and the "exactly once"
+    entry in `docs/reference/pipeline-contracts.md:79-93`, become the scheduler,
+    `adoptSlot` and an interactive run of a bound output. The run seeds from
+    `resolveSlot`'s inputs and refuses when the identity cannot be stated, as `adoptSlot`
+    does; today it seeds from `resolveBinding` over the manifest
+    (`apps/desktop/src/main/session/graphseeds.ts`), which in decision 4's re-key window
+    names a plate the graph did not draw from.
+12. Follows from decision 1: `accepted` as an attempt outcome is retired, since list
+    position no longer implies acceptance.
+
+### The chosen model
+
+The decisions describe none of A, B or C as written. They describe a fourth shape, D:
+`current` and `accepted` bits on the manifest row, `at` and `via` stamped on the row, the
+sheet angle in `satisfies`, history implicit (every row bound to the slot, ordered by
+`at`), and the planner unchanged on the task log. D is Option B's derivation cached on the
+row; the cache exists for one reason, a base repo with no `tasks.jsonl` (decision 5), and
+the repair rule in decision 3 is what keeps it a cache rather than a second writer.
+
+A fresh-context review of the options against the decisions ranked D > B > A > C. B loses
+only on decision 5; it would move to first if the row bits were deferred to the sharing
+plan. The owner chose D now. A contradicts decisions 3, 5 and 9, and its claim that git
+union-merges `tasks.jsonl` is false (only `notifications.jsonl` is union-merged,
+`templates/basic/.gitattributes:4`). C removes `accepted` from the manifest, so approval
+is unrecoverable from manifest plus log, and its planner change would key a shot on the
+carried-over old take during a re-key and again when the new identity lands.
+
+The review also found a bug every option inherits, which the plan fixes first: an upload
+or concept adopted onto a shot slot is invisible to the slot. `adoptSlot` writes the
+`shot_image` row to the project root, the base row keeps kind `reference` or `concept`,
+`AssetStore.manifest()` returns the base row (`packages/store/src/assetstore.ts:297-303`),
+and `candidatesFor(shot)` filters on `kind === 'shot_image'`
+(`packages/artgen/src/tests/adoptslot.test.ts:158-163` says so in words). Today
+`asset.replace` on a frame blanks that frame in the playable; under decision 3 it would
+trip the export's refusal instead.
