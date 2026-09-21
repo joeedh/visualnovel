@@ -10,6 +10,7 @@ import {
   writeGroupFile,
   type GenPricedEstimate,
   type Graph as GenGraph,
+  type GraphId,
   type GraphJournalRecord,
 } from '@vn/gengraph';
 import {
@@ -26,18 +27,27 @@ import {
   createGenServices,
   decomposeAll,
   decomposeAllPreview,
+  drawOf,
   hostPriceTables,
   indexGraphs,
+  readDrawn,
   type DecomposeAllResult,
   type GraphRuntime,
 } from '@vn/pipeline';
-import { aspectFor, assetSlotLabel, imageParams, sheetSeeds, slotKey } from '@vn/artgen';
+import {
+  aspectFor,
+  assetSlotLabel,
+  fileGraphDraw,
+  imageParams,
+  sheetSeeds,
+  slotKey,
+} from '@vn/artgen';
 import { SHEET_CELL_REF, sheetCellDef, sheetGraph } from '@vn/gengraph';
 import type { SheetCell } from '@vn/gengraph';
 import { readShots } from '@vn/store';
 import { projectModels, resolveRoutes } from '@vn/providers';
 import { runPipeline, type RunSummary } from '@vn/scheduler';
-import type { Asset } from '@vn/types';
+import type { Asset, RefBinding } from '@vn/types';
 import { BUSY_RUN } from '../../shared/ipc.js';
 import { GRAPH_DOCS_DIR } from '../../shared/writes.js';
 import type { GraphDocRead, GroupDocRead, PipelineRunResult } from '../../shared/ipc.js';
@@ -59,7 +69,7 @@ import {
 } from '../doctree/graphs.js';
 import { notify } from '../notify/notifications.js';
 import type { WorkspaceSession, LoadedProject, LoadedGraphDoc, GenDeps } from './core.js';
-import { graphSeeds } from './graphseeds.js';
+import { graphRunPlan, type GraphSeeds } from './graphseeds.js';
 import {
   relPath,
   loadProject,
@@ -83,6 +93,9 @@ export interface SheetScaffoldPlan {
 
 export class GengraphPart {
   constructor(private readonly session: WorkspaceSession) {}
+
+  /** The clock a filed draw's hold and attempt are stamped with. */
+  private readonly clock = (): string => new Date().toISOString();
 
   /**
    * Decides the graph a staging-sheet group is scaffolded as, or refuses in one sentence: the
@@ -374,38 +387,76 @@ export class GengraphPart {
   }
 
   /**
+   * What a run of `slug` to `node` (or the active output) would do, decided the same way for the
+   * command's check and for the run itself: the target, and the plan seeding it. A bound target
+   * whose slot the project cannot state an identity for is refused here, before anything is
+   * spent, with the resolver's own sentence.
+   */
+  async runTarget(
+    slug: GraphSlug,
+    node?: string,
+  ): Promise<
+    | { ok: false; reason: string }
+    | { ok: true; graph: GenGraph; target: GraphId; slot?: RefBinding; seeds: GraphSeeds }
+  > {
+    const read = await readGraph(this.session.dir, slug);
+    if (!read.ok) return { ok: false, reason: read.reason };
+
+    const target = node === undefined ? activeOutputOf(read.graph) : nodeIdOf(read.graph, node);
+    if (target === undefined) {
+      return {
+        ok    : false,
+        reason: `the ${slug} graph has no active output node, so there is nothing to run to`,
+      };
+    }
+    if (read.graph.nodeIdMap.get(target) === undefined) {
+      return { ok: false, reason: `the ${slug} graph holds no node ${target}` };
+    }
+    // Only the active output's picture is filed: another output's is a study, and an
+    // intermediate node's is a step
+    const files = target === activeOutputOf(read.graph);
+    const project = await loadProject(this.session.dir);
+    const planned = await graphRunPlan(project, read.graph, target);
+    if (!planned.ok) {
+      // A study of a slot the project cannot state yet runs unseeded, as it always has; only
+      // a run that would file a take is refused, because its record would name what it drew from
+      if (files) return { ok: false, reason: planned.reason };
+      return { ok: true, graph: read.graph, target, seeds: {} };
+    }
+    const slot = files ? planned.plan.slot : undefined;
+    return {
+      ok   : true,
+      graph: read.graph,
+      target,
+      seeds: planned.plan.seeds,
+      ...(slot === undefined ? {} : { slot }),
+    };
+  }
+
+  /**
    * Run one graph interactively, through the executor and the journal the scheduler runs it
-   * through, seeded for the slot its target binds as the scheduler would seed it. Nothing
-   * enters the asset store here: a picture becomes an asset only on the bound path, where a
-   * task's slot names the graph that draws it. `force` invalidates every paid ancestor of the
-   * target first, so re-running an unchanged graph is a request rather than a resume that
-   * does nothing.
+   * through, seeded for the slot its target binds as the scheduler would seed it. When the
+   * target is the active output of a bound graph, the picture it ends on is filed as that
+   * slot's current take, `via: 'graph'`, unapproved, so the tree, the storyboard and the
+   * approvals popup show it at once; every other target stays journal-only. A mock run stays
+   * journal-only too, since mock art never becomes real output. `force` invalidates every paid
+   * ancestor of the target first, so re-running an unchanged graph is a request rather than a
+   * resume that does nothing.
    */
   async runGraph(
     slug: GraphSlug,
     opts: { node?: string; force?: boolean; mock?: boolean } = {},
-  ): Promise<{ ok: boolean; message: string; written: string[] }> {
-    const read = await readGraph(this.session.dir, slug);
-    if (!read.ok) return { ok: false, message: read.reason, written: [] };
-
-    const target =
-      opts.node === undefined ? activeOutputOf(read.graph) : nodeIdOf(read.graph, opts.node);
-    if (target === undefined) {
-      return {
-        ok     : false,
-        message: `the ${slug} graph has no active output node, so there is nothing to run to`,
-        written: [],
-      };
-    }
-    if (read.graph.nodeIdMap.get(target) === undefined) {
-      return { ok: false, message: `the ${slug} graph holds no node ${target}`, written: [] };
-    }
-    const refused = opts.force === true ? this.forceRefusal(read.graph) : undefined;
+  ): Promise<{ ok: boolean; message: string; written: string[]; filed?: string }> {
+    const planned = await this.runTarget(slug, opts.node);
+    if (!planned.ok) return { ok: false, message: planned.reason, written: [] };
+    const { graph, target, seeds, slot } = planned;
+    const refused = opts.force === true ? this.forceRefusal(graph) : undefined;
     if (refused !== undefined) return { ok: false, message: refused, written: [] };
 
+    const mock = opts.mock ?? false;
     return this.session.while(BUSY_RUN, async () => {
       const project = await loadProject(this.session.dir);
-      const deps = await buildGenDeps(project, opts.mock ?? false);
+      const deps = await buildGenDeps(project, mock);
       const entry = (await this.loadGraphs(project, deps)).loaded.find((g) => g.slug === slug);
       if (entry === undefined) {
         return { ok: false, message: `the ${slug} graph could not be loaded`, written: [] };
@@ -416,9 +467,9 @@ export class GengraphPart {
         journal : entry.journal,
         record  : entry.record,
       };
-      const result = await executeGenGraph(read.graph, ctx, {
+      const result = await executeGenGraph(graph, ctx, {
         targets: [target],
-        seeds  : await graphSeeds(project, read.graph, target),
+        seeds,
         ...(opts.force === true ? { force: true } : {}),
       });
 
@@ -429,12 +480,47 @@ export class GengraphPart {
       }
       const ran = result.ran.length;
       const skipped = result.skipped.length;
+      const summary =
+        `Ran ${ran} node${ran === 1 ? '' : 's'} in ${slug}` +
+        `${skipped === 0 ? '' : `, resuming ${skipped} from the journal`}.`;
+      if (slot === undefined || mock) return { ok: true, message: summary, written };
+
+      const draw = drawOf(result, target);
+      if (draw === undefined) {
+        return {
+          ok     : true,
+          message: `${summary} Its output node ended on no picture, so nothing was filed.`,
+          written,
+        };
+      }
+      const filed = await fileGraphDraw(
+        { config: project.config, paths: project.paths, store: project.store, now: this.clock },
+        {
+          bytes: await readDrawn(entry.services, draw.image),
+          ext  : draw.image.ext,
+          slot,
+          prompt : draw.prompt,
+          modelId: draw.modelId,
+        },
+      );
+      if (!filed.ok) {
+        return { ok: true, message: `${summary} Not filed as a take: ${filed.reason}`, written };
+      }
+      const superseded = filed.plan.supersedes
+        ? ` It supersedes ${filed.plan.supersedes.slice(0, 8)}, whose bytes stay in the store.`
+        : '';
       return {
         ok     : true,
-        message:
-          `Ran ${ran} node${ran === 1 ? '' : 's'} in ${slug}` +
-          `${skipped === 0 ? '' : `, resuming ${skipped} from the journal`}.`,
-        written,
+        message: `${summary} ${filed.plan.ref.hash.slice(0, 8)} is the ${filed.plan.label} now, waiting for approval.${superseded}`,
+        written: [
+          ...written,
+          ...(slot.kind === 'shot'
+            ? [relPath(this.session.dir, project.paths.shotsFile(slot.sceneId))]
+            : []),
+          relPath(this.session.dir, project.store.manifestFileOf(filed.plan.ref.hash)),
+          relPath(this.session.dir, project.paths.tasksLog),
+        ],
+        filed  : filed.plan.ref.hash,
       };
     });
   }

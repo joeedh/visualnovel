@@ -18,7 +18,7 @@ import type {
   GraphJournalRecord,
 } from '@vn/gengraph';
 import { executeGenGraph, graphDrift } from '@vn/gengraph/state';
-import type { GenRunContext } from '@vn/gengraph/state';
+import type { GenRunContext, GenRunResult } from '@vn/gengraph/state';
 import type { RunDeps } from './pipeline.js';
 
 /** The type names of the three nodes a host seeds, which are also the seed's keys. */
@@ -293,11 +293,20 @@ export async function runBoundGraph(
     throw new Error(failure.error);
   }
 
-  const image = imageRefOf(result.outputs.get(binding.target)?.image);
-  if (image === undefined) {
+  const draw = drawOf(result, binding.target);
+  if (draw === undefined) {
     throw new Error('the bound graph ran, but its output node terminated on no picture');
   }
+  return draw;
+}
 
+/**
+ * The picture a finished run's `target` terminated on, with what drew it, or undefined when the
+ * output node terminated on none. Shared with the interactive run, which files it the same way.
+ */
+export function drawOf(result: GenRunResult, target: GraphId): GraphDraw | undefined {
+  const image = imageRefOf(result.outputs.get(target)?.image);
+  if (image === undefined) return undefined;
   return { image, ...provenanceOf(result.outputs, image) };
 }
 

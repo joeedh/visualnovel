@@ -302,7 +302,10 @@ The graphs themselves, the node types, the journal and the commands are describe
 - **Only the run needs a host.** Reading and editing go straight to the files through
   `@vn/gengraph/state`, so both work wherever the project is opened. `run_asset_graph`
   goes through `ToolContext.graphs`, which the host that owns the executor and the image
-  backend wires up. If nothing wired it, the call refuses and names the desktop app.
+  backend wires up. If nothing wired it, the call refuses and names the desktop app. The
+  run is the session's own `gengraph.run`, so a graph bound to a slot files what it drew
+  as that slot's current take, waiting for approval, and the estimate refuses before the
+  author is quoted a price when the slot's identity cannot be stated yet.
 - **A run is quoted before it is confirmed.** The estimate comes back in the sentence that
   `estimateSentence` builds, and the desktop's confirmation shows that same sentence, so
   an author reads the same figure in both places. The card goes through `ctx.confirm`

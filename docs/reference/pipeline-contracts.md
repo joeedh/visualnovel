@@ -76,9 +76,13 @@ These implement the system design in
       location's plate.
     - A test covers this by checking that a project holding a concept plans exactly the
       tasks it planned before.
-- **Adoption may write a `done` record outside the scheduler exactly once.**
+- **A `done` record is written outside the scheduler by two callers and no other.**
     - `adoptSlot` logs a slot's own task `done` with the handed-in bytes as its output, so
-      the next run adopts those bytes instead of rendering over them.
+      the next run adopts those bytes instead of rendering over them. `fileGraphDraw` does
+      the same for the picture an interactive graph run (`gengraph.run`) ended on, with
+      `via: 'graph'`, through the same writes. Both live in
+      `packages/artgen/src/adoptslot.ts` and share one filing routine, so there is one
+      place a picture becomes a slot's take without the scheduler.
     - The identity is derived in the same call from the project as it stands, never from a
       passed hash. That bound makes this safe, because the identity can only mark done the
       one node whose output this image now is.
@@ -86,8 +90,8 @@ These implement the system design in
       mock-marked bytes (mock art never becomes real output), and superseding a render
       that already holds the slot, which requires an explicit `replace` rather than a
       silent overwrite.
-    - `promoteConcept` is one caller of this. Every other writer of a terminal record in
-      the system ran that record itself.
+    - `promoteConcept` is one caller of adoption. Every other writer of a terminal record
+      in the system ran that record itself.
     - Plans:
       [`../plans/archive/INDEX.md#adopting-an-uploaded-asset`](../plans/archive/INDEX.md#adopting-an-uploaded-asset),
       [`../plans/archive/INDEX.md#on-demand-concept-images`](../plans/archive/INDEX.md#on-demand-concept-images).

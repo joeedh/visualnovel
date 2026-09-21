@@ -432,6 +432,20 @@ that read it to answer "is it approved" reads `assetApproved`.
 - Tests: a bound interactive run leaves the slot current and unapproved and the popup
   lists it; a following pipeline run resumes every node and renders nothing; an unbound
   run and a mock run write no row; a run whose identity cannot be stated refuses.
+- As built: the writes live in `@vn/artgen` as
+  `fileGraphDraw(deps, { bytes, ext, slot, prompt, modelId })`, beside `adoptSlot`, and
+  the two share one private `file` routine; the session reads the terminal picture's bytes
+  through `readDrawn` and its provenance through a new `drawOf` export in
+  `packages/pipeline/src/graphrun.ts`. A portrait output is filed too, as a draft for the
+  gate, which meant moving the `GATED_SLOT` refusal out of `resolve` and into adoption
+  alone. `graphseeds.ts` became `graphRunPlan`, returning `Decided`;
+  `GengraphPart.runTarget(slug, node)` is the one place the target, the seeds and the
+  filed slot are decided, and the command's `check`, the agent host's `estimate` and
+  `runGraph` all call it. A non-active output of a slot whose identity cannot be stated
+  still runs unseeded, because it files nothing. The session under test is always `mock`,
+  so the filed take is exercised through `fileGraphDraw` directly
+  (`packages/artgen/src/tests/filedraw.test.ts`,
+  `apps/desktop/src/main/tests/graphrun.test.ts`).
 
 ## Stage 5 — the portrait gate reads the row
 
@@ -605,7 +619,7 @@ Stages landed, each as its own green commit on the `slot-history` branch:
 - [x] Stage 1 — the model.
 - [x] Stage 2 — export refusal, `vngen accept`, `acceptAll`.
 - [x] Stage 3 — `Shot.status` removed.
-- [ ] Stage 4 — interactive graph run files a take.
+- [x] Stage 4 — interactive graph run files a take.
 - [ ] Stage 5 — portrait gate reads the row.
 
 - [ ] Comments audited in every file touched; no `CLAUDENOTE:` remains.

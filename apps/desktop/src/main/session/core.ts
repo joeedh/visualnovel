@@ -53,7 +53,13 @@ import { readModelCatalog } from '@vn/gengraph/state';
 
 import { loadGraph, type TaskGraph } from '@vn/taskgraph';
 import { driftOf, repairCurrent, type DecomposeAllResult, type LoadedGraph } from '@vn/pipeline';
-import { suspensionMap, type AdoptVia, type PromptRung, type Suspension } from '@vn/artgen';
+import {
+  slotLabel,
+  suspensionMap,
+  type AdoptVia,
+  type PromptRung,
+  type Suspension,
+} from '@vn/artgen';
 import {
   chatBackendFor,
   chatRoute,
@@ -1214,10 +1220,17 @@ export class WorkspaceSession {
       // pair of calls `gengraph.run` makes, priced by the same sentence the author confirms.
       graphs: {
         estimate: async (slug) => {
+          // Asked before the estimate so a run whose take could not be filed is refused before
+          // the author is quoted a price for it
+          const planned = await this.runTarget(slug);
+          if (!planned.ok) return { ok: false, reason: planned.reason };
           const counted = await this.graphEstimate(slug);
-          return counted.ok
-            ? { ok: true, note: estimateSentence(counted.estimate, counted.stale) }
-            : { ok: false, reason: counted.reason };
+          if (!counted.ok) return { ok: false, reason: counted.reason };
+          const files =
+            planned.slot === undefined
+              ? ''
+              : ` The picture it ends on becomes the ${slotLabel(planned.slot)}, waiting for approval.`;
+          return { ok: true, note: `${estimateSentence(counted.estimate, counted.stale)}${files}` };
         },
         run     : (slug, opts) => this.runGraph(slug, { force: opts.force, mock: this.mock }),
       },
@@ -2757,16 +2770,21 @@ export class WorkspaceSession {
 
   /**
    * Run one graph interactively, through the executor and the journal the scheduler runs it
-   * through. Nothing enters the asset store here: a picture becomes an asset only on the bound
-   * path, where a task's slot names the graph that draws it. `force` invalidates every paid
-   * ancestor of the target first, so re-running an unchanged graph is a request rather than a
-   * resume that does nothing.
+   * through. A run to the active output of a bound graph files the picture it ends on as the
+   * slot's current take, `via: 'graph'`; every other target, and a mock run, stays journal-only.
+   * `force` invalidates every paid ancestor of the target first, so re-running an unchanged
+   * graph is a request rather than a resume that does nothing.
    */
   async runGraph(
     slug: GraphSlug,
     opts: { node?: string; force?: boolean; mock?: boolean } = {},
-  ): Promise<{ ok: boolean; message: string; written: string[] }> {
+  ): Promise<{ ok: boolean; message: string; written: string[]; filed?: string }> {
     return this.gengraphPart.runGraph(slug, opts);
+  }
+
+  /** What `runGraph` would run to and file, or the refusal it would give; see `GengraphPart`. */
+  runTarget(slug: GraphSlug, node?: string): ReturnType<GengraphPart['runTarget']> {
+    return this.gengraphPart.runTarget(slug, node);
   }
 
   /** Why `runGraph` with `force` would refuse this graph, or undefined when it would run. */

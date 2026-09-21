@@ -232,13 +232,13 @@ path.ux's coercion.
   slot, and the first bullet of this page rests on that reproduction. The scheduled runner
   seeds the node from the task. In `gengraph.run`, the session computes the seeds for the
   slot the target output binds (`apps/desktop/src/main/session/graphseeds.ts`): the prompt
-  through the same `*Inputs` builders the planner hashes, the references as the manifest
-  resolves them now (`resolveBinding` for the plate and a non-default outfit's front
-  sheet, the approved portrait for each subject), and a sheet member's sheet prompt and
-  refs through `sheetSeeds`. The derivation needs the project model, which `GenServices`
-  deliberately does not carry. A reference the manifest cannot resolve yet is absent
-  rather than an error, so an interactive run before the plate exists draws without it and
-  its run key differs from the scheduled run's.
+  and the references are the slot's own task inputs as `resolveSlot` states them, which is
+  what the planner hashes, and a sheet member's sheet prompt and refs come through
+  `sheetSeeds`. The derivation needs the project model, which `GenServices` deliberately
+  does not carry. A reference the project cannot state yet — a frame whose plate is not
+  drawn — refuses the run rather than seeding without it, because the take the run files
+  would otherwise record references the graph was never shown; a run to a non-active
+  output of such a slot, which files nothing, runs unseeded as it always did.
 - `defaultSlotGraph(slot)` builds the graph an author gets when they ask for one rather
   than wiring it. It holds Derived prompt and Task refs feeding Generate image, and the
   picture from Generate image fills the slot. Every host builds the same four nodes, so a
@@ -456,11 +456,18 @@ implementation. The testkit passes a mock.
   ([`../guides/testkit.md`](../guides/testkit.md)).
 - **An interactive run**, `gengraph.run`, goes through the same executor and journal, and
   targets the active output or a named one, seeded for the slot that output binds (see the
-  Derived-prompt bullet under node types). The confirmation quotes the estimate. It writes
-  journal records and blobs but never an asset, because a picture enters the store only
-  through the bound or scheduled path, so `adoptSlot` remains the one `done` record
-  produced outside the scheduler. The agent's `run_asset_graph` performs the same run
-  behind the same confirmation. A failed run's message names the node by key.
+  Derived-prompt bullet under node types). The confirmation quotes the estimate. A run to
+  the active output of a bound graph files the picture it ends on as that slot's current
+  take, unapproved, with `via: 'graph'` on the row and on the attempt: `fileGraphDraw` in
+  `@vn/artgen` performs the same writes `adoptSlot` does (the row is held, a shot's frame
+  is stamped, the identity is logged `done`), so the tree, the storyboard and the
+  approvals popup show it at once, and the next pipeline run resumes the graph's nodes
+  from the journal and spends only on the dependents. The command's `check`, and the
+  estimate the agent's `run_asset_graph` quotes, refuse before anything is spent when the
+  slot's identity cannot be stated (a frame whose plate is not drawn), with the resolver's
+  sentence. Any other target — an unbound graph, a non-active output, an intermediate node
+  — stays journal-only, and so does a mock run, since mock art never becomes real output.
+  A failed run's message names the node by key.
 - **`force` is refused where a node feeds more than one output** (`sharedAncestors`, in
   the executor; the command's `check` declares the refusal). On a staging-sheet graph the
   sheet feeds every member's crop, and the crops spend nothing, so a forced run to one

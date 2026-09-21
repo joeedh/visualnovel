@@ -9,6 +9,9 @@
  * `adopt`'s safety property still holds: the task's inputs are derived here from the project as it
  * stands and handed over as inputs rather than as a remembered hash, so an adoption cannot mark
  * done a task the project no longer describes.
+ *
+ * An interactive graph run files what it drew through the same writes ({@link fileGraphDraw}), so
+ * a picture becomes a slot's take in one place whether an author brought it or a graph drew it.
  */
 import type {
   Asset,
@@ -107,20 +110,22 @@ interface ShotStamp {
  * against, and for a shot the frame to stamp.
  *
  * {@link resolveSlot} supplies the identity half, so adoption and the slot graph cannot disagree
- * about what task a picture is. The stamp belongs to adoption alone: nothing else rewrites the
+ * about what task a picture is. The stamp belongs to the filing alone: nothing else rewrites the
  * storyboard.
- *
- * A portrait never appears here because {@link resolve} turns it away, so the narrowing that
- * `AdoptSlotPlan.kind` needs comes from the type rather than from an assertion.
  */
 type Resolved = { model: ProjectModel } & (
-  | { slot: Exclude<ResolvedSlot, { kind: 'portrait' | 'shot_image' }>; stamp?: undefined }
+  | { slot: Exclude<ResolvedSlot, { kind: 'shot_image' }>; stamp?: undefined }
   | { slot: Extract<ResolvedSlot, { kind: 'shot_image' }>; stamp: ShotStamp }
 );
+
+/** A resolved slot adoption may hand bytes to: any kind but a portrait, which the gate owns. */
+type Adoptable = Resolved & { slot: Exclude<ResolvedSlot, { kind: 'portrait' }> };
 
 /** The manifest binding a slot writes, with a sheet's angle so the row alone says which sheet it is. */
 function bindingOf(slot: RefBinding): AssetBinding {
   switch (slot.kind) {
+    case 'portrait':
+      return { characterId: slot.characterId };
     case 'sheet':
       return { characterId: slot.characterId, outfit: slot.outfit, angle: slot.angle };
     case 'plate':
@@ -166,15 +171,6 @@ async function resolve(
   const decided = resolveSlot(slot, { model, shots, config: deps.config, graph });
   if (!decided.ok) return decided;
   const plan = decided.plan;
-  // A portrait is a real task, but not one a picture may be handed to: approving a portrait is the
-  // gate's act, and it releases scenes
-  if (plan.kind === 'portrait') {
-    return {
-      ok    : false,
-      code  : 'GATED_SLOT',
-      reason: `A portrait is not adopted: approving one writes ${plan.inputs.characterId}'s sheet and releases every scene they are in. Use gate.approve.`,
-    };
-  }
   if (plan.kind === 'shot_image') {
     // Unreachable: `resolveSlot` found the same shot in the same map, so a stamp was taken.
     if (!stamp)
@@ -215,11 +211,12 @@ export async function adoptionForSlot(
   const graph = await loadGraph(deps.paths);
   const resolved = await resolve(deps, req.slot, graph);
   if (!resolved.ok) return resolved;
+  const adoptable = gated(resolved.plan);
+  if (!adoptable.ok) return adoptable;
 
   const label = slotLabel(req.slot);
   const taskHash = slotTaskHash(resolved.plan.slot);
-  const node = graph.get(taskHash);
-  const held = node?.status === 'done' && node.output !== req.hash ? node.output : undefined;
+  const held = heldRender(graph, taskHash, req.hash);
   if (held && !req.replace) {
     return {
       ok    : false,
@@ -230,7 +227,7 @@ export async function adoptionForSlot(
   return {
     ok  : true,
     plan: {
-      kind: resolved.plan.slot.kind,
+      kind: adoptable.plan.slot.kind,
       taskHash,
       label,
       ...(held ? { supersedes: held } : {}),
@@ -241,19 +238,48 @@ export async function adoptionForSlot(
   };
 }
 
+/** How a filing enters the log and the row. */
+interface Filing {
+  via: TakeVia | 'restore';
+  replace: boolean;
+  /** Keep the prompt the row already carries over the slot's current one; see `AdoptSlotRequest`. */
+  keepPrompt: boolean;
+}
+
+/**
+ * The gate's refusal for a portrait slot. A portrait is a real task, but not one a picture may be
+ * handed to: approving a portrait is the gate's act, and it releases scenes.
+ */
+function gated(resolved: Resolved): Decided<Adoptable> {
+  if (resolved.slot.kind === 'portrait') {
+    return {
+      ok    : false,
+      code  : 'GATED_SLOT',
+      reason: `A portrait is not adopted: approving one writes ${resolved.slot.inputs.characterId}'s sheet and releases every scene they are in. Use gate.approve.`,
+    };
+  }
+  return { ok: true, plan: resolved as Adoptable };
+}
+
+/** The render already logged as the task's output, when it is a different picture. */
+function heldRender(graph: TaskGraph, taskHash: string, hash: string): string | undefined {
+  const node = graph.get(taskHash);
+  return node?.status === 'done' && node.output !== hash ? node.output : undefined;
+}
+
 /** Write the `done` record through `adopt`, so `adopt` stays the only guard on that write. */
 async function record(
   deps: AdoptSlotDeps,
   slot: Resolved['slot'],
   output: Asset,
-  req: AdoptSlotRequest,
+  filing: Filing,
   graph: TaskGraph,
 ): Promise<void> {
   const ctx = { has: (h: string) => deps.store.has(h), node: (h: string) => graph.get(h) };
   const at = deps.now?.();
   const flag = {
-    ...(req.replace ? { replace: true } : {}),
-    via: req.via,
+    ...(filing.replace ? { replace: true } : {}),
+    via: filing.via,
     ...(at === undefined ? {} : { at }),
   };
   // Spelled out per kind because `adopt` is generic: only a narrowed pair type-checks.
@@ -261,20 +287,78 @@ async function record(
     ? adopt(deps.paths, { kind: slot.kind, inputs: slot.inputs, output, ...flag }, ctx)
     : slot.kind === 'model_sheet'
       ? adopt(deps.paths, { kind: slot.kind, inputs: slot.inputs, output, ...flag }, ctx)
-      : adopt(deps.paths, { kind: slot.kind, inputs: slot.inputs, output, ...flag }, ctx));
+      : slot.kind === 'portrait'
+        ? adopt(deps.paths, { kind: slot.kind, inputs: slot.inputs, output, ...flag }, ctx)
+        : adopt(deps.paths, { kind: slot.kind, inputs: slot.inputs, output, ...flag }, ctx));
   if (!done.ok) throw new VnError(done.code, done.reason);
 }
 
 /**
- * Record bytes already in the store as a slot's output.
+ * The writes that make bytes already in the store a slot's take, each depending on the last: the
+ * bytes are re-recorded under the slot's kind — which is what routes them to the right root — the
+ * row is held as the slot's current take, a shot slot's frame is stamped into `work/shots/`, and
+ * the task identity is logged `done`. That last one is the mechanism: `loadGraph` replays the
+ * record, `TaskGraph.add` returns the existing `done` node, and `ready()` skips it.
  *
- * Four writes, each depending on the last: the bytes are re-recorded under the slot's kind — which
- * is what routes them to the right root — the row is held as the slot's current take, a shot
- * slot's frame is stamped into `work/shots/`, and the task identity is logged `done`. That last
- * one is the mechanism: `loadGraph` replays the record, `TaskGraph.add` returns the existing
- * `done` node, and `ready()` skips it.
- *
- * Nothing is accepted here. Adoption says "this is that task's output", not "a human approved it".
+ * Nothing is accepted here. A filing says "this is that task's output", not "a human approved it".
+ */
+async function file(
+  deps: AdoptSlotDeps,
+  resolved: Resolved,
+  asset: Asset,
+  taskHash: string,
+  slot: RefBinding,
+  filing: Filing,
+  graph: TaskGraph,
+): Promise<AssetRef> {
+  const bytes = await deps.store.read({ hash: asset.hash, ext: asset.ext });
+  const ref = await deps.store.write(bytes, asset.ext, {
+    kind      : resolved.slot.kind,
+    sourceTask: taskHash,
+    prompt:
+      filing.keepPrompt && asset.prompt !== undefined ? asset.prompt : resolved.slot.inputs.prompt,
+    refs      : resolved.slot.inputs.refs.map((r) => r.hash),
+    modelId   : asset.modelId,
+    // `mergeBindings` keeps what the bytes already served, so the tree still shows where an adopted
+    // picture came from — the same thing promotion has always done.
+    satisfies : bindingOf(slot),
+  });
+
+  // The hold releases the slot's other takes; `via` lands only on a row that has none, so a
+  // restored take keeps saying where its bytes came from
+  const held = deps.store.manifest().find((a) => a.hash === ref.hash)!;
+  const at = deps.now?.();
+  await deps.store.hold(
+    ref.hash,
+    heldBy(held, {
+      model  : resolved.model,
+      assets : deps.store.manifest(),
+      angleOf: angleOfTask(graph),
+    }),
+    {
+      ...(at === undefined ? {} : { at }),
+      ...(filing.via === 'restore' ? {} : { via: filing.via }),
+    },
+  );
+
+  // A stamp is taken for a shot slot and no other, so this is that branch.
+  if (resolved.stamp) {
+    // `proseHash` is stamped beside the image, so a frame handed in by an artist reports drift
+    // against the lines it was drawn from exactly as a rendered one does
+    const { scene, shot, shots } = resolved.stamp;
+    shot.image = ref.hash;
+    shot.proseHash = proseHash(scene, shot.coversLines);
+    await writeShots(deps.paths, scene.id, shots);
+  }
+
+  const written = deps.store.manifest().find((a) => a.hash === ref.hash)!;
+  await record(deps, resolved.slot, written, filing, graph);
+  return ref;
+}
+
+/**
+ * Record bytes already in the store as a slot's output, through {@link file}. Adoption says "this
+ * is that task's output", not "a human approved it".
  */
 export async function adoptSlot(
   deps: AdoptSlotDeps,
@@ -290,46 +374,90 @@ export async function adoptSlot(
   const asset = deps.store.manifest().find((a) => a.hash === req.hash);
   if (!asset) throw new VnError('UNKNOWN_ASSET', `No asset "${req.hash}" in the store.`);
 
-  const bytes = await deps.store.read({ hash: asset.hash, ext: asset.ext });
-  const ref = await deps.store.write(bytes, asset.ext, {
-    kind      : resolved.plan.slot.kind,
-    sourceTask: decided.plan.taskHash,
-    prompt:
-      req.keepPrompt && asset.prompt !== undefined
-        ? asset.prompt
-        : resolved.plan.slot.inputs.prompt,
-    refs      : resolved.plan.slot.inputs.refs.map((r) => r.hash),
-    modelId   : asset.modelId,
-    // `mergeBindings` keeps what the bytes already served, so the tree still shows where an adopted
-    // picture came from — the same thing promotion has always done.
-    satisfies : bindingOf(req.slot),
-  });
-
-  // The hold releases the slot's other takes; `via` lands only on a row that has none, so a
-  // restored take keeps saying where its bytes came from
-  const held = deps.store.manifest().find((a) => a.hash === ref.hash)!;
-  const at = deps.now?.();
-  await deps.store.hold(
-    ref.hash,
-    heldBy(held, {
-      model  : resolved.plan.model,
-      assets : deps.store.manifest(),
-      angleOf: angleOfTask(graph),
-    }),
-    { ...(at === undefined ? {} : { at }), ...(req.via === 'restore' ? {} : { via: req.via }) },
+  const ref = await file(
+    deps,
+    resolved.plan,
+    asset,
+    decided.plan.taskHash,
+    req.slot,
+    { via: req.via, replace: req.replace === true, keepPrompt: req.keepPrompt === true },
+    graph,
   );
+  return { ref, plan: decided.plan };
+}
 
-  // A stamp is taken for a shot slot and no other, so this is that branch.
-  if (resolved.plan.stamp) {
-    // `proseHash` is stamped beside the image, so a frame handed in by an artist reports drift
-    // against the lines it was drawn from exactly as a rendered one does
-    const { scene, shot, shots } = resolved.plan.stamp;
-    shot.image = ref.hash;
-    shot.proseHash = proseHash(scene, shot.coversLines);
-    await writeShots(deps.paths, scene.id, shots);
+/** A picture an interactive graph run terminated on, as the executor hands it back. */
+export interface GraphDrawRequest {
+  bytes: Uint8Array;
+  ext: string;
+  /** The slot the run's output binds. */
+  slot: RefBinding;
+  /** What the node that drew it reports; empty when the graph read the picture rather than drew it. */
+  prompt: string;
+  modelId: string;
+}
+
+/** What filing a graph draw did: the row written, and the render it superseded, if any. */
+export interface GraphDrawFiled {
+  ref: AssetRef;
+  taskHash: string;
+  label: string;
+  supersedes?: string;
+}
+
+/**
+ * Files what an interactive graph run drew as the take of the slot its output binds, with
+ * `via: 'graph'`. The same writes as adoption, with two differences: the bytes come from the
+ * executor rather than the store, and the author asked for this draw, so it supersedes whatever
+ * the slot held without a `replace` question. A portrait is filed too — it is a draft for the
+ * gate, exactly as a scheduled portrait draw is — and mock-marked bytes are refused by name, so
+ * a mock run stays journal-only however it is called.
+ */
+export async function fileGraphDraw(
+  deps: AdoptSlotDeps,
+  req: GraphDrawRequest,
+): Promise<Decided<GraphDrawFiled>> {
+  const refusal = baseRefusal(deps.store.base);
+  if (refusal) return { ok: false, code: 'BASE_UNAVAILABLE', reason: refusal };
+  if (isPlaceholderImage(req.bytes)) {
+    return {
+      ok    : false,
+      code  : 'MOCK_PLACEHOLDER',
+      reason:
+        'The graph drew a placeholder from a mock run, and mock art never becomes real output.',
+    };
   }
 
-  const written = deps.store.manifest().find((a) => a.hash === ref.hash)!;
-  await record(deps, resolved.plan.slot, written, req, graph);
-  return { ref, plan: decided.plan };
+  const graph = await loadGraph(deps.paths);
+  const resolved = await resolve(deps, req.slot, graph);
+  if (!resolved.ok) return resolved;
+  const taskHash = slotTaskHash(resolved.plan.slot);
+  const label = slotLabel(req.slot);
+
+  // Written once here with the drawing's own provenance, then re-recorded by `file` under the
+  // slot's identity; the two writes share a hash, so the manifest holds one row.
+  const inputs = resolved.plan.slot.inputs;
+  const drawn = await deps.store.write(req.bytes, req.ext, {
+    kind      : resolved.plan.slot.kind,
+    sourceTask: taskHash,
+    prompt    : req.prompt.length > 0 ? req.prompt : inputs.prompt,
+    refs      : inputs.refs.map((r) => r.hash),
+    modelId   : req.modelId,
+    satisfies : bindingOf(req.slot),
+  });
+  const asset = deps.store.manifest().find((a) => a.hash === drawn.hash)!;
+  const supersedes = heldRender(graph, taskHash, drawn.hash);
+  const ref = await file(
+    deps,
+    resolved.plan,
+    asset,
+    taskHash,
+    req.slot,
+    { via: 'graph', replace: true, keepPrompt: true },
+    graph,
+  );
+  return {
+    ok  : true,
+    plan: { ref, taskHash, label, ...(supersedes === undefined ? {} : { supersedes }) },
+  };
 }

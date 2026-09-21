@@ -119,7 +119,7 @@ const editAssetGraphTool: Tool<{
 const runAssetGraphTool: Tool<{ slug: string; force?: boolean }> = {
   name       : 'run_asset_graph',
   description:
-    'Run one generation graph now, up to the output node it is set to terminate on. It spends real image generations, so the author is quoted what the run is expected to cost and confirms it before anything happens. Every node whose inputs still match what it last ran resumes from that record instead of running again, which is why re-running an unchanged graph costs nothing; `force` runs the paid nodes over regardless. Nothing enters the asset store here — a graph fills a slot only where a planned task names it.',
+    'Run one generation graph now, up to the output node it is set to terminate on. It spends real image generations, so the author is quoted what the run is expected to cost and confirms it before anything happens. Every node whose inputs still match what it last ran resumes from that record instead of running again, which is why re-running an unchanged graph costs nothing; `force` runs the paid nodes over regardless. When the output is bound to a slot, the picture the run ends on becomes that slot’s current take, waiting for the author’s approval, and the record says a graph drew it; a graph bound to nothing writes only its journal. A bound run is refused before it spends when the slot’s identity cannot be stated yet, such as a frame whose plate is not drawn.',
   mutating   : true,
   args: z.object({
     slug : z.string().describe('which graph, by the name its file carries'),

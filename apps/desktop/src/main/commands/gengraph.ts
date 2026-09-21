@@ -15,6 +15,7 @@
  * the definition's subgraph, and writes the definition file. A node inside a group instance is
  * named by its key, `<instance id>/<inner id>`, and takes value edits only.
  */
+import { slotLabel } from '@vn/artgen';
 import { defineFor, prop, type CheckResult } from '@vn/commands';
 import {
   Graph,
@@ -1149,13 +1150,21 @@ export const gengraphRun = define({
   description:
     'Execute a graph now, through the same executor and journal a scheduled run uses. Every node ' +
     'whose hash still matches its last record resumes from the journal rather than running ' +
-    'again. Nothing enters the asset store: a picture becomes an asset on the bound path, where ' +
-    "a task's slot names the graph that draws it. `force` re-runs every paid node feeding " +
-    'the target instead of resuming it.',
+    'again. A run to the active output of a graph bound to a slot files the picture it ends on ' +
+    "as that slot's current take, waiting for approval; a run to any other node writes the " +
+    'journal only. `force` re-runs every paid node feeding the target instead of resuming it.',
   notes:
-    'Execute the graph through the same executor and journal the scheduler uses, targeting the active Output or the named one, seeded for the slot that output binds the way the scheduler seeds it. Confirmed, quoting the estimate. Not undoable: what it writes is a journal record and a blob under `vngen/state`. `force` re-runs every paid node feeding the target rather than resuming from the journal, and is refused on a graph where one node feeds more than one output (a staging sheet), because redrawing it for one output strands the others; such a graph is rerolled by changing the group’s seed.',
+    'Execute the graph through the same executor and journal the scheduler uses, targeting the active Output or the named one, seeded for the slot that output binds the way the scheduler seeds it. Confirmed, quoting the estimate. When the target is the active output of a bound graph, the picture it ends on is filed as the slot’s current take with `via: graph`, unapproved, exactly as `asset.adopt` files bytes an author brought: the row is held, a shot’s frame is stamped, the task is logged done, and the approvals popup lists it. The check refuses before anything is spent when the slot’s identity cannot be stated (an upstream picture not drawn yet), with the resolver’s sentence. A run to another output or to an intermediate node stays journal-only, and so does a mock run. Not undoable: the journal and the store are outside every snapshot. `force` re-runs every paid node feeding the target rather than resuming from the journal, and is refused on a graph where one node feeds more than one output (a staging sheet), because redrawing it for one output strands the others; such a graph is rerolled by changing the group’s seed.',
   mutating   : true,
-  affects    : ['vngen/state/graphs'],
+  affects: [
+    'vngen/state/graphs',
+    'assets/objects',
+    'assets/manifest.json',
+    'vngen/build/assets',
+    'vngen/build/manifest.json',
+    'vngen/work/shots',
+    'vngen/state/tasks.jsonl',
+  ],
   undoable   : false,
   confirm    : true,
   props: {
@@ -1163,17 +1172,24 @@ export const gengraphRun = define({
     node : prop.string('which output to run to, or empty for the active one', { default: '' }),
     force: prop.boolean('re-run the paid nodes rather than resuming them', { default: false }),
   },
-  async check({ slug, force }, ctx) {
-    const read = await readGraph(ctx.root, slug);
-    if (!read.ok) return { ok: false, reason: read.reason };
-    const refused = force ? ctx.host.session.forceRefusal(read.graph) : undefined;
+  async check({ slug, node, force }, ctx) {
+    const planned = await ctx.host.session.runTarget(
+      slug,
+      node.trim().length === 0 ? undefined : node.trim(),
+    );
+    if (!planned.ok) return { ok: false, reason: planned.reason };
+    const refused = force ? ctx.host.session.forceRefusal(planned.graph) : undefined;
     if (refused !== undefined) return { ok: false, reason: refused };
 
     const counted = await ctx.host.session.graphEstimate(slug);
     if (!counted.ok) return { ok: false, reason: counted.reason };
 
     const resumed = force ? 'runs every paid node again' : 'resumes what the journal already holds';
-    return { ok: true, note: `${estimateLine(counted)} It ${resumed}.` };
+    const files =
+      planned.slot === undefined
+        ? ' It writes the journal only.'
+        : ` The picture it ends on becomes the ${slotLabel(planned.slot)}, waiting for approval.`;
+    return { ok: true, note: `${estimateLine(counted)} It ${resumed}.${files}` };
   },
   async run({ slug, node, force }, ctx) {
     const ran = await ctx.host.session.runGraph(slug, {
