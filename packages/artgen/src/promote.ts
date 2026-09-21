@@ -14,6 +14,8 @@ export interface PromoteDeps {
   config: ProjectConfig;
   paths: ProjectPaths;
   store: AssetStore;
+  /** See `AdoptSlotDeps.now`. */
+  now?: () => string;
 }
 
 export interface PromoteRequest {
@@ -155,9 +157,13 @@ export async function promoteConcept(
 
   // The general act, against the sheet this call just wrote: it re-reads the model, so the identity
   // it derives is the one the planner would derive now.
+  // The concept's own prompt is what drew these bytes; the derived one would forge provenance,
+  // and the row's `via` is what exempts the plate from reading as stale against it.
   const adopted = await adoptSlot(deps, {
-    hash: req.hash,
-    slot: { kind: 'plate', locationId, variant },
+    hash      : req.hash,
+    slot      : { kind: 'plate', locationId, variant },
+    via       : 'promote',
+    keepPrompt: true,
   });
 
   return {

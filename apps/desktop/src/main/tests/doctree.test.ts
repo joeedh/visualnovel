@@ -52,6 +52,7 @@ const asset = (hash: string, over: Partial<Asset> = {}): Asset => ({
   modelId   : 'm',
   satisfies : [{ characterId: 'aiko' }],
   accepted  : false,
+  current   : true,
   ...over,
 });
 
@@ -230,8 +231,14 @@ describe('buildDocTree', () => {
 
   it('calls a frame stale rather than accepted once its scene moved on', () => {
     const base = makeInput();
+    const aiko = base.model.characters.get('aiko')!;
     const drifted = buildDocTree({
       ...base,
+      // The gate is cleared with the portrait, so it is approved and earns the badge
+      model: {
+        ...base.model,
+        characters: new Map([['aiko', { ...aiko, approvedPortrait: 'a'.repeat(64) }]]),
+      } as ProjectModel,
       manifest: base.manifest.map((a) => (a.kind === 'shot_image' ? { ...a, accepted: true } : a)),
       shots: new Map<string, Shot[] | null>([
         [
@@ -616,8 +623,11 @@ describe('the Assets branch, one row per slot', () => {
     order     : nodes.map((n) => n.key),
   });
 
-  /** The default manifest plus one older portrait take, and the slot that moved on from it. */
-  const withOldTake = (over: Partial<SlotNode> = {}) => {
+  /**
+   * The default manifest plus one older portrait take, and the slot that moved on from it. With
+   * `held` false no row of the slot is current, which is the shape a slot left unresolved has.
+   */
+  const withOldTake = (over: Partial<SlotNode> = {}, held = true) => {
     const base = makeInput();
     const portrait = slot(
       'portrait:aiko',
@@ -630,7 +640,10 @@ describe('the Assets branch, one row per slot', () => {
     );
     return buildDocTree({
       ...base,
-      manifest: [...base.manifest, asset(OLD)],
+      manifest: [
+        ...base.manifest.map((a) => (a.hash === HASH_A ? { ...a, current: held } : a)),
+        asset(OLD, { current: false }),
+      ],
       slots   : slots([portrait]),
     });
   };
@@ -652,11 +665,10 @@ describe('the Assets branch, one row per slot', () => {
     expect(current.children![0]!.note).toContain('Another take');
   });
 
-  it('says nothing is settled where the slot could not choose between the takes', () => {
-    // `pick` declines on a tie, and nothing in this projection records when a picture was made —
-    // the manifest is written hash-sorted. The row therefore names no take as the current one; the
-    // choice is made in the Unapproved branch, where both are listed one per row.
-    const portraits = kinds(withOldTake({ hash: undefined }))[0]!;
+  it('says nothing is settled where no row of the slot is current', () => {
+    // `pick` declines when no row is current, so the slot names no take; the row is headed by the
+    // newest take and says so.
+    const portraits = kinds(withOldTake({ hash: undefined }, false))[0]!;
     expect(portraits.label).toBe('Portraits (1)');
     expect(portraits.children![0]!.note).toContain('nothing is settled here');
     expect(portraits.children![0]!.note).toContain('1 other take');
@@ -737,7 +749,8 @@ describe('backlinks', () => {
           ext     : 'png',
           kind    : 'portrait',
           label   : 'aaaaaaaa.png',
-          accepted: true,
+          // The row's flag is set, and the answer is still the gate's, which is not cleared
+          accepted: false,
           base    : true,
           slot    : 'portrait:aiko',
         },

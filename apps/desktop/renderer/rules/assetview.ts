@@ -107,7 +107,7 @@ export function approveAction(info: AssetInfo | undefined): Offer {
       'An upload is not generated art — it counts by being pointed at, not by being blessed.',
     );
   }
-  if (info.accepted) return yes('asset.unapprove', 'Un-approve', { hash: info.hash });
+  if (info.approved) return yes('asset.unapprove', 'Un-approve', { hash: info.hash });
   if (info.unapproved) return no(info.unapproved);
   // An older take, which a later render pushed out of its slot. Accepting one has to put it back
   // as well: the flag alone would leave the slot naming the later render, so the runner and the
@@ -610,7 +610,7 @@ export function watchSlot(was: AssetInfo | undefined, now: AssetInfo, holding: b
 /** The header's badges, in display order: the kind, the store it lives in, then its status. */
 export function badgesOf(info: AssetInfo): string[] {
   const badges = [info.kind, info.base ? 'base' : 'project'];
-  if (info.accepted) badges.push('accepted');
+  if (info.approved) badges.push('accepted');
   if (info.stale) badges.push('stale');
   if (info.suspended) badges.push('suspended');
   return badges;

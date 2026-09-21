@@ -11,6 +11,8 @@ import type {
   Character,
   Location,
   Scene,
+  TakeEdit,
+  TakeStamp,
 } from './entities.js';
 import type { AnyTask, Task, TaskKind } from './tasks.js';
 import type { Providers } from './providers.js';
@@ -91,11 +93,18 @@ export interface AssetStore {
   pathOf(ref: AssetRef): string;
   manifest(): readonly Asset[];
   /**
-   * Mark an asset accepted (an approved portrait or an accepted shot), un-accepting the hashes in
-   * `supersede` in the same write. Acceptance is exclusive per slot: a slot holding two accepted
-   * candidates cannot be resolved, so it reads as empty.
+   * Make an asset the take its slot holds, clearing `current` on the hashes in `supersede` in the
+   * same write. Currency is exclusive per slot: a slot holding two current rows cannot be
+   * resolved, so it reads as empty. `supersede` is the slot's other current rows, which `heldBy`
+   * in `@vn/artgen` computes.
    */
-  accept(hash: string, supersede?: readonly string[]): Promise<void>;
+  hold(hash: string, supersede: readonly string[], stamp?: TakeStamp): Promise<void>;
+  /** Mark an asset approved by a person. Selects nothing: which take a slot holds is `hold`'s. */
+  accept(hash: string): Promise<void>;
+  /** Whether any row was written before takes were held, which `migrateCurrent` keys on. */
+  readonly unstamped: boolean;
+  /** The migration's write: every row's take fields rewritten from `decide`, once per root. */
+  migrateTakes(decide: (asset: Asset) => TakeEdit): Promise<void>;
   /** The base root's state; absent on a store that has only one root (test fakes). */
   readonly base?: BaseAssets;
 }

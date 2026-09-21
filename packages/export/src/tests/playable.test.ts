@@ -12,12 +12,15 @@ import { buildPlayable, loadSceneShots } from '../playable.js';
 /** A minimal in-memory {@link AssetStore}: only `manifest()` matters to the exporter. */
 function fakeStore(assets: Asset[] = []): AssetStore {
   return {
-    has     : (h) => assets.some((a) => a.hash === h),
-    write   : () => Promise.reject(new Error('not implemented')),
-    read    : () => Promise.reject(new Error('not implemented')),
-    pathOf  : (r) => r.hash,
-    manifest: () => assets,
-    accept  : () => Promise.resolve(),
+    has         : (h) => assets.some((a) => a.hash === h),
+    write       : () => Promise.reject(new Error('not implemented')),
+    read        : () => Promise.reject(new Error('not implemented')),
+    pathOf      : (r) => r.hash,
+    manifest    : () => assets,
+    hold        : () => Promise.resolve(),
+    accept      : () => Promise.resolve(),
+    unstamped   : false,
+    migrateTakes: () => Promise.resolve(),
   };
 }
 
@@ -28,6 +31,7 @@ const asset = (partial: Partial<Asset> & Pick<Asset, 'hash' | 'kind'>): Asset =>
   modelId   : 'mock',
   satisfies : [],
   accepted  : true,
+  current   : true,
   ...partial,
 });
 

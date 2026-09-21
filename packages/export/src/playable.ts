@@ -122,7 +122,10 @@ function coveringShots(
   return shots;
 }
 
-/** Content-addressed manifest lookups, filtered by kind, subject and acceptance. */
+/**
+ * Content-addressed manifest lookups, filtered by kind and subject, answering the take a slot
+ * holds. Whether that take is approved is not asked here.
+ */
 class AssetIndex {
   constructor(private readonly assets: readonly Asset[]) {}
 
@@ -130,16 +133,16 @@ class AssetIndex {
     return asset ? { hash: asset.hash, ext: asset.ext } : undefined;
   }
 
-  /** The accepted shot image for a shot id, if one was generated. */
+  /** The shot image a shot's slot holds, if one was generated. */
   shotImage(shotId: string): AssetRef | undefined {
     return this.ref(
-      this.assets.find((a) => a.kind === 'shot_image' && bindsTo(a, { shotId }) && a.accepted),
+      this.assets.find((a) => a.kind === 'shot_image' && bindsTo(a, { shotId }) && a.current),
     );
   }
 
   /**
    * A portrait for a character. Uses the explicitly approved hash when the character has one,
-   * otherwise the first accepted portrait.
+   * otherwise the portrait the slot holds.
    */
   portrait(characterId: string, approvedHash?: string): AssetRef | undefined {
     if (approvedHash) {
@@ -148,7 +151,7 @@ class AssetIndex {
       return byHash ? this.ref(byHash) : { hash: approvedHash, ext: 'png' };
     }
     return this.ref(
-      this.assets.find((a) => a.kind === 'portrait' && bindsTo(a, { characterId }) && a.accepted),
+      this.assets.find((a) => a.kind === 'portrait' && bindsTo(a, { characterId }) && a.current),
     );
   }
 }

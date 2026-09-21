@@ -8,7 +8,7 @@ import { relative } from 'node:path';
 import type { LoadedInputs } from '@vn/parse';
 import { bindsTo, type Asset, type AssetKind, type ProjectModel, type Shot } from '@vn/types';
 import { isBaseKind } from '@vn/store';
-import { assetApproved, slotKey, slotOf, type SlotGraph } from '@vn/artgen';
+import { assetApproved, sheetAngleOf, slotKey, slotOf, type SlotGraph } from '@vn/artgen';
 import { allLocationVariants, topologicalOrder, usedOutfits } from '@vn/model';
 import { driftOf } from '@vn/pipeline';
 import type { BibleFile } from '@vn/bible';
@@ -279,9 +279,9 @@ function assetLabelOf(input: DocTreeInput, asset: Asset): string {
 }
 
 /**
- * The frames whose scene has moved on since they were drawn. Acceptance records that the picture
+ * The frames whose scene has moved on since they were drawn. Approval records that the picture
  * is wanted; drift records that the prose it illustrates has changed since, so a drifted frame is
- * still accepted but no longer earns the `accepted` badge. Drift is re-derived on every read here
+ * still approved but no longer earns the `accepted` badge. Drift is re-derived on every read here
  * as everywhere else, never stored as a flag.
  */
 function driftedImages(input: DocTreeInput): Set<string> {
@@ -296,8 +296,9 @@ function driftedImages(input: DocTreeInput): Set<string> {
 
 /**
  * The manifest, filed by slot: one row per slot address (`aiko portrait`, `cafe — night plate`)
- * showing what fills it now, with the slot's other takes folded underneath. A slot rendered eight
- * times is one row rather than eight near-identical thumbnails told apart by hash.
+ * showing the take it holds now, with the slot's other takes folded underneath, newest first. A
+ * slot rendered eight times is one row rather than eight near-identical thumbnails told apart by
+ * hash.
  *
  * A picture no slot claims is listed on its own beneath the slots of its kind. The graph enumerates
  * slots only, so its silence about a concept, an upload, a reference or a base-root asset says
@@ -314,7 +315,11 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
   // document-opening route, which reads a file as text.
   const row = (a: Asset, over: Partial<DocNode> = {}): DocNode =>
     node(`asset:${a.hash}`, 'asset', assetLabelOf(input, a), {
-      ...(stale.has(a.hash) ? { badge: 'stale' } : a.accepted ? { badge: 'accepted' } : {}),
+      ...(stale.has(a.hash)
+        ? { badge: 'stale' }
+        : assetApproved(a, input.model)
+          ? { badge: 'accepted' }
+          : {}),
       ...(assetApproved(a, input.model) ? { approved: true } : {}),
       ...over,
     });
@@ -334,19 +339,19 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
     const slot = input.slots?.nodes.get(key);
     if (!slot) continue;
     // Only takes that no earlier slot claimed: one picture can satisfy two slots, and filing it
-    // twice would make one render read as two. Left in candidate order, which is the manifest's
-    // hash order: nothing in this projection records when a picture was rendered, so the list is a
-    // set rather than a history and no row may be presented as the latest.
+    // twice would make one render read as two. Left in candidate order, which is newest first by
+    // the row's `at`; a row never stamped sorts last, and the tree makes no recency claim for it.
     const takes = slot.candidates.filter((hash) => byHash.has(hash) && !claimed.has(hash));
     if (takes.length === 0) continue;
     for (const hash of takes) claimed.add(hash);
 
-    // The slot shows what it resolved to. When it resolved to nothing the fold is headed by the
-    // first take and says the slot holds none of them, because naming one of several drafts as the
-    // current picture is the answer `pick` declined to give. Choosing between them happens in the
-    // Unapproved branch, which still lists all of them one per row.
-    const settled = slot.hash !== undefined && takes.includes(slot.hash);
-    const current = settled ? slot.hash! : takes[0]!;
+    // The slot shows the take it holds: its current row, or for a slot that resolves without one
+    // (a sole candidate) what it resolved to. A slot with neither is headed by its newest take
+    // and says it holds none of them, because naming one of several drafts as the current picture
+    // is the answer `pick` declined to give.
+    const held = takes.find((hash) => byHash.get(hash)!.current === true);
+    const settled = held !== undefined || (slot.hash !== undefined && takes.includes(slot.hash));
+    const current = held ?? (settled ? slot.hash! : takes[0]!);
     const others = takes.filter((hash) => hash !== current);
     const count = `${others.length} other take${others.length === 1 ? '' : 's'}`;
     add(
@@ -385,7 +390,7 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
   // Both levels are ordered by the name on the row. `SlotGraph.order` did its work above, deciding
   // which slot claims a picture two of them could; it says nothing a reader needs once every row in
   // a group is the same kind, and a list nobody can scan for a name is worse than one that loses
-  // the topology. The takes folded under a row keep their own order, which is a history.
+  // the topology. The takes folded under a row keep their own order, which is newest first.
   const groups = [...byKind.entries()]
     .sort(([a], [b]) => BY_LABEL.compare(ASSET_KIND_LABELS[a], ASSET_KIND_LABELS[b]))
     // The heading counts rows rather than pictures, because rows are what it heads: a kind with
@@ -445,10 +450,18 @@ function unapprovedBranch(input: DocTreeInput, cap: number): DocNode | undefined
     }
     for (const hash of slot.candidates) {
       const asset = byHash.get(hash);
-      // One row per picture: a sheet bound to two outfits is still one thing to approve. A
-      // drifted one is left to the Stale branch: the prose it illustrates has moved since it was
-      // drawn, so approving it would bless a picture of something the scene no longer says.
-      if (!asset || seen.has(hash) || stale.has(hash) || assetApproved(asset, input.model)) {
+      // One row per picture, and only the take the slot holds: a sheet bound to two outfits is
+      // still one thing to approve, and a take a later render superseded is not waiting on
+      // anything — `asset.restore` is what brings it back. A drifted one is left to the Stale
+      // branch: the prose it illustrates has moved since it was drawn, so approving it would
+      // bless a picture of something the scene no longer says.
+      if (
+        !asset ||
+        !asset.current ||
+        seen.has(hash) ||
+        stale.has(hash) ||
+        assetApproved(asset, input.model)
+      ) {
         continue;
       }
       seen.add(hash);
@@ -598,13 +611,13 @@ function linksFor(
         'sceneId' in binding
           ? a.satisfies.find((b) => b.sceneId === binding.sceneId)?.shotId
           : undefined;
-      const slot = slotOf(a, input.angleOf?.(a.sourceTask));
+      const slot = slotOf(a, sheetAngleOf(a, input));
       return {
         hash    : a.hash,
         ext     : a.ext,
         kind    : a.kind,
         label   : assetLabelOf(input, a),
-        accepted: a.accepted,
+        accepted: assetApproved(a, input.model),
         base    : isBaseKind(a.kind),
         ...(shotId !== undefined ? { shotId } : {}),
         ...(slot ? { slot: slotKey(slot) } : {}),

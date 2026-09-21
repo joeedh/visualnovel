@@ -9,7 +9,7 @@
  * and trusted.
  */
 import fs from 'node:fs/promises';
-import type { PagePanel, SheetGroup, Shot, ShotsFile } from '@vn/types';
+import type { PagePanel, ProjectModel, SheetGroup, Shot, ShotsFile } from '@vn/types';
 import {
   promptOverrideFrom,
   promptOverrideIsEmpty,
@@ -242,6 +242,29 @@ function serialize(sceneId: string, shots: readonly Shot[], marks: FileMarks): s
     })),
   };
   return JSON.stringify(file, null, 2) + '\n';
+}
+
+/**
+ * Every scene's persisted storyboard, by scene id. A storyboard that will not parse is one
+ * scene's problem. With `reportBroken` it becomes a `null` the tree draws a badge for. Without
+ * that option the scene is simply absent, which is what every other reader wants.
+ */
+export async function readAllShots(
+  paths: ProjectPaths,
+  model: Pick<ProjectModel, 'scenes'>,
+  opts: { reportBroken?: boolean } = {},
+): Promise<Map<string, Shot[] | null>> {
+  const shots = new Map<string, Shot[] | null>();
+  for (const scene of model.scenes.values()) {
+    const ids = new Set(scene.lines.map((l) => l.id));
+    try {
+      const loaded = await readShots(paths, scene.id, ids);
+      if (loaded) shots.set(scene.id, loaded.shots);
+    } catch {
+      if (opts.reportBroken) shots.set(scene.id, null);
+    }
+  }
+  return shots;
 }
 
 /**

@@ -19,8 +19,8 @@ import type { Asset, AssetKind, ProjectModel } from '@vn/types';
 import { isApproved } from './gate.js';
 import { assetSlotLabel } from './describe.js';
 import { slotOf } from './refcycle.js';
-import { slotKey } from './slotaddr.js';
-import type { BindingContext } from './refs.js';
+import { slotKey, slotLabel } from './slotaddr.js';
+import { resolveBinding, sheetAngleOf, type BindingContext } from './refs.js';
 import type { RungContext } from './resolve.js';
 import { upstreamOf } from './upstream.js';
 
@@ -44,7 +44,7 @@ export interface Prereq {
 
 /**
  * Whether a human has blessed these bytes — the one predicate, so no two surfaces can disagree
- * about what "approved" means.
+ * about what "approved" means: the take is the one its slot holds, and a person accepted it.
  *
  * Asymmetric on purpose. A portrait answers to the P3 gate and never to `accepted`, and twice over:
  * the character has to be approved and these have to be the bytes they were approved with, so a
@@ -52,6 +52,24 @@ export interface Prereq {
  * at all, so they count as approved rather than blocking forever.
  */
 export function assetApproved(asset: Asset, model: ProjectModel): boolean {
+  switch (asset.kind) {
+    case 'portrait':
+    case 'reference':
+    case 'concept':
+      return assetBlessed(asset, model);
+    default:
+      return asset.current === true && asset.accepted;
+  }
+}
+
+/**
+ * Whether a person accepted these bytes, whether or not the slot still holds them — what a
+ * prerequisite check asks of a take's `refs`. A frame drawn from a plate that was approved and has
+ * since been superseded was still drawn from an approved plate; asking {@link assetApproved} here
+ * would make the frame unapprovable with no way to approve the plate, since accepting a take the
+ * slot no longer holds is refused.
+ */
+export function assetBlessed(asset: Asset, model: ProjectModel): boolean {
   switch (asset.kind) {
     case 'portrait': {
       const id = asset.satisfies[0]?.characterId;
@@ -95,8 +113,8 @@ function prereqOf(hash: string, up: Asset | undefined, ctx: PrereqContext): Prer
       note    : 'Not in the manifest — there is nothing here to approve.',
     };
   }
-  const slot = slotOf(up, ctx.angleOf?.(up.sourceTask));
-  const approved = assetApproved(up, ctx.model);
+  const slot = slotOf(up, sheetAngleOf(up, ctx));
+  const approved = assetBlessed(up, ctx.model);
   const base = {
     hash,
     label: assetSlotLabel(up),
@@ -138,4 +156,19 @@ export function prereqRefusal(label: string, prereqs: readonly Prereq[]): string
   if (!first) return undefined;
   const more = waiting.length > 1 ? `, and ${waiting.length - 1} more` : '';
   return `Approve what ${label} was drawn from first: ${first.label} is not approved yet${more}.`;
+}
+
+/**
+ * Why accepting a take is refused, or `undefined` when nothing is in the way. Two rules, in
+ * order: the take has to be the one its slot holds, since accepting a superseded take would bless
+ * a picture nothing is drawn from and `asset.restore` is the act that brings it back; and what it
+ * was drawn from has to be approved first ({@link prereqRefusal}). Shared by every host that
+ * accepts, so the CLI, the testkit and the desktop apply one rule.
+ */
+export function acceptRefusal(asset: Asset, label: string, ctx: PrereqContext): string | undefined {
+  const slot = slotOf(asset, sheetAngleOf(asset, ctx));
+  if (slot && slot.kind !== 'portrait' && resolveBinding(slot, ctx) !== asset.hash) {
+    return `${label} is not the take ${slotLabel(slot)} holds; asset.restore(hash='${asset.hash}') brings it back and accepts it.`;
+  }
+  return prereqRefusal(label, assetPrereqs(asset, ctx));
 }

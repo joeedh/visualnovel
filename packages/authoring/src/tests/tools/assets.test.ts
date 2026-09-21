@@ -48,8 +48,15 @@ describe('list_assets', () => {
       expect(r.output).toContain(hash.slice(0, 12));
       expect(r.output).toContain('classroom — day plate');
       expect(r.output).toContain('[location_ref]');
+      // Written straight into the manifest, so nothing has held it: a row a run never filed
       expect(r.data).toEqual([
-        { hash, kind: 'location_ref', label: 'classroom — day plate', accepted: false },
+        {
+          hash,
+          kind    : 'location_ref',
+          label   : 'classroom — day plate',
+          current : false,
+          approved: false,
+        },
       ]);
     } finally {
       await cleanup();

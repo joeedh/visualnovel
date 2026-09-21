@@ -36,7 +36,7 @@ import {
   conventionalKind,
   docKind,
   loadInputs,
-  readShots,
+  readAllShots as readAllShotsOf,
   type DocFile,
   type DocResult,
   type DocWritePlan,
@@ -52,8 +52,8 @@ import {
 import { readModelCatalog } from '@vn/gengraph/state';
 
 import { loadGraph, type TaskGraph } from '@vn/taskgraph';
-import { driftOf, repairAccepted, type DecomposeAllResult, type LoadedGraph } from '@vn/pipeline';
-import { suspensionMap, type PromptRung, type Suspension } from '@vn/artgen';
+import { driftOf, repairCurrent, type DecomposeAllResult, type LoadedGraph } from '@vn/pipeline';
+import { suspensionMap, type AdoptVia, type PromptRung, type Suspension } from '@vn/artgen';
 import {
   chatBackendFor,
   chatRoute,
@@ -360,26 +360,12 @@ export function driftedFrames(model: ProjectModel, shots: Map<string, Shot[] | n
   return out;
 }
 
-/**
- * Every scene's persisted storyboard, by scene id. A storyboard that will not parse is one
- * scene's problem. With `reportBroken` it becomes a `null` the tree draws a badge for. Without
- * that option the scene is simply absent, which is what every other reader wants.
- */
+/** Every scene's persisted storyboard, by scene id; `readAllShots` in `@vn/store` for a project. */
 export async function readAllShots(
   project: LoadedProject,
   opts: { reportBroken?: boolean } = {},
 ): Promise<Map<string, Shot[] | null>> {
-  const shots = new Map<string, Shot[] | null>();
-  for (const scene of project.model.scenes.values()) {
-    const ids = new Set(scene.lines.map((l) => l.id));
-    try {
-      const loaded = await readShots(project.paths, scene.id, ids);
-      if (loaded) shots.set(scene.id, loaded.shots);
-    } catch {
-      if (opts.reportBroken) shots.set(scene.id, null);
-    }
-  }
-  return shots;
+  return readAllShotsOf(project.paths, project.model, opts);
 }
 
 /** An outfit with one field changed, in the shape `wardrobeEntries` re-serializes. */
@@ -634,9 +620,10 @@ export async function loadProject(dir: string): Promise<LoadedProject> {
     sources: sourcesOf(inputs),
     inputs,
   };
-  // A slot holding two accepted takes resolves to nothing, so every surface reading this
-  // project would show it as unrendered; the manifest is put right as it is read
-  await repairAccepted({ model, store, graph, readShots: () => readAllShots(project) });
+  // `current` is a cache of the task log, and a slot holding two current rows resolves to
+  // nothing, so every surface reading this project would show it as unrendered; the manifest is
+  // put right as it is read, and migrated once on a project written before takes were held
+  await repairCurrent({ model, config, store, graph, shots: await readAllShots(project) });
   return project;
 }
 
@@ -2171,8 +2158,9 @@ export class WorkspaceSession {
     hash: string,
     slot: string,
     replace: boolean,
+    via?: AdoptVia,
   ): Promise<{ ok: boolean; message: string; hash?: string; written: string[] }> {
-    return this.assetPart.adoptAsset(hash, slot, replace);
+    return this.assetPart.adoptAsset(hash, slot, replace, via);
   }
 
   /**

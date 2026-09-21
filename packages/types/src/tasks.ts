@@ -3,7 +3,7 @@
  * a content hash of everything that determines its output — this is what gives the
  * pipeline dedupe, resumability, and staleness/invalidation for free.
  */
-import type { AssetRef, ImageParams } from './entities.js';
+import type { AssetRef, ImageParams, TakeVia } from './entities.js';
 
 export type TaskKind =
   | 'location_ref'
@@ -59,6 +59,11 @@ export interface TaskAttempt {
   error?: string;
   /** ISO timestamp; stamped by the caller (scripts have no clock). */
   at?: string;
+  /**
+   * How this attempt's output entered its slot, for an attempt written outside a run. A restore
+   * is recorded here rather than on the row, whose `via` keeps the picture's origin.
+   */
+  via?: TakeVia | 'restore';
 }
 
 /** A node in the task graph. Identity == `hash`. */

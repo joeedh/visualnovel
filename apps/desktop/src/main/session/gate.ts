@@ -5,6 +5,7 @@ import {
   assetApproved,
   assetPrereqs,
   buildSlotGraph,
+  heldBy,
   prereqRefusal,
   resolveSlot,
   slotTaskHash,
@@ -60,7 +61,11 @@ export class GatePart {
     };
   }
 
-  /** Flip a character to approved with `hash`: copy the visible portrait, accept the asset. */
+  /**
+   * Flip a character to approved with `hash`: copy the visible portrait, hold and accept the
+   * asset. The hold is what makes a draft chosen at the gate the slot's current take as well as
+   * its approved one; the gate itself still reads the sheet.
+   */
   async approveCharacter(characterId: string, hash: string): Promise<ApproveResult> {
     const project = await loadProject(this.session.dir);
     const asset = project.store.get(hash);
@@ -86,6 +91,14 @@ export class GatePart {
     // Asked before the accept, because which manifest answers is decided by which root holds the
     // hash, and a portrait's bytes never move between the two.
     const manifest = relPath(this.session.dir, project.store.manifestFileOf(hash));
+    const assets = project.store.manifest();
+    await project.store.hold(
+      hash,
+      heldBy(asset, { ...labelContext(project.model, project.graph), assets }),
+      {
+        at: new Date().toISOString(),
+      },
+    );
     await project.store.accept(hash);
     return {
       ok     : true,
@@ -101,9 +114,11 @@ export class GatePart {
   /**
    * Every picture that could be approved right now, upstream first — the same walk the document
    * tree's “Awaiting approval” group is a projection of, so the agent and the tree can never
-   * disagree about what is waiting. A blocked row is still listed, with a sentence saying what
-   * it is waiting on: the whole frontier is more useful than just the subset that happens to be
-   * actionable this second.
+   * disagree about what is waiting. At most one row per slot: the take the slot holds, when
+   * nobody has approved it. A take the slot no longer holds is reachable from the tree's fold and
+   * the asset editor, and `asset.restore` is what brings it back. A blocked row is still listed,
+   * with a sentence saying what it is waiting on: the whole frontier is more useful than just the
+   * subset that happens to be actionable this second.
    */
   async approvable(): Promise<Approvable[]> {
     const project = await loadProject(this.session.dir);
@@ -131,7 +146,13 @@ export class GatePart {
         // thing to approve, and the first slot that names it is the one it is listed under. A
         // drifted frame is left out: the prose it illustrates has moved since it was drawn, so
         // what it is waiting for is a redraw rather than approval.
-        if (!asset || seen.has(hash) || drifted.has(hash) || assetApproved(asset, project.model)) {
+        if (
+          !asset ||
+          !asset.current ||
+          seen.has(hash) ||
+          drifted.has(hash) ||
+          assetApproved(asset, project.model)
+        ) {
           continue;
         }
         seen.add(hash);
@@ -151,10 +172,6 @@ export class GatePart {
           door: asset.kind === 'portrait' ? 'gate' : 'accept',
           ...(characterId === undefined ? {} : { characterId }),
           ...(blocked === undefined ? {} : { blocked }),
-          // The slot's own asymmetric answer (gate for a portrait, `accepted` for everything
-          // else), carried through so a caller approving in bulk can tell "nothing has settled
-          // this yet" from "this is the take that lost".
-          ...(slot.approved ? { settled: true } : {}),
         });
       }
     }
@@ -164,7 +181,8 @@ export class GatePart {
   /**
    * Every picture that is approved right now, downstream first — the reverse of {@link approvable}
    * in both the filter and the order, because taking approval back has to run the other way: a
-   * frame stops being accepted before the plate it was drawn from does.
+   * frame stops being accepted before the plate it was drawn from does. `assetApproved` reads the
+   * current row, so a superseded take that kept its `accepted` bit as history is not listed.
    */
   async approvedAssets(): Promise<Approvable[]> {
     const project = await loadProject(this.session.dir);

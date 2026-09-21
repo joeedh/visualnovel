@@ -9,6 +9,8 @@ import type {
   BaseAssetState,
   BaseAssets,
   AssetStore as IAssetStore,
+  TakeEdit,
+  TakeStamp,
 } from '@vn/types';
 import { ensureDir, exists, readText, sha256, writeFileAtomic } from '@vn/util';
 import { ProjectPaths } from './paths.js';
@@ -151,7 +153,12 @@ export class AssetRoot {
       ...(meta.transport === undefined ? {} : { transport: meta.transport }),
       // One byte-stream can serve several things; the second writer must not erase the first.
       satisfies: mergeBindings(existing?.satisfies, meta.satisfies),
+      // The take bits belong to the slot's history, not to this write: a re-record of bytes the
+      // slot already holds keeps them, and a new row starts out held by nothing
+      current  : existing?.current ?? false,
       accepted : meta.accepted ?? existing?.accepted ?? false,
+      ...(existing?.at === undefined ? {} : { at: existing.at }),
+      ...(existing?.via === undefined ? {} : { via: existing.via }),
       // An existing title survives a write that carries none, so promoting a concept does not
       // erase the name it was given
       ...((meta.title ?? existing?.title) ? { title: meta.title ?? existing?.title } : {}),
@@ -165,26 +172,46 @@ export class AssetRoot {
   }
 
   /**
-   * Mark an asset accepted (an approved portrait or an accepted shot) and un-accept the takes it
-   * replaces, in one write. Returns whether this root holds `hash`.
+   * Make an asset the take its slot holds and release the takes it replaces, in one write. Returns
+   * whether this root holds `hash`.
    *
-   * The two halves are persisted together because a manifest recording both as accepted leaves the
-   * slot unresolvable, so a crash between two writes would be the state this is preventing. Hashes
-   * in `supersede` that this root does not hold are ignored; `AssetStore.accept` routes the call to
-   * the root the slot's art lives in, and a slot's candidates share a kind and so share a root.
+   * The two halves are persisted together because a manifest recording two current rows leaves
+   * the slot unresolvable, so a crash between two writes would be the state this is preventing.
+   * Hashes in `supersede` that this root does not hold are ignored; `AssetStore.hold` routes the
+   * call to the root the slot's art lives in, and a slot's candidates share a kind and so share a
+   * root. `at` is restamped on every hold; `via` is written only where the row has none.
    */
-  async accept(hash: string, supersede: readonly string[] = []): Promise<boolean> {
+  async hold(hash: string, supersede: readonly string[], stamp: TakeStamp = {}): Promise<boolean> {
     const asset = this.index.get(hash);
     if (!asset) return false;
-    let changed = !asset.accepted;
-    asset.accepted = true;
+    let changed = !asset.current;
+    asset.current = true;
+    if (stamp.at !== undefined && asset.at !== stamp.at) {
+      asset.at = stamp.at;
+      changed = true;
+    }
+    if (stamp.via !== undefined && asset.via === undefined) {
+      asset.via = stamp.via;
+      changed = true;
+    }
     for (const other of supersede) {
       const sibling = other === hash ? undefined : this.index.get(other);
-      if (!sibling?.accepted) continue;
-      sibling.accepted = false;
+      if (!sibling?.current) continue;
+      sibling.current = false;
       changed = true;
     }
     if (changed) await this.persist();
+    return true;
+  }
+
+  /** Mark an asset approved by a person. Returns whether this root holds `hash`. */
+  async accept(hash: string): Promise<boolean> {
+    const asset = this.index.get(hash);
+    if (!asset) return false;
+    if (!asset.accepted) {
+      asset.accepted = true;
+      await this.persist();
+    }
     return true;
   }
 
@@ -216,6 +243,45 @@ export class AssetRoot {
     // Isolate failures so one bad write does not poison subsequent persists.
     this.writeQueue = run.catch(() => undefined);
     return run;
+  }
+
+  /** Whether any row predates takes being held, which is what the migration keys on. */
+  get unstamped(): boolean {
+    for (const asset of this.index.values()) if (asset.current === undefined) return true;
+    return false;
+  }
+
+  /**
+   * Rewrite every row's take fields in one write. `decide` answers for each row; the angle, when
+   * given, goes onto the outfit binding it belongs to. Nothing is written when nothing changed.
+   */
+  async migrateTakes(decide: (asset: Asset) => TakeEdit): Promise<boolean> {
+    let changed = false;
+    for (const asset of this.index.values()) {
+      const edit = decide(asset);
+      if (asset.current !== edit.current) {
+        asset.current = edit.current;
+        changed = true;
+      }
+      if (edit.at !== undefined && asset.at === undefined) {
+        asset.at = edit.at;
+        changed = true;
+      }
+      if (edit.via !== undefined && asset.via === undefined) {
+        asset.via = edit.via;
+        changed = true;
+      }
+      if (edit.angle !== undefined) {
+        for (const b of asset.satisfies) {
+          if (b.characterId === undefined || b.outfit === undefined || b.angle !== undefined)
+            continue;
+          b.angle = edit.angle;
+          changed = true;
+        }
+      }
+    }
+    if (changed) await this.persist();
+    return changed;
   }
 
   private async writeManifest(): Promise<void> {
@@ -281,7 +347,8 @@ export class AssetStore implements IAssetStore {
   }
 
   /**
-   * The manifest recording `hash`, which is the file {@link accept} and {@link unaccept} rewrite.
+   * The manifest recording `hash`, which is the file {@link hold}, {@link accept} and
+   * {@link unaccept} rewrite.
    * Both follow {@link rowRoot}, so a caller reporting what it wrote has to ask which root
    * answered rather than naming one of the two.
    */
@@ -302,8 +369,30 @@ export class AssetStore implements IAssetStore {
     return all;
   }
 
-  async accept(hash: string, supersede: readonly string[] = []): Promise<void> {
-    await this.rowRoot(hash).accept(hash, supersede);
+  async hold(hash: string, supersede: readonly string[], stamp: TakeStamp = {}): Promise<void> {
+    await this.rowRoot(hash).hold(hash, supersede, stamp);
+  }
+
+  async accept(hash: string): Promise<void> {
+    await this.rowRoot(hash).accept(hash);
+  }
+
+  /** Whether either manifest has a row written before takes were held. */
+  get unstamped(): boolean {
+    return this.baseRoot.unstamped || this.projectRoot.unstamped;
+  }
+
+  /**
+   * The migration's one write per root. `decide` sees the row {@link manifest} reports for a hash;
+   * a hash's other row, in the root that does not answer for it, is stamped not current, so the
+   * trigger goes quiet on every row.
+   */
+  async migrateTakes(decide: (asset: Asset) => TakeEdit): Promise<void> {
+    for (const root of [this.baseRoot, this.projectRoot]) {
+      await root.migrateTakes((asset) =>
+        this.rowRoot(asset.hash) === root ? decide(asset) : { current: false },
+      );
+    }
   }
 
   async unaccept(hash: string): Promise<void> {

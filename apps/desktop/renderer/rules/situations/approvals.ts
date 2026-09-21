@@ -21,12 +21,11 @@ const ITEMS: readonly Approvable[] = [
     blocked    : 'Aiko’s model sheet is not approved yet.',
   },
   {
-    hash   : 'c3d4e5f6',
-    kind   : 'shot',
-    label  : 'arrival — s1',
-    slot   : 'shot:arrival/s1',
-    door   : 'accept',
-    settled: true,
+    hash : 'c3d4e5f6',
+    kind : 'shot',
+    label: 'arrival — s1',
+    slot : 'shot:arrival/s1',
+    door : 'accept',
   },
 ];
 
@@ -34,7 +33,7 @@ export const SITUATIONS = situations<ApprovalsState>(
   { name: 'empty', why: 'Nothing needs approval, so no row is drawn.', state: { items: [] } },
   {
     name : 'waiting',
-    why: 'Three pictures wait: a plate, a portrait blocked upstream, and a shot whose slot is already settled; each row opens its picture.',
+    why: 'Three pictures wait: a plate, a portrait blocked upstream, and a shot frame; each row opens its picture.',
     state: { items: ITEMS },
   },
 );

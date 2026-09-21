@@ -80,7 +80,7 @@ function ctx(pin: string | undefined, mute = false): SuspendContext {
       asset('oldnightplate', 'location_ref', [{ locationId: 'cafe', variant: 'night' }]),
       {
         ...asset('newnightplate', 'location_ref', [{ locationId: 'cafe', variant: 'night' }]),
-        accepted: true,
+        current: true,
       },
       asset('plate-dawn', 'location_ref', [{ locationId: 'cafe', variant: 'dawn' }]),
       asset('frame', 'shot_image', [{ sceneId: 'arrival', shotId: 'arrival__a' }], ['plate-dawn']),

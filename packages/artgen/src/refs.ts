@@ -45,10 +45,10 @@ export interface BindingContext {
   /** The manifest, as read — both roots, since a slot may be filled from either. */
   assets: readonly Asset[];
   /**
-   * The angle a model-sheet task was for. Injected because an angle is recorded in the task's
-   * inputs and never in `Asset.satisfies`, so the manifest alone cannot tell four sheets apart;
-   * the same seam `labelAssets` uses. Without it, a `sheet` binding resolves only when the outfit
-   * has exactly one sheet.
+   * The angle a model-sheet task was for, for a sheet row whose binding carries none. A binding
+   * written since takes were held names its angle itself; an older row is told apart from its
+   * siblings through its task's inputs, the same seam `labelAssets` uses. Without either, a
+   * `sheet` binding resolves only when the outfit has exactly one sheet.
    */
   angleOf?: (sourceTask: string | undefined) => string | undefined;
 }
@@ -56,16 +56,29 @@ export interface BindingContext {
 /**
  * Pick the one asset a slot holds, or `undefined` when the answer is not certain.
  *
- * A single accepted candidate wins outright, since accepting one is a human choosing it. Otherwise
- * the slot answers only when exactly one candidate serves it. The manifest is written hash-sorted,
- * so list order among unaccepted candidates carries no recency to guess from. Every caller reads
- * `undefined` as "no claim", never as "the slot is empty".
+ * The current row wins outright: a hold is exclusive per slot, so two current rows are a manifest
+ * in need of repair and the slot declines. With none, the slot answers only when exactly one
+ * candidate serves it. Every caller reads `undefined` as "no claim", never as "the slot is empty".
  */
-function pick(candidates: readonly Asset[]): string | undefined {
-  const accepted = candidates.filter((a) => a.accepted);
-  if (accepted.length === 1) return accepted[0]!.hash;
-  if (accepted.length > 1) return undefined;
+export function pick(candidates: readonly Asset[]): string | undefined {
+  const current = candidates.filter((a) => a.current);
+  if (current.length === 1) return current[0]!.hash;
+  if (current.length > 1) return undefined;
   return candidates.length === 1 ? candidates[0]!.hash : undefined;
+}
+
+/**
+ * Which of an outfit's sheets a row is: the angle its binding carries, else the one its task was
+ * for. `undefined` when neither is known.
+ */
+export function sheetAngleOf(
+  asset: Asset,
+  ctx: Pick<BindingContext, 'angleOf'>,
+): string | undefined {
+  const bound = asset.satisfies.find(
+    (b) => b.characterId !== undefined && b.outfit !== undefined && b.angle !== undefined,
+  );
+  return bound?.angle ?? ctx.angleOf?.(asset.sourceTask);
 }
 
 /**
@@ -95,9 +108,12 @@ export function candidatesFor(binding: RefBinding, ctx: BindingContext): Asset[]
           (a.kind === 'model_sheet' || a.kind === 'outfit_sheet') &&
           bindsTo(a, { characterId: binding.characterId, outfit: binding.outfit }),
       );
-      return ctx.angleOf
-        ? bound.filter((a) => ctx.angleOf!(a.sourceTask) === binding.angle)
-        : bound;
+      // A row whose angle nothing states is kept only by a caller with no task log to ask, as
+      // before: one sheet per outfit is the shape a manifest without angles had
+      return bound.filter((a) => {
+        const angle = sheetAngleOf(a, ctx);
+        return angle === undefined ? ctx.angleOf === undefined : angle === binding.angle;
+      });
     }
     case 'plate':
       return ctx.assets.filter(

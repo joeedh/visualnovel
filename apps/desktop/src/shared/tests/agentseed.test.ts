@@ -30,6 +30,8 @@ function info(over: Partial<AssetInfo> = {}): AssetInfo {
     ext       : 'png',
     kind      : 'location_ref',
     label     : 'Café Mori — night',
+    current   : true,
+    approved  : false,
     base      : true,
     accepted  : false,
     sourceTask: 't1',

@@ -12,7 +12,7 @@
  * later plan wants is then a loop plus a transaction boundary — not a second implementation of the
  * same safety property.
  */
-import type { Asset, Task, TaskInputs, TaskKind } from '@vn/types';
+import type { Asset, Task, TaskAttempt, TaskInputs, TaskKind } from '@vn/types';
 import { logTask, makeTask } from '@vn/taskgraph';
 import type { ProjectPaths } from '@vn/store';
 
@@ -32,6 +32,10 @@ export interface AdoptRequest<K extends TaskKind> {
    * superseded bytes stay in the store.
    */
   replace?: boolean;
+  /** How the bytes entered the slot, recorded on the attempt. */
+  via?: TaskAttempt['via'];
+  /** When, as an ISO timestamp. Recorded on the attempt when the caller has a clock. */
+  at?: string;
 }
 
 /** What the guard has to ask about the world: the store, and the graph as replayed. */
@@ -91,7 +95,14 @@ export function adoptionOf<K extends TaskKind>(
       status  : 'done',
       output  : req.output.hash,
       attempts: [
-        { attempt: 1, ...(prompt === undefined ? {} : { prompt }), refs, output: req.output.hash },
+        {
+          attempt: 1,
+          ...(prompt === undefined ? {} : { prompt }),
+          refs,
+          output: req.output.hash,
+          ...(req.at === undefined ? {} : { at: req.at }),
+          ...(req.via === undefined ? {} : { via: req.via }),
+        },
       ],
     },
   };

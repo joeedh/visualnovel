@@ -11,10 +11,11 @@ import { character, location, model, scene } from '@vn/testkit';
 import {
   buildSlotGraph,
   locationInputs,
+  heldBy,
   imageParams,
+  newestFirst,
   resolveSlot,
   slotTaskHash,
-  supersededBy,
   type SlotGraphContext,
 } from '../index.js';
 
@@ -28,7 +29,7 @@ function asset(
   hash: string,
   kind: AssetKind,
   satisfies: Asset['satisfies'],
-  accepted = false,
+  current = false,
 ): Asset {
   return {
     hash,
@@ -37,7 +38,8 @@ function asset(
     sourceTask: `task-${hash}`,
     refs      : [],
     modelId   : 'm',
-    accepted,
+    accepted  : false,
+    current,
     satisfies,
   };
 }
@@ -157,11 +159,27 @@ describe('buildSlotGraph', () => {
 
     const accepted = buildSlotGraph(
       ctx({
-        assets: [asset('plate1', 'location_ref', [{ locationId: 'cafe', variant: 'day' }], true)],
+        assets: [
+          {
+            ...asset('plate1', 'location_ref', [{ locationId: 'cafe', variant: 'day' }], true),
+            accepted: true,
+          },
+        ],
       }),
     );
     expect(accepted.nodes.get('plate:cafe/day')!.approved).toBe(true);
     expect(accepted.nodes.get('plate:cafe/night')!.approved).toBe(false);
+  });
+
+  it('lists a slot’s candidates newest first, by the row’s hold time', () => {
+    const plate = (hash: string, at?: string): Asset => ({
+      ...asset(hash, 'location_ref', [{ locationId: 'cafe', variant: 'day' }]),
+      ...(at === undefined ? {} : { at }),
+    });
+    const node = buildSlotGraph(
+      ctx({ assets: [plate('c'), plate('a', '2026-01-01'), plate('b', '2026-02-01')] }),
+    ).nodes.get('plate:cafe/day')!;
+    expect(node.candidates).toEqual(['b', 'a', 'c']);
   });
 
   it('reports drafts as candidates even when no one can say which is the slot', () => {
@@ -222,11 +240,11 @@ describe('resolveSlot', () => {
   });
 });
 
-describe('supersededBy', () => {
-  const frame = (hash: string, accepted = false): Asset =>
-    asset(hash, 'shot_image', [{ sceneId: 'arrival', shotId: 'arrival__a' }], accepted);
+describe('heldBy', () => {
+  const frame = (hash: string, current = false): Asset =>
+    asset(hash, 'shot_image', [{ sceneId: 'arrival', shotId: 'arrival__a' }], current);
 
-  it('names the accepted takes of the same slot, and nothing else', () => {
+  it('names the current takes of the same slot, and nothing else', () => {
     const other = asset(
       'elsewhere',
       'shot_image',
@@ -234,27 +252,63 @@ describe('supersededBy', () => {
       true,
     );
     const c = ctx({ assets: [frame('new'), frame('old', true), frame('draft'), other] });
-    expect(supersededBy(frame('new'), c)).toEqual(['old']);
+    expect(heldBy(frame('new'), c)).toEqual(['old']);
   });
 
-  it('supersedes nothing for a portrait, which answers to the gate rather than to acceptance', () => {
+  it('releases a portrait like any other kind, since currency is not the gate', () => {
     const c = ctx({
       assets: [
         asset('p-new', 'portrait', [{ characterId: 'aiko' }]),
         asset('p-aiko', 'portrait', [{ characterId: 'aiko' }], true),
       ],
     });
-    expect(supersededBy(asset('p-new', 'portrait', [{ characterId: 'aiko' }]), c)).toEqual([]);
+    expect(heldBy(asset('p-new', 'portrait', [{ characterId: 'aiko' }]), c)).toEqual(['p-aiko']);
   });
 
-  it('supersedes no sheet without an angle lookup, since four angles share one binding', () => {
-    const sheet = (hash: string, accepted = false): Asset =>
-      asset(hash, 'model_sheet', [{ characterId: 'aiko', outfit: 'default' }], accepted);
-    const assets = [sheet('front'), sheet('side', true)];
-    expect(supersededBy(sheet('front'), ctx({ assets }))).toEqual([]);
-    // With one, the angles separate and only a take of the same angle is superseded.
+  it('names the current takes of every slot a two-slot row serves', () => {
+    const both = asset('both', 'shot_image', [
+      { sceneId: 'arrival', shotId: 'arrival__a' },
+      { sceneId: 'arrival', shotId: 'arrival__b' },
+    ]);
+    const a = frame('a', true);
+    const b = asset('b', 'shot_image', [{ sceneId: 'arrival', shotId: 'arrival__b' }], true);
+    expect(heldBy(both, ctx({ assets: [both, a, b] })).sort()).toEqual(['a', 'b']);
+  });
+
+  it('tells sheet angles apart by the binding, or by the task where the binding says none', () => {
+    const sheet = (hash: string, current = false, angle?: string): Asset =>
+      asset(
+        hash,
+        'model_sheet',
+        [{ characterId: 'aiko', outfit: 'default', ...(angle === undefined ? {} : { angle }) }],
+        current,
+      );
+    // Bindings that name their angle separate on their own.
+    const named = [
+      sheet('front', false, 'front'),
+      sheet('side', true, 'side'),
+      sheet('front2', true, 'front'),
+    ];
+    expect(heldBy(sheet('front', false, 'front'), ctx({ assets: named }))).toEqual(['front2']);
+
+    // Rows written before the angle was recorded need the task log to separate them; without one,
+    // nothing is released, since four angles share one binding.
+    const bare = [sheet('front'), sheet('side', true)];
+    expect(heldBy(sheet('front'), ctx({ assets: bare }))).toEqual([]);
     const angles: Record<string, string> = { 'task-front': 'front', 'task-side': 'front' };
-    const seeing = ctx({ assets, angleOf: (task) => (task ? angles[task] : undefined) });
-    expect(supersededBy(sheet('front'), seeing)).toEqual(['side']);
+    const seeing = ctx({ assets: bare, angleOf: (task) => (task ? angles[task] : undefined) });
+    expect(heldBy(sheet('front'), seeing)).toEqual(['side']);
+  });
+});
+
+describe('newestFirst', () => {
+  it('orders by `at` descending, unstamped rows last in hash order', () => {
+    const rows = [
+      { ...asset('c', 'shot_image', []) },
+      { ...asset('a', 'shot_image', []), at: '2026-01-01T00:00:00.000Z' },
+      { ...asset('b', 'shot_image', []) },
+      { ...asset('d', 'shot_image', []), at: '2026-02-01T00:00:00.000Z' },
+    ];
+    expect(newestFirst(rows).map((r) => r.hash)).toEqual(['d', 'a', 'b', 'c']);
   });
 });

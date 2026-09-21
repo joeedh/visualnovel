@@ -101,31 +101,173 @@ describe('bindings', () => {
   });
 });
 
-describe('accept', () => {
-  it('un-accepts the takes it supersedes, and persists both halves together', async () => {
+describe('hold and accept', () => {
+  it('releases the takes it supersedes, and persists both halves together', async () => {
     const paths = new ProjectPaths(await tempRoot());
     const store = await AssetStore.open(paths);
     const old = await store.write(bytes('OLD'), 'png', meta('shot_image'));
     const fresh = await store.write(bytes('NEW'), 'png', meta('shot_image'));
+    await store.hold(old.hash, []);
     await store.accept(old.hash);
-    await store.accept(fresh.hash, [old.hash]);
+    await store.hold(fresh.hash, [old.hash], { at: '2026-09-20T10:00:00.000Z', via: 'run' });
 
-    // Read back from disk: a manifest recording two accepted takes is the state this prevents.
+    // Read back from disk: a manifest recording two current takes is the state this prevents,
+    // and the release leaves the old take's approval alone, as history.
     const reopened = (await AssetStore.open(paths)).manifest();
-    expect(reopened.filter((a) => a.accepted).map((a) => a.hash)).toEqual([fresh.hash]);
+    expect(reopened.filter((a) => a.current).map((a) => a.hash)).toEqual([fresh.hash]);
+    expect(reopened.find((a) => a.hash === old.hash)).toMatchObject({
+      current : false,
+      accepted: true,
+    });
+    expect(reopened.find((a) => a.hash === fresh.hash)).toMatchObject({
+      current : true,
+      accepted: false,
+      at      : '2026-09-20T10:00:00.000Z',
+      via     : 'run',
+    });
   });
 
-  it('re-accepting an already-accepted asset still clears what it supersedes', async () => {
+  it('restamps `at` on every hold and keeps the first `via`', async () => {
     const paths = new ProjectPaths(await tempRoot());
     const store = await AssetStore.open(paths);
-    const old = await store.write(bytes('OLD'), 'png', meta('shot_image'));
-    const fresh = await store.write(bytes('NEW'), 'png', meta('shot_image'));
-    await store.accept(fresh.hash);
-    await store.accept(old.hash);
-    await store.accept(fresh.hash, [old.hash]);
-    expect(
-      (await AssetStore.open(paths)).manifest().find((a) => a.hash === old.hash)!.accepted,
-    ).toBe(false);
+    const ref = await store.write(bytes('A'), 'png', meta('shot_image'));
+    await store.hold(ref.hash, [], { at: '2026-01-01T00:00:00.000Z', via: 'adopt' });
+    await store.hold(ref.hash, [], { at: '2026-02-01T00:00:00.000Z', via: 'run' });
+    expect(store.get(ref.hash)).toMatchObject({ at: '2026-02-01T00:00:00.000Z', via: 'adopt' });
+  });
+
+  it('accept sets the flag alone, so a take can be approved without being held', async () => {
+    const paths = new ProjectPaths(await tempRoot());
+    const store = await AssetStore.open(paths);
+    const ref = await store.write(bytes('A'), 'png', meta('shot_image'));
+    await store.accept(ref.hash);
+    expect(store.get(ref.hash)).toMatchObject({ current: false, accepted: true });
+  });
+
+  it('a new row starts out held by nothing, and a re-write keeps the bits', async () => {
+    const paths = new ProjectPaths(await tempRoot());
+    const store = await AssetStore.open(paths);
+    const ref = await store.write(bytes('P'), 'png', meta('portrait'));
+    expect(store.get(ref.hash)!.current).toBe(false);
+    await store.hold(ref.hash, [], { at: 't' });
+    await store.write(bytes('P'), 'png', meta('portrait', { sourceTask: 'again' }));
+    expect(store.get(ref.hash)).toMatchObject({ current: true, at: 't' });
+  });
+
+  it('routes the hold to the root the row lives in', async () => {
+    const paths = new ProjectPaths(await tempRoot());
+    const store = await AssetStore.open(paths);
+    const portrait = await store.write(bytes('P'), 'png', meta('portrait'));
+    const shot = await store.write(bytes('S'), 'png', meta('shot_image'));
+    await store.hold(portrait.hash, []);
+    await store.hold(shot.hash, []);
+    const base = JSON.parse(await readFile(paths.baseManifest, 'utf8')) as {
+      assets: { hash: string; current: boolean }[];
+    };
+    const project = JSON.parse(await readFile(paths.manifest, 'utf8')) as {
+      assets: { hash: string; current: boolean }[];
+    };
+    expect(base.assets.map((a) => [a.hash, a.current])).toEqual([[portrait.hash, true]]);
+    expect(project.assets.map((a) => [a.hash, a.current])).toEqual([[shot.hash, true]]);
+  });
+
+  it('refuses to hold base art while the base root is unavailable', async () => {
+    const paths = new ProjectPaths(await tempRoot());
+    const first = await AssetStore.open(paths);
+    const portrait = await first.write(bytes('P'), 'png', meta('portrait'));
+    await rm(paths.baseManifest);
+    const store = await AssetStore.open(paths);
+    expect(store.base?.state).toBe('unavailable');
+    // The row is not there to hold; nothing is written into another root in its place.
+    await store.hold(portrait.hash, []);
+    await store.accept(portrait.hash);
+    expect(store.get(portrait.hash)).toBeUndefined();
+    expect(store.manifest()).toEqual([]);
+  });
+});
+
+describe('migrateTakes', () => {
+  it('is owed while any row predates the bit, and goes quiet once every row is stamped', async () => {
+    const paths = new ProjectPaths(await tempRoot());
+    await mkdir(paths.assetsDir, { recursive: true });
+    await writeFile(
+      paths.manifest,
+      JSON.stringify({
+        version: 1,
+        assets: [
+          {
+            hash      : 'a',
+            ext       : 'png',
+            kind      : 'shot_image',
+            sourceTask: 't',
+            refs      : [],
+            modelId   : 'm',
+            accepted  : true,
+            satisfies : [],
+          },
+          {
+            hash      : 'b',
+            ext       : 'png',
+            kind      : 'shot_image',
+            sourceTask: 't',
+            refs      : [],
+            modelId   : 'm',
+            accepted  : false,
+            satisfies : [],
+          },
+        ],
+      }),
+    );
+    const store = await AssetStore.open(paths);
+    expect(store.unstamped).toBe(true);
+    await store.migrateTakes((row) =>
+      row.hash === 'a' ? { current: true, via: 'migrated', at: 'then' } : { current: false },
+    );
+    expect(store.unstamped).toBe(false);
+    const reopened = await AssetStore.open(paths);
+    expect(reopened.unstamped).toBe(false);
+    expect(reopened.get('a')).toMatchObject({ current: true, via: 'migrated', at: 'then' });
+    expect(reopened.get('b')).toMatchObject({ current: false });
+    expect(reopened.get('b')!.via).toBeUndefined();
+  });
+
+  it('backfills the angle onto an outfit binding that lacks one', async () => {
+    const paths = new ProjectPaths(await tempRoot());
+    const store = await AssetStore.open(paths);
+    const sheet = await store.write(bytes('S'), 'png', {
+      kind      : 'model_sheet',
+      sourceTask: 't',
+      modelId   : 'm',
+      satisfies : { characterId: 'aiko', outfit: 'default' },
+    });
+    expect(store.unstamped).toBe(false);
+    await store.migrateTakes(() => ({ current: true, angle: 'side' }));
+    expect(store.get(sheet.hash)!.satisfies).toEqual([
+      { characterId: 'aiko', outfit: 'default', angle: 'side' },
+    ]);
+    // A second pass leaves a binding that already names its angle alone.
+    await store.migrateTakes(() => ({ current: true, angle: 'front' }));
+    expect(store.get(sheet.hash)!.satisfies[0]!.angle).toBe('side');
+  });
+
+  it('stamps a hash both roots hold in both, so the trigger goes quiet', async () => {
+    const paths = new ProjectPaths(await tempRoot());
+    const store = await AssetStore.open(paths);
+    const ref = await store.write(bytes('C'), 'png', meta('portrait'));
+    await store.write(bytes('C'), 'png', meta('shot_image'));
+    const decided: string[] = [];
+    await store.migrateTakes((row) => {
+      decided.push(row.kind);
+      return { current: true };
+    });
+    // `decide` sees the project row, which answers for the hash; the base row is stamped false.
+    expect(decided).toEqual(['shot_image']);
+    expect(store.unstamped).toBe(false);
+    expect(store.get(ref.hash)).toMatchObject({ kind: 'shot_image', current: true });
+    const base = JSON.parse(await readFile(paths.baseManifest, 'utf8')) as {
+      assets: { current: boolean }[];
+    };
+    expect(base.assets[0]!.current).toBe(false);
   });
 });
 

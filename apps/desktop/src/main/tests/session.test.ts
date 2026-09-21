@@ -1394,6 +1394,12 @@ describe('WorkspaceSession — over a generated project', () => {
     expect(result.ok).toBe(true);
     expect(await p.read('characters/aiko/character.md')).toContain('status: approved');
     expect((await session.status()).blockedOnGate).toBe(false);
+    // The gate holds as well as accepts, so the approved draft is the slot's current take.
+    expect(await session.assetInfo(candidates[0]!.hash)).toMatchObject({
+      current : true,
+      accepted: true,
+      approved: true,
+    });
 
     await p.run(); // the gate is clear: model sheets + the remaining shots render
     expect((await session.status()).tasks.every((t) => t.status === 'done')).toBe(true);
@@ -1698,6 +1704,25 @@ describe('WorkspaceSession — over a generated project', () => {
     expect((await session.assetInfo(ready!.hash))!.accepted).toBe(true);
     expect((await session.approvable()).map((a) => a.hash)).not.toContain(ready!.hash);
   });
+
+  // The list is one row per slot: the take it holds. A take a later render pushed out is not
+  // waiting on anything, and accepting it outright is refused in favour of `asset.restore`.
+  it('lists only the take a slot holds, and refuses to accept one it does not', async () => {
+    const { store } = await p.reload();
+    const plate = store.manifest().find((a) => a.kind === 'location_ref' && a.current)!;
+    const older = await store.write(new TextEncoder().encode('an older plate'), 'png', {
+      kind      : 'location_ref',
+      sourceTask: plate.sourceTask,
+      modelId   : plate.modelId,
+      satisfies : plate.satisfies[0]!,
+    });
+    const waiting = await session.approvable();
+    expect(waiting.map((a) => a.hash)).not.toContain(older.hash);
+    const refused = await session.previewAccept(older.hash);
+    expect(refused).toMatchObject({ ok: false });
+    expect(refused.message).toContain('asset.restore');
+    expect((await session.assetInfo(older.hash))!.newerTake).toBe(plate.hash);
+  });
 });
 
 /**
@@ -1937,11 +1962,19 @@ describe('WorkspaceSession — restoring an older take', () => {
     const back = (await session.assetInfo(first.hash!))!;
     expect(back.slot).toBe(slot);
     expect(back.newerTake).toBeUndefined();
-    expect(back.accepted).toBe(true);
+    expect(back).toMatchObject({ current: true, accepted: true, approved: true });
+    // Put back keeps the row's own account of how it first arrived; only the hold time moves.
+    expect(back.via).toBe('upload');
     // The picture is still the one it always was, so it goes on reporting the drift it really has
     expect(back.prompt).toBe(drawnFrom);
-    // And the file that had taken the slot is now the older take, pointing back at this one
-    expect((await session.assetInfo(second.hash!))!.newerTake).toBe(first.hash);
+    // And the file that had taken the slot is now the older take, pointing back at this one. An
+    // adoption holds without approving, so it was never accepted and is not now.
+    expect(await session.assetInfo(second.hash!)).toMatchObject({
+      newerTake: first.hash,
+      current  : false,
+      accepted : false,
+      approved : false,
+    });
   });
 });
 

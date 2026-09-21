@@ -42,7 +42,7 @@ describe('adoptionForSlot', () => {
     try {
       const deps = await depsOf(p);
       const refusal = async (slot: Parameters<typeof adoptSlot>[1]['slot'], hash = ref.hash) => {
-        const decided = await adoptionForSlot(deps, { hash, slot });
+        const decided = await adoptionForSlot(deps, { hash, slot, via: 'adopt' });
         return decided.ok ? { code: 'ok', reason: decided.plan.note } : decided;
       };
 
@@ -71,6 +71,7 @@ describe('adoptionForSlot', () => {
       const decided = await adoptionForSlot(await depsOf(p), {
         hash: ref.hash,
         slot: { kind: 'plate', locationId: 'rooftop', variant: 'evening' },
+        via : 'adopt',
       });
       expect(decided.ok && decided.plan).toMatchObject({
         kind : 'location_ref',
@@ -93,6 +94,7 @@ describe('adoptSlot', () => {
       const { plan } = await adoptSlot(await depsOf(p), {
         hash: ref.hash,
         slot: { kind: 'plate', locationId: 'rooftop', variant: 'evening' },
+        via : 'adopt',
       });
 
       const summary = await p.run();
@@ -125,15 +127,26 @@ describe('adoptSlot', () => {
       const slot = { kind: 'shot', sceneId: 'arrival', shotId } as const;
 
       // Mock-marked bytes are never real output, whatever slot they are offered for.
-      expect(await adoptionForSlot(await depsOf(p), { hash: rendered, slot })).toMatchObject({
+      expect(
+        await adoptionForSlot(await depsOf(p), { hash: rendered, slot, via: 'adopt' }),
+      ).toMatchObject({
         code: 'MOCK_PLACEHOLDER',
       });
 
-      const refused = await adoptionForSlot(await depsOf(p), { hash: ref.hash, slot });
+      const refused = await adoptionForSlot(await depsOf(p), {
+        hash: ref.hash,
+        slot,
+        via: 'adopt',
+      });
       expect(refused).toMatchObject({ code: 'ALREADY_RENDERED' });
       expect(!refused.ok && refused.reason).toContain('replace');
 
-      const { plan } = await adoptSlot(await depsOf(p), { hash: ref.hash, slot, replace: true });
+      const { plan } = await adoptSlot(await depsOf(p), {
+        hash: ref.hash,
+        slot,
+        replace: true,
+        via    : 'adopt',
+      });
       expect(plan.supersedes).toBe(rendered);
 
       // The frame is stamped where the runner stamps one, so it reads as current rather than

@@ -156,6 +156,16 @@ the next open. So writers, readers, store and migration land together.
     - `AssetStore.hold` and `accept` route as stage 0 says.
     - The manifest is not zod-parsed (`:99-102`); every reader treats an absent `current`
       as false.
+    - As built: `Asset.current` is typed `current?: boolean` rather than
+      `current: boolean`. Absent reads as false everywhere, `store.unstamped` (any row
+      with the field absent) is what the migration keys on, and the thirty-odd test
+      fixtures that build an `Asset` literal need no change. `write` stamps a new row
+      `current: false`, so a manifest the new store has written is never mistaken for one
+      owed a migration. `AssetStore` gains `unstamped` and `migrateTakes(decide)` for the
+      migration's one write per root.
+    - As built: `readAllShots(paths, model)` moved into `@vn/store` from the desktop
+      session, since the scheduler, the CLI and `openTakeDeps` all needed it; the
+      session's `readAllShots(project)` delegates to it.
 
 ### 1b. `@vn/artgen`
 
@@ -183,6 +193,16 @@ the next open. So writers, readers, store and migration land together.
 - `migrateCurrent` and `repairCurrent` live here, not in `@vn/pipeline`, because every
   host has to run them (1c) and `vnauthor` may not import the pipeline. `repair.ts` in
   `@vn/pipeline` becomes a re-export or goes.
+    - As built: `takes.ts` holds both, plus `openTakeDeps(paths, model, config)`, which
+      opens the store, replays the graph and reads every storyboard for a host that holds
+      only the model and the paths (`vnauthor`'s `list_assets`). `repair.ts` in
+      `@vn/pipeline` re-exports them and `heldBy`, for the scheduler and the CLI, which
+      may not import `@vn/artgen`.
+    - As built: `heldBy` releases nothing for a sheet whose angle neither the binding nor
+      `angleOf` states, as `supersededBy` did: such a row could be any of the four, and
+      releasing on that basis would drop a sibling of another angle. `candidatesFor` still
+      lists it under the front slot for a caller with no task log, so a runner's hold on a
+      new sheet — whose binding carries its angle — sees it and releases it.
 
 ### 1c. Migration and repair
 
@@ -243,6 +263,12 @@ the next open. So writers, readers, store and migration land together.
   `store.write` it holds, stamping `via` on a row that has none, and `adoptionOf`
   (`adopt.ts:86-97`) writes `via` and `at` on the attempt it records. `asset.upload` that
   lands directly in a slot stamps `upload`.
+    - As built: the request's `via` is
+      `AdoptVia = 'adopt' | 'promote' | 'upload' | 'restore'`, required, so
+      `asset.replace` on an upload stamps `upload` rather than `adopt`. `'restore'` is
+      written on the attempt and never on the row, since the row keeps how the bytes first
+      arrived. The desktop's `adoptAsset` takes the `via` as a fourth argument, defaulting
+      to `'adopt'`.
 - `promoteConcept` (`promote.ts:158-161`) passes `keepPrompt` (decision 9).
 - `asset.restore` (`session/asset.ts:1001-1023`) adopts with `via: 'restore'`, then
   accepts. `asset.adopt` and `asset.replace` hold and do not accept.
@@ -252,6 +278,13 @@ the next open. So writers, readers, store and migration land together.
   in the command — regenerating any take of a slot regenerates the slot (decision 4).
 - `requeue` and `requeueDrifted` clear `output` and leave `current`, as today. A bound
   generation graph goes through the runner wrapper and inherits all of this.
+    - As built: a scheduled graph draw stamps `via: 'run'` like any other runner output,
+      since the runner wrapper is where the hold happens; `'graph'` is reserved for the
+      interactive run stage 4 adds.
+    - As built: `vngen approve` and the testkit's `approve` hold and then accept, as
+      `gate.approve` does, through `heldBy` re-exported from `@vn/pipeline`. The CLI's
+      `loadProject` and `vnauthor`'s `list_assets` run `repairCurrent` (1c); the other
+      `vnauthor` asset tools open the store as they did, since they only look a hash up.
 
 ### 1e. Readers
 
@@ -288,6 +321,11 @@ that read it to answer "is it approved" reads `assetApproved`.
   `done → 'accepted'` label becomes `'kept'` (decision 12);
   `rules/tests/attempts.test.ts:152` follows.
 - `docs/reference/document-tree.md` "newest first" becomes true.
+- As built: `assetInfo` also carries `via` and `at`; `badgesOf` reads `approved`; the
+  backlinks' `accepted` on a page asset reads `assetApproved`, so a portrait row whose
+  flag is set reports the gate's answer. `asset.regenerate`'s description says that
+  regenerating any take regenerates the slot, and `asset.accept`'s that only the current
+  take can be accepted.
 
 ### 1f. Tests and regenerations
 
@@ -304,6 +342,10 @@ that read it to answer "is it approved" reads `assetApproved`.
   success attempt carries `at`.
 - `gate`: popup contents after a regeneration (one row), after a restore (none), after a
   re-key (the old take, one row). `doctree`: fold order with a testkit clock.
+    - As built: the popup is covered by `approvable` over an older take written beside the
+      current one (not listed; `asset.accept` refuses it naming `asset.restore`) and by
+      the restore test's before-and-after rows; fold order is pinned where it is decided,
+      `buildSlotGraph`'s candidates (`newestFirst`), since the tree keeps that order.
 - `session.test.ts:1398-1429` (run then export in one session) passes because the writers
   hold in the same commit.
 - `pnpm gen:uxmodel` in the commit that drops `settled`; `command-table.md` regenerated
@@ -540,7 +582,7 @@ what the plan does about it.
 Stages landed, each as its own green commit on the `slot-history` branch:
 
 - [x] Stage 0 — cross-root adoption visible to its slot.
-- [ ] Stage 1 — the model.
+- [x] Stage 1 — the model.
 - [ ] Stage 2 — export refusal, `vngen accept`, `acceptAll`.
 - [ ] Stage 3 — `Shot.status` removed.
 - [ ] Stage 4 — interactive graph run files a take.

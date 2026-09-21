@@ -23,6 +23,7 @@ import {
   decomposeAll,
   gateStatus,
   graphRuntime,
+  heldBy,
   hostPriceTables,
   priceSlots,
   readProjectGraphs,
@@ -603,6 +604,14 @@ async function approveCharacter(
   }
   const bytes = await project.store.read({ hash, ext: project.store.get(hash)?.ext ?? 'png' });
   await writeApprovedPortrait(project.paths, characterId, bytes);
+  // Held as well as accepted, so a draft chosen here is the slot's current take too
+  const assets = project.store.manifest();
+  const asset = assets.find((a) => a.hash === hash);
+  if (asset) {
+    await project.store.hold(hash, heldBy(asset, { model: project.model, assets }), {
+      at: new Date().toISOString(),
+    });
+  }
   await project.store.accept(hash);
   return { ok: true, message: `Approved ${characterId} → ${hash}.` };
 }

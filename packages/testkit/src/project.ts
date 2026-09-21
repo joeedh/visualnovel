@@ -28,7 +28,13 @@ import {
 } from '@vn/providers';
 import type { Graph } from '@vn/gengraph';
 import { appendGraphJournal, graphBlobStore, readGraphJournal } from '@vn/gengraph/state';
-import { createGenServices, indexGraphs, type GraphRuntime, type LoadedGraph } from '@vn/pipeline';
+import {
+  createGenServices,
+  heldBy,
+  indexGraphs,
+  type GraphRuntime,
+  type LoadedGraph,
+} from '@vn/pipeline';
 import { runPipeline, type RunProgress, type RunSummary } from '@vn/scheduler';
 import {
   characterDoc,
@@ -81,6 +87,8 @@ export interface RunOptions {
   abort?: AbortSignal;
   /** The scheduler's own `onProgress`, for a test watching what a task says it is doing. */
   onProgress?: (progress: RunProgress) => void;
+  /** The scheduler's own `now`: the clock a run's attempts and its held takes are stamped with. */
+  now?: () => string;
 }
 
 export interface MakeProjectOptions {
@@ -228,6 +236,7 @@ export class TestProject {
       ...(opts.only === undefined ? {} : { only: opts.only }),
       ...(opts.abort === undefined ? {} : { abort: opts.abort }),
       ...(opts.onProgress === undefined ? {} : { onProgress: opts.onProgress }),
+      ...(opts.now === undefined ? {} : { now: opts.now }),
       ...(opts.graphs === undefined
         ? {}
         : {
@@ -277,10 +286,11 @@ export class TestProject {
 
   /**
    * Approve a portrait the way `vngen approve` does — front-matter, the visible
-   * `approved.png`, and `store.accept` — so the next `reload()` sees the gate cleared.
+   * `approved.png`, then `store.hold` and `store.accept` — so the next `reload()` sees the gate
+   * cleared and the slot holding the approved draft.
    */
   async approve(characterId: string, hash?: string): Promise<string> {
-    const { store } = await this.reload();
+    const { store, model } = await this.reload();
     const chosen = hash ?? this.portraitsFor(store, characterId)[0]?.hash;
     if (!chosen) {
       throw new Error(`no portrait asset for character "${characterId}" — run() first`);
@@ -294,6 +304,13 @@ export class TestProject {
       characterId,
       await store.read({ hash: chosen, ext: 'png' }),
     );
+    const assets = store.manifest();
+    const asset = assets.find((a) => a.hash === chosen);
+    if (asset) {
+      await store.hold(chosen, heldBy(asset, { model, assets }), {
+        at: new Date().toISOString(),
+      });
+    }
     await store.accept(chosen);
     return chosen;
   }

@@ -144,16 +144,16 @@ describe('promptRepeated', () => {
 });
 
 describe('attemptOutcome', () => {
-  it('accepts only the last attempt of a done task', () => {
+  it('keeps only the last attempt of a done task', () => {
     const t = task('done', threeAttempts);
     expect(threeAttempts.map((a, i) => attemptOutcome(t, a, i))).toEqual([
       'rejected',
       'rejected',
-      'accepted',
+      'kept',
     ]);
   });
 
-  it('accepts nothing on a needs_human task', () => {
+  it('keeps nothing on a needs_human task', () => {
     const t = task('needs_human', threeAttempts);
     expect(threeAttempts.map((a, i) => attemptOutcome(t, a, i))).toEqual([
       'rejected',

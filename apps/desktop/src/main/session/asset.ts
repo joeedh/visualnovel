@@ -33,7 +33,9 @@ import {
   slotLabel,
   slotOf,
   slotTaskHash,
-  supersededBy,
+  acceptRefusal,
+  resolveBinding,
+  sheetAngleOf,
   subjectEntity,
   uploadOf,
   uploadReference,
@@ -41,6 +43,7 @@ import {
   type ConceptRequest,
 } from '@vn/artgen';
 import type { AnyTask, RefBinding } from '@vn/types';
+import type { AdoptVia } from '@vn/artgen';
 import type { AssetInfo, AssetListing } from '../../shared/ipc.js';
 import { graphSlugs, readGraph } from '../doctree/graphs.js';
 import { labelAssets, labelContext } from '../assets/assetlabel.js';
@@ -57,6 +60,9 @@ import {
 
 export class AssetPart {
   constructor(private readonly session: WorkspaceSession) {}
+
+  /** The clock a hold and its attempt are stamped with. */
+  private readonly clock = (): string => new Date().toISOString();
 
   async assetLibrary(): Promise<AssetListing[]> {
     const project = await loadProject(this.session.dir);
@@ -103,22 +109,18 @@ export class AssetPart {
     // refused by name already, and a second sentence beside those reads as a second rule. Their
     // prereqs are still listed, because what a sketch was drawn from is worth showing regardless.
     const unapproved = ACCEPTABLE.has(asset.kind) ? prereqRefusal(label, prereqs) : undefined;
-    const from = slotOf(asset, labels.angleOf?.(asset.sourceTask));
+    const from = slotOf(asset, sheetAngleOf(asset, labels));
     const current = from ? this.session.gatePart.slotTask(project, from, shots) : undefined;
-    // A slot only counts while these are the bytes in it: a superseded render keeps its binding,
-    // and a pane offering to replace a superseded render would supersede a picture already
-    // moved past.
-    const slot = from && task?.status === 'done' && task.output === asset.hash ? from : undefined;
+    // What the slot holds now is the current row, not the identity's output: an old take stays
+    // current through a re-key until the new identity lands. A slot only counts while these are
+    // the bytes in it, because a pane offering to replace a superseded render would supersede a
+    // picture already moved past.
+    const holder = from ? resolveBinding(from, { ...labels, assets: manifest }) : undefined;
+    const slot = from && holder === asset.hash ? from : undefined;
     const failure = from
       ? this.session.gatePart.failureOf(project, current, asset.sourceTask)
       : undefined;
-    // Reported only once the bytes exist, so the pane never follows a hash the manifest cannot
-    // answer for.
-    const holder = current === undefined ? undefined : project.graph.get(current)?.output;
-    const newer =
-      holder !== undefined && holder !== asset.hash && manifest.some((a) => a.hash === holder)
-        ? holder
-        : undefined;
+    const newer = holder !== undefined && holder !== asset.hash ? holder : undefined;
     // Only a concept bound to a location promotes to a plate, and only that strip asks for a
     // variant, so nothing else pays for the lookup.
     const conceptOf = asset.kind === 'concept' ? asset.satisfies[0]?.locationId : undefined;
@@ -132,13 +134,24 @@ export class AssetPart {
       label,
       base      : isBaseKind(asset.kind),
       accepted  : asset.accepted,
+      current   : asset.current === true,
+      approved  : assetApproved(asset, project.model),
       sourceTask: asset.sourceTask,
+      ...(asset.via === undefined ? {} : { via: asset.via }),
+      ...(asset.at === undefined ? {} : { at: asset.at }),
       ...(asset.prompt === undefined ? {} : { prompt: asset.prompt }),
       ...(asset.title === undefined ? {} : { title: asset.title }),
       ...(derived === undefined ? {} : { derived }),
       // An unknown derivation is not evidence of drift — it means the project no longer describes
-      // this asset, which the editor says a different way.
-      stale: derived !== undefined && recorded !== undefined && derived !== recorded,
+      // this asset, which the editor says a different way. An adopted or promoted picture was
+      // never drawn from the derived prompt, so it has none to have gone stale against.
+      stale:
+        derived !== undefined &&
+        recorded !== undefined &&
+        derived !== recorded &&
+        asset.via !== 'adopt' &&
+        asset.via !== 'promote' &&
+        asset.via !== 'upload',
       ...(suspended ? { suspended: suspended.reason } : {}),
       ...(slot ? { slot: slotKey(slot) } : {}),
       ...(from ? { drawnFor: slotKey(from) } : {}),
@@ -197,8 +210,10 @@ export class AssetPart {
       };
     }
     // Checked after suspension deliberately: suspension is a claim about these bytes resting on a
-    // reference that moved, which is more specific than a claim about other bytes upstream.
-    if (info.unapproved) return { ok: false, message: info.unapproved };
+    // reference that moved, which is more specific than a claim about the slot or other bytes
+    // upstream. The rule itself is shared with the CLI and the testkit.
+    const refused = await this.refusalToAccept(hash);
+    if (refused) return { ok: false, message: refused };
     return {
       ok     : true,
       message: info.accepted
@@ -207,13 +222,25 @@ export class AssetPart {
     };
   }
 
+  /** `acceptRefusal` over the project as it stands: not the slot's take, or unapproved upstream. */
+  private async refusalToAccept(hash: string): Promise<string | undefined> {
+    const project = await loadProject(this.session.dir);
+    const manifest = project.store.manifest();
+    const asset = manifest.find((a) => a.hash === hash);
+    if (!asset) return `No asset "${hash}" in the manifest.`;
+    const labels = labelContext(project.model, project.graph);
+    const label = labelAssets(manifest, labels).get(hash) ?? hash;
+    const shots = await readAllShots(project);
+    return acceptRefusal(asset, label, { ...labels, assets: manifest, shots });
+  }
+
   /**
-   * Mark an asset as the accepted one for what it satisfies. Generic across both roots, and it
-   * asks {@link previewAccept} itself rather than trusting that a check already ran — a caller
-   * may skip the check, so the command cannot rely on it having happened.
+   * Mark an asset as approved by the author. Generic across both roots, and it asks
+   * {@link previewAccept} itself rather than trusting that a check already ran — a caller may
+   * skip the check, so the command cannot rely on it having happened.
    *
-   * Accepting is exclusive per slot: the takes this one replaces are un-accepted in the same write,
-   * because a slot with two accepted candidates cannot be resolved and reads as empty.
+   * Accepting selects nothing: the take is already the one its slot holds, or the preview refused
+   * and named `asset.restore`, which is the act that puts an older take back.
    */
   async acceptAsset(hash: string): Promise<PromptWriteResult> {
     const allowed = await this.session.previewAccept(hash);
@@ -221,13 +248,10 @@ export class AssetPart {
     const project = await loadProject(this.session.dir);
     if (!project.store.has(hash))
       return { ok: false, message: `No asset "${hash}" in the store.`, written: [] };
-    const assets = project.store.manifest();
-    const asset = assets.find((a) => a.hash === hash);
-    const ctx = { ...labelContext(project.model, project.graph), assets };
     // Asked before the write, since which root answers is decided by which one holds the hash and
     // an accept moves no bytes between them.
     const manifest = relPath(this.session.dir, project.store.manifestFileOf(hash));
-    await project.store.accept(hash, asset ? supersededBy(asset, ctx) : []);
+    await project.store.accept(hash);
     return { ok: true, message: `Accepted ${hash.slice(0, 8)}.`, written: [manifest] };
   }
 
@@ -321,12 +345,13 @@ export class AssetPart {
    * Whether a regeneration would land, and the task it would requeue. Shared by the check and the
    * write so the refusal a surface shows is the refusal the command gives.
    *
-   * A `stale` asset is refused on purpose: its task is an orphan (the prompt moved on, so the
-   * planner now wants a different hash), and requeueing it would spend a real image call
-   * reproducing the picture the author just edited away from. `tasks.jsonl` is never pruned, so
-   * without this the log's dead nodes stay re-runnable forever. The one stale asset that is not
-   * refused is one whose slot has since failed: there the task to re-run is the one that gave up,
-   * and no run will reach it on its own once its retry budget is spent.
+   * Regenerating any take of a slot regenerates the slot: the task requeued is the slot's
+   * identity as the project states it today, not the one these bytes came from. A `stale` take's
+   * own task is an orphan (the prompt moved on, so the planner wants a different hash), and
+   * requeueing it would spend a real image call reproducing the picture the author just edited
+   * away from; `tasks.jsonl` is never pruned, so the log's dead nodes would otherwise stay
+   * re-runnable forever. A slot that has since failed re-runs the task that gave up, which no run
+   * reaches on its own once its retry budget is spent.
    */
   private async regeneration(
     hash: string,
@@ -356,13 +381,6 @@ export class AssetPart {
         reason: `${info.label} is an upload: nothing generated it, so there is no task to re-run. Bring in a different image with asset.upload(file=…).`,
       };
     }
-    const task = info.sourceTask ? project.graph.get(info.sourceTask) : undefined;
-    if (!task) {
-      return {
-        ok    : false,
-        reason: `${info.label} records no task in the graph, so there is nothing to re-run.`,
-      };
-    }
     // A re-render the project has already given up on is the picture the author is asking for,
     // not the one these bytes came from. The scheduler will not requeue it once its retry budget
     // is spent, and the orphan refusal below would send the author to a run that does nothing.
@@ -375,6 +393,26 @@ export class AssetPart {
           note: `Would re-run the ${later.kind} that gave up on ${info.label}. The picture on screen is the last one that got through, and it stays until the new render lands.`,
         };
       }
+    }
+    const from = info.drawnFor ? parseSlot(info.drawnFor) : undefined;
+    const slotTask = from
+      ? this.session.gatePart.slotTask(project, from, await readAllShots(project))
+      : undefined;
+    const task =
+      (slotTask ? project.graph.get(slotTask) : undefined) ??
+      (info.sourceTask ? project.graph.get(info.sourceTask) : undefined);
+    if (!task) {
+      return {
+        ok    : false,
+        reason: `${info.label} records no task in the graph, so there is nothing to re-run.`,
+      };
+    }
+    if (task.hash !== info.sourceTask && info.stale) {
+      return {
+        ok: true,
+        task,
+        note: `Would re-run the ${task.kind} for ${info.drawnFor}: these bytes were rendered from a prompt the project has since changed, so the slot is drawn afresh from today's.`,
+      };
     }
     if (info.stale) {
       return {
@@ -781,7 +819,7 @@ export class AssetPart {
 
     // The bytes are in by now, so a refusal here is recoverable rather than lost — which is what
     // the message has to say, because the author's file did land somewhere.
-    const adopted = await this.session.adoptAsset(result.ref.hash, slot, replace);
+    const adopted = await this.session.adoptAsset(result.ref.hash, slot, replace, 'upload');
     if (!adopted.ok) {
       return {
         ok     : false,
@@ -823,7 +861,7 @@ export class AssetPart {
     const project = await loadProject(this.session.dir);
     const decided = await adoptionForSlot(
       { config: project.config, paths: project.paths, store: project.store },
-      { hash, slot: said, replace, ...(bytes ? { bytes } : {}) },
+      { hash, slot: said, replace, via: 'adopt', ...(bytes ? { bytes } : {}) },
     );
     return decided.ok
       ? { ok: true, project, slot: said, plan: decided.plan }
@@ -851,13 +889,14 @@ export class AssetPart {
     hash: string,
     slot: string,
     replace: boolean,
+    via: AdoptVia = 'adopt',
   ): Promise<{ ok: boolean; message: string; hash?: string; written: string[] }> {
     const decided = await this.adoptPlan(hash, slot, replace);
     if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
     const { project, slot: binding } = decided;
     const result = await adoptSlot(
-      { config: project.config, paths: project.paths, store: project.store },
-      { hash, slot: binding, replace },
+      { config: project.config, paths: project.paths, store: project.store, now: this.clock },
+      { hash, slot: binding, replace, via },
     );
     const superseded = result.plan.supersedes
       ? ` It supersedes the render ${result.plan.supersedes.slice(0, 8)}, whose bytes stay in the store.`
@@ -1010,8 +1049,8 @@ export class AssetPart {
         written: [],
       };
     const result = await adoptSlot(
-      { config: project.config, paths: project.paths, store: project.store },
-      { hash, slot, replace: true, keepPrompt: true },
+      { config: project.config, paths: project.paths, store: project.store, now: this.clock },
+      { hash, slot, replace: true, keepPrompt: true, via: 'restore' },
     );
     const accepted = await this.session.acceptAsset(hash);
     if (!accepted.ok) return { ok: false, message: accepted.message, written: [] };

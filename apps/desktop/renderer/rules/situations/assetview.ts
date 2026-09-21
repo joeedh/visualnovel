@@ -9,6 +9,8 @@ const info = (over: Partial<AssetInfo> = {}): AssetInfo => ({
   label     : 'Café Mori — night',
   base      : true,
   accepted  : false,
+  current   : true,
+  approved  : false,
   sourceTask: 't1',
   stale     : false,
   prereqs   : [],
@@ -51,6 +53,7 @@ export const SITUATIONS = situations<AssetSituation>(
     state: {
       info: info({
         accepted: true,
+        approved: true,
         slot    : 'plate:cafe/night',
         drawnFor: 'plate:cafe/night',
         prereqs: [

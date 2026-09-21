@@ -8,7 +8,7 @@
  * the shot is skipped, and the plan-run-replan loop starves in silence, so the check runs at write
  * time and the refusal names the path.
  */
-import type { Asset, RefBinding } from '@vn/types';
+import type { Asset, AssetBinding, RefBinding } from '@vn/types';
 import { outfitFor } from '@vn/model';
 import { overrideAt, type PromptRung, type RungContext } from './resolve.js';
 import { SHEET_FRONT } from './prompts.js';
@@ -17,13 +17,31 @@ import { slotKey, slotLabel } from './slotaddr.js';
 /**
  * The slot an asset itself fills — what a cycle check starts from. The mirror of `rungOf`, but a
  * binding rather than a rung, because a sheet's angle is part of the picture and only the rung
- * collapses the angles together. `angle` is injected for the same reason `BindingContext.angleOf`
- * is: it lives in the task's inputs and never in `satisfies`.
+ * collapses the angles together. `angle` is the task's, for a sheet row whose binding carries
+ * none; see `BindingContext.angleOf`.
  */
 export function slotOf(asset: Asset, angle?: string): RefBinding | undefined {
   const b = asset.satisfies[0];
-  if (!b) return undefined;
-  switch (asset.kind) {
+  return b ? slotOfBinding(asset.kind, b, angle) : undefined;
+}
+
+/** Every slot an asset serves, one per binding that names one. A row bound twice fills two. */
+export function slotsOf(asset: Asset, angle?: string): RefBinding[] {
+  const out: RefBinding[] = [];
+  for (const b of asset.satisfies) {
+    const slot = slotOfBinding(asset.kind, b, angle);
+    if (slot) out.push(slot);
+  }
+  return out;
+}
+
+/** The slot one binding of an asset of `kind` names, or `undefined` for a binding of another shape. */
+export function slotOfBinding(
+  kind: Asset['kind'],
+  b: AssetBinding,
+  angle?: string,
+): RefBinding | undefined {
+  switch (kind) {
     case 'portrait':
       return b.characterId ? { kind: 'portrait', characterId: b.characterId } : undefined;
     case 'model_sheet':
@@ -33,7 +51,7 @@ export function slotOf(asset: Asset, angle?: string): RefBinding | undefined {
             kind       : 'sheet',
             characterId: b.characterId,
             outfit     : b.outfit,
-            angle      : angle ?? SHEET_FRONT,
+            angle      : b.angle ?? angle ?? SHEET_FRONT,
           }
         : undefined;
     case 'location_ref':

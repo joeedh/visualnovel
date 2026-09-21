@@ -35,6 +35,7 @@ import type {
   Playable,
   SceneLine,
   Shot,
+  TakeVia,
   Task as PipelineTask,
   TaskAttempt as PipelineTaskAttempt,
   TaskKind,
@@ -732,9 +733,18 @@ export interface AssetInfo {
   label: string;
   /** Routed to the base root — see `isBaseKind`, which is the one place that is decided. */
   base: boolean;
+  /** The raw manifest flag: a person accepted this take, whether or not its slot still holds it. */
   accepted: boolean;
+  /** Whether these are the bytes the slot holds now. */
+  current: boolean;
+  /** `assetApproved`: current and accepted, or past the gate for a portrait. Drives the buttons. */
+  approved: boolean;
   /** The task that produced it; empty when the manifest records none. */
   sourceTask: string;
+  /** How the bytes entered the slot, when the row was held since that was recorded. */
+  via?: TakeVia;
+  /** When the slot last took these bytes, as an ISO timestamp, when recorded. */
+  at?: string;
   /** The prompt recorded with the bytes, if the manifest kept one. */
   prompt?: string;
   /**

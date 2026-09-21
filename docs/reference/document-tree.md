@@ -131,20 +131,23 @@ Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
 - **Each row in the Assets branch stands for a slot, and its children are the takes that
   slot has held.** A project that re-rendered a portrait four times has four pictures
   called `Aiko`, told apart only by the `(hash8)` that a label collision adds. Those four
-  pictures produce one row, which shows the picture filling the slot now. The other three
-  sit underneath it, newest first, and start collapsed, because `defaultExpanded` opens
-  only the roots. The rows are alphabetical. `SlotGraph.order` still decides which of two
-  slots claiming one picture keeps it, and the topology answers no other question here. A
-  row opens on `SlotNode.hash` where the slot resolved, and on the newest candidate where
-  it
+  pictures produce one row, which shows the take the slot holds now — its `current` row.
+  The other three sit underneath it, newest first by the row's `at` (rows never stamped
+  last, in hash order), and start collapsed, because `defaultExpanded` opens only the
+  roots. The rows are alphabetical. `SlotGraph.order` still decides which of two slots
+  claiming one picture keeps it, and the topology answers no other question here. A row
+  opens on the current take, on `SlotNode.hash` where a slot with no current row still
+  resolved (a sole candidate), and on the newest candidate otherwise, saying that nothing
+  is settled there.
 - **An asset gets a display name, and colliding names get a hash suffix.** `labelAssets`
   (`apps/desktop/src/main/assets/assetlabel.ts`, a pure function) turns the manifest's
   bindings into display names — `Aiko`, `Aiko — uniform / front`, `Café Mori — night`,
-  `greet · s2`. The angle on a model sheet comes from the task, not the binding
-  (`satisfies` binds only `{characterId, outfit}`, which four sheets share). If two assets
-  land on the same words, each keeps a `(hash8)` suffix, so every ambiguous label carries
-  its hash. An asset that nothing in the model claims falls back to `hash8.ext`, so bytes
-  whose character has been deleted do not get an invented name.
+  `greet · s2`. The angle on a model sheet comes from the binding where it names one, and
+  from the task otherwise (a row written before the angle was stored binds only
+  `{characterId, outfit}`, which four sheets share). If two assets land on the same words,
+  each keeps a `(hash8)` suffix, so every ambiguous label carries its hash. An asset that
+  nothing in the model claims falls back to `hash8.ext`, so bytes whose character has been
+  deleted do not get an invented name.
 - **A concept is named by what was asked for.** A concept is the one kind whose name is
   authored rather than derived. The name is the authored sentence cut at a word boundary,
   and it follows the subject the concept binds to, as in

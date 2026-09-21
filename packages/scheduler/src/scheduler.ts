@@ -1,15 +1,7 @@
-import type {
-  AnyTask,
-  Logger,
-  ProjectModel,
-  Providers,
-  Shot,
-  TaskKind,
-  TaskStatus,
-} from '@vn/types';
+import type { AnyTask, Logger, ProjectModel, Providers, TaskKind, TaskStatus } from '@vn/types';
 import type { AssetStore, BaseAssets } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
-import { readShots, type ProjectPaths } from '@vn/store';
+import { readAllShots, type ProjectPaths } from '@vn/store';
 import { TaskGraph, logTask } from '@vn/taskgraph';
 import { pool } from '@vn/util';
 import {
@@ -20,7 +12,7 @@ import {
   driftedTasks,
   gateStatus,
   planTasks,
-  repairAccepted,
+  repairCurrent,
   runTask,
   type CostPreview,
   type GateStatus,
@@ -228,23 +220,6 @@ export function requeueDrifted(
   return requeued;
 }
 
-/** Every scene's persisted storyboard, for the manifest repair; an unreadable one is skipped. */
-async function allShots(
-  model: ProjectModel,
-  paths: ProjectPaths,
-): Promise<ReadonlyMap<string, readonly Shot[] | null>> {
-  const out = new Map<string, readonly Shot[] | null>();
-  for (const scene of model.scenes.values()) {
-    try {
-      const loaded = await readShots(paths, scene.id, new Set(scene.lines.map((l) => l.id)));
-      if (loaded) out.set(scene.id, loaded.shots);
-    } catch {
-      // A storyboard that will not parse is reported elsewhere; here it simply names no take
-    }
-  }
-  return out;
-}
-
 /**
  * The tasks a targeted run may touch: the targets and everything upstream of them, walked over
  * `deps` from the graph as it stands now. Recomputed per wave, because a wave can plan nodes that
@@ -328,15 +303,17 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
     return new Set([...hashes].filter((hash) => wanted.has(hash)));
   };
 
-  // A slot left with two accepted takes resolves to nothing, and the plan below would read it
-  // as unrendered. The manifest is put right first, and a dry run leaves it alone.
+  // `current` is a cache of the task log, and a slot left with two current rows resolves to
+  // nothing, which the plan below would read as unrendered. The manifest is put right first, and
+  // a dry run leaves it alone.
   if (!dryRun) {
-    await repairAccepted({
+    await repairCurrent({
       model,
+      config,
       store,
       graph,
       logger,
-      readShots: () => allShots(model, paths),
+      shots: await readAllShots(paths, model),
     });
   }
 

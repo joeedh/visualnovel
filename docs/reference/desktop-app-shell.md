@@ -401,9 +401,9 @@ subscribes to `onExec`, and the bridge owns both.
   (`BUSY_PASS`), so the header keeps drawing the spinner and the Stop button through the
   gaps between rounds, and one `AbortController` covers all of them. Approving is not a
   run, so a stop asked for while a round is approving previously had nothing to abort and
-  was forgotten by the time the next round started. Its loop, its round cap and the
-  one-candidate-per-unsettled-slot rule it approves by are in
-  [`command-system.md`](command-system.md#the-registered-commands).
+  was forgotten by the time the next round started. Its loop and its round cap are in
+  [`command-system.md`](command-system.md#the-registered-commands); what it approves is
+  what `approvable` lists, at most one row per slot, the take the slot holds.
 - **Only the Help menu starts an update check.** Check for Updates…
   (`app.checkForUpdates`) queries GitHub for the latest release, compares it against
   `apps/desktop/package.json`'s version, and reports the result on screen — nothing is

@@ -1,6 +1,14 @@
 // ── Planned art: what exists, how it was directed, and drawing it again ─────
 import { z } from 'zod';
-import { assetSlotLabel, rungsFor, setArtNotes, type NotesMode } from '@vn/artgen';
+import {
+  assetApproved,
+  assetSlotLabel,
+  openTakeDeps,
+  repairCurrent,
+  rungsFor,
+  setArtNotes,
+  type NotesMode,
+} from '@vn/artgen';
 import { loadConfig } from '@vn/config';
 import { AssetStore, readShots } from '@vn/store';
 import { exists } from '@vn/util';
@@ -74,10 +82,23 @@ async function shotsFor(
   return shots;
 }
 
+/**
+ * The manifest with `current` made true to the task log first, the way every other host opens a
+ * project. A project whose `project.yaml` will not load has no slot identities to repair against,
+ * so its manifest is read as it stands.
+ */
+async function repairedStore(workspace: Workspace, model: ProjectModel): Promise<AssetStore> {
+  const config = await loadConfig(workspace.root).catch(() => undefined);
+  if (!config) return AssetStore.open(workspace.paths);
+  const deps = await openTakeDeps(workspace.paths, model, config);
+  await repairCurrent(deps);
+  return deps.store;
+}
+
 const listAssetsTool: Tool<{ subject: string }> = {
   name       : 'list_assets',
   description:
-    "List the pictures the pipeline has rendered for one subject — character:<id>, location:<id> or scene:<id> — with each one's hash, what it is, its kind, and whether it is accepted. Read-only, and the way to name an asset before `art_notes`, `view_image` or `regenerate_asset`. Concept sketches are listed by `list_images` instead, and a picture the pipeline has not drawn yet has no hash and does not appear here.",
+    "List the pictures the pipeline has rendered for one subject — character:<id>, location:<id> or scene:<id> — with each one's hash, what it is, its kind, whether it is the take its slot holds now, and whether it is approved. Read-only, and the way to name an asset before `art_notes`, `view_image` or `regenerate_asset`. Concept sketches are listed by `list_images` instead, and a picture the pipeline has not drawn yet has no hash and does not appear here.",
   mutating   : false,
   args: z.object({
     subject: z.string().min(1).describe('character:<id>, location:<id> or scene:<id>'),
@@ -89,7 +110,8 @@ const listAssetsTool: Tool<{ subject: string }> = {
         `"${a.subject}" is not a subject — write character:<id>, location:<id> or scene:<id>.`,
       );
     }
-    const store = await AssetStore.open(ctx.workspace.paths);
+    const { model } = await ctx.workspace.load();
+    const store = await repairedStore(ctx.workspace, model);
     const assets = store.manifest().filter((asset) => bindsTo(asset, subject));
     if (assets.length === 0) {
       return ok(`No rendered assets for ${a.subject} yet — the pipeline draws them.`);
@@ -97,9 +119,11 @@ const listAssetsTool: Tool<{ subject: string }> = {
     const rows = await Promise.all(
       assets.map(async (asset) => {
         const there = await exists(store.pathOf({ hash: asset.hash, ext: asset.ext }));
-        const flags = [asset.accepted ? 'accepted' : '', there ? '' : 'bytes missing'].filter(
-          Boolean,
-        );
+        const flags = [
+          asset.current ? 'current' : '',
+          assetApproved(asset, model) ? 'approved' : '',
+          there ? '' : 'bytes missing',
+        ].filter(Boolean);
         const tail = flags.length ? `  (${flags.join(', ')})` : '';
         return `${asset.hash.slice(0, 12)}  ${assetSlotLabel(asset)}  [${asset.kind}]${tail}`;
       }),
@@ -109,7 +133,8 @@ const listAssetsTool: Tool<{ subject: string }> = {
         hash    : asset.hash,
         kind    : asset.kind,
         label   : assetSlotLabel(asset),
-        accepted: asset.accepted,
+        current : asset.current === true,
+        approved: assetApproved(asset, model),
       })),
     });
   },

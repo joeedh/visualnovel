@@ -608,7 +608,8 @@ export class GenGraphEditor extends VnEditor {
   /**
    * Opens whatever fills the slot this graph draws. The picture is read from the pipeline status
    * rather than carried on the graph: a graph says what it draws, and the store says what came of
-   * it. An unsettled slot opens its first take, which is what the document tree heads it with.
+   * it. A slot that resolves to nothing opens its newest take, which is what the document tree
+   * heads it with, since candidates are listed newest first.
    */
   private async showAsset(): Promise<void> {
     const slot = this.graph === undefined ? '' : drawnSlot(this.graph);

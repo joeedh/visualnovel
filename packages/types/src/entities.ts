@@ -388,10 +388,37 @@ export interface SheetGroup {
 export interface AssetBinding {
   characterId?: string;
   outfit?: string;
+  /**
+   * Which of an outfit's sheets this is. On a binding written since takes were held; a sheet row
+   * without one is told apart from its siblings through its task's inputs instead.
+   */
+  angle?: string;
   locationId?: string;
   variant?: string;
   sceneId?: string;
   shotId?: string;
+}
+
+/**
+ * How a take's bytes entered its slot. Stamped on the row by the first hold and kept by every
+ * later one, so a restore leaves it alone and records itself on the attempt instead.
+ */
+export type TakeVia = 'run' | 'graph' | 'adopt' | 'promote' | 'upload' | 'migrated';
+
+/** What a hold stamps on the row it holds. */
+export interface TakeStamp {
+  /** ISO timestamp of the hold. */
+  at?: string;
+  via?: TakeVia;
+}
+
+/**
+ * What the one-shot migration writes onto a row: the take bits, and for a sheet the angle
+ * backfilled onto its outfit binding.
+ */
+export interface TakeEdit extends TakeStamp {
+  current: boolean;
+  angle?: string;
 }
 
 /** A stored, generated image and its provenance (report §3, §8). */
@@ -418,7 +445,21 @@ export interface Asset {
    * must not erase the first. A manifest written with a single record reads as one element.
    */
   satisfies: AssetBinding[];
+  /**
+   * Whether these are the bytes the slot holds. At most one row per slot; a hold clears the
+   * others in the same write. Absent on a row written before takes were held, which every reader
+   * treats as false and `migrateCurrent` stamps once.
+   */
+  current?: boolean;
+  /**
+   * Whether a person approved this take. Never cleared by a hold, so a superseded take keeps it
+   * as history; a surface asking "is this approved" reads `current` as well.
+   */
   accepted: boolean;
+  /** ISO timestamp of the last hold — when the slot most recently took these bytes. */
+  at?: string;
+  /** See {@link TakeVia}. */
+  via?: TakeVia;
   /**
    * A short human name, for an asset whose name cannot be derived from what it serves. A plate's
    * binding gives it the name "Café Mori — night"; a concept was asked for in a sentence, and that

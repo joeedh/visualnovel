@@ -73,11 +73,13 @@ export const assetAccept = define({
   id         : 'asset.accept',
   title      : 'Accept asset',
   description:
-    'Mark this asset as the accepted one for what it satisfies. A portrait is refused by name: ' +
-    'approving one also writes character.md and approved.png, which is `gate.approve`. So is a ' +
-    'concept: nothing downstream consumes one, so making it count is `art.promote`.',
+    'Approve the take its slot holds. Only the current take can be accepted: an older one is ' +
+    'refused in favour of `asset.restore`, which puts it back and accepts it in one act. A ' +
+    'portrait is refused by name: approving one also writes character.md and approved.png, ' +
+    'which is `gate.approve`. So is a concept: nothing downstream consumes one, so making it ' +
+    'count is `art.promote`.',
   notes:
-    '`store.accept`, generic across both roots. A portrait is refused by name — approving one also writes `character.md` and `approved.png`, which is `gate.approve`. So is a concept: nothing downstream consumes one, so making it count is `art.promote`. And so is an upload — nothing generated it, so there is no work to bless; it counts by being pointed at. A **suspended** asset is refused too, naming what moved.',
+    '`store.accept`, generic across both roots, which sets the row’s `accepted` bit and nothing else — which take the slot holds is `current`, set by `store.hold`. A take the slot no longer holds is refused, naming `asset.restore`. A portrait is refused by name — approving one also writes `character.md` and `approved.png`, which is `gate.approve`. So is a concept: nothing downstream consumes one, so making it count is `art.promote`. And so is an upload — nothing generated it, so there is no work to bless; it counts by being pointed at. A **suspended** asset is refused too, naming what moved.',
   mutating   : true,
   affects    : ['assets/manifest.json', 'vngen/build/manifest.json'],
   props      : { hash: prop.string('the asset hash to accept') },
@@ -126,13 +128,12 @@ export const assetRestore = define({
   id         : 'asset.restore',
   title      : 'Put this take back',
   description:
-    'Make an older take the picture in its slot again, and accept it. Accepting alone only ' +
-    'flips a manifest flag — the slot still names the later render, so the runner and the ' +
-    'exporter go on using it. The later take stays in the store as a take of the same slot, and ' +
-    'the prompt these bytes were drawn from is kept rather than restamped, so the picture goes ' +
-    'on reporting the drift it really has.',
+    'Make an older take the picture in its slot again, and accept it. The slot holds it from ' +
+    'then on, so the runner and the exporter use it; the take it replaces stays in the store as ' +
+    'history, its own approval untouched. The prompt these bytes were drawn from is kept rather ' +
+    'than restamped, so the picture goes on reporting the drift it really has.',
   notes:
-    '`asset.adopt(replace)` followed by `asset.accept`, as one act. Refused for a take that is already the picture in its slot, for one nothing planned, and — by name — for a portrait (`gate.approve`), a concept and an upload. The suspension and upstream-approval refusals are the ones `asset.accept` would give.',
+    '`asset.adopt(replace)` followed by `asset.accept`, as one act: the hold releases the take that had the slot, whose `accepted` bit is left as history. The row’s `via` keeps how the take first arrived; only `at` moves. Refused for a take that is already the picture in its slot, for one nothing planned, and — by name — for a portrait (`gate.approve`), a concept and an upload. The suspension and upstream-approval refusals are the ones `asset.accept` would give.',
   mutating   : true,
   affects: [
     'assets/objects',
@@ -162,7 +163,8 @@ export const assetUnapprove = define({
     'Take approval back off this asset, leaving what it answered unanswered again. A portrait ' +
     'goes back through the P3 gate — the character sheet’s `status:` and `approved_portrait:` ' +
     'and `approved.png` all come back out with it — and everything else is the manifest flag ' +
-    '`asset.accept` set. The bytes are never touched, so the same take can be approved again.',
+    '`asset.accept` set. The slot still holds the take; only the approval moves, and the bytes ' +
+    'are never touched, so the same take can be approved again.',
   mutating   : true,
   affects: [
     'characters',
@@ -325,13 +327,14 @@ export const assetRegenerate = define({
   id         : 'asset.regenerate',
   title      : 'Regenerate asset',
   description:
-    "Put this asset's task back to pending so the next run re-renders it. With `run` that task " +
+    "Put this asset's slot back to pending so the next run re-renders it: regenerating any take " +
+    'of a slot regenerates the slot, and the picture drawn takes the slot over. With `run` that task ' +
     'alone, and whatever upstream it still needs, is run for real straight afterwards — and it ' +
     'is run anyway when the requeue left exactly one task plannable, because a one-task run is ' +
     'not worth a second trip. A fixed image seed makes a plain re-roll deterministic — art notes, ' +
     'or a different image model, are how the picture actually changes.',
   notes:
-    "Put the asset's task back to `pending`; with `run`, run that task and its upstream needs for real straight afterwards, nothing else. A fixed image seed makes a plain re-roll deterministic, and the refusal text says so. A **concept** is refused by name — the planner never made one, so there is no task to requeue: `art.redraw` is what draws it again. An **upload** is refused for the same reason, pointing at `asset.upload` for a different image.",
+    "Put the slot's identity task back to `pending`, whichever take of the slot was named — an older take has no task of its own to re-run, so regenerating it regenerates the slot; with `run`, run that task and its upstream needs for real straight afterwards, nothing else. A fixed image seed makes a plain re-roll deterministic, and the refusal text says so. A **concept** is refused by name — the planner never made one, so there is no task to requeue: `art.redraw` is what draws it again. An **upload** is refused for the same reason, pointing at `asset.upload` for a different image.",
   mutating   : true,
   affects: [
     'assets/objects',

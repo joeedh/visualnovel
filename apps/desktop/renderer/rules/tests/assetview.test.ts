@@ -38,6 +38,8 @@ const info = (over: Partial<AssetInfo> = {}): AssetInfo => ({
   label     : 'Café Mori — night',
   base      : true,
   accepted  : false,
+  current   : true,
+  approved  : false,
   sourceTask: 't1',
   stale     : false,
   prereqs   : [],
@@ -195,7 +197,10 @@ describe('approveAction', () => {
   // Approving what is already approved writes what the manifest already says, so the button turns
   // around and offers the only act left on it — through the one command that undoes either door.
   it('offers to take the approval back off one that already stands', () => {
-    const both = [portrait({ accepted: true }), info({ accepted: true })];
+    const both = [
+      portrait({ accepted: true, approved: true }),
+      info({ accepted: true, approved: true }),
+    ];
     for (const one of both) {
       expect(approveAction(one)).toEqual({
         ok     : true,
@@ -220,7 +225,7 @@ describe('approveAction', () => {
   // undoing an approval, so the refusal that greys out approving does not grey this out
   it('still offers it while something upstream is unapproved', () => {
     const waiting = 'Approve what this was drawn from first: cafe — night plate is not approved.';
-    const action = approveAction(info({ accepted: true, unapproved: waiting }));
+    const action = approveAction(info({ accepted: true, approved: true, unapproved: waiting }));
     expect(action.ok && action.id).toBe('asset.unapprove');
   });
 
@@ -366,7 +371,7 @@ describe('watchSlot', () => {
 describe('badgesOf', () => {
   it('reads what it is, where it lives, and what is true of it', () => {
     expect(badgesOf(info())).toEqual(['location_ref', 'base']);
-    expect(badgesOf(info({ base: false, accepted: true, stale: true }))).toEqual([
+    expect(badgesOf(info({ base: false, accepted: true, approved: true, stale: true }))).toEqual([
       'location_ref',
       'project',
       'accepted',
@@ -758,7 +763,7 @@ describe('controls', () => {
       ],
     }),
     concept({ locationVariants: [], failure: failed({ task: 't9', later: true }) }),
-    portrait({ accepted: true, configSeed: 3 }),
+    portrait({ accepted: true, approved: true, configSeed: 3 }),
   ];
 
   it('lists every control the functions produce, each key once', () => {

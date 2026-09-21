@@ -138,14 +138,9 @@ class ApprovalList {
   }
 }
 
-/** What a row says under its name: why it cannot be approved yet, and what approving replaces. */
+/** What a row says under its name: why it cannot be approved yet. */
 function notesFor(item: Approvable): string[] {
-  const notes: string[] = [];
-  if (item.blocked) notes.push(item.blocked);
-  if (item.settled) {
-    notes.push('Another take for this slot is already approved — approving this one replaces it.');
-  }
-  return notes;
+  return item.blocked ? [item.blocked] : [];
 }
 
 /** Opens the list, or closes it if it is already open, so the button never stacks two popups. */

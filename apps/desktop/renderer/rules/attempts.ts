@@ -11,7 +11,7 @@ export interface MergedDefect extends Defect {
 }
 
 /** What became of one attempt. `pending` means the loop hasn't ruled on it yet. */
-export type AttemptOutcome = 'accepted' | 'rejected' | 'failed' | 'pending';
+export type AttemptOutcome = 'kept' | 'rejected' | 'failed' | 'pending';
 
 const SEVERITY_RANK: Record<Defect['severity'], number> = { blocking: 0, major: 1, minor: 2 };
 
@@ -75,13 +75,15 @@ export function promptRepeated(prev: TaskAttempt | undefined, next: TaskAttempt)
 }
 
 /**
- * Only the last attempt of a `done` task was accepted; every earlier attempt was rejected by
- * definition, because a later one exists. A task still in flight has ruled on nothing yet.
+ * Only the last attempt of a `done` task was kept; every earlier attempt was rejected by
+ * definition, because a later one exists. A task still in flight has ruled on nothing yet. Kept
+ * rather than accepted, because whether a person approved the picture is the manifest row's
+ * question, and only a `Task` is in hand here.
  */
 export function attemptOutcome(task: Task, attempt: TaskAttempt, index: number): AttemptOutcome {
   if (attempt.error) return 'failed';
   if (index < task.attempts.length - 1) return 'rejected';
-  if (task.status === 'done') return 'accepted';
+  if (task.status === 'done') return 'kept';
   if (task.status === 'needs_human' || task.status === 'failed') return 'rejected';
   return 'pending';
 }

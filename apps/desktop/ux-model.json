@@ -88,7 +88,7 @@
       "module": "approvals",
       "editor": "approvals",
       "name"  : "waiting",
-      "why": "Three pictures wait: a plate, a portrait blocked upstream, and a shot whose slot is already settled; each row opens its picture."
+      "why": "Three pictures wait: a plate, a portrait blocked upstream, and a shot frame; each row opens its picture."
     },
     {
       "module": "diagnostics",

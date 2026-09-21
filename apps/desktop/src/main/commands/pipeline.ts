@@ -243,29 +243,17 @@ export function stopReason(outcome: RoundOutcome, round: number, cap = MAX_ROUND
 }
 
 /**
- * The rows to approve this round: every unblocked candidate for a slot nothing has settled yet, and
- * at most one per slot.
- *
- * Both halves are the same rule, and both are about a slot's candidates being alternatives rather
- * than separate pictures. Approving a second portrait of Aiko is not approving two things, it is
- * choosing her look and then changing it; accepting a second sheet for one angle leaves `pick`
- * unable to say which one the slot holds, so the slot reads as empty and its plates re-render.
- * A settled slot is skipped outright — its losing takes stay listed for an author who wants to
- * choose one, but a pass that approved them would un-approve its own last round and never
- * converge. The first row of a slot is the one taken, because `approvable` already lists
- * upstream-first in slot order, which is the natural order to prefer.
+ * The rows to approve this round: every unblocked row `approvable` lists. That list already holds
+ * at most one row per slot — the take the slot holds, when nobody has approved it — so a pass
+ * approves what is current and never re-decides a slot it settled the round before.
  */
 export function toApprove(items: readonly Approvable[]): Approvable[] {
   const chosen: Approvable[] = [];
-  const taken = new Set<string>();
   for (const item of items) {
-    if (item.blocked || item.settled) continue;
+    if (item.blocked) continue;
     // A portrait with no character clears nobody from the gate, which is the sentence `approveOne`
     // refuses with. Skipping it here keeps the loop from asking about it again every round.
     if (item.door === 'gate' && !item.characterId) continue;
-    // Keyed by the slot the row is listed under, which for a portrait is the character's own.
-    if (taken.has(item.slot)) continue;
-    taken.add(item.slot);
     chosen.push(item);
   }
   return chosen;
@@ -281,7 +269,7 @@ export const pipelineApproveAndRun = define({
     'whole art pass as one act. It spends real model calls and approves on your behalf; Stop ' +
     'pipeline ends it after the task in progress.',
   notes:
-    'Approve everything waiting, run, and repeat until nothing is left of either — a whole art pass as one act. Each round unlocks the next rung of the slot graph, so it takes at most `MAX_ROUNDS` (twelve) of them and stops early on convergence, on a round that approved nothing and failed everything, or on `pipeline.stop`. The pass holds the session under its own busy name (`BUSY_PASS`) for all of its rounds and the gaps between them, sharing one `AbortController` with the runs inside it, so `pipeline.stop` ends the pass rather than only the round it interrupted — and the Stop button stays drawn while a round is approving, which is not a run and had nothing to abort before. It approves **one** candidate per slot, and **nothing at all for a slot that already has an answer** — a cleared gate, or another candidate already accepted. Candidates for one slot are alternatives rather than separate pictures: two approved portraits of one character settle her look and then change it, and two accepted sheets for one angle leave the slot unable to say which it holds. A finished project still lists the takes that lost, so without that rule the pass re-decides every settled slot each round, is offered the previous winner the round after, and never converges while the pipeline it runs between rounds has nothing to do. Confirmed because it is the one command that both approves art and spends money without asking again in between.',
+    'Approve everything waiting, run, and repeat until nothing is left of either — a whole art pass as one act. Each round unlocks the next rung of the slot graph, so it takes at most `MAX_ROUNDS` (twelve) of them and stops early on convergence, on a round that approved nothing and failed everything, or on `pipeline.stop`. The pass holds the session under its own busy name (`BUSY_PASS`) for all of its rounds and the gaps between them, sharing one `AbortController` with the runs inside it, so `pipeline.stop` ends the pass rather than only the round it interrupted — and the Stop button stays drawn while a round is approving, which is not a run and had nothing to abort before. It approves what `approvable` lists, which is at most one row per slot: the take the slot holds, when nobody has approved it. The other takes of a slot are history rather than alternatives waiting on a decision — `asset.restore` is what brings one back — so a finished project lists nothing and the pass converges. Confirmed because it is the one command that both approves art and spends money without asking again in between.',
   mutating   : true,
   affects: [
     'characters',

@@ -1,4 +1,5 @@
 export * from './prompts.js';
+export * from './repair.js';
 export * from './drift.js';
 // The P3 gate moved down to `@vn/artgen` so the slot graph and the approval rule could reach
 // `isApproved` without importing the pipeline. Re-exported by name: every caller says `@vn/pipeline`.
@@ -13,4 +14,3 @@ export * from './pipeline.js';
 export * from './genservices.js';
 export * from './graphrun.js';
 export * from './graphload.js';
-export * from './repair.js';

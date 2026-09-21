@@ -15,7 +15,7 @@ import type {
 } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import { mergeReports, reportingRetries } from '@vn/providers';
-import { layoutDefect, sheetSeeds, supersededBy } from '@vn/artgen';
+import { heldBy, layoutDefect, sheetSeeds } from '@vn/artgen';
 import type { SheetSeeds } from '@vn/artgen';
 import { refinePrompt } from './p6.js';
 import { shotSpec } from './prompts.js';
@@ -66,6 +66,42 @@ async function generateAsset(
     refs   : refs.map((r) => r.hash),
     modelId: result.modelId,
     ...(result.transport === undefined ? {} : { transport: result.transport }),
+  });
+}
+
+/**
+ * Makes a picture the take its slot holds, releasing the takes it replaces, and records the
+ * attempt that drew it. The row's `via` says a run drew it; `at` is the run's clock. The manifest
+ * alone decides what is released, because a runner has no task graph: a sheet row's angle is on
+ * its binding for exactly this reason.
+ */
+async function fileTake(
+  deps: RunDeps,
+  task: AnyTask,
+  ref: AssetRef,
+  prompt: string,
+  refs: AssetRef[],
+): Promise<void> {
+  const at = deps.now?.();
+  task.attempts.push({
+    attempt: task.attempts.length + 1,
+    prompt,
+    refs  : refs.map((r) => r.hash),
+    output: ref.hash,
+    ...(at === undefined ? {} : { at }),
+    via: 'run',
+  });
+  await holdTake(deps, ref, at);
+}
+
+/** The hold alone, for the shot runner, which records its attempts itself. */
+async function holdTake(deps: RunDeps, ref: AssetRef, at: string | undefined): Promise<void> {
+  const assets = deps.store.manifest();
+  const asset = assets.find((a) => a.hash === ref.hash);
+  if (!asset) return;
+  await deps.store.hold(ref.hash, heldBy(asset, { model: deps.model, assets }), {
+    ...(at === undefined ? {} : { at }),
+    via: 'run',
   });
 }
 
@@ -153,6 +189,7 @@ const runLocationRef: Runner<'location_ref'> = async (task, deps) => {
   const ref = binding
     ? (await drawThroughGraph(deps, binding, prompt, refs, meta)).ref
     : await generateAsset(deps, prompt, refs, params, meta);
+  await fileTake(deps, task, ref, prompt, refs);
   return { status: 'done', output: ref.hash };
 };
 
@@ -167,7 +204,8 @@ const runPortrait: Runner<'portrait'> = async (task, deps) => {
   const ref = binding
     ? (await drawThroughGraph(deps, binding, prompt, refs, meta)).ref
     : await generateAsset(deps, prompt, refs, params, meta);
-  // The portrait is a candidate; it is not accepted until a human approves it (§P3 gate).
+  // The portrait is held as the slot's take, and the gate still decides approval (§P3)
+  await fileTake(deps, task, ref, prompt, refs);
   return { status: 'done', output: ref.hash };
 };
 
@@ -176,12 +214,13 @@ const runModelSheet: Runner<'model_sheet'> = async (task, deps) => {
   const meta: AssetWriteMeta = {
     kind      : 'model_sheet',
     sourceTask: task.hash,
-    satisfies : { characterId, outfit },
+    satisfies : { characterId, outfit, angle: task.inputs.angle },
   };
 
   const binding = boundGraph(task, deps);
   if (binding) {
     const { ref } = await drawThroughGraph(deps, binding, prompt, refs, meta);
+    await fileTake(deps, task, ref, prompt, refs);
     return { status: 'done', output: ref.hash };
   }
 
@@ -197,6 +236,7 @@ const runModelSheet: Runner<'model_sheet'> = async (task, deps) => {
     modelId: result.modelId,
     ...(result.transport === undefined ? {} : { transport: result.transport }),
   });
+  await fileTake(deps, task, ref, prompt, refs);
   return { status: 'done', output: ref.hash };
 };
 
@@ -288,26 +328,22 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
       const reports = [...reviewed, ...layoutReport(found?.shot, reviewed)];
       const merged = mergeReports(reports);
 
+      const at = deps.now?.();
       const record: TaskAttempt = {
         attempt,
         prompt,
         refs   : refs.map((r) => r.hash),
         output : ref.hash,
         reviews: reports,
-        at     : deps.now?.(),
+        ...(at === undefined ? {} : { at }),
+        via: 'run',
       };
       task.attempts.push(record);
 
       if (!merged.blocking) {
-        // Accepting the frame un-accepts the takes it replaces, including this task's own earlier
-        // attempts and any frame an older task left for the same shot. Two accepted candidates make
-        // the slot unresolvable, so the shot would read as unrendered and everything drawn from it
-        // would re-render.
-        const asset = deps.store.manifest().find((a) => a.hash === ref.hash);
-        const supersede = asset
-          ? supersededBy(asset, { model: deps.model, assets: deps.store.manifest() })
-          : [];
-        await deps.store.accept(ref.hash, supersede);
+        // The clean frame is the take the slot holds; the reviewers' verdict gates retries and
+        // approves nothing, which stays a person's act
+        await holdTake(deps, ref, at);
         if (found) found.shot.status = 'accepted';
         return { status: 'done', output: ref.hash };
       }
@@ -330,6 +366,8 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
       }
     }
 
+    // The flawed frame holds the slot too: it is what the author needs to see and fix
+    if (lastRef) await holdTake(deps, lastRef, deps.now?.());
     if (found) found.shot.status = 'needs_human';
     return {
       status: 'needs_human',

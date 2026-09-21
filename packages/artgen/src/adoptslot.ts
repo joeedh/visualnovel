@@ -10,7 +10,17 @@
  * stands and handed over as inputs rather than as a remembered hash, so an adoption cannot mark
  * done a task the project no longer describes.
  */
-import type { Asset, AssetBinding, AssetRef, RefBinding, Scene, Shot, TaskGraph } from '@vn/types';
+import type {
+  Asset,
+  AssetBinding,
+  AssetRef,
+  ProjectModel,
+  RefBinding,
+  Scene,
+  Shot,
+  TakeVia,
+  TaskGraph,
+} from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import { modelFromInputs } from '@vn/model';
 import { loadInputs, readShots, writeShots, type AssetStore, type ProjectPaths } from '@vn/store';
@@ -21,13 +31,19 @@ import { proseHash } from './drift.js';
 import { adopt } from './adopt.js';
 import { baseRefusal } from './base.js';
 import { slotLabel } from './slotaddr.js';
-import { type Decided, type ResolvedSlot, resolveSlot, slotTaskHash } from './slotgraph.js';
+import { type Decided, type ResolvedSlot, heldBy, resolveSlot, slotTaskHash } from './slotgraph.js';
+import { angleOfTask } from './takes.js';
 
 export interface AdoptSlotDeps {
   config: ProjectConfig;
   paths: ProjectPaths;
   store: AssetStore;
+  /** Injected clock for the hold's `at` and the attempt's; a caller without one stamps neither. */
+  now?: () => string;
 }
+
+/** How adopted bytes entered the slot. A restore is recorded on the attempt, never on the row. */
+export type AdoptVia = Extract<TakeVia, 'adopt' | 'promote' | 'upload'> | 'restore';
 
 export interface AdoptSlotRequest {
   /** The asset whose bytes become the slot's output. Already in the store. */
@@ -36,6 +52,8 @@ export interface AdoptSlotRequest {
   slot: RefBinding;
   /** Supersede the render already holding this slot. See `AdoptRequest.replace`. */
   replace?: boolean;
+  /** How the bytes came to be adopted. Stamped on the row by the first hold; see `TakeVia`. */
+  via: AdoptVia;
   /**
    * The bytes, for a decision made before they are filed — an upload that names a slot has to hear
    * the refusal at the picker rather than after the copy. Ignored once the store holds the hash,
@@ -85,8 +103,8 @@ interface ShotStamp {
 }
 
 /**
- * A slot resolved against the project. Carries the task the slot names, and for a shot the frame to
- * stamp.
+ * A slot resolved against the project. Carries the task the slot names, the model it was resolved
+ * against, and for a shot the frame to stamp.
  *
  * {@link resolveSlot} supplies the identity half, so adoption and the slot graph cannot disagree
  * about what task a picture is. The stamp belongs to adoption alone: nothing else rewrites the
@@ -95,15 +113,16 @@ interface ShotStamp {
  * A portrait never appears here because {@link resolve} turns it away, so the narrowing that
  * `AdoptSlotPlan.kind` needs comes from the type rather than from an assertion.
  */
-type Resolved =
+type Resolved = { model: ProjectModel } & (
   | { slot: Exclude<ResolvedSlot, { kind: 'portrait' | 'shot_image' }>; stamp?: undefined }
-  | { slot: Extract<ResolvedSlot, { kind: 'shot_image' }>; stamp: ShotStamp };
+  | { slot: Extract<ResolvedSlot, { kind: 'shot_image' }>; stamp: ShotStamp }
+);
 
-/** The manifest binding a slot writes. The angle is not part of it: it lives in task inputs (§8). */
+/** The manifest binding a slot writes, with a sheet's angle so the row alone says which sheet it is. */
 function bindingOf(slot: RefBinding): AssetBinding {
   switch (slot.kind) {
     case 'sheet':
-      return { characterId: slot.characterId, outfit: slot.outfit };
+      return { characterId: slot.characterId, outfit: slot.outfit, angle: slot.angle };
     case 'plate':
       return { locationId: slot.locationId, variant: slot.variant };
     case 'shot':
@@ -160,9 +179,9 @@ async function resolve(
     // Unreachable: `resolveSlot` found the same shot in the same map, so a stamp was taken.
     if (!stamp)
       return { ok: false, code: 'NO_SUCH_SLOT', reason: `No such shot: ${slotLabel(slot)}.` };
-    return { ok: true, plan: { slot: plan, stamp } };
+    return { ok: true, plan: { model, slot: plan, stamp } };
   }
-  return { ok: true, plan: { slot: plan } };
+  return { ok: true, plan: { model, slot: plan } };
 }
 
 /**
@@ -227,11 +246,16 @@ async function record(
   deps: AdoptSlotDeps,
   slot: Resolved['slot'],
   output: Asset,
-  replace: boolean | undefined,
+  req: AdoptSlotRequest,
   graph: TaskGraph,
 ): Promise<void> {
   const ctx = { has: (h: string) => deps.store.has(h), node: (h: string) => graph.get(h) };
-  const flag = replace ? { replace: true } : {};
+  const at = deps.now?.();
+  const flag = {
+    ...(req.replace ? { replace: true } : {}),
+    via: req.via,
+    ...(at === undefined ? {} : { at }),
+  };
   // Spelled out per kind because `adopt` is generic: only a narrowed pair type-checks.
   const done = await (slot.kind === 'location_ref'
     ? adopt(deps.paths, { kind: slot.kind, inputs: slot.inputs, output, ...flag }, ctx)
@@ -244,10 +268,11 @@ async function record(
 /**
  * Record bytes already in the store as a slot's output.
  *
- * Three writes, each depending on the last: the bytes are re-recorded under the slot's kind — which
- * is what routes them to the right root — a shot slot's frame is stamped into `work/shots/`, and
- * the task identity is logged `done`. That last one is the mechanism: `loadGraph` replays the
- * record, `TaskGraph.add` returns the existing `done` node, and `ready()` skips it.
+ * Four writes, each depending on the last: the bytes are re-recorded under the slot's kind — which
+ * is what routes them to the right root — the row is held as the slot's current take, a shot
+ * slot's frame is stamped into `work/shots/`, and the task identity is logged `done`. That last
+ * one is the mechanism: `loadGraph` replays the record, `TaskGraph.add` returns the existing
+ * `done` node, and `ready()` skips it.
  *
  * Nothing is accepted here. Adoption says "this is that task's output", not "a human approved it".
  */
@@ -280,6 +305,20 @@ export async function adoptSlot(
     satisfies : bindingOf(req.slot),
   });
 
+  // The hold releases the slot's other takes; `via` lands only on a row that has none, so a
+  // restored take keeps saying where its bytes came from
+  const held = deps.store.manifest().find((a) => a.hash === ref.hash)!;
+  const at = deps.now?.();
+  await deps.store.hold(
+    ref.hash,
+    heldBy(held, {
+      model  : resolved.plan.model,
+      assets : deps.store.manifest(),
+      angleOf: angleOfTask(graph),
+    }),
+    { ...(at === undefined ? {} : { at }), ...(req.via === 'restore' ? {} : { via: req.via }) },
+  );
+
   // A stamp is taken for a shot slot and no other, so this is that branch.
   if (resolved.plan.stamp) {
     // `proseHash` is stamped beside the image, so a frame handed in by an artist reports drift
@@ -291,6 +330,6 @@ export async function adoptSlot(
   }
 
   const written = deps.store.manifest().find((a) => a.hash === ref.hash)!;
-  await record(deps, resolved.plan.slot, written, req.replace, graph);
+  await record(deps, resolved.plan.slot, written, req, graph);
   return { ref, plan: decided.plan };
 }

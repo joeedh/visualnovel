@@ -3,9 +3,9 @@ import type { LoadedInputs } from '@vn/parse';
 import type { Logger, ProjectModel, Providers } from '@vn/types';
 import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
 import { errors as modelErrors, modelFromInputs } from '@vn/model';
-import { AssetStore, ProjectPaths, loadInputs } from '@vn/store';
+import { AssetStore, ProjectPaths, loadInputs, readAllShots } from '@vn/store';
 import { TaskGraph, loadGraph } from '@vn/taskgraph';
-import { readModelCatalog } from '@vn/pipeline';
+import { readModelCatalog, repairCurrent } from '@vn/pipeline';
 import {
   createImageBackend,
   createMockProviders,
@@ -37,7 +37,9 @@ export interface LoadedProject {
  * Load and assemble everything from a project directory (report §P0): config, authored
  * input files → validated project model, the content-addressed asset store, and the task
  * graph replayed from `tasks.jsonl`. Validation diagnostics live on `model.diagnostics`;
- * callers decide whether error-severity diagnostics should abort.
+ * callers decide whether error-severity diagnostics should abort. The manifest's `current`
+ * bits are put right against the task log on the way in, so `vngen export` after an upgrade
+ * reads the same takes a run would.
  */
 export async function loadProject(dir: string): Promise<LoadedProject> {
   const config = await loadConfig(dir);
@@ -46,6 +48,7 @@ export async function loadProject(dir: string): Promise<LoadedProject> {
   const model = modelFromInputs(inputs, { title: config.title, start: config.start });
   const store = await AssetStore.open(paths);
   const graph = await loadGraph(paths);
+  await repairCurrent({ model, config, store, graph, shots: await readAllShots(paths, model) });
   return { dir, config, paths, model, store, graph, inputs };
 }
 

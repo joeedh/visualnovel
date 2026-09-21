@@ -19,14 +19,14 @@ import { TOKENS, alpha } from '../app/tokens.js';
 import type { PipelineStatus, Task, TaskAttempt } from '../../../src/shared/ipc.js';
 
 const VERDICT: Record<AttemptOutcome, string> = {
-  accepted: '✓ accepted',
+  kept    : '✓ kept',
   rejected: '✕ rejected',
   failed  : '⚠ failed',
   pending : '· in flight',
 };
 
 const OUTCOME_COLOUR: Record<AttemptOutcome, string> = {
-  accepted: TOKENS.jade,
+  kept    : TOKENS.jade,
   rejected: TOKENS.mistDim,
   failed  : TOKENS.vermilion,
   pending : TOKENS.signal,

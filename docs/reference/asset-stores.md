@@ -76,27 +76,42 @@ base root, adoption rewrites the record in place. Across the roots it does not: 
 the bytes to `vngen/build/assets/` as well. One hash then has two rows in two roots, each
 with its own provenance — the base row still records that an author handed the picture in,
 and the project row records which frame it is. The frame is the row every surface sees:
-`manifest()`, `get` and the flag writes (`accept`, `unaccept`) answer with the project row
-whenever it carries a project kind, so the frame is a candidate of its slot, the approval
-popup lists it, `asset.accept` accepts it, and the playable shows it. Both rows carry the
-same content because the hash identifies the content.
+`manifest()`, `get` and the flag writes (`hold`, `accept`, `unaccept`) answer with the
+project row whenever it carries a project kind, so the frame is a candidate of its slot,
+the approval popup lists it, `asset.accept` accepts it, and the playable shows it. Both
+rows carry the same content because the hash identifies the content.
 
 `promoteConcept` is one caller of `adoptSlot`, covering the location-concept case and
 writing the sheet before it calls. The general operation refuses a `portrait:` slot, which
 the P3 gate handles; refuses mock-marked bytes; and refuses to supersede a render that
-already holds the slot unless the caller declared `replace`. Adoption never accepts a slot
-automatically. It records that the bytes are that task's output; it does not record that a
-human approved them.
+already holds the slot unless the caller declared `replace`. Adoption holds the slot — the
+adopted row becomes its current take and the take it replaces is released — and never
+accepts it. It records that the bytes are that task's output; it does not record that a
+human approved them. Every adoption names how the bytes arrived (`via`: `adopt`,
+`promote`, `upload`) and a restore keeps the `via` the row already has.
+
+**A row carries its slot history.** Beyond its kind, bytes and bindings, a row has
+`current` (the slot holds this take; exclusive per slot, set by `hold`), `accepted` (a
+person approved it; set by `accept`, never cleared by a hold), `at` (when the slot last
+took it) and `via` (`run | graph | adopt | promote | upload | migrated`, written once). A
+sheet's binding carries its `angle`, so a runner with no task log can tell which of an
+outfit's four sheets a row is. A row written before these fields existed has none of them,
+and that absence is what `migrateCurrent` keys on
+([pipeline-contracts.md](pipeline-contracts.md#scheduling), _Currency is exclusive per
+slot_).
 
 **Reads consult both roots, and one row answers for a hash.** Hashes are content hashes,
 so a byte present in both roots is the same byte and the two indices cannot disagree about
 content. Where both hold a record for one hash, the project record answers when it carries
 a project kind (a picture adopted across the roots, above) and the base record otherwise
 (a manifest written before the split, below); `manifest()` returns the union deduped that
-way, `get` returns the same row, and `accept` and `unaccept` write the same row's flags
-without consulting the kind-to-root rule, so a flag write never refuses on an
-`unavailable` base. `pathOf` resolves from whichever index holds the hash, and defaults to
-the project root for a hash absent from both.
+way, `get` returns the same row, and `hold`, `accept` and `unaccept` write the same row's
+bits without consulting the kind-to-root rule, so a flag write never refuses on an
+`unavailable` base (a row the unavailable root holds is simply not there to write, and
+nothing is written elsewhere in its place). `migrateTakes` writes both roots, stamping a
+hash's other row not current, so the migration trigger goes quiet on every row. `pathOf`
+resolves from whichever index holds the hash, and defaults to the project root for a hash
+absent from both.
 
 Nothing on disk moves. A project written before the split keeps its base art indexed in
 `vngen/build/manifest.json`, and it keeps resolving, because the union reads that manifest

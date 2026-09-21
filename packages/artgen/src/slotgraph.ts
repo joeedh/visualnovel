@@ -43,8 +43,8 @@ import {
   usedOutfits,
 } from '@vn/model';
 import { makeTask } from '@vn/taskgraph';
-import { type BindingContext, candidatesFor, resolveBinding } from './refs.js';
-import { refsOfSlot, slotOf } from './refcycle.js';
+import { type BindingContext, candidatesFor, resolveBinding, sheetAngleOf } from './refs.js';
+import { refsOfSlot, slotsOf } from './refcycle.js';
 import { slotKey, slotLabel } from './slotaddr.js';
 import type { RungContext } from './resolve.js';
 import {
@@ -240,22 +240,40 @@ export function resolveSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<
 }
 
 /**
- * The accepted assets that accepting `asset` replaces: every other accepted candidate for the slot
- * it fills. Acceptance is exclusive per slot because `pick` declines a slot holding two accepted
- * candidates, and the slot then reads as empty and everything drawn from it re-renders.
+ * The current rows that holding `asset` releases: every other current candidate of every slot the
+ * asset serves. Currency is exclusive per slot because `pick` declines a slot holding two current
+ * rows, and the slot then reads as empty and everything drawn from it re-renders. A row bound to
+ * two slots is current for both or neither, so both slots' other rows are listed.
  *
- * A `portrait:` supersedes nothing: its slot answers to the P3 gate rather than to `Asset.accepted`,
- * and the gate already holds one answer. A `sheet:` supersedes nothing unless `ctx.angleOf` is
- * supplied, because without it `candidatesFor` returns all four angles of the outfit, which are four
- * different pictures rather than four takes of one.
+ * A sheet's angle comes off its binding, or off its task where the binding predates the angle
+ * being stored; a row with neither could be any of the four, so it releases nothing rather than
+ * a sibling of another angle.
  */
-export function supersededBy(asset: Asset, ctx: BindingContext): string[] {
-  const slot = slotOf(asset, ctx.angleOf?.(asset.sourceTask));
-  if (!slot || slot.kind === 'portrait') return [];
-  if (slot.kind === 'sheet' && !ctx.angleOf) return [];
-  return candidatesFor(slot, ctx)
-    .filter((a) => a.accepted && a.hash !== asset.hash)
-    .map((a) => a.hash);
+export function heldBy(asset: Asset, ctx: BindingContext): string[] {
+  const out = new Set<string>();
+  const angle = sheetAngleOf(asset, ctx);
+  if (angle === undefined && (asset.kind === 'model_sheet' || asset.kind === 'outfit_sheet')) {
+    return [];
+  }
+  for (const slot of slotsOf(asset, angle)) {
+    for (const other of candidatesFor(slot, ctx)) {
+      if (other.current && other.hash !== asset.hash) out.add(other.hash);
+    }
+  }
+  return [...out];
+}
+
+/**
+ * A slot's takes newest first: by the row's `at`, most recently held first, with rows never
+ * stamped last in hash order so the list is stable and makes no recency claim for them.
+ */
+export function newestFirst(candidates: readonly Asset[]): Asset[] {
+  return [...candidates].sort((a, b) => {
+    if (a.at !== undefined && b.at !== undefined) return b.at.localeCompare(a.at);
+    if (a.at !== undefined) return -1;
+    if (b.at !== undefined) return 1;
+    return a.hash.localeCompare(b.hash);
+  });
 }
 
 /** One picture this project implies, whether or not anything has drawn it. */
@@ -278,17 +296,17 @@ export interface SlotNode {
    */
   hash?: string;
   /**
-   * Every manifest asset bound here, accepted or not. An empty list is what "not yet rendered"
-   * means, and `hash === undefined` is not: a portrait resolves off the gate and so is unset before
-   * approval even with three drafts filed, and `pick` declines when two unaccepted candidates tie.
-   * Either case would report real bytes as unrendered.
+   * Every manifest asset bound here, newest first ({@link newestFirst}). An empty list is what
+   * "not yet rendered" means, and `hash === undefined` is not: a portrait resolves off the gate
+   * and so is unset before approval even with three drafts filed, and `pick` declines when no row
+   * is current and two candidates tie. Either case would report real bytes as unrendered.
    */
   candidates: string[];
   /**
    * Whether a human has approved what fills this slot. The test is deliberately asymmetric: a
-   * `portrait:` answers to the P3 gate (`isApproved`) and every other kind to `Asset.accepted`.
-   * These are two different acts under one word, and conflating them is the bug this graph exists
-   * to prevent.
+   * `portrait:` answers to the P3 gate (`isApproved`) and every other kind to the current row's
+   * `accepted`. These are two different acts under one word, and conflating them is the bug this
+   * graph exists to prevent.
    */
   approved: boolean;
 }
@@ -328,7 +346,7 @@ export function buildSlotGraph(ctx: SlotGraphContext): SlotGraph {
   for (const binding of bindings) {
     const key = slotKey(binding);
     if (nodes.has(key)) continue;
-    const candidates = candidatesFor(binding, ctx);
+    const candidates = newestFirst(candidatesFor(binding, ctx));
     const hash = resolveBinding(binding, ctx);
     const decided = resolveSlot(binding, ctx);
     const task = decided.ok ? slotTaskHash(decided.plan) : undefined;

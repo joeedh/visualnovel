@@ -146,29 +146,52 @@ These implement the system design in
       P3 gate makes this check and reads `approvedPortrait` from the model.
     - Every other slot is approved when the asset filling it has `accepted === true`.
     - The approval frontier exists to prevent conflating them.
-- **Acceptance is exclusive per slot.**
-    - `pick` returns nothing when two candidates for one slot are both `accepted`. A slot
-      in that state resolves to nothing, so it reads as empty and everything drawn from it
-      becomes unsettled.
-    - `AssetStore.accept(hash, supersede)` therefore receives the takes being replaced and
-      clears their flags in the same manifest write, and `supersededBy` computes that list
-      from the slot the asset fills.
-    - The shot runner passes it when a clean attempt is accepted, and
-      `session.acceptAsset` passes it when an author accepts one by hand.
-    - A `portrait:` supersedes nothing, because the gate rather than `accepted` selects
-      its slot. A `sheet:` supersedes nothing without an `angleOf` lookup, because four
-      angles of one outfit share one binding and are four pictures rather than four takes.
-    - The manifest records no render time for a picture, and its entries are sorted by
-      hash, so a surface that cannot resolve a slot must report the failure rather than
-      guess which take is newest.
-    - A manifest that has ended up with two accepted takes in one slot is repaired, not
-      tolerated. `repairAccepted` (`@vn/pipeline`, over `overAccepted` in `@vn/artgen`)
-      runs at the start of every non-dry run and when the desktop opens a project: a shot
-      slot keeps the take its storyboard names, any other slot keeps the take whose task
-      recorded the latest attempt (the lowest hash when no task did), and the rest are
-      un-accepted in one `accept(keep, drop)` write per slot, logged as `manifest.repair`.
-      Portraits are skipped, since the gate selects them; sheets are only repaired with
-      `angleOf`, for the reason above. A clean manifest is not written.
+- **Currency is exclusive per slot.** A manifest row carries two bits. `current` says the
+  slot holds this take; `accepted` says a person approved it. They are set by different
+  acts and neither clears the other.
+    - `pick` reads `current` and never `accepted`: one current candidate is the slot's
+      take, two resolve to nothing (the slot reads as empty and everything drawn from it
+      becomes unsettled), and a slot with a single candidate and no current row resolves
+      to that candidate.
+    - `AssetStore.hold(hash, supersede, stamp)` sets `current` on one row and clears it on
+      the takes being replaced in the same manifest write; `heldBy` computes that list
+      from every slot the row serves. It restamps `at` (the hold time) and writes `via`
+      (`run | graph | adopt | promote | upload | migrated`) only where the row has none.
+      `AssetStore.accept(hash)` sets `accepted` alone.
+    - Every writer holds: the runners on a clean output and on the last output of a
+      `needs_human` task (the flawed frame stays on screen), adoption, promotion, upload
+      and restore through `adoptSlot`, and the gate and `vngen approve`, which hold and
+      then accept. A run accepts nothing. A re-render leaves the approved take behind as
+      history, `accepted` and not current.
+    - Approved, for a plate, sheet or frame, is `assetApproved`: current and accepted. The
+      prerequisite check reads `assetBlessed` — `accepted` alone — because a frame drawn
+      from a plate that was approved and has since been superseded was still drawn from an
+      approved plate. A portrait's approval is the gate's until stage 5 of the
+      slot-history plan. `acceptRefusal` refuses to accept a take its slot does not hold,
+      naming `asset.restore`, which holds and then accepts.
+    - A sheet binding written since takes were held carries its `angle`; an older row is
+      told apart from its siblings through its task's inputs (`angleOf`), and a row with
+      neither releases nothing when held, since four angles share one binding.
+    - `current` is a cache of the task log. Where a slot's identity is `done`, its
+      `output` is the take; where it is `needs_human`, its last output is; otherwise
+      (`pending` after a re-key, `running`, `failed`) the row is authoritative.
+      `repairCurrent` (`@vn/artgen`, re-exported from `@vn/pipeline`) runs on every open
+      and every non-dry run, from the CLI's and `vnauthor`'s project load too: it rewrites
+      the bit to what the log says and puts any slot left with two current rows back to
+      one by `overHeld`'s keep rule (the storyboard's take for a shot, else the identity's
+      output, else the newest `at`, else the lowest hash), logged as `manifest.repair`. A
+      clean manifest is not written.
+    - `migrateCurrent` runs first, once per manifest, keyed on a row with no `current`
+      field, and stamps every row: the identity's output, else the last `needs_human`
+      output, else the one accepted candidate, else the newest by attempt time then lowest
+      hash, else the sole candidate, with `via: 'migrated'`; every other row gets
+      `current: false`. Logged as `manifest.migrate`, naming characters whose approved
+      portrait is no longer the take the slot holds.
+    - The row's `at` orders a slot's takes newest first (`newestFirst`); rows never
+      stamped sort last, in hash order, and no surface may present one of those as the
+      latest.
+    - Plan:
+      [`../plans/slot-history-on-the-manifest-row.md`](../plans/slot-history-on-the-manifest-row.md).
 - **A storyboard is fetched only on an explicit request, and a fallback is never
   persisted.**
     - Once `work/shots/<sceneId>.json` is written it takes precedence permanently, and an

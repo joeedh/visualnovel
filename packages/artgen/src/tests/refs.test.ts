@@ -83,11 +83,14 @@ describe('resolveBinding', () => {
     ).toBeUndefined();
   });
 
-  it('lets acceptance settle a slot with several candidates', () => {
+  it('lets the current bit settle a slot with several candidates, never acceptance', () => {
     const c = ctx([
       ...ASSETS,
-      asset('plate-night-2', 'location_ref', [{ locationId: 'cafe', variant: 'night' }], {
+      asset('plate-night-3', 'location_ref', [{ locationId: 'cafe', variant: 'night' }], {
         accepted: true,
+      }),
+      asset('plate-night-2', 'location_ref', [{ locationId: 'cafe', variant: 'night' }], {
+        current: true,
       }),
     ]);
     expect(resolveBinding({ kind: 'plate', locationId: 'cafe', variant: 'night' }, c)).toBe(
