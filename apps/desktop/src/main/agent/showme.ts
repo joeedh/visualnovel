@@ -15,16 +15,31 @@ import { coerceProps, type PropSpecMap } from '@vn/commands';
 import { checkTour, type Known } from '../../shared/tourcheck.js';
 import type { Step, Tour } from '../../shared/tours.js';
 
-/** How the tool is described to the model, including what a step may be. */
-const DESCRIPTION = [
-  'Walk the author through doing something in the app themselves: each step rings the control to',
-  'press and says what it does, and the app waits for them to press it. Use this when they ask how',
-  'to do something, rather than describing where a button is or doing it for them.',
-  'Command ids and props are the ones in the command catalog; gesture ids are the ones',
-  '`interaction.list` names. A step whose command no pane draws still works — the app opens the',
-  'command palette on it — so prefer the command that does the job over the one you know has a',
-  'button. Steps that name a scene, shot or asset need its real id, from the workspace index.',
-].join(' ');
+/**
+ * How the tool is described to the model, including what a step may be. With the UX docs tree
+ * present it points at the page to read first; without it, it reads as it did before the tree.
+ */
+export function describeShowMe(opts: { pages: boolean }): string {
+  return [
+    'Walk the author through doing something in the app themselves: each step rings the control to',
+    'press and says what it does, and the app waits for them to press it. Use this when they ask how',
+    'to do something, rather than describing where a button is or doing it for them.',
+    ...(opts.pages
+      ? [
+          'Before writing a step, `ux_read` `commands/<namespace>/<name>.md`: it says which pane',
+          'draws the control, which props the control already knows, and the sentence to use when',
+          'the command is refused; `ux_search` finds a page from a tooltip or a refusal, and',
+          'gesture ids are the pages under `interactions/`.',
+        ]
+      : [
+          'Command ids and props are the ones in the command catalog; gesture ids are the ones',
+          '`interaction.list` names.',
+        ]),
+    'A step whose command no pane draws still works — the app opens the',
+    'command palette on it — so prefer the command that does the job over the one you know has a',
+    'button. Steps that name a scene, shot or asset need its real id, from the workspace index.',
+  ].join(' ');
+}
 
 const propValue = z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]);
 const props = z.record(propValue).describe('the props the step already knows').optional();
@@ -82,6 +97,8 @@ export interface ShowMeDeps {
   commands: { get(id: string): { props: PropSpecMap } | undefined };
   /** The app's gestures, for the same reason. */
   interactions: { get(id: string): unknown };
+  /** Whether the `ux_*` tools are registered beside it, so the description can point at them. */
+  pages?: boolean;
 }
 
 /**
@@ -96,7 +113,7 @@ export function showMeTool(deps: ShowMeDeps): Tool<ShowMeArgs> {
   };
   return {
     name       : 'show_me',
-    description: DESCRIPTION,
+    description: describeShowMe({ pages: deps.pages ?? false }),
     mutating   : false,
     args       : ARGS,
     run(args) {

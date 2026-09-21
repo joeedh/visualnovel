@@ -177,12 +177,13 @@ import { type GuideUrlField, type KeyGuide } from '../../shared/apikeys.js';
 import { type ApprovalQueue } from '../workspace/approvals.js';
 import { type GraphSlug } from '../doctree/graphs.js';
 import { notify } from '../notify/notifications.js';
-import { builtinSkillsDir } from '../distribution/resources.js';
+import { builtinSkillsDir, UX_DOCS_PATH, uxDocsDir } from '../distribution/resources.js';
 import { type UpdateCheck } from '../distribution/updates.js';
 import { labelContext } from '../assets/assetlabel.js';
 import { type SkillEntry } from '../doctree/doctree.js';
 import { confirmDetail } from '../agent/toolconfirm.js';
 import { showMeTool } from '../agent/showme.js';
+import { uxDocsTools } from '../agent/uxdocs.js';
 import { createDesktopInteractions } from '../../shared/interactions.js';
 import { createDesktopRegistry } from '../commands/index.js';
 import type { Tour } from '../../shared/tours.js';
@@ -1238,15 +1239,23 @@ export class WorkspaceSession {
     const context = await loadContext(this.dir);
     const config = await loadConfig(this.dir);
     this.model = config.models.text;
+    // A dev launch that skipped the generator says so here, once, rather than shipping an agent
+    // whose `show_me` points at pages that are not there
+    const uxDocs = uxDocsDir();
+    if (uxDocs === undefined) {
+      console.warn(`[vnstudio] no UX docs tree at ${UX_DOCS_PATH}; the agent has no ux_* tools`);
+    }
     this.agent = new Agent({
       backend: await this.buildBackend(config),
       ctx,
       registry: createRegistry([
         ...historyTools(this.history()),
+        ...(uxDocs === undefined ? [] : uxDocsTools(uxDocs)),
         showMeTool({
           ...(this.deps.showTour ? { show: this.deps.showTour.bind(this.deps) } : {}),
           commands    : createDesktopRegistry(),
           interactions: createDesktopInteractions(),
+          pages       : uxDocs !== undefined,
         }) as Tool,
       ]),
       permission: this.permission(),

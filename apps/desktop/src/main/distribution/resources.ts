@@ -5,7 +5,7 @@
  * catalog — and both have the awkward property of living under the repo root in a checkout and
  * inside the installer's resources directory in a packaged build. Resolving that in one place
  * means a caller asks for a resource by name and never learns which kind of build it is running
- * in.
+ * in. A third, the UX docs tree, lives inside `dist/` and is resolved from `__dirname` instead.
  */
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -43,6 +43,20 @@ export function resourcePath(...parts: string[]): string | undefined {
 export function builtinSkillsDir(): string | undefined {
   return resourcePath(...BUILTIN_SKILLS_PATH);
 }
+
+/**
+ * The UX docs tree the authoring agent reads, `dist/ux`, written by `scripts/gen-ux-docs.mjs`.
+ * Resolved against `__dirname` rather than through {@link resourcePath} because the tree is inside
+ * `dist/`, which ships inside the asar: `__dirname` is `dist/main` in a checkout and in the asar
+ * alike, and Electron's `fs` reads inside the asar from main. Undefined where the generator has
+ * not run, which the host reports once rather than shipping an agent with no pages.
+ */
+export function uxDocsDir(): string | undefined {
+  return existsSync(UX_DOCS_PATH) ? UX_DOCS_PATH : undefined;
+}
+
+/** Where {@link uxDocsDir} looks, for the one line main logs when it finds nothing. */
+export const UX_DOCS_PATH = join(__dirname, '..', 'ux');
 
 /**
  * Read a shipped file, failing by name. A packaging mistake that drops a resource is invisible
