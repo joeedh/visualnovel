@@ -1,6 +1,6 @@
 /**
  * The UX docs tree the authoring agent reads: `ux-model.json` re-keyed by command and rendered as
- * Markdown pages (`docs/plans/agent-reads-the-ux-model.md`).
+ * Markdown pages (`docs/plans/archive/agent-reads-the-ux-model.md`).
  *
  * The model is stored as situation × control, and the agent's questions are keyed by command:
  * which pane draws it, which props the control already knows, when it is refused and what the

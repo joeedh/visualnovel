@@ -1,7 +1,9 @@
 # The agent reads the UX model
 
-Status: planned. Index row in [`index.md`](index.md). Reviewed once by a fresh-context
-agent; the findings and what changed are in [Review findings](#review-findings).
+Status: shipped 2026-09-21. Index row in [`../index.md`](../index.md). Reviewed once by a
+fresh-context agent; the findings and what changed are in
+[Review findings](#review-findings), and what landed and where it differs from the text
+above is in [As shipped](#as-shipped).
 
 ## Problem
 
@@ -322,6 +324,91 @@ and a dev-script call, one shared module, a moved function, doc paragraphs. A pe
 thread that called the tools resumes after they are removed, because `loop.ts` repairs a
 dangling tool call. The sticky residue is `describeShowMe`'s pointer and the README, which
 revert together.
+
+## As shipped
+
+All five stages landed, one commit each, in the plan's order, on 2026-09-21. `pnpm check`,
+`pnpm test` (4,947 tests, 339 suites) and `pnpm lint` are green after each. The tree the
+generator writes for the committed model is 268 pages: 192 commands, 12 effects, 22
+editors, 31 modules, 9 interactions, `shortcuts.md` and `README.md`. Nothing under
+`renderer/pathux/editors/**` changed, so `anchors.json` was not re-swept, and no command
+was added, so `paletteonly.ts` and `ux-model.json` are untouched.
+
+### Deviations
+
+- **`DocCommandEntry` gains `description`.** The page opens with the doc-index entry,
+  which the plan describes as "title, description, notes", but `toDocIndex` carried no
+  `description` (the runtime catalog did). One field was added in `@vn/commands`; the
+  command-table generator ignores it.
+- **`fold` takes a fifth argument, the effect catalog, and `UxPage` carries `effect?`.**
+  An effect page opens with the effect's title and description and lists its props, which
+  come from `toEffectCatalog(createDesktopEffects())` rather than from the model. Every
+  effect in the catalog gets a page; that is the same set as "every effect the model
+  records", because `model.test.ts` already fails when a declared effect is offered
+  nowhere. `UxAnchors` (`UX_ANCHORS`) names the four fields of `anchors.json` the fold
+  reads.
+- **The drawn-row count is 447, not 678.** The plan's count folded by verdict as well, so
+  it counted refused controls and menu entries as rows. The shipped fold keeps those in
+  their own tables ("Refused when" and the menu lines under "Reaching it"), and `drawn`
+  holds accepted controls only. Twins in one situation that agree on everything the row
+  carries (the Page editor's four corners) fold into one row, so the sum of situations
+  over rows is below the count of accepted records; the test asserts every accepted record
+  lands on its page under its situation rather than a one-to-one count.
+- **Props are rendered verbatim, with no `<row>` substitution.** The plan's example
+  renders `scene=sample` as `scene=<row>`, but nothing exports which prop values are
+  fixture ids, which is the same reason substituting ids in sentences is out of scope. The
+  README's warning covers props and menu `when` keys along with sentences.
+- **"Reaching it" opens with a `Sweep:` line rather than `Control:`.** `anchors.json`'s
+  `anchored` counts a menu entry as an anchor, so a command drawn only in a menu is
+  anchored with no control; the line says "a control or menu entry ran it in the sweep of
+  … at …" or "nothing ran it in the sweep …", which is what the bit means.
+- **A section with nothing to say is one sentence, not an empty table.** "No pane draws a
+  control for it.", "Never, in any fixture.", "Nothing runs it as a later step of a
+  click.", which cost less to read whole than a header row with no rows.
+- **Stage 1's tests are two files, not one.** The renderer's typecheck (`check:renderer`)
+  does not reach `src/main`, and the flat check does not reach `renderer/`, so one test
+  cannot hold both a fresh `model()` and the registry.
+  `renderer/rules/tests/uxdocs.test.ts` runs the fold over `model()` with a fixture doc
+  index (one minimal entry per command the model reaches) and checks the structure: the 84
+  refusal sentences, the 447 rows, "Reached after", menus, the sweep bit and the palette
+  rule, the throw on an unknown id. `src/main/tests/uxdocs.test.ts` folds the committed
+  `ux-model.json` (the file `model.test.ts` keeps equal to a regeneration, and what
+  `uxmodel.test.ts` in main already reads) with the live registry and holds the
+  command-coverage rule, the golden pages and the equality with what the generator entry
+  writes. Neither reads `dist/`. The golden pages live in
+  `src/main/tests/__fixtures__/uxdocs/` and are listed in `.prettierignore`, because the
+  renderer writes unpadded tables and prettier would repad them.
+- **`uxdocs-entry.ts` runs the fold and the render.** A `.mjs` script cannot import a
+  TypeScript module, so the generator bundles `src/main/commands/uxdocs-entry.ts`, whose
+  `uxPages(model, anchors)` parses both inputs and returns the page map. `loadEntry`
+  gained rest arguments to hand the model and the sweep through; its other callers pass
+  none.
+- **`ux_read`'s refusal names the tree.** `path "x" is outside the UX docs tree`, the
+  shape of `read_file`'s sentence with the subject corrected: the tree is not the
+  workspace, and the sentence should not say it is. `ux_list` uses the same sentence.
+- **`checkFor` takes `Asked` (`{ id?, props }`) rather than an `Anchor`.** `Anchor` is a
+  renderer type, and `src/shared/` cannot import it; an anchor is structurally an `Asked`,
+  so `tour.ts` passes one unchanged. `canBlank` is exported beside it for `ux_check`'s
+  `unjudged` sentence, and `askedAs` moved with it. The test moved to
+  `src/shared/tests/precheck.test.ts`.
+- **`describeShowMe` is reached through `ShowMeDeps.pages`.** The tool's description is
+  built from a `pages` flag on its deps rather than a second constructor argument, so the
+  session passes one object; the function is exported and tested on its own.
+- **The README is rendered in stage 1.** It is a page of the tree, so `render` writes it;
+  stage 2 added nothing to it.
+- **`AffectsHarness` gained `check`.** Stage 3's test runs `ux_check` against a real stack
+  over a testkit project, and the harness in
+  `src/main/commands/tests/__fixtures__/affects.ts` already held one; it now exposes
+  `stack.check` beside `run`.
+- **The research docs link to the archived plan.** Stage 5 pointed them at
+  `docs/plans/agent-reads-the-ux-model.md` so `check:doclinks` stayed green; the archive
+  commit retargets both links.
+
+### Left undone
+
+Nothing in scope. The follow-ups the plan names stay as named: `ux_targets`, `vnauthor` as
+a host, fixture-id substitution, committing the tree in place of the JSON, and a builtin
+skill if the transcripts show the model skipping the read.
 
 ## Review findings
 

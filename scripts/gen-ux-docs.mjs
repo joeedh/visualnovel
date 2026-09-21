@@ -1,8 +1,8 @@
 /**
  * Write the UX docs tree the authoring agent reads, `apps/desktop/dist/ux/`, from the derived UX
- * model, the anchor sweep and the command registry (`docs/plans/agent-reads-the-ux-model.md`).
- * The tree ships inside `dist/` and is never committed: `ux-model.json` is the committed
- * derivative, and this is a rendering of it.
+ * model, the anchor sweep and the command registry
+ * (`docs/plans/archive/agent-reads-the-ux-model.md`). The tree ships inside `dist/` and is never
+ * committed: `ux-model.json` is the committed derivative, and this is a rendering of it.
  *
  * Runs as `build:uxdocs` in `apps/desktop/package.json` and at the start of `dev.desktop.mjs`.
  *

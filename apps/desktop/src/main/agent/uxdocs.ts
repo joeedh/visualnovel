@@ -1,8 +1,8 @@
 /**
- * The four tools that let the agent read the UX docs tree (`docs/plans/agent-reads-the-ux-model.md`):
- * `ux_list`, `ux_read` and `ux_search` over the pages `scripts/gen-ux-docs.mjs` wrote under
- * `uxDocsDir()`, and `ux_check`, which asks the stack whether a command is refused in the open
- * project right now.
+ * The four tools that let the agent read the UX docs tree
+ * (`docs/plans/archive/agent-reads-the-ux-model.md`): `ux_list`, `ux_read` and `ux_search` over
+ * the pages `scripts/gen-ux-docs.mjs` wrote under `uxDocsDir()`, and `ux_check`, which asks the
+ * stack whether a command is refused in the open project right now.
  *
  * The readers are separate from `read_file` and `search` because the tree is not in the
  * workspace: `read_file` feeds `edit_file`'s ledger and every write tool refuses a path outside

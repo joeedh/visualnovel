@@ -367,7 +367,7 @@ thread open, a run in flight, a portrait awaiting approval, a project with no ke
   and line. The agent's reader has since shipped: `ux_read` and its siblings over a tree
   of pages folded from the model by command
   ([`../reference/guided-tours.md#sources-of-tours`](../reference/guided-tours.md#sources-of-tours),
-  [`../plans/agent-reads-the-ux-model.md`](../plans/agent-reads-the-ux-model.md)).
+  [`../plans/archive/agent-reads-the-ux-model.md`](../plans/archive/agent-reads-the-ux-model.md)).
 - **Two layers, not one.** The affordance model supplies the vocabulary. Workflows (tours
   today, macros if they are built) compose over that vocabulary and stay separate, so the
   generated file never carries anything hand-written.

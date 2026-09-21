@@ -242,7 +242,7 @@ of the pros list (the planning oracle and "show me"), which are the two the agen
 approximate today. `view.*` is non-mutating and non-undoable by construction, so it adds
 no record-keeping work. The `check` half of B has since shipped as the agent's `ux_check`,
 beside three tools that read a page tree folded from the UX model
-([`../plans/agent-reads-the-ux-model.md`](../plans/agent-reads-the-ux-model.md));
+([`../plans/archive/agent-reads-the-ux-model.md`](../plans/archive/agent-reads-the-ux-model.md));
 `targets` is left as a one-tool follow-up there.
 
 **C — allow-listed mutating bridge.** C covers everything B covers, plus a named set of
