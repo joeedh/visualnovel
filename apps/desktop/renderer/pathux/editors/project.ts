@@ -157,7 +157,7 @@ export class ProjectEditor extends VnEditor {
     // A catalog with no text listing predates the text pickers, or was never fetched: list once,
     // so the pickers hold more than the shipped ids. Once is enough — a listing that failed is
     // in the note, and Refresh models is the retry.
-    if (view !== undefined && view.imageModels.text.length === 0 && !this.listedOnce) {
+    if (view !== undefined && (view.imageModels.text?.length ?? 0) === 0 && !this.listedOnce) {
       this.listedOnce = true;
       void this.refreshModels();
     }
