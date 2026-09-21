@@ -4,6 +4,8 @@
  * testable here is that the check does not call a resolved-but-wrong module a success, and does
  * not call a missing source tree one either.
  */
+import { promises as fs } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { READABLE } from '@vn/agentreport';
 import { BUILTIN_SKILLS_PATH } from '@vn/authoring';
@@ -37,9 +39,23 @@ const CHECKOUT = join(__dirname, '..', '..', '..', '..', '..');
 const foundSkills = () => join(CHECKOUT, ...BUILTIN_SKILLS_PATH);
 const noSkills = () => undefined;
 
+/** A tree with a README, made here because the real one is a build product under `dist/`. */
+let uxDocs: string;
+const foundUxDocs = () => uxDocs;
+const noUxDocs = () => undefined;
+
+beforeAll(async () => {
+  uxDocs = await fs.mkdtemp(join(tmpdir(), 'vn-smoke-ux-'));
+  await fs.writeFile(join(uxDocs, 'README.md'), '# How the app answers\n');
+});
+
+afterAll(async () => {
+  await fs.rm(uxDocs, { recursive: true, force: true });
+});
+
 describe('runSmoke', () => {
   it('passes when both modules resolve and the source is there', async () => {
-    const report = await runSmoke(good, foundSource, wholeSource, foundSkills);
+    const report = await runSmoke(good, foundSource, wholeSource, foundSkills, foundUxDocs);
     expect(report.ok).toBe(true);
     expect(report.checks.map((c) => c.what)).toEqual([
       '@anthropic-ai/sdk',
@@ -47,6 +63,7 @@ describe('runSmoke', () => {
       'esbuild',
       'source',
       'skills',
+      'uxdocs',
     ]);
   });
 
@@ -149,6 +166,22 @@ describe('runSmoke', () => {
     expect(report.checks[4]!.detail).toMatch(/missing branching, full-production, new-character/);
   });
 
+  // The failure the check exists for: a build that ran without `build:uxdocs`
+  it('fails an image whose UX docs tree is missing, with everything else fine', async () => {
+    const report = await runSmoke(good, foundSource, wholeSource, foundSkills, noUxDocs);
+    expect(report.ok).toBe(false);
+    expect(report.checks.slice(0, 5).every((c) => c.ok)).toBe(true);
+    expect(report.checks[5]).toMatchObject({ what: 'uxdocs', ok: false });
+    expect(report.checks[5]!.detail).toMatch(/ux_\* tools/);
+  });
+
+  it('fails a UX docs tree that resolved and has no README', async () => {
+    const report = await runSmoke(good, foundSource, wholeSource, foundSkills, () => __dirname);
+    expect(report.ok).toBe(false);
+    expect(report.checks[5]).toMatchObject({ what: 'uxdocs', ok: false });
+    expect(report.checks[5]!.detail).toMatch(/README\.md/);
+  });
+
   it('treats a source lookup that threw as a missing source', async () => {
     const report = await runSmoke(
       good,
@@ -163,7 +196,9 @@ describe('runSmoke', () => {
 
   // The placeholder key stays inside the smoke module, so the formatted line cannot carry it out
   it('says nothing about the placeholder key it constructed with', async () => {
-    const line = formatSmoke(await runSmoke(good, foundSource, wholeSource, foundSkills));
+    const line = formatSmoke(
+      await runSmoke(good, foundSource, wholeSource, foundSkills, foundUxDocs),
+    );
     expect(line.startsWith(SMOKE_PREFIX)).toBe(true);
     expect(line).not.toMatch(/apiKey|smoke-test-not-a-key/);
     expect(JSON.parse(line.slice(SMOKE_PREFIX.length)).ok).toBe(true);

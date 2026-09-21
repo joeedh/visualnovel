@@ -1,7 +1,8 @@
 /**
  * `--smoke` checks what a packaged build cannot answer by opening a window: whether the three
  * packages left out of the bundle still resolve, whether the plugin bundler can transform, and
- * whether the source the debug agent reads and the builtin skill catalog are in the image.
+ * whether the source the debug agent reads, the builtin skill catalog and the UX docs tree the
+ * authoring agent reads are in the image.
  *
  * Everything in this app is bundled into `dist/` except three packages. `scripts/aliases.mjs`
  * leaves `@google/genai`, `@anthropic-ai/sdk` and `esbuild` external, and each is reached
@@ -30,7 +31,7 @@ import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { READABLE, sourceRoot } from '@vn/agentreport';
 import { BUILTIN_SKILL_IDS } from '@vn/types';
-import { builtinSkillsDir } from './resources.js';
+import { builtinSkillsDir, uxDocsDir } from './resources.js';
 
 /** The dynamic `import()`, as a parameter — because it is the only part a test cannot run. */
 export type Loader = (spec: string) => Promise<unknown>;
@@ -113,6 +114,7 @@ export async function runSmoke(
   findSource: () => Promise<string | undefined> = sourceRoot,
   findMissing: (root: string) => Promise<string[]> = missingRoots,
   findSkills: () => string | undefined = builtinSkillsDir,
+  findUxDocs: () => string | undefined = uxDocsDir,
 ): Promise<SmokeReport> {
   const checks: SmokeCheck[] = [];
   for (const { spec, pick } of SDKS) {
@@ -138,7 +140,30 @@ export async function runSmoke(
 
   checks.push(await skillsCheck(findSkills));
 
+  checks.push(await uxDocsCheck(findUxDocs));
+
   return { ok: checks.every((c) => c.ok), checks };
+}
+
+/**
+ * Whether the UX docs tree shipped, judged by reading its README. `build:uxdocs` writes it into
+ * `dist/`, and a build that ran without it starts, opens a project, and gives the agent no
+ * `ux_*` tools, which nothing but the agent's own tool list would show.
+ */
+async function uxDocsCheck(findUxDocs: () => string | undefined): Promise<SmokeCheck> {
+  const root = findUxDocs();
+  if (root === undefined) {
+    return { what: 'uxdocs', ok: false, detail: 'not found — the agent will have no ux_* tools' };
+  }
+  try {
+    const readme = await fs.readFile(join(root, 'README.md'), 'utf8');
+    if (readme.trim() === '') {
+      return { what: 'uxdocs', ok: false, detail: `${root} — README.md is empty` };
+    }
+  } catch (err) {
+    return { what: 'uxdocs', ok: false, detail: `${root} — ${(err as Error).message}` };
+  }
+  return { what: 'uxdocs', ok: true, detail: root };
 }
 
 /**
