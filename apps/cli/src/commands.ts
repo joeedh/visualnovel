@@ -13,10 +13,8 @@ import {
   ProjectPaths,
   readAllShots,
   readSceneChunks,
-  writeApprovedPortrait,
   writeSceneChunk,
   writeStoryGraph,
-  setCharacterApproval,
 } from '@vn/store';
 import {
   buildPlayable,
@@ -326,7 +324,7 @@ export async function cmdStatus(args: Args): Promise<number> {
   }
   if (failed.length > FAILURES_SHOWN) ok(`    … and ${failed.length - FAILURES_SHOWN} more`);
   await printGraphStatus(project);
-  const gate = gateStatus(project.model);
+  const gate = gateStatus(project.model, project.store.manifest());
   ok(`Gate: ${gate.cleared ? 'cleared' : `awaiting approval — ${gate.pending.join(', ')}`}`);
   return 0;
 }
@@ -564,9 +562,7 @@ export async function cmdRun(
   if (summary.blockedOnGate) {
     ok('');
     ok('Halted at the character-approval gate. Pending characters:');
-    for (const id of summary.gate.pending) {
-      ok(`  ${id} — review candidates in ${project.paths.candidatesDir(id)}`);
-    }
+    for (const id of summary.gate.pending) ok(`  ${id}`);
     ok(`Approve them interactively with: vngen approve${dir === '.' ? '' : ` ${dir}`}`);
   } else if (failed.length) {
     ok(`Gate cleared, but ${failed.length} task(s) failed — art is missing.`);
@@ -609,25 +605,25 @@ function portraitsFor(project: LoadedProject, characterId: string): Asset[] {
 }
 
 /** Flip the character to approved with `hash`, copy the visible portrait, accept the asset. */
+/**
+ * Approve a portrait: hold it as the slot's current take, then accept it. The store writes the
+ * sheet's mirror (`status: approved`, `approved_portrait:`, `approved.png`) in the accept, so
+ * this is `vngen accept` for a portrait, with the hold that makes an older draft a restore.
+ */
 async function approveCharacter(
   project: LoadedProject,
   characterId: string,
   hash: string,
 ): Promise<{ ok: boolean; message: string }> {
-  const file = entityFile(project.inputs.characterDocs, characterId);
-  if (!file || !(await setCharacterApproval(file, hash))) {
+  if (!entityFile(project.inputs.characterDocs, characterId)) {
     return { ok: false, message: `No character file for "${characterId}".` };
   }
-  const bytes = await project.store.read({ hash, ext: project.store.get(hash)?.ext ?? 'png' });
-  await writeApprovedPortrait(project.paths, characterId, bytes);
-  // Held as well as accepted, so a draft chosen here is the slot's current take too
   const assets = project.store.manifest();
   const asset = assets.find((a) => a.hash === hash);
-  if (asset) {
-    await project.store.hold(hash, heldBy(asset, { model: project.model, assets }), {
-      at: new Date().toISOString(),
-    });
-  }
+  if (!asset) return { ok: false, message: `No asset "${hash}" in the store.` };
+  await project.store.hold(hash, heldBy(asset, { model: project.model, assets }), {
+    at: new Date().toISOString(),
+  });
   await project.store.accept(hash);
   return { ok: true, message: `Approved ${characterId} → ${hash}.` };
 }
@@ -726,7 +722,7 @@ export async function cmdApprove(args: Args, ioOverride?: ApproveIO): Promise<nu
 
   if (onlyCharacter) return approveOne(project, onlyCharacter, explicitHash, dir);
 
-  const pending = gateStatus(project.model).pending;
+  const pending = gateStatus(project.model, project.store.manifest()).pending;
   if (pending.length === 0) {
     ok('Nothing to approve — every character used by a reachable scene is already approved.');
     return 0;

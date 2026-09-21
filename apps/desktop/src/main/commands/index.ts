@@ -47,7 +47,7 @@ import {
 import { bibleSearch } from './bible.js';
 import { commandCheck } from './command.js';
 import { docCreate, docRead, docRename, docSaveAll, docWrite } from './doc.js';
-import { gateApprove, gateCandidates } from './gate.js';
+import { gateApprove, gateCandidates, gateLock } from './gate.js';
 import {
   gengraphAddBoundary,
   gengraphAddGroup,
@@ -253,6 +253,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     docWrite,
     gateApprove,
     gateCandidates,
+    gateLock,
     gengraphAddBoundary,
     gengraphAddGroup,
     gengraphAddNode,

@@ -4,6 +4,7 @@ import type { AssetStore } from '@vn/store';
 import { hashParts, VnError } from '@vn/util';
 import { imageParams } from './prompts.js';
 import { baseRefusal } from './base.js';
+import { approvedPortraitOf } from './gate.js';
 import {
   conceptPrompt,
   matchSubject,
@@ -59,7 +60,8 @@ export interface ConceptResult {
 function subjectRefs(deps: ArtGenDeps, subject?: ConceptSubject): AssetRef[] {
   if (!subject) return [];
   if (subject.kind === 'character') {
-    const portrait = deps.model.characters.get(subject.id)?.approvedPortrait;
+    const character = deps.model.characters.get(subject.id);
+    const portrait = character ? approvedPortraitOf(character, deps.store.manifest()) : undefined;
     return portrait ? [{ hash: portrait, ext: 'png' }] : [];
   }
   return deps.store

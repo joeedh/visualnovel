@@ -140,16 +140,8 @@ class AssetIndex {
     );
   }
 
-  /**
-   * A portrait for a character. Uses the explicitly approved hash when the character has one,
-   * otherwise the portrait the slot holds.
-   */
-  portrait(characterId: string, approvedHash?: string): AssetRef | undefined {
-    if (approvedHash) {
-      const byHash = this.assets.find((a) => a.hash === approvedHash);
-      // The approved portrait may pre-date the manifest entry; fall back to a png ref.
-      return byHash ? this.ref(byHash) : { hash: approvedHash, ext: 'png' };
-    }
+  /** The portrait a character's slot holds, approved or not; `unapprovedTakes` says which. */
+  portrait(characterId: string): AssetRef | undefined {
     return this.ref(
       this.assets.find((a) => a.kind === 'portrait' && bindsTo(a, { characterId }) && a.current),
     );
@@ -221,7 +213,7 @@ export function buildPlayable(
 
   const characters: Playable['characters'] = {};
   for (const character of model.characters.values()) {
-    const portrait = assets.portrait(character.id, character.approvedPortrait);
+    const portrait = assets.portrait(character.id);
     characters[character.id] = { name: character.name, ...(portrait ? { portrait } : {}) };
   }
 

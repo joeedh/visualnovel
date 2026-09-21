@@ -15,8 +15,7 @@
  * requiring an approval that cannot be granted would make Approve permanently unreachable for
  * everything drawn from one. What "approved" means otherwise is {@link assetApproved}.
  */
-import type { Asset, AssetKind, ProjectModel } from '@vn/types';
-import { isApproved } from './gate.js';
+import type { Asset, AssetKind } from '@vn/types';
 import { assetSlotLabel } from './describe.js';
 import { slotOf } from './refcycle.js';
 import { slotKey, slotLabel } from './slotaddr.js';
@@ -44,19 +43,16 @@ export interface Prereq {
 
 /**
  * Whether a human has blessed these bytes — the one predicate, so no two surfaces can disagree
- * about what "approved" means: the take is the one its slot holds, and a person accepted it.
- *
- * Asymmetric on purpose. A portrait answers to the P3 gate and never to `accepted`, and twice over:
- * the character has to be approved and these have to be the bytes they were approved with, so a
- * draft filed beside the approved one does not count. A concept and an upload were never approvable
- * at all, so they count as approved rather than blocking forever.
+ * about what "approved" means: the take is the one its slot holds, and a person accepted it. A
+ * portrait reads the same two bits, since the gate is the row (`approvedPortraitOf`). A concept
+ * and an upload were never approvable at all, so they count as approved rather than blocking
+ * forever.
  */
-export function assetApproved(asset: Asset, model: ProjectModel): boolean {
+export function assetApproved(asset: Asset): boolean {
   switch (asset.kind) {
-    case 'portrait':
     case 'reference':
     case 'concept':
-      return assetBlessed(asset, model);
+      return true;
     default:
       return asset.current === true && asset.accepted;
   }
@@ -69,13 +65,8 @@ export function assetApproved(asset: Asset, model: ProjectModel): boolean {
  * would make the frame unapprovable with no way to approve the plate, since accepting a take the
  * slot no longer holds is refused.
  */
-export function assetBlessed(asset: Asset, model: ProjectModel): boolean {
+export function assetBlessed(asset: Asset): boolean {
   switch (asset.kind) {
-    case 'portrait': {
-      const id = asset.satisfies[0]?.characterId;
-      const character = id ? model.characters.get(id) : undefined;
-      return !!character && isApproved(character) && character.approvedPortrait === asset.hash;
-    }
     case 'reference':
     case 'concept':
       return true;
@@ -114,7 +105,7 @@ function prereqOf(hash: string, up: Asset | undefined, ctx: PrereqContext): Prer
     };
   }
   const slot = slotOf(up, sheetAngleOf(up, ctx));
-  const approved = assetBlessed(up, ctx.model);
+  const approved = assetBlessed(up);
   const base = {
     hash,
     label: assetSlotLabel(up),

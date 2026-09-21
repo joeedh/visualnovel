@@ -120,7 +120,8 @@ describe('buildPlayable', () => {
     expect(firstShow).toMatchObject({ type: 'show', image: { hash: 'bg1', ext: 'png' } });
   });
 
-  it('prefers a character.approvedPortrait hash for the portrait ref', () => {
+  it('shows the portrait the slot holds, and never the hash the sheet names', () => {
+    // The sheet is a mirror of an approval, not a take; a re-render leaves it naming the old one
     const withApproved: ProjectModel = {
       ...model,
       characters: new Map(
@@ -129,8 +130,14 @@ describe('buildPlayable', () => {
         ),
       ),
     };
-    const play = buildPlayable(withApproved, fakeStore());
-    expect(play.characters['aiko']!.portrait).toEqual({ hash: 'approved-hash', ext: 'png' });
+    expect(buildPlayable(withApproved, fakeStore()).characters['aiko']!.portrait).toBeUndefined();
+    const store = fakeStore([
+      asset({ hash: 'por2', kind: 'portrait', satisfies: [{ characterId: 'aiko' }] }),
+    ]);
+    expect(buildPlayable(withApproved, store).characters['aiko']!.portrait).toEqual({
+      hash: 'por2',
+      ext : 'png',
+    });
   });
 
   // The flag is presentation only. The ref is exported either way, so turning the overlay on is
@@ -196,8 +203,16 @@ describe('unapprovedTakes', () => {
     const store = fakeStore([
       frame({ accepted: true }),
       frame({ hash: 'f0', current: false, accepted: false }),
+      portrait({ accepted: true }),
     ]);
-    const approved: ProjectModel = {
+    expect(unapprovedTakes(model, store, shots)).toEqual([]);
+    expect(unapprovedSentence([])).toBeUndefined();
+    // Nothing drawn at all: the player shows a placeholder, and there is nothing to approve.
+    expect(unapprovedTakes(model, fakeStore(), shots)).toEqual([]);
+  });
+
+  it('reads a portrait off its row, as the gate does; the sheet alone approves nothing', () => {
+    const sheetOnly: ProjectModel = {
       ...model,
       characters: new Map(
         [...model.characters].map(([id, c]) =>
@@ -205,15 +220,20 @@ describe('unapprovedTakes', () => {
         ),
       ),
     };
-    expect(unapprovedTakes(approved, store, shots)).toEqual([]);
-    expect(unapprovedSentence([])).toBeUndefined();
-    // Nothing drawn at all: the player shows a placeholder, and there is nothing to approve.
-    expect(unapprovedTakes(model, fakeStore(), shots)).toEqual([]);
-  });
-
-  it('reads a portrait off the gate: the flag alone approves nothing', () => {
-    const store = fakeStore([portrait({ accepted: true })]);
-    expect(unapprovedTakes(model, store, shots)).toEqual([{ slot: 'portrait:aiko', hash: 'p1' }]);
+    const store = fakeStore([portrait({ accepted: false })]);
+    expect(unapprovedTakes(sheetOnly, store, shots)).toEqual([
+      { slot: 'portrait:aiko', hash: 'p1' },
+    ]);
+    // A locked character's approval is the sheet's, whatever the slot holds
+    const locked: ProjectModel = {
+      ...model,
+      characters: new Map(
+        [...model.characters].map(([id, c]) =>
+          id === 'aiko' ? [id, { ...c, status: 'locked', approvedPortrait: 'p1' }] : [id, c],
+        ),
+      ),
+    };
+    expect(unapprovedTakes(locked, store, shots)).toEqual([]);
   });
 });
 

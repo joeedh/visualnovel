@@ -335,7 +335,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
   // planned" and "nothing is left to do" look identical, and only one of them is a problem.
   const refused = baseRefusal(store.base);
   if (refused) {
-    const gate = gateStatus(model);
+    const gate = gateStatus(model, store.manifest());
     return {
       ran,
       preview: costPreview(graph, config, drawnByGraph),
@@ -381,7 +381,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
   let plannedNow = firstPass;
 
   if (dryRun) {
-    const gate = gateStatus(model);
+    const gate = gateStatus(model, store.manifest());
     return {
       ran,
       preview: costPreview(graph, config, drawnByGraph),
@@ -486,7 +486,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
   if (stopAsked()) stopped = true;
   progress();
 
-  const gate = gateStatus(model);
+  const gate = gateStatus(model, store.manifest());
   return {
     ran,
     preview: costPreview(graph, config, drawnByGraph),

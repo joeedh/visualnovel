@@ -48,7 +48,19 @@ function fixture() {
     satisfies : [{ locationId: 'classroom', variant: 'day' }],
     accepted  : true,
   };
-  return { m, room, plate };
+  // The portrait rows the two characters are approved with, which is where the seeds read them
+  const portraits: Asset[] = [aiko, ren].map((c) => ({
+    hash      : c.approvedPortrait!,
+    ext       : 'png',
+    kind      : 'portrait',
+    sourceTask: `t-${c.id}`,
+    refs      : [],
+    modelId   : 'm',
+    satisfies : [{ characterId: c.id }],
+    accepted  : true,
+    current   : true,
+  }));
+  return { m, room, assets: [plate, ...portraits] };
 }
 
 describe('the sheet grid', () => {
@@ -94,15 +106,15 @@ describe('the sheet prompt and key', () => {
   });
 
   it('references the plate then each cast portrait once, and keys on prompt, refs and seed', () => {
-    const { m, room, plate } = fixture();
-    const seeds = sheetSeeds(room, 'g1', m, config, [plate])!;
+    const { m, room, assets } = fixture();
+    const seeds = sheetSeeds(room, 'g1', m, config, assets)!;
     expect(seeds.refs.map((r) => r.hash)).toEqual(['c'.repeat(64), 'a'.repeat(64), 'b'.repeat(64)]);
     expect(seeds.seed).toBe(7);
     expect(seeds.layout.cells).toHaveLength(3);
     const key = sheetKey(seeds);
     expect(sheetKey({ ...seeds, seed: 8 })).not.toBe(key);
     expect(sheetKey({ ...seeds, refs: seeds.refs.slice(1) })).not.toBe(key);
-    expect(sheetKey(sheetSeeds(room, 'g1', m, config, [plate])!)).toBe(key);
+    expect(sheetKey(sheetSeeds(room, 'g1', m, config, assets)!)).toBe(key);
     expect(sheetSeeds(room, 'none', m, config, [])).toBeUndefined();
   });
 

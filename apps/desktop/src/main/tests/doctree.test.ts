@@ -106,7 +106,7 @@ function makeInput(over: Partial<DocTreeInput> = {}): DocTreeInput {
     model,
     inputs,
     manifest: [
-      asset('a'.repeat(64), { accepted: true }),
+      asset('a'.repeat(64)),
       asset('b'.repeat(64), {
         kind     : 'shot_image',
         satisfies: [{ sceneId: 'arrival', shotId: 'arrival-s1' }],
@@ -230,15 +230,10 @@ describe('buildDocTree', () => {
 
   it('calls a frame stale rather than accepted once its scene moved on', () => {
     const base = makeInput();
-    const aiko = base.model.characters.get('aiko')!;
     const drifted = buildDocTree({
       ...base,
-      // The gate is cleared with the portrait, so it is approved and earns the badge
-      model: {
-        ...base.model,
-        characters: new Map([['aiko', { ...aiko, approvedPortrait: 'a'.repeat(64) }]]),
-      } as ProjectModel,
-      manifest: base.manifest.map((a) => (a.kind === 'shot_image' ? { ...a, accepted: true } : a)),
+      // The portrait is accepted too, so the gate is cleared with it and it earns the badge
+      manifest: base.manifest.map((a) => ({ ...a, accepted: true })),
       shots: new Map<string, Shot[] | null>([
         [
           'arrival',
@@ -369,18 +364,23 @@ describe('the Unapproved branch', () => {
     expect('boundGraph' in rows[0]!).toBe(false);
   });
 
-  it('reads a portrait’s approval off the gate, never off Asset.accepted', () => {
-    // `a` is `accepted: true` and still waiting, because a portrait's approval comes from the P3
-    // gate and from nothing else.
+  it('reads a portrait’s approval off its row, never off the sheet', () => {
     expect(treeWith(slots([portrait]))!.children![0]!.label).toBe('Awaiting approval (1)');
 
+    // The sheet naming the hash clears nothing on its own: it mirrors an accept, and this row
+    // has none
     const input = makeInput();
     const aiko = input.model.characters.get('aiko')!;
-    const approved = {
+    const sheetOnly = {
       ...input.model,
       characters: new Map([['aiko', { ...aiko, approvedPortrait: HASH_A }]]),
     } as ProjectModel;
-    expect(treeWith(slots([portrait]), { model: approved })).toBeUndefined();
+    expect(treeWith(slots([portrait]), { model: sheetOnly })!.children![0]!.label).toBe(
+      'Awaiting approval (1)',
+    );
+    expect(
+      treeWith(slots([portrait]), { manifest: [asset(HASH_A, { accepted: true })] }),
+    ).toBeUndefined();
   });
 
   it('files three unaccepted drafts as awaiting approval, never as unrendered', () => {
@@ -748,7 +748,6 @@ describe('backlinks', () => {
           ext     : 'png',
           kind    : 'portrait',
           label   : 'aaaaaaaa.png',
-          // The row's flag is set, and the answer is still the gate's, which is not cleared
           accepted: false,
           base    : true,
           slot    : 'portrait:aiko',

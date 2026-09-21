@@ -85,8 +85,9 @@
 
 | Command | Props | Notes |
 | ------- | ----- | ----- |
-| `gate.approve` ✍ ✓ | `characterId`, `hash` | Writes `characters`, `wiki`, `vngen/work/characters`, `assets/manifest.json`, `vngen/build/manifest.json`. Flips `character.md`; writes the approved PNG + manifest. |
+| `gate.approve` ✍ ✓ | `characterId`, `hash` | Writes `characters`, `wiki`, `vngen/work/characters`, `assets/manifest.json`, `vngen/build/manifest.json`. Holds and accepts the portrait row; the store mirrors it onto `character.md` and `approved.png`. |
 | `gate.candidates` | `characterId` | Pending portrait candidates for one character. |
+| `gate.lock` ✍ ✓ | `characterId`, `locked` (default `true`) | Writes `characters`, `wiki`. Writes `status: locked` (or `approved` again) onto `character.md`; the manifest is untouched. |
 
 ## `gengraph.`
 

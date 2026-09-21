@@ -358,10 +358,10 @@ describe('prompt overrides', () => {
 
 describe('applyCharacterEdit', () => {
   it('patches one field, preserves the rest and the body', () => {
-    const res = applyCharacterEdit(charDoc, { status: 'approved' });
+    const res = applyCharacterEdit(charDoc, { traits: ['guarded', 'patient'] });
     expect(res.ok).toBe(true);
     if (!res.ok) return;
-    expect(res.value.value.status).toBe('approved');
+    expect(res.value.value.traits).toEqual(['guarded', 'patient']);
     expect(res.value.value.name).toBe('Ren');
     expect(res.value.doc.body.trim()).toBe('Ren is a guarded transfer student.');
   });
@@ -374,7 +374,7 @@ describe('applyCharacterEdit', () => {
 
   it('preserves unrelated hand-authored front-matter keys', () => {
     const doc = parseFrontMatter(`---\nid: ren\nname: Ren\nvoice: terse\n---\n\nbody\n`);
-    const res = applyCharacterEdit(doc, { status: 'approved' });
+    const res = applyCharacterEdit(doc, { traits: ['guarded'] });
     if (!res.ok) throw new Error('expected ok');
     expect(res.value.doc.data['voice']).toBe('terse');
   });

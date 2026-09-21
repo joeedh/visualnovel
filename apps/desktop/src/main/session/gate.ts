@@ -1,5 +1,5 @@
 import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
-import { entityFile, setCharacterApproval, writeApprovedPortrait } from '@vn/store';
+import { entityFile, setCharacterLocked } from '@vn/store';
 import { isApproved } from '@vn/pipeline';
 import {
   assetApproved,
@@ -55,16 +55,16 @@ export class GatePart {
     return {
       character : Boolean(character),
       candidate : candidates.some((a) => a.hash === hash),
-      approved  : character ? isApproved(character) : false,
+      approved  : character ? isApproved(character, project.store.manifest()) : false,
       candidates: candidates.length,
       ...(suspended ? { suspended } : {}),
     };
   }
 
   /**
-   * Flip a character to approved with `hash`: copy the visible portrait, hold and accept the
-   * asset. The hold is what makes a draft chosen at the gate the slot's current take as well as
-   * its approved one; the gate itself still reads the sheet.
+   * Flip a character to approved with `hash`: hold and accept the asset. The hold is what makes
+   * a draft chosen at the gate the slot's current take as well as its approved one — choosing an
+   * older draft is a restore — and the accept writes the sheet's mirror and `approved.png`.
    */
   async approveCharacter(characterId: string, hash: string): Promise<ApproveResult> {
     const project = await loadProject(this.session.dir);
@@ -81,13 +81,6 @@ export class GatePart {
     if (suspended) return { ok: false, message: `${hash.slice(0, 8)} is suspended: ${suspended}.` };
     const file = entityFile(project.inputs.characterDocs, characterId);
     if (!file) return { ok: false, message: `No character file for "${characterId}".` };
-    // Read before any write, so a store that cannot produce the bytes leaves `character.md`
-    // untouched rather than approved with no portrait behind it
-    const bytes = await project.store.read({ hash, ext: asset.ext });
-    if (!(await setCharacterApproval(file, hash))) {
-      return { ok: false, message: `No character file for "${characterId}".` };
-    }
-    await writeApprovedPortrait(project.paths, characterId, bytes);
     // Asked before the accept, because which manifest answers is decided by which root holds the
     // hash, and a portrait's bytes never move between the two.
     const manifest = relPath(this.session.dir, project.store.manifestFileOf(hash));
@@ -108,6 +101,66 @@ export class GatePart {
         relPath(this.session.dir, project.paths.approvedPortrait(characterId)),
         manifest,
       ],
+    };
+  }
+
+  /**
+   * What `gate.lock` would find: whether the character exists, the hash their sheet's mirror
+   * names, and whether they are locked already. A read — `lockCharacter` re-decides for itself.
+   */
+  async gateLockState(
+    characterId: string,
+  ): Promise<{ character: boolean; locked: boolean; mirror?: string }> {
+    const project = await loadProject(this.session.dir);
+    const character = project.model.characters.get(characterId);
+    if (!character) return { character: false, locked: false };
+    const mirror =
+      character.status === 'approved' || character.status === 'locked'
+        ? character.approvedPortrait
+        : undefined;
+    return {
+      character: true,
+      locked   : character.status === 'locked',
+      ...(mirror === undefined ? {} : { mirror }),
+    };
+  }
+
+  /**
+   * Set or release `status: locked` on a character's sheet, which holds their approval at the
+   * portrait the sheet names without reading the manifest. Locking needs a mirror to hold, so an
+   * unapproved character is refused; releasing a character who is not locked is refused too.
+   */
+  async lockCharacter(
+    characterId: string,
+    locked: boolean,
+  ): Promise<{ ok: boolean; message: string; written: string[] }> {
+    const state = await this.gateLockState(characterId);
+    if (!state.character) {
+      return { ok: false, message: `No character "${characterId}".`, written: [] };
+    }
+    const mirror = state.mirror;
+    if (locked && mirror === undefined) {
+      return {
+        ok     : false,
+        message: `${characterId} has no approved portrait to lock.`,
+        written: [],
+      };
+    }
+    if (!locked && !state.locked) {
+      return { ok: false, message: `${characterId} is not locked.`, written: [] };
+    }
+    const project = await loadProject(this.session.dir);
+    const file = entityFile(project.inputs.characterDocs, characterId);
+    if (!file)
+      return { ok: false, message: `No character file for "${characterId}".`, written: [] };
+    await setCharacterLocked(file, locked);
+    return {
+      ok     : true,
+      message:
+        locked && mirror !== undefined
+          ? `Locked ${characterId}'s look at ${mirror.slice(0, 8)}.`
+          : `Unlocked ${characterId}; their approval follows their portrait slot again.`,
+      written: [relPath(this.session.dir, file)],
     };
   }
 
@@ -151,7 +204,7 @@ export class GatePart {
           !asset.current ||
           seen.has(hash) ||
           drifted.has(hash) ||
-          assetApproved(asset, project.model)
+          assetApproved(asset)
         ) {
           continue;
         }
@@ -205,7 +258,7 @@ export class GatePart {
       if (!slot) continue;
       for (const hash of slot.candidates) {
         const asset = byHash.get(hash);
-        if (!asset || seen.has(hash) || !assetApproved(asset, project.model)) continue;
+        if (!asset || seen.has(hash) || !assetApproved(asset)) continue;
         seen.add(hash);
         const characterId = asset.satisfies[0]?.characterId;
         out.push({

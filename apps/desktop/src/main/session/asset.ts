@@ -1,11 +1,11 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { basename, isAbsolute, join } from 'node:path';
-import { clearCharacterApproval, entityFile, isBaseKind, removeApprovedPortrait } from '@vn/store';
+import { entityFile, isBaseKind } from '@vn/store';
 import { activeOutputs, type GraphJournalRecord } from '@vn/gengraph';
 import { appendGraphJournal, graphJournalFile, invalidateGenGraph } from '@vn/gengraph/state';
 import { logTask } from '@vn/taskgraph';
 import { sha256 } from '@vn/util';
-import { basePromptOf, baseRefusal, isApproved, slotOfTask } from '@vn/pipeline';
+import { approvedPortraitOf, basePromptOf, baseRefusal, slotOfTask } from '@vn/pipeline';
 import {
   adoptSlot,
   adoptionForSlot,
@@ -77,7 +77,7 @@ export class AssetPart {
         kind    : asset.kind,
         file    : relPath(this.session.dir, project.store.pathOf(asset)),
         label   : names.get(asset.hash) ?? asset.hash,
-        accepted: assetApproved(asset, project.model),
+        accepted: assetApproved(asset),
         ...(slot ? { slot: slotKey(slot) } : {}),
       };
     });
@@ -135,7 +135,7 @@ export class AssetPart {
       base      : isBaseKind(asset.kind),
       accepted  : asset.accepted,
       current   : asset.current === true,
-      approved  : assetApproved(asset, project.model),
+      approved  : assetApproved(asset),
       sourceTask: asset.sourceTask,
       ...(asset.via === undefined ? {} : { via: asset.via }),
       ...(asset.at === undefined ? {} : { at: asset.at }),
@@ -285,10 +285,13 @@ export class AssetPart {
       if (!who) return { ok: false, message: `${info.label} names no character.` };
       const project = await loadProject(this.session.dir);
       const character = project.model.characters.get(who);
-      if (!character || !isApproved(character)) {
+      const approved = character
+        ? approvedPortraitOf(character, project.store.manifest())
+        : undefined;
+      if (!character || approved === undefined) {
         return { ok: false, message: `${who} has no approved portrait.` };
       }
-      if (character.approvedPortrait !== hash) {
+      if (approved !== hash) {
         return { ok: false, message: `${who}'s approved portrait is a different take.` };
       }
       return {
@@ -301,8 +304,9 @@ export class AssetPart {
   }
 
   /**
-   * Take approval back off an asset: the manifest flag for an ordinary one, and for a portrait
-   * the whole P3 gate — the sheet's `status:` and `approved_portrait:`, and `approved.png`.
+   * Take approval back off an asset: the manifest flag, which for a portrait is the whole P3
+   * gate, since the store clears the sheet's `status:` and `approved_portrait:` and `approved.png`
+   * with it.
    *
    * Asks {@link previewUnapprove} itself for the reason {@link acceptAsset} asks its own preview:
    * a caller may skip the check, so the write cannot rely on one having run.
@@ -325,10 +329,7 @@ export class AssetPart {
 
     const who = this.portraitOwner(info) ?? '';
     const file = entityFile(project.inputs.characterDocs, who);
-    if (!file || !(await clearCharacterApproval(file))) {
-      return { ok: false, message: `No character file for "${who}".`, written: [] };
-    }
-    await removeApprovedPortrait(project.paths, who);
+    if (!file) return { ok: false, message: `No character file for "${who}".`, written: [] };
     await project.store.unaccept(hash);
     return {
       ok     : true,

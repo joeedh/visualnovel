@@ -518,6 +518,7 @@ const SKIPS: Record<string, string> = {
   'asset.unapprove'        : 'takes approval back off an approved asset',
   'asset.upload'           : 'copies an image in from outside the workspace',
   'gate.approve'           : 'approves a portrait candidate a real run has to have drawn',
+  'gate.lock'              : 'locks an approval that gate.approve has to have written first',
   'gengraph.run': 'executes a graph through real providers; the command declares no mock',
   'models.refresh'         : 'asks OpenRouter for its model listing over the network',
   'notify.deleteAll':

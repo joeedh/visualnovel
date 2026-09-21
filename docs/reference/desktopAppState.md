@@ -369,7 +369,6 @@ Authored inputs and generated outputs are the source of truth for everything els
 │       │   └── lib/<ref>.json  # A group definition; every graph instancing `<ref>` follows this file
 │       ├── characters/<id>/
 │       │   ├── approved.png    # Approved portrait for character
-│       │   ├── candidates/     # Awaiting approval
 │       │   └── outfits/<outfit>/sheet/
 │       ├── locations/<id>/
 │       │   ├── breakdown.md    # P1 location breakdown

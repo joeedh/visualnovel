@@ -13,7 +13,6 @@ import {
   promptOverrideIsEmpty,
   promptOverrideToDoc,
   type Character,
-  type CharacterStatus,
   type Location,
   type LocationVariant,
   type Outfit,
@@ -313,11 +312,14 @@ export function sceneToDoc(scene: Scene): FrontMatterDoc {
   return { data: { scene: scene.id }, body: sceneToFountain(scene, { sceneMarker: false }) };
 }
 
-/** A partial edit to a character; only the provided fields are changed. */
+/**
+ * A partial edit to a character; only the provided fields are changed. `status` is not among
+ * them: `approved` is the manifest's to say (`accept` on the portrait row writes it) and `locked`
+ * is `gate.lock`'s, so no edit path can approve a look by writing the word.
+ */
 export interface CharacterEdit {
   name?: string;
   description?: string;
-  status?: CharacterStatus;
   defaultOutfit?: string;
   /**
    * Replaces the whole wardrobe map, outfit id → description, or → the long form for an outfit
@@ -380,7 +382,6 @@ export function applyCharacterEdit(
 ): EntityResult<AppliedEdit<Character>> {
   const data = { ...doc.data };
   if (edit.name !== undefined) data['name'] = edit.name;
-  if (edit.status !== undefined) data['status'] = edit.status;
   if (edit.defaultOutfit !== undefined) data['default_outfit'] = edit.defaultOutfit;
   if (edit.outfits !== undefined) data['outfits'] = edit.outfits;
   if (edit.traits !== undefined) data['traits'] = edit.traits;

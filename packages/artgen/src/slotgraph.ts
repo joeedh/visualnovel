@@ -56,14 +56,19 @@ import {
   MODEL_SHEET_ANGLES,
   SHEET_FRONT,
 } from './prompts.js';
-import { isApproved } from './gate.js';
+import { approvedPortraitOf } from './gate.js';
 
 /** A decision that either carries a plan or names, in a sentence, why there is none. */
 export type Decided<T> = { ok: false; code: string; reason: string } | { ok: true; plan: T };
 
-/** The fields stating a slot's identity reads. The manifest is deliberately not among them. */
+/**
+ * The fields stating a slot's identity reads. The manifest enters only through the approved
+ * portrait (`approvedPortraitOf`): with `assets`, a sheet or a frame is keyed on the portrait the
+ * gate approves off the row; without them, on the sheet's mirror, which is what a pure plan reads.
+ */
 export interface SlotResolveContext extends RungContext {
   config: ProjectConfig;
+  assets?: readonly Asset[];
   /**
    * The task graph as loaded. Its absence is meaningful: without it no `shot:` slot can state an
    * identity and the result is pure shape, which is all a caller that has not read
@@ -73,7 +78,7 @@ export interface SlotResolveContext extends RungContext {
 }
 
 /** What walking the whole graph reads: identity, plus the manifest that says what fills each slot. */
-export interface SlotGraphContext extends SlotResolveContext, BindingContext {}
+export interface SlotGraphContext extends Omit<SlotResolveContext, 'assets'>, BindingContext {}
 
 /** A slot resolved against the project: which task it is, and what that task's inputs are. */
 export type ResolvedSlot =
@@ -128,8 +133,9 @@ function shotUpstream(scene: Scene, shot: Shot, ctx: SlotResolveContext): Decide
   const refs: AssetRef[] = [plate];
   for (const subject of shot.subjects) {
     const character = ctx.model.characters.get(subject.characterId);
-    if (!character?.approvedPortrait) return missing(`${subject.characterId}'s portrait`);
-    const portrait: AssetRef = { hash: character.approvedPortrait, ext: 'png' };
+    const approved = character ? approvedPortraitOf(character, ctx.assets) : undefined;
+    if (!character || !approved) return missing(`${subject.characterId}'s portrait`);
+    const portrait: AssetRef = { hash: approved, ext: 'png' };
     refs.push(portrait);
 
     const outfit = outfitFor(subject, scene, character);
@@ -188,7 +194,8 @@ export function resolveSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<
     case 'sheet': {
       const character = ctx.model.characters.get(slot.characterId);
       if (!character) return gone(`There is no character "${slot.characterId}"`);
-      if (!character.approvedPortrait) {
+      const approved = approvedPortraitOf(character, ctx.assets);
+      if (!approved) {
         return {
           ok    : false,
           code  : 'NOT_APPROVED',
@@ -207,7 +214,7 @@ export function resolveSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<
             character,
             slot.outfit,
             slot.angle,
-            { hash: character.approvedPortrait, ext: 'png' },
+            { hash: approved, ext: 'png' },
             ctx.config,
             params,
           ),
@@ -351,8 +358,6 @@ export function buildSlotGraph(ctx: SlotGraphContext): SlotGraph {
     const decided = resolveSlot(binding, ctx);
     const task = decided.ok ? slotTaskHash(decided.plan) : undefined;
     const status = task ? ctx.graph?.get(task)?.status : undefined;
-    const character =
-      binding.kind === 'portrait' ? ctx.model.characters.get(binding.characterId) : undefined;
 
     nodes.set(key, {
       key,
@@ -366,10 +371,7 @@ export function buildSlotGraph(ctx: SlotGraphContext): SlotGraph {
       ...(decided.ok ? {} : { blocked: decided.reason }),
       ...(hash ? { hash } : {}),
       candidates: candidates.map((a) => a.hash),
-      approved:
-        binding.kind === 'portrait'
-          ? !!character && isApproved(character)
-          : !!hash && candidates.some((a) => a.hash === hash && a.accepted),
+      approved  : !!hash && candidates.some((a) => a.hash === hash && a.accepted),
     });
   }
 

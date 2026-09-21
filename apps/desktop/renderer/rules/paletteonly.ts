@@ -84,6 +84,13 @@ const APP: readonly PaletteOnly[] = [
   },
 ];
 
+const GATE: readonly PaletteOnly[] = [
+  {
+    match: 'gate.lock',
+    why: 'Holding a look against its slot is a deliberate, rare act the palette and CDP make; no editor draws a lock control.',
+  },
+];
+
 const PROJECT = ['project.setStoryboardNotes', 'project.setLettering'].map((match) => ({
   match,
   why: 'A project.yaml key the palette and CDP set; no editor draws a field for it until the manga-style plan’s page-shot stage.',
@@ -160,6 +167,7 @@ export const PALETTE_ONLY: readonly PaletteOnly[] = [
   ...READS,
   ...VIEW,
   ...APP,
+  ...GATE,
   ...PROJECT,
   ...GENGRAPH_NODES,
   ...STORY,

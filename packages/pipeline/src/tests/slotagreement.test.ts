@@ -9,7 +9,7 @@
  * This test lives in `@vn/pipeline` because `@vn/artgen` may not import the planner; the pipeline
  * may import both, so this is the only package that can ask the question.
  */
-import { projectConfig, type ProjectModel } from '@vn/types';
+import { projectConfig, type Asset, type ProjectModel } from '@vn/types';
 import { TaskGraph } from '@vn/taskgraph';
 import { createMockProviders } from '@vn/providers';
 import { buildSlotGraph, type SlotGraph } from '@vn/artgen';
@@ -52,10 +52,27 @@ async function planToExhaustion(m: ProjectModel): Promise<TaskGraph> {
   return graph;
 }
 
+/**
+ * The portrait row whose hash the sheet's `approved_portrait` repeats. The planner here runs
+ * with no manifest and reads the sheet; the slot graph always has one and reads the row. The
+ * two have to agree, which is what the sheet's copy exists for.
+ */
+const PORTRAIT_ROW: Asset = {
+  hash      : 'portrait-hash',
+  ext       : 'png',
+  kind      : 'portrait',
+  sourceTask: 'task-portrait',
+  refs      : [],
+  modelId   : 'm',
+  satisfies : [{ characterId: 'aiko' }],
+  accepted  : true,
+  current   : true,
+};
+
 function slots(m: ProjectModel, graph: TaskGraph): SlotGraph {
   return buildSlotGraph({
     model : m,
-    assets: [],
+    assets: m.characters.get('aiko')?.status === 'approved' ? [PORTRAIT_ROW] : [],
     config,
     graph,
     // What the planner decomposed and would have persisted; `buildSlotGraph` never decomposes.

@@ -100,6 +100,17 @@ and that absence is what `migrateCurrent` keys on
 ([pipeline-contracts.md](pipeline-contracts.md#scheduling), _Currency is exclusive per
 slot_).
 
+**A portrait's accept writes the sheet.** `accept` on a `portrait` row the slot holds
+(`current`) also writes the character sheet's mirror — `status: approved` and
+`approved_portrait:` on `character.md`, and `approved.png` beside it — and `unaccept`
+clears all three when the sheet names that hash. The row is the authority and the sheet
+repeats it, so a reader with no manifest answers as the row does; a `locked` sheet keeps
+its status through the write. An accepted portrait the slot no longer holds is history and
+writes no mirror. The store discovers the sheet the way `loadInputs` does, so a character
+kept under `wiki/` is written where it lives
+([pipeline-contracts.md](pipeline-contracts.md#scheduling), _The gate blocks shot
+planning_).
+
 **Reads consult both roots, and one row answers for a hash.** Hashes are content hashes,
 so a byte present in both roots is the same byte and the two indices cannot disagree about
 content. Where both hold a record for one hash, the project record answers when it carries

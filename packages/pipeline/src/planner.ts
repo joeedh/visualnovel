@@ -26,10 +26,10 @@ import {
 import { type ProjectPaths, readShots, writeShots } from '@vn/store';
 import { makeTask } from '@vn/taskgraph';
 import {
+  approvedPortraitOf,
   baseRefusal,
   cycleRefusal,
   firstCycle,
-  isApproved,
   layoutDefect,
   sceneUnblocked,
   sheetGroups,
@@ -260,8 +260,9 @@ export async function planTasks(opts: {
    */
   readOnlyShots?: boolean;
   /**
-   * The manifest, which a staging sheet's references resolve from. Without it a sheet is keyed
-   * on its prompt and the portraits alone, which is what a plan with no store can know.
+   * The manifest, which a staging sheet's references resolve from and the character gate reads.
+   * Without it a sheet is keyed on its prompt and the portraits alone, and the gate reads the
+   * sheet's mirror of the row, which is what a plan with no store can know.
    */
   assets?: readonly Asset[];
 }): Promise<AnyTask[]> {
@@ -294,8 +295,9 @@ export async function planTasks(opts: {
     // P4: model sheets derive from the approved portrait, so only after the gate — and only for
     // the outfits something puts this character in, not for every one the sheet authors. An
     // uncast character has no wardrobe entry, so it costs nothing.
-    if (isApproved(character) && character.approvedPortrait) {
-      const portraitRef: AssetRef = { hash: character.approvedPortrait, ext: PNG };
+    const approved = approvedPortraitOf(character, opts.assets);
+    if (approved !== undefined) {
+      const portraitRef: AssetRef = { hash: approved, ext: PNG };
       for (const outfit of wardrobe.get(character.id) ?? []) {
         for (const angle of MODEL_SHEET_ANGLES) {
           planned.push(
@@ -308,7 +310,7 @@ export async function planTasks(opts: {
 
   // P5–P7: shots, but only for scenes that have fully cleared the character gate.
   for (const scene of reachableScenes(model)) {
-    if (!sceneUnblocked(model, scene.id)) continue;
+    if (!sceneUnblocked(model, scene.id, opts.assets)) continue;
     if (scene.shots.length === 0) {
       const storyboard = await shotsFor(
         scene,
@@ -343,11 +345,12 @@ export async function planTasks(opts: {
       let missingRef = false;
       for (const subject of shot.subjects) {
         const character = model.characters.get(subject.characterId);
-        if (!character?.approvedPortrait) {
+        const approved = character ? approvedPortraitOf(character, opts.assets) : undefined;
+        if (!character || approved === undefined) {
           missingRef = true;
           break;
         }
-        const portraitRef: AssetRef = { hash: character.approvedPortrait, ext: PNG };
+        const portraitRef: AssetRef = { hash: approved, ext: PNG };
         subjectRefs.push(portraitRef);
 
         const outfit = outfitFor(subject, scene, character);

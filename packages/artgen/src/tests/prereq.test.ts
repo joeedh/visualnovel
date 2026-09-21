@@ -1,9 +1,10 @@
 /**
  * The approval frontier for one asset.
  *
- * Most of these cases cover the three arms that answer "approved" without anyone having approved
- * the asset: a portrait, an upload and a concept. Getting one of those wrong makes Approve
- * permanently unreachable for everything drawn from that asset.
+ * Most of these cases cover the two arms that answer "approved" without anyone having approved
+ * the asset, an upload and a concept, and the one that reads `accepted` alone rather than the
+ * current row. Getting one of those wrong makes Approve permanently unreachable for everything
+ * drawn from that asset.
  */
 import type { Asset, AssetKind, ProjectModel, Shot } from '@vn/types';
 import { character, location, model, scene } from '@vn/testkit';
@@ -29,7 +30,10 @@ function asset(
 }
 
 const PLATE = asset('plate1', 'location_ref', [{ locationId: 'cafe', variant: 'night' }]);
-const PORTRAIT = asset('p-aiko', 'portrait', [{ characterId: 'aiko' }]);
+const PORTRAIT = asset('p-aiko', 'portrait', [{ characterId: 'aiko' }], {
+  current : true,
+  accepted: true,
+});
 const FRAME = asset('frame', 'shot_image', [{ sceneId: 'arrival', shotId: 'arrival__a' }], {
   refs: ['plate1', 'p-aiko'],
 });
@@ -61,28 +65,24 @@ describe('assetPrereqs', () => {
     expect(rows[1]!.approved).toBe(true);
   });
 
-  it('answers a portrait from the gate, not from `accepted`', () => {
-    // `p-aiko` is unaccepted in the manifest and approved in the model. A portrait's approval
-    // comes from the character gate, and reading `accepted` here would deadlock every frame.
+  it('answers a portrait from its row, as the gate does, and not from the sheet', () => {
     const rows = assetPrereqs(FRAME, ctx([PLATE, PORTRAIT, FRAME]));
     expect(rows[1]!.note).toBe('Approved at the character gate.');
 
-    const draft = model(
-      [character('aiko', 'draft')],
-      [scene('arrival', ['aiko'], 'cafe')],
-      [location('cafe')],
-    );
-    const pending = assetPrereqs(FRAME, ctx([PLATE, PORTRAIT, FRAME], draft));
+    // The sheet says approved and the row says nobody accepted it: the row wins, since the sheet
+    // is a mirror `accept` writes rather than a place approval is decided.
+    const draft = { ...PORTRAIT, accepted: false };
+    const pending = assetPrereqs(FRAME, ctx([PLATE, draft, FRAME]));
     expect(pending[1]!.approved).toBe(false);
     expect(pending[1]!.note).toContain('has not cleared the character gate');
   });
 
-  it('refuses to let a draft portrait beside the approved one count', () => {
-    // Aiko is approved with `p-aiko`; these are different bytes for the same character.
-    const other = asset('p-aiko-2', 'portrait', [{ characterId: 'aiko' }], { accepted: true });
-    const frame = { ...FRAME, refs: ['p-aiko-2'] };
-    const rows = assetPrereqs(frame, ctx([other, frame]));
-    expect(rows[0]!.approved).toBe(false);
+  it('lets an accepted portrait the slot no longer holds count, like any other kind', () => {
+    // A frame drawn from the portrait Aiko was approved with, before a re-render moved past it,
+    // was still drawn from an approved portrait; nothing downstream is deadlocked by history.
+    const older = { ...PORTRAIT, current: false };
+    const rows = assetPrereqs(FRAME, ctx([PLATE, older, FRAME]));
+    expect(rows[1]!.approved).toBe(true);
   });
 
   it('never blocks on an upload, a concept, or bytes the manifest has never heard of', () => {

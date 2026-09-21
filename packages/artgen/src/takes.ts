@@ -214,8 +214,31 @@ export async function repairCurrent(deps: TakeDeps): Promise<OverHeld[]> {
     await deps.store.hold(fix.keep, fix.drop);
     fixes.push(fix);
   }
+  fixes.push(...(await catchUpMirrors(deps)));
 
   for (const fix of fixes) deps.logger?.info('manifest.repair', { ...fix });
+  return fixes;
+}
+
+/**
+ * A sheet that says `approved` with a hash no portrait row of the character has caught up with
+ * was written by an older tool, straight into the file. The row is the authority now, so the
+ * sheet's hash is held and accepted to match — once, since an accepted row of the slot is what
+ * the next pass finds. A slot with an accepted row is left alone whatever the sheet names.
+ */
+async function catchUpMirrors(deps: TakeDeps): Promise<OverHeld[]> {
+  const fixes: OverHeld[] = [];
+  for (const character of deps.model.characters.values()) {
+    const hash = character.approvedPortrait;
+    if (hash === undefined) continue;
+    if (character.status !== 'approved' && character.status !== 'locked') continue;
+    const rows = candidatesFor({ kind: 'portrait', characterId: character.id }, contextOf(deps));
+    if (rows.some((a) => a.accepted) || !rows.some((a) => a.hash === hash)) continue;
+    const drop = rows.filter((a) => a.current && a.hash !== hash).map((a) => a.hash);
+    await deps.store.hold(hash, drop);
+    await deps.store.accept(hash);
+    fixes.push({ slot: `portrait:${character.id}`, keep: hash, drop });
+  }
   return fixes;
 }
 
@@ -256,7 +279,7 @@ export function acceptableTakes(deps: TakeDeps): Acceptable[] {
     const node = slots.nodes.get(key)!;
     for (const hash of node.candidates) {
       const asset = byHash.get(hash);
-      if (!asset?.current || seen.has(hash) || assetApproved(asset, deps.model)) continue;
+      if (!asset?.current || seen.has(hash) || assetApproved(asset)) continue;
       seen.add(hash);
       const label = assetSlotLabel(asset);
       const refusal = acceptRefusal(asset, label, prereqs);
@@ -292,8 +315,7 @@ export async function acceptTake(
   }
   const refusal = acceptRefusal(asset, label, prereqContextOf(deps));
   if (refusal !== undefined) return { ok: false, message: refusal };
-  if (assetApproved(asset, deps.model))
-    return { ok: true, message: `${label} is already accepted.` };
+  if (assetApproved(asset)) return { ok: true, message: `${label} is already accepted.` };
   await deps.store.accept(hash);
   return { ok: true, message: `Accepted ${label} (${hash.slice(0, 8)}).` };
 }

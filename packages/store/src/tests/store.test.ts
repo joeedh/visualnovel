@@ -6,7 +6,9 @@ import {
   AssetStore,
   ProjectPaths,
   loadInputs,
+  clearCharacterApproval,
   setCharacterApproval,
+  setCharacterLocked,
   writeSceneChunk,
 } from '../index.js';
 
@@ -139,5 +141,27 @@ describe('worktree IO', () => {
     const doc = parseFrontMatter(await readFile(paths.characterFile('aiko'), 'utf8'));
     expect(doc.data['status']).toBe('approved');
     expect(doc.data['approved_portrait']).toBe('deadbeef');
+  });
+
+  it('keeps a locked sheet locked through a mirror write, and unlocks back to approved', async () => {
+    const paths = new ProjectPaths(await tempRoot());
+    await mkdir(join(paths.charactersDir, 'aiko'), { recursive: true });
+    const file = paths.characterFile('aiko');
+    await writeFile(file, '---\nid: aiko\nname: Aiko\nstatus: candidates\n---\n\nAiko.\n');
+    const data = async () => parseFrontMatter(await readFile(file, 'utf8')).data;
+
+    // A mirror write under a lock brings the new hash and keeps the lock
+    await setCharacterApproval(file, 'deadbeef');
+    expect(await setCharacterLocked(file, true)).toBe(true);
+    expect(await data()).toMatchObject({ status: 'locked', approved_portrait: 'deadbeef' });
+    await setCharacterApproval(file, 'cafebabe');
+    expect(await data()).toMatchObject({ status: 'locked', approved_portrait: 'cafebabe' });
+    await setCharacterLocked(file, false);
+    expect(await data()).toMatchObject({ status: 'approved', approved_portrait: 'cafebabe' });
+
+    await clearCharacterApproval(file);
+    expect((await data())['status']).toBe('candidates');
+    expect((await data())['approved_portrait']).toBeUndefined();
+    expect(await setCharacterLocked(join(paths.charactersDir, 'nobody.md'), true)).toBe(false);
   });
 });

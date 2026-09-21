@@ -1782,6 +1782,34 @@ describe('WorkspaceSession — approving another character’s portrait', () => 
     expect(await session.approveCharacter('aiko', plate.hash)).toMatchObject({ ok: false });
     expect(await p.read('characters/aiko/character.md')).toBe(before);
   });
+
+  it('locks an approved look against its slot, and only an approved one', async () => {
+    expect(await session.lockCharacter('nobody', true)).toMatchObject({ ok: false });
+    // Unapproved: nothing for a lock to hold
+    expect(await session.gateLockState('ren')).toEqual({ character: true, locked: false });
+    expect(await session.lockCharacter('ren', true)).toMatchObject({ ok: false });
+    expect(await session.lockCharacter('ren', false)).toMatchObject({ ok: false });
+
+    const [portrait] = await session.gateCandidates('ren');
+    expect(await session.approveCharacter('ren', portrait!.hash)).toMatchObject({ ok: true });
+    expect(await session.lockCharacter('ren', true)).toMatchObject({
+      ok     : true,
+      written: ['characters/ren/character.md'],
+    });
+    expect(await session.gateLockState('ren')).toEqual({
+      character: true,
+      locked   : true,
+      mirror   : portrait!.hash,
+    });
+    expect(await p.read('characters/ren/character.md')).toContain('status: locked');
+    expect(await session.lockCharacter('ren', false)).toMatchObject({ ok: true });
+    expect(await p.read('characters/ren/character.md')).toContain('status: approved');
+    // Un-approving the locked portrait itself takes the lock with it
+    await session.lockCharacter('ren', true);
+    await (await p.reload()).store.unaccept(portrait!.hash);
+    expect(await p.read('characters/ren/character.md')).toContain('status: candidates');
+    expect(await session.lockCharacter('ren', false)).toMatchObject({ ok: false });
+  });
 });
 
 describe('WorkspaceSession — replacing a picture with a file', () => {

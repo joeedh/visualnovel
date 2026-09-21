@@ -85,8 +85,8 @@ export class PipelinePart {
 
   async status(): Promise<PipelineStatus> {
     const project = await loadProject(this.session.dir);
-    const gate = gateStatus(project.model);
     const manifest = project.store.manifest();
+    const gate = gateStatus(project.model, manifest);
     const exts = new Map(manifest.map((a) => [a.hash, a.ext]));
     // The same walk `docTree` reads. Emitted in `order`, so the wire carries the topology the
     // pane needs without shipping the two Maps: upstream is always earlier in the array.

@@ -15,8 +15,12 @@ describe('registry metadata', () => {
     expect(sig).toContain('description?: string (full prose body');
     expect(sig).toContain('id: string');
     expect(sig).toContain('palette?: string[]');
+    // Approval is not a field: a look is approved by accepting a portrait, never by a word here
+    expect(sig).not.toContain('status');
     // Enums render their literal options.
-    expect(sig).toContain('status?: "draft"|"candidates"|"approved"|"locked"');
+    expect(describeToolParams(tool('set_art_notes').args)).toContain(
+      'mode?: "append"|"replace"|"clear"',
+    );
   });
 
   it('names the fields inside a nested shape rather than flattening it to object', () => {

@@ -26,6 +26,7 @@ function asset(
 }
 
 const ASSETS: Asset[] = [
+  asset('portrait-hash', 'portrait', [{ characterId: 'aiko' }], { current: true, accepted: true }),
   asset('sheet-front', 'model_sheet', [{ characterId: 'aiko', outfit: 'uniform' }]),
   asset('sheet-side', 'model_sheet', [{ characterId: 'aiko', outfit: 'uniform' }]),
   asset('plate-night', 'location_ref', [{ locationId: 'cafe', variant: 'night' }]),
@@ -46,7 +47,11 @@ function ctx(assets: readonly Asset[] = ASSETS): BindingContext {
 describe('resolveBinding', () => {
   it('answers each of the five kinds from the slot that owns it', () => {
     const c = ctx();
+    // A portrait is the row its slot holds, like every other kind; the sheet's hash is not read
     expect(resolveBinding({ kind: 'portrait', characterId: 'aiko' }, c)).toBe('portrait-hash');
+    expect(
+      resolveBinding({ kind: 'portrait', characterId: 'aiko' }, ctx(ASSETS.slice(1))),
+    ).toBeUndefined();
     expect(
       resolveBinding({ kind: 'sheet', characterId: 'aiko', outfit: 'uniform', angle: 'side' }, c),
     ).toBe('sheet-side');

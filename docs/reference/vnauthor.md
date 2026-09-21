@@ -243,15 +243,18 @@ Editing an entity is typed rather than done with `edit_file`:
 `edit_character`/`edit_location` route through `@vn/model`'s serializers, so the
 round-trip guarantee holds by construction. Both edit tools patch the sheet the workspace
 index actually loaded (a character tagged `type: character` under `wiki/` is edited where
-it lives, not at the conventional path). The `create_*` tools do write to the conventional
-directory, because that is where a sheet that does not exist yet goes. A create tool takes
-the whole sheet: its arguments are the edit tool's arguments minus `id`, which is slugged
-from the name, and they route through the same `applyCharacterEdit`/`applyLocationEdit`. A
-created sheet is therefore validated by exactly what would have validated an edited one,
-and a character does not have to be created and then immediately edited. Given no fields
-at all, `create_character` still writes the template. It also reports which of the three
-cases it wrote, because a sheet of placeholders and a sheet with an empty body are
-different things to whoever draws from it next.
+it lives, not at the conventional path). A character's `status` is not among the fields
+either tool takes: a look is approved by accepting a portrait (`approve_assets`), which
+writes the sheet's `status: approved` as a mirror of the manifest row, and never by
+writing the word. The `create_*` tools do write to the conventional directory, because
+that is where a sheet that does not exist yet goes. A create tool takes the whole sheet:
+its arguments are the edit tool's arguments minus `id`, which is slugged from the name,
+and they route through the same `applyCharacterEdit`/`applyLocationEdit`. A created sheet
+is therefore validated by exactly what would have validated an edited one, and a character
+does not have to be created and then immediately edited. Given no fields at all,
+`create_character` still writes the template. It also reports which of the three cases it
+wrote, because a sheet of placeholders and a sheet with an empty body are different things
+to whoever draws from it next.
 
 Three things stay out of the model's hands. The first is scene prose: `write_file` and
 `edit_file` both refuse a `scenes/` path outright and name `edit_scene` instead, because a

@@ -22,6 +22,7 @@ import { hashParts } from '@vn/util';
 import { chunk, chunkList, composePrompt } from './chunks.js';
 import { resolveBinding } from './refs.js';
 import { stylePreamble, subjectWords } from './prompts.js';
+import { approvedPortraitOf } from './gate.js';
 
 export { MAX_SHEET_CELLS };
 
@@ -203,7 +204,8 @@ export function sheetRefs(
     for (const subject of member.subjects) {
       if (cast.has(subject.characterId)) continue;
       cast.add(subject.characterId);
-      const portrait = model.characters.get(subject.characterId)?.approvedPortrait;
+      const character = model.characters.get(subject.characterId);
+      const portrait = character ? approvedPortraitOf(character, assets) : undefined;
       if (!portrait) continue;
       const asset = assets.find((a) => a.hash === portrait);
       refs.push({ hash: portrait, ext: asset?.ext ?? 'png' });

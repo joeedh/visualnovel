@@ -98,13 +98,30 @@ These implement the system design in
 
 ## Scheduling
 
-- **The gate is a barrier.**
+- **The gate blocks shot planning, and reads the manifest row.**
     - The character-approval gate (P3) is not a task dependency. The planner enforces it
       by emitting shot tasks for a scene only once every character in that scene is
-      `approved`.
-    - A `vngen run` halts at the gate with nothing left ready.
-    - Approving (via `vngen approve`) flips `character.md`. The next `run` plans and
-      executes the downstream work.
+      approved.
+    - A character is approved when the take their portrait slot holds is one a person
+      accepted: `approvedPortraitOf(character, assets)` answers the current, accepted
+      portrait row, and `isApproved`, `sceneUnblocked`, `gateStatus`, `resolveSlot` and
+      the planner's P4 and P5 gates all read it. A re-render puts an unapproved draft in
+      the slot, so the gate closes until the author accepts the draft or restores the
+      approved take; nothing already drawn is touched.
+    - The sheet is a mirror. `AssetStore.accept` on the portrait a slot holds writes
+      `status: approved`, `approved_portrait:` and `approved.png` in the same act, and
+      `unaccept` clears them when the sheet names that hash. A reader with no manifest in
+      hand (a pure plan, `planTasks` without `assets`) reads the mirror, which is valid
+      because nothing else writes it: `status` is not an editable field of a character,
+      and a sheet an older tool approved by hand is caught up once by `repairCurrent`
+      (hold and accept the hash it names, when that row exists and no row of the slot is
+      accepted).
+    - `status: locked`, set by `gate.lock`, is the one thing the sheet says on its own: it
+      holds the character's approval with the hash the sheet names, whatever the slot
+      comes to hold.
+    - A `vngen run` halts at the gate with nothing left ready. Approving (`gate.approve`,
+      `vngen approve`) holds the chosen portrait and accepts it, so choosing an older
+      draft is a restore. The next `run` plans and executes the downstream work.
     - Scenes with no characters render immediately.
 - **Incremental planning.**
     - The planner is called once per scheduler wave.
@@ -144,12 +161,8 @@ These implement the system design in
       instead in the tree's _Awaiting approval_ branch.
     - Plan:
       [`../plans/archive/INDEX.md#drawing-a-character-before-a-scene-casts-them`](../plans/archive/INDEX.md#drawing-a-character-before-a-scene-casts-them).
-- `SlotNode.approved` means two different things depending on the slot kind. This is
-  deliberate.
-    - A `portrait:` slot is approved when the character's `approvedPortrait` names it. The
-      P3 gate makes this check and reads `approvedPortrait` from the model.
-    - Every other slot is approved when the asset filling it has `accepted === true`.
-    - The approval frontier exists to prevent conflating them.
+- `SlotNode.approved` means one thing for every slot kind: the take the slot holds is
+  accepted. A `portrait:` slot answers the same way, since the gate reads the row.
 - **Currency is exclusive per slot.** A manifest row carries two bits. `current` says the
   slot holds this take; `accepted` says a person approved it. They are set by different
   acts and neither clears the other.
@@ -170,9 +183,9 @@ These implement the system design in
     - Approved, for a plate, sheet or frame, is `assetApproved`: current and accepted. The
       prerequisite check reads `assetBlessed` — `accepted` alone — because a frame drawn
       from a plate that was approved and has since been superseded was still drawn from an
-      approved plate. A portrait's approval is the gate's until stage 5 of the
-      slot-history plan. `acceptRefusal` refuses to accept a take its slot does not hold,
-      naming `asset.restore`, which holds and then accepts.
+      approved plate. A portrait reads the same two bits. `acceptRefusal` refuses to
+      accept a take its slot does not hold, naming `asset.restore`, which holds and then
+      accepts.
     - A sheet binding written since takes were held carries its `angle`; an older row is
       told apart from its siblings through its task's inputs (`angleOf`), and a row with
       neither releases nothing when held, since four angles share one binding.

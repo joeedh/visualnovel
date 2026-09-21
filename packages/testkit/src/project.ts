@@ -14,8 +14,6 @@ import {
   entityFile,
   loadInputs,
   readAllShots,
-  setCharacterApproval,
-  writeApprovedPortrait,
   writeSceneChunk,
 } from '@vn/store';
 import { Git, openGit } from '@vn/git';
@@ -288,9 +286,9 @@ export class TestProject {
   }
 
   /**
-   * Approve a portrait the way `vngen approve` does — front-matter, the visible
-   * `approved.png`, then `store.hold` and `store.accept` — so the next `reload()` sees the gate
-   * cleared and the slot holding the approved draft.
+   * Approve a portrait the way `vngen approve` does — `store.hold`, then `store.accept`, which
+   * writes the sheet's mirror and `approved.png` — so the next `reload()` sees the gate cleared
+   * and the slot holding the approved draft.
    */
   async approve(characterId: string, hash?: string): Promise<string> {
     const { store, model } = await this.reload();
@@ -298,15 +296,10 @@ export class TestProject {
     if (!chosen) {
       throw new Error(`no portrait asset for character "${characterId}" — run() first`);
     }
-    const file = entityFile((await loadInputs(this.paths)).characterDocs, characterId);
-    if (!file || !(await setCharacterApproval(file, chosen))) {
+    if (!entityFile((await loadInputs(this.paths)).characterDocs, characterId)) {
       throw new Error(`no character sheet for "${characterId}"`);
     }
-    await writeApprovedPortrait(
-      this.paths,
-      characterId,
-      await store.read({ hash: chosen, ext: 'png' }),
-    );
+    // Held, then accepted: the accept writes the sheet's mirror and `approved.png`
     const assets = store.manifest();
     const asset = assets.find((a) => a.hash === chosen);
     if (asset) {

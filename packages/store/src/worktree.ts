@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { parseFrontMatter, stringifyFrontMatter, type LoadedInputs } from '@vn/parse';
 import type { Diagnostic } from '@vn/types';
-import { ensureDir, exists, writeFileAtomic } from '@vn/util';
+import { exists, writeFileAtomic } from '@vn/util';
 import { discoverEntities } from './entities.js';
 import { ProjectPaths } from './paths.js';
 import { readSceneChunks } from './scenes.js';
@@ -83,19 +83,6 @@ export async function writeBreakdown(
   await writeFileAtomic(paths.locationBreakdown(id), markdown);
 }
 
-/** Write a P3 candidate portrait image into the character's `candidates/` dir. */
-export async function writeCandidate(
-  paths: ProjectPaths,
-  characterId: string,
-  name: string,
-  bytes: Uint8Array,
-): Promise<string> {
-  await ensureDir(paths.candidatesDir(characterId));
-  const file = join(paths.candidatesDir(characterId), name);
-  await writeFileAtomic(file, bytes);
-  return file;
-}
-
 /** Copy the approved portrait bytes to the visible `approved.png` (report §9.2 gate). */
 export async function writeApprovedPortrait(
   paths: ProjectPaths,
@@ -106,16 +93,19 @@ export async function writeApprovedPortrait(
 }
 
 /**
- * Flip a character sheet's front-matter to approved with the chosen portrait hash (report §P3).
- * Takes the sheet's `file` — resolved by the caller from the same `loadInputs` its decision was
- * made against — because a character discovered by tag lives wherever its file lives, and a path
- * re-derived from the id would approve a file that may not exist. Returns false when the given
- * file does not exist.
+ * Write the sheet's mirror of an accepted portrait row: `status: approved` and the chosen hash
+ * (report §P3). The manifest row is the authority; the sheet says the same thing so the text file
+ * and its git history keep reading as they always have. Takes the sheet's `file`, because a
+ * character discovered by tag lives wherever its file lives, and a path re-derived from the id
+ * would approve a file that may not exist. A `locked` sheet keeps its status. Returns false when
+ * the given file does not exist, and leaves a file already saying this untouched.
  */
 export async function setCharacterApproval(file: string, portraitHash: string): Promise<boolean> {
   if (!(await exists(file))) return false;
   const doc = parseFrontMatter(await fs.readFile(file, 'utf8'));
-  doc.data['status'] = 'approved';
+  const status = doc.data['status'] === 'locked' ? 'locked' : 'approved';
+  if (doc.data['status'] === status && doc.data['approved_portrait'] === portraitHash) return true;
+  doc.data['status'] = status;
   doc.data['approved_portrait'] = portraitHash;
   await writeFileAtomic(file, stringifyFrontMatter(doc.data, doc.body));
   return true;
@@ -123,22 +113,41 @@ export async function setCharacterApproval(file: string, portraitHash: string): 
 
 /**
  * Undo {@link setCharacterApproval}: put the sheet back to `candidates` and drop the hash it
- * pointed at. Returns false when the given file does not exist.
+ * pointed at, a `locked` sheet included. Returns false when the given file does not exist, and
+ * leaves a file already saying this untouched.
  *
- * `candidates` rather than `draft` because the portraits that were drawn are still on disk, and
- * `draft` claims none exist. The candidate images and the manifest entries are untouched, so the
- * same portrait can be approved again.
+ * `candidates` rather than `draft` because the portraits that were drawn are still in the store,
+ * and `draft` claims none exist. The manifest rows are untouched, so the same portrait can be
+ * approved again.
  */
 export async function clearCharacterApproval(file: string): Promise<boolean> {
   if (!(await exists(file))) return false;
   const doc = parseFrontMatter(await fs.readFile(file, 'utf8'));
+  if (doc.data['status'] === 'candidates' && doc.data['approved_portrait'] === undefined) {
+    return true;
+  }
   doc.data['status'] = 'candidates';
   delete doc.data['approved_portrait'];
   await writeFileAtomic(file, stringifyFrontMatter(doc.data, doc.body));
   return true;
 }
 
-/** Remove the visible `approved.png`, if there is one. The candidates it was copied from stay. */
+/**
+ * Set or clear `status: locked` on a character sheet, which holds the character's approval
+ * without reading the manifest. Locking keeps the hash the sheet names; unlocking puts the
+ * status back to `approved`. Returns false when the given file does not exist.
+ */
+export async function setCharacterLocked(file: string, locked: boolean): Promise<boolean> {
+  if (!(await exists(file))) return false;
+  const doc = parseFrontMatter(await fs.readFile(file, 'utf8'));
+  const status = locked ? 'locked' : 'approved';
+  if (doc.data['status'] === status) return true;
+  doc.data['status'] = status;
+  await writeFileAtomic(file, stringifyFrontMatter(doc.data, doc.body));
+  return true;
+}
+
+/** Remove the visible `approved.png`, if there is one. The bytes it was copied from stay. */
 export async function removeApprovedPortrait(
   paths: ProjectPaths,
   characterId: string,

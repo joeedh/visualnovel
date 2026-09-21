@@ -53,6 +53,12 @@ const SHOT: Shot = {
   coversLines: [],
 };
 
+/** The portrait row Aiko is approved with: current in her slot, and accepted by a person. */
+const PORTRAIT: Asset = {
+  ...asset('p-aiko', 'portrait', [{ characterId: 'aiko' }], true),
+  accepted: true,
+};
+
 /**
  * Aiko is approved and in the one reachable scene; the café has two variants, only one of which any
  * shot names — both are still enumerated, because the planner plans both.
@@ -70,7 +76,7 @@ function ctx(over: Partial<SlotGraphContext> = {}): SlotGraphContext {
   );
   return {
     model : m,
-    assets: [],
+    assets: [PORTRAIT],
     config,
     shots: new Map([['arrival', [SHOT]]]),
     ...over,
@@ -115,10 +121,7 @@ describe('buildSlotGraph', () => {
   });
 
   it('enumerates sheets before the gate clears, and says why they have no identity', () => {
-    const c = ctx();
-    const aiko = c.model.characters.get('aiko')!;
-    aiko.status = 'draft';
-    delete aiko.approvedPortrait;
+    const c = ctx({ assets: [{ ...PORTRAIT, accepted: false }] });
     const sheet = buildSlotGraph(c).nodes.get('sheet:aiko/default/front')!;
     // The slot is still enumerated even though nothing can be planned for it yet.
     expect(sheet.taskHash).toBeUndefined();
@@ -149,12 +152,15 @@ describe('buildSlotGraph', () => {
     expect(order).toHaveLength(7);
   });
 
-  it('answers a portrait from the gate and everything else from the manifest', () => {
-    // Aiko is approved with no portrait asset filed at all. Approval for a portrait comes from
-    // the model rather than the manifest, and reading `accepted` here would call an approved
-    // character unapproved.
-    const graph = buildSlotGraph(ctx());
-    expect(graph.nodes.get('portrait:aiko')!.approved).toBe(true);
+  it('answers every kind, a portrait included, from the row its slot holds', () => {
+    expect(buildSlotGraph(ctx()).nodes.get('portrait:aiko')!.approved).toBe(true);
+    // The sheet still says approved with this hash; the row says nobody accepted it, and the
+    // row is what the gate reads once there is a manifest to read.
+    const unaccepted = buildSlotGraph(ctx({ assets: [{ ...PORTRAIT, accepted: false }] }));
+    expect(unaccepted.nodes.get('portrait:aiko')!.approved).toBe(false);
+    expect(unaccepted.nodes.get('sheet:aiko/default/front')!.blocked).toContain(
+      'has not been approved',
+    );
 
     const accepted = buildSlotGraph(
       ctx({

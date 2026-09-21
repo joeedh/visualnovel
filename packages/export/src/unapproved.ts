@@ -11,16 +11,6 @@ export interface UnapprovedTake {
   hash: string;
 }
 
-/** The gate's answer for a portrait, which is what approval means for one until the row reads it. */
-function portraitApproved(model: ProjectModel, characterId: string, hash: string): boolean {
-  const character = model.characters.get(characterId);
-  return (
-    !!character &&
-    (character.status === 'approved' || character.status === 'locked') &&
-    character.approvedPortrait === hash
-  );
-}
-
 /**
  * Every shot whose current frame is unapproved, then every character cast in a scene whose
  * current portrait is, in the order the playable shows them. A slot with no take at all is not
@@ -49,14 +39,10 @@ export function unapprovedTakes(
   for (const scene of model.scenes.values()) for (const id of scene.characters) cast.add(id);
   for (const id of cast) {
     const character = model.characters.get(id);
-    if (!character) continue;
-    // The playable shows the approved portrait when the gate names one, so only a character
-    // whose shown portrait is the slot's current take can be showing an unapproved one
-    if (character.approvedPortrait) continue;
+    // A locked character's approval is the sheet's, whatever the slot holds
+    if (!character || character.status === 'locked') continue;
     const portrait = current((a) => a.kind === 'portrait' && bindsTo(a, { characterId: id }));
-    if (portrait && !portraitApproved(model, id, portrait.hash)) {
-      out.push({ slot: `portrait:${id}`, hash: portrait.hash });
-    }
+    if (portrait && !portrait.accepted) out.push({ slot: `portrait:${id}`, hash: portrait.hash });
   }
   return out;
 }

@@ -1604,6 +1604,19 @@ export class WorkspaceSession {
     return this.gatePart.approveCharacter(characterId, hash);
   }
 
+  async gateLockState(
+    characterId: string,
+  ): Promise<{ character: boolean; locked: boolean; mirror?: string }> {
+    return this.gatePart.gateLockState(characterId);
+  }
+
+  async lockCharacter(
+    characterId: string,
+    locked: boolean,
+  ): Promise<{ ok: boolean; message: string; written: string[] }> {
+    return this.gatePart.lockCharacter(characterId, locked);
+  }
+
   /**
    * Every picture that could be approved right now, upstream first — the same walk the document
    * tree's “Awaiting approval” group is a projection of, so the agent and the tree can never

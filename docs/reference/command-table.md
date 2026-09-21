@@ -2,8 +2,8 @@
 
 # Registered commands
 
-191 commands, in 24 namespaces. 113 are `mutating`;
-126 declare a precondition; 78 are undoable; 21 ask
+192 commands, in 24 namespaces. 114 are `mutating`;
+127 declare a precondition; 78 are undoable; 21 ask
 for confirmation.
 
 ✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
@@ -54,8 +54,9 @@ for confirmation.
 | `doc.rename` ✍ ↺ ✓ | `path`, `name` | Writes `characters`, `locations`, `wiki`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`. Change the name a document is known by, **in place**. A sheet is renamed through its `name:` field, anything else through its title — front-matter `title:`, else the first heading — so the new name is read back from wherever the old one was. The file does not move: an id is derived from a name once, at creation, and afterwards it is what shots, cast lists and `[[goto:]]` markers point at. What the tree's double-click-to-rename dispatches. |
 | `doc.saveAll` | — | Save every unsaved wiki or skill draft, in every window, one `doc.write` each. Not itself a write: the drafts live in the renderer, which answers the effect this pushes. |
 | `doc.write` ✍ ↺ ✓ | `path`, `text` (digest), `seenHash` (default `''`), `auto` (default `false`) | Writes `characters`, `locations`, `wiki`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`. Overwrite a document. A file changed underneath the edit is refused by content. `scenes/**` is refused outright. |
-| `gate.approve` ✍ ✓ | `characterId`, `hash` | Writes `characters`, `wiki`, `vngen/work/characters`, `assets/manifest.json`, `vngen/build/manifest.json`. Flips `character.md`; writes the approved PNG + manifest. |
+| `gate.approve` ✍ ✓ | `characterId`, `hash` | Writes `characters`, `wiki`, `vngen/work/characters`, `assets/manifest.json`, `vngen/build/manifest.json`. Holds and accepts the portrait row; the store mirrors it onto `character.md` and `approved.png`. |
 | `gate.candidates` | `characterId` | Pending portrait candidates for one character. |
+| `gate.lock` ✍ ✓ | `characterId`, `locked` (default `true`) | Writes `characters`, `wiki`. Writes `status: locked` (or `approved` again) onto `character.md`; the manifest is untouched. |
 | `gengraph.addBoundary` ✍ ↺ ✓ | `group`, `dir`, `key`, `type` | Writes `vngen/work/graphs`. |
 | `gengraph.addGroup` ✍ ↺ ✓ | `slug`, `ref`, `x` (default `0`), `y` (default `0`), `group` (default `''`) | Writes `vngen/work/graphs`. Place one instance of a definition under `lib/`, bound at once so the file never holds an unresolved instance. What the Add Group menu runs. |
 | `gengraph.addNode` ✍ ↺ ✓ | `slug`, `type`, `x` (default `0`), `y` (default `0`), `group` (default `''`) | Writes `vngen/work/graphs`. Place one node of a registered type. A type no plugin provides is refused by name rather than written and reported on the next load. |

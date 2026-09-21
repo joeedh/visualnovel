@@ -62,9 +62,9 @@ type ApproveId = keyof typeof APPROVE_TOOLTIPS;
  * still names the command it is about, so a tour asked for that command can ring the greyed
  * button and say this sentence rather than reporting the button as missing.
  *
- * A portrait is approved through the gate and nothing else. `gate.approve` also writes
- * `character.md` and `approved.png`, which is what clears the character, so the pane offers that
- * command rather than the generic `asset.accept` the command itself would refuse. A concept and an
+ * A portrait is approved through the gate and nothing else. `gate.approve` holds the take as well
+ * as accepting it, which is what clears the character, so the pane offers that command rather
+ * than the generic `asset.accept` the command itself would refuse. A concept and an
  * upload have no approval at all: nothing consumes a concept, and nothing generated an upload.
  *
  * Approval also flows upstream-first, and that refusal is placed ahead of the portrait split so it

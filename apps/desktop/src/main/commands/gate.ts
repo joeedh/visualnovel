@@ -1,4 +1,4 @@
-/** Commands over the character-approval gate (P3): inspect candidates, approve one. */
+/** Commands over the character-approval gate (P3): inspect candidates, approve one, lock one. */
 import { defineFor, prop } from '@vn/commands';
 import type { CommandHost } from './host.js';
 
@@ -24,7 +24,8 @@ export const gateApprove = define({
   id         : 'gate.approve',
   title      : 'Approve portrait',
   description: "Approve a character's portrait by asset hash, clearing them from the gate.",
-  notes      : 'Flips `character.md`; writes the approved PNG + manifest.',
+  notes:
+    'Holds and accepts the portrait row; the store mirrors it onto `character.md` and `approved.png`.',
   mutating   : true,
   affects: [
     'characters',
@@ -76,5 +77,48 @@ export const gateApprove = define({
     // `approveCharacter` names them: a sheet discovered under `wiki/` is reported where it is, and
     // a portrait's manifest is whichever root holds the bytes.
     return { message: result.message, data: result, written: result.written ?? [] };
+  },
+});
+
+export const gateLock = define({
+  id         : 'gate.lock',
+  title      : 'Lock portrait',
+  description:
+    "Hold a character's approval at the portrait their sheet names, whatever their slot comes to hold; or release that hold.",
+  notes:
+    'Writes `status: locked` (or `approved` again) onto `character.md`; the manifest is untouched.',
+  mutating   : true,
+  affects    : ['characters', 'wiki'],
+  props: {
+    characterId: prop.string('the character to lock'),
+    locked     : prop.boolean('false to release the lock', { default: true }),
+  },
+  async check({ characterId, locked }, ctx) {
+    const state = await ctx.host.session.gateLockState(characterId);
+    if (!state.character) return { ok: false, reason: `No character "${characterId}".` };
+    if (locked) {
+      if (!state.mirror) {
+        return {
+          ok    : false,
+          reason: `${characterId} has no approved portrait to lock — approve one with gate.approve first.`,
+        };
+      }
+      return {
+        ok  : true,
+        note: state.locked
+          ? `${characterId} is already locked.`
+          : `Would hold ${characterId}'s approval at ${state.mirror.slice(0, 8)} until unlocked.`,
+      };
+    }
+    if (!state.locked) return { ok: false, reason: `${characterId} is not locked.` };
+    return {
+      ok  : true,
+      note: `Would let ${characterId}'s approval follow their portrait slot again.`,
+    };
+  },
+  async run({ characterId, locked }, ctx) {
+    const result = await ctx.host.session.lockCharacter(characterId, locked);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, written: result.written };
   },
 });

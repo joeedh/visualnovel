@@ -107,9 +107,6 @@ export class ProjectPaths {
   workCharacterDir(id: string): string {
     return join(this.work, 'characters', id);
   }
-  candidatesDir(id: string): string {
-    return join(this.workCharacterDir(id), 'candidates');
-  }
   approvedPortrait(id: string): string {
     return join(this.workCharacterDir(id), 'approved.png');
   }

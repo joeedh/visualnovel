@@ -510,14 +510,14 @@ describe('plan-mode gate', () => {
         ctx,
         [
           // 1. Try to edit before a plan — must be blocked.
-          JSON.stringify({ tool: 'edit_character', args: { id: 'aiko', status: 'approved' } }),
+          JSON.stringify({ tool: 'edit_character', args: { id: 'aiko', traits: ['patient'] } }),
           // 2. Propose a plan — approved → switches to execute mode.
           JSON.stringify({
             tool: 'propose_plan',
             args: { summary: 'Approve Aiko', steps: ['set status'], files: ['characters/aiko'] },
           }),
           // 3. Now the edit succeeds in execute mode.
-          JSON.stringify({ tool: 'edit_character', args: { id: 'aiko', status: 'approved' } }),
+          JSON.stringify({ tool: 'edit_character', args: { id: 'aiko', traits: ['patient'] } }),
           JSON.stringify({ final: 'Aiko is approved.' }),
         ],
         permission,
@@ -528,7 +528,7 @@ describe('plan-mode gate', () => {
       expect(permission.plans).toHaveLength(1);
       expect(res.mode).toBe('execute');
       const text = await fs.readFile(join(dir, 'characters', 'aiko', 'character.md'), 'utf8');
-      expect(text).toContain('status: approved');
+      expect(text).toContain('- patient');
     } finally {
       await cleanup();
     }
@@ -554,7 +554,7 @@ describe('plan-mode gate', () => {
       const res = await agent.run('approve aiko');
       expect(res.mode).toBe('plan');
       const text = await fs.readFile(join(dir, 'characters', 'aiko', 'character.md'), 'utf8');
-      expect(text).toContain('status: draft');
+      expect(text).not.toContain('- patient');
     } finally {
       await cleanup();
     }
@@ -645,7 +645,7 @@ describe('commit gate', () => {
             tool: 'propose_plan',
             args: { summary: 'Approve Aiko', steps: ['set status'], files: ['characters/aiko'] },
           }),
-          JSON.stringify({ tool: 'edit_character', args: { id: 'aiko', status: 'approved' } }),
+          JSON.stringify({ tool: 'edit_character', args: { id: 'aiko', traits: ['patient'] } }),
           // No `paths` — the loop must stage exactly what the agent edited this plan.
           JSON.stringify({ tool: 'git_commit', args: { message: 'Approve Aiko' } }),
           JSON.stringify({ final: 'Committed.' }),

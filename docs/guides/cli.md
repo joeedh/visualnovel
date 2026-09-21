@@ -50,11 +50,14 @@ node by node. [`../reference/gen-graphs.md`](../reference/gen-graphs.md#the-cli)
 what a graph is and what each verb prints.
 
 `approve` and `accept` are the two doors to approval. `approve` is the P3 gate and takes
-portraits only; `accept` takes every other kind — a plate, a sheet, a frame — and only the
-take its slot holds now: an older take is refused by name, since putting one back is
-`asset.restore` in the desktop app. `--all` accepts every current unapproved take upstream
-first, so a plate is accepted before the frame drawn from it, and reports each one it had
-to skip. With neither flag it lists what is waiting, with the reason anything is blocked.
+portraits only: it holds the chosen portrait as the slot's take and accepts it, and the
+store mirrors that row onto `character.md` (`status: approved`, `approved_portrait:`) and
+`approved.png`, so choosing an older portrait at the gate is a restore. `accept` takes
+every other kind — a plate, a sheet, a frame — and only the take its slot holds now: an
+older take is refused by name, since putting one back is `asset.restore` in the desktop
+app. `--all` accepts every current unapproved take upstream first, so a plate is accepted
+before the frame drawn from it, and reports each one it had to skip. With neither flag it
+lists what is waiting, with the reason anything is blocked.
 
 `export` and `screenplay` write different artifacts. `export` writes the playable the
 desktop app runs ([`../reference/playable-format.md`](../reference/playable-format.md)),
@@ -116,8 +119,8 @@ subtree and may be its own repo — see
 [`../reference/asset-stores.md`](../reference/asset-stores.md). Everything else generated
 lives under `vngen/`:
 
-- `work/` — holds the human-editable files: the story graph, candidates, `approved.png`,
-  and `shots/<sceneId>.json`
+- `work/` — holds the human-editable files: the story graph, `approved.png`, and
+  `shots/<sceneId>.json`
 - `build/` — holds the machine output: shot `assets/` and `manifest.json`.
 - `state/` — `tasks.jsonl`, reviews
 

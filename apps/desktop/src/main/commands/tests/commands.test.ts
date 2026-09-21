@@ -101,6 +101,7 @@ describe('the desktop registry', () => {
       'doc.rename',
       'doc.write',
       'gate.approve',
+      'gate.lock',
       'gengraph.addBoundary',
       'gengraph.addGroup',
       'gengraph.addNode',
@@ -381,6 +382,7 @@ describe('the desktop registry', () => {
       'doc.rename',
       'doc.write',
       'gate.approve',
+      'gate.lock',
       'gengraph.addBoundary',
       'gengraph.addGroup',
       'gengraph.addNode',
@@ -539,7 +541,9 @@ describe('the desktop registry', () => {
     expect(entries).toHaveLength(commands.length);
     const gateApprove = entries.find((e) => e.id === 'gate.approve');
     expect(gateApprove?.namespace).toBe('gate');
-    expect(gateApprove?.notes).toBe('Flips `character.md`; writes the approved PNG + manifest.');
+    expect(gateApprove?.notes).toBe(
+      'Holds and accepts the portrait row; the store mirrors it onto `character.md` and `approved.png`.',
+    );
   });
 
   /**

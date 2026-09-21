@@ -40,11 +40,11 @@ Ren keeps the roof key.
   it('is patched in place by edit_character', async () => {
     const { ctx, dir, cleanup } = await withWikiRen();
     try {
-      const r = await run('edit_character', { id: 'ren', status: 'approved' }, ctx);
+      const r = await run('edit_character', { id: 'ren', traits: ['guarded'] }, ctx);
       expect(r.ok).toBe(true);
       expect(r.written).toEqual(['wiki/cast/ren.md']);
       const text = await fs.readFile(join(dir, 'wiki', 'cast', 'ren.md'), 'utf8');
-      expect(text).toContain('status: approved');
+      expect(text).toContain('- guarded');
       expect(text).toContain('type: character');
       expect(text).toContain('Ren keeps the roof key.');
       // The conventional path is where a new sheet would go; nothing was created there.
@@ -57,7 +57,7 @@ Ren keeps the roof key.
   it('is reported missing rather than scaffolded when no sheet claims the id', async () => {
     const { ctx, cleanup } = await tempProject();
     try {
-      const r = await run('edit_character', { id: 'nobody', status: 'approved' }, ctx);
+      const r = await run('edit_character', { id: 'nobody', traits: ['guarded'] }, ctx);
       expect(r.ok).toBe(false);
     } finally {
       await cleanup();
@@ -85,11 +85,11 @@ describe('editing tools', () => {
   it('edit_character applies a validated patch and writes the file', async () => {
     const { ctx, dir, cleanup } = await tempProject();
     try {
-      const r = await run('edit_character', { id: 'aiko', status: 'approved' }, ctx);
+      const r = await run('edit_character', { id: 'aiko', traits: ['patient'] }, ctx);
       expect(r.ok).toBe(true);
       expect(r.written).toEqual(['characters/aiko/character.md']);
       const text = await fs.readFile(join(dir, 'characters', 'aiko', 'character.md'), 'utf8');
-      expect(text).toContain('status: approved');
+      expect(text).toContain('- patient');
       expect(text).toContain('Aiko is a transfer student.');
     } finally {
       await cleanup();
@@ -238,7 +238,6 @@ describe('create tools with the full field set', () => {
         {
           name         : 'Ren Takada',
           description  : 'Tall, black hair cut short, a burn scar along the left forearm.',
-          status       : 'draft',
           defaultOutfit: 'everyday',
           outfits      : { everyday: 'grey coat over a work shirt' },
           traits       : ['guarded', 'quick'],
@@ -248,7 +247,7 @@ describe('create tools with the full field set', () => {
       );
       expect(r.ok).toBe(true);
       expect(r.output).toContain('from the description you gave');
-      expect(r.output).toContain('status, defaultOutfit, outfits, traits, palette set');
+      expect(r.output).toContain('defaultOutfit, outfits, traits, palette set');
 
       const text = await fs.readFile(join(dir, 'characters', 'ren_takada', 'character.md'), 'utf8');
       expect(text).toContain('#a02828');

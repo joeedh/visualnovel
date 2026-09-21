@@ -88,11 +88,8 @@ export function sheetAngleOf(
  * this at all" are different questions, and `pick` declines the first whenever the answer is not
  * certain. A slot holding three unaccepted drafts resolves to `undefined` even though bytes exist,
  * and the slot graph has to tell those cases apart to say whether a picture is awaiting approval or
- * has yet to be rendered.
- *
- * A `portrait` slot answers from the manifest here, where `resolveBinding` reads the gate off the
- * model. The gate says which portrait is the approved one; this says what has been drawn for the
- * character.
+ * has yet to be rendered. A `portrait` slot answers like every other kind: what it holds is the
+ * current row, approved or not, and the gate (`approvedPortraitOf`) says whether that is approved.
  */
 export function candidatesFor(binding: RefBinding, ctx: BindingContext): Asset[] {
   switch (binding.kind) {
@@ -136,10 +133,6 @@ export function resolveBinding(binding: RefBinding, ctx: BindingContext): string
     // An upload and a concept have no slot under them; the hash is the identity, so it cannot drift
     case 'asset':
       return binding.hash;
-    // The gate writes the approved portrait onto the character sheet, so the model answers this one
-    // and the manifest is not consulted
-    case 'portrait':
-      return ctx.model.characters.get(binding.characterId)?.approvedPortrait;
     default:
       return pick(candidatesFor(binding, ctx));
   }

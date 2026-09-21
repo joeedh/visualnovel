@@ -121,7 +121,7 @@ const listAssetsTool: Tool<{ subject: string }> = {
         const there = await exists(store.pathOf({ hash: asset.hash, ext: asset.ext }));
         const flags = [
           asset.current ? 'current' : '',
-          assetApproved(asset, model) ? 'approved' : '',
+          assetApproved(asset) ? 'approved' : '',
           there ? '' : 'bytes missing',
         ].filter(Boolean);
         const tail = flags.length ? `  (${flags.join(', ')})` : '';
@@ -134,7 +134,7 @@ const listAssetsTool: Tool<{ subject: string }> = {
         kind    : asset.kind,
         label   : assetSlotLabel(asset),
         current : asset.current === true,
-        approved: assetApproved(asset, model),
+        approved: assetApproved(asset),
       })),
     });
   },

@@ -13,7 +13,15 @@ import type {
   TakeStamp,
 } from '@vn/types';
 import { ensureDir, exists, readText, sha256, writeFileAtomic } from '@vn/util';
+import type { EntityDoc } from '@vn/parse';
+import { discoverEntities, entityDoc } from './entities.js';
 import { ProjectPaths } from './paths.js';
+import {
+  clearCharacterApproval,
+  removeApprovedPortrait,
+  setCharacterApproval,
+  writeApprovedPortrait,
+} from './worktree.js';
 
 interface ManifestFile {
   version: 1;
@@ -306,6 +314,7 @@ export class AssetRoot {
  */
 export class AssetStore implements IAssetStore {
   private constructor(
+    private readonly paths: ProjectPaths,
     private readonly baseRoot: AssetRoot,
     private readonly projectRoot: AssetRoot,
     readonly base: BaseAssets,
@@ -315,7 +324,7 @@ export class AssetStore implements IAssetStore {
   static async open(paths: ProjectPaths): Promise<AssetStore> {
     const base = await AssetRoot.open(paths.baseObjects, paths.baseManifest);
     const project = await AssetRoot.open(paths.assetsDir, paths.manifest);
-    return new AssetStore(base, project, describe(paths, base));
+    return new AssetStore(paths, base, project, describe(paths, base));
   }
 
   has(hash: string): boolean {
@@ -373,8 +382,16 @@ export class AssetStore implements IAssetStore {
     await this.rowRoot(hash).hold(hash, supersede, stamp);
   }
 
+  /**
+   * Accept a take. For the portrait a character's slot holds, the sheet's mirror is written in
+   * the same act — `status: approved`, `approved_portrait:` and `approved.png` — so a reader with
+   * no manifest in hand answers as the row does. An accepted portrait the slot no longer holds is
+   * history, and writes no mirror.
+   */
   async accept(hash: string): Promise<void> {
     await this.rowRoot(hash).accept(hash);
+    const row = this.get(hash);
+    if (row?.kind === 'portrait' && row.current === true) await this.mirrorApproval(row);
   }
 
   /** Whether either manifest has a row written before takes were held. */
@@ -395,8 +412,43 @@ export class AssetStore implements IAssetStore {
     }
   }
 
+  /**
+   * Un-accept a take. For a portrait, the sheet's mirror is cleared when it names this hash:
+   * `status: candidates`, no `approved_portrait:`, no `approved.png`.
+   */
   async unaccept(hash: string): Promise<void> {
     await this.rowRoot(hash).unaccept(hash);
+    const row = this.get(hash);
+    if (row?.kind === 'portrait') await this.clearMirror(row);
+  }
+
+  /** The sheet of the character a portrait row is bound to, when both exist. */
+  private async sheetOf(
+    row: Asset,
+  ): Promise<{ characterId: string; file: string; doc: EntityDoc } | undefined> {
+    const characterId = row.satisfies.find((b) => b.characterId !== undefined)?.characterId;
+    if (characterId === undefined) return undefined;
+    const { characterDocs } = await discoverEntities(this.paths, []);
+    const doc = entityDoc(characterDocs, characterId);
+    return doc === undefined ? undefined : { characterId, file: doc.file, doc };
+  }
+
+  private async mirrorApproval(row: Asset): Promise<void> {
+    const sheet = await this.sheetOf(row);
+    if (!sheet) return;
+    // Read before the sheet is written, so a store that cannot produce the bytes leaves the
+    // sheet untouched rather than approved with no portrait behind it
+    const bytes = await this.read({ hash: row.hash, ext: row.ext });
+    await setCharacterApproval(sheet.file, row.hash);
+    await writeApprovedPortrait(this.paths, sheet.characterId, bytes);
+  }
+
+  private async clearMirror(row: Asset): Promise<void> {
+    const sheet = await this.sheetOf(row);
+    if (!sheet) return;
+    if (sheet.doc.doc.data['approved_portrait'] !== row.hash) return;
+    await clearCharacterApproval(sheet.file);
+    await removeApprovedPortrait(this.paths, sheet.characterId);
   }
 
   private rootFor(kind: AssetKind): AssetRoot {

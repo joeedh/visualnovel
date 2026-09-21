@@ -20,7 +20,6 @@ const characterEditShape = z.object({
     .string()
     .optional()
     .describe('full prose body — the canonical description fed to the pipeline; replaces it whole'),
-  status       : z.enum(['draft', 'candidates', 'approved', 'locked']).optional(),
   defaultOutfit: z
     .string()
     .optional()
@@ -49,7 +48,7 @@ const characterEditShape = z.object({
 const editCharacterTool: Tool<z.infer<typeof characterEditShape>> = {
   name       : 'edit_character',
   description:
-    "Apply a validated edit to an existing character.md and write it back. `artNotes` (and an outfit's `art_notes`) is how an author tweaks the look of generated art: it goes into the prompt, so changing it re-renders the portrait and model sheets it reaches on the next run. Say so before proposing one.",
+    "Apply a validated edit to an existing character.md and write it back. `artNotes` (and an outfit's `art_notes`) is how an author tweaks the look of generated art: it goes into the prompt, so changing it re-renders the portrait and model sheets it reaches on the next run. Say so before proposing one. A character's approval is not a field here: their look is approved by accepting a portrait (`approve_assets`), and never by writing a status.",
   mutating   : true,
   args       : characterEditShape,
   async run(a, ctx) {

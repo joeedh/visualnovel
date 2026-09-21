@@ -489,6 +489,25 @@ Second stage of decision 8. Lands after stages 1–4, as its own commits.
   one; a sheet mirror is written on accept and cleared on unaccept; `locked` holds without
   a row; a portrait re-render closes the gate and a restore reopens it; the sheet-only
   `approved` catch-up runs once.
+- As built: the mirror is written by `AssetStore.accept` itself (`assetstore.ts`), which
+  discovers the sheet through `discoverEntities` so a `wiki/` character is written where
+  it lives, and only when the portrait row is current; `unaccept` clears it when the sheet
+  names that hash, a `locked` sheet included. `approvedPortraitOf(character, assets?)` in
+  `gate.ts` is the one reader, and `isApproved`, `sceneUnblocked`, `gateStatus`,
+  `resolveSlot` (through a new optional `assets` on `SlotResolveContext`), `sheetSeeds`,
+  the concept subject refs, the planner, the scheduler, the CLI and every session read go
+  through it. `assetApproved` and `assetBlessed` lost their `model` argument, since a
+  portrait now reads the same two bits. The lock command is
+  `gate.lock(characterId, locked=true)` rather than the plan's `character.lock`: no
+  `character.` namespace exists, and the gate is where the sheet's approval words are
+  already owned; it refuses to lock an unapproved character and to unlock one that is not
+  locked, and is palette-only. The exporter (`@vn/export`) may not import `@vn/artgen`, so
+  `unapprovedTakes` keeps its own three-line read of the rule (current portrait row,
+  `locked` exempt). `CharacterEdit` lost `status` for both hosts; `create_character` in
+  `vnauthor` writes the template's `draft`. `packages/artgen/src/tests/gate.test.ts` and
+  `store.test.ts` carry the tests, and the desktop's `session.test.ts` the lock; the
+  fixtures in `prereq`, `slotgraph`, `refs`, `sheet`, `playable` and `slotagreement`
+  gained the portrait row the sheet's hash had stood in for.
 
 ## Stage 6 — docs
 
@@ -620,7 +639,7 @@ Stages landed, each as its own green commit on the `slot-history` branch:
 - [x] Stage 2 — export refusal, `vngen accept`, `acceptAll`.
 - [x] Stage 3 — `Shot.status` removed.
 - [x] Stage 4 — interactive graph run files a take.
-- [ ] Stage 5 — portrait gate reads the row.
+- [x] Stage 5 — portrait gate reads the row.
 
 - [ ] Comments audited in every file touched; no `CLAUDENOTE:` remains.
 - [ ] `docs/reference/pipeline-contracts.md`, `asset-stores.md`, `document-tree.md`,

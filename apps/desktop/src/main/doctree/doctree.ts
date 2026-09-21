@@ -137,7 +137,7 @@ function storyBranch(input: DocTreeInput, cap: number): DocNode {
   // refused, the same way an asset row's does
   const frameApproved = (hash: string | undefined): boolean => {
     const asset = hash === undefined ? undefined : byHash.get(hash);
-    return asset !== undefined && assetApproved(asset, input.model);
+    return asset !== undefined && assetApproved(asset);
   };
   const scenes = [...input.model.scenes.values()].map((scene) => {
     const shots = input.shots.get(scene.id);
@@ -315,12 +315,8 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
   // document-opening route, which reads a file as text.
   const row = (a: Asset, over: Partial<DocNode> = {}): DocNode =>
     node(`asset:${a.hash}`, 'asset', assetLabelOf(input, a), {
-      ...(stale.has(a.hash)
-        ? { badge: 'stale' }
-        : assetApproved(a, input.model)
-          ? { badge: 'accepted' }
-          : {}),
-      ...(assetApproved(a, input.model) ? { approved: true } : {}),
+      ...(stale.has(a.hash) ? { badge: 'stale' } : assetApproved(a) ? { badge: 'accepted' } : {}),
+      ...(assetApproved(a) ? { approved: true } : {}),
       ...over,
     });
 
@@ -455,13 +451,7 @@ function unapprovedBranch(input: DocTreeInput, cap: number): DocNode | undefined
       // anything — `asset.restore` is what brings it back. A drifted one is left to the Stale
       // branch: the prose it illustrates has moved since it was drawn, so approving it would
       // bless a picture of something the scene no longer says.
-      if (
-        !asset ||
-        !asset.current ||
-        seen.has(hash) ||
-        stale.has(hash) ||
-        assetApproved(asset, input.model)
-      ) {
+      if (!asset || !asset.current || seen.has(hash) || stale.has(hash) || assetApproved(asset)) {
         continue;
       }
       seen.add(hash);
@@ -510,7 +500,7 @@ function staleBranch(input: DocTreeInput, cap: number): DocNode | undefined {
     .map((a) =>
       node(`asset:${a.hash}`, 'asset', assetLabelOf(input, a), {
         badge: 'stale',
-        ...(assetApproved(a, input.model) ? { approved: true } : {}),
+        ...(assetApproved(a) ? { approved: true } : {}),
         note: 'The prose this illustrates has changed since it was drawn — regenerate it.',
       }),
     )
@@ -617,7 +607,7 @@ function linksFor(
         ext     : a.ext,
         kind    : a.kind,
         label   : assetLabelOf(input, a),
-        accepted: assetApproved(a, input.model),
+        accepted: assetApproved(a),
         base    : isBaseKind(a.kind),
         ...(shotId !== undefined ? { shotId } : {}),
         ...(slot ? { slot: slotKey(slot) } : {}),
