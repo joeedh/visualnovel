@@ -254,6 +254,18 @@ const LAYOUTS_COMMIT = 'Add the shipped layout templates';
 const IGNORES_COMMIT = 'Ignore the remembered window arrangement';
 
 /**
+ * Every subject the app commits under without a command behind it. The History pane's maker
+ * rule reads these as housekeeping, so a new scaffolding commit must be listed here.
+ */
+export const SCAFFOLDING_SUBJECTS: readonly string[] = [
+  'Existing project files',
+  'New project',
+  GITATTRIBUTES_COMMIT,
+  LAYOUTS_COMMIT,
+  IGNORES_COMMIT,
+];
+
+/**
  * The attributes a project needs from this app, each with the paragraph saying why. They are
  * separate blocks rather than one because a project created before the second one existed has the
  * first already, and {@link ensureGitAttributes} appends whichever it cannot find.

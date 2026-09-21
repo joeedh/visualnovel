@@ -69,6 +69,11 @@ const READS = [
   why: 'A read whose answer feeds an editor or the agent; the palette and CDP run it, no control does.',
 }));
 
+const GIT = ['git.repos', 'git.history', 'git.changes', 'git.diff', 'git.blob'].map((match) => ({
+  match,
+  why: 'A history read the History pane fetches for itself; the pane’s filters draw controls for it from its own stage on.',
+}));
+
 const VIEW = ['view.close', 'view.focus', 'view.layout', 'view.layouts', 'view.palette'].map(
   (match) => ({
     match,
@@ -165,6 +170,7 @@ export const PALETTE_ONLY: readonly PaletteOnly[] = [
   ...NOTIFY,
   ...NAMES,
   ...READS,
+  ...GIT,
   ...VIEW,
   ...APP,
   ...GATE,

@@ -120,6 +120,17 @@
 | `gengraph.ungroup` ✍ ↺ ✓ | `slug`, `node`, `group` (default `''`) | Writes `vngen/work/graphs`. Inline a copy of the instance's subgraph, overrides included, where the instance stood. The definition under `lib/` is left for its other instances. What Edit ▸ Ungroup runs. |
 | `gengraph.unlink` ✍ ↺ ✓ | `slug`, `to`, `toSocket`, `from` (default `''`), `fromSocket` (default `''`), `group` (default `''`) | Writes `vngen/work/graphs`. Sever what feeds an input. Naming a source severs that one edge; naming none severs every edge into the socket. |
 
+## `git.`
+
+| Command | Props | Notes |
+| ------- | ----- | ----- |
+| `git.blob` | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha`, `path` | — |
+| `git.changes` | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha` | — |
+| `git.diff` | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha`, `path` | — |
+| `git.history` | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `who` (``\|`author`\|`agent`\|`pipeline`\|`housekeeping`\|`other`\|`unknown`, default `''`), `path` (default `''`), `text` (default `''`), `before` (default `''`) | — |
+| `git.repos` | — | — |
+| `git.status` | `repo` (`project`\|`wiki`\|`base`, default `'project'`) | — |
+
 ## `interaction.`
 
 | Command | Props | Notes |

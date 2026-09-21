@@ -64,11 +64,14 @@ describe('fetch, push and rebase', () => {
     const a = await connected(remote.dir);
     try {
       expect(await aheadBehind(a.git)).toEqual([0, 0]);
+      expect(await a.git.unsent()).toEqual(new Set());
       await write(a.dir, 'a.txt', 'a\nb\n');
-      await a.git.commit({ message: 'Second', paths: ['-A'] });
+      const second = (await a.git.commit({ message: 'Second', paths: ['-A'] }))!;
       expect(await aheadBehind(a.git)).toEqual([1, 0]);
+      expect(await a.git.unsent()).toEqual(new Set([second]));
       await a.git.push('origin', a.branch);
       expect(await aheadBehind(a.git)).toEqual([0, 0]);
+      expect(await a.git.unsent()).toEqual(new Set());
       expect(await a.git.lastFetch()).toBeNull();
       await a.git.fetch('origin');
       expect(await a.git.lastFetch()).toMatch(/^\d{4}-/);

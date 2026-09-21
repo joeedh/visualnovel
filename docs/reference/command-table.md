@@ -2,7 +2,7 @@
 
 # Registered commands
 
-192 commands, in 24 namespaces. 114 are `mutating`;
+198 commands, in 25 namespaces. 114 are `mutating`;
 127 declare a precondition; 78 are undoable; 21 ask
 for confirmation.
 
@@ -83,6 +83,12 @@ for confirmation.
 | `gengraph.unexpose` ✍ ↺ ✓ | `group`, `index` | Writes `vngen/work/graphs`. |
 | `gengraph.ungroup` ✍ ↺ ✓ | `slug`, `node`, `group` (default `''`) | Writes `vngen/work/graphs`. Inline a copy of the instance's subgraph, overrides included, where the instance stood. The definition under `lib/` is left for its other instances. What Edit ▸ Ungroup runs. |
 | `gengraph.unlink` ✍ ↺ ✓ | `slug`, `to`, `toSocket`, `from` (default `''`), `fromSocket` (default `''`), `group` (default `''`) | Writes `vngen/work/graphs`. Sever what feeds an input. Naming a source severs that one edge; naming none severs every edge into the socket. |
+| `git.blob` | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha`, `path` | — |
+| `git.changes` | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha` | — |
+| `git.diff` | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha`, `path` | — |
+| `git.history` | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `who` (``\|`author`\|`agent`\|`pipeline`\|`housekeeping`\|`other`\|`unknown`, default `''`), `path` (default `''`), `text` (default `''`), `before` (default `''`) | — |
+| `git.repos` | — | — |
+| `git.status` | `repo` (`project`\|`wiki`\|`base`, default `'project'`) | — |
 | `interaction.list` | — | The gestures the app offers — see below. |
 | `interaction.targets` | `interaction` (`branch.connect`\|`branch.splice`\|`branch.unwire`\|`page.letter`\|`prompt.reorder`\|`script.moveLine`\|`timeline.cover`\|`timeline.create`\|`timeline.reorder`), `carried`, `scene` (default `''`), `asset` (default `''`) | Every target of a gesture, accepted or refused with why. `scene` and `asset` build the state the named gesture is judged against. |
 | `models.refresh` ✍ ✓ | — | Writes `<user>/models.json`. |

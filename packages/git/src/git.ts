@@ -98,6 +98,8 @@ export interface HistoryOptions {
   path?: string;
   /** Only commits whose author name or email matches this pattern. */
   author?: string;
+  /** Only commits whose message contains this text, matched without regard to case. */
+  grep?: string;
 }
 
 /** Commits per `history` call when the caller names no limit. */
@@ -365,6 +367,7 @@ export class Git {
     const limit = opts.limit ?? HISTORY_LIMIT;
     const args = ['log', `--format=${HISTORY_FORMAT}`, '--numstat', `-n${limit + 1}`];
     if (opts.author) args.push(`--author=${opts.author}`);
+    if (opts.grep) args.push('--fixed-strings', '--regexp-ignore-case', `--grep=${opts.grep}`);
     args.push(opts.before ?? 'HEAD');
     if (opts.path) args.push('--', opts.path);
     const r = await this.run(args);
@@ -372,6 +375,16 @@ export class Git {
     const entries = parseHistory(r.stdout);
     if (opts.before && entries[0]?.sha === opts.before) entries.shift();
     return entries.slice(0, limit);
+  }
+
+  /**
+   * The shas on the current branch that its upstream lacks, newest first. Null when the
+   * branch has no upstream or the upstream's tracking ref does not exist yet.
+   */
+  async unsent(): Promise<Set<string> | null> {
+    const r = await this.run(['rev-list', '@{upstream}..HEAD']);
+    if (r.code !== 0) return null;
+    return new Set(r.stdout.split('\n').filter((l) => l.length > 0));
   }
 
   /** The paths one commit changed, with blob ids and line counts. */
@@ -404,6 +417,12 @@ export class Git {
   /** The bytes of `path` at `sha`, or null when the commit has no such path. */
   async blob(sha: string, path: string): Promise<Buffer | null> {
     const r = await runBytes(this.root, ['show', `${sha}:${path}`]);
+    return r.code === 0 ? r.stdout : null;
+  }
+
+  /** The bytes of one blob by its own id, as `changes` reports them, or null for an unknown id. */
+  async catBlob(id: string): Promise<Buffer | null> {
+    const r = await runBytes(this.root, ['cat-file', 'blob', id]);
     return r.code === 0 ? r.stdout : null;
   }
 

@@ -76,6 +76,7 @@ import {
   gengraphUngroup,
   gengraphUnlink,
 } from './gengraph.js';
+import { gitBlob, gitChanges, gitDiff, gitHistory, gitRepos, gitStatus } from './git.js';
 import { interactionList, interactionTargets } from './interaction.js';
 import {
   notifyClear,
@@ -280,6 +281,12 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     gengraphUnexpose,
     gengraphUngroup,
     gengraphUnlink,
+    gitBlob,
+    gitChanges,
+    gitDiff,
+    gitHistory,
+    gitRepos,
+    gitStatus,
     interactionList,
     interactionTargets,
     modelsRefresh,

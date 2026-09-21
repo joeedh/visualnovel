@@ -32,10 +32,8 @@ function linesOf(text: string): string[] {
   return lines;
 }
 
-/** Every line of both texts, in order, each marked by which text has it. */
-export function lineDiff(before: string, after: string): DiffLine[] {
-  const a = linesOf(before);
-  const b = linesOf(after);
+/** Every item of both sequences, in order, each marked by which sequence has it. */
+function sequenceDiff(a: readonly string[], b: readonly string[]): DiffLine[] {
   const table = lcsTable(a, b);
   const out: DiffLine[] = [];
   let i = 0;
@@ -55,6 +53,92 @@ export function lineDiff(before: string, after: string): DiffLine[] {
   }
   for (; i < a.length; i++) out.push({ kind: 'removed', text: a[i]! });
   for (; j < b.length; j++) out.push({ kind: 'added', text: b[j]! });
+  return out;
+}
+
+/** Every line of both texts, in order, each marked by which text has it. */
+export function lineDiff(before: string, after: string): DiffLine[] {
+  return sequenceDiff(linesOf(before), linesOf(after));
+}
+
+/** A run of text inside a paragraph, marked like a `DiffLine`. */
+export type DiffSpan = DiffLine;
+
+/**
+ * One paragraph of a word diff. `changed` carries word-level spans; the other three carry one
+ * span holding the whole paragraph.
+ */
+export interface DiffParagraph {
+  kind: 'same' | 'removed' | 'added' | 'changed';
+  spans: DiffSpan[];
+}
+
+/** Words past which a changed paragraph is shown whole rather than word by word. */
+export const WORD_DIFF_CAP = 2000;
+
+/**
+ * Words, each with the whitespace after it, so the spans join back into the paragraph and a
+ * replaced word does not leave its space behind as a match between two changes.
+ */
+const tokensOf = (text: string): string[] => text.match(/\S+\s*|\s+/g) ?? [];
+
+/** Paragraphs are runs of lines between blank lines, each kept with its inner newlines. */
+const paragraphsOf = (text: string): string[] =>
+  text
+    .replace(/\r\n/g, '\n')
+    .split(/\n[ \t]*\n+/)
+    .map((p) => p.replace(/^\n+|\n+$/g, ''))
+    .filter((p) => p.length > 0);
+
+/** Merges adjacent spans of the same kind, which the LCS walk produces one word at a time. */
+function coalesce(spans: DiffSpan[]): DiffSpan[] {
+  const out: DiffSpan[] = [];
+  for (const s of spans) {
+    const last = out[out.length - 1];
+    if (last && last.kind === s.kind) last.text += s.text;
+    else out.push({ ...s });
+  }
+  return out;
+}
+
+/**
+ * A diff of two prose texts by paragraph, with the words compared inside each paragraph that
+ * changed. A removed paragraph next to an added one is read as the same paragraph edited; a
+ * paragraph over `cap` words is shown whole on both sides instead.
+ */
+export function wordDiff(before: string, after: string, cap = WORD_DIFF_CAP): DiffParagraph[] {
+  const lines = sequenceDiff(paragraphsOf(before), paragraphsOf(after));
+  const out: DiffParagraph[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i]!;
+    if (line.kind === 'same') {
+      out.push({ kind: 'same', spans: [{ kind: 'same', text: line.text }] });
+      i++;
+      continue;
+    }
+    // A run of removed paragraphs followed by a run of added ones pairs off in order
+    const removed: string[] = [];
+    const added: string[] = [];
+    while (i < lines.length && lines[i]!.kind === 'removed') removed.push(lines[i++]!.text);
+    while (i < lines.length && lines[i]!.kind === 'added') added.push(lines[i++]!.text);
+    const pairs = Math.min(removed.length, added.length);
+    for (let k = 0; k < pairs; k++) {
+      const a = tokensOf(removed[k]!);
+      const b = tokensOf(added[k]!);
+      if (a.length > cap || b.length > cap) {
+        out.push({ kind: 'removed', spans: [{ kind: 'removed', text: removed[k]! }] });
+        out.push({ kind: 'added', spans: [{ kind: 'added', text: added[k]! }] });
+      } else {
+        out.push({ kind: 'changed', spans: coalesce(sequenceDiff(a, b)) });
+      }
+    }
+    for (const text of removed.slice(pairs)) {
+      out.push({ kind: 'removed', spans: [{ kind: 'removed', text }] });
+    }
+    for (const text of added.slice(pairs))
+      out.push({ kind: 'added', spans: [{ kind: 'added', text }] });
+  }
   return out;
 }
 

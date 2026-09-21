@@ -301,6 +301,48 @@ given a full refname creates `refs/tags/refs/tags/…`. `Git.log` is untouched.
 - The six reads join `paletteonly.ts` (all but `git.status`), the namespace list gains
   `git`, and `pnpm gen:command-table` runs.
 
+**As built (2026-09-21).** Everything above, with these particulars:
+
+- `makerOf(commit, ctx)` takes `{ local: { name, email }, housekeeping }` rather than a
+  name: the identity is compared by email first, by name when no email is configured, and
+  with neither configured nothing is "someone else". The housekeeping subjects come from
+  `SCAFFOLDING_SUBJECTS`, now exported by `workspace/workspace.ts`, so a new scaffolding
+  commit is listed once. A batch's `Vn-Source` and `Vn-Command` are read as
+  comma-separated lists.
+- `statusCause(entries, pending, inProgress, own)` takes a fourth argument, prefixes of
+  the app's own logs (`vngen/state/`). A read appends to `commands.jsonl` without a
+  commit, so on the sample project every status read otherwise said "changed outside the
+  app" about the command log.
+- **Scene diffs are not parsed through `@vn/parse`.** Fountain elements are separated by
+  blank lines, so the paragraph word diff already compares element by element; the
+  renderer classifies each paragraph (speaker, dialogue, action, marker) when it draws.
+  Sheet front matter diffs as one paragraph for now; the field table is Stage 5's call, as
+  planned. The `Diff` union has five kinds: `lines`, `prose`, `log`, `picture`, `binary`.
+- `wordDiff` tokens are a word plus its trailing whitespace, so a replaced word does not
+  leave its space behind as a match between two changes. The paragraph cap
+  (`WORD_DIFF_CAP`, 2000 tokens) shows the paragraph whole on both sides rather than
+  falling to a line diff. Over `LINE_DIFF_CAP` (3000 lines a side) a line diff is git's
+  own hunks, with each `@@` header kept as a context line.
+- `git.history` answers `{ saves, next }`; `next` is the last commit scanned, matched or
+  not, so a `who` page never rescans. `Save` carries `sent: boolean | null` from a new
+  `Git.unsent()` (`rev-list @{upstream}..HEAD`) and the checkpoint slugs by sha.
+  `HistoryOptions.grep` maps to `--fixed-strings --regexp-ignore-case --grep`.
+- `git.blob` answers `{ kind: 'text', text }` or `{ kind: 'bytes', url, bytes }`; text is
+  valid UTF-8 with no NUL under 2 MB. `vngit://<role>/<blobId>.<ext>` names a blob by the
+  id `git.changes` reports (`Git.catBlob`), and `vngit://<role>/<sha>/<path>` a path at a
+  commit; `parseGitUrl` and `blobUrl` live in `shared/history.ts`. The handler is
+  `assets/gitprotocol.ts`, registered beside the asset one, and answers with an immutable
+  cache header.
+- `kindOf` and `KIND_ORDER` are in `apps/desktop/src/shared/history.ts`; `.png` under
+  `characters/` is a picture, `screenplay.fountain` a scene, `.vnstudio/**` project.
+- `Committer` no longer imports `@vn/git` at runtime: Stage 2's
+  `instanceof InProgressError` had put `node:child_process` into the renderer bundle
+  through the `@vn/commands` barrel, and `pnpm build` failed. The check is by shape
+  (`operation` is a string). `pnpm build` is now part of what a stage runs before it
+  lands.
+- The anchor sweep was re-run against `examples/mySampleRepo`, and the six reads were
+  exercised over CDP there before the sweep.
+
 ### Stage 4 — The pane: list, strip, status, empty and loading states
 
 - `apps/desktop/src/shared/editors.ts`: a `history` entry with `title` per the Stage 4

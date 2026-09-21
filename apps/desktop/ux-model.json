@@ -39202,6 +39202,26 @@
       "why": "A read whose answer feeds an editor or the agent; the palette and CDP run it, no control does."
     },
     {
+      "match": "git.repos",
+      "why": "A history read the History pane fetches for itself; the pane’s filters draw controls for it from its own stage on."
+    },
+    {
+      "match": "git.history",
+      "why": "A history read the History pane fetches for itself; the pane’s filters draw controls for it from its own stage on."
+    },
+    {
+      "match": "git.changes",
+      "why": "A history read the History pane fetches for itself; the pane’s filters draw controls for it from its own stage on."
+    },
+    {
+      "match": "git.diff",
+      "why": "A history read the History pane fetches for itself; the pane’s filters draw controls for it from its own stage on."
+    },
+    {
+      "match": "git.blob",
+      "why": "A history read the History pane fetches for itself; the pane’s filters draw controls for it from its own stage on."
+    },
+    {
       "match": "view.close",
       "why": "Pane management the hotkeys, the docker’s own chrome and a menu row’s `then` list run; the View menu draws the rest of the namespace."
     },

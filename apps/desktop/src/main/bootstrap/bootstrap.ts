@@ -14,6 +14,7 @@ import { acquireWorkspace, focusOwner } from './instancelock.js';
 import { inspectWorkspace, rememberWorkspace } from '../workspace/workspace.js';
 import { askAboutGit, openRepos, resolveWorkspace } from '../runtime/workspacelifecycle.js';
 import { registerAssetProtocol } from '../assets/assetprotocol.js';
+import { registerGitProtocol } from '../assets/gitprotocol.js';
 import { registerIpc } from '../runtime/ipc.js';
 import { openSessionStore } from '../runtime/sessionaccess.js';
 import {
@@ -85,6 +86,7 @@ async function runReady(ctx: AppContext): Promise<void> {
   await openRepos(ctx);
   rememberWorkspace(ctx.getSessionState(), ctx.workspace());
   registerAssetProtocol(ctx);
+  registerGitProtocol(ctx);
   registerIpc(ctx);
 
   // Before the first window, because a graph opened in one resolves its node types out of the

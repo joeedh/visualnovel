@@ -43,6 +43,7 @@ describe('the desktop registry', () => {
       'doc',
       'gate',
       'gengraph',
+      'git',
       'interaction',
       'models',
       'notify',

@@ -55,6 +55,21 @@ describe('Git.history', () => {
       expect((await git.history({ path: 'bin.dat' })).map((e) => e.sha)).toEqual([first]);
       expect(await git.history({ author: 'nobody' })).toEqual([]);
       expect((await git.history({ author: 'test@example' })).length).toBe(3);
+      expect((await git.history({ grep: 'body LINE' })).map((e) => e.sha)).toEqual([second]);
+      expect(await git.history({ grep: 'a.b' })).toEqual([]);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('reads a blob by the id changes reports, and has no unsent set without an upstream', async () => {
+    const { git, second, cleanup } = await seeded();
+    try {
+      const change = (await git.changes(second)).find((c) => c.path === 'a.txt')!;
+      expect((await git.catBlob(change.newBlob!))?.toString()).toBe('a\nc\nd\n');
+      expect((await git.catBlob(change.oldBlob!))?.toString()).toBe('a\nb\n');
+      expect(await git.catBlob('0'.repeat(40))).toBeNull();
+      expect(await git.unsent()).toBeNull();
     } finally {
       await cleanup();
     }

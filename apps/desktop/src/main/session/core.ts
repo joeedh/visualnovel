@@ -740,6 +740,15 @@ import { DocsPart } from './docs.js';
 import { StoryPart } from './story.js';
 import { PipelinePart } from './pipeline.js';
 import { GengraphPart, type SheetScaffoldPlan } from './gengraph.js';
+import { HistoryPart, type HistoryFilter } from './history.js';
+import type { Change, Diff } from '@vn/git';
+import type {
+  BlobRead,
+  HistoryPage,
+  RepoEntry,
+  RepoRole,
+  RepoStatus,
+} from '../../shared/history.js';
 
 export class WorkspaceSession {
   agent: Agent | undefined;
@@ -873,6 +882,7 @@ export class WorkspaceSession {
   readonly storyPart: StoryPart = new StoryPart(this);
   readonly pipelinePart: PipelinePart = new PipelinePart(this);
   readonly gengraphPart: GengraphPart = new GengraphPart(this);
+  readonly historyPart: HistoryPart = new HistoryPart(this);
 
   constructor(
     readonly dir: string,
@@ -2898,5 +2908,34 @@ export class WorkspaceSession {
 
   async runPipeline(mock: boolean, only?: readonly string[]): Promise<PipelineRunResult> {
     return this.gengraphPart.runPipeline(mock, only);
+  }
+
+  async gitRepos(): Promise<RepoEntry[]> {
+    return this.historyPart.repos();
+  }
+
+  async gitHistory(role: RepoRole, filter?: HistoryFilter): Promise<HistoryPage> {
+    return this.historyPart.history(role, filter);
+  }
+
+  async gitChanges(role: RepoRole, sha: string): Promise<Change[]> {
+    return this.historyPart.changes(role, sha);
+  }
+
+  async gitDiff(role: RepoRole, sha: string, path: string): Promise<Diff | null> {
+    return this.historyPart.diff(role, sha, path);
+  }
+
+  async gitBlob(role: RepoRole, sha: string, path: string): Promise<BlobRead | null> {
+    return this.historyPart.blob(role, sha, path);
+  }
+
+  /** The bytes behind one `vngit://` request. */
+  async gitBytes(role: RepoRole, ref: string, path?: string): Promise<Buffer | null> {
+    return this.historyPart.bytesAt(role, ref, path);
+  }
+
+  async gitStatus(role: RepoRole, pending: number): Promise<RepoStatus> {
+    return this.historyPart.status(role, pending);
   }
 }

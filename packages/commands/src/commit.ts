@@ -13,8 +13,17 @@
  * dirty is then what the whole run did, which is exactly what `commitBatch` describes. The stack
  * flushes the run before any other act runs, so no act's commit ever holds another's files.
  */
-import { InProgressError, type Git } from '@vn/git';
+import type { Git, InProgressError } from '@vn/git';
 import type { CommandRecord } from './command.js';
+
+/**
+ * Whether `err` is a refusal to commit mid-operation, told by its shape rather than its class:
+ * a runtime import of `@vn/git` here would carry `node:child_process` into the renderer bundle,
+ * which reaches this module through the `@vn/commands` barrel.
+ */
+function inProgress(err: unknown): err is InProgressError {
+  return err instanceof Error && typeof (err as { operation?: unknown }).operation === 'string';
+}
 
 /** One commit this act produced. */
 export interface CommitResult {
@@ -161,7 +170,7 @@ export class Committer {
       } catch (err) {
         // A stopped rebase is a state the author resolves in the History pane; committing into it
         // would fold the conflict markers into the replayed save
-        if (!(err instanceof InProgressError)) throw err;
+        if (!inProgress(err)) throw err;
         this.opts.onSkip?.(git.root, err.operation);
       }
     }
