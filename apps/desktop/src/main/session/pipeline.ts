@@ -1,10 +1,10 @@
 import { join } from 'node:path';
 import { scriptFromScenes } from '@vn/model';
-import { writeFileAtomic } from '@vn/util';
+import { VnError, writeFileAtomic } from '@vn/util';
 import { fileCache } from '../workspace/filecache.js';
 import { gateStatus } from '@vn/pipeline';
 import { buildSlotGraph } from '@vn/artgen';
-import { buildPlayable, loadSceneShots } from '@vn/export';
+import { buildPlayable, loadSceneShots, unapprovedSentence, unapprovedTakes } from '@vn/export';
 import type { Playable } from '@vn/types';
 import type { PipelineStatus } from '../../shared/ipc.js';
 import { narrowTask } from '../agent/reviews.js';
@@ -26,10 +26,27 @@ export class PipelinePart {
     });
   }
 
-  /** Write the playable to `vngen/build/story.play.json` — the `vngen export` equivalent. */
+  /**
+   * Why the playable may not be exported right now: the first slot holding a take nobody has
+   * approved, in the sentence `exportPlayable` throws with. The in-app player asks nothing, so
+   * an author can watch an unapproved take; publishing one is what is refused.
+   */
+  async exportRefusal(): Promise<string | undefined> {
+    const project = await loadProject(this.session.dir);
+    const shots = await loadSceneShots(project.paths, project.model);
+    return unapprovedSentence(unapprovedTakes(project.model, project.store, shots));
+  }
+
+  /**
+   * Write the playable to `vngen/build/story.play.json` — the `vngen export` equivalent. Throws
+   * `VnError('UNAPPROVED')` with {@link exportRefusal}'s sentence, so a command's check and its
+   * run agree.
+   */
   async exportPlayable(): Promise<{ path: string; scenes: number }> {
     const project = await loadProject(this.session.dir);
     const shots = await loadSceneShots(project.paths, project.model);
+    const refusal = unapprovedSentence(unapprovedTakes(project.model, project.store, shots));
+    if (refusal !== undefined) throw new VnError('UNAPPROVED', refusal);
     const playable = buildPlayable(project.model, project.store, {
       shots,
       portraitOverlay: project.config.portrait_overlay,

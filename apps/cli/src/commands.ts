@@ -11,14 +11,23 @@ import {
   entityFile,
   findScreenplay,
   ProjectPaths,
+  readAllShots,
   readSceneChunks,
   writeApprovedPortrait,
   writeSceneChunk,
   writeStoryGraph,
   setCharacterApproval,
 } from '@vn/store';
-import { buildPlayable, loadSceneShots, writePlayable } from '@vn/export';
 import {
+  buildPlayable,
+  loadSceneShots,
+  unapprovedSentence,
+  unapprovedTakes,
+  writePlayable,
+} from '@vn/export';
+import {
+  acceptTake,
+  acceptableTakes,
   boundSlotsToDraw,
   decomposeAll,
   gateStatus,
@@ -216,6 +225,13 @@ export async function cmdExport(args: Args): Promise<number> {
     reportDiagnostics(project.model);
   }
   const shots = await loadSceneShots(project.paths, project.model);
+  // A playable shows the take each slot holds, so one holding a take nobody approved is refused
+  // here rather than published: `vngen accept` is the route to approval on the command line
+  const refusal = unapprovedSentence(unapprovedTakes(project.model, project.store, shots));
+  if (refusal !== undefined) {
+    ok(`Not exported: ${refusal} (\`vngen accept ${dir} --all\` accepts every take waiting.)`);
+    return 1;
+  }
   const playable = buildPlayable(project.model, project.store, {
     shots,
     portraitOverlay: project.config.portrait_overlay,
@@ -645,6 +661,53 @@ async function approveOne(
   const r = await approveCharacter(project, characterId, hash);
   ok(r.ok ? `${r.message} Re-run \`vngen run ${dir}\` to continue past the gate.` : r.message);
   return r.ok ? 0 : 1;
+}
+
+/**
+ * `vngen accept [dir] --hash=<h> | --all` — approve the take a slot holds, for every kind but a
+ * portrait (`vngen approve`). `--all` accepts every current unapproved take upstream first, so a
+ * plate is accepted before the frame drawn from it, and names each take it had to skip.
+ */
+export async function cmdAccept(args: Args): Promise<number> {
+  const dir = args.positional[0] ?? '.';
+  const project = await loadProject(dir);
+  const deps = {
+    model : project.model,
+    config: project.config,
+    store : project.store,
+    graph : project.graph,
+    shots : await readAllShots(project.paths, project.model),
+  };
+  const hash = typeof args.flags['hash'] === 'string' ? args.flags['hash'] : undefined;
+  if (hash !== undefined) {
+    const r = await acceptTake(deps, hash);
+    ok(r.message);
+    return r.ok ? 0 : 1;
+  }
+  if (!args.flags['all']) {
+    const waiting = acceptableTakes(deps);
+    if (waiting.length === 0) {
+      ok('Nothing is waiting to be accepted.');
+      return 0;
+    }
+    ok('Waiting to be accepted (--hash=<h> for one, --all for every one):');
+    for (const take of waiting) {
+      ok(`  ${take.hash.slice(0, 12)}  ${take.label}${take.refusal ? `  (${take.refusal})` : ''}`);
+    }
+    return 0;
+  }
+  let accepted = 0;
+  let refused = 0;
+  for (const take of acceptableTakes(deps)) {
+    // Asked again per take rather than trusting the listing: accepting a plate is what makes
+    // the frame drawn from it acceptable, so a refusal listed a moment ago may have cleared
+    const r = await acceptTake(deps, take.hash);
+    ok(`  ${r.ok ? '✓' : '✘'} ${r.message}`);
+    if (r.ok) accepted += 1;
+    else refused += 1;
+  }
+  ok(`Accepted ${accepted} take(s)${refused ? `, ${refused} refused` : ''}.`);
+  return 0;
 }
 
 /**

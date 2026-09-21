@@ -482,6 +482,9 @@ export const projectInstallPages = define({
           'This repository has no `origin` remote. Add one on GitHub, then install the page builder.',
       };
     }
+    // The install exports the playable in the same act, so it is refused on the same grounds
+    const refusal = await ctx.host.session.exportRefusal();
+    if (refusal !== undefined) return { ok: false, reason: refusal };
     const verb = view.installed ? 'Updates' : 'Installs';
     return {
       ok  : true,

@@ -25,7 +25,9 @@ import type { ProjectConfig } from '@vn/config';
 import { AssetStore as DiskStore, readAllShots, type ProjectPaths } from '@vn/store';
 import { loadGraph } from '@vn/taskgraph';
 import { candidatesFor } from './refs.js';
+import { assetSlotLabel } from './describe.js';
 import { lastRenderedAt, overHeld, type OverHeld, type OverHeldContext } from './overheld.js';
+import { acceptRefusal, assetApproved, type PrereqContext } from './prereq.js';
 import {
   buildSlotGraph,
   newestFirst,
@@ -215,4 +217,83 @@ export async function repairCurrent(deps: TakeDeps): Promise<OverHeld[]> {
 
   for (const fix of fixes) deps.logger?.info('manifest.repair', { ...fix });
   return fixes;
+}
+
+/** One current take a person could accept, with the refusal it would meet today. */
+export interface Acceptable {
+  hash: string;
+  /** What it is, in the project's own terms — `cafe — night plate`. */
+  label: string;
+  /** The slot it holds, as `slotKey` spells it. */
+  slot: string;
+  /** Why accepting it would be refused right now — a prerequisite not yet approved. */
+  refusal?: string;
+}
+
+function prereqContextOf(deps: TakeDeps): PrereqContext {
+  return {
+    model  : deps.model,
+    assets : deps.store.manifest(),
+    angleOf: angleOfTask(deps.graph),
+    shots  : deps.shots,
+  };
+}
+
+/**
+ * Every current take nobody has approved, upstream first, so accepting them in this order lets
+ * one pass finish a whole chain. Portraits are left out: their approval is the gate's. Rows the
+ * gate or `approvable` would list are the same rows, since both walk the slot graph.
+ */
+export function acceptableTakes(deps: TakeDeps): Acceptable[] {
+  const ctx = contextOf(deps);
+  const prereqs = prereqContextOf(deps);
+  const byHash = new Map(ctx.assets.map((a) => [a.hash, a]));
+  const out: Acceptable[] = [];
+  const seen = new Set<string>();
+  const slots = buildSlotGraph(ctx);
+  for (const key of slots.order) {
+    if (key.startsWith('portrait:')) continue;
+    const node = slots.nodes.get(key)!;
+    for (const hash of node.candidates) {
+      const asset = byHash.get(hash);
+      if (!asset?.current || seen.has(hash) || assetApproved(asset, deps.model)) continue;
+      seen.add(hash);
+      const label = assetSlotLabel(asset);
+      const refusal = acceptRefusal(asset, label, prereqs);
+      out.push({ hash, label, slot: key, ...(refusal === undefined ? {} : { refusal }) });
+    }
+  }
+  return out;
+}
+
+/**
+ * Accepts one non-portrait take through the rule every host applies: refused for a portrait (the
+ * gate's), a concept or an upload (nothing to bless), a take its slot no longer holds (naming
+ * `asset.restore`), and one drawn from something not yet approved.
+ */
+export async function acceptTake(
+  deps: TakeDeps,
+  hash: string,
+): Promise<{ ok: boolean; message: string }> {
+  const asset = deps.store.manifest().find((a) => a.hash === hash);
+  if (!asset) return { ok: false, message: `No asset ${hash} in the manifest.` };
+  const label = assetSlotLabel(asset);
+  if (asset.kind === 'portrait') {
+    return {
+      ok     : false,
+      message: `${label} is a portrait; approving one is the gate's, not accept's.`,
+    };
+  }
+  if (asset.kind === 'concept' || asset.kind === 'reference') {
+    return {
+      ok     : false,
+      message: `${label} is a ${asset.kind}; nothing generated it, so there is nothing to accept.`,
+    };
+  }
+  const refusal = acceptRefusal(asset, label, prereqContextOf(deps));
+  if (refusal !== undefined) return { ok: false, message: refusal };
+  if (assetApproved(asset, deps.model))
+    return { ok: true, message: `${label} is already accepted.` };
+  await deps.store.accept(hash);
+  return { ok: true, message: `Accepted ${label} (${hash.slice(0, 8)}).` };
 }

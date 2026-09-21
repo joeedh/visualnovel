@@ -142,7 +142,7 @@ for confirmation.
 | `story.deleteLines` ✍ ↺ ✓ | `lines` | Writes `scenes`, `vngen/work/shots`. The gutter marks, deleted together: one undo point rather than one per line. A shot left covering nothing is **kept**. |
 | `story.deleteScene` ✍ ↺ ✓ | `scene` | Writes `scenes`, `vngen/work/shots`. Refuses while anything still points at it, naming what. |
 | `story.deleteShot` ✍ ↺ ✓ | `scene`, `shot` | Writes `vngen/work/shots`. The covered lines become visible gaps — never handed to a neighbour — and a rendered frame is orphaned, not deleted. Removing the last shot deletes the storyboard file itself, so the scene will be decomposed again. |
-| `story.export` ✍ ✓ | — | Writes `vngen/build/story.play.json`. Write `vngen/build/story.play.json` (`vngen export`). |
+| `story.export` ✍ ✓ | — | Writes `vngen/build/story.play.json`. Write `vngen/build/story.play.json` (`vngen export`). Refused, naming the first, while any shot frame or cast portrait the playable would show is the slot’s current take and unapproved (`unapprovedTakes` in `@vn/export`); the run throws `VnError(UNAPPROVED)` with the same sentence. The in-app player asks nothing. |
 | `story.graph` | — | Scenes + branch edges for the editor; reachability marked. |
 | `story.insertLine` ✍ ↺ ✓ | `scene`, `text`, `after` (default `''`), `kind` (`dialogue`\|`parenthetical`\|`narration`\|`transition`\|`lyric`\|`centered`, default `'dialogue'`), `speaker` (default `''`) | Writes `scenes`. Empty `after` means the top of the scene; the id is allocated, not positional. |
 | `story.mergeScene` ✍ ↺ ✓ | `scene`, `into` | Writes `scenes`, `vngen/work/shots`. Only across a `next` boundary; `scene`'s file and storyboard are removed. |

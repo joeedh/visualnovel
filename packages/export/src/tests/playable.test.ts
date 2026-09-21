@@ -8,6 +8,7 @@ import { buildModel } from '@vn/model';
 import { ProjectPaths, writeShots } from '@vn/store';
 import { SCRIPTS } from '@vn/testkit';
 import { buildPlayable, loadSceneShots } from '../playable.js';
+import { unapprovedSentence, unapprovedTakes } from '../unapproved.js';
 
 /** A minimal in-memory {@link AssetStore}: only `manifest()` matters to the exporter. */
 function fakeStore(assets: Asset[] = []): AssetStore {
@@ -148,6 +149,72 @@ describe('buildPlayable', () => {
   it('carries bubble_names, written even when off', () => {
     expect(buildPlayable(model, fakeStore()).bubbleNames).toBe(false);
     expect(buildPlayable(model, fakeStore(), { bubbleNames: true }).bubbleNames).toBe(true);
+  });
+});
+
+describe('unapprovedTakes', () => {
+  const model = sampleModel();
+  const lines = model.scenes.get('arrival')!.lines.map((l) => l.id);
+  const shots = new Map<string, Shot[]>([
+    [
+      'arrival',
+      [
+        {
+          id         : 'arrival__s1',
+          sceneId    : 'arrival',
+          framing    : 'wide',
+          location   : 'evening',
+          subjects   : [],
+          coversLines: lines,
+          status     : 'pending',
+        },
+      ],
+    ],
+  ]);
+  const frame = (over: Partial<Asset>): Asset =>
+    asset({
+      hash     : 'f1',
+      kind     : 'shot_image',
+      satisfies: [{ sceneId: 'arrival', shotId: 'arrival__s1' }],
+      ...over,
+    });
+  const portrait = (over: Partial<Asset>): Asset =>
+    asset({ hash: 'p1', kind: 'portrait', satisfies: [{ characterId: 'aiko' }], ...over });
+
+  it('lists the frames and cast portraits the playable would show unapproved, frames first', () => {
+    const store = fakeStore([frame({ accepted: false }), portrait({ accepted: false })]);
+    expect(unapprovedTakes(model, store, shots)).toEqual([
+      { slot: 'shot:arrival/arrival__s1', hash: 'f1' },
+      { slot: 'portrait:aiko', hash: 'p1' },
+    ]);
+    expect(unapprovedSentence(unapprovedTakes(model, store, shots))).toMatch(
+      /^shot:arrival\/arrival__s1 holds a take nobody has approved \(f1…\) and 1 more\./,
+    );
+  });
+
+  it('is silent for approved takes, and for a slot that holds nothing', () => {
+    // A frame a later render pushed out is history and not shown, so its flag does not matter.
+    const store = fakeStore([
+      frame({ accepted: true }),
+      frame({ hash: 'f0', current: false, accepted: false }),
+    ]);
+    const approved: ProjectModel = {
+      ...model,
+      characters: new Map(
+        [...model.characters].map(([id, c]) =>
+          id === 'aiko' ? [id, { ...c, status: 'approved', approvedPortrait: 'p1' }] : [id, c],
+        ),
+      ),
+    };
+    expect(unapprovedTakes(approved, store, shots)).toEqual([]);
+    expect(unapprovedSentence([])).toBeUndefined();
+    // Nothing drawn at all: the player shows a placeholder, and there is nothing to approve.
+    expect(unapprovedTakes(model, fakeStore(), shots)).toEqual([]);
+  });
+
+  it('reads a portrait off the gate: the flag alone approves nothing', () => {
+    const store = fakeStore([portrait({ accepted: true })]);
+    expect(unapprovedTakes(model, store, shots)).toEqual([{ slot: 'portrait:aiko', hash: 'p1' }]);
   });
 });
 

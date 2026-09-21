@@ -22,6 +22,7 @@ after `pnpm build`.
 ```
 vngen run [dir] [--mock]            parse → validate → execute to the next gate
 vngen approve [dir] [--character][--hash][--yes]  interactively approve pending portraits
+vngen accept [dir] [--hash=<h>|--all]  accept the take a slot holds; neither flag lists what waits
 vngen status [dir]                  task/asset/approval summary
 vngen graph [dir]                   emit the story branch graph (Mermaid)
 vngen export [dir]                  write vngen/build/story.play.json (the playable)
@@ -48,10 +49,20 @@ through it, reported as drifted when the graph was edited since it last ran, and
 node by node. [`../reference/gen-graphs.md`](../reference/gen-graphs.md#the-cli) describes
 what a graph is and what each verb prints.
 
+`approve` and `accept` are the two doors to approval. `approve` is the P3 gate and takes
+portraits only; `accept` takes every other kind — a plate, a sheet, a frame — and only the
+take its slot holds now: an older take is refused by name, since putting one back is
+`asset.restore` in the desktop app. `--all` accepts every current unapproved take upstream
+first, so a plate is accepted before the frame drawn from it, and reports each one it had
+to skip. With neither flag it lists what is waiting, with the reason anything is blocked.
+
 `export` and `screenplay` write different artifacts. `export` writes the playable the
 desktop app runs ([`../reference/playable-format.md`](../reference/playable-format.md)),
-and `screenplay` writes Fountain that a human (or `vngen import`) can read. `import` runs
-once per project, refuses over an existing `scenes/`, and moves the original aside as
+and `screenplay` writes Fountain that a human (or `vngen import`) can read. `export` is
+refused, naming the first, while any frame or cast portrait it would show is a take nobody
+has approved: a run holds what it draws and approves nothing, so
+`vngen run && vngen export` needs `vngen accept --all` between them. `import` runs once
+per project, refuses over an existing `scenes/`, and moves the original aside as
 `.fountain.imported`. Both `screenplay` and `import` are written up in full in
 [`../reference/fountain.md`](../reference/fountain.md#one-fountain-file-in-and-out-project-specific).
 
@@ -156,5 +167,6 @@ node apps/cli/dist/cli.js run    examples/walkthrough
 node apps/cli/dist/cli.js approve examples/walkthrough        # interactively approve portraits
 node apps/cli/dist/cli.js run    examples/walkthrough         # clears the gate, renders shots
 node apps/cli/dist/cli.js status examples/walkthrough
+node apps/cli/dist/cli.js accept examples/walkthrough --all   # accept the plates, sheets and frames
 node apps/cli/dist/cli.js export examples/walkthrough         # write the playable (story.play.json)
 ```

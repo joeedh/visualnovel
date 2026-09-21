@@ -13,6 +13,7 @@ import {
   ProjectPaths,
   entityFile,
   loadInputs,
+  readAllShots,
   setCharacterApproval,
   writeApprovedPortrait,
   writeSceneChunk,
@@ -29,6 +30,8 @@ import {
 import type { Graph } from '@vn/gengraph';
 import { appendGraphJournal, graphBlobStore, readGraphJournal } from '@vn/gengraph/state';
 import {
+  acceptTake,
+  acceptableTakes,
   createGenServices,
   heldBy,
   indexGraphs,
@@ -323,6 +326,21 @@ export class TestProject {
     );
     for (const id of pending) await this.approve(id);
     return pending;
+  }
+
+  /**
+   * Accept every current take nobody has approved, upstream first, through the rule `vngen
+   * accept --all` applies; returns the hashes accepted. A test that exports calls it first,
+   * since an export is refused while a slot holds an unapproved take.
+   */
+  async acceptAll(): Promise<string[]> {
+    const { model, config, store, graph } = await this.reload();
+    const deps = { model, config, store, graph, shots: await readAllShots(this.paths, model) };
+    const accepted: string[] = [];
+    for (const take of acceptableTakes(deps)) {
+      if ((await acceptTake(deps, take.hash)).ok) accepted.push(take.hash);
+    }
+    return accepted;
   }
 
   write(rel: string, content: string): Promise<void> {

@@ -372,6 +372,14 @@ that read it to answer "is it approved" reads `assetApproved`.
   that exports calls it.
 - Tests: the player builds with unapproved frames; `story.export`'s check refuses and its
   run throws the same sentence; CLI accept round trip; a testkit export after `acceptAll`.
+- As built: the accept rule the CLI and the testkit share is `acceptableTakes(deps)`
+  (every current unapproved non-portrait take, upstream first, with the refusal each would
+  meet) and `acceptTake(deps, hash)` in `@vn/artgen`'s `takes.ts`, re-exported from
+  `@vn/pipeline`; `vngen accept` with neither flag lists them. The session exposes
+  `exportRefusal()` beside `exportPlayable()`, so both commands' `check`s ask one question
+  and the run throws its answer. `unapprovedTakes` reads a portrait off the gate, as
+  `assetBlessed` does until stage 5, and skips a character whose gate names an approved
+  portrait, since that is what the playable shows for them.
 
 ## Stage 3 — `Shot.status` leaves the storyboard file
 
@@ -583,7 +591,7 @@ Stages landed, each as its own green commit on the `slot-history` branch:
 
 - [x] Stage 0 — cross-root adoption visible to its slot.
 - [x] Stage 1 — the model.
-- [ ] Stage 2 — export refusal, `vngen accept`, `acceptAll`.
+- [x] Stage 2 — export refusal, `vngen accept`, `acceptAll`.
 - [ ] Stage 3 — `Shot.status` removed.
 - [ ] Stage 4 — interactive graph run files a take.
 - [ ] Stage 5 — portrait gate reads the row.

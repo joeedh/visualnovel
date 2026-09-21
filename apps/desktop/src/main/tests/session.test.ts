@@ -1429,9 +1429,14 @@ describe('WorkspaceSession — over a generated project', () => {
     const show = play.scenes['arrival']!.beats.find((b) => b.type === 'show');
     expect(show).toMatchObject({ type: 'show', image: { ext: 'png' } });
 
-    const { path, scenes } = await session.exportPlayable();
-    expect(scenes).toBe(2);
-    expect(JSON.parse(await fs.readFile(path, 'utf8'))).toEqual(play);
+    // The player builds with unapproved frames; exporting them is what is refused, and the
+    // check's sentence is the run's.
+    const refusal = await session.exportRefusal();
+    expect(refusal).toMatch(/^shot:arrival\/\S+ holds a take nobody has approved/);
+    await expect(session.exportPlayable()).rejects.toMatchObject({
+      code   : 'UNAPPROVED',
+      message: refusal,
+    });
   });
 
   /**
@@ -1722,6 +1727,17 @@ describe('WorkspaceSession — over a generated project', () => {
     expect(refused).toMatchObject({ ok: false });
     expect(refused.message).toContain('asset.restore');
     expect((await session.assetInfo(older.hash))!.newerTake).toBe(plate.hash);
+  });
+
+  // Last in this block, because accepting every take empties the approval list the tests above
+  // read. The older plate written above is not current, so `acceptAll` leaves it alone.
+  it('exports once every take the playable shows is accepted', async () => {
+    const play = await session.playable();
+    expect((await p.acceptAll()).length).toBeGreaterThan(0);
+    expect(await session.exportRefusal()).toBeUndefined();
+    const { path, scenes } = await session.exportPlayable();
+    expect(scenes).toBe(2);
+    expect(JSON.parse(await fs.readFile(path, 'utf8'))).toEqual(play);
   });
 });
 

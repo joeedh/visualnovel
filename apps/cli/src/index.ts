@@ -1,5 +1,6 @@
 import { createLogger } from '@vn/util';
 import {
+  cmdAccept,
   cmdApprove,
   cmdCost,
   cmdDecompose,
@@ -27,6 +28,8 @@ export async function main(argv: string[]): Promise<number> {
         return await cmdRun(args, logger);
       case 'approve':
         return await cmdApprove(args);
+      case 'accept':
+        return await cmdAccept(args);
       case 'status':
         return await cmdStatus(args);
       case 'graph':
@@ -64,13 +67,16 @@ function usage(): string {
     'Commands:',
     '  run [dir] [--mock]   parse → validate → preview → execute to the next gate',
     '  approve [dir] [--character=<id>] [--hash=<h>] [--yes]   approve portraits (interactive)',
+    '  accept [dir] [--hash=<h> | --all]   accept the take a slot holds (plates, sheets, frames);',
+    '                       with neither, list what is waiting',
     '  status [dir]         show task/asset/approval status',
     '  graph [dir]          emit the story branch graph (Mermaid)',
     '  import [dir]         convert screenplay/*.fountain into scenes/<id>.md chunks',
     '  screenplay [dir] [-o <file>|-] [--clean]   write the scenes back out as one Fountain file',
     '                       (default <dir>/screenplay.fountain; --clean drops the [[…]] markers,',
     '                        which takes the scene ids, the branches and nextLineId with them)',
-    '  export [dir]         write vngen/build/story.play.json (the playable, not a screenplay)',
+    '  export [dir]         write vngen/build/story.play.json (the playable, not a screenplay);',
+    '                       refused while a slot holds a take nobody has approved',
     '  decompose [dir]      storyboard every reachable scene that has none yet (no --mock: a',
     '                       baseline is never written, so a mock run would do nothing)',
     '  cost [dir]           dry-run cost preview',

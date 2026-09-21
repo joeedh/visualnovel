@@ -2668,6 +2668,10 @@ export class WorkspaceSession {
     return this.pipelinePart.playable();
   }
 
+  async exportRefusal(): Promise<string | undefined> {
+    return this.pipelinePart.exportRefusal();
+  }
+
   async exportPlayable(): Promise<{ path: string; scenes: number }> {
     return this.pipelinePart.exportPlayable();
   }

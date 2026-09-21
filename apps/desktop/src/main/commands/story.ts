@@ -1100,12 +1100,18 @@ export const storyPlay = define({
 export const storyExport = define({
   id         : 'story.export',
   title      : 'Export playable',
-  description: 'Write vngen/build/story.play.json — the `vngen export` equivalent.',
-  notes      : 'Write `vngen/build/story.play.json` (`vngen export`).',
+  description:
+    'Write vngen/build/story.play.json — the `vngen export` equivalent. Refused while a slot ' +
+    'holds a take nobody has approved, naming it: the player shows whatever a slot holds, and ' +
+    'exporting is publishing.',
+  notes:
+    'Write `vngen/build/story.play.json` (`vngen export`). Refused, naming the first, while any shot frame or cast portrait the playable would show is the slot’s current take and unapproved (`unapprovedTakes` in `@vn/export`); the run throws `VnError(UNAPPROVED)` with the same sentence. The in-app player asks nothing.',
   mutating   : true,
   affects    : ['vngen/build/story.play.json'],
   props      : {},
   async check(_props, ctx) {
+    const refusal = await ctx.host.session.exportRefusal();
+    if (refusal !== undefined) return { ok: false, reason: refusal };
     // Building the playable is the question, and it is pure and writes nothing, so the check
     // answers with the real projection rather than a guess about whether one would work.
     const playable = await ctx.host.session.playable();

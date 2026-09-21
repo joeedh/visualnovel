@@ -10,6 +10,7 @@ import { makeProject, SCRIPTS } from '@vn/testkit';
 import { GenDerivedPrompt, GenImage, GenOutput, Graph, registerGenRuntimes } from '@vn/gengraph';
 import { graphDocFile, writeGraphDoc } from '@vn/gengraph/state';
 import {
+  cmdAccept,
   cmdApprove,
   cmdCost,
   cmdDecompose,
@@ -445,6 +446,25 @@ describe('end to end — on-disk inputs → run → export', () => {
       expect((await p.run()).blockedOnGate).toBe(true);
       expect(await p.approveAll()).toEqual(['aiko']);
       expect((await p.run()).blockedOnGate).toBe(false);
+
+      // The frames are drawn and unapproved, so the export is refused naming the first of them,
+      // and `accept --all` is the route past that on the command line.
+      const refused = await capture(() => cmdExport({ positional: [p.dir], flags: {} }));
+      expect(refused.code).toBe(1);
+      expect(refused.out).toMatch(/shot:arrival\/\S+ holds a take nobody has approved/);
+      expect(refused.out).toContain('vngen accept');
+      const listed = await capture(() => cmdAccept({ positional: [p.dir], flags: {} }));
+      expect(listed.code).toBe(0);
+      expect(listed.out).toContain('Waiting to be accepted');
+      const accepted = await capture(() =>
+        cmdAccept({ positional: [p.dir], flags: { all: true } }),
+      );
+      expect(accepted.code).toBe(0);
+      expect(accepted.out).toMatch(/Accepted \d+ take\(s\)\./);
+      expect(accepted.out).not.toContain('refused');
+      expect((await capture(() => cmdAccept({ positional: [p.dir], flags: {} }))).out).toContain(
+        'Nothing is waiting',
+      );
 
       const { code } = await capture(() => cmdExport({ positional: [p.dir], flags: {} }));
       expect(code).toBe(0);
