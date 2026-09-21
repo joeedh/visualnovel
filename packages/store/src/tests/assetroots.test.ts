@@ -49,18 +49,32 @@ describe('routing by kind', () => {
     expect(reopened.base?.count).toBe(1);
   });
 
-  // Content addressing means the two roots cannot disagree about bytes, only about provenance.
-  it('deduplicates a hash held by both roots, base winning', async () => {
+  // A hash in both roots names the same bytes with two provenances: a picture adopted across
+  // them. The frame is the row bound to a slot, so it is the row reported.
+  it('deduplicates a hash held by both roots, the project row winning when it is a frame', async () => {
     const paths = new ProjectPaths(await tempRoot());
     const store = await AssetStore.open(paths);
     const shot = await store.write(bytes('SAME'), 'png', meta('shot_image', { sourceTask: 'p' }));
     const portrait = await store.write(bytes('SAME'), 'png', meta('portrait', { sourceTask: 'b' }));
     expect(portrait.hash).toBe(shot.hash);
 
-    const manifest = (await AssetStore.open(paths)).manifest();
+    const reopened = await AssetStore.open(paths);
+    const manifest = reopened.manifest();
     expect(manifest).toHaveLength(1);
-    expect(manifest[0]!.kind).toBe('portrait');
-    expect(manifest[0]!.sourceTask).toBe('b');
+    expect(manifest[0]).toMatchObject({ kind: 'shot_image', sourceTask: 'p' });
+    expect(reopened.get(shot.hash)).toMatchObject({ kind: 'shot_image' });
+
+    // A flag write follows the same row, so accepting the frame leaves the base row alone.
+    await reopened.accept(shot.hash);
+    const base = JSON.parse(await readFile(paths.baseManifest, 'utf8')) as {
+      assets: { accepted: boolean }[];
+    };
+    const project = JSON.parse(await readFile(paths.manifest, 'utf8')) as {
+      assets: { accepted: boolean }[];
+    };
+    expect(base.assets[0]!.accepted).toBe(false);
+    expect(project.assets[0]!.accepted).toBe(true);
+    expect(reopened.manifestFileOf(shot.hash)).toBe(paths.manifest);
   });
 });
 

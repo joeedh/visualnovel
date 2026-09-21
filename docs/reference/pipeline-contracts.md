@@ -54,8 +54,8 @@ These implement the system design in
       `vngen/build/assets/<hash>.<ext>`.
     - Each root's `manifest.json` indexes the provenance of the files under that root, so
       a base subtree that is its own git repo describes its own provenance.
-    - Routing uses `AssetKind` and nothing else. Reads consult both, checking the base
-      first.
+    - Routing uses `AssetKind` and nothing else. Reads consult both; a hash both hold is a
+      picture adopted across them, and the project row answers when it is a frame.
     - Manifest writes are serialized through a single-writer queue so parallel tasks don't
       race on the atomic rename (this matters on Windows).
     - Full statement: [`asset-stores.md`](asset-stores.md).

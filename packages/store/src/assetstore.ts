@@ -257,7 +257,7 @@ export class AssetStore implements IAssetStore {
   }
 
   get(hash: string): Asset | undefined {
-    return this.baseRoot.get(hash) ?? this.projectRoot.get(hash);
+    return this.rowRoot(hash).get(hash);
   }
 
   async write(bytes: Uint8Array, ext: string, meta: AssetMeta): Promise<AssetRef> {
@@ -282,20 +282,20 @@ export class AssetStore implements IAssetStore {
 
   /**
    * The manifest recording `hash`, which is the file {@link accept} and {@link unaccept} rewrite.
-   * Both route base-first, so a caller reporting what it wrote has to ask which root answered
-   * rather than naming one of the two.
+   * Both follow {@link rowRoot}, so a caller reporting what it wrote has to ask which root
+   * answered rather than naming one of the two.
    */
   manifestFileOf(hash: string): string {
-    return this.rootHolding(hash).manifestFile;
+    return this.rowRoot(hash).manifestFile;
   }
 
   /**
-   * Both manifests as one list, base first and deduped by hash. The roots cannot disagree about
-   * content, so where both hold a hash the base record — the one that travels with the bytes a
-   * later prompt references — is the one reported.
+   * Both manifests as one list, deduped by hash. The roots cannot disagree about content, so
+   * where both hold a hash one row is reported, chosen by {@link rowRoot}.
    */
   manifest(): readonly Asset[] {
-    const all = [...this.baseRoot.assets()];
+    const all: Asset[] = [];
+    for (const asset of this.baseRoot.assets()) all.push(this.rowRoot(asset.hash).get(asset.hash)!);
     for (const asset of this.projectRoot.assets()) {
       if (!this.baseRoot.has(asset.hash)) all.push(asset);
     }
@@ -303,12 +303,11 @@ export class AssetStore implements IAssetStore {
   }
 
   async accept(hash: string, supersede: readonly string[] = []): Promise<void> {
-    if (!(await this.baseRoot.accept(hash, supersede)))
-      await this.projectRoot.accept(hash, supersede);
+    await this.rowRoot(hash).accept(hash, supersede);
   }
 
   async unaccept(hash: string): Promise<void> {
-    if (!(await this.baseRoot.unaccept(hash))) await this.projectRoot.unaccept(hash);
+    await this.rowRoot(hash).unaccept(hash);
   }
 
   private rootFor(kind: AssetKind): AssetRoot {
@@ -324,6 +323,22 @@ export class AssetStore implements IAssetStore {
   /** The root that holds `hash`, defaulting to the project root for one neither knows. */
   private rootHolding(hash: string): AssetRoot {
     return this.baseRoot.has(hash) ? this.baseRoot : this.projectRoot;
+  }
+
+  /**
+   * The root whose row answers for `hash`: the one whose manifest is reported for it and whose
+   * flags a flag write moves.
+   *
+   * A hash both roots hold is a picture adopted across them: an upload or a concept in the base
+   * root that became a shot frame in the project root. The project row is then the one bound to
+   * a slot, so it wins whenever it carries a project kind. A project row carrying a base kind is a
+   * manifest written before the split, and the base row wins as it always has. Bytes are the same
+   * in both, so `read` and `pathOf` never need this distinction.
+   */
+  private rowRoot(hash: string): AssetRoot {
+    const row = this.projectRoot.get(hash);
+    if (row && !BASE_KINDS.has(row.kind)) return this.projectRoot;
+    return this.rootHolding(hash);
   }
 }
 

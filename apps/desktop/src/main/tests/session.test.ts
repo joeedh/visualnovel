@@ -26,7 +26,7 @@ import {
 } from '@vn/authoring';
 import { openGit } from '@vn/git';
 import { ProjectPaths, readShots, writeShots } from '@vn/store';
-import type { Shot } from '@vn/types';
+import type { Shot, ShotsFile } from '@vn/types';
 import { nativeFile, readNative } from '../notify/threads.js';
 import type { AskQuestion, Plan, PlanDecision } from '../../shared/ipc.js';
 import { WorkspaceSession, type SessionDeps } from '../session.js';
@@ -1942,6 +1942,53 @@ describe('WorkspaceSession — restoring an older take', () => {
     expect(back.prompt).toBe(drawnFrom);
     // And the file that had taken the slot is now the older take, pointing back at this one
     expect((await session.assetInfo(second.hash!))!.newerTake).toBe(first.hash);
+  });
+});
+
+/**
+ * A frame replaced across the two roots: the upload stays a `reference` in the base root while the
+ * project root files the same bytes as the frame, and the frame is the row every surface must see.
+ */
+describe('WorkspaceSession — replacing a frame with a file', () => {
+  let p: TestProject;
+  let session: WorkspaceSession;
+
+  beforeAll(async () => {
+    p = await makeProject({ title: 'Reframed', script: SCRIPTS.linear });
+    session = sessionFor(p);
+    await p.run();
+    await p.approveAll();
+    await p.run(); // the gate is clear, so every shot has a frame
+  }, 30_000);
+
+  afterAll(async () => {
+    await p.cleanup();
+  });
+
+  it('files the upload as the frame, which its slot can then accept and the playable shows', async () => {
+    const shots = JSON.parse(await p.read('vngen/work/shots/arrival.json')) as ShotsFile;
+    const shotId = shots.shots[0]!.id;
+    const rendered = shots.shots[0]!.shotData!.image!;
+    expect((await session.assetInfo(rendered))!.slot).toBe(`shot:arrival/${shotId}`);
+
+    const file = join(p.dir, 'repaint.png');
+    await fs.writeFile(file, new Uint8Array([...realPng(), 41, 42]));
+    const done = await session.replaceAsset(rendered, file);
+    expect(done.ok).toBe(true);
+
+    // The merged manifest answers with the frame, not the upload it came in as
+    const info = (await session.assetInfo(done.hash!))!;
+    expect(info).toMatchObject({ kind: 'shot_image', slot: `shot:arrival/${shotId}` });
+    // Upstream first, as the popup would: a frame is accepted only once its plate and sheets are
+    for (const prereq of info.prereqs.filter((q) => !q.approved)) {
+      expect(await session.acceptAsset(prereq.hash)).toMatchObject({ ok: true });
+    }
+    expect(await session.previewAccept(done.hash!)).toMatchObject({ ok: true });
+    expect(await session.acceptAsset(done.hash!)).toMatchObject({ ok: true });
+
+    const play = await session.playable();
+    const frames = play.scenes['arrival']!.beats.filter((b) => b.type === 'show');
+    expect(frames[0]).toMatchObject({ type: 'show', image: { hash: done.hash } });
   });
 });
 

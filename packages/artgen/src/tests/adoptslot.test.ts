@@ -157,10 +157,13 @@ describe('adoptSlot', () => {
 
       // The same hash sits in two roots. The frame is filed under `build/` because that is where
       // its kind routes, while the base root still holds the concept it came from. The merged view
-      // shows the base row, which is why this reads the build manifest by hand.
-      const built = JSON.parse(await p.read('vngen/build/manifest.json')) as { assets: Asset[] };
-      expect(built.assets.find((a) => a.hash === ref.hash)).toMatchObject({ kind: 'shot_image' });
-      expect(store.manifest().find((a) => a.hash === ref.hash)).toMatchObject({ kind: 'concept' });
+      // shows the frame, so the slot's candidates include it and the popup can list it.
+      const base = JSON.parse(await p.read('assets/manifest.json')) as { assets: Asset[] };
+      expect(base.assets.find((a) => a.hash === ref.hash)).toMatchObject({ kind: 'concept' });
+      expect(store.manifest().find((a) => a.hash === ref.hash)).toMatchObject({
+        kind     : 'shot_image',
+        satisfies: expect.arrayContaining([{ sceneId: 'arrival', shotId }]),
+      });
     } finally {
       await p.cleanup();
     }

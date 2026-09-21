@@ -75,9 +75,11 @@ base root, adoption rewrites the record in place. Across the roots it does not: 
 `reference` an author uploaded lives in `assets/`, and adopting it onto a shot slot writes
 the bytes to `vngen/build/assets/` as well. One hash then has two rows in two roots, each
 with its own provenance — the base row still records that an author handed the picture in,
-and the project row records which frame it is. Reads are base-first, so `asset.info`
-answers from the base record, and both rows carry the same content because the hash
-identifies the content.
+and the project row records which frame it is. The frame is the row every surface sees:
+`manifest()`, `get` and the flag writes (`accept`, `unaccept`) answer with the project row
+whenever it carries a project kind, so the frame is a candidate of its slot, the approval
+popup lists it, `asset.accept` accepts it, and the playable shows it. Both rows carry the
+same content because the hash identifies the content.
 
 `promoteConcept` is one caller of `adoptSlot`, covering the location-concept case and
 writing the sheet before it calls. The general operation refuses a `portrait:` slot, which
@@ -86,10 +88,14 @@ already holds the slot unless the caller declared `replace`. Adoption never acce
 automatically. It records that the bytes are that task's output; it does not record that a
 human approved them.
 
-**Reads consult both roots, base first.** Hashes are content hashes, so a byte present in
-both roots is the same byte and the two indices cannot disagree about content. Where both
-hold a record for one hash, reads take the base record, and `manifest()` returns the union
-deduped that way. `pathOf` resolves from whichever index holds the hash, and defaults to
+**Reads consult both roots, and one row answers for a hash.** Hashes are content hashes,
+so a byte present in both roots is the same byte and the two indices cannot disagree about
+content. Where both hold a record for one hash, the project record answers when it carries
+a project kind (a picture adopted across the roots, above) and the base record otherwise
+(a manifest written before the split, below); `manifest()` returns the union deduped that
+way, `get` returns the same row, and `accept` and `unaccept` write the same row's flags
+without consulting the kind-to-root rule, so a flag write never refuses on an
+`unavailable` base. `pathOf` resolves from whichever index holds the hash, and defaults to
 the project root for a hash absent from both.
 
 Nothing on disk moves. A project written before the split keeps its base art indexed in

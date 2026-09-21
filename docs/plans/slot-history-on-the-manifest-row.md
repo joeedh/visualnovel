@@ -117,9 +117,16 @@ otherwise fire on every replaced frame. One commit, green on its own.
   `vngen/build/manifest.json` (`docs/reference/asset-stores.md:95-98`), and `rootFor`
   throws for a base kind when the base is `unavailable` (`assetstore.ts:314-322`). A flag
   write never consults `rootFor`; only a byte write does.
-- The adoptslot test asserts the new answer. A testkit test uploads a picture,
-  `asset.replace`s a frame with it, builds the playable, and asserts the frame names the
-  upload.
+    - As built: one private rule, `rowRoot(hash)`, decides the row for a hash — the
+      project row when it carries a project kind, else the base row when the base holds
+      the hash, else the project row — and `get`, `manifest`, `manifestFileOf`, `accept`
+      and `unaccept` all follow it. No caller passes a kind: the row `manifest()` shows is
+      the row a flag write moves, so the two cannot disagree.
+- The adoptslot test asserts the new answer. A session test (`session.test.ts`, "replacing
+  a frame with a file") uploads a picture, `asset.replace`s a frame with it, accepts its
+  prerequisites and then the frame, builds the playable, and asserts the frame names the
+  upload. The accept step is there because the exporter reads `accepted` until stage 1e;
+  before this stage `asset.accept` refused the frame as an upload.
 
 ## Stage 1 — the model lands
 
@@ -529,6 +536,15 @@ what the plan does about it.
   unstated. Fixed: named per stage.
 
 ## Finishing checklist
+
+Stages landed, each as its own green commit on the `slot-history` branch:
+
+- [x] Stage 0 — cross-root adoption visible to its slot.
+- [ ] Stage 1 — the model.
+- [ ] Stage 2 — export refusal, `vngen accept`, `acceptAll`.
+- [ ] Stage 3 — `Shot.status` removed.
+- [ ] Stage 4 — interactive graph run files a take.
+- [ ] Stage 5 — portrait gate reads the row.
 
 - [ ] Comments audited in every file touched; no `CLAUDENOTE:` remains.
 - [ ] `docs/reference/pipeline-contracts.md`, `asset-stores.md`, `document-tree.md`,
