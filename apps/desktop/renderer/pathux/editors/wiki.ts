@@ -11,7 +11,6 @@ import {
   type LinkClick,
   type MdDoc,
 } from 'pathux-richtext-headless';
-import type { WikilinkStart } from 'pathux-richtext-markdown';
 import { frontmatterCodec } from '@vn/parse';
 import { api } from '../../api.js';
 import { ASSETSTRIP_CSS, renderAssetStrip } from '../assets/assetstrip.js';
@@ -21,13 +20,14 @@ import {
   RELOAD_TIP,
   TEXT_TIP,
   discardOffer,
+  linkOffer,
   pictureOffer,
   rawOffer,
 } from '../../rules/wiki.js';
 import { reloadOffer, textBox } from '../../rules/docbuffer.js';
 import { visibleEditors } from '../panes/route.js';
 import { panesOf } from '../panes/view.js';
-import { onInvalidate, onWrote } from '../app/bridge.js';
+import { onInvalidate, onWrote, projectView } from '../app/bridge.js';
 import { AUTOSAVE_MS, BRIDGE_IO, DocBuffer } from '../doctree/docbuffer.js';
 import { parseOptionsFor, refusalOf } from '../doctree/docsession.js';
 import type { DocForm } from '../doctree/docforms.js';
@@ -37,7 +37,7 @@ import { assetGroups } from '../doctree/doctree.js';
 import { linkedNode } from '../doctree/doclinks.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { assetNode, openNode } from '../panes/open.js';
-import { PICTURE_BUTTON, WikiProvider } from './wikiprovider.js';
+import { LINK_BUTTON, PICTURE_BUTTON, WikiProvider, type LinkStart } from './wikiprovider.js';
 import { LinkCompletion } from './wikilinks.js';
 import type { VnScreen } from '../app/screen.js';
 import WIKI_CSS from '../../styles/wiki.css?inline';
@@ -72,8 +72,9 @@ import type { EditorId } from '../../../src/shared/editors.js';
  * is a separate, ranked and budgeted question answered by `bible.search`, and is deliberately not
  * asked here.
  *
- * Links between documents are ordinary markdown links to document-relative paths. Typing `[[`
- * opens a completion over the tree's documents (`wikilinks.ts`), and Ctrl+click (Cmd on macOS),
+ * Links between documents are ordinary markdown links to document-relative paths. Typing `[[`,
+ * or pressing the toolbar's `[[` button, which types it, opens a completion over the tree's
+ * documents (`wikilinks.ts`), and Ctrl+click (Cmd on macOS),
  * or a plain click while the document cannot be written, follows a link that names a document or
  * a stored picture through the same route a tree click takes; a plain click keeps path.ux's own
  * popup, which edits the link. A `[[marker]]` the screenplay uses, or a url, leads nowhere here.
@@ -117,15 +118,15 @@ export class WikiEditor extends VnEditor {
    * widgets and nothing about the text.
    */
   private readonly buf = new DocBuffer(() => this.paint(), BRIDGE_IO, {
-    // One provider serves every pane on the session, so the `[[` finds its pane from the key
+    // One provider serves every pane on the session, so the `[[` finds its pane from where it landed
     rich: (path) =>
       new WikiProvider(path, {
-        onWikilinkStart: (start) => paneOf(start)?.completion.show(start),
+        onLinkStart: (start) => paneOf(start)?.completion.show(start),
       }),
     autosave: AUTOSAVE_MS,
   });
 
-  /** The popup a typed `[[` opens, over the documents in the tree. Built with the pane, read late. */
+  /** The popup a `[[` opens, over the documents in the tree. Built with the pane, read late. */
   private readonly completion = new LinkCompletion({
     editor : () => this.editor,
     screen : () => this.ctx?.screen as VnScreen | undefined,
@@ -138,17 +139,18 @@ export class WikiEditor extends VnEditor {
   /** This pane's forms: the schemas with its own controls, and the form path.ux has mounted. */
   private readonly forms = new SheetForms(
     sheetControls({
-      path     : () => this.buf.path,
-      ctx      : () => this.ctx,
-      anchors  : (part) => redrawing('wiki', `form/${part}`),
-      links    : () => this.links(),
+      path        : () => this.buf.path,
+      ctx         : () => this.ctx,
+      projectModel: () => projectView()?.models.image,
+      anchors     : (part) => redrawing('wiki', `form/${part}`),
+      links       : () => this.links(),
       onLinks: (listener) => {
         this.linkListeners.add(listener);
         return () => this.linkListeners.delete(listener);
       },
-      visible  : () => this.visible(),
-      openAsset: (hash) => this.openAsset(hash),
-      dirty    : () => this.buf.dirty,
+      visible     : () => this.visible(),
+      openAsset   : (hash) => this.openAsset(hash),
+      dirty       : () => this.buf.dirty,
       onPaint: (listener) => {
         this.paintListeners.add(listener);
         return () => this.paintListeners.delete(listener);
@@ -540,10 +542,10 @@ export class WikiEditor extends VnEditor {
     // was built by `bind` above, so the node is this paint's
     const toolbar = this.editor.shadow.querySelector<UIBase>('[data-richtext-toolbar]');
     const picture = toolbar?.shadow.querySelector<HTMLElement>(`[data-testid="${PICTURE_BUTTON}"]`);
-    if (picture) {
-      const readOnly = this.buf.session?.canWrite === false;
-      anchors.record(picture, pictureOffer(this.buf.path, readOnly));
-    }
+    const link = toolbar?.shadow.querySelector<HTMLElement>(`[data-testid="${LINK_BUTTON}"]`);
+    const readOnly = this.buf.session?.canWrite === false;
+    if (picture) anchors.record(picture, pictureOffer(this.buf.path, readOnly));
+    if (link) anchors.record(link, linkOffer(this.buf.path, readOnly));
     this.paintFoot(anchors);
     this.paintStrip();
     for (const listener of this.paintListeners) listener();
@@ -603,12 +605,15 @@ export class WikiEditor extends VnEditor {
 }
 
 /**
- * The pane a `[[` was typed in. The provider that hears the key is the session's, not any pane's,
- * and the key's path crosses the editor's shadow root up to the pane's host, so the event is what
- * names the pane.
+ * The pane a `[[` landed in. The provider that hears the key or the button is the session's, not
+ * any pane's, so the node the start names is walked up, across the editor's shadow root, to the
+ * pane's host.
  */
-function paneOf(start: WikilinkStart): WikiEditor | undefined {
-  return start.event.composedPath().find((n): n is WikiEditor => n instanceof WikiEditor);
+function paneOf(start: LinkStart): WikiEditor | undefined {
+  for (let n: Node | null = start.node; n; n = n.parentNode ?? (n as ShadowRoot).host ?? null) {
+    if (n instanceof WikiEditor) return n;
+  }
+  return undefined;
 }
 
 /** The only prefix allowed before the fence, matching what `parseFrontMatter` skips. */

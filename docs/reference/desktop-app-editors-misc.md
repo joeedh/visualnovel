@@ -68,11 +68,23 @@ on the rich editor, with every decision and what shipped against each, is
   read ("Not a wardrobe") is shown as a sentence and handed back unchanged, and the Raw
   view is the way round it.
 - **Art direction is written by the form, at both rungs.** The root `art_notes`, `seed`
-  and `image_model` boxes and the ones in an outfit's or a variant's row all go through
+  and `image_model` controls and the ones in an outfit's or a variant's row all go through
   the codec, because the `art.*` commands re-serialise the whole front matter and lose the
   author's comments. The model reads the keys back identically from either writer
   ([`pipeline-contracts.md`](pipeline-contracts.md)). A blank box removes the key, so a
-  sheet that authors no notes keeps producing byte-identical prompts.
+  sheet that authors no notes keeps producing byte-identical prompts. `image_model` is the
+  same searchable menu every other surface draws for a model (`doctree/modelcontrol.ts`
+  over `widgets/modelmenu.ts`), with an inherit row naming the project's model; picking
+  inherit omits the key, which is why the row's button then reads Keep.
+- **Undo reaches the form's draft before the document.** An Omit, a swatch, a pick in the
+  model menu and typing into a box are answers on the draft, not edits to the document, so
+  they are not in the session's history. path.ux's editor offers the undo chord to the
+  session's drafts first (`DraftController.undo`, `session.undoDraft()`) and falls through
+  to the document's history only when no draft takes it, so Ctrl+Z after an Omit puts the
+  field back rather than undoing the last applied edit underneath the draft. An Omit is
+  one step; typing into one field within `DRAFT_RUN_MS` of the last change to it joins a
+  step; Apply and Discard leave nothing to undo. A textbox with the focus still undoes
+  natively, because the widget host keeps its keys from the editor.
 - **The art beside an entry comes from the tree.** `EntityLinks.assets[]` carries the
   asset's slot address and a character's links carry `usedOutfits`, a location's
   `usedVariants` (all computed in main, `main/doctree.ts`), so a wardrobe row shows the
@@ -182,11 +194,15 @@ on the rich editor, with every decision and what shipped against each, is
   a popup under the caret (`editors/wikilinks.ts`) over every document in the tree
   (`doctree/doclinks.ts`), filtered as the author types on; Enter or a click writes
   `[Aiko](../characters/aiko/character.md)` over the typed text as one undo entry, and
-  Escape leaves the brackets. Ctrl+click (Cmd on macOS), or a plain click when the
-  document cannot be written, follows a link to a document or a stored picture through the
-  route a tree click takes; a plain click keeps path.ux's popup that edits the link. A
-  `[[marker]]` the screenplay's syntax uses, and any url, lead nowhere. The bible still
-  indexes a link as plain text; there are no backlinks between notes.
+  Escape leaves the brackets. The toolbar's **Insert a link** (`[[`, beside **Insert a
+  picture**) types the pair at the caret and opens the same popup, so the two ways in
+  share one code path; its tooltip says the pair can be typed instead. It is refused for a
+  document the app cannot write, like the picture button. Ctrl+click (Cmd on macOS), or a
+  plain click when the document cannot be written, follows a link to a document or a
+  stored picture through the route a tree click takes; a plain click keeps path.ux's popup
+  that edits the link. A `[[marker]]` the screenplay's syntax uses, and any url, lead
+  nowhere. The bible still indexes a link as plain text; there are no backlinks between
+  notes.
 - **It does not read through `@vn/bible`.** That interface has no whole-file call, and the
   guarantee follows from that absence ([`story-bible.md`](story-bible.md)). A human
   reading their own note on screen does not put it into the agent's context window.

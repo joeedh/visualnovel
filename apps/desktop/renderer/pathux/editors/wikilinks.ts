@@ -1,9 +1,10 @@
 import type { ContextLike, PopupContainer, RichTextEditor } from 'pathux';
-import { markdownOps, type MdDoc, type WikilinkStart } from 'pathux-richtext-markdown';
+import { markdownOps, type MdDoc } from 'pathux-richtext-markdown';
 import { filterTargets, linkHref, linkTargets } from '../doctree/doclinks.js';
 import { linkRow } from '../../rules/wiki.js';
 import type { AnchorPass } from '../tour/anchors.js';
 import type { VnScreen } from '../app/screen.js';
+import type { LinkStart } from './wikiprovider.js';
 import LINKCOMPLETE_CSS from '../../styles/linkcomplete.css?inline';
 import type { DocNode } from '../../../src/shared/ipc.js';
 import type { EditorId } from '../../../src/shared/editors.js';
@@ -22,16 +23,16 @@ export interface CompletionHost {
 }
 
 /**
- * The popup a typed `[[` opens, listing the documents a link could lead to. Typing goes on in
- * the editor: the popup never takes focus, reads the query out of the document after each
- * change (the text between the `[[` and the caret), and hears the arrow keys, Enter and Escape
- * on the editor's host before the pane does. Enter or a click on a row replaces the `[[` and
- * the query with an ordinary link to the document; Escape, or the caret leaving the query,
- * closes the popup and leaves what was typed.
+ * The popup a `[[` opens, typed or put there by the toolbar's link button, listing the documents
+ * a link could lead to. Typing goes on in the editor: the popup never takes focus, reads the
+ * query out of the document after each change (the text between the `[[` and the caret), and
+ * hears the arrow keys, Enter and Escape on the editor's host before the pane does. Enter or a
+ * click on a row replaces the `[[` and the query with an ordinary link to the document; Escape,
+ * or the caret leaving the query, closes the popup and leaves what was typed.
  */
 export class LinkCompletion {
   private popup: PopupContainer<ContextLike> | undefined;
-  private start: WikilinkStart | undefined;
+  private start: LinkStart | undefined;
   private list: HTMLDivElement | undefined;
   private rows: DocNode[] = [];
   private active = 0;
@@ -47,7 +48,7 @@ export class LinkCompletion {
   }
 
   /** Opens under the caret; a completion already open is closed first. */
-  show(start: WikilinkStart): void {
+  show(start: LinkStart): void {
     this.close();
     const screen = this.host.screen();
     const editor = this.host.editor();

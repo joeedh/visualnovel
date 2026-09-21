@@ -65,6 +65,11 @@ export const SITUATIONS = situations<SheetFormState>(
     state: { path: 'characters/aiko/character.md', wardrobe: { ids: [] } },
   },
   {
+    name : 'model',
+    why: "Every sheet carries an image-model menu, whose pick is the same write as the sheet's boxes.",
+    state: { path: 'characters/aiko/character.md', model: true },
+  },
+  {
     name : 'read-only',
     why  : 'A session that refuses writes greys every control of the form with the reason.',
     state: {
@@ -72,6 +77,7 @@ export const SITUATIONS = situations<SheetFormState>(
       readOnly: true,
       palette : { swatches: 1 },
       wardrobe: { ids: ['uniform'], default: 'uniform' },
+      model   : true,
     },
   },
 );

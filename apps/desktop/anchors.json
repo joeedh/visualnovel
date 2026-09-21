@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-21T00:07:55.011Z",
-  "gitSha"       : "df72b18cea93e2b06f2aca4524c6e6d2b66a7467",
+  "sweptAt"      : "2026-09-21T01:49:24.597Z",
+  "gitSha"       : "f80915432920688cb116e67fe990286587c80985",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -3887,6 +3887,13 @@
       "supplies"  : ["text", "seenHash"]
     },
     {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#link",
+      "widgetPath": "wiki/doc-write~b83db750",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "wiki",
       "key": "item:link/asset/246322f6cb8b5da4133f86e549fa0b8d60fd6cf2449ec32b8204fdb1d2b7ed0b",
@@ -4289,6 +4296,13 @@
       "editor"    : "wiki",
       "key"       : "cmd:doc.write#palette/add",
       "widgetPath": "wiki/doc-write~f9d436eb",
+      "supplies"  : ["text", "seenHash"]
+    },
+    {
+      "id"        : "doc.write",
+      "editor"    : "wiki",
+      "key"       : "cmd:doc.write#model",
+      "widgetPath": "wiki/doc-write~38fcd30f",
       "supplies"  : ["text", "seenHash"]
     },
     {
@@ -5605,16 +5619,16 @@
     {
       "id"        : "project.setKey",
       "editor"    : "onboarding",
-      "key"       : "cmd:project.setKey#anthropic",
-      "widgetPath": "onboarding/project-setkey~b45dc248",
+      "key"       : "cmd:project.setKey#openrouter",
+      "widgetPath": "onboarding/project-setkey~e338045b",
       "supplies"  : ["key"],
       "refused"   : "Paste a key first"
     },
     {
       "id"        : "project.setKey",
       "editor"    : "onboarding",
-      "key"       : "cmd:project.setKey#openrouter",
-      "widgetPath": "onboarding/project-setkey~e338045b",
+      "key"       : "cmd:project.setKey#anthropic",
+      "widgetPath": "onboarding/project-setkey~b45dc248",
       "supplies"  : ["key"],
       "refused"   : "Paste a key first"
     },
@@ -5649,6 +5663,30 @@
       "key"       : "cmd:notify.deleteAll",
       "widgetPath": "notifications/notify-deleteall~53de25de",
       "form"      : true
+    },
+    {
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260920-184147-7671-0000",
+      "widgetPath": "notifications/notify-follow~65099ad1"
+    },
+    {
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260920-184147-7671-0000",
+      "widgetPath": "notifications/notify-hide~698a5ea0"
+    },
+    {
+      "id"        : "notify.follow",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.follow#20260920-183041-90a6-0000",
+      "widgetPath": "notifications/notify-follow~248c0910"
+    },
+    {
+      "id"        : "notify.hide",
+      "editor"    : "notifications",
+      "key"       : "cmd:notify.hide#20260920-183041-90a6-0000",
+      "widgetPath": "notifications/notify-hide~f0e0e6a1"
     },
     {
       "id"        : "notify.follow",
@@ -5985,30 +6023,6 @@
       "editor"    : "notifications",
       "key"       : "cmd:notify.hide#20260917-163130-54bb-0001",
       "widgetPath": "notifications/notify-hide~22f21bba"
-    },
-    {
-      "id"        : "notify.follow",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.follow#20260917-163130-54bb-0000",
-      "widgetPath": "notifications/notify-follow~e4f4bb22"
-    },
-    {
-      "id"        : "notify.hide",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.hide#20260917-163130-54bb-0000",
-      "widgetPath": "notifications/notify-hide~1f4813b3"
-    },
-    {
-      "id"        : "notify.follow",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.follow#20260917-155813-2fe4-0009",
-      "widgetPath": "notifications/notify-follow~456a2022"
-    },
-    {
-      "id"        : "notify.hide",
-      "editor"    : "notifications",
-      "key"       : "cmd:notify.hide#20260917-155813-2fe4-0009",
-      "widgetPath": "notifications/notify-hide~548a3753"
     },
     {
       "id"        : "pane.view",
@@ -7279,7 +7293,17 @@
       "stack": "refuses it — The classroom — day plate is already the render b524a2d7, and nothing about it has changed — adopting 45716256 would replace real work. Adopt with replace to supersede it; the old bytes stay in the store."
     }
   ],
-  "strays"       : ["documents item:location/classroom"],
+  "strays": [
+    "asset cmd:prompt.check",
+    "documents item:link/asset/9d78b424f22bd31f9e6efc135087a11e66f808ae22427c5afe16768e77f7098e",
+    "documents item:link/asset/d246bdcc4e4d2b1ca7c3140060d60f4bfbf2af7fdc32d612497d296b4c3f16c7",
+    "documents item:link/asset/ed9f4427c214956c2eced5ae4a47d26385908a10f09051dd3ccf3e6824cdf4c4",
+    "onboarding cmd:app.openKeyLink#gemini/billing",
+    "onboarding cmd:app.openKeyLink#gemini/console",
+    "onboarding cmd:app.openKeyLink#gemini/docs",
+    "play fx:pane.view#dim",
+    "timeline fx:pane.view#reload"
+  ],
   "untagged"     : [],
   "unwalked"     : []
 }

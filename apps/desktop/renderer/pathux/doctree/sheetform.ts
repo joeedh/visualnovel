@@ -22,6 +22,7 @@ import type { EditorId } from '../../../src/shared/editors.js';
 import type { EntityLinks } from '../../../src/shared/ipc.js';
 import type { AnchorPass } from '../tour/anchors.js';
 import { FORMS, formKind, type DocForm } from './docforms.js';
+import { imageModelControl } from './modelcontrol.js';
 import { paletteControl } from './palettecontrol.js';
 import { promptControl } from './promptcontrol.js';
 import { variantsControl } from './variantscontrol.js';
@@ -36,6 +37,8 @@ export interface SheetHost {
   path(): string;
   /** The pane's context, which a path.ux widget drawn among the raw rows is built with. */
   ctx(): ContextLike;
+  /** The project's image model, which a sheet or an entry naming none draws with. */
+  projectModel(): string | undefined;
   /**
    * A fresh anchor pass for one control's part of the form. A control that rebuilds its rows
    * opens one, because a pass refuses a node whose offer changes inside it, and the previous pass
@@ -59,6 +62,10 @@ export interface SheetHost {
 export function sheetControls(host: SheetHost): SheetControls {
   const fields = FORMS.character.presentation.fields!;
   const palette: FieldMeta = { ...fields.palette, control: (field) => paletteControl(field, host) };
+  const image_model: FieldMeta = {
+    ...fields.image_model,
+    control: (field) => imageModelControl(field, host),
+  };
   const outfits: FieldMeta = {
     label  : 'Wardrobe',
     help: 'The outfits scenes can dress this character in; the marked one is worn when a scene names none',
@@ -80,8 +87,9 @@ export function sheetControls(host: SheetHost): SheetControls {
       outfits,
       default_outfit: { ...fields.default_outfit, control: 'none' },
       prompt_override,
+      image_model,
     },
-    location : { palette, variants },
+    location : { palette, variants, image_model },
   };
 }
 

@@ -268,6 +268,7 @@ function directionRow(
   });
 
   const current = entry?.image_model ?? '';
+  // An entry's inherit is the sheet's model before the project's, so the row names neither
   const model = imageModelMenu(on.host.ctx(), current, undefined, (id) => {
     if (id === '') set({}, 'image_model');
     else set({ image_model: id });

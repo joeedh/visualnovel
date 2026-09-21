@@ -109,6 +109,13 @@ type ProjectViewWatcher = (view: ProjectView | undefined) => void;
 
 const projectWatchers = new Set<ProjectViewWatcher>();
 
+let lastProject: ProjectView | undefined;
+
+/** The project view as last read, for a surface built between two refreshes. */
+export function projectView(): ProjectView | undefined {
+  return lastProject;
+}
+
 /**
  * Watch the project view the shell reads. It is re-read with every workspace refresh, so a
  * `project.yaml` write reaches it, and after `models.refresh`, which writes outside the workspace.
@@ -135,6 +142,7 @@ export async function refreshProjectView(): Promise<ProjectView | undefined> {
     source: 'ui',
   });
   const view = outcome.ok ? (outcome.data as ProjectView) : undefined;
+  lastProject = view;
   setModelCatalog(view?.imageModels);
   for (const watcher of projectWatchers) watcher(view);
   return view;

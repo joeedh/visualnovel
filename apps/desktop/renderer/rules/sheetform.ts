@@ -28,6 +28,8 @@ export interface SheetFormState {
   variants?: EntryRows;
   /** The prompt override's button, when the sheet has one. */
   prompt?: PromptState;
+  /** Whether the sheet's own image-model menu is drawn. */
+  model?: boolean;
 }
 
 /** What the prompt control's button reads; the field is a character sheet's. */
@@ -67,6 +69,16 @@ function draftWrite(state: SheetFormState, on: string, label: string, tooltip: s
   if (state.path === '') return { ...refuse('No document is open.'), ...control };
   if (state.readOnly === true) return { ...refuse(READ_ONLY), ...control };
   return { ok: true, props: { path: state.path }, ...control };
+}
+
+/** The sheet's image-model menu, in place of the id's text box. */
+export function modelOffer(state: SheetFormState): Offer {
+  return draftWrite(
+    state,
+    'model',
+    'Image model',
+    "Pick the image model every picture of this entity is drawn with; inherit draws with the project's. Apply answers writes it into the sheet",
+  );
 }
 
 /** One swatch: a click opens the colour picker on it. */
@@ -255,5 +267,6 @@ export function controls(state: SheetFormState): readonly Offer[] {
   if (state.wardrobe) out.push(...entryControls(state, 'wardrobe', state.wardrobe));
   if (state.variants) out.push(...entryControls(state, 'variants', state.variants));
   if (state.prompt) out.push(promptEdit(state, state.prompt));
+  if (state.model) out.push(modelOffer(state));
   return out;
 }

@@ -119,6 +119,12 @@
   padding-top: 2px;
 }
 
+/* The image-model menu where the id's box was, sized like the palette so the rows line up. */
+.schema-form-row > .sf-model {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+
 .sf-swatches {
   display: flex;
   flex-wrap: wrap;

@@ -15,7 +15,7 @@ export const SITUATIONS = situations<WikiState>(
   },
   {
     name : 'open-read-only',
-    why  : 'The open page cannot be written, so the toolbar refuses to place a picture in it.',
+    why: 'The open page cannot be written, so the toolbar refuses to place a picture or a link in it.',
     state: { path: 'characters/aiko/character.md', dirty: false, readOnly: true },
   },
   {
@@ -35,7 +35,7 @@ export const SITUATIONS = situations<WikiState>(
   },
   {
     name : 'open-completing',
-    why: 'A `[[` was typed, so the completion lists documents a link could lead to, each recording where it would open.',
+    why: 'A `[[` was typed, or the link button typed it, so the completion lists documents a link could lead to, each recording where it would open.',
     state: {
       path      : 'wiki/world.md',
       dirty     : true,

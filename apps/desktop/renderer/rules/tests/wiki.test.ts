@@ -1,10 +1,12 @@
 import {
+  LINK_TIP,
   RAW_TIP,
   RELOAD_TIP,
   TEXT_TIP,
   PICTURE_TIP,
   controls,
   discardOffer,
+  linkOffer,
   linkRow,
   pictureOffer,
   rawOffer,
@@ -53,6 +55,7 @@ describe('controls', () => {
         rawOffer(false, s.path),
         textBox(s.path, TEXT_TIP),
         pictureOffer(s.path),
+        linkOffer(s.path),
         ...(s.strip ? s.strip.assets.map((a) => cellAction(a, s.strip!.visible)) : []),
       ]);
       expect(duplicateKeys(listed)).toEqual([]);
@@ -63,6 +66,7 @@ describe('controls', () => {
       'fx:pane.view#raw',
       'cmd:doc.write#text',
       'cmd:doc.write#picture',
+      'cmd:doc.write#link',
       'item:link/asset/a1b2c3d4',
     ]);
   });
@@ -101,6 +105,25 @@ describe('controls', () => {
     });
     expect(controls(state({ readOnly: true }))).toContainEqual(pictureOffer('wiki/lore.md', true));
     expect(controls(state({ raw: true })).map(keyOf)).not.toContain('cmd:doc.write#picture');
+  });
+
+  it('offers the link as the write the pick lands in, only in the rich view', () => {
+    expect(linkOffer('wiki/lore.md')).toEqual({
+      ok      : true,
+      id      : 'doc.write',
+      props   : { path: 'wiki/lore.md' },
+      on      : 'link',
+      label   : 'Insert a link',
+      tooltip : LINK_TIP,
+      supplies: ['text', 'seenHash'],
+    });
+    expect(LINK_TIP).toContain('[[');
+    expect(linkOffer('')).toMatchObject({ refusal: { reason: 'No document is open.' } });
+    expect(linkOffer('wiki/lore.md', true)).toMatchObject({
+      refusal: { reason: 'This document cannot be written' },
+    });
+    expect(controls(state({ readOnly: true }))).toContainEqual(linkOffer('wiki/lore.md', true));
+    expect(controls(state({ raw: true })).map(keyOf)).not.toContain('cmd:doc.write#link');
   });
 
   it('records where a completion row would lead, without opening it', () => {

@@ -13,6 +13,8 @@ export const RAW_TIP =
   'Edit the document as Markdown source, front matter included. Ctrl+S saves and commits.';
 export const RELOAD_TIP = 'Re-read this document from disk (discards an unsaved draft)';
 export const PICTURE_TIP = "Pick a picture from the project's assets and place it at the cursor";
+export const LINK_TIP =
+  'Link to a character, location, scene or page in this project (or type [[ in the text)';
 
 /** What the Wiki pane reads when it draws its bar, its box and its strip. */
 export interface WikiState {
@@ -21,7 +23,7 @@ export interface WikiState {
   dirty: boolean;
   /** Whether the pane shows Markdown source in place of the rich view. Off on every open. */
   raw?: boolean;
-  /** Whether the open document cannot be written, which refuses the toolbar's picture. */
+  /** Whether the open document cannot be written, which refuses the toolbar's picture and link. */
   readOnly?: boolean;
   /** Form answers typed into a view that has since closed, which a save refuses until resolved. */
   detached?: number;
@@ -70,6 +72,24 @@ export function pictureOffer(path: string, readOnly = false): Offer {
     on      : 'picture',
     label   : 'Insert a picture',
     tooltip : PICTURE_TIP,
+    supplies: ['text', 'seenHash'],
+  };
+  if (path === '') return { ...refuse('No document is open.'), ...control };
+  if (readOnly) return { ...refuse('This document cannot be written'), ...control };
+  return { ok: true, props: { path }, ...control };
+}
+
+/**
+ * The rich view's Insert a link. A press types `[[` at the cursor and opens the completion the
+ * typed pair opens, so the pick lands in the text Save writes and the button is that write under
+ * its own `on`; refused with nothing open, then for a document the app cannot write.
+ */
+export function linkOffer(path: string, readOnly = false): Offer {
+  const control = {
+    id      : 'doc.write',
+    on      : 'link',
+    label   : 'Insert a link',
+    tooltip : LINK_TIP,
     supplies: ['text', 'seenHash'],
   };
   if (path === '') return { ...refuse('No document is open.'), ...control };
@@ -127,7 +147,12 @@ export function controls(state: WikiState): readonly Offer[] {
     reloadOffer(RELOAD_TIP),
     rawOffer(raw, state.path),
     textBox(state.path, raw ? RAW_TIP : TEXT_TIP),
-    ...(raw ? [] : [pictureOffer(state.path, state.readOnly === true)]),
+    ...(raw
+      ? []
+      : [
+          pictureOffer(state.path, state.readOnly === true),
+          linkOffer(state.path, state.readOnly === true),
+        ]),
     ...(detached > 0 || stale ? [discardOffer(detached, stale)] : []),
     ...(strip ? strip.assets.map((asset) => cellAction(asset, strip.visible)) : []),
     ...(completion ? completion.targets.map((target) => linkRow(target, completion.visible)) : []),

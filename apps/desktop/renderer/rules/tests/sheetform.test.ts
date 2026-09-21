@@ -5,6 +5,7 @@ import {
   entryArt,
   entryField,
   entryRemove,
+  modelOffer,
   promptEdit,
   SAVE_FIRST,
   swatchAdd,
@@ -44,6 +45,27 @@ describe('the palette offers', () => {
       ok     : false,
       refusal: { reason: 'This document cannot be written' },
     });
+  });
+});
+
+describe('the image-model menu', () => {
+  it("is the box's write on `model`, listed after the rest, and refused like the swatches", () => {
+    expect(modelOffer(state())).toEqual({
+      ok      : true,
+      id      : 'doc.write',
+      props   : { path: 'characters/aiko/character.md' },
+      on      : 'model',
+      label   : 'Image model',
+      tooltip : expect.stringContaining('inherit draws with the project'),
+      supplies: ['text', 'seenHash'],
+    });
+    expect(modelOffer(state({ readOnly: true }))).toMatchObject({
+      refusal: { reason: 'This document cannot be written' },
+    });
+    expect(controls(state()).map(keyOf)).not.toContain('cmd:doc.write#model');
+    const listed = controls(state({ model: true }));
+    expect(listed.at(-1)).toEqual(modelOffer(state()));
+    expect(duplicateKeys(listed)).toEqual([]);
   });
 });
 

@@ -615,6 +615,12 @@
     {
       "module": "sheetform",
       "editor": "wiki",
+      "name"  : "model",
+      "why": "Every sheet carries an image-model menu, whose pick is the same write as the sheet's boxes."
+    },
+    {
+      "module": "sheetform",
+      "editor": "wiki",
       "name"  : "read-only",
       "why"   : "A session that refuses writes greys every control of the form with the reason."
     },
@@ -772,7 +778,7 @@
       "module": "wiki",
       "editor": "wiki",
       "name"  : "open-read-only",
-      "why"   : "The open page cannot be written, so the toolbar refuses to place a picture in it."
+      "why": "The open page cannot be written, so the toolbar refuses to place a picture or a link in it."
     },
     {
       "module": "wiki",
@@ -796,7 +802,7 @@
       "module": "wiki",
       "editor": "wiki",
       "name"  : "open-completing",
-      "why": "A `[[` was typed, so the completion lists documents a link could lead to, each recording where it would open."
+      "why": "A `[[` was typed, or the link button typed it, so the completion lists documents a link could lead to, each recording where it would open."
     },
     {
       "module": "wiki",
@@ -29882,6 +29888,33 @@
       "via"       : "control",
       "editor"    : "wiki",
       "module"    : "sheetform",
+      "situation" : "model",
+      "key"       : "cmd:doc.write#model",
+      "widgetPath": "wiki/doc-write~38fcd30f",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Image model",
+        "tooltip": "Pick the image model every picture of this entity is drawn with; inherit draws with the project's. Apply answers writes it into the sheet",
+        "on"      : "model",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
       "situation" : "read-only",
       "key"       : "cmd:doc.write#palette/0",
       "widgetPath": "wiki/doc-write~0e761e0a",
@@ -30130,6 +30163,30 @@
         "label"   : "Add an outfit",
         "tooltip": "Append an outfit with an empty id and focus it; Apply answers writes the wardrobe into the sheet",
         "on"      : "wardrobe/add",
+        "supplies": ["text", "seenHash"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "This document cannot be written"
+        }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "sheetform",
+      "situation" : "read-only",
+      "key"       : "cmd:doc.write#model",
+      "widgetPath": "wiki/doc-write~38fcd30f",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Image model",
+        "tooltip": "Pick the image model every picture of this entity is drawn with; inherit draws with the project's. Apply answers writes it into the sheet",
+        "on"      : "model",
         "supplies": ["text", "seenHash"],
         "ok"      : false,
         "refusal": {
@@ -33822,6 +33879,30 @@
       "via"       : "control",
       "editor"    : "wiki",
       "module"    : "wiki",
+      "situation" : "none-open",
+      "key"       : "cmd:doc.write#link",
+      "widgetPath": "wiki/doc-write~b83db750",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Insert a link",
+        "tooltip": "Link to a character, location, scene or page in this project (or type [[ in the text)",
+        "on"      : "link",
+        "supplies": ["text", "seenHash"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "No document is open."
+        }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
       "situation" : "open",
       "key"       : "cmd:doc.write",
       "widgetPath": "wiki/doc-write~1ab13660",
@@ -33932,6 +34013,33 @@
         "label"   : "Insert a picture",
         "tooltip" : "Pick a picture from the project's assets and place it at the cursor",
         "on"      : "picture",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open",
+      "key"       : "cmd:doc.write#link",
+      "widgetPath": "wiki/doc-write~b83db750",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Insert a link",
+        "tooltip": "Link to a character, location, scene or page in this project (or type [[ in the text)",
+        "on"      : "link",
         "supplies": ["text", "seenHash"],
         "ok"      : true,
         "props": {
@@ -34077,6 +34185,30 @@
       "via"       : "control",
       "editor"    : "wiki",
       "module"    : "wiki",
+      "situation" : "open-read-only",
+      "key"       : "cmd:doc.write#link",
+      "widgetPath": "wiki/doc-write~b83db750",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Insert a link",
+        "tooltip": "Link to a character, location, scene or page in this project (or type [[ in the text)",
+        "on"      : "link",
+        "supplies": ["text", "seenHash"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "This document cannot be written"
+        }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
       "situation" : "open-detached",
       "key"       : "cmd:doc.write",
       "widgetPath": "wiki/doc-write~1ab13660",
@@ -34190,6 +34322,33 @@
         "label"   : "Insert a picture",
         "tooltip" : "Pick a picture from the project's assets and place it at the cursor",
         "on"      : "picture",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-detached",
+      "key"       : "cmd:doc.write#link",
+      "widgetPath": "wiki/doc-write~b83db750",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Insert a link",
+        "tooltip": "Link to a character, location, scene or page in this project (or type [[ in the text)",
+        "on"      : "link",
         "supplies": ["text", "seenHash"],
         "ok"      : true,
         "props": {
@@ -34601,6 +34760,33 @@
       "editor"    : "wiki",
       "module"    : "wiki",
       "situation" : "open-completing",
+      "key"       : "cmd:doc.write#link",
+      "widgetPath": "wiki/doc-write~b83db750",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Insert a link",
+        "tooltip": "Link to a character, location, scene or page in this project (or type [[ in the text)",
+        "on"      : "link",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "wiki/world.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "wiki/world.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-completing",
       "key"       : "cmd:view.open#link/doc/characters/aiko/character.md",
       "widgetPath": "wiki/view-open~c7cc9a72",
       "offer": {
@@ -34773,6 +34959,33 @@
         "label"   : "Insert a picture",
         "tooltip" : "Pick a picture from the project's assets and place it at the cursor",
         "on"      : "picture",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "characters/aiko/character.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-dirty",
+      "key"       : "cmd:doc.write#link",
+      "widgetPath": "wiki/doc-write~b83db750",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Insert a link",
+        "tooltip": "Link to a character, location, scene or page in this project (or type [[ in the text)",
+        "on"      : "link",
         "supplies": ["text", "seenHash"],
         "ok"      : true,
         "props": {
