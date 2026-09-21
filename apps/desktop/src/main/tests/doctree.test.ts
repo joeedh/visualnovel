@@ -2,7 +2,7 @@
  * The document tree is a projection, so most of it is testable with no filesystem at all — the
  * end-to-end case at the bottom is what proves the projection is fed the real thing.
  */
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
 import { BUILTIN_SKILL_IDS } from '@vn/types';
@@ -1041,12 +1041,18 @@ describe('WorkspaceSession — the tree over a real project', () => {
 
     it('clones into the user folder with nothing in the workspace written', async () => {
       const session = new WorkspaceSession(p.dir, true, deps);
-      const made = await session.cloneSkill('branching', 'user');
-      if (!made.ok) throw new Error(made.reason);
-      expect(made.path).toBe('<user>/skills/branching/SKILL.md');
-      expect(made.written).toEqual([]);
-      const read = await session.readDoc(made.path);
-      expect(read.ok).toBe(true);
+      try {
+        const made = await session.cloneSkill('branching', 'user');
+        if (!made.ok) throw new Error(made.reason);
+        expect(made.path).toBe('<user>/skills/branching/SKILL.md');
+        expect(made.written).toEqual([]);
+        const read = await session.readDoc(made.path);
+        expect(read.ok).toBe(true);
+      } finally {
+        // `$VNAUTHOR_HOME` is per worker, not per file: a skill left here is a user skill to
+        // every later suite on the same worker
+        await rm(userSkillsDir(), { recursive: true, force: true, maxRetries: 3 });
+      }
     });
   });
 
