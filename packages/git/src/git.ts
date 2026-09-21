@@ -6,9 +6,23 @@
  * to one repo `root`.
  */
 import { execFile } from 'node:child_process';
-import { rm } from 'node:fs/promises';
-import { join } from 'node:path';
+import { readFile, rm, stat } from 'node:fs/promises';
+import { join, resolve as resolvePath } from 'node:path';
 import { GitError } from './errors.js';
+import {
+  CHECKPOINT_FORMAT,
+  CHECKPOINT_PREFIX,
+  CHECKPOINT_TAG,
+  HISTORY_FORMAT,
+  parseChanges,
+  parseCheckpoints,
+  parseHistory,
+  parseStatusV2,
+  type BranchStatus,
+  type Change,
+  type Checkpoint,
+  type HistoryEntry,
+} from './parse.js';
 
 interface RunResult {
   code: number;
@@ -39,6 +53,66 @@ function run(cwd: string, args: string[], indexFile?: string): Promise<RunResult
       },
     );
   });
+}
+
+/** Run a git subcommand and keep stdout as bytes, for blob content. Never throws. */
+function runBytes(cwd: string, args: string[]): Promise<{ code: number; stdout: Buffer }> {
+  return new Promise((resolve) => {
+    execFile(
+      'git',
+      args,
+      { cwd, windowsHide: true, maxBuffer: 256 * 1024 * 1024, encoding: 'buffer' },
+      (err, stdout) => {
+        const code =
+          err && typeof (err as { code?: unknown }).code === 'number'
+            ? (err as { code: number }).code
+            : err
+              ? 1
+              : 0;
+        resolve({ code, stdout });
+      },
+    );
+  });
+}
+
+/** Filters for `Git.history`; all optional. */
+export interface HistoryOptions {
+  /** How many commits at most; `HISTORY_LIMIT` when omitted. */
+  limit?: number;
+  /** Only commits older than this sha, which is what a page after it starts from. */
+  before?: string;
+  /** Only commits that touched this path. */
+  path?: string;
+  /** Only commits whose author name or email matches this pattern. */
+  author?: string;
+}
+
+/** Commits per `history` call when the caller names no limit. */
+export const HISTORY_LIMIT = 50;
+
+/** What `diffPath` returns: the unified text, or a flag when git could not diff the bytes. */
+export interface PathDiff {
+  text: string;
+  binary: boolean;
+}
+
+/** A rebase that has stopped, read from `rebase-merge/` (or the older `rebase-apply/`). */
+export interface RebaseState {
+  /** The branch being rebased; HEAD is detached until the rebase ends. Null if unreadable. */
+  branch: string | null;
+  onto: string;
+  /** 1-based position of the commit being replayed, and how many there are. */
+  current: number;
+  total: number;
+  /** The commit that could not be applied, when the rebase stopped on a conflict. */
+  stoppedSha: string | null;
+}
+
+/** Which multi-step operation, if any, the repository is in the middle of. */
+export interface InProgress {
+  rebase: RebaseState | null;
+  merge: boolean;
+  revert: boolean;
 }
 
 /** One entry from `git log`. */
@@ -239,6 +313,170 @@ export class Git {
     const r = await this.run(['log', '-n1', '--format=%H', '--', path]);
     const sha = r.stdout.trim();
     return r.code === 0 && sha.length > 0 ? sha : null;
+  }
+
+  // ---- history reads: one spawn each, parsed by `parse.ts` ----
+
+  /**
+   * Commits newest first, with parents, trailers and the files each touched. Pages with
+   * `before`: the listing starts at that sha and drops it, so a root commit pages to nothing
+   * rather than failing on `<sha>^`.
+   */
+  async history(opts: HistoryOptions = {}): Promise<HistoryEntry[]> {
+    const limit = opts.limit ?? HISTORY_LIMIT;
+    const args = ['log', `--format=${HISTORY_FORMAT}`, '--numstat', `-n${limit + 1}`];
+    if (opts.author) args.push(`--author=${opts.author}`);
+    args.push(opts.before ?? 'HEAD');
+    if (opts.path) args.push('--', opts.path);
+    const r = await this.run(args);
+    if (r.code !== 0) return []; // unborn repo, or a sha that no longer exists
+    const entries = parseHistory(r.stdout);
+    if (opts.before && entries[0]?.sha === opts.before) entries.shift();
+    return entries.slice(0, limit);
+  }
+
+  /** The paths one commit changed, with blob ids and line counts. */
+  async changes(sha: string): Promise<Change[]> {
+    const out = await this.ok([
+      'diff-tree',
+      '-r',
+      '-M',
+      '--root',
+      '--raw',
+      '--numstat',
+      '--no-commit-id',
+      sha,
+    ]);
+    return parseChanges(out);
+  }
+
+  /**
+   * The unified diff of one path at `sha`, against its first parent unless `against` names
+   * another commit. A root commit diffs against the empty tree.
+   */
+  async diffPath(sha: string, path: string, against?: string): Promise<PathDiff> {
+    const args = against
+      ? ['diff', against, sha, '--', path]
+      : ['diff-tree', '-p', '--root', '--no-commit-id', sha, '--', path];
+    const text = await this.ok(args);
+    return { text, binary: /^Binary files .* differ$|^GIT binary patch$/m.test(text) };
+  }
+
+  /** The bytes of `path` at `sha`, or null when the commit has no such path. */
+  async blob(sha: string, path: string): Promise<Buffer | null> {
+    const r = await runBytes(this.root, ['show', `${sha}:${path}`]);
+    return r.code === 0 ? r.stdout : null;
+  }
+
+  /**
+   * Absolute paths inside the git directory, one per name. `.git` is a file in a linked
+   * worktree, so nothing may spell `<root>/.git/<name>` itself.
+   */
+  private async gitPaths(...names: string[]): Promise<string[]> {
+    const out = await this.ok(['rev-parse', ...names.flatMap((n) => ['--git-path', n])]);
+    return out
+      .split('\n')
+      .filter((l) => l.length > 0)
+      .map((l) => resolvePath(this.root, l.trim()));
+  }
+
+  /** Whether a rebase, merge or revert is in progress, and where a rebase stopped. */
+  async inProgress(): Promise<InProgress> {
+    const [merging, applying, mergeHead, revertHead] = await this.gitPaths(
+      'rebase-merge',
+      'rebase-apply',
+      'MERGE_HEAD',
+      'REVERT_HEAD',
+    );
+    const exists = async (p: string | undefined): Promise<boolean> =>
+      p !== undefined &&
+      (await stat(p).then(
+        () => true,
+        () => false,
+      ));
+    const read = async (dir: string, name: string): Promise<string | null> =>
+      readFile(join(dir, name), 'utf8').then(
+        (s) => s.trim(),
+        () => null,
+      );
+    let rebase: RebaseState | null = null;
+    const dir = (await exists(merging)) ? merging : (await exists(applying)) ? applying : null;
+    if (dir) {
+      // the am backend's `rebase-apply` spells the position `next`/`last`
+      const [head, onto, current, total, stopped] = await Promise.all([
+        read(dir, 'head-name'),
+        read(dir, 'onto'),
+        read(dir, dir === merging ? 'msgnum' : 'next'),
+        read(dir, dir === merging ? 'end' : 'last'),
+        read(dir, 'stopped-sha'),
+      ]);
+      rebase = {
+        branch    : head?.replace(/^refs\/heads\//, '') ?? null,
+        onto      : onto ?? '',
+        current   : Number(current ?? 0),
+        total     : Number(total ?? 0),
+        stoppedSha: stopped,
+      };
+    }
+    return { rebase, merge: await exists(mergeHead), revert: await exists(revertHead) };
+  }
+
+  /** Every remote and its fetch URL. */
+  async remotes(): Promise<{ name: string; url: string }[]> {
+    const out = await this.ok(['remote', '-v']);
+    const seen: { name: string; url: string }[] = [];
+    for (const line of out.split('\n')) {
+      const m = /^(\S+)\t(.*) \(fetch\)$/.exec(line);
+      if (m) seen.push({ name: m[1]!, url: m[2]! });
+    }
+    return seen;
+  }
+
+  /**
+   * The remote and branch `branch` tracks, or null when it tracks nothing. Defaults to the
+   * current branch, which is the wrong one mid-rebase; pass `inProgress().rebase.branch` then.
+   */
+  async upstream(branch?: string): Promise<{ remote: string; branch: string } | null> {
+    const name = branch ?? (await this.branch());
+    if (name === 'HEAD') return null;
+    const remote = await this.configGet(`branch.${name}.remote`);
+    const merge = await this.configGet(`branch.${name}.merge`);
+    if (!remote || !merge) return null;
+    return { remote, branch: merge.replace(/^refs\/heads\//, '') };
+  }
+
+  /** The branch header and the worktree entries in one spawn (`status --porcelain=v2 --branch`). */
+  async branchStatus(): Promise<BranchStatus> {
+    return parseStatusV2(await this.ok(['status', '--porcelain=v2', '--branch']));
+  }
+
+  /** Creates the annotated tag `CHECKPOINT_PREFIX + slug` at `sha` with `message`. */
+  async tag(slug: string, sha: string, message: string): Promise<void> {
+    await this.ok(['tag', '-a', `${CHECKPOINT_TAG}${slug}`, '-m', message, sha]);
+  }
+
+  /** Every checkpoint, in refname order. */
+  async checkpoints(): Promise<Checkpoint[]> {
+    const out = await this.ok(['for-each-ref', `--format=${CHECKPOINT_FORMAT}`, CHECKPOINT_PREFIX]);
+    return parseCheckpoints(out);
+  }
+
+  /** Deletes a checkpoint. Missing is not an error. */
+  async deleteTag(slug: string): Promise<void> {
+    await this.run(['tag', '-d', `${CHECKPOINT_TAG}${slug}`]);
+  }
+
+  /**
+   * When any remote was last fetched, as an ISO timestamp, or null if never. Every fetch
+   * rewrites `FETCH_HEAD`, so this cannot be answered per remote.
+   */
+  async lastFetch(): Promise<string | null> {
+    const [file] = await this.gitPaths('FETCH_HEAD');
+    if (!file) return null;
+    return stat(file).then(
+      (s) => s.mtime.toISOString(),
+      () => null,
+    );
   }
 
   /** Show a commit (metadata + patch). */

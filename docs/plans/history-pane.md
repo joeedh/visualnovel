@@ -189,6 +189,16 @@ because `.git` is a file in a linked worktree.
 - `lastFetch()`: the mtime of `FETCH_HEAD`, or `null`. It is the last fetch of **any**
   remote, since every fetch rewrites the file; the sync view labels it that way.
 
+**As built (2026-09-21).** Everything above, in `packages/git/src/git.ts` with the parsers
+in a new `packages/git/src/parse.ts` (exported from the package) and tests in
+`tests/parse.test.ts` (parsers, no repository) and `tests/reads.test.ts` (against temp
+repositories, including a stopped rebase). Two things differ from the text: `upstream()`
+reads `branch.<name>.remote`/`.merge` from config rather than `@{u}`, so it answers during
+a rebase when given `inProgress().rebase.branch`; and the tag name and the refname are two
+constants (`CHECKPOINT_TAG = 'vn/checkpoint/'` for `git tag`,
+`CHECKPOINT_PREFIX = 'refs/tags/vn/checkpoint/'` for `for-each-ref`), because `git tag`
+given a full refname creates `refs/tags/refs/tags/…`. `Git.log` is untouched.
+
 ### Stage 2 — `@vn/git` writes, the framework, and the mid-rebase guards
 
 - `packages/git/src/git.ts`: `fetch(remote)`, `push(remote, branch)` with `--follow-tags`,
