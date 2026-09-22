@@ -36,6 +36,7 @@ import {
   type ToolContext,
   type ToolResult,
 } from './tools/index.js';
+import type { RepoCommit } from './tools/git.js';
 
 /** The two states of the plan/permission machine. */
 export type AgentMode = 'plan' | 'execute';
@@ -1062,10 +1063,12 @@ export class Agent {
     const result = await tool.run(parsed.data, this.ctx);
     emit({ type: 'tool', tool: name, args: parsed.data, result });
     for (const p of result.written ?? []) this.editedPaths.add(p);
-    // One commit per approved plan: a successful commit closes out the tracked edit set.
-    if (name === 'git_commit' && result.ok && result.data) {
-      this.editedPaths.clear();
-      this.plan = undefined;
+    // One commit per approved plan, which may span several repositories. Each repository that got
+    // through clears its own paths, so after a partial failure a retry commits only the rest
+    if (name === 'git_commit') {
+      const repos = (result.data as RepoCommit[] | undefined) ?? [];
+      for (const repo of repos) for (const p of repo.paths) this.editedPaths.delete(p);
+      if (result.ok && repos.some((repo) => repo.sha !== null)) this.plan = undefined;
     }
     return result.output;
   }

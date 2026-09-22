@@ -1,11 +1,13 @@
 // ── Git ─────────────────────────────────────────────────────────────────────
 import { z } from 'zod';
 import {
+  byDepth,
   InProgressError,
   makersOf,
   operationOf,
   previewCheckpoint,
   previewTakeBack,
+  RepoResolver,
   statusCause,
   type Git,
   type Maker,
@@ -14,7 +16,7 @@ import {
 import { resolutionProblem, sceneTextProblem } from '@vn/model';
 import { inSecretsDir, readDocFile, SECRETS_REFUSAL, writeDocFile } from '@vn/store';
 import { hasConflictMarkers, writeFileAtomic } from '@vn/util';
-import { join } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { AGENT_WRITERS, ok, fail, type Tool, type ToolContext } from './core.js';
 
 /**
@@ -223,18 +225,125 @@ const gitCommitTool: Tool<{ message: string; paths?: string[] }> = {
     // The source is this tool's to state; the conversation and the plan are the host's and the
     // loop's, read now so the commit names the thread it was made in
     const trailers = { 'Vn-Source': 'agent', ...(ctx.trailers?.() ?? {}) };
-    let hash: string | null;
-    try {
-      hash = await ctx.git.commit({ message: a.message, paths: a.paths, trailers });
-    } catch (err) {
-      if (err instanceof InProgressError) return fail(SYNC_PART_WAY);
-      throw err;
+    const plan = await commitPlan(ctx.workspace.root, ctx.git, a.paths ?? []);
+    const done: RepoCommit[] = [];
+    const names = new Map(plan.groups.map((g) => [g.root, repoName(ctx.workspace.root, g.root)]));
+    for (const group of plan.groups) {
+      try {
+        const sha = await group.git.commit({
+          message: a.message,
+          paths  : group.stage,
+          trailers,
+        });
+        done.push({ root: group.root, sha, paths: group.paths });
+      } catch (err) {
+        const made = done.filter((d) => d.sha !== null);
+        if (err instanceof InProgressError && made.length === 0) return fail(SYNC_PART_WAY);
+        const why = err instanceof InProgressError ? SYNC_PART_WAY : String(err);
+        const kept = made.length
+          ? ` Committed before it: ${made.map((d) => `${short(d.sha!)} (${names.get(d.root)})`).join(', ')}.`
+          : '';
+        return {
+          ok    : false,
+          output: `The ${names.get(group.root)} commit failed: ${why}${kept}`,
+          data  : done,
+        };
+      }
     }
-    return hash
-      ? ok(`Committed ${hash.slice(0, 8)}: ${a.message}`, { data: hash })
-      : ok('Nothing to commit.');
+    const made = done.filter((d) => d.sha !== null);
+    const lines = made.length
+      ? [
+          `Committed ${made.map((d) => `${short(d.sha!)} (${names.get(d.root)})`).join(', ')}: ${a.message}`,
+        ]
+      : ['Nothing to commit.'];
+    if (plan.outside.length) {
+      lines.push(`Left out, in no repository: ${plan.outside.join(', ')}.`);
+    }
+    return ok(lines.join('\n'), { data: done });
   },
 };
+
+/** One repository's part of a `git_commit`, as the loop reads it back from `data`. */
+export interface RepoCommit {
+  root: string;
+  /** Null when the repository had nothing to commit. */
+  sha: string | null;
+  /** The workspace-relative paths that belonged to this repository. */
+  paths: string[];
+}
+
+/** What `git_commit` stages in one repository. */
+interface CommitGroup {
+  git: Git;
+  root: string;
+  /** Workspace-relative paths the agent wrote here, cleared from the loop's set once committed. */
+  paths: string[];
+  /** Root-relative pathspecs for `git add`, including each nested repository's gitlink. */
+  stage: string[];
+}
+
+/**
+ * Partitions workspace-relative `paths` by the repository that owns each, nested repositories
+ * first. A nested repository's parent also stages the nested one's own path, so its gitlink
+ * follows the commit just made there, even when none of `paths` belongs to the parent. The walk
+ * stops at `project`'s repository and never climbs into one enclosing it. With no paths at all,
+ * `project` commits whatever is already staged.
+ */
+async function commitPlan(
+  workspace: string,
+  project: Git,
+  paths: string[],
+): Promise<{ groups: CommitGroup[]; outside: string[] }> {
+  const whole = { git: project, root: resolve(project.root), paths: [], stage: [] };
+  if (paths.length === 0) return { groups: [whole], outside: [] };
+  const resolver = new RepoResolver();
+  const top = await resolver.rootOf(project.root);
+  const byRoot = new Map<string, CommitGroup>();
+  const outside: string[] = [];
+  const groupFor = (root: string): CommitGroup => {
+    let group = byRoot.get(root);
+    if (!group) {
+      group = { git: resolver.open(root), root, paths: [], stage: [] };
+      byRoot.set(root, group);
+    }
+    return group;
+  };
+  for (const path of paths) {
+    const abs = resolve(workspace, path);
+    const root = await resolver.rootOf(abs);
+    if (root === null) outside.push(path);
+    else {
+      const group = groupFor(root);
+      group.paths.push(path);
+      group.stage.push(slashed(relative(root, abs)));
+    }
+  }
+  // Deepest first, so a parent found here is still ahead in the queue and gets its own parent
+  const queue = byDepth([...byRoot.keys()], (root) => root);
+  for (let i = 0; i < queue.length; i++) {
+    const root = queue[i]!;
+    if (top === null || root === top || !inside(top, root)) continue;
+    const parent = await resolver.rootOf(dirname(root));
+    if (parent === null || parent === root) continue;
+    if (!byRoot.has(parent)) queue.push(parent);
+    groupFor(parent).stage.push(slashed(relative(parent, root)));
+  }
+  return { groups: byDepth([...byRoot.values()], (g) => g.root), outside };
+}
+
+const slashed = (path: string): string => path.split(sep).join('/');
+
+/** Whether `path` lies under the directory `dir`. */
+function inside(dir: string, path: string): boolean {
+  const rel = relative(dir, path);
+  return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel);
+}
+
+/** A repository as the reply names it: `project` for the workspace's own, else its path. */
+function repoName(workspace: string, root: string): string {
+  const path = slashed(relative(workspace, root));
+  return path === '' || path.startsWith('..') ? 'project' : path;
+}
 
 const resolveConflictTool: Tool<{ path: string; text: string }> = {
   name       : 'resolve_conflict',

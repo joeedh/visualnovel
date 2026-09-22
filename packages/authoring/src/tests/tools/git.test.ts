@@ -1,6 +1,9 @@
+import { execFileSync } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
-import { run, tempProject } from './testkit.js';
+import { openGit } from '@vn/git';
+import type { RepoCommit } from '../../tools/git.js';
+import { CHUNKS, run, tempProject } from './testkit.js';
 import type { ToolContext } from '../../index.js';
 
 /** A project under git with two saves: the scaffold, then an edit to one scene. */
@@ -120,6 +123,66 @@ describe('the git writes', () => {
         ok    : false,
         output: 'That save has no nope.md.',
       });
+    } finally {
+      await cleanup();
+    }
+  });
+
+  /** `repo()` with `wiki/` a repository of its own, recorded in the project as a gitlink. */
+  async function withWiki() {
+    const project = await repo();
+    const wikiDir = join(project.dir, 'wiki');
+    await fs.mkdir(wikiDir);
+    const wiki = openGit(wikiDir);
+    await wiki.init();
+    await wiki.config('user.email', 'test@example.com');
+    await wiki.config('user.name', 'VN Test');
+    await fs.writeFile(join(wikiDir, 'note.md'), 'first\n');
+    await wiki.commit({ message: 'wiki', paths: ['-A'] });
+    await project.ctx.git.commit({ message: 'record the wiki', paths: ['-A'] });
+    return { ...project, wiki };
+  }
+
+  const gitlinkOf = (dir: string): string =>
+    execFileSync('git', ['ls-tree', 'HEAD', 'wiki'], { cwd: dir }).toString().split(/\s+/)[2]!;
+
+  it('commit each repository its paths belong to, the nested one first', async () => {
+    const { ctx, dir, wiki, cleanup } = await withWiki();
+    try {
+      await fs.writeFile(join(dir, 'scenes', 'greet.md'), CHUNKS.greet!);
+      await fs.writeFile(join(dir, 'wiki', 'note.md'), 'second\n');
+      const paths = ['scenes/greet.md', 'wiki/note.md'];
+      const result = await run('git_commit', { message: 'Both', paths }, ctx);
+
+      expect(result.ok).toBe(true);
+      const repos = result.data as RepoCommit[];
+      expect(repos.map((r) => [r.root, r.paths])).toEqual([
+        [wiki.root, ['wiki/note.md']],
+        [dir, ['scenes/greet.md']],
+      ]);
+      const [inWiki, inProject] = repos.map((r) => r.sha!.slice(0, 7));
+      expect(result.output).toBe(`Committed ${inWiki} (wiki), ${inProject} (project): Both`);
+      expect(gitlinkOf(dir)).toBe(await wiki.head());
+      expect(await ctx.git.isDirty()).toBe(false);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('bump the gitlink alone when only the nested repository was written', async () => {
+    const { ctx, dir, wiki, cleanup } = await withWiki();
+    try {
+      await fs.writeFile(join(dir, 'wiki', 'note.md'), 'second\n');
+      const result = await run('git_commit', { message: 'Wiki', paths: ['wiki/note.md'] }, ctx);
+
+      const repos = result.data as RepoCommit[];
+      expect(repos.map((r) => [r.root, r.paths, r.sha !== null])).toEqual([
+        [wiki.root, ['wiki/note.md'], true],
+        [dir, [], true],
+      ]);
+      expect(gitlinkOf(dir)).toBe(await wiki.head());
+      const [bump] = await ctx.git.history({ limit: 1 });
+      expect(bump!.files.map((f) => f.path)).toEqual(['wiki']);
     } finally {
       await cleanup();
     }
