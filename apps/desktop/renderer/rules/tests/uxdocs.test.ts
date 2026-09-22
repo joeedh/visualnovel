@@ -100,7 +100,7 @@ describe('fold', () => {
 
   it('folds the model to a stated number of drawn rows', () => {
     const drawn = [...byId.values()].reduce((n, page) => n + page.drawn.length, 0);
-    expect(drawn).toBe(517);
+    expect(drawn).toBe(518);
     // Every accepted control lands on its page under its own situation; twins in one situation
     // (the page editor's four corners) fold into one row
     for (const record of file.records) {

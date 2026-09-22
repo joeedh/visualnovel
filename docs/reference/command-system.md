@@ -624,7 +624,13 @@ path. `scenes/**` still has exactly one write path, and it is `story.*`.
   ([`repos-and-commits.md`](repos-and-commits.md#message-shape)).
 - **A write to `scenes/**`is refused outright.** A scene has exactly one write
   path,`session.editScene`, and a text overwrite would bypass every rule in
-  `@vn/scriptedit`.
+  `@vn/scriptedit`. Two commands write a scene whole anyway, and neither is a document
+  save: `git.restoreFile` puts back an earlier version, and `git.writeResolution` writes
+  the author's merge of a file a stopped sync is waiting on. Both check the text before
+  writing it — the first with `sceneTextProblem`, the second with `resolutionProblem`,
+  which is stricter — and the second stages what it wrote, because the point of it is the
+  decision rather than the bytes
+  ([`history-pane.md`](history-pane.md#deciding-a-file-by-editing-it)).
 - **The document is logged as a digest.** `prop.string(…, { digest: true })` marks a value
   that the `CommandRecord` must not carry verbatim. `formatCommand` and the record store
   `<sha256:bcded73b562b+566>` (twelve hex digits and the byte length), so `commands.jsonl`

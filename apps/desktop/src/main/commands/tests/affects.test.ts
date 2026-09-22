@@ -703,6 +703,28 @@ const SYNC_COLLIDE: SyncRun[] = [
       expect(text).toContain(sceneLine('b'));
     },
   },
+  // The agent's opener names the save being replayed; a file with no middle gets Edit's refusal
+  {
+    who    : 'b',
+    id     : 'agent.mergeConflict',
+    props  : { path: LAYOUT },
+    refuses: true,
+    expect: (result) =>
+      expect(result.error).toBe(
+        `${LAYOUT} was not merged line by line; keep one side or the other.`,
+      ),
+  },
+  {
+    who   : 'b',
+    id    : 'agent.mergeConflict',
+    props : { path: SCENE },
+    expect: (result) =>
+      expect((outcome(result) as { seed: string }).seed).toBe(
+        `${SCENE} is waiting on a merge decision: my save “Set the layout to 2 panes” collides ` +
+          'with the saves I just got. Read it, keep what each of us meant, write the merged ' +
+          'file, and do not commit.',
+      ),
+  },
   // A merge saved part way, markers still in, is allowed for prose but stops Continue
   {
     who  : 'b',
@@ -1103,7 +1125,7 @@ describe('RUNS and SKIPS', () => {
     .map((command) => command.id);
 
   /** The reads a sync run makes between writes, to pin what a write left; not part of the tier. */
-  const READS = ['git.status', 'git.conflictText'];
+  const READS = ['git.status', 'git.conflictText', 'agent.mergeConflict'];
 
   it('partition the mutating commands exactly', () => {
     const runs = new Set(

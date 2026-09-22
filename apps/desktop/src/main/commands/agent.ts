@@ -11,7 +11,8 @@ import {
   type EffortChoice,
 } from '@vn/types';
 import { ANY_DOCUMENT } from '../../shared/affects.js';
-import { assetOpener, lineOpener } from '../../shared/agentseed.js';
+import { assetOpener, lineOpener, mergeOpener } from '../../shared/agentseed.js';
+import { REPO_ROLES } from '../../shared/history.js';
 import { BUSY_AGENT } from '../../shared/ipc.js';
 import type { CommandHost } from './host.js';
 
@@ -348,6 +349,53 @@ export const agentEditLine = define({
     if (!verdict.ok) throw new Error(verdict.reason);
     showConvo(ctx);
     return { message: `Asking about ${line} of ${scene}.`, data: { seed: verdict.seed } };
+  },
+});
+
+/** The opener a file waiting on a merge decision would arrive with, or why there is none. */
+async function wouldMergeConflict(
+  repo: string,
+  path: string,
+  host: CommandHost,
+): Promise<{ ok: true; seed: string } | { ok: false; reason: string }> {
+  const free = idle(host);
+  if (!free.ok) return free;
+  if (repo !== 'project') {
+    return { ok: false, reason: 'The agent works in the project’s own repository only.' };
+  }
+  const status = await host.session.gitStatus(repo, host.pendingCommits());
+  if (!status.replaying) return { ok: false, reason: 'No sync is waiting on a decision.' };
+  if (!status.marked.includes(path)) {
+    return {
+      ok    : false,
+      reason: `${path} was not merged line by line; keep one side or the other.`,
+    };
+  }
+  return { ok: true, seed: mergeOpener(path, status.replaying.subject) };
+}
+
+export const agentMergeConflict = define({
+  id         : 'agent.mergeConflict',
+  title      : 'Merge with the agent',
+  description:
+    'Open the conversation on one file a stopped sync is waiting on, with the composer already ' +
+    'asking for the merge: the file, the save that collided, and that nothing is to be ' +
+    'committed. Nothing is sent: the opener is text in a field, and what to ask for is the ' +
+    'author’s to write.',
+  mutating   : false,
+  props: {
+    repo: prop.oneOf(REPO_ROLES, 'which of the project’s repositories', { default: 'project' }),
+    path: prop.string('the file, as the conflict view lists it'),
+  },
+  check: ({ repo, path }, ctx) =>
+    wouldMergeConflict(repo, path, ctx.host).then((v) =>
+      v.ok ? { ok: true as const, note: 'Opens a conversation about merging this file.' } : v,
+    ),
+  async run({ repo, path }, ctx) {
+    const verdict = await wouldMergeConflict(repo, path, ctx.host);
+    if (!verdict.ok) throw new Error(verdict.reason);
+    showConvo(ctx);
+    return { message: `Asking the agent to merge ${path}.`, data: { seed: verdict.seed } };
   },
 });
 

@@ -9,9 +9,20 @@ import { relative } from 'node:path';
 import { z, type ZodType } from 'zod';
 import type { Diagnostic, TextLLM } from '@vn/types';
 import type { Git } from '@vn/git';
+import type { GuardedWriters } from '@vn/store';
 import type { ApprovalControl } from '../approve.js';
 import type { ArtGen } from '../art.js';
 import type { Workspace } from '../workspace.js';
+
+/**
+ * What each guarded directory's writer is called from this agent's side. Here rather than beside
+ * `write_file` because the two whole-file writers, that one and `resolve_conflict`, sit in
+ * different modules and must name the same tools.
+ */
+export const AGENT_WRITERS: GuardedWriters = {
+  scenes: 'edit_scene',
+  graphs: 'edit_asset_graph',
+};
 
 /** A text observation for the loop, plus optional structured data. */
 export interface ToolResult {

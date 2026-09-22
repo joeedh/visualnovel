@@ -1,4 +1,4 @@
-import { assetOpener, lineOpener } from '../agentseed.js';
+import { assetOpener, lineOpener, mergeOpener } from '../agentseed.js';
 import type { AssetFailure, AssetInfo, SceneCoverage } from '../ipc.js';
 
 const scene: SceneCoverage = {
@@ -94,5 +94,21 @@ describe('assetOpener', () => {
 
   it('opens nothing for an asset that has not failed', () => {
     expect(assetOpener(info())).toBe('');
+  });
+});
+
+describe('mergeOpener', () => {
+  it('names the file and the save that collided, asks for the merge, and forbids the commit', () => {
+    expect(mergeOpener('scenes/arrival.md', 'Theo: a deeper bow')).toBe(
+      'scenes/arrival.md is waiting on a merge decision: my save “Theo: a deeper bow” collides ' +
+        'with the saves I just got. Read it, keep what each of us meant, write the merged file, ' +
+        'and do not commit.',
+    );
+  });
+
+  it('flattens and cuts a long subject', () => {
+    const opener = mergeOpener('scenes/arrival.md', `${'word '.repeat(40)}\nend`);
+    expect(opener).not.toContain('\n');
+    expect(opener).toContain('…');
   });
 });

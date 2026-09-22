@@ -247,10 +247,10 @@ export function installAgent(): void {
       if (!upload?.seed) return;
       set(offered(state, upload.seed, upload.suggestions ?? []));
       setMode('plan');
-    } else if (id === 'agent.editLine' || id === 'agent.fixAsset') {
-      // These two ask about something on screen rather than about the project, so the opener is
-      // the composer's text and not a line the agent said. The pane the command opened focuses
-      // the field around it.
+    } else if (id === 'agent.editLine' || id === 'agent.fixAsset' || id === 'agent.mergeConflict') {
+      // These ask about something on screen rather than about the project, so the opener is the
+      // composer's text and not a line the agent said. The pane the command opened focuses the
+      // field around it.
       const opener = (outcome.data as { seed?: string } | undefined)?.seed;
       if (opener) void openerFor(opener);
     }

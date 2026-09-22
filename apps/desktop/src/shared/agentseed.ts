@@ -1,9 +1,10 @@
 /**
- * The openers a surface hands the composer: the sentence a right-clicked script line and a failed
- * asset start a conversation with.
+ * The openers a surface hands the composer: the sentence a right-clicked script line, a failed
+ * asset and a file waiting on a merge decision start a conversation with.
  *
- * Pure and shared, so `agent.editLine` and `agent.fixAsset` can be checked without a project on
- * disk. The composer is a single-line field, so an opener is one line with no newlines in it.
+ * Pure and shared, so `agent.editLine`, `agent.fixAsset` and `agent.mergeConflict` can be checked
+ * without a project on disk. The composer is a single-line field, so an opener is one line with no
+ * newlines in it.
  */
 import type { AssetInfo, SceneCoverage } from './ipc.js';
 
@@ -60,5 +61,20 @@ export function assetOpener(info: AssetInfo): string {
   return (
     `${subject} ${gave}${why}. Work out what in its prompt or its art notes caused that, ` +
     'and propose a change.'
+  );
+}
+
+/**
+ * The opener for a file a stopped sync is waiting on. A whole request, like `assetOpener`: the
+ * author pressed Ask the agent on a row that already says what is wrong. It names no tool, since
+ * the tool's description says which side is whose, and it says not to commit, since the
+ * replayed save is where the merge lands. The collaborator's save is not named: the file's own
+ * labels carry its sha, and finding its subject would need a merge base `Git` does not compute.
+ */
+export function mergeOpener(path: string, subject: string): string {
+  return (
+    `${path} is waiting on a merge decision: my save “${elide(subject, QUOTED)}” collides with ` +
+    'the saves I just got. Read it, keep what each of us meant, write the merged file, and do ' +
+    'not commit.'
   );
 }

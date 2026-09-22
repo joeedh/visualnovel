@@ -12,6 +12,7 @@ import {
   detailControls,
   dropCheckpointAction,
   emptySentence,
+  askAgentAction,
   editAction,
   decidedSentence,
   fetchAction,
@@ -535,7 +536,7 @@ describe('the conflict view', () => {
     expect(replayingSentence(merge)).toBe('A merge started outside the app is unfinished');
   });
 
-  it('offers both sides of each file, and editing only where git merged line by line', () => {
+  it('offers both sides of each file, and editing or the agent only where git merged line by line', () => {
     expect(resolveAction(conflict, scene, 'mine')).toMatchObject({
       ok   : true,
       on   : `${scene}/mine`,
@@ -550,14 +551,25 @@ describe('the conflict view', () => {
     expect(editAction(conflict, layout)).toMatchObject({
       refusal: { reason: 'This file was not merged line by line; keep one side or the other.' },
     });
+    expect(askAgentAction(conflict, scene)).toMatchObject({
+      ok   : true,
+      id   : 'agent.mergeConflict',
+      label: 'Ask the agent',
+      props: { repo: 'project', path: scene },
+    });
+    expect(askAgentAction(conflict, layout)).toMatchObject({
+      refusal: { reason: 'This file was not merged line by line; keep one side or the other.' },
+    });
     expect(decidedSentence(conflict.status)).toBe('2 files need a decision.');
     expect(conflictControls(conflict).map((o) => `${o.id}:${o.on ?? ''}`)).toEqual([
       `git.resolve:${layout}/mine`,
       `git.resolve:${layout}/theirs`,
       `pane.view:edit/${layout}`,
+      `agent.mergeConflict:${layout}`,
       `git.resolve:${scene}/mine`,
       `git.resolve:${scene}/theirs`,
       `pane.view:edit/${scene}`,
+      `agent.mergeConflict:${scene}`,
       'git.continueSync:',
       'git.abandonSync:',
     ]);

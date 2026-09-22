@@ -12,6 +12,7 @@ import {
   checkpointAction,
   checkpointsAction,
   clearAction,
+  askAgentAction,
   cancelEditAction,
   conflicting,
   decidedLabel,
@@ -1200,7 +1201,8 @@ export class HistoryEditor extends VnEditor {
   /**
    * The files a stopped sync is waiting on, grouped by kind under the save being replayed. Each
    * gets Keep mine and Take theirs, and one git merged line by line gets Edit, which opens the
-   * whole file beneath the list with Save and Cancel. The files already decided follow, greyed,
+   * whole file beneath the list with Save and Cancel, and Ask the agent, which opens the
+   * conversation with the request in the composer. The files already decided follow, greyed,
    * each with how it was decided and Undo decision. Continue and Give up close the view.
    */
   private conflictView(state: HistoryState, anchors: AnchorPass): HTMLElement {
@@ -1245,6 +1247,9 @@ export class HistoryEditor extends VnEditor {
           anchors.act(el('button', 'hs-btn', edit.label) as HTMLButtonElement, edit, () =>
             this.openEdit(path),
           ),
+        );
+        acts.appendChild(
+          button(askAgentAction(state, path), (action) => void exec(action.id, action.props)),
         );
         row.appendChild(acts);
         list.appendChild(row);

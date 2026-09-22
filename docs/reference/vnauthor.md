@@ -225,7 +225,7 @@ through the permission gate, in every mode).
 | Raw write           | `write_file` **M**, `edit_file` **M** (neither for `scenes/` or `.aiagent/skills/`)                                                                                                                                          |
 | Context             | `update_context` **M**, `regenerate_context` **M**                                                                                                                                                                           |
 | Git (read)          | `git_status`, `git_log`, `git_show`, `git_diff` (structured: rows carry the maker and checkpoints, `git_status` its cause)                                                                                                   |
-| Git (write)         | `git_commit` **M**, `git_init` **M**, `git_checkpoint` **M**, `git_revert` **M C**, `git_restore` **M C**                                                                                                                    |
+| Git (write)         | `git_commit` **M**, `git_init` **M**, `git_checkpoint` **M**, `git_revert` **M C**, `git_restore` **M C**, `resolve_conflict` **M**                                                                                          |
 | Skills              | `discover_skills`, `create_skill` **M**, `edit_skill` **M**, `run_skill` **M** (**C** on the first run of a script-bearing skill)                                                                                            |
 
 The desktop app registers a few tools of its own beside these, which the table omits
@@ -247,6 +247,18 @@ hunk is applied in memory and the file is written once, so a refusal part-way th
 leaves the bytes exactly as the model last read them. It partly overlaps the escape hatch
 and is not a way around the typed tools: an edit to a `scenes/`, `characters/` or
 `locations/` path is refused by name.
+
+`resolve_conflict(path, text)` is the other whole-file writer, and only while a sync is
+stopped: it writes the author's merge of a file git could not merge and stages it, so the
+decision is git's. It rests on the same read ledger `edit_file` does, holds the text to
+`resolutionProblem` (the check the History pane's Save shares), and refuses a path the
+sync is not waiting on. It is **M** but takes no confirmation, because nothing it does is
+lost: the two sides stay in the index and the author's Undo decision brings them back.
+While a file is in question, `write_file` and `edit_file` on that path are refused, since
+a plain write would leave git still waiting on it, and a marked scene is refused by
+`@vn/scriptedit` to every tool that edits one. Nothing continues or abandons a sync: that
+is the author's act, in the History pane
+([`history-pane.md`](history-pane.md#from-the-agent)).
 
 Editing an entity is typed rather than done with `edit_file`:
 `edit_character`/`edit_location` route through `@vn/model`'s serializers, so the

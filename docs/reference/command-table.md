@@ -2,8 +2,8 @@
 
 # Registered commands
 
-218 commands, in 25 namespaces. 132 are `mutating`;
-145 declare a precondition; 79 are undoable; 25 ask
+219 commands, in 25 namespaces. 132 are `mutating`;
+146 declare a precondition; 79 are undoable; 25 ask
 for confirmation.
 
 ✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
@@ -14,6 +14,7 @@ for confirmation.
 | `agent.compact` ✍ ✓ | — | Writes `vngen/state/threads`. Summarize the open conversation so the agent carries a summary instead of every turn. Appends one line to each of the thread's logs and rewrites neither, so the transcript on screen is unchanged. Checked because it costs a model call, and refused while a turn is running, with no finished turn to summarize, with the last turn stopped part way through a tool call, and when nothing has been said since the last compaction. |
 | `agent.editLine` ✓ | `scene`, `line` | — |
 | `agent.fixAsset` ✓ | `hash` | — |
+| `agent.mergeConflict` ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `path` | — |
 | `agent.newThread` | — | End the open conversation and start again. The next turn opens a new thread file. |
 | `agent.openThread` | `id` | Replay a saved conversation on screen. **Read-only**: the model is not shown it, and the next turn starts a new thread unless Continue is pressed first. Returns the whole record as `data`. |
 | `agent.renameThread` ✍ ✓ | `id` (default `''`), `title` | Writes `vngen/state/threads`. Retitle a saved conversation; an empty `id` renames the open one. Appended as a superseding `title` record — the log stays append-only, and the last one read wins. |

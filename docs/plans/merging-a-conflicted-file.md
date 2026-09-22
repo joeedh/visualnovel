@@ -430,6 +430,71 @@ does not finish without a run against a real model, and the plan records what wa
       saving reads back as "took theirs", which is `decisionOf` classifying the saved blob
       against the stages, not the button that was pressed.
 
+### Stage 3: the agent
+
+- `resolve_conflict` is where the plan put it, with one addition the live run forced:
+  `write_file` and `edit_file` refuse a path the sync is waiting on (`conflictRefusal` in
+  `tools/git.ts`), because a plain write leaves git still unmerged and Continue would
+  refuse the file the model just merged. Without it Sonnet wrote three of the four cases
+  with `write_file` and reported them as merged; with it, it read the refusal and reached
+  for `resolve_conflict` in the same turn.
+- `AGENT_WRITERS` moved from `tools/files.ts` to `tools/core.ts`: the two whole-file
+  writers now sit in different modules, and a cycle between them is not worth the
+  proximity.
+- `agent.mergeConflict` refuses a repository that is not the project, since the agent
+  works in one.
+- The opener was not revised. It was the lever the plan reserved for a failing prose case,
+  and the prose case passed on the first run.
+
+#### The live run
+
+`pnpm eval:merge`, 2026-09-22, `claude-sonnet-5` under test and answering, four cases, one
+fixture pair per case built from the sample project's inputs. Both runs are recorded
+because the first is what found the missing guard.
+
+| case               | what collided                                               | first run                       | after the guard  |
+| ------------------ | ----------------------------------------------------------- | ------------------------------- | ---------------- |
+| `prose`            | a dialogue line and an inserted line in `scenes/arrival.md` | pass, 1 exchange                | pass, 1 exchange |
+| `shots-fields`     | two fields of one shot                                      | fail: never staged, 6 exchanges | pass, 1 exchange |
+| `shots-same-field` | one field of one shot, both sides                           | fail: never staged, 6 exchanges | pass, 1 exchange |
+| `shots-add-next`   | both sides minted the same shot id                          | fail: never staged, 6 exchanges | pass, 1 exchange |
+
+Tokens on the second run: 64k–93k in, 2.5k–3.6k out per case, which is the whole
+conversation including the answerer's turns.
+
+What the transcripts say, read end to end:
+
+- **The prose merge kept both authors' intent.** It kept the author's curtsy and their new
+  line, and folded the collaborator's "the room goes very quiet" into it rather than
+  choosing a side. It did not ask, which is right: the brief answered the question.
+- **The scene guard works and is read.** In the first run the model's first move was
+  `edit_scene`, which refused with `conflictedSentence`; it then used `resolve_conflict`.
+- **The same-field case was decided by the author, but through the plan rather than a
+  question.** The model proposed keeping its own side, the author rejected the plan with
+  the reason, and the model took the other side. The plan's pass criterion said it should
+  ask; in plan mode the proposal _is_ the question, and the decision still reached the
+  author before anything was written. Recorded rather than fixed: adding a rule that says
+  "ask when the sides disagree on one field" would fire on cases the author has already
+  answered.
+- **`shots-fields` asked once when the brief already answered.** One question, answered,
+  then a correct merge. It costs a turn and it is the failure mode worth watching if the
+  opener is ever revised.
+- **Nothing tried to commit.** The loop's own approval message tells the model to run
+  `git_commit` after a plan; the opener's "do not commit" held in all eight conversations,
+  and `git_commit`'s `InProgressError` catch was never reached. It is still the second
+  line of defence, and its test covers it.
+- **The storyboard merges were right as data.** The duplicate-id case renumbered the
+  second shot to `ending__shot3` and moved `nextShot` past both, which is what the app's
+  own minting would have done.
+
+The harness reads approval from a leading `APPROVE:` / `CHANGES:` / `ANSWER:` word in the
+answerer's reply, which is a convention of the eval rather than of the app: in the app the
+author's own words are the authorization, and no prefix is parsed.
+
+`scripts/merge-eval.mjs` keeps the fixture under `--out` with `--keep`, and `--dry-run`
+builds the collisions and asks nothing, which is how to check the cases still collide
+after the sample project changes.
+
 ## What it costs to undo
 
 Two commands, one read, one tool, one guard in two planners, a notice row, and two fields

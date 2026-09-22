@@ -382,6 +382,7 @@ describe('the desktop registry', () => {
       'agent.compact',
       'agent.editLine',
       'agent.fixAsset',
+      'agent.mergeConflict',
       'agent.renameThread',
       'agent.resumeThread',
       'agent.stop',
@@ -530,9 +531,11 @@ describe('the desktop registry', () => {
     expect(commands.filter((c) => c.check && !c.mutating).map((c) => c.id)).toEqual([
       // Neither sends a turn nor writes anything. Both are offered from a surface that draws a
       // refusal rather than hiding it, so the sentence for a line the scene has lost, a picture
-      // that never failed, or a turn already running has to exist before the click.
+      // that never failed, a file no sync is waiting on, or a turn already running has to exist
+      // before the click.
       'agent.editLine',
       'agent.fixAsset',
+      'agent.mergeConflict',
       // Hands the agent a stored conversation and writes nothing. A conversation recorded through
       // another vendor cannot be continued at all, so the Continue button is greyed with the
       // sentence saying which vendor it wants.

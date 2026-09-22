@@ -77,12 +77,21 @@ rooftop_, then one row per file waiting on a decision.
 
 - **Keep mine** keeps your version of that file; **Take theirs** takes your
   collaborator's.
-- **Open both** shows the two versions side by side first, for a scene, a sheet or another
-  text file git merged line by line. A layout, a graph or a picture has no middle to read,
-  so it offers only the two sides.
-- A scene git merged textually may hold both versions between `<<<<<<<` and `>>>>>>>`
-  markers. Keep a side, or edit the markers out in the Script pane; **Continue** is
-  refused while any scene still holds them.
+- **Edit** opens the whole file, as git left it, for a scene, a sheet or another text file
+  git merged line by line. Where the two of you changed the same lines, both versions are
+  in it: theirs between `<<<<<<<` and `=======`, yours between `=======` and `>>>>>>>`.
+  Keep what each of you meant, delete the marker lines, and press **Save**. A layout, a
+  graph or a picture has no middle to edit, so it offers only the two sides.
+- **Ask the agent** opens a conversation with the request already written — read the file,
+  keep what each of you meant, write the merged version — and sends nothing until you
+  press Enter. It proposes before it writes, as it does for any edit, and it cannot finish
+  or give up the sync.
+- Saving a merge decides that file. It moves to the bottom of the list, greyed, with how
+  it was decided, and **Undo decision** puts it back in question with both versions and
+  the markers.
+- A scene you are still merging may be saved with markers left in it; **Continue** is
+  refused while any changed file still holds them. The Script pane shows a scene waiting
+  on a decision under a notice row and refuses every edit to it until it is decided.
 - **Continue** finishes the save being replayed and goes on to the next, which may stop
   again. Edits you make while the conflict view is up become part of the save being
   replayed, which the view's footer says.

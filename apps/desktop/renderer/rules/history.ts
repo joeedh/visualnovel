@@ -819,6 +819,28 @@ export function editAction(state: HistoryState, path: string): Offer {
   return { ok: true, ...control };
 }
 
+/**
+ * Open a conversation asking the agent to merge one file in question, with the request already
+ * in the composer. Nothing is sent. Only for a file git merged line by line, like Edit.
+ */
+export function askAgentAction(state: HistoryState, path: string): Offer {
+  const control = {
+    id     : 'agent.mergeConflict',
+    on     : path,
+    label  : 'Ask the agent',
+    tooltip:
+      `Open a conversation asking the agent to merge ${path}: it reads the file, keeps what each ` +
+      'of you meant, and writes the result for you to review. Nothing is sent until you press Enter.',
+  };
+  const why =
+    stillSyncing(state) ??
+    notOwned(state) ??
+    (state.status?.cause !== 'rebase' ? 'No sync is waiting on a decision.' : undefined) ??
+    (!state.status?.marked.includes(path) ? NO_MIDDLE : undefined);
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { repo: state.repo, path } };
+}
+
 /** The editor's own field: the whole file, which Save reads at the click. */
 export function resolveBox(path: string): Offer {
   return {
@@ -1151,8 +1173,9 @@ export function syncControls(state: HistoryState): readonly Offer[] {
 }
 
 /**
- * The conflict view's offers: per file in question keep mine, take theirs and edit; the box, save
- * and cancel for the one open for editing; undo per decided file; then continue and give up.
+ * The conflict view's offers: per file in question keep mine, take theirs, edit and ask the agent;
+ * the box, save and cancel for the one open for editing; undo per decided file; then continue and
+ * give up.
  */
 export function conflictControls(state: HistoryState): readonly Offer[] {
   const paths = state.status?.conflicted ?? [];
@@ -1163,6 +1186,7 @@ export function conflictControls(state: HistoryState): readonly Offer[] {
       resolveAction(state, path, 'mine'),
       resolveAction(state, path, 'theirs'),
       editAction(state, path),
+      askAgentAction(state, path),
     ]),
     ...(editing === undefined
       ? []

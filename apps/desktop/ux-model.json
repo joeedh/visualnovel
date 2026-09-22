@@ -442,7 +442,7 @@
       "module": "history",
       "editor": "history",
       "name"  : "conflict",
-      "why": "Getting their saves stopped on the second of three replayed saves, with a scene and a layout in question: the scene, which git merged line by line, offers Edit while the layout, which git never merges, offers only the two sides; Continue is refused until both are decided; the status view leads to this view rather than duplicating Give up."
+      "why": "Getting their saves stopped on the second of three replayed saves, with a scene and a layout in question: the scene, which git merged line by line, offers Edit and Ask the agent while the layout, which git never merges, offers only the two sides; Continue is refused until both are decided; the status view leads to this view rather than duplicating Give up."
     },
     {
       "module": "history",
@@ -24855,6 +24855,29 @@
       "editor"    : "history",
       "module"    : "history",
       "situation" : "conflict",
+      "key"       : "cmd:agent.mergeConflict#.vnstudio/layouts/writing.json",
+      "widgetPath": "history/agent-mergeconflict~2b226c8d",
+      "offer": {
+        "id"     : "agent.mergeConflict",
+        "label"  : "Ask the agent",
+        "tooltip": "Open a conversation asking the agent to merge .vnstudio/layouts/writing.json: it reads the file, keeps what each of you meant, and writes the result for you to review. Nothing is sent until you press Enter.",
+        "on"     : ".vnstudio/layouts/writing.json",
+        "ok"     : false,
+        "refusal": {
+          "reason": "This file was not merged line by line; keep one side or the other."
+        }
+      },
+      "effects": [
+        {
+          "id": "agent.mergeConflict"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
       "key"       : "cmd:git.resolve#scenes/rooftop.fountain/mine",
       "widgetPath": "history/git-resolve~01fdeb16",
       "offer": {
@@ -24932,6 +24955,34 @@
           "id"   : "pane.view",
           "props": {
             "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "cmd:agent.mergeConflict#scenes/rooftop.fountain",
+      "widgetPath": "history/agent-mergeconflict~9b7a57af",
+      "offer": {
+        "id"     : "agent.mergeConflict",
+        "label"  : "Ask the agent",
+        "tooltip": "Open a conversation asking the agent to merge scenes/rooftop.fountain: it reads the file, keeps what each of you meant, and writes the result for you to review. Nothing is sent until you press Enter.",
+        "on"     : "scenes/rooftop.fountain",
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "path": "scenes/rooftop.fountain"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "agent.mergeConflict",
+          "props": {
+            "repo": "project",
+            "path": "scenes/rooftop.fountain"
           }
         }
       ]
@@ -25400,6 +25451,29 @@
       "editor"    : "history",
       "module"    : "history",
       "situation" : "conflict-editing",
+      "key"       : "cmd:agent.mergeConflict#.vnstudio/layouts/writing.json",
+      "widgetPath": "history/agent-mergeconflict~2b226c8d",
+      "offer": {
+        "id"     : "agent.mergeConflict",
+        "label"  : "Ask the agent",
+        "tooltip": "Open a conversation asking the agent to merge .vnstudio/layouts/writing.json: it reads the file, keeps what each of you meant, and writes the result for you to review. Nothing is sent until you press Enter.",
+        "on"     : ".vnstudio/layouts/writing.json",
+        "ok"     : false,
+        "refusal": {
+          "reason": "This file was not merged line by line; keep one side or the other."
+        }
+      },
+      "effects": [
+        {
+          "id": "agent.mergeConflict"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
       "key"       : "cmd:git.resolve#scenes/rooftop.fountain/mine",
       "widgetPath": "history/git-resolve~01fdeb16",
       "offer": {
@@ -25475,6 +25549,34 @@
       "effects": [
         {
           "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "cmd:agent.mergeConflict#scenes/rooftop.fountain",
+      "widgetPath": "history/agent-mergeconflict~9b7a57af",
+      "offer": {
+        "id"     : "agent.mergeConflict",
+        "label"  : "Ask the agent",
+        "tooltip": "Open a conversation asking the agent to merge scenes/rooftop.fountain: it reads the file, keeps what each of you meant, and writes the result for you to review. Nothing is sent until you press Enter.",
+        "on"     : "scenes/rooftop.fountain",
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "path": "scenes/rooftop.fountain"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "agent.mergeConflict",
+          "props": {
+            "repo": "project",
+            "path": "scenes/rooftop.fountain"
+          }
         }
       ]
     },

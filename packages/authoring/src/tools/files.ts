@@ -7,19 +7,13 @@ import {
   resolveInWorkspace,
   workspacePath,
   writeDocFile,
-  type GuardedWriters,
 } from '@vn/store';
 import { readText, unifiedDiff } from '@vn/util';
 import { updateContext } from '../context.js';
 import { skillWriteRefusal } from '../skills.js';
 import { wrapWarning, WRAP_COLUMNS } from '../wrap.js';
-import { ok, fail, rel, type Tool } from './core.js';
-
-/** What each guarded directory's writer is called from this agent's side. */
-const AGENT_WRITERS: GuardedWriters = {
-  scenes: 'edit_scene',
-  graphs: 'edit_asset_graph',
-};
+import { AGENT_WRITERS, ok, fail, rel, type Tool } from './core.js';
+import { conflictRefusal } from './git.js';
 
 /**
  * The validated writer a path belongs to, or null when no tool owns it. `guardedDir` covers the
@@ -61,6 +55,9 @@ const writeFileTool: Tool<{ path: string; content: string }> = {
     // so a person approves that specific restore. This gate is about authoring a script.
     const refusal = skillWriteRefusal(path);
     if (refusal) return fail(refusal);
+
+    const undecided = await conflictRefusal(ctx, path);
+    if (undecided) return fail(undecided);
 
     // A missing ledger entry asserts that no file exists at the path: a creation then succeeds,
     // and an unread overwrite is refused with `already exists` instead of quietly replacing a
@@ -177,6 +174,9 @@ const editFileTool: Tool<{
     // one that changes a script a person already vetted.
     const skillRefusal = skillWriteRefusal(path);
     if (skillRefusal) return fail(skillRefusal);
+
+    const undecided = await conflictRefusal(ctx, path);
+    if (undecided) return fail(undecided);
 
     const seen = ctx.seen?.get(path);
     if (!seen) {

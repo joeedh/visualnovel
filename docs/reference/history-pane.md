@@ -17,6 +17,7 @@ side of syncing is [`../guides/collaborating.md`](../guides/collaborating.md).
 - [Shared copies](#shared-copies)
 - [Sync is a rebase](#sync-is-a-rebase)
 - [The conflict view](#the-conflict-view)
+    - [Deciding a file by editing it](#deciding-a-file-by-editing-it)
 - [The app's logs during a rebase](#the-apps-logs-during-a-rebase)
 - [From the agent](#from-the-agent)
 - [Testing](#testing)
@@ -168,16 +169,47 @@ reported as part way rather than done.
 
 A rebase that stops replaces the detail column with the conflict view: "Replaying N of M:
 <subject>" from `inProgress().rebase`, then one row per unmerged path with "Keep mine",
-"Take theirs" and, for a text file, "Open both" (the two sides drawn inline from index
-stages `:2` and `:3`). "Mine" is git's `theirs` during a rebase and the other way round
-(`REBASE_SIDE`); a side that deleted the file deletes it. `git.resolve` checks the side
-out and stages it. "Continue" (`git.continueSync`) stages everything — edits made while
-the view was up ride into the replayed save, which the footer says — and runs
-`rebase --continue`; it is refused while a path is still unmerged or a scene under
-`scenes/` still holds `<<<<<<<` markers, since the Script pane could not parse it. "Give
-up" (`git.abandonSync`) is `rebase --abort`, and also abandons a merge or a revert a
-terminal left. The strip's "Shared copies" toggle is refused while a file is waiting,
-since the column is the conflict's.
+"Take theirs" and, for a file git merged line by line, "Edit" and "Ask the agent". "Mine"
+is git's `theirs` during a rebase and the other way round (`REBASE_SIDE`); a side that
+deleted the file deletes it. `git.resolve` checks the side out and stages it. "Continue"
+(`git.continueSync`) stages everything — edits made while the view was up ride into the
+replayed save, which the footer says — and runs `rebase --continue`; it is refused while a
+path is still unmerged or a changed file git merges textually still holds `<<<<<<<`
+markers, since nothing would parse it. "Give up" (`git.abandonSync`) is `rebase --abort`,
+and also abandons a merge or a revert a terminal left. The strip's "Shared copies" toggle
+is refused while a file is waiting, since the column is the conflict's.
+
+### Deciding a file by editing it
+
+"Edit" opens the whole file beneath the list, as git left it, markers and all, in a field
+that fills the column and scrolls itself to the first marker; a scene or a note gets the
+prose face, everything else the mono one. The text is `git.conflictText`, which reads the
+worktree copy. "Save" is `git.writeResolution(repo, path, text)`: it writes the field over
+the file and stages it, so the decision is git's and not just the disk's. "Cancel" closes
+the editor and changes nothing. Only one file is open at a time, and nothing is autosaved
+— the footer says so while the editor is up.
+
+What Save will take is `resolutionProblem(path, text)` in `@vn/model`, which the agent's
+tool shares: a scene must load with no error diagnostic, a sheet must pass its schema,
+JSON and YAML must parse, and markers are refused outright in a data file and in a note's
+front matter, since YAML reads a marker line as a scalar. Markers left in the _body_ of a
+scene or a note are allowed at Save and refused at Continue, so a merge can be saved part
+way.
+
+The rows for files already decided follow the list, greyed, each with how it was decided —
+"kept yours", "took theirs", "merged", "removed" — and "Undo decision"
+(`git.undoResolution`), which is `checkout -m` over the index's memory of the three
+stages. How it was decided is read off the stage blobs (`Git.resolvedPaths`,
+`ls-files --resolve-undo`) rather than remembered from the button that was pressed, so a
+decision made in a terminal reads the same. A decision that _removed_ the file cannot be
+undone: git keeps the record but `checkout -m` refuses a path without all three versions,
+and the row says so. Git drops the records itself at the next rebase stop.
+
+While a scene is waiting on a decision, the Script pane draws it as the parser reads it
+under one notice row — "This scene is waiting on a merge decision. Open History to decide
+it." — with a `view.open` to this pane. Every write on it is refused first, by
+`conflictedRefusal` in `@vn/scriptedit`, which both planners run, so `story.*`, the
+agent's `edit_scene` and CDP all get one host-neutral sentence.
 
 Every command that commits is guarded while a rebase is in progress: `Git.commit` throws
 `InProgressError`, the committer skips the repository, the four sync commands that act
@@ -218,7 +250,20 @@ rows the pane draws, with `makerOf` applied; `git_revert`, `git_restore` and
 `git.restoreFile` and `git.checkpoint`, without invoking the command registry. There is no
 agent tool for a shared copy, a send or a get: publication and collaboration are the
 author's acts, and a model must not send saves anywhere or decide where they go.
-`git_commit` refuses while a rebase is in progress, by the same `Git.commit` guard.
+`git_commit` refuses while a rebase is in progress, by the same `Git.commit` guard, and
+answers with the sentence that says who finishes the sync instead; `git_restore` refuses
+for the same reason.
+
+A file waiting on a decision is the agent's to merge, though not to decide alone. "Ask the
+agent" on a row runs `agent.mergeConflict`, which opens the conversation with the request
+already in the composer and sends nothing: `mergeOpener` names the file and the save being
+replayed, asks for the merge, and says not to commit. The tool is
+`resolve_conflict(path, text)` — the whole file, marker lines gone — which refuses until
+the file has been read this conversation, refuses a path the sync is not waiting on, and
+holds the text to `resolutionProblem`, the check Save shares. An ordinary `write_file` or
+`edit_file` on a file in question is refused too (`conflictRefusal`), because a plain
+write leaves git still waiting on the path and Continue would refuse it. Nothing the agent
+can call continues or abandons a sync.
 
 ## Testing
 

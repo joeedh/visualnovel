@@ -364,7 +364,7 @@ export const SITUATIONS = situations<HistoryState>(
   },
   {
     name : 'conflict',
-    why: 'Getting their saves stopped on the second of three replayed saves, with a scene and a layout in question: the scene, which git merged line by line, offers Edit while the layout, which git never merges, offers only the two sides; Continue is refused until both are decided; the status view leads to this view rather than duplicating Give up.',
+    why: 'Getting their saves stopped on the second of three replayed saves, with a scene and a layout in question: the scene, which git merged line by line, offers Edit and Ask the agent while the layout, which git never merges, offers only the two sides; Continue is refused until both are decided; the status view leads to this view rather than duplicating Give up.',
     state: {
       repos        : [PROJECT],
       repo         : 'project',

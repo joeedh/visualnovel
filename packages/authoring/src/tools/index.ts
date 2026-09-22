@@ -50,6 +50,7 @@ import {
   gitRestoreTool,
   gitCheckpointTool,
   gitInitTool,
+  resolveConflictTool,
 } from './git.js';
 
 export * from './core.js';
@@ -108,6 +109,7 @@ export const ALL_TOOLS: Tool[] = [
   gitRestoreTool,
   gitCheckpointTool,
   gitInitTool,
+  resolveConflictTool,
 ] as Tool[];
 
 /** Build a name→tool registry from the built-in tools (plus optional extras). */
