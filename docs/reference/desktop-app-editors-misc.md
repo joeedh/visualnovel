@@ -452,11 +452,11 @@ see what that turn actually read.
   `view.open(editor='systemprompt')` from the command palette. A saved layout that holds
   this editor still restores it.
 - **The pane asks main for the prompt rather than reassembling it.** `agent:system`
-  answers with `systemSections(await loadContext(dir))`, the section list, the context
-  files that fed it and the bound model id. The pane exists to show that assembly.
-  `runAgent` calls `refreshSystem(systemSections(await loadContext(...)))` before every
-  turn, so the pane shows the assembly that ships. A second implementation in the renderer
-  could disagree with the one that runs, and would be wrong in exactly the case being
+  answers with `appSections(await loadContext(dir))`, the section list, the context files
+  that fed it and the bound model id. The pane exists to show that assembly. `runAgent`
+  calls `refreshSystem(appSections(await loadContext(...)))` before every turn, so the
+  pane shows the assembly that ships. A second implementation in the renderer could
+  disagree with the one that runs, and would be wrong in exactly the case being
   investigated. `agent:system` also answers before an agent exists, because the prompt is
   a property of the workspace rather than of a conversation.
 - **Section order.** The built-in section comes first, then the generated `PROJECT MAP`,

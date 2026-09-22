@@ -7,7 +7,7 @@
  */
 import { coerceProps, prop } from '@vn/commands';
 import { checkTour, readTour, type Known } from '../../shared/tourcheck.js';
-import { showMeTool } from '../agent/showme.js';
+import { SHOW_ME_SECTION, appSections, showMeTool } from '../agent/showme.js';
 import type { Step, Tour } from '../../shared/tours.js';
 
 const specs = {
@@ -128,5 +128,26 @@ describe('show_me', () => {
     const result = await showMeTool(deps()).run(args, {} as never);
     expect(result.ok).toBe(false);
     expect(result.output).toContain('no window');
+  });
+});
+
+describe('appSections', () => {
+  const ctx = {
+    systemPrompt    : 'the contract',
+    generatedContext: 'the map',
+    projectContext  : 'be terse',
+    files           : [],
+  };
+
+  it('puts the show_me section after the built-in prompt and before the project', () => {
+    const names = appSections(ctx).map((s) => s.name);
+    expect(names[0]).toBe('BUILT-IN');
+    expect(names[1]).toBe(SHOW_ME_SECTION.name);
+    expect(names[names.length - 1]).toBe('PROJECT CONTEXT (AICONTEXT.md)');
+  });
+
+  it('names the tool by its id and by the words an author uses for it', () => {
+    expect(SHOW_ME_SECTION.text).toContain('call show_me');
+    expect(SHOW_ME_SECTION.text).toContain('"the show me');
   });
 });

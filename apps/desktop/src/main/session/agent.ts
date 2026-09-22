@@ -12,7 +12,6 @@ import {
   focusOnScene,
   loadContext,
   restorable,
-  systemSections,
   type AgentEvent,
   type AgentMode,
   type GeneratedContextState,
@@ -25,6 +24,7 @@ import {
 import type { Excerpt } from '@vn/bible';
 import type { EffortChoice } from '@vn/types';
 import { EFFORT_CHOICES, resolveEffort, type BudgetChoice } from '@vn/types';
+import { appSections } from '../agent/showme.js';
 import { BUSY_AGENT } from '../../shared/ipc.js';
 import type { AgentSystem } from '../../shared/ipc.js';
 import {
@@ -116,7 +116,7 @@ export class AgentPart {
       // included, so the map is re-read per turn and never outranks the tool output. Refreshed
       // section by section, so a rewrite supersedes itself rather than invalidating the cached
       // prefix.
-      const sections = systemSections(await loadContext(this.session.dir));
+      const sections = appSections(await loadContext(this.session.dir));
       const delta = agent.refreshSystem(sections);
       this.noteSections(sections, delta);
       const focus = scene ? focusOnScene(await this.session.index(), scene) : undefined;
@@ -250,14 +250,14 @@ export class AgentPart {
    * The system prompt the next turn will carry, in its sections.
    *
    * Assembled from the project rather than read off `this.session.agent`, and deliberately so: `runAgent`
-   * calls `refreshSystem(systemSections(await loadContext(...)))` before every turn, so this is
+   * calls `refreshSystem(appSections(await loadContext(...)))` before every turn, so this is
    * exactly what the next turn sends — and it can be answered before an agent has ever been
    * built, which is when an author most wants to check what it was told.
    */
   async systemPrompt(): Promise<AgentSystem> {
     const context = await loadContext(this.session.dir);
     return {
-      sections: systemSections(context).map((section) => ({ ...section })),
+      sections: appSections(context).map((section) => ({ ...section })),
       files   : context.files,
       modelId : this.session.model,
     };

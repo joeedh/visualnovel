@@ -80,9 +80,9 @@ import {
   StructuredAgentBackend,
   Workspace,
   apiRecoveryQuestion,
-  composeSystem,
   createRegistry,
   historyTools,
+  joinSections,
   loadContext,
   readApiPlan,
   workspaceArtGen,
@@ -183,7 +183,7 @@ import { type UpdateCheck } from '../distribution/updates.js';
 import { labelContext } from '../assets/assetlabel.js';
 import { type SkillEntry } from '../doctree/doctree.js';
 import { confirmDetail } from '../agent/toolconfirm.js';
-import { showMeTool } from '../agent/showme.js';
+import { appSections, showMeTool } from '../agent/showme.js';
 import { uxCheckTool, uxDocsTools } from '../agent/uxdocs.js';
 import { createDesktopInteractions } from '../../shared/interactions.js';
 import { createDesktopRegistry } from '../commands/index.js';
@@ -1297,7 +1297,7 @@ export class WorkspaceSession {
         }) as Tool,
       ]),
       permission: this.permission(),
-      system    : composeSystem(context),
+      system    : joinSections(appSections(context)),
       budget    : this.budget,
       onEvent: (event) => {
         this.record((convo) => received(convo, event));
@@ -1447,7 +1447,7 @@ export class WorkspaceSession {
    * The system prompt the next turn will carry, in its sections.
    *
    * Assembled from the project rather than read off `this.agent`, and deliberately so: `runAgent`
-   * calls `refreshSystem(systemSections(await loadContext(...)))` before every turn, so this is
+   * calls `refreshSystem(appSections(await loadContext(...)))` before every turn, so this is
    * exactly what the next turn sends — and it can be answered before an agent has ever been
    * built, which is when an author most wants to check what it was told.
    */

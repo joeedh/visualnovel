@@ -667,6 +667,11 @@ fault, only later.
   `gesture`, because a gesture step needs a scene or shot id from a specific project.
 - Agent-written tours come from the `show_me` tool (`src/main/agent/showme.ts`), which the
   agent uses for anything the curated tours do not cover.
+- The desktop agent's system prompt carries a section of its own, `SHOW_ME_SECTION`,
+  placed after the built-in prompt by `appSections`. It tells the model to answer "how do
+  I" and "show me" requests with `show_me` rather than prose. The built-in prompt cannot
+  say this, because `vnauthor` shares it and has no `show_me`. Without the section, one
+  agent told the author the tool did not exist (GitHub issue #6).
 
 Before writing a tour the agent can read what the app draws. `pnpm build` (and the start
 of `pnpm dev`) runs `scripts/gen-ux-docs.mjs`, which folds `ux-model.json`, `anchors.json`

@@ -10,7 +10,7 @@
  * value goes through. Nothing here writes: the tour says what to press and never presses it.
  */
 import { z } from 'zod';
-import type { Tool } from '@vn/authoring';
+import { systemSections, type LoadedContext, type SystemSection, type Tool } from '@vn/authoring';
 import { coerceProps, type PropSpecMap } from '@vn/commands';
 import { checkTour, type Known } from '../../shared/tourcheck.js';
 import type { Step, Tour } from '../../shared/tours.js';
@@ -39,6 +39,32 @@ export function describeShowMe(opts: { pages: boolean }): string {
     'command palette on it — so prefer the command that does the job over the one you know has a',
     'button. Steps that name a scene, shot or asset need its real id, from the workspace index.',
   ].join(' ');
+}
+
+/**
+ * The system-prompt section that tells the model when to reach for `show_me`. The built-in prompt
+ * is shared with `vnauthor`, which has no such tool, so it cannot say this itself.
+ */
+export const SHOW_ME_SECTION: SystemSection = {
+  name: 'IN THE APP',
+  text: [
+    'SHOWING THE AUTHOR HOW. You are running inside the desktop app, and show_me walks the author',
+    'through doing something in it themselves: each step highlights the control to press and waits',
+    'for them to press it. When the author asks how to do something in the app, asks you to show',
+    'them, or asks for a tour or a walkthrough, call show_me rather than describing the steps or',
+    'doing the job for them. Describe the steps in prose only when show_me refuses the tour, or',
+    'when the author asks for an explanation instead. Authors name tools loosely ("the show me',
+    'tool" is show_me), so check your tool list before telling them a tool does not exist.',
+  ].join('\n'),
+};
+
+/**
+ * Returns the desktop agent's system prompt in sections: the shared ones, with
+ * {@link SHOW_ME_SECTION} after the built-in prompt so the author's own context still reads last.
+ */
+export function appSections(ctx: LoadedContext): SystemSection[] {
+  const [builtIn, ...rest] = systemSections(ctx);
+  return [builtIn!, SHOW_ME_SECTION, ...rest];
 }
 
 const propValue = z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]);
