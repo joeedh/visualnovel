@@ -11,7 +11,9 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { CONFIG_FILENAME, loadConfig } from '@vn/config';
 import { InProgressError, openGit, type Git } from '@vn/git';
 import { slug } from '@vn/model';
+import type { NotificationLevel } from '@vn/types';
 import { writeFileAtomic } from '@vn/util';
+import { notCheckedOut } from '../../shared/history.js';
 import {
   LAYOUT_ATTRIBUTE,
   LAYOUT_ATTRIBUTES_BLOCK,
@@ -158,6 +160,65 @@ export async function ensureRepo(root: string, message = 'Existing project files
   // answer "not a repo", writes refuse, and a notification says why saving does not work
   if (!gitHealth().ok) return git;
   return initRepoAt(root, message);
+}
+
+/** What `adoptSubmodules` found worth telling the author, for the caller to post. */
+export interface SubmoduleNotice {
+  level: Extract<NotificationLevel, 'info' | 'warn'>;
+  message: string;
+}
+
+const short = (sha: string): string => sha.slice(0, 8);
+
+/**
+ * The branch a detached submodule's saves should go to: the one `.gitmodules` names, else a
+ * remote branch that already holds HEAD, else `main` or `master` where one exists, else `main`.
+ */
+async function branchFor(project: Git, sub: Git, path: string, head: string): Promise<string> {
+  const named = await project.submoduleBranch(path);
+  if (named) return named;
+  const remote = (await sub.remoteBranchesContaining(head))[0];
+  if (remote) return remote.branch;
+  if (await sub.resolve('refs/heads/main')) return 'main';
+  if (await sub.resolve('refs/heads/master')) return 'master';
+  return 'main';
+}
+
+/**
+ * Checks each nested repository the project's index records. One that is not checked out is
+ * reported, since nothing written under it reaches any history. One on no branch is put on a
+ * branch when that loses nothing — the branch is absent or HEAD already contains it — and is
+ * reported either way. The app never runs `git submodule update`, which is a network act.
+ */
+export async function adoptSubmodules(root: string): Promise<SubmoduleNotice[]> {
+  const project = openGit(root);
+  const notices: SubmoduleNotice[] = [];
+  for (const link of await project.gitlinks()) {
+    const dir = join(root, link.path);
+    const shown = `${link.path}/`;
+    if (!(await exists(join(dir, '.git')))) {
+      notices.push({ level: 'warn', message: notCheckedOut(shown) });
+      continue;
+    }
+    const sub = openGit(dir);
+    const head = await sub.head();
+    if (head === null || !(await sub.detached())) continue;
+    const branch = await branchFor(project, sub, link.path, head);
+    const tip = await sub.resolve(`refs/heads/${branch}`);
+    if (tip === null || (await sub.isAncestor(tip, head))) {
+      await sub.checkoutBranch(branch);
+      notices.push({
+        level  : 'info',
+        message: `${shown} was on no branch; its saves now go to ${branch}. Run git checkout --detach in ${shown} to undo this.`,
+      });
+    } else {
+      notices.push({
+        level  : 'warn',
+        message: `${shown} is on no branch (at ${short(head)}), and ${branch} has moved on without it (at ${short(tip)}); check one out in a terminal so its saves go somewhere.`,
+      });
+    }
+  }
+  return notices;
 }
 
 /**

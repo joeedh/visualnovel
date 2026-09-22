@@ -96,6 +96,12 @@ export interface RepoRef {
    * (a monorepo checkout, for example) whose history the project does not own.
    */
   owned: boolean;
+  /**
+   * The part is a submodule that is not checked out: the repo containing it records a gitlink
+   * there, but the directory has no `.git`, so nothing written under it reaches any history.
+   * `root` is then the part's own directory and `owned` is false.
+   */
+  missing?: true;
 }
 
 /** The lightweight structural snapshot the agent keeps in context. */
@@ -146,6 +152,17 @@ export interface LoadedWorkspace {
   inputs: LoadedInputs;
 }
 
+/** Whether the repository at `root` records a gitlink at `dir`, a directory inside it. */
+async function recordsGitlink(resolver: RepoResolver, root: string, dir: string): Promise<boolean> {
+  const rel = relative(root, resolve(dir)).split(sep).join('/');
+  if (rel === '' || rel.startsWith('..')) return false;
+  const links = await resolver
+    .open(root)
+    .gitlinks([rel])
+    .catch(() => []);
+  return links.some((link) => link.path === rel);
+}
+
 /** Bind a workspace to a project root; all paths are resolved through `ProjectPaths`. */
 export class Workspace {
   readonly paths: ProjectPaths;
@@ -170,7 +187,8 @@ export class Workspace {
    * Discovered through `git rev-parse`, never declared — a `repos:` block in `project.yaml`
    * would be a second source of truth, wrong the moment someone runs `git init` in `wiki/`.
    * Resolved on each call rather than cached, so a repository created after the workspace was
-   * opened is still reported.
+   * opened is still reported. A part that resolves to an already reported root is reported again
+   * only when that root records a gitlink at the part's directory, as a `missing` submodule.
    */
   async repos(): Promise<RepoRef[]> {
     const resolver = new RepoResolver();
@@ -183,9 +201,13 @@ export class Workspace {
     ] as const;
     for (const [role, dir] of parts) {
       const root = await resolver.rootOf(dir);
-      if (root === null || seen.has(root)) continue;
-      seen.add(root);
-      found.push({ role, root, owned: root === resolve(dir) });
+      if (root === null) continue;
+      if (!seen.has(root)) {
+        seen.add(root);
+        found.push({ role, root, owned: root === resolve(dir) });
+      } else if (await recordsGitlink(resolver, root, dir)) {
+        found.push({ role, root: resolve(dir), owned: false, missing: true });
+      }
     }
     return found;
   }

@@ -25,8 +25,13 @@ import {
   type Checkpoint,
   COMMIT_KEY_FORMAT,
   parseCommitKeys,
+  parseGitlinks,
+  parseRemoteBranches,
+  parseSubmodulePaths,
   type CommitKey,
+  type Gitlink,
   type HistoryEntry,
+  type RemoteBranch,
   type ResolvedPath,
 } from './parse.js';
 
@@ -555,6 +560,74 @@ export class Git {
     return parseStatusV2(
       await this.ok(['status', '--porcelain=v2', '--branch', '--untracked-files=all']),
     );
+  }
+
+  /**
+   * The nested repositories the index records, submodule or plain `git init` alike, optionally
+   * only those under `paths`. `.gitmodules` is not consulted, since a gitlink it does not map is
+   * still a nested repository.
+   */
+  async gitlinks(paths: string[] = []): Promise<Gitlink[]> {
+    const args = ['ls-files', '-s', '-z'];
+    if (paths.length > 0) args.push('--', ...paths);
+    return parseGitlinks(await this.ok(args));
+  }
+
+  /**
+   * The branch `.gitmodules` names for the submodule at `path`, or null when the file is absent or
+   * names none. Git's `.` (follow the superproject's branch) answers the branch checked out here.
+   */
+  async submoduleBranch(path: string): Promise<string | null> {
+    const names = await this.run([
+      'config',
+      '-z',
+      '-f',
+      '.gitmodules',
+      '--get-regexp',
+      '^submodule\\..*\\.path$',
+    ]);
+    if (names.code !== 0) return null;
+    const name = parseSubmodulePaths(names.stdout).get(path.replace(/\\/g, '/'));
+    if (name === undefined) return null;
+    const r = await this.run(['config', '-f', '.gitmodules', '--get', `submodule.${name}.branch`]);
+    const branch = r.code === 0 ? r.stdout.trim() : '';
+    if (branch === '') return null;
+    if (branch !== '.') return branch;
+    const own = await this.branch();
+    return own === 'HEAD' ? null : own;
+  }
+
+  /**
+   * True when HEAD names a commit rather than a branch, outside a rebase or other operation that
+   * detaches it on its own account. An unborn repository is on a branch.
+   */
+  async detached(): Promise<boolean> {
+    const r = await this.run(['symbolic-ref', '-q', 'HEAD']);
+    return r.code !== 0 && operationOf(await this.inProgress()) === null;
+  }
+
+  /** Whether `ancestor` is `descendant` or reachable from it. */
+  async isAncestor(ancestor: string, descendant: string): Promise<boolean> {
+    const r = await this.run(['merge-base', '--is-ancestor', ancestor, descendant]);
+    if (r.code === 0) return true;
+    if (r.code === 1) return false;
+    throw new GitError(`git merge-base failed: ${r.stderr.trim() || r.stdout.trim()}`);
+  }
+
+  /** The remote-tracking branches whose history contains `sha`, leaving out each remote's `HEAD`. */
+  async remoteBranchesContaining(sha: string): Promise<RemoteBranch[]> {
+    return parseRemoteBranches(
+      await this.ok(['for-each-ref', '--contains', sha, '--format=%(refname)', 'refs/remotes']),
+    );
+  }
+
+  /**
+   * Puts HEAD on `name`, creating the branch or moving it to HEAD (`checkout -B`); the worktree
+   * is left as it is. A moved branch loses whatever it held that HEAD does not, so the caller
+   * must first have shown that `name` is absent or an ancestor of HEAD.
+   */
+  async checkoutBranch(name: string): Promise<void> {
+    await this.ok(['checkout', '-q', '-B', name]);
   }
 
   /**

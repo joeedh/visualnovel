@@ -10,6 +10,7 @@ import {
   kindOf,
   NO_UPSTREAM,
   NOT_OWNED,
+  notCheckedOut,
   SYNC_UNFINISHED,
   UNSAVED_EDITS,
   type DecidedFile,
@@ -423,7 +424,11 @@ export function conversationAction(thread: string | undefined): Offer {
 // -----------------------------------------------------------------------------
 
 /** What every recovery control says over a repository the app does not write history in. */
-const notOwned = (state: HistoryState) => (ownedRepo(state) ? undefined : NOT_OWNED);
+function notOwned(state: HistoryState): string | undefined {
+  const entry = state.repos.find((r) => r.role === state.repo);
+  if (entry?.missing) return notCheckedOut(entry.root);
+  return ownedRepo(state) ? undefined : NOT_OWNED;
+}
 
 /** Whether a rebase, merge or revert is in progress, as the sentence the commands refuse with. */
 function unfinished(status: RepoStatus | undefined): string | undefined {
@@ -961,6 +966,10 @@ export function stripSentence(
 ): string {
   if (!entry) return '';
   const parts = [ROLE_SAYS[entry.role]];
+  if (entry.missing) {
+    parts.push('not checked out', 'nothing written there is saved');
+    return parts.join(' · ');
+  }
   if (!entry.owned) {
     parts.push(`inside ${entry.root}`, 'the app does not write history here');
     return parts.join(' · ');
@@ -1041,8 +1050,10 @@ export function dayAndTime(iso: string, now: Date = new Date()): string {
 /** What an empty list says, given why it is empty. */
 export function emptySentence(state: HistoryState): string {
   if (state.repos.length === 0) return 'This project is not under version control yet.';
+  const entry = state.repos.find((r) => r.role === state.repo);
+  if (entry?.missing) return notCheckedOut(entry.root);
   if (!ownedRepo(state)) {
-    const root = state.repos.find((r) => r.role === state.repo)?.root ?? '';
+    const root = entry?.root ?? '';
     return `This project sits inside ${root}, which the app does not write history to. Showing that repository read-only.`;
   }
   if (filtering(state.filter)) {

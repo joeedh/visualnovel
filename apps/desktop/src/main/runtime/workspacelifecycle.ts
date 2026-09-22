@@ -19,13 +19,16 @@ import {
 import { sameApprovals } from '../workspace/approvals.js';
 import { acquireWorkspace, focusOwner } from '../bootstrap/instancelock.js';
 import {
+  adoptSubmodules,
   commitScaffolding,
   ensureRepo,
   openWorkspace,
+  ownsRepo,
   recentWorkspaces,
   rememberWorkspace,
   seedWorkspace,
   writeScaffolding,
+  type SubmoduleNotice,
 } from '../workspace/workspace.js';
 import { forgetFiles } from '../workspace/filecache.js';
 import { liveDocs } from '../workspace/livedocs.js';
@@ -196,14 +199,20 @@ export async function openRepos(ctx: AppContext): Promise<void> {
   // an explicit `workspace.open` — a project reached from the recents list or `VN_PROJECT` gets
   // its layout templates, its merge attribute and its ignore line here.
   const scaffolded = await writeScaffolding(root);
+  let submodules: SubmoduleNotice[] = [];
   // Everything down to the sweep spawns `git`, and on a machine without it the first call
   // would throw before any window exists, so the app would never appear. Branching on the
   // doctor's finding beats a try/catch, which would have to guess which failures mean "no git".
   if (gitHealth().ok) {
     await ensureRepo(root);
+    // Before `repos()`, so a submodule it puts on a branch is committed to from the first act.
+    // A project inside a larger repo is skipped, for the reason `commitScaffolding` skips it.
+    if (await ownsRepo(root)) submodules = await adoptSubmodules(root);
     const refs = await new Workspace(root).repos();
     for (const ref of refs) {
       if (ref.owned) ctx.ownedRepos.push(openGit(ref.root));
+      else if (ref.missing)
+        console.warn(`[vnstudio] ${ref.root} is a submodule that is not checked out`);
       else console.warn(`[vnstudio] ${ref.role} sits inside ${ref.root}; not committing there`);
     }
     // Before the sweep, so what was just written lands under a subject saying what it is
@@ -218,7 +227,18 @@ export async function openRepos(ctx: AppContext): Promise<void> {
   // into that commit under a subject that has nothing to do with it.
   await notifications().open();
   await noticeMissingGit();
+  await noticeSubmodules(submodules);
   await noticeMissingKeys(ctx);
+}
+
+/** Files what `adoptSubmodules` found, once per sentence, as `noticeMissingGit` does. */
+async function noticeSubmodules(notices: SubmoduleNotice[]): Promise<void> {
+  if (notices.length === 0) return;
+  const already = new Set((await notifications().list()).map((note) => note.message));
+  for (const { level, message } of notices) {
+    if (already.has(message)) continue;
+    await notifications().post({ category: 'workspace', level, source: 'main', message });
+  }
 }
 
 /**

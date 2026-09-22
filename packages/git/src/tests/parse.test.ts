@@ -1,9 +1,12 @@
 import {
   parseChanges,
   parseCheckpoints,
+  parseGitlinks,
   parseHistory,
   parseNumstat,
+  parseRemoteBranches,
   parseStatusV2,
+  parseSubmodulePaths,
   parseTrailers,
   slugOf,
   uniqueSlug,
@@ -194,5 +197,46 @@ describe('slugOf', () => {
   it('suffixes a taken slug', () => {
     expect(uniqueSlug('Act two', new Set(['act-two', 'act-two-2']))).toBe('act-two-3');
     expect(uniqueSlug('Act two', new Set())).toBe('act-two');
+  });
+});
+
+describe('parseGitlinks', () => {
+  it('keeps mode 160000 entries only, and reads a path with a tab or a newline whole', () => {
+    const a = 'a'.repeat(40);
+    const b = 'b'.repeat(40);
+    const stdout = [
+      `100644 ${'c'.repeat(40)} 0\tdoc.md`,
+      `160000 ${a} 0\twiki`,
+      `160000 ${b} 0\tassets/odd\tname\nhere`,
+      '',
+    ].join('\0');
+    expect(parseGitlinks(stdout)).toEqual([
+      { path: 'wiki', sha: a },
+      { path: 'assets/odd\tname\nhere', sha: b },
+    ]);
+    expect(parseGitlinks('')).toEqual([]);
+  });
+});
+
+describe('parseSubmodulePaths', () => {
+  it('maps each path to its submodule name, which may contain dots', () => {
+    const stdout = 'submodule.wiki.path\nwiki\0submodule.story.bible.path\nlore/bible/\0';
+    expect(parseSubmodulePaths(stdout)).toEqual(
+      new Map([
+        ['wiki', 'wiki'],
+        ['lore/bible', 'story.bible'],
+      ]),
+    );
+  });
+});
+
+describe('parseRemoteBranches', () => {
+  it('splits remote from branch and leaves out a remote’s HEAD', () => {
+    const stdout =
+      'refs/remotes/origin/HEAD\nrefs/remotes/origin/main\nrefs/remotes/up/feature/x\n';
+    expect(parseRemoteBranches(stdout)).toEqual([
+      { remote: 'origin', branch: 'main' },
+      { remote: 'up', branch: 'feature/x' },
+    ]);
   });
 });

@@ -17,6 +17,8 @@ export interface RepoEntry {
   root: string;
   /** False for a repository the project merely sits inside, where commit-on-save never writes. */
   owned: boolean;
+  /** A submodule that is not checked out; `root` is its empty directory, and `owned` is false. */
+  missing?: true;
 }
 
 /**
@@ -26,6 +28,17 @@ export interface RepoEntry {
  */
 export const NOT_OWNED =
   'This project sits inside a repository that is not its own; the app does not write history there.';
+
+/**
+ * Builds the sentence for a submodule that is not checked out, used by the open-time notice and
+ * by the History pane. `dir` is the directory as the caller wants it shown.
+ */
+export function notCheckedOut(dir: string): string {
+  return (
+    `${dir} is a submodule that is not checked out, so nothing written there is saved. ` +
+    'Run git submodule update --init in the project, then reopen it.'
+  );
+}
 
 /**
  * What every command that plans from the worktree says while a rebase, merge or revert is in

@@ -67,6 +67,7 @@ const PROJECT: RepoEntry = { role: 'project', root: 'C:\\stories\\rooftop', owne
 const WIKI: RepoEntry = { role: 'wiki', root: 'C:/stories/rooftop/wiki', owned: true };
 const BASE: RepoEntry = { role: 'base', root: 'C:/stories/rooftop/wiki/base', owned: true };
 const FOREIGN: RepoEntry = { role: 'project', root: 'C:/stories', owned: false };
+const MISSING: RepoEntry = { ...WIKI, owned: false, missing: true };
 
 const state = (name: string): HistoryState => SITUATIONS.find((s) => s.name === name)!.state;
 
@@ -141,6 +142,12 @@ describe('stripSentence', () => {
     );
     expect(stripSentence(undefined, clean)).toBe('');
   });
+
+  it('says a submodule that is not checked out keeps nothing', () => {
+    expect(stripSentence(MISSING, undefined)).toBe(
+      'Story bible · not checked out · nothing written there is saved',
+    );
+  });
 });
 
 describe('statusSentence', () => {
@@ -165,6 +172,9 @@ describe('emptySentence', () => {
   it('explains an empty list by what emptied it', () => {
     expect(emptySentence(state('no-repo'))).toBe('This project is not under version control yet.');
     expect(emptySentence({ ...state('one-repo'), repos: [FOREIGN] })).toContain('read-only');
+    expect(
+      emptySentence({ ...state('one-repo'), repos: [PROJECT, MISSING], repo: 'wiki' }),
+    ).toContain('git submodule update --init');
     expect(emptySentence({ ...state('one-repo'), saves: [] })).toBe(
       'Every save will appear here. Edit anything and it is saved.',
     );

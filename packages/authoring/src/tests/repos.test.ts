@@ -76,6 +76,29 @@ describe('Workspace.repos', () => {
     }
   });
 
+  it('reports a gitlink with no checkout as a missing wiki, which the project does not own', async () => {
+    const dir = await tempDir();
+    try {
+      const wiki = join(dir, 'wiki');
+      await fs.mkdir(wiki);
+      await initRepo(dir);
+      await initRepo(wiki);
+      await fs.writeFile(join(wiki, 'note.md'), 'note\n');
+      await openGit(wiki).commit({ message: 'wiki', paths: ['-A'] });
+      await openGit(dir).commit({ message: 'record the wiki', paths: ['-A'] });
+      // What a clone without `--recurse-submodules` leaves: the gitlink, and an empty directory
+      await fs.rm(wiki, { recursive: true, force: true });
+      await fs.mkdir(wiki);
+
+      expect(await new Workspace(dir).repos()).toEqual([
+        { role: 'project', root: dir, owned: true },
+        { role: 'wiki', root: wiki, owned: false, missing: true },
+      ]);
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('reports nothing outside a work tree rather than throwing', async () => {
     const dir = await tempDir();
     try {

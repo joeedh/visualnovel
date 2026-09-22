@@ -1,4 +1,5 @@
-import { CHECKPOINT_PREFIX, slugOf } from '../index.js';
+import { join } from 'node:path';
+import { CHECKPOINT_PREFIX, openGit, slugOf } from '../index.js';
 import { sh, tempRepo, write } from './helpers.js';
 
 /** Three commits: a text file and a binary, then an edit with trailers, then a rename. */
@@ -241,6 +242,130 @@ describe('checkpoints', () => {
         const r = await sh(dir, ['check-ref-format', `${CHECKPOINT_PREFIX}${slugOf(name)}`]);
         expect([name, r.code]).toEqual([name, 0]);
       }
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+/**
+ * A project with a real submodule at `wiki/`, added from a sibling repository. `submodule add`
+ * leaves it on the sibling's branch, with `origin` pointing back at the sibling.
+ */
+async function withSubmodule() {
+  const upstream = await tempRepo();
+  const project = await tempRepo();
+  const cleanup = async () => {
+    await project.cleanup();
+    await upstream.cleanup();
+  };
+  await write(upstream.dir, 'note.md', 'first\n');
+  const first = (await upstream.git.commit({ message: 'wiki one', paths: ['-A'] }))!;
+  await write(project.dir, 'doc.md', 'doc\n');
+  await project.git.commit({ message: 'project', paths: ['-A'] });
+  const added = await sh(project.dir, [
+    '-c',
+    'protocol.file.allow=always',
+    'submodule',
+    'add',
+    upstream.dir.replace(/\\/g, '/'),
+    'wiki',
+  ]);
+  expect(added.code).toBe(0);
+  await project.git.commit({ message: 'add the wiki', paths: ['-A'] });
+  const wiki = openGit(join(project.dir, 'wiki'));
+  await wiki.config('user.email', 'test@example.com');
+  await wiki.config('user.name', 'Test');
+  return { project, upstream, wiki, first, cleanup };
+}
+
+describe('submodule reads', () => {
+  it('lists gitlinks from the index, and narrows them by path', async () => {
+    const { project, first, cleanup } = await withSubmodule();
+    try {
+      expect(await project.git.gitlinks()).toEqual([{ path: 'wiki', sha: first }]);
+      expect(await project.git.gitlinks(['wiki'])).toEqual([{ path: 'wiki', sha: first }]);
+      expect(await project.git.gitlinks(['doc.md'])).toEqual([]);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('reads the branch `.gitmodules` names, by path, and follows `.` to the project’s branch', async () => {
+    const { project, cleanup } = await withSubmodule();
+    try {
+      expect(await project.git.submoduleBranch('wiki')).toBeNull();
+      await sh(project.dir, ['config', '-f', '.gitmodules', 'submodule.wiki.branch', 'trunk']);
+      expect(await project.git.submoduleBranch('wiki')).toBe('trunk');
+      await sh(project.dir, ['config', '-f', '.gitmodules', 'submodule.wiki.branch', '.']);
+      expect(await project.git.submoduleBranch('wiki')).toBe(await project.git.branch());
+      expect(await project.git.submoduleBranch('elsewhere')).toBeNull();
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('answers a plain nested `git init` the same shape, with no `.gitmodules`', async () => {
+    const { git, dir, cleanup } = await tempRepo();
+    try {
+      await sh(dir, ['init', '-q', 'wiki']);
+      await sh(join(dir, 'wiki'), [
+        '-c',
+        'user.name=T',
+        '-c',
+        'user.email=t@t',
+        'commit',
+        '-q',
+        '--allow-empty',
+        '-m',
+        'x',
+      ]);
+      await git.commit({ message: 'record the wiki', paths: ['-A'] });
+      const sha = await openGit(join(dir, 'wiki')).head();
+      expect(await git.gitlinks()).toEqual([{ path: 'wiki', sha }]);
+      expect(await git.submoduleBranch('wiki')).toBeNull();
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('tells a detached HEAD from a branch, and an unborn repository from either', async () => {
+    const { wiki, cleanup } = await withSubmodule();
+    const unborn = await tempRepo();
+    try {
+      expect(await wiki.detached()).toBe(false);
+      await sh(wiki.root, ['checkout', '-q', '--detach']);
+      expect(await wiki.detached()).toBe(true);
+      expect(await unborn.git.detached()).toBe(false);
+    } finally {
+      await cleanup();
+      await unborn.cleanup();
+    }
+  });
+
+  it('answers ancestry by exit code', async () => {
+    const { wiki, first, cleanup } = await withSubmodule();
+    try {
+      await write(wiki.root, 'note.md', 'second\n');
+      const second = (await wiki.commit({ message: 'wiki two', paths: ['-A'] }))!;
+      expect(await wiki.isAncestor(first, second)).toBe(true);
+      expect(await wiki.isAncestor(second, first)).toBe(false);
+      expect(await wiki.isAncestor(first, first)).toBe(true);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('names the remote branches containing a commit, and puts a detached HEAD on a branch', async () => {
+    const { upstream, wiki, first, cleanup } = await withSubmodule();
+    try {
+      const branch = await upstream.git.branch();
+      expect(await wiki.remoteBranchesContaining(first)).toEqual([{ remote: 'origin', branch }]);
+
+      await sh(wiki.root, ['checkout', '-q', '--detach']);
+      await wiki.checkoutBranch('saves');
+      expect(await wiki.branch()).toBe('saves');
+      expect(await wiki.head()).toBe(first);
     } finally {
       await cleanup();
     }

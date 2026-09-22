@@ -1,7 +1,7 @@
 /**
  * Pure parsers for the machine-readable git output the history reads use: `log` with
- * `--numstat`, `diff-tree --raw --numstat`, `status --porcelain=v2 --branch` and the
- * checkpoint tag listing. Each takes the command's stdout and nothing else, so the shapes can
+ * `--numstat`, `diff-tree --raw --numstat`, `status --porcelain=v2 --branch`, the checkpoint
+ * tag listing, and the index and `.gitmodules` reads that find submodules. Each takes the command's stdout and nothing else, so the shapes can
  * be tested without a repository.
  */
 import { createHash } from 'node:crypto';
@@ -380,6 +380,60 @@ export function slugOf(name: string): string {
     .replace(/^[-.]+|[-.]+$/g, '')
     .replace(/\.lock$/, '');
   return slug.length > 0 ? slug : 'checkpoint';
+}
+
+/** A nested repository the index records as a commit rather than as files. */
+export interface Gitlink {
+  /** Repo-relative and forward-slashed, as the index spells it. */
+  path: string;
+  /** The nested repository's commit the index holds. */
+  sha: string;
+}
+
+/** Mode `160000`: an index entry that is another repository's commit. */
+const GITLINK_MODE = '160000';
+
+/** Parses `ls-files -s -z`, keeping only the gitlinks. */
+export function parseGitlinks(stdout: string): Gitlink[] {
+  const out: Gitlink[] = [];
+  for (const record of stdout.split('\0')) {
+    const m = /^(\d{6}) ([0-9a-f]+) \d\t(.+)$/s.exec(record);
+    if (m && m[1] === GITLINK_MODE) out.push({ path: m[3]!, sha: m[2]! });
+  }
+  return out;
+}
+
+/**
+ * Parses `config -z --get-regexp '^submodule\..*\.path$'` into path → submodule name. The keys
+ * are by name, and a name may itself contain dots, so the name is everything between the first
+ * `submodule.` and the last `.path`.
+ */
+export function parseSubmodulePaths(stdout: string): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const record of stdout.split('\0')) {
+    const m = /^submodule\.(.+)\.path\n(.+)$/s.exec(record);
+    if (m) out.set(m[2]!.replace(/\/+$/, ''), m[1]!);
+  }
+  return out;
+}
+
+/** One remote-tracking branch, split into the remote and the branch name on it. */
+export interface RemoteBranch {
+  remote: string;
+  branch: string;
+}
+
+/**
+ * Parses `for-each-ref --format=%(refname) refs/remotes`, one full refname per line. A remote's
+ * `HEAD` is a pointer at one of its branches rather than a branch, so it is left out.
+ */
+export function parseRemoteBranches(stdout: string): RemoteBranch[] {
+  const out: RemoteBranch[] = [];
+  for (const line of stdout.split('\n')) {
+    const m = /^refs\/remotes\/([^/]+)\/(.+)$/.exec(line.trim());
+    if (m && m[2] !== 'HEAD') out.push({ remote: m[1]!, branch: m[2]! });
+  }
+  return out;
 }
 
 /** `slugOf(name)`, with a numeric suffix when `taken` already holds it. */

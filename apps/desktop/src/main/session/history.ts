@@ -28,6 +28,7 @@ import { hasConflictMarkers, type DiffLine } from '@vn/util';
 import {
   blobUrl,
   kindOf,
+  notCheckedOut,
   readableConflict,
   type BlobRead,
   type DecidedFile,
@@ -143,6 +144,14 @@ export function slotChanges(before: Buffer | null, after: Buffer | null): SlotCh
   return out;
 }
 
+/** One repository's handle, as `HistoryPart.repo` answers it. */
+export interface Found {
+  git: Git;
+  root: string;
+  owned: boolean;
+  missing: boolean;
+}
+
 export class HistoryPart {
   constructor(private readonly session: WorkspaceSession) {}
 
@@ -154,11 +163,19 @@ export class HistoryPart {
   /** Every repository the project spans. */
   async repos(): Promise<RepoEntry[]> {
     const refs = await new Workspace(this.session.dir).repos();
-    return refs.map((r) => ({ role: r.role, root: r.root, owned: r.owned }));
+    return refs.map((r) => ({
+      role : r.role,
+      root : r.root,
+      owned: r.owned,
+      ...(r.missing ? { missing: r.missing } : {}),
+    }));
   }
 
-  /** The handle for one role, or null when the project has no repository in that role. */
-  async repo(role: RepoRole): Promise<{ git: Git; root: string; owned: boolean } | null> {
+  /**
+   * The handle for one role, or null when the project has no repository in that role. A `missing`
+   * submodule's handle would answer for the repository around it, so callers check the flag.
+   */
+  async repo(role: RepoRole): Promise<Found | null> {
     const ref = (await this.repos()).find((r) => r.role === role);
     if (!ref) return null;
     let git = this.handles.get(ref.root);
@@ -166,12 +183,13 @@ export class HistoryPart {
       git = openGit(ref.root);
       this.handles.set(ref.root, git);
     }
-    return { git, root: ref.root, owned: ref.owned };
+    return { git, root: ref.root, owned: ref.owned, missing: ref.missing === true };
   }
 
-  async need(role: RepoRole): Promise<{ git: Git; root: string; owned: boolean }> {
+  async need(role: RepoRole): Promise<Found> {
     const found = await this.repo(role);
     if (!found) throw new Error(`This project has no ${role} repository.`);
+    if (found.missing) throw new Error(notCheckedOut(found.root));
     return found;
   }
 
@@ -331,7 +349,7 @@ export class HistoryPart {
   /** The bytes `vngit://` serves: a blob by id, or a path at a commit. Null when neither exists. */
   async bytesAt(role: RepoRole, ref: string, path?: string): Promise<Buffer | null> {
     const found = await this.repo(role);
-    if (!found) return null;
+    if (!found || found.missing) return null;
     return path === undefined ? found.git.catBlob(ref) : found.git.blob(ref, path);
   }
 

@@ -20,7 +20,7 @@ import { sceneLoadProblem } from '@vn/model';
 import { checkDocWrite, inSecretsDir, readDocFile, SECRETS_REFUSAL, writeDocFile } from '@vn/store';
 import { writeFileAtomic } from '@vn/util';
 import { ANY_DOCUMENT, UNDO_EXCLUDES, covers } from '../../shared/affects.js';
-import { NOT_OWNED, type RepoRole } from '../../shared/history.js';
+import { NOT_OWNED, notCheckedOut, type RepoRole } from '../../shared/history.js';
 import { syncRefusal } from '../commands/syncstate.js';
 import { fileCache } from '../workspace/filecache.js';
 import { DOC_WRITERS, entityDiagnostic, relPath } from './core.js';
@@ -65,6 +65,7 @@ export class RecoveryPart {
     if (busy) return refuse(`${busy} is still running; wait for it to finish.`);
     const found = await this.session.historyPart.repo(role);
     if (!found) return refuse(`This project has no ${role} repository.`);
+    if (found.missing) return refuse(notCheckedOut(found.root));
     if (!found.owned) return refuse(NOT_OWNED);
     return { git: found.git, root: found.root };
   }

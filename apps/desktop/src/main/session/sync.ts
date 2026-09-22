@@ -28,6 +28,7 @@ import {
 } from '@vn/git';
 import {
   NOT_OWNED,
+  notCheckedOut,
   readableConflict,
   SYNC_UNFINISHED,
   type RepoRole,
@@ -82,6 +83,7 @@ export class SyncPart {
     if (busy) return refuse(`${busy} is still running; wait for it to finish.`);
     const found = await this.session.historyPart.repo(role);
     if (!found) return refuse(`This project has no ${role} repository.`);
+    if (found.missing) return refuse(notCheckedOut(found.root));
     if (!found.owned) return refuse(NOT_OWNED);
     return { git: found.git, root: found.root };
   }

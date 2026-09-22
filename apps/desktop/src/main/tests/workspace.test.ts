@@ -1,3 +1,4 @@
+import { execFile } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -12,6 +13,7 @@ import {
   RECENT_MAX,
   SESSION_IGNORE,
   START_SCENE,
+  adoptSubmodules,
   commitScaffolding,
   createRoot,
   createWorkspace,
@@ -145,6 +147,89 @@ describe('ensureRepo', () => {
     // No second `.git`: `git init` here would carve a repo out of one that already owns it.
     expect(await readdir(nested)).toEqual(['project.yaml']);
     expect((await openGit(root).log()).map((c) => c.subject)).toEqual(['Existing project files']);
+  }, 20_000);
+});
+
+/** Runs git directly, for the verbs the wrapper does not expose (`submodule add`, `checkout`). */
+function sh(dir: string, args: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    execFile('git', args, { cwd: dir, windowsHide: true }, (err) =>
+      err ? reject(err) : resolve(),
+    );
+  });
+}
+
+describe('adoptSubmodules', () => {
+  let root: string;
+  let project: string;
+  let wikiDir: string;
+  /** The branch the upstream checked out, which `submodule add` carries into the submodule. */
+  let branch: string;
+
+  beforeEach(async () => {
+    root = await realpath(await mkdtemp(join(tmpdir(), 'vn-submodule-')));
+    const upstream = join(root, 'bible');
+    project = join(root, 'story');
+    wikiDir = join(project, 'wiki');
+    await mkdir(upstream);
+    await writeFile(join(upstream, 'note.md'), 'first\n');
+    branch = await ensureRepo(upstream).then((git) => git.branch());
+    await mkdir(project);
+    await writeFile(join(project, 'project.yaml'), 'title: Story\n');
+    await ensureRepo(project);
+    const url = upstream.replace(/\\/g, '/');
+    await sh(project, ['-c', 'protocol.file.allow=always', 'submodule', 'add', url, 'wiki']);
+    await openGit(project).commit({ message: 'add the wiki', paths: ['-A'] });
+    await openGit(wikiDir).config('user.email', 'test@example.com');
+    await openGit(wikiDir).config('user.name', 'Test');
+  }, 30_000);
+
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true, maxRetries: 3 });
+  });
+
+  it('says nothing about a submodule on a branch', async () => {
+    expect(await adoptSubmodules(project)).toEqual([]);
+  }, 20_000);
+
+  it('reports a submodule that is not checked out, and does not initialize it', async () => {
+    await rm(wikiDir, { recursive: true, force: true, maxRetries: 3 });
+    await mkdir(wikiDir);
+    const notices = await adoptSubmodules(project);
+    expect(notices).toEqual([
+      { level: 'warn', message: expect.stringContaining('wiki/ is a submodule') },
+    ]);
+    expect(await readdir(wikiDir)).toEqual([]);
+  }, 20_000);
+
+  it('puts a detached submodule on its branch when HEAD already holds the branch', async () => {
+    const wiki = openGit(wikiDir);
+    await sh(wikiDir, ['checkout', '-q', '--detach']);
+    await writeFile(join(wikiDir, 'note.md'), 'saved while detached\n');
+    const head = await wiki.commit({ message: 'detached save', paths: ['-A'] });
+
+    const notices = await adoptSubmodules(project);
+    expect(await wiki.branch()).toBe(branch);
+    expect(await wiki.head()).toBe(head);
+    expect(notices).toEqual([
+      { level: 'info', message: expect.stringContaining(`its saves now go to ${branch}`) },
+    ]);
+  }, 20_000);
+
+  it('leaves a detached submodule alone when its branch has moved on without it', async () => {
+    const wiki = openGit(wikiDir);
+    await writeFile(join(wikiDir, 'note.md'), 'on the branch\n');
+    await wiki.commit({ message: 'branch save', paths: ['-A'] });
+    await sh(wikiDir, ['checkout', '-q', '--detach', 'HEAD~1']);
+    await writeFile(join(wikiDir, 'note.md'), 'somewhere else\n');
+    const head = (await wiki.commit({ message: 'detached save', paths: ['-A'] }))!;
+
+    const notices = await adoptSubmodules(project);
+    expect(await wiki.detached()).toBe(true);
+    expect(await wiki.head()).toBe(head);
+    expect(notices).toEqual([
+      { level: 'warn', message: expect.stringContaining(`${branch} has moved on without it`) },
+    ]);
   }, 20_000);
 });
 
