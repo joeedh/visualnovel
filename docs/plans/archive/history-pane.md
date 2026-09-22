@@ -25,27 +25,43 @@
 <!-- tocstop -->
 
 Implements the pane specified in
-[`../research/git-editor-pane.md`](../research/git-editor-pane.md). The report is the
+[`../research/git-editor-pane.md`](../../research/git-editor-pane.md). The report is the
 authority on what the pane shows, says and refuses; this plan is the authority on the
 order the work lands in, what is decided before the first commit, and what is decided
 later against something running. Where the two disagree, fix the report, since the plan
 cites it rather than repeating it.
 
-Status: planned. Branch `git-editor`. Pressure-tested 2026-09-20; the findings and what
-became of each are in [Pressure test](#pressure-test).
+Status: **shipped** 2026-09-21 on branch `git-editor`, in eight stage commits.
+Pressure-tested 2026-09-20; the findings and what became of each are in
+[Pressure test](#pressure-test).
+
+## As shipped
+
+Every stage landed as planned, each with an "As built" note under its heading recording
+the particulars: what was renamed, what was decided at the three UX reviews, and what the
+evidence projects turned up that the plan had not foreseen. The largest of those was Stage
+7's: the app writes its own logs while a rebase runs, and git refuses to replay over them,
+so the rebase verbs absorb such a stop; `commands.jsonl` had no merge attribute, so every
+two-author sync collided on it; and a replayed save checks out its own `.gitattributes`,
+so the rules are copied to the repository's `info/attributes`. The pane as shipped is
+written up in [`../../reference/history-pane.md`](../../reference/history-pane.md), and
+the author-facing guide is
+[`../../guides/collaborating.md`](../../guides/collaborating.md). Left as follow-ups: a
+word diff between the two sides in "Open both", and the stopped-sync "never checked out"
+strip entry that waits on `RepoRef.missing` from the wiki-submodule plan.
 
 ## Scope
 
 - In: the `@vn/git` additions, the `git.*` command set, the pane (list, status, change,
   checkpoint, sync and conflict views), the agent's tool wrappers, and the docs.
 - Out, each with its own future plan: viewing the project read-only at a save (report,
-  [Deferred](../research/git-editor-pane.md#deferred-viewing-the-project-at-a-save));
+  [Deferred](../../research/git-editor-pane.md#deferred-viewing-the-project-at-a-save));
   history menus inside the Wiki and Script panes (report,
-  [Future](../research/git-editor-pane.md#future-history-inside-the-wiki-and-script-panes)).
+  [Future](../../research/git-editor-pane.md#future-history-inside-the-wiki-and-script-panes)).
   This plan keeps them open by building `git.blob` and `git.history(path=…)` as general
   reads and by carrying a save's sha on every row in a form `view.open` can later take.
 - Out for good: rewriting history a remote already holds, branches, detached HEAD, a git
-  library (report, [Non-goals](../research/git-editor-pane.md#non-goals)).
+  library (report, [Non-goals](../../research/git-editor-pane.md#non-goals)).
 
 ## Decided before the work starts
 
@@ -63,7 +79,7 @@ pressure test found a gap.
 | A checkpoint is an annotated tag at `refs/tags/vn/checkpoint/<slug>`              | The author's name is the tag message's first line; the slug is derived from it. `push` uses `--follow-tags`; `git.pull` re-points a checkpoint on a rewritten save through `rewrote` |
 | No commit is made in a repository while a rebase, merge or revert is in progress  | `Committer` skips such a repo; `Git.commit` refuses; `git.resolve`, `git.continueSync`, `git.abandonSync` are `commitsItself`                                                        |
 | Command ids and props are the report's tables                                     | The catalog is public to the palette, CDP and the agent, so a rename after landing is a breaking change                                                                              |
-| Every string in the pane uses the author's vocabulary                             | The report's [vocabulary table](../research/git-editor-pane.md#the-vocabulary-the-pane-uses)                                                                                         |
+| Every string in the pane uses the author's vocabulary                             | The report's [vocabulary table](../../research/git-editor-pane.md#the-vocabulary-the-pane-uses)                                                                                      |
 | Every worktree-changing command refuses while `session.busy()`                    | The `project.installPages` pattern, `apps/desktop/src/main/commands/project.ts:462-463`                                                                                              |
 | The pure rules both hosts need live in `@vn/git`                                  | `@vn/authoring` may not import the desktop app; `makerOf`, `statusCause`, the row and change types, and `revertDryRun` are package code                                              |
 
@@ -111,11 +127,11 @@ than once at the end. Three reviews, each a gate on its stage:
   pane through `node scripts/vn-cdp.mjs "view.open(editor='history')"`, and take
   screenshots over CDP at 320, 560 and 900 px. Then invoke the `frontend-design` skill
   with the screenshots, the report's
-  [Visual design](../research/git-editor-pane.md#visual-design) section and the token file
-  (`apps/desktop/renderer/styles/tokens.css`), and ask it to review against that design:
-  what reads as a generic git client, where the type or the colour leaves the token set,
-  where a control lacks a tooltip or a refused state, and what an author who has never
-  seen git would misread.
+  [Visual design](../../research/git-editor-pane.md#visual-design) section and the token
+  file (`apps/desktop/renderer/styles/tokens.css`), and ask it to review against that
+  design: what reads as a generic git client, where the type or the colour leaves the
+  token set, where a control lacks a tooltip or a refused state, and what an author who
+  has never seen git would misread.
 - **What happens to the findings.** Each is fixed in the stage, or recorded under the
   stage with the reason it is not. The review leaves a trace in this file either way, on
   the same rule the pressure test follows.
@@ -274,9 +290,9 @@ given a full refname creates `refs/tags/refs/tags/…`. `Git.log` is untouched.
   type, the `Maker` union, the `Change` type and the structured `Diff` variants the
   report's kind table names, and two pure functions with tests:
   `makerOf(commit, localName)` (the report's
-  [maker table](../research/git-editor-pane.md#the-history-list)) and
+  [maker table](../../research/git-editor-pane.md#the-history-list)) and
   `statusCause(porcelain, pendingBatch, inProgress)` (the report's
-  [status table](../research/git-editor-pane.md#the-status-view)).
+  [status table](../../research/git-editor-pane.md#the-status-view)).
   `apps/desktop/src/shared/history.ts` re-exports the types and adds `kindOf(path)` for
   the grouping, since only the desktop groups.
 - `apps/desktop/src/main/commands/git.ts`: `git.repos`, `git.history`, `git.changes`,
@@ -528,7 +544,7 @@ given a full refname creates `refs/tags/refs/tags/…`. `Git.log` is untouched.
 - `git.save`, `git.checkpoint`, `git.dropCheckpoint`, `git.takeBack`, `git.goBack`,
   `git.restoreFile` in `apps/desktop/src/main/commands/git.ts`, with `check`, `affects`,
   `confirm` and refusal sentences as the report's
-  [writes table](../research/git-editor-pane.md#writes) has them, and these
+  [writes table](../../research/git-editor-pane.md#writes) has them, and these
   clarifications:
     - `git.save` is `mutating: true`, checks that the tree is dirty, and returns
       `{message, subject}` with the author's text as `subject`. It calls nothing on the
@@ -673,7 +689,7 @@ given a full refname creates `refs/tags/refs/tags/…`. `Git.log` is untouched.
   inverted `--ours`/`--theirs` during a rebase, `rm` for a deleted side, and "Open both"
   through two read-only Wiki panes.
 - Notifications: the report's
-  [table](../research/git-editor-pane.md#what-the-notification-box-says).
+  [table](../../research/git-editor-pane.md#what-the-notification-box-says).
 - A test drives a rebase conflict end to end: two `makeProject({ git: true })` projects
   and a bare repository at a filesystem path as their shared remote (a plain path needs no
   `protocol.file.allow`), local `user.name`/`user.email` in each so global config is never
@@ -757,10 +773,10 @@ given a full refname creates `refs/tags/refs/tags/…`. `Git.log` is untouched.
   list this plan built against, and its stale `project.ts:353-354` citation becomes
   `:462-463`.
 - Finishing checklist per
-  [`../reference/conventions.md`](../reference/conventions.md#finishing-a-plan): comment
-  audit over every touched file, no `CLAUDENOTE:` left, `pnpm lint:comments` clean,
-  `pnpm gen:uxmodel`, `pnpm gen:command-table` and the anchor sweep re-run, `todos.md`
-  untouched (its item was the report and is already checked).
+  [`../reference/conventions.md`](../../reference/conventions.md#finishing-a-plan):
+  comment audit over every touched file, no `CLAUDENOTE:` left, `pnpm lint:comments`
+  clean, `pnpm gen:uxmodel`, `pnpm gen:command-table` and the anchor sweep re-run,
+  `todos.md` untouched (its item was the report and is already checked).
 
 ## Risks specific to the build order
 

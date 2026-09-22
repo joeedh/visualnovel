@@ -205,7 +205,7 @@ project guidance that the agent follows.
 
 ## Tools
 
-`packages/authoring/src/tools.ts` holds the registry of 49 tools. **M** marks
+`packages/authoring/src/tools/` holds the registry of 53 tools. **M** marks
 `mutating: true` (plan mode blocks it); **C** marks `confirm: true` (it always goes
 through the permission gate, in every mode).
 
@@ -224,8 +224,8 @@ through the permission gate, in every mode).
 | Generation graphs   | `read_asset_graph`, `edit_asset_graph` **M**, `run_asset_graph` **M** (confirms a priced run)                                                                                                                                |
 | Raw write           | `write_file` **M**, `edit_file` **M** (neither for `scenes/` or `.aiagent/skills/`)                                                                                                                                          |
 | Context             | `update_context` **M**, `regenerate_context` **M**                                                                                                                                                                           |
-| Git (read)          | `git_status`, `git_log`, `git_show`, `git_diff`                                                                                                                                                                              |
-| Git (write)         | `git_commit` **M**, `git_init` **M**, `git_revert` **M C**, `git_restore` **M C**                                                                                                                                            |
+| Git (read)          | `git_status`, `git_log`, `git_show`, `git_diff` (structured: rows carry the maker and checkpoints, `git_status` its cause)                                                                                                   |
+| Git (write)         | `git_commit` **M**, `git_init` **M**, `git_checkpoint` **M**, `git_revert` **M C**, `git_restore` **M C**                                                                                                                    |
 | Skills              | `discover_skills`, `create_skill` **M**, `edit_skill` **M**, `run_skill` **M** (**C** on the first run of a script-bearing skill)                                                                                            |
 
 The desktop app registers a few tools of its own beside these, which the table omits
@@ -609,7 +609,13 @@ names those two instead. A script-bearing skill stays fully supported, but a per
 add it, because `run_skill`'s confirm card names only the script to be run, and that card
 reads the same whether the file was vetted a year ago or written ninety seconds ago.
 `git_restore` and `git_revert` are deliberately not gated. Both are `confirm: true` and
-their cards name the file, so a person approves the change to that named file.
+their cards name the file, so a person approves the change to that named file. Both share
+`@vn/git`'s rules with the desktop's `git.restoreFile` and `git.takeBack`
+(`packages/git/src/recovery.ts`), so the agent and the History pane refuse the same
+situation with the same sentence, and `git_commit` refuses while a rebase, merge or revert
+is in progress, since a commit made then would be adopted as the replayed save. The agent
+has no sync tool at all: getting and sending saves are the author's acts
+([`history-pane.md`](history-pane.md#from-the-agent)).
 
 `discover_skills` also reports a degraded skill rather than passing over it. It appends
 `(!)` and states what is wrong when a skill has no description, no body, or a `script:`

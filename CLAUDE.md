@@ -192,9 +192,12 @@ which also covers the shell, the canvas, and the nineteen editors in full.
 playable format, [`docs/reference/desktopAppState.md`](docs/reference/desktopAppState.md)
 records what persists where, and
 [`docs/reference/document-tree.md`](docs/reference/document-tree.md) covers the document
-tree, asset naming and `doc.rename`. Showing an editor to the author is always `view.open`
-/ `view.focus`, reached through `exec` or pushed as a `command:ui` effect, never through
-the pane rules directly:
+tree, asset naming and `doc.rename`, and
+[`docs/reference/history-pane.md`](docs/reference/history-pane.md) the History pane: the
+project's saves, the recovery controls, and syncing with a collaborator's shared copy,
+which is a rebase of the author's unsent saves and the one place the app rewrites history.
+Showing an editor to the author is always `view.open` / `view.focus`, reached through
+`exec` or pushed as a `command:ui` effect, never through the pane rules directly:
 [`docs/guides/showEditorPaneGuide.md`](docs/guides/showEditorPaneGuide.md) is how to call
 it correctly, and
 [`docs/reference/swappingPaneEditors.md`](docs/reference/swappingPaneEditors.md) is the

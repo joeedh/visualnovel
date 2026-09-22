@@ -122,7 +122,13 @@ the file; the authoritative package responsibilities and import rules are in
 
 ### @vn/git — thin git plumbing (`packages/git`)
 
-`git.ts` (command runner), `repos.ts` (repo discovery), `errors.ts`, `index.ts`.
+`git.ts` (command runner: reads, writes, `inProgress()`, the rebase verbs), `parse.ts`
+(the `log`, `diff-tree`, porcelain v2 and `for-each-ref` parsers), `history.ts` (the
+History pane's row and diff types, `makerOf`, `statusCause`), `recovery.ts` (take-back,
+go-back, restore and checkpoint rules), `sync.ts` (remote rules, `finishRebase`, the
+rewrite table), `repos.ts` (repo discovery), `errors.ts` (`GitError`, `InProgressError`),
+`index.ts`. Both the desktop's `git.*` commands and the agent's `git_*` tools are built on
+it ([`history-pane.md`](history-pane.md)).
 
 ### @vn/commands — command framework (`packages/commands`)
 
@@ -138,7 +144,8 @@ the file; the authoritative package responsibilities and import rules are in
 | `interaction.ts` | interactive prompt registry                                         |
 | `content.ts`     | `ContentStore` (content-addressed workspace blobs)                  |
 | `snapshot.ts`    | **side entry** (fs only): snapshot store + `UndoJournal`            |
-| `commit.ts`      | `Committer` commit-on-save                                          |
+| `commit.ts`      | `Committer` commit-on-save; skips a repository mid-rebase           |
+| `provenance.ts`  | `recordForCommit`: a commit's record through the `rewrote` tables   |
 | `undo.ts`        | undo journal                                                        |
 | `index.ts`       | barrel (browser-safe: no `node:fs`)                                 |
 

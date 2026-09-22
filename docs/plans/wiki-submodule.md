@@ -125,8 +125,8 @@ test in scratch repositories on git 2.55). Nothing here is planned work.
 
 ## Ordering against the History pane
 
-`docs/plans/history-pane.md` (branch `git-editor`, its own worktree, not on `master` yet)
-has stages 1–3 committed, which add `packages/git/src/parse.ts`, `Git.inProgress()`,
+`docs/plans/archive/history-pane.md` (branch `git-editor`, shipped 2026-09-21) has stages
+1–3 committed, which add `packages/git/src/parse.ts`, `Git.inProgress()`,
 `Git.branchStatus()` and `Git.catBlob()`. Stage 2 here reads `inProgress()` (a rebase also
 detaches HEAD, and that case is the pane's, not this plan's) and adds its parser to
 `parse.ts`. So:
@@ -261,10 +261,10 @@ Each stage is one commit, green under `pnpm check`, `pnpm test`, `pnpm lint` and
 
 ## What the History pane needs to know
 
-`docs/plans/history-pane.md` is being built in parallel on branch `git-editor`, in its own
-worktree, and is not on `master` yet, so it is named here rather than linked. These are
-the places where a submodule crosses its design; each is also recorded in that plan so its
-implementing session sees them. None changes a command id or a refname.
+`docs/plans/archive/history-pane.md` was built in parallel on branch `git-editor`, in its
+own worktree, and is not on `master` yet, so it is named here rather than linked. These
+are the places where a submodule crosses its design; each is also recorded in that plan so
+its implementing session sees them. None changes a command id or a refname.
 
 - **Detached HEAD is in its non-goals, and a submodule is detached after a clone.** Stage
   2 here puts the wiki on a branch at open, so the pane never sees a detached wiki repo in

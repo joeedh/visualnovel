@@ -220,21 +220,34 @@ is open and what a switch tears down.
 
 ### The `.gitattributes` a project gets
 
-Bootstrap writes the only `.gitattributes` this app puts into a project. The file contains
-exactly two rules, one for each of the two cases git would otherwise handle incorrectly.
-The first of those two rules follows.
+Bootstrap writes the only `.gitattributes` this app puts into a project: a merge rule for
+each file git would otherwise merge incorrectly, each under a comment saying why.
 
-`openWorkspace` runs `ensureGitAttributes(root)`, which idempotently appends
+`openWorkspace` runs `ensureGitAttributes(root)`, which idempotently appends whichever of
+these blocks the file lacks (`GITATTRIBUTES_BLOCKS` in `workspace/workspace.ts`):
 
 ```
 vngen/state/notifications.jsonl merge=union
+vngen/state/threads/*.native.jsonl -merge
+vngen/work/graphs/*.json -merge
+vngen/work/graphs/lib/*.json -merge
+vngen/state/commands.jsonl merge=union
 ```
 
-before `ensureRepo`, so a project created before the notification log existed picks up the
-line on next open (committed on its own, under the message "Union-merge the notification
-log"). `skeleton()` writes the same line into a new project. `ensureLayouts` appends the
-second rule the same way, in the same place, and is the subject of
-[the section below](#the-one-thing-git-is-told-not-to-merge).
+before `ensureRepo`, so a project created before a rule existed picks it up on the next
+open (committed on its own, under "Set how git merges the state logs"). `skeleton()`
+writes the same text into a new project. `ensureLayouts` appends the layout rule the same
+way, in the same place, and is the subject of
+[the section below](#the-one-thing-git-is-told-not-to-merge). A new block goes last in the
+list: a project owed several gets them in that order, one that got them a release at a
+time has them in release order, and two collaborators upgraded at different times collide
+on the file itself unless the two orders agree.
+
+The same rules are written again to the repository's own `info/attributes`
+(`ensureRepoAttributes`, for a project that is its own repository), which git reads ahead
+of the worktree's file. A sync replays each unsent save under that save's own
+`.gitattributes`, so a save from before a rule was committed would otherwise replay
+without it, and so would every save in a collaborator's copy until they got the commit.
 
 Both of those commits call `ownsRepo(root)` first, and that check is the essential one.
 Scaffolding may write files into a project that sits inside a larger repo, since the files
@@ -270,7 +283,9 @@ byte-exact behavior.
 Notification writes are included in the next act's commit, because `Committer.commit`
 stages the whole worktree. `vngen/state/commands.jsonl` has always been included in the
 next act's commit for the same reason, and the open-time sweep absorbs notification
-writes.
+writes. The command log is union-merged for the same reason the notification log is: two
+collaborators both append to it between syncs, and a reader finds a record by the save
+that names it rather than by its place in the file.
 
 ## The one thing git is told not to merge
 
@@ -294,12 +309,11 @@ worktree, and the author picks a side with `git checkout --ours` or `--theirs` a
 file, so it preserves what the author wrote and adds only the missing rule. For a new
 project, `skeleton()` writes the file outright, so the file lands in the first commit.
 
-Conflict resolution stays out of scope, and so does conflict detection. The app used to
-read `git status` porcelain codes and refuse a mid-merge layout or graph by name. The undo
-refactor dropped that check, because it only ever served an author running their own git
-workflow over the project, and it was the last read path that called git. Until the app
-has a better design for merge conflicts, it opens whichever side is in the worktree. With
-`-merge`, that side is the "ours" side, and git leaves it unmangled.
+A conflict on one of these paths is whole-file by construction, which is what the History
+pane's conflict view offers: keep mine or take theirs, with no middle to read
+([`history-pane.md`](history-pane.md#the-conflict-view)). Outside a sync the app still
+opens whichever side is in the worktree; with `-merge` that is git's "ours", left
+unmangled.
 
 ## How undo composes with it
 
@@ -346,6 +360,10 @@ project like any other subdirectory, and there is no repo-boundary detection on 
 at all. Undo now compares one tree hash against another instead of refusing as a unit
 across repos.
 
-Remotes, push/pull, conflict resolution, and rewriting the save history are out of scope
-throughout. A user who wants a tidier log can run `git rebase`; the app never rewrites the
-saves it has already written.
+Remotes, getting and sending saves, and conflict resolution are the History pane's
+([`history-pane.md`](history-pane.md#shared-copies)), and each repository syncs on its
+own: the project's push is refused while a nested story bible has unsent saves, so the
+project's history never names a bible save the shared copy lacks. The app rewrites history
+in exactly one place: a pull rebases the author's unsent saves onto the collaborator's,
+which gives them new shas, and the pull's record carries the table from old to new. Saves
+that have been sent are never rewritten, and a force push is never offered.

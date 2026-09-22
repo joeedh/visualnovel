@@ -31,6 +31,8 @@ This page covers the cross-cutting invariants. The rest of the app is split by c
 - [`desktop-app-editors-misc.md`](desktop-app-editors-misc.md) — the remaining document
   and settings editors: Wiki, Skills, Documents, Project, System Prompt, Setup, Debug
   Agent.
+- [`history-pane.md`](history-pane.md) — the History pane: every save of the project, what
+  each changed, the recovery controls, and syncing with a collaborator's shared copy.
 - [`desktop-app-state.md`](desktop-app-state.md) — the state the shell persists between
   runs (the two `session.json` files), which project opens at launch, and the seeded
   sample workspace.

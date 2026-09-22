@@ -240,8 +240,15 @@ interface CommandRecord {
     stack?: "undo" | "redo"; // set on the stack's own entries, which are history, not undo points
     commits?: { repo: string; sha: string }[]; // what commit-on-save wrote; absent ⇒ nothing was
     commitDeferred?: true; // the commit joined a batch, so `commits` is absent for that reason
+    rewrote?: { from: string; to: string | null }[]; // saves a sync gave new shas; `to: null` ⇒ dropped
 }
 ```
+
+`rewrote` is the one exception to the log's sha-keyed links staying valid. A `git.pull` or
+`git.continueSync` that completes a rebase gives every unsent save a new sha, and the
+record carries the table, old to new, so a commit's record is still found by walking the
+tables newest first (`recordForCommit` in `packages/commands/src/provenance.ts`). See
+[`history-pane.md`](history-pane.md#sync-is-a-rebase).
 
 `onRecord` is a hook rather than a hardcoded write. The desktop app wires it to
 `appendJsonl` at `vngen/state/commands.jsonl`, next to the pipeline's own `tasks.jsonl`.
@@ -259,10 +266,12 @@ the vocabulary and the rules, the arrangement `mutating` and `undoable` already 
   `vngen/work/shots/<scene>.json` only when there is something to write, and a lower bound
   would need a fixture per branch of every command.
 - **The vocabulary is closed** (`apps/desktop/src/shared/affects.ts`). Twelve directory
-  roots, five root files commands write, and the `<user>` sentinel for the user-level
-  configuration directory that `plugin.*` and `project.setKey` reach and no
-  workspace-relative path can name. Without a closed list, `'scene'` for `'scenes'`
-  declares a subtree nothing writes and every test still passes.
+  roots, five root files commands write, and two sentinels: `<user>` for the user-level
+  configuration directory that `plugin.*` and `project.setKey` reach, and `<git>` for the
+  repository itself (a commit, a tag, a remote, a rebase), which no workspace-relative
+  path can name either. Neither is snapshotted, so a command declaring only a sentinel is
+  never `undoable`. Without a closed list, `'scene'` for `'scenes'` declares a subtree
+  nothing writes and every test still passes.
 - **`keys` is a legal declaration.** `project.setKey` exists to write it, and refusing the
   root would make the one command that touches it undeclarable. Declaring it forces
   `undoable: false` by the rule below, which is the property that command's own comment
@@ -422,6 +431,15 @@ written as usual with `commitDeferred: true` and no `commits`. The flush runs be
 next command's `run` rather than before its commit, so that command's commit holds only
 its own files. Mutating commands are serialized end to end so a commit still holds only
 its own files when two arrive at once.
+
+Neither commits while a rebase, merge or revert is in progress in a repository.
+`Git.commit` throws `InProgressError` then, and `Committer.run` catches it, skips that
+repository and reports it through `onSkip`. The guard is in the wrapper rather than in the
+committer alone so that the agent's `git_commit`, the open-time sweep and the scaffolding
+commits are all covered by one check: `add -A` during a stopped rebase would mark every
+conflicted path resolved, markers and all, and the commit would be adopted as the replayed
+save. The four sync commands that act inside a rebase (`git.pull`, `git.resolve`,
+`git.continueSync`, `git.abandonSync`) are `commitsItself` for the same reason.
 
 ---
 
