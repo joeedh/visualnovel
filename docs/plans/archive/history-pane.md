@@ -46,9 +46,9 @@ two-author sync collided on it; and a replayed save checks out its own `.gitattr
 so the rules are copied to the repository's `info/attributes`. The pane as shipped is
 written up in [`../../reference/history-pane.md`](../../reference/history-pane.md), and
 the author-facing guide is
-[`../../guides/collaborating.md`](../../guides/collaborating.md). Left as follow-ups: a
-word diff between the two sides in "Open both", and the stopped-sync "never checked out"
-strip entry that waits on `RepoRef.missing` from the wiki-submodule plan.
+[`../../guides/collaborating.md`](../../guides/collaborating.md). Left as a follow-up: a
+word diff between the two sides in "Open both". The "never checked out" strip entry this
+section once listed beside it shipped with [`wiki-submodule.md`](wiki-submodule.md).
 
 ## Scope
 
@@ -795,17 +795,16 @@ given a full refname creates `refs/tags/refs/tags/…`. `Git.log` is untouched.
 
 ## A wiki that is a submodule
 
-Added 2026-09-21 from `docs/plans/wiki-submodule.md`, a separate plan on `master` (not on
-this branch yet, so named rather than linked) that makes `wiki/` work as a git submodule
-of the project. The repo map already treats a submodule as an owned `wiki` repo, so the
-pane's second strip entry is a submodule in practice. That plan fixes commit ordering
-(nested repos commit first, so the parent's gitlink is current), puts a detached submodule
-on a branch at open, reports a submodule that was never checked out (`RepoRef.missing`),
-and makes `vnauthor`'s `git_commit` span repos. Its Stage 1 (commit order, `byDepth`
-exported from `@vn/git`) is independent; its Stages 2 and 3 wait for this plan's Stages
-1–3 to be on `master`, because they read `inProgress()` and add a parser to `parse.ts`.
-What is left touches this plan, stage by stage; none of it changes a command id or a
-refname.
+Added 2026-09-21 from [`wiki-submodule.md`](wiki-submodule.md), a separate plan (shipped
+2026-09-22) that makes `wiki/` work as a git submodule of the project. The repo map
+already treats a submodule as an owned `wiki` repo, so the pane's second strip entry is a
+submodule in practice. That plan fixes commit ordering (nested repos commit first, so the
+parent's gitlink is current), puts a detached submodule on a branch at open, reports a
+submodule that was never checked out (`RepoRef.missing`), and makes `vnauthor`'s
+`git_commit` span repos. Its Stage 1 (commit order, `byDepth` exported from `@vn/git`) is
+independent; its Stages 2 and 3 wait for this plan's Stages 1–3 to be on `master`, because
+they read `inProgress()` and add a parser to `parse.ts`. What is left touches this plan,
+stage by stage; none of it changes a command id or a refname.
 
 - **Stage 3/4 — the parser and the strip.** `diff-tree --raw` prints a submodule bump with
   mode `160000` and a _commit_ sha in the blob columns. `parseChanges` discards the modes,

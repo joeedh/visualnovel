@@ -2,6 +2,7 @@
 
 <!-- toc -->
 
+- [As shipped](#as-shipped)
 - [Scope](#scope)
 - [What already works](#what-already-works)
 - [What breaks](#what-breaks)
@@ -19,15 +20,59 @@
 
 <!-- tocstop -->
 
-Status: planned. Written 2026-09-21; pressure-tested the same day, and the findings and
-what became of each are in [Pressure test](#pressure-test).
+Status: shipped 2026-09-22, in four commits, one per stage. Written 2026-09-21 and
+pressure-tested the same day; the findings and what became of each are in
+[Pressure test](#pressure-test). The as-shipped write-up is
+[`../../reference/repos-and-commits.md#submodules`](../../reference/repos-and-commits.md#submodules).
 
 An author wants `wiki/` to be a git submodule of the project: one bible shared by several
 projects, or a bible with a history of its own. The repo map
-([`../reference/repos-and-commits.md`](../reference/repos-and-commits.md)) was built so
-that `wiki/` could be its own repository, and a submodule is one. This plan covers the
+([`../../reference/repos-and-commits.md`](../../reference/repos-and-commits.md)) was built
+so that `wiki/` could be its own repository, and a submodule is one. This plan covers the
 places where a submodule differs from a plain nested repository, and two gaps that apply
 to both.
+
+## As shipped
+
+The stages landed as planned, with these deviations:
+
+- **`byDepth` is in `packages/git/src/depth.ts`, exported as its own entry,
+  `@vn/git/depth`.** `@vn/commands` imports `@vn/git` only as types, because the renderer
+  bundle reaches `@vn/commands` and the `@vn/git` barrel pulls in `node:child_process`.
+  That is the same reason `@vn/util/conflict` exists. The barrel re-exports `byDepth` too,
+  so `@vn/authoring` imports it from `@vn/git`.
+- **An existing committer test changed its fixture.** "Skips directories that are not
+  repos" had put its non-repo directory inside the project repo, where `isRepo()` is true.
+  With the new order that directory committed first, so the fixture moved to a temp
+  directory outside any repo.
+- **`SKIP_DIRS` in `content.ts` became `SKIP_NAMES`**, since it now skips a file as well
+  as a directory.
+- **The History pane had more `owned: false` readers than the plan counted.** The plan
+  named only the `console.warn` in `openRepos`, but the History pane had landed on
+  `master` by the time Stage 2 was built. Its readers treat `owned: false` as "sits inside
+  a larger repo", and a `missing` ref's handle would read the project's history under the
+  wiki's name. So `RepoEntry` carries `missing`, and `notCheckedOut(dir)` in
+  `apps/desktop/src/shared/history.ts` is the one sentence for it. That sentence is used
+  by the open-time notice, the strip line, the empty list, and the write refusals in
+  `recovery.ts` and `sync.ts`. `HistoryPart.need()` refuses reads, and `bytesAt` answers
+  null. The History pane plan had listed this strip entry as a follow-up.
+- **`Workspace.repos()` reports `missing` for `base` as well as `wiki`.** It checks any
+  part that resolved to an already-reported root for a gitlink at its own directory.
+- **Notices are posted by `noticeSubmodules` in `workspacelifecycle.ts`**, after the
+  notification hub opens. They are deduped by message the way `noticeMissingGit` is.
+  `adoptSubmodules` runs before `repos()` as planned, so the notices wait in a local
+  variable until the hub opens.
+- **`git_commit`'s walk stops at the project's repository.** Without the stop, a project
+  that is itself a nested repo (`examples/mySampleRepo` inside this checkout) would have
+  its own path staged in the enclosing repo. With no paths at all, `git_commit` commits
+  what is staged in `ctx.git`, as before.
+- **`git_commit`'s `data` includes repos that had nothing to commit (`sha: null`)**, and
+  the loop clears their paths too. A repo with nothing to commit holds no uncommitted
+  change on those paths. The plan is cleared only when some repo committed. A sync stopped
+  before anything committed still answers `SYNC_PART_WAY` exactly.
+- **The loop's clearing is covered by the tool tests.** They assert each repo's `paths` in
+  `data`, and the existing loop test covers the single-repo case. No new loop-level test
+  was added.
 
 ## Scope
 
@@ -257,7 +302,7 @@ Each stage is one commit, green under `pnpm check`, `pnpm test`, `pnpm lint` and
   partition.
 - `docs/plans/index.md` row.
 - Finishing checklist per
-  [`../reference/conventions.md`](../reference/conventions.md#finishing-a-plan).
+  [`../../reference/conventions.md`](../../reference/conventions.md#finishing-a-plan).
 
 ## What the History pane needs to know
 

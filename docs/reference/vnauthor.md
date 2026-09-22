@@ -198,6 +198,15 @@ project guidance that the agent follows.
   replace them. The tool record is complete and the model's recollection is not: an
   `AICONTEXT.md` that the agent updated and then forgot about went uncommitted. A path
   named in the argument is still honoured.
+- **One plan's commit may span several repositories.** When `wiki/` is a repository of its
+  own (a submodule or a nested `git init`), `git_commit` splits the paths by owning
+  repository and commits each group in its own repository with the same message, nested
+  ones first. The project also stages `wiki`, so its gitlink records the wiki's new
+  commit. The walk stops at the project's repository. The reply names each commit:
+  `Committed abc1234 (wiki), def5678 (project): <message>`. When one repository's commit
+  fails, the reply names it and the ones that did commit. The loop clears only the
+  committed repositories' paths, so a retry commits the rest
+  ([`repos-and-commits.md`](repos-and-commits.md#multi-repo)).
 - **Round-trip safety.** Edits go through `@vn/model`'s `*ToDoc` / `applyCharacterEdit` /
   `applyLocationEdit` serializers (`fromDoc(toDoc(x)) ≡ x`), rewriting only changed
   front-matter so untouched prose and branch markers are preserved.

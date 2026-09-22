@@ -23,6 +23,7 @@ leaves commit-on-save untouched, and undo and commit-on-save still compose (see
 - [The one thing git is told not to merge](#the-one-thing-git-is-told-not-to-merge)
 - [How undo composes with it](#how-undo-composes-with-it)
 - [Multi-repo](#multi-repo)
+    - [Submodules](#submodules)
 
 <!-- tocstop -->
 
@@ -54,9 +55,10 @@ nested repository, so `wiki/.git` falls outside the project repo.
 
 ```ts
 interface RepoRef {
-    role: "project" | "wiki";
+    role: "project" | "wiki" | "base";
     root: string; // what git reports — not the directory asked about
     owned: boolean; // false when the directory merely *sits inside* that root
+    missing?: true; // a submodule that is not checked out; see Submodules below
 }
 ```
 
@@ -262,12 +264,19 @@ construction and the scaffolding is already in its first commit.
 
 `openWorkspace` is not enough on its own, because the ordinary launch never calls it:
 `main` resolves a root from the recents list or `VN_PROJECT` and goes straight to
-`openRepos()`. So `openRepos()` calls `adoptGitAttributes(root)` between `ensureRepo` and
-the `sweep`. That call performs the same ensure plus the separate commit, which keeps the
-line out of "Changes made outside the app". The caller skips `adoptGitAttributes` when the
-project sits inside a larger repo, and `adoptGitAttributes` checks `ownsRepo` again
-itself. Checking again places the guard next to the write rather than at the single call
-site alone.
+`openRepos()`. So `openRepos()` runs the same steps itself, in this order:
+
+- `writeScaffolding(root)` writes the layout templates, the merge attributes and the
+  session ignore line. It runs before any git, because the files are needed whether or not
+  git is installed.
+- `ensureRepo(root)` brings the project under version control.
+- `adoptSubmodules(root)` checks the project's submodules ([Submodules](#submodules)). It
+  runs only when `ownsRepo(root)` is true.
+- `Workspace.repos()` builds the list of owned repos the committer commits in.
+- `commitScaffolding(root, wrote)` commits what `writeScaffolding` wrote, one subject per
+  file, so none of it lands under "Changes made outside the app". It checks `ownsRepo`
+  itself.
+- The sweep commits anything else changed outside the app.
 
 Union merge keeps both sides' lines, so an append-only log survives a branch merge. Union
 merge duplicates a line whose read/hidden flags each side changed, so the reader dedupes
@@ -352,7 +361,18 @@ after it.
 
 The repo map is part of commit-on-save and is used only there. `Committer` takes the repo
 list, commits each repo that had something to commit, and reports what was committed in
-each repo.
+each repo. It commits nested repos before the repo that contains them (`byDepth`, from
+`@vn/git/depth`). Committing in that order has two effects:
+
+- The project's `add -A` stages the wiki's new HEAD as its gitlink, rather than the HEAD
+  from one act earlier.
+- A `wiki/` that has files but no commit yet gets its first commit before the project's
+  `add -A` meets it. Git refuses to add a nested repo with no commit checked out.
+
+`vnauthor`'s `git_commit` follows the same order. It splits its paths by owning repo and
+commits each group in its own repo, nested repos first. The repo containing a nested one
+also stages the nested repo's path, so the gitlink moves even when the agent wrote nothing
+in the project itself ([`vnauthor.md`](vnauthor.md#how-it-works)).
 
 Undo has no such notion any more. A snapshot covers a directory (the project root), so a
 `wiki/` or `assets/` that happens to be its own repository is snapshotted as part of the
@@ -367,3 +387,44 @@ project's history never names a bible save the shared copy lacks. The app rewrit
 in exactly one place: a pull rebases the author's unsent saves onto the collaborator's,
 which gives them new shas, and the pull's record carries the table from old to new. Saves
 that have been sent are never rewritten, and a force push is never offered.
+
+### Submodules
+
+`wiki/` (or `assets/`) can be a git submodule of the project, which lets several projects
+share one story bible, or gives a bible a history of its own. The repo map needs nothing
+extra: `git rev-parse --show-toplevel` reads a submodule's `.git` file the same way it
+reads a `.git` directory, so a checked-out submodule is an owned `wiki` repo like any
+other nested repo. The plan is
+[`../plans/archive/wiki-submodule.md`](../plans/archive/wiki-submodule.md).
+
+- **The wiki leads, and the project records.** The wiki's worktree follows its own branch.
+  The project's gitlink follows the wiki's HEAD through the project's ordinary `add -A`.
+  The app never runs `git submodule update` and never moves the wiki to match the project.
+- **Commit order.** Nested repos commit first, as described above, so the project's
+  history records which bible save each project save saw.
+- **Submodules are found in the index.** `Git.gitlinks()` lists the index entries of mode
+  `160000`. `.gitmodules` is optional and is read only for a branch name. This works for a
+  plain nested `git init` too, which gets a gitlink with no `.gitmodules` entry.
+  `git submodule status` fails outright on such an entry.
+- **A detached submodule is put on a branch at open, when that loses nothing.** A
+  recursive clone or `submodule update --init` leaves the submodule on no branch, so its
+  saves could not be pushed. `adoptSubmodules` picks a branch: the one `.gitmodules`
+  names, else a remote branch that already contains HEAD, else `main` or `master` where
+  one exists, else `main`.
+    - When that branch is absent or an ancestor of HEAD, the app runs `checkout -B` and
+      posts an info notice naming the branch and the undo (`git checkout --detach`).
+    - When the branch has moved on without HEAD, the app checks nothing out and posts a
+      warning naming both commits.
+    - A submodule in the middle of a rebase counts as busy, not detached, and is left
+      alone.
+- **A submodule that is not checked out is reported, not initialized.** A clone without
+  `--recurse-submodules` leaves `wiki/` as an empty directory. The project's `add -A` then
+  skips every file written there, so those notes are on disk and in no history. At open, a
+  warning names the directory and the command to run (`git submodule update --init`).
+  Running it is a network act the app leaves to the author. `Workspace.repos()` reports
+  such a directory as `{ role, root: <dir>, owned: false, missing: true }`. The History
+  pane's strip, its empty list and its refusals say the submodule is not checked out. Its
+  reads refuse too, where they would otherwise answer with the project's history.
+- **Undo does not touch repository structure.** The snapshot walk skips `.git` whether it
+  is a directory or a submodule's file, and `.gitmodules` is in `UNDO_EXCLUDES`.
+- **Adding or removing a submodule** is done in a terminal, never from the app.

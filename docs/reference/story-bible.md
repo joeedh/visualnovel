@@ -39,9 +39,9 @@ const bible = await openBible("/path/to/project/wiki");
 const excerpts = await bible.query("who keeps the roof key?", { limit: 5, budget: 2000 });
 ```
 
-`openBible` takes a directory rather than a `ProjectPaths`. The bible may one day live in
-its own git repo (refactorTaskList.md item 4), so no code here assumes it shares a repo
-with the project.
+`openBible` takes a directory rather than a `ProjectPaths`. The bible can be a git
+repository of its own, such as a submodule, so no code here assumes it shares a repo with
+the project.
 
 A missing root is accepted rather than reported as an error. A project with no `wiki/` has
 an empty bible, and every caller behaves exactly as it did before the bible existed.
@@ -149,6 +149,6 @@ is a choice the author makes; the tools follow that choice rather than making it
   reaches it, and it is read only when someone names a path in it. The bible is
   retrievable; the archive is preserved unchanged. See
   [`vnauthor.md`](vnauthor.md#the-archive).
-- **Not yet versioned separately.** A `wiki/` with its own `.git` is
-  [`../plans/refactorTaskList.md`](../plans/refactorTaskList.md) item 4. This design does
-  not make that change harder.
+- **Not tied to the project's repository.** `wiki/` may be a repository of its own, a
+  submodule included, and commits and history follow it there
+  ([`repos-and-commits.md`](repos-and-commits.md#submodules)).
