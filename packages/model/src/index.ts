@@ -10,3 +10,4 @@ export * from './lineids.js';
 export * from './graph.js';
 export * from './used.js';
 export * from './build.js';
+export * from './resolution.js';

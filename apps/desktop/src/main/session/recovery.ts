@@ -16,7 +16,7 @@ import {
   type Git,
   type HistoryEntry,
 } from '@vn/git';
-import { sceneTextProblem } from '@vn/model';
+import { sceneLoadProblem } from '@vn/model';
 import { checkDocWrite, inSecretsDir, readDocFile, SECRETS_REFUSAL, writeDocFile } from '@vn/store';
 import { writeFileAtomic } from '@vn/util';
 import { ANY_DOCUMENT, UNDO_EXCLUDES, covers } from '../../shared/affects.js';
@@ -262,8 +262,9 @@ export class RecoveryPart {
   }
 
   /**
-   * Every refusal a restore can earn, decided without writing: a credential, the session file,
-   * a cache the app rebuilds, a path the app does not write, a file the save does not hold, one
+   * Every refusal a restore can earn, decided without writing: a sync part way (an undoable
+   * write mid-rebase would be undone into a committed tree), a credential, the session file, a
+   * cache the app rebuilds, a path the app does not write, a file the save does not hold, one
    * that is not text, a scene the model would reject, and everything `checkDocWrite` refuses.
    */
   private async planRestore(
@@ -273,6 +274,8 @@ export class RecoveryPart {
   ): Promise<({ ok: true } & RestorePlan) | Refusal> {
     const repo = await this.writable(role);
     if ('ok' in repo) return repo;
+    const syncing = await syncRefusal(repo.git);
+    if (syncing) return refuse(syncing);
     const rel = this.wsPath(repo.root, path);
     if (rel.startsWith('..')) return refuse(`${path} is outside the project.`);
     if (inSecretsDir(rel)) return refuse(SECRETS_REFUSAL);
@@ -294,7 +297,7 @@ export class RecoveryPart {
     const abs = join(this.session.dir, rel);
     const scene = SCENE_PATH.exec(rel);
     if (scene) {
-      const problem = sceneTextProblem(scene[1]!, text);
+      const problem = sceneLoadProblem(scene[1]!, text);
       if (problem !== undefined) return refuse(`${rel} as it was then would not load: ${problem}`);
       const now = await readDocFile(this.session.dir, rel);
       if (now.ok && now.file.text === text)

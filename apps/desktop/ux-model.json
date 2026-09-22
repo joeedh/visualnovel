@@ -45785,6 +45785,18 @@
       "why": "A read the History pane fetches for itself. Its filters and rows are `pane.view` effects over what was read, so no control names the read."
     },
     {
+      "match": "git.conflictText",
+      "why": "A read the History pane fetches for itself. Its filters and rows are `pane.view` effects over what was read, so no control names the read."
+    },
+    {
+      "match": "git.writeResolution",
+      "why": "A decision on a collided file the conflict view will draw controls for in the next stage of the merging-a-conflicted-file plan; until then the palette and CDP run it."
+    },
+    {
+      "match": "git.undoResolution",
+      "why": "A decision on a collided file the conflict view will draw controls for in the next stage of the merging-a-conflicted-file plan; until then the palette and CDP run it."
+    },
+    {
       "match": "view.close",
       "why": "Pane management the hotkeys, the docker’s own chrome and a menu row’s `then` list run; the View menu draws the rest of the namespace."
     },

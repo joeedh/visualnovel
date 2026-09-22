@@ -4,6 +4,7 @@
     "paths": {
       "@vn/types"           : ["./packages/types/src/index.ts"],
       "@vn/util"            : ["./packages/util/src/index.ts"],
+      "@vn/util/conflict"   : ["./packages/util/src/conflict.ts"],
       "@vn/config"          : ["./packages/config/src/index.ts"],
       "@vn/parse"           : ["./packages/parse/src/index.ts"],
       "@vn/model"           : ["./packages/model/src/index.ts"],

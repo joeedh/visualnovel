@@ -12,7 +12,7 @@
  * otherwise pass by being invisible.
  */
 import { execFile } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { userSkillsDir } from '@vn/config';
@@ -537,18 +537,46 @@ interface SyncRun extends Run {
 
 /** The layout both authors change; `-merge` in `.gitattributes`, so git never splices the two. */
 const LAYOUT = '.vnstudio/layouts/mine.json';
+/** The scene both authors append a line to, which git merges line by line and leaves marked. */
+const SCENE = 'scenes/arrival.md';
+/** The storyboard both authors write, which git merges the same way. */
+const SHOTS = 'vngen/work/shots/arrival.json';
 
-/** A `git.save` over one edit to the layout, made outside the app. */
-function layoutSave(who: 'a' | 'b', panes: number): SyncRun {
+const shotsFile = (who: 'a' | 'b'): string =>
+  `{\n  "version": 1,\n  "scene": "arrival",\n  "nextShot": ${who === 'a' ? 2 : 3},\n  "shots": []\n}\n`;
+
+const sceneLine = (who: 'a' | 'b'): string =>
+  who === 'a' ? 'The bell rings.\n' : 'Outside, a bell rings.\n';
+
+/**
+ * A `git.save` over one edit each to the layout, the scene and the storyboard, made outside the
+ * app, so a pull from the other author stops on all three.
+ */
+function collidingSave(who: 'a' | 'b', panes: number): SyncRun {
   return {
     who,
     id   : 'git.save',
     props: async ({ harness }) => {
       await writeFile(join(harness.root, LAYOUT), `{"panes":${panes}}\n`);
+      await appendFile(join(harness.root, SCENE), `\n${sceneLine(who)}`);
+      await mkdir(join(harness.root, 'vngen', 'work', 'shots'), { recursive: true });
+      await writeFile(join(harness.root, SHOTS), shotsFile(who));
       return { message: `Set the layout to ${panes} pane${panes === 1 ? '' : 's'}` };
     },
   };
 }
+
+/** The file as git left it, markers and all, read straight off B's disk. */
+const marked = async ({ harness }: Context, path: string): Promise<string> =>
+  readFile(join(harness.root, path), 'utf8');
+
+/** B's own merge of the scene: both appended lines, the markers gone. */
+const mergedScene = async (ctx: Context): Promise<string> => {
+  const text = await marked(ctx, SCENE);
+  const cut = text.indexOf('<<<<<<< ');
+  if (cut < 0) throw new Error(`${SCENE} holds no markers`);
+  return `${text.slice(0, cut)}${sceneLine('a')}\n${sceneLine('b')}`;
+};
 
 const outcome = (result: RunResult): Record<string, unknown> =>
   result.data as Record<string, unknown>;
@@ -598,8 +626,8 @@ const SYNC_COLLIDE: SyncRun[] = [
     expect: (result) => expect(outcome(result)).toEqual({ remote: 'origin', behind: 0 }),
   },
   { who: 'b', id: 'git.syncWith', props: { name: 'origin' } },
-  layoutSave('b', 2),
-  layoutSave('a', 3),
+  collidingSave('b', 2),
+  collidingSave('a', 3),
   {
     who   : 'a',
     id    : 'git.push',
@@ -628,7 +656,7 @@ const SYNC_COLLIDE: SyncRun[] = [
       expect(outcome(result)).toEqual({
         got       : 1,
         replayed  : 0,
-        conflicted: [LAYOUT],
+        conflicted: [LAYOUT, SCENE, SHOTS],
         rewrote   : [],
         finished  : false,
       }),
@@ -638,16 +666,110 @@ const SYNC_COLLIDE: SyncRun[] = [
     who   : 'b',
     id    : 'git.pull',
     props : {},
-    expect: (result) => expect(outcome(result)).toMatchObject({ conflicted: [LAYOUT] }),
+    expect: (result) =>
+      expect(outcome(result)).toMatchObject({ conflicted: [LAYOUT, SCENE, SHOTS] }),
   },
   {
     who    : 'b',
     id     : 'git.continueSync',
     props  : {},
     refuses: true,
-    expect : (result) => expect(result.error).toBe('1 file still needs a decision.'),
+    expect : (result) => expect(result.error).toBe('3 files still need a decision.'),
+  },
+  {
+    who   : 'b',
+    id    : 'git.status',
+    props : {},
+    expect: (result) =>
+      expect(outcome(result)).toMatchObject({ marked: [SCENE, SHOTS], decided: [] }),
+  },
+  // Only a file git merged line by line has a text to edit; the layout offers its two sides
+  {
+    who    : 'b',
+    id     : 'git.conflictText',
+    props  : { path: LAYOUT },
+    refuses: true,
+    expect: (result) =>
+      expect(result.error).toBe(`${LAYOUT} was not merged line by line; keep a side instead.`),
+  },
+  {
+    who   : 'b',
+    id    : 'git.conflictText',
+    props : { path: SCENE },
+    expect: (result) => {
+      const { text } = outcome(result) as { text: string };
+      expect(text).toMatch(/^<<<<<<< HEAD$/m);
+      expect(text).toContain(sceneLine('a'));
+      expect(text).toContain(sceneLine('b'));
+    },
+  },
+  // A merge saved part way, markers still in, is allowed for prose but stops Continue
+  {
+    who  : 'b',
+    id   : 'git.writeResolution',
+    props: async (ctx) => ({ path: SCENE, text: await marked(ctx, SCENE) }),
   },
   { who: 'b', id: 'git.resolve', props: { path: LAYOUT, side: 'mine' } },
+  { who: 'b', id: 'git.resolve', props: { path: SHOTS, side: 'theirs' } },
+  {
+    who    : 'b',
+    id     : 'git.continueSync',
+    props  : {},
+    refuses: true,
+    expect: (result) =>
+      expect(result.error).toBe(
+        `${SCENE} still holds conflict markers; keep a side or edit them out first.`,
+      ),
+  },
+  {
+    who   : 'b',
+    id    : 'git.status',
+    props : {},
+    expect: (result) =>
+      expect(outcome(result)).toMatchObject({
+        conflicted: [],
+        marked    : [],
+        decided: [
+          { path: LAYOUT, decision: 'theirs' },
+          { path: SCENE, decision: 'merged' },
+          { path: SHOTS, decision: 'ours' },
+        ],
+      }),
+  },
+  // Each decision comes back, and the storyboard is then merged by hand rather than kept whole
+  { who: 'b', id: 'git.undoResolution', props: { path: SCENE } },
+  { who: 'b', id: 'git.undoResolution', props: { path: SHOTS } },
+  {
+    who    : 'b',
+    id     : 'git.undoResolution',
+    props  : { path: SHOTS },
+    refuses: true,
+    expect : (result) => expect(result.error).toBe(`${SHOTS} was not decided at this stop.`),
+  },
+  {
+    who    : 'b',
+    id     : 'git.writeResolution',
+    props  : async (ctx) => ({ path: SHOTS, text: await marked(ctx, SHOTS) }),
+    refuses: true,
+    expect : (result) => expect(result.error).toBe(`${SHOTS} still holds conflict markers.`),
+  },
+  {
+    who    : 'b',
+    id     : 'git.writeResolution',
+    props  : { path: SHOTS, text: '{"version":1,"scene":"arrival",' },
+    refuses: true,
+    expect : (result) => expect(result.error).toMatch(/is not valid JSON/),
+  },
+  {
+    who  : 'b',
+    id   : 'git.writeResolution',
+    props: { path: SHOTS, text: shotsFile('b').replace('"nextShot": 3', '"nextShot": 4') },
+  },
+  {
+    who  : 'b',
+    id   : 'git.writeResolution',
+    props: async (ctx) => ({ path: SCENE, text: await mergedScene(ctx) }),
+  },
   {
     who   : 'b',
     id    : 'git.continueSync',
@@ -954,7 +1076,8 @@ describe('the sync writes, over two projects and a shared copy', () => {
 
     for (const run of SYNC_COLLIDE) await step(run);
 
-    // One line: B's save replayed on top of A's, and the layout is the side B kept
+    // One line: B's save replayed on top of A's, the layout is the side B kept, and the two
+    // merged files read as B wrote them
     const { saves } = await harnesses.b.session.gitHistory('project');
     expect(saves.map((s) => s.subject)).toEqual([
       'Set the layout to 2 panes',
@@ -963,6 +1086,11 @@ describe('the sync writes, over two projects and a shared copy', () => {
       'Fixture inputs',
     ]);
     expect(await readFile(join(cloneDir, LAYOUT), 'utf8')).toBe('{"panes":2}\n');
+    expect(await readFile(join(cloneDir, SHOTS), 'utf8')).toContain('"nextShot": 4');
+    const scene = await readFile(join(cloneDir, SCENE), 'utf8');
+    expect(scene).not.toMatch(/^<<<<<<< /m);
+    expect(scene).toContain(sceneLine('a'));
+    expect(scene).toContain(sceneLine('b'));
     expect(await openGit(bare).resolve('HEAD')).toBe(saves[0]!.sha);
     expect(await other.remotes()).toEqual([]);
   }, 180_000);
@@ -974,9 +1102,14 @@ describe('RUNS and SKIPS', () => {
     .filter((command) => command.mutating)
     .map((command) => command.id);
 
+  /** The reads a sync run makes between writes, to pin what a write left; not part of the tier. */
+  const READS = ['git.status', 'git.conflictText'];
+
   it('partition the mutating commands exactly', () => {
     const runs = new Set(
-      [...RUNS, ...PROMPT_RUNS, ...GIT_RUNS, ...SYNC_CONNECT, ...SYNC_COLLIDE].map((run) => run.id),
+      [...RUNS, ...PROMPT_RUNS, ...GIT_RUNS, ...SYNC_CONNECT, ...SYNC_COLLIDE]
+        .map((run) => run.id)
+        .filter((id) => !READS.includes(id)),
     );
     const skips = new Set(Object.keys(SKIPS));
     expect([...runs].filter((id) => skips.has(id))).toEqual([]);

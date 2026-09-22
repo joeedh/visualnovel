@@ -16,6 +16,7 @@ import { parseBranchMarker, parseFountain, stringifyFrontMatter } from '@vn/pars
 import { deleteSceneChunk, deleteShots, readShots, writeShots, type ProjectPaths } from '@vn/store';
 import type { Shot } from '@vn/types';
 import { writeFileAtomic } from '@vn/util';
+import { conflictedRefusal } from './conflicted.js';
 import type { LineOp, ScriptState } from './lineops.js';
 import { scenesTouchedBy, shotFallout, type ShotFallout } from './shotfallout.js';
 import { chunkText, scriptStateOf, type SceneSource } from './sources.js';
@@ -72,6 +73,11 @@ export async function planSceneEdit(
 ): Promise<ScenePlan> {
   const op = decide(scriptStateOf(input.sources, input.entry));
   if (!op.ok) return { ok: false, message: op.error };
+  const conflicted = conflictedRefusal(input.sources, [
+    ...op.writes.map((s) => s.id),
+    ...op.removes,
+  ]);
+  if (conflicted !== undefined) return { ok: false, message: conflicted };
 
   // Every file is serialized and proved before any is written: a split that is refused on its
   // second half must leave the first exactly as it was.

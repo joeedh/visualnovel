@@ -3074,6 +3074,26 @@ export class WorkspaceSession {
     return this.syncPart.resolve(role, path, side);
   }
 
+  gitConflictText(role: RepoRole, path: string): Promise<{ text: string }> {
+    return this.syncPart.conflictText(role, path);
+  }
+
+  previewWriteResolution(role: RepoRole, path: string, text: string): Promise<CheckResult> {
+    return this.syncPart.previewWriteResolution(role, path, text);
+  }
+
+  gitWriteResolution(role: RepoRole, path: string, text: string): Promise<{ written: string[] }> {
+    return this.syncPart.writeResolution(role, path, text);
+  }
+
+  previewUndoResolution(role: RepoRole, path: string): Promise<CheckResult> {
+    return this.syncPart.previewUndoResolution(role, path);
+  }
+
+  gitUndoResolution(role: RepoRole, path: string): Promise<{ written: string[] }> {
+    return this.syncPart.undoResolution(role, path);
+  }
+
   previewContinueSync(role: RepoRole): Promise<CheckResult> {
     return this.syncPart.previewContinue(role);
   }

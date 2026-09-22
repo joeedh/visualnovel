@@ -48,6 +48,7 @@ const SUBPATHS = [
   'artgen/slotaddr',
   'artgen/layout',
   'commands/snapshot',
+  'util/conflict',
 ];
 
 export const alias = Object.fromEntries([

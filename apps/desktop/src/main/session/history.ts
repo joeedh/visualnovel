@@ -3,6 +3,8 @@
  * diff of one file, over `@vn/git`. Per-commit answers are held for the session, since a commit's
  * contents never change; the list is not, since HEAD does.
  */
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { slotKey, slotLabel, slotsOf } from '@vn/artgen';
 import { Workspace } from '@vn/authoring';
 import {
@@ -22,11 +24,13 @@ import {
   type SlotChange,
 } from '@vn/git';
 import type { Asset } from '@vn/types';
-import type { DiffLine } from '@vn/util';
+import { hasConflictMarkers, type DiffLine } from '@vn/util';
 import {
   blobUrl,
   kindOf,
+  readableConflict,
   type BlobRead,
+  type DecidedFile,
   type HistoryPage,
   type RemoteEntry,
   type Replaying,
@@ -337,7 +341,7 @@ export class HistoryPart {
    * alone; a stopped rebase names the save it is replaying.
    */
   async status(role: RepoRole, pending: number): Promise<RepoStatus> {
-    const { git } = await this.need(role);
+    const { git, root } = await this.need(role);
     const [branch, inProgress, listed, lastFetch] = await Promise.all([
       git.branchStatus(),
       git.inProgress(),
@@ -368,8 +372,13 @@ export class HistoryPart {
             total  : inProgress.rebase.total,
           }
         : null;
+    const cause = statusCause(branch.entries, pending, inProgress, OWN_LOGS);
+    const marked = await markedPaths(root, cause.conflicted);
+    const decided: DecidedFile[] = inProgress.rebase
+      ? (await git.resolvedPaths()).map((r) => ({ path: r.path, decision: r.decision }))
+      : [];
     return {
-      ...statusCause(branch.entries, pending, inProgress, OWN_LOGS),
+      ...cause,
       branch  : name,
       upstream: branch.upstream ?? (upstream ? `${upstream.remote}/${upstream.branch}` : null),
       ahead   : branch.ahead,
@@ -378,6 +387,8 @@ export class HistoryPart {
       lastFetch,
       inProgress,
       replaying,
+      marked,
+      decided,
     };
   }
 
@@ -386,4 +397,15 @@ export class HistoryPart {
     this.changesMemo.clear();
     this.diffMemo.clear();
   }
+}
+
+/** The conflicted paths git merged line by line and left its markers in, read off the worktree. */
+async function markedPaths(root: string, conflicted: readonly string[]): Promise<string[]> {
+  const marked: string[] = [];
+  for (const path of conflicted) {
+    if (!readableConflict(path)) continue;
+    const text = await readFile(join(root, path), 'utf8').catch(() => '');
+    if (hasConflictMarkers(text)) marked.push(path);
+  }
+  return marked;
 }

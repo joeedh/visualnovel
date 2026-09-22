@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   finishRebase,
-  hasConflictMarkers,
   openGit,
   pairRewrites,
   parseCommitKeys,
@@ -15,6 +14,7 @@ import {
   type CommitKey,
   type Git,
 } from '../index.js';
+import { hasConflictMarkers } from '@vn/util';
 import { sh, tempRepo, write } from './helpers.js';
 
 const key = (sha: string, k: string): CommitKey => ({ sha: sha.repeat(40), key: k });

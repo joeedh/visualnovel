@@ -3,9 +3,9 @@
  * the grouping of a changed path into a file kind, which only the desktop does. A kind chooses
  * how `git.diff` builds a diff and how the pane draws it.
  */
-import type { FileKind, InProgress, Save, WorktreeStatus } from '@vn/git';
+import type { Decision, FileKind, InProgress, Save, WorktreeStatus } from '@vn/git';
 
-export type { FileKind, Save, WorktreeStatus };
+export type { Decision, FileKind, Save, WorktreeStatus };
 
 /** The repositories a project spans, as `git.repos` lists them. */
 export type RepoRole = 'project' | 'wiki' | 'base';
@@ -77,6 +77,33 @@ export interface RepoStatus extends WorktreeStatus {
   inProgress: InProgress;
   /** Where a stopped rebase stands; null outside one. */
   replaying: Replaying | null;
+  /**
+   * The paths in `conflicted` whose worktree copy holds git's markers: the ones git merged line by
+   * line, so the author can finish the merge in the text.
+   */
+  marked: string[];
+  /** The files decided since this stop began, in the order git lists them; empty outside a rebase. */
+  decided: DecidedFile[];
+}
+
+/** One file decided at the current stop, and how; `Decision` is in git's words for the sides. */
+export interface DecidedFile {
+  path: string;
+  decision: Decision;
+}
+
+/** How a decided row says it was decided, translating git's sides for a rebase. */
+export function decisionSentence(decision: Decision): string {
+  switch (decision) {
+    case 'ours':
+      return 'took theirs';
+    case 'theirs':
+      return 'kept yours';
+    case 'merged':
+      return 'merged';
+    case 'removed':
+      return 'removed';
+  }
 }
 
 /** Paths git never merges, by the project's `.gitattributes`: a conflict there is whole-file. */

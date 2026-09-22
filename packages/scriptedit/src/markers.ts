@@ -9,6 +9,7 @@
  */
 import { applySceneMarkerEdit, type SceneMarkerEdit } from '@vn/model';
 import { writeFileAtomic } from '@vn/util';
+import { conflictedRefusal } from './conflicted.js';
 import type { SceneSource } from './sources.js';
 
 /** One file's patched bytes, waiting to be written. */
@@ -38,6 +39,12 @@ export function planMarkerEdit(
     if (!source) return { ok: false, message: `No file holds scene "${edit.sceneId}".` };
     groups.set(source, [...(groups.get(source) ?? []), edit]);
   }
+
+  const conflicted = conflictedRefusal(
+    sources,
+    [...groups.keys()].map((s) => s.id),
+  );
+  if (conflicted !== undefined) return { ok: false, message: conflicted };
 
   const patches: MarkerPatch[] = [];
   for (const [source, group] of groups) {

@@ -32,6 +32,8 @@ const CLEAN: RepoStatus = {
   lastFetch : '2026-09-21T09:00:00Z',
   inProgress: { rebase: null, merge: false, revert: false },
   replaying : null,
+  marked    : [],
+  decided   : [],
 };
 
 const save = (over: Partial<Save> & { sha: string }): Save => ({
@@ -345,6 +347,7 @@ export const SITUATIONS = situations<HistoryState>(
         ...CLEAN,
         cause     : 'rebase',
         conflicted: ['scenes/rooftop.fountain', '.vnstudio/layouts/writing.json'],
+        marked    : ['scenes/rooftop.fountain'],
         inProgress: {
           rebase: {
             branch    : 'main',

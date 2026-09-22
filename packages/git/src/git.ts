@@ -17,7 +17,9 @@ import {
   parseChanges,
   parseCheckpoints,
   parseHistory,
+  parseStages,
   parseStatusV2,
+  decisionOf,
   type BranchStatus,
   type Change,
   type Checkpoint,
@@ -25,6 +27,7 @@ import {
   parseCommitKeys,
   type CommitKey,
   type HistoryEntry,
+  type ResolvedPath,
 } from './parse.js';
 
 interface RunResult {
@@ -797,6 +800,35 @@ export class Git {
     const present = listed.split('\n').some((l) => l.split('\t')[0]?.endsWith(` ${stage}`));
     if (present) throw new GitError(`git checkout --${side} failed: ${r.stderr.trim()}`);
     await this.ok(['rm', '--quiet', '--', path]);
+  }
+
+  /**
+   * The paths decided since the conflict they were part of, from the index's resolve-undo
+   * records, each with how it was decided. Git drops the records when a rebase moves on, so a
+   * later stop starts empty.
+   */
+  async resolvedPaths(): Promise<ResolvedPath[]> {
+    const remembered = parseStages(await this.ok(['ls-files', '--resolve-undo']));
+    if (remembered.length === 0) return [];
+    const held = new Map<string, string>();
+    const listed = await this.ok(['ls-files', '-s', '--', ...remembered.map((r) => r.path)]);
+    for (const line of listed.split('\n')) {
+      const m = /^\d+ ([0-9a-f]+) 0\t(.+)$/.exec(line);
+      if (m) held.set(m[2]!, m[1]!);
+    }
+    return remembered.map((r) => ({
+      ...r,
+      decision: decisionOf(r.stages, held.get(r.path) ?? null),
+    }));
+  }
+
+  /**
+   * Puts a decided path back the way the conflict left it, stages and markers both, from its
+   * resolve-undo record. Git refuses a path one side had removed, since there is no whole set of
+   * versions to rebuild the conflict from.
+   */
+  async recreateConflict(path: string): Promise<void> {
+    await this.ok(['checkout', '-m', '--', path]);
   }
 
   /**

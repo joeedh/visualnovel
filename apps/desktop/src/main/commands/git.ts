@@ -509,13 +509,77 @@ export const gitResolve = define({
   },
 });
 
+export const gitConflictText = define({
+  id         : 'git.conflictText',
+  title      : 'A file as the collision left it',
+  description:
+    'One file both of you changed, exactly as it sits on disk while the sync waits: every line ' +
+    'that did not collide, and where the two versions did, both between git’s markers. Refused ' +
+    'for a file git could not merge line by line, which offers only its two sides.',
+  mutating   : false,
+  props      : { repo: repoProp(), path: prop.string('the file, as that repository names it') },
+  async run({ repo, path }, ctx) {
+    const read = await ctx.host.session.gitConflictText(repo, path);
+    return { message: `${read.text.length} character(s).`, data: read };
+  },
+});
+
+export const gitWriteResolution = define({
+  id           : 'git.writeResolution',
+  title        : 'Decide a collision by editing the file',
+  description:
+    'Write your own merge of one file both of you changed, over the copy on disk, and mark it ' +
+    'decided. Refused when no sync is waiting, for a file that is not in question or that git ' +
+    'could not merge line by line, and for text its kind cannot load: a scene that would not ' +
+    'read, a sheet its schema refuses, JSON or YAML that does not parse. Markers left in prose ' +
+    'are allowed until Continue.',
+  notes:
+    'The text is written verbatim for a scene and anything that is not markdown, and through the whole-file document writer otherwise, then `add`ed. `commitsItself`, since a rebase is in progress and the committer must not run. Undone with `git.undoResolution`, not undo.',
+  mutating     : true,
+  affects      : [...ANY_DOCUMENT, GIT_ROOT],
+  commitsItself: true,
+  props: {
+    repo: repoProp(),
+    path: prop.string('the file, as that repository names it'),
+    text: prop.string('the whole file as it should read', { digest: true }),
+  },
+  check: ({ repo, path, text }, ctx) => ctx.host.session.previewWriteResolution(repo, path, text),
+  async run({ repo, path, text }, ctx) {
+    const { written } = await ctx.host.session.gitWriteResolution(repo, path, text);
+    return { message: `Decided ${path} by editing it.`, written };
+  },
+});
+
+export const gitUndoResolution = define({
+  id           : 'git.undoResolution',
+  title        : 'Put a decided file back in question',
+  description:
+    'Take back a decision on one file both of you changed, whichever way it was decided, so it ' +
+    'waits on a decision again with both versions and the markers back on disk. Refused when no ' +
+    'sync is waiting, for a file not decided at this stop, and for one the decision removed.',
+  notes:
+    '`checkout -m -- <path>`, from the resolve-undo record `add` leaves in the index. `commitsItself`.',
+  mutating     : true,
+  affects      : [...ANY_DOCUMENT, GIT_ROOT],
+  commitsItself: true,
+  props: {
+    repo: repoProp(),
+    path: prop.string('the file, as that repository names it'),
+  },
+  check        : ({ repo, path }, ctx) => ctx.host.session.previewUndoResolution(repo, path),
+  async run({ repo, path }, ctx) {
+    const { written } = await ctx.host.session.gitUndoResolution(repo, path);
+    return { message: `${path} is waiting on a decision again.`, written };
+  },
+});
+
 export const gitContinueSync = define({
   id           : 'git.continueSync',
   title        : 'Continue getting their saves',
   description:
     'Carry on once every file in question is decided. The next of your saves is replayed, and ' +
-    'may wait on decisions of its own. Refused while a file is undecided, and while a scene ' +
-    'still holds conflict markers, which the Script pane could not read.',
+    'may wait on decisions of its own. Refused while a file is undecided, while a file git ' +
+    'merged line by line still holds conflict markers, and while one would not load as its kind.',
   notes:
     '`add -A` then `rebase --continue`, so edits made while the conflict view was up ride into the replayed save. `commitsItself`. A completed rebase records `rewrote` the way `git.pull` does.',
   mutating     : true,

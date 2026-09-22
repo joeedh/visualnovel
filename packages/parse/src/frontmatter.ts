@@ -55,3 +55,13 @@ export function stringifyFrontMatter(data: Record<string, unknown>, body: string
   const yaml = stringifyYaml(data).trimEnd();
   return `---\n${yaml}\n---\n\n${body.replace(/^\n+/, '')}`;
 }
+
+/** Why `text` is not YAML, or undefined when it parses. */
+export function yamlProblem(text: string): string | undefined {
+  try {
+    parseYaml(text);
+    return undefined;
+  } catch (err) {
+    return (err as Error).message.split('\n')[0];
+  }
+}

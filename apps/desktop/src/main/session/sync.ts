@@ -8,12 +8,14 @@
 import { join } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import type { CheckResult } from '@vn/commands';
+import { resolutionProblem } from '@vn/model';
+import { readDocFile, writeDocFile } from '@vn/store';
+import { hasConflictMarkers, writeFileAtomic } from '@vn/util';
 import {
   DIRTY_TREE,
   dirtyOutsideLogs,
   finishRebase,
   GitError,
-  hasConflictMarkers,
   NO_UPSTREAM,
   REBASE_SIDE,
   remoteNameProblem,
@@ -24,14 +26,22 @@ import {
   type MySide,
   type Rewrite,
 } from '@vn/git';
-import { NOT_OWNED, SYNC_UNFINISHED, type RepoRole } from '../../shared/history.js';
-import { relPath } from './core.js';
+import {
+  NOT_OWNED,
+  readableConflict,
+  SYNC_UNFINISHED,
+  type RepoRole,
+} from '../../shared/history.js';
+import { fileCache } from '../workspace/filecache.js';
+import { DOC_WRITERS, relPath } from './core.js';
 import type { WorkspaceSession } from './core.js';
 
 /** What `git.resolve` and `git.continueSync` say when no sync is waiting on a decision. */
 export const NO_SYNC_STOPPED = 'No sync is waiting on a decision.';
 /** What `git.abandonSync` says when there is nothing to abandon. */
 export const NOTHING_TO_ABANDON = 'Nothing is part way through; there is nothing to give up.';
+
+const SCENE_PATH = /^scenes\/[^/]+\.md$/;
 
 type Refusal = { ok: false; reason: string };
 
@@ -382,6 +392,104 @@ export class SyncPart {
     return repo;
   }
 
+  // `git.conflictText`
+
+  /** The worktree copy of a path waiting on a decision, markers and all. */
+  async conflictText(role: RepoRole, path: string): Promise<{ text: string }> {
+    const plan = await this.planMarked(role, path);
+    if ('ok' in plan) throw new Error(plan.reason);
+    return { text: plan.text };
+  }
+
+  // `git.writeResolution`
+
+  async previewWriteResolution(role: RepoRole, path: string, text: string): Promise<CheckResult> {
+    const plan = await this.planWriteResolution(role, path, text);
+    if ('ok' in plan) return plan;
+    return { ok: true, note: `Writes ${path} as edited and marks it decided.` };
+  }
+
+  /**
+   * Writes the author's merge of a conflicted path over the worktree copy and stages it, so
+   * Continue sees a decided file. A scene and anything that is not markdown are written verbatim;
+   * a markdown document goes through the whole-file writer, as `git.restoreFile` does.
+   */
+  async writeResolution(
+    role: RepoRole,
+    path: string,
+    text: string,
+  ): Promise<{ written: string[] }> {
+    const plan = await this.planWriteResolution(role, path, text);
+    if ('ok' in plan) throw new Error(plan.reason);
+    const abs = join(plan.root, path);
+    const rel = relPath(this.session.dir, abs);
+    if (SCENE_PATH.test(path) || !path.endsWith('.md')) {
+      await writeFileAtomic(abs, text);
+      await fileCache.note(abs, text);
+    } else {
+      const existing = await readDocFile(this.session.dir, rel);
+      const seen = existing.ok ? existing.file.hash : '';
+      const written = await writeDocFile(this.session.dir, rel, text, seen, DOC_WRITERS);
+      if (!written.ok) throw new Error(written.reason);
+      await fileCache.note(written.file, text);
+    }
+    await plan.git.add([path]);
+    return { written: [rel] };
+  }
+
+  private async planWriteResolution(
+    role: RepoRole,
+    path: string,
+    text: string,
+  ): Promise<(Owned & { text: string }) | Refusal> {
+    const plan = await this.planMarked(role, path);
+    if ('ok' in plan) return plan;
+    const problem = resolutionProblem(path, text);
+    if (problem !== undefined) return refuse(problem);
+    return plan;
+  }
+
+  /** The repository with `path` waiting on a decision and git's markers in its worktree copy. */
+  private async planMarked(
+    role: RepoRole,
+    path: string,
+  ): Promise<(Owned & { text: string }) | Refusal> {
+    const repo = await this.planResolve(role, path);
+    if ('ok' in repo) return repo;
+    const text = await readFile(join(repo.root, path), 'utf8').catch(() => null);
+    if (text === null || !readableConflict(path) || !hasConflictMarkers(text)) {
+      return refuse(`${path} was not merged line by line; keep a side instead.`);
+    }
+    return { ...repo, text };
+  }
+
+  // `git.undoResolution`
+
+  async previewUndoResolution(role: RepoRole, path: string): Promise<CheckResult> {
+    const plan = await this.planUndoResolution(role, path);
+    if ('ok' in plan) return plan;
+    return { ok: true, note: `Puts ${path} back in question, both sides and the markers.` };
+  }
+
+  /** Recreates the conflict a decision replaced, from the index's memory of the two sides. */
+  async undoResolution(role: RepoRole, path: string): Promise<{ written: string[] }> {
+    const plan = await this.planUndoResolution(role, path);
+    if ('ok' in plan) throw new Error(plan.reason);
+    await plan.git.recreateConflict(path);
+    return { written: [relPath(this.session.dir, join(plan.root, path))] };
+  }
+
+  private async planUndoResolution(role: RepoRole, path: string): Promise<Owned | Refusal> {
+    const repo = await this.stopped(role);
+    if ('ok' in repo) return repo;
+    const decided = (await repo.git.resolvedPaths()).find((r) => r.path === path);
+    if (!decided) return refuse(`${path} was not decided at this stop.`);
+    if (decided.decision === 'removed') {
+      return refuse(`${path} was removed; git cannot put a removed file back in question.`);
+    }
+    return repo;
+  }
+
   // `git.continueSync`
 
   async previewContinue(role: RepoRole): Promise<CheckResult> {
@@ -426,19 +534,25 @@ export class SyncPart {
         `${plural(conflicted.length, 'file')} still need${conflicted.length === 1 ? 's' : ''} a decision.`,
       );
     }
-    const marked = await this.markedScene(repo);
-    if (marked !== null) {
-      return refuse(`${marked} still holds conflict markers; keep a side or edit them out first.`);
-    }
+    const unfit = await this.unfitToCarry(repo);
+    if (unfit !== null) return refuse(unfit);
     return repo;
   }
 
-  /** The first scene under `scenes/` that still holds git's markers, or null. */
-  private async markedScene(repo: Owned): Promise<string | null> {
-    const entries = (await repo.git.status()).entries.filter((e) => e.path.startsWith('scenes/'));
+  /**
+   * Why the replayed save could not carry the tree as it stands, or null: the first changed file
+   * git merged line by line that still holds markers, or that its own kind refuses.
+   */
+  private async unfitToCarry(repo: Owned): Promise<string | null> {
+    const entries = (await repo.git.status()).entries.filter((e) => readableConflict(e.path));
     for (const entry of entries) {
-      const text = await readFile(join(repo.root, entry.path), 'utf8').catch(() => '');
-      if (hasConflictMarkers(text)) return entry.path;
+      const text = await readFile(join(repo.root, entry.path), 'utf8').catch(() => null);
+      if (text === null) continue;
+      if (hasConflictMarkers(text)) {
+        return `${entry.path} still holds conflict markers; keep a side or edit them out first.`;
+      }
+      const problem = resolutionProblem(entry.path, text);
+      if (problem !== undefined) return problem;
     }
     return null;
   }

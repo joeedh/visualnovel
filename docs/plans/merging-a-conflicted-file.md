@@ -365,6 +365,40 @@ does not finish without a run against a real model, and the plan records what wa
   the opener is revised first (it is the cheapest lever), then the tool's description; the
   plan does not add a bigger model as the fix.
 
+## As built
+
+### Stage 1: rules and commands
+
+- `Git.clearResolveUndo` was not added. The stage's test proves git drops the resolve-undo
+  records on its own when the rebase moves to the next stop, so Continue has nothing to
+  clear.
+- A decision that removed the path cannot be undone: git keeps the record but
+  `checkout -m` refuses a path without all three versions. `git.undoResolution` says so,
+  and the row will say "removed" with no Undo.
+- `assets/manifest.json` is not Edit-eligible after all. `readableConflict` already
+  classes it as a log, and this plan does not change that; the design's list above was
+  wrong to include it.
+- `resolutionProblem` refuses markers outright in a JSON or YAML file, a sheet, and a
+  note's front matter, rather than trusting the parse: YAML reads a marker line as a plain
+  scalar, so `project.yaml` with markers between two keys can parse. Markers in the body
+  of a scene or a note are still allowed at Save.
+- `hasConflictMarkers` moved to `@vn/util` as planned, but through its own entry,
+  `@vn/util/conflict`: `@vn/model` reaches the renderer bundle, and the util barrel pulls
+  in `node:crypto`. `scripts/aliases.mjs` and the root `tsconfig.json` list the subpath,
+  as they do for `@vn/scriptedit/write`.
+- The guard in `planSceneEdit` runs after `decide` and before serialization, over
+  `op.writes` and `op.removes`; `decide` only reads, so this is what "before the text is
+  parsed" meant. `planMarkerEdit` checks every source an edit names before patching.
+- `RepoStatus` gained `marked` (the conflicted paths whose worktree copy holds markers)
+  and `decided` (`{ path, decision }`, with `decision` in git's words: `ours` is the
+  collaborator's side during a rebase). `decisionSentence` in `shared/history.ts`
+  translates for the row.
+- The affects executed tier's `SYNC_COLLIDE` now collides on the layout, the scene and a
+  storyboard in one save per author, and runs `git.conflictText`, `git.writeResolution`
+  (part way with markers, then merged), `git.undoResolution` and `git.resolve` over them
+  before Continue, with Continue seen refusing the marked scene. `git.status` and
+  `git.conflictText` are read between writes and excluded from the tier's partition.
+
 ## What it costs to undo
 
 Two commands, one read, one tool, one guard in two planners, a notice row, and two fields

@@ -2,8 +2,8 @@
 
 # Registered commands
 
-215 commands, in 25 namespaces. 130 are `mutating`;
-143 declare a precondition; 79 are undoable; 25 ask
+218 commands, in 25 namespaces. 132 are `mutating`;
+145 declare a precondition; 79 are undoable; 25 ask
 for confirmation.
 
 ✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
@@ -89,6 +89,7 @@ for confirmation.
 | `git.blob` | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha`, `path` | — |
 | `git.changes` | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha` | — |
 | `git.checkpoint` ✍ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `name`, `sha` (default `''`), `note` (default `''`) | Writes `<git>`. An annotated tag under `refs/tags/vn/checkpoint/<slug>`; the name is the tag message’s first line, the note its body. Refused on a slug collision, by name. |
+| `git.conflictText` | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `path` | — |
 | `git.continueSync` ✍ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`) | Writes `characters`, `locations`, `wiki`, `scenes`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`, `<git>`. `add -A` then `rebase --continue`, so edits made while the conflict view was up ride into the replayed save. `commitsItself`. A completed rebase records `rewrote` the way `git.pull` does. |
 | `git.diff` | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha`, `path` | — |
 | `git.dropCheckpoint` ✍ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `name` | Writes `<git>`. Deletes the tag. The commit is untouched. |
@@ -106,6 +107,8 @@ for confirmation.
 | `git.status` | `repo` (`project`\|`wiki`\|`base`, default `'project'`) | — |
 | `git.syncWith` ✍ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `name` | Writes `<git>`. Writes `branch.<current>.remote` and `branch.<current>.merge`, where git itself keeps the answer, so a terminal `git pull` agrees. |
 | `git.takeBack` ✍ ⚠ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha` | Writes `characters`, `locations`, `wiki`, `scenes`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`, `<git>`. `revert --no-commit` then a reset of the index, so the committer sees a plain dirty tree rather than a revert in progress. A revert that conflicts is aborted before this returns. Undo history from before it no longer applies. |
+| `git.undoResolution` ✍ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `path` | Writes `characters`, `locations`, `wiki`, `scenes`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`, `<git>`. `checkout -m -- <path>`, from the resolve-undo record `add` leaves in the index. `commitsItself`. |
+| `git.writeResolution` ✍ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `path`, `text` (digest) | Writes `characters`, `locations`, `wiki`, `scenes`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`, `<git>`. The text is written verbatim for a scene and anything that is not markdown, and through the whole-file document writer otherwise, then `add`ed. `commitsItself`, since a rebase is in progress and the committer must not run. Undone with `git.undoResolution`, not undo. |
 | `interaction.list` | — | The gestures the app offers — see below. |
 | `interaction.targets` | `interaction` (`branch.connect`\|`branch.splice`\|`branch.unwire`\|`page.letter`\|`prompt.reorder`\|`script.moveLine`\|`timeline.cover`\|`timeline.create`\|`timeline.reorder`), `carried`, `scene` (default `''`), `asset` (default `''`) | Every target of a gesture, accepted or refused with why. `scene` and `asset` build the state the named gesture is judged against. |
 | `models.refresh` ✍ ✓ | — | Writes `<user>/models.json`. |

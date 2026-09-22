@@ -9,6 +9,7 @@
  */
 
 export { chunkText, scriptStateOf, sourcesOf, type SceneSource } from './sources.js';
+export { conflictedRefusal, conflictedSentence } from './conflicted.js';
 export { applyMarkerPlan, planMarkerEdit, type MarkerPatch, type MarkerPlan } from './markers.js';
 export {
   applyScenePlan,

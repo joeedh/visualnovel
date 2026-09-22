@@ -93,11 +93,6 @@ export function resolveRewritten(
   return current;
 }
 
-/** Whether `text` still holds the markers git leaves in a conflicted file. */
-export function hasConflictMarkers(text: string): boolean {
-  return /^(<{7}|={7}|>{7})( |$)/m.test(text);
-}
-
 /** "Replaying 2 of 3", from where a stopped rebase stands. */
 export function replayingSentence(current: number, total: number): string {
   return `Replaying ${current} of ${total}`;

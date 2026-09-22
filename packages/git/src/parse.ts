@@ -250,6 +250,52 @@ export function parseStatusV2(stdout: string): BranchStatus {
   return status;
 }
 
+/**
+ * One path's higher stages, as `ls-files -u` lists them while it is unmerged and
+ * `ls-files --resolve-undo` remembers them once it is decided. Stage 1 is the base, 2 `ours`, 3
+ * `theirs`; a stage is absent when that side lacked the path.
+ */
+export interface StagedPath {
+  path: string;
+  stages: Partial<Record<1 | 2 | 3, string>>;
+}
+
+/** Parses the stage lines of `ls-files -u` or `ls-files --resolve-undo`, one entry per path. */
+export function parseStages(stdout: string): StagedPath[] {
+  const byPath = new Map<string, StagedPath>();
+  for (const line of stdout.split('\n')) {
+    const m = /^\d+ ([0-9a-f]+) ([123])\t(.+)$/.exec(line);
+    if (!m) continue;
+    const path = m[3]!;
+    const entry = byPath.get(path) ?? { path, stages: {} };
+    entry.stages[Number(m[2]) as 1 | 2 | 3] = m[1]!;
+    byPath.set(path, entry);
+  }
+  return [...byPath.values()];
+}
+
+/**
+ * How a decided path was decided, read from its resolve-undo record against what the index holds
+ * now: one of the two sides kept whole, something else written, or the path removed.
+ */
+export type Decision = 'ours' | 'theirs' | 'merged' | 'removed';
+
+/** One path decided since the conflict it was part of, as `Git.resolvedPaths` reports it. */
+export interface ResolvedPath extends StagedPath {
+  decision: Decision;
+}
+
+/**
+ * Reads a decision off the blob the index now holds for the path (`ls-files -s`, stage 0), or
+ * null when the path was removed.
+ */
+export function decisionOf(stages: StagedPath['stages'], resolved: string | null): Decision {
+  if (resolved === null) return 'removed';
+  if (resolved === stages[2]) return 'ours';
+  if (resolved === stages[3]) return 'theirs';
+  return 'merged';
+}
+
 /** One commit's sha and the key `pairRewrites` matches it on across a rebase. */
 export interface CommitKey {
   sha: string;

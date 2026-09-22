@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-22T00:01:13.739Z",
-  "gitSha"       : "eec7e8dea6cfb90c6a4ed4560fa5a0fb375c5f61",
+  "sweptAt"      : "2026-09-22T04:46:48.702Z",
+  "gitSha"       : "975189231ac875511df58377aa5192015cc4432c",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -89,6 +89,7 @@
     "git.blob",
     "git.changes",
     "git.checkpoint",
+    "git.conflictText",
     "git.continueSync",
     "git.diff",
     "git.dropCheckpoint",
@@ -106,6 +107,8 @@
     "git.status",
     "git.syncWith",
     "git.takeBack",
+    "git.undoResolution",
+    "git.writeResolution",
     "interaction.list",
     "interaction.targets",
     "models.refresh",
@@ -5759,16 +5762,16 @@
     {
       "id"        : "project.setKey",
       "editor"    : "onboarding",
-      "key"       : "cmd:project.setKey#anthropic",
-      "widgetPath": "onboarding/project-setkey~b45dc248",
+      "key"       : "cmd:project.setKey#openrouter",
+      "widgetPath": "onboarding/project-setkey~e338045b",
       "supplies"  : ["key"],
       "refused"   : "Paste a key first"
     },
     {
       "id"        : "project.setKey",
       "editor"    : "onboarding",
-      "key"       : "cmd:project.setKey#openrouter",
-      "widgetPath": "onboarding/project-setkey~e338045b",
+      "key"       : "cmd:project.setKey#anthropic",
+      "widgetPath": "onboarding/project-setkey~b45dc248",
       "supplies"  : ["key"],
       "refused"   : "Paste a key first"
     },
@@ -6403,9 +6406,13 @@
   ],
   "disagreements": [],
   "strays": [
+    "asset cmd:view.open#style",
+    "branches fx:pane.view#reload",
     "documents item:link/asset/613746984653b37b24cb935b82ab56bb760fc7e4958b418321d082007d25f613",
     "documents item:link/asset/cba46728a12ad297aa87e02c58e7ebb28c16e7e01113922ccecdf8ec9c8968df",
-    "documents item:link/asset/fc80c6eba9cb0d134428bb7c0bd8bb65effa5be3379a763df6cb0467f5ebbae9"
+    "documents item:link/asset/fc80c6eba9cb0d134428bb7c0bd8bb65effa5be3379a763df6cb0467f5ebbae9",
+    "gengraph cmd:models.refresh",
+    "wiki cmd:doc.write#picture"
   ],
   "untagged"     : [],
   "unwalked"     : []
