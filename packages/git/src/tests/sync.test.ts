@@ -165,6 +165,8 @@ describe('a rebase over files the app keeps writing', () => {
         '#!/bin/sh\nlog="$(git rev-parse --show-toplevel)/log.jsonl"\n' +
           'grep -q \'"seq":9\' "$log" || printf \'{"seq":9}\\n\' >> "$log"\n',
       );
+      // Git skips a hook without the execute bit everywhere but Windows
+      await fs.chmod(join(a.dir, '.git/hooks/post-commit'), 0o755);
       expect(await a.git.rebaseContinue()).toBe(true);
       expect((await a.git.log()).map((c) => c.subject)).toEqual([
         'Read something',

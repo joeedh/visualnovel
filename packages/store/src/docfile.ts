@@ -144,8 +144,20 @@ export function decodeText(bytes: Uint8Array): DecodedText | null {
   try {
     return { text: new TextDecoder('utf-8', { fatal: true }).decode(bytes), encoding: 'utf-8' };
   } catch {
-    return { text: new TextDecoder('windows-1252').decode(bytes), encoding: 'windows-1252' };
+    return { text: decode1252(bytes), encoding: 'windows-1252' };
   }
+}
+
+/** Code points for bytes 0x80–0x9f in Windows-1252, per the WHATWG index; the rest are Latin-1. */
+const CP1252_HIGH = '€\u0081‚ƒ„…†‡ˆ‰Š‹Œ\u008dŽ\u008f\u0090‘’“”•–—˜™š›œ\u009džŸ';
+
+/** Decodes Windows-1252 by hand, since Node 20's `TextDecoder` decodes that label as Latin-1. */
+function decode1252(bytes: Uint8Array): string {
+  let text = '';
+  for (const b of bytes) {
+    text += b >= 0x80 && b < 0xa0 ? CP1252_HIGH[b - 0x80] : String.fromCharCode(b);
+  }
+  return text;
 }
 
 /**
