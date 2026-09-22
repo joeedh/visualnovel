@@ -10,7 +10,7 @@
  */
 import type { Anchor, AnchorRect } from '../../rules/anchors.js';
 import { opens, type Guidance } from '../../rules/tour.js';
-import { RING_PAD, outset, ringRect } from '../../rules/ring.js';
+import { RING_PAD, captionAt, outset, ringRect, type Nudge } from '../../rules/ring.js';
 import { anchorFor, landsOn, rectOf } from './anchors.js';
 import { TOKENS, alpha } from '../app/tokens.js';
 
@@ -34,12 +34,24 @@ export interface Showing {
   of: number;
 }
 
+/** The layer's elements, once it has been built. */
+interface Parts {
+  ring: HTMLElement;
+  caption: HTMLElement;
+  captionText: HTMLElement;
+  banner: HTMLElement;
+  bannerText: HTMLElement;
+}
+
 let layer: HTMLElement | undefined;
-let ring: HTMLElement | undefined;
-let caption: HTMLElement | undefined;
-let banner: HTMLElement | undefined;
-let bannerText: HTMLElement | undefined;
+let parts: Parts | undefined;
 const marks: HTMLElement[] = [];
+
+/** Where the author has dragged the caption, kept for the tour rather than for the step. */
+let nudge: Nudge = { dx: 0, dy: 0 };
+
+/** The offset the last paint actually applied, which is {@link nudge} trimmed to the window. */
+let applied: Nudge = { dx: 0, dy: 0 };
 
 let frame: number | undefined;
 let timer: ReturnType<typeof setInterval> | undefined;
@@ -83,12 +95,15 @@ export function unfollow(): void {
   says = '';
   scrolled.clear();
   warned.clear();
+  nudge = { dx: 0, dy: 0 };
+  applied = { dx: 0, dy: 0 };
   hide();
-  if (banner) banner.style.display = 'none';
+  if (parts) parts.banner.style.display = 'none';
 }
 
 /** What the overlay is ringing, for a test to read over CDP. */
-export const ringing = (): string | undefined => (ring?.style.display === 'none' ? undefined : key);
+export const ringing = (): string | undefined =>
+  parts?.ring.style.display === 'none' ? undefined : key;
 
 function tick(now: number): void {
   frame = requestAnimationFrame(tick);
@@ -132,15 +147,15 @@ function reresolve(): void {
  * tour started from the palette read before, since the palette retargeted without saying so.
  */
 function tell(showing: Showing | undefined, ringed: boolean): void {
-  const [, , box, text] = build();
+  const { banner, bannerText } = build();
   if (!showing || showing.shown.show === 'done') {
-    box.style.display = 'none';
+    banner.style.display = 'none';
     return;
   }
   const lines = [`${showing.title} · step ${showing.at + 1} of ${showing.of}`];
   if (!ringed) lines.push(...asks(showing.shown));
-  text.textContent = lines.join('\n');
-  box.style.display = 'flex';
+  bannerText.textContent = lines.join('\n');
+  banner.style.display = 'flex';
 }
 
 /** The instruction for a step that rings nothing, followed by where the author will find it. */
@@ -220,9 +235,9 @@ function miss(anchor: Anchor): void {
 }
 
 function draw(rect: AnchorRect, enabled: boolean): void {
-  const [box, text] = build();
+  const { ring, caption, captionText } = build();
   const colour = enabled ? TOKENS.sodium : TOKENS.mistDim;
-  Object.assign(box.style, {
+  Object.assign(ring.style, {
     display    : 'block',
     left       : `${rect.left}px`,
     top        : `${rect.top}px`,
@@ -231,17 +246,15 @@ function draw(rect: AnchorRect, enabled: boolean): void {
     borderColor: colour,
     boxShadow  : `0 0 0 3px ${alpha(colour, 0.25)}`,
   });
-  text.textContent = says;
-  // Below the ring where there is room for it, and above it otherwise, so a control near the
-  // bottom of the window is still explained on screen
-  const below = rect.bottom + 8;
-  const room = below + 40 < window.innerHeight;
-  Object.assign(text.style, {
-    display: says ? 'block' : 'none',
-    left   : `${Math.max(8, Math.min(rect.left, window.innerWidth - 320))}px`,
-    top    : room ? `${below}px` : '',
-    bottom : room ? '' : `${window.innerHeight - rect.top + 8}px`,
-  });
+  captionText.textContent = says;
+  caption.style.display = says ? 'flex' : 'none';
+  if (!says) return;
+  // Measured rather than assumed, because the placement turns on how tall the sentence wrapped to
+  const box = caption.getBoundingClientRect();
+  const view = { width: window.innerWidth, height: window.innerHeight };
+  const at = captionAt(rect, box, view, nudge);
+  applied = at.nudge;
+  Object.assign(caption.style, { left: `${at.left}px`, top: `${at.top}px` });
 }
 
 /**
@@ -285,15 +298,15 @@ function newMark(): HTMLElement {
 }
 
 function hide(): void {
-  if (ring) ring.style.display = 'none';
-  if (!caption) return;
-  caption.style.display = 'none';
-  caption.textContent = '';
+  if (!parts) return;
+  parts.ring.style.display = 'none';
+  parts.caption.style.display = 'none';
+  parts.captionText.textContent = '';
 }
 
 /** The layer, made on first use and kept, so a tour that starts and stops does not thrash the DOM. */
-function build(): [HTMLElement, HTMLElement, HTMLElement, HTMLElement] {
-  if (layer && ring && caption && banner && bannerText) return [ring, caption, banner, bannerText];
+function build(): Parts {
+  if (parts) return parts;
   layer = document.createElement('div');
   Object.assign(layer.style, {
     position     : 'fixed',
@@ -302,7 +315,7 @@ function build(): [HTMLElement, HTMLElement, HTMLElement, HTMLElement] {
     zIndex       : `${LAYER_Z}`,
   });
 
-  ring = document.createElement('div');
+  const ring = document.createElement('div');
   Object.assign(ring.style, {
     position    : 'fixed',
     display     : 'none',
@@ -312,23 +325,30 @@ function build(): [HTMLElement, HTMLElement, HTMLElement, HTMLElement] {
     animation   : 'vn-tour-pulse 1.6s ease-in-out infinite',
   });
 
-  caption = document.createElement('div');
+  const caption = document.createElement('div');
   Object.assign(caption.style, {
     position    : 'fixed',
     display     : 'none',
+    alignItems  : 'flex-start',
+    gap         : '8px',
     maxWidth    : '300px',
     padding     : '7px 10px',
     borderRadius: `${TOKENS.radiusChrome}px`,
     border      : `1px solid ${TOKENS.inkLine}`,
     background  : TOKENS.inkRaised,
-    color       : TOKENS.paper,
     fontFamily  : TOKENS.sans,
-    fontSize    : '12px',
-    lineHeight  : '1.4',
-    whiteSpace  : 'pre-line',
   });
 
-  banner = document.createElement('div');
+  const captionText = document.createElement('div');
+  Object.assign(captionText.style, {
+    color     : TOKENS.paper,
+    fontSize  : '12px',
+    lineHeight: '1.4',
+    whiteSpace: 'pre-line',
+  });
+  caption.append(captionText, grip());
+
+  const banner = document.createElement('div');
   Object.assign(banner.style, {
     position     : 'fixed',
     display      : 'none',
@@ -346,7 +366,7 @@ function build(): [HTMLElement, HTMLElement, HTMLElement, HTMLElement] {
     pointerEvents: 'auto',
   });
 
-  bannerText = document.createElement('div');
+  const bannerText = document.createElement('div');
   Object.assign(bannerText.style, {
     color     : TOKENS.paper,
     fontFamily: TOKENS.sans,
@@ -380,5 +400,50 @@ function build(): [HTMLElement, HTMLElement, HTMLElement, HTMLElement] {
 
   layer.append(style, ring, caption, banner);
   document.body.appendChild(layer);
-  return [ring, caption, banner, bannerText];
+  parts = { ring, caption, captionText, banner, bannerText };
+  return parts;
+}
+
+/**
+ * The handle that drags the caption. Only the handle takes pointer events, so the rest of the
+ * caption stays click-through and a control it covers can still be reached without moving it.
+ */
+function grip(): HTMLElement {
+  const handle = document.createElement('div');
+  handle.textContent = '⠿';
+  handle.title = 'Drag to move this box off a control you need';
+  Object.assign(handle.style, {
+    flex         : 'none',
+    cursor       : 'grab',
+    color        : TOKENS.mistDim,
+    fontFamily   : TOKENS.mono,
+    fontSize     : '12px',
+    lineHeight   : '1.4',
+    pointerEvents: 'auto',
+    touchAction  : 'none',
+  });
+
+  let from: { x: number; y: number } | undefined;
+  handle.addEventListener('pointerdown', (ev: PointerEvent) => {
+    // From where the caption is rather than from where it was asked to be, so a drag away from an
+    // edge that trimmed the last one moves it at once
+    nudge = applied;
+    from = { x: ev.clientX - nudge.dx, y: ev.clientY - nudge.dy };
+    handle.setPointerCapture(ev.pointerId);
+    handle.style.cursor = 'grabbing';
+    // Keeps the press off the text under the caption, which would otherwise start a selection
+    ev.preventDefault();
+  });
+  // The frame loop places the caption, so the drag only has to record where it has got to
+  handle.addEventListener('pointermove', (ev: PointerEvent) => {
+    if (from) nudge = { dx: ev.clientX - from.x, dy: ev.clientY - from.y };
+  });
+  const drop = (ev: PointerEvent): void => {
+    from = undefined;
+    handle.style.cursor = 'grab';
+    handle.releasePointerCapture(ev.pointerId);
+  };
+  handle.addEventListener('pointerup', drop);
+  handle.addEventListener('pointercancel', drop);
+  return handle;
 }

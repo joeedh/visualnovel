@@ -60,3 +60,47 @@ export function outset(rect: AnchorRect, pad: number): AnchorRect {
 export function ringRect(box: AnchorRect, hit?: AnchorRect): AnchorRect {
   return hit && !contains(box, hit) ? union(box, hit) : box;
 }
+
+/** How far the caption sits from the ring it explains, and how close it may come to an edge. */
+export const CAPTION_GAP = 8;
+
+export interface Size {
+  width: number;
+  height: number;
+}
+
+/** How far the author has dragged the caption from where it would otherwise sit. */
+export interface Nudge {
+  dx: number;
+  dy: number;
+}
+
+/**
+ * Where the caption goes: under the ring where the window has room for it, over the ring where it
+ * does not, plus whatever the author has dragged it by. The result is clamped to the window, so a
+ * drag cannot put the instruction out of reach, and a ring near an edge does not push it there.
+ *
+ * The clamped offset comes back as `nudge` for the caller to keep in place of the one it passed.
+ * A drag that is holding the caption against an edge would otherwise accumulate distance the
+ * window never granted, and dragging back would move nothing until that distance was retraced.
+ */
+export function captionAt(
+  ring: AnchorRect,
+  caption: Size,
+  view: Size,
+  nudge: Nudge = { dx: 0, dy: 0 },
+): { left: number; top: number; nudge: Nudge } {
+  const below = ring.bottom + CAPTION_GAP;
+  const room = below + caption.height + CAPTION_GAP <= view.height;
+  const top = room ? below : ring.top - CAPTION_GAP - caption.height;
+  const at = {
+    left: within(ring.left + nudge.dx, caption.width, view.width),
+    top : within(top + nudge.dy, caption.height, view.height),
+  };
+  return { ...at, nudge: { dx: at.left - ring.left, dy: at.top - top } };
+}
+
+/** `at`, moved the least distance that puts a `size`-long box inside `view` with a gap at each end. */
+function within(at: number, size: number, view: number): number {
+  return Math.min(Math.max(at, CAPTION_GAP), Math.max(CAPTION_GAP, view - size - CAPTION_GAP));
+}

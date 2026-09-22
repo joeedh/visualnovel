@@ -592,6 +592,18 @@ inside the window. If the hit test still fails after that, the overlay logs one
 `console.warn` per anchor and leaves the ring where it is; the overlay cannot distinguish
 an element covered by another from an element that moved between frames.
 
+The caption sits under the ring where the window has room for it and over the ring where
+it does not; `captionAt` in `renderer/rules/ring.ts` is that placement, and the overlay
+measures the caption rather than assuming a height, because the placement turns on how
+tall the sentence wrapped to. The caption carries a drag handle, because a step often
+rings the control that opens a form and the caption then covers the field the author has
+to type into. Only the handle takes pointer events, so the rest of the caption stays
+click-through and a covered control can still be clicked without moving anything. A drag
+shifts the caption from wherever the step would otherwise put it, for the rest of the tour
+rather than for the step, and the shift is clamped to the window. `captionAt` returns the
+shift it granted, and the handle takes that as its starting point, so a drag away from an
+edge that trimmed the last one moves the caption at once.
+
 The same layer draws a banner at the bottom of the window for as long as a tour is
 running. The banner shows the tour's title, which step of how many, and a button that runs
 `tour.cancel`. A step with a control to point at states what to do in the ring's caption,
@@ -909,7 +921,7 @@ produces identical bytes.
 | `renderer/rules/effects.ts`                | One typed helper per effect, each returning an `Action`                                                                                                                                                                                          |
 | `renderer/rules/anchors.ts`                | `Action`, `Offer`, `refuse`, `keyOf`, `effectKey`, `openerKey`, `duplicateKeys`, `applyOffer`, `toolOf`, `writeTag`, `tagOf`; anchor and resolution types; `subsumes`, `resolveAnchor`, `resolveItem`, `resolveSubject`, `resolveNamed`, `mapOf` |
 | `renderer/rules/toolmeta.ts`               | `VnToolMeta`: path.ux's `UXToolMeta` plus the offer's `on`, `supplies`, `form`, `props` and `then`                                                                                                                                               |
-| `renderer/rules/ring.ts`                   | Ring geometry: `ringRect`, `union`, `outset`, `RING_PAD`                                                                                                                                                                                         |
+| `renderer/rules/ring.ts`                   | Ring and caption geometry: `ringRect`, `union`, `outset`, `RING_PAD`, `captionAt`                                                                                                                                                                |
 | `renderer/rules/tour.ts`                   | `TourState`, `guide`, `satisfies`; pure, no DOM                                                                                                                                                                                                  |
 | `renderer/rules/anchormap.ts`              | `ANCHOR_MAP`, loaded from `anchors.json`                                                                                                                                                                                                         |
 | `src/shared/precheck.ts`                   | `checkFor`, `askedAs`, `canBlank`: which invocation a ringed anchor, or the agent's `ux_check`, is checked with                                                                                                                                  |
