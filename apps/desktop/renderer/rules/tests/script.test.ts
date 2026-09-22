@@ -13,6 +13,8 @@ import {
   lidAction,
   continueAction,
   composeBox,
+  CONFLICTED_NOTICE,
+  decideAction,
   cancelAction,
   addLineAction,
   speakerAction,
@@ -775,6 +777,25 @@ describe('controls', () => {
       label   : 'Retype a:L1',
       supplies: ['text'],
     });
+  });
+
+  it('leads a scene that still holds conflict markers to the History pane first', () => {
+    const keys = controls(state({ shown: { ...shown, conflicted: true } })).map(keyOf);
+    expect(keys.slice(0, 4)).toEqual([
+      'fx:menu.open',
+      'fx:pane.view#reload',
+      'cmd:view.open',
+      'cmd:story.deleteLines#marked',
+    ]);
+    expect(decideAction()).toMatchObject({
+      ok   : true,
+      id   : 'view.open',
+      props: { editor: 'history', where: 'elsewhere' },
+      label: 'Open History',
+    });
+    expect(CONFLICTED_NOTICE).toBe(
+      'This scene is waiting on a merge decision. Open History to decide it.',
+    );
   });
 
   it('invites the first line of an empty scene, and offers the composer’s box while one is open', () => {

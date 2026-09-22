@@ -562,6 +562,11 @@ export interface SceneCoverage {
    * previewing `story.newShot` names the id the write would actually mint, not a derived guess.
    */
   nextShot?: number;
+  /**
+   * The scene file still holds git's conflict markers from a stopped sync. The parser reads a
+   * marked scene, so the pane can show it, but every write on it is refused until it is decided.
+   */
+  conflicted?: true;
 }
 
 /**

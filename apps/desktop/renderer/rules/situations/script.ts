@@ -50,6 +50,11 @@ export const SITUATIONS = situations<ScriptPageState>(
     state: { ...base, shown: { ...shown, lines: [] } },
   },
   {
+    name : 'conflicted',
+    why: 'The scene file still holds a stopped sync’s conflict markers, so a notice row leads to the History pane; the page is otherwise drawn as the parser reads it, and every edit on it is refused by the rule the commands share.',
+    state: { ...base, shown: { ...shown, conflicted: true } },
+  },
+  {
     name : 'editing-a-line',
     why  : 'One line’s box is open, so its box stands in for that line’s control.',
     state: { ...base, editingLine: 'arrival:L1' },

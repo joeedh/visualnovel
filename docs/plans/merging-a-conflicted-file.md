@@ -399,6 +399,37 @@ does not finish without a run against a real model, and the plan records what wa
   before Continue, with Continue seen refusing the marked scene. `git.status` and
   `git.conflictText` are read between writes and excluded from the tier's partition.
 
+### Stage 2: the pane
+
+- The Script pane's notice row reads `SceneCoverage.conflicted`, set by `sceneCoverage`
+  from the scene file itself, so the pane needs no git status to draw it. The row sits
+  above the page's scroll, beside the pane's own notice, with one control, `view.open` on
+  the History pane.
+- The editor's field fills the detail column rather than sitting at a fixed height, and
+  scrolls itself to the first marker when it opens. Both came out of the review below: at
+  eight lines the field was a keyhole on a 300-line scene, and the markers were a long
+  scroll away.
+- `git.writeResolution` and `git.undoResolution` left `paletteonly.ts`: Save and Undo
+  decision are their controls.
+- **UX review** (2026-09-22), over the two-author fixture with a 300-line scene both
+  authors added, differing in two lines near the middle. Findings:
+    - The textarea is enough once it fills the column. Reading a scene in it is reading
+      Fountain source, `[[line: L75]]` markers and all, which is what the plan chose; the
+      prose face keeps it readable.
+    - The labels were left untranslated in the text, as decided. On a fresh stop the
+      `>>>>>>>` side names the author's own save
+      (`>>>>>>> 7f20623 (Mara: the archive scene)`), so the two sides are readable from
+      the text alone. After Undo decision they are not: `checkout -m` labels the
+      collaborator's side `ours` and the author's `theirs`, which is the opposite of the
+      app's words. The field's tooltip says which is which, and the row's Keep mine and
+      Take theirs are still right; an author who reads `ours` as their own and keeps it is
+      the risk, and this plan accepts it rather than rewriting git's labels in the text.
+    - A decided row reads as decided: the path greyed, "took theirs" in the dim face
+      beside it (it was drawn in the accent colour first, which read as a warning), Undo
+      decision the one control. Keeping the collaborator's block whole in the editor and
+      saving reads back as "took theirs", which is `decisionOf` classifying the saved blob
+      against the stages, not the button that was pressed.
+
 ## What it costs to undo
 
 Two commands, one read, one tool, one guard in two planners, a notice row, and two fields

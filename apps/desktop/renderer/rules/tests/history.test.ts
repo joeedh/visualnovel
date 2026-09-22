@@ -12,6 +12,8 @@ import {
   detailControls,
   dropCheckpointAction,
   emptySentence,
+  editAction,
+  decidedSentence,
   fetchAction,
   goBackAction,
   groupByDay,
@@ -19,11 +21,14 @@ import {
   moreAction,
   NO_FILTER,
   onlyLogs,
-  openBothAction,
   pathAction,
   pullAction,
   pushAction,
   ranSentence,
+  saveResolutionAction,
+  undoResolutionAction,
+  cancelEditAction,
+  resolveBox,
   remoteSentence,
   removeRemoteAction,
   replayingSentence,
@@ -530,7 +535,7 @@ describe('the conflict view', () => {
     expect(replayingSentence(merge)).toBe('A merge started outside the app is unfinished');
   });
 
-  it('offers both sides of each file, and reading both only where there is a middle to read', () => {
+  it('offers both sides of each file, and editing only where git merged line by line', () => {
     expect(resolveAction(conflict, scene, 'mine')).toMatchObject({
       ok   : true,
       on   : `${scene}/mine`,
@@ -541,21 +546,69 @@ describe('the conflict view', () => {
       ok   : true,
       label: 'Take theirs',
     });
-    expect(openBothAction(conflict, scene)).toMatchObject({ ok: true, label: 'Close both' });
-    expect(openBothAction({ ...conflict, bothOpen: undefined }, scene).label).toBe('Open both');
-    expect(openBothAction(conflict, layout)).toMatchObject({
-      refusal: { reason: 'This file has no middle to read; keep one side or the other.' },
+    expect(editAction(conflict, scene)).toMatchObject({ ok: true, label: 'Edit' });
+    expect(editAction(conflict, layout)).toMatchObject({
+      refusal: { reason: 'This file was not merged line by line; keep one side or the other.' },
     });
+    expect(decidedSentence(conflict.status)).toBe('2 files need a decision.');
     expect(conflictControls(conflict).map((o) => `${o.id}:${o.on ?? ''}`)).toEqual([
-      `git.resolve:${scene}/mine`,
-      `git.resolve:${scene}/theirs`,
-      `pane.view:both/${scene}`,
       `git.resolve:${layout}/mine`,
       `git.resolve:${layout}/theirs`,
-      `pane.view:both/${layout}`,
+      `pane.view:edit/${layout}`,
+      `git.resolve:${scene}/mine`,
+      `git.resolve:${scene}/theirs`,
+      `pane.view:edit/${scene}`,
       'git.continueSync:',
       'git.abandonSync:',
     ]);
+  });
+
+  it('opens one file for editing, with the box and Save carrying the text at the click', () => {
+    const editing = state('conflict-editing');
+    expect(editAction(editing, scene)).toMatchObject({
+      refusal: { reason: 'Already open below; save or cancel it there.' },
+    });
+    expect(resolveBox(scene)).toMatchObject({
+      id      : 'git.writeResolution',
+      on      : `text/${scene}`,
+      supplies: ['text'],
+    });
+    expect(saveResolutionAction(editing, scene)).toMatchObject({
+      ok      : true,
+      label   : 'Save',
+      supplies: ['text'],
+      props   : { repo: 'project', path: scene },
+    });
+    expect(saveResolutionAction(editing, layout)).toMatchObject({ ok: false });
+    expect(cancelEditAction(scene)).toMatchObject({ ok: true, on: `cancel/${scene}` });
+    expect(conflictControls(editing).map((o) => `${o.id}:${o.on ?? ''}`)).toContain(
+      `git.writeResolution:${scene}`,
+    );
+  });
+
+  it('lists a decided file greyed with how it was decided, and offers to undo it', () => {
+    const decided = state('conflict-decided');
+    const mergedScene = decided.status!.decided[1]!;
+    expect(decidedSentence(decided.status)).toBe('Every file is decided.');
+    expect(
+      decidedSentence({ ...decided.status!, conflicted: [layout], decided: [mergedScene] }),
+    ).toBe('1 of 2 decided.');
+    expect(undoResolutionAction(decided, mergedScene)).toMatchObject({
+      ok   : true,
+      label: 'Undo decision',
+      props: { repo: 'project', path: scene },
+    });
+    expect(undoResolutionAction(decided, { path: layout, decision: 'removed' })).toMatchObject({
+      ok     : false,
+      refusal: { reason: expect.stringMatching(/cannot put a removed file back/) },
+    });
+    expect(conflictControls(decided).map((o) => `${o.id}:${o.on ?? ''}`)).toEqual([
+      `git.undoResolution:${layout}`,
+      `git.undoResolution:${scene}`,
+      'git.continueSync:',
+      'git.abandonSync:',
+    ]);
+    expect(continueSyncAction(decided)).toMatchObject({ ok: true });
   });
 
   it('refuses Continue until every file is decided, and Give up only with nothing part way', () => {

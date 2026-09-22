@@ -11,7 +11,7 @@ import {
   writeSceneChunk,
   writeShots,
 } from '@vn/store';
-import { exists, readText } from '@vn/util';
+import { exists, hasConflictMarkers, readText } from '@vn/util';
 import { fileCache } from '../workspace/filecache.js';
 import { aspectFor, imageParams, layoutDefect, resolveSlot, slotTaskHash } from '@vn/artgen';
 import { driftOf } from '@vn/pipeline';
@@ -414,6 +414,7 @@ export class StoryPart {
     };
     const wardrobes = wardrobesOf(project.model.characters);
     const params = imageParams(project.config);
+    const conflicted = hasConflictMarkers(await readText(project.paths.sceneFile(sceneId)));
     const pageAspect = project.config.image_params.page_aspect;
     // Whoever the scene declares, plus anyone a shot actually frames — a subject the scene's
     // `characters` list forgot is still someone the strip has to be able to dress.
@@ -477,6 +478,7 @@ export class StoryPart {
       names: Object.fromEntries([...project.model.characters.values()].map((c) => [c.id, c.name])),
       imageModel : project.config.models.image,
       ...(loaded?.nextShot !== undefined ? { nextShot: loaded.nextShot } : {}),
+      ...(conflicted ? { conflicted: true } : {}),
     };
   }
 

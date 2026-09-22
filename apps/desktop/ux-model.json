@@ -442,7 +442,19 @@
       "module": "history",
       "editor": "history",
       "name"  : "conflict",
-      "why": "Getting their saves stopped on the second of three replayed saves, with a scene and a layout in question: the scene offers Open both while the layout, which git never merges, offers only the two sides; Continue is refused until both are decided; the status view leads to this view rather than duplicating Give up."
+      "why": "Getting their saves stopped on the second of three replayed saves, with a scene and a layout in question: the scene, which git merged line by line, offers Edit while the layout, which git never merges, offers only the two sides; Continue is refused until both are decided; the status view leads to this view rather than duplicating Give up."
+    },
+    {
+      "module": "history",
+      "editor": "history",
+      "name"  : "conflict-editing",
+      "why": "The scene in question is open for editing beneath the list, whole and with git’s markers in it: the field and Save carry the text at the click, Cancel closes it, and the row’s own Edit is refused while it is open."
+    },
+    {
+      "module": "history",
+      "editor": "history",
+      "name"  : "conflict-decided",
+      "why": "Both files are decided, the scene by a merge written by hand and the layout by keeping the author’s side, so each is listed greyed with how it was decided and Undo decision, and Continue is offered."
     },
     {
       "module": "history",
@@ -611,6 +623,12 @@
       "editor": "script",
       "name"  : "empty-scene",
       "why"   : "A scene with no lines invites the first one and offers nothing to split or add to."
+    },
+    {
+      "module": "script",
+      "editor": "script",
+      "name"  : "conflicted",
+      "why": "The scene file still holds a stopped sync’s conflict markers, so a notice row leads to the History pane; the page is otherwise drawn as the parser reads it, and every edit on it is refused by the rule the commands share."
     },
     {
       "module": "script",
@@ -24754,92 +24772,6 @@
       "editor"    : "history",
       "module"    : "history",
       "situation" : "conflict",
-      "key"       : "cmd:git.resolve#scenes/rooftop.fountain/mine",
-      "widgetPath": "history/git-resolve~01fdeb16",
-      "offer": {
-        "id"     : "git.resolve",
-        "label"  : "Keep mine",
-        "tooltip": "Keep your version of scenes/rooftop.fountain and drop theirs.",
-        "on"     : "scenes/rooftop.fountain/mine",
-        "ok"     : true,
-        "props": {
-          "repo": "project",
-          "path": "scenes/rooftop.fountain",
-          "side": "mine"
-        }
-      },
-      "effects": [
-        {
-          "id"   : "git.resolve",
-          "props": {
-            "repo": "project",
-            "path": "scenes/rooftop.fountain",
-            "side": "mine"
-          }
-        }
-      ]
-    },
-    {
-      "via"       : "control",
-      "editor"    : "history",
-      "module"    : "history",
-      "situation" : "conflict",
-      "key"       : "cmd:git.resolve#scenes/rooftop.fountain/theirs",
-      "widgetPath": "history/git-resolve~336622e8",
-      "offer": {
-        "id"     : "git.resolve",
-        "label"  : "Take theirs",
-        "tooltip": "Take their version of scenes/rooftop.fountain and drop yours.",
-        "on"     : "scenes/rooftop.fountain/theirs",
-        "ok"     : true,
-        "props": {
-          "repo": "project",
-          "path": "scenes/rooftop.fountain",
-          "side": "theirs"
-        }
-      },
-      "effects": [
-        {
-          "id"   : "git.resolve",
-          "props": {
-            "repo": "project",
-            "path": "scenes/rooftop.fountain",
-            "side": "theirs"
-          }
-        }
-      ]
-    },
-    {
-      "via"       : "control",
-      "editor"    : "history",
-      "module"    : "history",
-      "situation" : "conflict",
-      "key"       : "fx:pane.view#both/scenes/rooftop.fountain",
-      "widgetPath": "history/pane-view~2080b029",
-      "offer": {
-        "id"     : "pane.view",
-        "label"  : "Close both",
-        "tooltip": "Put the two sides away again.",
-        "on"     : "both/scenes/rooftop.fountain",
-        "ok"     : true,
-        "props": {
-          "what": "mode"
-        }
-      },
-      "effects": [
-        {
-          "id"   : "pane.view",
-          "props": {
-            "what": "mode"
-          }
-        }
-      ]
-    },
-    {
-      "via"       : "control",
-      "editor"    : "history",
-      "module"    : "history",
-      "situation" : "conflict",
       "key"       : "cmd:git.resolve#.vnstudio/layouts/writing.json/mine",
       "widgetPath": "history/git-resolve~a3e2267c",
       "offer": {
@@ -24900,21 +24832,107 @@
       "editor"    : "history",
       "module"    : "history",
       "situation" : "conflict",
-      "key"       : "fx:pane.view#both/.vnstudio/layouts/writing.json",
-      "widgetPath": "history/pane-view~222ad47b",
+      "key"       : "fx:pane.view#edit/.vnstudio/layouts/writing.json",
+      "widgetPath": "history/pane-view~8c663b36",
       "offer": {
         "id"     : "pane.view",
-        "label"  : "Open both",
-        "tooltip": "Read their .vnstudio/layouts/writing.json and yours side by side, before keeping one.",
-        "on"     : "both/.vnstudio/layouts/writing.json",
+        "label"  : "Edit",
+        "tooltip": "Open .vnstudio/layouts/writing.json as git left it, both versions between the markers, and merge them by hand.",
+        "on"     : "edit/.vnstudio/layouts/writing.json",
         "ok"     : false,
         "refusal": {
-          "reason": "This file has no middle to read; keep one side or the other."
+          "reason": "This file was not merged line by line; keep one side or the other."
         }
       },
       "effects": [
         {
           "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "cmd:git.resolve#scenes/rooftop.fountain/mine",
+      "widgetPath": "history/git-resolve~01fdeb16",
+      "offer": {
+        "id"     : "git.resolve",
+        "label"  : "Keep mine",
+        "tooltip": "Keep your version of scenes/rooftop.fountain and drop theirs.",
+        "on"     : "scenes/rooftop.fountain/mine",
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "path": "scenes/rooftop.fountain",
+          "side": "mine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.resolve",
+          "props": {
+            "repo": "project",
+            "path": "scenes/rooftop.fountain",
+            "side": "mine"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "cmd:git.resolve#scenes/rooftop.fountain/theirs",
+      "widgetPath": "history/git-resolve~336622e8",
+      "offer": {
+        "id"     : "git.resolve",
+        "label"  : "Take theirs",
+        "tooltip": "Take their version of scenes/rooftop.fountain and drop yours.",
+        "on"     : "scenes/rooftop.fountain/theirs",
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "path": "scenes/rooftop.fountain",
+          "side": "theirs"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.resolve",
+          "props": {
+            "repo": "project",
+            "path": "scenes/rooftop.fountain",
+            "side": "theirs"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "fx:pane.view#edit/scenes/rooftop.fountain",
+      "widgetPath": "history/pane-view~8b0d952c",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Edit",
+        "tooltip": "Open scenes/rooftop.fountain as git left it, both versions between the markers, and merge them by hand.",
+        "on"     : "edit/scenes/rooftop.fountain",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
         }
       ]
     },
@@ -24945,6 +24963,1065 @@
       "editor"    : "history",
       "module"    : "history",
       "situation" : "conflict",
+      "key"       : "cmd:git.abandonSync",
+      "widgetPath": "history/git-abandonsync~5589c909",
+      "offer": {
+        "id"     : "git.abandonSync",
+        "label"  : "Give up",
+        "tooltip": "Stop getting their saves and put yours back exactly as they were. Their saves stay at the shared copy for another try.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.abandonSync",
+          "props": {
+            "repo": "project"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "fx:pane.view#sync",
+      "widgetPath": "history/pane-view~c82b206b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Shared copies",
+        "tooltip": "List the shared copies: what each has, and send or get saves.",
+        "on"     : "sync",
+        "ok"     : false,
+        "refusal": {
+          "reason": "The files in question have this column until they are decided."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "fx:pane.view#who",
+      "widgetPath": "history/pane-view~f13e92ac",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Everyone",
+        "tooltip": "Narrow the list to the saves one kind of maker made: you, the agent, the pipeline, or the app’s housekeeping.",
+        "on"     : "who",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "fx:pane.view#path",
+      "widgetPath": "history/pane-view~f5ccb359",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Any file",
+        "tooltip": "Right-click a file or a scene in the document tree and choose Show history to narrow the list to it.",
+        "on"     : "path",
+        "ok"     : false,
+        "refusal": {
+          "reason": "The list is not narrowed to a file."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "fx:pane.view#checkpoints",
+      "widgetPath": "history/pane-view~0d942c3d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Checkpoints",
+        "tooltip": "Show only the saves you named as a checkpoint.",
+        "on"     : "checkpoints",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "fx:pane.view#text",
+      "widgetPath": "history/pane-view~34dea019",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Search saves…",
+        "tooltip": "Narrow the list to the saves whose description contains these words.",
+        "on"     : "text",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "fx:pane.view#clear",
+      "widgetPath": "history/pane-view~13059a85",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Show all",
+        "tooltip": "Take every filter off and show every save.",
+        "on"     : "clear",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing narrows the list."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "cmd:git.checkpoint",
+      "widgetPath": "history/git-checkpoint~21f68b45",
+      "offer": {
+        "id"     : "git.checkpoint",
+        "label"  : "⚑ Checkpoint…",
+        "tooltip": "Name the selected save as a checkpoint, so it can be found and gone back to later.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.checkpoint",
+          "props": {
+            "repo": "project",
+            "sha" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "history/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Read the saves again, in case something changed outside the app.",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "fx:pane.view#conflicts",
+      "widgetPath": "history/pane-view~1b72e321",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Decide…",
+        "tooltip": "Show the files waiting on a decision, and continue or give up getting their saves.",
+        "on"     : "conflicts",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "fx:pane.view#save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "widgetPath": "history/pane-view~c2eee052",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Moved line L4 into rooftop",
+        "tooltip": "Showing this save. You · 1 file · aaaaaaa",
+        "on"     : "save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "fx:pane.view#save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "widgetPath": "history/pane-view~946708b2",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Agent turn: make the rooftop scene tenser",
+        "tooltip": "Show what this save changed. Agent · 3 files · bbbbbbb",
+        "on"     : "save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "fx:pane.view#save/cccccccccccccccccccccccccccccccccccccccc",
+      "widgetPath": "history/pane-view~442baf92",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Generated 14 assets",
+        "tooltip": "Show what this save changed. Pipeline · 1 file · ccccccc",
+        "on"     : "save/cccccccccccccccccccccccccccccccccccccccc",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "fx:pane.view#more",
+      "widgetPath": "history/pane-view~bab7f4e9",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Earlier saves",
+        "tooltip": "Read the next fifty saves.",
+        "on"     : "more",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Every save is listed."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "cmd:git.resolve#.vnstudio/layouts/writing.json/mine",
+      "widgetPath": "history/git-resolve~a3e2267c",
+      "offer": {
+        "id"     : "git.resolve",
+        "label"  : "Keep mine",
+        "tooltip": "Keep your version of .vnstudio/layouts/writing.json and drop theirs.",
+        "on"     : ".vnstudio/layouts/writing.json/mine",
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "path": ".vnstudio/layouts/writing.json",
+          "side": "mine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.resolve",
+          "props": {
+            "repo": "project",
+            "path": ".vnstudio/layouts/writing.json",
+            "side": "mine"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "cmd:git.resolve#.vnstudio/layouts/writing.json/theirs",
+      "widgetPath": "history/git-resolve~ddf2cb42",
+      "offer": {
+        "id"     : "git.resolve",
+        "label"  : "Take theirs",
+        "tooltip": "Take their version of .vnstudio/layouts/writing.json and drop yours.",
+        "on"     : ".vnstudio/layouts/writing.json/theirs",
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "path": ".vnstudio/layouts/writing.json",
+          "side": "theirs"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.resolve",
+          "props": {
+            "repo": "project",
+            "path": ".vnstudio/layouts/writing.json",
+            "side": "theirs"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "fx:pane.view#edit/.vnstudio/layouts/writing.json",
+      "widgetPath": "history/pane-view~8c663b36",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Edit",
+        "tooltip": "Open .vnstudio/layouts/writing.json as git left it, both versions between the markers, and merge them by hand.",
+        "on"     : "edit/.vnstudio/layouts/writing.json",
+        "ok"     : false,
+        "refusal": {
+          "reason": "This file was not merged line by line; keep one side or the other."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "cmd:git.resolve#scenes/rooftop.fountain/mine",
+      "widgetPath": "history/git-resolve~01fdeb16",
+      "offer": {
+        "id"     : "git.resolve",
+        "label"  : "Keep mine",
+        "tooltip": "Keep your version of scenes/rooftop.fountain and drop theirs.",
+        "on"     : "scenes/rooftop.fountain/mine",
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "path": "scenes/rooftop.fountain",
+          "side": "mine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.resolve",
+          "props": {
+            "repo": "project",
+            "path": "scenes/rooftop.fountain",
+            "side": "mine"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "cmd:git.resolve#scenes/rooftop.fountain/theirs",
+      "widgetPath": "history/git-resolve~336622e8",
+      "offer": {
+        "id"     : "git.resolve",
+        "label"  : "Take theirs",
+        "tooltip": "Take their version of scenes/rooftop.fountain and drop yours.",
+        "on"     : "scenes/rooftop.fountain/theirs",
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "path": "scenes/rooftop.fountain",
+          "side": "theirs"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.resolve",
+          "props": {
+            "repo": "project",
+            "path": "scenes/rooftop.fountain",
+            "side": "theirs"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "fx:pane.view#edit/scenes/rooftop.fountain",
+      "widgetPath": "history/pane-view~8b0d952c",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Edit",
+        "tooltip": "Open scenes/rooftop.fountain as git left it, both versions between the markers, and merge them by hand.",
+        "on"     : "edit/scenes/rooftop.fountain",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Already open below; save or cancel it there."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "cmd:git.writeResolution#text/scenes/rooftop.fountain",
+      "widgetPath": "history/git-writeresolution~0dcac6fe",
+      "offer": {
+        "id"      : "git.writeResolution",
+        "label"   : "The file, as git left it",
+        "tooltip": "The whole file. Where both of you changed the same lines, theirs come first between <<<<<<< and =======, yours between ======= and >>>>>>>. Keep what you want and delete the marker lines.",
+        "on"      : "text/scenes/rooftop.fountain",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "path": "scenes/rooftop.fountain"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.writeResolution",
+          "props": {
+            "path": "scenes/rooftop.fountain"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "cmd:git.writeResolution#scenes/rooftop.fountain",
+      "widgetPath": "history/git-writeresolution~fc66cfb4",
+      "offer": {
+        "id"      : "git.writeResolution",
+        "label"   : "Save",
+        "tooltip": "Write scenes/rooftop.fountain as it reads above and mark it decided. Markers left in prose are allowed until Continue.",
+        "on"      : "scenes/rooftop.fountain",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "repo": "project",
+          "path": "scenes/rooftop.fountain"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.writeResolution",
+          "props": {
+            "repo": "project",
+            "path": "scenes/rooftop.fountain"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "fx:pane.view#cancel/scenes/rooftop.fountain",
+      "widgetPath": "history/pane-view~980f9cf6",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Cancel",
+        "tooltip": "Close the editor and leave the file as git left it, still waiting on a decision.",
+        "on"     : "cancel/scenes/rooftop.fountain",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "cmd:git.continueSync",
+      "widgetPath": "history/git-continuesync~bf114e7f",
+      "offer": {
+        "id"     : "git.continueSync",
+        "label"  : "Continue",
+        "tooltip": "Finish the save being replayed and go on to the next. Edits made while this view was up ride into it.",
+        "ok"     : false,
+        "refusal": {
+          "reason": "2 files still need a decision."
+        }
+      },
+      "effects": [
+        {
+          "id": "git.continueSync"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-editing",
+      "key"       : "cmd:git.abandonSync",
+      "widgetPath": "history/git-abandonsync~5589c909",
+      "offer": {
+        "id"     : "git.abandonSync",
+        "label"  : "Give up",
+        "tooltip": "Stop getting their saves and put yours back exactly as they were. Their saves stay at the shared copy for another try.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.abandonSync",
+          "props": {
+            "repo": "project"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-decided",
+      "key"       : "fx:pane.view#sync",
+      "widgetPath": "history/pane-view~c82b206b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Shared copies",
+        "tooltip": "List the shared copies: what each has, and send or get saves.",
+        "on"     : "sync",
+        "ok"     : false,
+        "refusal": {
+          "reason": "The files in question have this column until they are decided."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-decided",
+      "key"       : "fx:pane.view#who",
+      "widgetPath": "history/pane-view~f13e92ac",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Everyone",
+        "tooltip": "Narrow the list to the saves one kind of maker made: you, the agent, the pipeline, or the app’s housekeeping.",
+        "on"     : "who",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-decided",
+      "key"       : "fx:pane.view#path",
+      "widgetPath": "history/pane-view~f5ccb359",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Any file",
+        "tooltip": "Right-click a file or a scene in the document tree and choose Show history to narrow the list to it.",
+        "on"     : "path",
+        "ok"     : false,
+        "refusal": {
+          "reason": "The list is not narrowed to a file."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-decided",
+      "key"       : "fx:pane.view#checkpoints",
+      "widgetPath": "history/pane-view~0d942c3d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Checkpoints",
+        "tooltip": "Show only the saves you named as a checkpoint.",
+        "on"     : "checkpoints",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-decided",
+      "key"       : "fx:pane.view#text",
+      "widgetPath": "history/pane-view~34dea019",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Search saves…",
+        "tooltip": "Narrow the list to the saves whose description contains these words.",
+        "on"     : "text",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-decided",
+      "key"       : "fx:pane.view#clear",
+      "widgetPath": "history/pane-view~13059a85",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Show all",
+        "tooltip": "Take every filter off and show every save.",
+        "on"     : "clear",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing narrows the list."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-decided",
+      "key"       : "cmd:git.checkpoint",
+      "widgetPath": "history/git-checkpoint~21f68b45",
+      "offer": {
+        "id"     : "git.checkpoint",
+        "label"  : "⚑ Checkpoint…",
+        "tooltip": "Name the selected save as a checkpoint, so it can be found and gone back to later.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.checkpoint",
+          "props": {
+            "repo": "project",
+            "sha" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-decided",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "history/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Read the saves again, in case something changed outside the app.",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-decided",
+      "key"       : "fx:pane.view#conflicts",
+      "widgetPath": "history/pane-view~1b72e321",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Decide…",
+        "tooltip": "Show the files waiting on a decision, and continue or give up getting their saves.",
+        "on"     : "conflicts",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-decided",
+      "key"       : "fx:pane.view#save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "widgetPath": "history/pane-view~c2eee052",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Moved line L4 into rooftop",
+        "tooltip": "Showing this save. You · 1 file · aaaaaaa",
+        "on"     : "save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-decided",
+      "key"       : "fx:pane.view#save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "widgetPath": "history/pane-view~946708b2",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Agent turn: make the rooftop scene tenser",
+        "tooltip": "Show what this save changed. Agent · 3 files · bbbbbbb",
+        "on"     : "save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-decided",
+      "key"       : "fx:pane.view#save/cccccccccccccccccccccccccccccccccccccccc",
+      "widgetPath": "history/pane-view~442baf92",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Generated 14 assets",
+        "tooltip": "Show what this save changed. Pipeline · 1 file · ccccccc",
+        "on"     : "save/cccccccccccccccccccccccccccccccccccccccc",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-decided",
+      "key"       : "fx:pane.view#more",
+      "widgetPath": "history/pane-view~bab7f4e9",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Earlier saves",
+        "tooltip": "Read the next fifty saves.",
+        "on"     : "more",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Every save is listed."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-decided",
+      "key"       : "cmd:git.undoResolution#.vnstudio/layouts/writing.json",
+      "widgetPath": "history/git-undoresolution~c22a85ae",
+      "offer": {
+        "id"     : "git.undoResolution",
+        "label"  : "Undo decision",
+        "tooltip": "Put .vnstudio/layouts/writing.json back in question, with both versions and the markers back on disk.",
+        "on"     : ".vnstudio/layouts/writing.json",
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "path": ".vnstudio/layouts/writing.json"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.undoResolution",
+          "props": {
+            "repo": "project",
+            "path": ".vnstudio/layouts/writing.json"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-decided",
+      "key"       : "cmd:git.undoResolution#scenes/rooftop.fountain",
+      "widgetPath": "history/git-undoresolution~dec664a4",
+      "offer": {
+        "id"     : "git.undoResolution",
+        "label"  : "Undo decision",
+        "tooltip": "Put scenes/rooftop.fountain back in question, with both versions and the markers back on disk.",
+        "on"     : "scenes/rooftop.fountain",
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "path": "scenes/rooftop.fountain"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.undoResolution",
+          "props": {
+            "repo": "project",
+            "path": "scenes/rooftop.fountain"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-decided",
+      "key"       : "cmd:git.continueSync",
+      "widgetPath": "history/git-continuesync~bf114e7f",
+      "offer": {
+        "id"     : "git.continueSync",
+        "label"  : "Continue",
+        "tooltip": "Finish the save being replayed and go on to the next. Edits made while this view was up ride into it.",
+        "ok"     : true,
+        "props": {
+          "repo": "project"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.continueSync",
+          "props": {
+            "repo": "project"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict-decided",
       "key"       : "cmd:git.abandonSync",
       "widgetPath": "history/git-abandonsync~5589c909",
       "offer": {
@@ -32272,6 +33349,401 @@
       "editor"    : "script",
       "module"    : "script",
       "situation" : "empty-scene",
+      "key"       : "fx:popup.open#continue",
+      "widgetPath": "script/popup-open~b935f3e4",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ scene after this one",
+        "tooltip": "Write a new scene and make this one continue into it",
+        "on"     : "continue",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "conflicted",
+      "key"       : "fx:menu.open",
+      "widgetPath": "script/menu-open~eb5b4984",
+      "offer": {
+        "id"     : "menu.open",
+        "label"  : "arrival",
+        "tooltip": "Which scene this editor shows. Every pane follows the choice.",
+        "ok"     : true,
+        "props": {
+          "menu": "scenes"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "menu.open",
+          "props": {
+            "menu": "scenes"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "conflicted",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "script/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this scene from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "conflicted",
+      "key"       : "cmd:view.open",
+      "widgetPath": "script/view-open~dd85e74a",
+      "offer": {
+        "id"     : "view.open",
+        "label"  : "Open History",
+        "tooltip": "Show the History pane, where the sync that stopped on this scene is decided.",
+        "ok"     : true,
+        "props": {
+          "editor": "history",
+          "where" : "elsewhere"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor": "history",
+            "where" : "elsewhere"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "conflicted",
+      "key"       : "cmd:story.deleteLines#marked",
+      "widgetPath": "script/story-deletelines~de5dfe98",
+      "offer": {
+        "id"     : "story.deleteLines",
+        "label"  : "Delete",
+        "tooltip": "Remove the marked lines from the scene",
+        "on"     : "marked",
+        "ok"     : false,
+        "refusal": {
+          "reason": "No lines are marked. Click a gutter number to mark a line, Shift+click for a run."
+        }
+      },
+      "effects": [
+        {
+          "id": "story.deleteLines"
+        }
+      ],
+      "shortcut"  : "Delete"
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "conflicted",
+      "key"       : "cmd:story.setHeading",
+      "widgetPath": "script/story-setheading~a1b1a71c",
+      "offer": {
+        "id"     : "story.setHeading",
+        "label"  : "EXT. SCHOOL GATE - MORNING",
+        "tooltip": "Move this scene somewhere else by rewriting its heading. Its rendered shots are drawn again — the dialog says how many — and the prose is left describing the old place.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "scene"  : "arrival",
+          "heading": "EXT. SCHOOL GATE - MORNING"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setHeading",
+          "props": {
+            "scene"  : "arrival",
+            "heading": "EXT. SCHOOL GATE - MORNING"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "conflicted",
+      "key"       : "fx:drag.start#line/arrival:L1",
+      "widgetPath": "script/drag-start~d2e1bb0e",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "1",
+        "tooltip": "Line 1 of this scene, arrival:L1 — drag this handle to move it, click to mark it for Delete, Shift+click to mark a run",
+        "on"     : "line/arrival:L1",
+        "ok"     : true,
+        "props": {
+          "interaction": "script.moveLine"
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "script.moveLine"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "conflicted",
+      "key"       : "cmd:story.setLineText#arrival:L1",
+      "widgetPath": "script/story-setlinetext~0a1def10",
+      "offer": {
+        "id"      : "story.setLineText",
+        "label"   : "Aiko stops at the gate.",
+        "tooltip" : "Click to retype this line",
+        "on"      : "arrival:L1",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L1"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L1"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "conflicted",
+      "key"       : "fx:drag.start#line/arrival:L2",
+      "widgetPath": "script/drag-start~d68bc315",
+      "offer": {
+        "id"     : "drag.start",
+        "label"  : "2",
+        "tooltip": "Line 2 of this scene, arrival:L2 — drag this handle to move it, click to mark it for Delete, Shift+click to mark a run",
+        "on"     : "line/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "interaction": "script.moveLine"
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "drag.start",
+          "props": {
+            "interaction": "script.moveLine"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "conflicted",
+      "key"       : "cmd:story.setSpeaker#arrival:L2",
+      "widgetPath": "script/story-setspeaker~dcab6715",
+      "offer": {
+        "id"      : "story.setSpeaker",
+        "label"   : "Aiko",
+        "tooltip" : "Aiko says this line — click to change who does",
+        "on"      : "arrival:L2",
+        "supplies": ["speaker"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setSpeaker",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "conflicted",
+      "key"       : "cmd:story.setLineText#arrival:L2",
+      "widgetPath": "script/story-setlinetext~5f3115cb",
+      "offer": {
+        "id"      : "story.setLineText",
+        "label"   : "AIKO: Is this the place?",
+        "tooltip" : "Click to retype this line",
+        "on"      : "arrival:L2",
+        "supplies": ["text"],
+        "ok"      : true,
+        "props": {
+          "line": "arrival:L2"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "story.setLineText",
+          "props": {
+            "line": "arrival:L2"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "conflicted",
+      "key"       : "fx:popup.open#split/arrival:L2",
+      "widgetPath": "script/popup-open~94c6985f",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "split here",
+        "tooltip": "Start a second scene at this line, and name it before anything is written",
+        "on"     : "split/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "conflicted",
+      "key"       : "fx:popup.open#compose/arrival:L2",
+      "widgetPath": "script/popup-open~1bb241dd",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "+ line",
+        "tooltip": "Write another line at the end of this scene",
+        "on"     : "compose/arrival:L2",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "conflicted",
+      "key"       : "fx:popup.open#merge/departure",
+      "widgetPath": "script/popup-open~e35583be",
+      "offer": {
+        "id"     : "popup.open",
+        "label"  : "merge departure in",
+        "tooltip": "Take departure's lines into this scene and delete its file",
+        "on"     : "merge/departure",
+        "ok"     : true,
+        "props": {
+          "popup": "box"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "popup.open",
+          "props": {
+            "popup": "box"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "script",
+      "module"    : "script",
+      "situation" : "conflicted",
       "key"       : "fx:popup.open#continue",
       "widgetPath": "script/popup-open~b935f3e4",
       "offer": {
@@ -45787,14 +47259,6 @@
     {
       "match": "git.conflictText",
       "why": "A read the History pane fetches for itself. Its filters and rows are `pane.view` effects over what was read, so no control names the read."
-    },
-    {
-      "match": "git.writeResolution",
-      "why": "A decision on a collided file the conflict view will draw controls for in the next stage of the merging-a-conflicted-file plan; until then the palette and CDP run it."
-    },
-    {
-      "match": "git.undoResolution",
-      "why": "A decision on a collided file the conflict view will draw controls for in the next stage of the merging-a-conflicted-file plan; until then the palette and CDP run it."
     },
     {
       "match": "view.close",

@@ -6,12 +6,13 @@
  * recovery and sync commands, so the derived model and the pane draw from one place.
  */
 import {
+  decisionSentence,
   kindOf,
   NO_UPSTREAM,
   NOT_OWNED,
-  readableConflict,
   SYNC_UNFINISHED,
   UNSAVED_EDITS,
+  type DecidedFile,
   type Maker,
   type RemoteEntry,
   type RepoEntry,
@@ -107,8 +108,8 @@ export interface HistoryState {
   syncOpen: boolean;
   /** The network verb still running, while one is. */
   syncing?: SyncVerb;
-  /** The conflicted path whose two sides are open, side by side, in the conflict view. */
-  bothOpen?: string;
+  /** The conflicted path whose whole file is open for editing, markers and all, in the conflict view. */
+  editing?: string;
 }
 
 export type PaneSize = 'small' | 'mid' | 'large';
@@ -753,6 +754,31 @@ export function replayingSentence(status: RepoStatus | undefined): string {
 /** The conflict view's footer line: an edit made during a stopped rebase lands in the replayed save. */
 export const REPLAYING_NOTE = 'Edits you make now become part of the save being replayed.';
 
+/** What the conflict view adds beneath the footer while a file is open for editing. */
+export const EDITING_NOTE = 'Saving decides this file; Undo decision brings the markers back.';
+
+/** What a control on a file that was not merged line by line says instead of offering a merge. */
+export const NO_MIDDLE = 'This file was not merged line by line; keep one side or the other.';
+
+/** "2 of 3 decided", or the sentence for none left, for the conflict view's heading. */
+export function decidedSentence(status: RepoStatus | undefined): string {
+  const left = status?.conflicted.length ?? 0;
+  const done = status?.decided.length ?? 0;
+  const total = left + done;
+  if (left === 0) return 'Every file is decided.';
+  if (done === 0)
+    return `${total} file${total === 1 ? '' : 's'} need${total === 1 ? 's' : ''} a decision.`;
+  return `${done} of ${total} decided.`;
+}
+
+/**
+ * How a decided row reads: the path, then "kept yours", "took theirs", "merged" or "removed".
+ * Git's `ours` is the collaborator's side during a rebase, which `decisionSentence` translates.
+ */
+export function decidedLabel(file: DecidedFile): string {
+  return decisionSentence(file.decision);
+}
+
 /** Keep one side of one file in question: yours, or theirs. */
 export function resolveAction(state: HistoryState, path: string, side: 'mine' | 'theirs'): Offer {
   const control = {
@@ -773,26 +799,86 @@ export function resolveAction(state: HistoryState, path: string, side: 'mine' | 
 }
 
 /**
- * Read both sides of one file in question, side by side, before deciding. Only for a text file
- * git merged line by line; a layout, a graph or a picture has no readable middle.
+ * Open one file in question for editing, whole, with git's markers where the two versions
+ * collided. Only for a file git merged line by line: a layout, a graph or a picture has no
+ * middle to edit. While it is open, the row's control gives way to Save and Cancel beneath it.
  */
-export function openBothAction(state: HistoryState, path: string): Offer {
-  const open = state.bothOpen === path;
+export function editAction(state: HistoryState, path: string): Offer {
   const control = {
     ...view('mode'),
-    on     : `both/${path}`,
-    label  : open ? 'Close both' : 'Open both',
-    tooltip: open
-      ? 'Put the two sides away again.'
-      : `Read their ${path} and yours side by side, before keeping one.`,
+    on     : `edit/${path}`,
+    label  : 'Edit',
+    tooltip: `Open ${path} as git left it, both versions between the markers, and merge them by hand.`,
   };
-  if (!readableConflict(path)) {
-    return {
-      ...refuse('This file has no middle to read; keep one side or the other.'),
-      ...control,
-    };
-  }
+  const why =
+    stillSyncing(state) ??
+    (state.status?.cause !== 'rebase' ? 'No sync is waiting on a decision.' : undefined) ??
+    (!state.status?.marked.includes(path) ? NO_MIDDLE : undefined) ??
+    (state.editing === path ? 'Already open below; save or cancel it there.' : undefined);
+  if (why !== undefined) return { ...refuse(why), ...control };
   return { ok: true, ...control };
+}
+
+/** The editor's own field: the whole file, which Save reads at the click. */
+export function resolveBox(path: string): Offer {
+  return {
+    ok      : true,
+    id      : 'git.writeResolution',
+    on      : `text/${path}`,
+    label   : 'The file, as git left it',
+    tooltip:
+      'The whole file. Where both of you changed the same lines, theirs come first between <<<<<<< and =======, yours between ======= and >>>>>>>. Keep what you want and delete the marker lines.',
+    supplies: ['text'],
+    props   : { path },
+  };
+}
+
+/** Write the editor's text over the file and mark it decided. The text is the box's at the click. */
+export function saveResolutionAction(state: HistoryState, path: string): Offer {
+  const control = {
+    id      : 'git.writeResolution',
+    on      : path,
+    label   : 'Save',
+    tooltip: `Write ${path} as it reads above and mark it decided. Markers left in prose are allowed until Continue.`,
+    supplies: ['text'],
+  };
+  const why =
+    stillSyncing(state) ??
+    notOwned(state) ??
+    (state.status?.cause !== 'rebase' ? 'No sync is waiting on a decision.' : undefined) ??
+    (!state.status?.marked.includes(path) ? NO_MIDDLE : undefined);
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { repo: state.repo, path } };
+}
+
+/** Close the editor without writing anything. */
+export function cancelEditAction(path: string): Offer {
+  return {
+    ok: true,
+    ...view('mode'),
+    on     : `cancel/${path}`,
+    label  : 'Cancel',
+    tooltip: 'Close the editor and leave the file as git left it, still waiting on a decision.',
+  };
+}
+
+/** Put a decided file back in question, whichever way it was decided. */
+export function undoResolutionAction(state: HistoryState, file: DecidedFile): Offer {
+  const control = {
+    id     : 'git.undoResolution',
+    on     : file.path,
+    label  : 'Undo decision',
+    tooltip: `Put ${file.path} back in question, with both versions and the markers back on disk.`,
+  };
+  const why =
+    stillSyncing(state) ??
+    notOwned(state) ??
+    (state.status?.cause !== 'rebase' ? 'No sync is waiting on a decision.' : undefined) ??
+    (file.decision === 'removed'
+      ? 'The decision removed this file, and git cannot put a removed file back in question.'
+      : undefined);
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { repo: state.repo, path: file.path } };
 }
 
 /** Continue getting their saves once every file is decided. Refused with the check's own reason. */
@@ -1065,17 +1151,23 @@ export function syncControls(state: HistoryState): readonly Offer[] {
 }
 
 /**
- * The conflict view's offers: per file in question keep mine, take theirs and, for a readable
- * one, open both; then continue and give up.
+ * The conflict view's offers: per file in question keep mine, take theirs and edit; the box, save
+ * and cancel for the one open for editing; undo per decided file; then continue and give up.
  */
 export function conflictControls(state: HistoryState): readonly Offer[] {
   const paths = state.status?.conflicted ?? [];
+  const decided = state.status?.decided ?? [];
+  const editing = state.editing;
   return [
     ...paths.flatMap((path) => [
       resolveAction(state, path, 'mine'),
       resolveAction(state, path, 'theirs'),
-      openBothAction(state, path),
+      editAction(state, path),
     ]),
+    ...(editing === undefined
+      ? []
+      : [resolveBox(editing), saveResolutionAction(state, editing), cancelEditAction(editing)]),
+    ...decided.map((file) => undoResolutionAction(state, file)),
     continueSyncAction(state),
     abandonSyncAction(state),
   ];

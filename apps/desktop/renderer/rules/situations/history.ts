@@ -36,6 +36,32 @@ const CLEAN: RepoStatus = {
   decided   : [],
 };
 
+/** Where the conflict situations stand: the second of three saves replayed, two files in question. */
+const STOPPED: RepoStatus = {
+  ...CLEAN,
+  cause     : 'rebase',
+  conflicted: ['.vnstudio/layouts/writing.json', 'scenes/rooftop.fountain'],
+  marked    : ['scenes/rooftop.fountain'],
+  inProgress: {
+    rebase: {
+      branch    : 'main',
+      onto      : 'f'.repeat(40),
+      current   : 2,
+      total     : 3,
+      stoppedSha: 'a'.repeat(40),
+      origHead  : 'e'.repeat(40),
+    },
+    merge : false,
+    revert: false,
+  },
+  replaying: {
+    sha    : 'a'.repeat(40),
+    subject: 'Moved line L4 into rooftop',
+    current: 2,
+    total  : 3,
+  },
+};
+
 const save = (over: Partial<Save> & { sha: string }): Save => ({
   parents    : ['0'.repeat(40)],
   author     : 'VN Studio',
@@ -338,34 +364,56 @@ export const SITUATIONS = situations<HistoryState>(
   },
   {
     name : 'conflict',
-    why: 'Getting their saves stopped on the second of three replayed saves, with a scene and a layout in question: the scene offers Open both while the layout, which git never merges, offers only the two sides; Continue is refused until both are decided; the status view leads to this view rather than duplicating Give up.',
+    why: 'Getting their saves stopped on the second of three replayed saves, with a scene and a layout in question: the scene, which git merged line by line, offers Edit while the layout, which git never merges, offers only the two sides; Continue is refused until both are decided; the status view leads to this view rather than duplicating Give up.',
+    state: {
+      repos        : [PROJECT],
+      repo         : 'project',
+      filter       : NO_FILTER,
+      status       : STOPPED,
+      saves        : SAVES,
+      next         : null,
+      selected     : 'a'.repeat(40),
+      logsOpen     : false,
+      size         : 'large',
+      showingDetail: false,
+      verdicts     : {},
+      syncOpen     : false,
+    },
+  },
+  {
+    name : 'conflict-editing',
+    why: 'The scene in question is open for editing beneath the list, whole and with git’s markers in it: the field and Save carry the text at the click, Cancel closes it, and the row’s own Edit is refused while it is open.',
+    state: {
+      repos        : [PROJECT],
+      repo         : 'project',
+      filter       : NO_FILTER,
+      status       : STOPPED,
+      saves        : SAVES,
+      next         : null,
+      selected     : 'a'.repeat(40),
+      logsOpen     : false,
+      size         : 'large',
+      showingDetail: false,
+      verdicts     : {},
+      syncOpen     : false,
+      editing      : 'scenes/rooftop.fountain',
+    },
+  },
+  {
+    name : 'conflict-decided',
+    why: 'Both files are decided, the scene by a merge written by hand and the layout by keeping the author’s side, so each is listed greyed with how it was decided and Undo decision, and Continue is offered.',
     state: {
       repos        : [PROJECT],
       repo         : 'project',
       filter       : NO_FILTER,
       status: {
-        ...CLEAN,
-        cause     : 'rebase',
-        conflicted: ['scenes/rooftop.fountain', '.vnstudio/layouts/writing.json'],
-        marked    : ['scenes/rooftop.fountain'],
-        inProgress: {
-          rebase: {
-            branch    : 'main',
-            onto      : 'f'.repeat(40),
-            current   : 2,
-            total     : 3,
-            stoppedSha: 'a'.repeat(40),
-            origHead  : 'e'.repeat(40),
-          },
-          merge : false,
-          revert: false,
-        },
-        replaying: {
-          sha    : 'a'.repeat(40),
-          subject: 'Moved line L4 into rooftop',
-          current: 2,
-          total  : 3,
-        },
+        ...STOPPED,
+        conflicted: [],
+        marked    : [],
+        decided: [
+          { path: '.vnstudio/layouts/writing.json', decision: 'theirs' },
+          { path: 'scenes/rooftop.fountain', decision: 'merged' },
+        ],
       },
       saves        : SAVES,
       next         : null,
@@ -375,7 +423,6 @@ export const SITUATIONS = situations<HistoryState>(
       showingDetail: false,
       verdicts     : {},
       syncOpen     : false,
-      bothOpen     : 'scenes/rooftop.fountain',
     },
   },
   {

@@ -528,6 +528,8 @@ export interface ScriptPageState {
     sceneId: string;
     heading: string;
     lines: { id: string; text: string; kind?: CoverageLine['kind']; speaker?: string }[];
+    /** The file still holds a stopped sync's conflict markers, so the page adds a notice row. */
+    conflicted?: boolean;
   };
   /** The line whose text box is open, which replaces that line's control with the box. */
   editingLine: string | null;
@@ -782,6 +784,24 @@ export function cancelAction(): Offer {
   };
 }
 
+/** The notice row on a scene whose file still holds conflict markers. */
+export const CONFLICTED_NOTICE =
+  'This scene is waiting on a merge decision. Open History to decide it.';
+
+/**
+ * The notice row's one control: the History pane, whose conflict view is where the decision is
+ * made. The page shows the scene as the parser reads it and refuses every edit until then.
+ */
+export function decideAction(): Offer {
+  return {
+    ok     : true,
+    id     : 'view.open',
+    props  : { editor: 'history', where: 'elsewhere' },
+    label  : 'Open History',
+    tooltip: 'Show the History pane, where the sync that stopped on this scene is decided.',
+  };
+}
+
 /**
  * The heading as the scene's own slugline, and where the scene is moved from, because the heading
  * gives the location. Opens the dialog, which rechecks on every keystroke, so the price of the
@@ -845,6 +865,7 @@ export function controls(state: ScriptPageState): readonly Offer[] {
   const shown = state.shown;
   const marked = new Set(state.marked ?? []);
   if (shown) {
+    if (shown.conflicted) list.push(decideAction());
     list.push(deleteMarkedAction(markedInOrder(shown.lines, state.marked ?? [])));
     list.push(headingAction(shown));
     if (shown.lines.length === 0 && state.composing === undefined) {

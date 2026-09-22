@@ -877,6 +877,19 @@ button.hs-btn:disabled {
   padding: 10px 16px 12px;
 }
 
+/* With a file open for editing the view takes the column, so the field can be as tall as the
+   pane allows: a scene runs to hundreds of lines. */
+.hs-conflict.editing {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.hs-conflict.editing > * {
+  flex: 0 0 auto;
+}
+
 .hs-conflict-row {
   display: flex;
   flex-wrap: wrap;
@@ -918,39 +931,58 @@ button.hs-btn:disabled {
   font-size: 11px;
 }
 
-/* The two sides, theirs then mine, on the sunken ink like a diff body; each column scrolls on
-   its own so a long scene does not push the buttons off screen. */
-.hs-sides {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px;
-  margin: 8px 0;
-  background: var(--ink-line);
-  border: 1px solid var(--ink-line);
+/* A decided row is greyed, with how it was decided in the status colour beside the path */
+.hs-conflict-row.decided .hs-file-path {
+  color: var(--mist-dim);
 }
 
-.hs-surface[data-size='small'] .hs-sides {
-  grid-template-columns: 1fr;
+.hs-decided-how {
+  flex: 0 0 auto;
+  color: var(--mist-dim);
+  font-size: 11px;
 }
 
-.hs-side {
+/* The file open for editing, whole, on the sunken ink like a diff body. The field scrolls on its
+   own so a long scene does not push Save off screen; the prose face is for a scene, a sheet or a
+   note, the mono one for data. */
+.hs-conflict.editing > .hs-resolve {
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  min-width: 0;
-  max-height: 50vh;
-  background: var(--ink-sunken);
+  gap: 6px;
+  margin: 8px 0;
+  min-height: 0;
 }
 
-.hs-side-text {
+.hs-resolve-field {
   flex: 1 1 auto;
-  overflow: auto;
-  margin: 0;
-  padding: 8px 12px 16px;
-  font-family: var(--prose);
-  font-size: 13px;
+  width: 100%;
+  min-height: 200px;
+  resize: none;
+  border: 1px solid var(--ink-line);
+  outline: none;
+  padding: 8px 12px;
+  background: var(--ink-sunken);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 12px;
   line-height: 1.5;
+  tab-size: 2;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.hs-resolve-field.prose {
+  font-family: var(--prose);
+  font-size: 13px;
+}
+
+.hs-resolve-field:disabled {
+  color: var(--mist-dim);
+}
+
+.hs-resolve-acts {
+  display: inline-flex;
 }
 
 /* ------------------------------------------------------------------ foot */

@@ -12,7 +12,12 @@ import {
   checkpointAction,
   checkpointsAction,
   clearAction,
+  cancelEditAction,
   conflicting,
+  decidedLabel,
+  decidedSentence,
+  editAction,
+  EDITING_NOTE,
   continueSyncAction,
   conversationAction,
   dayAndTime,
@@ -30,7 +35,6 @@ import {
   NO_FILTER,
   NO_REMOTES,
   onlyLogs,
-  openBothAction,
   pathAction,
   pullAction,
   pushAction,
@@ -42,6 +46,9 @@ import {
   replayingSentence,
   REPLAYING_NOTE,
   resolveAction,
+  resolveBox,
+  saveResolutionAction,
+  undoResolutionAction,
   resolvePath,
   restoreFileAction,
   rowAction,
@@ -71,7 +78,6 @@ import {
   KIND_ORDER,
   kindOf,
   REPO_ROLES,
-  type BlobRead,
   type Diff,
   type FileKind,
   type HistoryPage,
@@ -153,9 +159,14 @@ export class HistoryEditor extends VnEditor {
   private syncing: SyncVerb | undefined;
   private syncStarted = 0;
   private clockTimer: ReturnType<typeof setInterval> | undefined;
-  /** The conflicted path whose two sides are open, and the sides once read; theirs is `:2`, mine `:3`. */
-  private bothOpen: string | undefined;
-  private sides: { theirs: string | null; mine: string | null } | undefined;
+  /** The conflicted path open for editing, and its text as git left it, once read. */
+  private editing: string | undefined;
+  private draft: string | undefined;
+  /**
+   * The editor's field, made once and re-attached on every redraw, so what the author has typed
+   * survives a status poll that rebuilds the view around it.
+   */
+  private readonly resolveField = el('textarea', 'hs-resolve-field') as HTMLTextAreaElement;
 
   /** What `ui.docPath` was the last time the pane looked, so only a change narrows the list. */
   private seenDocPath: string | undefined;
@@ -209,6 +220,8 @@ export class HistoryEditor extends VnEditor {
     this.foot = el('div', 'hs-foot') as HTMLDivElement;
     this.surface.append(this.strip, this.filters, body, this.foot);
     this.appendSurface(this.surface);
+    this.resolveField.spellcheck = false;
+    this.resolveField.wrap = 'soft';
 
     this.watch(() => {
       const observer = new ResizeObserver(([entry]) => {
@@ -306,7 +319,7 @@ export class HistoryEditor extends VnEditor {
       ...(BLOCKS_UNDO.test(this.ui.undoBlocked) ? { undoBlocked: this.ui.undoBlocked } : {}),
       syncOpen: this.syncOpen,
       ...(this.syncing === undefined ? {} : { syncing: this.syncing }),
-      ...(this.bothOpen === undefined ? {} : { bothOpen: this.bothOpen }),
+      ...(this.editing === undefined ? {} : { editing: this.editing }),
     };
   }
 
@@ -395,8 +408,8 @@ export class HistoryEditor extends VnEditor {
       // The worktree may have moved with whatever invalidated the list, so the verdicts are stale
       this.verdicts = {};
       void this.askVerdicts(['git.takeBack', 'git.goBack', 'git.restoreFile', ...this.syncKeys()]);
-      if (!conflicting(this.state())) this.closeBoth();
-      else if (this.bothOpen !== undefined) void this.loadSides(this.bothOpen);
+      // Decided elsewhere, or the sync finished: the file the editor holds is no longer in question
+      if (this.editing !== undefined && !status.marked.includes(this.editing)) this.closeEdit();
       this.pollWhilePending();
     } catch (err) {
       if (mine !== this.token) return;
@@ -578,36 +591,70 @@ export class HistoryEditor extends VnEditor {
     this.clockTimer = undefined;
   }
 
-  /** Open both sides of one file in question, reading them from the index's two stages. */
-  private openBoth(path: string): void {
-    if (this.bothOpen === path) {
-      this.closeBoth();
+  /** Open one file in question for editing, reading it as git left it in the worktree. */
+  private openEdit(path: string): void {
+    if (this.editing === path) return;
+    this.editing = path;
+    this.draft = undefined;
+    this.resolveField.value = '';
+    this.rebuild();
+    void this.loadConflictText(path);
+  }
+
+  private closeEdit(): void {
+    if (this.editing === undefined) return;
+    this.editing = undefined;
+    this.draft = undefined;
+    this.resolveField.value = '';
+    this.rebuild();
+  }
+
+  private async loadConflictText(path: string): Promise<void> {
+    const outcome = await exec('git.conflictText', { repo: this.repo, path });
+    if (this.editing !== path) return;
+    if (!outcome.ok) {
+      this.failure = outcome.error;
+      this.closeEdit();
       return;
     }
-    this.bothOpen = path;
-    this.sides = undefined;
+    this.draft = (outcome.data as { text: string }).text;
+    this.resolveField.value = this.draft;
     this.rebuild();
-    void this.loadSides(path);
+    this.scrollToMarker();
   }
 
-  private closeBoth(): void {
-    if (this.bothOpen === undefined) return;
-    this.bothOpen = undefined;
-    this.sides = undefined;
-    this.rebuild();
+  /**
+   * Scroll the field to the first marker, which in a long scene is well below the fold. A
+   * textarea only scrolls to its caret on typing, so the scroll height of the text above the
+   * marker is measured by loading that much and reading it back.
+   */
+  private scrollToMarker(): void {
+    const field = this.resolveField;
+    const text = field.value;
+    const at = text.search(/^<{7}( |$)/m);
+    if (at <= 0) return;
+    field.value = text.slice(0, at);
+    field.scrollTop = field.scrollHeight;
+    // The text above the marker, less one view: zero when the marker is already in view
+    const above = field.scrollTop;
+    field.value = text;
+    if (above > 0) field.scrollTop = above + (field.clientHeight * 2) / 3;
   }
 
-  private async loadSides(path: string): Promise<void> {
-    const side = async (stage: ':2' | ':3'): Promise<string | null> => {
-      const outcome = await exec('git.blob', { repo: this.repo, sha: stage, path });
-      if (!outcome.ok) return null;
-      const read = outcome.data as BlobRead;
-      return read.kind === 'text' ? read.text : null;
-    };
-    const [theirs, mine] = await Promise.all([side(':2'), side(':3')]);
-    if (this.bothOpen !== path) return;
-    this.sides = { theirs, mine };
-    this.rebuild();
+  /** Write the field over the file and mark it decided; a refusal stays in the footer. */
+  private async saveResolution(path: string): Promise<void> {
+    const outcome = await exec('git.writeResolution', {
+      repo: this.repo,
+      path,
+      text: this.resolveField.value,
+    });
+    if (!outcome.ok) {
+      this.failure = outcome.error;
+      this.rebuildFoot();
+      return;
+    }
+    this.closeEdit();
+    await this.load();
   }
 
   /** Open one file's diff, reading it if this is the first look. The file list stays as it is. */
@@ -672,8 +719,8 @@ export class HistoryEditor extends VnEditor {
       this.ui.undoBlocked,
       this.syncOpen,
       this.syncing,
-      this.bothOpen,
-      this.sides === undefined ? '' : 'sides',
+      this.editing,
+      this.draft === undefined ? '' : 'draft',
     ].join('|');
   }
 
@@ -1152,11 +1199,13 @@ export class HistoryEditor extends VnEditor {
 
   /**
    * The files a stopped sync is waiting on, grouped by kind under the save being replayed. Each
-   * gets Keep mine and Take theirs, and a readable one Open both, whose two sides are drawn
-   * beneath the list from the index's stages. Continue and Give up close the view.
+   * gets Keep mine and Take theirs, and one git merged line by line gets Edit, which opens the
+   * whole file beneath the list with Save and Cancel. The files already decided follow, greyed,
+   * each with how it was decided and Undo decision. Continue and Give up close the view.
    */
   private conflictView(state: HistoryState, anchors: AnchorPass): HTMLElement {
     const view = el('div', 'hs-conflict');
+    view.classList.toggle('editing', state.editing !== undefined);
     const button = (
       offer: Offer,
       run: (action: { id: string; props: Record<string, string> }) => void,
@@ -1166,16 +1215,7 @@ export class HistoryEditor extends VnEditor {
       );
     view.appendChild(el('div', 'hs-head-subject', replayingSentence(state.status)));
     const paths = state.status?.conflicted ?? [];
-    const n = paths.length;
-    view.appendChild(
-      el(
-        'div',
-        'hs-head-line',
-        n === 0
-          ? 'Every file is decided.'
-          : `${n} file${n === 1 ? '' : 's'} need${n === 1 ? 's' : ''} a decision.`,
-      ),
-    );
+    view.appendChild(el('div', 'hs-head-line', decidedSentence(state.status)));
 
     const byKind = new Map<FileKind, string[]>();
     for (const path of paths) {
@@ -1189,7 +1229,7 @@ export class HistoryEditor extends VnEditor {
       list.appendChild(el('div', 'hs-kind', KIND_SAYS[kind]));
       for (const path of group) {
         const row = el('div', 'hs-conflict-row');
-        row.classList.toggle('open', path === state.bothOpen);
+        row.classList.toggle('open', path === state.editing);
         row.appendChild(el('span', 'hs-file-path', path));
         const acts = el('span', 'hs-conflict-acts');
         for (const side of ['mine', 'theirs'] as const) {
@@ -1200,10 +1240,28 @@ export class HistoryEditor extends VnEditor {
             ),
           );
         }
-        const both = openBothAction(state, path);
+        const edit = editAction(state, path);
         acts.appendChild(
-          anchors.act(el('button', 'hs-btn', both.label) as HTMLButtonElement, both, () =>
-            this.openBoth(path),
+          anchors.act(el('button', 'hs-btn', edit.label) as HTMLButtonElement, edit, () =>
+            this.openEdit(path),
+          ),
+        );
+        row.appendChild(acts);
+        list.appendChild(row);
+      }
+    }
+    const decided = state.status?.decided ?? [];
+    if (decided.length > 0) {
+      list.appendChild(el('div', 'hs-kind', 'Decided'));
+      for (const file of decided) {
+        const row = el('div', 'hs-conflict-row decided');
+        row.appendChild(el('span', 'hs-file-path', file.path));
+        row.appendChild(el('span', 'hs-decided-how', decidedLabel(file)));
+        const acts = el('span', 'hs-conflict-acts');
+        acts.appendChild(
+          button(
+            undoResolutionAction(state, file),
+            (action) => void exec(action.id, action.props).then(() => this.load()),
           ),
         );
         row.appendChild(acts);
@@ -1212,7 +1270,7 @@ export class HistoryEditor extends VnEditor {
     }
     view.appendChild(list);
 
-    if (state.bothOpen !== undefined) view.appendChild(this.sidesView(state.bothOpen));
+    if (state.editing !== undefined) view.appendChild(this.editView(state, state.editing, anchors));
 
     const acts = el('div', 'hs-head-acts hs-conflict-foot');
     acts.appendChild(
@@ -1226,23 +1284,40 @@ export class HistoryEditor extends VnEditor {
     );
     view.appendChild(acts);
     view.appendChild(el('div', 'hs-conflict-note', REPLAYING_NOTE));
+    if (state.editing !== undefined) view.appendChild(el('div', 'hs-conflict-note', EDITING_NOTE));
     return view;
   }
 
-  /** The two sides of one file in question, theirs then mine, read-only, each under its name. */
-  private sidesView(path: string): HTMLElement {
-    const view = el('div', 'hs-sides');
-    const column = (title: string, text: string | null | undefined) => {
-      const col = el('div', 'hs-side');
-      col.appendChild(el('div', 'hs-kind', title));
-      if (text === undefined) col.appendChild(el('div', 'hs-diff-note', 'Reading…'));
-      else if (text === null) col.appendChild(el('div', 'hs-diff-note', 'Not on this side.'));
-      else col.appendChild(el('pre', 'hs-side-text', text));
-      return col;
-    };
-    const sides = this.sides;
-    view.appendChild(column(`Theirs · ${path}`, sides?.theirs));
-    view.appendChild(column(`Mine · ${path}`, sides?.mine));
+  /**
+   * One file in question, whole, in a field the author merges by hand, with Save and Cancel
+   * beneath. Prose gets the prose face; a storyboard, a layout-like JSON or YAML the mono one.
+   */
+  private editView(state: HistoryState, path: string, anchors: AnchorPass): HTMLElement {
+    const view = el('div', 'hs-resolve');
+    view.appendChild(el('div', 'hs-kind', `Editing · ${path}`));
+    const kind = kindOf(path);
+    const field = this.resolveField;
+    field.classList.toggle('prose', kind === 'scene' || kind === 'wiki' || kind === 'sheet');
+    field.disabled = this.draft === undefined;
+    anchors.record(field, resolveBox(path));
+    view.appendChild(field);
+    if (this.draft === undefined) view.appendChild(el('div', 'hs-diff-note', 'Reading…'));
+    const acts = el('div', 'hs-conflict-acts hs-resolve-acts');
+    const save = saveResolutionAction(state, path);
+    acts.appendChild(
+      anchors.act(
+        el('button', 'hs-btn', save.label) as HTMLButtonElement,
+        save,
+        () => void this.saveResolution(path),
+      ),
+    );
+    const cancel = cancelEditAction(path);
+    acts.appendChild(
+      anchors.act(el('button', 'hs-btn', cancel.label) as HTMLButtonElement, cancel, () =>
+        this.closeEdit(),
+      ),
+    );
+    view.appendChild(acts);
     return view;
   }
 

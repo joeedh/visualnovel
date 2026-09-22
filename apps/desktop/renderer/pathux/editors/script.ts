@@ -10,9 +10,11 @@ import {
   checkOf,
   composeBox,
   composedCueText,
+  CONFLICTED_NOTICE,
   continueAction,
   continueFrom,
   cueChoices,
+  decideAction,
   deleteMarkedAction,
   speakerAction,
   dropTarget,
@@ -94,6 +96,33 @@ const SURFACE_CSS = `
   min-height: calc(3 * 1.5 * 10.5px + 14px);
   border-bottom: 1px solid var(--ink-line);
   background: var(--ink-sunken);
+}
+.sc-surface > .sc-conflicted {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 22px;
+  line-height: 1.5;
+  border-bottom: 1px solid var(--ink-line);
+  color: var(--sodium);
+  background: var(--ink-sunken);
+}
+.sc-surface > .sc-conflicted > span { flex: 1 1 auto; }
+.sc-surface > .sc-conflicted > .sc-decide {
+  background: none;
+  border: 1px solid var(--sodium);
+  border-radius: var(--r-chrome);
+  color: var(--sodium);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 4px 10px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.sc-surface > .sc-conflicted > .sc-decide:hover {
+  background: var(--sodium);
+  color: var(--ink);
 }
 .sc-surface > .sc-page { flex: 1 1 auto; }
 .sc-surface > .sc-note { flex: none; }
@@ -479,6 +508,22 @@ export class ScriptEditor extends VnEditor {
     if (!shown) {
       this.surface.appendChild(el('div', 'sc-note', 'Loading…'));
       return;
+    }
+
+    // Above the scroll like the notice: the markers can be anywhere in the file, and every edit
+    // below is refused until the History pane decides the scene.
+    if (shown.conflicted) {
+      const row = el('div', 'sc-conflicted');
+      row.appendChild(el('span', '', CONFLICTED_NOTICE));
+      const decide = decideAction();
+      row.appendChild(
+        this.anchors.act(
+          el('button', 'sc-decide', decide.label),
+          decide,
+          (action) => void exec(action.id, action.props),
+        ),
+      );
+      this.surface.appendChild(row);
     }
 
     const page = el('div', 'sc-page') as HTMLDivElement;

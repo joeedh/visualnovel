@@ -81,11 +81,6 @@ const GIT = [
   why: 'A read the History pane fetches for itself. Its filters and rows are `pane.view` effects over what was read, so no control names the read.',
 }));
 
-const GIT_WRITES = ['git.writeResolution', 'git.undoResolution'].map((match) => ({
-  match,
-  why: 'A decision on a collided file the conflict view will draw controls for in the next stage of the merging-a-conflicted-file plan; until then the palette and CDP run it.',
-}));
-
 const VIEW = ['view.close', 'view.focus', 'view.layout', 'view.layouts', 'view.palette'].map(
   (match) => ({
     match,
@@ -187,7 +182,6 @@ export const PALETTE_ONLY: readonly PaletteOnly[] = [
   ...NAMES,
   ...READS,
   ...GIT,
-  ...GIT_WRITES,
   ...VIEW,
   ...APP,
   ...GATE,
