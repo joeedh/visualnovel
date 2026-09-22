@@ -49,6 +49,7 @@ const SUBPATHS = [
   'artgen/layout',
   'commands/snapshot',
   'util/conflict',
+  'git/depth',
 ];
 
 export const alias = Object.fromEntries([

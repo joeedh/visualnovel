@@ -14,6 +14,7 @@
  * flushes the run before any other act runs, so no act's commit ever holds another's files.
  */
 import type { Git, InProgressError } from '@vn/git';
+import { byDepth } from '@vn/git/depth';
 import type { CommandRecord } from './command.js';
 
 /**
@@ -162,7 +163,9 @@ export class Committer {
 
   private async run(subject: string, trailers: Record<string, string>): Promise<CommitResult[]> {
     const commits: CommitResult[] = [];
-    for (const git of await this.opts.repos()) {
+    // A nested repo commits before its parent, so the parent's `-A` stages the nested repo's new
+    // HEAD as its gitlink, and so the parent never meets a nested repo with no commit at all
+    for (const git of byDepth(await this.opts.repos(), (g) => g.root)) {
       if (!(await git.isRepo())) continue;
       try {
         const sha = await git.commit({ message: subject, paths: ['-A'], trailers });

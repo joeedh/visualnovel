@@ -5,3 +5,4 @@ export * from './parse.js';
 export * from './history.js';
 export * from './recovery.js';
 export * from './sync.js';
+export * from './depth.js';

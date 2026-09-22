@@ -17,6 +17,7 @@
       "@vn/artgen/slotaddr" : ["./packages/artgen/src/slotaddr.ts"],
       "@vn/artgen/layout"   : ["./packages/artgen/src/layout.ts"],
       "@vn/git"             : ["./packages/git/src/index.ts"],
+      "@vn/git/depth"       : ["./packages/git/src/depth.ts"],
       "@vn/commands"        : ["./packages/commands/src/index.ts"],
       "@vn/agentreport"     : ["./packages/agentreport/src/index.ts"],
       "@vn/debug2d"         : ["./packages/debug2d/src/index.ts"],

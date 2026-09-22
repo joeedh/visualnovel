@@ -71,8 +71,8 @@ export const MEDIA_EXTS = new Set([
   'woff2',
 ]);
 
-/** Directory names never walked, wherever they appear. */
-const SKIP_DIRS = new Set(['.git', 'node_modules']);
+/** Names never walked or hashed, wherever they appear and whether directory or file. */
+const SKIP_NAMES = new Set(['.git', 'node_modules']);
 
 /** The temp sibling `writeFileAtomic` leaves beside a file, which is mid-write by definition. */
 const TEMP_SIBLING = /\.tmp-[0-9a-f]+$/;
@@ -258,10 +258,10 @@ export class ContentStore {
     for (const dirent of listing) {
       const name = dirent.name;
       const rel = prefix === '' ? name : `${prefix}/${name}`;
-      if (skip.has(rel)) continue;
+      // A submodule's `.git` is a file, not a directory
+      if (skip.has(rel) || SKIP_NAMES.has(name)) continue;
 
       if (dirent.isDirectory()) {
-        if (SKIP_DIRS.has(name)) continue;
         const hash = await this.captureDir(root, rel, skip);
         // Git has no empty trees in a commit, and neither does this: an entry for one would make
         // a restore create and remove directories nobody put anything in.

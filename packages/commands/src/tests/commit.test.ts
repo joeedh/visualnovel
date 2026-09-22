@@ -10,13 +10,19 @@ import { CommandRegistry } from '../registry.js';
 import { BATCH_IDLE_MS, CommandStack } from '../stack.js';
 import { UndoJournal } from '../undo.js';
 
-/** Runs git directly, for the one verb (`checkout -b`) the wrapper has no method for. */
-function runGit(dir: string, args: string[]): Promise<void> {
+/** Runs git directly, for the verbs (`checkout -b`, `ls-tree`) the wrapper has no method for. */
+function runGit(dir: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile('git', args, { cwd: dir, windowsHide: true }, (err) =>
-      err ? reject(err) : resolve(),
+    execFile('git', args, { cwd: dir, windowsHide: true }, (err, stdout) =>
+      err ? reject(err) : resolve(stdout),
     );
   });
+}
+
+/** The mode and sha the parent's HEAD records for `path`, as `ls-tree` prints them. */
+async function gitlinkOf(dir: string, path: string): Promise<{ mode: string; sha: string }> {
+  const [mode, , sha] = (await runGit(dir, ['ls-tree', 'HEAD', path])).trim().split(/\s+/);
+  return { mode: mode!, sha: sha! };
 }
 
 /** A repo with a deterministic identity (no global config bleed). */
@@ -124,14 +130,57 @@ describe('Committer', () => {
 
   it('commits each repo that had something, and skips directories that are not repos', async () => {
     const { dir, git, cleanup } = await tempProject();
+    const bare = await fs.mkdtemp(join(tmpdir(), 'vn-not-a-repo-'));
     try {
-      const bare = join(dir, 'not-a-repo');
-      await fs.mkdir(bare);
       const committer = new Committer({ repos: () => [git, openGit(bare)] });
 
       await fs.writeFile(join(dir, 'doc.md'), 'edited\n');
       const commits = await committer.commit(record());
       expect(commits.map((c) => c.repo)).toEqual([dir]);
+    } finally {
+      await cleanup();
+      await fs.rm(bare, { recursive: true, force: true });
+    }
+  }, 20_000);
+
+  it('commits a nested repo before its parent, so the gitlink is the nested repo’s new HEAD', async () => {
+    const { dir, git, cleanup } = await tempProject();
+    try {
+      await fs.mkdir(join(dir, 'wiki'));
+      const wiki = await initRepo(join(dir, 'wiki'));
+      await fs.writeFile(join(dir, 'wiki', 'note.md'), 'first\n');
+      await wiki.commit({ message: 'wiki init', paths: ['-A'] });
+      await git.commit({ message: 'record the wiki', paths: ['-A'] });
+
+      // The parent is given first, which is the order `Workspace.repos()` yields
+      const committer = new Committer({ repos: () => [git, wiki] });
+      await fs.writeFile(join(dir, 'doc.md'), 'edited\n');
+      await fs.writeFile(join(dir, 'wiki', 'note.md'), 'second\n');
+      const commits = await committer.commit(record());
+
+      expect(commits.map((c) => c.repo)).toEqual([wiki.root, dir]);
+      expect(await gitlinkOf(dir, 'wiki')).toEqual({ mode: '160000', sha: await wiki.head() });
+      expect(await git.isDirty()).toBe(false);
+    } finally {
+      await cleanup();
+    }
+  }, 20_000);
+
+  it('gives a nested repo with files and no commit its first commit, then records it', async () => {
+    const { dir, git, cleanup } = await tempProject();
+    try {
+      // `git init` in `wiki/` a moment ago: files, no commit, and nothing in the parent yet
+      await fs.mkdir(join(dir, 'wiki'));
+      const wiki = await initRepo(join(dir, 'wiki'));
+      await fs.writeFile(join(dir, 'wiki', 'note.md'), 'first\n');
+
+      const committer = new Committer({ repos: () => [git, wiki] });
+      await fs.writeFile(join(dir, 'doc.md'), 'edited\n');
+      const commits = await committer.commit(record());
+
+      expect(commits.map((c) => c.repo)).toEqual([wiki.root, dir]);
+      expect(await wiki.head()).not.toBeNull();
+      expect(await gitlinkOf(dir, 'wiki')).toEqual({ mode: '160000', sha: await wiki.head() });
     } finally {
       await cleanup();
     }

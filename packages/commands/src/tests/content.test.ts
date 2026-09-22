@@ -38,6 +38,15 @@ describe('ContentStore', () => {
     expect(store.stats().blobs).toBe(1);
   });
 
+  it('passes over a submodule’s `.git` file the same as a `.git` directory', async () => {
+    await fs.mkdir(join(dir, 'wiki'));
+    await write('wiki/note.md', 'note\n');
+    const without = await new ContentStore().capture(dir);
+
+    await write('wiki/.git', 'gitdir: ../.git/modules/wiki\n');
+    expect(await new ContentStore().capture(dir)).toBe(without);
+  });
+
   it('serves bytes back while the file is untouched, and stops once it moves', async () => {
     const store = new ContentStore();
     const path = join(dir, 'doc.md');

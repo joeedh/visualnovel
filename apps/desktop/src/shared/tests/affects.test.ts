@@ -54,6 +54,7 @@ describe('snapshotted', () => {
     for (const exclude of UNDO_EXCLUDES) expect(snapshotted(exclude)).toBe(false);
     expect(snapshotted('vngen/state/journal')).toBe(false);
     expect(snapshotted('keys/openai.key')).toBe(false);
+    expect(snapshotted('.gitmodules')).toBe(false);
   });
 
   it('answers false for the repository itself, which is history rather than documents', () => {

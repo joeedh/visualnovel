@@ -21,7 +21,8 @@ import { normalizePath } from './writes.js';
  * `pipeline.run` between two edits from reading as workspace drift. `assets/objects` is the base
  * store, which is the same class of thing, and pruning the walk there is worth the entry even
  * though its bytes are media. `keys/` holds credentials, which no undo may write over or delete,
- * and the session file moves on every pane drag.
+ * and the session file moves on every pane drag. `.gitmodules` is repository structure, like
+ * `.git`, and a restore that deleted it would leave the project's gitlinks unmapped.
  */
 export const UNDO_EXCLUDES = [
   'vngen/build',
@@ -29,6 +30,7 @@ export const UNDO_EXCLUDES = [
   'assets/objects',
   'keys',
   '.vnstudio/session.json',
+  '.gitmodules',
 ];
 
 /**
