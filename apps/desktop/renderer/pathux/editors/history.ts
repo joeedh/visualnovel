@@ -6,34 +6,54 @@ import { openCommandDialog } from '../chrome/dialog.js';
 import { redrawing, type AnchorPass } from '../tour/anchors.js';
 import type { Offer } from '../../rules/anchors.js';
 import {
+  abandonSyncAction,
+  addRemoteAction,
   backAction,
   checkpointAction,
   checkpointsAction,
   clearAction,
+  conflicting,
+  continueSyncAction,
   conversationAction,
+  dayAndTime,
   dropCheckpointAction,
   emptySentence,
+  fetchAction,
   fileAction,
   filesBackAction,
   goBackAction,
   groupByDay,
+  listedRemotes,
   logsAction,
   MAKER_SAYS,
   moreAction,
   NO_FILTER,
+  NO_REMOTES,
   onlyLogs,
+  openBothAction,
   pathAction,
+  pullAction,
+  pushAction,
   ranSentence,
   reloadAction,
+  removeRemoteAction,
+  remoteSentence,
   repoAction,
+  replayingSentence,
+  REPLAYING_NOTE,
+  resolveAction,
   resolvePath,
   restoreFileAction,
   rowAction,
-  saveAction,
   searchBox,
+  setRemoteUrlAction,
   shown,
+  statusControls,
   statusSentence,
   stripSentence,
+  syncSentence,
+  syncViewAction,
+  syncWithAction,
   takeBackAction,
   threadOf,
   timeOf,
@@ -43,13 +63,15 @@ import {
   type HistoryFilter,
   type HistoryState,
   type PaneSize,
-  type RecoveryId,
+  type SyncVerb,
   type Verdict,
+  type VerdictKey,
 } from '../../rules/history.js';
 import {
   KIND_ORDER,
   kindOf,
   REPO_ROLES,
+  type BlobRead,
   type Diff,
   type FileKind,
   type HistoryPage,
@@ -123,8 +145,17 @@ export class HistoryEditor extends VnEditor {
   private logsOpen = false;
   private width: PaneSize = 'large';
   private showingDetail = false;
-  /** What `check` answered for the recovery commands on the selection; emptied when it moves. */
-  private verdicts: Partial<Record<RecoveryId, Verdict>> = {};
+  /** What `check` answered for the recovery and sync commands; emptied when the tree moves. */
+  private verdicts: Partial<Record<VerdictKey, Verdict>> = {};
+  /** Whether the sync view has the detail column. */
+  private syncOpen = false;
+  /** The network verb running, when one is, and when it started, for the footer's clock. */
+  private syncing: SyncVerb | undefined;
+  private syncStarted = 0;
+  private clockTimer: ReturnType<typeof setInterval> | undefined;
+  /** The conflicted path whose two sides are open, and the sides once read; theirs is `:2`, mine `:3`. */
+  private bothOpen: string | undefined;
+  private sides: { theirs: string | null; mine: string | null } | undefined;
 
   /** What `ui.docPath` was the last time the pane looked, so only a change narrows the list. */
   private seenDocPath: string | undefined;
@@ -206,6 +237,7 @@ export class HistoryEditor extends VnEditor {
 
   override on_remove(): void {
     this.stopPolling();
+    this.stopClock();
     super.on_remove();
   }
 
@@ -272,6 +304,9 @@ export class HistoryEditor extends VnEditor {
       showingDetail: this.showingDetail,
       verdicts     : this.verdicts,
       ...(BLOCKS_UNDO.test(this.ui.undoBlocked) ? { undoBlocked: this.ui.undoBlocked } : {}),
+      syncOpen: this.syncOpen,
+      ...(this.syncing === undefined ? {} : { syncing: this.syncing }),
+      ...(this.bothOpen === undefined ? {} : { bothOpen: this.bothOpen }),
     };
   }
 
@@ -280,26 +315,42 @@ export class HistoryEditor extends VnEditor {
    * again once it has answered. The control is drawn accepted until then, since the command's
    * own check runs again on the click; a verdict for a selection that has moved on is dropped.
    */
-  private async askVerdicts(ids: readonly RecoveryId[]): Promise<void> {
+  private async askVerdicts(keys: readonly VerdictKey[]): Promise<void> {
     const sha = this.selected;
     const file = this.file;
-    if (sha === undefined || !this.repos.some((r) => r.role === this.repo && r.owned)) return;
-    const asked = ids.filter((id) => id !== 'git.restoreFile' || file !== undefined);
+    const token = this.token;
+    if (!this.repos.some((r) => r.role === this.repo && r.owned)) return;
+    const asked = keys.filter((key) => {
+      if (key === 'git.restoreFile') return sha !== undefined && file !== undefined;
+      if (key === 'git.takeBack' || key === 'git.goBack') return sha !== undefined;
+      return true;
+    });
     if (asked.length === 0) return;
     const answers = await Promise.all(
-      asked.map(async (id) => {
-        const props: Record<string, string> =
-          id === 'git.restoreFile'
-            ? { repo: this.repo, sha, path: file! }
-            : { repo: this.repo, sha };
-        return [id, await check(id, props)] as const;
+      asked.map(async (key) => {
+        const [id, on] = key.split(':') as [string, string | undefined];
+        const props: Record<string, string> = { repo: this.repo };
+        if (key === 'git.restoreFile') Object.assign(props, { sha: sha!, path: file! });
+        else if (key === 'git.takeBack' || key === 'git.goBack') props['sha'] = sha!;
+        else if (id === 'git.push') props['remote'] = on ?? '';
+        return [key, await check(id, props)] as const;
       }),
     );
-    if (this.selected !== sha || this.file !== file) return;
-    for (const [id, answer] of answers) {
-      this.verdicts[id] = { ok: answer.state !== 'refuse', message: answer.message };
+    if (this.selected !== sha || this.file !== file || this.token !== token) return;
+    for (const [key, answer] of answers) {
+      this.verdicts[key] = { ok: answer.state !== 'refuse', message: answer.message };
     }
     this.rebuild();
+  }
+
+  /** The keys the branch's own state is asked about: the pull, a push per copy, and continuing. */
+  private syncKeys(): VerdictKey[] {
+    const remotes = this.repoStatus?.remotes ?? [];
+    return [
+      'git.pull',
+      'git.continueSync',
+      ...remotes.map((r): VerdictKey => `git.push:${r.name}`),
+    ];
   }
 
   /** Re-present the bar's checkpoint button on its own pass, since the bar is built once. */
@@ -343,7 +394,9 @@ export class HistoryEditor extends VnEditor {
       }
       // The worktree may have moved with whatever invalidated the list, so the verdicts are stale
       this.verdicts = {};
-      void this.askVerdicts(['git.takeBack', 'git.goBack', 'git.restoreFile']);
+      void this.askVerdicts(['git.takeBack', 'git.goBack', 'git.restoreFile', ...this.syncKeys()]);
+      if (!conflicting(this.state())) this.closeBoth();
+      else if (this.bothOpen !== undefined) void this.loadSides(this.bothOpen);
       this.pollWhilePending();
     } catch (err) {
       if (mine !== this.token) return;
@@ -474,12 +527,87 @@ export class HistoryEditor extends VnEditor {
       this.file = undefined;
       this.diff = undefined;
       this.logsOpen = false;
-      this.verdicts = {};
+      delete this.verdicts['git.takeBack'];
+      delete this.verdicts['git.goBack'];
+      delete this.verdicts['git.restoreFile'];
     }
     this.selected = sha;
     this.showingDetail = true;
+    // A row asks for its changes, so the sync view gives the column back
+    this.syncOpen = false;
     this.rebuild();
     void this.askVerdicts(['git.takeBack', 'git.goBack']);
+  }
+
+  private toggleSync(): void {
+    this.syncOpen = !this.syncOpen;
+    this.showingDetail = this.syncOpen || this.selected !== undefined;
+    this.rebuild();
+  }
+
+  /** Bring the conflict view to the front, which in the one-column layout means the detail. */
+  private showConflicts(): void {
+    this.syncOpen = false;
+    this.showingDetail = true;
+    this.rebuild();
+  }
+
+  /**
+   * Run a network verb and keep the footer's clock going while it does. The list is read again
+   * afterwards whatever happened, since a fetch moves the counts even when nothing else moved.
+   */
+  private async runSync(verb: SyncVerb, id: string, props: Record<string, string>): Promise<void> {
+    if (this.syncing !== undefined) return;
+    this.syncing = verb;
+    this.syncStarted = Date.now();
+    this.failure = '';
+    this.clockTimer = setInterval(() => this.rebuildFoot(), 1000);
+    this.rebuild();
+    try {
+      const outcome = await exec(id, props);
+      if (!outcome.ok) this.failure = outcome.error;
+    } finally {
+      this.stopClock();
+      this.syncing = undefined;
+    }
+    await this.load();
+  }
+
+  private stopClock(): void {
+    if (this.clockTimer !== undefined) clearInterval(this.clockTimer);
+    this.clockTimer = undefined;
+  }
+
+  /** Open both sides of one file in question, reading them from the index's two stages. */
+  private openBoth(path: string): void {
+    if (this.bothOpen === path) {
+      this.closeBoth();
+      return;
+    }
+    this.bothOpen = path;
+    this.sides = undefined;
+    this.rebuild();
+    void this.loadSides(path);
+  }
+
+  private closeBoth(): void {
+    if (this.bothOpen === undefined) return;
+    this.bothOpen = undefined;
+    this.sides = undefined;
+    this.rebuild();
+  }
+
+  private async loadSides(path: string): Promise<void> {
+    const side = async (stage: ':2' | ':3'): Promise<string | null> => {
+      const outcome = await exec('git.blob', { repo: this.repo, sha: stage, path });
+      if (!outcome.ok) return null;
+      const read = outcome.data as BlobRead;
+      return read.kind === 'text' ? read.text : null;
+    };
+    const [theirs, mine] = await Promise.all([side(':2'), side(':3')]);
+    if (this.bothOpen !== path) return;
+    this.sides = { theirs, mine };
+    this.rebuild();
   }
 
   /** Open one file's diff, reading it if this is the first look. The file list stays as it is. */
@@ -540,8 +668,12 @@ export class HistoryEditor extends VnEditor {
       this.width,
       this.showingDetail,
       this.failure,
-      ...Object.entries(this.verdicts).map(([id, v]) => `${id}=${v.ok}:${v.message}`),
+      ...Object.entries(this.verdicts).map(([id, v]) => `${id}=${v?.ok}:${v?.message}`),
       this.ui.undoBlocked,
+      this.syncOpen,
+      this.syncing,
+      this.bothOpen,
+      this.sides === undefined ? '' : 'sides',
     ].join('|');
   }
 
@@ -584,6 +716,16 @@ export class HistoryEditor extends VnEditor {
     );
     line.title = entry ? entry.root : '';
     this.strip.appendChild(line);
+    if (state.repos.length > 0) {
+      const sync = syncViewAction(state);
+      this.strip.appendChild(
+        anchors.act(
+          el('button', 'hs-btn hs-sync-toggle', sync.label) as HTMLButtonElement,
+          sync,
+          () => this.toggleSync(),
+        ),
+      );
+    }
   }
 
   private rebuildFilters(state: HistoryState): void {
@@ -710,7 +852,8 @@ export class HistoryEditor extends VnEditor {
 
   /**
    * The cause the worktree is not clean, with the paths where there are some, and the one thing
-   * to do about edits made outside the app: save them under a message, in `git.save`'s form.
+   * to do about it: save edits made outside the app under a message, decide a stopped sync's
+   * collisions, or give up a take-back a terminal left part way.
    */
   private rebuildStatus(state: HistoryState): void {
     this.status.textContent = '';
@@ -719,12 +862,14 @@ export class HistoryEditor extends VnEditor {
     const anchors = redrawing('history', 'status');
     const line = el('div', 'hs-status-line');
     line.appendChild(el('span', '', sentence));
-    const save = saveAction(state);
-    line.appendChild(
-      anchors.act(el('button', 'hs-btn', save.label) as HTMLButtonElement, save, (action) =>
-        openCommandDialog(action.id, action.props),
-      ),
-    );
+    for (const offer of statusControls(state)) {
+      line.appendChild(
+        anchors.act(el('button', 'hs-btn', offer.label) as HTMLButtonElement, offer, (action) => {
+          if (offer.id === 'pane.view') this.showConflicts();
+          else openCommandDialog(action.id, action.props);
+        }),
+      );
+    }
     this.status.appendChild(line);
     const paths = state.status?.cause === 'outside' ? state.status.outside : [];
     if (paths.length > 0) {
@@ -745,6 +890,15 @@ export class HistoryEditor extends VnEditor {
         }),
       );
       this.detail.appendChild(holder);
+    }
+
+    if (conflicting(state)) {
+      this.detail.appendChild(this.conflictView(state, anchors));
+      return;
+    }
+    if (state.syncOpen) {
+      this.detail.appendChild(this.syncView(state, anchors));
+      return;
     }
 
     const save = state.saves.find((s) => s.sha === state.selected);
@@ -923,12 +1077,183 @@ export class HistoryEditor extends VnEditor {
     return view;
   }
 
+  /**
+   * The shared copies of the repository: get their saves from the one the branch syncs with, and
+   * per copy its address, its counts and when it was last checked, with send, check, sync-with,
+   * change-address and remove; then add another. With none, the one sentence and the way to
+   * connect one.
+   */
+  private syncView(state: HistoryState, anchors: AnchorPass): HTMLElement {
+    const view = el('div', 'hs-sync');
+    const remotes = listedRemotes(state.status);
+    const button = (
+      offer: Offer,
+      run: (action: { id: string; props: Record<string, string> }) => void,
+    ) =>
+      anchors.act(el('button', 'hs-btn', offer.label) as HTMLButtonElement, offer, (action) =>
+        run({ id: action.id, props: action.props as Record<string, string> }),
+      );
+    const form = (offer: Offer) =>
+      button(offer, (action) => openCommandDialog(action.id, action.props));
+
+    if (remotes.length === 0) {
+      const empty = el('div', 'hs-detail-empty');
+      empty.appendChild(el('div', '', NO_REMOTES));
+      empty.appendChild(form(addRemoteAction(state)));
+      view.appendChild(empty);
+      return view;
+    }
+
+    const head = el('div', 'hs-sync-head');
+    head.appendChild(el('div', 'hs-head-subject', 'Shared copies'));
+    const pull = pullAction(state);
+    head.appendChild(button(pull, (action) => void this.runSync('pull', action.id, action.props)));
+    view.appendChild(head);
+
+    for (const remote of remotes) {
+      const row = el('div', 'hs-remote');
+      row.classList.toggle('syncs', remote.syncsWith);
+      const name = el('div', 'hs-remote-name', remote.name);
+      if (remote.syncsWith) name.appendChild(el('span', 'hs-badge', 'syncs with'));
+      row.appendChild(name);
+      name.appendChild(
+        el('span', 'hs-remote-line', remoteSentence(remote, state.status?.lastFetch ?? null)),
+      );
+      const url = el('div', 'hs-remote-url', remote.url);
+      url.title = remote.url;
+      row.appendChild(url);
+      const acts = el('div', 'hs-head-acts');
+      acts.appendChild(
+        button(
+          pushAction(state, remote),
+          (action) => void this.runSync('push', action.id, action.props),
+        ),
+      );
+      acts.appendChild(
+        button(
+          fetchAction(state, remote),
+          (action) => void this.runSync('fetch', action.id, action.props),
+        ),
+      );
+      acts.appendChild(
+        button(syncWithAction(state, remote), (action) => void exec(action.id, action.props)),
+      );
+      acts.appendChild(form(setRemoteUrlAction(state, remote)));
+      acts.appendChild(form(removeRemoteAction(state, remote)));
+      row.appendChild(acts);
+      view.appendChild(row);
+    }
+
+    const foot = el('div', 'hs-head-acts');
+    foot.appendChild(form(addRemoteAction(state)));
+    view.appendChild(foot);
+    return view;
+  }
+
+  /**
+   * The files a stopped sync is waiting on, grouped by kind under the save being replayed. Each
+   * gets Keep mine and Take theirs, and a readable one Open both, whose two sides are drawn
+   * beneath the list from the index's stages. Continue and Give up close the view.
+   */
+  private conflictView(state: HistoryState, anchors: AnchorPass): HTMLElement {
+    const view = el('div', 'hs-conflict');
+    const button = (
+      offer: Offer,
+      run: (action: { id: string; props: Record<string, string> }) => void,
+    ) =>
+      anchors.act(el('button', 'hs-btn', offer.label) as HTMLButtonElement, offer, (action) =>
+        run({ id: action.id, props: action.props as Record<string, string> }),
+      );
+    view.appendChild(el('div', 'hs-head-subject', replayingSentence(state.status)));
+    const paths = state.status?.conflicted ?? [];
+    const n = paths.length;
+    view.appendChild(
+      el(
+        'div',
+        'hs-head-line',
+        n === 0
+          ? 'Every file is decided.'
+          : `${n} file${n === 1 ? '' : 's'} need${n === 1 ? 's' : ''} a decision.`,
+      ),
+    );
+
+    const byKind = new Map<FileKind, string[]>();
+    for (const path of paths) {
+      const kind = kindOf(path);
+      byKind.set(kind, [...(byKind.get(kind) ?? []), path]);
+    }
+    const list = el('div', 'hs-files');
+    for (const kind of KIND_ORDER) {
+      const group = byKind.get(kind);
+      if (!group) continue;
+      list.appendChild(el('div', 'hs-kind', KIND_SAYS[kind]));
+      for (const path of group) {
+        const row = el('div', 'hs-conflict-row');
+        row.classList.toggle('open', path === state.bothOpen);
+        row.appendChild(el('span', 'hs-file-path', path));
+        const acts = el('span', 'hs-conflict-acts');
+        for (const side of ['mine', 'theirs'] as const) {
+          acts.appendChild(
+            button(
+              resolveAction(state, path, side),
+              (action) => void exec(action.id, action.props),
+            ),
+          );
+        }
+        const both = openBothAction(state, path);
+        acts.appendChild(
+          anchors.act(el('button', 'hs-btn', both.label) as HTMLButtonElement, both, () =>
+            this.openBoth(path),
+          ),
+        );
+        row.appendChild(acts);
+        list.appendChild(row);
+      }
+    }
+    view.appendChild(list);
+
+    if (state.bothOpen !== undefined) view.appendChild(this.sidesView(state.bothOpen));
+
+    const acts = el('div', 'hs-head-acts hs-conflict-foot');
+    acts.appendChild(
+      button(
+        continueSyncAction(state),
+        (action) => void this.runSync('pull', action.id, action.props),
+      ),
+    );
+    acts.appendChild(
+      button(abandonSyncAction(state), (action) => openCommandDialog(action.id, action.props)),
+    );
+    view.appendChild(acts);
+    view.appendChild(el('div', 'hs-conflict-note', REPLAYING_NOTE));
+    return view;
+  }
+
+  /** The two sides of one file in question, theirs then mine, read-only, each under its name. */
+  private sidesView(path: string): HTMLElement {
+    const view = el('div', 'hs-sides');
+    const column = (title: string, text: string | null | undefined) => {
+      const col = el('div', 'hs-side');
+      col.appendChild(el('div', 'hs-kind', title));
+      if (text === undefined) col.appendChild(el('div', 'hs-diff-note', 'Reading…'));
+      else if (text === null) col.appendChild(el('div', 'hs-diff-note', 'Not on this side.'));
+      else col.appendChild(el('pre', 'hs-side-text', text));
+      return col;
+    };
+    const sides = this.sides;
+    view.appendChild(column(`Theirs · ${path}`, sides?.theirs));
+    view.appendChild(column(`Mine · ${path}`, sides?.mine));
+    return view;
+  }
+
   private rebuildFoot(state: HistoryState = this.state()): void {
     this.foot.textContent = '';
     this.foot.classList.toggle('bad', this.failure !== '');
     const left = el('div', 'hs-foot-left');
     if (this.failure !== '') left.textContent = this.failure;
-    else if (this.reading) left.textContent = 'Reading history…';
+    else if (this.syncing !== undefined) {
+      left.textContent = syncSentence(this.syncing, (Date.now() - this.syncStarted) / 1000);
+    } else if (this.reading) left.textContent = 'Reading history…';
     else if (this.file !== undefined && this.selected !== undefined) {
       left.textContent = `${this.file} · ${this.selected.slice(0, 7)}`;
     }
@@ -944,14 +1269,6 @@ function countsOf(file: Save['files'][number]): string {
   return file.added === null || file.removed === null
     ? 'binary'
     : `+${file.added} −${file.removed}`;
-}
-
-/** `Today 14:02`, or the date and time for an older save. */
-function dayAndTime(iso: string): string {
-  const date = new Date(iso);
-  const day = date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-  const today = new Date().toDateString() === date.toDateString();
-  return `${today ? 'today' : day} ${timeOf(iso)}`;
 }
 
 function el(tag: string, className: string, text?: string): HTMLElement {

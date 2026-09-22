@@ -21,6 +21,9 @@ import {
   type BranchStatus,
   type Change,
   type Checkpoint,
+  COMMIT_KEY_FORMAT,
+  parseCommitKeys,
+  type CommitKey,
   type HistoryEntry,
 } from './parse.js';
 
@@ -38,6 +41,15 @@ const NO_PROMPT_ENV = {
   GIT_TERMINAL_PROMPT: '0',
   GIT_SSH_COMMAND    : 'ssh -oBatchMode=yes',
 };
+
+/**
+ * The subject of a commit made of edits a rebase found in the worktree before it had replayed
+ * anything, so it had no commit of the author's to fold them into.
+ */
+export const ABSORBED_SUBJECT = 'Changes made while getting their saves';
+
+/** How many stops over unstaged edits one rebase absorbs before it is reported as stopped. */
+const ABSORB_TRIES = 20;
 
 /** Run a git subcommand in `cwd`, capturing output. Never throws on non-zero exit. */
 function run(cwd: string, args: string[], indexFile?: string): Promise<RunResult> {
@@ -123,6 +135,8 @@ export interface RebaseState {
   total: number;
   /** The commit that could not be applied, when the rebase stopped on a conflict. */
   stoppedSha: string | null;
+  /** Where the branch stood before the rebase began. Null if unreadable. */
+  origHead: string | null;
 }
 
 /** Which multi-step operation, if any, the repository is in the middle of. */
@@ -445,6 +459,11 @@ export class Git {
    * Absolute paths inside the git directory, one per name. `.git` is a file in a linked
    * worktree, so nothing may spell `<root>/.git/<name>` itself.
    */
+  /** Where `name` lives under the repository's git directory, wherever that is for this worktree. */
+  async gitPath(name: string): Promise<string> {
+    return (await this.gitPaths(name))[0]!;
+  }
+
   private async gitPaths(...names: string[]): Promise<string[]> {
     const out = await this.ok(['rev-parse', ...names.flatMap((n) => ['--git-path', n])]);
     return out
@@ -481,12 +500,13 @@ export class Git {
     const dir = (await exists(merging)) ? merging : (await exists(applying)) ? applying : null;
     if (dir) {
       // the am backend's `rebase-apply` spells the position `next`/`last`
-      const [head, onto, current, total, stopped] = await Promise.all([
+      const [head, onto, current, total, stopped, origHead] = await Promise.all([
         read(dir, 'head-name'),
         read(dir, 'onto'),
         read(dir, dir === merging ? 'msgnum' : 'next'),
         read(dir, dir === merging ? 'end' : 'last'),
         read(dir, 'stopped-sha'),
+        read(dir, 'orig-head'),
       ]);
       rebase = {
         branch    : head?.replace(/^refs\/heads\//, '') ?? null,
@@ -494,6 +514,7 @@ export class Git {
         current   : Number(current ?? 0),
         total     : Number(total ?? 0),
         stoppedSha: stopped,
+        origHead,
       };
     }
     return { rebase, merge: await exists(mergeHead), revert: await exists(revertHead) };
@@ -533,9 +554,13 @@ export class Git {
     );
   }
 
-  /** Creates the annotated tag `CHECKPOINT_PREFIX + slug` at `sha` with `message`. */
-  async tag(slug: string, sha: string, message: string): Promise<void> {
-    await this.ok(['tag', '-a', `${CHECKPOINT_TAG}${slug}`, '-m', message, sha]);
+  /**
+   * Creates the annotated tag `CHECKPOINT_PREFIX + slug` at `sha` with `message`. With `force`,
+   * an existing tag of that name is moved, which is how a checkpoint follows a rewritten save.
+   */
+  async tag(slug: string, sha: string, message: string, force = false): Promise<void> {
+    const args = ['tag', '-a', ...(force ? ['-f'] : []), `${CHECKPOINT_TAG}${slug}`, '-m', message];
+    await this.ok([...args, sha]);
   }
 
   /** Every checkpoint, in refname order. */
@@ -638,6 +663,36 @@ export class Git {
     await this.ok(['branch', `--set-upstream-to=${remote}/${branch}`]);
   }
 
+  /**
+   * Points `branch` at `remote` through the two config keys `git pull` reads. Unlike
+   * `setUpstream`, it needs no tracking ref, so it works before the first fetch or push.
+   */
+  async trackRemote(branch: string, remote: string, remoteBranch = branch): Promise<void> {
+    await this.config(`branch.${branch}.remote`, remote);
+    await this.config(`branch.${branch}.merge`, `refs/heads/${remoteBranch}`);
+  }
+
+  /**
+   * How many commits `ref` lacks that HEAD has, and the reverse, or null when `ref` names
+   * nothing, as a remote's branch does before the first fetch.
+   */
+  async aheadBehind(ref: string): Promise<{ ahead: number; behind: number } | null> {
+    const r = await this.run(['rev-list', '--left-right', '--count', `${ref}...HEAD`]);
+    if (r.code !== 0) return null;
+    const [behind, ahead] = r.stdout.trim().split(/\s+/);
+    return { ahead: Number(ahead ?? 0), behind: Number(behind ?? 0) };
+  }
+
+  /**
+   * The commits in `range`, newest first, each with the key a rebase preserves: author name,
+   * email, author date and a hash of the full message. Empty when the range does not resolve.
+   */
+  async rangeKeys(range: string): Promise<CommitKey[]> {
+    const r = await this.run(['log', `--format=${COMMIT_KEY_FORMAT}`, range]);
+    if (r.code !== 0) return [];
+    return parseCommitKeys(r.stdout);
+  }
+
   /** Fetches one remote, tags included. */
   async fetch(remote: string): Promise<void> {
     await this.ok(['fetch', '--tags', remote]);
@@ -650,13 +705,12 @@ export class Git {
 
   /**
    * Rebases the current branch onto `onto`. Answers whether it completed; false means it stopped
-   * on a conflict and `inProgress()` now describes where.
+   * on a conflict and `inProgress()` now describes where. Uncommitted edits are stashed for the
+   * duration and put back when the rebase ends, since the app's own logs are dirty between
+   * saves and git refuses to start over any unstaged change.
    */
   async rebase(onto: string): Promise<boolean> {
-    const r = await this.run(['rebase', onto]);
-    if (r.code === 0) return true;
-    if ((await this.inProgress()).rebase) return false;
-    throw new GitError(`git rebase failed: ${r.stderr.trim() || r.stdout.trim()}`);
+    return this.rebaseOutcome(await this.run(['rebase', '--autostash', onto]), 'git rebase');
   }
 
   /**
@@ -664,11 +718,51 @@ export class Git {
    * the next replayed commit stopped on a conflict of its own.
    */
   async rebaseContinue(): Promise<boolean> {
-    // No editor: the replayed commit keeps its message
-    const r = await this.run(['-c', 'core.editor=true', 'rebase', '--continue']);
-    if (r.code === 0) return true;
-    if ((await this.inProgress()).rebase) return false;
-    throw new GitError(`git rebase --continue failed: ${r.stderr.trim() || r.stdout.trim()}`);
+    return this.rebaseOutcome(await this.continueRun(), 'git rebase --continue');
+  }
+
+  /** No editor, so a replayed commit keeps its message. */
+  private continueRun(): Promise<RunResult> {
+    return this.run(['-c', 'core.editor=true', 'rebase', '--continue']);
+  }
+
+  /**
+   * Whether the rebase `r` came from completed. A stop that is not a conflict is git refusing to
+   * replay a commit over a file with unstaged edits, which the app's logs earn by being written
+   * while the rebase runs; those edits are absorbed and the rebase continued, `ABSORB_TRIES` times
+   * at most.
+   */
+  private async rebaseOutcome(r: RunResult, what: string): Promise<boolean> {
+    for (let tries = 0; ; tries++) {
+      if (r.code === 0) return true;
+      if (!(await this.inProgress()).rebase) {
+        throw new GitError(`${what} failed: ${r.stderr.trim() || r.stdout.trim()}`);
+      }
+      if (tries === ABSORB_TRIES || !(await this.absorbUnstaged())) return false;
+      r = await this.continueRun();
+    }
+  }
+
+  /**
+   * Stages the worktree's edits so the rebase can go on, and answers whether there were any. At a
+   * conflict stop the continue commits what is staged as the replayed commit, so staging is all
+   * it takes; elsewhere git has refused to replay a commit over them, and they are folded into
+   * the commit replayed last, or into a commit of their own when none has been yet. Does nothing
+   * while a path is unmerged, since those edits are a decision the author has not made.
+   */
+  private async absorbUnstaged(): Promise<boolean> {
+    const status = await this.branchStatus();
+    if (status.entries.length === 0 || status.entries.some((e) => e.unmerged)) return false;
+    await this.add(['-A']);
+    const rebase = (await this.inProgress()).rebase;
+    if (rebase?.stoppedSha !== null) return true;
+    const r =
+      (await this.head()) === rebase.onto
+        ? await this.run(['commit', '-m', ABSORBED_SUBJECT])
+        : await this.run(['commit', '--amend', '--no-edit']);
+    if (r.code !== 0)
+      throw new GitError(`git commit failed: ${r.stderr.trim() || r.stdout.trim()}`);
+    return true;
   }
 
   /** Abandons a rebase, putting the branch back where it started. */
@@ -679,6 +773,11 @@ export class Git {
   /** Abandons a merge someone started from a terminal. */
   async mergeAbort(): Promise<void> {
     await this.ok(['merge', '--abort']);
+  }
+
+  /** Abandons a revert that stopped part way, putting the tree back as it was. */
+  async revertAbort(): Promise<void> {
+    await this.ok(['revert', '--abort']);
   }
 
   /**

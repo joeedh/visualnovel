@@ -1,7 +1,8 @@
 /**
  * The History pane's situations: one repository with saves of every maker, two repositories with
  * a filter on, a project inside a foreign repository, an empty history, a save with a diff open
- * in each width, and the recovery controls answered by their checks.
+ * in each width, the recovery controls answered by their checks, the sync view with and without
+ * shared copies, a sync stopped on a collision, and one still running.
  */
 import { situations } from './situation.js';
 import { NO_FILTER, type HistoryState } from '../history.js';
@@ -19,9 +20,18 @@ const CLEAN: RepoStatus = {
   upstream  : 'origin/main',
   ahead     : 3,
   behind    : 0,
-  remotes   : [{ name: 'origin', url: 'https://github.com/mara/rooftop.git' }],
+  remotes: [
+    {
+      name     : 'origin',
+      url      : 'https://github.com/mara/rooftop.git',
+      ahead    : 3,
+      behind   : 0,
+      syncsWith: true,
+    },
+  ],
   lastFetch : '2026-09-21T09:00:00Z',
   inProgress: { rebase: null, merge: false, revert: false },
+  replaying : null,
 };
 
 const save = (over: Partial<Save> & { sha: string }): Save => ({
@@ -89,6 +99,7 @@ export const SITUATIONS = situations<HistoryState>(
       size         : 'large',
       showingDetail: false,
       verdicts     : {},
+      syncOpen     : false,
     },
   },
   {
@@ -105,6 +116,7 @@ export const SITUATIONS = situations<HistoryState>(
       size         : 'large',
       showingDetail: false,
       verdicts     : {},
+      syncOpen     : false,
     },
   },
   {
@@ -123,6 +135,7 @@ export const SITUATIONS = situations<HistoryState>(
       size         : 'large',
       showingDetail: false,
       verdicts     : {},
+      syncOpen     : false,
     },
   },
   {
@@ -141,6 +154,7 @@ export const SITUATIONS = situations<HistoryState>(
       size         : 'mid',
       showingDetail: false,
       verdicts     : {},
+      syncOpen     : false,
     },
   },
   {
@@ -158,6 +172,7 @@ export const SITUATIONS = situations<HistoryState>(
       size         : 'small',
       showingDetail: true,
       verdicts     : {},
+      syncOpen     : false,
     },
   },
   {
@@ -174,6 +189,7 @@ export const SITUATIONS = situations<HistoryState>(
       size         : 'large',
       showingDetail: false,
       verdicts     : {},
+      syncOpen     : false,
     },
   },
   {
@@ -189,6 +205,7 @@ export const SITUATIONS = situations<HistoryState>(
       size         : 'large',
       showingDetail: false,
       verdicts     : {},
+      syncOpen     : false,
     },
   },
   {
@@ -222,6 +239,7 @@ export const SITUATIONS = situations<HistoryState>(
           message: 'Rewrites scenes/rooftop.fountain as it was at save bbbbbbb.',
         },
       },
+      syncOpen     : false,
     },
   },
   {
@@ -239,6 +257,7 @@ export const SITUATIONS = situations<HistoryState>(
       size         : 'large',
       showingDetail: false,
       verdicts     : {},
+      syncOpen     : false,
       undoBlocked  : "git.takeBack(repo='project' sha='aaaaaaa')",
     },
   },
@@ -257,6 +276,122 @@ export const SITUATIONS = situations<HistoryState>(
       size         : 'large',
       showingDetail: false,
       verdicts     : {},
+      syncOpen     : false,
+    },
+  },
+  {
+    name : 'sync-view',
+    why: 'The sync view has the detail column, with two shared copies: the GitHub one the project syncs with, which is behind so sending to it is refused until their saves are got, and a backup on a drive that has never been compared. Adding another copy is offered at the foot.',
+    state: {
+      repos        : [PROJECT],
+      repo         : 'project',
+      filter       : NO_FILTER,
+      status: {
+        ...CLEAN,
+        ahead  : 3,
+        behind : 1,
+        remotes: [
+          { ...CLEAN.remotes[0]!, behind: 1 },
+          {
+            name     : 'backup',
+            url      : 'D:/backup/rooftop.git',
+            ahead    : null,
+            behind   : null,
+            syncsWith: false,
+          },
+        ],
+      },
+      saves        : SAVES,
+      next         : null,
+      selected     : 'a'.repeat(40),
+      logsOpen     : false,
+      size         : 'large',
+      showingDetail: false,
+      verdicts: {
+        'git.pull': {
+          ok     : true,
+          message:
+            'Gets their saves from “origin” and replays yours on top. A collision waits for your decision.',
+        },
+      },
+      syncOpen     : true,
+    },
+  },
+  {
+    name : 'no-remotes',
+    why: 'The sync view is open on a repository with no shared copy, so it says so and leads with connecting one; there is nothing to get from and nothing to send to.',
+    state: {
+      repos        : [PROJECT],
+      repo         : 'project',
+      filter       : NO_FILTER,
+      status       : { ...CLEAN, upstream: null, ahead: null, behind: null, remotes: [] },
+      saves        : SAVES,
+      next         : null,
+      logsOpen     : false,
+      size         : 'large',
+      showingDetail: false,
+      verdicts     : {},
+      syncOpen     : true,
+    },
+  },
+  {
+    name : 'conflict',
+    why: 'Getting their saves stopped on the second of three replayed saves, with a scene and a layout in question: the scene offers Open both while the layout, which git never merges, offers only the two sides; Continue is refused until both are decided; the status view leads to this view rather than duplicating Give up.',
+    state: {
+      repos        : [PROJECT],
+      repo         : 'project',
+      filter       : NO_FILTER,
+      status: {
+        ...CLEAN,
+        cause     : 'rebase',
+        conflicted: ['scenes/rooftop.fountain', '.vnstudio/layouts/writing.json'],
+        inProgress: {
+          rebase: {
+            branch    : 'main',
+            onto      : 'f'.repeat(40),
+            current   : 2,
+            total     : 3,
+            stoppedSha: 'a'.repeat(40),
+            origHead  : 'e'.repeat(40),
+          },
+          merge : false,
+          revert: false,
+        },
+        replaying: {
+          sha    : 'a'.repeat(40),
+          subject: 'Moved line L4 into rooftop',
+          current: 2,
+          total  : 3,
+        },
+      },
+      saves        : SAVES,
+      next         : null,
+      selected     : 'a'.repeat(40),
+      logsOpen     : false,
+      size         : 'large',
+      showingDetail: false,
+      verdicts     : {},
+      syncOpen     : false,
+      bothOpen     : 'scenes/rooftop.fountain',
+    },
+  },
+  {
+    name : 'syncing',
+    why: 'A pull is still running, so every write in the sync view and the bar refuses with “Still getting their saves.” while the filters, which only read, stay offered.',
+    state: {
+      repos        : [PROJECT],
+      repo         : 'project',
+      filter       : NO_FILTER,
+      status       : CLEAN,
+      saves        : SAVES,
+      next         : null,
+      selected     : 'a'.repeat(40),
+      logsOpen     : false,
+      size         : 'large',
+      showingDetail: false,
+      verdicts     : {},
+      syncOpen     : true,
+      syncing      : 'pull',
     },
   },
 );

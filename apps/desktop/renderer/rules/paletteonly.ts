@@ -84,6 +84,10 @@ const VIEW = ['view.close', 'view.focus', 'view.layout', 'view.layouts', 'view.p
 const APP: readonly PaletteOnly[] = [
   { match: 'app.openReleases', why: 'Reached from the update notification.' },
   {
+    match: 'app.openCollaboratingGuide',
+    why  : 'Reached from the notification a send or a get the shared copy refused.',
+  },
+  {
     match: 'app.keyGuide',
     why  : 'The onboarding editor reads the guide’s text through it; no control runs it.',
   },

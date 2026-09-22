@@ -33,6 +33,35 @@ export const NOT_OWNED =
  */
 export const SYNC_UNFINISHED = 'Getting their saves is unfinished; finish or give it up first.';
 
+/**
+ * What every sync verb says over a branch with no shared copy to sync with. `@vn/git` says the
+ * same, as `NO_UPSTREAM`; the renderer cannot import that package, so a test pins the two equal.
+ */
+export const NO_UPSTREAM = 'No shared copy is set to sync with; connect one first.';
+
+/** What every restore and a pull say over edits on disk no save holds yet; `@vn/git`'s `DIRTY_TREE`. */
+export const UNSAVED_EDITS = 'There are edits on disk not yet saved; save or discard them first.';
+
+/** One shared copy, as the sync view lists it. */
+export interface RemoteEntry {
+  name: string;
+  url: string;
+  /** Saves this copy lacks, and saves it has that the branch lacks; null before the first fetch. */
+  ahead: number | null;
+  behind: number | null;
+  /** Whether this is the copy the branch syncs with: where a pull comes from. */
+  syncsWith: boolean;
+}
+
+/** The save a stopped rebase is replaying, for the conflict view's heading. */
+export interface Replaying {
+  sha: string;
+  subject: string;
+  /** 1-based position among the saves being replayed. */
+  current: number;
+  total: number;
+}
+
 /** What `git.status` answers: the worktree's cause plus the branch and its remotes. */
 export interface RepoStatus extends WorktreeStatus {
   /** Null on an unborn branch, or when HEAD is detached outside a rebase. */
@@ -42,10 +71,29 @@ export interface RepoStatus extends WorktreeStatus {
   /** Null until the upstream's tracking ref exists, as after adding a remote but before a fetch. */
   ahead: number | null;
   behind: number | null;
-  remotes: { name: string; url: string }[];
+  remotes: RemoteEntry[];
   /** ISO time of the last fetch, or null when there has never been one. */
   lastFetch: string | null;
   inProgress: InProgress;
+  /** Where a stopped rebase stands; null outside one. */
+  replaying: Replaying | null;
+}
+
+/** Paths git never merges, by the project's `.gitattributes`: a conflict there is whole-file. */
+const NO_MERGE = [
+  /^\.vnstudio\/layouts\/[^/]+\.json$/,
+  /^vngen\/state\/threads\/[^/]+\.native\.jsonl$/,
+  /^vngen\/work\/graphs\/(lib\/)?[^/]+\.json$/,
+];
+
+/**
+ * Whether a conflicted path is one the author can read both sides of: a text file git merged line
+ * by line. A `-merge` file, a picture and a log offer only the two sides to keep.
+ */
+export function readableConflict(path: string): boolean {
+  if (NO_MERGE.some((re) => re.test(path))) return false;
+  const kind = kindOf(path);
+  return kind !== 'picture' && kind !== 'log';
 }
 
 /** What `git.blob` answers for a path at a commit. */

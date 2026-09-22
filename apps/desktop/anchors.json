@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-21T18:49:15.520Z",
-  "gitSha"       : "5a9caf9a0a0051758b78e6fe5d1d0147e0adba5f",
+  "sweptAt"      : "2026-09-22T00:01:13.739Z",
+  "gitSha"       : "eec7e8dea6cfb90c6a4ed4560fa5a0fb375c5f61",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -28,6 +28,7 @@
     "app.checkForUpdates",
     "app.copy",
     "app.keyGuide",
+    "app.openCollaboratingGuide",
     "app.openKeyLink",
     "app.openReleases",
     "art.generate",
@@ -83,17 +84,27 @@
     "gengraph.unexpose",
     "gengraph.ungroup",
     "gengraph.unlink",
+    "git.abandonSync",
+    "git.addRemote",
     "git.blob",
     "git.changes",
     "git.checkpoint",
+    "git.continueSync",
     "git.diff",
     "git.dropCheckpoint",
+    "git.fetch",
     "git.goBack",
     "git.history",
+    "git.pull",
+    "git.push",
+    "git.removeRemote",
     "git.repos",
+    "git.resolve",
     "git.restoreFile",
     "git.save",
+    "git.setRemoteUrl",
     "git.status",
+    "git.syncWith",
     "git.takeBack",
     "interaction.list",
     "interaction.targets",
@@ -5052,8 +5063,7 @@
       "editor"    : "history",
       "key"       : "cmd:git.checkpoint",
       "widgetPath": "history/git-checkpoint~21f68b45",
-      "form"      : true,
-      "refused": "This project sits inside a repository that is not its own; the app does not write history there."
+      "form"      : true
     },
     {
       "id"        : "pane.view",
@@ -5066,6 +5076,12 @@
       "editor"    : "history",
       "key"       : "fx:pane.pin",
       "widgetPath": "history/pane-pin~3ef17e3e"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "history",
+      "key"       : "fx:pane.view#sync",
+      "widgetPath": "history/pane-view~c82b206b"
     },
     {
       "id"        : "pane.view",
@@ -5096,6 +5112,37 @@
       "editor"    : "history",
       "key"       : "fx:pane.view#clear",
       "widgetPath": "history/pane-view~13059a85"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "history",
+      "key"       : "fx:pane.view#save/4b7abbef0c5faeef6002432493b9ee53574eab6a",
+      "widgetPath": "history/pane-view~1783811b"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "history",
+      "key"       : "fx:pane.view#save/465058cbc3fac8f3582a37249e3228d84c96d253",
+      "widgetPath": "history/pane-view~0502242f"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "history",
+      "key"       : "fx:pane.view#save/2aadcc84813fddf92d1226e6453ff1ffde479c62",
+      "widgetPath": "history/pane-view~1901637e"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "history",
+      "key"       : "fx:pane.view#save/7c179204ded073fe156ef1054317139f1fd3dcb7",
+      "widgetPath": "history/pane-view~9c152dfe"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "history",
+      "key"       : "fx:pane.view#more",
+      "widgetPath": "history/pane-view~bab7f4e9",
+      "refused"   : "Every save is listed."
     },
     {
       "id"        : "asset.replace",
@@ -6356,13 +6403,9 @@
   ],
   "disagreements": [],
   "strays": [
-    "asset cmd:view.open#style",
-    "branches fx:pane.view#reload",
     "documents item:link/asset/613746984653b37b24cb935b82ab56bb760fc7e4958b418321d082007d25f613",
     "documents item:link/asset/cba46728a12ad297aa87e02c58e7ebb28c16e7e01113922ccecdf8ec9c8968df",
-    "documents item:link/asset/fc80c6eba9cb0d134428bb7c0bd8bb65effa5be3379a763df6cb0467f5ebbae9",
-    "gengraph cmd:models.refresh",
-    "wiki cmd:doc.write#picture"
+    "documents item:link/asset/fc80c6eba9cb0d134428bb7c0bd8bb65effa5be3379a763df6cb0467f5ebbae9"
   ],
   "untagged"     : [],
   "unwalked"     : []

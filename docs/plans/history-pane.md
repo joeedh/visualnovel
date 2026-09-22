@@ -685,6 +685,65 @@ given a full refname creates `refs/tags/refs/tags/…`. `Git.log` is untouched.
   `docs/guides/api-keys.md` has no GitHub section, so the refusal's link points here.
 - **UX review 3.** Decisions taken here: `rerere`; the size warning.
 
+**As built (2026-09-21).** Everything above, with these particulars:
+
+- The ten writes live in `apps/desktop/src/main/session/sync.ts` (`SyncPart`), one preview
+  and one run each; `WorkspaceSession` delegates. `git.pull`, `git.resolve`,
+  `git.continueSync` and `git.abandonSync` are `commitsItself`. `git.pull`'s check does
+  not refuse "nothing to get": the run answers with a note instead, since the count is
+  only known after a fetch. `rewrote` is recorded by whichever of `git.pull` and
+  `git.continueSync` completed the rebase, from `rebase-merge/orig-head` and `onto` when
+  the rebase was started in an earlier command; `finishRebase` in
+  `packages/git/src/sync.ts` pairs by author, email, date and message and re-points
+  checkpoints.
+- Every sync outcome carries `finished`. False with nothing in `conflicted` is a stop git
+  explains in its own words, and `syncMessage` says the sync is part way rather than
+  finished.
+- **The app's logs and a rebase.** Two things the plan did not foresee, both found on the
+  two-author fixture. First, the app appends to `commands.jsonl` and `notifications.jsonl`
+  while a rebase runs (a read command records itself, a notification is filed), and git
+  will neither start a rebase over unstaged edits nor replay a commit that touches a file
+  with any. `Git.rebase` runs `--autostash`, and `Git.rebase`/`Git.rebaseContinue` absorb
+  a stop that is not a conflict: the edits are staged and, when the stop is a refused
+  replay rather than a conflict stop, folded into the commit replayed last
+  (`commit --amend --no-edit`) or into a commit of their own (`ABSORBED_SUBJECT`) when
+  none has been yet; then the rebase continues, `ABSORB_TRIES` times at most. Second,
+  `commands.jsonl` had no merge attribute, so every two-author sync collided on it; it is
+  now `merge=union` like the notification log. Because a rebase checks out each replayed
+  save's own `.gitattributes`, a save from before the rule was committed replays without
+  it, so `ensureRepoAttributes` writes the same rules into the repository's
+  `info/attributes`, which git reads first, on every open of a project that owns its
+  repository. The `.gitattributes` blocks are appended in array order, and a new block
+  goes last, or two projects upgraded at different times collide on the file itself.
+- `commitScaffolding` swallows `InProgressError`: a project reopened with a stopped sync
+  used to fail before the window existed.
+- Open both is drawn inline in the conflict view from index stages `:2` and `:3`, as two
+  plain-text columns, rather than as two Wiki panes; a word diff between them is a
+  follow-up. The status view offers Give up for a merge or a revert a terminal left, and
+  the conflict view for a rebase.
+- Notifications: `linkForRecord` maps a refused fetch, pull or push to
+  `app.openCollaboratingGuide` (palette-only) and a completed pull or continue to the
+  History pane. `NO_UPSTREAM` and `UNSAVED_EDITS` are repeated in `shared/history.ts`,
+  pinned to `@vn/git`'s by a test, because the renderer must not import the package.
+- The project's push is refused while a nested story bible has unsent saves, so the
+  gitlink never names a save the copy lacks.
+- The executed affects tier runs all ten against a bare repository and two projects
+  (`SYNC_CONNECT`, `SYNC_COLLIDE`), so none has a `SKIPS` entry. `packages/git` covers the
+  two absorbed stops with a post-commit hook standing in for the app.
+- `scripts/sweep-anchors.mjs` `SETTLE_MS` is 1200: the character sheet's wardrobe rows
+  wait on the manifest, and 700 ms dropped thirty-four anchors on three runs.
+- **UX review 3, applied.** The synced-with copy is listed first; the counts sit on the
+  name line and the address on its own line; "checked …" is left off a copy never
+  compared; the Shared copies toggle is refused during a conflict; the strip says "getting
+  their saves" mid-rebase; the conflict subtitle no longer claims their version is on
+  disk; the conflict row wraps its buttons under the path in a narrow column. Decisions:
+  `rerere` is left off, since the app resolves whole files and a remembered resolution
+  would apply one silently; the size warning is not built, and the guide documents
+  GitHub's limits instead.
+- Known: commit-on-save commits the log lines a push or a fetch wrote, so "Sent 8 saves"
+  is itself a save and the copy is one behind right after a send. It is consistent with
+  every other `<git>`-only command (a checkpoint does the same) and is left as is.
+
 ### Stage 8 — Docs and finishing
 
 - `docs/reference/desktop-app-editors-misc.md` gets the pane's as-shipped section, or a

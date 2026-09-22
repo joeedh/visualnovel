@@ -427,6 +427,30 @@
       "why": "The project sits inside a repository that is not its own, so every write is refused with the one sentence while the reads still work."
     },
     {
+      "module": "history",
+      "editor": "history",
+      "name"  : "sync-view",
+      "why": "The sync view has the detail column, with two shared copies: the GitHub one the project syncs with, which is behind so sending to it is refused until their saves are got, and a backup on a drive that has never been compared. Adding another copy is offered at the foot."
+    },
+    {
+      "module": "history",
+      "editor": "history",
+      "name"  : "no-remotes",
+      "why": "The sync view is open on a repository with no shared copy, so it says so and leads with connecting one; there is nothing to get from and nothing to send to."
+    },
+    {
+      "module": "history",
+      "editor": "history",
+      "name"  : "conflict",
+      "why": "Getting their saves stopped on the second of three replayed saves, with a scene and a layout in question: the scene offers Open both while the layout, which git never merges, offers only the two sides; Continue is refused until both are decided; the status view leads to this view rather than duplicating Give up."
+    },
+    {
+      "module": "history",
+      "editor": "history",
+      "name"  : "syncing",
+      "why": "A pull is still running, so every write in the sync view and the bar refuses with “Still getting their saves.” while the filters, which only read, stay offered."
+    },
+    {
       "module": "inspector",
       "editor": "inspector",
       "name"  : "no-task",
@@ -19476,6 +19500,32 @@
       "editor"    : "history",
       "module"    : "history",
       "situation" : "one-repo",
+      "key"       : "fx:pane.view#sync",
+      "widgetPath": "history/pane-view~c82b206b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Shared copies",
+        "tooltip": "List the shared copy: what each has, and send or get saves.",
+        "on"     : "sync",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "one-repo",
       "key"       : "fx:pane.view#who",
       "widgetPath": "history/pane-view~f13e92ac",
       "offer": {
@@ -19914,6 +19964,32 @@
       "editor"    : "history",
       "module"    : "history",
       "situation" : "two-repos-filtered",
+      "key"       : "fx:pane.view#sync",
+      "widgetPath": "history/pane-view~c82b206b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Shared copies",
+        "tooltip": "List the shared copy: what each has, and send or get saves.",
+        "on"     : "sync",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "two-repos-filtered",
       "key"       : "fx:pane.view#who",
       "widgetPath": "history/pane-view~f13e92ac",
       "offer": {
@@ -20139,6 +20215,32 @@
       "effects": [
         {
           "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "agent-save-open",
+      "key"       : "fx:pane.view#sync",
+      "widgetPath": "history/pane-view~c82b206b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Shared copies",
+        "tooltip": "List the shared copy: what each has, and send or get saves.",
+        "on"     : "sync",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
         }
       ]
     },
@@ -20596,6 +20698,32 @@
             "repo": "project",
             "sha" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             "path": "scenes/rooftop.fountain"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "mid-diff-open",
+      "key"       : "fx:pane.view#sync",
+      "widgetPath": "history/pane-view~c82b206b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Shared copies",
+        "tooltip": "List the shared copy: what each has, and send or get saves.",
+        "on"     : "sync",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
           }
         }
       ]
@@ -21141,6 +21269,32 @@
       "editor"    : "history",
       "module"    : "history",
       "situation" : "narrow-detail",
+      "key"       : "fx:pane.view#sync",
+      "widgetPath": "history/pane-view~c82b206b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Shared copies",
+        "tooltip": "List the shared copy: what each has, and send or get saves.",
+        "on"     : "sync",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "narrow-detail",
       "key"       : "fx:pane.view#who",
       "widgetPath": "history/pane-view~f13e92ac",
       "offer": {
@@ -21596,6 +21750,32 @@
       "editor"    : "history",
       "module"    : "history",
       "situation" : "empty",
+      "key"       : "fx:pane.view#sync",
+      "widgetPath": "history/pane-view~c82b206b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Shared copies",
+        "tooltip": "Connect a copy of this repository somewhere else, to work with someone or to keep a backup.",
+        "on"     : "sync",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "empty",
       "key"       : "fx:pane.view#who",
       "widgetPath": "history/pane-view~f13e92ac",
       "offer": {
@@ -21936,6 +22116,32 @@
           "id"   : "pane.view",
           "props": {
             "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "outside-edits",
+      "key"       : "fx:pane.view#sync",
+      "widgetPath": "history/pane-view~c82b206b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Shared copies",
+        "tooltip": "List the shared copy: what each has, and send or get saves.",
+        "on"     : "sync",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
           }
         }
       ]
@@ -22424,6 +22630,32 @@
       "editor"    : "history",
       "module"    : "history",
       "situation" : "checkpointed",
+      "key"       : "fx:pane.view#sync",
+      "widgetPath": "history/pane-view~c82b206b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Shared copies",
+        "tooltip": "List the shared copy: what each has, and send or get saves.",
+        "on"     : "sync",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "checkpointed",
       "key"       : "fx:pane.view#who",
       "widgetPath": "history/pane-view~f13e92ac",
       "offer": {
@@ -22835,6 +23067,32 @@
       "editor"    : "history",
       "module"    : "history",
       "situation" : "foreign-repo",
+      "key"       : "fx:pane.view#sync",
+      "widgetPath": "history/pane-view~c82b206b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Shared copies",
+        "tooltip": "List the shared copy: what each has, and send or get saves.",
+        "on"     : "sync",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "foreign-repo",
       "key"       : "fx:pane.view#who",
       "widgetPath": "history/pane-view~f13e92ac",
       "offer": {
@@ -23194,6 +23452,1993 @@
           "id"   : "pane.view",
           "props": {
             "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "fx:pane.view#sync",
+      "widgetPath": "history/pane-view~c82b206b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Close",
+        "tooltip": "Put the selected save’s changes back in this column.",
+        "on"     : "sync",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "fx:pane.view#who",
+      "widgetPath": "history/pane-view~f13e92ac",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Everyone",
+        "tooltip": "Narrow the list to the saves one kind of maker made: you, the agent, the pipeline, or the app’s housekeeping.",
+        "on"     : "who",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "fx:pane.view#path",
+      "widgetPath": "history/pane-view~f5ccb359",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Any file",
+        "tooltip": "Right-click a file or a scene in the document tree and choose Show history to narrow the list to it.",
+        "on"     : "path",
+        "ok"     : false,
+        "refusal": {
+          "reason": "The list is not narrowed to a file."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "fx:pane.view#checkpoints",
+      "widgetPath": "history/pane-view~0d942c3d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Checkpoints",
+        "tooltip": "Show only the saves you named as a checkpoint.",
+        "on"     : "checkpoints",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "fx:pane.view#text",
+      "widgetPath": "history/pane-view~34dea019",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Search saves…",
+        "tooltip": "Narrow the list to the saves whose description contains these words.",
+        "on"     : "text",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "fx:pane.view#clear",
+      "widgetPath": "history/pane-view~13059a85",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Show all",
+        "tooltip": "Take every filter off and show every save.",
+        "on"     : "clear",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing narrows the list."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "cmd:git.checkpoint",
+      "widgetPath": "history/git-checkpoint~21f68b45",
+      "offer": {
+        "id"     : "git.checkpoint",
+        "label"  : "⚑ Checkpoint…",
+        "tooltip": "Name the selected save as a checkpoint, so it can be found and gone back to later.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.checkpoint",
+          "props": {
+            "repo": "project",
+            "sha" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "history/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Read the saves again, in case something changed outside the app.",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "fx:pane.view#save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "widgetPath": "history/pane-view~c2eee052",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Moved line L4 into rooftop",
+        "tooltip": "Showing this save. You · 1 file · aaaaaaa",
+        "on"     : "save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "fx:pane.view#save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "widgetPath": "history/pane-view~946708b2",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Agent turn: make the rooftop scene tenser",
+        "tooltip": "Show what this save changed. Agent · 3 files · bbbbbbb",
+        "on"     : "save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "fx:pane.view#save/cccccccccccccccccccccccccccccccccccccccc",
+      "widgetPath": "history/pane-view~442baf92",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Generated 14 assets",
+        "tooltip": "Show what this save changed. Pipeline · 1 file · ccccccc",
+        "on"     : "save/cccccccccccccccccccccccccccccccccccccccc",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "fx:pane.view#more",
+      "widgetPath": "history/pane-view~bab7f4e9",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Earlier saves",
+        "tooltip": "Read the next fifty saves.",
+        "on"     : "more",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Every save is listed."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "cmd:git.pull",
+      "widgetPath": "history/git-pull~179e724c",
+      "offer": {
+        "id"     : "git.pull",
+        "label"  : "Get their saves",
+        "tooltip": "Get the saves sent to the shared copy and put yours on top. A file both of you changed waits here for your decision.",
+        "ok"     : true,
+        "props": {
+          "repo": "project"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.pull",
+          "props": {
+            "repo": "project"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "cmd:git.push#origin",
+      "widgetPath": "history/git-push~a246afa3",
+      "offer": {
+        "id"     : "git.push",
+        "label"  : "Send my saves",
+        "tooltip": "Send every save “origin” lacks, checkpoints included.",
+        "on"     : "origin",
+        "ok"     : false,
+        "refusal": {
+          "reason": "“origin” has 1 save you do not; get their saves first."
+        }
+      },
+      "effects": [
+        {
+          "id": "git.push"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "cmd:git.fetch#origin",
+      "widgetPath": "history/git-fetch~ebe425e1",
+      "offer": {
+        "id"     : "git.fetch",
+        "label"  : "Check",
+        "tooltip": "Ask “origin” what it has, so the counts are current. Nothing here changes.",
+        "on"     : "origin",
+        "ok"     : true,
+        "props": {
+          "repo"  : "project",
+          "remote": "origin"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.fetch",
+          "props": {
+            "repo"  : "project",
+            "remote": "origin"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "cmd:git.syncWith#origin",
+      "widgetPath": "history/git-syncwith~25cd6d50",
+      "offer": {
+        "id"     : "git.syncWith",
+        "label"  : "Syncing with this copy",
+        "tooltip": "Get their saves from “origin” from now on. Sending is offered per copy either way.",
+        "on"     : "origin",
+        "ok"     : false,
+        "refusal": {
+          "reason": "This is already the copy the project syncs with."
+        }
+      },
+      "effects": [
+        {
+          "id": "git.syncWith"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "cmd:git.setRemoteUrl#origin",
+      "widgetPath": "history/git-setremoteurl~594e501e",
+      "offer": {
+        "id"     : "git.setRemoteUrl",
+        "label"  : "Change address…",
+        "tooltip": "Point “origin” at a different address, when the copy moved or this one was mistyped.",
+        "on"     : "origin",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "name": "origin"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.setRemoteUrl",
+          "props": {
+            "repo": "project",
+            "name": "origin"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "cmd:git.removeRemote#origin",
+      "widgetPath": "history/git-removeremote~4e54ee41",
+      "offer": {
+        "id"     : "git.removeRemote",
+        "label"  : "Remove",
+        "tooltip": "Forget “origin”. Nothing in this project is removed, and the copy itself is untouched.",
+        "on"     : "origin",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "name": "origin"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.removeRemote",
+          "props": {
+            "repo": "project",
+            "name": "origin"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "cmd:git.push#backup",
+      "widgetPath": "history/git-push~e81dd521",
+      "offer": {
+        "id"     : "git.push",
+        "label"  : "Send my saves",
+        "tooltip": "Send every save “backup” lacks, checkpoints included.",
+        "on"     : "backup",
+        "ok"     : true,
+        "props": {
+          "repo"  : "project",
+          "remote": "backup"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.push",
+          "props": {
+            "repo"  : "project",
+            "remote": "backup"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "cmd:git.fetch#backup",
+      "widgetPath": "history/git-fetch~3fa405e3",
+      "offer": {
+        "id"     : "git.fetch",
+        "label"  : "Check",
+        "tooltip": "Ask “backup” what it has, so the counts are current. Nothing here changes.",
+        "on"     : "backup",
+        "ok"     : true,
+        "props": {
+          "repo"  : "project",
+          "remote": "backup"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.fetch",
+          "props": {
+            "repo"  : "project",
+            "remote": "backup"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "cmd:git.syncWith#backup",
+      "widgetPath": "history/git-syncwith~b9cb4182",
+      "offer": {
+        "id"     : "git.syncWith",
+        "label"  : "Sync with this copy",
+        "tooltip": "Get their saves from “backup” from now on. Sending is offered per copy either way.",
+        "on"     : "backup",
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "name": "backup"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.syncWith",
+          "props": {
+            "repo": "project",
+            "name": "backup"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "cmd:git.setRemoteUrl#backup",
+      "widgetPath": "history/git-setremoteurl~8557559c",
+      "offer": {
+        "id"     : "git.setRemoteUrl",
+        "label"  : "Change address…",
+        "tooltip": "Point “backup” at a different address, when the copy moved or this one was mistyped.",
+        "on"     : "backup",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "name": "backup"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.setRemoteUrl",
+          "props": {
+            "repo": "project",
+            "name": "backup"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "cmd:git.removeRemote#backup",
+      "widgetPath": "history/git-removeremote~2ee50ba3",
+      "offer": {
+        "id"     : "git.removeRemote",
+        "label"  : "Remove",
+        "tooltip": "Forget “backup”. Nothing in this project is removed, and the copy itself is untouched.",
+        "on"     : "backup",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "name": "backup"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.removeRemote",
+          "props": {
+            "repo": "project",
+            "name": "backup"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "sync-view",
+      "key"       : "cmd:git.addRemote",
+      "widgetPath": "history/git-addremote~687360aa",
+      "offer": {
+        "id"     : "git.addRemote",
+        "label"  : "Add a shared copy…",
+        "tooltip": "Connect another copy of this repository, on a NAS or a drive, say, as a backup.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "name": ""
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.addRemote",
+          "props": {
+            "repo": "project",
+            "name": ""
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "no-remotes",
+      "key"       : "fx:pane.view#sync",
+      "widgetPath": "history/pane-view~c82b206b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Close",
+        "tooltip": "Put the selected save’s changes back in this column.",
+        "on"     : "sync",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "no-remotes",
+      "key"       : "fx:pane.view#who",
+      "widgetPath": "history/pane-view~f13e92ac",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Everyone",
+        "tooltip": "Narrow the list to the saves one kind of maker made: you, the agent, the pipeline, or the app’s housekeeping.",
+        "on"     : "who",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "no-remotes",
+      "key"       : "fx:pane.view#path",
+      "widgetPath": "history/pane-view~f5ccb359",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Any file",
+        "tooltip": "Right-click a file or a scene in the document tree and choose Show history to narrow the list to it.",
+        "on"     : "path",
+        "ok"     : false,
+        "refusal": {
+          "reason": "The list is not narrowed to a file."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "no-remotes",
+      "key"       : "fx:pane.view#checkpoints",
+      "widgetPath": "history/pane-view~0d942c3d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Checkpoints",
+        "tooltip": "Show only the saves you named as a checkpoint.",
+        "on"     : "checkpoints",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "no-remotes",
+      "key"       : "fx:pane.view#text",
+      "widgetPath": "history/pane-view~34dea019",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Search saves…",
+        "tooltip": "Narrow the list to the saves whose description contains these words.",
+        "on"     : "text",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "no-remotes",
+      "key"       : "fx:pane.view#clear",
+      "widgetPath": "history/pane-view~13059a85",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Show all",
+        "tooltip": "Take every filter off and show every save.",
+        "on"     : "clear",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing narrows the list."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "no-remotes",
+      "key"       : "cmd:git.checkpoint",
+      "widgetPath": "history/git-checkpoint~21f68b45",
+      "offer": {
+        "id"     : "git.checkpoint",
+        "label"  : "⚑ Checkpoint…",
+        "tooltip": "Name the latest save as a checkpoint, so it can be found and gone back to later.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : ""
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.checkpoint",
+          "props": {
+            "repo": "project",
+            "sha" : ""
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "no-remotes",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "history/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Read the saves again, in case something changed outside the app.",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "no-remotes",
+      "key"       : "fx:pane.view#save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "widgetPath": "history/pane-view~c2eee052",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Moved line L4 into rooftop",
+        "tooltip": "Show what this save changed. You · 1 file · aaaaaaa",
+        "on"     : "save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "no-remotes",
+      "key"       : "fx:pane.view#save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "widgetPath": "history/pane-view~946708b2",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Agent turn: make the rooftop scene tenser",
+        "tooltip": "Show what this save changed. Agent · 3 files · bbbbbbb",
+        "on"     : "save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "no-remotes",
+      "key"       : "fx:pane.view#save/cccccccccccccccccccccccccccccccccccccccc",
+      "widgetPath": "history/pane-view~442baf92",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Generated 14 assets",
+        "tooltip": "Show what this save changed. Pipeline · 1 file · ccccccc",
+        "on"     : "save/cccccccccccccccccccccccccccccccccccccccc",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "no-remotes",
+      "key"       : "fx:pane.view#more",
+      "widgetPath": "history/pane-view~bab7f4e9",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Earlier saves",
+        "tooltip": "Read the next fifty saves.",
+        "on"     : "more",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Every save is listed."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "no-remotes",
+      "key"       : "cmd:git.addRemote",
+      "widgetPath": "history/git-addremote~687360aa",
+      "offer": {
+        "id"     : "git.addRemote",
+        "label"  : "Connect a shared copy…",
+        "tooltip": "Connect a copy of this repository somewhere else, under a name and an address. It becomes the copy the project syncs with.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "name": "origin"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.addRemote",
+          "props": {
+            "repo": "project",
+            "name": "origin"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "fx:pane.view#sync",
+      "widgetPath": "history/pane-view~c82b206b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Shared copies",
+        "tooltip": "List the shared copies: what each has, and send or get saves.",
+        "on"     : "sync",
+        "ok"     : false,
+        "refusal": {
+          "reason": "The files in question have this column until they are decided."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "fx:pane.view#who",
+      "widgetPath": "history/pane-view~f13e92ac",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Everyone",
+        "tooltip": "Narrow the list to the saves one kind of maker made: you, the agent, the pipeline, or the app’s housekeeping.",
+        "on"     : "who",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "fx:pane.view#path",
+      "widgetPath": "history/pane-view~f5ccb359",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Any file",
+        "tooltip": "Right-click a file or a scene in the document tree and choose Show history to narrow the list to it.",
+        "on"     : "path",
+        "ok"     : false,
+        "refusal": {
+          "reason": "The list is not narrowed to a file."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "fx:pane.view#checkpoints",
+      "widgetPath": "history/pane-view~0d942c3d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Checkpoints",
+        "tooltip": "Show only the saves you named as a checkpoint.",
+        "on"     : "checkpoints",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "fx:pane.view#text",
+      "widgetPath": "history/pane-view~34dea019",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Search saves…",
+        "tooltip": "Narrow the list to the saves whose description contains these words.",
+        "on"     : "text",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "fx:pane.view#clear",
+      "widgetPath": "history/pane-view~13059a85",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Show all",
+        "tooltip": "Take every filter off and show every save.",
+        "on"     : "clear",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing narrows the list."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "cmd:git.checkpoint",
+      "widgetPath": "history/git-checkpoint~21f68b45",
+      "offer": {
+        "id"     : "git.checkpoint",
+        "label"  : "⚑ Checkpoint…",
+        "tooltip": "Name the selected save as a checkpoint, so it can be found and gone back to later.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.checkpoint",
+          "props": {
+            "repo": "project",
+            "sha" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "history/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Read the saves again, in case something changed outside the app.",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "fx:pane.view#conflicts",
+      "widgetPath": "history/pane-view~1b72e321",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Decide…",
+        "tooltip": "Show the files waiting on a decision, and continue or give up getting their saves.",
+        "on"     : "conflicts",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "fx:pane.view#save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "widgetPath": "history/pane-view~c2eee052",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Moved line L4 into rooftop",
+        "tooltip": "Showing this save. You · 1 file · aaaaaaa",
+        "on"     : "save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "fx:pane.view#save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "widgetPath": "history/pane-view~946708b2",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Agent turn: make the rooftop scene tenser",
+        "tooltip": "Show what this save changed. Agent · 3 files · bbbbbbb",
+        "on"     : "save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "fx:pane.view#save/cccccccccccccccccccccccccccccccccccccccc",
+      "widgetPath": "history/pane-view~442baf92",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Generated 14 assets",
+        "tooltip": "Show what this save changed. Pipeline · 1 file · ccccccc",
+        "on"     : "save/cccccccccccccccccccccccccccccccccccccccc",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "fx:pane.view#more",
+      "widgetPath": "history/pane-view~bab7f4e9",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Earlier saves",
+        "tooltip": "Read the next fifty saves.",
+        "on"     : "more",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Every save is listed."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "cmd:git.resolve#scenes/rooftop.fountain/mine",
+      "widgetPath": "history/git-resolve~01fdeb16",
+      "offer": {
+        "id"     : "git.resolve",
+        "label"  : "Keep mine",
+        "tooltip": "Keep your version of scenes/rooftop.fountain and drop theirs.",
+        "on"     : "scenes/rooftop.fountain/mine",
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "path": "scenes/rooftop.fountain",
+          "side": "mine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.resolve",
+          "props": {
+            "repo": "project",
+            "path": "scenes/rooftop.fountain",
+            "side": "mine"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "cmd:git.resolve#scenes/rooftop.fountain/theirs",
+      "widgetPath": "history/git-resolve~336622e8",
+      "offer": {
+        "id"     : "git.resolve",
+        "label"  : "Take theirs",
+        "tooltip": "Take their version of scenes/rooftop.fountain and drop yours.",
+        "on"     : "scenes/rooftop.fountain/theirs",
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "path": "scenes/rooftop.fountain",
+          "side": "theirs"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.resolve",
+          "props": {
+            "repo": "project",
+            "path": "scenes/rooftop.fountain",
+            "side": "theirs"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "fx:pane.view#both/scenes/rooftop.fountain",
+      "widgetPath": "history/pane-view~2080b029",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Close both",
+        "tooltip": "Put the two sides away again.",
+        "on"     : "both/scenes/rooftop.fountain",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "cmd:git.resolve#.vnstudio/layouts/writing.json/mine",
+      "widgetPath": "history/git-resolve~a3e2267c",
+      "offer": {
+        "id"     : "git.resolve",
+        "label"  : "Keep mine",
+        "tooltip": "Keep your version of .vnstudio/layouts/writing.json and drop theirs.",
+        "on"     : ".vnstudio/layouts/writing.json/mine",
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "path": ".vnstudio/layouts/writing.json",
+          "side": "mine"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.resolve",
+          "props": {
+            "repo": "project",
+            "path": ".vnstudio/layouts/writing.json",
+            "side": "mine"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "cmd:git.resolve#.vnstudio/layouts/writing.json/theirs",
+      "widgetPath": "history/git-resolve~ddf2cb42",
+      "offer": {
+        "id"     : "git.resolve",
+        "label"  : "Take theirs",
+        "tooltip": "Take their version of .vnstudio/layouts/writing.json and drop yours.",
+        "on"     : ".vnstudio/layouts/writing.json/theirs",
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "path": ".vnstudio/layouts/writing.json",
+          "side": "theirs"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.resolve",
+          "props": {
+            "repo": "project",
+            "path": ".vnstudio/layouts/writing.json",
+            "side": "theirs"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "fx:pane.view#both/.vnstudio/layouts/writing.json",
+      "widgetPath": "history/pane-view~222ad47b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Open both",
+        "tooltip": "Read their .vnstudio/layouts/writing.json and yours side by side, before keeping one.",
+        "on"     : "both/.vnstudio/layouts/writing.json",
+        "ok"     : false,
+        "refusal": {
+          "reason": "This file has no middle to read; keep one side or the other."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "cmd:git.continueSync",
+      "widgetPath": "history/git-continuesync~bf114e7f",
+      "offer": {
+        "id"     : "git.continueSync",
+        "label"  : "Continue",
+        "tooltip": "Finish the save being replayed and go on to the next. Edits made while this view was up ride into it.",
+        "ok"     : false,
+        "refusal": {
+          "reason": "2 files still need a decision."
+        }
+      },
+      "effects": [
+        {
+          "id": "git.continueSync"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "conflict",
+      "key"       : "cmd:git.abandonSync",
+      "widgetPath": "history/git-abandonsync~5589c909",
+      "offer": {
+        "id"     : "git.abandonSync",
+        "label"  : "Give up",
+        "tooltip": "Stop getting their saves and put yours back exactly as they were. Their saves stay at the shared copy for another try.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.abandonSync",
+          "props": {
+            "repo": "project"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "syncing",
+      "key"       : "fx:pane.view#sync",
+      "widgetPath": "history/pane-view~c82b206b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Close",
+        "tooltip": "Put the selected save’s changes back in this column.",
+        "on"     : "sync",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "syncing",
+      "key"       : "fx:pane.view#who",
+      "widgetPath": "history/pane-view~f13e92ac",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Everyone",
+        "tooltip": "Narrow the list to the saves one kind of maker made: you, the agent, the pipeline, or the app’s housekeeping.",
+        "on"     : "who",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "syncing",
+      "key"       : "fx:pane.view#path",
+      "widgetPath": "history/pane-view~f5ccb359",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Any file",
+        "tooltip": "Right-click a file or a scene in the document tree and choose Show history to narrow the list to it.",
+        "on"     : "path",
+        "ok"     : false,
+        "refusal": {
+          "reason": "The list is not narrowed to a file."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "syncing",
+      "key"       : "fx:pane.view#checkpoints",
+      "widgetPath": "history/pane-view~0d942c3d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Checkpoints",
+        "tooltip": "Show only the saves you named as a checkpoint.",
+        "on"     : "checkpoints",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "syncing",
+      "key"       : "fx:pane.view#text",
+      "widgetPath": "history/pane-view~34dea019",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Search saves…",
+        "tooltip": "Narrow the list to the saves whose description contains these words.",
+        "on"     : "text",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "syncing",
+      "key"       : "fx:pane.view#clear",
+      "widgetPath": "history/pane-view~13059a85",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Show all",
+        "tooltip": "Take every filter off and show every save.",
+        "on"     : "clear",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing narrows the list."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "syncing",
+      "key"       : "cmd:git.checkpoint",
+      "widgetPath": "history/git-checkpoint~21f68b45",
+      "offer": {
+        "id"     : "git.checkpoint",
+        "label"  : "⚑ Checkpoint…",
+        "tooltip": "Name the selected save as a checkpoint, so it can be found and gone back to later.",
+        "form"   : true,
+        "ok"     : false,
+        "refusal": {
+          "reason": "Still getting their saves."
+        }
+      },
+      "effects": [
+        {
+          "id": "git.checkpoint"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "syncing",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "history/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Read the saves again, in case something changed outside the app.",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "syncing",
+      "key"       : "fx:pane.view#save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "widgetPath": "history/pane-view~c2eee052",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Moved line L4 into rooftop",
+        "tooltip": "Showing this save. You · 1 file · aaaaaaa",
+        "on"     : "save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "syncing",
+      "key"       : "fx:pane.view#save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "widgetPath": "history/pane-view~946708b2",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Agent turn: make the rooftop scene tenser",
+        "tooltip": "Show what this save changed. Agent · 3 files · bbbbbbb",
+        "on"     : "save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "syncing",
+      "key"       : "fx:pane.view#save/cccccccccccccccccccccccccccccccccccccccc",
+      "widgetPath": "history/pane-view~442baf92",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Generated 14 assets",
+        "tooltip": "Show what this save changed. Pipeline · 1 file · ccccccc",
+        "on"     : "save/cccccccccccccccccccccccccccccccccccccccc",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "syncing",
+      "key"       : "fx:pane.view#more",
+      "widgetPath": "history/pane-view~bab7f4e9",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Earlier saves",
+        "tooltip": "Read the next fifty saves.",
+        "on"     : "more",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Every save is listed."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "syncing",
+      "key"       : "cmd:git.pull",
+      "widgetPath": "history/git-pull~179e724c",
+      "offer": {
+        "id"     : "git.pull",
+        "label"  : "Get their saves",
+        "tooltip": "Get the saves sent to the shared copy and put yours on top. A file both of you changed waits here for your decision.",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Still getting their saves."
+        }
+      },
+      "effects": [
+        {
+          "id": "git.pull"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "syncing",
+      "key"       : "cmd:git.push#origin",
+      "widgetPath": "history/git-push~a246afa3",
+      "offer": {
+        "id"     : "git.push",
+        "label"  : "Send my saves",
+        "tooltip": "Send every save “origin” lacks, checkpoints included.",
+        "on"     : "origin",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Still getting their saves."
+        }
+      },
+      "effects": [
+        {
+          "id": "git.push"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "syncing",
+      "key"       : "cmd:git.fetch#origin",
+      "widgetPath": "history/git-fetch~ebe425e1",
+      "offer": {
+        "id"     : "git.fetch",
+        "label"  : "Check",
+        "tooltip": "Ask “origin” what it has, so the counts are current. Nothing here changes.",
+        "on"     : "origin",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Still getting their saves."
+        }
+      },
+      "effects": [
+        {
+          "id": "git.fetch"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "syncing",
+      "key"       : "cmd:git.syncWith#origin",
+      "widgetPath": "history/git-syncwith~25cd6d50",
+      "offer": {
+        "id"     : "git.syncWith",
+        "label"  : "Syncing with this copy",
+        "tooltip": "Get their saves from “origin” from now on. Sending is offered per copy either way.",
+        "on"     : "origin",
+        "ok"     : false,
+        "refusal": {
+          "reason": "This is already the copy the project syncs with."
+        }
+      },
+      "effects": [
+        {
+          "id": "git.syncWith"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "syncing",
+      "key"       : "cmd:git.setRemoteUrl#origin",
+      "widgetPath": "history/git-setremoteurl~594e501e",
+      "offer": {
+        "id"     : "git.setRemoteUrl",
+        "label"  : "Change address…",
+        "tooltip": "Point “origin” at a different address, when the copy moved or this one was mistyped.",
+        "on"     : "origin",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "name": "origin"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.setRemoteUrl",
+          "props": {
+            "repo": "project",
+            "name": "origin"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "syncing",
+      "key"       : "cmd:git.removeRemote#origin",
+      "widgetPath": "history/git-removeremote~4e54ee41",
+      "offer": {
+        "id"     : "git.removeRemote",
+        "label"  : "Remove",
+        "tooltip": "Forget “origin”. Nothing in this project is removed, and the copy itself is untouched.",
+        "on"     : "origin",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "name": "origin"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.removeRemote",
+          "props": {
+            "repo": "project",
+            "name": "origin"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "syncing",
+      "key"       : "cmd:git.addRemote",
+      "widgetPath": "history/git-addremote~687360aa",
+      "offer": {
+        "id"     : "git.addRemote",
+        "label"  : "Add a shared copy…",
+        "tooltip": "Connect another copy of this repository, on a NAS or a drive, say, as a backup.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "name": ""
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.addRemote",
+          "props": {
+            "repo": "project",
+            "name": ""
           }
         }
       ]
@@ -43562,6 +45807,10 @@
     {
       "match": "app.openReleases",
       "why"  : "Reached from the update notification."
+    },
+    {
+      "match": "app.openCollaboratingGuide",
+      "why"  : "Reached from the notification a send or a get the shared copy refused."
     },
     {
       "match": "app.keyGuide",

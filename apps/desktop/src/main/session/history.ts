@@ -6,6 +6,7 @@
 import { slotKey, slotLabel, slotsOf } from '@vn/artgen';
 import { Workspace } from '@vn/authoring';
 import {
+  entryOf,
   makersOf,
   openGit,
   OWN_LOGS,
@@ -27,6 +28,8 @@ import {
   kindOf,
   type BlobRead,
   type HistoryPage,
+  type RemoteEntry,
+  type Replaying,
   type RepoEntry,
   type RepoRole,
   type RepoStatus,
@@ -303,13 +306,19 @@ export class HistoryPart {
     return textDiff(kind, a, b);
   }
 
-  /** One path as it was at one save: its text, or where to load its bytes from. Null if absent. */
+  /**
+   * One path as it was at one save: its text, or where to load its bytes from. Null if absent.
+   * `sha` may also be an index stage (`:2`, `:3`), which is how a conflicted path's two sides
+   * are read while a rebase is stopped.
+   */
   async blob(role: RepoRole, sha: string, path: string): Promise<BlobRead | null> {
     const { git } = await this.need(role);
     const bytes = await git.blob(sha, path);
     if (bytes === null) return null;
     if (isText(bytes)) return { kind: 'text', text: bytes.toString('utf8') };
-    const id = (await this.changes(role, sha)).find((c) => c.path === path)?.newBlob ?? null;
+    const id = sha.startsWith(':')
+      ? null
+      : ((await this.changes(role, sha)).find((c) => c.path === path)?.newBlob ?? null);
     // A path the save did not touch has no blob id in its change list; `<sha>:<path>` still names it
     const url = id ? blobUrl(role, id, path) : `vngit://${role}/${sha}/${path}`;
     return { kind: 'bytes', url, bytes: bytes.length };
@@ -322,24 +331,53 @@ export class HistoryPart {
     return path === undefined ? found.git.catBlob(ref) : found.git.blob(ref, path);
   }
 
-  /** The worktree, the branch and the remotes of one repository, with the cause of any dirt. */
+  /**
+   * The worktree, the branch and the remotes of one repository, with the cause of any dirt. Each
+   * remote is counted against the branch on its own, since the strip's counts are the upstream's
+   * alone; a stopped rebase names the save it is replaying.
+   */
   async status(role: RepoRole, pending: number): Promise<RepoStatus> {
     const { git } = await this.need(role);
-    const [branch, inProgress, remotes, lastFetch] = await Promise.all([
+    const [branch, inProgress, listed, lastFetch] = await Promise.all([
       git.branchStatus(),
       git.inProgress(),
       git.remotes(),
       git.lastFetch(),
     ]);
+    const name = branch.head ?? inProgress.rebase?.branch ?? null;
+    const upstream = name === null ? null : await git.upstream(name);
+    const remotes: RemoteEntry[] = await Promise.all(
+      listed.map(async (r) => {
+        const counts = name === null ? null : await git.aheadBehind(`${r.name}/${name}`);
+        return {
+          ...r,
+          ahead    : counts?.ahead ?? null,
+          behind   : counts?.behind ?? null,
+          syncsWith: upstream?.remote === r.name,
+        };
+      }),
+    );
+    const stopped = inProgress.rebase?.stoppedSha ?? null;
+    const entry = stopped === null ? undefined : await entryOf(git, stopped);
+    const replaying: Replaying | null =
+      inProgress.rebase && entry
+        ? {
+            sha    : entry.sha,
+            subject: entry.subject,
+            current: inProgress.rebase.current,
+            total  : inProgress.rebase.total,
+          }
+        : null;
     return {
       ...statusCause(branch.entries, pending, inProgress, OWN_LOGS),
-      branch  : branch.head ?? inProgress.rebase?.branch ?? null,
-      upstream: branch.upstream,
+      branch  : name,
+      upstream: branch.upstream ?? (upstream ? `${upstream.remote}/${upstream.branch}` : null),
       ahead   : branch.ahead,
       behind  : branch.behind,
       remotes,
       lastFetch,
       inProgress,
+      replaying,
     };
   }
 

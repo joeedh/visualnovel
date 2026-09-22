@@ -103,6 +103,22 @@ export const appCheckForUpdates = define({
   },
 });
 
+export const appOpenCollaboratingGuide = define({
+  id         : 'app.openCollaboratingGuide',
+  title      : 'Open the collaborating guide',
+  description:
+    'Open the guide to working with a collaborator in your browser: what a shared copy is, how ' +
+    'git remembers your GitHub sign-in on each platform, and what it means when a send or a get ' +
+    'is refused. The address is one the app already knew, never one it was handed.',
+  mutating   : false,
+  props      : {},
+  async run(_props, ctx) {
+    const result = await ctx.host.session.openCollaboratingGuide();
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message };
+  },
+});
+
 export const appOpenReleases = define({
   id         : 'app.openReleases',
   title      : 'Open the releases page',

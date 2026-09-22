@@ -17,6 +17,7 @@ import {
   createWorkspace,
   ensureGitAttributes,
   ensureRepo,
+  ensureRepoAttributes,
   inspectCreate,
   inspectWorkspace,
   openWorkspace,
@@ -446,6 +447,7 @@ describe('ensureGitAttributes', () => {
     const text = await readFile(join(root, '.gitattributes'), 'utf8');
     expect(text.split(line)).toHaveLength(2);
     expect(text).toContain('vngen/state/threads/*.native.jsonl -merge');
+    expect(text).toContain('vngen/state/commands.jsonl merge=union');
   });
 
   // A graph document is nstructjs JSON, so a textual merge of one deserializes into a graph
@@ -475,6 +477,25 @@ describe('ensureGitAttributes', () => {
 
     await openWorkspace(root);
     expect(await readFile(join(root, '.gitattributes'), 'utf8')).toContain(line);
+  }, 20_000);
+
+  // A replayed save from before the rules were committed checks out a `.gitattributes` without
+  // them, so the repository carries a copy git reads first.
+  it('gives a project’s own repository the rules in info/attributes, once', async () => {
+    await writeFile(join(root, 'project.yaml'), 'title: "Older"\n');
+    await ensureRepo(root);
+
+    expect(await ensureRepoAttributes(root)).toBe(true);
+    const text = await readFile(join(root, '.git', 'info', 'attributes'), 'utf8');
+    expect(text).toContain(line);
+    expect(text).toContain('vngen/state/commands.jsonl merge=union');
+    expect(text).toContain('.vnstudio/layouts/*.json text eol=lf -merge');
+    expect(await ensureRepoAttributes(root)).toBe(false);
+    expect(await readFile(join(root, '.git', 'info', 'attributes'), 'utf8')).toBe(text);
+
+    const nested = join(root, 'inside');
+    await mkdir(nested);
+    expect(await ensureRepoAttributes(nested)).toBe(false);
   }, 20_000);
 });
 
@@ -533,6 +554,28 @@ describe('scaffolding', () => {
       'vngen/state/notifications.jsonl merge=union',
     );
     expect((await openGit(root).log()).map((c) => c.subject)).toEqual(['Existing project files']);
+  }, 20_000);
+
+  // A sync that stopped on a collision outlives the app, and opening the project again must
+  // not fail on the scaffolding's commit: the files stay written and the rebase stays stopped.
+  it('writes the files and leaves a stopped sync where it was', async () => {
+    await olderProject(root);
+    const git = openGit(root);
+    const base = (await git.head())!;
+    await writeFile(join(root, 'project.yaml'), 'title: "Theirs"\n');
+    const theirs = await git.commitTree(await git.writeTree(), {
+      message: 'Theirs',
+      parents: [base],
+    });
+    await git.updateRef('refs/heads/theirs', theirs);
+    await writeFile(join(root, 'project.yaml'), 'title: "Mine"\n');
+    await git.commit({ message: 'Mine', paths: ['-A'] });
+    expect(await git.rebase('theirs')).toBe(false);
+
+    await commitScaffolding(root, await writeScaffolding(root));
+    expect((await git.inProgress()).rebase).not.toBeNull();
+    expect(await readFile(join(root, '.gitignore'), 'utf8')).toContain(SESSION_IGNORE);
+    expect((await git.log()).map((c) => c.subject)).toEqual(['Theirs', 'Existing project files']);
   }, 20_000);
 
   it('writes nothing and commits nothing the second time', async () => {

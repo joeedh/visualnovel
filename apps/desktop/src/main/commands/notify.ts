@@ -156,6 +156,11 @@ export const notifyFollow = define({
           if (!opened.ok) throw new Error(opened.message);
           return { message: `Marked read. ${opened.message}` };
         }
+        case LINK_COMMANDS.collaborating: {
+          const opened = await ctx.host.session.openCollaboratingGuide();
+          if (!opened.ok) throw new Error(opened.message);
+          return { message: `Marked read. ${opened.message}` };
+        }
       }
       // Adding an entry to `LINK_COMMANDS` without teaching this switch to follow it is a
       // compile error here rather than a link that silently goes nowhere.

@@ -147,7 +147,14 @@ describe('statusCause', () => {
   });
 
   it('names a stopped rebase before anything else, with the conflicted paths', () => {
-    const rebase = { branch: 'main', onto: 'x', current: 1, total: 1, stoppedSha: null };
+    const rebase = {
+      branch    : 'main',
+      onto      : 'x',
+      current   : 1,
+      total     : 1,
+      stoppedSha: null,
+      origHead  : null,
+    };
     const status = statusCause([entry('a.txt', true), entry('b.txt')], 3, {
       ...QUIET,
       rebase,

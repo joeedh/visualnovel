@@ -29,6 +29,7 @@
 | `app.checkForUpdates` | `quiet` (default `false`) | — |
 | `app.copy` | `text`, `what` (default `'text'`) | — |
 | `app.keyGuide` | — | — |
+| `app.openCollaboratingGuide` | — | — |
 | `app.openKeyLink` | `provider` (`gemini`\|`anthropic`\|`openrouter`), `link` (`console`\|`docs`\|`billing`, default `'console'`) | — |
 | `app.openReleases` | — | — |
 
@@ -124,17 +125,27 @@
 
 | Command | Props | Notes |
 | ------- | ----- | ----- |
+| `git.abandonSync` ✍ ⚠ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`) | Writes `characters`, `locations`, `wiki`, `scenes`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`, `<git>`. `rebase --abort`, `merge --abort` or `revert --abort`, whichever is in progress. `commitsItself`. |
+| `git.addRemote` ✍ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `name`, `url` | Writes `<git>`. `remote add`, then `branch.<b>.remote`/`.merge` when the branch had no upstream. The address must be `https://`, `git@host:` or an absolute path; the name a refname component git accepts. |
 | `git.blob` | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha`, `path` | — |
 | `git.changes` | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha` | — |
 | `git.checkpoint` ✍ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `name`, `sha` (default `''`), `note` (default `''`) | Writes `<git>`. An annotated tag under `refs/tags/vn/checkpoint/<slug>`; the name is the tag message’s first line, the note its body. Refused on a slug collision, by name. |
+| `git.continueSync` ✍ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`) | Writes `characters`, `locations`, `wiki`, `scenes`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`, `<git>`. `add -A` then `rebase --continue`, so edits made while the conflict view was up ride into the replayed save. `commitsItself`. A completed rebase records `rewrote` the way `git.pull` does. |
 | `git.diff` | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha`, `path` | — |
 | `git.dropCheckpoint` ✍ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `name` | Writes `<git>`. Deletes the tag. The commit is untouched. |
+| `git.fetch` ✍ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `remote` (default `''`) | Writes `<git>`. `fetch --tags <remote>`. The one network verb that moves nothing on the branch. |
 | `git.goBack` ✍ ⚠ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha` | Writes `characters`, `locations`, `wiki`, `scenes`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`, `<git>`. `applyTree(treeOf(HEAD), treeOf(sha))` over the whole tree, no exclusions; commit-on-save makes the save. Undo history from before it no longer applies. |
 | `git.history` | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `who` (``\|`author`\|`agent`\|`pipeline`\|`housekeeping`\|`other`\|`unknown`, default `''`), `path` (default `''`), `text` (default `''`), `before` (default `''`) | — |
+| `git.pull` ✍ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`) | Writes `characters`, `locations`, `wiki`, `scenes`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`, `<git>`. `fetch` then `rebase <remote>/<branch>`. `commitsItself`: the rebase moves the branch and the committer has nothing to add. A stopped rebase returns normally, since that state is the conflict view’s; a completed one records `rewrote`, old sha to new, paired by author, date and message, and re-points checkpoints through it. |
+| `git.push` ✍ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `remote` (default `''`) | Writes `<git>`. `push --follow-tags <remote> <branch>`; never forces. The project is also refused while a nested story bible has unsent saves, so its gitlink never names a save the copy lacks. |
+| `git.removeRemote` ✍ ⚠ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `name` | Writes `<git>`. `remote remove`, which drops the tracking refs too. Confirmed, since the counts against that copy are lost. |
 | `git.repos` | — | — |
+| `git.resolve` ✍ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `path`, `side` (`mine`\|`theirs`) | Writes `characters`, `locations`, `wiki`, `scenes`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`, `<git>`. `checkout --ours\|--theirs` then `add`, in git’s inverted words for a rebase: “mine” is git’s `theirs`. A side that deleted the file deletes it. `commitsItself`, since a rebase is in progress and the committer must not run. |
 | `git.restoreFile` ✍ ↺ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha`, `path` | Writes `characters`, `locations`, `wiki`, `scenes`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`. Through the ordinary whole-file write, so the write is hashed, cached and snapshotted. A scene is validated through `@vn/model` and then written verbatim, since `scenes/` has no whole-file writer. |
 | `git.save` ✍ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `message` | Writes `<git>`. Commits the dirty tree under the author’s message. Writes nothing itself: commit-on-save makes the commit, with `Vn-Command: git.save` and the message as the subject. |
+| `git.setRemoteUrl` ✍ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `name`, `url` | Writes `<git>`. `remote set-url`. The same address test as `git.addRemote`. |
 | `git.status` | `repo` (`project`\|`wiki`\|`base`, default `'project'`) | — |
+| `git.syncWith` ✍ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `name` | Writes `<git>`. Writes `branch.<current>.remote` and `branch.<current>.merge`, where git itself keeps the answer, so a terminal `git pull` agrees. |
 | `git.takeBack` ✍ ⚠ ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `sha` | Writes `characters`, `locations`, `wiki`, `scenes`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`, `<git>`. `revert --no-commit` then a reset of the index, so the committer sees a plain dirty tree rather than a revert in progress. A revert that conflicts is aborted before this returns. Undo history from before it no longer applies. |
 
 ## `interaction.`

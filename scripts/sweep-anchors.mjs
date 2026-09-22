@@ -41,8 +41,12 @@ for (const record of derived.records) {
   derivedIds.get(record.editor).add(record.offer.id);
 }
 
-/** How long a pane is given to load its subject and draw. Reads cross IPC and a disk read. */
-const SETTLE_MS = 700;
+/**
+ * How long a pane is given to load its subject and draw. Reads cross IPC and a disk read, and a
+ * character sheet's wardrobe rows wait on the manifest as well, which took a little over 700 ms
+ * on 2026-09-21 and left the sheet's asset items out of the file.
+ */
+const SETTLE_MS = 1200;
 
 const windowArg = process.argv.indexOf('--window');
 const socket = await connect(

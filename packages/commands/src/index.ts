@@ -10,3 +10,4 @@ export * from './stack.js';
 // renderer's bundle never has to resolve the `node:fs` they import
 export * from './commit.js';
 export * from './catalog.js';
+export * from './provenance.js';

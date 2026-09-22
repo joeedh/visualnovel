@@ -2,6 +2,9 @@ import { NOTIFICATION_CATEGORIES, type Notification, type NotificationCategory }
 import {
   categoryOfCommand,
   DEFAULT_FILTER,
+  LINK_COMMANDS,
+  linkCommand,
+  linkForRecord,
   linkTarget,
   NOTIFICATION_PAGE,
   notificationPage,
@@ -198,5 +201,27 @@ describe('linkTarget', () => {
   // A log written by a build with an editor this one lacks must not ask for a pane that cannot exist.
   it('refuses an editor this build does not have', () => {
     expect(linkTarget(note({ link: { editor: 'holodeck', subject: 'x' } }))).toBeUndefined();
+  });
+});
+
+describe('linkForRecord', () => {
+  it('sends a send or a get the shared copy refused to the collaborating guide', () => {
+    for (const id of ['git.fetch', 'git.pull', 'git.push']) {
+      expect(linkForRecord({ id, status: 'error' })).toEqual({
+        command: LINK_COMMANDS.collaborating,
+      });
+    }
+    expect(linkForRecord({ id: 'git.addRemote', status: 'error' })).toBeUndefined();
+  });
+
+  it('sends a get that ran to the History pane, where its outcome is', () => {
+    expect(linkForRecord({ id: 'git.pull', status: 'ok' })).toEqual({ editor: 'history' });
+    expect(linkForRecord({ id: 'git.continueSync', status: 'ok' })).toEqual({ editor: 'history' });
+    expect(linkForRecord({ id: 'git.push', status: 'ok' })).toBeUndefined();
+  });
+
+  it('names a command the allow-list has, so the note frame can follow it', () => {
+    const link = linkForRecord({ id: 'git.push', status: 'error' })!;
+    expect(linkCommand(note({ link }))).toBe('app.openCollaboratingGuide');
   });
 });

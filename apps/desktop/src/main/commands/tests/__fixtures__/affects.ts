@@ -81,7 +81,7 @@ function unavailable(member: string): never {
  * commits on save, which is what the `git.*` writes need to have something to take back.
  */
 export async function openAffectsHarness(
-  project: TestProject,
+  project: Pick<TestProject, 'dir'>,
   opts: { committed?: boolean } = {},
 ): Promise<AffectsHarness> {
   const root = project.dir;

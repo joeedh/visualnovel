@@ -7,13 +7,16 @@
  * command's own `written` list, which catch different things. The diff misses media, since a
  * capture skips it wherever it sits; `written` misses whatever the command forgot to report.
  *
- * `RUNS`, `PROMPT_RUNS`, `GIT_RUNS` and `SKIPS` partition the mutating commands, and a test says
- * so, since a command added later that is in none of the tables would otherwise pass by being
- * invisible.
+ * `RUNS`, `PROMPT_RUNS`, `GIT_RUNS`, the two `SYNC_*` tables and `SKIPS` partition the mutating
+ * commands, and a test says so, since a command added later that is in none of the tables would
+ * otherwise pass by being invisible.
  */
-import { readFile, rm, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { userSkillsDir } from '@vn/config';
+import { openGit } from '@vn/git';
 import { makeProject, type TestProject } from '@vn/testkit';
 import { covers } from '../../../shared/affects.js';
 import { readGroupDoc } from '../../doctree/graphs.js';
@@ -525,6 +528,157 @@ const firstSave = async (ctx: Context): Promise<string> =>
 const latestSave = async (ctx: Context): Promise<string> =>
   (await ctx.harness.session.gitHistory('project')).saves[0]!.sha;
 
+/** One sync run, on whichever of the two connected projects `who` names. */
+interface SyncRun extends Run {
+  who: 'a' | 'b';
+  /** What the outcome must say, where the run is there to pin more than its declaration. */
+  expect?: (result: RunResult) => void;
+}
+
+/** The layout both authors change; `-merge` in `.gitattributes`, so git never splices the two. */
+const LAYOUT = '.vnstudio/layouts/mine.json';
+
+/** A `git.save` over one edit to the layout, made outside the app. */
+function layoutSave(who: 'a' | 'b', panes: number): SyncRun {
+  return {
+    who,
+    id   : 'git.save',
+    props: async ({ harness }) => {
+      await writeFile(join(harness.root, LAYOUT), `{"panes":${panes}}\n`);
+      return { message: `Set the layout to ${panes} pane${panes === 1 ? '' : 's'}` };
+    },
+  };
+}
+
+const outcome = (result: RunResult): Record<string, unknown> =>
+  result.data as Record<string, unknown>;
+
+/**
+ * Project A connects the shared copy and sends the first saves. `ids.remote` is the bare
+ * repository's path, seeded by the suite before the first run.
+ */
+const SYNC_CONNECT: SyncRun[] = [
+  {
+    who  : 'a',
+    id   : 'git.save',
+    props: async ({ harness }) => {
+      await mkdir(join(harness.root, '.vnstudio', 'layouts'), { recursive: true });
+      await writeFile(
+        join(harness.root, '.gitattributes'),
+        `${LAYOUT.replace('mine', '*')} -merge\n`,
+      );
+      await writeFile(join(harness.root, LAYOUT), '{"panes":1}\n');
+      return { message: 'Added a layout' };
+    },
+  },
+  {
+    who   : 'a',
+    id    : 'git.addRemote',
+    props : ({ ids }) => Promise.resolve({ name: 'origin', url: ids['remote']! }),
+    expect: (result) => expect(outcome(result)).toEqual({ syncsWith: true }),
+  },
+  {
+    who   : 'a',
+    id    : 'git.push',
+    props : {},
+    expect: (result) => expect(outcome(result)).toEqual({ remote: 'origin', sent: null }),
+  },
+];
+
+/**
+ * Both projects change the layout; A sends first, so B's pull stops on it. B gives the sync up
+ * once, pulls again, keeps its own side, finishes, and sends. Every sync mutator runs here, in
+ * the order an author would meet them.
+ */
+const SYNC_COLLIDE: SyncRun[] = [
+  {
+    who   : 'b',
+    id    : 'git.fetch',
+    props : { remote: 'origin' },
+    expect: (result) => expect(outcome(result)).toEqual({ remote: 'origin', behind: 0 }),
+  },
+  { who: 'b', id: 'git.syncWith', props: { name: 'origin' } },
+  layoutSave('b', 2),
+  layoutSave('a', 3),
+  {
+    who   : 'a',
+    id    : 'git.push',
+    props : { remote: 'origin' },
+    expect: (result) => expect(outcome(result)).toEqual({ remote: 'origin', sent: 1 }),
+  },
+  {
+    who   : 'b',
+    id    : 'git.fetch',
+    props : {},
+    expect: (result) => expect(outcome(result)).toEqual({ remote: 'origin', behind: 1 }),
+  },
+  {
+    who    : 'b',
+    id     : 'git.push',
+    props  : {},
+    refuses: true,
+    expect: (result) =>
+      expect(result.error).toBe('“origin” has 1 save you do not; get their saves first.'),
+  },
+  {
+    who   : 'b',
+    id    : 'git.pull',
+    props : {},
+    expect: (result) =>
+      expect(outcome(result)).toEqual({
+        got       : 1,
+        replayed  : 0,
+        conflicted: [LAYOUT],
+        rewrote   : [],
+        finished  : false,
+      }),
+  },
+  { who: 'b', id: 'git.abandonSync', props: {} },
+  {
+    who   : 'b',
+    id    : 'git.pull',
+    props : {},
+    expect: (result) => expect(outcome(result)).toMatchObject({ conflicted: [LAYOUT] }),
+  },
+  {
+    who    : 'b',
+    id     : 'git.continueSync',
+    props  : {},
+    refuses: true,
+    expect : (result) => expect(result.error).toBe('1 file still needs a decision.'),
+  },
+  { who: 'b', id: 'git.resolve', props: { path: LAYOUT, side: 'mine' } },
+  {
+    who   : 'b',
+    id    : 'git.continueSync',
+    props : {},
+    expect: (result) =>
+      expect(outcome(result)).toMatchObject({
+        replayed  : 1,
+        conflicted: [],
+        finished  : true,
+        rewrote: [
+          {
+            from: expect.stringMatching(/^[0-9a-f]{40}$/),
+            to  : expect.stringMatching(/^[0-9a-f]{40}$/),
+          },
+        ],
+      }),
+  },
+  {
+    who   : 'b',
+    id    : 'git.push',
+    props : {},
+    expect: (result) => expect(outcome(result)).toEqual({ remote: 'origin', sent: 1 }),
+  },
+  {
+    who  : 'b',
+    id   : 'git.setRemoteUrl',
+    props: ({ ids }) => Promise.resolve({ name: 'origin', url: ids['remote']! }),
+  },
+  { who: 'b', id: 'git.removeRemote', props: { name: 'origin' } },
+];
+
 /**
  * The mutating commands the executed tier does not reach, each with the reason. A skip is a
  * written-down limit rather than an omission: the declaration lint and the undo rule still cover
@@ -740,6 +894,80 @@ describe('the git writes, over a project under git with a committer', () => {
   }, 120_000);
 });
 
+/** Runs git directly, for the two verbs the wrapper has no reason to expose: a bare init and a clone. */
+function sh(dir: string, args: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    execFile('git', args, { cwd: dir, windowsHide: true }, (err, _stdout, stderr) => {
+      if (err) reject(new Error(`git ${args[0]} failed: ${stderr}`));
+      else resolve();
+    });
+  });
+}
+
+describe('the sync writes, over two projects and a shared copy', () => {
+  let project: TestProject;
+  let bare: string;
+  let cloneDir: string;
+  const harnesses: Partial<Record<'a' | 'b', AffectsHarness>> = {};
+  const ids: Ids = {};
+
+  beforeAll(async () => {
+    project = await makeProject({ title: 'Sync', git: true });
+    // The bare copy is born pointing at A's branch, or a clone of it would check nothing out
+    const branch = await openGit(project.dir).branch();
+    bare = await mkdtemp(join(tmpdir(), 'vn-bare-'));
+    await sh(bare, ['init', '--bare', '-q', `--initial-branch=${branch}`]);
+    ids['remote'] = bare.replaceAll('\\', '/');
+    harnesses.a = await openAffectsHarness(project, { committed: true });
+  }, 120_000);
+
+  afterAll(async () => {
+    await harnesses.a?.dispose();
+    await harnesses.b?.dispose();
+    for (const dir of [project.dir, cloneDir, bare]) {
+      if (dir) await rm(dir, { recursive: true, force: true, maxRetries: 3 });
+    }
+  });
+
+  /** One run on the project it names, held to its declaration and to what it had to say. */
+  async function step(run: SyncRun): Promise<void> {
+    const harness = harnesses[run.who]!;
+    const ctx: Context = { harness, ids };
+    const props = typeof run.props === 'function' ? await run.props(ctx) : run.props;
+    const result = await harness.run(run.id, props);
+    if (run.refuses) expect(result.ok).toBe(false);
+    else expect(`${run.who} ${run.id}: ${result.error ?? ''}`).toBe(`${run.who} ${run.id}: `);
+    expect(failure(run.id, result)).toEqual([]);
+    run.expect?.(result);
+  }
+
+  it('connects A, clones B, and carries a collision through to both copies agreeing', async () => {
+    for (const run of SYNC_CONNECT) await step(run);
+
+    // B is a second author's copy: the same history, a different name on its saves
+    cloneDir = await mkdtemp(join(tmpdir(), 'vn-clone-'));
+    await sh(cloneDir, ['clone', '-q', '-c', 'core.autocrlf=false', ids['remote']!, '.']);
+    const other = openGit(cloneDir);
+    await other.config('user.email', 'other@example.com');
+    await other.config('user.name', 'Other');
+    harnesses.b = await openAffectsHarness({ dir: cloneDir }, { committed: true });
+
+    for (const run of SYNC_COLLIDE) await step(run);
+
+    // One line: B's save replayed on top of A's, and the layout is the side B kept
+    const { saves } = await harnesses.b.session.gitHistory('project');
+    expect(saves.map((s) => s.subject)).toEqual([
+      'Set the layout to 2 panes',
+      'Set the layout to 3 panes',
+      'Added a layout',
+      'Fixture inputs',
+    ]);
+    expect(await readFile(join(cloneDir, LAYOUT), 'utf8')).toBe('{"panes":2}\n');
+    expect(await openGit(bare).resolve('HEAD')).toBe(saves[0]!.sha);
+    expect(await other.remotes()).toEqual([]);
+  }, 180_000);
+});
+
 describe('RUNS and SKIPS', () => {
   const mutating = registry
     .list()
@@ -747,7 +975,9 @@ describe('RUNS and SKIPS', () => {
     .map((command) => command.id);
 
   it('partition the mutating commands exactly', () => {
-    const runs = new Set([...RUNS, ...PROMPT_RUNS, ...GIT_RUNS].map((run) => run.id));
+    const runs = new Set(
+      [...RUNS, ...PROMPT_RUNS, ...GIT_RUNS, ...SYNC_CONNECT, ...SYNC_COLLIDE].map((run) => run.id),
+    );
     const skips = new Set(Object.keys(SKIPS));
     expect([...runs].filter((id) => skips.has(id))).toEqual([]);
     expect(mutating.filter((id) => !runs.has(id) && !skips.has(id))).toEqual([]);

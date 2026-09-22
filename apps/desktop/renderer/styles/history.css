@@ -801,6 +801,158 @@ button.hs-btn:disabled {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
 }
 
+/* ------------------------------------------------------------------ sync */
+
+.hs-sync-toggle {
+  flex: 0 0 auto;
+}
+
+.hs-sync {
+  flex: 0 0 auto;
+  padding: 10px 16px 12px;
+}
+
+.hs-sync-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--ink-line);
+}
+
+/* One shared copy per block; the one the branch syncs with carries the pane's rail in `--signal`,
+   the colour of what comes from elsewhere. */
+.hs-remote {
+  position: relative;
+  padding: 10px 0 10px 12px;
+  border-bottom: 1px solid var(--ink-line);
+}
+
+.hs-remote::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--ink-line);
+}
+
+.hs-remote.syncs::before {
+  background: var(--signal);
+}
+
+.hs-remote-name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.hs-remote-line {
+  color: var(--mist);
+  font-size: 11px;
+}
+
+.hs-remote-url {
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--mist-dim);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.hs-remote .hs-head-acts {
+  flex-wrap: wrap;
+}
+
+/* ------------------------------------------------------------------ conflict */
+
+.hs-conflict {
+  flex: 0 0 auto;
+  padding: 10px 16px 12px;
+}
+
+.hs-conflict-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 3px 0 3px 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+/* The path keeps a readable width; in a narrow column the buttons drop under it instead */
+.hs-conflict-row .hs-file-path {
+  flex: 1 1 160px;
+  min-width: 160px;
+}
+
+.hs-conflict-row.open {
+  background: rgba(69, 200, 214, 0.1);
+}
+
+.hs-conflict-acts {
+  flex: 0 0 auto;
+  display: inline-flex;
+  gap: 4px;
+  font-family: var(--sans);
+  font-size: 12px;
+}
+
+.hs-conflict-foot {
+  padding-top: 8px;
+  border-top: 1px solid var(--ink-line);
+}
+
+/* The one warning the view carries, in the status colour, since an edit made now lands somewhere
+   the author might not expect. */
+.hs-conflict-note {
+  margin-top: 6px;
+  color: var(--sodium);
+  font-size: 11px;
+}
+
+/* The two sides, theirs then mine, on the sunken ink like a diff body; each column scrolls on
+   its own so a long scene does not push the buttons off screen. */
+.hs-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  margin: 8px 0;
+  background: var(--ink-line);
+  border: 1px solid var(--ink-line);
+}
+
+.hs-surface[data-size='small'] .hs-sides {
+  grid-template-columns: 1fr;
+}
+
+.hs-side {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-height: 50vh;
+  background: var(--ink-sunken);
+}
+
+.hs-side-text {
+  flex: 1 1 auto;
+  overflow: auto;
+  margin: 0;
+  padding: 8px 12px 16px;
+  font-family: var(--prose);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 /* ------------------------------------------------------------------ foot */
 
 .hs-foot {

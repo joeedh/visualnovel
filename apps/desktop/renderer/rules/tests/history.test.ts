@@ -1,24 +1,45 @@
 import {
+  abandonSyncAction,
+  addRemoteAction,
   checkpointAction,
   clearAction,
+  conflictControls,
+  conflicting,
+  continueSyncAction,
   controls,
+  dayAndTime,
   dayHeading,
   detailControls,
   dropCheckpointAction,
   emptySentence,
+  fetchAction,
   goBackAction,
   groupByDay,
+  listedRemotes,
   moreAction,
   NO_FILTER,
   onlyLogs,
+  openBothAction,
   pathAction,
+  pullAction,
+  pushAction,
   ranSentence,
+  remoteSentence,
+  removeRemoteAction,
+  replayingSentence,
+  resolveAction,
   resolvePath,
   restoreFileAction,
   saveAction,
+  setRemoteUrlAction,
   shown,
+  statusControls,
   statusSentence,
   stripSentence,
+  syncControls,
+  syncSentence,
+  syncViewAction,
+  syncWithAction,
   takeBackAction,
   threadOf,
   timeOf,
@@ -28,8 +49,10 @@ import {
 import { duplicateKeys } from '../anchors.js';
 import { SITUATIONS } from '../situations/history.js';
 import {
+  NO_UPSTREAM,
   NOT_OWNED,
   SYNC_UNFINISHED,
+  UNSAVED_EDITS,
   type RepoEntry,
   type RepoStatus,
 } from '../../../src/shared/history.js';
@@ -350,6 +373,204 @@ describe('the recovery controls', () => {
     for (const situation of SITUATIONS) {
       expect(duplicateKeys(controls(situation.state))).toEqual([]);
     }
+  });
+});
+
+describe('the sync view', () => {
+  const sync = state('sync-view');
+  const origin = sync.status!.remotes[0]!;
+  const backup = sync.status!.remotes[1]!;
+
+  it('is opened from the strip, and the same control closes it', () => {
+    expect(syncViewAction(state('one-repo'))).toMatchObject({
+      ok     : true,
+      on     : 'sync',
+      label  : 'Shared copies',
+      tooltip: expect.stringContaining('List the shared copy'),
+    });
+    expect(syncViewAction(sync).tooltip).toBe(
+      'Put the selected save’s changes back in this column.',
+    );
+    expect(syncViewAction(sync).label).toBe('Close');
+    const none = { ...state('no-remotes'), syncOpen: false };
+    expect(syncViewAction(none).tooltip).toMatch(/^Connect a copy/);
+  });
+
+  it('gets their saves from the copy the branch syncs with, and says why not otherwise', () => {
+    expect(pullAction(sync)).toMatchObject({ ok: true, props: { repo: 'project' } });
+    expect(pullAction(state('no-remotes'))).toMatchObject({ refusal: { reason: NO_UPSTREAM } });
+    const outside = { ...sync, status: { ...sync.status!, cause: 'outside' as const } };
+    expect(pullAction(outside)).toMatchObject({ refusal: { reason: UNSAVED_EDITS } });
+    const rebasing = { ...sync, status: { ...sync.status!, cause: 'rebase' as const } };
+    expect(pullAction(rebasing)).toMatchObject({ refusal: { reason: SYNC_UNFINISHED } });
+    const refused = { ...sync, verdicts: { 'git.pull': { ok: false, message: 'Not today.' } } };
+    expect(pullAction(refused)).toMatchObject({ refusal: { reason: 'Not today.' } });
+  });
+
+  it('sends to one copy, keyed by its name, and refuses while it has saves not yet got', () => {
+    expect(pushAction(sync, origin)).toMatchObject({
+      on     : 'origin',
+      refusal: { reason: '“origin” has 1 save you do not; get their saves first.' },
+    });
+    expect(pushAction(sync, { ...origin, behind: 0, ahead: 0 })).toMatchObject({
+      refusal: { reason: 'Nothing to send; “origin” has every save.' },
+    });
+    expect(pushAction(sync, backup)).toMatchObject({
+      ok   : true,
+      on   : 'backup',
+      props: { repo: 'project', remote: 'backup' },
+    });
+    const refused = {
+      ...sync,
+      verdicts: { 'git.push:backup': { ok: false, message: 'The copy refused.' } },
+    };
+    expect(pushAction(refused, backup)).toMatchObject({ refusal: { reason: 'The copy refused.' } });
+  });
+
+  it('offers the other four per copy, and refuses syncing with the copy already synced with', () => {
+    expect(fetchAction(sync, backup)).toMatchObject({ ok: true, on: 'backup', label: 'Check' });
+    expect(syncWithAction(sync, origin)).toMatchObject({
+      label  : 'Syncing with this copy',
+      refusal: { reason: 'This is already the copy the project syncs with.' },
+    });
+    expect(syncWithAction(sync, backup)).toMatchObject({
+      ok   : true,
+      props: { repo: 'project', name: 'backup' },
+    });
+    expect(setRemoteUrlAction(sync, backup)).toMatchObject({ ok: true, form: true, on: 'backup' });
+    expect(removeRemoteAction(sync, backup)).toMatchObject({ ok: true, form: true, on: 'backup' });
+  });
+
+  it('leads with connecting a copy where there is none, named origin', () => {
+    expect(addRemoteAction(state('no-remotes'))).toMatchObject({
+      ok   : true,
+      form : true,
+      label: 'Connect a shared copy…',
+      props: { repo: 'project', name: 'origin' },
+    });
+    expect(addRemoteAction(sync)).toMatchObject({
+      label: 'Add a shared copy…',
+      props: { name: '' },
+    });
+    expect(syncControls(state('no-remotes')).map((o) => o.id)).toEqual(['git.addRemote']);
+    expect(syncControls(sync).map((o) => `${o.id}:${o.on ?? ''}`)).toEqual([
+      'git.pull:',
+      'git.push:origin',
+      'git.fetch:origin',
+      'git.syncWith:origin',
+      'git.setRemoteUrl:origin',
+      'git.removeRemote:origin',
+      'git.push:backup',
+      'git.fetch:backup',
+      'git.syncWith:backup',
+      'git.setRemoteUrl:backup',
+      'git.removeRemote:backup',
+      'git.addRemote:',
+    ]);
+  });
+
+  it('refuses every write with the one sentence while a verb is still running', () => {
+    const busy = state('syncing');
+    for (const offer of [
+      pullAction(busy),
+      pushAction(busy, origin),
+      fetchAction(busy, origin),
+      takeBackAction(busy, busy.saves[0]!),
+      saveAction(busy),
+    ]) {
+      expect(offer).toMatchObject({ ok: false, refusal: { reason: 'Still getting their saves.' } });
+    }
+    expect(syncSentence('pull', 3.7)).toBe('Getting their saves… 3 s');
+    expect(syncSentence(undefined, 3)).toBe('');
+  });
+
+  it('writes one line per copy: address, counts, and when it was last checked', () => {
+    expect(remoteSentence(origin, null)).toBe('3 to send · 1 to get');
+    expect(remoteSentence(backup, null)).toBe('not yet compared');
+    expect(remoteSentence(origin, '2026-09-21T09:00:00Z')).toMatch(
+      /^3 to send · 1 to get · checked /,
+    );
+    expect(remoteSentence(backup, '2026-09-21T09:00:00Z')).toBe('not yet compared');
+    expect(
+      listedRemotes({ ...sync.status!, remotes: [backup, origin] }).map((r) => r.name),
+    ).toEqual(['origin', 'backup']);
+    const now = new Date(2026, 8, 21, 15, 0);
+    expect(dayAndTime(new Date(2026, 8, 21, 14, 2).toISOString(), now)).toBe('today 14:02');
+    expect(dayAndTime(new Date(2026, 8, 19, 9, 5).toISOString(), now)).toMatch(/^\S.* 09:05$/);
+  });
+});
+
+describe('the conflict view', () => {
+  const conflict = state('conflict');
+  const scene = 'scenes/rooftop.fountain';
+  const layout = '.vnstudio/layouts/writing.json';
+
+  it('has the detail column while a sync or a merge is stopped, whatever else is open', () => {
+    expect(conflicting(conflict)).toBe(true);
+    expect(conflicting(state('sync-view'))).toBe(false);
+    expect(syncViewAction(conflict)).toMatchObject({
+      ok     : false,
+      label  : 'Shared copies',
+      refusal: { reason: 'The files in question have this column until they are decided.' },
+    });
+    expect(stripSentence(PROJECT, conflict.status!)).toBe(
+      'Project · main · shared copy origin/main · getting their saves',
+    );
+    expect(detailControls({ ...conflict, syncOpen: true }).map((o) => o.id)).toContain(
+      'git.resolve',
+    );
+    expect(statusControls(conflict).map((o) => o.label)).toEqual(['Decide…']);
+    const revert = { ...conflict, status: { ...conflict.status!, cause: 'revert' as const } };
+    expect(statusControls(revert).map((o) => o.id)).toEqual(['git.abandonSync']);
+  });
+
+  it('says which save is being replayed', () => {
+    expect(replayingSentence(conflict.status)).toBe('Replaying 2 of 3: Moved line L4 into rooftop');
+    const merge = { ...conflict.status!, cause: 'merge' as const };
+    expect(replayingSentence(merge)).toBe('A merge started outside the app is unfinished');
+  });
+
+  it('offers both sides of each file, and reading both only where there is a middle to read', () => {
+    expect(resolveAction(conflict, scene, 'mine')).toMatchObject({
+      ok   : true,
+      on   : `${scene}/mine`,
+      label: 'Keep mine',
+      props: { repo: 'project', path: scene, side: 'mine' },
+    });
+    expect(resolveAction(conflict, layout, 'theirs')).toMatchObject({
+      ok   : true,
+      label: 'Take theirs',
+    });
+    expect(openBothAction(conflict, scene)).toMatchObject({ ok: true, label: 'Close both' });
+    expect(openBothAction({ ...conflict, bothOpen: undefined }, scene).label).toBe('Open both');
+    expect(openBothAction(conflict, layout)).toMatchObject({
+      refusal: { reason: 'This file has no middle to read; keep one side or the other.' },
+    });
+    expect(conflictControls(conflict).map((o) => `${o.id}:${o.on ?? ''}`)).toEqual([
+      `git.resolve:${scene}/mine`,
+      `git.resolve:${scene}/theirs`,
+      `pane.view:both/${scene}`,
+      `git.resolve:${layout}/mine`,
+      `git.resolve:${layout}/theirs`,
+      `pane.view:both/${layout}`,
+      'git.continueSync:',
+      'git.abandonSync:',
+    ]);
+  });
+
+  it('refuses Continue until every file is decided, and Give up only with nothing part way', () => {
+    expect(continueSyncAction(conflict)).toMatchObject({
+      refusal: { reason: '2 files still need a decision.' },
+    });
+    const decided = { ...conflict, status: { ...conflict.status!, conflicted: [] } };
+    expect(continueSyncAction(decided)).toMatchObject({ ok: true, props: { repo: 'project' } });
+    expect(abandonSyncAction(conflict)).toMatchObject({ ok: true, form: true });
+    expect(abandonSyncAction(state('one-repo'))).toMatchObject({
+      refusal: { reason: 'Nothing is part way through; there is nothing to give up.' },
+    });
+    expect(resolveAction(state('one-repo'), scene, 'mine')).toMatchObject({
+      refusal: { reason: 'No sync is waiting on a decision.' },
+    });
   });
 });
 

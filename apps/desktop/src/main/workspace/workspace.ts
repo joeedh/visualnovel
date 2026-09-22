@@ -9,10 +9,14 @@
 import { cp, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { CONFIG_FILENAME, loadConfig } from '@vn/config';
-import { openGit, type Git } from '@vn/git';
+import { InProgressError, openGit, type Git } from '@vn/git';
 import { slug } from '@vn/model';
 import { writeFileAtomic } from '@vn/util';
-import { LAYOUT_ATTRIBUTES_BLOCK, shippedLayoutFiles } from '../../shared/layouts.js';
+import {
+  LAYOUT_ATTRIBUTE,
+  LAYOUT_ATTRIBUTES_BLOCK,
+  shippedLayoutFiles,
+} from '../../shared/layouts.js';
 import { gitHealth } from '../bootstrap/doctor.js';
 import { ensureLayouts } from './layouts.js';
 
@@ -65,12 +69,14 @@ export interface Scaffolding {
 }
 
 /**
- * Write the files a project needs from this app: the shipped layout templates, the union-merge
- * attribute, and the ignore line for the session file. Idempotent, and it writes whatever repo
- * encloses `root` — the files belong to the project either way, and only committing them is
- * somebody else's business.
+ * Write the files a project needs from this app: the shipped layout templates, the merge
+ * attributes (in the project and again in the repository's own `info/attributes`), and the
+ * ignore line for the session file. Idempotent, and it writes whatever repo encloses `root` —
+ * the files belong to the project either way, and only committing them is somebody else's
+ * business.
  */
 export async function writeScaffolding(root: string): Promise<Scaffolding> {
+  await ensureRepoAttributes(root);
   return {
     layouts   : await ensureLayouts(root),
     attributes: await ensureGitAttributes(root),
@@ -83,15 +89,22 @@ export async function writeScaffolding(root: string): Promise<Scaffolding> {
  * the project's own, on the grounds `ownsRepo` gives.
  *
  * Committing is not optional: opening a project must not leave the worktree dirty, or the
- * open-time checkpoint sweeps these files up under "Changes made outside the app".
+ * open-time checkpoint sweeps these files up under "Changes made outside the app". The one
+ * exception is a sync that stopped before the app was closed: `Git.commit` refuses while it is
+ * unfinished, and what was written rides into the save the author finishes it with.
  */
 export async function commitScaffolding(root: string, wrote: Scaffolding): Promise<void> {
   if (!(await ownsRepo(root))) return;
   const git = openGit(root);
-  if (wrote.attributes)
-    await git.commit({ message: GITATTRIBUTES_COMMIT, paths: ['.gitattributes'] });
-  if (wrote.layouts.length > 0) await git.commit({ message: LAYOUTS_COMMIT, paths: wrote.layouts });
-  if (wrote.ignores) await git.commit({ message: IGNORES_COMMIT, paths: ['.gitignore'] });
+  try {
+    if (wrote.attributes)
+      await git.commit({ message: GITATTRIBUTES_COMMIT, paths: ['.gitattributes'] });
+    if (wrote.layouts.length > 0)
+      await git.commit({ message: LAYOUTS_COMMIT, paths: wrote.layouts });
+    if (wrote.ignores) await git.commit({ message: IGNORES_COMMIT, paths: ['.gitignore'] });
+  } catch (err) {
+    if (!(err instanceof InProgressError)) throw err;
+  }
 }
 
 export interface SeedResult {
@@ -268,7 +281,9 @@ export const SCAFFOLDING_SUBJECTS: readonly string[] = [
 /**
  * The attributes a project needs from this app, each with the paragraph saying why. They are
  * separate blocks rather than one because a project created before the second one existed has the
- * first already, and {@link ensureGitAttributes} appends whichever it cannot find.
+ * first already, and {@link ensureGitAttributes} appends whichever it cannot find. A new block goes
+ * last: a project owed several gets them in this order, one that got them a release at a time has
+ * them in release order, and a collaborator's sync collides on this file unless the two agree.
  */
 const GITATTRIBUTES_BLOCKS = [
   {
@@ -296,6 +311,13 @@ const GITATTRIBUTES_BLOCKS = [
     line: 'vngen/work/graphs/lib/*.json -merge',
     why : '# A saved node group is a graph fragment, and merges no better than a whole one.\n',
   },
+  {
+    line: 'vngen/state/commands.jsonl merge=union',
+    why:
+      '# The command log is append-only, and two collaborators both append to it between\n' +
+      '# syncs. Union-merge it: both runs of records are kept, and a reader finds a record by\n' +
+      '# the save that names it rather than by its place in the file.\n',
+  },
 ];
 
 const GITATTRIBUTES_TEXT = GITATTRIBUTES_BLOCKS.map((b) => `${b.why}${b.line}\n`).join('\n');
@@ -318,6 +340,29 @@ export async function ensureGitAttributes(root: string): Promise<boolean> {
   const prefix = current === undefined || current === '' || current.endsWith('\n') ? '' : '\n';
   const text = owed.map((block) => `${block.why}${block.line}\n`).join('\n');
   await writeFile(path, `${current ?? ''}${prefix}${text}`);
+  return true;
+}
+
+/** Every merge rule the app relies on, the layout one included. */
+const MERGE_ATTRIBUTES = [...GITATTRIBUTES_BLOCKS.map((b) => b.line), LAYOUT_ATTRIBUTE];
+
+/**
+ * Give the repository the same merge rules in `info/attributes`, which git reads over the
+ * worktree's `.gitattributes`. A rebase checks out each replayed save in turn, and a save from
+ * before the rules were committed replays under a `.gitattributes` without them; so does every
+ * save in a collaborator's copy until they get the commit. Only a project that is its own
+ * repository gets one, since the paths are relative to the repository's root; nothing the file
+ * already says is written twice.
+ */
+export async function ensureRepoAttributes(root: string): Promise<boolean> {
+  if (!(await ownsRepo(root))) return false;
+  const path = await openGit(root).gitPath('info/attributes');
+  const current = await readFile(path, 'utf8').catch(() => undefined);
+  const owed = MERGE_ATTRIBUTES.filter((line) => !current?.includes(line));
+  if (owed.length === 0) return false;
+  const prefix = current === undefined || current === '' || current.endsWith('\n') ? '' : '\n';
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, `${current ?? ''}${prefix}${owed.join('\n')}\n`);
   return true;
 }
 

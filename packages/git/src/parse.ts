@@ -4,6 +4,7 @@
  * checkpoint tag listing. Each takes the command's stdout and nothing else, so the shapes can
  * be tested without a repository.
  */
+import { createHash } from 'node:crypto';
 
 /** ASCII unit separator, `%x1f` in a log format. */
 export const UNIT = '\x1f';
@@ -247,6 +248,33 @@ export function parseStatusV2(stdout: string): BranchStatus {
     }
   }
   return status;
+}
+
+/** One commit's sha and the key `pairRewrites` matches it on across a rebase. */
+export interface CommitKey {
+  sha: string;
+  key: string;
+}
+
+/** The `--format` `Git.rangeKeys` uses: the sha, then the author fields and the whole message. */
+export const COMMIT_KEY_FORMAT = '%x1e%H%x1f%an%x1f%ae%x1f%aI%x1f%B';
+
+/**
+ * Parses the stdout of `git log --format=<COMMIT_KEY_FORMAT>`. The key is what a rebase keeps
+ * of a commit: its author, the author date and a digest of the full message. The digest keeps a
+ * key short whatever the message holds.
+ */
+export function parseCommitKeys(stdout: string): CommitKey[] {
+  const out: CommitKey[] = [];
+  for (const record of stdout.split(RECORD)) {
+    const [sha, author, email, date, message] = record.replace(/^\n/, '').split(UNIT);
+    if (!sha || sha.length !== 40) continue;
+    const digest = createHash('sha256')
+      .update(message ?? '')
+      .digest('hex');
+    out.push({ sha, key: [author ?? '', email ?? '', date ?? '', digest].join(UNIT) });
+  }
+  return out;
 }
 
 /** Where checkpoints live; the slug is the rest of the refname. */

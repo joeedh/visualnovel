@@ -19,7 +19,7 @@ import { scheduleApprovals, switchWorkspace } from './workspacelifecycle.js';
 import { snapshotStore } from '../workspace/filecache.js';
 import { UNDO_EXCLUDES } from '../../shared/affects.js';
 import { notify } from '../notify/notifications.js';
-import { categoryOfCommand, shouldFileCommand } from '../../shared/notify.js';
+import { categoryOfCommand, linkForRecord, shouldFileCommand } from '../../shared/notify.js';
 import { workspaceIsTaken } from '../bootstrap/instancelock.js';
 import type { ExecOutcome, UiEffect } from '../../shared/ipc.js';
 import type { WindowId } from './windows.js';
@@ -147,11 +147,13 @@ export function getStack(ctx: AppContext): CommandStack<CommandHost> {
         // This one hook replaces a `say()` call at each of the thirty places that used to report
         // their own outcome. A refusal arrives as a throw, with `status: 'error'` and its reason.
         if (shouldFileCommand(record)) {
+          const link = linkForRecord(record);
           await notify({
             category: record.status === 'ok' ? categoryOfCommand(record.id) : 'error',
             level   : record.status === 'ok' ? 'info' : 'error',
             message : record.status === 'ok' ? record.message : (record.error ?? record.message),
             source  : record.source === 'agent' || record.source === 'cdp' ? record.source : 'ui',
+            ...(link ? { link } : {}),
           });
         }
         // Scheduled rather than awaited: a recount reloads the project, and this hook sits on

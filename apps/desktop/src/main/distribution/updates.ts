@@ -28,6 +28,9 @@ export const RELEASES_API = `https://api.github.com/repos/${ISSUE_REPO}/releases
  */
 export const RELEASES_PAGE = `https://github.com/${ISSUE_REPO}/releases/latest`;
 
+/** The guide a refused send or get points at: credential helpers and what a refusal means. */
+export const COLLABORATING_GUIDE = `https://github.com/${ISSUE_REPO}/blob/master/docs/guides/collaborating.md`;
+
 /** Milliseconds to wait before treating GitHub as not answering. A background check the author did not request must never hang indefinitely. */
 export const CHECK_TIMEOUT_MS = 8000;
 

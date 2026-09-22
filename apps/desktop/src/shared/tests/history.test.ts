@@ -1,4 +1,12 @@
-import { blobUrl, kindOf, parseGitUrl } from '../history.js';
+import { DIRTY_TREE, NO_UPSTREAM as GIT_NO_UPSTREAM } from '@vn/git';
+import {
+  blobUrl,
+  kindOf,
+  NO_UPSTREAM,
+  parseGitUrl,
+  readableConflict,
+  UNSAVED_EDITS,
+} from '../history.js';
 
 describe('parseGitUrl', () => {
   it('reads back what blobUrl wrote', () => {
@@ -61,5 +69,30 @@ describe('blobUrl', () => {
     expect(blobUrl('project', 'ab12', 'assets/objects/x.PNG')).toBe('vngit://project/ab12.png');
     expect(blobUrl('wiki', 'ab12', 'notes/README')).toBe('vngit://wiki/ab12.bin');
     expect(blobUrl('base', 'ab12', 'a.b/c')).toBe('vngit://base/ab12.bin');
+  });
+});
+
+describe('readableConflict', () => {
+  it.each([
+    ['scenes/rooftop.fountain', true],
+    ['characters/mara/mara.md', true],
+    ['project.yaml', true],
+    ['vngen/work/shots/rooftop.json', true],
+    ['.vnstudio/layouts/writing.json', false],
+    ['vngen/work/graphs/hero.json', false],
+    ['vngen/work/graphs/lib/portrait.json', false],
+    ['vngen/state/threads/20260914-182452.native.jsonl', false],
+    ['vngen/state/threads/20260914-182452.jsonl', false],
+    ['characters/mara/portrait.png', false],
+  ] as const)('%s → %s', (path, readable) => {
+    expect(readableConflict(path)).toBe(readable);
+  });
+});
+
+/** The renderer cannot import `@vn/git`, so the two sentences it repeats are pinned to the source. */
+describe('the sentences shared with @vn/git', () => {
+  it('are the same words in both places', () => {
+    expect(NO_UPSTREAM).toBe(GIT_NO_UPSTREAM);
+    expect(UNSAVED_EDITS).toBe(DIRTY_TREE);
   });
 });

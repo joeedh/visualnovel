@@ -6,7 +6,12 @@
  *
  * `shared/` is in the browser bundle, so nothing here may reach for node.
  */
-import { NOTIFICATION_CATEGORIES, type Notification, type NotificationCategory } from '@vn/types';
+import {
+  NOTIFICATION_CATEGORIES,
+  type Notification,
+  type NotificationCategory,
+  type NotificationLink,
+} from '@vn/types';
 import { EDITOR_IDS, type EditorId } from './editors.js';
 
 /**
@@ -147,7 +152,9 @@ export function linkTarget(note: Notification): { editor: EditorId; subject?: st
  */
 export const LINK_COMMANDS = {
   /** VN Studio's releases page — where an update notice sends the author. */
-  releases: 'app.openReleases',
+  releases     : 'app.openReleases',
+  /** The collaborating guide — where a send or a get the shared copy refused sends the author. */
+  collaborating: 'app.openCollaboratingGuide',
 } as const;
 
 export type LinkCommand = (typeof LINK_COMMANDS)[keyof typeof LINK_COMMANDS];
@@ -161,4 +168,25 @@ const LINKABLE = new Set<string>(Object.values(LINK_COMMANDS));
 export function linkCommand(note: Notification): LinkCommand | undefined {
   const id = note.link?.command;
   return id && LINKABLE.has(id) ? (id as LinkCommand) : undefined;
+}
+
+/** The three verbs that reach a shared copy, whose refusal comes from outside the app. */
+const NETWORK_VERBS = new Set(['git.fetch', 'git.pull', 'git.push']);
+/** The two acts that can leave files waiting on a decision in the History pane. */
+const SYNC_STEPS = new Set(['git.pull', 'git.continueSync']);
+
+/**
+ * Where a filed command outcome should point, when it should point anywhere. A send or a get the
+ * shared copy refused links to the collaborating guide, since the reason is a sign-in or an
+ * address rather than anything in the project; a get that ran links to the History pane, where a
+ * collision waits for a decision and a clean one is listed.
+ */
+export function linkForRecord(record: {
+  id: string;
+  status: 'ok' | 'error';
+}): NotificationLink | undefined {
+  if (record.status === 'error') {
+    return NETWORK_VERBS.has(record.id) ? { command: LINK_COMMANDS.collaborating } : undefined;
+  }
+  return SYNC_STEPS.has(record.id) ? { editor: 'history' } : undefined;
 }

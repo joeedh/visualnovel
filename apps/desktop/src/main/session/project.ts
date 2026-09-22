@@ -50,6 +50,7 @@ import { parseKeyGuide, type GuideUrlField, type KeyGuide } from '../../shared/a
 import { builtinSkillsDir, readResource } from '../distribution/resources.js';
 import {
   CHECK_TIMEOUT_MS,
+  COLLABORATING_GUIDE,
   RELEASES_API,
   RELEASES_PAGE,
   checkAgainst,
@@ -696,6 +697,14 @@ export class ProjectPart {
     if (!open) return { ok: false, message: 'This build cannot open a browser.' };
     await open(RELEASES_PAGE);
     return { ok: true, message: `Opened ${RELEASES_PAGE}.` };
+  }
+
+  /** Open the collaborating guide, the page a refused send or get points at, in the browser. */
+  async openCollaboratingGuide(): Promise<PromptResult> {
+    const open = this.session.deps.openExternal;
+    if (!open) return { ok: false, message: 'This build cannot open a browser.' };
+    await open(COLLABORATING_GUIDE);
+    return { ok: true, message: `Opened ${COLLABORATING_GUIDE}.` };
   }
 
   /**

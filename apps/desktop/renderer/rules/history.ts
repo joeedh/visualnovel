@@ -1,15 +1,19 @@
 /**
  * What the History pane offers and says: the repository chooser, the four filters, reload, the
- * rows, paging, the recovery controls, and the sentences the strip, the status line and the
- * empty states carry. Pure over what `git.repos`, `git.status` and `git.history` answered, and
- * over the verdicts `check` gave the recovery commands, so the derived model and the pane draw
- * from one place.
+ * rows, paging, the recovery controls, the sync view's and the conflict view's controls, and the
+ * sentences the strip, the status line, the footer and the empty states carry. Pure over what
+ * `git.repos`, `git.status` and `git.history` answered, and over the verdicts `check` gave the
+ * recovery and sync commands, so the derived model and the pane draw from one place.
  */
 import {
   kindOf,
+  NO_UPSTREAM,
   NOT_OWNED,
+  readableConflict,
   SYNC_UNFINISHED,
+  UNSAVED_EDITS,
   type Maker,
+  type RemoteEntry,
   type RepoEntry,
   type RepoRole,
   type RepoStatus,
@@ -89,22 +93,44 @@ export interface HistoryState {
   /** Whether the pane is showing the detail in the list's place, in the small layout. */
   showingDetail: boolean;
   /**
-   * What `check` answered for the recovery commands, by id, on the selected save and the open
-   * file. One not yet answered is absent, and its control is drawn as if accepted, since the
-   * command's own check runs again on the click.
+   * What `check` answered for the recovery and sync commands, by key, on the selected save, the
+   * open file and the branch. One not yet answered is absent, and its control is drawn as if
+   * accepted, since the command's own check runs again on the click.
    */
-  verdicts: Readonly<Partial<Record<RecoveryId, Verdict>>>;
+  verdicts: Readonly<Partial<Record<VerdictKey, Verdict>>>;
   /**
    * What the last command run from this pane did to undo: the invocation of a take-back or a
    * go-back, after which the undo history from before no longer applies; empty otherwise.
    */
   undoBlocked?: string;
+  /** Whether the sync view has the detail column, in the change view's place. */
+  syncOpen: boolean;
+  /** The network verb still running, while one is. */
+  syncing?: SyncVerb;
+  /** The conflicted path whose two sides are open, side by side, in the conflict view. */
+  bothOpen?: string;
 }
 
 export type PaneSize = 'small' | 'mid' | 'large';
 
 /** The commands the pane asks `check` about before it draws their controls. */
 export type RecoveryId = 'git.takeBack' | 'git.goBack' | 'git.restoreFile';
+
+/** The sync commands the pane asks `check` about; a push is asked per shared copy. */
+export type SyncId = 'git.pull' | 'git.continueSync';
+
+/** How a verdict is filed: by command id, or by id and remote for a push. */
+export type VerdictKey = RecoveryId | SyncId | `git.push:${string}`;
+
+/** The three verbs that reach a shared copy and can take seconds. */
+export type SyncVerb = 'pull' | 'push' | 'fetch';
+
+/** What the footer says while each verb runs, before the elapsed time. */
+export const SYNC_SAYS: Record<SyncVerb, string> = {
+  pull : 'Getting their saves',
+  push : 'Sending my saves',
+  fetch: 'Checking the shared copy',
+};
 
 /** One command's verdict as `check` gave it: the note when accepted, the reason when refused. */
 export interface Verdict {
@@ -419,6 +445,7 @@ export function saveAction(state: HistoryState): Offer {
     tooltip: 'Save the files changed outside the app as one save, under a message you type.',
   };
   const why =
+    stillSyncing(state) ??
     notOwned(state) ??
     unfinished(state.status) ??
     (state.status?.cause === 'pending'
@@ -445,7 +472,9 @@ export function checkpointAction(state: HistoryState): Offer {
       : 'Name the latest save as a checkpoint, so it can be found and gone back to later.',
   };
   const why =
-    notOwned(state) ?? (state.saves.length === 0 ? 'There is no save to name yet.' : undefined);
+    stillSyncing(state) ??
+    notOwned(state) ??
+    (state.saves.length === 0 ? 'There is no save to name yet.' : undefined);
   if (why !== undefined) return { ...refuse(why), ...control };
   return { ok: true, ...control, props: { repo: state.repo, sha: selected?.sha ?? '' } };
 }
@@ -476,7 +505,11 @@ export function takeBackAction(state: HistoryState, save: Save): Offer {
     tooltip:
       'Reverse what this save did, as a new save. Nothing in history is deleted, and the undo history from before no longer applies.',
   };
-  const why = notOwned(state) ?? unfinished(state.status) ?? refusedBy(state, 'git.takeBack');
+  const why =
+    stillSyncing(state) ??
+    notOwned(state) ??
+    unfinished(state.status) ??
+    refusedBy(state, 'git.takeBack');
   if (why !== undefined) return { ...refuse(why), ...control };
   return { ok: true, ...control, props: { repo: state.repo, sha: save.sha } };
 }
@@ -490,7 +523,11 @@ export function goBackAction(state: HistoryState, save: Save): Offer {
     tooltip:
       'Put every file back to how it was at this save, as a new save. Nothing in history is deleted, and the undo history from before no longer applies.',
   };
-  const why = notOwned(state) ?? unfinished(state.status) ?? refusedBy(state, 'git.goBack');
+  const why =
+    stillSyncing(state) ??
+    notOwned(state) ??
+    unfinished(state.status) ??
+    refusedBy(state, 'git.goBack');
   if (why !== undefined) return { ...refuse(why), ...control };
   return { ok: true, ...control, props: { repo: state.repo, sha: save.sha } };
 }
@@ -505,15 +542,300 @@ export function restoreFileAction(state: HistoryState, save: Save, path: string)
     label  : 'Bring back this file',
     tooltip: `Rewrite ${path} as it was at this save. Undo reverses it.`,
   };
-  const why = notOwned(state) ?? refusedBy(state, 'git.restoreFile');
+  const why = stillSyncing(state) ?? notOwned(state) ?? refusedBy(state, 'git.restoreFile');
   if (why !== undefined) return { ...refuse(why), ...control };
   return { ok: true, ...control, props: { repo: state.repo, sha: save.sha, path } };
 }
 
-/** The check's reason for refusing `id`, or undefined while it accepted or has not answered. */
-function refusedBy(state: HistoryState, id: RecoveryId): string | undefined {
-  const verdict = state.verdicts[id];
+/** The check's reason for refusing `key`, or undefined while it accepted or has not answered. */
+function refusedBy(state: HistoryState, key: VerdictKey): string | undefined {
+  const verdict = state.verdicts[key];
   return verdict !== undefined && !verdict.ok ? verdict.message : undefined;
+}
+
+/** What every write says while a network verb is still running. */
+function stillSyncing(state: HistoryState): string | undefined {
+  return state.syncing === undefined
+    ? undefined
+    : `Still ${SYNC_SAYS[state.syncing].toLowerCase()}.`;
+}
+
+// -----------------------------------------------------------------------------
+// Sync
+// -----------------------------------------------------------------------------
+
+/** The strip's control that opens the sync view in the detail column, and closes it again. */
+export function syncViewAction(state: HistoryState): Offer {
+  const control = { ...view('mode'), on: 'sync' };
+  if (conflicting(state)) {
+    return {
+      ...refuse('The files in question have this column until they are decided.'),
+      ...control,
+      label  : 'Shared copies',
+      tooltip: 'List the shared copies: what each has, and send or get saves.',
+    };
+  }
+  if (state.syncOpen) {
+    return {
+      ok: true,
+      ...control,
+      label  : 'Close',
+      tooltip: 'Put the selected save’s changes back in this column.',
+    };
+  }
+  const remotes = state.status?.remotes.length ?? 0;
+  return {
+    ok: true,
+    ...control,
+    label  : 'Shared copies',
+    tooltip:
+      remotes === 0
+        ? 'Connect a copy of this repository somewhere else, to work with someone or to keep a backup.'
+        : `List the ${remotes === 1 ? 'shared copy' : `${remotes} shared copies`}: what each has, and send or get saves.`,
+  };
+}
+
+/**
+ * Get their saves, from the copy the branch syncs with. Refused while nothing is set to sync
+ * with, while edits are unsaved, while a sync is part way, and with the check's own reason.
+ */
+export function pullAction(state: HistoryState): Offer {
+  const control = {
+    id     : 'git.pull',
+    label  : 'Get their saves',
+    tooltip:
+      'Get the saves sent to the shared copy and put yours on top. A file both of you changed waits here for your decision.',
+  };
+  const why =
+    stillSyncing(state) ??
+    notOwned(state) ??
+    unfinished(state.status) ??
+    (state.status?.upstream === null ? NO_UPSTREAM : undefined) ??
+    (state.status?.cause === 'outside' ? UNSAVED_EDITS : undefined) ??
+    refusedBy(state, 'git.pull');
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { repo: state.repo } };
+}
+
+/**
+ * Send my saves to one shared copy. Refused while the copy has every save, while it has saves not
+ * yet got, and with the check's own reason, which is git's when the copy refused.
+ */
+export function pushAction(state: HistoryState, remote: RemoteEntry): Offer {
+  const control = {
+    id     : 'git.push',
+    on     : remote.name,
+    label  : 'Send my saves',
+    tooltip: `Send every save “${remote.name}” lacks, checkpoints included.`,
+  };
+  const why =
+    stillSyncing(state) ??
+    notOwned(state) ??
+    unfinished(state.status) ??
+    (remote.behind !== null && remote.behind > 0
+      ? `“${remote.name}” has ${remote.behind} save${remote.behind === 1 ? '' : 's'} you do not; get their saves first.`
+      : undefined) ??
+    (remote.ahead === 0 ? `Nothing to send; “${remote.name}” has every save.` : undefined) ??
+    refusedBy(state, `git.push:${remote.name}`);
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { repo: state.repo, remote: remote.name } };
+}
+
+/** Ask one shared copy what it has, so its counts are current. Changes nothing here. */
+export function fetchAction(state: HistoryState, remote: RemoteEntry): Offer {
+  const control = {
+    id     : 'git.fetch',
+    on     : remote.name,
+    label  : 'Check',
+    tooltip: `Ask “${remote.name}” what it has, so the counts are current. Nothing here changes.`,
+  };
+  const why = stillSyncing(state) ?? notOwned(state);
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { repo: state.repo, remote: remote.name } };
+}
+
+/** Make one shared copy the one the branch gets saves from. Refused on the one it already is. */
+export function syncWithAction(state: HistoryState, remote: RemoteEntry): Offer {
+  const control = {
+    id     : 'git.syncWith',
+    on     : remote.name,
+    label  : remote.syncsWith ? 'Syncing with this copy' : 'Sync with this copy',
+    tooltip: `Get their saves from “${remote.name}” from now on. Sending is offered per copy either way.`,
+  };
+  const why =
+    notOwned(state) ??
+    (remote.syncsWith ? 'This is already the copy the project syncs with.' : undefined) ??
+    (state.status?.branch === null ? 'Not on a branch; check one out first.' : undefined);
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { repo: state.repo, name: remote.name } };
+}
+
+/** Change one shared copy's address, in `git.setRemoteUrl`'s own form. */
+export function setRemoteUrlAction(state: HistoryState, remote: RemoteEntry): Offer {
+  const control = {
+    id     : 'git.setRemoteUrl',
+    on     : remote.name,
+    label  : 'Change address…',
+    form   : true,
+    tooltip: `Point “${remote.name}” at a different address, when the copy moved or this one was mistyped.`,
+  };
+  const why = notOwned(state);
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { repo: state.repo, name: remote.name } };
+}
+
+/** Forget one shared copy, in `git.removeRemote`'s form, which is the confirmation. */
+export function removeRemoteAction(state: HistoryState, remote: RemoteEntry): Offer {
+  const control = {
+    id     : 'git.removeRemote',
+    on     : remote.name,
+    label  : 'Remove',
+    form   : true,
+    tooltip: `Forget “${remote.name}”. Nothing in this project is removed, and the copy itself is untouched.`,
+  };
+  const why = notOwned(state);
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { repo: state.repo, name: remote.name } };
+}
+
+/**
+ * Connect a shared copy, in `git.addRemote`'s form. The first one connected becomes the copy the
+ * project syncs with, and the empty sync view leads with this.
+ */
+export function addRemoteAction(state: HistoryState): Offer {
+  const first = (state.status?.remotes.length ?? 0) === 0;
+  const control = {
+    id     : 'git.addRemote',
+    label  : first ? 'Connect a shared copy…' : 'Add a shared copy…',
+    form   : true,
+    tooltip: first
+      ? 'Connect a copy of this repository somewhere else, under a name and an address. It becomes the copy the project syncs with.'
+      : 'Connect another copy of this repository, on a NAS or a drive, say, as a backup.',
+  };
+  const why = notOwned(state);
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { repo: state.repo, name: first ? 'origin' : '' } };
+}
+
+/** What the sync view says when there is nothing to list. */
+export const NO_REMOTES = 'No shared copy yet. Connect one to work with someone else.';
+
+// -----------------------------------------------------------------------------
+// Conflicts
+// -----------------------------------------------------------------------------
+
+/** Whether the detail column shows the conflict view: a sync stopped part way, with decisions to make. */
+export function conflicting(state: HistoryState): boolean {
+  const cause = state.status?.cause;
+  return cause === 'rebase' || cause === 'merge';
+}
+
+/** The status view's control for a stopped sync, which brings the conflict view to the front. */
+export function conflictsAction(): Offer {
+  return {
+    ok: true,
+    ...view('mode'),
+    on     : 'conflicts',
+    label  : 'Decide…',
+    tooltip: 'Show the files waiting on a decision, and continue or give up getting their saves.',
+  };
+}
+
+/** "Replaying 2 of 3: Moved line L4 into rooftop", or the merge's own sentence. */
+export function replayingSentence(status: RepoStatus | undefined): string {
+  if (!status) return '';
+  if (status.cause === 'merge') return 'A merge started outside the app is unfinished';
+  const r = status.replaying;
+  if (!r) return 'Getting their saves is unfinished';
+  return `Replaying ${r.current} of ${r.total}: ${r.subject}`;
+}
+
+/** The conflict view's footer line: an edit made during a stopped rebase lands in the replayed save. */
+export const REPLAYING_NOTE = 'Edits you make now become part of the save being replayed.';
+
+/** Keep one side of one file in question: yours, or theirs. */
+export function resolveAction(state: HistoryState, path: string, side: 'mine' | 'theirs'): Offer {
+  const control = {
+    id     : 'git.resolve',
+    on     : `${path}/${side}`,
+    label  : side === 'mine' ? 'Keep mine' : 'Take theirs',
+    tooltip:
+      side === 'mine'
+        ? `Keep your version of ${path} and drop theirs.`
+        : `Take their version of ${path} and drop yours.`,
+  };
+  const why =
+    stillSyncing(state) ??
+    notOwned(state) ??
+    (state.status?.cause !== 'rebase' ? 'No sync is waiting on a decision.' : undefined);
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { repo: state.repo, path, side } };
+}
+
+/**
+ * Read both sides of one file in question, side by side, before deciding. Only for a text file
+ * git merged line by line; a layout, a graph or a picture has no readable middle.
+ */
+export function openBothAction(state: HistoryState, path: string): Offer {
+  const open = state.bothOpen === path;
+  const control = {
+    ...view('mode'),
+    on     : `both/${path}`,
+    label  : open ? 'Close both' : 'Open both',
+    tooltip: open
+      ? 'Put the two sides away again.'
+      : `Read their ${path} and yours side by side, before keeping one.`,
+  };
+  if (!readableConflict(path)) {
+    return {
+      ...refuse('This file has no middle to read; keep one side or the other.'),
+      ...control,
+    };
+  }
+  return { ok: true, ...control };
+}
+
+/** Continue getting their saves once every file is decided. Refused with the check's own reason. */
+export function continueSyncAction(state: HistoryState): Offer {
+  const control = {
+    id     : 'git.continueSync',
+    label  : 'Continue',
+    tooltip:
+      'Finish the save being replayed and go on to the next. Edits made while this view was up ride into it.',
+  };
+  const n = state.status?.conflicted.length ?? 0;
+  const why =
+    stillSyncing(state) ??
+    notOwned(state) ??
+    (state.status?.cause !== 'rebase' ? 'No sync is waiting on a decision.' : undefined) ??
+    (n > 0
+      ? `${n} file${n === 1 ? '' : 's'} still need${n === 1 ? 's' : ''} a decision.`
+      : undefined) ??
+    refusedBy(state, 'git.continueSync');
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { repo: state.repo } };
+}
+
+/** Give up a sync, a merge or a take-back that is part way, in the command's confirming form. */
+export function abandonSyncAction(state: HistoryState): Offer {
+  const cause = state.status?.cause;
+  const control = {
+    id     : 'git.abandonSync',
+    label  : 'Give up',
+    form   : true,
+    tooltip:
+      cause === 'rebase'
+        ? 'Stop getting their saves and put yours back exactly as they were. Their saves stay at the shared copy for another try.'
+        : 'Abandon it and put every file back as it was.',
+  };
+  const why =
+    stillSyncing(state) ??
+    notOwned(state) ??
+    (cause !== 'rebase' && cause !== 'merge' && cause !== 'revert'
+      ? 'Nothing is part way through; there is nothing to give up.'
+      : undefined);
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { repo: state.repo } };
 }
 
 // -----------------------------------------------------------------------------
@@ -541,7 +863,9 @@ export function stripSentence(
   if (status.upstream === null) parts.push('no shared copy yet');
   else {
     if (!narrow) parts.push(`shared copy ${status.upstream}`);
-    if (status.ahead === null || status.behind === null) parts.push('not yet compared');
+    // Mid-rebase HEAD is detached, so the counts are unknowable rather than unasked
+    if (status.inProgress.rebase) parts.push('getting their saves');
+    else if (status.ahead === null || status.behind === null) parts.push('not yet compared');
     else parts.push(`${status.ahead} to send`, `${status.behind} to get`);
   }
   return parts.join(' · ');
@@ -575,6 +899,35 @@ export function statusSentence(status: RepoStatus | undefined): string {
 /** What the footer's right side says about undo after a take-back or a go-back. */
 export function undoSentence(state: HistoryState): string {
   return state.undoBlocked ? 'Undo history from before this save no longer applies.' : '';
+}
+
+/** What the footer says while a network verb runs: the verb and how long it has taken. */
+export function syncSentence(verb: SyncVerb | undefined, seconds: number): string {
+  return verb === undefined ? '' : `${SYNC_SAYS[verb]}… ${Math.max(0, Math.floor(seconds))} s`;
+}
+
+/** The sync view's line under a shared copy's name: the counts against it, and when it was last checked. */
+export function remoteSentence(remote: RemoteEntry, lastFetch: string | null): string {
+  // The fetch time is the repository's, so a copy never compared has not been checked either
+  if (remote.ahead === null || remote.behind === null) return 'not yet compared';
+  const parts = [`${remote.ahead} to send`, `${remote.behind} to get`];
+  if (lastFetch !== null) parts.push(`checked ${dayAndTime(lastFetch)}`);
+  return parts.join(' · ');
+}
+
+/** The shared copies in the order the sync view lists them: the one synced with first, then by name. */
+export function listedRemotes(status: RepoStatus | undefined): RemoteEntry[] {
+  return [...(status?.remotes ?? [])].sort(
+    (a, b) => Number(b.syncsWith) - Number(a.syncsWith) || a.name.localeCompare(b.name),
+  );
+}
+
+/** `today 14:02`, or the date and time for an older moment. */
+export function dayAndTime(iso: string, now: Date = new Date()): string {
+  const date = new Date(iso);
+  const day = date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  const today = now.toDateString() === date.toDateString();
+  return `${today ? 'today' : day} ${timeOf(iso)}`;
 }
 
 /** What an empty list says, given why it is empty. */
@@ -652,11 +1005,31 @@ export function shown(saves: readonly Save[], filter: HistoryFilter): Save[] {
   return filter.checkpointsOnly ? saves.filter((s) => s.checkpoints.length > 0) : [...saves];
 }
 
+/**
+ * The status view's one control per cause: save the outside edits, decide, or give up. A stopped
+ * sync or merge leads to the conflict view, where Give up sits beside Continue.
+ */
+export function statusControls(state: HistoryState): readonly Offer[] {
+  switch (state.status?.cause) {
+    case 'pending':
+    case 'outside':
+      return [saveAction(state)];
+    case 'rebase':
+    case 'merge':
+      return [conflictsAction()];
+    case 'revert':
+      return [abandonSyncAction(state)];
+    default:
+      return [];
+  }
+}
+
 /** Every offer the History pane draws from this module. */
 export function controls(state: HistoryState): readonly Offer[] {
   const many = state.repos.length > 1;
   return [
     ...(many ? state.repos.map((entry) => repoAction(entry, state.repo)) : []),
+    ...(state.repos.length > 0 ? [syncViewAction(state)] : []),
     whoAction(state.filter.who),
     pathAction(state.filter.path),
     checkpointsAction(state.filter.checkpointsOnly),
@@ -665,7 +1038,7 @@ export function controls(state: HistoryState): readonly Offer[] {
     checkpointAction(state),
     reloadAction(),
     ...(state.size === 'small' && state.showingDetail ? [backAction()] : []),
-    ...(statusSentence(state.status) !== '' ? [saveAction(state)] : []),
+    ...statusControls(state),
     ...state.saves.map((save) => rowAction(save, save.sha === state.selected)),
     ...(state.saves.length > 0 ? [moreAction(state.next)] : []),
     ...detailControls(state),
@@ -673,10 +1046,49 @@ export function controls(state: HistoryState): readonly Offer[] {
 }
 
 /**
- * The detail column's offers: the conversation, the three recovery controls and one per
- * checkpoint, one row per file, the logs fold, the way back, and the diff's own control.
+ * The sync view's offers: get their saves, then per shared copy send, check, sync with, change
+ * the address and remove, and at the foot add another. With none, only the way to connect one.
+ */
+export function syncControls(state: HistoryState): readonly Offer[] {
+  const remotes = listedRemotes(state.status);
+  return [
+    ...(remotes.length > 0 ? [pullAction(state)] : []),
+    ...remotes.flatMap((remote) => [
+      pushAction(state, remote),
+      fetchAction(state, remote),
+      syncWithAction(state, remote),
+      setRemoteUrlAction(state, remote),
+      removeRemoteAction(state, remote),
+    ]),
+    addRemoteAction(state),
+  ];
+}
+
+/**
+ * The conflict view's offers: per file in question keep mine, take theirs and, for a readable
+ * one, open both; then continue and give up.
+ */
+export function conflictControls(state: HistoryState): readonly Offer[] {
+  const paths = state.status?.conflicted ?? [];
+  return [
+    ...paths.flatMap((path) => [
+      resolveAction(state, path, 'mine'),
+      resolveAction(state, path, 'theirs'),
+      openBothAction(state, path),
+    ]),
+    continueSyncAction(state),
+    abandonSyncAction(state),
+  ];
+}
+
+/**
+ * The detail column's offers: the sync view's or the conflict view's when one of those has the
+ * column, else the conversation, the three recovery controls and one per checkpoint, one row per
+ * file, the logs fold, the way back, and the diff's own control.
  */
 export function detailControls(state: HistoryState): readonly Offer[] {
+  if (conflicting(state)) return conflictControls(state);
+  if (state.syncOpen) return syncControls(state);
   const save = state.saves.find((s) => s.sha === state.selected);
   if (!save) return [];
   const logs = save.files.filter((f) => kindOf(f.path) === 'log');

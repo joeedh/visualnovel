@@ -742,7 +742,8 @@ import { PipelinePart } from './pipeline.js';
 import { GengraphPart, type SheetScaffoldPlan } from './gengraph.js';
 import { HistoryPart, type HistoryFilter } from './history.js';
 import { RecoveryPart } from './recovery.js';
-import type { Change, Checkpoint, Diff, HistoryEntry } from '@vn/git';
+import { SyncPart, type SyncOutcome } from './sync.js';
+import type { Change, Checkpoint, Diff, HistoryEntry, MySide } from '@vn/git';
 import type { CheckResult } from '@vn/commands';
 import type {
   BlobRead,
@@ -886,6 +887,7 @@ export class WorkspaceSession {
   readonly gengraphPart: GengraphPart = new GengraphPart(this);
   readonly historyPart: HistoryPart = new HistoryPart(this);
   readonly recoveryPart: RecoveryPart = new RecoveryPart(this);
+  readonly syncPart: SyncPart = new SyncPart(this);
 
   constructor(
     readonly dir: string,
@@ -2150,6 +2152,10 @@ export class WorkspaceSession {
     return this.projectPart.openReleases();
   }
 
+  async openCollaboratingGuide(): Promise<PromptResult> {
+    return this.projectPart.openCollaboratingGuide();
+  }
+
   /**
    * Whether {@link testKey} has anything to try, in its own sentence either way — so the Setup
    * pane's greyed-out button says why it is grey rather than looking broken.
@@ -3002,5 +3008,85 @@ export class WorkspaceSession {
     path: string,
   ): Promise<{ path: string; diagnostic?: string }> {
     return this.recoveryPart.restoreFile(role, sha, path);
+  }
+
+  previewAddRemote(role: RepoRole, name: string, url: string): Promise<CheckResult> {
+    return this.syncPart.previewAddRemote(role, name, url);
+  }
+
+  gitAddRemote(role: RepoRole, name: string, url: string): Promise<{ syncsWith: boolean }> {
+    return this.syncPart.addRemote(role, name, url);
+  }
+
+  previewRemoveRemote(role: RepoRole, name: string): Promise<CheckResult> {
+    return this.syncPart.previewRemoveRemote(role, name);
+  }
+
+  gitRemoveRemote(role: RepoRole, name: string): Promise<{ remote: string }> {
+    return this.syncPart.removeRemote(role, name);
+  }
+
+  previewSetRemoteUrl(role: RepoRole, name: string, url: string): Promise<CheckResult> {
+    return this.syncPart.previewSetRemoteUrl(role, name, url);
+  }
+
+  gitSetRemoteUrl(role: RepoRole, name: string, url: string): Promise<{ remote: string }> {
+    return this.syncPart.setRemoteUrl(role, name, url);
+  }
+
+  previewSyncWith(role: RepoRole, name: string): Promise<CheckResult> {
+    return this.syncPart.previewSyncWith(role, name);
+  }
+
+  gitSyncWith(role: RepoRole, name: string): Promise<{ remote: string; branch: string }> {
+    return this.syncPart.syncWith(role, name);
+  }
+
+  previewFetch(role: RepoRole, remote: string): Promise<CheckResult> {
+    return this.syncPart.previewFetch(role, remote);
+  }
+
+  gitFetch(role: RepoRole, remote: string): Promise<{ remote: string; behind: number | null }> {
+    return this.syncPart.fetch(role, remote);
+  }
+
+  previewPull(role: RepoRole): Promise<CheckResult> {
+    return this.syncPart.previewPull(role);
+  }
+
+  gitPull(role: RepoRole): Promise<SyncOutcome> {
+    return this.syncPart.pull(role);
+  }
+
+  previewPush(role: RepoRole, remote: string): Promise<CheckResult> {
+    return this.syncPart.previewPush(role, remote);
+  }
+
+  gitPush(role: RepoRole, remote: string): Promise<{ remote: string; sent: number | null }> {
+    return this.syncPart.push(role, remote);
+  }
+
+  previewResolve(role: RepoRole, path: string, side: MySide): Promise<CheckResult> {
+    return this.syncPart.previewResolve(role, path, side);
+  }
+
+  gitResolve(role: RepoRole, path: string, side: MySide): Promise<{ written: string[] }> {
+    return this.syncPart.resolve(role, path, side);
+  }
+
+  previewContinueSync(role: RepoRole): Promise<CheckResult> {
+    return this.syncPart.previewContinue(role);
+  }
+
+  gitContinueSync(role: RepoRole): Promise<SyncOutcome> {
+    return this.syncPart.continueSync(role);
+  }
+
+  previewAbandonSync(role: RepoRole): Promise<CheckResult> {
+    return this.syncPart.previewAbandon(role);
+  }
+
+  gitAbandonSync(role: RepoRole): Promise<{ operation: 'rebase' | 'merge' | 'revert' }> {
+    return this.syncPart.abandonSync(role);
   }
 }
