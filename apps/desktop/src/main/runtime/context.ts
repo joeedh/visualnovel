@@ -11,7 +11,6 @@
  */
 import type { BrowserWindow } from 'electron';
 import { Committer, type CommandStack } from '@vn/commands';
-import type { Git } from '@vn/git';
 import type { CommandHost } from '../commands/index.js';
 import { createDesktopRegistry } from '../commands/index.js';
 import type { WorkspaceSession } from '../session.js';
@@ -21,6 +20,7 @@ import { Pending, Windows, type WindowId, type WindowList } from './windows.js';
 import { workspaceScope } from '../../shared/sessionkeys.js';
 import type { EventChannel, EventChannels, PlanDecision, DocVersions } from '../../shared/ipc.js';
 import { liveDocs } from '../workspace/livedocs.js';
+import type { RepoList } from '../workspace/repolist.js';
 
 export class AppContext {
   /**
@@ -42,14 +42,14 @@ export class AppContext {
 
   /**
    * The repos the app may write history in — the project's, plus the story bible's when `wiki/`
-   * is its own. Resolved once, after the workspace exists.
+   * is its own. Opened by `openRepos`, and re-resolved before a commit when one may have appeared.
    *
    * A repo appears here only when the directory is its own root. A project opened inside a larger
    * repo (a checkout of this monorepo, say) resolves to that repo, and committing `-A` there would
    * sweep in files that have nothing to do with the project — so commit-on-save stays off rather
    * than guessing at a scope. Undo is unaffected: it snapshots a directory, not a repo.
    */
-  readonly ownedRepos: Git[] = [];
+  repoList: RepoList | null = null;
 
   /**
    * The window that started the current agent turn, remembered from `agent:run`'s sender. There
@@ -134,7 +134,7 @@ export class AppContext {
 
   committer(): Committer {
     return new Committer({
-      repos : () => this.ownedRepos,
+      repos : () => this.repoList?.current() ?? [],
       onSkip: (repo, operation) =>
         console.warn(`[vnstudio] ${repo}: a ${operation} is in progress; not committing there`),
     });

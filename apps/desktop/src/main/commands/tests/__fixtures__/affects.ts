@@ -123,7 +123,6 @@ export async function openAffectsHarness(
       coerce     : coerceProps,
     },
     check                   : (id, props) => stack.check(id, props),
-    ownedRepos              : () => owned,
     // Every commit here lands before the outcome returns, so nothing is ever pending
     pendingCommits          : () => 0,
   };

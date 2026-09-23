@@ -6,9 +6,7 @@
 import { app, dialog, shell } from 'electron';
 import { existsSync } from 'node:fs';
 import { join, resolve as resolvePath } from 'node:path';
-import { openGit } from '@vn/git';
 import { ProjectPaths } from '@vn/store';
-import { Workspace } from '@vn/authoring';
 import { installNotifications, notifications } from '../notify/notifications.js';
 import {
   gitHealth,
@@ -19,11 +17,9 @@ import {
 import { sameApprovals } from '../workspace/approvals.js';
 import { acquireWorkspace, focusOwner } from '../bootstrap/instancelock.js';
 import {
-  adoptSubmodules,
   commitScaffolding,
   ensureRepo,
   openWorkspace,
-  ownsRepo,
   recentWorkspaces,
   rememberWorkspace,
   seedWorkspace,
@@ -31,6 +27,7 @@ import {
   type SubmoduleNotice,
 } from '../workspace/workspace.js';
 import { forgetFiles } from '../workspace/filecache.js';
+import { RepoList } from '../workspace/repolist.js';
 import { liveDocs } from '../workspace/livedocs.js';
 import type { AppContext } from './context.js';
 import { cliArgs, MOCK } from '../bootstrap/cliargs.js';
@@ -161,7 +158,7 @@ export async function switchWorkspace(
   if (ctx.approvalTimer) clearTimeout(ctx.approvalTimer);
   ctx.approvalTimer = null;
   ctx.broadcastApprovals = [];
-  ctx.ownedRepos.length = 0;
+  ctx.repoList = null;
   // The stack and its undo history are rebuilt against the new root, so nothing held may cross.
   forgetFiles();
   // Versions are keyed workspace-relative, so under a different root the same key names a
@@ -205,16 +202,11 @@ export async function openRepos(ctx: AppContext): Promise<void> {
   // doctor's finding beats a try/catch, which would have to guess which failures mean "no git".
   if (gitHealth().ok) {
     await ensureRepo(root);
-    // Before `repos()`, so a submodule it puts on a branch is committed to from the first act.
-    // A project inside a larger repo is skipped, for the reason `commitScaffolding` skips it.
-    if (await ownsRepo(root)) submodules = await adoptSubmodules(root);
-    const refs = await new Workspace(root).repos();
-    for (const ref of refs) {
-      if (ref.owned) ctx.ownedRepos.push(openGit(ref.root));
-      else if (ref.missing)
-        console.warn(`[vnstudio] ${ref.root} is a submodule that is not checked out`);
-      else console.warn(`[vnstudio] ${ref.role} sits inside ${ref.root}; not committing there`);
-    }
+    ctx.repoList = new RepoList(root, {
+      notice : noticeSubmodules,
+      skipped: (message) => console.warn(`[vnstudio] ${message}`),
+    });
+    submodules = await ctx.repoList.open();
     // Before the sweep, so what was just written lands under a subject saying what it is
     // rather than under "Changes made outside the app".
     await commitScaffolding(root, scaffolded);

@@ -270,9 +270,10 @@ construction and the scaffolding is already in its first commit.
   session ignore line. It runs before any git, because the files are needed whether or not
   git is installed.
 - `ensureRepo(root)` brings the project under version control.
-- `adoptSubmodules(root)` checks the project's submodules ([Submodules](#submodules)). It
-  runs only when `ownsRepo(root)` is true.
-- `Workspace.repos()` builds the list of owned repos the committer commits in.
+- `RepoList.open()` (`apps/desktop/src/main/workspace/repolist.ts`) runs
+  `adoptSubmodules(root)`, which checks the project's submodules
+  ([Submodules](#submodules)) and runs only when `ownsRepo(root)` is true. It then builds
+  the list of owned repos the committer commits in from `Workspace.repos()`.
 - `commitScaffolding(root, wrote)` commits what `writeScaffolding` wrote, one subject per
   file, so none of it lands under "Changes made outside the app". It checks `ownsRepo`
   itself.
@@ -425,6 +426,11 @@ other nested repo. The plan is
   such a directory as `{ role, root: <dir>, owned: false, missing: true }`. The History
   pane's strip, its empty list and its refusals say the submodule is not checked out. Its
   reads refuse too, where they would otherwise answer with the project's history.
+- **A submodule added while the app is open is committed to from the next act.** Before
+  each commit, `RepoList` checks, without spawning git, whether the project, `wiki/` or
+  `assets/` gained or lost a `.git`, and whether `.gitmodules` changed. When one did, it
+  repeats the whole lookup, `adoptSubmodules` included, and posts what that finds. A
+  directory's mtime is not part of the check, because every commit writes inside `.git`.
 - **Undo does not touch repository structure.** The snapshot walk skips `.git` whether it
   is a directory or a submodule's file, and `.gitmodules` is in `UNDO_EXCLUDES`.
 - **Adding or removing a submodule** is done in a terminal, never from the app.
