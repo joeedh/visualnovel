@@ -18,6 +18,7 @@ describes what underlies it. The plan and the reasoning behind each decision are
 - [The file tree](#the-file-tree)
 - [Where it lives](#where-it-lives)
 - [Right-click menus](#right-click-menus)
+- [Moving, copying and renaming files](#moving-copying-and-renaming-files)
 - [Renaming in place](#renaming-in-place)
 - [Opening a shot's frame](#opening-a-shots-frame)
 - [Deliberately absent](#deliberately-absent)
@@ -273,15 +274,16 @@ pane lists files only, as before.
 
 ## Where it lives
 
-| Piece                                                                                           | Where                                                                                     |
-| ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Shapes (`DocNode`, `EntityLinks`, `DocTree`)                                                    | `apps/desktop/src/shared/ipc.ts`                                                          |
-| The projection (`buildDocTree`, `fileTree`) — pure                                              | `apps/desktop/src/main/doctree/doctree.ts`                                                |
-| Asset display names (`assetLabel`, `labelAssets`) — pure                                        | `apps/desktop/src/main/assets/assetlabel.ts`                                              |
-| The reads (one `loadProject`, one `readShots` per scene, `bible.files()`, one `discoverSkills`) | `WorkspaceSession.docTree()` / `.fileTree()`                                              |
-| The skills walk (`walkFiles` under each skill, across the three tiers)                          | `WorkspaceSession.skillTree()`                                                            |
-| Channels                                                                                        | `workspace:doctree`, `workspace:filetree`, `workspace:skilltree`                          |
-| Commands                                                                                        | `workspace.doctree`, `workspace.filetree`, `workspace.skilltree` (non-mutating, no props) |
+| Piece                                                                                           | Where                                                                                                      |
+| ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Shapes (`DocNode`, `EntityLinks`, `DocTree`)                                                    | `apps/desktop/src/shared/ipc.ts`                                                                           |
+| The projection (`buildDocTree`, `fileTree`) — pure                                              | `apps/desktop/src/main/doctree/doctree.ts`                                                                 |
+| Asset display names (`assetLabel`, `labelAssets`) — pure                                        | `apps/desktop/src/main/assets/assetlabel.ts`                                                               |
+| The reads (one `loadProject`, one `readShots` per scene, `bible.files()`, one `discoverSkills`) | `WorkspaceSession.docTree()` / `.fileTree()`                                                               |
+| The skills walk (`walkFiles` under each skill, across the three tiers)                          | `WorkspaceSession.skillTree()`                                                                             |
+| File commands (`doc.mkdir`, `doc.newFile`, `doc.move`, `doc.copy`)                              | `apps/desktop/src/main/commands/docfiles.ts`, over `FilesPart` in `apps/desktop/src/main/session/files.ts` |
+| Channels                                                                                        | `workspace:doctree`, `workspace:filetree`, `workspace:skilltree`                                           |
+| Commands                                                                                        | `workspace.doctree`, `workspace.filetree`, `workspace.skilltree` (non-mutating, no props)                  |
 
 It sits in the desktop's main process rather than `@vn/authoring` because the walk needs
 `AssetStore` and the persisted storyboards (neither of which `Workspace` opens), and
@@ -401,6 +403,98 @@ the popup.
 The asset editor's own header carries the same `asset` entries behind a `⋯` button, drawn
 from the same table. Both menus read that one table, which shows that `menuFor` is
 node-shaped rather than tree-shaped.
+
+## Moving, copying and renaming files
+
+`doc.move` moves files and folders into a folder, and with `name` it renames one file or
+folder. `doc.copy` copies files and folders into a folder. Neither is drawn in the tree
+yet, so both run from the palette and over CDP:
+`node scripts/vn-cdp.mjs "doc.move(paths=['wiki/a.md'] into='wiki/lore')"`. Both are
+undoable. Their check and their run call the same planner (`planTransfer` in
+`src/main/session/files.ts`, after the pure `planMove` and `planCopy` in
+`src/shared/fileops.ts`), so a check shows the refusal the run would give.
+
+Where they may act:
+
+- **Only under the four roots.** Every source and `into` must be under `wiki/`,
+  `characters/`, `locations/` or `archive/`, as for New folder… and New file…. A root
+  itself can be `into` but not a source, so `wiki/` cannot be moved or renamed.
+- **Not across repositories.** A source and `into` that `RepoResolver.rootOf` (`@vn/git`)
+  places in different git repositories are refused, for a copy as well as a move, because
+  a file's history would stay in one and other projects sharing a submodule `wiki/` would
+  see it vanish. Two paths in no repository count as the same one. `into` inside a
+  submodule that is not checked out is refused too, since nothing written there would be
+  in any history.
+
+What else is refused:
+
+- A folder moved or copied into itself or into a folder inside it.
+- A move into the folder the item is already in, with no `name`; `name` with more than one
+  path; a rename to the same name.
+- A rename that changes only letter case. On Windows and macOS, undoing it would write
+  `a.md` and then delete `A.md`, which is the same file.
+- Two sources with the same name moved into one folder, and a name the folder already
+  holds. Names are compared without case on Windows and macOS. A copy never collides: it
+  takes `-copy` before the extension, then `-copy-2` and on (`a.md` → `a-copy.md`, `lore`
+  → `lore-copy`), so copying into the item's own folder duplicates it.
+- Anything undo cannot hold. A source that is, or holds, a media file (`MEDIA_EXTS`), a
+  symbolic link or other non-regular file, a `.git` entry, a `node_modules` folder or an
+  interrupted save's temp file is refused, naming the first one found. So is a folder that
+  holds files and also an empty folder, because undo has no entry for the empty folder and
+  would leave it, and its parents, at the destination.
+- A change to which characters and locations the project has. A moved markdown file must
+  keep the identity discovery gives it now: the check compares `entityIdentity` at the new
+  path against `discoverCandidates` over the project. A tagged sheet can therefore move
+  anywhere under `wiki/` as long as its file name stays the same, and `locations/cafe.md`
+  can move into `wiki/` only if it carries `type: location`. Moving `characters/aiko/`,
+  renaming a sheet's file, and moving a plain note into `locations/` are refused. Because
+  candidates include the losing copy of a duplicate id, a move that changes which
+  duplicate wins is accepted. A copy must have no identity at all, so a sheet cannot be
+  copied.
+
+How much a check reads: the named paths and the folders under them (a directory walk for
+names and file types), `into`'s listing, and the front-matter of the markdown being moved
+or copied. A move of markdown under `wiki/`, `characters/` or `locations/` also runs
+entity discovery, because main holds no loaded project to compare against. The check does
+not scan for links.
+
+Links follow the move:
+
+- The run rewrites every relative link that pointed at a moved file, in each markdown file
+  under `wiki/`, `characters/` and `locations/` (`relink` in
+  `src/main/doctree/relink.ts`). Each moved or copied markdown file also has its own
+  relative links rewritten, so they name the same files from its new place, and a copy's
+  links to another item copied with it name that copy.
+- Inline links, images, angle-bracket hrefs and reference definitions are rewritten;
+  fenced code, inline code, urls, and hrefs starting with `/` or `#` are not. A fragment
+  and a query are kept.
+- Nothing under `archive/` is rewritten, and neither is anything under `scenes/`.
+- The rewrite writes bytes with only the hrefs changed, after checking that the file still
+  hashes to what was read. It does not go through `writeDocFile`, so a note with
+  front-matter that does not parse, or an oversized file, cannot block a move.
+- The message counts the rewritten files: "Moved wiki/a.md to wiki/lore/a.md; updated
+  links in 2 documents."
+
+What undo does and does not restore:
+
+- A move is two snapshots holding the same bytes at different paths, and the rewritten
+  links are in the same bracket, so one undo puts back the files and the link text
+  together. Every destination file gets a fresh mtime, because the undo store trusts a
+  matching `(mtime, size)` at a path and a renamed file keeps its own.
+- Undoing the first thing put into an empty folder removes that folder, because the
+  snapshot before the move did not hold it.
+- A run that fails part way (a rename refused because a file is open, a linking file
+  edited during the run) puts back everything it did before it reports the error, since a
+  failed command leaves no undo point. If putting something back fails too, the error
+  names what was left at the destination.
+- Open editors do not follow a move. `doc.move` pushes a `docs` `moved` effect to every
+  window before it returns, but the renderer does nothing with it yet.
+- Show history on a moved file starts at the move, because `@vn/git` runs `git log`
+  without `--follow`.
+
+`written` lists every source path, every destination file and every file whose links were
+rewritten. After either command, the window that ran it opens every folder above the new
+paths (the `docs` `reveal` push).
 
 ## Renaming in place
 

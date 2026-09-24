@@ -423,6 +423,11 @@ const OTHER_RUNS: Run[] = [
   },
   { id: 'doc.mkdir', props: { parent: 'wiki', name: 'lore' } },
   { id: 'doc.newFile', props: { parent: 'wiki/lore', name: 'notes.txt', open: false } },
+  { id: 'doc.copy', props: { paths: ['wiki/factions.md'], into: 'wiki/lore' } },
+  {
+    id   : 'doc.move',
+    props: { paths: ['wiki/lore/factions.md'], into: 'wiki/lore', name: 'groups.md' },
+  },
   { id: 'project.setArtStyle', props: { style: 'soft watercolour' } },
   { id: 'project.setStoryboardNotes', props: { notes: 'pages of four to six panels' } },
   { id: 'project.setLettering', props: { lettering: 'model' } },

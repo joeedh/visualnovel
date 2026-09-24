@@ -758,7 +758,7 @@ import { AssetPart } from './asset.js';
 import { PromptPart } from './prompt.js';
 import { ProjectPart } from './project.js';
 import { DocsPart } from './docs.js';
-import { FilesPart } from './files.js';
+import { FilesPart, type TransferMode, type TransferResult } from './files.js';
 import { StoryPart } from './story.js';
 import { PipelinePart } from './pipeline.js';
 import { GengraphPart, type SheetScaffoldPlan } from './gengraph.js';
@@ -2456,6 +2456,25 @@ export class WorkspaceSession {
   /** Create one empty file under one of the four file roots. */
   newFile(parent: string, name: string): Promise<DocResult<DocSaveResult>> {
     return this.filesPart.newFile(parent, name);
+  }
+
+  previewTransfer(
+    paths: readonly string[],
+    into: string,
+    mode: TransferMode,
+    name = '',
+  ): Promise<DocResult<{ note: string }>> {
+    return this.filesPart.previewTransfer(paths, into, mode, name);
+  }
+
+  /** Move or copy files and folders under the four file roots, rewriting the links they break. */
+  transfer(
+    paths: readonly string[],
+    into: string,
+    mode: TransferMode,
+    name = '',
+  ): Promise<DocResult<TransferResult>> {
+    return this.filesPart.transfer(paths, into, mode, name);
   }
 
   async previewRename(path: string, name: string): Promise<DocResult<{ note: string }>> {

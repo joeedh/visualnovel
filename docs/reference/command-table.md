@@ -2,8 +2,8 @@
 
 # Registered commands
 
-221 commands, in 25 namespaces. 134 are `mutating`;
-148 declare a precondition; 81 are undoable; 25 ask
+223 commands, in 25 namespaces. 136 are `mutating`;
+150 declare a precondition; 83 are undoable; 25 ask
 for confirmation.
 
 ✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
@@ -51,8 +51,10 @@ for confirmation.
 | `asset.upload` ✍ ⚠ ✓ | `file`, `title` (default `''`), `slot` (default `''`), `replace` (default `false`), `open` (default `true`) | Writes `assets/objects`, `assets/manifest.json`, `vngen/build/assets`, `vngen/build/manifest.json`, `vngen/work/shots`, `vngen/state/tasks.jsonl`. Bring an image from outside into the **base** store. With no `slot` it is a `reference`: nothing generated it, so it is never approved and never planned — it exists to be pointed at by `prompt.addRef`. Name a `slot` and the same act files the bytes and adopts them onto it, which is what a repainted plate wants. Mock placeholder art and anything that is not an image are refused by name; a file that lands but cannot be adopted says so and stays filed as a reference, recoverable with `asset.adopt`. |
 | `bible.search` | `query`, `limit` (default `8`) | Ranked excerpts from `wiki/`. There is no `bible.read`: [`@vn/bible`](story-bible.md) has no whole-file API. |
 | `command.check` | `invocation` | Would that invocation run? See [Preconditions](command-system.md#preconditions-asking-before-acting). |
+| `doc.copy` ✍ ↺ ✓ | `paths`, `into` | Writes `wiki`, `characters`, `locations`, `archive`. Only under wiki/, characters/, locations/ and archive/, and refused for the same media, links, repositories and submodules `doc.move` refuses. A copy’s own relative links are rewritten so they still name the same files, or the other copies made with it; nothing under archive/ is rewritten. |
 | `doc.create` ✍ ↺ ✓ | `kind` (`character`\|`location`\|`note`\|`skill`), `name`, `open` (default `true`), `dir` (default `''`) | Writes `characters`, `locations`, `wiki`, `.aiagent/skills`. Scaffold a sheet, a note or a skill in its conventional home, from the same templates the agent's create tools use. Refuses over an existing path. |
 | `doc.mkdir` ✍ ↺ ✓ | `parent`, `name` | Writes `wiki`, `characters`, `locations`, `archive`. Only under wiki/, characters/, locations/ and archive/. An empty folder is in no undo snapshot, so undo walks past this command to the one before it, and the folder stays; like every mutating command it still clears redo. |
+| `doc.move` ✍ ↺ ✓ | `paths`, `into`, `name` (default `''`) | Writes `wiki`, `characters`, `locations`, `archive`. Only under wiki/, characters/, locations/ and archive/. Also refused: a name the folder already holds (case-folded on Windows and macOS), a rename that changes only letter case, a folder into itself, media, symbolic links, a nested repository, and a submodule that is not checked out. Links under archive/ and scenes/ are never rewritten. Every window is told what moved (a `docs` `moved` push) before the command returns. |
 | `doc.newFile` ✍ ↺ ✓ | `parent`, `name`, `open` (default `true`) | Writes `wiki`, `characters`, `locations`, `archive`. Only under wiki/, characters/, locations/ and archive/. The name is used as typed, extension included. Media extensions are refused, because undo does not keep media files. |
 | `doc.read` | `path` | The text of one workspace document, with the content hash it was read at. Bounded and text only. |
 | `doc.rename` ✍ ↺ ✓ | `path`, `name` | Writes `characters`, `locations`, `wiki`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`. Change the name a document is known by, **in place**. A sheet is renamed through its `name:` field, anything else through its title — front-matter `title:`, else the first heading — so the new name is read back from wherever the old one was. The file does not move: an id is derived from a name once, at creation, and afterwards it is what shots, cast lists and `[[goto:]]` markers point at. What the tree's double-click-to-rename dispatches. |

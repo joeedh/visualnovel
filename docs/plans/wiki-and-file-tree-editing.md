@@ -1,6 +1,6 @@
 # Wiki and file tree editing
 
-Status: partial — stage 1 of 5 shipped. Reviewed once by a fresh-context agent; its
+Status: partial — stages 1–2 of 5 shipped. Reviewed once by a fresh-context agent; its
 nineteen findings and how each was answered are in [Review](#review).
 
 This plan covers the six items in `todos.md` under "Wiki Subtree / File Tree Commands".
@@ -829,6 +829,36 @@ from stage 4; palette and CDP until then."
 - Verify by hand over CDP:
   `node scripts/vn-cdp.mjs "doc.move(paths=['wiki/a.md'] into='wiki/lore')"`, then undo
   and redo from the Edit menu, with a page linking to `wiki/a.md` open.
+- Shipped. What the implementation settled or changed:
+    - **D3 and D6 were wrong that main holds a loaded project.** Every session method
+      calls `loadProject` afresh; nothing caches discovery. A move's check therefore runs
+      `discoverCandidates` itself, but only when a moved markdown file starts or ends
+      under `wiki/`, `characters/` or `locations/`. That reads every sheet's front-matter,
+      which is more than "How much a check reads" allowed; it is the same read
+      `loadProject` makes for most other commands' checks. A copy needs no discovery, only
+      `entityIdentity` at each destination.
+    - **D3 missed empty folders.** A folder that holds files and also an empty folder is
+      refused, because undo would move the files back and leave the empty folder, and so
+      its parent, at the destination. A folder with no files at all is accepted; like
+      `doc.mkdir`, its move leaves no undo point. The temp sibling an interrupted atomic
+      write leaves (`*.tmp-<hex>`) is refused too, since a snapshot skips it.
+    - **Undoing a move into any empty folder removes that folder**, not only one made by
+      `doc.mkdir`, for the same reason D4 gives.
+    - **`doc.copy` rewrites each copy's own relative links**, which D7 reserved for moves.
+      Without it a page copied into another folder had broken links. The move map for a
+      copy is the copy map, so a link between two items copied together names the copy.
+      Nothing under `archive/` is rewritten, as for a move.
+    - `written`: for `doc.move`, each source as named, every source file, every
+      destination file and every rewritten file; for `doc.copy`, the destination files and
+      rewritten files only, since a copy writes nothing at its sources.
+    - The media refusal says "is an image" only for image extensions; other media name
+      their extension ("wiki/theme.mp3 is a .mp3 file…").
+    - The fault seam is `FilesPart.step(stage, path)`, called before each item is placed
+      and before each rewritten file is written.
+    - A bare href is decoded with `decodeURI` and re-encoded only for `%`, whitespace,
+      parentheses and angle brackets, so a rewritten href keeps non-ASCII names readable.
+    - `docpath.test.ts` held the `doclinks` tests as well; those stayed in the renderer as
+      `doctree/tests/doclinks.test.ts`, and only the `docpath` cases moved.
 
 ### Stage 3 — Multiselect
 

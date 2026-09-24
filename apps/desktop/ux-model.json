@@ -48297,6 +48297,14 @@
     {
       "match": "upload.files",
       "why"  : "Uploads come from the drop target."
+    },
+    {
+      "match": "doc.move",
+      "why": "Drawn by the documents pane’s Paste and Rename entries from stage 4; palette and CDP until then."
+    },
+    {
+      "match": "doc.copy",
+      "why": "Drawn by the documents pane’s Paste and Rename entries from stage 4; palette and CDP until then."
     }
   ],
   "shortcuts": [

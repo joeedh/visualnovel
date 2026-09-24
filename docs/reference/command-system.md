@@ -295,10 +295,11 @@ the vocabulary and the rules, the arrangement `mutating` and `undoable` already 
   schedules a debounced flush that would land during the next command's window.
   `vngen/build` and `vngen/state` are not skipped, unlike `UNDO_EXCLUDES`: a command
   writing generated output is what the tier exists to see.
-- **The file commands refuse outside their declaration in `check`.** `doc.mkdir` and
-  `doc.newFile` declare `FILE_ROOTS` (`src/shared/fileops.ts`: `wiki`, `characters`,
-  `locations`, `archive`), and `rootProblem` refuses any other target before the command
-  runs, so the declaration is enforced as well as tested.
+- **The file commands refuse outside their declaration in `check`.** `doc.mkdir`,
+  `doc.newFile`, `doc.move` and `doc.copy` declare `FILE_ROOTS` (`src/shared/fileops.ts`:
+  `wiki`, `characters`, `locations`, `archive`), and `rootProblem` refuses any other
+  source or target before the command runs, so the declaration is enforced as well as
+  tested.
 - **`checkWrittenScope` is a separate rule.** Folding the checkpoint scope check onto
   `covers` would change behaviour for every checkpoint caller in a shared package, so the
   two matchers stay apart until `affects` has settled.
@@ -319,14 +320,17 @@ original is written up in full in
 - **Opt-in per command.** `Command.undoable` widened from `?: false` to `?: boolean`, and
   only document mutators set it. Those are every `story.*` command (the branch and
   coverage commands it shipped for, the prose edits, `moveShot` and the two outfit
-  commands), plus `doc.write`, `doc.create`, `doc.rename`, `doc.mkdir` and `doc.newFile`,
-  which write documents by the same right. `doc.mkdir` is undoable in name only: an empty
-  folder is in no snapshot, so its record has nothing to restore and undo walks past it.
-  The authored-input writers that followed set it too: `art.setNotes`,
-  `project.setArtStyle` and the `prompt.*` chunk editors. A command whose writes are
-  generated output stays out, as does one that straddles both classes. The `↺` column in
-  the table below lists the full set. Read it there rather than counting here, because the
-  set grows.
+  commands), plus `doc.write`, `doc.create`, `doc.rename`, `doc.mkdir`, `doc.newFile`,
+  `doc.move` and `doc.copy`, which write documents by the same right. `doc.mkdir` is
+  undoable in name only: an empty folder is in no snapshot, so its record has nothing to
+  restore and undo walks past it. A move is representable because its pre and post
+  snapshots hold the same blobs at different paths, and because `doc.move` refuses
+  everything a snapshot skips (media, links, `.git`, an empty folder beside files), so a
+  restore never leaves anything behind at the destination. The authored-input writers that
+  followed set it too: `art.setNotes`, `project.setArtStyle` and the `prompt.*` chunk
+  editors. A command whose writes are generated output stays out, as does one that
+  straddles both classes. The `↺` column in the table below lists the full set. Read it
+  there rather than counting here, because the set grows.
 - **The store is `ContentStore` (`@vn/commands/snapshot`).** Files hash to blobs and
   directories hash to sorted entry lists, so identical directory states share a tree hash
   and comparing them compares one string. It holds bytes in memory and touches disk only
@@ -471,39 +475,39 @@ creates one by hand. Once the file is written, it takes precedence from then on.
 `@vn/scriptedit` rules and get the same refusals.
 
 **Only what a snapshot of the worktree can restore is undoable** — the eighteen `story.*`
-ones plus `doc.write`, `doc.create`, `doc.rename`, `doc.mkdir`, `doc.newFile`,
-`art.setNotes`, the eight `prompt.*` writers, `project.setArtStyle`, and the two `view.*`
-commands that write layout templates. Those last two are the only undoable commands that
-are not document edits, and they qualify for exactly the same reason: a template is an
-ordinary file in the project, inside the class a snapshot covers, so undo puts the
-author's back. Which panes are open is _not_ — that is a window fact remembered per
-install, which is why `view.applyLayout` is neither mutating nor undoable. `asset.accept`
-and `asset.regenerate` write into the generated class instead (a manifest, a status log),
-so neither is undoable and neither needs to be: accepting again and regenerating again are
-both ordinary acts. `asset.upload` is the same class — bytes and a manifest row in the
-base store — and an upload nothing points at costs nothing, so it is not undoable either.
-`art.generate` and `art.redraw` are the same shape — bytes and a manifest row, and undoing
-an image you paid for by deleting it is not an improvement (a redraw files a _new_ sketch
-and leaves the original where it is, so there is nothing to undo). `art.promote` writes
-across _both_ classes at once (a location sheet, a manifest row, and a `done` record in
-the task log), which is exactly what a document snapshot cannot restore, so it asks for
-confirmation instead of offering undo. `asset.adopt` and `asset.replace` are that same act
-with the sheet write dropped — the `done` record `tasks.jsonl` has no un-appending for is
-reason enough on its own, and superseding is recoverable the honest way instead, by
-adopting the earlier hash back. `gate.approve` straddles both data classes — undoing
-`character.md` would leave `manifest.json` still marking the asset `accepted` —
-`story.export`, `story.screenplay` and `pipeline.run` write only generated output, and
-`agent.run` owns its own commits, one per approved plan. `workspace.import` restructures
-the whole worktree, which is what a whole-tree snapshot is worst at, and the
-`<name>.fountain.imported` it leaves behind is a reversal the author can perform;
-`workspace.reindex` writes one derived file, and undoing it means running it again;
-`project.setKey` writes into `keys/`, which `UNDO_EXCLUDES` keeps outside the snapshot on
-purpose, so no undo can write over or delete a credential; `upload.files`/`upload.pick`
-copy bytes in from outside the tree _and_ close the conversation that was open, which
-`vngen/state` being outside the snapshot means undo could not put back; and
-`workspace.open`/`workspace.pick`/`workspace.create` write into a _different_ tree than
-the one a snapshot covers, and switching workspaces drops the journal along with the
-stack. The reasoning is in
+ones plus `doc.write`, `doc.create`, `doc.rename`, `doc.mkdir`, `doc.newFile`, `doc.move`,
+`doc.copy`, `art.setNotes`, the eight `prompt.*` writers, `project.setArtStyle`, and the
+two `view.*` commands that write layout templates. Those last two are the only undoable
+commands that are not document edits, and they qualify for exactly the same reason: a
+template is an ordinary file in the project, inside the class a snapshot covers, so undo
+puts the author's back. Which panes are open is _not_ — that is a window fact remembered
+per install, which is why `view.applyLayout` is neither mutating nor undoable.
+`asset.accept` and `asset.regenerate` write into the generated class instead (a manifest,
+a status log), so neither is undoable and neither needs to be: accepting again and
+regenerating again are both ordinary acts. `asset.upload` is the same class — bytes and a
+manifest row in the base store — and an upload nothing points at costs nothing, so it is
+not undoable either. `art.generate` and `art.redraw` are the same shape — bytes and a
+manifest row, and undoing an image you paid for by deleting it is not an improvement (a
+redraw files a _new_ sketch and leaves the original where it is, so there is nothing to
+undo). `art.promote` writes across _both_ classes at once (a location sheet, a manifest
+row, and a `done` record in the task log), which is exactly what a document snapshot
+cannot restore, so it asks for confirmation instead of offering undo. `asset.adopt` and
+`asset.replace` are that same act with the sheet write dropped — the `done` record
+`tasks.jsonl` has no un-appending for is reason enough on its own, and superseding is
+recoverable the honest way instead, by adopting the earlier hash back. `gate.approve`
+straddles both data classes — undoing `character.md` would leave `manifest.json` still
+marking the asset `accepted` — `story.export`, `story.screenplay` and `pipeline.run` write
+only generated output, and `agent.run` owns its own commits, one per approved plan.
+`workspace.import` restructures the whole worktree, which is what a whole-tree snapshot is
+worst at, and the `<name>.fountain.imported` it leaves behind is a reversal the author can
+perform; `workspace.reindex` writes one derived file, and undoing it means running it
+again; `project.setKey` writes into `keys/`, which `UNDO_EXCLUDES` keeps outside the
+snapshot on purpose, so no undo can write over or delete a credential;
+`upload.files`/`upload.pick` copy bytes in from outside the tree _and_ close the
+conversation that was open, which `vngen/state` being outside the snapshot means undo
+could not put back; and `workspace.open`/`workspace.pick`/`workspace.create` write into a
+_different_ tree than the one a snapshot covers, and switching workspaces drops the
+journal along with the stack. The reasoning is in
 [`../plans/archive/INDEX.md#command-undo-redo`](../plans/archive/INDEX.md#command-undo-redo),
 and each command's own [`affects`](#every-mutating-command-declares-what-it-may-touch) now
 states which subtrees the reasoning is about.
@@ -680,6 +684,15 @@ path. `scenes/**` still has exactly one write path, and it is `story.*`.
   a path discovery would read as a character or location sheet, and it opens the new file
   in the Wiki editor when it is text (`open=false` to skip that). Both ask the window that
   ran them to expand the tree down to the new path, through a `docs` `reveal` push.
+- **`doc.move` and `doc.copy` move or copy files and folders into a folder.** Both take
+  `paths` and `into`; `doc.move` also takes `name`, which renames the one item it moves,
+  so a rename is a move into the folder the item is already in. Both refuse outside
+  `FILE_ROOTS`, across git repositories, into a submodule that is not checked out, and
+  anything undo cannot hold, and a move refuses whatever would change an entity's id. A
+  move rewrites the relative links that pointed at what it moved, except under `archive/`
+  and `scenes/`, and tells every window what moved through a `docs` `moved` push; a copy
+  that would collide takes a `-copy` name. The rules are written up in
+  [`document-tree.md`](document-tree.md#moving-copying-and-renaming-files).
 
 ### The `prompt.` namespace
 

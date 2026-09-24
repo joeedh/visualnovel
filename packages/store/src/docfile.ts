@@ -311,7 +311,11 @@ function parseFrontMatterOrEmpty(text: string): FrontMatterDoc {
   }
 }
 
-/** `checkDocWrite`, then the atomic write. The only whole-document write path. */
+/**
+ * `checkDocWrite`, then the atomic write. Every save of a whole document comes through here;
+ * the one other whole-file write is the desktop's link rewrite after a move, which writes a
+ * file's bytes back with only its hrefs changed, so it parses nothing and refuses no size.
+ */
 export async function writeDocFile(
   root: string,
   path: string,

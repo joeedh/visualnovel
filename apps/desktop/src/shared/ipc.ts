@@ -195,6 +195,11 @@ export type UiEffect =
    */
   | { type: 'docs'; action: 'reveal'; paths: string[] }
   /**
+   * Files and folders `doc.move` moved, sent to every window before the command returns. `from`
+   * and `to` are workspace-relative, and a folder's entry covers everything under it.
+   */
+  | { type: 'docs'; action: 'moved'; moves: { from: string; to: string }[] }
+  /**
    * Rearrange the whole window to a layout template. Main reads the file and sends its contents,
    * because only main may read the project and only the renderer can build a mesh. `fingerprint`
    * tells the renderer whether the arrangement it is already showing is still the one on disk.

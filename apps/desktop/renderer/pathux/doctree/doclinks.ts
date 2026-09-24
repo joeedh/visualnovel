@@ -5,7 +5,7 @@
  * read out of the document tree, so a link can only name what the tree shows.
  */
 import { pictureAsset } from '../assets/picturepath.js';
-import { relativePath, resolvePath } from './docpath.js';
+import { relativePath, resolvePath } from '../../../src/shared/docpath.js';
 import type { DocNode } from '../../../src/shared/ipc.js';
 
 /** How many rows a completion shows; the query narrows the rest. */

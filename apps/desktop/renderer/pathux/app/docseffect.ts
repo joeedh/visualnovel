@@ -39,5 +39,8 @@ export async function docsEffect(effect: DocsEffect, deps: DocsDeps): Promise<vo
     case 'reveal':
       for (const listener of revealers) listener(effect.paths);
       return;
+    // Open documents do not follow a move yet, and a move saves nothing
+    case 'moved':
+      return;
   }
 }

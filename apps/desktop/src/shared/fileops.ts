@@ -1,8 +1,8 @@
 /**
- * The path rules of the document tree's file commands (`doc.mkdir`, `doc.newFile`), decided
- * without touching the disk. Main's `FilesPart` runs them before its own disk rules, and the
- * renderer runs `rootProblem` to grey a New folder… or New file… entry whose folder the commands
- * would refuse, since a form entry is never checked before the menu opens.
+ * The path rules of the document tree's file commands (`doc.mkdir`, `doc.newFile`, `doc.move`,
+ * `doc.copy`), decided without touching the disk. Main's `FilesPart` runs them before its own disk
+ * rules, and the renderer runs `rootProblem` to grey a New folder… or New file… entry whose folder
+ * the commands would refuse, since a form entry is never checked before the menu opens.
  */
 import { skillTierPath } from './editors.js';
 import { normalizePath } from './writes.js';
@@ -84,4 +84,141 @@ export function planCreate(
   const named = fileNameProblem(name);
   if (named) return { ok: false, reason: named };
   return { ok: true, parent: folder, path: `${folder}/${name}` };
+}
+
+/** One item moved or copied: a file or a folder, workspace-relative at both ends. */
+export interface FileMove {
+  from: string;
+  to: string;
+}
+
+type Planned = { ok: true; into: string; moves: FileMove[] } | { ok: false; reason: string };
+
+const trimPath = (path: string): string => normalizePath(path).replace(/\/+$/, '');
+
+/** Answers the last segment of a workspace-relative path. */
+export const baseName = (path: string): string => path.slice(path.lastIndexOf('/') + 1);
+
+/** `path` is `folder` or inside it, compared without regard to letter case. */
+const within = (path: string, folder: string): boolean => {
+  const p = path.toLowerCase();
+  const f = folder.toLowerCase();
+  return p === f || p.startsWith(`${f}/`);
+};
+
+/**
+ * Applies the rules a move and a copy share: every path is an item under the four roots, `into` is a
+ * folder under them, no folder goes into itself, and a path inside another listed folder is
+ * dropped because that folder carries it.
+ */
+function planSources(paths: readonly string[], into: string, verb: string): Planned {
+  const folder = trimPath(into);
+  const where = rootProblem(folder, 'folder');
+  if (where) return { ok: false, reason: where };
+  const listed = [...new Set(paths.map(trimPath))];
+  if (listed.length === 0)
+    return { ok: false, reason: `Name at least one file or folder to ${verb}.` };
+  for (const path of listed) {
+    const problem = rootProblem(path, 'item');
+    if (problem) return { ok: false, reason: problem };
+    if (within(folder, path)) {
+      return {
+        ok    : false,
+        reason: `${path} cannot be put into ${folder === path ? 'itself' : `${folder}, which is inside it`}.`,
+      };
+    }
+  }
+  const kept = listed.filter(
+    (path) => !listed.some((other) => other !== path && within(path, other)),
+  );
+  return {
+    ok   : true,
+    into : folder,
+    moves: kept.map((from) => ({ from, to: `${folder}/${baseName(from)}` })),
+  };
+}
+
+/**
+ * Where each of `paths` goes when moved into `into`, or why the move is refused. `name`, which is
+ * allowed with one path only, gives the item a new name at its destination; a move into the folder
+ * the item is already in is then a rename. A rename that changes only letter case is refused,
+ * because on Windows and macOS undoing it would write the old name and then delete the new one,
+ * which is the same file.
+ */
+export function planMove(paths: readonly string[], into: string, name = ''): Planned {
+  const planned = planSources(paths, into, 'move');
+  if (!planned.ok) return planned;
+  if (name !== '') {
+    if (planned.moves.length !== 1) {
+      return { ok: false, reason: 'A new name can be given only when one item is moved.' };
+    }
+    const named = fileNameProblem(name);
+    if (named) return { ok: false, reason: named };
+    planned.moves[0]!.to = `${planned.into}/${name}`;
+  }
+  const seen = new Map<string, string>();
+  for (const { from, to } of planned.moves) {
+    if (to === from) {
+      return {
+        ok    : false,
+        reason:
+          name === ''
+            ? `${from} is already in ${planned.into}.`
+            : `${from} is already called ${name}.`,
+      };
+    }
+    if (to.toLowerCase() === from.toLowerCase()) {
+      return {
+        ok    : false,
+        reason:
+          `${from} and ${to} differ only in letter case, which Windows and macOS treat as one ` +
+          'name, so undoing the rename would delete the file. Rename it to a different name, ' +
+          'then to the one you want.',
+      };
+    }
+    const key = baseName(to).toLowerCase();
+    const clash = seen.get(key);
+    if (clash !== undefined) {
+      return {
+        ok    : false,
+        reason: `${clash} and ${from} have the same name, so they cannot both go into ${planned.into}.`,
+      };
+    }
+    seen.set(key, from);
+  }
+  return planned;
+}
+
+/**
+ * The items `paths` copies into `into`, each still under its own name; `FilesPart` renames a
+ * copy whose name is taken with {@link copyName}. Unlike a move, a copy into the folder an item is
+ * already in is allowed, since that is how a page is duplicated.
+ */
+export function planCopy(paths: readonly string[], into: string): Planned {
+  return planSources(paths, into, 'copy');
+}
+
+/**
+ * A name for a copy of `name` that `taken` does not hold: the name itself, then `-copy` before the
+ * extension, then `-copy-2`, `-copy-3`. A folder has no extension, so `lore` becomes `lore-copy`.
+ * No spaces or parentheses, because a link to `a (copy).md` does not parse as a markdown link.
+ */
+export function copyName(name: string, folder: boolean, taken: (name: string) => boolean): string {
+  if (!taken(name)) return name;
+  const dot = folder ? -1 : name.lastIndexOf('.');
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const ext = dot > 0 ? name.slice(dot) : '';
+  for (let n = 1; ; n++) {
+    const candidate = `${stem}-copy${n === 1 ? '' : `-${n}`}${ext}`;
+    if (!taken(candidate)) return candidate;
+  }
+}
+
+/** Where `path` is after `moves`: its own entry's `to`, the same place under a moved folder, or unchanged. */
+export function remapPath(path: string, moves: readonly FileMove[]): string {
+  for (const { from, to } of moves) {
+    if (path === from) return to;
+    if (path.startsWith(`${from}/`)) return `${to}${path.slice(from.length)}`;
+  }
+  return path;
 }

@@ -43,4 +43,12 @@ describe('docsEffect', () => {
     expect(r.said).toEqual([]);
     expect(heard).toEqual([['wiki/lore']]);
   });
+
+  it('saves nothing and says nothing for a move', async () => {
+    const r = rig();
+    const moves = [{ from: 'wiki/a.md', to: 'wiki/lore/a.md' }];
+    await docsEffect({ type: 'docs', action: 'moved', moves }, r.deps);
+    expect(r.saves()).toBe(0);
+    expect(r.said).toEqual([]);
+  });
 });

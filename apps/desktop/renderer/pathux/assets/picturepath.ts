@@ -3,7 +3,7 @@
  * document-relative path to the stored file rather than a `vnasset://` url, so a markdown viewer
  * over the same checkout draws the picture too; the app maps it back when it renders.
  */
-import { relativePath, resolvePath } from '../doctree/docpath.js';
+import { relativePath, resolvePath } from '../../../src/shared/docpath.js';
 
 /** The two roots stored bytes live under (`docs/reference/asset-stores.md`), as workspace paths. */
 const ROOTS = ['assets/objects/', 'vngen/build/assets/'];

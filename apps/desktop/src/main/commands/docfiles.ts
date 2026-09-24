@@ -1,6 +1,6 @@
 /**
- * Commands that create files and folders in the document tree, as opposed to `doc.ts`'s commands
- * over one document's contents. Every path they take must be under `FILE_ROOTS`, which is also
+ * Commands that create, move and copy files and folders in the document tree, as opposed to
+ * `doc.ts`'s commands over one document's contents. Every path they take must be under `FILE_ROOTS`, which is also
  * exactly what they declare in `affects`, so for these commands the declaration is enforced by
  * their own check rather than being only an upper bound.
  */
@@ -75,5 +75,69 @@ export const docNewFile = define({
       );
     }
     return { message: `Created ${made.path}.`, data: made, written: [made.path] };
+  },
+});
+
+export const docMove = define({
+  id         : 'doc.move',
+  title      : 'Move or rename files',
+  description:
+    'Move files and folders into another folder, or rename one file or folder with `name`. ' +
+    'Relative links in other documents that pointed at them are rewritten to the new place. ' +
+    'Refused when it would change which characters and locations the project has, or cross ' +
+    'into another git repository.',
+  notes:
+    'Only under wiki/, characters/, locations/ and archive/. Also refused: a name the folder already holds (case-folded on Windows and macOS), a rename that changes only letter case, a folder into itself, media, symbolic links, a nested repository, and a submodule that is not checked out. Links under archive/ and scenes/ are never rewritten. Every window is told what moved (a `docs` `moved` push) before the command returns.',
+  mutating   : true,
+  affects    : FILE_ROOTS,
+  undoable   : true,
+  props: {
+    paths: prop.stringList('the files and folders, workspace-relative'),
+    into : prop.string('the folder to put them in'),
+    name: prop.string('a new name for the one item moved; empty to keep its name', {
+      default: '',
+    }),
+  },
+  async check({ paths, into, name }, ctx) {
+    return verdict(await ctx.host.session.previewTransfer(paths, into, 'move', name));
+  },
+  async run({ paths, into, name }, ctx) {
+    const moved = await ctx.host.session.transfer(paths, into, 'move', name);
+    if (!moved.ok) throw new Error(moved.reason);
+    ctx.host.uiAll({ type: 'docs', action: 'moved', moves: moved.moves });
+    ctx.host.ui(
+      { type: 'docs', action: 'reveal', paths: moved.moves.map((m) => m.to) },
+      ctx.origin,
+    );
+    return { message: moved.message, data: moved, written: moved.written };
+  },
+});
+
+export const docCopy = define({
+  id         : 'doc.copy',
+  title      : 'Copy files',
+  description:
+    'Copy files and folders into a folder. A name already taken there gets `-copy` added. ' +
+    'Refused for a character or location sheet, since the copy would be a second one.',
+  notes:
+    'Only under wiki/, characters/, locations/ and archive/, and refused for the same media, links, repositories and submodules `doc.move` refuses. A copy’s own relative links are rewritten so they still name the same files, or the other copies made with it; nothing under archive/ is rewritten.',
+  mutating   : true,
+  affects    : FILE_ROOTS,
+  undoable   : true,
+  props: {
+    paths: prop.stringList('the files and folders, workspace-relative'),
+    into : prop.string('the folder to put them in'),
+  },
+  async check({ paths, into }, ctx) {
+    return verdict(await ctx.host.session.previewTransfer(paths, into, 'copy'));
+  },
+  async run({ paths, into }, ctx) {
+    const copied = await ctx.host.session.transfer(paths, into, 'copy');
+    if (!copied.ok) throw new Error(copied.reason);
+    ctx.host.ui(
+      { type: 'docs', action: 'reveal', paths: copied.moves.map((m) => m.to) },
+      ctx.origin,
+    );
+    return { message: copied.message, data: copied, written: copied.written };
   },
 });
