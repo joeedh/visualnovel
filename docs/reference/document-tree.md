@@ -310,8 +310,8 @@ why an entry is an invocation rather than a callback) is in
 | `location`                           | New reference shot… · Art notes… · Open sheet elsewhere                                                                                                              |
 | `character`                          | New concept image… · Art notes… · Open sheet elsewhere                                                                                                               |
 | `branch:wiki`                        | New wiki page… · New character sheet… · New location sheet… · New folder… · Paste                                                                                    |
-| `wikidir`                            | New wiki page… · New character sheet… · New location sheet… · New folder… · Cut · Copy · Paste · Copy path                                                           |
-| `dir`                                | New file… · New folder… · Cut · Copy · Paste · Copy path                                                                                                             |
+| `wikidir`                            | New wiki page… · New character sheet… · New location sheet… · New folder… · Cut · Copy · Paste · Rename… · Copy path                                                 |
+| `dir`                                | New file… · New folder… · Cut · Copy · Paste · Rename… · Copy path                                                                                                   |
 | `branch:characters`                  | New character sheet…                                                                                                                                                 |
 | `branch:locations`                   | New location sheet…                                                                                                                                                  |
 | `branch:story`                       | New scene… · Export Fountain · Sort in topological order / Sort as stored                                                                                            |
@@ -321,7 +321,8 @@ why an entry is an invocation rather than a callback) is in
 | `shot`                               | Set coverage… · Set outfit… · Scaffold a sheet graph for group _g_ (only for a shot in a staging-sheet group)                                                        |
 | `slot`                               | Upload a file for this… · Adopt an asset for this… · Create a graph for this slot · Run pipeline…                                                                    |
 | `skill`                              | Open in the Skills pane · Ask the agent to change this skill…                                                                                                        |
-| `wiki`, `file`                       | Cut · Copy · Paste · Copy path · Show history                                                                                                                        |
+| `wiki`                               | Cut · Copy · Paste · Rename file… · Copy path · Show history                                                                                                         |
+| `file`                               | Cut · Copy · Paste · Rename… · Copy path · Show history                                                                                                              |
 | a row marked among several           | Cut _n_ items · Copy _n_ items, and on a folder Paste into _folder_                                                                                                  |
 | `branch:assets`, `assetkind`, `more` | none — no menu opens at all                                                                                                                                          |
 
@@ -368,11 +369,13 @@ This table lists the following:
   the entry is not offered.
 - **A wiki note or a file offers file acts and Show history.** No binding targets a wiki
   note, and `doc.write` needs the text, so opening it is left to a plain click. What it
-  offers are the acts on the file itself: Cut, Copy, Paste into its folder, and Copy path
-  (see [Cut, Copy and Paste](#cut-copy-and-paste)). `branch:wiki` is the exception among
-  the headings because it names a location. An author right-clicks the "top level wiki
-  tree", and the `wikidir:` nodes below that heading are the folders inside the tree,
-  which a flat `wiki/` does not have.
+  offers are the acts on the file itself: Cut, Copy, Paste into its folder, a rename of
+  the file, and Copy path (see [Cut, Copy and Paste](#cut-copy-and-paste) and
+  [Renaming in place](#renaming-in-place)). A page's entry is Rename file…, because its
+  label is its title and the double-click already retitles it. `branch:wiki` is the
+  exception among the headings because it names a location. An author right-clicks the
+  "top level wiki tree", and the `wikidir:` nodes below that heading are the folders
+  inside the tree, which a flat `wiki/` does not have.
 - **New folder… and New file… are forms, and only under four folders.** They run
   `doc.mkdir` and `doc.newFile` with `parent` filled in, and the palette's form takes the
   name and shows the check's verdict as it is typed. Both commands refuse any path outside
@@ -487,7 +490,8 @@ refusal.
 
 `doc.move` moves files and folders into a folder, and with `name` it renames one file or
 folder. `doc.copy` copies files and folders into a folder. The tree runs them from Paste
-([Cut, Copy and Paste](#cut-copy-and-paste)), and both also run from the palette and over
+([Cut, Copy and Paste](#cut-copy-and-paste)) and runs `doc.move` from Rename…
+([Renaming in place](#renaming-in-place)), and both also run from the palette and over
 CDP: `node scripts/vn-cdp.mjs "doc.move(paths=['wiki/a.md'] into='wiki/lore')"`. Both are
 undoable. Their check and their run call the same planner (`planTransfer` in
 `src/main/session/files.ts`, after the pure `planMove` and `planCopy` in
@@ -583,17 +587,50 @@ paths and marks them (the `docs` `reveal` push).
 
 ## Renaming in place
 
-Double-clicking a row whose node names a document lets the author retype the document's
-name over the label. Enter commits the edit, Escape and blur abort it, and an unchanged
-name is not written.
+The tree has two renames, and they change different things.
 
-`renameOf(node)` in the pure `doctree.ts` decides what is renamable. A `character`,
-`location` or `wiki` node that carries a path is renamable, and `renameOf` returns the two
-props `doc.rename` takes, so the surface never assembles them. An entity with no sheet of
-its own has no file to hold the name. A scene is deliberately not renamable. Its label is
-its id, and that id is also its filename, the value of the config's `start:` and the
-target of every `[[goto:]]` pointing at it. Changing one of these is a rename, and
-changing the rest is a refactor.
+- **Retitling a document.** Double-clicking a `character`, `location` or `wiki` row lets
+  the author retype the name the document is shown under, over the label. It runs
+  `doc.rename`, and the file never moves.
+- **Renaming a file or folder.** Rename… on a `file`, `dir` or `wikidir` row, Rename file…
+  on a `wiki` row, and F2 on the anchor row while it is the only marked row open a box
+  over the row holding the file or folder name, with the part before the extension
+  selected. Enter runs `doc.move` with `name` into the folder the item is already in, so a
+  rename is checked, relinked and undone exactly as a move is
+  ([Moving, copying and renaming files](#moving-copying-and-renaming-files)). A
+  double-click on a `file` row opens this box too, because a file row's label is its file
+  name.
+- **A page's double-click still retitles it.** A `wiki` row's label is the page's title,
+  so its double-click stays `doc.rename`, and the file is renamed from the menu or with
+  F2. Were the double-click to rename the file, a double-click on a tagged sheet would
+  always be refused.
+- **A sheet's file cannot be renamed.** A sheet's file name is its id, so `doc.move`
+  refuses: "wiki/cast/aiko.md is the sheet for character aiko, and its file name is the id
+  shots and cast lists use. Renaming the file would make a different character.
+  Double-click it in the tree to change the name it is shown under." The refusal arrives
+  at Enter rather than on the menu: the new name is typed after the menu closes, so the
+  menu has nothing complete to check.
+- **Refused before the box opens:** a row outside the four roots, one of the four root
+  folders, and a path, or a folder holding a path, with unsaved edits ("Save wiki/a.md
+  first — it has unsaved edits."), since a move does not carry a draft along. The entry
+  draws greyed with the sentence, and F2 and the double-click report it. The box asks
+  again at Enter.
+- Both boxes commit on Enter and give up on Escape or blur, and an unchanged name is not
+  sent.
+- A row's tooltip says which gesture does what: "double-click the name to retitle the
+  page, F2 to rename the file" on a page, "double-click the name to rename the file" on a
+  file, and "F2 renames it" on a folder.
+
+`renameOf(node)` and `renamePathOf(node)` in the pure `renderer/rules/documents.ts` decide
+what each rename can take. `renamePathOf` answers for a `wiki`, `wikidir`, `file` or `dir`
+row with a path, with the path, its last segment and the folder it stays in, and
+`renameEntry` in `renderer/pathux/doctree/doctree.ts` builds the menu entry F2 also reads.
+`renameOf` answers for a `character`, `location` or `wiki` node that carries a path, with
+the two props `doc.rename` takes, so the surface never assembles them. An entity with no
+sheet of its own has no file to hold the name. A scene is deliberately not renamable
+either way. Its label is its id, and that id is also its filename, the value of the
+config's `start:` and the target of every `[[goto:]]` pointing at it. Changing one of
+these is a rename, and changing the rest is a refactor.
 
 Skills are also excluded, for a different reason. A skill has a path and a label, so it
 appears renamable. But `renameInText` writes `name:` only for a sheet; for anything else
@@ -608,7 +645,7 @@ Two things underlie the gesture:
   which rebuilds the rows, so the element both clicks landed on is gone before a
   `dblclick` could be dispatched. Two clicks on the same node id within 500 ms count as a
   double click, and the row is found again by `data-id`.
-- **Renaming runs as an ordinary command.** `doc.rename` is `mutating` and `undoable`, so
+- **Retitling runs as an ordinary command.** `doc.rename` is `mutating` and `undoable`, so
   it commits, records and undoes through the same journal as `doc.write`. `renameInText`
   in `src/main/doctree/rename.ts` decides where the new name is written. A sheet keeps its
   name in `name:`. Anything else keeps it wherever the title was read from, which is

@@ -10,7 +10,7 @@
  * What a click selects, and what a row says on hover, live in `rules/selection.ts` and
  * `rules/documents.ts`, because the row's offer is built from them there.
  */
-import { orderEntry, type SceneOrder } from '../../rules/documents.js';
+import { orderEntry, renamePathOf, type SceneOrder } from '../../rules/documents.js';
 import { unsavedRefusal } from '../../rules/docbuffer.js';
 import { view } from '../../rules/effects.js';
 import { shortcutOf } from '../../rules/shortcuts.js';
@@ -30,7 +30,7 @@ export {
   selectionForNode,
   splitShot,
 } from '../../rules/selection.js';
-export { markable, renameOf, rowTitle } from '../../rules/documents.js';
+export { markable, renameOf, renamePathOf, rowTitle } from '../../rules/documents.js';
 
 /** One drawn line: the node, how deep it sits, and what its twisty would do. */
 export interface DocRow {
@@ -332,6 +332,39 @@ export function pasteEntry(into: string, ctx: MenuContext, label?: string): Menu
   return unsaved === undefined ? entry : { ...entry, refused: unsaved };
 }
 
+/** The action the F2 row binds, whose combo labels both rename entries. */
+const RENAME_KEY = { id: 'doc.move', props: {} };
+
+/** What renaming does on each kind of row. `doc.move`'s registry sentence describes a move. */
+const RENAME_TOOLTIP: Partial<Record<DocNodeKind, string>> = {
+  wiki   : 'Change the page’s file name on disk and keep its title. Links to it are rewritten.',
+  file   : 'Change the file’s name on disk. Links to it are rewritten.',
+  dir    : 'Change the folder’s name on disk. Links to what it holds are rewritten.',
+  wikidir: 'Change the folder’s name on disk. Links to what it holds are rewritten.',
+};
+
+/**
+ * Builds Rename… on a page, file or folder, or `undefined` for a row that names neither. It is
+ * `doc.move` into the folder the item is in, with the name typed into the box the pane's handler
+ * opens, so it is not checked; a row outside the four roots, and a path with unsaved edits, are
+ * refused here. F2 runs it too.
+ */
+export function renameEntry(node: DocNode, ctx: MenuContext): MenuEntry | undefined {
+  const target = renamePathOf(node);
+  if (target === undefined) return undefined;
+  const refused = rootProblem(target.path) ?? unsavedRefusal([target.path], ctx.dirty);
+  return {
+    label   : node.kind === 'wiki' ? 'Rename file…' : 'Rename…',
+    id      : 'doc.move',
+    props   : { paths: [target.path], into: target.into },
+    on      : 'rename',
+    supplies: ['name'],
+    shortcut: shortcutOf(RENAME_KEY, 'rename'),
+    ...(RENAME_TOOLTIP[node.kind] === undefined ? {} : { tooltip: RENAME_TOOLTIP[node.kind] }),
+    ...(refused === undefined ? {} : { refused }),
+  };
+}
+
 /** Puts `entries` under a separator, or answers nothing when there are none to separate. */
 function separated(entries: MenuEntry[]): MenuEntry[] {
   return entries.length === 0 ? [] : [SEPARATOR, ...entries];
@@ -343,17 +376,19 @@ function copyPath(path: string): MenuEntry {
 }
 
 /**
- * Builds Cut, Copy and Paste on one page, file or folder, then Copy path. Empty for a row with no
- * path, which names nothing a file command could take.
+ * Builds Cut, Copy and Paste on one page, file or folder, then Rename… and Copy path. Empty for a
+ * row with no path, which names nothing a file command could take.
  */
 function fileActs(node: DocNode, ctx: MenuContext): MenuEntry[] {
   const into = pasteInto(node);
   if (node.path === undefined || into === undefined) return [];
+  const rename = renameEntry(node, ctx);
   return [
     clipEntry('cut', [node.path]),
     clipEntry('copy', [node.path]),
     pasteEntry(into, ctx),
     SEPARATOR,
+    ...(rename === undefined ? [] : [rename]),
     copyPath(node.path),
   ];
 }

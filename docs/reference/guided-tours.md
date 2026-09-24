@@ -846,7 +846,10 @@ shell also binds, and `from: 'pathux'` marks the Gen Graph pane's five, copied f
 path.ux's node editor. The shell keymap and the Play pane build their `HotKey`s from the
 table through `bindings()`, and the header's menu rows, the Gen Graph tooltips and the
 palette button read `shortcutOf` for their labels, so a binding is spelled once. A
-shortcut is a property of the control it duplicates rather than an effect.
+shortcut is a property of the control it duplicates rather than an effect. A `key` is a
+name from path.ux's keymap, or a function key from `FUNCTION_KEYS` (`F2`, `F12`), which
+that keymap does not name; `hotkeys()` in `pathux/app/keymap.ts` sets such a key's code on
+the `HotKey` itself.
 
 `menuExempt` is `renderer/rules/menuexempt.ts`: the mutating commands a menu runs on the
 click that neither undo nor confirm, each with the reason it is allowed to.

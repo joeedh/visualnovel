@@ -11,7 +11,12 @@ import { HotKey, KeyMap } from 'pathux';
 import { closeWindow, exec, move, quit, report, toggleMode } from './bridge.js';
 import type { ShellApp } from './context.js';
 import { openPalette } from '../chrome/palette.js';
-import { bindings, type ShortcutScope } from '../../rules/shortcuts.js';
+import {
+  FUNCTION_KEYS,
+  bindings,
+  isFunctionKey,
+  type ShortcutScope,
+} from '../../rules/shortcuts.js';
 import { watchKeymap } from '../tour/anchors.js';
 
 /** The `HotKey`s of one scope, each running the handler its table row names. */
@@ -19,9 +24,13 @@ export function hotkeys(
   scope: ShortcutScope,
   handlers: Readonly<Record<string, () => void>>,
 ): HotKey[] {
-  return bindings(scope, handlers).map(
-    (binding) => new HotKey(binding.key, [...binding.mods], binding.run, binding.label),
-  );
+  return bindings(scope, handlers).map(({ key, mods, run, label }) => {
+    if (!isFunctionKey(key)) return new HotKey(key, [...mods], run, label);
+    // The constructor reads the code from path.ux's keymap, which names no function keys
+    const hotkey = new HotKey('Space', [...mods], run, label);
+    hotkey.key = FUNCTION_KEYS[key];
+    return hotkey;
+  });
 }
 
 export function installKeymap(app: ShellApp): void {

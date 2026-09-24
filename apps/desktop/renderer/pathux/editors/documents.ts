@@ -13,10 +13,13 @@ import {
   flattenTree,
   markable,
   menuFor,
+  NO_MENU_CONTEXT,
   nodeIsSelected,
   pasteEntry,
   pasteInto,
+  renameEntry,
   renameOf,
+  renamePathOf,
   revealIds,
   rowTitle,
   selectionForNode,
@@ -29,6 +32,7 @@ import { VN_ICONS } from '../app/icons.js';
 import {
   collapseAction,
   createAction,
+  fileRenameAction,
   modeAction,
   reloadAction,
   renameAction,
@@ -37,8 +41,11 @@ import {
   sheetLinkAction,
   shotLinkAction,
   storyInOrder,
+  type FileRename,
   type SceneOrder,
 } from '../../rules/documents.js';
+import type { Offer } from '../../rules/anchors.js';
+import { unsavedRefusal } from '../../rules/docbuffer.js';
 import { cellAction } from '../../rules/assetstrip.js';
 import { redrawing, watchKeymap } from '../tour/anchors.js';
 import { hotkeys } from '../app/keymap.js';
@@ -180,6 +187,7 @@ export class DocumentsEditor extends VnEditor {
         Copy         : () => this.clipMarks('copy'),
         Cut          : () => this.clipMarks('cut'),
         Paste        : () => this.pasteAtAnchor(),
+        Rename       : () => this.renameAtAnchor(),
       }),
     );
     watchKeymap('documents', () => this.keymap);
@@ -497,12 +505,13 @@ export class DocumentsEditor extends VnEditor {
       onToggle     : (id) => this.toggle(id),
       onClick      : (row, mods) => this.rowClick(row, mods),
       // A location mined from a heading has no sheet, so its second click writes one rather than
-      // renaming — the only place in the tree where a second click authors a file. A shot's second
-      // click opens the frame it was drawn as, and a shot with no frame yet does nothing, which is
-      // what its tooltip says it will do.
+      // renaming — the only place in the tree where a second click authors a file. A file's label
+      // is its name, so its second click renames the file on disk. A shot's second click opens the
+      // frame it was drawn as, and a shot with no frame yet does nothing, as its tooltip says.
       onSecondClick: (row) => {
         const renamable = renameOf(row.node);
         if (renamable) this.beginRename(row.node.id, renamable);
+        else if (row.node.kind === 'file' && markable(row.node)) this.renameFile(row.node);
         else if (this.sheetless(row.node)) void this.writeSheet(row.node.label);
         else if (row.node.kind === 'shot' && row.node.hash) this.openAsset(row.node.hash);
       },
@@ -667,6 +676,23 @@ export class DocumentsEditor extends VnEditor {
     });
   }
 
+  /** Opens the file-name box on the anchor row when it is the only mark. Bound to F2. */
+  private renameAtAnchor(): void {
+    const { marks, anchor } = this.marking;
+    if (marks.length !== 1 || marks[0] !== anchor) return;
+    const row = this.shown.find((r) => r.node.id === anchor);
+    if (row) this.renameFile(row.node);
+  }
+
+  /** Opens the file-name box on a row, or reports why the row's Rename… entry is greyed. */
+  private renameFile(node: DocNode): void {
+    const entry = renameEntry(node, { ...NO_MENU_CONTEXT, dirty: draftPaths() });
+    const target = renamePathOf(node);
+    if (entry === undefined || target === undefined) return;
+    if (entry.refused !== undefined) say(entry.refused, true);
+    else this.beginFileRename(node.id, target);
+  }
+
   /** Takes every mark off and keeps the anchor. Bound to Escape while the tree has the keyboard. */
   private clearMarks(): void {
     if (this.marking.marks.length === 0) return;
@@ -706,14 +732,53 @@ export class DocumentsEditor extends VnEditor {
   }
 
   /**
-   * Rename in place: the label becomes a text box over the row it was drawn in, Enter commits and
-   * Escape leaves it alone. It is undoable like every other document write, because it is one —
-   * `doc.rename` rewrites the field the name was read from, and the file never moves.
+   * Retitle a document in place. It is undoable like every other document write, because it is
+   * one: `doc.rename` rewrites the field the name was read from, and the file never moves.
+   */
+  private beginRename(id: string, target: { path: string; name: string }): void {
+    this.openBox(id, target.name, target.name.length, renameAction(target), (name) => {
+      void exec('doc.rename', { path: target.path, name }).then(() => void this.load());
+    });
+  }
+
+  /**
+   * Rename a page, file or folder on disk: `doc.move` with `name`, into the folder it is already
+   * in. The box starts with the file name and its stem selected. A path with unsaved edits is
+   * refused before `exec`, since a move does not carry a draft along.
+   */
+  private beginFileRename(id: string, target: FileRename): void {
+    const dot = target.folder ? -1 : target.name.lastIndexOf('.');
+    const stem = dot > 0 ? dot : target.name.length;
+    this.openBox(id, target.name, stem, fileRenameAction(target), (name) => {
+      const refused = unsavedRefusal([target.path], draftPaths());
+      if (refused !== undefined) {
+        say(refused, true);
+        this.rebuild();
+        return;
+      }
+      void exec('doc.move', { paths: [target.path], into: target.into, name }).then((outcome) => {
+        if (outcome.ok) report(outcome);
+        void this.load();
+      });
+    });
+  }
+
+  /**
+   * Turns a row's label into a text box: Enter commits and Escape leaves it alone. `commit` gets
+   * the trimmed text, and only when it is not empty and differs from `value`, since an unchanged
+   * name would cost a commit and an undo point for nothing. `select` is how much of `value` starts
+   * selected.
    *
    * The row is found by node id rather than held onto, because the click that opened this rebuilt
    * the rows and the element the author double-clicked no longer exists.
    */
-  private beginRename(id: string, target: { path: string; name: string }): void {
+  private openBox(
+    id: string,
+    value: string,
+    select: number,
+    offer: Offer,
+    commit: (name: string) => void,
+  ): void {
     if (this.renaming) return;
     // `dataset.id` and `.tv-label` are `renderTree`'s stated contract, which is what lets the
     // rename box land in a row this pane did not build and no longer holds a reference to.
@@ -724,24 +789,19 @@ export class DocumentsEditor extends VnEditor {
     this.renaming = id;
     const box = document.createElement('input');
     box.className = 'tv-rename';
-    box.value = target.name;
+    box.value = value;
     line.replaceChild(box, label);
     // Its own pass: the box appears and vanishes without the rows around it being redrawn, and a
     // detached node is dropped from the live set rather than reported as scrolled away.
-    redrawing('documents', 'rename').record(box, renameAction(target));
+    redrawing('documents', 'rename').record(box, offer);
 
     let settled = false;
     const finish = (name?: string): void => {
       if (settled) return;
       settled = true;
       this.renaming = '';
-      // The name is only sent if it changed: renaming a document to what it is already called
-      // would cost a commit, an undo point and a rewritten file for nothing.
-      if (name !== undefined && name !== '' && name !== target.name) {
-        void exec('doc.rename', { path: target.path, name }).then(() => void this.load());
-      } else {
-        this.rebuild();
-      }
+      if (name !== undefined && name !== '' && name !== value) commit(name);
+      else this.rebuild();
     };
 
     // The screen keymap is a bubble-phase window listener, so a box that does not stop its own
@@ -757,7 +817,7 @@ export class DocumentsEditor extends VnEditor {
     box.addEventListener('click', (event) => event.stopPropagation());
 
     box.focus();
-    box.select();
+    box.setSelectionRange(0, select);
   }
 
   /**
@@ -793,6 +853,10 @@ export class DocumentsEditor extends VnEditor {
       'pane.view#copy' : () => setClip({ paths, mode: 'copy' }),
       'doc.move#paste' : (props) => this.paste('doc.move', props),
       'doc.copy#paste' : (props) => this.paste('doc.copy', props),
+      'doc.move#rename': () => {
+        const target = renamePathOf(row.node);
+        if (target) this.beginFileRename(row.node.id, target);
+      },
     });
   }
 

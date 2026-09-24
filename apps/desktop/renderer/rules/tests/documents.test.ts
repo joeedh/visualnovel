@@ -2,11 +2,13 @@ import {
   collapseAction,
   controls,
   createAction,
+  fileRenameAction,
   markable,
   modeAction,
   panelControls,
   reloadAction,
   renameAction,
+  renamePathOf,
   rowAction,
   sceneLinkAction,
   sheetLinkAction,
@@ -62,6 +64,66 @@ describe('renameAction', () => {
       tooltip : 'Type the new name — Enter renames the document, Escape leaves it as it was',
       supplies: ['name'],
     });
+  });
+});
+
+describe('renamePathOf', () => {
+  it('names a page, a file or a folder by its last segment, in the folder it stays in', () => {
+    expect(
+      renamePathOf({
+        id   : 'wiki:lore/cafe.md',
+        kind : 'wiki',
+        label: 'Café',
+        path : 'wiki/lore/cafe.md',
+      }),
+    ).toEqual({ path: 'wiki/lore/cafe.md', name: 'cafe.md', into: 'wiki/lore', folder: false });
+    expect(
+      renamePathOf({
+        id   : 'file:archive/a.txt',
+        kind : 'file',
+        label: 'a.txt',
+        path : 'archive/a.txt',
+      }),
+    ).toEqual({ path: 'archive/a.txt', name: 'a.txt', into: 'archive', folder: false });
+    expect(
+      renamePathOf({ id: 'wikidir:cast', kind: 'wikidir', label: 'cast', path: 'wiki/cast' }),
+    ).toEqual({ path: 'wiki/cast', name: 'cast', into: 'wiki', folder: true });
+    expect(
+      renamePathOf({ id: 'dir:scenes', kind: 'dir', label: 'scenes', path: 'scenes' }),
+    ).toEqual({ path: 'scenes', name: 'scenes', into: '', folder: true });
+  });
+
+  // A sheet's file name is its id, and its row retitles it; the file rename is on its `file` row
+  it('answers nothing for a sheet, a scene, a heading or a row with no path', () => {
+    expect(
+      renamePathOf({
+        id   : 'character:aiko',
+        kind : 'character',
+        label: 'Aiko',
+        path : 'characters/aiko/character.md',
+      }),
+    ).toBeUndefined();
+    expect(renamePathOf(scene.node)).toBeUndefined();
+    expect(renamePathOf({ id: 'branch:wiki', kind: 'branch', label: 'Wiki' })).toBeUndefined();
+    expect(renamePathOf({ id: 'wiki:x', kind: 'wiki', label: 'x' })).toBeUndefined();
+  });
+});
+
+describe('fileRenameAction', () => {
+  it('moves the item into its own folder, with the box supplying the name', () => {
+    const target = { path: 'wiki/lore/cafe.md', name: 'cafe.md', into: 'wiki/lore', folder: false };
+    expect(fileRenameAction(target)).toEqual({
+      ok      : true,
+      id      : 'doc.move',
+      props   : { paths: ['wiki/lore/cafe.md'], into: 'wiki/lore' },
+      label   : 'cafe.md',
+      tooltip:
+        'Type the new file name — Enter renames the file on disk, Escape leaves it as it was',
+      supplies: ['name'],
+    });
+    expect(fileRenameAction({ ...target, folder: true }).tooltip).toBe(
+      'Type the new folder name — Enter renames the folder on disk, Escape leaves it as it was',
+    );
   });
 });
 
@@ -171,7 +233,7 @@ describe('marking rows', () => {
     expect(offer).toMatchObject({
       id     : 'ui.publish',
       props  : { docPath: 'wiki/lore.md' },
-      tooltip: `wiki/lore.md — double-click the name to rename it. ${hint}`,
+      tooltip: `wiki/lore.md — double-click the name to retitle the page, F2 to rename the file. ${hint}`,
       then   : [{ id: 'view.open', props: { editor: 'wiki' } }, mark],
     });
   });
@@ -183,9 +245,15 @@ describe('marking rows', () => {
       props  : { node: 'wikidir:cast' },
       on     : 'wikidir/cast',
       label  : 'cast',
-      tooltip: `wiki/cast — ${hint}`,
+      tooltip: `wiki/cast — F2 renames it. ${hint}`,
       then   : [mark],
     });
+  });
+
+  it('says a file’s double-click renames it', () => {
+    expect(rowAction(file, NONE, ['documents']).tooltip).toBe(
+      `locations/cafe.md — double-click the name to rename the file. ${hint}`,
+    );
   });
 
   it('records no mark, and no hint, on a row that cannot be marked', () => {
@@ -300,6 +368,11 @@ describe('controls', () => {
       'item:scene/arrival',
       'item:asset/a1b2c3d4',
     ]);
+  });
+
+  it('lists the file-name box only while one is open', () => {
+    const renamingFile = { path: 'wiki/lore.md', name: 'lore.md', into: 'wiki', folder: false };
+    expect(controls({ renamingFile }).map(keyOf)).toEqual([...bar, 'cmd:doc.move']);
   });
 
   it('lists the bar, and the rename box only while one is open', () => {

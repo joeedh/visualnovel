@@ -7,6 +7,7 @@ import { type Action, type Offer } from './anchors.js';
 import { EVERY_NODE, expand, publish, view, type Publishes } from './effects.js';
 import { openOf, routeFor } from './route.js';
 import { cellAction, type StripAsset } from './assetstrip.js';
+import { shortcutOf } from './shortcuts.js';
 import {
   nodeIsSelected,
   nodeKey,
@@ -33,6 +34,8 @@ export interface DocumentsState {
   mode?: DocMode;
   /** The document whose row holds the rename box, while one does. */
   renaming?: { path: string; name: string };
+  /** The page, file or folder whose row holds the file-name box, while one does. */
+  renamingFile?: FileRename;
   /** The rows on screen, the selection they are drawn against and the editors that are up. */
   rows?: {
     list: readonly RowState[];
@@ -227,6 +230,48 @@ export function renameAction(target: { path: string; name: string }): Offer {
   };
 }
 
+/** A page, file or folder the file-name box renames: its path, its name and its folder. */
+export interface FileRename {
+  path: string;
+  /** The last segment of `path`, which the box starts from. */
+  name: string;
+  /** The folder the item stays in, which is `doc.move`'s `into`. */
+  into: string;
+  folder: boolean;
+}
+
+/**
+ * Renames one page, file or folder on disk: `doc.move` into the folder it is already in, with the
+ * box supplying `name`.
+ */
+export function fileRenameAction(target: FileRename): Offer {
+  const what = target.folder ? 'folder' : 'file';
+  return {
+    ok      : true,
+    id      : 'doc.move',
+    props   : { paths: [target.path], into: target.into },
+    label   : target.name,
+    tooltip: `Type the new ${what} name — Enter renames the ${what} on disk, Escape leaves it as it was`,
+    supplies: ['name'],
+  };
+}
+
+/**
+ * What renaming this row's file or folder on disk would take, or `undefined` for a row that names
+ * neither. Unlike {@link renameOf}, which retitles a document, this changes the path, so a `wiki`
+ * row answers for both.
+ */
+export function renamePathOf(node: DocNode): FileRename | undefined {
+  if (!node.path || !MARKABLE.has(node.kind)) return undefined;
+  const slash = node.path.lastIndexOf('/');
+  return {
+    path  : node.path,
+    name  : node.path.slice(slash + 1),
+    into  : slash < 0 ? '' : node.path.slice(0, slash),
+    folder: node.kind === 'dir' || node.kind === 'wikidir',
+  };
+}
+
 /**
  * What double-clicking this node would rename, or `undefined` if it is not renamable. Answering
  * with the props `doc.rename` takes keeps the surface from assembling them: a row that can be
@@ -273,6 +318,20 @@ export function markable(node: DocNode): boolean {
 /** Appended to a markable row's tooltip. */
 const MARK_HINT = 'Ctrl-click or Shift-click to select several.';
 
+/** The key that opens the file-name box on the anchor row. */
+const RENAME_KEY = shortcutOf({ id: 'doc.move', props: {} }, 'rename');
+
+/**
+ * How a markable row's file or folder is renamed. A page's double-click retitles it, since its
+ * label is the title; a file's label is its name, so its double-click renames the file.
+ */
+const FILE_RENAME_HINT: Partial<Record<DocNodeKind, string>> = {
+  wiki   : `double-click the name to retitle the page, ${RENAME_KEY} to rename the file`,
+  file   : 'double-click the name to rename the file',
+  dir    : `${RENAME_KEY} renames it`,
+  wikidir: `${RENAME_KEY} renames it`,
+};
+
 /**
  * What a row says on hover, and every row says something. A path is the useful thing to say where
  * there is one; the rest is what a row with no file says instead.
@@ -288,10 +347,10 @@ export function rowTitle(
   opts: { renamable: boolean; markable: boolean; sheetless: boolean; expanded: boolean },
 ): string {
   if (node.path) {
-    const rename = 'double-click the name to rename it';
-    if (opts.renamable && opts.markable) return `${node.path} — ${rename}. ${MARK_HINT}`;
-    if (opts.renamable) return `${node.path} — ${rename}`;
+    const hint = opts.markable ? FILE_RENAME_HINT[node.kind] : undefined;
+    if (hint !== undefined) return `${node.path} — ${hint}. ${MARK_HINT}`;
     if (opts.markable) return `${node.path} — ${MARK_HINT}`;
+    if (opts.renamable) return `${node.path} — double-click the name to rename it`;
     return node.path;
   }
   if (node.note) return node.note;
@@ -357,7 +416,10 @@ export function rowAction(
   };
 }
 
-/** Every offer the Documents pane draws from this module: the bar, the rename box, the rows, the panel. */
+/**
+ * Every offer the Documents pane draws from this module: the bar, the two rename boxes, the rows,
+ * the panel.
+ */
 export function controls(state: DocumentsState): readonly Offer[] {
   const list: Offer[] = [
     modeAction(state.mode ?? 'documents'),
@@ -366,6 +428,7 @@ export function controls(state: DocumentsState): readonly Offer[] {
     collapseAction(),
   ];
   if (state.renaming) list.push(renameAction(state.renaming));
+  if (state.renamingFile) list.push(fileRenameAction(state.renamingFile));
   if (state.rows) {
     const { selection, visible } = state.rows;
     for (const row of state.rows.list) list.push(rowAction(row, selection, visible));

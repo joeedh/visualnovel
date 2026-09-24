@@ -1,5 +1,5 @@
 /**
- * The Documents pane's situations: whether a row holds the rename box, and which editors are up
+ * The Documents pane's situations: whether a row holds a rename box, and which editors are up
  * when the rows are clicked, since the route a row opens with depends on that.
  */
 import { situations } from './situation.js';
@@ -59,6 +59,18 @@ export const SITUATIONS = situations<DocumentsState>(
     name : 'renaming',
     why  : 'A row holds the rename box, which commits doc.rename on the document it stands in.',
     state: { renaming: { path: 'characters/aiko/character.md', name: 'Aiko' } },
+  },
+  {
+    name : 'renaming-file',
+    why: 'A page’s row holds the file-name box, which commits doc.move with the typed name into the folder the page is already in.',
+    state: {
+      renamingFile: {
+        path  : 'wiki/lore/cafe.md',
+        name  : 'cafe.md',
+        into  : 'wiki/lore',
+        folder: false,
+      },
+    },
   },
   {
     name : 'rows-claimant-hidden',

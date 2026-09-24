@@ -12,7 +12,7 @@
      - Must be undoable 
 [x]: Right clicking on folders in wiki subtree & file tree should also have a 'new file'
      command.
-[ ]: Add support for renaming wiki files
+[x]: Add support for renaming wiki files
 
 ## Others
 [x]: Label undo/redo entries in the edit menu with what's being undone/redone.

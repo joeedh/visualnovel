@@ -318,6 +318,12 @@ toggling, which selection field a node names, and which entity the panel is abou
   `pathux/doctree/clipboard.ts`, is shared by every Documents pane in the window, and is
   not persisted. After `doc.move`, every pane carries its expanded folders and its marks
   to the new paths.
+- **A row has two rename boxes.** A double-click on a page, a sheet or a location retitles
+  it through `doc.rename`. Rename…, Rename file… and F2 open a box over the file or folder
+  name that commits `doc.move` with `name`, and a double-click on a `file` row opens that
+  box, since a file's label is its name
+  ([`document-tree.md`](document-tree.md#renaming-in-place)). Both are the pane's one
+  `openBox`, which records the box's offer in its own anchor pass.
 - **Backlinks under the tree** come from `DocTree.backlinks[nodeId]`. They cover the
   sheet, said as "in the story bible" when it lives under `wiki/`; the art, which
   `renderAssetStrip` renders grouped by kind with the gate's accepted mark; and the scenes

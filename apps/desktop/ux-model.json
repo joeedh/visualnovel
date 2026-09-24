@@ -327,6 +327,12 @@
     {
       "module": "documents",
       "editor": "documents",
+      "name"  : "renaming-file",
+      "why": "A page’s row holds the file-name box, which commits doc.move with the typed name into the folder the page is already in."
+    },
+    {
+      "module": "documents",
+      "editor": "documents",
       "name"  : "rows-claimant-hidden",
       "why": "Only the tree is up, so a row that opens an editor opens it elsewhere; a heading and a stand-in expand."
     },
@@ -17457,6 +17463,134 @@
       "via"       : "control",
       "editor"    : "documents",
       "module"    : "documents",
+      "situation" : "renaming-file",
+      "key"       : "fx:pane.view#mode",
+      "widgetPath": "documents/pane-view~f711061f",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "DOCUMENTS",
+        "tooltip": "Showing cast, locations and scenes. Click to see the folders they live in instead.",
+        "on"     : "mode",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "documents",
+      "module"    : "documents",
+      "situation" : "renaming-file",
+      "key"       : "cmd:doc.create",
+      "widgetPath": "documents/doc-create~ac61d9ac",
+      "offer": {
+        "id"      : "doc.create",
+        "label"   : "New…",
+        "tooltip" : "Add a character, location, page or skill to this project",
+        "supplies": ["kind", "name"],
+        "ok"      : true,
+        "props"   : {}
+      },
+      "effects": [
+        {
+          "id"   : "doc.create",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "documents",
+      "module"    : "documents",
+      "situation" : "renaming-file",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "documents/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read the project from disk",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "documents",
+      "module"    : "documents",
+      "situation" : "renaming-file",
+      "key"       : "fx:tree.expand#all",
+      "widgetPath": "documents/tree-expand~1a390e92",
+      "offer": {
+        "id"     : "tree.expand",
+        "label"  : "Close all",
+        "tooltip": "Fold every branch of the tree shut",
+        "on"     : "all",
+        "ok"     : true,
+        "props": {
+          "node": "*"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "tree.expand",
+          "props": {
+            "node": "*"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "documents",
+      "module"    : "documents",
+      "situation" : "renaming-file",
+      "key"       : "cmd:doc.move",
+      "widgetPath": "documents/doc-move~ad874895",
+      "offer": {
+        "id"      : "doc.move",
+        "label"   : "cafe.md",
+        "tooltip": "Type the new file name — Enter renames the file on disk, Escape leaves it as it was",
+        "supplies": ["name"],
+        "ok"      : true,
+        "props": {
+          "paths": ["wiki/lore/cafe.md"],
+          "into" : "wiki/lore"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.move",
+          "props": {
+            "paths": ["wiki/lore/cafe.md"],
+            "into" : "wiki/lore"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "documents",
+      "module"    : "documents",
       "situation" : "rows-claimant-hidden",
       "key"       : "fx:pane.view#mode",
       "widgetPath": "documents/pane-view~f711061f",
@@ -17819,7 +17953,7 @@
       "offer": {
         "id"     : "ui.publish",
         "label"  : "Lore",
-        "tooltip": "wiki/lore.md — double-click the name to rename it. Ctrl-click or Shift-click to select several.",
+        "tooltip": "wiki/lore.md — double-click the name to retitle the page, F2 to rename the file. Ctrl-click or Shift-click to select several.",
         "on"     : "wiki/lore.md",
         "ok"     : true,
         "props": {
@@ -17875,7 +18009,7 @@
       "offer": {
         "id"     : "tree.expand",
         "label"  : "cast",
-        "tooltip": "wiki/cast — Ctrl-click or Shift-click to select several.",
+        "tooltip": "wiki/cast — F2 renames it. Ctrl-click or Shift-click to select several.",
         "on"     : "wikidir/cast",
         "ok"     : true,
         "props": {
@@ -17915,7 +18049,7 @@
       "offer": {
         "id"     : "ui.publish",
         "label"  : "map.png",
-        "tooltip": "wiki/map.png — Ctrl-click or Shift-click to select several.",
+        "tooltip": "wiki/map.png — double-click the name to rename the file. Ctrl-click or Shift-click to select several.",
         "on"     : "file/wiki/map.png",
         "ok"     : true,
         "props": {
@@ -18293,7 +18427,7 @@
       "offer": {
         "id"     : "ui.publish",
         "label"  : "Lore",
-        "tooltip": "wiki/lore.md — double-click the name to rename it. Ctrl-click or Shift-click to select several.",
+        "tooltip": "wiki/lore.md — double-click the name to retitle the page, F2 to rename the file. Ctrl-click or Shift-click to select several.",
         "on"     : "wiki/lore.md",
         "ok"     : true,
         "props": {
@@ -18349,7 +18483,7 @@
       "offer": {
         "id"     : "tree.expand",
         "label"  : "cast",
-        "tooltip": "wiki/cast — Ctrl-click or Shift-click to select several.",
+        "tooltip": "wiki/cast — F2 renames it. Ctrl-click or Shift-click to select several.",
         "on"     : "wikidir/cast",
         "ok"     : true,
         "props": {
@@ -18389,7 +18523,7 @@
       "offer": {
         "id"     : "ui.publish",
         "label"  : "map.png",
-        "tooltip": "wiki/map.png — Ctrl-click or Shift-click to select several.",
+        "tooltip": "wiki/map.png — double-click the name to rename the file. Ctrl-click or Shift-click to select several.",
         "on"     : "file/wiki/map.png",
         "ok"     : true,
         "props": {
@@ -18783,7 +18917,7 @@
       "offer": {
         "id"     : "ui.publish",
         "label"  : "Lore",
-        "tooltip": "wiki/lore.md — double-click the name to rename it. Ctrl-click or Shift-click to select several.",
+        "tooltip": "wiki/lore.md — double-click the name to retitle the page, F2 to rename the file. Ctrl-click or Shift-click to select several.",
         "on"     : "wiki/lore.md",
         "ok"     : true,
         "props": {
@@ -18839,7 +18973,7 @@
       "offer": {
         "id"     : "tree.expand",
         "label"  : "cast",
-        "tooltip": "wiki/cast — Ctrl-click or Shift-click to select several.",
+        "tooltip": "wiki/cast — F2 renames it. Ctrl-click or Shift-click to select several.",
         "on"     : "wikidir/cast",
         "ok"     : true,
         "props": {
@@ -18879,7 +19013,7 @@
       "offer": {
         "id"     : "ui.publish",
         "label"  : "map.png",
-        "tooltip": "wiki/map.png — Ctrl-click or Shift-click to select several.",
+        "tooltip": "wiki/map.png — double-click the name to rename the file. Ctrl-click or Shift-click to select several.",
         "on"     : "file/wiki/map.png",
         "ok"     : true,
         "props": {
@@ -44246,6 +44380,23 @@
       "module"   : "doctree",
       "situation": "every-kind",
       "when"     : "wikidir:sample",
+      "id"       : "doc.move",
+      "label"    : "Rename…",
+      "tooltip"  : "Change the folder’s name on disk. Links to what it holds are rewritten.",
+      "props": {
+        "paths": ["wiki/wikidir.md"],
+        "into" : "wiki"
+      },
+      "on"       : "rename",
+      "supplies" : ["name"],
+      "shortcut" : "F2"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "wikidir:sample",
       "id"       : "app.copy",
       "label"    : "Copy path",
       "props": {
@@ -44298,6 +44449,23 @@
       "on"       : "paste",
       "refused"  : "Nothing has been copied or cut yet.",
       "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "wiki:sample",
+      "id"       : "doc.move",
+      "label"    : "Rename file…",
+      "tooltip": "Change the page’s file name on disk and keep its title. Links to it are rewritten.",
+      "props": {
+        "paths": ["wiki/wiki.md"],
+        "into" : "wiki"
+      },
+      "on"       : "rename",
+      "supplies" : ["name"],
+      "shortcut" : "F2"
     },
     {
       "via"      : "menu",
@@ -44658,6 +44826,23 @@
       "module"   : "doctree",
       "situation": "every-kind",
       "when"     : "dir:sample",
+      "id"       : "doc.move",
+      "label"    : "Rename…",
+      "tooltip"  : "Change the folder’s name on disk. Links to what it holds are rewritten.",
+      "props": {
+        "paths": ["wiki/dir.md"],
+        "into" : "wiki"
+      },
+      "on"       : "rename",
+      "supplies" : ["name"],
+      "shortcut" : "F2"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "dir:sample",
       "id"       : "app.copy",
       "label"    : "Copy path",
       "props": {
@@ -44710,6 +44895,23 @@
       "on"       : "paste",
       "refused"  : "Nothing has been copied or cut yet.",
       "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "file:sample",
+      "id"       : "doc.move",
+      "label"    : "Rename…",
+      "tooltip"  : "Change the file’s name on disk. Links to it are rewritten.",
+      "props": {
+        "paths": ["wiki/file.md"],
+        "into" : "wiki"
+      },
+      "on"       : "rename",
+      "supplies" : ["name"],
+      "shortcut" : "F2"
     },
     {
       "via"      : "menu",
@@ -45072,6 +45274,23 @@
       "module"   : "doctree",
       "situation": "cut-clipboard",
       "when"     : "wikidir:lore",
+      "id"       : "doc.move",
+      "label"    : "Rename…",
+      "tooltip"  : "Change the folder’s name on disk. Links to what it holds are rewritten.",
+      "props": {
+        "paths": ["wiki/lore"],
+        "into" : "wiki"
+      },
+      "on"       : "rename",
+      "supplies" : ["name"],
+      "shortcut" : "F2"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "wikidir:lore",
       "id"       : "app.copy",
       "label"    : "Copy path",
       "props": {
@@ -45123,6 +45342,23 @@
       },
       "on"       : "paste",
       "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "wiki:lore/cafe.md",
+      "id"       : "doc.move",
+      "label"    : "Rename file…",
+      "tooltip": "Change the page’s file name on disk and keep its title. Links to it are rewritten.",
+      "props": {
+        "paths": ["wiki/lore/cafe.md"],
+        "into" : "wiki/lore"
+      },
+      "on"       : "rename",
+      "supplies" : ["name"],
+      "shortcut" : "F2"
     },
     {
       "via"      : "menu",
@@ -45228,6 +45464,23 @@
       "module"   : "doctree",
       "situation": "cut-clipboard",
       "when"     : "dir:wiki/lore",
+      "id"       : "doc.move",
+      "label"    : "Rename…",
+      "tooltip"  : "Change the folder’s name on disk. Links to what it holds are rewritten.",
+      "props": {
+        "paths": ["wiki/lore"],
+        "into" : "wiki"
+      },
+      "on"       : "rename",
+      "supplies" : ["name"],
+      "shortcut" : "F2"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "dir:wiki/lore",
       "id"       : "app.copy",
       "label"    : "Copy path",
       "props": {
@@ -45279,6 +45532,23 @@
       },
       "on"       : "paste",
       "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "file:wiki/lore/cafe.md",
+      "id"       : "doc.move",
+      "label"    : "Rename…",
+      "tooltip"  : "Change the file’s name on disk. Links to it are rewritten.",
+      "props": {
+        "paths": ["wiki/lore/cafe.md"],
+        "into" : "wiki/lore"
+      },
+      "on"       : "rename",
+      "supplies" : ["name"],
+      "shortcut" : "F2"
     },
     {
       "via"      : "menu",
@@ -45478,6 +45748,23 @@
       "module"   : "doctree",
       "situation": "copy-clipboard",
       "when"     : "wikidir:lore",
+      "id"       : "doc.move",
+      "label"    : "Rename…",
+      "tooltip"  : "Change the folder’s name on disk. Links to what it holds are rewritten.",
+      "props": {
+        "paths": ["wiki/lore"],
+        "into" : "wiki"
+      },
+      "on"       : "rename",
+      "supplies" : ["name"],
+      "shortcut" : "F2"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "wikidir:lore",
       "id"       : "app.copy",
       "label"    : "Copy path",
       "props": {
@@ -45529,6 +45816,23 @@
       },
       "on"       : "paste",
       "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "wiki:lore/cafe.md",
+      "id"       : "doc.move",
+      "label"    : "Rename file…",
+      "tooltip": "Change the page’s file name on disk and keep its title. Links to it are rewritten.",
+      "props": {
+        "paths": ["wiki/lore/cafe.md"],
+        "into" : "wiki/lore"
+      },
+      "on"       : "rename",
+      "supplies" : ["name"],
+      "shortcut" : "F2"
     },
     {
       "via"      : "menu",
@@ -45634,6 +45938,23 @@
       "module"   : "doctree",
       "situation": "copy-clipboard",
       "when"     : "dir:wiki/lore",
+      "id"       : "doc.move",
+      "label"    : "Rename…",
+      "tooltip"  : "Change the folder’s name on disk. Links to what it holds are rewritten.",
+      "props": {
+        "paths": ["wiki/lore"],
+        "into" : "wiki"
+      },
+      "on"       : "rename",
+      "supplies" : ["name"],
+      "shortcut" : "F2"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "dir:wiki/lore",
       "id"       : "app.copy",
       "label"    : "Copy path",
       "props": {
@@ -45685,6 +46006,23 @@
       },
       "on"       : "paste",
       "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "file:wiki/lore/cafe.md",
+      "id"       : "doc.move",
+      "label"    : "Rename…",
+      "tooltip"  : "Change the file’s name on disk. Links to it are rewritten.",
+      "props": {
+        "paths": ["wiki/lore/cafe.md"],
+        "into" : "wiki/lore"
+      },
+      "on"       : "rename",
+      "supplies" : ["name"],
+      "shortcut" : "F2"
     },
     {
       "via"      : "menu",
@@ -50217,6 +50555,17 @@
         "props": {}
       },
       "on"   : "paste"
+    },
+    {
+      "scope": "documents",
+      "key"  : "F2",
+      "mods" : [],
+      "label": "Rename",
+      "runs": {
+        "id"   : "doc.move",
+        "props": {}
+      },
+      "on"   : "rename"
     },
     {
       "scope": "gengraph",

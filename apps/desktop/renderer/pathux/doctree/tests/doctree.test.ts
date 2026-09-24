@@ -10,6 +10,7 @@ import {
   nodeIsSelected,
   nodeKey,
   pasteInto,
+  renameEntry,
   renameOf,
   revealIds,
   rowTitle,
@@ -514,6 +515,7 @@ describe('menuFor', () => {
       { what: 'clip' },
       { paths: [], into: 'wiki/lore' },
       undefined,
+      { paths: ['wiki/lore'], into: 'wiki' },
       { text: 'wiki/lore', what: 'path' },
     ]);
     expect(menuFor(node('branch:wiki', 'branch'))[0]!.props).toEqual({ kind: 'note' });
@@ -540,6 +542,7 @@ describe('menuFor', () => {
       ['Copy', roots],
       ['Paste', NOTHING_CLIPPED],
       [MENU_SEP, undefined],
+      ['Rename…', roots],
       ['Copy path', undefined],
     ]);
   });
@@ -793,18 +796,60 @@ describe('the file acts', () => {
   const paste = (n: DocNode, ctx?: MenuContext) =>
     menuFor(n, 'stored', ctx).find((entry) => entry.on === 'paste')!;
 
-  it('draws a page and a file as Cut · Copy · Paste · Copy path · Show history', () => {
-    for (const kind of ['wiki', 'file'] as const) {
+  it('draws a page and a file as Cut · Copy · Paste · Rename · Copy path · Show history', () => {
+    for (const [kind, rename] of [
+      ['wiki', 'Rename file…'],
+      ['file', 'Rename…'],
+    ] as const) {
       const entries = menuFor(node(`${kind}:x`, kind, { path: 'wiki/x.md' }));
       expect(entries.map((entry) => entry.label)).toEqual([
         'Cut',
         'Copy',
         'Paste',
         MENU_SEP,
+        rename,
         'Copy path',
         'Show history',
       ]);
     }
+  });
+
+  // The name is typed into the box the pane's handler opens, so the entry is not checked
+  it('renames with doc.move into the item’s own folder, the pane supplying the name', () => {
+    const rename = menuFor(page).find((entry) => entry.on === 'rename');
+    expect(rename).toMatchObject({
+      label   : 'Rename file…',
+      id      : 'doc.move',
+      props   : { paths: ['wiki/lore/cafe.md'], into: 'wiki/lore' },
+      supplies: ['name'],
+      shortcut: 'F2',
+    });
+    expect(rename?.refused).toBeUndefined();
+    expect(renameEntry(folder, NO_MENU_CONTEXT)).toMatchObject({
+      label: 'Rename…',
+      props: { paths: ['wiki/lore'], into: 'wiki' },
+    });
+  });
+
+  it('refuses Rename… on a root folder, outside the roots, and with unsaved edits', () => {
+    expect(renameEntry(node('dir:wiki', 'dir', { path: 'wiki' }), NO_MENU_CONTEXT)?.refused).toBe(
+      "wiki/ is one of the project's own folders; it cannot be created, moved or renamed.",
+    );
+    expect(
+      renameEntry(node('file:scenes/a.md', 'file', { path: 'scenes/a.md' }), NO_MENU_CONTEXT)
+        ?.refused,
+    ).toMatch(/^Files can be created, moved and renamed only under/);
+    const dirty = { ...NO_MENU_CONTEXT, dirty: ['wiki/lore/cafe.md'] };
+    const refused = 'Save wiki/lore/cafe.md first — it has unsaved edits.';
+    expect(renameEntry(page, dirty)?.refused).toBe(refused);
+    expect(renameEntry(folder, dirty)?.refused).toBe(refused);
+  });
+
+  it('offers no Rename… on a row that names no file or folder', () => {
+    expect(
+      renameEntry(node('scene:greet', 'scene', { path: 'scenes/greet.md' }), NO_MENU_CONTEXT),
+    ).toBeUndefined();
+    expect(renameEntry(node('wiki:x', 'wiki'), NO_MENU_CONTEXT)).toBeUndefined();
   });
 
   it('records Cut and Copy as the clip view, with their keys and their own tooltips', () => {
@@ -945,13 +990,29 @@ describe('rowTitle', () => {
     );
   });
 
-  it('says how to mark several, after the rename where both apply', () => {
+  it('says how a markable row is renamed, then how to mark several', () => {
+    const hint = 'Ctrl-click or Shift-click to select several.';
     const page = node('wiki:lore.md', 'wiki', { label: 'Lore', path: 'wiki/lore.md' });
-    expect(rowTitle(page, { ...plain, markable: true })).toBe(
-      'wiki/lore.md — Ctrl-click or Shift-click to select several.',
-    );
     expect(rowTitle(page, { ...plain, renamable: true, markable: true })).toBe(
-      'wiki/lore.md — double-click the name to rename it. Ctrl-click or Shift-click to select several.',
+      `wiki/lore.md — double-click the name to retitle the page, F2 to rename the file. ${hint}`,
+    );
+    expect(
+      rowTitle(node('file:wiki/a.txt', 'file', { path: 'wiki/a.txt' }), {
+        ...plain,
+        markable: true,
+      }),
+    ).toBe(`wiki/a.txt — double-click the name to rename the file. ${hint}`);
+    for (const kind of ['dir', 'wikidir'] as const) {
+      expect(
+        rowTitle(node(`${kind}:x`, kind, { path: 'wiki/lore' }), { ...plain, markable: true }),
+      ).toBe(`wiki/lore — F2 renames it. ${hint}`);
+    }
+  });
+
+  // The Skills pane marks nothing, so its rows keep their path alone
+  it('says only the path of a row outside the four roots, or in a pane that marks nothing', () => {
+    expect(rowTitle(node('file:scenes/a.md', 'file', { path: 'scenes/a.md' }), plain)).toBe(
+      'scenes/a.md',
     );
   });
 

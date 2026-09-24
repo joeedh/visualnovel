@@ -15,7 +15,13 @@ import * as nstructjs from 'nstructjs';
 import { StdUXMeta, getMeta, type MetaOwner } from 'pathux-meta';
 import type { PopupHome } from '../../../src/shared/editors.js';
 import { menuRecords } from '../../rules/menus.js';
-import { SHORTCUTS, comboOf, type ShortcutScope } from '../../rules/shortcuts.js';
+import {
+  FUNCTION_KEYS,
+  SHORTCUTS,
+  comboOf,
+  isFunctionKey,
+  type ShortcutScope,
+} from '../../rules/shortcuts.js';
 import { hitFor, up } from '../interactions/hittest.js';
 import { centreOf } from '../../rules/ring.js';
 import {
@@ -446,7 +452,12 @@ export function shortcutReport(): ScopeReport[] {
   for (const [scope, keys] of liveKeymaps) {
     const listed = new Map(
       SHORTCUTS.filter((entry) => entry.scope === scope).map((entry) => [
-        combo((KEYS as unknown as Record<string, number>)[entry.key] ?? -1, entry.mods),
+        combo(
+          isFunctionKey(entry.key)
+            ? FUNCTION_KEYS[entry.key]
+            : ((KEYS as unknown as Record<string, number>)[entry.key] ?? -1),
+          entry.mods,
+        ),
         comboOf(entry),
       ]),
     );
@@ -455,7 +466,9 @@ export function shortcutReport(): ScopeReport[] {
       [...(keys() ?? [])].map((hotkey) => [
         combo(hotkey.key, hotkey.mods),
         comboOf({
-          key : (reverse_keymap[hotkey.key] ?? String(hotkey.key)) as never,
+          key: (reverse_keymap[hotkey.key] ??
+            Object.entries(FUNCTION_KEYS).find(([, code]) => code === hotkey.key)?.[0] ??
+            String(hotkey.key)) as never,
           mods: hotkey.mods.map((mod) => mod.toLowerCase() as never),
         }),
       ]),

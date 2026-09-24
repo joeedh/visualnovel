@@ -1,7 +1,9 @@
 import {
+  FUNCTION_KEYS,
   MODS,
   SHORTCUTS,
   bindings,
+  isFunctionKey,
   comboOf,
   findShortcut,
   matches,
@@ -128,19 +130,21 @@ describe('bindings', () => {
     );
   });
 
-  it('binds Escape, Ctrl+C, Ctrl+X and Ctrl+V in the Documents pane', () => {
+  it('binds Escape, Ctrl+C, Ctrl+X, Ctrl+V and F2 in the Documents pane', () => {
     const noop = () => {};
     const list = bindings('documents', {
       'Clear marks': noop,
       Copy         : noop,
       Cut          : noop,
       Paste        : noop,
+      Rename       : noop,
     });
     expect(list.map((b) => [b.key, b.mods, b.label])).toEqual([
       ['Escape', [], 'Clear marks'],
       ['C', ['ctrl'], 'Copy'],
       ['X', ['ctrl'], 'Cut'],
       ['V', ['ctrl'], 'Paste'],
+      ['F2', [], 'Rename'],
     ]);
     expect(findShortcut(view('mark'), undefined, 'documents')).toMatchObject({
       scope: 'documents',
@@ -152,8 +156,15 @@ describe('bindings', () => {
     expect(shortcutOf(view('clip'), 'cut')).toBe('Ctrl+X');
     expect(shortcutOf(view('clip'), 'copy')).toBe('Ctrl+C');
     expect(shortcutOf({ id: 'doc.move', props: {} }, 'paste')).toBe('Ctrl+V');
-    // Rename's F2 arrives with the rename box, so a doc.move with no `on` binds nothing yet
     expect(findShortcut({ id: 'doc.move', props: {} }, undefined, 'documents')).toBeUndefined();
+  });
+
+  // The rename box itself runs doc.move with no `on`, so only the menu entry is labelled F2
+  it('labels Rename… by doc.move with `on: rename`, and F2 is a function key', () => {
+    expect(shortcutOf({ id: 'doc.move', props: { paths: ['wiki/a.md'] } }, 'rename')).toBe('F2');
+    expect(isFunctionKey('F2')).toBe(true);
+    expect(isFunctionKey('V')).toBe(false);
+    expect(FUNCTION_KEYS.F2).toBe(113);
   });
 
   it('has nothing to bind for a scope path.ux binds itself', () => {

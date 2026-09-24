@@ -20,8 +20,18 @@ import type { UxShortcut } from '../../src/shared/uxmodel.js';
 /** A key name as path.ux's `HotKey` takes it. */
 export type PathuxKey = keyof typeof keymap;
 
-/** A table key: a path.ux name, or the one key main catches that path.ux has no name for. */
-export type ShortcutKey = PathuxKey | 'F12';
+/** Key codes for the function keys the table binds, which path.ux's keymap does not name. */
+export const FUNCTION_KEYS = { F2: 113, F12: 123 } as const;
+
+export type FunctionKey = keyof typeof FUNCTION_KEYS;
+
+/** A table key: a path.ux name, or a function key from {@link FUNCTION_KEYS}. */
+export type ShortcutKey = PathuxKey | FunctionKey;
+
+/** Whether a table key is one of {@link FUNCTION_KEYS}, which path.ux cannot look up. */
+export function isFunctionKey(key: string): key is FunctionKey {
+  return Object.hasOwn(FUNCTION_KEYS, key);
+}
 
 /** The modifiers the app binds; the order here is the order a combo is written in. */
 export const MODS = ['ctrl', 'shift', 'alt'] as const;
@@ -208,8 +218,9 @@ export const SHORTCUTS: readonly Shortcut[] = [
   },
   { scope: 'script', key: 'Escape', mods: [], label: 'Unmark lines', runs: view('mark') },
 
-  // The Documents pane's keys act on the rows marked by Ctrl-click and Shift-click, and Paste on
-  // the anchor row's folder. Paste is recorded as `doc.move`, but after a Copy it runs `doc.copy`
+  // The Documents pane's keys act on the rows marked by Ctrl-click and Shift-click, Paste on the
+  // anchor row's folder, and Rename on the anchor row when it is the only mark. Paste is recorded
+  // as `doc.move`, but after a Copy it runs `doc.copy`
   { scope: 'documents', key: 'Escape', mods: [], label: 'Clear marks', runs: view('mark') },
   { scope: 'documents', key: 'C', mods: ['ctrl'], label: 'Copy', runs: view('clip'), on: 'copy' },
   { scope: 'documents', key: 'X', mods: ['ctrl'], label: 'Cut', runs: view('clip'), on: 'cut' },
@@ -220,6 +231,14 @@ export const SHORTCUTS: readonly Shortcut[] = [
     label: 'Paste',
     runs : command('doc.move'),
     on   : 'paste',
+  },
+  {
+    scope: 'documents',
+    key  : 'F2',
+    mods : [],
+    label: 'Rename',
+    runs : command('doc.move'),
+    on   : 'rename',
   },
 
   {
@@ -332,7 +351,7 @@ export function shortcutOf(action: Action, on?: string): string {
 
 /** One `HotKey`'s worth: the key, the modifiers, the name and what to run. */
 export interface Binding {
-  key: PathuxKey;
+  key: ShortcutKey;
   mods: readonly ShortcutMod[];
   label: string;
   run: () => void;
@@ -357,9 +376,8 @@ export function bindings(
         `no entry for ${JSON.stringify(unbound)}`,
     );
   }
-  // Only main's scope names a key path.ux lacks, and main binds its own rather than calling here
   return entries.map((entry) => ({
-    key  : entry.key as PathuxKey,
+    key  : entry.key,
     mods : entry.mods,
     label: entry.label,
     run  : handlers[entry.label]!,
