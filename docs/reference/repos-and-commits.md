@@ -362,8 +362,14 @@ after it.
 
 The repo map is part of commit-on-save and is used only there. `Committer` takes the repo
 list, commits each repo that had something to commit, and reports what was committed in
-each repo. It commits nested repos before the repo that contains them (`byDepth`, from
-`@vn/git/depth`). Committing in that order has two effects:
+each repo. The list (`RepoList`, `apps/desktop/src/main/workspace/repolist.ts`) is the
+owned repos `Workspace.repos()` reports plus every checked-out submodule those repos
+record in their index, at any depth: a submodule at `lore/`, or one nested inside the
+wiki's own repository, is committed like `wiki/` is. A parent's `add -A` does not descend
+into a submodule, so a submodule missing from the list would have its edits left out of
+every commit while `git.save` reported the save as made. `Committer` commits nested repos
+before the repo that contains them (`byDepth`, from `@vn/git/depth`). Committing in that
+order has two effects:
 
 - The project's `add -A` stages the wiki's new HEAD as its gitlink, rather than the HEAD
   from one act earlier.
@@ -427,10 +433,11 @@ other nested repo. The plan is
   pane's strip, its empty list and its refusals say the submodule is not checked out. Its
   reads refuse too, where they would otherwise answer with the project's history.
 - **A submodule added while the app is open is committed to from the next act.** Before
-  each commit, `RepoList` checks, without spawning git, whether the project, `wiki/` or
-  `assets/` gained or lost a `.git`, and whether `.gitmodules` changed. When one did, it
-  repeats the whole lookup, `adoptSubmodules` included, and posts what that finds. A
-  directory's mtime is not part of the check, because every commit writes inside `.git`.
+  each commit, `RepoList` checks, without spawning git, whether the project, `wiki/`,
+  `assets/` or a submodule it already knows gained or lost a `.git`, and whether any of
+  their `.gitmodules` changed. When one did, it repeats the whole lookup,
+  `adoptSubmodules` included, and posts what that finds. A directory's mtime is not part
+  of the check, because every commit writes inside `.git`.
 - **Undo does not touch repository structure.** The snapshot walk skips `.git` whether it
   is a directory or a submodule's file, and `.gitmodules` is in `UNDO_EXCLUDES`.
 - **Adding or removing a submodule** is done in a terminal, never from the app.

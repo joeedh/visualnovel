@@ -63,6 +63,32 @@ describe('RepoList', () => {
     ]);
   }, 30_000);
 
+  it('commits in a submodule outside wiki/, and in one nested inside another', async () => {
+    const list = new RepoList(project);
+    await list.open();
+    const url = upstream.replace(/\\/g, '/');
+    await sh(project, ['-c', 'protocol.file.allow=always', 'submodule', 'add', url, 'lore']);
+    const loreDir = join(project, 'lore');
+    const lore = openGit(loreDir);
+    await lore.config('user.email', 'test@example.com');
+    await lore.config('user.name', 'Test');
+    await sh(loreDir, ['-c', 'protocol.file.allow=always', 'submodule', 'add', url, 'inner']);
+    const innerDir = join(loreDir, 'inner');
+    await openGit(innerDir).config('user.email', 'test@example.com');
+    await openGit(innerDir).config('user.name', 'Test');
+    await sh(loreDir, ['commit', '-qm', 'add inner']);
+    await sh(project, ['commit', '-qam', 'add lore']);
+
+    await writeFile(join(loreDir, 'note.md'), 'edited in lore\n');
+    await writeFile(join(innerDir, 'note.md'), 'edited in inner\n');
+    const commits = await new Committer({ repos: () => list.current() }).sweep('an act');
+
+    expect(commits.map((c) => c.repo).sort()).toEqual([project, loreDir, innerDir].sort());
+    for (const dir of [project, loreDir, innerDir]) {
+      expect((await openGit(dir).status()).dirty).toBe(false);
+    }
+  }, 30_000);
+
   it('does not repeat the lookup when nothing that decides it has changed', async () => {
     const list = new RepoList(project);
     await list.open();
