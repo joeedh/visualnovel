@@ -154,6 +154,9 @@ export class ShellState {
   canRedo = false;
   undoLabel = '';
   redoLabel = '';
+  /** The same two acts named by their command titles, which the Edit menu's rows read. */
+  undoTitle = '';
+  redoTitle = '';
   /** The act undo stops at when `canUndo` is false and something has changed; empty otherwise. */
   undoBlocked = '';
 

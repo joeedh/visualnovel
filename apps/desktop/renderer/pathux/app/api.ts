@@ -35,6 +35,8 @@ export function defineShellApi(): DataAPI {
   ui.bool('canRedo', 'canRedo', 'Can Redo');
   ui.string('undoLabel', 'undoLabel', 'Undo Label');
   ui.string('redoLabel', 'redoLabel', 'Redo Label');
+  ui.string('undoTitle', 'undoTitle', 'Undo Title');
+  ui.string('redoTitle', 'redoTitle', 'Redo Title');
   ui.string('undoBlocked', 'undoBlocked', 'Undo Blocked By');
 
   root.struct('ui', 'ui', 'UI', ui);

@@ -39,6 +39,12 @@ export interface HeaderMenuState {
   pagesInstalled: boolean;
   /** The editor the active pane shows, which Move Pane to New Window moves, or `''` with none. */
   activeEditor: string;
+  /** The title of the act undo would reverse, or null when there is nothing to undo. */
+  undo: string | null;
+  /** The act undo stops at when `undo` is null because the newest change cannot be undone. */
+  undoBlocked: string;
+  /** The title of the act redo would reapply, or null when nothing has been undone. */
+  redo: string | null;
 }
 
 /** The keys of every row the header runs itself rather than through `exec` or a form. */
@@ -71,19 +77,34 @@ function submenu(
   return { label, ...openMenu(menu), tooltip, submenu: rows };
 }
 
-const UNDO: MenuEntry = {
-  label: 'Undo',
-  ...move('undo'),
-  shortcut: shortcutOf(move('undo')),
-  tooltip : 'Put the project back the way it was before the last act',
-};
+/**
+ * Undo, labelled with the act it reverses. Refused with the header arrow's sentences when there
+ * is nothing to undo.
+ */
+export function undoEntry(state: HeaderMenuState): MenuEntry {
+  const row: MenuEntry = {
+    label: state.undo ? `Undo ${state.undo}` : 'Undo',
+    ...move('undo'),
+    shortcut: shortcutOf(move('undo')),
+    tooltip : 'Put the project back the way it was before the last act',
+  };
+  if (state.undo !== null) return row;
+  const why = state.undoBlocked
+    ? `Undo stops at ${state.undoBlocked}, which cannot be undone`
+    : 'Nothing to undo';
+  return { ...row, refused: why };
+}
 
-const REDO: MenuEntry = {
-  label: 'Redo',
-  ...move('redo'),
-  shortcut: shortcutOf(move('redo')),
-  tooltip : 'Reapply the act that was just undone',
-};
+/** Redo, labelled with the act it reapplies, and refused when nothing has been undone. */
+export function redoEntry(state: HeaderMenuState): MenuEntry {
+  return {
+    label: state.redo ? `Redo ${state.redo}` : 'Redo',
+    ...move('redo'),
+    shortcut: shortcutOf(move('redo')),
+    tooltip : 'Reapply the act that was just undone',
+    ...(state.redo === null ? { refused: 'Nothing to redo' } : {}),
+  };
+}
 
 /**
  * The app menu. Run Pipeline is fired rather than formed: it and the header's button run the
@@ -101,8 +122,8 @@ export function appMenu(state: HeaderMenuState): MenuEntry[] {
       tooltip : 'Search every command by name and fill in its arguments',
     },
     SEPARATOR,
-    UNDO,
-    REDO,
+    undoEntry(state),
+    redoEntry(state),
     SEPARATOR,
     {
       label   : 'Save All',
@@ -229,10 +250,10 @@ export function recentMenu(recents: readonly string[], current: string): MenuEnt
  * broken. The group entries act on the Gen Graph pane that is the active one, the same pane its
  * own keys would reach, so their props come from that pane rather than from the row.
  */
-export function editMenu(): MenuEntry[] {
+export function editMenu(state: HeaderMenuState): MenuEntry[] {
   return [
-    UNDO,
-    REDO,
+    undoEntry(state),
+    redoEntry(state),
     SEPARATOR,
     {
       label   : 'Create Group',
@@ -443,7 +464,7 @@ const buttonOf = (menu: MenuName): MenuButton =>
 /** The four menus, in bar order. */
 export const HEADER_MENUS: readonly HeaderMenu[] = [
   { ...buttonOf('app'), entries: appMenu },
-  { ...buttonOf('edit'), entries: () => editMenu() },
+  { ...buttonOf('edit'), entries: editMenu },
   { ...buttonOf('view'), entries: viewMenu },
   { ...buttonOf('help'), entries: () => helpMenu() },
 ];

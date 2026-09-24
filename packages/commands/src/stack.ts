@@ -113,6 +113,12 @@ export interface UndoState {
   undoLabel: string | null;
   redoLabel: string | null;
   /**
+   * The act undo would reverse, as a menu names it: the record's own `label`, else its command's
+   * `title`. Null when there is nothing to undo.
+   */
+  undoTitle: string | null;
+  redoTitle: string | null;
+  /**
    * The act undo stops at: the newest change, when it cannot be undone. Null when undo is
    * possible or when there is nothing to undo.
    */
@@ -632,8 +638,15 @@ export class CommandStack<Host = unknown> {
       canRedo  : Boolean(this.opts.journal && redo),
       undoLabel: undoable ? (undo!.label ?? undo!.invocation) : null,
       redoLabel: redo ? (redo.label ?? redo.invocation) : null,
+      undoTitle: undoable ? this.titleOf(undo!) : null,
+      redoTitle: redo ? this.titleOf(redo) : null,
       blocked  : this.opts.journal && undo && !undo.undo ? (undo.label ?? undo.invocation) : null,
     };
+  }
+
+  /** Names a record in words, falling back to its id for a command no longer registered. */
+  private titleOf(record: CommandRecord): string {
+    return record.label ?? this.opts.registry.get(record.id)?.title ?? record.id;
   }
 
   canUndo(): boolean {

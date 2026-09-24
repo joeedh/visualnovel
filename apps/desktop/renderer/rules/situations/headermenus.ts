@@ -36,6 +36,9 @@ const fresh: HeaderMenuState = {
   layout        : '{"vnstudio":"layout/1"}',
   pagesInstalled: false,
   activeEditor  : 'script',
+  undo          : null,
+  undoBlocked   : '',
+  redo          : null,
 };
 
 export const SITUATIONS = situations<HeaderMenuState>(
@@ -46,7 +49,7 @@ export const SITUATIONS = situations<HeaderMenuState>(
   },
   {
     name : 'project',
-    why: 'Two projects are remembered, one of them open and refused; two layouts exist, one unusable; the page builder is installed; the agent is executing.',
+    why: 'Two projects are remembered, one of them open and refused; two layouts exist, one unusable; the page builder is installed; the agent is executing; Undo and Redo each name an act.',
     state: {
       ...fresh,
       agentMode     : 'execute',
@@ -56,6 +59,8 @@ export const SITUATIONS = situations<HeaderMenuState>(
       activeSlug    : 'writing',
       pagesInstalled: true,
       activeEditor  : 'gengraph',
+      undo          : 'Save a document',
+      redo          : 'Move nodes',
     },
   },
   {
@@ -67,5 +72,10 @@ export const SITUATIONS = situations<HeaderMenuState>(
     name : 'no-pane',
     why: 'No pane can be moved and the arrangement cannot be serialized, so both rows are refused.',
     state: { ...fresh, activeEditor: '', layout: '' },
+  },
+  {
+    name : 'undo-blocked',
+    why  : 'The newest change cannot be undone, so Undo is refused by naming it.',
+    state: { ...fresh, undoBlocked: "git.takeBack(repo='project' sha='4f1a2b3')" },
   },
 );

@@ -382,28 +382,32 @@ subscribes to `onExec`, and the bridge owns both.
 - **The Edit menu is Undo, Redo, the group entries, and the one act that is a whole art
   pass.** It sits between View and Help and holds Undo (`Ctrl+Z`) and Redo
   (`Ctrl+Shift+Z`) — the two acts an author looks for under a menu with that name, and the
-  same pair the header's arrows run — then **Create Group** (`Ctrl+G`), **Ungroup**
-  (`Ctrl+Alt+G`), **Edit Group** (`Tab`) and **Exit Group**, which act on the Gen Graph
-  pane that is the active one in `paneToUse`'s sense (the pane the pointer last entered,
-  else the biggest) and say so when that pane is not a Gen Graph; the keys themselves
-  belong to the pane's keymap, and the menu only names them
-  ([`gen-graphs.md#the-gen-graph-pane`](gen-graphs.md#the-gen-graph-pane)) — plus
-  **Approve & Generate All…**, which opens `pipeline.approveAndRun`'s dialog. That command
-  approves every picture waiting, runs the pipeline, and repeats until neither half moves:
-  each round unlocks the next rung of the slot graph, so an approved portrait clears the
-  gate and an approved sheet lets its plates plan. It is a menu entry rather than a button
-  because it spends real model calls and approves art on the author's behalf; the
-  confirmation card counts what is waiting and what is planned before anything is spent —
-  and says so plainly when the answer to both is none, because a pass with nothing to do
-  still takes one round and an author who was not told reads that round as a run that did
-  nothing. Stop pipeline ends it after the task in progress, and ends the pass rather than
-  only the round it interrupted: the session is held for the whole pass under its own name
-  (`BUSY_PASS`), so the header keeps drawing the spinner and the Stop button through the
-  gaps between rounds, and one `AbortController` covers all of them. Approving is not a
-  run, so a stop asked for while a round is approving previously had nothing to abort and
-  was forgotten by the time the next round started. Its loop and its round cap are in
-  [`command-system.md`](command-system.md#the-registered-commands); what it approves is
-  what `approvable` lists, at most one row per slot, the take the slot holds.
+  same pair the header's arrows run. Each row is labelled with the act it would move over,
+  by that command's `title` (`Undo Save a document`, `Redo Move nodes`), from
+  `UndoState.undoTitle` / `redoTitle`; a checkpoint is named by its own label. With
+  nothing to move over, the row is refused with the header arrow's sentence. After those
+  come **Create Group** (`Ctrl+G`), **Ungroup** (`Ctrl+Alt+G`), **Edit Group** (`Tab`) and
+  **Exit Group**, which act on the Gen Graph pane that is the active one in `paneToUse`'s
+  sense (the pane the pointer last entered, else the biggest) and say so when that pane is
+  not a Gen Graph; the keys themselves belong to the pane's keymap, and the menu only
+  names them ([`gen-graphs.md#the-gen-graph-pane`](gen-graphs.md#the-gen-graph-pane)) —
+  plus **Approve & Generate All…**, which opens `pipeline.approveAndRun`'s dialog. That
+  command approves every picture waiting, runs the pipeline, and repeats until neither
+  half moves: each round unlocks the next rung of the slot graph, so an approved portrait
+  clears the gate and an approved sheet lets its plates plan. It is a menu entry rather
+  than a button because it spends real model calls and approves art on the author's
+  behalf; the confirmation card counts what is waiting and what is planned before anything
+  is spent — and says so plainly when the answer to both is none, because a pass with
+  nothing to do still takes one round and an author who was not told reads that round as a
+  run that did nothing. Stop pipeline ends it after the task in progress, and ends the
+  pass rather than only the round it interrupted: the session is held for the whole pass
+  under its own name (`BUSY_PASS`), so the header keeps drawing the spinner and the Stop
+  button through the gaps between rounds, and one `AbortController` covers all of them.
+  Approving is not a run, so a stop asked for while a round is approving previously had
+  nothing to abort and was forgotten by the time the next round started. Its loop and its
+  round cap are in [`command-system.md`](command-system.md#the-registered-commands); what
+  it approves is what `approvable` lists, at most one row per slot, the take the slot
+  holds.
 - **Only the Help menu starts an update check.** Check for Updates…
   (`app.checkForUpdates`) queries GitHub for the latest release, compares it against
   `apps/desktop/package.json`'s version, and reports the result on screen — nothing is

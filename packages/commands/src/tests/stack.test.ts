@@ -757,6 +757,14 @@ describe('undo/redo', () => {
     expect(world.value).toBe('w1');
   });
 
+  it('names the act to undo or redo by its command title', async () => {
+    const { stack } = undoSetup();
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui');
+    expect(stack.undoState()).toMatchObject({ undoTitle: 'Edit', redoTitle: null });
+    await stack.undo();
+    expect(stack.undoState()).toMatchObject({ undoTitle: null, redoTitle: 'Edit' });
+  });
+
   it('drops the redo stack when a new act lands on top', async () => {
     const { stack, world } = undoSetup();
     await stack.exec('demo.edit', { to: 'w1' }, 'ui');
@@ -775,6 +783,8 @@ describe('undo/redo', () => {
       canRedo  : false,
       undoLabel: null,
       redoLabel: null,
+      undoTitle: null,
+      redoTitle: null,
       blocked  : null,
     });
     expect(await stack.undo()).toMatchObject({ ok: false, error: 'nothing to undo' });
@@ -908,7 +918,10 @@ describe('checkpoints', () => {
       expect(r.undo).toBeUndefined();
     }
     expect(stack.undoCandidate()).toMatchObject({ id: 'stack.checkpoint' });
-    expect(stack.undoState().undoLabel).toBe('Delete nodes');
+    expect(stack.undoState()).toMatchObject({
+      undoLabel: 'Delete nodes',
+      undoTitle: 'Delete nodes',
+    });
 
     expect(await stack.undo()).toMatchObject({ ok: true });
     expect(world.value).toBe('w0');

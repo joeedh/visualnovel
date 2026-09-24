@@ -531,6 +531,9 @@ export class VnHeaderEditor extends VnEditor {
       layout        : this.serializedLayout(),
       pagesInstalled: this.pagesInstalled,
       activeEditor  : active === NO_PANE ? '' : (panes[active]?.editor ?? ''),
+      undo          : ui.canUndo ? ui.undoTitle : null,
+      undoBlocked   : ui.undoBlocked,
+      redo          : ui.canRedo ? ui.redoTitle : null,
     };
   }
 

@@ -15,7 +15,7 @@
 [ ]: Add support for renaming wiki files
 
 ## Others
-[ ]: Label undo/redo entries in the edit menu with what's being undone/redone.
+[x]: Label undo/redo entries in the edit menu with what's being undone/redone.
 [ ]: The history pane silently fails to commit files inside a submodule to git.
 [ ]: Numbered lists in the rich text editor never reset to 1 during rendering,
      they do however do so in the raw markdown file.

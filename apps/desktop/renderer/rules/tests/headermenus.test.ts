@@ -121,8 +121,32 @@ describe('recentMenu', () => {
 });
 
 describe('editMenu', () => {
+  it('names the act Undo and Redo would move over, and refuses each with nothing to move to', () => {
+    const named = editMenu(project);
+    expect(named[0]).toMatchObject({
+      label   : 'Undo Save a document',
+      id      : 'history.move',
+      props   : { to: 'undo' },
+      shortcut: 'Ctrl+Z',
+    });
+    expect(named[0]!.refused).toBeUndefined();
+    expect(named[1]).toMatchObject({ label: 'Redo Move nodes', props: { to: 'redo' } });
+
+    const empty = editMenu(fresh);
+    expect(empty[0]).toMatchObject({ label: 'Undo', refused: 'Nothing to undo' });
+    expect(empty[1]).toMatchObject({ label: 'Redo', refused: 'Nothing to redo' });
+
+    const blocked = SITUATIONS.find((s) => s.name === 'undo-blocked')!.state;
+    expect(editMenu(blocked)[0]!.refused).toBe(
+      "Undo stops at git.takeBack(repo='project' sha='4f1a2b3'), which cannot be undone",
+    );
+    expect(appMenu(project).find((e) => e.id === 'history.move')!.label).toBe(
+      'Undo Save a document',
+    );
+  });
+
   it('lets the active Gen Graph pane supply the group commands’ props', () => {
-    const rows = editMenu();
+    const rows = editMenu(fresh);
     expect(rows.find((e) => e.label === 'Create Group')).toMatchObject({
       id      : 'gengraph.createGroup',
       supplies: ['slug', 'nodes'],
@@ -135,13 +159,13 @@ describe('editMenu', () => {
   });
 
   it('tells Edit Group and Exit Group apart by `on`, since both change the pane’s scope', () => {
-    const rows = editMenu();
+    const rows = editMenu(fresh);
     expect(entryKey(rows.find((e) => e.label === 'Edit Group')!)).toBe('pane.view#enter');
     expect(entryKey(rows.find((e) => e.label === 'Exit Group')!)).toBe('pane.view#exit');
   });
 
   it('opens Approve & Generate All as a form, because the command confirms', () => {
-    expect(editMenu().at(-1)).toMatchObject({ id: 'pipeline.approveAndRun', form: true });
+    expect(editMenu(fresh).at(-1)).toMatchObject({ id: 'pipeline.approveAndRun', form: true });
   });
 });
 

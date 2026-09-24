@@ -402,6 +402,8 @@ export function installBridge(app: ShellApp): void {
       ui.canRedo = effect.state.canRedo;
       ui.undoLabel = effect.state.undoLabel ?? '';
       ui.redoLabel = effect.state.redoLabel ?? '';
+      ui.undoTitle = effect.state.undoTitle ?? '';
+      ui.redoTitle = effect.state.redoTitle ?? '';
       ui.undoBlocked = effect.state.blocked ?? '';
       // The header is not recounted here. This effect is pushed after every command, reads or
       // refusals included, and a recount reloads the whole project — so it follows the writes

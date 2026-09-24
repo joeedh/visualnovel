@@ -1090,7 +1090,7 @@
       "module": "headermenus",
       "editor": "header",
       "name"  : "project",
-      "why": "Two projects are remembered, one of them open and refused; two layouts exist, one unusable; the page builder is installed; the agent is executing."
+      "why": "Two projects are remembered, one of them open and refused; two layouts exist, one unusable; the page builder is installed; the agent is executing; Undo and Redo each name an act."
     },
     {
       "module": "headermenus",
@@ -1103,6 +1103,12 @@
       "editor": "header",
       "name"  : "no-pane",
       "why": "No pane can be moved and the arrangement cannot be serialized, so both rows are refused."
+    },
+    {
+      "module": "headermenus",
+      "editor": "header",
+      "name"  : "undo-blocked",
+      "why"   : "The newest change cannot be undone, so Undo is refused by naming it."
     }
   ],
   "records": [
@@ -44463,6 +44469,7 @@
       "props": {
         "to": "undo"
       },
+      "refused"  : "Nothing to undo",
       "shortcut" : "Ctrl+Z"
     },
     {
@@ -44477,6 +44484,7 @@
       "props": {
         "to": "redo"
       },
+      "refused"  : "Nothing to redo",
       "shortcut" : "Ctrl+Shift+Z"
     },
     {
@@ -44647,6 +44655,7 @@
       "props": {
         "to": "undo"
       },
+      "refused"  : "Nothing to undo",
       "shortcut" : "Ctrl+Z"
     },
     {
@@ -44661,6 +44670,7 @@
       "props": {
         "to": "redo"
       },
+      "refused"  : "Nothing to redo",
       "shortcut" : "Ctrl+Shift+Z"
     },
     {
@@ -45151,7 +45161,7 @@
       "situation": "project",
       "when"     : "header/app",
       "id"       : "history.move",
-      "label"    : "Undo",
+      "label"    : "Undo Save a document",
       "tooltip"  : "Put the project back the way it was before the last act",
       "props": {
         "to": "undo"
@@ -45165,7 +45175,7 @@
       "situation": "project",
       "when"     : "header/app",
       "id"       : "history.move",
-      "label"    : "Redo",
+      "label"    : "Redo Move nodes",
       "tooltip"  : "Reapply the act that was just undone",
       "props": {
         "to": "redo"
@@ -45351,7 +45361,7 @@
       "situation": "project",
       "when"     : "header/edit",
       "id"       : "history.move",
-      "label"    : "Undo",
+      "label"    : "Undo Save a document",
       "tooltip"  : "Put the project back the way it was before the last act",
       "props": {
         "to": "undo"
@@ -45365,7 +45375,7 @@
       "situation": "project",
       "when"     : "header/edit",
       "id"       : "history.move",
-      "label"    : "Redo",
+      "label"    : "Redo Move nodes",
       "tooltip"  : "Reapply the act that was just undone",
       "props": {
         "to": "redo"
@@ -45881,6 +45891,7 @@
       "props": {
         "to": "undo"
       },
+      "refused"  : "Nothing to undo",
       "shortcut" : "Ctrl+Z"
     },
     {
@@ -45895,6 +45906,7 @@
       "props": {
         "to": "redo"
       },
+      "refused"  : "Nothing to redo",
       "shortcut" : "Ctrl+Shift+Z"
     },
     {
@@ -46063,6 +46075,7 @@
       "props": {
         "to": "undo"
       },
+      "refused"  : "Nothing to undo",
       "shortcut" : "Ctrl+Z"
     },
     {
@@ -46077,6 +46090,7 @@
       "props": {
         "to": "redo"
       },
+      "refused"  : "Nothing to redo",
       "shortcut" : "Ctrl+Shift+Z"
     },
     {
@@ -46572,6 +46586,7 @@
       "props": {
         "to": "undo"
       },
+      "refused"  : "Nothing to undo",
       "shortcut" : "Ctrl+Z"
     },
     {
@@ -46586,6 +46601,7 @@
       "props": {
         "to": "redo"
       },
+      "refused"  : "Nothing to redo",
       "shortcut" : "Ctrl+Shift+Z"
     },
     {
@@ -46756,6 +46772,7 @@
       "props": {
         "to": "undo"
       },
+      "refused"  : "Nothing to undo",
       "shortcut" : "Ctrl+Z"
     },
     {
@@ -46770,6 +46787,7 @@
       "props": {
         "to": "redo"
       },
+      "refused"  : "Nothing to redo",
       "shortcut" : "Ctrl+Shift+Z"
     },
     {
@@ -47218,6 +47236,703 @@
       "editor"   : "header",
       "module"   : "headermenus",
       "situation": "no-pane",
+      "when"     : "header/help",
+      "id"       : "view.open",
+      "label"    : "Report a Difficult Agent…",
+      "tooltip": "Have a conversation that went wrong read by a debug agent, and draft a bug report from it. Runs on your own model key; names from your story are replaced first.",
+      "props": {
+        "editor": "report",
+        "where" : "popup"
+      },
+      "on"       : "report"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/app",
+      "id"       : "popup.open",
+      "label"    : "Command Palette…",
+      "tooltip"  : "Search every command by name and fill in its arguments",
+      "props": {
+        "popup": "palette"
+      },
+      "shortcut" : "Ctrl+Shift+P"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/app",
+      "id"       : "history.move",
+      "label"    : "Undo",
+      "tooltip"  : "Put the project back the way it was before the last act",
+      "props": {
+        "to": "undo"
+      },
+      "refused": "Undo stops at git.takeBack(repo='project' sha='4f1a2b3'), which cannot be undone",
+      "shortcut" : "Ctrl+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/app",
+      "id"       : "history.move",
+      "label"    : "Redo",
+      "tooltip"  : "Reapply the act that was just undone",
+      "props": {
+        "to": "redo"
+      },
+      "refused"  : "Nothing to redo",
+      "shortcut" : "Ctrl+Shift+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/app",
+      "id"       : "doc.saveAll",
+      "label"    : "Save All",
+      "tooltip"  : "Save every wiki page and skill with unsaved edits, in every window",
+      "shortcut" : "Ctrl+Shift+S"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/app",
+      "id"       : "pipeline.run",
+      "label"    : "Run Pipeline",
+      "tooltip"  : "Plan and render everything that is ready, to the next gate",
+      "props": {
+        "mock": false
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/app",
+      "id"       : "pipeline.run",
+      "label"    : "Run Pipeline (adv)…",
+      "tooltip"  : "Start a run with the flags spelled out — dry run, scene filter, task limit",
+      "props": {
+        "mock": false
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/app",
+      "id"       : "workspace.create",
+      "label"    : "New Project…",
+      "tooltip"  : "Scaffold a project in a new folder and open it, closing this one",
+      "props": {
+        "newFolder": true
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/app",
+      "id"       : "workspace.pick",
+      "label"    : "Open Project…",
+      "tooltip"  : "Choose a project folder and open it, closing this one"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/app",
+      "id"       : "menu.open",
+      "label"    : "Recent Projects",
+      "tooltip"  : "Reopen a project you worked on before",
+      "props": {
+        "menu": "recent"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/app/recent",
+      "id"       : "workspace.open",
+      "label"    : "(none)",
+      "refused"  : "No project has been opened yet"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/app",
+      "id"       : "workspace.reindex",
+      "label"    : "Reindex Project",
+      "tooltip"  : "Rebuild the map the authoring agent reads: cast, locations, story graph, bible"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/app",
+      "id"       : "view.open",
+      "label"    : "Set Up API Keys…",
+      "tooltip"  : "How to get a model key, which of yours are set, and where they are read from",
+      "props": {
+        "editor": "onboarding",
+        "where" : "elsewhere"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/app",
+      "id"       : "upload.pick",
+      "label"    : "Upload Files…",
+      "tooltip"  : "Copy files into the project archive, verbatim, under a dated folder",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/app",
+      "id"       : "project.installPages",
+      "label"    : "Install GitHub Page Builder…",
+      "tooltip": "Commit a GitHub Actions workflow that publishes this story as a web page when you push",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/app",
+      "id"       : "agent.setMode",
+      "label"    : "Plan ⇄ Execute",
+      "tooltip"  : "Switch the agent between reading only and being allowed to apply edits",
+      "props": {
+        "mode": "execute"
+      },
+      "shortcut" : "Shift+Tab"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/app",
+      "id"       : "window.quit",
+      "label"    : "Quit",
+      "tooltip"  : "Close every window and quit vnstudio",
+      "shortcut" : "Ctrl+Q"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/edit",
+      "id"       : "history.move",
+      "label"    : "Undo",
+      "tooltip"  : "Put the project back the way it was before the last act",
+      "props": {
+        "to": "undo"
+      },
+      "refused": "Undo stops at git.takeBack(repo='project' sha='4f1a2b3'), which cannot be undone",
+      "shortcut" : "Ctrl+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/edit",
+      "id"       : "history.move",
+      "label"    : "Redo",
+      "tooltip"  : "Reapply the act that was just undone",
+      "props": {
+        "to": "redo"
+      },
+      "refused"  : "Nothing to redo",
+      "shortcut" : "Ctrl+Shift+Z"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/edit",
+      "id"       : "gengraph.createGroup",
+      "label"    : "Create Group",
+      "tooltip": "Move the selected nodes of the active Gen Graph pane into a new group, and leave an instance of it in their place",
+      "supplies" : ["slug", "nodes"],
+      "shortcut" : "Ctrl+G"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/edit",
+      "id"       : "gengraph.ungroup",
+      "label"    : "Ungroup",
+      "tooltip"  : "Put a copy of each selected group’s nodes where the instance stands",
+      "supplies" : ["slug", "node"],
+      "shortcut" : "Ctrl+Alt+G"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/edit",
+      "id"       : "pane.view",
+      "label"    : "Edit Group",
+      "tooltip"  : "Open the selected group’s definition, which every instance of it follows",
+      "props": {
+        "what": "scope"
+      },
+      "on"       : "enter",
+      "shortcut" : "Tab"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/edit",
+      "id"       : "pane.view",
+      "label"    : "Exit Group",
+      "tooltip"  : "Go back up one level, to the graph the open group sits in",
+      "props": {
+        "what": "scope"
+      },
+      "on"       : "exit"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/edit",
+      "id"       : "pipeline.approveAndRun",
+      "label"    : "Approve & Generate All…",
+      "tooltip": "Approve every picture that is waiting and run the pipeline, repeatedly, until nothing is left to approve or generate. Spends real model calls.",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view",
+      "id"       : "menu.open",
+      "label"    : "Editors",
+      "tooltip"  : "Show a different editor in this pane",
+      "props": {
+        "menu": "editors"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Branches",
+      "tooltip"  : "Show the story graph as index cards in this pane",
+      "props": {
+        "editor": "branches"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Script",
+      "tooltip"  : "Show one scene's lines in this pane",
+      "props": {
+        "editor": "script"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Convo",
+      "tooltip"  : "Show the vnauthor conversation in this pane",
+      "props": {
+        "editor": "convo"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Page",
+      "tooltip": "Show one page shot: its panels, their lines and what the render made of them in this pane",
+      "props": {
+        "editor": "page"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Shot Coverage",
+      "tooltip"  : "Show a scene against the shots that illustrate it in this pane",
+      "props": {
+        "editor": "timeline"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Tasks",
+      "tooltip"  : "Show the pipeline task list in this pane",
+      "props": {
+        "editor": "tasklist"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Task Graph",
+      "tooltip"  : "Show the pipeline task graph in this pane",
+      "props": {
+        "editor": "taskgraph"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Gen Graph",
+      "tooltip"  : "Show the node graph an asset is generated by in this pane",
+      "props": {
+        "editor": "gengraph"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Inspector",
+      "tooltip"  : "Show what is selected, in detail in this pane",
+      "props": {
+        "editor": "inspector"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Play",
+      "tooltip"  : "Show the runner in this pane",
+      "props": {
+        "editor": "play"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Skills",
+      "tooltip"  : "Show the playbooks the agent can follow, and can write in this pane",
+      "props": {
+        "editor": "skills"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Wiki",
+      "tooltip"  : "Show one markdown document in this pane",
+      "props": {
+        "editor": "wiki"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Documents",
+      "tooltip"  : "Show the project's documents and what links to them in this pane",
+      "props": {
+        "editor": "documents"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "History",
+      "tooltip"  : "Show every save of the project, who made it and what it changed in this pane",
+      "props": {
+        "editor": "history"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Asset",
+      "tooltip"  : "Show one generated asset, and the art notes behind it in this pane",
+      "props": {
+        "editor": "asset"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view/editors",
+      "id"       : "view.open",
+      "label"    : "Project",
+      "tooltip"  : "Show project.yaml — art style, models, image params in this pane",
+      "props": {
+        "editor": "project"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view",
+      "id"       : "menu.open",
+      "label"    : "Layout",
+      "tooltip"  : "Rearrange the whole window",
+      "props": {
+        "menu": "layout"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view/layout",
+      "id"       : "view.applyLayout",
+      "label"    : "(none)",
+      "refused"  : "This project has no layouts yet"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view/layout",
+      "id"       : "view.saveLayout",
+      "label"    : "Save Current Layout As…",
+      "tooltip"  : "File the arrangement on screen in the project under a name of your own",
+      "props": {
+        "layout": "{\"vnstudio\":\"layout/1\"}"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view/layout",
+      "id"       : "view.resetLayout",
+      "label"    : "Reset View Layout…",
+      "tooltip"  : "Put the layouts that ship with the app back the way they shipped — undoable",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view",
+      "id"       : "screen.arrange",
+      "label"    : "Close Pane…",
+      "tooltip"  : "Point at a pane to close it — it is outlined and crossed out. Escape cancels.",
+      "props": {
+        "what": "close"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view",
+      "id"       : "screen.arrange",
+      "label"    : "Split Area",
+      "tooltip"  : "Drag a line across a pane to divide it in two.",
+      "props": {
+        "what": "split"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view",
+      "id"       : "view.zoom",
+      "label"    : "Zoom In",
+      "tooltip"  : "Make text and widgets in every window one step bigger",
+      "props": {
+        "move": "in"
+      },
+      "shortcut" : "Ctrl+="
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view",
+      "id"       : "view.zoom",
+      "label"    : "Zoom Out",
+      "tooltip"  : "Make text and widgets in every window one step smaller",
+      "props": {
+        "move": "out"
+      },
+      "shortcut" : "Ctrl+-"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view",
+      "id"       : "view.zoom",
+      "label"    : "Reset Zoom",
+      "tooltip"  : "Put every window back at 100%",
+      "props": {
+        "move": "reset"
+      },
+      "shortcut" : "Ctrl+Key0"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view",
+      "id"       : "window.new",
+      "label"    : "New Window",
+      "tooltip"  : "Open another window onto this project — one app, panes across two monitors",
+      "shortcut" : "Ctrl+Shift+N"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view",
+      "id"       : "window.close",
+      "label"    : "Close Window",
+      "tooltip"  : "Close this window; closing the last one quits",
+      "shortcut" : "Ctrl+W"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/view",
+      "id"       : "window.new",
+      "label"    : "Move Pane to New Window",
+      "tooltip"  : "Reopen the active pane’s editor in a window of its own and close it here",
+      "props": {
+        "editor": "script"
+      },
+      "then": [
+        {
+          "id"   : "view.close",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/help",
+      "id"       : "app.checkForUpdates",
+      "label"    : "Check for Updates…",
+      "tooltip": "Ask GitHub whether a newer VN Studio has been released. Downloads nothing — if there is one, the notification takes you to the page."
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
       "when"     : "header/help",
       "id"       : "view.open",
       "label"    : "Report a Difficult Agent…",
