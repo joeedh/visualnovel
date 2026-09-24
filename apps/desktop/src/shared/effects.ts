@@ -54,6 +54,7 @@ export const VIEWS = [
   'page',
   'step',
   'mark',
+  'clip',
 ] as const;
 export type ViewWhat = (typeof VIEWS)[number];
 

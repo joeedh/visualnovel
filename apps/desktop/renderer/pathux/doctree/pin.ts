@@ -15,6 +15,7 @@
  * the pinned field reads the pin, and a write through the pinned pane moves both.
  */
 import type { PinField } from '../../../src/shared/editors.js';
+import { remapPath, type FileMove } from '../../../src/shared/fileops.js';
 import type { ShellState } from '../app/state.js';
 
 /** The pinned value, and the way back to wherever the editor is keeping it. */
@@ -46,4 +47,12 @@ export function pinnedView(live: ShellState, pin: Pin): ShellState {
       return Reflect.set(target, key, value);
     },
   });
+}
+
+/**
+ * Answers what a pin holds after files moved. A pin on `docPath` follows its file to the new
+ * path, as the shell's own `ui.docPath` does; a pin on any other field is unchanged.
+ */
+export function pinAfterMove(field: PinField, held: string, moves: readonly FileMove[]): string {
+  return field === 'docPath' ? remapPath(held, moves) : held;
 }

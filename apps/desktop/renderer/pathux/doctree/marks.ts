@@ -5,6 +5,7 @@
  */
 import { markable, type DocRow } from './doctree.js';
 import type { ClickMods } from './treeview.js';
+import { remapPath, type FileMove } from '../../../src/shared/fileops.js';
 
 /** The marked rows as node ids in click order, and the last row clicked without Shift. */
 export interface MarkState {
@@ -79,6 +80,29 @@ export function pruneMarks(state: MarkState, rows: readonly DocRow[]): MarkState
   const anchor = drawn.has(state.anchor) ? state.anchor : '';
   if (marks.length === state.marks.length && anchor === state.anchor) return state;
   return { marks, anchor };
+}
+
+/**
+ * Answers a node id after files moved, in either tree: `file:` and `dir:` name a workspace path,
+ * and `wiki:` and `wikidir:` a path under `wiki/`. An id naming anything else, or a page moved
+ * out of `wiki/`, is returned unchanged, and the next redraw drops it.
+ */
+export function movedId(id: string, moves: readonly FileMove[]): string {
+  const colon = id.indexOf(':');
+  const scheme = id.slice(0, colon);
+  const rest = id.slice(colon + 1);
+  if (scheme === 'file' || scheme === 'dir') return `${scheme}:${remapPath(rest, moves)}`;
+  if (scheme !== 'wiki' && scheme !== 'wikidir') return id;
+  const moved = remapPath(`wiki/${rest}`, moves);
+  return moved.startsWith('wiki/') ? `${scheme}:${moved.slice('wiki/'.length)}` : id;
+}
+
+/** Carries the marks and the anchor to where their files moved, so a moved row stays marked. */
+export function remapMarks(state: MarkState, moves: readonly FileMove[]): MarkState {
+  return {
+    marks : state.marks.map((mark) => movedId(mark, moves)),
+    anchor: state.anchor === '' ? '' : movedId(state.anchor, moves),
+  };
 }
 
 /**

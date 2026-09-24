@@ -1,4 +1,5 @@
-import { docsEffect, onReveal } from '../docseffect.js';
+import { docsEffect, onMoved, onReveal } from '../docseffect.js';
+import type { FileMove } from '../../../../src/shared/fileops.js';
 import type { SaveAllResult } from '../../doctree/docbuffer.js';
 
 /** A Save All that records being run, and the sentences the dispatch said. */
@@ -44,11 +45,17 @@ describe('docsEffect', () => {
     expect(heard).toEqual([['wiki/lore']]);
   });
 
-  it('saves nothing and says nothing for a move', async () => {
+  it('saves nothing for a move, moves the buffers, then tells every listener', async () => {
     const r = rig();
+    const order: string[] = [];
     const moves = [{ from: 'wiki/a.md', to: 'wiki/lore/a.md' }];
-    await docsEffect({ type: 'docs', action: 'moved', moves }, r.deps);
+    const off = onMoved((heard) => order.push(`listener ${heard[0]!.to}`));
+    const follow = (heard: readonly FileMove[]) => void order.push(`buffers ${heard[0]!.to}`);
+    await docsEffect({ type: 'docs', action: 'moved', moves }, { ...r.deps, follow });
+    off();
+    await docsEffect({ type: 'docs', action: 'moved', moves }, { ...r.deps, follow: () => {} });
     expect(r.saves()).toBe(0);
     expect(r.said).toEqual([]);
+    expect(order).toEqual(['buffers wiki/lore/a.md', 'listener wiki/lore/a.md']);
   });
 });

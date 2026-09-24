@@ -23,6 +23,7 @@
  */
 import type { DocumentProvider, DocumentSession, MdDoc } from 'pathux-richtext-headless';
 import { touches } from '../../../src/shared/writes.js';
+import { remapPath, type FileMove } from '../../../src/shared/fileops.js';
 import type { Offer } from '../../rules/anchors.js';
 import { saveOffer } from '../../rules/docbuffer.js';
 import type { DocFile, DocSaveResult } from '../../../src/shared/ipc.js';
@@ -154,6 +155,25 @@ export async function saveAllDrafts(io: DocIo = BRIDGE_IO): Promise<SaveAllResul
     }
   }
   return result;
+}
+
+/**
+ * Points every clean buffer showing a moved file at the file's new path, and re-reads it there,
+ * since the move may have rewritten its links. Opening the new path lets go of the session held
+ * for the old one, which is then disposed. A buffer with unsaved edits stays on the old path with
+ * its draft, and its next save is refused because the file is gone.
+ */
+export function followMoves(moves: readonly FileMove[]): void {
+  for (const ref of buffers) {
+    const buffer = ref.deref();
+    if (buffer === undefined) {
+      buffers.delete(ref);
+      continue;
+    }
+    if (buffer.path === '' || buffer.dirty) continue;
+    const to = remapPath(buffer.path, moves);
+    if (to !== buffer.path) void buffer.open(to);
+  }
 }
 
 /**
@@ -405,7 +425,12 @@ export class DocBuffer implements SessionHolder {
       this.say(outcome.error, true);
       return;
     }
-    if (outcome.file.hash === entry.seenHash) return;
+    if (outcome.file.hash === entry.seenHash) {
+      // The file is back as the session holds it, as after an undo removed it and a redo restored
+      // it, so a failed read's note is stale
+      if (this.isBad) this.say('');
+      return;
+    }
     this.leave();
     entry.dispose();
     this.adopt(this.entryFor(entry.path, outcome.file));

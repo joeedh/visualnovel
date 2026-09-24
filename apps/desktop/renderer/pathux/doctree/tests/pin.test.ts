@@ -1,5 +1,5 @@
 import { ShellState } from '../../app/state.js';
-import { pinnedView, type Pin } from '../pin.js';
+import { pinAfterMove, pinnedView, type Pin } from '../pin.js';
 
 function pinned(field: Pin['field'], held: string): { live: ShellState; view: ShellState } {
   const live = new ShellState();
@@ -58,5 +58,18 @@ describe('what a write through a pinned editor does', () => {
     view.shotId = 'sh7';
     expect(live.shotId).toBe('sh7');
     expect(view.sceneId).toBe('arrival');
+  });
+});
+
+describe('pinAfterMove', () => {
+  const moves = [{ from: 'wiki/lore', to: 'archive/lore' }];
+
+  test('carries a pin on a document to where its file moved', () => {
+    expect(pinAfterMove('docPath', 'wiki/lore/cafe.md', moves)).toBe('archive/lore/cafe.md');
+    expect(pinAfterMove('docPath', 'wiki/other.md', moves)).toBe('wiki/other.md');
+  });
+
+  test('leaves a pin on anything else alone, even one spelled like a moved path', () => {
+    expect(pinAfterMove('sceneId', 'wiki/lore', moves)).toBe('wiki/lore');
   });
 });

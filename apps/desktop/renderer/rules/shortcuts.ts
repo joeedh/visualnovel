@@ -208,8 +208,19 @@ export const SHORTCUTS: readonly Shortcut[] = [
   },
   { scope: 'script', key: 'Escape', mods: [], label: 'Unmark lines', runs: view('mark') },
 
-  // The Documents pane's keys act on the rows marked by Ctrl-click and Shift-click
+  // The Documents pane's keys act on the rows marked by Ctrl-click and Shift-click, and Paste on
+  // the anchor row's folder. Paste is recorded as `doc.move`, but after a Copy it runs `doc.copy`
   { scope: 'documents', key: 'Escape', mods: [], label: 'Clear marks', runs: view('mark') },
+  { scope: 'documents', key: 'C', mods: ['ctrl'], label: 'Copy', runs: view('clip'), on: 'copy' },
+  { scope: 'documents', key: 'X', mods: ['ctrl'], label: 'Cut', runs: view('clip'), on: 'cut' },
+  {
+    scope: 'documents',
+    key  : 'V',
+    mods : ['ctrl'],
+    label: 'Paste',
+    runs : command('doc.move'),
+    on   : 'paste',
+  },
 
   {
     scope: 'gengraph',

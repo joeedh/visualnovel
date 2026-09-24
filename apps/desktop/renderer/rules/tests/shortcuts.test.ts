@@ -128,14 +128,32 @@ describe('bindings', () => {
     );
   });
 
-  it('binds Escape in the Documents pane to clearing its marks', () => {
+  it('binds Escape, Ctrl+C, Ctrl+X and Ctrl+V in the Documents pane', () => {
     const noop = () => {};
-    const list = bindings('documents', { 'Clear marks': noop });
-    expect(list.map((b) => [b.key, b.mods, b.label])).toEqual([['Escape', [], 'Clear marks']]);
+    const list = bindings('documents', {
+      'Clear marks': noop,
+      Copy         : noop,
+      Cut          : noop,
+      Paste        : noop,
+    });
+    expect(list.map((b) => [b.key, b.mods, b.label])).toEqual([
+      ['Escape', [], 'Clear marks'],
+      ['C', ['ctrl'], 'Copy'],
+      ['X', ['ctrl'], 'Cut'],
+      ['V', ['ctrl'], 'Paste'],
+    ]);
     expect(findShortcut(view('mark'), undefined, 'documents')).toMatchObject({
       scope: 'documents',
       key  : 'Escape',
     });
+  });
+
+  it('labels Cut and Copy by the clip view, and Paste by doc.move whatever the clipboard', () => {
+    expect(shortcutOf(view('clip'), 'cut')).toBe('Ctrl+X');
+    expect(shortcutOf(view('clip'), 'copy')).toBe('Ctrl+C');
+    expect(shortcutOf({ id: 'doc.move', props: {} }, 'paste')).toBe('Ctrl+V');
+    // Rename's F2 arrives with the rename box, so a doc.move with no `on` binds nothing yet
+    expect(findShortcut({ id: 'doc.move', props: {} }, undefined, 'documents')).toBeUndefined();
   });
 
   it('has nothing to bind for a scope path.ux binds itself', () => {

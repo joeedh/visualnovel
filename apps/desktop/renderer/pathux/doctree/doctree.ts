@@ -11,11 +11,15 @@
  * `rules/documents.ts`, because the row's offer is built from them there.
  */
 import { orderEntry, type SceneOrder } from '../../rules/documents.js';
+import { unsavedRefusal } from '../../rules/docbuffer.js';
+import { view } from '../../rules/effects.js';
+import { shortcutOf } from '../../rules/shortcuts.js';
 import { NEW_SKILL_PROMPT } from '../../rules/skills.js';
 import { nodeKey, splitShot, type Selection } from '../../rules/selection.js';
 import type { DocNode, DocNodeKind, EntityLinks } from '../../../src/shared/ipc.js';
 import { rootProblem } from '../../../src/shared/fileops.js';
 import { MENU_SEP, SEPARATOR, type MenuEntry } from '../chrome/contextmenu.js';
+import { EMPTY_CLIP, NOTHING_CLIPPED, type Clip, type ClipMode } from './clipboard.js';
 
 // The selection and title rules moved into `rules/`, where the offers are built from them. They
 // are still reached from here by the tree's own callers.
@@ -258,6 +262,112 @@ function makeIn(label: string, id: 'doc.mkdir' | 'doc.newFile', parent: string):
   return { label, id, props: { parent }, form: true, ...(refused ? { refused } : {}) };
 }
 
+/** What a row's menu needs beyond the node, for the file acts. */
+export interface MenuContext {
+  /** The window's clipboard, which decides what Paste runs. */
+  clip: Clip;
+  /** The paths of the marked rows, when the menu was raised on one of two or more of them. */
+  marked: readonly string[];
+  /** Every path with unsaved edits, as `draftPaths()` lists them. */
+  dirty: readonly string[];
+}
+
+export const NO_MENU_CONTEXT: MenuContext = { clip: EMPTY_CLIP, marked: [], dirty: [] };
+
+/**
+ * Answers the folder a Paste on this row puts things in: the folder the row is, or the one its
+ * file is in. `wiki` for the Wiki heading, and `undefined` for any other row.
+ */
+export function pasteInto(node: DocNode): string | undefined {
+  if (node.id === 'branch:wiki') return 'wiki';
+  const path = node.path;
+  if (path === undefined) return undefined;
+  if (node.kind === 'wikidir' || node.kind === 'dir') return path;
+  if (node.kind === 'wiki' || node.kind === 'file')
+    return path.slice(0, Math.max(0, path.lastIndexOf('/')));
+  return undefined;
+}
+
+/** The action the Ctrl+V row binds, whose combo labels Paste after a Copy as well as a Cut. */
+const PASTE_KEY = { id: 'doc.move', props: {} };
+
+/**
+ * Builds Cut or Copy of `paths` as the `pane.view(what=clip)` effect, which the pane's handler
+ * turns into the clipboard. An effect entry is never checked, so a path outside the four roots
+ * is refused here.
+ */
+function clipEntry(mode: ClipMode, paths: readonly string[]): MenuEntry {
+  const refused = paths.map((path) => rootProblem(path)).find((problem) => problem !== undefined);
+  const count = paths.length > 1 ? ` ${paths.length} items` : '';
+  return {
+    ...view('clip'),
+    on      : mode,
+    label   : `${mode === 'cut' ? 'Cut' : 'Copy'}${count}`,
+    tooltip:
+      mode === 'cut'
+        ? 'Mark these to be moved by the next Paste'
+        : 'Mark these to be copied by the next Paste',
+    shortcut: shortcutOf(view('clip'), mode),
+    ...(refused === undefined ? {} : { refused }),
+  };
+}
+
+/**
+ * Builds the Paste of the clipboard into `into`: `doc.move` after a Cut, `doc.copy` after a
+ * Copy, checked like any other command entry. An empty clipboard, and a Cut holding a path with
+ * unsaved edits, are refused here, since neither is a question for main. Ctrl+V runs it too.
+ */
+export function pasteEntry(into: string, ctx: MenuContext, label?: string): MenuEntry {
+  const { clip } = ctx;
+  const count = clip.paths.length;
+  const entry: MenuEntry = {
+    label   : label ?? (count > 1 ? `Paste ${count} items` : 'Paste'),
+    id      : clip.mode === 'copy' && count > 0 ? 'doc.copy' : 'doc.move',
+    props   : { paths: [...clip.paths], into },
+    on      : 'paste',
+    shortcut: shortcutOf(PASTE_KEY, 'paste'),
+  };
+  if (count === 0) return { ...entry, refused: NOTHING_CLIPPED };
+  const unsaved = clip.mode === 'cut' ? unsavedRefusal(clip.paths, ctx.dirty) : undefined;
+  return unsaved === undefined ? entry : { ...entry, refused: unsaved };
+}
+
+/** Puts `entries` under a separator, or answers nothing when there are none to separate. */
+function separated(entries: MenuEntry[]): MenuEntry[] {
+  return entries.length === 0 ? [] : [SEPARATOR, ...entries];
+}
+
+/** Builds `app.copy` on a row's workspace-relative path. */
+function copyPath(path: string): MenuEntry {
+  return { label: 'Copy path', id: 'app.copy', props: { text: path, what: 'path' } };
+}
+
+/**
+ * Builds Cut, Copy and Paste on one page, file or folder, then Copy path. Empty for a row with no
+ * path, which names nothing a file command could take.
+ */
+function fileActs(node: DocNode, ctx: MenuContext): MenuEntry[] {
+  const into = pasteInto(node);
+  if (node.path === undefined || into === undefined) return [];
+  return [
+    clipEntry('cut', [node.path]),
+    clipEntry('copy', [node.path]),
+    pasteEntry(into, ctx),
+    SEPARATOR,
+    copyPath(node.path),
+  ];
+}
+
+/**
+ * Builds the menu of a row marked among several: Cut and Copy of every marked row, and on a
+ * folder a Paste into it. Nothing that acts on one row alone is offered.
+ */
+function markedMenu(node: DocNode, ctx: MenuContext): MenuEntry[] {
+  const acts = [clipEntry('cut', ctx.marked), clipEntry('copy', ctx.marked)];
+  if ((node.kind !== 'wikidir' && node.kind !== 'dir') || node.path === undefined) return acts;
+  return [...acts, SEPARATOR, pasteEntry(node.path, ctx, `Paste into ${node.label}`)];
+}
+
 /**
  * Offers to wire a graph that draws `slot`, where the row names one. An asset row names a slot only
  * when a slot claims that picture, so a concept, an upload or a base asset offers nothing here. The
@@ -316,8 +426,15 @@ function storyActs(): MenuEntry[] {
  * through silently, so a new node kind shows up as a missing case.
  *
  * `order` is how the pane is sorting the Story branch, which its heading's menu offers to switch.
+ * `ctx` carries the clipboard, the marked rows and the unsaved paths the file acts depend on; with
+ * two or more rows marked the menu is {@link markedMenu}.
  */
-export function menuFor(node: DocNode, order: SceneOrder = 'stored'): MenuEntry[] {
+export function menuFor(
+  node: DocNode,
+  order: SceneOrder = 'stored',
+  ctx: MenuContext = NO_MENU_CONTEXT,
+): MenuEntry[] {
+  if (ctx.marked.length >= 2) return markedMenu(node, ctx);
   const key = nodeKey(node);
   switch (node.kind) {
     case 'location':
@@ -363,6 +480,7 @@ export function menuFor(node: DocNode, order: SceneOrder = 'stored'): MenuEntry[
         ...wikiCreate(node.path ?? ''),
         SEPARATOR,
         makeIn('New folder…', 'doc.mkdir', node.path ?? ''),
+        ...separated(fileActs(node, ctx)),
       ];
     // Running and deleting open as forms, so the palette can quote the estimate and take a
     // confirmation before anything is spent or lost
@@ -487,7 +605,12 @@ export function menuFor(node: DocNode, order: SceneOrder = 'stored'): MenuEntry[
         case 'locations':
           return [newSheet('location', 'New location sheet…')];
         case 'wiki':
-          return [...wikiCreate(), SEPARATOR, makeIn('New folder…', 'doc.mkdir', 'wiki')];
+          return [
+            ...wikiCreate(),
+            SEPARATOR,
+            makeIn('New folder…', 'doc.mkdir', 'wiki'),
+            pasteEntry('wiki', ctx),
+          ];
         case 'graphs':
           return [{ label: 'New generation graph…', id: 'gengraph.create', form: true }];
         // Two ways to get a skill, and both are forms: the menu can supply neither a name nor a
@@ -507,16 +630,17 @@ export function menuFor(node: DocNode, order: SceneOrder = 'stored'): MenuEntry[
           return [];
       }
     // A page or a file names no subject a write takes: nothing binds to a wiki note (see
-    // `assetstrip.ts`) and `doc.write` needs the text. Its history is the one thing left to ask
+    // `assetstrip.ts`) and `doc.write` needs the text. What is left are the file acts and history
     case 'wiki':
     case 'file':
-      return showHistory(node.path);
+      return [...fileActs(node, ctx), ...showHistory(node.path)];
     // A folder in file mode can hold any file, so it offers New file… where the Wiki branch offers
     // a page
     case 'dir':
       return [
         makeIn('New file…', 'doc.newFile', node.path ?? ''),
         makeIn('New folder…', 'doc.mkdir', node.path ?? ''),
+        ...separated(fileActs(node, ctx)),
       ];
     case 'assetkind':
     case 'more':

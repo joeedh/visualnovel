@@ -1,4 +1,4 @@
-import { DocBuffer, draftCount, type DocIo } from '../docbuffer.js';
+import { DocBuffer, draftCount, draftPaths, followMoves, type DocIo } from '../docbuffer.js';
 import type { DocFile, DocSaveResult } from '../../../../src/shared/ipc.js';
 
 /** Let every queued microtask and timer settle — `wrote` starts a read it does not return. */
@@ -269,5 +269,40 @@ describe('DocBuffer', () => {
     expect(buf.text).toBe('');
     expect(buf.dirty).toBe(false);
     expect(draftCount()).toBe(before);
+  });
+});
+
+describe('followMoves', () => {
+  it('points a clean buffer at the moved file and reads it there', async () => {
+    const io = new FakeIo();
+    const from = uniq();
+    const to = `wiki/lore/${from.slice('wiki/'.length)}`;
+    io.set(from, 'before');
+    const { buf } = buffer(io);
+    await buf.open(from);
+
+    io.files.delete(from);
+    io.set(to, 'after the links were rewritten');
+    followMoves([{ from, to }]);
+    await settle();
+
+    expect(buf.path).toBe(to);
+    expect(buf.text).toBe('after the links were rewritten');
+  });
+
+  it('keeps a dirty buffer and its draft on the old path', async () => {
+    const io = new FakeIo();
+    const from = uniq();
+    io.set(from, 'before');
+    const { buf } = buffer(io);
+    await buf.open(from);
+    buf.text = 'typed and not saved';
+
+    followMoves([{ from: 'wiki', to: 'archive/wiki' }]);
+    await settle();
+
+    expect(buf.path).toBe(from);
+    expect(buf.text).toBe('typed and not saved');
+    expect(draftPaths()).toContain(from);
   });
 });

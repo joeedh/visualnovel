@@ -4,7 +4,8 @@
  * path.ux, which `bridge.ts` imports.
  */
 import type { UiEffect } from '../../../src/shared/ipc.js';
-import { saveAllDrafts, type SaveAllResult } from '../doctree/docbuffer.js';
+import type { FileMove } from '../../../src/shared/fileops.js';
+import { followMoves, saveAllDrafts, type SaveAllResult } from '../doctree/docbuffer.js';
 
 export type DocsEffect = Extract<UiEffect, { type: 'docs' }>;
 
@@ -18,13 +19,30 @@ export function onReveal(listener: Revealer): () => void {
   return () => revealers.delete(listener);
 }
 
-/** What the dispatch reaches outside itself. `save` defaults to Save All over the real drafts. */
+type Mover = (moves: readonly FileMove[]) => void;
+
+const movers = new Set<Mover>();
+
+/** Calls `listener` with the moves of every `moved` push, until the returned function is called. */
+export function onMoved(listener: Mover): () => void {
+  movers.add(listener);
+  return () => movers.delete(listener);
+}
+
+/**
+ * What the dispatch reaches outside itself. `save` defaults to Save All over the real drafts, and
+ * `follow` to moving the window's clean document buffers.
+ */
 export interface DocsDeps {
   say(text: string, bad?: boolean): void;
   save?: () => Promise<SaveAllResult>;
+  follow?: Mover;
 }
 
-/** Runs one `docs` push: Save All for `saveAll`, and the documents panes' reveal for `reveal`. */
+/**
+ * Runs one `docs` push: Save All for `saveAll`, the documents panes' reveal for `reveal`, and for
+ * `moved` the open documents, then every listener. A `moved` push saves nothing.
+ */
 export async function docsEffect(effect: DocsEffect, deps: DocsDeps): Promise<void> {
   switch (effect.action) {
     case 'saveAll': {
@@ -39,8 +57,11 @@ export async function docsEffect(effect: DocsEffect, deps: DocsDeps): Promise<vo
     case 'reveal':
       for (const listener of revealers) listener(effect.paths);
       return;
-    // Open documents do not follow a move yet, and a move saves nothing
+    // Buffers before listeners: once a listener remaps `ui.docPath`, the Wiki pane compares it
+    // with its buffer's path, which must already be the new one or the file is opened twice
     case 'moved':
+      (deps.follow ?? followMoves)(effect.moves);
+      for (const listener of movers) listener(effect.moves);
       return;
   }
 }

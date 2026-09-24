@@ -47,6 +47,12 @@
   background: color-mix(in srgb, var(--sodium) 12%, transparent);
 }
 
+/* A row on a Cut clipboard stays where it is until the next Paste moves it. Only the label dims,
+   so the marked and selected tints behind it still show. */
+.tv-row.cut .tv-label {
+  opacity: 0.5;
+}
+
 /* A grouping is a heading, not a place — it reads as chrome so the documents under it do not
    have to compete with it. */
 .tv-row.group .tv-label {

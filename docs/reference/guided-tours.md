@@ -113,7 +113,7 @@ is a compile error there and a parse error in the driver's test.
 | `menu.open`      | `menu`, from `MENUS`                          | Dropping a menu, each entry of which is a command or an effect of its own.                      |
 | `popup.open`     | `popup`, from `POPUPS`                        | Opening the palette, the picker, a toolbar popup, the report preview, or an inline box (`box`). |
 | `popup.close`    | `popup`                                       | A Cancel or Close on a popup or an inline box.                                                  |
-| `pane.view`      | `what`, from `VIEWS`                          | Changing what a pane shows: reload, fit, tidy, filter, scope, mode, page, step, mark.           |
+| `pane.view`      | `what`, from `VIEWS`                          | Changing what a pane shows: reload, fit, tidy, filter, scope, mode, page, step, mark, clip.     |
 | `pane.scroll`    | `to`                                          | Bringing something already on the pane into view.                                               |
 | `pane.pin`       | `pinned`                                      | The pin toggle in a pinnable pane's header.                                                     |
 | `screen.arrange` | `what: 'split' \| 'close'`                    | The View menu's Split Area and Close Pane… gestures.                                            |

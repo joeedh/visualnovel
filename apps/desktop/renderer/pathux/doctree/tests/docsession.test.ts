@@ -404,6 +404,29 @@ describe('a rich DocBuffer', () => {
     buf.close();
   });
 
+  it('clears a failed read’s note when the file comes back as the session holds it', async () => {
+    const io = new FakeIo();
+    const path = uniq();
+    io.set(path, ORIGINAL);
+    const { buf } = rich(io);
+    await buf.open(path);
+    const held = buf.session;
+
+    // An undo of a move takes the file away, and the redo puts the same bytes back
+    const file = io.files.get(path)!;
+    io.files.delete(path);
+    buf.wrote([path]);
+    await settle();
+    expect(buf.bad).toBe(true);
+    io.files.set(path, file);
+    buf.wrote([path]);
+    await settle();
+    expect(buf.note).toBe('');
+    expect(buf.bad).toBe(false);
+    expect(buf.session).toBe(held);
+    buf.close();
+  });
+
   it('reload drops the session, and a second buffer on the path is reopened', async () => {
     const io = new FakeIo();
     const path = uniq();

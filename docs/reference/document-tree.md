@@ -19,6 +19,7 @@ describes what underlies it. The plan and the reasoning behind each decision are
 - [Where it lives](#where-it-lives)
 - [Right-click menus](#right-click-menus)
 - [Selecting several rows](#selecting-several-rows)
+- [Cut, Copy and Paste](#cut-copy-and-paste)
 - [Moving, copying and renaming files](#moving-copying-and-renaming-files)
 - [Renaming in place](#renaming-in-place)
 - [Opening a shot's frame](#opening-a-shots-frame)
@@ -308,8 +309,9 @@ why an entry is an invocation rather than a callback) is in
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `location`                           | New reference shot… · Art notes… · Open sheet elsewhere                                                                                                              |
 | `character`                          | New concept image… · Art notes… · Open sheet elsewhere                                                                                                               |
-| `branch:wiki`, `wikidir`             | New wiki page… · New character sheet… · New location sheet… · New folder…                                                                                            |
-| `dir`                                | New file… · New folder…                                                                                                                                              |
+| `branch:wiki`                        | New wiki page… · New character sheet… · New location sheet… · New folder… · Paste                                                                                    |
+| `wikidir`                            | New wiki page… · New character sheet… · New location sheet… · New folder… · Cut · Copy · Paste · Copy path                                                           |
+| `dir`                                | New file… · New folder… · Cut · Copy · Paste · Copy path                                                                                                             |
 | `branch:characters`                  | New character sheet…                                                                                                                                                 |
 | `branch:locations`                   | New location sheet…                                                                                                                                                  |
 | `branch:story`                       | New scene… · Export Fountain · Sort in topological order / Sort as stored                                                                                            |
@@ -319,7 +321,8 @@ why an entry is an invocation rather than a callback) is in
 | `shot`                               | Set coverage… · Set outfit… · Scaffold a sheet graph for group _g_ (only for a shot in a staging-sheet group)                                                        |
 | `slot`                               | Upload a file for this… · Adopt an asset for this… · Create a graph for this slot · Run pipeline…                                                                    |
 | `skill`                              | Open in the Skills pane · Ask the agent to change this skill…                                                                                                        |
-| `wiki`, `file`                       | Show history                                                                                                                                                         |
+| `wiki`, `file`                       | Cut · Copy · Paste · Copy path · Show history                                                                                                                        |
+| a row marked among several           | Cut _n_ items · Copy _n_ items, and on a folder Paste into _folder_                                                                                                  |
 | `branch:assets`, `assetkind`, `more` | none — no menu opens at all                                                                                                                                          |
 
 This table lists the following:
@@ -363,11 +366,13 @@ This table lists the following:
   `asset` row carries the address it fills in `slot` so the entry can read that address. A
   picture that no slot claims (a concept, an upload, a base asset) carries no address, so
   the entry is not offered.
-- **A wiki note or a file offers only Show history.** No binding targets a wiki note, and
-  `doc.write` needs the text, so opening it is left to a plain click. `branch:wiki` is the
-  exception among the headings because it names a location. An author right-clicks the
-  "top level wiki tree", and the `wikidir:` nodes below that heading are the folders
-  inside the tree, which a flat `wiki/` does not have.
+- **A wiki note or a file offers file acts and Show history.** No binding targets a wiki
+  note, and `doc.write` needs the text, so opening it is left to a plain click. What it
+  offers are the acts on the file itself: Cut, Copy, Paste into its folder, and Copy path
+  (see [Cut, Copy and Paste](#cut-copy-and-paste)). `branch:wiki` is the exception among
+  the headings because it names a location. An author right-clicks the "top level wiki
+  tree", and the `wikidir:` nodes below that heading are the folders inside the tree,
+  which a flat `wiki/` does not have.
 - **New folder… and New file… are forms, and only under four folders.** They run
   `doc.mkdir` and `doc.newFile` with `parent` filled in, and the palette's form takes the
   name and shows the check's verdict as it is typed. Both commands refuse any path outside
@@ -409,8 +414,8 @@ node-shaped rather than tree-shaped.
 ## Selecting several rows
 
 Pages, files and folders can be marked several at a time, in both modes. The marked rows
-are what the tree's file acts will take (Cut, Copy and Paste are not drawn yet). They are
-held by the pane rather than published, so `ui.docPath` stays the one app-wide selection.
+are what Cut and Copy take. They are held by the pane rather than published, so
+`ui.docPath` stays the one app-wide selection.
 
 - **Which rows can be marked.** A `wiki`, `wikidir`, `file` or `dir` row whose path is
   under `wiki/`, `characters/`, `locations/` or `archive/`, and is not one of those four
@@ -426,9 +431,9 @@ held by the pane rather than published, so `ui.docPath` stays the one app-wide s
     - Any click on a row that cannot be marked clears the marks.
     - A click with Ctrl or Shift held never counts toward a double-click, so two quick
       Ctrl-clicks cannot open a rename box.
-- **Right-click.** On a row marked among several, the marks stay. On any other row, that
-  row becomes the only mark, or the marks clear when it cannot be marked. The menu is
-  still the row's own until the multi-row entries arrive.
+- **Right-click.** On a row marked among several, the marks stay and the menu, titled "3
+  items", covers all of them. On any other row, that row becomes the only mark, or the
+  marks clear when it cannot be marked, and the menu is the row's own.
 - **Escape** clears the marks while the tree has the keyboard (the `documents` row in
   `renderer/rules/shortcuts.ts`).
 - **Marks are only ever on rows the author can see.** Switching mode clears them, and
@@ -438,15 +443,52 @@ held by the pane rather than published, so `ui.docPath` stays the one app-wide s
   `reveal` push has opened the folders above it.
 - A marked row is tinted (`marked` in `styles/treeview.css`); `sel` still marks the row
   that is `ui.docPath`, so the open document stays identifiable inside a larger set.
+- **A move carries the marks.** When `doc.move` moves a marked row's file, in any window,
+  the mark follows it to the new row (`remapMarks`), and so does an expanded folder.
 - Marks are not remembered across sessions. The pure rules are in
   `renderer/pathux/doctree/marks.ts`.
+
+## Cut, Copy and Paste
+
+Cut and Copy put the marked rows, or the row right-clicked, on the window's clipboard.
+Paste turns the clipboard into one ordinary command with every prop filled in: `doc.move`
+after a Cut, `doc.copy` after a Copy. So the command record names what was pasted and
+where, and the menu checks Paste like any other entry and greys it with the command's
+refusal.
+
+- **The clipboard is per window.** Every Documents pane in the window shares it, in either
+  mode, so a page cut in the Wiki branch can be pasted into a folder in file mode. It is
+  not persisted and not shared with other windows
+  (`renderer/pathux/doctree/clipboard.ts`).
+- **Cut changes nothing on disk.** The move happens at Paste. A row on a Cut clipboard
+  draws with a dimmed label (`cut` in `styles/treeview.css`).
+- **Cut and Copy are an effect,** `pane.view(what=clip)` with `on: 'cut'` or `'copy'`,
+  since they change what the pane shows and write nothing. An effect entry is never
+  checked, so on a row outside the four roots they carry the refusal from `rootProblem`.
+- **Where Paste puts things.** A folder row pastes into that folder, `branch:wiki` into
+  `wiki/`, and a page or file row into the folder it is in.
+- **Paste refuses before it asks main** in two cases: an empty clipboard ("Nothing has
+  been copied or cut yet."), and a Cut holding a path, or a folder holding a path, with
+  unsaved edits ("Save wiki/a.md first — it has unsaved edits."). A move does not carry a
+  draft along, so the author saves first. The sentence comes from `unsavedRefusal` in
+  `renderer/rules/docbuffer.ts`.
+- **After a Cut is pasted the clipboard empties; after a Copy it stays,** so the same
+  items can be pasted again. A path cut and then moved some other way is refused at Paste
+  by `doc.move`'s own check ("no such file").
+- **Keys.** Ctrl+X and Ctrl+C put the marked rows on the clipboard, and Ctrl+V pastes into
+  the anchor row's folder, with the menu's refusals; with no anchor on screen it does
+  nothing. They are the `documents` rows in `renderer/rules/shortcuts.ts`, and the menu
+  shows them beside each entry.
+- **Copy path** puts the row's workspace-relative path on the system clipboard as text,
+  through `app.copy`. Files are never put on the system clipboard: pasting files from
+  Explorer or Finder would be an import, which is `upload.*`'s job.
 
 ## Moving, copying and renaming files
 
 `doc.move` moves files and folders into a folder, and with `name` it renames one file or
-folder. `doc.copy` copies files and folders into a folder. Neither is drawn in the tree
-yet, so both run from the palette and over CDP:
-`node scripts/vn-cdp.mjs "doc.move(paths=['wiki/a.md'] into='wiki/lore')"`. Both are
+folder. `doc.copy` copies files and folders into a folder. The tree runs them from Paste
+([Cut, Copy and Paste](#cut-copy-and-paste)), and both also run from the palette and over
+CDP: `node scripts/vn-cdp.mjs "doc.move(paths=['wiki/a.md'] into='wiki/lore')"`. Both are
 undoable. Their check and their run call the same planner (`planTransfer` in
 `src/main/session/files.ts`, after the pure `planMove` and `planCopy` in
 `src/shared/fileops.ts`), so a check shows the refusal the run would give.
@@ -524,8 +566,14 @@ What undo does and does not restore:
   edited during the run) puts back everything it did before it reports the error, since a
   failed command leaves no undo point. If putting something back fails too, the error
   names what was left at the destination.
-- Open editors do not follow a move. `doc.move` pushes a `docs` `moved` effect to every
-  window before it returns, but the renderer does nothing with it yet.
+- `doc.move` pushes a `docs` `moved` effect to every window before it returns. Each window
+  points its clean open documents at the new paths and re-reads them, and carries
+  `ui.docPath`, every pane pinned to a document, and each Documents pane's expanded
+  folders and marks along. A document with unsaved edits stays at the old path, and its
+  save is then refused because the file is gone; the tree's Paste refuses such a move
+  first, but a move from the palette or CDP does not.
+- Undo and redo do not move open editors back. A Wiki pane showing the moved-to path
+  re-reads it and reports it gone.
 - Show history on a moved file starts at the move, because `@vn/git` runs `git log`
   without `--follow`.
 
@@ -589,10 +637,12 @@ Coverage editor handles the same double-click the same way, reading `CoverageSho
   produces shots and assets.
 - **Filesystem watching** — reads both trees, and a write refetches them, as `story:graph`
   does.
-- **Moving and deleting through the tree** — a drag in a sidebar would have to dispatch
-  the `story.*` commands that own those refusals, rather than open a new write path.
-  Renaming is the only editing gesture the tree has, and it follows that rule. It is a
-  registered command with its own check, reached from a double-click instead of the
-  palette.
+- **Deleting and dragging through the tree.** Moving is no longer absent: Cut and Paste
+  run `doc.move`, a registered command with its own check, and `scenes/` is outside the
+  folders it may touch, so it opens no write path around the `story.*` refusals. Deleting
+  stays absent because undo cannot restore what its snapshot skips, and deleting a sheet
+  removes an entity. Dragging stays absent because a drag's hover verdict could apply only
+  the path rules, while the repository, media and identity rules need the disk, so the
+  hover and the drop would not come from one function.
 - **A menu entry that is not a command** — an action that appears in a right-click menu
   also belongs in the palette, the catalog and the provenance log.

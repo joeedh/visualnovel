@@ -9,7 +9,7 @@
  * commands is routed rather than rung.
  */
 import { MENU_SEP, type MenuEntry } from '../pathux/chrome/contextmenu.js';
-import { MENU_NODES, menuFor } from '../pathux/doctree/doctree.js';
+import { menuFor } from '../pathux/doctree/doctree.js';
 import { cardMenu } from '../pathux/interactions/branch.js';
 import { lineMenu } from '../pathux/interactions/script.js';
 import { shotMenu } from '../pathux/interactions/timeline.js';
@@ -17,12 +17,12 @@ import { headerMenus, type HeaderMenuState } from './headermenus.js';
 import { threadsMenu, type ThreadsMenuState } from './convobar.js';
 import type { Situation } from './situations/situation.js';
 import { SITUATIONS as CARDMENU, type CardMenuState } from './situations/cardmenu.js';
+import { SITUATIONS as DOCTREEMENU, type DocTreeMenuState } from './situations/doctreemenu.js';
 import { SITUATIONS as HEADERMENUS } from './situations/headermenus.js';
 import { SITUATIONS as LINEMENU, type LineMenuState } from './situations/linemenu.js';
 import { SITUATIONS as SHOTMENU, type ShotMenuState } from './situations/shotmenu.js';
 import { SITUATIONS as THREADSMENU } from './situations/threadsmenu.js';
 import type { AnchorHome } from '../../src/shared/editors.js';
-import type { DocNode } from '../../src/shared/ipc.js';
 import type { UxMenuRecord } from '../../src/shared/uxmodel.js';
 
 /** One menu as drawn: what it was drawn for, and its rows. */
@@ -49,21 +49,15 @@ const row = <S>(
   menus: (state: S) => readonly OpenMenu[],
 ): MenuRow<S> => ({ module, editor, file, situations, menus });
 
-/** The tree's one situation: one node of each kind, so the menu's coverage is total. */
-const EVERY_KIND: Situation<readonly DocNode[]> = {
-  name : 'every-kind',
-  why: 'One node of each kind the tree draws, so the menu’s coverage is total rather than a project’s.',
-  state: MENU_NODES,
-};
-
 /** Every menu source, in the order the file lists them. */
 export const MENU_ROWS: readonly MenuRow<unknown>[] = [
   row(
     'doctree',
     'documents',
     'apps/desktop/renderer/pathux/doctree/doctree.ts',
-    [EVERY_KIND],
-    (nodes) => nodes.map((node) => ({ when: node.id, entries: menuFor(node) })),
+    DOCTREEMENU,
+    ({ nodes, ctx }: DocTreeMenuState) =>
+      nodes.map((node) => ({ when: node.id, entries: menuFor(node, 'stored', ctx) })),
   ),
   row(
     'shotmenu',

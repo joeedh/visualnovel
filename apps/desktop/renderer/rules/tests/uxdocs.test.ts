@@ -77,7 +77,7 @@ describe('fold', () => {
 
   it('puts each refusal sentence on exactly the pages whose first action carries it', () => {
     const expected = refusalsInModel();
-    expect(expected.size).toBe(99);
+    expect(expected.size).toBe(100);
     const found = new Map<string, Set<string>>();
     for (const page of byId.values()) {
       for (const refusal of page.refused) {

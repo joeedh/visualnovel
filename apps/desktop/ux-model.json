@@ -1018,7 +1018,25 @@
       "module": "doctree",
       "editor": "documents",
       "name"  : "every-kind",
-      "why": "One node of each kind the tree draws, so the menu’s coverage is total rather than a project’s."
+      "why": "One node of each kind the tree draws, so the menu’s coverage is total rather than a project’s; nothing is on the clipboard, so Paste is refused."
+    },
+    {
+      "module": "doctree",
+      "editor": "documents",
+      "name"  : "cut-clipboard",
+      "why"   : "Two pages were cut, so Paste on a folder or a file moves them there with doc.move."
+    },
+    {
+      "module": "doctree",
+      "editor": "documents",
+      "name"  : "copy-clipboard",
+      "why": "Two pages were copied, so Paste on a folder or a file copies them there with doc.copy."
+    },
+    {
+      "module": "doctree",
+      "editor": "documents",
+      "name"  : "three-marked",
+      "why": "Three rows are marked and the menu is raised on the marked folder, so it offers Cut and Copy of all three and a Paste into that folder."
     },
     {
       "module": "shotmenu",
@@ -44181,6 +44199,124 @@
       "editor"   : "documents",
       "module"   : "doctree",
       "situation": "every-kind",
+      "when"     : "wikidir:sample",
+      "id"       : "pane.view",
+      "label"    : "Cut",
+      "tooltip"  : "Mark these to be moved by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "cut",
+      "shortcut" : "Ctrl+X"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "wikidir:sample",
+      "id"       : "pane.view",
+      "label"    : "Copy",
+      "tooltip"  : "Mark these to be copied by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "copy",
+      "shortcut" : "Ctrl+C"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "wikidir:sample",
+      "id"       : "doc.move",
+      "label"    : "Paste",
+      "props": {
+        "paths": [],
+        "into" : "wiki/wikidir.md"
+      },
+      "on"       : "paste",
+      "refused"  : "Nothing has been copied or cut yet.",
+      "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "wikidir:sample",
+      "id"       : "app.copy",
+      "label"    : "Copy path",
+      "props": {
+        "text": "wiki/wikidir.md",
+        "what": "path"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "wiki:sample",
+      "id"       : "pane.view",
+      "label"    : "Cut",
+      "tooltip"  : "Mark these to be moved by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "cut",
+      "shortcut" : "Ctrl+X"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "wiki:sample",
+      "id"       : "pane.view",
+      "label"    : "Copy",
+      "tooltip"  : "Mark these to be copied by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "copy",
+      "shortcut" : "Ctrl+C"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "wiki:sample",
+      "id"       : "doc.move",
+      "label"    : "Paste",
+      "props": {
+        "paths": [],
+        "into" : "wiki"
+      },
+      "on"       : "paste",
+      "refused"  : "Nothing has been copied or cut yet.",
+      "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "wiki:sample",
+      "id"       : "app.copy",
+      "label"    : "Copy path",
+      "props": {
+        "text": "wiki/wiki.md",
+        "what": "path"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
       "when"     : "wiki:sample",
       "id"       : "view.open",
       "label"    : "Show history",
@@ -44475,6 +44611,124 @@
       "editor"   : "documents",
       "module"   : "doctree",
       "situation": "every-kind",
+      "when"     : "dir:sample",
+      "id"       : "pane.view",
+      "label"    : "Cut",
+      "tooltip"  : "Mark these to be moved by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "cut",
+      "shortcut" : "Ctrl+X"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "dir:sample",
+      "id"       : "pane.view",
+      "label"    : "Copy",
+      "tooltip"  : "Mark these to be copied by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "copy",
+      "shortcut" : "Ctrl+C"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "dir:sample",
+      "id"       : "doc.move",
+      "label"    : "Paste",
+      "props": {
+        "paths": [],
+        "into" : "wiki/dir.md"
+      },
+      "on"       : "paste",
+      "refused"  : "Nothing has been copied or cut yet.",
+      "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "dir:sample",
+      "id"       : "app.copy",
+      "label"    : "Copy path",
+      "props": {
+        "text": "wiki/dir.md",
+        "what": "path"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "file:sample",
+      "id"       : "pane.view",
+      "label"    : "Cut",
+      "tooltip"  : "Mark these to be moved by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "cut",
+      "shortcut" : "Ctrl+X"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "file:sample",
+      "id"       : "pane.view",
+      "label"    : "Copy",
+      "tooltip"  : "Mark these to be copied by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "copy",
+      "shortcut" : "Ctrl+C"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "file:sample",
+      "id"       : "doc.move",
+      "label"    : "Paste",
+      "props": {
+        "paths": [],
+        "into" : "wiki"
+      },
+      "on"       : "paste",
+      "refused"  : "Nothing has been copied or cut yet.",
+      "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "file:sample",
+      "id"       : "app.copy",
+      "label"    : "Copy path",
+      "props": {
+        "text": "wiki/file.md",
+        "what": "path"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
       "when"     : "file:sample",
       "id"       : "view.open",
       "label"    : "Show history",
@@ -44600,6 +44854,22 @@
       "editor"   : "documents",
       "module"   : "doctree",
       "situation": "every-kind",
+      "when"     : "branch:wiki",
+      "id"       : "doc.move",
+      "label"    : "Paste",
+      "props": {
+        "paths": [],
+        "into" : "wiki"
+      },
+      "on"       : "paste",
+      "refused"  : "Nothing has been copied or cut yet.",
+      "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
       "when"     : "branch:graphs",
       "id"       : "gengraph.create",
       "label"    : "New generation graph…",
@@ -44630,6 +44900,863 @@
         "input": "Write a new skill under .aiagent/skills — a SKILL.md with name, description and when-to-use in its front-matter, and the procedure below it. It should: "
       },
       "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "branch:wiki",
+      "id"       : "doc.create",
+      "label"    : "New wiki page…",
+      "props": {
+        "kind": "note"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "branch:wiki",
+      "id"       : "doc.create",
+      "label"    : "New character sheet…",
+      "props": {
+        "kind": "character"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "branch:wiki",
+      "id"       : "doc.create",
+      "label"    : "New location sheet…",
+      "props": {
+        "kind": "location"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "branch:wiki",
+      "id"       : "doc.mkdir",
+      "label"    : "New folder…",
+      "props": {
+        "parent": "wiki"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "branch:wiki",
+      "id"       : "doc.move",
+      "label"    : "Paste 2 items",
+      "props": {
+        "paths": ["wiki/a.md", "wiki/b.md"],
+        "into" : "wiki"
+      },
+      "on"       : "paste",
+      "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "wikidir:lore",
+      "id"       : "doc.create",
+      "label"    : "New wiki page…",
+      "props": {
+        "kind": "note",
+        "dir" : "wiki/lore"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "wikidir:lore",
+      "id"       : "doc.create",
+      "label"    : "New character sheet…",
+      "props": {
+        "kind": "character"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "wikidir:lore",
+      "id"       : "doc.create",
+      "label"    : "New location sheet…",
+      "props": {
+        "kind": "location"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "wikidir:lore",
+      "id"       : "doc.mkdir",
+      "label"    : "New folder…",
+      "props": {
+        "parent": "wiki/lore"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "wikidir:lore",
+      "id"       : "pane.view",
+      "label"    : "Cut",
+      "tooltip"  : "Mark these to be moved by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "cut",
+      "shortcut" : "Ctrl+X"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "wikidir:lore",
+      "id"       : "pane.view",
+      "label"    : "Copy",
+      "tooltip"  : "Mark these to be copied by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "copy",
+      "shortcut" : "Ctrl+C"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "wikidir:lore",
+      "id"       : "doc.move",
+      "label"    : "Paste 2 items",
+      "props": {
+        "paths": ["wiki/a.md", "wiki/b.md"],
+        "into" : "wiki/lore"
+      },
+      "on"       : "paste",
+      "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "wikidir:lore",
+      "id"       : "app.copy",
+      "label"    : "Copy path",
+      "props": {
+        "text": "wiki/lore",
+        "what": "path"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "wiki:lore/cafe.md",
+      "id"       : "pane.view",
+      "label"    : "Cut",
+      "tooltip"  : "Mark these to be moved by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "cut",
+      "shortcut" : "Ctrl+X"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "wiki:lore/cafe.md",
+      "id"       : "pane.view",
+      "label"    : "Copy",
+      "tooltip"  : "Mark these to be copied by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "copy",
+      "shortcut" : "Ctrl+C"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "wiki:lore/cafe.md",
+      "id"       : "doc.move",
+      "label"    : "Paste 2 items",
+      "props": {
+        "paths": ["wiki/a.md", "wiki/b.md"],
+        "into" : "wiki/lore"
+      },
+      "on"       : "paste",
+      "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "wiki:lore/cafe.md",
+      "id"       : "app.copy",
+      "label"    : "Copy path",
+      "props": {
+        "text": "wiki/lore/cafe.md",
+        "what": "path"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "wiki:lore/cafe.md",
+      "id"       : "view.open",
+      "label"    : "Show history",
+      "props": {
+        "editor" : "history",
+        "where"  : "elsewhere",
+        "subject": "wiki/lore/cafe.md"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "dir:wiki/lore",
+      "id"       : "doc.newFile",
+      "label"    : "New file…",
+      "props": {
+        "parent": "wiki/lore"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "dir:wiki/lore",
+      "id"       : "doc.mkdir",
+      "label"    : "New folder…",
+      "props": {
+        "parent": "wiki/lore"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "dir:wiki/lore",
+      "id"       : "pane.view",
+      "label"    : "Cut",
+      "tooltip"  : "Mark these to be moved by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "cut",
+      "shortcut" : "Ctrl+X"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "dir:wiki/lore",
+      "id"       : "pane.view",
+      "label"    : "Copy",
+      "tooltip"  : "Mark these to be copied by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "copy",
+      "shortcut" : "Ctrl+C"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "dir:wiki/lore",
+      "id"       : "doc.move",
+      "label"    : "Paste 2 items",
+      "props": {
+        "paths": ["wiki/a.md", "wiki/b.md"],
+        "into" : "wiki/lore"
+      },
+      "on"       : "paste",
+      "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "dir:wiki/lore",
+      "id"       : "app.copy",
+      "label"    : "Copy path",
+      "props": {
+        "text": "wiki/lore",
+        "what": "path"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "file:wiki/lore/cafe.md",
+      "id"       : "pane.view",
+      "label"    : "Cut",
+      "tooltip"  : "Mark these to be moved by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "cut",
+      "shortcut" : "Ctrl+X"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "file:wiki/lore/cafe.md",
+      "id"       : "pane.view",
+      "label"    : "Copy",
+      "tooltip"  : "Mark these to be copied by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "copy",
+      "shortcut" : "Ctrl+C"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "file:wiki/lore/cafe.md",
+      "id"       : "doc.move",
+      "label"    : "Paste 2 items",
+      "props": {
+        "paths": ["wiki/a.md", "wiki/b.md"],
+        "into" : "wiki/lore"
+      },
+      "on"       : "paste",
+      "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "file:wiki/lore/cafe.md",
+      "id"       : "app.copy",
+      "label"    : "Copy path",
+      "props": {
+        "text": "wiki/lore/cafe.md",
+        "what": "path"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "file:wiki/lore/cafe.md",
+      "id"       : "view.open",
+      "label"    : "Show history",
+      "props": {
+        "editor" : "history",
+        "where"  : "elsewhere",
+        "subject": "wiki/lore/cafe.md"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "branch:wiki",
+      "id"       : "doc.create",
+      "label"    : "New wiki page…",
+      "props": {
+        "kind": "note"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "branch:wiki",
+      "id"       : "doc.create",
+      "label"    : "New character sheet…",
+      "props": {
+        "kind": "character"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "branch:wiki",
+      "id"       : "doc.create",
+      "label"    : "New location sheet…",
+      "props": {
+        "kind": "location"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "branch:wiki",
+      "id"       : "doc.mkdir",
+      "label"    : "New folder…",
+      "props": {
+        "parent": "wiki"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "branch:wiki",
+      "id"       : "doc.copy",
+      "label"    : "Paste 2 items",
+      "props": {
+        "paths": ["wiki/a.md", "wiki/b.md"],
+        "into" : "wiki"
+      },
+      "on"       : "paste",
+      "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "wikidir:lore",
+      "id"       : "doc.create",
+      "label"    : "New wiki page…",
+      "props": {
+        "kind": "note",
+        "dir" : "wiki/lore"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "wikidir:lore",
+      "id"       : "doc.create",
+      "label"    : "New character sheet…",
+      "props": {
+        "kind": "character"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "wikidir:lore",
+      "id"       : "doc.create",
+      "label"    : "New location sheet…",
+      "props": {
+        "kind": "location"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "wikidir:lore",
+      "id"       : "doc.mkdir",
+      "label"    : "New folder…",
+      "props": {
+        "parent": "wiki/lore"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "wikidir:lore",
+      "id"       : "pane.view",
+      "label"    : "Cut",
+      "tooltip"  : "Mark these to be moved by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "cut",
+      "shortcut" : "Ctrl+X"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "wikidir:lore",
+      "id"       : "pane.view",
+      "label"    : "Copy",
+      "tooltip"  : "Mark these to be copied by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "copy",
+      "shortcut" : "Ctrl+C"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "wikidir:lore",
+      "id"       : "doc.copy",
+      "label"    : "Paste 2 items",
+      "props": {
+        "paths": ["wiki/a.md", "wiki/b.md"],
+        "into" : "wiki/lore"
+      },
+      "on"       : "paste",
+      "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "wikidir:lore",
+      "id"       : "app.copy",
+      "label"    : "Copy path",
+      "props": {
+        "text": "wiki/lore",
+        "what": "path"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "wiki:lore/cafe.md",
+      "id"       : "pane.view",
+      "label"    : "Cut",
+      "tooltip"  : "Mark these to be moved by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "cut",
+      "shortcut" : "Ctrl+X"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "wiki:lore/cafe.md",
+      "id"       : "pane.view",
+      "label"    : "Copy",
+      "tooltip"  : "Mark these to be copied by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "copy",
+      "shortcut" : "Ctrl+C"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "wiki:lore/cafe.md",
+      "id"       : "doc.copy",
+      "label"    : "Paste 2 items",
+      "props": {
+        "paths": ["wiki/a.md", "wiki/b.md"],
+        "into" : "wiki/lore"
+      },
+      "on"       : "paste",
+      "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "wiki:lore/cafe.md",
+      "id"       : "app.copy",
+      "label"    : "Copy path",
+      "props": {
+        "text": "wiki/lore/cafe.md",
+        "what": "path"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "wiki:lore/cafe.md",
+      "id"       : "view.open",
+      "label"    : "Show history",
+      "props": {
+        "editor" : "history",
+        "where"  : "elsewhere",
+        "subject": "wiki/lore/cafe.md"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "dir:wiki/lore",
+      "id"       : "doc.newFile",
+      "label"    : "New file…",
+      "props": {
+        "parent": "wiki/lore"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "dir:wiki/lore",
+      "id"       : "doc.mkdir",
+      "label"    : "New folder…",
+      "props": {
+        "parent": "wiki/lore"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "dir:wiki/lore",
+      "id"       : "pane.view",
+      "label"    : "Cut",
+      "tooltip"  : "Mark these to be moved by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "cut",
+      "shortcut" : "Ctrl+X"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "dir:wiki/lore",
+      "id"       : "pane.view",
+      "label"    : "Copy",
+      "tooltip"  : "Mark these to be copied by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "copy",
+      "shortcut" : "Ctrl+C"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "dir:wiki/lore",
+      "id"       : "doc.copy",
+      "label"    : "Paste 2 items",
+      "props": {
+        "paths": ["wiki/a.md", "wiki/b.md"],
+        "into" : "wiki/lore"
+      },
+      "on"       : "paste",
+      "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "dir:wiki/lore",
+      "id"       : "app.copy",
+      "label"    : "Copy path",
+      "props": {
+        "text": "wiki/lore",
+        "what": "path"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "file:wiki/lore/cafe.md",
+      "id"       : "pane.view",
+      "label"    : "Cut",
+      "tooltip"  : "Mark these to be moved by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "cut",
+      "shortcut" : "Ctrl+X"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "file:wiki/lore/cafe.md",
+      "id"       : "pane.view",
+      "label"    : "Copy",
+      "tooltip"  : "Mark these to be copied by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "copy",
+      "shortcut" : "Ctrl+C"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "file:wiki/lore/cafe.md",
+      "id"       : "doc.copy",
+      "label"    : "Paste 2 items",
+      "props": {
+        "paths": ["wiki/a.md", "wiki/b.md"],
+        "into" : "wiki/lore"
+      },
+      "on"       : "paste",
+      "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "file:wiki/lore/cafe.md",
+      "id"       : "app.copy",
+      "label"    : "Copy path",
+      "props": {
+        "text": "wiki/lore/cafe.md",
+        "what": "path"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "file:wiki/lore/cafe.md",
+      "id"       : "view.open",
+      "label"    : "Show history",
+      "props": {
+        "editor" : "history",
+        "where"  : "elsewhere",
+        "subject": "wiki/lore/cafe.md"
+      }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "three-marked",
+      "when"     : "wikidir:lore",
+      "id"       : "pane.view",
+      "label"    : "Cut 3 items",
+      "tooltip"  : "Mark these to be moved by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "cut",
+      "shortcut" : "Ctrl+X"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "three-marked",
+      "when"     : "wikidir:lore",
+      "id"       : "pane.view",
+      "label"    : "Copy 3 items",
+      "tooltip"  : "Mark these to be copied by the next Paste",
+      "props": {
+        "what": "clip"
+      },
+      "on"       : "copy",
+      "shortcut" : "Ctrl+C"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "three-marked",
+      "when"     : "wikidir:lore",
+      "id"       : "doc.copy",
+      "label"    : "Paste into lore",
+      "props": {
+        "paths": ["wiki/a.md", "wiki/b.md"],
+        "into" : "wiki/lore"
+      },
+      "on"       : "paste",
+      "shortcut" : "Ctrl+V"
     },
     {
       "via"      : "menu",
@@ -48705,14 +49832,6 @@
     {
       "match": "upload.files",
       "why"  : "Uploads come from the drop target."
-    },
-    {
-      "match": "doc.move",
-      "why": "Drawn by the documents pane’s Paste and Rename entries from stage 4; palette and CDP until then."
-    },
-    {
-      "match": "doc.copy",
-      "why": "Drawn by the documents pane’s Paste and Rename entries from stage 4; palette and CDP until then."
     }
   ],
   "shortcuts": [
@@ -49061,6 +50180,43 @@
           "what": "mark"
         }
       }
+    },
+    {
+      "scope": "documents",
+      "key"  : "C",
+      "mods" : ["ctrl"],
+      "label": "Copy",
+      "runs": {
+        "id"   : "pane.view",
+        "props": {
+          "what": "clip"
+        }
+      },
+      "on"   : "copy"
+    },
+    {
+      "scope": "documents",
+      "key"  : "X",
+      "mods" : ["ctrl"],
+      "label": "Cut",
+      "runs": {
+        "id"   : "pane.view",
+        "props": {
+          "what": "clip"
+        }
+      },
+      "on"   : "cut"
+    },
+    {
+      "scope": "documents",
+      "key"  : "V",
+      "mods" : ["ctrl"],
+      "label": "Paste",
+      "runs": {
+        "id"   : "doc.move",
+        "props": {}
+      },
+      "on"   : "paste"
     },
     {
       "scope": "gengraph",

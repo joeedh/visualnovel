@@ -7,8 +7,8 @@
 [x]: Right clicking on a folder in the wiki document subtree should have a 'add new folder'
      command.  Same is also true of file tree mode.
 [x]: File tree should support multiselect
-[ ]: Add copy/cut/paste context menu entries to file tree and wiki subtree
-[ ]: Add support for moving files/folders in the wiki subtree and file tree.
+[x]: Add copy/cut/paste context menu entries to file tree and wiki subtree
+[x]: Add support for moving files/folders in the wiki subtree and file tree.
      - Must be undoable 
 [x]: Right clicking on folders in wiki subtree & file tree should also have a 'new file'
      command.

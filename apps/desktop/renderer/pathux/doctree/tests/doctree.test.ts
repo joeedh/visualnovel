@@ -6,8 +6,10 @@ import {
   findNode,
   flattenTree,
   menuFor,
+  NO_MENU_CONTEXT,
   nodeIsSelected,
   nodeKey,
+  pasteInto,
   renameOf,
   revealIds,
   rowTitle,
@@ -16,8 +18,10 @@ import {
   shotGroups,
   toggleExpanded,
   type DocRow,
+  type MenuContext,
 } from '../doctree.js';
 import { MENU_SEP } from '../../chrome/contextmenu.js';
+import { NOTHING_CLIPPED } from '../clipboard.js';
 import { NEW_SKILL_PROMPT } from '../../../rules/skills.js';
 import type { Selection } from '../../../rules/selection.js';
 import type { DocNode, DocNodeKind, EntityLinks } from '../../../../src/shared/ipc.js';
@@ -486,7 +490,7 @@ describe('menuFor', () => {
         'location',
       ]);
       expect(entries.slice(0, 3).every((e) => e.id === 'doc.create' && e.form)).toBe(true);
-      expect(entries.slice(3).map((entry) => entry.id)).toEqual([MENU_SEP, 'doc.mkdir']);
+      expect(entries.slice(3, 5).map((entry) => entry.id)).toEqual([MENU_SEP, 'doc.mkdir']);
     }
     expect(menuFor(node('branch:wiki', 'branch'))[4]).toEqual({
       label: 'New folder…',
@@ -505,25 +509,38 @@ describe('menuFor', () => {
       { kind: 'location' },
       undefined,
       { parent: 'wiki/lore' },
+      undefined,
+      { what: 'clip' },
+      { what: 'clip' },
+      { paths: [], into: 'wiki/lore' },
+      undefined,
+      { text: 'wiki/lore', what: 'path' },
     ]);
     expect(menuFor(node('branch:wiki', 'branch'))[0]!.props).toEqual({ kind: 'note' });
   });
 
   it('offers a folder in file mode a new file and a new folder, both as forms', () => {
-    expect(menuFor(node('dir:archive/old', 'dir', { path: 'archive/old' }))).toEqual([
+    expect(menuFor(node('dir:archive/old', 'dir', { path: 'archive/old' })).slice(0, 2)).toEqual([
       { label: 'New file…', id: 'doc.newFile', props: { parent: 'archive/old' }, form: true },
       { label: 'New folder…', id: 'doc.mkdir', props: { parent: 'archive/old' }, form: true },
     ]);
   });
 
-  // A form is never checked before the menu opens, so the refusal has to be on the entry
-  it('greys both on a folder outside the four roots, with the sentence the command gives', () => {
+  // A form and an effect are never checked before the menu opens, so the refusal is on the entry
+  it('greys the forms, Cut and Copy on a folder outside the four roots', () => {
+    const roots =
+      'Files can be created, moved and renamed only under wiki/, characters/, locations/ and ' +
+      'archive/. scenes/ is written by the story commands.';
     const entries = menuFor(node('dir:scenes', 'dir', { path: 'scenes' }));
-    expect(entries.map((entry) => entry.refused)).toEqual([
-      'Files can be created, moved and renamed only under wiki/, characters/, locations/ and ' +
-        'archive/. scenes/ is written by the story commands.',
-      'Files can be created, moved and renamed only under wiki/, characters/, locations/ and ' +
-        'archive/. scenes/ is written by the story commands.',
+    expect(entries.map((entry) => [entry.label, entry.refused])).toEqual([
+      ['New file…', roots],
+      ['New folder…', roots],
+      [MENU_SEP, undefined],
+      ['Cut', roots],
+      ['Copy', roots],
+      ['Paste', NOTHING_CLIPPED],
+      [MENU_SEP, undefined],
+      ['Copy path', undefined],
     ]);
   });
 
@@ -714,7 +731,7 @@ describe('menuFor', () => {
       props: { editor: 'history', where: 'elsewhere', subject: 'wiki/x.md' },
     };
     for (const kind of ['wiki', 'file'] as const) {
-      expect(menuFor(node(`${kind}:x`, kind, { path: 'wiki/x.md' }))).toEqual([history]);
+      expect(menuFor(node(`${kind}:x`, kind, { path: 'wiki/x.md' })).at(-1)).toEqual(history);
     }
     for (const kind of ['scene', 'character', 'location'] as const) {
       expect(menuFor(node(`${kind}:x`, kind, { path: 'wiki/x.md' }))).toContainEqual(history);
@@ -762,6 +779,103 @@ describe('menuFor', () => {
       }
     };
     walk(every);
+  });
+});
+
+describe('the file acts', () => {
+  const page = node('wiki:lore/cafe.md', 'wiki', { label: 'Café', path: 'wiki/lore/cafe.md' });
+  const folder = node('wikidir:lore', 'wikidir', { label: 'lore', path: 'wiki/lore' });
+  const clipped = (mode: 'cut' | 'copy', dirty: string[] = []): MenuContext => ({
+    ...NO_MENU_CONTEXT,
+    clip: { paths: ['wiki/a.md', 'wiki/notes'], mode },
+    dirty,
+  });
+  const paste = (n: DocNode, ctx?: MenuContext) =>
+    menuFor(n, 'stored', ctx).find((entry) => entry.on === 'paste')!;
+
+  it('draws a page and a file as Cut · Copy · Paste · Copy path · Show history', () => {
+    for (const kind of ['wiki', 'file'] as const) {
+      const entries = menuFor(node(`${kind}:x`, kind, { path: 'wiki/x.md' }));
+      expect(entries.map((entry) => entry.label)).toEqual([
+        'Cut',
+        'Copy',
+        'Paste',
+        MENU_SEP,
+        'Copy path',
+        'Show history',
+      ]);
+    }
+  });
+
+  it('records Cut and Copy as the clip view, with their keys and their own tooltips', () => {
+    const [cut, copy] = menuFor(page);
+    expect(cut).toMatchObject({
+      id      : 'pane.view',
+      props   : { what: 'clip' },
+      on      : 'cut',
+      shortcut: 'Ctrl+X',
+      tooltip : 'Mark these to be moved by the next Paste',
+    });
+    expect(copy).toMatchObject({ on: 'copy', shortcut: 'Ctrl+C' });
+  });
+
+  it('pastes into the folder a row is, or the folder its file is in', () => {
+    expect(pasteInto(page)).toBe('wiki/lore');
+    expect(pasteInto(folder)).toBe('wiki/lore');
+    expect(pasteInto(node('branch:wiki', 'branch'))).toBe('wiki');
+    expect(pasteInto(node('file:x', 'file', { path: 'wiki/x.md' }))).toBe('wiki');
+    expect(pasteInto(node('scene:greet', 'scene', { path: 'scenes/greet.md' }))).toBeUndefined();
+  });
+
+  it('refuses Paste with an empty clipboard, rather than hiding it', () => {
+    expect(paste(page)).toMatchObject({ id: 'doc.move', refused: NOTHING_CLIPPED });
+    expect(paste(node('branch:wiki', 'branch'))).toMatchObject({ props: { into: 'wiki' } });
+  });
+
+  it('pastes a Cut with doc.move and a Copy with doc.copy, checked, with every prop filled', () => {
+    for (const [mode, id] of [
+      ['cut', 'doc.move'],
+      ['copy', 'doc.copy'],
+    ] as const) {
+      const entry = paste(page, clipped(mode));
+      expect(entry).toMatchObject({
+        id,
+        props   : { paths: ['wiki/a.md', 'wiki/notes'], into: 'wiki/lore' },
+        label   : 'Paste 2 items',
+        shortcut: 'Ctrl+V',
+      });
+      expect(entry.refused).toBeUndefined();
+    }
+  });
+
+  it('refuses Paste of a Cut holding unsaved edits, and not of a Copy', () => {
+    expect(paste(page, clipped('cut', ['wiki/notes/b.md'])).refused).toBe(
+      'Save wiki/notes/b.md first — it has unsaved edits.',
+    );
+    expect(paste(page, clipped('copy', ['wiki/notes/b.md'])).refused).toBeUndefined();
+  });
+
+  it('offers a marked row Cut and Copy of every mark, and a folder a Paste into it', () => {
+    const marked = { ...clipped('copy'), marked: ['wiki/lore', 'wiki/x.md', 'wiki/y.md'] };
+    expect(menuFor(page, 'stored', marked).map((entry) => entry.label)).toEqual([
+      'Cut 3 items',
+      'Copy 3 items',
+    ]);
+    const entries = menuFor(folder, 'stored', marked);
+    expect(entries.map((entry) => entry.label)).toEqual([
+      'Cut 3 items',
+      'Copy 3 items',
+      MENU_SEP,
+      'Paste into lore',
+    ]);
+    expect(entries[3]).toMatchObject({ id: 'doc.copy', props: { into: 'wiki/lore' } });
+  });
+
+  it('offers nothing to cut from a row with no file', () => {
+    expect(menuFor(node('wiki:x', 'wiki'))).toEqual([]);
+    expect(menuFor(node('wikidir:wiki', 'wikidir')).map((entry) => entry.id)).not.toContain(
+      'pane.view',
+    );
   });
 });
 

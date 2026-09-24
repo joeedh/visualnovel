@@ -312,6 +312,12 @@ toggling, which selection field a node names, and which entity the panel is abou
   anchor a Shift-click extends from are plain fields on the pane, not declared to
   nstructjs, so a restored layout starts with nothing marked. The rules are pure, in
   `pathux/doctree/marks.ts`.
+- **The window holds one clipboard.** Cut and Copy put paths on it, and Paste runs
+  `doc.move` or `doc.copy` from it
+  ([`document-tree.md`](document-tree.md#cut-copy-and-paste)). It lives in
+  `pathux/doctree/clipboard.ts`, is shared by every Documents pane in the window, and is
+  not persisted. After `doc.move`, every pane carries its expanded folders and its marks
+  to the new paths.
 - **Backlinks under the tree** come from `DocTree.backlinks[nodeId]`. They cover the
   sheet, said as "in the story bible" when it lives under `wiki/`; the art, which
   `renderAssetStrip` renders grouped by kind with the gate's accepted mark; and the scenes

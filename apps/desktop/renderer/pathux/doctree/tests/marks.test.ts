@@ -1,4 +1,12 @@
-import { NO_MARKS, markClick, menuTargets, pruneMarks, revealMarks } from '../marks.js';
+import {
+  NO_MARKS,
+  markClick,
+  menuTargets,
+  movedId,
+  pruneMarks,
+  remapMarks,
+  revealMarks,
+} from '../marks.js';
 import type { DocRow } from '../doctree.js';
 import type { DocNode } from '../../../../src/shared/ipc.js';
 
@@ -134,5 +142,39 @@ describe('revealMarks', () => {
 
   it('marks nothing for a path that is not drawn or cannot be marked', () => {
     expect(revealMarks(ROWS, ['wiki/gone.md', 'scenes/x.md'])).toEqual(NO_MARKS);
+  });
+});
+
+describe('remapMarks', () => {
+  const moves = [
+    { from: 'wiki/a.md', to: 'wiki/lore/a.md' },
+    { from: 'wiki/old', to: 'archive/old' },
+  ];
+
+  it('carries file-mode ids to the new paths, a folder’s contents with it', () => {
+    const state = {
+      marks : ['file:wiki/a.md', 'dir:wiki/old', 'file:wiki/old/n.md'],
+      anchor: 'file:wiki/a.md',
+    };
+    expect(remapMarks(state, moves)).toEqual({
+      marks : ['file:wiki/lore/a.md', 'dir:archive/old', 'file:archive/old/n.md'],
+      anchor: 'file:wiki/lore/a.md',
+    });
+  });
+
+  it('carries document-mode ids, which name a path under wiki/', () => {
+    const state = { marks: ['wiki:a.md', 'wikidir:lore'], anchor: 'wikidir:lore' };
+    expect(remapMarks(state, [...moves, { from: 'wiki/lore', to: 'wiki/places/lore' }])).toEqual({
+      marks : ['wiki:lore/a.md', 'wikidir:places/lore'],
+      anchor: 'wikidir:places/lore',
+    });
+  });
+
+  it('leaves an id it cannot carry, and one no move names, for the next redraw to judge', () => {
+    // A page moved out of wiki/ has no row in the Wiki branch, so its id is left to be pruned
+    expect(movedId('wikidir:old', moves)).toBe('wikidir:old');
+    expect(movedId('file:wiki/b.md', moves)).toBe('file:wiki/b.md');
+    expect(movedId('branch:wiki', moves)).toBe('branch:wiki');
+    expect(remapMarks(NO_MARKS, moves)).toEqual(NO_MARKS);
   });
 });

@@ -8,7 +8,7 @@
  */
 import { message as note, error as noteError } from 'pathux';
 import { setModelCatalog } from '@vn/gengraph';
-import { docsEffect } from './docseffect.js';
+import { docsEffect, onMoved } from './docseffect.js';
 import {
   DEFAULT_BUDGET,
   EFFORT_CHOICES,
@@ -32,6 +32,7 @@ import type {
 } from '../../../src/shared/ipc.js';
 import { shouldFileCommand } from '../../../src/shared/notify.js';
 import { touchesInputs } from '../../../src/shared/writes.js';
+import { remapPath, type FileMove } from '../../../src/shared/fileops.js';
 import type { ShellApp } from './context.js';
 import { approvalsChanged, refreshApprovals } from '../chrome/approvals.js';
 import { notificationsChanged, refreshNotifications } from '../chrome/notifications.js';
@@ -39,6 +40,9 @@ import { closePalette, openPalette } from '../chrome/palette.js';
 import { applyTour } from '../tour/tour.js';
 import { seedReport } from '../agent/reportconvo.js';
 import { applyView } from '../panes/view.js';
+import { pinAfterMove } from '../doctree/pin.js';
+import { layoutChanged } from './persist.js';
+import { VnEditor } from './editor.js';
 
 let host: ShellApp | undefined;
 
@@ -380,6 +384,25 @@ export async function setBudget(budget: BudgetChoice): Promise<void> {
 }
 
 /**
+ * Carries the shell's `ui.docPath`, and every pane pinned to a document, to where `doc.move` put
+ * the file. A changed pin is saved with the layout, like one the author set.
+ */
+function followMove(app: ShellApp, moves: readonly FileMove[]): void {
+  app.ui.docPath = remapPath(app.ui.docPath, moves);
+  let pinsMoved = false;
+  for (const sarea of app.screen?.sareas ?? []) {
+    for (const area of sarea.editors) {
+      if (!(area instanceof VnEditor) || !area.pinned || area.pinField === undefined) continue;
+      const held = pinAfterMove(area.pinField, area.pinnedTo, moves);
+      pinsMoved ||= held !== area.pinnedTo;
+      area.pinnedTo = held;
+    }
+  }
+  if (pinsMoved) layoutChanged();
+  touch();
+}
+
+/**
  * Subscribe to what main pushes, and take the first workspace read. Called once, after the
  * screen exists — `say` and the palette both need one.
  */
@@ -391,6 +414,8 @@ export function installBridge(app: ShellApp): void {
   const storedBudget = api.session.initial()['agent.budget'];
   app.ui.budget =
     typeof storedBudget === 'string' ? (storedBudget as BudgetChoice) : DEFAULT_BUDGET;
+
+  onMoved((moves) => followMove(app, moves));
 
   api.on('command:ui', (effect: UiEffect) => {
     const ui = app.ui;

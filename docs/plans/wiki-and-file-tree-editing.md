@@ -1,6 +1,6 @@
 # Wiki and file tree editing
 
-Status: partial — stages 1–3 of 5 shipped. Reviewed once by a fresh-context agent; its
+Status: partial — stages 1–4 of 5 shipped. Reviewed once by a fresh-context agent; its
 nineteen findings and how each was answered are in [Review](#review).
 
 This plan covers the six items in `todos.md` under "Wiki Subtree / File Tree Commands".
@@ -944,6 +944,44 @@ Renderer only.
 - Verify by hand: cut three pages in the Wiki branch, paste into a folder in file mode,
   undo, redo; try to cut and paste a page with unsaved edits and read the refusal; confirm
   an open page follows its move.
+- Shipped. What the implementation settled or changed:
+    - **Copy path shipped here.** D11 lists it but no stage claimed it. `app.copy`'s
+      description now names a file's path beside the ids, so the entry's tooltip, which is
+      the registry's text, is true of it.
+    - **Clean buffers follow a move rather than being dropped.** `followMoves` in
+      `docbuffer.ts` points each clean buffer showing a moved path at the new path and
+      re-reads it there. Opening the new path releases the old session, which is then
+      disposed, so `docsession.ts` needed no change. A dirty buffer stays at the old path.
+    - **`ui.docPath` and pins are mapped in `bridge.ts`** (`followMove`), through
+      `pinAfterMove` in `pin.ts`. A pin that moved saves the layout, as a pin the author
+      set does. `docsEffect` runs the buffers first and then the `onMoved` listeners, so
+      the Wiki pane's buffer is already on the new path when `ui.docPath` changes.
+    - **Marks are not pruned while a fetch is out.** A `moved` push remaps expanded ids
+      and marks (`movedId`, `remapMarks`) before the tree holding the new rows has
+      arrived, so the pane refetches and prunes only once it lands. `movedId` leaves a
+      `wiki:` id whose page moved out of `wiki/` unchanged, and the next redraw drops it.
+    - **Paste runs through a pane handler and is still checked.** The entry carries
+      `on: 'paste'`, which `needsCheck` ignores, so the menu asks `stack.check` as before;
+      the handler runs `exec` and empties the clipboard once a Cut's move has landed. With
+      an empty clipboard the entry records `doc.move`.
+    - **Ctrl+V uses the menu's own entry.** `pasteEntry` in `doctree.ts` is exported, and
+      the key handler reads its `refused` and its id, so the menu and the key cannot give
+      different answers. The dirty-draft sentence is `unsavedRefusal` in
+      `rules/docbuffer.ts`, as planned.
+    - **The marked menu's Paste is labelled "Paste into lore"** and follows the
+      clipboard's mode like the single-row entry. The menu's title is "3 items".
+    - **Menu situations.** The `doctree` row's state is now `{ nodes, ctx }`, with the
+      situations in `rules/situations/doctreemenu.ts`: `every-kind` (unchanged nodes, an
+      empty clipboard), `cut-clipboard`, `copy-clipboard` and `three-marked`. The empty
+      clipboard's sentence is new in the model, so the uxdocs refusal count moves from 99
+      to 100. The anchor sweep went from 664 to 700 records: 36 new menu records and none
+      removed.
+    - **A cut row dims only its label**, so the marked and selected tints still show
+      behind it.
+    - **Found while verifying:** after an undo removed a moved page and a redo put it
+      back, the Wiki pane kept the undo's "no such file" note, because `DocBuffer.follow`
+      returned early when the file came back with the hash its session already held. It
+      now clears a failed read's note in that case.
 
 ### Stage 5 — Renaming files and folders in the tree
 

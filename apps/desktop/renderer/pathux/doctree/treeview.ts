@@ -32,6 +32,8 @@ export interface RowLook {
   selected: boolean;
   /** One of several rows the host has marked; drawn apart from `selected`. */
   marked?: boolean;
+  /** On a Cut clipboard, waiting for the next Paste to move it; drawn dimmed. */
+  cut?: boolean;
   /** Must never be `''`; an empty title would let a row hover silently, the bug this field exists to prevent. */
   title: string;
 }
@@ -160,6 +162,7 @@ function rowEl(root: HTMLElement, row: DocRow, h: TreeHandlers): HTMLElement {
   if (group) line.classList.add('group');
   if (look.selected) line.classList.add('sel');
   if (look.marked) line.classList.add('marked');
+  if (look.cut) line.classList.add('cut');
   line.style.paddingLeft = `${4 + row.depth * 13}px`;
   line.title = look.title;
 

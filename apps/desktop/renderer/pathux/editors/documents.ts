@@ -1,8 +1,8 @@
 import { KeyMap, type Container } from 'pathux';
 import { api } from '../../api.js';
 import { ASSETSTRIP_CSS, renderAssetStrip } from '../assets/assetstrip.js';
-import { exec, onInvalidate } from '../app/bridge.js';
-import { onReveal } from '../app/docseffect.js';
+import { exec, onInvalidate, report, say } from '../app/bridge.js';
+import { onMoved, onReveal } from '../app/docseffect.js';
 import type { VnContext } from '../app/context.js';
 import {
   assetGroups,
@@ -14,12 +14,15 @@ import {
   markable,
   menuFor,
   nodeIsSelected,
+  pasteEntry,
+  pasteInto,
   renameOf,
   revealIds,
   rowTitle,
   selectionForNode,
   toggleExpanded,
   type DocRow,
+  type MenuContext,
 } from '../doctree/doctree.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { VN_ICONS } from '../app/icons.js';
@@ -57,12 +60,17 @@ import {
   NO_MARKS,
   markClick,
   menuTargets,
+  movedId,
   pruneMarks,
+  remapMarks,
   revealMarks,
   type MarkState,
 } from '../doctree/marks.js';
+import { clipboard, isCut, onClip, pasted, setClip, type ClipMode } from '../doctree/clipboard.js';
+import { draftPaths } from '../doctree/docbuffer.js';
 import DOCUMENTS_CSS from '../../styles/documents.css?inline';
-import type { DocNode, DocTree } from '../../../src/shared/ipc.js';
+import type { DocNode, DocTree, PropValue } from '../../../src/shared/ipc.js';
+import type { FileMove } from '../../../src/shared/fileops.js';
 
 /** Which tree the pane is drawing. Remembered per pane, so two of them can differ. */
 type DocMode = 'documents' | 'files';
@@ -77,7 +85,7 @@ type DocMode = 'documents' | 'files';
  * `ui.characterId` / `ui.docPath`, which every other editor already observes, so the tree steers
  * the app without knowing what is open, and a scene picked in the branch graph highlights here.
  * What it does hold is its marked rows (`marks.ts`): the pages, files and folders gathered by
- * Ctrl-click and Shift-click for the tree's file acts.
+ * Ctrl-click and Shift-click for Cut and Copy, which fill the window's clipboard (`clipboard.ts`).
  *
  * The panel under the tree lists what points at the selected entity: its sheet, its art, and the
  * scenes and shots it appears in, from `DocTree.backlinks`. It is here rather than in the
@@ -161,9 +169,19 @@ export class DocumentsEditor extends VnEditor {
       () => void this.load(),
     );
     this.watch(() => onReveal((paths) => this.reveal(paths)));
+    this.watch(() => onMoved((moves) => this.followMove(moves)));
+    // Every pane in the window dims the rows a Cut took, not only the pane it was made in
+    this.watch(() => onClip(() => this.rebuild()));
 
-    // The search box and the inline boxes stop their own keys, so Escape here reaches only the tree
-    this.keymap = new KeyMap(hotkeys('documents', { 'Clear marks': () => this.clearMarks() }));
+    // The search box and the inline boxes stop their own keys, so these reach only the tree
+    this.keymap = new KeyMap(
+      hotkeys('documents', {
+        'Clear marks': () => this.clearMarks(),
+        Copy         : () => this.clipMarks('copy'),
+        Cut          : () => this.clipMarks('cut'),
+        Paste        : () => this.pasteAtAnchor(),
+      }),
+    );
     watchKeymap('documents', () => this.keymap);
 
     void this.load();
@@ -282,8 +300,9 @@ export class DocumentsEditor extends VnEditor {
   private rebuild(): void {
     const roots = this.failure ? undefined : this.roots();
     const rows = roots && this.flatRows(roots);
-    // Pruned before the state key is taken, so dropping a hidden mark does not cost a second draw
-    if (rows) this.marking = pruneMarks(this.marking, rows);
+    // Pruned before the state key is taken, so dropping a hidden mark does not cost a second draw.
+    // Not while a fetch is out: marks a move carried to new ids wait for the tree that has them
+    if (rows && !this.pending) this.marking = pruneMarks(this.marking, rows);
     this.drawn = this.stateKey();
     this.rebuildBar();
     this.rebuildRows(rows);
@@ -462,10 +481,12 @@ export class DocumentsEditor extends VnEditor {
     const visible = visibleEditors(screen ? panesOf(screen) : []);
     const anchors = redrawing('documents', 'rows');
     const marked = new Set(this.marking.marks);
+    const clip = clipboard();
     renderTree(this.rows, rows, {
       look: (row) => ({
         selected: nodeIsSelected(row.node, selection),
         marked  : marked.has(row.node.id),
+        cut     : isCut(clip, row.node.path),
         title: rowTitle(row.node, {
           renamable: renameOf(row.node) !== undefined,
           markable : markable(row.node),
@@ -603,6 +624,49 @@ export class DocumentsEditor extends VnEditor {
     else this.rebuild();
   }
 
+  /**
+   * Carries the expanded folders and the marks to where `doc.move` put their files, then refetches
+   * the tree that has them. A move run from any window arrives here, not only this one's.
+   */
+  private followMove(moves: readonly FileMove[]): void {
+    this.expanded = new Set([...this.expanded].map((id) => movedId(id, moves)));
+    this.marking = remapMarks(this.marking, moves);
+    void this.load();
+  }
+
+  /** Answers the paths of the drawn rows with these ids, in the order given. */
+  private pathsOf(ids: readonly string[]): string[] {
+    return ids.flatMap((id) => this.shown.find((row) => row.node.id === id)?.node.path ?? []);
+  }
+
+  /** Puts the marked rows on the window's clipboard. Bound to Ctrl+C and Ctrl+X. */
+  private clipMarks(mode: ClipMode): void {
+    const paths = this.pathsOf(this.marking.marks);
+    if (paths.length > 0) setClip({ paths, mode });
+  }
+
+  /**
+   * Pastes into the anchor row's folder, refused with the menu's own sentence where Paste would be
+   * greyed. With no anchor drawn there is no folder to paste into, and nothing happens.
+   */
+  private pasteAtAnchor(): void {
+    const anchor = this.shown.find((row) => row.node.id === this.marking.anchor);
+    const into = anchor && pasteInto(anchor.node);
+    if (into === undefined) return;
+    const entry = pasteEntry(into, { clip: clipboard(), marked: [], dirty: draftPaths() });
+    if (entry.refused !== undefined) say(entry.refused, true);
+    else this.paste(entry.id, entry.props ?? {});
+  }
+
+  /** Runs a Paste. A Cut is used up once its move lands; a Copy stays to be pasted again. */
+  private paste(id: string, props: Record<string, PropValue>): void {
+    const clip = clipboard();
+    void exec(id, props).then((outcome) => {
+      report(outcome);
+      if (outcome.ok && clipboard() === clip) setClip(pasted(clip));
+    });
+  }
+
   /** Takes every mark off and keeps the anchor. Bound to Escape while the tree has the keyboard. */
   private clearMarks(): void {
     if (this.marking.marks.length === 0) return;
@@ -701,21 +765,34 @@ export class DocumentsEditor extends VnEditor {
    * and whatever the asset pane is showing cannot disagree about which asset is meant. It is not
    * routed to: opening a pane is what a left click does, and a menu should not rearrange the
    * screen before the author has chosen anything. A row marked among several keeps the other
-   * marks; any other row becomes the only one.
+   * marks, and the menu covers all of them; any other row becomes the only one.
    */
   private openMenu(row: DocRow, x: number, y: number): void {
-    const entries = menuFor(row.node, this.order);
+    const { next: marking, targets } = menuTargets(this.marking, row);
+    const paths = this.pathsOf(targets);
+    const several = targets.length >= 2;
+    const ctx: MenuContext = {
+      clip  : clipboard(),
+      marked: several ? paths : [],
+      dirty : draftPaths(),
+    };
+    const entries = menuFor(row.node, this.order, ctx);
     if (entries.length === 0) return;
 
-    this.marking = menuTargets(this.marking, row).next;
+    this.marking = marking;
     this.picked = row.node.kind === 'location' ? row.node.id : '';
     const current = this.selection();
     const next = selectionForNode(row.node, current);
     if (next === current) this.rebuild();
     else this.publish(next);
 
-    void showContextMenu(this.ctx as VnContext, x, y, row.node.label, entries, {
+    const title = several ? `${targets.length} items` : row.node.label;
+    void showContextMenu(this.ctx as VnContext, x, y, title, entries, {
       'pane.view#order': () => this.setOrder(this.order === 'story' ? 'stored' : 'story'),
+      'pane.view#cut'  : () => setClip({ paths, mode: 'cut' }),
+      'pane.view#copy' : () => setClip({ paths, mode: 'copy' }),
+      'doc.move#paste' : (props) => this.paste('doc.move', props),
+      'doc.copy#paste' : (props) => this.paste('doc.copy', props),
     });
   }
 

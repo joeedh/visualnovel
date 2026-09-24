@@ -175,11 +175,6 @@ const CONVERSATIONS: readonly PaletteOnly[] = [
   { match: 'upload.files', why: 'Uploads come from the drop target.' },
 ];
 
-const DOC_FILES = ['doc.move', 'doc.copy'].map((match) => ({
-  match,
-  why: 'Drawn by the documents pane’s Paste and Rename entries from stage 4; palette and CDP until then.',
-}));
-
 export const PALETTE_ONLY: readonly PaletteOnly[] = [
   ...NAMESPACES,
   ...WORKSPACE,
@@ -195,5 +190,4 @@ export const PALETTE_ONLY: readonly PaletteOnly[] = [
   ...STORY,
   ...PROMPT,
   ...CONVERSATIONS,
-  ...DOC_FILES,
 ];
