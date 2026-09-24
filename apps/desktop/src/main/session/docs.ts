@@ -1,3 +1,4 @@
+import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { userSkillsDir } from '@vn/config';
 import { docToMarkdown, newCharacterTemplate, newLocationDoc, slug } from '@vn/model';
@@ -25,6 +26,8 @@ import {
   type SkillRoot,
 } from '@vn/authoring';
 import type { DocNode, DocSaveResult, DocTree } from '../../shared/ipc.js';
+import { rootProblem } from '../../shared/fileops.js';
+import { normalizePath } from '../../shared/writes.js';
 import {
   SKILL_TIER_DIRS,
   SKILL_TIER_LABELS,
@@ -48,9 +51,19 @@ import {
   readAllShots,
   DOC_WRITERS,
   entityDiagnostic,
+  walkDirs,
   walkFiles,
   loadProject,
 } from './core.js';
+
+/** Why a kind other than a note cannot be filed in a folder of the author's choosing. */
+const NOT_FILED: Record<Exclude<NewDocKind, 'note'>, string> = {
+  character:
+    'A character sheet is always created in characters/; move it afterwards to file it elsewhere.',
+  location:
+    'A location sheet is always created in locations/; move it afterwards to file it elsewhere.',
+  skill    : 'A skill is always created in .aiagent/skills/.',
+};
 
 export class DocsPart {
   constructor(private readonly session: WorkspaceSession) {}
@@ -72,6 +85,7 @@ export class DocsPart {
       shots,
       bible      : bible.files(),
       wikiDir    : relPath(this.session.dir, project.paths.wikiDir),
+      wikiDirs   : await walkDirs(project.paths.wikiDir),
       assetLabels: labelAssets(manifest, labels),
       angleOf    : labels.angleOf,
       // Always an array, never undefined: the branch is drawn even with nothing in it, and only a
@@ -172,7 +186,8 @@ export class DocsPart {
 
   /** The tree's other mode: what is actually on disk, `.git` and `node_modules` excluded. */
   async fileTree(): Promise<DocNode[]> {
-    return fileTree(await walkFiles(this.session.dir));
+    const dir = this.session.dir;
+    return fileTree(await walkFiles(dir), DEFAULT_CAP, '', await walkDirs(dir));
   }
 
   /**
@@ -362,16 +377,18 @@ export class DocsPart {
   private newDoc(
     kind: NewDocKind,
     name: string,
+    dir = '',
   ): { id: string; path: string; text: string } | null {
     const paths = new ProjectPaths(this.session.dir);
     // A note is a heading and nothing else: `wiki/` is free-form, and an empty front-matter
     // block at the top of every new note would be a shape the author has to delete.
     if (kind === 'note') {
       const id = slug(name);
+      const folder = dir === '' ? paths.wikiDir : join(this.session.dir, dir);
       return id
         ? {
             id,
-            path: relPath(this.session.dir, join(paths.wikiDir, `${id}.md`)),
+            path: relPath(this.session.dir, join(folder, `${id}.md`)),
             text: `# ${name}\n`,
           }
         : null;
@@ -408,9 +425,30 @@ export class DocsPart {
     };
   }
 
+  /**
+   * Why a new document of `kind` cannot be filed in `dir`, or undefined. Only a note may be filed
+   * somewhere chosen, and only under `wiki/`: the other kinds have a conventional home that
+   * discovery reads them from.
+   */
+  private async dirProblem(kind: NewDocKind, dir: string): Promise<string | undefined> {
+    if (dir === '') return undefined;
+    if (kind !== 'note') return NOT_FILED[kind];
+    const folder = normalizePath(dir).replace(/\/+$/, '');
+    const outside = rootProblem(folder, 'folder');
+    if (outside) return outside;
+    if (folder !== 'wiki' && !folder.startsWith('wiki/')) {
+      return `A wiki page is filed under wiki/, and ${folder} is not.`;
+    }
+    const found = await stat(join(this.session.dir, folder)).catch(() => null);
+    if (!found) return `no such folder: ${folder}`;
+    return found.isDirectory() ? undefined : `${folder} is a file, not a folder.`;
+  }
+
   /** Whether the scaffold would land — mostly a check that the name is not already taken. */
-  async previewCreate(kind: NewDocKind, name: string): Promise<DocResult<DocWritePlan>> {
-    const scaffold = this.newDoc(kind, name);
+  async previewCreate(kind: NewDocKind, name: string, dir = ''): Promise<DocResult<DocWritePlan>> {
+    const misfiled = await this.dirProblem(kind, dir);
+    if (misfiled) return { ok: false, reason: misfiled };
+    const scaffold = this.newDoc(kind, name, normalizePath(dir));
     if (!scaffold) return { ok: false, reason: `"${name}" does not name a ${kind}` };
     return checkDocWrite(this.session.dir, scaffold.path, scaffold.text, '', DOC_WRITERS);
   }
@@ -423,8 +461,11 @@ export class DocsPart {
   async createDoc(
     kind: NewDocKind,
     name: string,
+    dir = '',
   ): Promise<DocResult<DocSaveResult & { id: string }>> {
-    const scaffold = this.newDoc(kind, name);
+    const misfiled = await this.dirProblem(kind, dir);
+    if (misfiled) return { ok: false, reason: misfiled };
+    const scaffold = this.newDoc(kind, name, normalizePath(dir));
     if (!scaffold) return { ok: false, reason: `"${name}" does not name a ${kind}` };
     const written = await writeDocFile(
       this.session.dir,

@@ -20,7 +20,7 @@ import type { ProjectPaths } from './paths.js';
 import { listWikiFiles } from './tree.js';
 
 /** A discovered sheet, with the surface it came from, which breaks a duplicate tie. */
-interface Candidate {
+export interface EntityCandidate {
   kind: EntityTag;
   doc: EntityDoc;
   /** True for `characters/`/`locations/`, which win over the wiki when both claim an id. */
@@ -78,14 +78,14 @@ function tagConflict(doc: EntityDoc, kind: EntityTag, diagnostics: Diagnostic[])
 async function readAll<T>(
   items: readonly T[],
   diagnostics: Diagnostic[],
-  read: (item: T, into: Diagnostic[]) => Promise<Candidate | undefined>,
-): Promise<Candidate[]> {
+  read: (item: T, into: Diagnostic[]) => Promise<EntityCandidate | undefined>,
+): Promise<EntityCandidate[]> {
   const done = await pool(items, READ_CONCURRENCY, async (item) => {
     const into: Diagnostic[] = [];
     return { into, candidate: await read(item, into) };
   });
 
-  const found: Candidate[] = [];
+  const found: EntityCandidate[] = [];
   for (const { into, candidate } of done) {
     diagnostics.push(...into);
     if (candidate) found.push(candidate);
@@ -97,7 +97,7 @@ async function readAll<T>(
 async function fromCharactersDir(
   paths: ProjectPaths,
   diagnostics: Diagnostic[],
-): Promise<Candidate[]> {
+): Promise<EntityCandidate[]> {
   if (!(await exists(paths.charactersDir))) return [];
   const entries = await fs.readdir(paths.charactersDir, { withFileTypes: true });
   const dirs = entries.filter((entry) => entry.isDirectory());
@@ -115,7 +115,7 @@ async function fromCharactersDir(
 async function fromLocationsDir(
   paths: ProjectPaths,
   diagnostics: Diagnostic[],
-): Promise<Candidate[]> {
+): Promise<EntityCandidate[]> {
   if (!(await exists(paths.locationsDir))) return [];
   const entries = await fs.readdir(paths.locationsDir, { withFileTypes: true });
   const sheets = entries.filter(
@@ -132,7 +132,10 @@ async function fromLocationsDir(
 
 /** `wiki/**\/*.md` carrying an entity tag — the id is the filename stem. Untagged files are not
  * inputs; they belong to the story bible and are skipped without a diagnostic. */
-async function fromWiki(paths: ProjectPaths, diagnostics: Diagnostic[]): Promise<Candidate[]> {
+async function fromWiki(
+  paths: ProjectPaths,
+  diagnostics: Diagnostic[],
+): Promise<EntityCandidate[]> {
   const files = await listWikiFiles(paths);
 
   return readAll(files, diagnostics, async (file, into) => {
@@ -150,8 +153,12 @@ async function fromWiki(paths: ProjectPaths, diagnostics: Diagnostic[]): Promise
  * wins over the wiki, wiki ties go to the lexicographically first path, and the losing file is
  * named in a warning so the author can delete the copy they did not mean to keep.
  */
-function dedupe(candidates: Candidate[], kind: EntityTag, diagnostics: Diagnostic[]): EntityDoc[] {
-  const byId = new Map<string, Candidate[]>();
+function dedupe(
+  candidates: EntityCandidate[],
+  kind: EntityTag,
+  diagnostics: Diagnostic[],
+): EntityDoc[] {
+  const byId = new Map<string, EntityCandidate[]>();
   for (const candidate of candidates.filter((c) => c.kind === kind)) {
     const list = byId.get(candidate.doc.id);
     if (list) list.push(candidate);
@@ -196,11 +203,15 @@ export function entityDoc(docs: EntityDoc[], id: string): EntityDoc | undefined 
   return docs.find((d) => d.id === id);
 }
 
-/** Every character and set-location sheet a project has, across all three surfaces. */
-export async function discoverEntities(
+/**
+ * Every file that claims to be a character or set-location sheet, across all three surfaces,
+ * before duplicates are resolved. The losing copy of a duplicate id is included, so a caller can
+ * ask what identity any one file has, not only which file won.
+ */
+export async function discoverCandidates(
   paths: ProjectPaths,
   diagnostics: Diagnostic[],
-): Promise<{ characterDocs: EntityDoc[]; locationDocs: EntityDoc[] }> {
+): Promise<EntityCandidate[]> {
   // The three surfaces are walked together, each collecting its own diagnostics so the merged
   // list still reads conventional-first however the walks interleave.
   const surfaces: Diagnostic[][] = [[], [], []];
@@ -210,8 +221,52 @@ export async function discoverEntities(
     fromWiki(paths, surfaces[2]!),
   ]);
   for (const found of surfaces) diagnostics.push(...found);
+  return [...characters, ...locations, ...wiki];
+}
 
-  const candidates = [...characters, ...locations, ...wiki];
+/** What a file is to entity discovery: a sheet of one kind under one id. */
+export interface EntityIdentity {
+  kind: EntityTag;
+  id: string;
+}
+
+/**
+ * The identity discovery would give a file at `path` (workspace-relative) whose front-matter is
+ * `data`, or undefined when it would not be a candidate at all. Mirrors the three surfaces:
+ * `characters/<id>/character.md`, a `.md` directly in `locations/`, and a tagged `.md` anywhere
+ * under `wiki/`. A conventional sheet whose tag names the other kind is undefined, as
+ * `tagConflict` drops it.
+ */
+export function entityIdentity(
+  path: string,
+  data: Record<string, unknown>,
+): EntityIdentity | undefined {
+  const parts = path.replace(/\\/g, '/').split('/');
+  const name = parts[parts.length - 1] ?? '';
+  const markdown = name.toLowerCase().endsWith('.md');
+  const stem = name.slice(0, -'.md'.length);
+  const conventional = (kind: EntityTag, id: string): EntityIdentity | undefined =>
+    docKind(kind, data).kind === kind ? { kind, id } : undefined;
+
+  if (parts.length === 3 && parts[0] === 'characters' && name === 'character.md') {
+    return conventional(ENTITY_TAGS.character, parts[1]!);
+  }
+  if (parts.length === 2 && parts[0] === 'locations' && markdown) {
+    return conventional(ENTITY_TAGS.location, stem);
+  }
+  if (parts.length >= 2 && parts[0] === 'wiki' && markdown) {
+    const kind = taggedKind(data);
+    return kind === undefined ? undefined : { kind, id: stem };
+  }
+  return undefined;
+}
+
+/** Every character and set-location sheet a project has, across all three surfaces. */
+export async function discoverEntities(
+  paths: ProjectPaths,
+  diagnostics: Diagnostic[],
+): Promise<{ characterDocs: EntityDoc[]; locationDocs: EntityDoc[] }> {
+  const candidates = await discoverCandidates(paths, diagnostics);
   return {
     characterDocs: dedupe(candidates, ENTITY_TAGS.character, diagnostics),
     locationDocs : dedupe(candidates, ENTITY_TAGS.location, diagnostics),

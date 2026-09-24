@@ -886,6 +886,92 @@ describe('fileTree', () => {
     const roots = fileTree(['b.md', 'a/x.md'], DEFAULT_CAP, 'p/');
     expect(roots.map((n) => n.id)).toEqual(['dir:p/a', 'file:p/b.md']);
   });
+
+  it('draws a folder no file implies, in name order among the ones that hold files', () => {
+    const roots = fileTree(['wiki/b/x.md', 'wiki/d.md'], DEFAULT_CAP, '', [
+      'wiki',
+      'wiki/a',
+      'wiki/b',
+      'wiki/c',
+      'wiki/c/deeper',
+    ]);
+    const wiki = roots[0]!.children!;
+    expect(wiki.map((n) => n.id)).toEqual([
+      'dir:wiki/a',
+      'dir:wiki/b',
+      'dir:wiki/c',
+      'file:wiki/d.md',
+    ]);
+    expect(wiki[0]!.children).toEqual([]);
+    expect(wiki[2]!.children!.map((n) => [n.id, n.path])).toEqual([
+      ['dir:wiki/c/deeper', 'wiki/c/deeper'],
+    ]);
+  });
+});
+
+describe('the Wiki branch, given the folders under wiki/', () => {
+  const wikiOf = (over: Partial<DocTreeInput>): DocNode[] =>
+    branch(buildDocTree(makeInput(over)).roots, 'branch:wiki').children!;
+
+  it('draws an empty folder among its siblings by name, and nests one inside another', () => {
+    const wiki = wikiOf({ wikiDirs: ['cast', 'empty', 'empty/inner', 'history', 'a-first'] });
+    expect(wiki.map((n) => n.id)).toEqual([
+      'wikidir:a-first',
+      'wikidir:cast',
+      'wikidir:empty',
+      'wikidir:history',
+    ]);
+    expect(wiki[2]).toMatchObject({ kind: 'wikidir', label: 'empty', path: 'wiki/empty' });
+    expect(wiki[2]!.children!.map((n) => n.id)).toEqual(['wikidir:empty/inner']);
+    expect(wiki[0]!.children).toEqual([]);
+  });
+
+  it('leaves the branch as the bible drew it when the caller lists no folders', () => {
+    expect(wikiOf({}).map((n) => n.id)).toEqual(['wikidir:cast', 'wikidir:history']);
+  });
+});
+
+describe('WorkspaceSession — empty folders on disk', () => {
+  let p: TestProject;
+
+  beforeAll(async () => {
+    p = await makeProject({
+      title: 'Folders',
+      files: {
+        'wiki/history/canal.md'                   : '# The canal\n',
+        'wiki/plates/cafe.png'                    : 'not really a picture',
+        '.aiagent/skills/continuity-pass/SKILL.md': SKILL_MD,
+      },
+    });
+    await mkdir(join(p.dir, 'wiki', 'lore', 'empty'), { recursive: true });
+    await mkdir(join(p.dir, '.aiagent', 'skills', 'continuity-pass', 'scratch'));
+  });
+
+  afterAll(async () => {
+    await p.cleanup();
+  });
+
+  it('lists an empty folder and a folder holding only an image in the Wiki branch', async () => {
+    const tree = await new WorkspaceSession(p.dir, true, deps).docTree();
+    const wiki = branch(tree.roots, 'branch:wiki').children!;
+    expect(wiki.map((n) => n.id)).toEqual(['wikidir:history', 'wikidir:lore', 'wikidir:plates']);
+    expect(wiki[1]!.children!.map((n) => n.id)).toEqual(['wikidir:lore/empty']);
+    expect(wiki[2]!.children).toEqual([]);
+  });
+
+  it('lists an empty folder in file mode', async () => {
+    const roots = await new WorkspaceSession(p.dir, true, deps).fileTree();
+    const wiki = roots.find((n) => n.id === 'dir:wiki')!;
+    const lore = wiki.children!.find((n) => n.id === 'dir:wiki/lore')!;
+    expect(lore.children!.map((n) => n.id)).toEqual(['dir:wiki/lore/empty']);
+  });
+
+  it('leaves the Skills pane listing files only, as it did', async () => {
+    const [project] = await new WorkspaceSession(p.dir, true, deps).skillTree();
+    expect(project!.children![0]!.children!.map((n) => n.id)).toEqual([
+      'file:.aiagent/skills/continuity-pass/SKILL.md',
+    ]);
+  });
 });
 
 describe('WorkspaceSession — the tree over a real project', () => {

@@ -14,7 +14,8 @@ import { orderEntry, type SceneOrder } from '../../rules/documents.js';
 import { NEW_SKILL_PROMPT } from '../../rules/skills.js';
 import { nodeKey, splitShot, type Selection } from '../../rules/selection.js';
 import type { DocNode, DocNodeKind, EntityLinks } from '../../../src/shared/ipc.js';
-import { MENU_SEP, type MenuEntry } from '../chrome/contextmenu.js';
+import { rootProblem } from '../../../src/shared/fileops.js';
+import { MENU_SEP, SEPARATOR, type MenuEntry } from '../chrome/contextmenu.js';
 
 // The selection and title rules moved into `rules/`, where the offers are built from them. They
 // are still reached from here by the tree's own callers.
@@ -103,6 +104,23 @@ export function filterTree(roots: readonly DocNode[], query: string): FilteredTr
   };
 
   return { roots: keep(roots), expanded };
+}
+
+/**
+ * The ids that have to be expanded for every path to be drawn, in both trees: the `dir:` rows of
+ * file mode, and `branch:wiki` with the `wikidir:` rows for a path under `wiki/`. A path's own row
+ * is not among them, so a new folder is shown closed.
+ */
+export function revealIds(paths: readonly string[]): string[] {
+  const ids = new Set<string>();
+  for (const path of paths) {
+    const folders = path.split('/').slice(0, -1);
+    folders.forEach((_, i) => ids.add(`dir:${folders.slice(0, i + 1).join('/')}`));
+    if (folders[0] !== 'wiki') continue;
+    ids.add('branch:wiki');
+    folders.slice(1).forEach((_, i) => ids.add(`wikidir:${folders.slice(1, i + 2).join('/')}`));
+  }
+  return [...ids];
 }
 
 /** Flip one node, returning a new set. The pane holds the expanded state itself. */
@@ -211,20 +229,33 @@ function showHistory(path: string | undefined): MenuEntry[] {
 }
 
 /** One `doc.create` entry. Spelled once, so the wiki tree and the cast branches agree. */
-function newSheet(kind: 'note' | 'character' | 'location' | 'skill', label: string): MenuEntry {
-  return { label, id: 'doc.create', props: { kind }, form: true };
+function newSheet(
+  kind: 'note' | 'character' | 'location' | 'skill',
+  label: string,
+  dir = '',
+): MenuEntry {
+  return { label, id: 'doc.create', props: dir ? { kind, dir } : { kind }, form: true };
 }
 
 /**
- * The three things a new page under `wiki/` can be. `doc.create` takes a kind and a name and files
- * it itself, so a nested directory offers exactly what the branch above it does.
+ * The three things a new page under `wiki/` can be. A page is filed in the folder that was
+ * right-clicked, `dir`; a sheet always goes to its conventional home, which `doc.create` picks.
  */
-function wikiCreate(): MenuEntry[] {
+function wikiCreate(dir = ''): MenuEntry[] {
   return [
-    newSheet('note', 'New wiki page…'),
+    newSheet('note', 'New wiki page…', dir),
     newSheet('character', 'New character sheet…'),
     newSheet('location', 'New location sheet…'),
   ];
+}
+
+/**
+ * A form entry that makes something inside `parent`. A form is not checked before the menu
+ * opens, so a folder the file commands refuse outright is greyed here with their sentence.
+ */
+function makeIn(label: string, id: 'doc.mkdir' | 'doc.newFile', parent: string): MenuEntry {
+  const refused = rootProblem(parent, 'folder');
+  return { label, id, props: { parent }, form: true, ...(refused ? { refused } : {}) };
 }
 
 /**
@@ -328,7 +359,11 @@ export function menuFor(node: DocNode, order: SceneOrder = 'stored'): MenuEntry[
         ...showHistory(node.path),
       ];
     case 'wikidir':
-      return wikiCreate();
+      return [
+        ...wikiCreate(node.path ?? ''),
+        SEPARATOR,
+        makeIn('New folder…', 'doc.mkdir', node.path ?? ''),
+      ];
     // Running and deleting open as forms, so the palette can quote the estimate and take a
     // confirmation before anything is spent or lost
     case 'graph':
@@ -452,7 +487,7 @@ export function menuFor(node: DocNode, order: SceneOrder = 'stored'): MenuEntry[
         case 'locations':
           return [newSheet('location', 'New location sheet…')];
         case 'wiki':
-          return wikiCreate();
+          return [...wikiCreate(), SEPARATOR, makeIn('New folder…', 'doc.mkdir', 'wiki')];
         case 'graphs':
           return [{ label: 'New generation graph…', id: 'gengraph.create', form: true }];
         // Two ways to get a skill, and both are forms: the menu can supply neither a name nor a
@@ -476,8 +511,14 @@ export function menuFor(node: DocNode, order: SceneOrder = 'stored'): MenuEntry[
     case 'wiki':
     case 'file':
       return showHistory(node.path);
-    case 'assetkind':
+    // A folder in file mode can hold any file, so it offers New file… where the Wiki branch offers
+    // a page
     case 'dir':
+      return [
+        makeIn('New file…', 'doc.newFile', node.path ?? ''),
+        makeIn('New folder…', 'doc.mkdir', node.path ?? ''),
+      ];
+    case 'assetkind':
     case 'more':
       return [];
   }

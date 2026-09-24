@@ -2,6 +2,7 @@ import type { Container } from 'pathux';
 import { api } from '../../api.js';
 import { ASSETSTRIP_CSS, renderAssetStrip } from '../assets/assetstrip.js';
 import { exec, onInvalidate } from '../app/bridge.js';
+import { onReveal } from '../app/docseffect.js';
 import type { VnContext } from '../app/context.js';
 import {
   assetGroups,
@@ -13,6 +14,7 @@ import {
   menuFor,
   nodeIsSelected,
   renameOf,
+  revealIds,
   rowTitle,
   selectionForNode,
   toggleExpanded,
@@ -131,6 +133,7 @@ export class DocumentsEditor extends VnEditor {
       () => onInvalidate(() => void this.load()),
       () => void this.load(),
     );
+    this.watch(() => onReveal((paths) => this.reveal(paths)));
 
     void this.load();
   }
@@ -517,6 +520,15 @@ export class DocumentsEditor extends VnEditor {
   private toggle(id: string): void {
     this.expanded = toggleExpanded(this.expanded, id);
     this.rebuild();
+  }
+
+  /**
+   * Open every folder above `paths`, in both modes' ids, and refetch so the new rows are drawn.
+   * Added to the author's own expanded set rather than replacing it.
+   */
+  private reveal(paths: readonly string[]): void {
+    this.expanded = new Set([...this.expanded, ...revealIds(paths)]);
+    void this.load();
   }
 
   /**

@@ -1,7 +1,7 @@
 # Wiki and file tree editing
 
-Status: planned. Reviewed once by a fresh-context agent; its nineteen findings and how
-each was answered are in [Review](#review).
+Status: partial — stage 1 of 5 shipped. Reviewed once by a fresh-context agent; its
+nineteen findings and how each was answered are in [Review](#review).
 
 This plan covers the six items in `todos.md` under "Wiki Subtree / File Tree Commands".
 All of them land in the `documents` editor, in both of its modes: the logical document
@@ -143,8 +143,11 @@ Descriptions (the registry text, which is also every entry's tooltip):
 ### D2. Where file operations are allowed
 
 - **The four roots.** Every source, every destination and every `parent` must be inside
-  `wiki/`, `characters/`, `locations/` or `archive/`, and must not be the root folder
-  itself (moving or renaming `wiki/` is refused).
+  `wiki/`, `characters/`, `locations/` or `archive/`. A source or a created path must not
+  be the root folder itself (moving or renaming `wiki/` is refused), but a `parent` or a
+  destination folder may be: New folder… on `branch:wiki` has `wiki` as its parent.
+  `rootProblem` takes a role (`'folder'` or `'item'`) for this; stage 1 corrected the
+  earlier wording, which refused a root as a parent too.
 - **Why these four.** They are the author's own folders, and the only ones where the app
   reads nothing by a fixed path except the entity sheets D6 protects.
     - `scenes/` has one validated writer, `story.*`.
@@ -752,6 +755,23 @@ the docs its change makes wrong, in the same commit.
   `dir`; the undoable list; the note that these commands' checks enforce their `affects`).
 - Verify by hand: `pnpm vndesktop`, make a folder in the Wiki branch and in file mode,
   make a page and a file in it, undo each.
+- Shipped. What the implementation settled or changed:
+    - `rootProblem(path, role)` allows a root as a folder and refuses it as an item (see
+      D2). `planCreate(parent, name)` in `fileops.ts` runs the name and root checks
+      together for both commands; the menu's `refused` calls `rootProblem` alone, since
+      the name is not typed yet.
+    - `DocTreeInput.wikiDirs` is optional, so existing callers and tests are unchanged.
+    - `doc.newFile` opens the Wiki editor only for a text path (`isTextPath`); any other
+      file is created and revealed but not opened.
+    - `reveal` only expands every folder above the path and refetches the tree. Marking
+      the new row waits for stage 3, which adds marks.
+    - `doc.create`'s `dir` also refuses a folder that does not exist.
+    - Undoing the first file put into an empty root folder, such as an empty `wiki/`,
+      removes that root folder as well, because the snapshot before the write did not hold
+      it.
+    - No `doctreemenu.ts` situations were added: `MENU_NODES` already draws `dir`,
+      `wikidir` and `branch:wiki`, so the new entries reach `ux-model.json` and the sweep
+      without them.
 
 ### Stage 2 — Moving and copying in main
 

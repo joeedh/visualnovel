@@ -120,10 +120,10 @@ describe('the tree’s row', () => {
       'file',
       'more',
     ];
-    // The three kinds with nothing to offer contribute no record. Naming them keeps a kind that
+    // The two kinds with nothing to offer contribute no record. Naming them keeps a kind that
     // was covered distinguishable from one that was forgotten.
     const seen = new Set(tree.map((record) => record.when.split(':')[0]));
-    const silent: DocNodeKind[] = ['assetkind', 'dir', 'more'];
+    const silent: DocNodeKind[] = ['assetkind', 'more'];
     for (const kind of kinds) expect(seen.has(kind)).toBe(!silent.includes(kind));
   });
 

@@ -620,6 +620,27 @@ export async function walkFiles(dir: string): Promise<string[]> {
   return out;
 }
 
+/**
+ * Every directory under `dir` as `dir`-relative `/` paths, parents before their children. It is
+ * the one source of the folders no file path implies, which is how a tree shows an empty folder.
+ * Skips and stops as {@link walkFiles} does.
+ */
+export async function walkDirs(dir: string): Promise<string[]> {
+  const out: string[] = [];
+  const visit = async (abs: string, prefix: string): Promise<void> => {
+    const entries = await readdir(abs, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (out.length >= TREE_MAX_FILES) return;
+      if (TREE_SKIP.has(entry.name) || !entry.isDirectory()) continue;
+      const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+      out.push(rel);
+      await visit(join(abs, entry.name), rel);
+    }
+  };
+  await visit(dir, '');
+  return out;
+}
+
 export async function loadProject(dir: string): Promise<LoadedProject> {
   const config = await loadConfig(dir);
   const paths = new ProjectPaths(dir);
@@ -737,6 +758,7 @@ import { AssetPart } from './asset.js';
 import { PromptPart } from './prompt.js';
 import { ProjectPart } from './project.js';
 import { DocsPart } from './docs.js';
+import { FilesPart } from './files.js';
 import { StoryPart } from './story.js';
 import { PipelinePart } from './pipeline.js';
 import { GengraphPart, type SheetScaffoldPlan } from './gengraph.js';
@@ -882,6 +904,7 @@ export class WorkspaceSession {
   readonly promptPart: PromptPart = new PromptPart(this);
   readonly projectPart: ProjectPart = new ProjectPart(this);
   readonly docsPart: DocsPart = new DocsPart(this);
+  readonly filesPart: FilesPart = new FilesPart(this);
   readonly storyPart: StoryPart = new StoryPart(this);
   readonly pipelinePart: PipelinePart = new PipelinePart(this);
   readonly gengraphPart: GengraphPart = new GengraphPart(this);
@@ -2400,8 +2423,8 @@ export class WorkspaceSession {
     return this.docsPart.saveDoc(path, text, seenHash);
   }
 
-  async previewCreate(kind: NewDocKind, name: string): Promise<DocResult<DocWritePlan>> {
-    return this.docsPart.previewCreate(kind, name);
+  async previewCreate(kind: NewDocKind, name: string, dir = ''): Promise<DocResult<DocWritePlan>> {
+    return this.docsPart.previewCreate(kind, name, dir);
   }
 
   /**
@@ -2412,8 +2435,27 @@ export class WorkspaceSession {
   async createDoc(
     kind: NewDocKind,
     name: string,
+    dir = '',
   ): Promise<DocResult<DocSaveResult & { id: string }>> {
-    return this.docsPart.createDoc(kind, name);
+    return this.docsPart.createDoc(kind, name, dir);
+  }
+
+  previewMkdir(parent: string, name: string): Promise<DocResult<{ note: string }>> {
+    return this.filesPart.previewMkdir(parent, name);
+  }
+
+  /** Create one empty folder under one of the four file roots. */
+  mkdir(parent: string, name: string): Promise<DocResult<{ path: string }>> {
+    return this.filesPart.mkdir(parent, name);
+  }
+
+  previewNewFile(parent: string, name: string): Promise<DocResult<{ note: string }>> {
+    return this.filesPart.previewNewFile(parent, name);
+  }
+
+  /** Create one empty file under one of the four file roots. */
+  newFile(parent: string, name: string): Promise<DocResult<DocSaveResult>> {
+    return this.filesPart.newFile(parent, name);
   }
 
   async previewRename(path: string, name: string): Promise<DocResult<{ note: string }>> {

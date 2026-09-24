@@ -33,6 +33,11 @@ export interface DocTreeInput {
   /** The bible root, workspace-relative — `wiki` normally, and the prefix its nodes carry. */
   wikiDir: string;
   /**
+   * Every folder under the bible root, relative to it, parents first. A folder no markdown file
+   * implies is drawn from here, so an empty one is still a place to put a page.
+   */
+  wikiDirs?: readonly string[];
+  /**
    * Display names by asset hash, from `labelAssets`. Passed in rather than derived here because
    * a model-sheet's angle lives in the task graph, which this projection does not read; an asset
    * missing from the map falls back to `hash8.ext`.
@@ -201,6 +206,9 @@ function entityBranch(input: DocTreeInput, kind: 'character' | 'location'): DocN
   return node('branch:locations', 'branch', 'Locations', { children });
 }
 
+/** The file or folder name at the end of a node's path. */
+const lastSegment = (n: DocNode): string => (n.path ?? '').split('/').pop() ?? '';
+
 /**
  * The wiki tree, from `Bible.files()` — path, title, nothing else. A table of contents is not an
  * excerpt, which is why this may read the bible index at all; see `docs/reference/story-bible.md`.
@@ -236,6 +244,22 @@ function wikiBranch(input: DocTreeInput): DocNode {
         path: `${input.wikiDir}/${[...segments, name].join('/')}`,
       }),
     );
+  }
+
+  // A folder with no markdown under it gets a row too. It goes in among its siblings by name, the
+  // order the bible lists its files in, rather than after them
+  for (const dir of input.wikiDirs ?? []) {
+    if (dirs.has(dir)) continue;
+    const segments = dir.split('/');
+    const name = segments.pop()!;
+    const siblings = dirFor(segments);
+    const at = siblings.findIndex((sibling) => lastSegment(sibling) > name);
+    const made = node(`wikidir:${dir}`, 'wikidir', name, {
+      path    : `${input.wikiDir}/${dir}`,
+      children: [],
+    });
+    dirs.set(dir, made);
+    siblings.splice(at < 0 ? siblings.length : at, 0, made);
   }
   return node('branch:wiki', 'branch', 'Wiki', { children: roots });
 }
@@ -725,34 +749,44 @@ export function buildDocTree(input: DocTreeInput): DocTree {
  * given. That lets a caller walk one subdirectory and still hand back rows a click can act on: the
  * ids come out `file:.aiagent/skills/<id>/SKILL.md`, which is the workspace-relative path
  * `doc.read` takes, so `selectionForNode` and `nodeIsSelected` work on them with no new rule.
+ *
+ * `dirs` lists directories, relative the same way as `paths`. Each one no file path produced
+ * becomes a `dir` node with no files under it, which is how an empty folder is drawn.
  */
 export function fileTree(
   paths: readonly string[],
   cap: number = DEFAULT_CAP,
   base = '',
+  dirs: readonly string[] = [],
 ): DocNode[] {
   const roots: DocNode[] = [];
-  const dirs = new Map<string, DocNode>();
+  const made = new Map<string, DocNode>();
 
-  for (const path of [...paths].sort()) {
+  // One sort over both lists, so a folder that only `dirs` names lands among its siblings in the
+  // order a folder holding files would
+  const entries = [
+    ...paths.map((path) => ({ path, file: true })),
+    ...dirs.map((path) => ({ path, file: false })),
+  ].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+  for (const { path, file } of entries) {
     const segments = path.split('/');
-    const name = segments.pop()!;
+    const name = file ? segments.pop()! : '';
     let parent = roots;
     let prefix = '';
     for (const segment of segments) {
       prefix = prefix ? `${prefix}/${segment}` : segment;
-      let dir = dirs.get(prefix);
+      let dir = made.get(prefix);
       if (!dir) {
         dir = node(`dir:${base}${prefix}`, 'dir', segment, {
           path    : `${base}${prefix}`,
           children: [],
         });
-        dirs.set(prefix, dir);
+        made.set(prefix, dir);
         parent.push(dir);
       }
       parent = dir.children!;
     }
-    parent.push(node(`file:${base}${path}`, 'file', name, { path: `${base}${path}` }));
+    if (file) parent.push(node(`file:${base}${path}`, 'file', name, { path: `${base}${path}` }));
   }
 
   // Directories before files at every level, which is what a file tree looks like; the paths

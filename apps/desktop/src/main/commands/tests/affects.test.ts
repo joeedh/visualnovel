@@ -421,6 +421,8 @@ const OTHER_RUNS: Run[] = [
       };
     },
   },
+  { id: 'doc.mkdir', props: { parent: 'wiki', name: 'lore' } },
+  { id: 'doc.newFile', props: { parent: 'wiki/lore', name: 'notes.txt', open: false } },
   { id: 'project.setArtStyle', props: { style: 'soft watercolour' } },
   { id: 'project.setStoryboardNotes', props: { notes: 'pages of four to six panels' } },
   { id: 'project.setLettering', props: { lettering: 'model' } },

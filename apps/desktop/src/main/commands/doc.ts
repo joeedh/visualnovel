@@ -138,7 +138,8 @@ export const docCreate = define({
   title      : 'Create a document',
   description:
     'Scaffold a character sheet, a location sheet, a wiki note or a skill from a name, in its ' +
-    'conventional home. Refuses rather than overwriting a document already at that path.',
+    'conventional home, or a note in the wiki folder named by `dir`. Refuses rather than ' +
+    'overwriting a document already at that path.',
   notes:
     "Scaffold a sheet, a note or a skill in its conventional home, from the same templates the agent's create tools use. Refuses over an existing path.",
   mutating   : true,
@@ -148,12 +149,13 @@ export const docCreate = define({
     kind: prop.oneOf(NEW_DOC_KINDS, 'what to create'),
     name: prop.string('the name it is known by; the id is derived from it'),
     open: prop.boolean('show the new document in the Wiki editor', { default: true }),
+    dir : prop.string('the wiki folder to file a note in; empty for wiki/ itself', { default: '' }),
   },
-  async check({ kind, name }, ctx) {
-    return verdict(await ctx.host.session.previewCreate(kind as NewDocKind, name));
+  async check({ kind, name, dir }, ctx) {
+    return verdict(await ctx.host.session.previewCreate(kind as NewDocKind, name, dir));
   },
-  async run({ kind, name, open }, ctx) {
-    const made = await ctx.host.session.createDoc(kind as NewDocKind, name);
+  async run({ kind, name, open, dir }, ctx) {
+    const made = await ctx.host.session.createDoc(kind as NewDocKind, name, dir);
     if (!made.ok) throw new Error(made.reason);
     // Shows the new page by the same route a click in the document tree takes, so the author does
     // not have to go looking for it. Every kind lands in the Wiki editor, because a sheet is

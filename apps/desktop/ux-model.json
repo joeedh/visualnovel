@@ -43724,7 +43724,8 @@
       "id"       : "doc.create",
       "label"    : "New wiki page…",
       "props": {
-        "kind": "note"
+        "kind": "note",
+        "dir" : "wiki/wikidir.md"
       },
       "form"     : true
     },
@@ -43751,6 +43752,19 @@
       "label"    : "New location sheet…",
       "props": {
         "kind": "location"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "wikidir:sample",
+      "id"       : "doc.mkdir",
+      "label"    : "New folder…",
+      "props": {
+        "parent": "wiki/wikidir.md"
       },
       "form"     : true
     },
@@ -44027,6 +44041,32 @@
       "editor"   : "documents",
       "module"   : "doctree",
       "situation": "every-kind",
+      "when"     : "dir:sample",
+      "id"       : "doc.newFile",
+      "label"    : "New file…",
+      "props": {
+        "parent": "wiki/dir.md"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "dir:sample",
+      "id"       : "doc.mkdir",
+      "label"    : "New folder…",
+      "props": {
+        "parent": "wiki/dir.md"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
       "when"     : "file:sample",
       "id"       : "view.open",
       "label"    : "Show history",
@@ -44131,6 +44171,19 @@
       "label"    : "New location sheet…",
       "props": {
         "kind": "location"
+      },
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "branch:wiki",
+      "id"       : "doc.mkdir",
+      "label"    : "New folder…",
+      "props": {
+        "parent": "wiki"
       },
       "form"     : true
     },

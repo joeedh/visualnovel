@@ -8,7 +8,7 @@
  */
 import { message as note, error as noteError } from 'pathux';
 import { setModelCatalog } from '@vn/gengraph';
-import { saveAllDrafts } from '../doctree/docbuffer.js';
+import { docsEffect } from './docseffect.js';
 import {
   DEFAULT_BUDGET,
   EFFORT_CHOICES,
@@ -449,13 +449,7 @@ That is a fault in what was ` +
           'your own key, and nothing from them goes into the report.',
       });
     } else if (effect.type === 'docs') {
-      void saveAllDrafts().then((result) => {
-        const saved = result.saved.length;
-        const refused = result.refused.map((r) => `${r.path}: ${r.reason}`).join('; ');
-        if (saved === 0 && refused === '') say('Nothing to save.');
-        else if (refused === '') say(`Saved ${saved} document(s).`);
-        else say(`Saved ${saved} document(s); refused — ${refused}`, true);
-      });
+      void docsEffect(effect, { say });
     } else if (effect.type === 'tour') {
       applyTour(effect);
     } else if (effect.type === 'view') {

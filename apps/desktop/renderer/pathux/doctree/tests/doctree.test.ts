@@ -9,6 +9,7 @@ import {
   nodeIsSelected,
   nodeKey,
   renameOf,
+  revealIds,
   rowTitle,
   publishedBy,
   selectionForNode,
@@ -471,19 +472,59 @@ describe('menuFor', () => {
     ]);
   });
 
-  it('offers the wiki branch the three things a page can be', () => {
+  it('offers the wiki branch the three things a page can be, and a new folder', () => {
     // `branch:wiki` is the top of the wiki tree an author right-clicks. The `wikidir:` nodes are
-    // the folders inside that tree, which a flat `wiki/` directory never has. Both node kinds
-    // offer the same three menu entries.
-    for (const wiki of [node('branch:wiki', 'branch'), node('wikidir:lore', 'wikidir')]) {
+    // the folders inside that tree. Both offer the same entries; only what they are filed in differs.
+    for (const wiki of [
+      node('branch:wiki', 'branch'),
+      node('wikidir:lore', 'wikidir', { path: 'wiki/lore' }),
+    ]) {
       const entries = menuFor(wiki);
-      expect(entries.map((entry) => entry.props?.['kind'])).toEqual([
+      expect(entries.slice(0, 3).map((entry) => entry.props?.['kind'])).toEqual([
         'note',
         'character',
         'location',
       ]);
-      expect(entries.every((entry) => entry.id === 'doc.create' && entry.form)).toBe(true);
+      expect(entries.slice(0, 3).every((e) => e.id === 'doc.create' && e.form)).toBe(true);
+      expect(entries.slice(3).map((entry) => entry.id)).toEqual([MENU_SEP, 'doc.mkdir']);
     }
+    expect(menuFor(node('branch:wiki', 'branch'))[4]).toEqual({
+      label: 'New folder…',
+      id   : 'doc.mkdir',
+      props: { parent: 'wiki' },
+      form : true,
+    });
+  });
+
+  // A sheet has a home discovery reads it from, so only the page is filed where the author was
+  it('files a new page in the folder that was right-clicked, and a sheet in its own home', () => {
+    const entries = menuFor(node('wikidir:lore', 'wikidir', { path: 'wiki/lore' }));
+    expect(entries.map((entry) => entry.props)).toEqual([
+      { kind: 'note', dir: 'wiki/lore' },
+      { kind: 'character' },
+      { kind: 'location' },
+      undefined,
+      { parent: 'wiki/lore' },
+    ]);
+    expect(menuFor(node('branch:wiki', 'branch'))[0]!.props).toEqual({ kind: 'note' });
+  });
+
+  it('offers a folder in file mode a new file and a new folder, both as forms', () => {
+    expect(menuFor(node('dir:archive/old', 'dir', { path: 'archive/old' }))).toEqual([
+      { label: 'New file…', id: 'doc.newFile', props: { parent: 'archive/old' }, form: true },
+      { label: 'New folder…', id: 'doc.mkdir', props: { parent: 'archive/old' }, form: true },
+    ]);
+  });
+
+  // A form is never checked before the menu opens, so the refusal has to be on the entry
+  it('greys both on a folder outside the four roots, with the sentence the command gives', () => {
+    const entries = menuFor(node('dir:scenes', 'dir', { path: 'scenes' }));
+    expect(entries.map((entry) => entry.refused)).toEqual([
+      'Files can be created, moved and renamed only under wiki/, characters/, locations/ and ' +
+        'archive/. scenes/ is written by the story commands.',
+      'Files can be created, moved and renamed only under wiki/, characters/, locations/ and ' +
+        'archive/. scenes/ is written by the story commands.',
+    ]);
   });
 
   it('offers the story heading a switch to the order it is not in', () => {
@@ -659,7 +700,7 @@ describe('menuFor', () => {
   });
 
   it('opens nothing for a kind that names no subject a command takes', () => {
-    for (const kind of ['assetkind', 'wiki', 'dir', 'file', 'more'] as const) {
+    for (const kind of ['assetkind', 'wiki', 'file', 'more'] as const) {
       expect(menuFor(node(`${kind}:x`, kind))).toEqual([]);
     }
   });
@@ -679,7 +720,7 @@ describe('menuFor', () => {
       expect(menuFor(node(`${kind}:x`, kind, { path: 'wiki/x.md' }))).toContainEqual(history);
       expect(menuFor(node(`${kind}:x`, kind))).not.toContainEqual(history);
     }
-    expect(menuFor(node('dir:x', 'dir', { path: 'wiki' }))).toEqual([]);
+    expect(menuFor(node('dir:x', 'dir', { path: 'wiki' }))).not.toContainEqual(history);
   });
 
   // The second entry is a form on purpose. Asking to change a skill without saying how starts a
@@ -721,6 +762,27 @@ describe('menuFor', () => {
       }
     };
     walk(every);
+  });
+});
+
+describe('revealIds', () => {
+  it('opens every folder above a path in file mode, and in the Wiki branch for a wiki path', () => {
+    expect(revealIds(['wiki/lore/deep/a.md'])).toEqual([
+      'dir:wiki',
+      'dir:wiki/lore',
+      'dir:wiki/lore/deep',
+      'branch:wiki',
+      'wikidir:lore',
+      'wikidir:lore/deep',
+    ]);
+  });
+
+  it('leaves the new row itself closed, and names a path outside the wiki in file mode only', () => {
+    expect(revealIds(['wiki/lore'])).toEqual(['dir:wiki', 'branch:wiki']);
+    expect(revealIds(['archive/old/notes.txt', 'archive/x.md'])).toEqual([
+      'dir:archive',
+      'dir:archive/old',
+    ]);
   });
 });
 

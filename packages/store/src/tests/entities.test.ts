@@ -1,9 +1,18 @@
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { parseFrontMatter } from '@vn/parse';
 import type { Diagnostic } from '@vn/types';
 import { writeFileAtomic } from '@vn/util';
-import { loadInputs, ProjectPaths } from '../index.js';
+import {
+  discoverCandidates,
+  discoverEntities,
+  entityIdentity,
+  listMarkdownTree,
+  loadInputs,
+  ProjectPaths,
+  workspacePath,
+} from '../index.js';
 
 async function tempRoot(): Promise<ProjectPaths> {
   return new ProjectPaths(await mkdtemp(join(tmpdir(), 'vn-entities-')));
@@ -154,5 +163,58 @@ describe('entity discovery by tag', () => {
     expect(inputs.characterDocs).toEqual([]);
     expect(inputs.locationDocs).toEqual([]);
     expect(inputs.diagnostics).toEqual([]);
+  });
+});
+
+/**
+ * One of each case the identity rule has to mirror: a nested file under `locations/` that is not a
+ * sheet, a conventional sheet whose tag names the other kind, and two files claiming one id.
+ */
+async function agreementFixture(): Promise<ProjectPaths> {
+  const paths = await tempRoot();
+  await writeFileAtomic(paths.characterFile('ada'), sheet('ada'));
+  await writeFileAtomic(paths.characterFile('bea'), sheet('bea', { tag: 'location' }));
+  await writeFileAtomic(join(paths.charactersDir, 'ada', 'notes.md'), 'Notes.\n');
+  await writeFileAtomic(paths.locationFile('pier'), sheet('pier'));
+  await writeFileAtomic(join(paths.locationsDir, 'sub', 'hall.md'), sheet('hall'));
+  await writeFileAtomic(join(paths.wikiDir, 'cast', 'ada.md'), sheet('ada', { tag: 'character' }));
+  await writeFileAtomic(join(paths.wikiDir, 'sets', 'dock.md'), sheet('dock', { tag: 'location' }));
+  await writeFileAtomic(join(paths.wikiDir, 'lore.md'), '# Lore\n');
+  return paths;
+}
+
+describe('entityIdentity', () => {
+  it('agrees with discovery on every markdown file, the losing duplicate included', async () => {
+    const paths = await agreementFixture();
+    const candidates = await discoverCandidates(paths, []);
+    const found = new Map(
+      candidates.map((c) => [
+        workspacePath(paths.root, c.doc.file),
+        { kind: c.kind, id: c.doc.id },
+      ]),
+    );
+    const files = await listMarkdownTree(paths.root);
+    expect(files).toHaveLength(8);
+    for (const file of files) {
+      const rel = workspacePath(paths.root, file);
+      const data = parseFrontMatter(await readFile(file, 'utf8')).data;
+      expect([rel, entityIdentity(rel, data)]).toEqual([rel, found.get(rel)]);
+    }
+    expect(found.get('wiki/cast/ada.md')).toEqual({ kind: 'character', id: 'ada' });
+  });
+
+  it('leaves discoverEntities answering as it did, one sheet per id', async () => {
+    const paths = await agreementFixture();
+    const diagnostics: Diagnostic[] = [];
+    const { characterDocs, locationDocs } = await discoverEntities(paths, diagnostics);
+    expect(characterDocs.map((d) => d.file)).toEqual([paths.characterFile('ada')]);
+    expect(locationDocs.map((d) => d.id)).toEqual(['dock', 'pier']);
+    expect(codes(diagnostics).sort()).toEqual(['duplicate_entity', 'entity_tag_conflict']);
+  });
+
+  it('names nothing outside the three surfaces', () => {
+    expect(entityIdentity('archive/ada.md', { type: 'character' })).toBeUndefined();
+    expect(entityIdentity('wiki/notes.txt', { type: 'character' })).toBeUndefined();
+    expect(entityIdentity('locations/pier.md', {})).toEqual({ kind: 'location', id: 'pier' });
   });
 });

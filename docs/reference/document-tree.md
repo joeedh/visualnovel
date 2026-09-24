@@ -30,9 +30,10 @@ The tree joins records that already exist rather than adding a source of truth. 
 the tree draws already exists on disk: entity sheets carry the file they were discovered
 in ([entity discovery by tag](../plans/archive/INDEX.md#entity-discovery-by-meta-tag)),
 `Scene.characters` names the cast, `ShotSubject.characterId` names who is in frame,
-`Asset.satisfies` names what a byte-stream is for, and `Bible.files()` names the wiki.
-This module walks them once and builds the tree from what it finds; it reads nothing else
-and writes nothing at all.
+`Asset.satisfies` names what a byte-stream is for, and `Bible.files()` names the wiki. The
+one addition is a list of the folders under `wiki/`, so a folder with no page in it still
+has a row. This module walks them once and builds the tree from what it finds; it reads
+nothing else and writes nothing at all.
 
 A node records its kind, its label, and its location. It holds no prose, no excerpt, and
 no image bytes. The whole tree can therefore be shipped over IPC, and a large project
@@ -70,7 +71,10 @@ Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
   `characters/aiko/character.md` (or `wiki/cast/aiko.md` if that is where the author filed
   it).
 - **Wiki** nests `Bible.files()` back into directories. Each entry contains a path and a
-  title and nothing else.
+  title and nothing else. `DocTreeInput.wikiDirs` lists every folder under `wiki/`
+  (`walkDirs`, in `session/core.ts`), and a folder no page implies gets a `wikidir` row
+  among its siblings by name. An empty folder and a folder holding only images are
+  therefore drawn, and New wiki page… or New folder… on it has somewhere to land.
 - **Skills** lists every skill the agent can use as one leaf each — the project's own
   under `.aiagent/skills/`, the user's, and the builtin catalog the project has on
   ([`vnauthor.md#skills`](vnauthor.md#skills)); a shadowed skill and a builtin skill that
@@ -242,10 +246,13 @@ Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
 ## The file tree
 
 `workspace:filetree` is a separate walk that serves a different purpose. It shares only
-the `DocNode` type with the document tree. It lists every file under the workspace root,
-directories first, excludes `.git` and `node_modules`, caps entries per level, and stops
-at 5000 files overall. It does not consult git, because a project that is not a repo still
-has files, and `.gitignore` semantics do not match a request to view every file.
+the `DocNode` type with the document tree. It lists every file and every folder under the
+workspace root, directories first, excludes `.git` and `node_modules`, caps entries per
+level, and stops at 5000 files overall. Folders come from their own walk (`walkDirs`),
+passed as `fileTree`'s fourth argument, so an empty folder is drawn as a `dir` row with
+nothing under it; git does not record one, so it exists on this disk only. The walk does
+not consult git, because a project that is not a repo still has files, and `.gitignore`
+semantics do not match a request to view every file.
 
 `workspace:skilltree` runs the same walk over each skill's directory alone, and it is
 deliberately not a filter over the project-wide walk. That walk stops at 5000 files across
@@ -261,7 +268,8 @@ from the walked paths, so the rows come out `file:.aiagent/skills/<id>/SKILL.md`
 workspace-relative; the other two are virtual paths `doc.read` resolves and `doc.write`
 refuses. `selectionForNode` and `nodeIsSelected` act on the path as a string, so no new
 rule is needed. A heading with nothing under it is still answered, and every new project
-starts with an empty Project heading.
+starts with an empty Project heading. The skills walk passes no folder list, so the Skills
+pane lists files only, as before.
 
 ## Where it lives
 
@@ -293,21 +301,23 @@ why an entry is an invocation rather than a callback) is in
 [`command-system.md`](command-system.md#from-a-right-click) and
 [`../plans/archive/INDEX.md#document-tree-context-menus`](../plans/archive/INDEX.md#document-tree-context-menus).
 
-| node kind                                                   | entries                                                                                                                                                              |
-| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `location`                                                  | New reference shot… · Art notes… · Open sheet elsewhere                                                                                                              |
-| `character`                                                 | New concept image… · Art notes… · Open sheet elsewhere                                                                                                               |
-| `branch:wiki`, `wikidir`                                    | New wiki page… · New character sheet… · New location sheet…                                                                                                          |
-| `branch:characters`                                         | New character sheet…                                                                                                                                                 |
-| `branch:locations`                                          | New location sheet…                                                                                                                                                  |
-| `branch:story`                                              | New scene… · Export Fountain · Sort in topological order / Sort as stored                                                                                            |
-| `branch:skills`                                             | New skill… · Ask the agent for a skill…                                                                                                                              |
-| `asset`                                                     | Regenerate… · Accept · Approve as a portrait… · Promote to a plate… · Create a graph for this slot (only where a slot claims the picture) · Open in the Asset editor |
-| `scene`                                                     | Assign line ids · New scene… · Export Fountain                                                                                                                       |
-| `shot`                                                      | Set coverage… · Set outfit… · Scaffold a sheet graph for group _g_ (only for a shot in a staging-sheet group)                                                        |
-| `slot`                                                      | Upload a file for this… · Adopt an asset for this… · Create a graph for this slot · Run pipeline…                                                                    |
-| `skill`                                                     | Open in the Skills pane · Ask the agent to change this skill…                                                                                                        |
-| `branch:assets`, `assetkind`, `wiki`, `dir`, `file`, `more` | none — no menu opens at all                                                                                                                                          |
+| node kind                            | entries                                                                                                                                                              |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `location`                           | New reference shot… · Art notes… · Open sheet elsewhere                                                                                                              |
+| `character`                          | New concept image… · Art notes… · Open sheet elsewhere                                                                                                               |
+| `branch:wiki`, `wikidir`             | New wiki page… · New character sheet… · New location sheet… · New folder…                                                                                            |
+| `dir`                                | New file… · New folder…                                                                                                                                              |
+| `branch:characters`                  | New character sheet…                                                                                                                                                 |
+| `branch:locations`                   | New location sheet…                                                                                                                                                  |
+| `branch:story`                       | New scene… · Export Fountain · Sort in topological order / Sort as stored                                                                                            |
+| `branch:skills`                      | New skill… · Ask the agent for a skill…                                                                                                                              |
+| `asset`                              | Regenerate… · Accept · Approve as a portrait… · Promote to a plate… · Create a graph for this slot (only where a slot claims the picture) · Open in the Asset editor |
+| `scene`                              | Assign line ids · New scene… · Export Fountain                                                                                                                       |
+| `shot`                               | Set coverage… · Set outfit… · Scaffold a sheet graph for group _g_ (only for a shot in a staging-sheet group)                                                        |
+| `slot`                               | Upload a file for this… · Adopt an asset for this… · Create a graph for this slot · Run pipeline…                                                                    |
+| `skill`                              | Open in the Skills pane · Ask the agent to change this skill…                                                                                                        |
+| `wiki`, `file`                       | Show history                                                                                                                                                         |
+| `branch:assets`, `assetkind`, `more` | none — no menu opens at all                                                                                                                                          |
 
 This table lists the following:
 
@@ -350,12 +360,29 @@ This table lists the following:
   `asset` row carries the address it fills in `slot` so the entry can read that address. A
   picture that no slot claims (a concept, an upload, a base asset) carries no address, so
   the entry is not offered.
-- **A kind with no actions is named rather than skipped.** No binding targets a wiki note,
-  and `doc.write` needs the text, so the only action for that kind is the one a plain
-  click already performs. `branch:wiki` is the exception among the headings because it
-  names a location. An author right-clicks the "top level wiki tree", and the `wikidir:`
-  nodes below that heading are the folders inside the tree, which a flat `wiki/` does not
-  have.
+- **A wiki note or a file offers only Show history.** No binding targets a wiki note, and
+  `doc.write` needs the text, so opening it is left to a plain click. `branch:wiki` is the
+  exception among the headings because it names a location. An author right-clicks the
+  "top level wiki tree", and the `wikidir:` nodes below that heading are the folders
+  inside the tree, which a flat `wiki/` does not have.
+- **New folder… and New file… are forms, and only under four folders.** They run
+  `doc.mkdir` and `doc.newFile` with `parent` filled in, and the palette's form takes the
+  name and shows the check's verdict as it is typed. Both commands refuse any path outside
+  `wiki/`, `characters/`, `locations/` and `archive/` (`FILE_ROOTS` in
+  `src/shared/fileops.ts`), and a folder at the project root. A form entry is not checked
+  before the menu opens, so on a folder such as `scenes/` the entry carries the refusal
+  from `rootProblem` itself and draws greyed. New wiki page… on a `wikidir` row passes
+  `dir`, so the page is filed in that folder rather than at the wiki root; the two sheet
+  entries still file a sheet in `characters/` or `locations/`, which discovery reads.
+  After either command runs, the window that ran it opens every folder above the new path
+  (the `docs` `reveal` push, handled in `renderer/pathux/app/docseffect.ts`).
+- **New folder… leaves no undo point.** An undo snapshot has no entry for an empty folder,
+  so `doc.mkdir`'s record is walked past and Undo reaches the command before it; the
+  folder stays. It still clears the redo stack, as every mutating command does. The first
+  file put into a new folder is undone the ordinary way, and undoing it removes the folder
+  too, since the folder was not in the snapshot before. New file… refuses a media
+  extension, because undo does not keep media, and a path discovery would read as a
+  character or location sheet, because an empty sheet is an entity with no fields.
 - **A skill's second entry opens a form rather than sending a turn.** _Ask the agent to
   change this skill…_ opens `agent.run` pre-filled with `Edit the "<name>" skill: ` and
   does not send it. The author would only have to interrupt a turn that said "change this

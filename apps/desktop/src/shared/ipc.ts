@@ -190,6 +190,11 @@ export type UiEffect =
    */
   | { type: 'docs'; action: 'saveAll' }
   /**
+   * Show newly made files or folders in the window whose command made them: its documents panes
+   * expand every folder above each path. `paths` are workspace-relative. Nothing is saved.
+   */
+  | { type: 'docs'; action: 'reveal'; paths: string[] }
+  /**
    * Rearrange the whole window to a layout template. Main reads the file and sends its contents,
    * because only main may read the project and only the renderer can build a mesh. `fingerprint`
    * tells the renderer whether the arrangement it is already showing is still the one on disk.
