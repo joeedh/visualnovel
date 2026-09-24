@@ -28,6 +28,8 @@
   white-space: nowrap;
   cursor: pointer;
   border-left: 2px solid transparent;
+  /* Shift-click marks a range of rows, and would otherwise also select the text between them */
+  user-select: none;
 }
 
 .tv-row:hover {
@@ -37,6 +39,12 @@
 .tv-row.sel {
   background: rgba(69, 200, 214, 0.1);
   border-left-color: var(--signal);
+}
+
+/* A marked row takes the Script editor's marked-line tint. It comes after `.sel` so a marked row
+   that is also the selection keeps the tint and the selection's left border. */
+.tv-row.marked {
+  background: color-mix(in srgb, var(--sodium) 12%, transparent);
 }
 
 /* A grouping is a heading, not a place — it reads as chrome so the documents under it do not

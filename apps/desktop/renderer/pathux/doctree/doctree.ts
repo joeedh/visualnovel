@@ -26,7 +26,7 @@ export {
   selectionForNode,
   splitShot,
 } from '../../rules/selection.js';
-export { renameOf, rowTitle } from '../../rules/documents.js';
+export { markable, renameOf, rowTitle } from '../../rules/documents.js';
 
 /** One drawn line: the node, how deep it sits, and what its twisty would do. */
 export interface DocRow {

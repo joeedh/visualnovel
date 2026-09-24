@@ -128,6 +128,16 @@ describe('bindings', () => {
     );
   });
 
+  it('binds Escape in the Documents pane to clearing its marks', () => {
+    const noop = () => {};
+    const list = bindings('documents', { 'Clear marks': noop });
+    expect(list.map((b) => [b.key, b.mods, b.label])).toEqual([['Escape', [], 'Clear marks']]);
+    expect(findShortcut(view('mark'), undefined, 'documents')).toMatchObject({
+      scope: 'documents',
+      key  : 'Escape',
+    });
+  });
+
   it('has nothing to bind for a scope path.ux binds itself', () => {
     expect(bindings('gengraph', {})).toEqual([]);
   });

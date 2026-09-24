@@ -30,15 +30,30 @@ export const DOUBLE_CLICK_MS = 500;
 /** What only the host knows about a row, and the renderer cannot derive from the node. */
 export interface RowLook {
   selected: boolean;
+  /** One of several rows the host has marked; drawn apart from `selected`. */
+  marked?: boolean;
   /** Must never be `''`; an empty title would let a row hover silently, the bug this field exists to prevent. */
   title: string;
+}
+
+/** The modifier keys held during a click. `ctrl` is also set by Cmd, for macOS. */
+export interface ClickMods {
+  ctrl: boolean;
+  shift: boolean;
+}
+
+export const NO_MODS: ClickMods = { ctrl: false, shift: false };
+
+/** Reads the modifiers a click was made with. */
+export function modsOf(event: Pick<MouseEvent, 'ctrlKey' | 'metaKey' | 'shiftKey'>): ClickMods {
+  return { ctrl: event.ctrlKey || event.metaKey, shift: event.shiftKey };
 }
 
 export interface TreeHandlers {
   look(row: DocRow): RowLook;
   /** The twisty was hit. The host owns the expanded set, so it decides what that means. */
   onToggle(id: string): void;
-  onClick(row: DocRow): void;
+  onClick(row: DocRow, mods: ClickMods): void;
   /** A second click on the row the last one landed on, inside `DOUBLE_CLICK_MS`. */
   onSecondClick?(row: DocRow): void;
   onMenu?(row: DocRow, x: number, y: number): void;
@@ -58,13 +73,16 @@ export const NO_CLICK: ClickLatch = { id: '', at: -1 };
 /**
  * Whether this click is the second on one row, and the latch to carry forward. A counted second
  * click resets the latch rather than becoming the first of the next pair, so three clicks are one
- * rename and not two.
+ * rename and not two. A click with Ctrl or Shift held is never a second click and resets the latch,
+ * so two quick Ctrl-clicks mark and unmark a row without opening its rename box.
  */
 export function countClick(
   last: ClickLatch,
   id: string,
   at: number,
+  mods: ClickMods = NO_MODS,
 ): { again: boolean; next: ClickLatch } {
+  if (mods.ctrl || mods.shift) return { again: false, next: NO_CLICK };
   const again = last.id === id && at - last.at < DOUBLE_CLICK_MS;
   return { again, next: again ? NO_CLICK : { id, at } };
 }
@@ -141,6 +159,7 @@ function rowEl(root: HTMLElement, row: DocRow, h: TreeHandlers): HTMLElement {
   if (counted) line.classList.add('inert');
   if (group) line.classList.add('group');
   if (look.selected) line.classList.add('sel');
+  if (look.marked) line.classList.add('marked');
   line.style.paddingLeft = `${4 + row.depth * 13}px`;
   line.title = look.title;
 
@@ -165,9 +184,11 @@ function rowEl(root: HTMLElement, row: DocRow, h: TreeHandlers): HTMLElement {
     if (row.expandable) h.onToggle(node.id);
   });
   line.addEventListener('click', (event) => {
-    const { again, next } = countClick(LATCHES.get(root) ?? NO_CLICK, node.id, event.timeStamp);
+    const mods = modsOf(event);
+    const last = LATCHES.get(root) ?? NO_CLICK;
+    const { again, next } = countClick(last, node.id, event.timeStamp, mods);
     LATCHES.set(root, next);
-    h.onClick(row);
+    h.onClick(row, mods);
     if (again) h.onSecondClick?.(row);
   });
   // The listener is unconditional and the host decides what a menu holds. A host answers with

@@ -22,7 +22,10 @@ const row = (node: DocNode, expandable = false, expanded = false): RowState => (
   expanded,
 });
 
-/** One row of each behaviour: a heading, a scene, a shot, a sheet, an asset and a counted stand-in. */
+/**
+ * One row of each behaviour: a heading, a scene, a shot, a sheet, an asset, a counted stand-in,
+ * and the three rows a click also marks — a page, a folder, and a file no editor opens.
+ */
 const ROWS: readonly RowState[] = [
   row({ id: 'branch:story', kind: 'branch', label: 'Story' }, true, true),
   row({ id: 'scene:arrival', kind: 'scene', label: 'arrival', path: 'scenes/arrival.md' }, true),
@@ -36,6 +39,9 @@ const ROWS: readonly RowState[] = [
   row({ id: 'location:cafe', kind: 'location', label: 'Café Mori' }),
   row({ id: 'asset:a1b2c3d4', kind: 'asset', label: 'a1b2c3d4', slot: 'plate:cafe/night' }, true),
   row({ id: 'more:assets', kind: 'more', label: '12 more' }, true),
+  row({ id: 'wiki:lore.md', kind: 'wiki', label: 'Lore', path: 'wiki/lore.md' }),
+  row({ id: 'wikidir:cast', kind: 'wikidir', label: 'cast', path: 'wiki/cast' }, true),
+  row({ id: 'file:wiki/map.png', kind: 'file', label: 'map.png', path: 'wiki/map.png' }),
 ];
 
 export const SITUATIONS = situations<DocumentsState>(

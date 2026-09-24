@@ -1,4 +1,4 @@
-import { countClick, DOUBLE_CLICK_MS, NO_CLICK } from '../treeview.js';
+import { countClick, DOUBLE_CLICK_MS, modsOf, NO_CLICK, NO_MODS } from '../treeview.js';
 
 describe('countClick', () => {
   test('the first click on a row is never a second one', () => {
@@ -35,5 +35,35 @@ describe('countClick', () => {
     expect(second.again).toBe(true);
     expect(second.next).toEqual(NO_CLICK);
     expect(countClick(second.next, 'character:aiko', 300).again).toBe(false);
+  });
+});
+
+describe('modifier clicks', () => {
+  const ctrl = { ctrl: true, shift: false };
+  const shift = { ctrl: false, shift: true };
+
+  test('Cmd counts as Ctrl, and Shift is read on its own', () => {
+    expect(modsOf({ ctrlKey: false, metaKey: true, shiftKey: false })).toEqual(ctrl);
+    expect(modsOf({ ctrlKey: true, metaKey: false, shiftKey: false })).toEqual(ctrl);
+    expect(modsOf({ ctrlKey: false, metaKey: false, shiftKey: true })).toEqual(shift);
+    expect(modsOf({ ctrlKey: false, metaKey: false, shiftKey: false })).toEqual(NO_MODS);
+  });
+
+  test('two quick Ctrl-clicks on one row are not a second click', () => {
+    const first = countClick(NO_CLICK, 'wiki:a.md', 100, ctrl);
+    expect(first).toEqual({ again: false, next: NO_CLICK });
+    expect(countClick(first.next, 'wiki:a.md', 150, ctrl).again).toBe(false);
+  });
+
+  test('two quick Shift-clicks on one row are not a second click', () => {
+    const first = countClick(NO_CLICK, 'wiki:a.md', 100, shift);
+    expect(countClick(first.next, 'wiki:a.md', 150, shift).again).toBe(false);
+  });
+
+  test('a modifier click resets the latch, so a plain click after it is a first click', () => {
+    const plain = countClick(NO_CLICK, 'wiki:a.md', 100);
+    const marked = countClick(plain.next, 'wiki:a.md', 150, ctrl);
+    expect(marked).toEqual({ again: false, next: NO_CLICK });
+    expect(countClick(marked.next, 'wiki:a.md', 200).again).toBe(false);
   });
 });

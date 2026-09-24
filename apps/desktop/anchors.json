@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-24T18:53:49.812Z",
-  "gitSha"       : "846fa6245db6eef5117ab6131a3ffba3dae7632a",
+  "sweptAt"      : "2026-09-24T19:20:51.708Z",
+  "gitSha"       : "4d8e58572b827da31d1829f82561ee5c4563651e",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -4984,7 +4984,15 @@
       "id"        : "tree.expand",
       "editor"    : "documents",
       "key"       : "fx:tree.expand#wikidir/locations",
-      "widgetPath": "documents/tree-expand~83a03b51"
+      "widgetPath": "documents/tree-expand~83a03b51",
+      "then": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
     },
     {
       "id"        : "ui.publish",
@@ -4998,6 +5006,12 @@
             "editor" : "wiki",
             "where"  : "here",
             "subject": "wiki/world.md"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
           }
         }
       ]
@@ -5841,16 +5855,16 @@
     {
       "id"        : "project.setKey",
       "editor"    : "onboarding",
-      "key"       : "cmd:project.setKey#anthropic",
-      "widgetPath": "onboarding/project-setkey~b45dc248",
+      "key"       : "cmd:project.setKey#gemini",
+      "widgetPath": "onboarding/project-setkey~83f4e4d5",
       "supplies"  : ["key"],
       "refused"   : "Paste a key first"
     },
     {
       "id"        : "project.setKey",
       "editor"    : "onboarding",
-      "key"       : "cmd:project.setKey#gemini",
-      "widgetPath": "onboarding/project-setkey~83f4e4d5",
+      "key"       : "cmd:project.setKey#anthropic",
+      "widgetPath": "onboarding/project-setkey~b45dc248",
       "supplies"  : ["key"],
       "refused"   : "Paste a key first"
     },
@@ -6493,12 +6507,14 @@
   ],
   "disagreements": [],
   "strays": [
+    "asset cmd:view.open#style",
+    "branches fx:pane.view#reload",
     "branches fx:popup.open#label/arrival#choice:0",
     "branches fx:popup.open#label/arrival#choice:1",
     "documents item:link/asset/613746984653b37b24cb935b82ab56bb760fc7e4958b418321d082007d25f613",
     "documents item:link/asset/cba46728a12ad297aa87e02c58e7ebb28c16e7e01113922ccecdf8ec9c8968df",
     "documents item:link/asset/fc80c6eba9cb0d134428bb7c0bd8bb65effa5be3379a763df6cb0467f5ebbae9",
-    "wiki cmd:doc.write#link"
+    "gengraph cmd:models.refresh"
   ],
   "untagged"     : [],
   "unwalked"     : []

@@ -208,6 +208,9 @@ export const SHORTCUTS: readonly Shortcut[] = [
   },
   { scope: 'script', key: 'Escape', mods: [], label: 'Unmark lines', runs: view('mark') },
 
+  // The Documents pane's keys act on the rows marked by Ctrl-click and Shift-click
+  { scope: 'documents', key: 'Escape', mods: [], label: 'Clear marks', runs: view('mark') },
+
   {
     scope: 'gengraph',
     key  : 'Delete',

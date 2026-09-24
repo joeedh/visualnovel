@@ -17795,6 +17795,142 @@
       "via"       : "control",
       "editor"    : "documents",
       "module"    : "documents",
+      "situation" : "rows-claimant-hidden",
+      "key"       : "item:wiki/lore.md",
+      "widgetPath": "documents/ui-publish~93513b26",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "Lore",
+        "tooltip": "wiki/lore.md — double-click the name to rename it. Ctrl-click or Shift-click to select several.",
+        "on"     : "wiki/lore.md",
+        "ok"     : true,
+        "props": {
+          "docPath": "wiki/lore.md"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "wiki",
+              "where"  : "elsewhere",
+              "subject": "wiki/lore.md"
+            }
+          },
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "docPath": "wiki/lore.md"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "wiki",
+            "where"  : "elsewhere",
+            "subject": "wiki/lore.md"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "documents",
+      "module"    : "documents",
+      "situation" : "rows-claimant-hidden",
+      "key"       : "fx:tree.expand#wikidir/cast",
+      "widgetPath": "documents/tree-expand~0e267b02",
+      "offer": {
+        "id"     : "tree.expand",
+        "label"  : "cast",
+        "tooltip": "wiki/cast — Ctrl-click or Shift-click to select several.",
+        "on"     : "wikidir/cast",
+        "ok"     : true,
+        "props": {
+          "node": "wikidir:cast"
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "tree.expand",
+          "props": {
+            "node": "wikidir:cast"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "documents",
+      "module"    : "documents",
+      "situation" : "rows-claimant-hidden",
+      "key"       : "item:file/wiki/map.png",
+      "widgetPath": "documents/ui-publish~b3f2d66f",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "map.png",
+        "tooltip": "wiki/map.png — Ctrl-click or Shift-click to select several.",
+        "on"     : "file/wiki/map.png",
+        "ok"     : true,
+        "props": {
+          "docPath": "wiki/map.png"
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "docPath": "wiki/map.png"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "documents",
+      "module"    : "documents",
       "situation" : "rows-claimant-visible",
       "key"       : "fx:pane.view#mode",
       "widgetPath": "documents/pane-view~f711061f",
@@ -18125,6 +18261,142 @@
           "id"   : "tree.expand",
           "props": {
             "node": "more:assets"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "documents",
+      "module"    : "documents",
+      "situation" : "rows-claimant-visible",
+      "key"       : "item:wiki/lore.md",
+      "widgetPath": "documents/ui-publish~93513b26",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "Lore",
+        "tooltip": "wiki/lore.md — double-click the name to rename it. Ctrl-click or Shift-click to select several.",
+        "on"     : "wiki/lore.md",
+        "ok"     : true,
+        "props": {
+          "docPath": "wiki/lore.md"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "wiki",
+              "where"  : "elsewhere",
+              "subject": "wiki/lore.md"
+            }
+          },
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "docPath": "wiki/lore.md"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "wiki",
+            "where"  : "elsewhere",
+            "subject": "wiki/lore.md"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "documents",
+      "module"    : "documents",
+      "situation" : "rows-claimant-visible",
+      "key"       : "fx:tree.expand#wikidir/cast",
+      "widgetPath": "documents/tree-expand~0e267b02",
+      "offer": {
+        "id"     : "tree.expand",
+        "label"  : "cast",
+        "tooltip": "wiki/cast — Ctrl-click or Shift-click to select several.",
+        "on"     : "wikidir/cast",
+        "ok"     : true,
+        "props": {
+          "node": "wikidir:cast"
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "tree.expand",
+          "props": {
+            "node": "wikidir:cast"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "documents",
+      "module"    : "documents",
+      "situation" : "rows-claimant-visible",
+      "key"       : "item:file/wiki/map.png",
+      "widgetPath": "documents/ui-publish~b3f2d66f",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "map.png",
+        "tooltip": "wiki/map.png — Ctrl-click or Shift-click to select several.",
+        "on"     : "file/wiki/map.png",
+        "ok"     : true,
+        "props": {
+          "docPath": "wiki/map.png"
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "docPath": "wiki/map.png"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
           }
         }
       ]
@@ -18479,6 +18751,142 @@
           "id"   : "tree.expand",
           "props": {
             "node": "more:assets"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "documents",
+      "module"    : "documents",
+      "situation" : "backlinks",
+      "key"       : "item:wiki/lore.md",
+      "widgetPath": "documents/ui-publish~93513b26",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "Lore",
+        "tooltip": "wiki/lore.md — double-click the name to rename it. Ctrl-click or Shift-click to select several.",
+        "on"     : "wiki/lore.md",
+        "ok"     : true,
+        "props": {
+          "docPath": "wiki/lore.md"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "wiki",
+              "where"  : "elsewhere",
+              "subject": "wiki/lore.md"
+            }
+          },
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "docPath": "wiki/lore.md"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "wiki",
+            "where"  : "elsewhere",
+            "subject": "wiki/lore.md"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "documents",
+      "module"    : "documents",
+      "situation" : "backlinks",
+      "key"       : "fx:tree.expand#wikidir/cast",
+      "widgetPath": "documents/tree-expand~0e267b02",
+      "offer": {
+        "id"     : "tree.expand",
+        "label"  : "cast",
+        "tooltip": "wiki/cast — Ctrl-click or Shift-click to select several.",
+        "on"     : "wikidir/cast",
+        "ok"     : true,
+        "props": {
+          "node": "wikidir:cast"
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "tree.expand",
+          "props": {
+            "node": "wikidir:cast"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "documents",
+      "module"    : "documents",
+      "situation" : "backlinks",
+      "key"       : "item:file/wiki/map.png",
+      "widgetPath": "documents/ui-publish~b3f2d66f",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "map.png",
+        "tooltip": "wiki/map.png — Ctrl-click or Shift-click to select several.",
+        "on"     : "file/wiki/map.png",
+        "ok"     : true,
+        "props": {
+          "docPath": "wiki/map.png"
+        },
+        "then": [
+          {
+            "id"   : "pane.view",
+            "props": {
+              "what": "mark"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "docPath": "wiki/map.png"
+          }
+        },
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mark"
           }
         }
       ]
@@ -48635,6 +49043,18 @@
       "key"  : "Escape",
       "mods" : [],
       "label": "Unmark lines",
+      "runs": {
+        "id"   : "pane.view",
+        "props": {
+          "what": "mark"
+        }
+      }
+    },
+    {
+      "scope": "documents",
+      "key"  : "Escape",
+      "mods" : [],
+      "label": "Clear marks",
       "runs": {
         "id"   : "pane.view",
         "props": {

@@ -15,7 +15,8 @@ import {
   type Selection,
 } from './selection.js';
 import type { EditorId } from '../../src/shared/editors.js';
-import type { DocNode } from '../../src/shared/ipc.js';
+import { rootProblem } from '../../src/shared/fileops.js';
+import type { DocNode, DocNodeKind } from '../../src/shared/ipc.js';
 import type { MenuEntry } from '../pathux/chrome/contextmenu.js';
 
 /** What the pane knows about a drawn row that the node does not carry. */
@@ -258,21 +259,40 @@ export function sheetless(node: DocNode): boolean {
   return node.kind === 'location' && node.path === undefined;
 }
 
+/** The kinds of row that name a file or a folder the file commands can act on. */
+const MARKABLE: ReadonlySet<DocNodeKind> = new Set(['wiki', 'wikidir', 'file', 'dir']);
+
+/**
+ * Whether a row can be marked as one of several: a page, file or folder under `FILE_ROOTS`, and
+ * not a root itself. Every marked row is therefore one the file commands accept.
+ */
+export function markable(node: DocNode): boolean {
+  return MARKABLE.has(node.kind) && node.path !== undefined && !rootProblem(node.path);
+}
+
+/** Appended to a markable row's tooltip. */
+const MARK_HINT = 'Ctrl-click or Shift-click to select several.';
+
 /**
  * What a row says on hover, and every row says something. A path is the useful thing to say where
  * there is one; the rest is what a row with no file says instead.
  *
- * The three facts the tree adds to the node are the arguments, because none is on `DocNode`:
- * `renamable` is `renameOf(node) !== undefined`, `sheetless` is a location known only from a
- * scene heading — its second click writes a sheet rather than renaming one — and `expanded` is
- * the row's own state, which only a counted stand-in has anything to say about.
+ * The four facts the tree adds to the node are the arguments, because none is on `DocNode`:
+ * `renamable` is `renameOf(node) !== undefined`, `markable` is `markable(node)` in a pane that
+ * marks rows, `sheetless` is a location known only from a scene heading — its second click writes
+ * a sheet rather than renaming one — and `expanded` is the row's own state, which only a counted
+ * stand-in has anything to say about.
  */
 export function rowTitle(
   node: DocNode,
-  opts: { renamable: boolean; sheetless: boolean; expanded: boolean },
+  opts: { renamable: boolean; markable: boolean; sheetless: boolean; expanded: boolean },
 ): string {
   if (node.path) {
-    return opts.renamable ? `${node.path} — double-click the name to rename it` : node.path;
+    const rename = 'double-click the name to rename it';
+    if (opts.renamable && opts.markable) return `${node.path} — ${rename}. ${MARK_HINT}`;
+    if (opts.renamable) return `${node.path} — ${rename}`;
+    if (opts.markable) return `${node.path} — ${MARK_HINT}`;
+    return node.path;
   }
   if (node.note) return node.note;
   if (opts.sheetless) return 'Only a heading names this place — double-click to write its sheet';
@@ -297,6 +317,9 @@ export function rowTitle(
  * row publishes the fields it changes and then opens the editor that claims it, where one does,
  * with `where` from the route: `here` for a claimant already on screen, `elsewhere` otherwise.
  *
+ * A click on a markable row also marks it, so that row's offer ends with `pane.view(what=mark)`
+ * and its tooltip says how to mark several.
+ *
  * The key is `item:<kind>/<key>` on a publishing row, which is the address a tour's `select`
  * step names, and `fx:tree.expand#<kind>/<key>` on a row that only expands.
  */
@@ -307,22 +330,25 @@ export function rowAction(
 ): Offer {
   const { node } = row;
   const on = `${node.kind}/${nodeKey(node)}`;
+  const canMark = markable(node);
   const control = {
     on,
     label  : node.label,
     tooltip: rowTitle(node, {
       renamable: renameOf(node) !== undefined,
+      markable : canMark,
       sheetless: sheetless(node),
       expanded : row.expanded,
     }),
   };
+  const mark: Action[] = canMark ? [view('mark')] : [];
   const unchanged = selectionForNode(node, selection) === selection;
   const reselected = node.kind === 'asset' && nodeIsSelected(node, selection);
   if (row.expandable && (unchanged || reselected)) {
-    return { ok: true, ...expand(node.id), ...control };
+    return { ok: true, ...expand(node.id), ...control, ...(canMark ? { then: mark } : {}) };
   }
   const open = unchanged ? null : openOf(routeFor({ node, visible, shotId: selection.shotId }));
-  const then: Action[] = open ? [open] : [];
+  const then: Action[] = [...(open ? [open] : []), ...mark];
   return {
     ok: true,
     ...publish(publishedBy(node, selection) as Publishes),

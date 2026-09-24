@@ -1,4 +1,4 @@
-import type { Container } from 'pathux';
+import { KeyMap, type Container } from 'pathux';
 import { api } from '../../api.js';
 import { ASSETSTRIP_CSS, renderAssetStrip } from '../assets/assetstrip.js';
 import { exec, onInvalidate } from '../app/bridge.js';
@@ -11,6 +11,7 @@ import {
   filterTree,
   findNode,
   flattenTree,
+  markable,
   menuFor,
   nodeIsSelected,
   renameOf,
@@ -36,7 +37,8 @@ import {
   type SceneOrder,
 } from '../../rules/documents.js';
 import { cellAction } from '../../rules/assetstrip.js';
-import { redrawing } from '../tour/anchors.js';
+import { redrawing, watchKeymap } from '../tour/anchors.js';
+import { hotkeys } from '../app/keymap.js';
 import { assetNode, openNode } from '../panes/open.js';
 import { visibleEditors } from '../panes/route.js';
 import { panesOf } from '../panes/view.js';
@@ -44,7 +46,21 @@ import { layoutChanged } from '../app/persist.js';
 import type { VnScreen } from '../app/screen.js';
 import { menuIsOpen, showContextMenu } from '../chrome/showmenu.js';
 import type { Selection } from '../../rules/selection.js';
-import { TREEVIEW_CSS, armDismissLatch, renderTree, rowElementFor } from '../doctree/treeview.js';
+import {
+  TREEVIEW_CSS,
+  armDismissLatch,
+  renderTree,
+  rowElementFor,
+  type ClickMods,
+} from '../doctree/treeview.js';
+import {
+  NO_MARKS,
+  markClick,
+  menuTargets,
+  pruneMarks,
+  revealMarks,
+  type MarkState,
+} from '../doctree/marks.js';
 import DOCUMENTS_CSS from '../../styles/documents.css?inline';
 import type { DocNode, DocTree } from '../../../src/shared/ipc.js';
 
@@ -57,9 +73,11 @@ type DocMode = 'documents' | 'files';
  * file on disk when it is switched to file mode. It is an editor rather than fixed chrome, so it
  * can be torn out, put on either side, or opened twice — once per mode.
  *
- * It holds no selection of its own. A click publishes `ui.sceneId` / `ui.shotId` /
+ * It holds no app-wide selection of its own. A click publishes `ui.sceneId` / `ui.shotId` /
  * `ui.characterId` / `ui.docPath`, which every other editor already observes, so the tree steers
  * the app without knowing what is open, and a scene picked in the branch graph highlights here.
+ * What it does hold is its marked rows (`marks.ts`): the pages, files and folders gathered by
+ * Ctrl-click and Shift-click for the tree's file acts.
  *
  * The panel under the tree lists what points at the selected entity: its sheet, its art, and the
  * scenes and shots it appears in, from `DocTree.backlinks`. It is here rather than in the
@@ -101,6 +119,15 @@ export class DocumentsEditor extends VnEditor {
    * now, and a project reopening on three visible rows would read as a project that lost its files.
    */
   private query = '';
+  /**
+   * The marked rows and the anchor a Shift-click extends from. Not remembered across sessions: the
+   * paths may be gone by then, and marks the author cannot see must not be acted on.
+   */
+  private marking: MarkState = NO_MARKS;
+  /** The rows last drawn, in draw order, which a Shift-click's range is taken from. */
+  private shown: readonly DocRow[] = [];
+  /** Paths a `reveal` push named, marked once the refetch it started draws them. */
+  private revealed: readonly string[] | undefined;
 
   static override define() {
     return {
@@ -134,6 +161,10 @@ export class DocumentsEditor extends VnEditor {
       () => void this.load(),
     );
     this.watch(() => onReveal((paths) => this.reveal(paths)));
+
+    // The search box and the inline boxes stop their own keys, so Escape here reaches only the tree
+    this.keymap = new KeyMap(hotkeys('documents', { 'Clear marks': () => this.clearMarks() }));
+    watchKeymap('documents', () => this.keymap);
 
     void this.load();
   }
@@ -175,6 +206,10 @@ export class DocumentsEditor extends VnEditor {
       // serves both modes: their node ids share no prefix, so neither can close the other.
       if (first) this.expanded = new Set([...this.expanded, ...defaultExpanded(roots)]);
       this.failure = '';
+      if (this.revealed) {
+        this.marking = revealMarks(this.flatRows(this.roots() ?? []), this.revealed);
+        this.revealed = undefined;
+      }
     } catch (err) {
       if (mine !== this.token) return;
       this.failure = err instanceof Error ? err.message : String(err);
@@ -192,6 +227,8 @@ export class DocumentsEditor extends VnEditor {
     if (mode === this.mode) return;
     this.mode = mode;
     this.failure = '';
+    // The two modes' node ids share no prefix, so no mark could survive the switch
+    this.marking = NO_MARKS;
     layoutChanged();
     this.rebuild();
     if (!this.roots()) void this.load();
@@ -226,6 +263,8 @@ export class DocumentsEditor extends VnEditor {
       this.token,
       this.picked,
       this.query,
+      this.marking.marks.join(','),
+      this.marking.anchor,
       this.expanded.size,
       [...this.expanded].join(','),
       ui.sceneId,
@@ -241,10 +280,24 @@ export class DocumentsEditor extends VnEditor {
   // -------------------------------------------------------------------------
 
   private rebuild(): void {
+    const roots = this.failure ? undefined : this.roots();
+    const rows = roots && this.flatRows(roots);
+    // Pruned before the state key is taken, so dropping a hidden mark does not cost a second draw
+    if (rows) this.marking = pruneMarks(this.marking, rows);
     this.drawn = this.stateKey();
     this.rebuildBar();
-    this.rebuildRows();
+    this.rebuildRows(rows);
     this.rebuildPanel();
+  }
+
+  /**
+   * The rows on screen, in draw order. The filter's own open branches are added to the author's
+   * rather than replacing them, so a matched node they had already expanded still shows what is
+   * under it.
+   */
+  private flatRows(roots: readonly DocNode[]): DocRow[] {
+    const filtered = filterTree(roots, this.query);
+    return flattenTree(filtered.roots, new Set([...this.expanded, ...filtered.expanded]));
   }
 
   private rebuildBar(): void {
@@ -380,26 +433,22 @@ export class DocumentsEditor extends VnEditor {
     this.openDoc((outcome.data as { path: string }).path);
   }
 
-  private rebuildRows(): void {
+  private rebuildRows(rows: readonly DocRow[] | undefined): void {
     // A rename box is thrown away with the row it sat in, so clearing this here keeps a refetch
     // from blocking every later rename.
     this.renaming = '';
     this.rows.textContent = '';
+    this.shown = rows ?? [];
 
     if (this.failure) {
       this.rows.appendChild(el('div', 'dt-note', this.failure));
       return;
     }
-    const roots = this.roots();
-    if (!roots) {
+    if (!rows) {
       this.rows.appendChild(el('div', 'dt-note', 'Reading the workspace…'));
       return;
     }
 
-    // The filter's own open branches are added to the author's rather than replacing them, so a
-    // matched node they had already expanded still shows what is under it.
-    const filtered = filterTree(roots, this.query);
-    const rows = flattenTree(filtered.roots, new Set([...this.expanded, ...filtered.expanded]));
     if (rows.length === 0) {
       const note = this.query.trim()
         ? `Nothing here is called “${this.query.trim()}”.`
@@ -412,17 +461,20 @@ export class DocumentsEditor extends VnEditor {
     const screen = this.ctx?.screen as VnScreen | undefined;
     const visible = visibleEditors(screen ? panesOf(screen) : []);
     const anchors = redrawing('documents', 'rows');
+    const marked = new Set(this.marking.marks);
     renderTree(this.rows, rows, {
       look: (row) => ({
         selected: nodeIsSelected(row.node, selection),
+        marked  : marked.has(row.node.id),
         title: rowTitle(row.node, {
           renamable: renameOf(row.node) !== undefined,
+          markable : markable(row.node),
           sheetless: this.sheetless(row.node),
           expanded : row.expanded,
         }),
       }),
       onToggle     : (id) => this.toggle(id),
-      onClick      : (row) => this.pick(row),
+      onClick      : (row, mods) => this.rowClick(row, mods),
       // A location mined from a heading has no sheet, so its second click writes one rather than
       // renaming — the only place in the tree where a second click authors a file. A shot's second
       // click opens the frame it was drawn as, and a shot with no frame yet does nothing, which is
@@ -523,11 +575,12 @@ export class DocumentsEditor extends VnEditor {
   }
 
   /**
-   * Open every folder above `paths`, in both modes' ids, and refetch so the new rows are drawn.
-   * Added to the author's own expanded set rather than replacing it.
+   * Open every folder above `paths`, in both modes' ids, and refetch so the new rows are drawn and
+   * marked. Added to the author's own expanded set rather than replacing it.
    */
   private reveal(paths: readonly string[]): void {
     this.expanded = new Set([...this.expanded, ...revealIds(paths)]);
+    this.revealed = paths;
     void this.load();
   }
 
@@ -539,6 +592,21 @@ export class DocumentsEditor extends VnEditor {
   private collapseAll(): void {
     if (this.expanded.size === 0) return;
     this.expanded = new Set();
+    this.rebuild();
+  }
+
+  /** Applies a click to the marks, then does what a plain click does unless the click only marked. */
+  private rowClick(row: DocRow, mods: ClickMods): void {
+    const { next, plain } = markClick(this.marking, row, this.shown, mods);
+    this.marking = next;
+    if (plain) this.pick(row);
+    else this.rebuild();
+  }
+
+  /** Takes every mark off and keeps the anchor. Bound to Escape while the tree has the keyboard. */
+  private clearMarks(): void {
+    if (this.marking.marks.length === 0) return;
+    this.marking = { ...this.marking, marks: [] };
     this.rebuild();
   }
 
@@ -632,12 +700,14 @@ export class DocumentsEditor extends VnEditor {
    * Open the right-click menu. The node under the cursor is selected first, so that "Regenerate"
    * and whatever the asset pane is showing cannot disagree about which asset is meant. It is not
    * routed to: opening a pane is what a left click does, and a menu should not rearrange the
-   * screen before the author has chosen anything.
+   * screen before the author has chosen anything. A row marked among several keeps the other
+   * marks; any other row becomes the only one.
    */
   private openMenu(row: DocRow, x: number, y: number): void {
     const entries = menuFor(row.node, this.order);
     if (entries.length === 0) return;
 
+    this.marking = menuTargets(this.marking, row).next;
     this.picked = row.node.kind === 'location' ? row.node.id : '';
     const current = this.selection();
     const next = selectionForNode(row.node, current);

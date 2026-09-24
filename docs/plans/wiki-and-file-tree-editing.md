@@ -1,6 +1,6 @@
 # Wiki and file tree editing
 
-Status: partial — stages 1–2 of 5 shipped. Reviewed once by a fresh-context agent; its
+Status: partial — stages 1–3 of 5 shipped. Reviewed once by a fresh-context agent; its
 nineteen findings and how each was answered are in [Review](#review).
 
 This plan covers the six items in `todos.md` under "Wiki Subtree / File Tree Commands".
@@ -884,6 +884,34 @@ Renderer only.
 - Docs: `desktop-app-editors-misc.md#documents` ("The tree owns no selection" becomes: it
   owns no app-wide selection, and holds the marked rows itself); `document-tree.md` (a
   short "Selecting several rows" section).
+- Shipped. What the implementation settled or changed:
+    - **`pruneMarks` takes the drawn rows and runs on every redraw.** A refetch and the
+      filter drop marks as D10 says, and so does closing a folder, since the reason is the
+      same: no act may take a row the author cannot see. The anchor is dropped with its
+      row.
+    - **A reveal marks what it names** (`revealMarks` in `marks.ts`), which stage 1
+      deferred. The marks are applied when the refetch the reveal started returns.
+    - **`remapMarks` waits for stage 4**, with the `moved` handling that calls it.
+    - **A right-click on a row marked among several keeps the marks, but the menu is still
+      the row's own**, with the row's label as its title, and the selection is published
+      as before. The "3 items" title arrives with the multi-row entries in stage 4. A
+      right-click on a row with no menu leaves the marks alone.
+    - **Row titles leave out F2**, which does not exist until stage 5. A `wiki` row reads
+      "`<path>` — double-click the name to rename it. Ctrl-click or Shift-click to select
+      several.", and a `file`, `dir` or `wikidir` row reads "`<path>` — Ctrl-click or
+      Shift-click to select several." D15's wording replaces them in stage 5.
+    - `markable(node)` lives in `rules/documents.ts` beside `renameOf`, because `rowTitle`
+      and `rowAction` need it there; `marks.ts` imports it. `rowTitle` takes `markable` as
+      an option, as it takes `renamable`, and the Skills pane passes `false`.
+    - A markable row's offer records `pane.view(what=mark)` last in `then`, after the
+      `view.open` where there is one. The Documents situations gain a page, a wiki folder
+      and an image file so the derived model draws that tail; the uxdocs fold count moves
+      from 518 to 521.
+    - Ctrl and Shift together act as Shift. Escape clears the marks and keeps the anchor.
+    - `treeview.test.ts` tests `countClick` with modifiers and `modsOf`, not a dispatched
+      click: the desktop jest project runs under node with no DOM.
+    - Tree rows are `user-select: none`, so a Shift-click does not also select the text
+      between the two rows.
 
 ### Stage 4 — Cut, Copy and Paste
 

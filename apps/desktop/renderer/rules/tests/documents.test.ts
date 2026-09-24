@@ -2,6 +2,7 @@ import {
   collapseAction,
   controls,
   createAction,
+  markable,
   modeAction,
   panelControls,
   reloadAction,
@@ -121,6 +122,79 @@ describe('rowAction', () => {
 
   it('keys every row by its kind and key, which is what a select step names', () => {
     expect(keyOf(rowAction(scene, NONE, ['documents']))).toBe('item:scene/arrival');
+  });
+});
+
+describe('marking rows', () => {
+  const page = row({ id: 'wiki:lore.md', kind: 'wiki', label: 'Lore', path: 'wiki/lore.md' });
+  const folder = row(
+    { id: 'wikidir:cast', kind: 'wikidir', label: 'cast', path: 'wiki/cast' },
+    true,
+  );
+  const file = row({
+    id   : 'file:locations/cafe.md',
+    kind : 'file',
+    label: 'cafe.md',
+    path : 'locations/cafe.md',
+  });
+  const hint = 'Ctrl-click or Shift-click to select several.';
+  const mark = { id: 'pane.view', props: { what: 'mark' } };
+
+  it('marks a page, a file or a folder under the four roots', () => {
+    expect(markable(page.node)).toBe(true);
+    expect(markable(folder.node)).toBe(true);
+    expect(markable(file.node)).toBe(true);
+    expect(
+      markable({ id: 'dir:archive/old', kind: 'dir', label: 'old', path: 'archive/old' }),
+    ).toBe(true);
+  });
+
+  it('marks no root folder, nothing outside the roots, and no other kind of row', () => {
+    expect(markable({ id: 'dir:wiki', kind: 'dir', label: 'wiki', path: 'wiki' })).toBe(false);
+    expect(
+      markable({ id: 'file:scenes/a.md', kind: 'file', label: 'a.md', path: 'scenes/a.md' }),
+    ).toBe(false);
+    expect(markable(scene.node)).toBe(false);
+    expect(markable({ id: 'branch:wiki', kind: 'branch', label: 'Wiki' })).toBe(false);
+    expect(
+      markable({
+        id   : 'character:aiko',
+        kind : 'character',
+        label: 'Aiko',
+        path : 'characters/aiko/character.md',
+      }),
+    ).toBe(false);
+  });
+
+  it('records the mark after the open, and says how to mark several', () => {
+    const offer = rowAction(page, NONE, ['documents']);
+    expect(offer).toMatchObject({
+      id     : 'ui.publish',
+      props  : { docPath: 'wiki/lore.md' },
+      tooltip: `wiki/lore.md — double-click the name to rename it. ${hint}`,
+      then   : [{ id: 'view.open', props: { editor: 'wiki' } }, mark],
+    });
+  });
+
+  it('records only the mark on a folder, whose click expands it', () => {
+    expect(rowAction(folder, NONE, ['documents'])).toEqual({
+      ok     : true,
+      id     : 'tree.expand',
+      props  : { node: 'wikidir:cast' },
+      on     : 'wikidir/cast',
+      label  : 'cast',
+      tooltip: `wiki/cast — ${hint}`,
+      then   : [mark],
+    });
+  });
+
+  it('records no mark, and no hint, on a row that cannot be marked', () => {
+    const offer = rowAction(scene, NONE, ['documents']);
+    expect(offer.ok && offer.then?.map((a) => a.id)).toEqual(['view.open']);
+    expect(offer.tooltip).toBe('scenes/arrival.md');
+    const outside = row({ id: 'dir:scenes', kind: 'dir', label: 'scenes', path: 'scenes' }, true);
+    expect(rowAction(outside, NONE, ['documents'])).not.toHaveProperty('then');
+    expect(rowAction(outside, NONE, ['documents']).tooltip).toBe('scenes');
   });
 });
 

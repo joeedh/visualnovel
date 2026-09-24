@@ -821,13 +821,23 @@ describe('renameOf', () => {
 });
 
 describe('rowTitle', () => {
-  const plain = { renamable: false, sheetless: false, expanded: false };
+  const plain = { renamable: false, markable: false, sheetless: false, expanded: false };
 
   it('says the path, and how to rename it where that is possible', () => {
     const aiko = node('character:aiko', 'character', { label: 'Aiko', path: 'c/aiko.md' });
     expect(rowTitle(aiko, plain)).toBe('c/aiko.md');
     expect(rowTitle(aiko, { ...plain, renamable: true })).toBe(
       'c/aiko.md — double-click the name to rename it',
+    );
+  });
+
+  it('says how to mark several, after the rename where both apply', () => {
+    const page = node('wiki:lore.md', 'wiki', { label: 'Lore', path: 'wiki/lore.md' });
+    expect(rowTitle(page, { ...plain, markable: true })).toBe(
+      'wiki/lore.md — Ctrl-click or Shift-click to select several.',
+    );
+    expect(rowTitle(page, { ...plain, renamable: true, markable: true })).toBe(
+      'wiki/lore.md — double-click the name to rename it. Ctrl-click or Shift-click to select several.',
     );
   });
 

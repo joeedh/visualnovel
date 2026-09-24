@@ -18,6 +18,7 @@ describes what underlies it. The plan and the reasoning behind each decision are
 - [The file tree](#the-file-tree)
 - [Where it lives](#where-it-lives)
 - [Right-click menus](#right-click-menus)
+- [Selecting several rows](#selecting-several-rows)
 - [Moving, copying and renaming files](#moving-copying-and-renaming-files)
 - [Renaming in place](#renaming-in-place)
 - [Opening a shot's frame](#opening-a-shots-frame)
@@ -377,7 +378,8 @@ This table lists the following:
   `dir`, so the page is filed in that folder rather than at the wiki root; the two sheet
   entries still file a sheet in `characters/` or `locations/`, which discovery reads.
   After either command runs, the window that ran it opens every folder above the new path
-  (the `docs` `reveal` push, handled in `renderer/pathux/app/docseffect.ts`).
+  and marks the new row (the `docs` `reveal` push, handled in
+  `renderer/pathux/app/docseffect.ts`).
 - **New folder… leaves no undo point.** An undo snapshot has no entry for an empty folder,
   so `doc.mkdir`'s record is walked past and Undo reaches the command before it; the
   folder stays. It still clears the redo stack, as every mutating command does. The first
@@ -403,6 +405,41 @@ the popup.
 The asset editor's own header carries the same `asset` entries behind a `⋯` button, drawn
 from the same table. Both menus read that one table, which shows that `menuFor` is
 node-shaped rather than tree-shaped.
+
+## Selecting several rows
+
+Pages, files and folders can be marked several at a time, in both modes. The marked rows
+are what the tree's file acts will take (Cut, Copy and Paste are not drawn yet). They are
+held by the pane rather than published, so `ui.docPath` stays the one app-wide selection.
+
+- **Which rows can be marked.** A `wiki`, `wikidir`, `file` or `dir` row whose path is
+  under `wiki/`, `characters/`, `locations/` or `archive/`, and is not one of those four
+  folders itself (`markable` in `renderer/rules/documents.ts`). These are exactly the rows
+  the file commands accept. A markable row's tooltip ends "Ctrl-click or Shift-click to
+  select several."
+- **Clicks.** Ctrl is Cmd on macOS.
+    - A plain click marks the row alone, then does what it always did: a page or file
+      publishes `ui.docPath` and opens, a folder opens or closes.
+    - Ctrl-click adds the row to the marks or takes it out, and does nothing else.
+    - Shift-click marks every markable row drawn between the anchor (the last row clicked
+      without Shift) and this one. With no anchor on screen it counts as a plain click.
+    - Any click on a row that cannot be marked clears the marks.
+    - A click with Ctrl or Shift held never counts toward a double-click, so two quick
+      Ctrl-clicks cannot open a rename box.
+- **Right-click.** On a row marked among several, the marks stay. On any other row, that
+  row becomes the only mark, or the marks clear when it cannot be marked. The menu is
+  still the row's own until the multi-row entries arrive.
+- **Escape** clears the marks while the tree has the keyboard (the `documents` row in
+  `renderer/rules/shortcuts.ts`).
+- **Marks are only ever on rows the author can see.** Switching mode clears them, and
+  every redraw drops the marks on rows that are no longer drawn, whether a refetch removed
+  them, the filter hid them or their folder was closed.
+- **What a file command made or moved is marked** in the window that ran it, once the
+  `reveal` push has opened the folders above it.
+- A marked row is tinted (`marked` in `styles/treeview.css`); `sel` still marks the row
+  that is `ui.docPath`, so the open document stays identifiable inside a larger set.
+- Marks are not remembered across sessions. The pure rules are in
+  `renderer/pathux/doctree/marks.ts`.
 
 ## Moving, copying and renaming files
 
@@ -494,7 +531,7 @@ What undo does and does not restore:
 
 `written` lists every source path, every destination file and every file whose links were
 rewritten. After either command, the window that ran it opens every folder above the new
-paths (the `docs` `reveal` push).
+paths and marks them (the `docs` `reveal` push).
 
 ## Renaming in place
 

@@ -300,12 +300,18 @@ toggling, which selection field a node names, and which entity the panel is abou
   different kind of tree, so the header toggle adds a second fetch and no second renderer.
   The mode is a per-pane field declared through `registerEditor(cls, name, fields)`, so
   two sidebars can differ and each keeps its own mode.
-- **The tree owns no selection.** A click publishes `ui.sceneId` / `ui.shotId` /
+- **The tree owns no app-wide selection.** A click publishes `ui.sceneId` / `ui.shotId` /
   `ui.characterId` / `ui.docPath` / `ui.assetHash`, which every other editor already
   observes, so the tree steers the app without tracking what is open, and a scene picked
   in Branches is highlighted here without either editor referencing the other. A node that
   names nothing (a grouping, a truncated `more`) returns the same selection, so opening a
   branch leaves the author's current selection unchanged.
+- **The pane holds its marked rows itself.** Ctrl-click and Shift-click mark pages, files
+  and folders under the four file roots
+  ([`document-tree.md`](document-tree.md#selecting-several-rows)). The marks and the
+  anchor a Shift-click extends from are plain fields on the pane, not declared to
+  nstructjs, so a restored layout starts with nothing marked. The rules are pure, in
+  `pathux/doctree/marks.ts`.
 - **Backlinks under the tree** come from `DocTree.backlinks[nodeId]`. They cover the
   sheet, said as "in the story bible" when it lives under `wiki/`; the art, which
   `renderAssetStrip` renders grouped by kind with the gate's accepted mark; and the scenes
