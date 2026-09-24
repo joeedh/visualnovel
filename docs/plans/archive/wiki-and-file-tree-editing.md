@@ -1,7 +1,7 @@
 # Wiki and file tree editing
 
-Status: partial — stages 1–4 of 5 shipped. Reviewed once by a fresh-context agent; its
-nineteen findings and how each was answered are in [Review](#review).
+Status: shipped — all five stages. Reviewed once by a fresh-context agent; its nineteen
+findings and how each was answered are in [Review](#review).
 
 This plan covers the six items in `todos.md` under "Wiki Subtree / File Tree Commands".
 All of them land in the `documents` editor, in both of its modes: the logical document
@@ -15,7 +15,7 @@ tree (its Wiki branch: `branch:wiki`, `wikidir:<rel>`, `wiki:<rel>`) and file mo
 5. Moving files and folders in both, undoably.
 6. Renaming wiki files.
 
-It reverses part of [`document-tree.md`](../reference/document-tree.md), which lists
+It reverses part of [`document-tree.md`](../../reference/document-tree.md), which lists
 "Moving and deleting through the tree" as deliberately absent. Moving and renaming arrive;
 deleting stays absent. Today `wiki` and `file` rows have one menu entry, Show history, and
 `dir` rows have none. The table in `document-tree.md` still says all three have no menu;
@@ -90,7 +90,7 @@ Facts the decisions below rest on, with where each one lives.
 - **A project can span repositories.** `wiki/` (or `assets/`) can be a nested repository
   or a submodule, possibly shared by several projects; a submodule that is not checked out
   is an empty directory reported `missing: true` by `Workspace.repos()`
-  ([`repos-and-commits.md`](../reference/repos-and-commits.md#submodules)).
+  ([`repos-and-commits.md`](../../reference/repos-and-commits.md#submodules)).
   `RepoResolver.rootOf` (`@vn/git`) answers which repository a path is in.
 - **File history does not follow renames.** `@vn/git` runs `git log` without `--follow`.
 
@@ -997,6 +997,40 @@ Renderer only.
     - `apps/desktop/renderer/rules/tests/shortcuts.test.ts`: the F2 row.
 - Docs: `document-tree.md` "Renaming in place" gains the file rename (D5), and states that
   a double-click on a page still retitles it.
+- Shipped. What the implementation settled or changed:
+    - **path.ux's keymap names no function keys**, so D12's F2 row could not become a
+      `HotKey` as written. `rules/shortcuts.ts` gains `FUNCTION_KEYS` (`F2` and main's
+      `F12`) and `isFunctionKey`; `hotkeys()` in `pathux/app/keymap.ts` builds such a
+      `HotKey` and sets its `key` code directly, and the sweep's shortcut report reads the
+      same table. path.ux itself is unchanged: an enum entry there would be a submodule
+      commit that exists only in this worktree's module store until it is pushed.
+    - **The rename entries carry their own tooltips.** D15 falls back to the registry's
+      sentence, but `doc.move`'s is about moving; each kind says what its rename changes
+      ("Change the page’s file name on disk and keep its title. Links to it are
+      rewritten."). The rename boxes use D15's sentence, with "folder" for a folder.
+    - **`renamePathOf(node)`** answers `{ path, name, into, folder }` for a `wiki`,
+      `wikidir`, `file` or `dir` row with a path, including one outside `FILE_ROOTS`, so
+      the entry can be drawn and greyed there. `renameEntry(node, ctx)` in `doctree.ts`
+      builds Rename… and Rename file… and is exported, so F2 and the double-click read its
+      `refused` the way Ctrl+V reads Paste's. `fileRenameAction` is the box's offer, and
+      the Documents situations gain `renaming-file`; the uxdocs fold count moves from 521
+      to 522.
+    - **Both boxes are one `openBox`** in `editors/documents.ts`. The file-name box
+      selects the name up to its extension, and checks `unsavedRefusal` again at Enter as
+      well as before it opens.
+    - **A sheet's refusal arrives at Enter.** The rename entry supplies `name`, so it is
+      not checked, and D5's sentence comes from `doc.move`'s own check when the box
+      commits.
+    - **A double-click on a `file` row renames only a markable row.** A file outside the
+      four roots keeps its old double-click (nothing), which matches its tooltip, the path
+      alone.
+    - **The anchor sweep stayed at 700 records.** Menu records are one per command per
+      row, and Paste already recorded `doc.move` on every row that gained Rename…, so the
+      new entries add none. The sweep's shortcut report agrees with the table in every
+      scope, F2 included.
+    - **Found while verifying:** F2, like the pane's other keys, reaches the tree only
+      while path.ux treats the tree as the active area. After a click opens a page in
+      another pane, that pane is active until the pointer moves back over the tree.
 
 ## Docs after the plan
 
