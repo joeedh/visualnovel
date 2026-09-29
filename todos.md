@@ -30,6 +30,7 @@
      de-select it unless it's explicitly multi-select.
 [ ]: Approving an older asset doesn't appear to properly make it active for its slot.
 [ ]: Clicking 'apply answers' when editing character/location/etc yaml forms should also save the document.
+[ ]: Clicking various things in the script editor causes the scroll to jump
 	 
 ## Markdown Editor
 [ ]: Pressing space when the cursor is at the end of a link should insert the space outside the link.
