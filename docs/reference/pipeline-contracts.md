@@ -48,6 +48,18 @@ These implement the system design in
       no extra cost.
     - Every status transition is appended to `state/tasks.jsonl`. Replaying that log (last
       writer wins per hash) rebuilds the graph, so runs are crash-safe and resumable.
+    - A tombstone takes a task out of the replayed graph. It is a full copy of the task's
+      last record with `status: 'pending'`, no `output`, no `error`, and `removed: true`,
+      written by `logTombstone` (`packages/taskgraph/src/log.ts`).
+        - `loadGraph` leaves a hash out when its last record is a tombstone, so
+          `vngen status` and the Task Graph pane stop counting it. A later task record for
+          the same hash supersedes the tombstone, and the planner plans the task again.
+        - The shape is the requeue's plus one field, so a build that predates tombstones
+          replays one as a requeued task, with its `deps`. A bare `{ hash, removed }`
+          record would reach that build's `topoOrder` with no `deps` array, and it would
+          throw.
+        - A line that does not parse still stops `readJsonl`, as any bad line does.
+        - Plan: [`../plans/deleting-things.md`](../plans/deleting-things.md), stage 2.
 - **Assets are content-addressed and stored in two separate roots.**
     - Image bytes are stored once per root. Base art (portraits, model sheets, location
       plates) is stored at `assets/objects/<hash>.<ext>`. Shot frames are stored at

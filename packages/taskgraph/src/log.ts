@@ -9,17 +9,42 @@ import { TaskGraph } from './graph.js';
  * hash) reconstructs the graph, which is what makes runs crash-safe and resumable.
  */
 
+/**
+ * One line of the log. `removed` marks a tombstone, which takes the task out of the replayed
+ * graph until a later record for the same hash supersedes it.
+ */
+export type TaskRecord = AnyTask & { removed?: true };
+
 /** Append a task's current state as one JSONL record. */
 export async function logTask(paths: ProjectPaths, task: AnyTask): Promise<void> {
   await appendJsonl(paths.tasksLog, task);
 }
 
-/** Rebuild a TaskGraph by replaying the status log. A missing log gives an empty graph. */
+/**
+ * Append a tombstone for a task: its record put back to `pending` with no output or error, plus
+ * `removed: true`. That is the requeue's shape, so a build that predates tombstones replays it
+ * as a requeued task, with its `deps`, rather than as a record it cannot order.
+ */
+export async function logTombstone(paths: ProjectPaths, task: AnyTask): Promise<void> {
+  const record: TaskRecord = {
+    ...task,
+    status : 'pending',
+    output : undefined,
+    error  : undefined,
+    removed: true,
+  };
+  await appendJsonl(paths.tasksLog, record);
+}
+
+/**
+ * Rebuild a TaskGraph by replaying the status log. A missing log gives an empty graph, and a
+ * hash whose last record is a tombstone is left out.
+ */
 export async function loadGraph(paths: ProjectPaths): Promise<TaskGraph> {
-  const records = await readJsonl<AnyTask>(paths.tasksLog);
-  const latest = new Map<string, AnyTask>();
+  const records = await readJsonl<TaskRecord>(paths.tasksLog);
+  const latest = new Map<string, TaskRecord>();
   for (const record of records) latest.set(record.hash, record);
   const graph = new TaskGraph();
-  for (const task of latest.values()) graph.add(task);
+  for (const task of latest.values()) if (task.removed !== true) graph.add(task);
   return graph;
 }
