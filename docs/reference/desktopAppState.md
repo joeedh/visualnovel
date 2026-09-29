@@ -360,7 +360,6 @@ Authored inputs and generated outputs are the source of truth for everything els
 │   │   ├── tasks.jsonl         # Append-only task log (crash recovery + resume)
 │   │   ├── commands.jsonl      # Append-only CommandRecord log (provenance + undo)
 │   │   ├── notifications.jsonl # Append-only notification log (`r`/`h` patched in place)
-│   │   ├── reviews/<taskHash>  # Vision-review reports per task
 │   │   └── graphs/<slug>.jsonl # A generation graph's run journal, keyed by node key (`<instance>/<id>` inside a group)
 │   └── work/
 │       ├── story.graph.mmd     # Mermaid diagram of story branches
@@ -368,11 +367,7 @@ Authored inputs and generated outputs are the source of truth for everything els
 │       │   ├── <slug>.json     # A generation graph (nstructjs JSON), written only by `gengraph.*` commands
 │       │   └── lib/<ref>.json  # A group definition; every graph instancing `<ref>` follows this file
 │       ├── characters/<id>/
-│       │   ├── approved.png    # Approved portrait for character
-│       │   └── outfits/<outfit>/sheet/
-│       ├── locations/<id>/
-│       │   ├── breakdown.md    # P1 location breakdown
-│       │   └── refs/           # Reference plates
+│       │   └── approved.png    # Copy of the approved portrait; nothing reads it
 │       └── shots/<sceneId>.json  # Persisted shot decomposition
 └── keys/                     # API keys (gitignored)
     └── …

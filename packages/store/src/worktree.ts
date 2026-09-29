@@ -74,15 +74,6 @@ export async function writeStoryGraph(paths: ProjectPaths, mermaid: string): Pro
   await writeFileAtomic(paths.storyGraph, mermaid);
 }
 
-/** Write a location breakdown markdown file under `work/locations/<id>/`. */
-export async function writeBreakdown(
-  paths: ProjectPaths,
-  id: string,
-  markdown: string,
-): Promise<void> {
-  await writeFileAtomic(paths.locationBreakdown(id), markdown);
-}
-
 /** Copy the approved portrait bytes to the visible `approved.png` (report §9.2 gate). */
 export async function writeApprovedPortrait(
   paths: ProjectPaths,

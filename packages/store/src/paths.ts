@@ -110,15 +110,6 @@ export class ProjectPaths {
   approvedPortrait(id: string): string {
     return join(this.workCharacterDir(id), 'approved.png');
   }
-  outfitSheetDir(characterId: string, outfit: string): string {
-    return join(this.workCharacterDir(characterId), 'outfits', outfit, 'sheet');
-  }
-  locationBreakdown(id: string): string {
-    return join(this.work, 'locations', id, 'breakdown.md');
-  }
-  locationRefsDir(id: string): string {
-    return join(this.work, 'locations', id, 'refs');
-  }
   /** One scene's persisted shot decomposition from P5; human-editable, committed. */
   shotsFile(sceneId: string): string {
     return join(this.work, 'shots', `${sceneId}.json`);
@@ -139,8 +130,5 @@ export class ProjectPaths {
    */
   get notificationsLog(): string {
     return join(this.state, 'notifications.jsonl');
-  }
-  reviewsDir(taskHash: string): string {
-    return join(this.state, 'reviews', taskHash);
   }
 }
