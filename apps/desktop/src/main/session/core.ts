@@ -1483,6 +1483,11 @@ export class WorkspaceSession {
    * disk, and the next turn opens a new one — and it is committed on the way out, so that what
    * stays on disk also stays in history.
    */
+  /** Why the conversation cannot be closed now, or `undefined`; what `clearAgent` throws. */
+  clearRefusal(): string | undefined {
+    return this.agentPart.clearRefusal();
+  }
+
   async clearAgent(): Promise<void> {
     return this.agentPart.clearAgent();
   }

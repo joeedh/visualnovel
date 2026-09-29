@@ -3,20 +3,20 @@
 # Registered commands
 
 223 commands, in 25 namespaces. 136 are `mutating`;
-150 declare a precondition; 83 are undoable; 25 ask
+153 declare a precondition; 83 are undoable; 25 ask
 for confirmation.
 
 ✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
 
 | Command | Props | Notes |
 | ------- | ----- | ----- |
-| `agent.clear` | — | Resets the conversation, back to plan mode. The thread it was in stays on disk and stays listed. |
+| `agent.clear` ✓ | — | Resets the conversation, back to plan mode. The thread it was in stays on disk and stays listed. |
 | `agent.compact` ✍ ✓ | — | Writes `vngen/state/threads`. Summarize the open conversation so the agent carries a summary instead of every turn. Appends one line to each of the thread's logs and rewrites neither, so the transcript on screen is unchanged. Checked because it costs a model call, and refused while a turn is running, with no finished turn to summarize, with the last turn stopped part way through a tool call, and when nothing has been said since the last compaction. |
 | `agent.editLine` ✓ | `scene`, `line` | — |
 | `agent.fixAsset` ✓ | `hash` | — |
 | `agent.mergeConflict` ✓ | `repo` (`project`\|`wiki`\|`base`, default `'project'`), `path` | — |
-| `agent.newThread` | — | End the open conversation and start again. The next turn opens a new thread file. |
-| `agent.openThread` | `id` | Replay a saved conversation on screen. **Read-only**: the model is not shown it, and the next turn starts a new thread unless Continue is pressed first. Returns the whole record as `data`. |
+| `agent.newThread` ✓ | — | End the open conversation and start again. The next turn opens a new thread file. |
+| `agent.openThread` ✓ | `id` | Replay a saved conversation on screen. **Read-only**: the model is not shown it, and the next turn starts a new thread unless Continue is pressed first. Returns the whole record as `data`. |
 | `agent.renameThread` ✍ ✓ | `id` (default `''`), `title` | Writes `vngen/state/threads`. Retitle a saved conversation; an empty `id` renames the open one. Appended as a superseding `title` record — the log stays append-only, and the last one read wins. |
 | `agent.resumeThread` ✓ | `id` | Continue a saved conversation: the agent is handed the messages from its native log and the session binds to that thread, so later turns append to the same two files. Not mutating — it changes what the agent holds, not the project. Checked because a conversation recorded through another vendor or another protocol cannot be handed to the model bound now; the check answers that sentence, along with a log merged from two clones, one written by a newer version of the app, and a thread that kept only its transcript. |
 | `agent.run` ✍ | `input`, `scene` (default `''`) | Writes `characters`, `locations`, `wiki`, `scenes`, `screenplay`, `archive`, `assets`, `vngen`, `.vnstudio`, `.aiagent`, `.github`, `project.yaml`, `screenplay.fountain`, `AICONTEXT.generated.md`, `.gitignore`, `.gitattributes`. One agent turn. Mutating: a turn in execute mode writes. |

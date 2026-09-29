@@ -2,7 +2,7 @@
  * The authoring agent as commands. `agent.run` is marked mutating because a turn in execute mode
  * can edit files. The agent keeps its own plan/execute gate, and these commands do not bypass it.
  */
-import { defineFor, prop, type CommandContext } from '@vn/commands';
+import { defineFor, prop, type CheckResult, type CommandContext } from '@vn/commands';
 import {
   BUDGET_CHOICES,
   EFFORT_CHOICES,
@@ -134,11 +134,18 @@ export const agentClear = define({
     'Resets the conversation, back to plan mode. The thread it was in stays on disk and stays listed.',
   mutating   : false,
   props      : {},
+  check      : (_props, ctx) => closable(ctx.host, 'Back to plan mode. The thread stays on disk.'),
   async run(_props, ctx) {
     await ctx.host.session.clearAgent();
     return { message: 'Agent context cleared.' };
   },
 });
+
+/** Refuses with the sentence `clearAgent` would throw, so the control is greyed before the click. */
+function closable(host: CommandHost, note: string): Promise<CheckResult> {
+  const reason = host.session.clearRefusal();
+  return Promise.resolve(reason ? { ok: false, reason } : { ok: true, note });
+}
 
 /**
  * The six thread commands. None is `undoable`, because `vngen/state` sits outside the undo
@@ -167,6 +174,7 @@ export const agentNewThread = define({
   notes      : 'End the open conversation and start again. The next turn opens a new thread file.',
   mutating   : false,
   props      : {},
+  check: (_props, ctx) => closable(ctx.host, 'Saves this conversation and starts a fresh one.'),
   async run(_props, ctx) {
     await ctx.host.session.clearAgent();
     return { message: 'Started a new conversation.' };
@@ -183,6 +191,7 @@ export const agentOpenThread = define({
     'Replay a saved conversation on screen. **Read-only**: the model is not shown it, and the next turn starts a new thread unless Continue is pressed first. Returns the whole record as `data`.',
   mutating   : false,
   props      : { id: prop.string('the conversation to reopen') },
+  check      : (_props, ctx) => closable(ctx.host, 'Closes the open conversation first.'),
   async run({ id }, ctx) {
     const record = await ctx.host.session.openThreadForReading(id);
     return { message: `Reopened “${record.title}” for reading.`, data: record };

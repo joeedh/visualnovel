@@ -387,10 +387,13 @@ describe('the desktop registry', () => {
    */
   it('declares a precondition on what an act would cost, and on the three interrupters', () => {
     expect(commands.filter((c) => c.check).map((c) => c.id)).toEqual([
+      'agent.clear',
       'agent.compact',
       'agent.editLine',
       'agent.fixAsset',
       'agent.mergeConflict',
+      'agent.newThread',
+      'agent.openThread',
       'agent.renameThread',
       'agent.resumeThread',
       'agent.stop',
@@ -541,6 +544,10 @@ describe('the desktop registry', () => {
     ]);
     // A checked non-mutator is the exception, so it is listed by name rather than allowed by rule.
     expect(commands.filter((c) => c.check && !c.mutating).map((c) => c.id)).toEqual([
+      // `agent.clear`, `agent.newThread` and `agent.openThread` close the open conversation and
+      // write nothing. Closing it under a running turn strands the turn on a question whose card
+      // is gone, so all three refuse until the turn ends.
+      'agent.clear',
       // Neither sends a turn nor writes anything. Both are offered from a surface that draws a
       // refusal rather than hiding it, so the sentence for a line the scene has lost, a picture
       // that never failed, a file no sync is waiting on, or a turn already running has to exist
@@ -548,6 +555,8 @@ describe('the desktop registry', () => {
       'agent.editLine',
       'agent.fixAsset',
       'agent.mergeConflict',
+      'agent.newThread',
+      'agent.openThread',
       // Hands the agent a stored conversation and writes nothing. A conversation recorded through
       // another vendor cannot be continued at all, so the Continue button is greyed with the
       // sentence saying which vendor it wants.

@@ -28,6 +28,7 @@ import { openGit } from '@vn/git';
 import { ProjectPaths, readShots, writeShots } from '@vn/store';
 import type { Shot, ShotsFile } from '@vn/types';
 import { nativeFile, readNative } from '../notify/threads.js';
+import { BUSY_AGENT } from '../../shared/ipc.js';
 import type { AskQuestion, Plan, PlanDecision } from '../../shared/ipc.js';
 import { WorkspaceSession, type SessionDeps } from '../session.js';
 import { setChoice, setNext, spliceScene } from '@vn/scriptedit';
@@ -2210,6 +2211,24 @@ describe('WorkspaceSession — conversation threads', () => {
     await session.runAgent('second');
     const { threads } = await session.threads();
     expect(threads.map((t) => t.title)).toEqual(['second', 'first']);
+  });
+
+  // A turn parked on a question stands in for the real one, whose card closing the conversation
+  // removed, leaving the session busy until restart
+  it('refuses to close the conversation while a turn is running', async () => {
+    const session = sessionFor(p);
+    let finish = (): void => {};
+    const turn = session.while(
+      BUSY_AGENT,
+      () => new Promise<void>((resolve) => (finish = resolve)),
+    );
+    expect(session.clearRefusal()).toMatch(/still in a turn/);
+    await expect(session.clearAgent()).rejects.toThrow(/still in a turn/);
+
+    finish();
+    await turn;
+    expect(session.clearRefusal()).toBeUndefined();
+    await expect(session.clearAgent()).resolves.toBeUndefined();
   });
 
   // This case builds its own project, because every other test here works without a repo and

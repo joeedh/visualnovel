@@ -264,11 +264,24 @@ export class AgentPart {
   }
 
   /**
+   * Why the conversation cannot be closed now, or `undefined`. Closing it under a running turn
+   * drops the card for any question or plan the turn is waiting on, so the turn never ends and the
+   * session stays busy until the app restarts.
+   */
+  clearRefusal(): string | undefined {
+    return this.session.running(BUSY_AGENT)
+      ? 'The agent is still in a turn. Let it finish, or stop it, first.'
+      : undefined;
+  }
+
+  /**
    * Start over. The thread is closed rather than deleted — a conversation that happened stays on
    * disk, and the next turn opens a new one — and it is committed on the way out, so that what
    * stays on disk also stays in history.
    */
   async clearAgent(): Promise<void> {
+    const refusal = this.clearRefusal();
+    if (refusal) throw new Error(refusal);
     (await this.session.ensureAgent()).clear();
     await this.session.writes;
     await this.commitThread();
