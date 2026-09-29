@@ -3,6 +3,7 @@
 <!-- toc -->
 
 - [Summary](#summary)
+- [Decisions](#decisions)
 - [What exists today](#what-exists-today)
     - [Commands and rules that delete](#commands-and-rules-that-delete)
     - [Reachability of the existing deletes](#reachability-of-the-existing-deletes)
@@ -40,8 +41,9 @@ A survey of the options for deleting project entities from the desktop app and f
 `vnauthor`, written before any plan. It records what deletion support exists today, what
 references each kind of entity, how the command system, undo, git and the
 content-addressed stores constrain a delete, and four candidate designs with their
-trade-offs. It ends with the questions the owner has to answer before a plan is written.
-Nothing here is a decision.
+trade-offs. The owner answered every open question on 2026-09-29, and the answers are
+recorded under [Decisions](#decisions), which is what a plan should start from. The
+sections after it are the survey the decisions were made from.
 
 Every claim about the code is cited as `path:line` against the `todos` worktree as of
 2026-09-20.
@@ -70,6 +72,229 @@ Every claim about the code is cited as `path:line` against the `todos` worktree 
   naming a deleted location gets a mined stand-in with an empty description and a new
   plate hash; a branch edge to a deleted scene is an error. Only the branch edge is fatal.
 
+## Decisions
+
+Recorded 2026-09-29 by the owner.
+
+- **Deleting a location asks for confirmation.** The delete re-keys every plate under the
+  location and, one wave later, every shot in every scene set there, so the next run
+  re-renders them. `location.delete` is `confirm: true`, and its check names the scenes
+  and the count of shots that will re-render. This follows `project.setArtStyle`, which
+  confirms because it reaches every image, rather than `story.setHeading`, which only
+  shows the cost in its check.
+- **Derived state is cleaned up, and the agent may run the cleanup.** Orphaned takes,
+  manifest rows and task records are removed by a collector rather than kept forever. The
+  agent gets a tool that runs it.
+- **The agent asks the author before any tool call that deletes a file.** Plan approval
+  alone is not enough; the author confirms each deleting call on the desktop's
+  confirmation card, even inside an approved plan.
+    - A tool that always deletes, such as the collector, sets `confirm: true`, which
+      routes every call through `Permission.confirmAction`
+      (`packages/authoring/src/loop.ts:1040`).
+    - `Tool.confirm` is one boolean per tool (`packages/authoring/src/tools/core.ts:145`),
+      so a tool where only some ops delete asks per call through `ctx.confirm(message)`
+      instead, as `run_skill` does (`loop.ts:573`).
+    - This changes two shipped ops. `edit_scene op=deleteScene` and `op=deleteShot` (when
+      it removes the last shot's file) delete files on plan approval alone today
+      (`packages/authoring/src/tools/scenes.ts:287`, `:348`).
+- **The author runs the collector as a command.** `pipeline.run` does not call it, so a
+  run never removes bytes on its own.
+- **The collector does not check other projects. A project that loses a referenced asset
+  finds out after a pull and resolves it like a conflict.** When `assets/` is its own
+  repository and several projects use it, one project's collector removes what that
+  project no longer references, commits in the `assets/` repository, and pushes as usual.
+    - After another project pulls that repository, each asset it still references but no
+      longer has is listed, one row per asset, in the manner of the History pane's
+      conflict view (`../reference/history-pane.md`, "The conflict view").
+    - For each row the author chooses between two actions. **Restore** checks the file and
+      its manifest row out of the commit before the deletion, re-appends the task's last
+      `done` record (see the undo decision below), and commits them in the `assets/`
+      repository. **Remove references** deletes the project's references to the asset with
+      the same rules an entity delete uses; for an asset that is a task's output, that
+      tombstones the task, so the next run renders it again.
+    - Git itself reports no conflict here, because a file deleted upstream and untouched
+      locally merges cleanly. The check has to be the app's own, run after a pull.
+    - **The shared repository keeps a ledger of claimed assets.** Restore adds the asset's
+      hash to the ledger under the restoring project's name, and the collector never
+      removes a hash another project has claimed. Without it, the project that first
+      collected the asset would collect it again on its next run, because it still does
+      not reference it. A project's claim is released when that project's own collector
+      finds it no longer references the asset; the hash is then collectable by whichever
+      project collects next. The ledger's file and format are the plan's to set.
+    - **An in-app pull pulls the project and the nested `assets/` repository together.**
+    - **The app runs the check after its own pull, and when it detects that a pull ran
+      outside it.** A terminal `git pull` bypasses `git.pull`, so the app has to notice
+      the change itself. Nothing in the app watches a repository's `HEAD` today. The app
+      records the `HEAD` the check last ran against, per repository, and re-runs the check
+      whenever the current `HEAD` differs, both on project open and on window focus. That
+      also catches a checkout or reset that removed assets, not only a pull.
+    - Restore needs the bytes to be in the `assets/` repository's history. If
+      `assets/objects` is not committed, only Remove references is available.
+- **There is no soft delete.** Undo and the delete's commit restore the deleted file and
+  its reference rewrites together; a trash would restore only the file.
+- **A delete in a project the app does not commit in warns in its check and confirms.**
+  Commit-on-save is not an author setting. The desktop app commits in every repository the
+  project owns, and declines only when the project sits inside a larger repository it does
+  not own (`owned: false`, `../reference/repos-and-commits.md`), because staging with
+  `git add -A` there would commit unrelated files. A delete there is recoverable only by
+  undo, and only until the app closes. The check says so, and the delete asks for
+  confirmation, even for a kind that does not otherwise confirm.
+- **An entity delete removes the entity's `vngen/work` folder in the same command.**
+    - `vngen/work/characters/<id>/` holds only `approved.png`, a copy of the approved
+      portrait for people to look at (`writeApprovedPortrait`, called from
+      `packages/store/src/assetstore.ts:443`). The manifest and the sheet are the
+      authority, the portrait's bytes stay in the asset store for the collector to decide,
+      and nothing reads the copy.
+    - Nothing writes `vngen/work/locations/<id>/` today; the delete removes it if an older
+      project has one.
+    - Leaving the folder would give a later character with the same id a stale
+      `approved.png`. The collector works on manifest rows, tasks and blobs, not on
+      folders named by an entity id, so it is not the place for this.
+    - Undo does not restore `approved.png`, because it is media. After undoing a character
+      delete, the copy is missing until the portrait is approved again, which is cosmetic
+      because nothing reads it.
+    - Separately, `writeBreakdown` (`packages/store/src/worktree.ts:78`), `outfitSheetDir`
+      and `locationRefsDir` (`packages/store/src/paths.ts:113`, `:119`) have no callers
+      and look like dead code.
+- **Threads and notifications are not references.** The delete's check does not scan them.
+  A notification whose target is gone already reports that its link went nowhere
+  (`notify.ts:127`), and a thread is a transcript of what was said, which a delete must
+  not rewrite.
+- **The document tree's right-click menu offers Delete.** This reverses the decision
+  recorded in `../reference/document-tree.md` ("Deliberately absent"), which keeps Delete
+  out for two reasons, both answered above: undo cannot restore what its snapshot skips
+  (the delete's commit and the missing-asset check cover that), and deleting a sheet
+  removes an entity (each entity kind now has a delete command that rewrites the
+  references).
+    - Each row's Delete runs the delete command for the row's kind, as a `form: true`
+      entry so its props and check are shown first, as `gengraph.delete` already is on
+      graph rows (`apps/desktop/renderer/pathux/doctree/doctree.ts:528`).
+    - `../reference/document-tree.md` is updated to match when the menu entries ship.
+    - Still open for the plan: what Delete does on a plain file or folder that is not an
+      entity (a command like `doc.move`, confined to the same folders), and whether Delete
+      applies to a multiselection.
+- **Undo or revert after a collection is resolved like a pull.** Undoing a delete, or
+  reverting its commit, after the collector has run can bring back references to images
+  the collector removed: a restored sheet's `approved_portrait:`, storyboard subjects,
+  pins. The next run would then fail reading them (`planner.ts:353` makes the approved
+  portrait a reference of every shot casting the character).
+    - After an undo, a revert or a checkout, the missing-asset check lists each missing
+      image with the same two actions as after a pull: Restore from git, or Remove
+      references. One mechanism covers undo, revert and pull.
+    - Restore also re-appends each restored image's task's last `done` record, copied from
+      earlier in `tasks.jsonl`, so the tombstone is superseded and the planner reuses the
+      image instead of paying for it again. This restates a record the log already holds,
+      for bytes that exist again, so it is not the forged `done` the contracts doc warns
+      about. Still open for the plan: whether the copy keeps its original timestamp or
+      gets a new one and a marker saying it was restored.
+    - Restore works only for images committed to git. `vngen/` is committed in a real
+      project, which covers `vngen/build/assets` and the graph blobs under
+      `vngen/state/graphs/`; `assets/objects` depends on how the `assets/` repository is
+      set up. When the images the collector would remove are not committed, its check says
+      that they cannot be restored afterwards.
+    - Rejected: skipping hashes a live undo snapshot references, because it protects only
+      the session and not a later `git revert` (it may still be added to save a prompt);
+      and clearing the undo history on collection, because it discards undo for unrelated
+      edits.
+- **A validation tool reports every reference that would fail a run or a read.** It is
+  non-mutating, so it is usable in plan mode, after the collector command, and after a
+  pull, where it is what finds the missing assets above.
+    - Proposed checks:
+        - Every `done` record's `output` has a file in one of the two roots.
+        - Every manifest row has its file, and every file under a root has a manifest row.
+        - Every `approved_portrait:`, `Shot.image`, `ChunkRef.pin` and `Asset.refs` entry
+          resolves to a manifest row.
+        - No slot has two current rows (the state `repairCurrent` fixes at the start of a
+          run).
+- **The collector appends tombstones to `tasks.jsonl`.**
+    - A tombstone is one appended line naming a task hash and marking it removed (for
+      example `{ "hash": "…", "removed": true }`; the exact fields are the plan's to set).
+    - `loadGraph` (`packages/taskgraph/src/log.ts:18`) is the only reader of the file.
+      When the last record for a hash is a tombstone, it leaves that task out of the
+      graph.
+    - A later record for the same hash supersedes the tombstone under last-writer-wins.
+      That is what happens when a deleted input is restored: the planner plans the task
+      again as `pending`, and the scheduler re-renders it, which is correct because its
+      bytes are gone.
+    - The collector writes a tombstone for every task whose output it removes, and for the
+      `failed` and `needs_human` records of orphaned tasks, which have no bytes. This also
+      stops `vngen status` counting a deleted scene's failed shots forever.
+    - Order within one collection: tombstones first, then both manifests, then the files.
+      A crash after the tombstones leaves only unreferenced files on disk, which the next
+      collection removes. Any other order can leave a `done` record naming a missing file,
+      which fails the next run (`planner.ts:228`).
+    - Rejected: leaving the log alone, because nothing a `done` record names could then be
+      collected. Appending a `pending` record per collected output (the shape the requeue
+      at `apps/desktop/src/main/session/asset.ts:470` already writes), because orphaned
+      tasks would then show as outstanding work in `vngen status` and the Task Graph pane.
+      Rewriting the file in place, because it breaks the log's append-only contract and
+      would lose a record appended by a concurrent run; no lock covers a whole project run
+      today.
+    - Deferred: a separate compaction step that rewrites the log without tombstoned
+      records, to shrink the file. It needs a guard against a concurrent run, and the
+      collector does not depend on it.
+- **Gen-graph journals are left as they are; the collector removes blobs.** A graph's
+  journal is `vngen/state/graphs/<slug>.jsonl` and its blobs sit in
+  `vngen/state/graphs/<slug>/` (`packages/gengraph/src/paths.ts:36`, `:45`). A graph's
+  final picture is an ordinary asset with a `tasks.jsonl` record, so the rules above cover
+  it.
+    - No tombstones are needed. Both of the executor's resume paths check that a recorded
+      answer's pictures are still in their stores before reusing it (`bytesExist`,
+      `packages/gengraph/src/execute.ts:150`, `:181`), so a node whose picture was
+      collected runs again instead of failing.
+    - The collector always removes the journal and blob folder of a graph whose document
+      is gone (`gengraph.delete` leaves both), and any blob no journal record names.
+    - Blobs named only by superseded `done` records are removed only when the author asks
+      for it as a separate choice. Keeping them lets a node whose inputs return to an
+      earlier state reuse the earlier picture for free; removing them means paying again.
+    - Rejected: appending `invalidated` records for collected nodes, because that record
+      retires every earlier answer of the node, including ones whose pictures survive; and
+      a new per-answer tombstone, because nothing needs one for correctness.
+    - Removing a deleted graph's journal changes what undoing that delete does later: the
+      restored graph has no history and re-runs every spending node, unless Restore brings
+      the journal and blobs back from git (see the undo decision above).
+- **A delete removes the references to what it deletes, rather than refusing on them.**
+  The workspace is in git, so a rewritten reference is recoverable. Every reference kind
+  already has a command that edits it, so each delete composes existing rules.
+    - Removed without asking, because nothing authored is lost:
+        - `[[outfit:]]` markers naming a deleted character (`story.setSceneOutfit` with an
+          empty outfit).
+        - The character in a shot's subjects (`story.setSubjects`); a shot left with
+          nobody in it becomes a background plate.
+        - Prompt pins naming the entity or its art (`prompt.removeRef`).
+        - `Shot.location` variants of a deleted location, reset to the default
+          (`story.setVariant`).
+        - `approved_portrait:` and `Shot.image` naming a deleted take.
+        - `start:` naming a deleted scene, moved to that scene's `next`.
+    - References that carry authored meaning are chosen by props on the delete command,
+      with defaults where one is safe:
+        - A character's dialogue lines: `lines='narrate' | 'delete' | 'merge'`, with
+          `mergeInto` naming the character who takes them (`story.setSpeaker`,
+          `story.deleteLines`).
+        - Scene headings naming a deleted location: `replaceWith` names the location that
+          takes its place (`story.setHeading`).
+        - Branch edges into a deleted scene: `edges='bypass' | 'cut'`. Bypass points each
+          predecessor and choice at the deleted scene's own `next`; cut clears or removes
+          them (`story.setNext`, `story.setChoice`, `story.removeChoice`).
+        - Defaults: dialogue becomes narration (`lines='narrate'`), which keeps the words.
+          A location delete has no default and refuses without `replaceWith` while any
+          scene is set there, rather than letting the model build mine a stand-in with an
+          empty description. Branch edges default to `bypass`.
+    - The check lists every rewrite and prices the re-renders before anything runs.
+      Changing a shot's subjects, a heading, an outfit or a pin changes that shot's task
+      hash, so the next run draws it again.
+    - Mentions in prose and in the wiki are plain text. The check lists them for the
+      author or the agent to rewrite, as `story.setHeading` already does for the prose a
+      move leaves behind.
+    - Every rewritten reference is in a document undo snapshots: `scenes/*.md`,
+      `vngen/work/shots/*.json`, and the character and location sheets, which carry the
+      other prompt overrides (`packages/types/src/entities.ts:64`, `:108`, `:125`,
+      `:294`). A delete and its rewrites are therefore one undo step and one commit.
+    - The agent's route is different. Its delete tool removes the references that need no
+      decision and refuses, by name, while any reference that needs one remains. In
+      `vnauthor`, the agent plans those rewrites and the delete together as one approved
+      plan, so the author sees each rewrite in the plan's `files[]` before approving.
+
 ## What exists today
 
 ### Commands and rules that delete
@@ -81,7 +306,7 @@ Every claim about the code is cited as `path:line` against the `todos` worktree 
 | `story.deleteShot`                                                  | one shot from `work/shots/<scene>.json`; the file itself when it was the last shot                                      | no such shot                                                      | yes  | no      | `story.ts:610`, rule at `packages/scriptedit/src/shotcreate.ts:216`                             |
 | `story.deleteLine`                                                  | one line; its id is retired and never reused                                                                            | see `lineops.ts:257`                                              | yes  | no      | `story.ts:316`                                                                                  |
 | `story.removeChoice`                                                | one `[[choice:]]` marker line                                                                                           | no such index                                                     | yes  | no      | `story.ts:188`, rule at `packages/scriptedit/src/branchops.ts:72`                               |
-| `gengraph.delete`                                                   | `vngen/work/graphs/<slug>.json`; the journal and blobs under `vngen/state/graphs/<slug>/` stay                          | no such graph                                                     | yes  | yes     | `apps/desktop/src/main/commands/gengraph.ts:354`, `packages/gengraph/src/document.ts:116`       |
+| `gengraph.delete`                                                   | `vngen/work/graphs/<slug>.json`; the journal `vngen/state/graphs/<slug>.jsonl` and the blobs beside it stay             | no such graph                                                     | yes  | yes     | `apps/desktop/src/main/commands/gengraph.ts:354`, `packages/gengraph/src/document.ts:116`       |
 | `gengraph.removeNode`, `gengraph.unlink`, `gengraph.removeBoundary` | one node, link or group socket inside a graph                                                                           | structural edit inside a group instance                           | yes  | no      | `gengraph.ts:446`, `:525`, `:1080`                                                              |
 | `prompt.removeRef`                                                  | one pinned reference from a prompt clause                                                                               |                                                                   | yes  | no      | `apps/desktop/src/main/commands/prompt.ts:229`                                                  |
 | `asset.unapprove`                                                   | approval only: `status:`/`approved_portrait:` on the sheet, `approved.png`, or the manifest `accepted` flag; bytes stay | see `previewUnapprove`                                            | no   | yes     | `apps/desktop/src/main/commands/asset.ts:158`, `packages/store/src/worktree.ts:132`             |
@@ -177,11 +402,11 @@ at the root; `vngen/work/` is human-editable generated state; `vngen/build/` and
   (`slotaddr.ts:20`); manifest rows through `satisfies[].characterId`;
   `Character.approvedPortrait` written into the sheet's own front matter as
   `approved_portrait:` (`packages/store/src/worktree.ts:119`);
-  `vngen/work/characters/<id>/{candidates,approved.png,outfits}` (`paths.ts:107`);
-  portrait, sheet and shot tasks in `tasks.jsonl` (a shot's inputs embed the portrait
-  hash, `packages/pipeline/src/planner.ts:353`); prompt-clause pins whose `from` binding
-  names the character (`packages/types/src/prompt.ts:114`); wiki prose by mention only
-  (there is no wiki-link syntax; `[[…]]` in this project is a Fountain marker vocabulary,
+  `vngen/work/characters/<id>/approved.png` (`paths.ts:110`); portrait, sheet and shot
+  tasks in `tasks.jsonl` (a shot's inputs embed the portrait hash,
+  `packages/pipeline/src/planner.ts:353`); prompt-clause pins whose `from` binding names
+  the character (`packages/types/src/prompt.ts:114`); wiki prose by mention only (there is
+  no wiki-link syntax; `[[…]]` in this project is a Fountain marker vocabulary,
   `packages/model/src/scenes.ts:160`, and the bible index is an in-memory walk rebuilt per
   open, `packages/bible/src/indexer.ts:85`).
 - On a dangling reference: `unknown_character` is a `warning` and the cue is dropped from
@@ -245,8 +470,8 @@ at the root; `vngen/work/` is human-editable generated state; `vngen/build/` and
 - Referenced by: the slot each Output node binds (`gen-graphs.md`, "Slots and outputs"),
   reported on tree rows as `boundGraph`; group definitions under
   `vngen/work/graphs/lib/<ref>.json` referenced by every graph that instantiates them; the
-  journal and blobs under `vngen/state/graphs/<slug>/`
-  (`packages/gengraph/src/paths.ts:30`, `blobs.ts:10`).
+  journal `vngen/state/graphs/<slug>.jsonl` and the blobs under
+  `vngen/state/graphs/<slug>/` (`packages/gengraph/src/paths.ts:30`, `blobs.ts:10`).
 - On removal (already shipped): the slot falls back to the planner's default path; the
   journal stays. Deleting a group definition that instances still reference is not covered
   by any command today.
@@ -572,7 +797,7 @@ Two sub-shapes:
 | Wiki page        | `wiki/**/*.md`, possibly its own repo                                                                | nothing structural (search only)                                                                                                                  | (d)        | No references to refuse on and no derived state to collect. A tagged page is an entity and takes that entity's option instead.                                                                                                                                                                   |
 | Asset take       | `assets/objects/` or `vngen/build/assets/` plus a manifest row                                       | `Asset.refs`, task `refs`, `approved_portrait:`, `Shot.image`, pins, the other root's copy, journals                                              | (d)        | Removing one take is what the collector does with a reference walk; doing it per take by hand needs the same walk plus a refcount, which is (a). `asset.unapprove` already covers "stop using this take" without removing it.                                                                    |
 | Asset slot       | an address; takes as above                                                                           | the model (it exists while implied)                                                                                                               | none       | A slot cannot be deleted directly; it disappears when the entity or shot implying it does. "Delete all takes of a slot" is the collector scoped to one address.                                                                                                                                  |
-| Gen graph        | `vngen/work/graphs/<slug>.json`; journal under `vngen/state/graphs/<slug>/`                          | the slot it binds; group definitions it instantiates                                                                                              | (d)        | Shipped. A group definition in `lib/` with live instances is the one unhandled case and fits (c).                                                                                                                                                                                                |
+| Gen graph        | `vngen/work/graphs/<slug>.json`; journal `vngen/state/graphs/<slug>.jsonl`                           | the slot it binds; group definitions it instantiates                                                                                              | (d)        | Shipped. A group definition in `lib/` with live instances is the one unhandled case and fits (c).                                                                                                                                                                                                |
 | Thread           | `vngen/state/threads/<id>.jsonl`, `<id>.native.jsonl`                                                | notification links (tolerated), `commands.jsonl` records (kept)                                                                                   | (d) or (b) | Outside undo either way. A `hidden` flag mirrors `notify.hide` and keeps the transcript for review skills; a file delete is a `notify.deleteAll`-shaped confirm command.                                                                                                                         |
 | Notification     | rows in `vngen/state/notifications.jsonl`                                                            | nothing                                                                                                                                           | (b)        | Shipped as `notify.hide`/`notify.deleteAll`.                                                                                                                                                                                                                                                     |
 | Skill            | `.aiagent/skills/<id>/` (project), or user/builtin tiers                                             | `project.yaml` builtin list; the agent's `discover_skills`                                                                                        | (d)        | A directory delete; the tree's Skills branch and `project.yaml` re-read. The user and builtin tiers are outside the workspace and take `plugin.remove`'s shape.                                                                                                                                  |
@@ -581,48 +806,6 @@ Two sub-shapes:
 
 ## Open questions for the owner
 
-- **Which references count as blocking?** `story.deleteScene` refuses on what the model
-  build reports as an `error`. For a character, the build reports a `warning` and drops
-  the cue. Refusing on warnings means most characters cannot be deleted without editing
-  prose first; not refusing means the planner silently skips their shots. Is the check's
-  note (cost shown, delete allowed) enough, as `story.setHeading` decided for its
-  restaging cost?
-- **Should deleting a location be allowed to re-key every shot set there without a
-  confirmation?** Today nothing in the model reports it. `story.setHeading` shows the cost
-  in its check rather than confirming; `project.setArtStyle` confirms because it reaches
-  every image. Which precedent applies?
-- **Is derived state ever removed, and by what?** Keeping orphans is free and is the
-  current policy for shots and graphs. If a collector is wanted, is it a command an author
-  runs, a step inside `pipeline.run`, or a CLI-only tool? Does the agent get it?
-- **Does the collector rewrite `tasks.jsonl`, append tombstones, or leave it alone and
-  only remove bytes and manifest rows?** Leaving it alone breaks the planner at
-  `planner.ts:229` for any collected hash a surviving task references, so "leave it alone"
-  only works if the reachability rule is "referenced by any record in the log", which
-  collects almost nothing.
-- **Soft delete for entities: flag, move, or tag removal?** Tag removal is the only shape
-  that needs no new reader logic (the sheet becomes a note), but it also means the file
-  keeps its path and its `id:`, and re-adding the tag is the restore. Is that acceptable,
-  or is a visible `trash/` wanted?
-- **Which deletes does the agent get, and at which bar?** `edit_scene op=deleteScene` runs
-  on plan approval alone. Options are: the same for every entity; `confirm: true` for
-  entities and takes; or the `approve_assets` three-check shape for anything that removes
-  paid-for art. The desktop's `requestConfirm` card and the triage model both exist.
-- **Should a delete appear in the document tree's right-click menu?** `document-tree.md`
-  lists it as deliberately absent, and the branch editor and timeline own the two shipped
-  deletes. Adding "Delete…" as a `form: true` entry (as `gengraph.delete` already is on
-  graph rows) is one line per kind in `menuFor`, but it reverses a recorded decision.
-- **What happens to `work/characters/<id>/` and `work/locations/<id>/` on an entity
-  delete?** They hold candidate PNGs, `approved.png` and breakdowns; they are generated,
-  under `vngen/work` (snapshotted as text, but the PNGs are media and are not restored).
-  Delete with the sheet, leave for the collector, or leave forever?
-- **Do threads and notifications count as references?** They mention ids as text. Scanning
-  them for the report is cheap; refusing on them is unworkable; showing them is a choice.
-- **Is a purge ever undoable, and what does undo mean after a collector runs?** Undo of a
-  delete restores the file; the file's tasks resurrect by hash only if their bytes
-  survived. Should the collector refuse while any snapshot in the undo journal still
-  references a hash it would collect, or should undo report the missing bytes as it
-  reports a missing snapshot?
-- **Does `assets/` as its own repository change the answer for takes?** A base-root delete
-  is a commit in a repository that may be shared between projects; a collector run from
-  one project could remove a plate another project's manifest names. Is sharing a real
-  use, or is the second repository only a provenance boundary?
+None. Every question the survey raised was answered on 2026-09-29 and is recorded under
+[Decisions](#decisions). The details those decisions leave to the plan are marked "the
+plan's to set" or "still open for the plan" where they arise.
