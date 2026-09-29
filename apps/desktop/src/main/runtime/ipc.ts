@@ -6,6 +6,7 @@ import { BrowserWindow, ipcMain } from 'electron';
 import type { AppContext } from './context.js';
 import { getSession } from './sessionaccess.js';
 import { getStack, withVersions } from './stack.js';
+import { execOptions } from './execoptions.js';
 import { catalogOf } from '../commands/catalog-entry.js';
 import { notifications } from '../notify/notifications.js';
 import { APPROVAL_ORDER_KEY } from '../../shared/sessionkeys.js';
@@ -78,18 +79,18 @@ export function registerIpc(ctx: AppContext): void {
   handle(ctx, 'command:catalog', () => catalogOf(ctx.registry));
   handle(ctx, 'command:exec', async (origin, request) => {
     const source = request.source ?? 'ui';
+    const options = execOptions(origin, request);
     if (request.dsl !== undefined) {
-      return withVersions(
-        await getStack(ctx).execDsl(request.dsl, source, origin, request.checkpoint),
-      );
+      return withVersions(await getStack(ctx).execDsl(request.dsl, source, options));
     }
     if (request.id === undefined) {
       return { ok: false as const, error: 'command:exec needs an id or a dsl' };
     }
-    return withVersions(
-      await getStack(ctx).exec(request.id, request.props ?? {}, source, origin, request.checkpoint),
-    );
+    return withVersions(await getStack(ctx).exec(request.id, request.props ?? {}, source, options));
   });
+  handle(ctx, 'command:confirm', (_origin, payload) =>
+    ctx.pendingCommandConfirms.answer(payload.id, payload.allowed),
+  );
   handle(ctx, 'command:check', (origin, request) =>
     getStack(ctx).check(request.id, request.props ?? {}, origin),
   );

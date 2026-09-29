@@ -74,7 +74,7 @@ describe('ctx.origin', () => {
 
   it('reaches run and check as the caller gave it', async () => {
     const { stack, host } = setup();
-    const outcome = await stack.exec('demo.slow', { tag: 'a' }, 'ui', 3);
+    const outcome = await stack.exec('demo.slow', { tag: 'a' }, 'ui', { origin: 3 });
     expect(outcome).toMatchObject({ ok: true, data: { before: 3, after: 3 } });
 
     await stack.check('demo.slow', { tag: 'a' }, 7);
@@ -84,7 +84,7 @@ describe('ctx.origin', () => {
 
   it('survives the DSL path too, which is what CDP and the palette use', async () => {
     const { stack } = setup();
-    const outcome = await stack.execDsl("demo.slow(tag='a')", 'cdp', 2);
+    const outcome = await stack.execDsl("demo.slow(tag='a')", 'cdp', { origin: 2 });
     expect(outcome).toMatchObject({ ok: true, data: { before: 2, after: 2 } });
   });
 
@@ -94,8 +94,8 @@ describe('ctx.origin', () => {
     host.gate = new Promise<void>((ok) => (release = () => ok()));
 
     // Window 1's command parks inside `run`; window 2's goes through underneath it.
-    const first = stack.exec('demo.slow', { tag: 'first' }, 'ui', 1);
-    const second = stack.exec('demo.slow', { tag: 'second' }, 'ui', 2);
+    const first = stack.exec('demo.slow', { tag: 'first' }, 'ui', { origin: 1 });
+    const second = stack.exec('demo.slow', { tag: 'second' }, 'ui', { origin: 2 });
     release();
 
     expect(await first).toMatchObject({ data: { before: 1, after: 1 } });
@@ -104,7 +104,7 @@ describe('ctx.origin', () => {
 
   it('leaves the shared context untouched, so nothing else can read it by accident', async () => {
     const { stack, context } = setup();
-    await stack.exec('demo.slow', { tag: 'a' }, 'ui', 5);
+    await stack.exec('demo.slow', { tag: 'a' }, 'ui', { origin: 5 });
     expect(context.origin).toBeUndefined();
   });
 });

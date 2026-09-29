@@ -235,7 +235,13 @@ export type UiEffect =
    * by a second turn between the failure and the question. `message` is the provider's own
    * sentence, shown on the dialog so it says why it opened.
    */
-  | { type: 'agent'; action: 'diagnose'; thread?: string; message: string };
+  | { type: 'agent'; action: 'diagnose'; thread?: string; message: string }
+  /**
+   * A command asks the author before it runs. Sent to the window that ran it; the answer goes back
+   * over `command:confirm` with the same `id`. `title` names the command, and labels the button
+   * that says yes.
+   */
+  | { type: 'confirm'; id: number; sentence: string; title: string };
 
 /** Either form of invocation accepted over `command:exec`: structured, or a DSL string. */
 export interface CommandExecRequest {
@@ -245,12 +251,16 @@ export interface CommandExecRequest {
   source?: CommandSource;
   /** Routes a mutating command onto an open checkpoint's own undo point — see `@vn/commands`. */
   checkpoint?: CheckpointHandle;
+  /** The caller already asked the author, as a form's second click does, so main does not ask. */
+  confirmed?: boolean;
 }
 
 /** A precondition's answer. Three states: absence of a check is `undeclared`, not `accept`. */
 export interface CommandCheck {
   state: 'accept' | 'refuse' | 'undeclared';
   message: string;
+  /** What running it now would ask the author first, when the command asks only in some states. */
+  confirm?: string;
 }
 
 export type {
@@ -1154,6 +1164,11 @@ export interface InvokeChannels {
   /** The live registry projection — never the generated file, so the two can't diverge. */
   'command:catalog': () => CommandCatalog;
   'command:exec': (request: CommandExecRequest) => ExecOutcome;
+  /**
+   * Yes or no to a `confirm` effect. A window that closes before answering counts as no. An
+   * answer to an id nothing is waiting on is ignored.
+   */
+  'command:confirm': (payload: { id: number; allowed: boolean }) => void;
   'command:history': (limit?: number) => CommandRecord[];
   /**
    * Reports whether an invocation would run. A read, never a gate — `command:exec` re-decides

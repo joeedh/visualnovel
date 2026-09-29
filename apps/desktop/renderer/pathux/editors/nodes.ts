@@ -775,7 +775,7 @@ export class GenGraphEditor extends VnEditor {
     const sync = this.syncFor(docPathFor(target));
     sync.inflight++;
     if (reload) sync.stale = true;
-    void exec(command.id, command.props, this.checkpoint).then((outcome) => {
+    void exec(command.id, command.props, { checkpoint: this.checkpoint }).then((outcome) => {
       sync.inflight--;
       if (outcome.ok) {
         // Every document the write produced a version of, the definition a group was created

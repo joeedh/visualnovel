@@ -325,9 +325,183 @@ describe('confirmation gate', () => {
     expect(yes.host.seen).toEqual(['guarded']);
 
     const no = setup({ confirm: () => Promise.resolve(false) });
-    expect(await no.stack.exec('demo.guarded', {}, 'ui')).toMatchObject({ ok: false });
+    expect(await no.stack.exec('demo.guarded', {}, 'ui')).toMatchObject({
+      ok   : false,
+      error: '"demo.guarded" was declined',
+    });
     expect(no.host.seen).toEqual([]);
     expect(no.stack.history()).toEqual([]);
+  });
+
+  it('asks with the fixed sentence, naming the command and the window that ran it', async () => {
+    const asked: unknown[] = [];
+    const { stack } = setup({
+      confirm: (message, about) => {
+        asked.push({ message, about });
+        return Promise.resolve(true);
+      },
+    });
+    await stack.exec('demo.guarded', {}, 'ui', { origin: 4 });
+    expect(asked).toEqual([{ message: 'Run Guarded?', about: { title: 'Guarded', origin: 4 } }]);
+  });
+
+  it('does not ask when the caller already confirmed', async () => {
+    const asked: string[] = [];
+    const { stack, host } = setup({
+      confirm: (message) => {
+        asked.push(message);
+        return Promise.resolve(false);
+      },
+    });
+    expect(await stack.exec('demo.guarded', {}, 'ui', { confirmed: true })).toMatchObject({
+      ok: true,
+    });
+    expect(asked).toEqual([]);
+    expect(host.seen).toEqual(['guarded']);
+  });
+
+  /** Asks only when `who` is `everyone`, the way a delete asks only in an uncommitted project. */
+  const sometimes = define({
+    id         : 'demo.sometimes',
+    title      : 'Sometimes',
+    description: 'Asks in one state only.',
+    mutating   : true,
+    props      : { who: prop.string('who to greet') },
+    confirmWhen(props, ctx) {
+      ctx.host.seen.push(`asked about ${props.who}`);
+      return Promise.resolve(props.who === 'everyone' ? 'Greet everyone at once?' : undefined);
+    },
+    run(props, ctx) {
+      ctx.host.seen.push(props.who);
+      return Promise.resolve({ message: 'ran' });
+    },
+  });
+
+  function sometimesSetup(answer: boolean) {
+    const asked: string[] = [];
+    const made = setup({
+      confirm: (message) => {
+        asked.push(message);
+        return Promise.resolve(answer);
+      },
+    });
+    made.registry.register(sometimes);
+    return { ...made, asked };
+  }
+
+  it('asks the confirmWhen sentence only when it returns one', async () => {
+    const { stack, host, asked } = sometimesSetup(true);
+    await stack.exec('demo.sometimes', { who: 'aiko' }, 'ui');
+    await stack.exec('demo.sometimes', { who: 'everyone' }, 'ui');
+    expect(asked).toEqual(['Greet everyone at once?']);
+    expect(host.seen).toEqual(['asked about aiko', 'aiko', 'asked about everyone', 'everyone']);
+  });
+
+  it('refuses a declined confirmWhen and records nothing', async () => {
+    const { stack, host, asked } = sometimesSetup(false);
+    expect(await stack.exec('demo.sometimes', { who: 'everyone' }, 'ui')).toMatchObject({
+      ok   : false,
+      error: '"demo.sometimes" was declined',
+    });
+    expect(asked).toHaveLength(1);
+    expect(host.seen).toEqual(['asked about everyone']);
+    expect(stack.history()).toEqual([]);
+  });
+
+  it('does not evaluate confirmWhen when the caller already confirmed', async () => {
+    const { stack, host, asked } = sometimesSetup(false);
+    await stack.exec('demo.sometimes', { who: 'everyone' }, 'ui', { confirmed: true });
+    expect(asked).toEqual([]);
+    expect(host.seen).toEqual(['everyone']);
+  });
+
+  it('refuses when confirmWhen throws, without running', async () => {
+    const { stack, host, registry } = setup({ confirm: () => Promise.resolve(true) });
+    registry.register(
+      define({
+        id         : 'demo.unsure',
+        title      : 'Unsure',
+        description: 'Cannot tell whether to ask.',
+        mutating   : true,
+        props      : {},
+        confirmWhen: () => Promise.reject(new Error('no repo list')),
+        run(_p, c) {
+          c.host.seen.push('unsure');
+          return Promise.resolve({ message: 'ran' });
+        },
+      }),
+    );
+    expect(await stack.exec('demo.unsure', {}, 'ui')).toMatchObject({
+      ok   : false,
+      error: 'could not decide whether "demo.unsure" needs confirmation: no repo list',
+    });
+    expect(host.seen).toEqual([]);
+  });
+
+  it('asks confirmWhen after the mutating command queued ahead of it has run', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const { stack, host, registry } = sometimesSetup(true);
+    registry.register(
+      define({
+        id         : 'demo.hold',
+        title      : 'Hold',
+        description: 'Holds the chain until released.',
+        mutating   : true,
+        props      : {},
+        async run(_p, c) {
+          await gate;
+          c.host.seen.push('held');
+          return { message: 'held' };
+        },
+      }),
+    );
+    const first = stack.exec('demo.hold', {}, 'ui');
+    const second = stack.exec('demo.sometimes', { who: 'everyone' }, 'ui');
+    await Promise.resolve();
+    expect(host.seen).toEqual([]);
+    release();
+    await Promise.all([first, second]);
+    expect(host.seen).toEqual(['held', 'asked about everyone', 'everyone']);
+  });
+
+  it('gives a question asked from inside run the command and its window', async () => {
+    const asked: unknown[] = [];
+    const { stack, registry } = setup({
+      confirm: (message, about) => {
+        asked.push({ message, about });
+        return Promise.resolve(true);
+      },
+    });
+    registry.register(
+      define({
+        id         : 'demo.inner',
+        title      : 'Inner',
+        description: 'Asks from inside run.',
+        mutating   : true,
+        props      : {},
+        async run(_p, c) {
+          await c.confirm?.('Install it?');
+          return { message: 'ran' };
+        },
+      }),
+    );
+    await stack.exec('demo.inner', {}, 'ui', { origin: 2, confirmed: true });
+    expect(asked).toEqual([{ message: 'Install it?', about: { title: 'Inner', origin: 2 } }]);
+  });
+
+  it('reports the confirmWhen sentence from check without asking', async () => {
+    const { stack, asked } = sometimesSetup(true);
+    expect(await stack.check('demo.sometimes', { who: 'everyone' })).toEqual({
+      state  : 'undeclared',
+      message: '"demo.sometimes" declares no precondition',
+      confirm: 'Greet everyone at once?',
+    });
+    expect(await stack.check('demo.sometimes', { who: 'aiko' })).toEqual({
+      state  : 'undeclared',
+      message: '"demo.sometimes" declares no precondition',
+    });
+    expect(asked).toEqual([]);
   });
 });
 
@@ -897,12 +1071,16 @@ describe('checkpoints', () => {
     const { stack, world, persisted } = checkpointSetup();
     const handle = await stack.beginCheckpoint('Delete nodes', 'Deleted 2 nodes', 'graphs');
 
-    expect(await stack.exec('demo.edit', { to: 'w1' }, 'ui', undefined, handle)).toMatchObject({
-      ok: true,
-    });
-    expect(await stack.exec('demo.edit', { to: 'w2' }, 'ui', undefined, handle)).toMatchObject({
-      ok: true,
-    });
+    expect(await stack.exec('demo.edit', { to: 'w1' }, 'ui', { checkpoint: handle })).toMatchObject(
+      {
+        ok: true,
+      },
+    );
+    expect(await stack.exec('demo.edit', { to: 'w2' }, 'ui', { checkpoint: handle })).toMatchObject(
+      {
+        ok: true,
+      },
+    );
     const closed = await stack.endCheckpoint(handle);
     expect(closed).toMatchObject({
       ok    : true,
@@ -931,11 +1109,11 @@ describe('checkpoints', () => {
     const { stack, world, persisted } = checkpointSetup();
     const handle = await stack.beginCheckpoint('Batch', 'A batch', 'graphs');
 
-    await stack.exec('demo.edit', { to: 'w1' }, 'ui', undefined, handle);
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui', { checkpoint: handle });
     // Dispatched without awaiting, the way `GenGraphEditor`'s selection loop does — both land on
     // the checkpoint's own tail in arrival order.
-    const failing = stack.exec('demo.editFails', { to: 'w2' }, 'ui', undefined, handle);
-    const queuedAfter = stack.exec('demo.edit', { to: 'w3' }, 'ui', undefined, handle);
+    const failing = stack.exec('demo.editFails', { to: 'w2' }, 'ui', { checkpoint: handle });
+    const queuedAfter = stack.exec('demo.edit', { to: 'w3' }, 'ui', { checkpoint: handle });
 
     expect(await failing).toMatchObject({ ok: false, error: 'boom' });
     expect(await queuedAfter).toMatchObject({
@@ -957,7 +1135,7 @@ describe('checkpoints', () => {
   it('fails and releases a checkpoint left open past its timeout', async () => {
     const { stack, world, timer, persisted } = checkpointSetup();
     const handle = await stack.beginCheckpoint('Batch', 'A batch', 'graphs');
-    await stack.exec('demo.edit', { to: 'w1' }, 'ui', undefined, handle);
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui', { checkpoint: handle });
     expect(timer.armedMs()).toBe(CHECKPOINT_TIMEOUT_MS);
 
     timer.fire();
@@ -981,16 +1159,20 @@ describe('checkpoints', () => {
 
   it('refuses a stale or absent checkpoint handle immediately', async () => {
     const { stack } = checkpointSetup();
-    expect(await stack.exec('demo.edit', { to: 'w1' }, 'ui', undefined, { seq: 999 })).toEqual({
-      ok   : false,
-      error: 'no open checkpoint 999',
-    });
+    expect(await stack.exec('demo.edit', { to: 'w1' }, 'ui', { checkpoint: { seq: 999 } })).toEqual(
+      {
+        ok   : false,
+        error: 'no open checkpoint 999',
+      },
+    );
 
     const handle = await stack.beginCheckpoint('Batch', 'A batch', 'graphs');
-    expect(await stack.exec('demo.edit', { to: 'w1' }, 'ui', undefined, { seq: 999 })).toEqual({
-      ok   : false,
-      error: 'no open checkpoint 999',
-    });
+    expect(await stack.exec('demo.edit', { to: 'w1' }, 'ui', { checkpoint: { seq: 999 } })).toEqual(
+      {
+        ok   : false,
+        error: 'no open checkpoint 999',
+      },
+    );
     await stack.endCheckpoint(handle);
   });
 
@@ -1013,7 +1195,7 @@ describe('checkpoints', () => {
   it('logs rather than refuses when an inner command writes outside the declared scope', async () => {
     const { stack, logs } = checkpointSetup();
     const handle = await stack.beginCheckpoint('Batch', 'A batch', 'graphs');
-    expect(await stack.exec('demo.outside', {}, 'ui', undefined, handle)).toMatchObject({
+    expect(await stack.exec('demo.outside', {}, 'ui', { checkpoint: handle })).toMatchObject({
       ok: true,
     });
     expect(logs.join()).toMatch(/wrote outside its scope: elsewhere\/file\.md/);
@@ -1032,7 +1214,7 @@ describe('checkpoints', () => {
   it('queues a no-handle mutating command behind an open checkpoint rather than interleaving it', async () => {
     const { stack, world } = checkpointSetup();
     const handle = await stack.beginCheckpoint('Batch', 'A batch', 'graphs');
-    void stack.exec('demo.edit', { to: 'from-checkpoint' }, 'ui', undefined, handle);
+    void stack.exec('demo.edit', { to: 'from-checkpoint' }, 'ui', { checkpoint: handle });
 
     // No handle: this must not run until the checkpoint closes.
     const outside = stack.exec('demo.edit', { to: 'from-outside' }, 'ui');
@@ -1092,13 +1274,9 @@ describe('checkpoints, against a real UndoJournal', () => {
     const { dir, stack, cleanup } = await realCheckpointSetup();
     try {
       const handle = await stack.beginCheckpoint('Duplicate', 'Duplicated a node', 'graphs');
-      const written = await stack.exec(
-        'demo.writeGraph',
-        { text: '{"nodes":[1]}\n' },
-        'ui',
-        undefined,
-        handle,
-      );
+      const written = await stack.exec('demo.writeGraph', { text: '{"nodes":[1]}\n' }, 'ui', {
+        checkpoint: handle,
+      });
       expect(written).toMatchObject({ ok: true });
 
       const closed = await stack.endCheckpoint(handle);
@@ -1127,7 +1305,9 @@ describe('checkpoints, against a real UndoJournal', () => {
     const { stack, cleanup } = await realCheckpointSetup();
     try {
       const handle = await stack.beginCheckpoint('Duplicate', 'Duplicated a node', 'graphs');
-      await stack.exec('demo.writeGraph', { text: '{"nodes":[1]}\n' }, 'ui', undefined, handle);
+      await stack.exec('demo.writeGraph', { text: '{"nodes":[1]}\n' }, 'ui', {
+        checkpoint: handle,
+      });
       await stack.endCheckpoint(handle);
 
       const undone = await stack.undo();
@@ -1145,14 +1325,12 @@ describe('checkpoints, against a real UndoJournal', () => {
     const { dir, stack, cleanup } = await realCheckpointSetup();
     try {
       const handle = await stack.beginCheckpoint('Duplicate', 'Duplicated a node', 'graphs');
-      await stack.exec('demo.writeGraph', { text: '{"nodes":[1]}\n' }, 'ui', undefined, handle);
-      const failed = await stack.exec(
-        'demo.writeGraphFails',
-        { text: '{"nodes":[1,2]}\n' },
-        'ui',
-        undefined,
-        handle,
-      );
+      await stack.exec('demo.writeGraph', { text: '{"nodes":[1]}\n' }, 'ui', {
+        checkpoint: handle,
+      });
+      const failed = await stack.exec('demo.writeGraphFails', { text: '{"nodes":[1,2]}\n' }, 'ui', {
+        checkpoint: handle,
+      });
       expect(failed).toMatchObject({ ok: false, error: 'boom' });
 
       const outcome = await stack.endCheckpoint(handle);

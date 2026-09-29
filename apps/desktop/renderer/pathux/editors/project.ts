@@ -32,9 +32,9 @@ import type { Offer } from '../../rules/anchors.js';
  * Four fields are editable. The art style is the sentence every image prompt opens with, typed
  * into a box and written by Apply through `project.setArtStyle`. The three model ids are picked
  * from dropdowns whose every row runs the matching `project.set*Model*` command at once; the
- * image model's is `confirm: true` and says how many image tasks it re-keys before it writes,
- * while the text and vision models re-key nothing. The image params are read-only here because
- * changing them is a deliberate, file-level act.
+ * image model's is `confirm: true` and asks before it writes, because it changes what every later
+ * render costs, while the text and vision models write at once. The image params are read-only
+ * here because changing them is a deliberate, file-level act.
  *
  * The shot form and `bubble_names` are set from the settings card too: a two-row dropdown and a
  * checkbox, each writing its key the moment it is picked.
@@ -164,8 +164,8 @@ export class ProjectEditor extends VnEditor {
   }
 
   /**
-   * Write the box. `project.setArtStyle` is `confirm: true`, so the author is asked — with the
-   * count of image tasks it re-keys — before the file moves.
+   * Write the box. `project.setArtStyle` is `confirm: true`, so the author is asked before the
+   * file moves.
    */
   private async apply(): Promise<void> {
     if (!this.view || !this.dirty) return void this.note('no changes');
@@ -177,9 +177,9 @@ export class ProjectEditor extends VnEditor {
   }
 
   /**
-   * Write one picker row. `project.setImageModel` is `confirm: true`, so the author is asked with
-   * the count of image tasks it re-keys before the file moves; a refusal (no key for the vendor,
-   * the value the file already holds) lands in the note.
+   * Write one picker row. `project.setImageModel` is `confirm: true`, so the author is asked
+   * before the file moves; a refusal (no key for the vendor, the value the file already holds)
+   * lands in the note.
    */
   private async pickModel(id: string): Promise<void> {
     const outcome = await exec('project.setImageModel', { model: id });

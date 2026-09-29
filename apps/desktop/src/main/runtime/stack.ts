@@ -111,9 +111,7 @@ export function getStack(ctx: AppContext): CommandStack<CommandHost> {
         git,
         host,
         log    : (level, message) => ctx.broadcast('log', { level, message }),
-        // TODO(desktop): route through the renderer once a confirm dialog exists; until then a
-        // `confirm: true` command is reachable only from the UI's own affordances.
-        confirm: () => Promise.resolve(true),
+        confirm: (sentence, about) => ctx.confirmCommand(sentence, about),
       },
       // Undo still works where commit-on-save refuses: a snapshot is held in memory and writes
       // nobody's history, so a project nested in a larger repo is snapshotted like any other.

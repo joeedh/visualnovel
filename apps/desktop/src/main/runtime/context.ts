@@ -10,7 +10,7 @@
  * otherwise have to import each other.
  */
 import type { BrowserWindow } from 'electron';
-import { Committer, type CommandStack } from '@vn/commands';
+import { Committer, type CommandStack, type ConfirmAbout } from '@vn/commands';
 import type { CommandHost } from '../commands/index.js';
 import { createDesktopRegistry } from '../commands/index.js';
 import type { WorkspaceSession } from '../session.js';
@@ -18,7 +18,13 @@ import type { SessionState } from '../workspace/sessionstate.js';
 import type { InstanceLock } from '../bootstrap/instancelock.js';
 import { Pending, Windows, type WindowId, type WindowList } from './windows.js';
 import { workspaceScope } from '../../shared/sessionkeys.js';
-import type { EventChannel, EventChannels, PlanDecision, DocVersions } from '../../shared/ipc.js';
+import type {
+  EventChannel,
+  EventChannels,
+  PlanDecision,
+  DocVersions,
+  UiEffect,
+} from '../../shared/ipc.js';
 import { liveDocs } from '../workspace/livedocs.js';
 import type { RepoList } from '../workspace/repolist.js';
 
@@ -83,6 +89,8 @@ export class AppContext {
    */
   readonly pendingAsks = new Pending<string[]>([]);
   readonly pendingConfirms = new Pending<boolean>(false);
+  /** A command's own confirmation, which is not the agent's: it goes to the window that ran it. */
+  readonly pendingCommandConfirms = new Pending<boolean>(false);
 
   readonly registry = createDesktopRegistry();
 
@@ -145,6 +153,7 @@ export class AppContext {
     this.pendingPlans.abandon();
     this.pendingAsks.abandon();
     this.pendingConfirms.abandon();
+    this.pendingCommandConfirms.abandon();
   }
 
   /** One window closed. Only the turns parked on that window end; the others are still asked. */
@@ -152,6 +161,27 @@ export class AppContext {
     this.pendingPlans.by(id);
     this.pendingAsks.by(id);
     this.pendingConfirms.by(id);
+    this.pendingCommandConfirms.by(id);
+  }
+
+  /**
+   * Ask the window that ran a command to confirm it, and focus that window. With no window left to
+   * ask, the answer is no. Falls back to the focused window like any other targeted push.
+   */
+  confirmCommand(sentence: string, about?: ConfirmAbout): Promise<boolean> {
+    const target = this.windowFor(about?.origin);
+    if (!target) return Promise.resolve(false);
+    const id = this.windows.byHandle(target);
+    target.focus();
+    return this.pendingCommandConfirms.ask((requestId) => {
+      const effect: UiEffect = {
+        type: 'confirm',
+        id  : requestId,
+        sentence,
+        title: about?.title ?? 'Continue',
+      };
+      target.webContents.send('command:ui', effect);
+    }, id);
   }
 
   /**

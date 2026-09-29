@@ -49,8 +49,7 @@ export function imageModelRows(
 
 /**
  * The image-model picker's button. Each row runs `project.setImageModel` for its id, which is
- * `confirm: true`, so the author is asked with the count of image tasks it re-keys before the
- * file moves.
+ * `confirm: true`, so the author is asked before the file moves.
  */
 export function imageModelAction(opened: boolean, imageModel: string): Offer {
   const control = {
@@ -107,8 +106,8 @@ export function toggledVisionModels(visionModels: readonly string[], id: string)
 
 /**
  * Write the art style back to `project.yaml`. `project.setArtStyle` is `confirm: true`, so the
- * author is asked — with the count of image tasks it re-keys — before the file moves. The style
- * itself is typed into the box the pane's body is, so the click supplies it.
+ * author is asked before the file moves. The style itself is typed into the box the pane's body
+ * is, so the click supplies it.
  */
 export function applyStyleAction(opened: boolean, dirty: boolean): Offer {
   const control = {

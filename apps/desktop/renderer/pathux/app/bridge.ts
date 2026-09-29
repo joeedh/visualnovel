@@ -37,6 +37,7 @@ import type { ShellApp } from './context.js';
 import { approvalsChanged, refreshApprovals } from '../chrome/approvals.js';
 import { notificationsChanged, refreshNotifications } from '../chrome/notifications.js';
 import { closePalette, openPalette } from '../chrome/palette.js';
+import { askToConfirm } from '../chrome/confirm.js';
 import { applyTour } from '../tour/tour.js';
 import { seedReport } from '../agent/reportconvo.js';
 import { applyView } from '../panes/view.js';
@@ -258,13 +259,16 @@ export function onBusy(listener: (state: BusyState) => void): () => void {
  * Run a command. Every mutating surface in the shell goes through this — the header's menu,
  * the palette, and whatever an editor offers — so provenance, undo and history are identical
  * whoever ran it.
+ *
+ * `confirmed` says the surface already asked the author, as a form's second click does, so main
+ * does not ask again.
  */
 export async function exec(
   id: string,
   props: Record<string, PropValue> = {},
-  checkpoint?: CheckpointHandle,
+  options: { checkpoint?: CheckpointHandle; confirmed?: boolean } = {},
 ): Promise<ExecOutcome> {
-  const outcome = await api.invoke('command:exec', { id, props, source: 'ui', checkpoint });
+  const outcome = await api.invoke('command:exec', { id, props, source: 'ui', ...options });
   if (!outcome.ok && !outcome.record) say(outcome.error, true);
   for (const watcher of watchers) watcher(id, outcome);
   // `wrote` is not raised here. Main broadcasts every write to every window, so raising it from
@@ -477,6 +481,8 @@ That is a fault in what was ` +
       void docsEffect(effect, { say });
     } else if (effect.type === 'tour') {
       applyTour(effect);
+    } else if (effect.type === 'confirm') {
+      askToConfirm(effect);
     } else if (effect.type === 'view') {
       // The command already said what it meant to do; the mesh answers only when it disagrees,
       // and that answer displaces the optimistic sentence rather than following it.

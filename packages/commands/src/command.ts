@@ -21,9 +21,10 @@ export interface CommandContext<Host = unknown> {
   log(level: 'info' | 'warn' | 'error', message: string): void;
   /**
    * Ask the host to confirm an elevated action. Absent in bare contexts, in which case a
-   * `confirm: true` command refuses rather than assuming consent (same rule as tools).
+   * `confirm: true` command refuses rather than assuming consent (same rule as tools). The stack
+   * fills `about` from the running command when a command's own `run` asks without one.
    */
-  confirm?(message: string): Promise<boolean>;
+  confirm?(message: string, about?: ConfirmAbout): Promise<boolean>;
   /**
    * An opaque number identifying the caller, carried for the length of one execution.
    *
@@ -35,6 +36,13 @@ export interface CommandContext<Host = unknown> {
    * Deliberately absent from `CommandRecord`, where a window index would mean nothing to a
    * reader of `commands.jsonl` a week later.
    */
+  origin?: number;
+}
+
+/** Which command a confirmation is for, so the host can say so and ask the right window. */
+export interface ConfirmAbout {
+  /** The command's `title`, which the host puts on the button that says yes. */
+  title: string;
   origin?: number;
 }
 
@@ -91,6 +99,16 @@ export interface Command<M extends PropSpecMap = PropSpecMap, Host = any> {
   affects?: readonly string[];
   /** True if the command always needs explicit user confirmation, regardless of caller. */
   confirm?: boolean;
+  /**
+   * Answers the sentence to confirm before this invocation runs, or `undefined` when it needs no
+   * confirmation. It suits a command that asks only in some states, such as a delete in a project
+   * the app does not commit in. The stack evaluates it in the same turn of the mutating chain as
+   * `run`, so the answer describes the state `run` finds, and it takes the place of `confirm`'s
+   * fixed sentence when it returns one.
+   *
+   * Reads and does not write, like `check`.
+   */
+  confirmWhen?(props: PropsOf<M>, ctx: CommandContext<Host>): Promise<string | undefined>;
   /**
    * Whether the stack should snapshot the document tree around this command so it can be
    * undone. Only meaningful with `mutating: true`, and only for commands whose writes are

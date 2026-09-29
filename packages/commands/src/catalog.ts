@@ -39,7 +39,10 @@ export interface CatalogEntry {
   mutating: boolean;
   confirm: boolean;
   undoable: boolean;
-  /** Whether `stack.check` has a precondition to consult. False means `undeclared`, not `accept`. */
+  /**
+   * Whether `stack.check` has anything to report: a precondition, or a `confirmWhen` sentence.
+   * False means `undeclared`, not `accept`.
+   */
   checkable: boolean;
   /** The subtrees the command may write, as its host spells them. Absent on a non-mutator. */
   affects?: readonly string[];
@@ -218,7 +221,7 @@ export function toCatalog(
       mutating   : command.mutating,
       confirm    : command.confirm ?? false,
       undoable   : command.undoable ?? false,
-      checkable  : Boolean(command.check),
+      checkable  : Boolean(command.check ?? command.confirmWhen),
       ...(command.affects ? { affects: [...command.affects] } : {}),
       props : catalogProps(command.props),
       usage : formatCommand(command.id, template),

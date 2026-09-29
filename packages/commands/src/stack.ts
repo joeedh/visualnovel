@@ -18,6 +18,7 @@ import type {
   CommandOutcome,
   CommandRecord,
   CommandSource,
+  ConfirmAbout,
   UndoPoint,
 } from './command.js';
 
@@ -41,6 +42,37 @@ export const CHECKPOINT_TIMEOUT_MS = 120_000;
 /** A round-trippable token naming an open checkpoint. No methods, no closed-over state. */
 export interface CheckpointHandle {
   readonly seq: number;
+}
+
+/** How one `exec` is run, beyond what to run. */
+export interface ExecOptions {
+  /**
+   * Who asked, carried for this execution only. It is a shallow overlay on the shared context
+   * rather than a field on it, because commands overlap: a mutable field would be clobbered by the
+   * next invocation while this one was still running. Absent means nobody in particular asked,
+   * and the host decides who to answer.
+   */
+  origin?: number;
+  /**
+   * Routes a mutating command onto an open checkpoint's own tail instead of the shared chain, so
+   * it lands inside that checkpoint's one undo point rather than getting its own. A stale handle
+   * (wrong seq, or none open) is refused immediately rather than queued.
+   */
+  checkpoint?: CheckpointHandle;
+  /**
+   * Whether the caller already asked the author; when true the stack does not ask again. A
+   * command's own `ctx.confirm` inside `run` still asks, because it asks about something the
+   * caller did not.
+   */
+  confirmed?: boolean;
+}
+
+/** What `check` answers: the precondition, and the sentence `exec` would confirm first. */
+export interface CheckAnswer {
+  state: 'accept' | 'refuse' | 'undeclared';
+  message: string;
+  /** What `confirmWhen` would ask right now. Absent when it would not ask, or on a refusal. */
+  confirm?: string;
 }
 
 export interface CommandStackOptions<Host> {
@@ -146,8 +178,7 @@ export class CommandStack<Host = unknown> {
   async execDsl(
     text: string,
     source: CommandSource,
-    origin?: number,
-    checkpoint?: CheckpointHandle,
+    options: ExecOptions = {},
   ): Promise<CommandOutcome> {
     let parsed;
     try {
@@ -156,26 +187,16 @@ export class CommandStack<Host = unknown> {
       const message = err instanceof DslError ? err.message : String(err);
       return { ok: false, error: `could not parse command: ${message}` };
     }
-    return this.exec(parsed.id, parsed.props, source, origin, checkpoint);
+    return this.exec(parsed.id, parsed.props, source, options);
   }
 
-  /**
-   * `origin` is who asked, carried for this execution only. It is a shallow overlay on the
-   * shared context rather than a field on it, because commands genuinely overlap: a mutable
-   * field would be clobbered by the next invocation while this one was still running. Absent
-   * means nobody in particular asked, and the host decides who to answer.
-   *
-   * `checkpoint` routes a mutating command onto an open checkpoint's own tail instead of the
-   * shared chain, so it lands inside that checkpoint's one undo point rather than getting its
-   * own. A stale handle (wrong seq, or none open) is refused immediately rather than queued.
-   */
   async exec(
     id: string,
     raw: Record<string, unknown>,
     source: CommandSource,
-    origin?: number,
-    checkpoint?: CheckpointHandle,
+    options: ExecOptions = {},
   ): Promise<CommandOutcome> {
+    const { origin, checkpoint, confirmed = false } = options;
     const command = this.opts.registry.get(id);
     if (!command) return { ok: false, error: `unknown command "${id}"` };
 
@@ -184,17 +205,7 @@ export class CommandStack<Host = unknown> {
       return { ok: false, error: `invalid props for "${id}": ${coerced.errors.join('; ')}` };
     }
     const props = coerced.value;
-
-    const ctx: CommandContext<Host> =
-      origin === undefined ? this.opts.context : { ...this.opts.context, origin };
-    if (command.confirm) {
-      if (!ctx.confirm) {
-        return { ok: false, error: `"${id}" needs confirmation, but no gate is wired` };
-      }
-      if (!(await ctx.confirm(`Run ${command.title}?`))) {
-        return { ok: false, error: `"${id}" was declined` };
-      }
-    }
+    const ctx = this.contextFor(command.title, origin);
 
     // A deferring command joins the batch instead of committing; anything else mutating ends it.
     // A disposed stack defers nothing, since it no longer arms the timer that would drain it.
@@ -207,7 +218,7 @@ export class CommandStack<Host = unknown> {
     );
 
     if (!command.mutating) {
-      return this.runCommand({ command, props, ctx, id, source, defers });
+      return this.runCommand({ command, props, ctx, id, source, defers, confirmed });
     }
 
     if (checkpoint !== undefined) {
@@ -222,7 +233,16 @@ export class CommandStack<Host = unknown> {
         if (this.openCheckpoint !== oc || oc.failed !== undefined) {
           return Promise.resolve({ ok: false, error: `no open checkpoint ${checkpoint.seq}` });
         }
-        return this.runCommand({ command, props, ctx, id, source, defers, checkpoint: oc });
+        return this.runCommand({
+          command,
+          props,
+          ctx,
+          id,
+          source,
+          defers,
+          confirmed,
+          checkpoint: oc,
+        });
       };
       const next = oc.tail.then(guarded);
       oc.tail = next.then(
@@ -237,10 +257,60 @@ export class CommandStack<Host = unknown> {
     // would let one command's write land on disk inside another's commit. When a checkpoint is
     // open, `this.chain` is held for its whole span (see `beginCheckpoint`), so a caller that
     // forgot the handle simply queues behind it like any other in-flight mutating command.
-    return this.serialize(() => this.runCommand({ command, props, ctx, id, source, defers }));
+    return this.serialize(() =>
+      this.runCommand({ command, props, ctx, id, source, defers, confirmed }),
+    );
   }
 
-  /** The part of `exec` that runs under the chain: flush, snapshot, run, snapshot, commit. */
+  /**
+   * Builds the shared context with this execution's `origin` laid over it, and a `confirm` that
+   * names the command, so a question asked from inside `run` reaches the same window with the same
+   * button.
+   */
+  private contextFor(title: string, origin: number | undefined): CommandContext<Host> {
+    const shared = this.opts.context;
+    const ask = shared.confirm?.bind(shared);
+    const about = origin === undefined ? { title } : { title, origin };
+    return {
+      ...shared,
+      ...(origin === undefined ? {} : { origin }),
+      ...(ask
+        ? { confirm: (message: string, given?: ConfirmAbout) => ask(message, given ?? about) }
+        : {}),
+    };
+  }
+
+  /**
+   * Asks `confirmWhen`'s sentence, or `confirm`'s fixed sentence when `confirmWhen` gives none, and
+   * answers the refusal when the author says no. Answers nothing when there was nothing to ask or
+   * the author said yes.
+   */
+  private async confirmFor(
+    command: Command<PropSpecMap, Host>,
+    props: Record<string, PropValue>,
+    ctx: CommandContext<Host>,
+    id: string,
+  ): Promise<CommandOutcome | undefined> {
+    let conditional: string | undefined;
+    try {
+      conditional = await command.confirmWhen?.(props as never, ctx);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      return { ok: false, error: `could not decide whether "${id}" needs confirmation: ${detail}` };
+    }
+    const sentence = conditional ?? (command.confirm ? `Run ${command.title}?` : undefined);
+    if (sentence === undefined) return undefined;
+    if (!ctx.confirm)
+      return { ok: false, error: `"${id}" needs confirmation, but no gate is wired` };
+    if (!(await ctx.confirm(sentence))) return { ok: false, error: `"${id}" was declined` };
+    return undefined;
+  }
+
+  /**
+   * Runs the part of `exec` under the chain: confirm, flush, snapshot, run, snapshot, commit.
+   * The question is asked here rather than before the chain, so a `confirmWhen` sentence describes
+   * the state `run` will find; a mutating command queued behind it waits for the answer.
+   */
   private async runCommand(opts: {
     command: Command<PropSpecMap, Host>;
     props: Record<string, PropValue>;
@@ -248,9 +318,14 @@ export class CommandStack<Host = unknown> {
     id: string;
     source: CommandSource;
     defers: boolean;
+    confirmed: boolean;
     checkpoint?: OpenCheckpoint;
   }): Promise<CommandOutcome> {
-    const { command, props, ctx, id, source, defers, checkpoint } = opts;
+    const { command, props, ctx, id, source, defers, confirmed, checkpoint } = opts;
+    if (!confirmed) {
+      const refusal = await this.confirmFor(command, props, ctx, id);
+      if (refusal) return refusal;
+    }
     // Before `run` rather than before the commit: at this moment the only dirty content is the
     // deferred edits, so the flush commit contains exactly them.
     if (command.mutating && !defers) await this.flush();
@@ -566,12 +641,9 @@ export class CommandStack<Host = unknown> {
    * `run` would.
    *
    * Nothing here gates `exec`: a check reports on the present state, and `run` decides again.
+   * The same goes for `confirm`, which says what `exec` would ask if it ran now.
    */
-  async check(
-    id: string,
-    raw: Record<string, unknown>,
-    origin?: number,
-  ): Promise<{ state: 'accept' | 'refuse' | 'undeclared'; message: string }> {
+  async check(id: string, raw: Record<string, unknown>, origin?: number): Promise<CheckAnswer> {
     const command = this.opts.registry.get(id);
     if (!command) return { state: 'refuse', message: `unknown command "${id}"` };
 
@@ -582,16 +654,17 @@ export class CommandStack<Host = unknown> {
         message: `invalid props for "${id}": ${coerced.errors.join('; ')}`,
       };
     }
-    if (!command.check) {
-      return { state: 'undeclared', message: `"${id}" declares no precondition` };
-    }
 
     try {
-      const ctx: CommandContext<Host> =
-        origin === undefined ? this.opts.context : { ...this.opts.context, origin };
+      const ctx = this.contextFor(command.title, origin);
+      const confirm = await command.confirmWhen?.(coerced.value as never, ctx);
+      const asks = confirm === undefined ? {} : { confirm };
+      if (!command.check) {
+        return { state: 'undeclared', message: `"${id}" declares no precondition`, ...asks };
+      }
       const result = await command.check(coerced.value as never, ctx);
       return result.ok
-        ? { state: 'accept', message: result.note }
+        ? { state: 'accept', message: result.note, ...asks }
         : { state: 'refuse', message: result.reason };
     } catch (err) {
       // A check that throws has failed to answer, which is not the same as a refusal by the

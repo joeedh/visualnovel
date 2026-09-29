@@ -18,6 +18,7 @@ import {
   type ChoiceRow,
 } from '../../rules/catalog.js';
 import { picksAnAsset } from '../../rules/vocabulary.js';
+import { confirmLines } from '../../rules/confirm.js';
 import { galleryItem } from '../assets/assetthumb.js';
 import type {
   AssetListing,
@@ -57,7 +58,7 @@ export class CommandForm {
   readonly values: Record<string, PropValue>;
 
   private check: CommandCheck | undefined;
-  /** A `confirm: true` command needs a second click, and the button says so between them. */
+  /** Whether the run button has had the first of the two clicks `asks()` requires. */
   private confirming = false;
   /**
    * The verdict's own strip. A recheck redraws this and nothing else: rebuilding the form would
@@ -101,6 +102,16 @@ export class CommandForm {
 
     this.verdictCol = this.col.col();
     this.renderVerdict();
+
+    // Drawn directly above the armed button, so the author reads it before the second click
+    const asked = this.confirming ? this.check?.confirm : undefined;
+    if (asked !== undefined) {
+      const col = this.col.col();
+      for (const line of confirmLines(asked)) {
+        const text = paragraph(col, line, this.opts.width);
+        text.description = 'What the second click agrees to';
+      }
+    }
 
     const row = this.col.row();
     this.opts.buttons?.(row);
@@ -151,9 +162,14 @@ export class CommandForm {
       ? 'Running. This can take a while; closing the form does not stop it.'
       : refused
         ? this.check!.message
-        : this.entry.confirm
+        : this.asks()
           ? 'this command asks before it writes'
           : this.entry.title;
+  }
+
+  /** Whether the run button takes two clicks: always for `confirm`, or when the check says so. */
+  private asks(): boolean {
+    return this.entry.confirm || this.check?.confirm !== undefined;
   }
 
   /**
@@ -356,18 +372,20 @@ export class CommandForm {
 
   private async run(): Promise<void> {
     if (this.running) return;
-    if (this.entry.confirm && !this.confirming) {
+    if (this.asks() && !this.confirming) {
       this.confirming = true;
       this.render();
       return;
     }
+    // The second click was the confirmation, so main does not ask again in a popup
+    const confirmed = this.confirming;
     this.confirming = false;
 
     this.running = true;
     this.render();
     let outcome;
     try {
-      outcome = await exec(this.entry.id, this.values);
+      outcome = await exec(this.entry.id, this.values, { confirmed });
     } finally {
       this.running = false;
     }

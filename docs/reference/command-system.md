@@ -204,11 +204,58 @@ than a runtime state.
        absent.
 2.  2. **Coerce and validate** props. Reports `invalid props for "…": …`, listing every
        error.
-3.  3. **Confirm**, if the command is flagged `confirm: true`. If no gate is wired into
-       the context, the command refuses rather than assuming consent. Tools follow the
-       same rule.
+3.  3. **Confirm**, if the command asks (see [Confirmation](#confirmation)). If no gate is
+       wired into the context, the command refuses rather than assuming consent. Tools
+       follow the same rule.
 4.  **Capture git state** — `gitHead` and `gitDirty`.
 5.  5. Run, then record.
+
+### Confirmation
+
+A command asks the author before it runs in one of two ways.
+
+- **`confirm: true`** asks every time, with the fixed sentence `Run <title>?`.
+- **`confirmWhen(props, ctx)`** asks only when it returns a sentence, and asks that
+  sentence. It is for a command that needs confirmation in some states only, such as a
+  delete in a project the app does not commit in. When it returns a sentence, that
+  sentence replaces `confirm`'s fixed one, so a command that declares both still asks
+  once.
+
+The rules:
+
+- **The question is asked inside the run step.** For a mutating command, that is inside
+  the same turn of the serialized chain as `run`, so a `confirmWhen` sentence describes
+  the state `run` will find. A mutating command queued behind it waits for the answer.
+  `check` is not used for this: `exec` never runs it, and some checks are expensive
+  (`pipeline.run` plans the project).
+- **`stack.check` reports the sentence too.** Its answer carries `confirm` whenever
+  `confirmWhen` would ask right now, so a form can show the sentence before the click. A
+  command with `confirmWhen` and no `check` answers `undeclared` with the sentence, and
+  counts as `checkable` in the catalog.
+- **`exec` takes `confirmed: true`** from a caller that already asked, and then the stack
+  does not ask. The command form passes it after its two-click guard, so a form is never
+  followed by a second question. A command that calls `ctx.confirm` from inside its own
+  `run` (`plugin.install`, `plugin.prices`) still asks, because it asks about something
+  the caller did not.
+- **`ctx.confirm` knows which command is asking.** The stack passes the command's `title`
+  and the caller's `origin`, including when the command calls `ctx.confirm` itself.
+- **A declined confirmation leaves no record.** `exec` answers `"<id>" was declined`. A
+  `confirmWhen` that throws refuses in the same way, without running.
+
+In the desktop app, `ctx.confirm` pushes a `command:ui` effect
+`{ type: 'confirm', id, sentence, title }` to the window that ran the command, focuses it,
+and waits for the answer on `command:confirm`. The renderer draws a small popup with the
+sentence, Cancel, and a button labelled with the command's title
+(`renderer/pathux/chrome/confirm.ts`). Every way of closing the popup answers no, and a
+closed window or a workspace switch answers no for the questions parked on it. A second
+question waits until the first is answered (`renderer/rules/confirm.ts`). The popup is not
+the agent's confirmation card: that one belongs to the conversation, over
+`permission:confirm`.
+
+Main treats every `source: 'cdp'` call as confirmed (`runtime/execoptions.ts`), because a
+script has no one to ask, and the anchor sweep and the guided tours run through CDP. The
+agent never reaches the registry, so its own `confirm: true` tools and `ctx.confirm` calls
+are what ask for it.
 
 A command that throws still produces a record with `status: 'error'` and the error's
 message. `exec` never throws for command-level failure; it returns a `CommandOutcome`
@@ -984,9 +1031,11 @@ search box and no list of eighty-odd other commands to scroll past. Both are
 - **A toggle does not rebuild the form.** A `boolean` is a `check-x` that carries its own
   state, so flipping it rechecks and redraws nothing else. Rebuilding the form under a
   widget would take away the focus that widget just received.
-- **`mutating` is marked `writes`; `confirm` takes a second click.** The main process
-  still auto-approves `confirm` for other callers (that half of follow-on 2 is still
-  open), but from the palette, `pipeline.run` requires two steps.
+- **`mutating` is marked `writes`; a command that asks takes a second click.** That is a
+  `confirm: true` command, or one whose check carries a `confirm` sentence. Between the
+  two clicks the button reads `confirm — <label>`, and a `confirm` sentence is drawn
+  directly above it, one paragraph per line. The second click runs the command with
+  `confirmed: true`, so the popup does not ask again.
 - **`checkable` entries show their verdict, re-asked on every keystroke.** The verdict
   comes from `command:check`, so it has the same three states the command declares:
   `accept` and `refuse` render inline (✓ / ✕ with the sentence the command supplies), and
@@ -1204,9 +1253,9 @@ The following items are deliberately out of scope for v1, in rough order of valu
    as step 7 of
    [`../plans/archive/INDEX.md#allocated-line-ids`](../plans/archive/INDEX.md#allocated-line-ids)
    — see [From the palette](#from-the-palette-or-from-a-commands-own-dialog).
-2.  2. **Route `confirm` through the renderer.** The palette now requires a second click,
-       but the main process still auto-approves for every other caller, so
-       `pipeline.run`'s `confirm: true` does not stop the agent or CDP.
+2. ~~**Route `confirm` through the renderer.**~~ **Shipped** as stage 1 of
+   [`../plans/deleting-things.md`](../plans/deleting-things.md) — see
+   [Confirmation](#confirmation).
 3. **Feed `CatalogEntry.schema` to `NativeAgentBackend`** in place of `LOOSE_PARAMS`.
 4.  4. **Undoable `gate.approve`**, which needs `manifest.json` re-pointed alongside the
        document restore. Undo left this straddling case out.
