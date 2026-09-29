@@ -42,8 +42,10 @@ A survey of the options for deleting project entities from the desktop app and f
 references each kind of entity, how the command system, undo, git and the
 content-addressed stores constrain a delete, and four candidate designs with their
 trade-offs. The owner answered every open question on 2026-09-29, and the answers are
-recorded under [Decisions](#decisions), which is what a plan should start from. The
-sections after it are the survey the decisions were made from.
+recorded under [Decisions](#decisions). The sections after it are the survey the decisions
+were made from. The implementation plan is
+[`../plans/deleting-things.md`](../plans/deleting-things.md); its review findings record
+where it narrows a decision.
 
 Every claim about the code is cited as `path:line` against the `todos` worktree as of
 2026-09-20.
@@ -261,7 +263,7 @@ Recorded 2026-09-29 by the owner.
           empty outfit).
         - The character in a shot's subjects (`story.setSubjects`); a shot left with
           nobody in it becomes a background plate.
-        - Prompt pins naming the entity or its art (`prompt.removeRef`).
+        - Prompt pins naming the entity or its art (`prompt.dropRef`).
         - `Shot.location` variants of a deleted location, reset to the default
           (`story.setVariant`).
         - `approved_portrait:` and `Shot.image` naming a deleted take.
@@ -308,7 +310,7 @@ Recorded 2026-09-29 by the owner.
 | `story.removeChoice`                                                | one `[[choice:]]` marker line                                                                                           | no such index                                                     | yes  | no      | `story.ts:188`, rule at `packages/scriptedit/src/branchops.ts:72`                               |
 | `gengraph.delete`                                                   | `vngen/work/graphs/<slug>.json`; the journal `vngen/state/graphs/<slug>.jsonl` and the blobs beside it stay             | no such graph                                                     | yes  | yes     | `apps/desktop/src/main/commands/gengraph.ts:354`, `packages/gengraph/src/document.ts:116`       |
 | `gengraph.removeNode`, `gengraph.unlink`, `gengraph.removeBoundary` | one node, link or group socket inside a graph                                                                           | structural edit inside a group instance                           | yes  | no      | `gengraph.ts:446`, `:525`, `:1080`                                                              |
-| `prompt.removeRef`                                                  | one pinned reference from a prompt clause                                                                               |                                                                   | yes  | no      | `apps/desktop/src/main/commands/prompt.ts:229`                                                  |
+| `prompt.dropRef`                                                    | one pinned reference from a prompt clause                                                                               |                                                                   | yes  | no      | `apps/desktop/src/main/commands/prompt.ts:229`                                                  |
 | `asset.unapprove`                                                   | approval only: `status:`/`approved_portrait:` on the sheet, `approved.png`, or the manifest `accepted` flag; bytes stay | see `previewUnapprove`                                            | no   | yes     | `apps/desktop/src/main/commands/asset.ts:158`, `packages/store/src/worktree.ts:132`             |
 | `notify.deleteAll`                                                  | the whole `vngen/state/notifications.jsonl`                                                                             | the log is empty                                                  | no   | yes     | `apps/desktop/src/main/commands/notify.ts:97`                                                   |
 | `plugin.remove`                                                     | an installed plugin directory under the user config dir                                                                 |                                                                   | no   | yes     | `apps/desktop/src/main/commands/plugin.ts:136`                                                  |
