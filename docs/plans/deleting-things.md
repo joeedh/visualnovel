@@ -65,9 +65,15 @@ before it starts.
     - CDP clients reach commands through `window.vn.exec`, and the preload marks those
       calls `source: 'cdp'` (`apps/desktop/src/preload/index.ts:46`).
 - **Undo.**
+    - Undo is snapshot-only. `UndoJournal` holds an in-memory, content-addressed copy of
+      the document tree before and after each undoable command, keeps 50 commands and at
+      most 64 MB, and deliberately skips generated output and media
+      (`packages/commands/src/undo.ts:1-62`). No command can supply undo logic of its own.
     - A mutating command that is not undoable blocks undo from reaching past it: `undo`
       refuses with `"<id>" was not recorded as undoable`
       (`packages/commands/src/stack.ts:619-668`).
+    - Before restoring, undo compares the current document tree with the record's snapshot
+      and refuses on any difference (`packages/commands/src/undo.ts:118-140`).
     - `onRecord` runs after every command and after every undo or redo, with
       `record.stack` set for the latter
       (`apps/desktop/src/main/runtime/stack.ts:133-170`).
@@ -260,6 +266,8 @@ static (`confirm: true`). The second depends on the project.
   current rows" check could never fire.
 - **Findings** have a severity. **Blocking** means the next run or a read would fail:
     - a `done` task whose `output` has no file in either root;
+    - a `done` task whose `output` has a file but no manifest row in the root that serves
+      it, which a collection undo that stopped part way can leave;
     - a manifest row with no file;
     - a character's `approved_portrait:`, a `Shot.image`, or a `ChunkRef.pin` on any
       override rung that names no manifest row (pins are found by walking the overrides
@@ -402,8 +410,8 @@ static (`confirm: true`). The second depends on the project.
 ### Stage 7: the collector
 
 - **Store primitives.** `AssetRoot.remove(hashes)` removes rows and rewrites the manifest;
-  `AssetRoot.removeFiles(hashes)` removes the bytes. They are separate so the caller
-  controls the order. A blob-store `list()` and `remove(refs)` in `@vn/gengraph`.
+  `AssetRoot.reinstate(rows)` puts rows back; moving the bytes is left to the caller. They
+  are separate so the caller controls the order. A blob-store `list()` in `@vn/gengraph`.
 - **Live rows.** Liveness is decided per row, not per hash, because one hash can have a
   row in each root. A row is live when any of these holds:
     - its own `satisfies` binds it to a slot the collector enumerates (below);
@@ -433,20 +441,127 @@ static (`confirm: true`). The second depends on the project.
   superseded `done` records.
 - **Order:** tombstones, then both manifests, then the files, then graph state. A crash
   after the tombstones leaves unreferenced files, which the next collection removes.
-- **Stale store instances.** The desktop collector runs against the session's own
-  `AssetStore` and reloads the project afterwards, so no instance in the app writes an old
-  index back. Another process holding a store (a terminal `vngen run` or `vnauthor`) can
-  still resurrect removed rows on its next write; the docs say so.
+- **The holding folder.** In the desktop app, removed files are moved, not deleted, into
+  `vngen/state/collected/<hold>/`, where `<hold>` is a random id. `run` returns it, and
+  the stack stores it on the command record. A sequence number is not used, because `run`
+  cannot see it (`packages/commands/src/command.ts:16-39`) and it restarts at 0 in every
+  session (`stack.ts:132`), so a folder a crash left behind would collide with a new one.
+    - The folder holds the image files per root, the removed graph journals and blob
+      folders, and `plan.json`: the removed manifest rows, and for each tombstoned task
+      the record the tombstone replaced. `plan.json` is updated after each file is moved,
+      so a partial move leaves an accurate list.
+    - `vngen/state` is outside the undo snapshot, so moving files there does not trip the
+      drift guard.
+    - `vngen/` is committed, so `writeScaffolding` adds an ignore line for
+      `vngen/state/collected/`, as it does for `SESSION_IGNORE`.
+    - A move is a rename. `assets/` lies inside the project folder, so both roots are on
+      the same volume. `EXDEV` falls back to copy then delete, and `EPERM` and `EBUSY` (an
+      open file on Windows) are retried through `renameWithRetry`
+      (`packages/util/src/fs.ts:30-53`), which `writeFileAtomic` uses. A file that still
+      will not move stays in place with its row, is left out of `plan.json`, and is
+      reported; the next collection tries it again.
+    - The space is freed when the folder is released, not when the collector runs. The
+      check states how much is held and when it will be freed. The held bytes count
+      against no budget.
+    - `keepForUndo: false` deletes at once. `run` then tells the stack to omit the undo
+      point, so the record has none and Undo is disabled, naming the collection
+      (`undoState.blocked`, `stack.ts:643`), rather than enabled and then refusing.
+- **Undoing a collection** needs a new hook in `@vn/commands`, because snapshots cannot
+  hold the collector's bytes, and most of what the collector writes is outside the
+  snapshot.
+    - **The hook.** A command may declare
+      `sidecar: { beforeRestore, afterRestore, release }`. Each phase takes the command
+      record and the direction (undo or redo), and returns the paths it wrote.
+    - **A sidecar never writes the document class.** The snapshot restore writes only the
+      paths whose hashes differ between the checked tree and the target
+      (`packages/commands/src/content.ts:311-369`), so a document-class file a sidecar
+      wrote would survive the restore unnoticed.
+    - **A record with a sidecar is never skipped by undo.** A collection that removes only
+      project-root pictures changes nothing in the snapshot, so its record would otherwise
+      carry `changed: false` (`stack.ts:295`, `undo.ts:94-96`), and `undoCandidate` would
+      walk past it to the delete before it (`stack.ts:625`). The stack marks such a record
+      so `undoCandidate` stops at it.
+    - **Undo order.** After the drift check passes:
+        1. `beforeRestore` checks that the holding folder exists and refuses by name if it
+           was released. It then moves the files back. A file back with no row is
+           harmless.
+        2. The snapshot restore puts `assets/manifest.json` back, with its rows.
+        3. `afterRestore` reinstates the `vngen/build/manifest.json` rows, then moves
+           graph state back, then re-appends each tombstoned task's replaced record, last.
+    - **Redo order** is the collection's own: `beforeRestore` appends the tombstones and
+      removes the `vngen/build/manifest.json` rows, the snapshot restore puts the
+      collected `assets/manifest.json` back, and `afterRestore` moves the files into the
+      holding folder again.
+    - **Guards on the task log**, which the drift check does not cover because
+      `vngen/state` is excluded:
+        - undo re-appends a task's record only when the latest record for that hash is
+          still this collection's tombstone;
+        - redo tombstones a task only when the latest record for that hash equals the one
+          `plan.json` recorded;
+        - neither moves a file, journal or blob onto an existing path with different
+          bytes. Otherwise the phase refuses by name before writing anything. A terminal
+          `vngen run` or a `vnauthor` process between the collection and its undo is what
+          these guards catch.
+    - **The re-appended record** is the replaced record with `restored: <ISO time>` added,
+      the same marker stage 8's Recover writes.
+    - **Failure.** Each phase is idempotent: it skips work already done, so it can be run
+      again. When a phase or the restore stops part way, the stack writes an error record
+      naming what was and was not moved, so `onRecord` and stage 8's check still run. The
+      states a failure can leave are: files back with no rows (harmless; the next
+      collection removes them), or rows back with tasks still tombstoned (the next run
+      re-renders them unless the author recovers them in stage 8's view, which then only
+      re-appends the record).
+    - **Reporting.** The paths each phase returns are merged into the undo or redo
+      record's `written`, and the record carries the target command's id, so `noteWrites`,
+      the panes, `commands.jsonl` and stage 8's check see what moved.
+    - **Release.** `UndoJournal.prune` returns the seqs it dropped. It returns nothing
+      today (`undo.ts:211-233`), and the stack discards the result (`stack.ts:908-915`).
+      The stack calls the collection's `release`, which deletes its holding folder, when
+      the first of these happens:
+        - the journal drops the collection's snapshots;
+        - a later non-undoable command is recorded, since undo can no longer reach past it
+          (`stack.ts:619-668`); `pipeline.run`, `agent.run`, `gengraph.run` and the
+          `git.*` commands are such commands;
+        - the collection has been undone and the redo stack is cleared by a fresh act
+          (`stack.ts:307`); the files are back in place, so the folder holds only
+          `plan.json`;
+        - `dispose()`, which is called before `switchWorkspace` moves the root
+          (`workspacelifecycle.ts:149-155`).
+    - **Quit** releases nothing: quitting only flushes commits under a deadline
+      (`apps/desktop/src/main/bootstrap/bootstrap.ts:132-146`). The folders are deleted on
+      the next open instead, in `openRepos` (`workspacelifecycle.ts:192`), which runs
+      after the single-instance lock is taken (`workspacelifecycle.ts:135-138`).
+      `vnauthor` and `collectProject` never delete `collected/`, so a running `vnauthor`
+      cannot destroy the desktop's live undo.
+- **Stale store instances.** `loadProject` opens a fresh `AssetStore` on every call and
+  runs `repairCurrent`, which persists (`apps/desktop/src/main/session/core.ts:644-665`).
+  It has about 80 callers in the desktop session, many outside the command chain. A reader
+  that loaded before the collection (or before its undo) and then persists its whole index
+  resurrects rows the collection removed.
+    - **Fix, in this stage:** `AssetRoot` persists by read-modify-write. Under its write
+      queue it re-reads the manifest file and applies only the rows this instance added,
+      changed or removed, instead of writing its whole index. That closes the gap for
+      readers in the app and narrows it for other processes to the moment between the read
+      and the atomic write.
+    - A reader's `catchUpMirrors` can still write a character sheet between the two undos,
+      which makes the second undo refuse with the drift error. That is a safe refusal, and
+      the author can undo again once nothing is writing.
 - **`collectProject`** in `@vn/gengraph` returns a plan (per-root rows, files, bytes,
   tombstones, graph state) before it applies anything. The host adds, per removed file,
   whether `git cat-file -e HEAD:<path>` finds it in the repository that holds it, and the
   check reports those that are not restorable.
-- **Command.** `asset.collect`, `confirm: true`, `undoable: false`.
-    - `affects`: `assets`, `vngen/build`, `vngen/state`.
-    - **It ends in-app undo.** A non-undoable command blocks undo from reaching past it,
-      and the collector rewrites `assets/manifest.json`, which is in the snapshot, so the
-      drift guard would refuse anyway. After a collection, the ways back are
-      `git.takeBack`, `git.goBack` and the agent's revert. The check says so.
+- **Command.** `asset.collect`, `confirm: true`, `undoable: true`, with the sidecar above.
+    - `affects`: `assets`, `vngen/build`, `vngen/state`. `assets` is snapshotted (only
+      `assets/objects` is excluded), so the `undoable` declaration passes the `restorable`
+      rule in `commands/tests/commands.test.ts`.
+    - Once its holding folder is released, the ways back are `git.takeBack`, `git.goBack`
+      and the agent's revert, followed by Recover (stage 8). The check says how long undo
+      lasts: until the next non-undoable command, such as a pipeline run, or until 50
+      later undo points push it out.
+    - `docs/reference/command-system.md` states why the declaration is honest: `assets` is
+      in `affects` for `assets/manifest.json`, the one file the collector writes that the
+      snapshot holds. The pictures under `assets/` are media, which the snapshot skips,
+      and are the sidecar's to restore.
     - Refused while `busy()` reports a pipeline run.
     - Commit-on-save commits the project repository and, when `assets/` is its own, that
       one too.
@@ -454,6 +569,12 @@ static (`confirm: true`). The second depends on the project.
       branch.
 - **Agent tool.** `collect_unused_assets`, `confirm: true`. `ToolContext` gains a `busy()`
   seam the desktop fills from the session and `vnauthor` answers false.
+    - The tool deletes at once, in both hosts. Agent tools bypass the command registry, so
+      no undo point exists to hold the files for, and `vnauthor` has no undo stack at all.
+      The confirm card says the collection cannot be undone in the app and names how many
+      pictures are not in git.
+    - Every removed path is reported in the tool's `written`, so the desktop panes and
+      stage 8's check see them.
 - **Frontend design.** Consult the skill for the collector's form: a report that can run
   to hundreds of pictures needs a summary first (counts and bytes per root, how many are
   not in git) and the detail behind it.
@@ -466,10 +587,40 @@ static (`confirm: true`). The second depends on the project.
   crashes between tombstones and manifests and asserts the next collection finishes the
   job. A third shares `assets/` with a second project and asserts the second project's
   pictures stay.
-- **Docs.** `docs/reference/asset-stores.md` ("What this does not do" loses "Collect
-  garbage"), `docs/reference/pipeline-contracts.md` (the collector, its order, and that it
-  ends in-app undo), `docs/reference/gen-graphs.md` (pruning is built; a reused slug no
-  longer inherits a journal once the collector has run).
+- **Undo tests.**
+    - Stack tests in `packages/commands/src/tests/` for the sidecar:
+        - `beforeRestore` and `afterRestore` run on either side of the snapshot restore,
+          in both directions;
+        - a sidecar record with no snapshot change is not skipped by `undoCandidate`;
+        - `release` fires on pruning, on a later non-undoable record, on a cleared redo
+          stack and on `dispose()`, and not on quit;
+        - a phase that throws part way leaves an error record, and running it again
+          finishes the job;
+        - the returned paths reach the record's `written`.
+    - A desktop session test over a testkit project: delete a character, collect, undo
+      twice; the character's sheet, its portrait file, its manifest rows and its task
+      records are back, `validateProject` finds nothing blocking, and the next mock run
+      renders nothing. Then redo twice and assert the collection is re-applied.
+    - A collection that removes only project-root frames of a deleted scene, undone once,
+      puts the frames and their rows back, and a second undo restores the scene.
+    - Undo refuses by name when a task's latest record is no longer the tombstone, and
+      redo refuses when it is no longer the planned record.
+    - A reader that loaded the store before the collection and persists afterwards does
+      not bring the removed rows back.
+    - `keepForUndo: false` deletes at once and leaves Undo disabled, naming the
+      collection.
+    - A leftover holding folder is deleted on project open in the desktop app, and
+      `vnauthor` opening the same project leaves it alone.
+- **Docs.**
+    - `docs/reference/asset-stores.md`: "What this does not do" loses "Collect garbage",
+      and the page describes the read-modify-write persist.
+    - `docs/reference/pipeline-contracts.md`: the collector, its order, the holding
+      folder, and the `restored` marker on a re-appended task record.
+    - `docs/reference/command-system.md`: the sidecar hook, its phases and release points,
+      that undo is no longer snapshot-only, and why `asset.collect` passes the
+      `restorable` rule.
+    - `docs/reference/gen-graphs.md`: pruning is built, and a reused slug no longer
+      inherits a journal once the collector has run.
 
 ### Stage 8: recovering from a missing picture
 
@@ -488,6 +639,10 @@ static (`confirm: true`). The second depends on the project.
     - `asset.recover` adds the recovering project's claim on a base asset.
     - The collector skips hashes claimed by any other project, and removes this project's
       own claim on a hash it no longer references.
+    - When B recovers one of A's collected pictures and pushes, and A then undoes the
+      collection before pulling, both commits rewrite `assets/manifest.json`, so A's next
+      sync can conflict there on rebase. The History pane's conflict view handles it like
+      any other conflict; B's claim file is untouched either way.
 - **`asset.recover(hash)`.**
     - Finds the commit that deleted the file (`git log -1 --diff-filter=D` on the object
       path, in the repository that holds it) and restores the bytes and the manifest row
@@ -530,9 +685,10 @@ static (`confirm: true`). The second depends on the project.
 - **Tests.**
     - Two testkit projects sharing an `assets/` repository: B recovers a plate that A
       generated and collected; A collects again and the plate stays because B claims it.
-    - Revert after a collection: delete a character, collect, `git.takeBack` the
-      collection's commit and the delete's; the check finds the portrait; Recover restores
-      it and appends its `done` record; the next mock run renders nothing.
+    - Revert after a collection whose holding folder was released: delete a character,
+      collect, release, `git.takeBack` the collection's commit and the delete's; the check
+      finds the portrait; Recover restores it and appends its `done` record; the next mock
+      run renders nothing.
 - **Docs.** `docs/reference/history-pane.md` (the view),
   `docs/reference/repos-and-commits.md` (the ledger and `project_id`),
   `docs/reference/pipeline-contracts.md` (a recovered `done` record restates one the log
@@ -575,10 +731,13 @@ addition, the row in [`index.md`](index.md) flips to shipped and this file moves
 A fresh-context review attacked the first draft. Each finding is listed with what was done
 about it.
 
-1. **In-app undo cannot reach past a collection.** Fixed in the plan: stage 7 says the
-   collector ends in-app undo, and stage 8's test uses `git.takeBack`. This narrows the
-   owner's decision "undo or revert after a collection is resolved like a pull" to the
-   revert routes; raised with the owner.
+1. **In-app undo cannot reach past a collection.** The first revision said the collector
+   ends in-app undo. The owner then chose (2026-09-29) to make it undoable instead: stage
+   7's holding folder and the `sidecar` hook in `@vn/commands`. Two alternatives were
+   rejected: letting undo skip over the collector and exempting its manifest writes from
+   the drift guard (it breaks the guard's refusal to guess, and leaves the author a page
+   of Recover buttons after one undo), and keeping git as the only way back. After the
+   holding folder is released, the revert routes and Recover still apply.
 2. **The live-root set missed references.** Fixed: group definitions are walked, the
    collector enumerates every scene and every defined outfit itself, a live slot's task
    outputs are roots, liveness is per row, and `story.play.json` is checked by the
@@ -601,9 +760,10 @@ about it.
    reused; the agent's git tools trigger the check; claims are one file each; the copied-
    folder case is stated; the re-appended record is the last `done` with that output.
 7. **The validator wrote, and stale store instances could resurrect rows.** Fixed: a load
-   path without `repairCurrent`; the desktop collector uses the session's store and
-   reloads; other processes are a stated residual risk; the agent tool gets a `busy()`
-   seam.
+   path without `repairCurrent`, and the agent tool gets a `busy()` seam. The first fix
+   for stale instances (the collector uses the session's store and reloads it) was wrong,
+   because the session has no long-lived store; the second review replaced it (its item
+   7).
 8. **Undecided details.** Fixed: severities are defined; "graph is gone" means the file is
    missing; entity-delete undo tests live in `apps/desktop/src/main/tests/`; stage 9's
    stop, no-remote and outcome shapes are stated; a project with no repository is treated
@@ -624,3 +784,45 @@ about it.
     - Removing base rows another project made went beyond the decision. Fixed: only base
       rows this project's task log produced are candidates.
     - "Undo after a collection": see item 1.
+
+### Second review: undoing a collection, 2026-09-29
+
+A second fresh-context review attacked stage 7's undo design after the owner chose the
+holding folder. Each finding is listed with what was done about it.
+
+1. **Undo skipped a collection that changed nothing in the snapshot.** One that removes
+   only project-root pictures has `changed: false`, and `undoCandidate` walked past it.
+   Fixed: a record with a sidecar is never skipped, and a test covers it.
+2. **The undo order left a window of broken state, and a partial failure had no record.**
+   Fixed: the hook is split into `beforeRestore` and `afterRestore` around the snapshot
+   restore, task records are re-appended last, each phase is idempotent, a stopped phase
+   writes an error record, and stage 3 gains a blocking finding for a `done` output with
+   no row. A sidecar may not write the document class, because the restore would not
+   notice.
+3. **The holding folder outlived the undo it served.** A later non-undoable command, a
+   cleared redo stack and a workspace switch all ended the undo without releasing the
+   folder, and `prune` did not say what it dropped. Fixed: all four release points are
+   listed, `prune` returns the dropped seqs, and quit relies on the next open.
+4. **Folders named by seq collided across sessions, and cleanup could race.** Fixed: a
+   random hold id; cleanup only in the desktop `openRepos` after the instance lock;
+   `vnauthor` never cleans up.
+5. **The agent tool had no undo to hold for.** Agent tools bypass the registry. Fixed: the
+   tool deletes at once in both hosts, says so on its confirm card, and reports every
+   removed path.
+6. **Undo and redo could clobber the task log or a file changed since.** The drift check
+   does not cover `vngen/state`. Fixed: undo and redo compare the latest task record with
+   the one they expect and refuse otherwise, never overwrite differing bytes, and mark a
+   re-appended record `restored`.
+7. **"The session's own `AssetStore`" does not exist.** `loadProject` opens a fresh store
+   per call, about 80 of them, and each persists its whole index. Fixed: `AssetRoot`
+   persists by read-modify-write of its own changes. A sheet write between two undos
+   remains, and makes the second undo refuse, which is safe.
+8. **`keepForUndo: false` left an undo that could only refuse.** Fixed: `run` tells the
+   stack to omit the undo point, so Undo is disabled and names the collection.
+9. **What undo moved was invisible.** Fixed: phases return their paths, which join the
+   record's `written`, and the record names the target command.
+10. **Smaller gaps.** Fixed: a move retries `EPERM` and `EBUSY` like `writeFileAtomic`,
+    and `plan.json` is written after each move; the check reports held bytes, with no
+    budget; `command-system.md` explains why `asset.collect` passes the `restorable` rule;
+    stage 8 notes that A's undo can conflict with B's Recover in `assets/manifest.json` on
+    rebase.

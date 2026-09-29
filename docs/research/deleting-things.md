@@ -180,6 +180,13 @@ Recorded 2026-09-29 by the owner.
   the collector removed: a restored sheet's `approved_portrait:`, storyboard subjects,
   pins. The next run would then fail reading them (`planner.ts:353` makes the approved
   portrait a reference of every shot casting the character).
+    - **The collection itself is undoable in the app** (decided 2026-09-29 after the
+      plan's review). The collector moves removed files into a holding folder instead of
+      deleting them, and a new command hook moves them back on undo, so undoing the
+      collection and then the delete restores everything with no missing pictures. The
+      holding folder is emptied when the undo entry expires or the project closes, and the
+      rest of this decision applies from then on. Details are in stage 7 of
+      [`../plans/deleting-things.md`](../plans/deleting-things.md).
     - After an undo, a revert or a checkout, the missing-asset check lists each missing
       image with the same two actions as after a pull: Restore from git, or Remove
       references. One mechanism covers undo, revert and pull.
