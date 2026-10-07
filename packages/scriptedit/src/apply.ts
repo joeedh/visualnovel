@@ -17,7 +17,7 @@ import { deleteSceneChunk, deleteShots, readShots, writeShots, type ProjectPaths
 import type { Shot } from '@vn/types';
 import { writeFileAtomic } from '@vn/util';
 import { conflictedRefusal } from './conflicted.js';
-import type { LineOp, ScriptState } from './lineops.js';
+import type { AppliedLineOp, LineOp, ScriptState } from './lineops.js';
 import { scenesTouchedBy, shotFallout, type ShotFallout } from './shotfallout.js';
 import { chunkText, scriptStateOf, type SceneSource } from './sources.js';
 
@@ -54,6 +54,11 @@ export interface AppliedScenePlan {
   /** Scene ids whose chunk the edit ended. */
   chunkRemoves: string[];
   fallout: ShotFallout;
+  /**
+   * The scene `start:` must name once this is written. `@vn/scriptedit` cannot write
+   * `project.yaml`, so each host applies it with `setStartScene` after `applyScenePlan`.
+   */
+  start?: string;
 }
 
 export type ScenePlan = AppliedScenePlan | { ok: false; message: string };
@@ -64,20 +69,19 @@ export function scenePlanMessage(plan: AppliedScenePlan): string {
 }
 
 /**
- * Decide a scene edit and prove it, writing nothing: the chunk bytes, the chunks to delete, and
- * what all of it does to the storyboard.
+ * Serializes each scene an op writes and proves it, writing nothing: the bytes must read back as
+ * the scene they were written from, and no note the model cannot hold may be lost. Answers the
+ * chunk files to write, or the sentence the whole edit is refused with.
  */
-export async function planSceneEdit(
-  input: SceneEditInput,
-  decide: (state: ScriptState) => LineOp,
-): Promise<ScenePlan> {
-  const op = decide(scriptStateOf(input.sources, input.entry));
-  if (!op.ok) return { ok: false, message: op.error };
+export function proveScenes(
+  input: Pick<SceneEditInput, 'paths' | 'sources'>,
+  op: AppliedLineOp,
+): { file: string; text: string }[] | string {
   const conflicted = conflictedRefusal(input.sources, [
     ...op.writes.map((s) => s.id),
     ...op.removes,
   ]);
-  if (conflicted !== undefined) return { ok: false, message: conflicted };
+  if (conflicted !== undefined) return conflicted;
 
   // Every file is serialized and proved before any is written: a split that is refused on its
   // second half must leave the first exactly as it was.
@@ -85,16 +89,13 @@ export async function planSceneEdit(
   for (const scene of op.writes) {
     const doc = sceneToDoc(scene);
     const read = sceneFromDoc(doc, scene.id);
-    if (!read.ok) return { ok: false, message: read.diagnostic.message };
+    if (!read.ok) return read.diagnostic.message;
     const errors = read.value.diagnostics.filter((d) => d.severity === 'error');
-    if (errors.length > 0) return { ok: false, message: errors.map((d) => d.message).join(' ') };
+    if (errors.length > 0) return errors.map((d) => d.message).join(' ');
     // The serializer is lossless, so a scene that reads back as itself writes back identically.
     // Comparing the text rather than the scenes keeps the check on the bytes being written.
     if (sceneToDoc(read.value.scene).body !== doc.body) {
-      return {
-        ok     : false,
-        message: `Writing ${scene.id} would not read back as the scene it was written from.`,
-      };
+      return `Writing ${scene.id} would not read back as the scene it was written from.`;
     }
 
     // An existing chunk keeps its front-matter byte-exactly — only the body is ours to rewrite;
@@ -110,12 +111,10 @@ export async function planSceneEdit(
       const after = strayNoteTexts(doc.body);
       const lost = before.filter((n) => !after.includes(n));
       if (lost.length > 0) {
-        return {
-          ok     : false,
-          message:
-            `Writing ${scene.id} would drop ${lost.length} note(s) the model does not keep: ` +
-            `${lost.map((n) => `[[${n}]]`).join(', ')}. Remove or fix them in the file first.`,
-        };
+        return (
+          `Writing ${scene.id} would drop ${lost.length} note(s) the model does not keep: ` +
+          `${lost.map((n) => `[[${n}]]`).join(', ')}. Remove or fix them in the file first.`
+        );
       }
     }
 
@@ -129,6 +128,21 @@ export async function planSceneEdit(
     const text = chunkText(source.prefix, doc.body);
     if (text !== source.prefix + source.script) pending.push({ file: source.file, text });
   }
+  return pending;
+}
+
+/**
+ * Decide a scene edit and prove it, writing nothing: the chunk bytes, the chunks to delete, and
+ * what all of it does to the storyboard.
+ */
+export async function planSceneEdit(
+  input: SceneEditInput,
+  decide: (state: ScriptState) => LineOp,
+): Promise<ScenePlan> {
+  const op = decide(scriptStateOf(input.sources, input.entry));
+  if (!op.ok) return { ok: false, message: op.error };
+  const pending = proveScenes(input, op);
+  if (typeof pending === 'string') return { ok: false, message: pending };
 
   // Shots are read unfiltered because `readShots(knownLineIds)` would drop the very ids the edit
   // is about to remap, and remapping those is what this covers.
@@ -144,6 +158,7 @@ export async function planSceneEdit(
     pending,
     chunkRemoves: op.removes,
     fallout     : shotFallout(op, shots),
+    ...(op.start !== undefined ? { start: op.start } : {}),
   };
 }
 

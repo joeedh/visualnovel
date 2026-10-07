@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-10-07T20:00:06.806Z",
-  "gitSha"       : "bb8e9a1a3337dc1e2a3665160331295f8e1da067",
+  "sweptAt"      : "2026-10-07T20:57:14.100Z",
+  "gitSha"       : "00311e2eb5fcc5a8b9172df06416329b77a6bb18",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -50,9 +50,11 @@
     "asset.unapprove",
     "asset.upload",
     "bible.search",
+    "character.delete",
     "command.check",
     "doc.copy",
     "doc.create",
+    "doc.delete",
     "doc.mkdir",
     "doc.move",
     "doc.newFile",
@@ -116,6 +118,7 @@
     "git.writeResolution",
     "interaction.list",
     "interaction.targets",
+    "location.delete",
     "models.refresh",
     "notify.clear",
     "notify.deleteAll",
@@ -1248,7 +1251,7 @@
       "editor"    : "branches",
       "key"       : "cmd:story.deleteScene",
       "widgetPath": "branches/story-deletescene~a4288987",
-      "refused"   : "arrival is the entry scene — point start: in project.yaml elsewhere first."
+      "refused": "arrival is the entry scene and continues to nothing, so start: has nowhere to move — point start: in project.yaml elsewhere first."
     },
     {
       "id"        : "story.setHeading",

@@ -27,6 +27,7 @@ export async function readVocabulary(): Promise<ProjectVocabulary> {
   return {
     scenes    : index?.scenes ?? [],
     characters: index?.characters ?? [],
+    locations : index?.locations ?? [],
     threads,
     boundModel: shell().ui.model,
   };

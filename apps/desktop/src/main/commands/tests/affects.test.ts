@@ -400,7 +400,9 @@ const STORY_RUNS: Run[] = [
     id   : 'story.deleteLines',
     props: async (ctx) => ({ lines: (await lineIds(ctx, 'arrival')).slice(-2) }),
   },
-  { id: 'story.deleteScene', props: { scene: 'bad_end' } },
+  { id: 'story.deleteScene', props: { scene: 'bad_end', edges: 'bypass' } },
+  // rooftop's one remaining choice leads here, so the cut rewrites rooftop as well
+  { id: 'story.deleteScene', props: { scene: 'good_end', edges: 'cut' } },
   { id: 'story.export', props: {} },
   { id: 'story.screenplay', props: { clean: false } },
 ];
@@ -428,6 +430,7 @@ const OTHER_RUNS: Run[] = [
     id   : 'doc.move',
     props: { paths: ['wiki/lore/factions.md'], into: 'wiki/lore', name: 'groups.md' },
   },
+  { id: 'doc.delete', props: { paths: ['wiki/lore/groups.md'] } },
   { id: 'project.setArtStyle', props: { style: 'soft watercolour' } },
   { id: 'project.setStoryboardNotes', props: { notes: 'pages of four to six panels' } },
   { id: 'project.setLettering', props: { lettering: 'model' } },
@@ -440,6 +443,9 @@ const OTHER_RUNS: Run[] = [
   { id: 'skill.cloneToUser', props: { id: 'branching' } },
   { id: 'view.resetLayout', props: { scope: 'shipped' } },
   { id: 'workspace.reindex', props: {} },
+  // Last, so nothing after them names a character or location that is gone
+  { id: 'character.delete', props: { character: 'haruki', lines: 'narrate', mergeInto: '' } },
+  { id: 'location.delete', props: { location: 'hall', replaceWith: 'classroom' } },
 ];
 
 /**

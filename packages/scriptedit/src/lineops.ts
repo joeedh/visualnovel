@@ -57,6 +57,8 @@ export type LineOp =
        * does not declare gets no plate, and a shot with no plate is skipped without a word.
        */
       relocated: [string, string][];
+      /** The scene `start:` must name afterwards, when the edit removes the one it names now. */
+      start?: string;
     }
   | { ok: false; error: string };
 
@@ -503,26 +505,88 @@ export function setHeading(state: ScriptState, args: { scene: string; heading: s
 }
 
 /**
- * Removes a chunk, refusing while anything still points at it. A delete that went through anyway
- * would produce the same failure a `dangling_goto` diagnostic reports, so refusing is better than
- * letting a delete manufacture one.
+ * What a scene delete does to the edges that led into the deleted scene. `bypass` sends each one
+ * on to the deleted scene's `next`; `cut` clears each `next` and removes each choice.
  */
-export function deleteScene(state: ScriptState, args: { scene: string }): LineOp {
+export type SceneEdges = 'bypass' | 'cut';
+
+/** The values {@link SceneEdges} takes, for a command's enum prop. */
+export const SCENE_EDGES: readonly SceneEdges[] = ['bypass', 'cut'];
+
+/**
+ * Removes a chunk. With no `edges` it refuses while anything still points at the scene, since a
+ * delete that went through anyway would leave a `dangling_goto`. With `edges` it rewrites those
+ * edges instead: see {@link SceneEdges}.
+ *
+ * Deleting the entry scene moves `start:` to the scene's own `next`, returned as `start` for the
+ * host to write, and is refused when there is no `next` to move it to.
+ */
+export function deleteScene(
+  state: ScriptState,
+  args: { scene: string; edges?: SceneEdges },
+): LineOp {
   const scene = state.scenes.get(args.scene);
   if (!scene) return refuse(`No scene "${args.scene}".`);
-  if (state.entry === scene.id) {
-    return refuse(`${scene.id} is the entry scene — point start: in project.yaml elsewhere first.`);
+  const entry = state.entry === scene.id;
+  if (entry && scene.next === undefined) {
+    return refuse(
+      `${scene.id} is the entry scene and continues to nothing, so start: has nowhere to move — ` +
+        'point start: in project.yaml elsewhere first.',
+    );
   }
+  const start = entry ? { start: scene.next } : {};
+  const moved = entry ? ` start: now names ${scene.next}.` : '';
 
   const pointing = referrers(state, scene.id);
-  if (pointing.length > 0) {
+  const deleted = `Deleted ${scene.id} and its ${scene.lines.length} line(s).`;
+  const removal = { removes: [scene.id], retired: scene.lines.map((l) => l.id), ...start };
+  if (pointing.length === 0) return done(`${deleted}${moved}`, removal);
+  if (args.edges === undefined) {
     return refuse(`${pointing.join(', ')} still point(s) at ${scene.id}.`);
   }
-  return done(`Deleted ${scene.id} and its ${scene.lines.length} line(s).`, {
-    removes: [scene.id],
-    retired: scene.lines.map((l) => l.id),
-  });
+
+  const target = args.edges === 'bypass' ? scene.next : undefined;
+  if (args.edges === 'bypass' && target === undefined) {
+    return refuse(
+      `${scene.id} continues to nothing, so ${pointing.join(', ')} cannot be sent past it. ` +
+        'Use edges=cut to remove those edges instead.',
+    );
+  }
+  const writes: Scene[] = [];
+  for (const referrer of state.scenes.values()) {
+    if (referrer.id === scene.id) continue;
+    const pointsHere =
+      referrer.next === scene.id || referrer.choices.some((c) => c.goto === scene.id);
+    if (!pointsHere) continue;
+    if (target === referrer.id) {
+      return refuse(
+        `${referrer.id} would continue to itself once ${scene.id} is bypassed. Use edges=cut, or ` +
+          `rewire ${referrer.id} first.`,
+      );
+    }
+    const rewired: Scene = target
+      ? {
+          ...referrer,
+          ...(referrer.next === scene.id ? { next: target } : {}),
+          choices: referrer.choices.map((c) => (c.goto === scene.id ? { ...c, goto: target } : c)),
+        }
+      : unwiredFrom(referrer, scene.id);
+    writes.push(rewired);
+  }
+  const how = target
+    ? `${pointing.length} edge(s) that led into it now lead to ${target}`
+    : `${pointing.length} edge(s) that led into it are removed`;
+  return done(`${deleted} ${capitalized(how)}.${moved}`, { ...removal, writes });
 }
+
+/** Copies `scene` without its edges into `goneId`: its `next`, and each such choice. */
+function unwiredFrom(scene: Scene, goneId: string): Scene {
+  const copy: Scene = { ...scene, choices: scene.choices.filter((c) => c.goto !== goneId) };
+  if (copy.next === goneId) delete copy.next;
+  return copy;
+}
+
+const capitalized = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
  * One scene becomes two at a line boundary: `at` and everything below it move into a new chunk,

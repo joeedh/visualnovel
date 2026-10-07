@@ -24,6 +24,7 @@ import type { CatalogEntry, CatalogProp, PropValue, WorkspaceIndex } from '../..
 export interface ProjectVocabulary {
   scenes: WorkspaceIndex['scenes'];
   characters: WorkspaceIndex['characters'];
+  locations: WorkspaceIndex['locations'];
   threads: ThreadHeader[];
   /** The model bound in the app, because a `model` prop left empty means that one. */
   boundModel: string;
@@ -32,12 +33,13 @@ export interface ProjectVocabulary {
 export const NO_VOCABULARY: ProjectVocabulary = {
   scenes    : [],
   characters: [],
+  locations : [],
   threads   : [],
   boundModel: '',
 };
 
 /** The lists this module can build. */
-type Kind = 'scene' | 'character' | 'thread' | 'model' | 'effort';
+type Kind = 'scene' | 'character' | 'location' | 'thread' | 'model' | 'effort';
 
 /** Prop names that name the same thing in every command that declares them. */
 const BY_NAME: Record<string, Kind> = {
@@ -45,6 +47,7 @@ const BY_NAME: Record<string, Kind> = {
   goto       : 'scene',
   character  : 'character',
   characterId: 'character',
+  location   : 'location',
   thread     : 'thread',
   model      : 'model',
   effort     : 'effort',
@@ -58,6 +61,8 @@ const BY_COMMAND: Record<string, Record<string, Kind>> = {
   'agent.openThread'  : { id: 'thread' },
   'agent.renameThread': { id: 'thread' },
   'agent.resumeThread': { id: 'thread' },
+  'character.delete'  : { mergeInto: 'character' },
+  'location.delete'   : { replaceWith: 'location' },
 };
 
 /**
@@ -108,6 +113,8 @@ function rowsFor(
       return some(project.scenes.map(sceneRow));
     case 'character':
       return some(project.characters.map(characterRow));
+    case 'location':
+      return some(project.locations.map(locationRow));
     case 'thread':
       return some(project.threads.map(threadChoice));
     case 'model':
@@ -151,6 +158,16 @@ function characterRow(character: WorkspaceIndex['characters'][number]): ChoiceRo
     value  : character.id,
     label  : character.name || character.id,
     tooltip: `${character.id} — ${character.status}`,
+  };
+}
+
+function locationRow(location: WorkspaceIndex['locations'][number]): ChoiceRow {
+  return {
+    value  : location.id,
+    label  : location.name || location.id,
+    tooltip: location.mined
+      ? `${location.id} — named by a scene heading, with no sheet yet`
+      : `${location.id} — ${location.file ?? 'its sheet'}`,
   };
 }
 

@@ -455,6 +455,18 @@ describe('setHeading', () => {
 });
 
 describe('deleteScene', () => {
+  /** The fixture with rooftop continuing to the attic, and the ending offering rooftop again. */
+  const wired = (): ScriptState => {
+    const s = state();
+    const scenes = new Map(s.scenes);
+    scenes.set('rooftop', { ...scenes.get('rooftop')!, next: 'attic' });
+    scenes.set('ending', {
+      ...scenes.get('ending')!,
+      choices: [{ label: 'Again', goto: 'rooftop' }],
+    });
+    return { ...s, scenes };
+  };
+
   it('removes a chunk nothing points at, retiring its line ids', () => {
     const op = deleteScene(state(), { scene: 'attic' });
     expect(op).toMatchObject({
@@ -465,7 +477,7 @@ describe('deleteScene', () => {
     });
   });
 
-  it('refuses while anything still points at it, naming every referrer', () => {
+  it('refuses while anything still points at it when told nothing about edges', () => {
     expect(error(deleteScene(state(), { scene: 'rooftop' }))).toBe(
       'arrival (next) still point(s) at rooftop.',
     );
@@ -474,8 +486,42 @@ describe('deleteScene', () => {
     );
   });
 
-  it('refuses the entry scene, naming what would have to change first', () => {
-    expect(error(deleteScene(state(), { scene: 'arrival' }))).toMatch(/entry scene/);
+  it('bypasses: every next and choice that led in leads to its next instead', () => {
+    const op = deleteScene(wired(), { scene: 'rooftop', edges: 'bypass' });
+    expect(written(op, 'arrival').next).toBe('attic');
+    expect(written(op, 'ending').choices).toEqual([{ label: 'Again', goto: 'attic' }]);
+    expect(op).toMatchObject({ ok: true, removes: ['rooftop'] });
+  });
+
+  it('refuses to bypass a scene that continues to nothing, and names cut', () => {
+    expect(error(deleteScene(state(), { scene: 'ending', edges: 'bypass' }))).toMatch(
+      /continues to nothing.*edges=cut/,
+    );
+  });
+
+  it('refuses a bypass that would send a scene back to itself', () => {
+    const s = wired();
+    const scenes = new Map(s.scenes);
+    scenes.set('attic', { ...scenes.get('attic')!, next: 'rooftop' });
+    expect(error(deleteScene({ ...s, scenes }, { scene: 'rooftop', edges: 'bypass' }))).toMatch(
+      /attic would continue to itself/,
+    );
+  });
+
+  it('cuts: every next that led in is cleared and every such choice removed', () => {
+    const op = deleteScene(wired(), { scene: 'rooftop', edges: 'cut' });
+    expect(written(op, 'arrival').next).toBeUndefined();
+    expect(written(op, 'ending').choices).toEqual([]);
+  });
+
+  it('moves start: to the next of the entry scene it deletes', () => {
+    const op = deleteScene(state(), { scene: 'arrival' });
+    expect(op).toMatchObject({ ok: true, removes: ['arrival'], start: 'rooftop' });
+    expect(op.ok && op.message).toMatch(/start: now names rooftop/);
+  });
+
+  it('refuses the entry scene when it continues to nothing', () => {
+    expect(error(deleteScene(state('attic'), { scene: 'attic' }))).toMatch(/entry scene/);
   });
 });
 

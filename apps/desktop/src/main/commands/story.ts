@@ -30,6 +30,7 @@ import {
   moveLine,
   newScene,
   removeChoice,
+  SCENE_EDGES,
   setChoice,
   setCoverage as decideCoverage,
   setHeading,
@@ -53,6 +54,7 @@ import {
 } from '@vn/types';
 import { scenesOf } from '../../shared/interactions.js';
 import type { CommandHost } from './host.js';
+import { askBeforeRemoving } from './removals.js';
 
 const define = defineFor<CommandHost>();
 
@@ -113,6 +115,14 @@ async function edit(
     data   : result.graph,
     written: [...result.written, ...result.removed],
   };
+}
+
+/** Returns the question `confirmWhen` asks before a prose edit removes a chunk or a storyboard. */
+function removing(
+  ctx: CommandContext<CommandHost>,
+  decide: (state: ScriptState) => LineOp,
+): Promise<string | undefined> {
+  return askBeforeRemoving(ctx, () => ctx.host.session.sceneEditRemovals(decide));
 }
 
 async function previewEdit(
@@ -328,6 +338,9 @@ export const storyDeleteLine = define({
   check({ line }, ctx) {
     return previewEdit(ctx, (state) => deleteLine(state, { line }));
   },
+  confirmWhen({ line }, ctx) {
+    return removing(ctx, (state) => deleteLine(state, { line }));
+  },
   run({ line }, ctx) {
     return edit(ctx, (state) => deleteLine(state, { line }));
   },
@@ -349,6 +362,9 @@ export const storyDeleteLines = define({
   props: { lines: prop.stringList('the line ids to remove, in any order; all of them or none') },
   check({ lines }, ctx) {
     return previewEdit(ctx, (state) => deleteLines(state, { lines }));
+  },
+  confirmWhen({ lines }, ctx) {
+    return removing(ctx, (state) => deleteLines(state, { lines }));
   },
   run({ lines }, ctx) {
     return edit(ctx, (state) => deleteLines(state, { lines }));
@@ -449,18 +465,30 @@ export const storyDeleteScene = define({
   id         : 'story.deleteScene',
   title      : 'Delete a scene',
   description:
-    'Remove a scene chunk, refusing while any choice, next edge or start: still points at it — ' +
-    'the same failure a dangling goto would be, caught before it exists.',
-  notes      : 'Refuses while anything still points at it, naming what.',
+    'Remove a scene chunk and its storyboard. The edges that led into it are sent on to the ' +
+    'scene it continues to, or removed; deleting the entry scene moves start: to its next.',
+  notes:
+    '`edges=bypass` is refused when the scene continues to nothing, and names `cut`. The entry scene with no next is refused, since start: would have nowhere to go.',
   mutating   : true,
-  affects    : ['scenes', 'vngen/work/shots'],
+  affects    : ['scenes', 'vngen/work/shots', 'project.yaml'],
   undoable   : true,
-  props      : { scene: prop.string('the scene to remove') },
-  check({ scene }, ctx) {
-    return previewEdit(ctx, (state) => deleteScene(state, { scene }));
+  props: {
+    scene: prop.string('the scene to remove'),
+    edges: prop.oneOf(
+      SCENE_EDGES,
+      'what happens to the choices and next edges that led into it: bypass sends them on to ' +
+        'the scene it continues to, cut removes them',
+      { default: 'bypass' },
+    ),
   },
-  run({ scene }, ctx) {
-    return edit(ctx, (state) => deleteScene(state, { scene }));
+  check({ scene, edges }, ctx) {
+    return previewEdit(ctx, (state) => deleteScene(state, { scene, edges }));
+  },
+  confirmWhen({ scene, edges }, ctx) {
+    return removing(ctx, (state) => deleteScene(state, { scene, edges }));
+  },
+  run({ scene, edges }, ctx) {
+    return edit(ctx, (state) => deleteScene(state, { scene, edges }));
   },
 });
 
@@ -505,6 +533,9 @@ export const storyMergeScene = define({
   },
   check({ scene, into }, ctx) {
     return previewEdit(ctx, (state) => mergeScene(state, { scene, into }));
+  },
+  confirmWhen({ scene, into }, ctx) {
+    return removing(ctx, (state) => mergeScene(state, { scene, into }));
   },
   run({ scene, into }, ctx) {
     return edit(ctx, (state) => mergeScene(state, { scene, into }));
@@ -649,6 +680,12 @@ export const storyDeleteShot = define({
   async check({ scene, shot }, ctx) {
     const op = await ctx.host.session.previewDeleteShot(scene, shot);
     return op.ok ? { ok: true, note: op.message } : { ok: false, reason: op.error };
+  },
+  confirmWhen({ scene, shot }, ctx) {
+    return askBeforeRemoving(ctx, async () => {
+      const op = await ctx.host.session.previewDeleteShot(scene, shot);
+      return op.ok && op.deleteFile ? [`vngen/work/shots/${scene}.json`] : [];
+    });
   },
   async run({ scene, shot }, ctx) {
     const result = await ctx.host.session.deleteShot(scene, shot);

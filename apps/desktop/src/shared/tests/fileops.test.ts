@@ -67,7 +67,7 @@ describe('rootProblem', () => {
     expect(rootProblem('wiki', 'folder')).toBeUndefined();
     expect(rootProblem('wiki/', 'folder')).toBeUndefined();
     expect(rootProblem('wiki')).toBe(
-      "wiki/ is one of the project's own folders; it cannot be created, moved or renamed.",
+      "wiki/ is one of the project's own folders; it cannot be created, moved, renamed or deleted.",
     );
   });
 

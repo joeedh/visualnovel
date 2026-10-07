@@ -30,6 +30,7 @@ import {
   planSceneEdit,
   scenePlanMessage,
 } from '@vn/scriptedit/write';
+import { setStartScene } from '@vn/config';
 import { deleteShots, writeShots } from '@vn/store';
 import type { Workspace } from '../workspace.js';
 import { ok, fail, rel, type Tool } from './core.js';
@@ -359,6 +360,10 @@ const editSceneTool: Tool<SceneEditArgs> = {
     if (!plan.ok) return fail(plan.message);
 
     const { written, removed } = await applyScenePlan(input, plan);
+    // Deleting the entry scene moves start: to its next, which only the host can write
+    if (plan.start !== undefined && (await setStartScene(ctx.workspace.root, plan.start))) {
+      written.push(ctx.workspace.paths.projectConfig);
+    }
     const paths = [...written, ...removed].map((file) => rel(ctx.workspace.root, file));
     return ok(scenePlanMessage(plan), { written: paths, data: { paths, fallout: plan.fallout } });
   },

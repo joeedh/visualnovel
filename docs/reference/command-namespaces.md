@@ -67,6 +67,12 @@
 | ------- | ----- | ----- |
 | `bible.search` | `query`, `limit` (default `8`) | Ranked excerpts from `wiki/`. There is no `bible.read`: [`@vn/bible`](story-bible.md) has no whole-file API. |
 
+## `character.`
+
+| Command | Props | Notes |
+| ------- | ----- | ----- |
+| `character.delete` ✍ ↺ ✓ | `character`, `lines` (`narrate`\|`delete`\|`merge`, default `'narrate'`), `mergeInto` (default `''`) | Writes `scenes`, `characters`, `locations`, `wiki`, `vngen/work`. Removes the sheet and `vngen/work/characters/<id>/`. A shot left with nobody becomes a background plate. Undo restores every document but not `approved.png`. |
+
 ## `command.`
 
 | Command | Props | Notes |
@@ -79,6 +85,7 @@
 | ------- | ----- | ----- |
 | `doc.copy` ✍ ↺ ✓ | `paths`, `into` | Writes `wiki`, `characters`, `locations`, `archive`. Only under wiki/, characters/, locations/ and archive/, and refused for the same media, links, repositories and submodules `doc.move` refuses. A copy’s own relative links are rewritten so they still name the same files, or the other copies made with it; nothing under archive/ is rewritten. |
 | `doc.create` ✍ ↺ ✓ | `kind` (`character`\|`location`\|`note`\|`skill`), `name`, `open` (default `true`), `dir` (default `''`) | Writes `characters`, `locations`, `wiki`, `.aiagent/skills`. Scaffold a sheet, a note or a skill in its conventional home, from the same templates the agent's create tools use. Refuses over an existing path. |
+| `doc.delete` ✍ ↺ ✓ | `paths` | Writes `wiki`, `characters`, `locations`, `archive`. Only under wiki/, characters/, locations/ and archive/. Pictures and other media can be deleted, but undo does not bring them back; only git history can, which the check says. A nested repository is refused. |
 | `doc.mkdir` ✍ ↺ ✓ | `parent`, `name` | Writes `wiki`, `characters`, `locations`, `archive`. Only under wiki/, characters/, locations/ and archive/. An empty folder is in no undo snapshot, so undo walks past this command to the one before it, and the folder stays; like every mutating command it still clears redo. |
 | `doc.move` ✍ ↺ ✓ | `paths`, `into`, `name` (default `''`) | Writes `wiki`, `characters`, `locations`, `archive`. Only under wiki/, characters/, locations/ and archive/. Also refused: a name the folder already holds (case-folded on Windows and macOS), a rename that changes only letter case, a folder into itself, media, symbolic links, a nested repository, and a submodule that is not checked out. Links under archive/ and scenes/ are never rewritten. Every window is told what moved (a `docs` `moved` push) before the command returns. |
 | `doc.newFile` ✍ ↺ ✓ | `parent`, `name`, `open` (default `true`) | Writes `wiki`, `characters`, `locations`, `archive`. Only under wiki/, characters/, locations/ and archive/. The name is used as typed, extension included. Media extensions are refused, because undo does not keep media files. |
@@ -162,6 +169,12 @@
 | ------- | ----- | ----- |
 | `interaction.list` | — | The gestures the app offers — see below. |
 | `interaction.targets` | `interaction` (`branch.connect`\|`branch.splice`\|`branch.unwire`\|`page.letter`\|`prompt.reorder`\|`script.moveLine`\|`timeline.cover`\|`timeline.create`\|`timeline.reorder`), `carried`, `scene` (default `''`), `asset` (default `''`) | Every target of a gesture, accepted or refused with why. `scene` and `asset` build the state the named gesture is judged against. |
+
+## `location.`
+
+| Command | Props | Notes |
+| ------- | ----- | ----- |
+| `location.delete` ✍ ⚠ ↺ ✓ | `location`, `replaceWith` (default `''`) | Writes `scenes`, `characters`, `locations`, `wiki`, `vngen/work`. Refused without `replaceWith` while any scene is set there. Removes the sheet and `vngen/work/locations/<id>/` if present. Always asks first. |
 
 ## `models.`
 
@@ -264,7 +277,7 @@
 | `story.decomposeAll` ✍ ⚠ ↺ ✓ | — | Writes `vngen/work/shots`. Storyboard every reachable scene that has none, so the graph is whole rather than one wave of it. One model call per scene. Additive only — a scene with a file is left alone and there is **no `force`**, because the file wins forever and re-decomposing would move shot ids, hence task identities, hence re-render art already paid for. A scene the model does not answer for is named and **not written**: an absent file is the only signal meaning "decompose this" (so a scene begun by hand with `story.newShot` already has its file, and is left alone like any other). `check` refuses mock or unresolved keys with `pipeline.run`'s own sentence, reports the count, and warns about scenes naming a character the project does not have yet. One undo point for the batch. |
 | `story.deleteLine` ✍ ↺ ✓ | `line` | Writes `scenes`, `vngen/work/shots`. A shot left covering nothing is **kept** — deleting paid-for art is the author's call. |
 | `story.deleteLines` ✍ ↺ ✓ | `lines` | Writes `scenes`, `vngen/work/shots`. The gutter marks, deleted together: one undo point rather than one per line. A shot left covering nothing is **kept**. |
-| `story.deleteScene` ✍ ↺ ✓ | `scene` | Writes `scenes`, `vngen/work/shots`. Refuses while anything still points at it, naming what. |
+| `story.deleteScene` ✍ ↺ ✓ | `scene`, `edges` (`bypass`\|`cut`, default `'bypass'`) | Writes `scenes`, `vngen/work/shots`, `project.yaml`. `edges=bypass` is refused when the scene continues to nothing, and names `cut`. The entry scene with no next is refused, since start: would have nowhere to go. |
 | `story.deleteShot` ✍ ↺ ✓ | `scene`, `shot` | Writes `vngen/work/shots`. The covered lines become visible gaps — never handed to a neighbour — and a rendered frame is orphaned, not deleted. Removing the last shot deletes the storyboard file itself, so the scene will be decomposed again. |
 | `story.export` ✍ ✓ | — | Writes `vngen/build/story.play.json`. Write `vngen/build/story.play.json` (`vngen export`). Refused, naming the first, while any shot frame or cast portrait the playable would show is the slot’s current take and unapproved (`unapprovedTakes` in `@vn/export`); the run throws `VnError(UNAPPROVED)` with the same sentence. The in-app player asks nothing. |
 | `story.graph` | — | Scenes + branch edges for the editor; reachability marked. |

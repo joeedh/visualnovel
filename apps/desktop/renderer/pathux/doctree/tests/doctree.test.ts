@@ -531,7 +531,7 @@ describe('menuFor', () => {
   // A form and an effect are never checked before the menu opens, so the refusal is on the entry
   it('greys the forms, Cut and Copy on a folder outside the four roots', () => {
     const roots =
-      'Files can be created, moved and renamed only under wiki/, characters/, locations/ and ' +
+      'Files can be created, moved, renamed and deleted only under wiki/, characters/, locations/ and ' +
       'archive/. scenes/ is written by the story commands.';
     const entries = menuFor(node('dir:scenes', 'dir', { path: 'scenes' }));
     expect(entries.map((entry) => [entry.label, entry.refused])).toEqual([
@@ -833,12 +833,12 @@ describe('the file acts', () => {
 
   it('refuses Rename… on a root folder, outside the roots, and with unsaved edits', () => {
     expect(renameEntry(node('dir:wiki', 'dir', { path: 'wiki' }), NO_MENU_CONTEXT)?.refused).toBe(
-      "wiki/ is one of the project's own folders; it cannot be created, moved or renamed.",
+      "wiki/ is one of the project's own folders; it cannot be created, moved, renamed or deleted.",
     );
     expect(
       renameEntry(node('file:scenes/a.md', 'file', { path: 'scenes/a.md' }), NO_MENU_CONTEXT)
         ?.refused,
-    ).toMatch(/^Files can be created, moved and renamed only under/);
+    ).toMatch(/^Files can be created, moved, renamed and deleted only under/);
     const dirty = { ...NO_MENU_CONTEXT, dirty: ['wiki/lore/cafe.md'] };
     const refused = 'Save wiki/lore/cafe.md first — it has unsaved edits.';
     expect(renameEntry(page, dirty)?.refused).toBe(refused);

@@ -39,10 +39,24 @@ export {
   setSpeaker,
   setSynopsis,
   splitScene,
+  SCENE_EDGES,
   type AppliedLineOp,
   type LineOp,
+  type SceneEdges,
   type ScriptState,
 } from './lineops.js';
+export {
+  CHARACTER_LINES,
+  deleteCharacter,
+  deleteLocation,
+  type ChangedShot,
+  type CharacterLines,
+  type EntityOp,
+  type EntityWorld,
+  type Mention,
+  type SheetEdit,
+} from './entitydelete.js';
+export { dropPins, type PinsDropped } from './pins.js';
 export { moveShot, planShotMove, type PositionedShot, type ShotMove } from './shotorder.js';
 export {
   applyCoverage,

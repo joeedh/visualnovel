@@ -13,7 +13,14 @@ import {
 } from '@vn/store';
 import { exists, hasConflictMarkers, readText } from '@vn/util';
 import { fileCache } from '../workspace/filecache.js';
-import { aspectFor, imageParams, layoutDefect, resolveSlot, slotTaskHash } from '@vn/artgen';
+import {
+  aspectFor,
+  imageParams,
+  layoutDefect,
+  priceShotChanges,
+  resolveSlot,
+  slotTaskHash,
+} from '@vn/artgen';
 import { driftOf } from '@vn/pipeline';
 import {
   applyCoverage,
@@ -34,6 +41,8 @@ import {
   wardrobesOf,
   type BranchOp,
   type DeleteShotOp,
+  type EntityOp,
+  type EntityWorld,
   type LineOp,
   type NewShotOp,
   type SceneOutfitOp,
@@ -42,14 +51,19 @@ import {
   type ShotOutfitOp,
 } from '@vn/scriptedit';
 import {
+  applyEntityPlan,
   applyMarkerPlan,
   applyScenePlan,
+  entityPlanMessage,
+  planEntityDelete,
   planMarkerEdit,
   planSceneEdit,
   scenePlanMessage,
   scriptStateOf,
+  type AppliedEntityPlan,
   type ScenePlan,
   type SceneSource,
+  type ShotPrice,
 } from '@vn/scriptedit/write';
 import type { DefectReport, PagePanel, PanelBubble, Scene, Shot } from '@vn/types';
 import type {
@@ -61,7 +75,7 @@ import type {
 } from '../../shared/ipc.js';
 import { storyGraphOf } from '../doctree/storygraph.js';
 import type { WorkspaceSession, LoadedProject } from './core.js';
-import { editInputOf, relPath, loadProject } from './core.js';
+import { editInputOf, readAllShots, relPath, loadProject } from './core.js';
 
 /**
  * The layout verdict the Page editor's header shows: the runner's own `layout` defect over the
@@ -151,6 +165,19 @@ export class StoryPart {
   }
 
   /**
+   * Lists the files a prose edit would remove, workspace-relative: the chunks it ends and the
+   * storyboards it empties.
+   */
+  async sceneEditRemovals(decide: (state: ScriptState) => LineOp): Promise<string[]> {
+    const { project, plan } = await this.planScene(decide);
+    if (!plan.ok) return [];
+    return [
+      ...plan.chunkRemoves.map((id) => project.paths.sceneFile(id)),
+      ...plan.fallout.removes.map((id) => project.paths.shotsFile(id)),
+    ].map((file) => relPath(this.session.dir, file));
+  }
+
+  /**
    * The single write path for every prose edit, and the sibling of `editBranches`: apply the proved
    * plan — chunks, storyboards, removals — then rebuild the model. The app's own part is reporting:
    * `applyScenePlan` answers in absolute paths, and a `written` list is workspace-relative.
@@ -162,6 +189,9 @@ export class StoryPart {
     const input = editInputOf(project);
     const paths = await applyScenePlan(input, plan);
     const written = paths.written.map((file) => relPath(this.session.dir, file));
+    if (plan.start !== undefined && (await setStartScene(this.session.dir, plan.start))) {
+      written.push(relPath(this.session.dir, project.paths.projectConfig));
+    }
     const removed = paths.removed.map((file) => relPath(this.session.dir, file));
 
     if (written.length === 0 && removed.length === 0) {
@@ -180,6 +210,78 @@ export class StoryPart {
       written,
       removed,
       graph: storyGraphOf(reloaded.model),
+    };
+  }
+
+  /**
+   * Decides and proves an entity delete against a fresh load, writing nothing, and prices the
+   * shots it changes. Shared by `previewEntityDelete` and `deleteEntity`, so the listing a
+   * check shows is the plan the run carries out.
+   */
+  private async planEntity(
+    kind: 'character' | 'location',
+    id: string,
+    decide: (world: EntityWorld) => EntityOp,
+  ): Promise<
+    | { ok: false; message: string }
+    | { ok: true; project: LoadedProject; plan: AppliedEntityPlan; price: ShotPrice }
+  > {
+    const project = await loadProject(this.session.dir);
+    const manifest = project.store.manifest();
+    const plan = await planEntityDelete(
+      {
+        ...editInputOf(project),
+        characters: project.model.characters,
+        locations : project.model.locations,
+        inputs    : project.inputs,
+        manifest,
+      },
+      kind,
+      id,
+      decide,
+    );
+    if (!plan.ok) return plan;
+    const shots = await readAllShots(project);
+    const price = priceShotChanges(
+      {
+        model : project.model,
+        config: project.config,
+        shots,
+        assets: manifest,
+        graph : project.graph,
+      },
+      plan.changed,
+    );
+    return { ok: true, project, plan, price };
+  }
+
+  /** Decides what `deleteEntity` would do, cost and leave behind, without doing it. */
+  async previewEntityDelete(
+    kind: 'character' | 'location',
+    id: string,
+    decide: (world: EntityWorld) => EntityOp,
+  ): Promise<{ ok: boolean; message: string }> {
+    const planned = await this.planEntity(kind, id, decide);
+    if (!planned.ok) return planned;
+    return { ok: true, message: entityPlanMessage(planned.plan, this.session.dir, planned.price) };
+  }
+
+  /** Deletes a character or a location and rewrites everything that referred to it. */
+  async deleteEntity(
+    kind: 'character' | 'location',
+    id: string,
+    decide: (world: EntityWorld) => EntityOp,
+  ): Promise<SceneEditResult> {
+    const planned = await this.planEntity(kind, id, decide);
+    if (!planned.ok) return { ok: false, message: planned.message, written: [], removed: [] };
+    const paths = await applyEntityPlan(planned.project, planned.plan);
+    const reloaded = await loadProject(this.session.dir);
+    return {
+      ok     : true,
+      message: entityPlanMessage(planned.plan, this.session.dir, planned.price, 'Deleted'),
+      written: paths.written.map((file) => relPath(this.session.dir, file)),
+      removed: paths.removed.map((file) => relPath(this.session.dir, file)),
+      graph  : storyGraphOf(reloaded.model),
     };
   }
 

@@ -49,7 +49,8 @@ import {
 import { bibleSearch } from './bible.js';
 import { commandCheck } from './command.js';
 import { docCreate, docRead, docRename, docSaveAll, docWrite } from './doc.js';
-import { docCopy, docMkdir, docMove, docNewFile } from './docfiles.js';
+import { docCopy, docDelete, docMkdir, docMove, docNewFile } from './docfiles.js';
+import { characterDelete, locationDelete } from './entity.js';
 import { gateApprove, gateCandidates, gateLock } from './gate.js';
 import {
   gengraphAddBoundary,
@@ -278,9 +279,11 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     assetUnapprove,
     assetUpload,
     bibleSearch,
+    characterDelete,
     commandCheck,
     docCopy,
     docCreate,
+    docDelete,
     docMkdir,
     docMove,
     docNewFile,
@@ -344,6 +347,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     gitTakeBack,
     interactionList,
     interactionTargets,
+    locationDelete,
     modelsRefresh,
     notifyClear,
     notifyDeleteAll,

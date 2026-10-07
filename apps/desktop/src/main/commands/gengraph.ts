@@ -46,6 +46,7 @@ import {
   writeGroupDef,
 } from '../doctree/graphs.js';
 import type { CommandHost } from './host.js';
+import { askBeforeRemoving } from './removals.js';
 import { syncRefusal } from './syncstate.js';
 
 const define = defineFor<CommandHost>();
@@ -373,6 +374,10 @@ export const gengraphDelete = define({
     if (!read.ok) return { ok: false, reason: read.reason };
     const count = read.graph.nodes.length;
     return { ok: true, note: `deletes ${read.path} and the ${count} nodes in it` };
+  },
+  async confirmWhen({ slug }, ctx) {
+    const read = await readGraph(ctx.root, slug);
+    return read.ok ? askBeforeRemoving(ctx, async () => [read.path]) : undefined;
   },
   async run({ slug }, ctx) {
     const read = await readGraph(ctx.root, slug);

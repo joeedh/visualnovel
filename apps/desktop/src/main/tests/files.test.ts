@@ -123,7 +123,7 @@ describe('doc.mkdir', () => {
   it('refuses outside the four roots, a taken name, and a parent that is not there', async () => {
     await mkdir(join(r.dir, 'wiki', 'lore'));
     expect(errorOf(await r.run('doc.mkdir', { parent: 'scenes', name: 'x' }))).toMatch(
-      /^Files can be created, moved and renamed only under wiki\//,
+      /^Files can be created, moved, renamed and deleted only under wiki\//,
     );
     expect(errorOf(await r.run('doc.mkdir', { parent: '', name: 'extra' }))).toMatch(
       /^Files can be created/,
@@ -760,6 +760,62 @@ describe('repository boundaries', () => {
     );
     expect(errorOf(await r.run('doc.move', { paths: ['wiki/a.md'], into: 'wiki/lore' }))).toBe(
       '(ran)',
+    );
+  });
+});
+
+describe('doc.delete', () => {
+  let r: Rig;
+
+  beforeEach(async () => {
+    r = await rig();
+    await lay(r.dir, {
+      'wiki/lore/a.md'              : '# A\n',
+      'wiki/lore/b.txt'             : 'b\n',
+      'wiki/places/cafe.png'        : 'png',
+      'characters/aiko/character.md': '---\nname: Aiko\n---\n',
+      'wiki/cast/bo.md'             : sheet('character', 'Bo'),
+    });
+  });
+
+  afterEach(async () => {
+    await rm(r.dir, { recursive: true, force: true });
+  });
+
+  const del = (paths: string[]): Promise<CommandOutcome> => r.run('doc.delete', { paths });
+
+  it('deletes a folder and a file inside it once, and one undo restores both', async () => {
+    const before = await treeOf(r.dir);
+    const outcome = await del(['wiki/lore', 'wiki/lore/a.md']);
+    expect(errorOf(outcome)).toBe('(ran)');
+    expect(outcome.ok && outcome.record.message).toBe('Deleted wiki/lore (2 files).');
+    expect(await gone(join(r.dir, 'wiki', 'lore'))).toBe(true);
+
+    expect(errorOf(await r.stack.undo())).toBe('(ran)');
+    expect(await treeOf(r.dir)).toEqual(before);
+  });
+
+  it('refuses a sheet and a folder holding one, naming the command that deletes it', async () => {
+    expect(errorOf(await del(['characters/aiko']))).toBe(
+      'characters/aiko holds characters/aiko/character.md, which is the sheet for character ' +
+        'aiko. Delete it with character.delete, which also rewrites what refers to aiko.',
+    );
+    expect(errorOf(await del(['wiki/cast/bo.md']))).toMatch(
+      /^wiki\/cast\/bo\.md is the sheet for character bo\. Delete it with character\.delete/,
+    );
+  });
+
+  it('refuses a root folder, and a path that is not there', async () => {
+    expect(errorOf(await del(['wiki']))).toBe(
+      "wiki/ is one of the project's own folders; it cannot be created, moved, renamed or deleted.",
+    );
+    expect(errorOf(await del(['wiki/nothing.md']))).toBe('no such file: wiki/nothing.md');
+  });
+
+  it('says before it runs that undo will not bring an image back', async () => {
+    const check = await r.stack.check('doc.delete', { paths: ['wiki/places'] });
+    expect(check.message).toMatch(
+      /Undo does not bring back wiki\/places\/cafe\.png; only git history can\./,
     );
   });
 });

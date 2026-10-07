@@ -369,6 +369,36 @@ static (`confirm: true`). The second depends on the project.
       assert the plan reads, `validateProject` reports nothing blocking, and undo restores
       every document.
 - **Docs.** `docs/reference/command-system.md` (the new namespaces).
+- **As built (2026-10-07)**, where it differs from the above:
+    - The rules are `deleteCharacter` and `deleteLocation` in `entitydelete.ts` (pure),
+      with `planEntityDelete` / `applyEntityPlan` in `entityplan.ts` doing the reads and
+      writes. `proveScenes` was pulled out of `planSceneEdit` so both share the round-trip
+      proof.
+    - `deleteScene` with no `edges` keeps the shipped refusal while anything points at the
+      scene. The command defaults `edges` to `bypass`; the agent's `edit_scene` sends
+      none, so its behaviour is unchanged until stage 6.
+    - The `start:` move is in the shared rule (`LineOp.start`), so `vnauthor`'s
+      `edit_scene` applies it with `setStartScene` too.
+    - A `bypass` that would make a referrer continue to itself is refused.
+    - Under `narrate`, a parenthetical becomes narration, as `setSpeaker` does it. A
+      `merge` keeps the cue's extension (`(V.O.)`).
+    - Shots in a moved scene are restaged to the heading's time of day (through
+      `relocated`, as `story.setHeading` does), not to the location's default variant.
+    - The conventional `characters/<id>/` folder is removed only when it is left empty.
+    - Mentions are searched in line texts after the rewrite, and in wiki pages other than
+      the deleted sheet.
+    - `priceShotChanges` patches the scene's new location and the edited shot into the
+      slot context rather than building a model after the edit.
+    - `REFETCHES_PROJECT` is not needed: `touchesInputs` already covers `project.yaml`, so
+      any command whose `written` includes it refreshes the project view. The cited line
+      was `bridge.ts:134`, not `:273`.
+    - `FILE_ROOTS`, `ROOTS_REFUSAL` and `rootProblem` moved to `@vn/types`
+      (`fileroots.ts`) so `@vn/scriptedit` can reach them; the skill-tier check stays in
+      the desktop wrapper. The refusal wording now includes "deleted".
+    - `confirmWhen` asks only when the run actually removes a file, not whenever the
+      command could.
+    - The form dropdowns gained a `location` kind, and `mergeInto` / `replaceWith` offer
+      the cast and the locations.
 
 ### Stage 5: Delete in the document tree
 

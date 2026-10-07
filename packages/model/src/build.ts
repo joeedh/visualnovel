@@ -150,7 +150,9 @@ function idAgrees(
 }
 
 /** Index character ids by their uppercased display name, for cue resolution. */
-function nameIndex(characters: Map<string, Character>): Map<string, string> {
+function nameIndex(
+  characters: ReadonlyMap<string, Pick<Character, 'id' | 'name'>>,
+): Map<string, string> {
   const byName = new Map<string, string>();
   for (const c of characters.values()) byName.set(c.name.toUpperCase(), c.id);
   return byName;
@@ -159,14 +161,25 @@ function nameIndex(characters: Map<string, Character>): Map<string, string> {
 /** Resolve a single uppercase Fountain cue name to a character id, or undefined. */
 function cueToId(
   cue: string,
-  characters: Map<string, Character>,
-  byName: Map<string, string>,
+  characters: ReadonlyMap<string, unknown>,
+  byName: ReadonlyMap<string, string>,
 ): string | undefined {
   const baseName = cue
     .replace(/\([^)]*\)/g, '')
     .trim()
     .toUpperCase();
   return characters.has(slug(baseName)) ? slug(baseName) : byName.get(baseName);
+}
+
+/**
+ * Builds a function that resolves a cue as the author typed it (`AIKO`, `Aiko (V.O.)`) to a
+ * character id, by the rule `buildModel` applies to every speaker, or answers undefined.
+ */
+export function cueResolver(
+  characters: ReadonlyMap<string, Pick<Character, 'id' | 'name'>>,
+): (cue: string) => string | undefined {
+  const byName = nameIndex(characters);
+  return (cue) => cueToId(cue, characters, byName);
 }
 
 /**
@@ -190,8 +203,8 @@ function retiredReferenceImages(id: string, data: Record<string, unknown>): Diag
 /** Resolve uppercase Fountain cue names to character ids; returns ids + diagnostics. */
 function resolveCast(
   scene: Scene,
-  characters: Map<string, Character>,
-  byName: Map<string, string>,
+  characters: ReadonlyMap<string, Character>,
+  byName: ReadonlyMap<string, string>,
 ): { ids: string[]; diagnostics: Diagnostic[] } {
   const ids: string[] = [];
   const diagnostics: Diagnostic[] = [];

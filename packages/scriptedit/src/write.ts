@@ -19,3 +19,12 @@ export {
   type SceneEditInput,
   type ScenePlan,
 } from './apply.js';
+export {
+  applyEntityPlan,
+  entityPlanMessage,
+  planEntityDelete,
+  type AppliedEntityPlan,
+  type EntityDeleteInput,
+  type EntityPlan,
+  type ShotPrice,
+} from './entityplan.js';

@@ -9,3 +9,4 @@ export * from './model.js';
 export * from './notifications.js';
 export * from './schemas.js';
 export * from './playable.js';
+export * from './fileroots.js';

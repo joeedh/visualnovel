@@ -1,22 +1,15 @@
 /**
  * The path rules of the document tree's file commands (`doc.mkdir`, `doc.newFile`, `doc.move`,
- * `doc.copy`), decided without touching the disk. Main's `FilesPart` runs them before its own disk
- * rules, and the renderer runs `rootProblem` to grey a New folder… or New file… entry whose folder
- * the commands would refuse, since a form entry is never checked before the menu opens.
+ * `doc.copy`, `doc.delete`), decided without touching the disk. Main's `FilesPart` runs them
+ * before its own disk rules, and the renderer runs `rootProblem` to grey a New folder… or
+ * New file… entry whose folder the commands would refuse, since a form entry is never checked
+ * before the menu opens.
  */
+import { rootProblem as typesRootProblem, type PathRole } from '@vn/types';
 import { skillTierPath } from './editors.js';
 import { normalizePath } from './writes.js';
 
-/**
- * The folders file commands may write under: the author's own, where nothing is read by a fixed
- * path except the entity sheets the identity rule protects.
- */
-export const FILE_ROOTS: readonly string[] = ['wiki', 'characters', 'locations', 'archive'];
-
-/** Why a path outside {@link FILE_ROOTS} is refused. */
-export const ROOTS_REFUSAL =
-  'Files can be created, moved and renamed only under wiki/, characters/, locations/ and ' +
-  'archive/. scenes/ is written by the story commands.';
+export { FILE_ROOTS, ROOTS_REFUSAL, type PathRole } from '@vn/types';
 
 /** Device names Windows reserves, with or without an extension. */
 const RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
@@ -44,15 +37,8 @@ export function fileNameProblem(name: string): string | undefined {
 }
 
 /**
- * Whether a path is a folder something is put into, or an item that is created, moved or renamed.
- * A root such as `wiki` can be the first but never the second.
- */
-export type PathRole = 'folder' | 'item';
-
-/**
- * Why a file command must refuse `path`, or undefined when it is inside {@link FILE_ROOTS}. A
- * root itself is accepted as a `folder` and refused as an `item`, because moving or renaming
- * `wiki/` would move the whole story bible.
+ * Why a file command must refuse `path`, or undefined when it may proceed: `@vn/types`'s rule, with
+ * a skill's own path refused first by the sentence that names the Skills pane.
  */
 export function rootProblem(path: string, role: PathRole = 'item'): string | undefined {
   const rel = normalizePath(path).replace(/\/+$/, '');
@@ -60,17 +46,7 @@ export function rootProblem(path: string, role: PathRole = 'item'): string | und
   if (tier === 'user' || tier === 'builtin') {
     return `${rel} is in a ${tier} skill, which is edited in the Skills pane; clone it into the project to change a copy.`;
   }
-  if (rel === '') return ROOTS_REFUSAL;
-  const segments = rel.split('/');
-  if (/^[a-z]:/i.test(rel) || segments.some((s) => s === '' || s === '.' || s === '..')) {
-    return `${path} is not a path inside the project.`;
-  }
-  const root = segments[0]!;
-  if (!FILE_ROOTS.includes(root)) return ROOTS_REFUSAL;
-  if (role === 'item' && segments.length === 1) {
-    return `${root}/ is one of the project's own folders; it cannot be created, moved or renamed.`;
-  }
-  return undefined;
+  return typesRootProblem(path, role);
 }
 
 /** Where a new file or folder named `name` inside `parent` goes, or why it cannot. */
@@ -196,6 +172,26 @@ export function planMove(paths: readonly string[], into: string, name = ''): Pla
  */
 export function planCopy(paths: readonly string[], into: string): Planned {
   return planSources(paths, into, 'copy');
+}
+
+/**
+ * The items `paths` deletes, or why the delete is refused: every path is an item under the four
+ * roots, and a path inside another listed folder is dropped because that folder carries it.
+ */
+export function planDelete(
+  paths: readonly string[],
+): { ok: true; items: string[] } | { ok: false; reason: string } {
+  const listed = [...new Set(paths.map(trimPath))];
+  if (listed.length === 0)
+    return { ok: false, reason: 'Name at least one file or folder to delete.' };
+  for (const path of listed) {
+    const problem = rootProblem(path, 'item');
+    if (problem) return { ok: false, reason: problem };
+  }
+  return {
+    ok   : true,
+    items: listed.filter((path) => !listed.some((other) => other !== path && within(path, other))),
+  };
 }
 
 /**

@@ -50436,6 +50436,18 @@
     {
       "match": "upload.files",
       "why"  : "Uploads come from the drop target."
+    },
+    {
+      "match": "character.delete",
+      "why": "A delete the palette and CDP run until the document tree’s right-click menu offers it."
+    },
+    {
+      "match": "location.delete",
+      "why": "A delete the palette and CDP run until the document tree’s right-click menu offers it."
+    },
+    {
+      "match": "doc.delete",
+      "why": "A delete the palette and CDP run until the document tree’s right-click menu offers it."
     }
   ],
   "shortcuts": [

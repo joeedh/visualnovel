@@ -114,6 +114,8 @@ import type { Excerpt } from '@vn/bible';
 import {
   type BranchOp,
   type DeleteShotOp,
+  type EntityOp,
+  type EntityWorld,
   type LineOp,
   type NewShotOp,
   type SceneOutfitOp,
@@ -2490,6 +2492,17 @@ export class WorkspaceSession {
     return this.filesPart.transfer(paths, into, mode, name);
   }
 
+  previewDelete(paths: readonly string[]): Promise<DocResult<{ note: string }>> {
+    return this.filesPart.previewDelete(paths);
+  }
+
+  /** Delete files and folders under the four file roots, refusing an entity sheet by name. */
+  deleteFiles(
+    paths: readonly string[],
+  ): Promise<DocResult<{ deleted: string[]; written: string[]; message: string }>> {
+    return this.filesPart.deleteFiles(paths);
+  }
+
   async previewRename(path: string, name: string): Promise<DocResult<{ note: string }>> {
     return this.docsPart.previewRename(path, name);
   }
@@ -2539,6 +2552,11 @@ export class WorkspaceSession {
     return this.storyPart.previewSceneEdit(decide);
   }
 
+  /** Lists the files a prose edit would remove, workspace-relative. */
+  sceneEditRemovals(decide: (state: ScriptState) => LineOp): Promise<string[]> {
+    return this.storyPart.sceneEditRemovals(decide);
+  }
+
   /**
    * The single write path for every prose edit, and the sibling of `editBranches`: apply the proved
    * plan — chunks, storyboards, removals — then rebuild the model. The app's own part is reporting:
@@ -2546,6 +2564,23 @@ export class WorkspaceSession {
    */
   async editScene(decide: (state: ScriptState) => LineOp): Promise<SceneEditResult> {
     return this.storyPart.editScene(decide);
+  }
+
+  previewEntityDelete(
+    kind: 'character' | 'location',
+    id: string,
+    decide: (world: EntityWorld) => EntityOp,
+  ): Promise<{ ok: boolean; message: string }> {
+    return this.storyPart.previewEntityDelete(kind, id, decide);
+  }
+
+  /** Delete a character or location, rewriting every document that referred to it. */
+  deleteEntity(
+    kind: 'character' | 'location',
+    id: string,
+    decide: (world: EntityWorld) => EntityOp,
+  ): Promise<SceneEditResult> {
+    return this.storyPart.deleteEntity(kind, id, decide);
   }
 
   /**

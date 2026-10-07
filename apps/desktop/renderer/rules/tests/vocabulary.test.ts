@@ -37,6 +37,10 @@ const PROJECT: ProjectVocabulary = {
     { id: 'aiko', name: 'Aiko', status: 'approved' },
     { id: 'haruki', name: '', status: 'candidates' },
   ],
+  locations: [
+    { id: 'rooftop', name: 'Rooftop', mined: false, file: 'locations/rooftop.md' },
+    { id: 'gate', name: 'Gate', mined: true },
+  ],
   threads   : [THREAD],
   boundModel: 'claude-sonnet-5',
 };
@@ -52,6 +56,22 @@ describe('which props get a list', () => {
     expect(lists['scene']?.map((row) => row.value)).toEqual(['rooftop_intro', 'orphan']);
     // `goto` takes an empty value, which is a choice rather than an unfilled field.
     expect(lists['goto']?.map((row) => row.value)).toEqual(['', 'rooftop_intro', 'orphan']);
+  });
+
+  it('offers locations, and the cast where a delete names who takes over', () => {
+    const location = entry('location.delete', [
+      prop({ name: 'location' }),
+      prop({ name: 'replaceWith', required: false, default: '' }),
+    ]);
+    const lists = vocabularyFor(location, PROJECT, {});
+    expect(lists['location']?.map((row) => row.value)).toEqual(['rooftop', 'gate']);
+    expect(lists['replaceWith']?.map((row) => row.value)).toEqual(['', 'rooftop', 'gate']);
+
+    const character = entry('character.delete', [
+      prop({ name: 'mergeInto', required: false, default: '' }),
+    ]);
+    const merge = vocabularyFor(character, PROJECT, {});
+    expect(merge['mergeInto']?.map((row) => row.value)).toEqual(['', 'aiko', 'haruki']);
   });
 
   it('leaves a prop alone when the project has nothing to offer', () => {

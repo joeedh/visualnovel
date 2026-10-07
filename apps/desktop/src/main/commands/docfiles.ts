@@ -1,13 +1,14 @@
 /**
- * Commands that create, move and copy files and folders in the document tree, as opposed to
- * `doc.ts`'s commands over one document's contents. Every path they take must be under `FILE_ROOTS`, which is also
- * exactly what they declare in `affects`, so for these commands the declaration is enforced by
- * their own check rather than being only an upper bound.
+ * Commands that create, move, copy and delete files and folders in the document tree, as opposed
+ * to `doc.ts`'s commands over one document's contents. Every path they take must be under
+ * `FILE_ROOTS`, which is also exactly what they declare in `affects`, so for these commands the
+ * declaration is enforced by their own check rather than being only an upper bound.
  */
 import { defineFor, prop, type CheckResult } from '@vn/commands';
 import { isTextPath } from '../../shared/editors.js';
 import { FILE_ROOTS } from '../../shared/fileops.js';
 import type { CommandHost } from './host.js';
+import { askBeforeRemoving } from './removals.js';
 
 const define = defineFor<CommandHost>();
 
@@ -110,6 +111,31 @@ export const docMove = define({
       ctx.origin,
     );
     return { message: moved.message, data: moved, written: moved.written };
+  },
+});
+
+export const docDelete = define({
+  id         : 'doc.delete',
+  title      : 'Delete files',
+  description:
+    'Delete files and folders. A character or location sheet is refused, naming the command ' +
+    'that deletes the entity along with what refers to it; so is a folder holding one.',
+  notes:
+    'Only under wiki/, characters/, locations/ and archive/. Pictures and other media can be deleted, but undo does not bring them back; only git history can, which the check says. A nested repository is refused.',
+  mutating   : true,
+  affects    : FILE_ROOTS,
+  undoable   : true,
+  props      : { paths: prop.stringList('the files and folders, workspace-relative') },
+  async check({ paths }, ctx) {
+    return verdict(await ctx.host.session.previewDelete(paths));
+  },
+  confirmWhen({ paths }, ctx) {
+    return askBeforeRemoving(ctx, async () => paths);
+  },
+  async run({ paths }, ctx) {
+    const deleted = await ctx.host.session.deleteFiles(paths);
+    if (!deleted.ok) throw new Error(deleted.reason);
+    return { message: deleted.message, data: deleted, written: deleted.written };
   },
 });
 
