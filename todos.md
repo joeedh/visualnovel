@@ -34,4 +34,5 @@
 	 
 ## Markdown Editor
 [ ]: Pressing space when the cursor is at the end of a link should insert the space outside the link.
-[ ]: When creating a new location the cursor cannot be set after the yaml widget making the document uneditable.
+[ ]: When editing an empty file with a yaml form the cursor cannot be set after the yaml widget, making the document uneditable.
+
