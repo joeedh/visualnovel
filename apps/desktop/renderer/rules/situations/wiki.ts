@@ -54,6 +54,18 @@ export const SITUATIONS = situations<WikiState>(
     },
   },
   {
+    name : 'open-switching',
+    why: 'Ctrl+Tab is held, so the switcher lists the pages the pane has shown, most recent first, each publishing its page as the pane document.',
+    state: {
+      path  : 'wiki/world.md',
+      dirty : false,
+      recent: [
+        { path: 'wiki/world.md', label: 'world' },
+        { path: 'characters/aiko/character.md', label: 'Aiko' },
+      ],
+    },
+  },
+  {
     name : 'open-dirty',
     why: 'The open page has changed, so Save is offered, and one picture drawn from it opens in the asset editor.',
     state: {

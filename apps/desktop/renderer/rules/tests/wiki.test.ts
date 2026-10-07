@@ -10,8 +10,10 @@ import {
   linkRow,
   pictureOffer,
   rawOffer,
+  recentRow,
   type WikiState,
 } from '../wiki.js';
+import { findShortcut } from '../shortcuts.js';
 import { reloadOffer, saveOffer, textBox } from '../docbuffer.js';
 import { cellAction } from '../assetstrip.js';
 import { duplicateKeys, keyOf } from '../anchors.js';
@@ -145,6 +147,31 @@ describe('controls', () => {
     const listed = controls(state({ completion: { targets: [aiko], visible: ['wiki'] } }));
     expect(listed.map(keyOf)).toContain('cmd:view.open#link/doc/characters/aiko/character.md');
     expect(duplicateKeys(listed)).toEqual([]);
+  });
+
+  it('offers each recent page as the pane document it publishes, bound to Ctrl+Tab', () => {
+    const lore = { path: 'wiki/lore.md', label: 'lore' };
+    const aiko = { path: 'characters/aiko/character.md', label: 'Aiko' };
+    expect(recentRow(aiko, false)).toEqual({
+      ok     : true,
+      id     : 'ui.publish',
+      props  : { docPath: 'characters/aiko/character.md' },
+      on     : 'recent/characters/aiko/character.md',
+      label  : 'Aiko',
+      tooltip: expect.stringContaining('release Ctrl'),
+    });
+    expect(recentRow(lore, true).tooltip).toContain('the page shown now');
+    const listed = controls(state({ recent: [lore, aiko] }));
+    expect(listed.map(keyOf)).toEqual(
+      expect.arrayContaining([
+        'item:recent/wiki/lore.md',
+        'item:recent/characters/aiko/character.md',
+      ]),
+    );
+    expect(duplicateKeys(listed)).toEqual([]);
+    const row = recentRow(aiko, false);
+    const key = row.ok ? findShortcut({ id: row.id, props: row.props }, row.on, 'wiki') : undefined;
+    expect(key).toMatchObject({ key: 'Tab', mods: ['ctrl'] });
   });
 
   it('offers to discard detached form answers only while there are some', () => {

@@ -13,7 +13,7 @@
  */
 import type { keymap } from 'pathux';
 import type { Action } from './anchors.js';
-import { move, openPopup, view } from './effects.js';
+import { move, openPopup, publish, view } from './effects.js';
 import type { EditorId } from '../../src/shared/editors.js';
 import type { UxShortcut } from '../../src/shared/uxmodel.js';
 
@@ -239,6 +239,25 @@ export const SHORTCUTS: readonly Shortcut[] = [
     label: 'Rename',
     runs : command('doc.move'),
     on   : 'rename',
+  },
+
+  // The Wiki pane's switcher stays up while Ctrl is held and shows the highlighted page when it is
+  // released, so a key runs what a click on a switcher row runs
+  {
+    scope: 'wiki',
+    key  : 'Tab',
+    mods : ['ctrl'],
+    label: 'Next recent page',
+    runs : publish({}),
+    on   : 'recent/',
+  },
+  {
+    scope: 'wiki',
+    key  : 'Tab',
+    mods : ['ctrl', 'shift'],
+    label: 'Previous recent page',
+    runs : publish({}),
+    on   : 'recent/',
   },
 
   {

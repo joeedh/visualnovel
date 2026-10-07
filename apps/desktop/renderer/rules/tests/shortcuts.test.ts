@@ -167,6 +167,21 @@ describe('bindings', () => {
     expect(FUNCTION_KEYS.F2).toBe(113);
   });
 
+  it('binds Ctrl+Tab and Ctrl+Shift+Tab in the Wiki pane to the switcher rows', () => {
+    const noop = () => {};
+    const list = bindings('wiki', { 'Next recent page': noop, 'Previous recent page': noop });
+    expect(list.map((b) => [b.key, b.mods])).toEqual([
+      ['Tab', ['ctrl']],
+      ['Tab', ['ctrl', 'shift']],
+    ]);
+    expect(
+      shortcutOf({ id: 'ui.publish', props: { docPath: 'wiki/a.md' } }, 'recent/wiki/a.md'),
+    ).toBe('Ctrl+Tab');
+    expect(
+      findShortcut({ id: 'ui.publish', props: {} }, 'link/doc/wiki/a.md', 'wiki'),
+    ).toBeUndefined();
+  });
+
   it('has nothing to bind for a scope path.ux binds itself', () => {
     expect(bindings('gengraph', {})).toEqual([]);
   });

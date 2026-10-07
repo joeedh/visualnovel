@@ -205,6 +205,20 @@ on the rich editor, with every decision and what shipped against each, is
   that edits the link. A `[[marker]]` the screenplay's syntax uses, and any url, lead
   nowhere. The bible still indexes a link as plain text; there are no backlinks between
   notes.
+- **Ctrl+Tab switches between recently shown pages.** Each pane keeps the pages it has
+  shown, most recent first (`doctree/recent.ts`, at most `RECENT_LIMIT`). Ctrl+Tab opens a
+  popup over the pane (`editors/wikirecent.ts`) with the previous page highlighted; each
+  further Tab moves the highlight down, Shift+Tab or the arrow keys move it either way,
+  and releasing Ctrl shows the highlighted page. A single Ctrl+Tab therefore flips back to
+  the previous page. Enter or a click on a row also shows it; Escape, a press outside, any
+  other key, or the window losing focus closes the popup without moving. Showing a page
+  publishes it as `ui.docPath`, which a pinned pane reads from its pin instead. The chord
+  is Ctrl+Tab rather than Alt+Tab because the operating system takes Alt+Tab before the
+  app sees it. The pane catches the chord in the capture phase, before the rich editor
+  would take the Tab as an indent; the pane's keymap binds the same two rows of
+  `SHORTCUTS` for when the pointer is over the pane but the focus is elsewhere. Renames
+  and moves are followed, and a page whose read fails is dropped. The list is pane memory,
+  like the Raw switch, so it starts empty after a restart.
 - **It does not read through `@vn/bible`.** That interface has no whole-file call, and the
   guarantee follows from that absence ([`story-bible.md`](story-bible.md)). A human
   reading their own note on screen does not put it into the agent's context window.

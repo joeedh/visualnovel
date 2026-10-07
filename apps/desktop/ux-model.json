@@ -921,6 +921,12 @@
     {
       "module": "wiki",
       "editor": "wiki",
+      "name"  : "open-switching",
+      "why": "Ctrl+Tab is held, so the switcher lists the pages the pane has shown, most recent first, each publishing its page as the pane document."
+    },
+    {
+      "module": "wiki",
+      "editor": "wiki",
       "name"  : "open-dirty",
       "why": "The open page has changed, so Save is offered, and one picture drawn from it opens in the asset editor."
     },
@@ -43377,6 +43383,216 @@
       "via"       : "control",
       "editor"    : "wiki",
       "module"    : "wiki",
+      "situation" : "open-switching",
+      "key"       : "cmd:doc.write",
+      "widgetPath": "wiki/doc-write~1ab13660",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Save",
+        "tooltip" : "Write this file back to disk, and commit it",
+        "supplies": ["text", "seenHash"],
+        "ok"      : false,
+        "refusal": {
+          "reason": "Nothing to save"
+        }
+      },
+      "effects": [
+        {
+          "id": "doc.write"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-switching",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "wiki/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Re-read this document from disk (discards an unsaved draft)",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-switching",
+      "key"       : "fx:pane.view#raw",
+      "widgetPath": "wiki/pane-view~8a156d00",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Raw",
+        "tooltip": "Show this document as Markdown source; edits here and in the rich view share one undo history",
+        "on"     : "raw",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-switching",
+      "key"       : "cmd:doc.write#text",
+      "widgetPath": "wiki/doc-write~b0b7797d",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "The file, as text",
+        "tooltip": "Edit the document; a sheet shows its front matter as a form. Ctrl+S saves and commits.",
+        "on"      : "text",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "wiki/world.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "wiki/world.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-switching",
+      "key"       : "cmd:doc.write#picture",
+      "widgetPath": "wiki/doc-write~5b47a774",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Insert a picture",
+        "tooltip" : "Pick a picture from the project's assets and place it at the cursor",
+        "on"      : "picture",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "wiki/world.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "wiki/world.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-switching",
+      "key"       : "cmd:doc.write#link",
+      "widgetPath": "wiki/doc-write~b83db750",
+      "offer": {
+        "id"      : "doc.write",
+        "label"   : "Insert a link",
+        "tooltip": "Link to a character, location, scene or page in this project (or type [[ in the text)",
+        "on"      : "link",
+        "supplies": ["text", "seenHash"],
+        "ok"      : true,
+        "props": {
+          "path": "wiki/world.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "doc.write",
+          "props": {
+            "path": "wiki/world.md"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-switching",
+      "key"       : "item:recent/wiki/world.md",
+      "widgetPath": "wiki/ui-publish~3c8d71e4",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "world",
+        "tooltip": "Stay on world (wiki/world.md), the page shown now",
+        "on"     : "recent/wiki/world.md",
+        "ok"     : true,
+        "props": {
+          "docPath": "wiki/world.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "docPath": "wiki/world.md"
+          }
+        }
+      ],
+      "shortcut"  : "Ctrl+Tab"
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
+      "situation" : "open-switching",
+      "key"       : "item:recent/characters/aiko/character.md",
+      "widgetPath": "wiki/ui-publish~a7d3da6a",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "Aiko",
+        "tooltip": "Show Aiko (characters/aiko/character.md) in this pane — release Ctrl on it, or click it",
+        "on"     : "recent/characters/aiko/character.md",
+        "ok"     : true,
+        "props": {
+          "docPath": "characters/aiko/character.md"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "docPath": "characters/aiko/character.md"
+          }
+        }
+      ],
+      "shortcut"  : "Ctrl+Tab"
+    },
+    {
+      "via"       : "control",
+      "editor"    : "wiki",
+      "module"    : "wiki",
       "situation" : "open-dirty",
       "key"       : "cmd:doc.write",
       "widgetPath": "wiki/doc-write~1ab13660",
@@ -50566,6 +50782,28 @@
         "props": {}
       },
       "on"   : "rename"
+    },
+    {
+      "scope": "wiki",
+      "key"  : "Tab",
+      "mods" : ["ctrl"],
+      "label": "Next recent page",
+      "runs": {
+        "id"   : "ui.publish",
+        "props": {}
+      },
+      "on"   : "recent/"
+    },
+    {
+      "scope": "wiki",
+      "key"  : "Tab",
+      "mods" : ["ctrl", "shift"],
+      "label": "Previous recent page",
+      "runs": {
+        "id"   : "ui.publish",
+        "props": {}
+      },
+      "on"   : "recent/"
     },
     {
       "scope": "gengraph",

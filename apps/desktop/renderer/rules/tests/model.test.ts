@@ -157,6 +157,9 @@ describe('model()', () => {
       'play fx:pane.view#back Left',
       'play fx:pane.view#forward Space',
       'script cmd:story.deleteLines#marked Delete',
+      // The Ctrl+Tab switcher's rows, under the recent-page family
+      'wiki item:recent/characters/aiko/character.md Ctrl+Tab',
+      'wiki item:recent/wiki/world.md Ctrl+Tab',
     ]);
   });
 

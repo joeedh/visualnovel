@@ -1,4 +1,11 @@
-import { UIBase, type Button, type Container, type ContextLike, type RichTextEditor } from 'pathux';
+import {
+  KeyMap,
+  UIBase,
+  type Button,
+  type Container,
+  type ContextLike,
+  type RichTextEditor,
+} from 'pathux';
 import { nativeFormWidgets } from 'pathux-richtext-forms';
 import {
   markdownSourceCommand,
@@ -23,6 +30,7 @@ import {
   linkOffer,
   pictureOffer,
   rawOffer,
+  type RecentPage,
 } from '../../rules/wiki.js';
 import { reloadOffer, textBox } from '../../rules/docbuffer.js';
 import { visibleEditors } from '../panes/route.js';
@@ -32,9 +40,14 @@ import { AUTOSAVE_MS, BRIDGE_IO, DocBuffer } from '../doctree/docbuffer.js';
 import { parseOptionsFor, refusalOf } from '../doctree/docsession.js';
 import type { DocForm } from '../doctree/docforms.js';
 import { SheetForms, sheetControls } from '../doctree/sheetform.js';
-import { redrawing } from '../tour/anchors.js';
+import { redrawing, watchKeymap } from '../tour/anchors.js';
 import { assetGroups } from '../doctree/doctree.js';
-import { linkedNode } from '../doctree/doclinks.js';
+import { linkTargets, linkedNode } from '../doctree/doclinks.js';
+import { RecentPages } from '../doctree/recent.js';
+import { hotkeys } from '../app/keymap.js';
+import { onMoved } from '../app/docseffect.js';
+import { RecentSwitcher } from './wikirecent.js';
+import { baseName } from '../../../src/shared/fileops.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { assetNode, openNode } from '../panes/open.js';
 import { LINK_BUTTON, PICTURE_BUTTON, WikiProvider, type LinkStart } from './wikiprovider.js';
@@ -78,6 +91,9 @@ import type { EditorId } from '../../../src/shared/editors.js';
  * or a plain click while the document cannot be written, follows a link that names a document or
  * a stored picture through the same route a tree click takes; a plain click keeps path.ux's own
  * popup, which edits the link. A `[[marker]]` the screenplay uses, or a url, leads nowhere here.
+ *
+ * Ctrl+Tab cycles through the pages the pane has shown, most recent first, in a popup that stays
+ * up while Ctrl is held and shows the highlighted page on release (`wikirecent.ts`).
  */
 export class WikiEditor extends VnEditor {
   private surface!: HTMLDivElement;
@@ -134,6 +150,18 @@ export class WikiEditor extends VnEditor {
     roots  : () => this.tree?.roots ?? [],
     visible: () => this.visible(),
     anchors: () => redrawing('wiki', 'complete'),
+  });
+
+  /** The pages this pane has shown, most recent first. In memory only, like the Raw switch. */
+  private readonly recent = new RecentPages();
+
+  /** The popup Ctrl+Tab opens over the recent pages. */
+  private readonly recentPopup = new RecentSwitcher({
+    screen : () => this.ctx?.screen as VnScreen | undefined,
+    pane   : () => this,
+    pages  : () => this.recentPages(),
+    anchors: () => redrawing('wiki', 'recent'),
+    show   : (path) => this.showRecent(path),
   });
 
   /** This pane's forms: the schemas with its own controls, and the form path.ux has mounted. */
@@ -301,7 +329,42 @@ export class WikiEditor extends VnEditor {
     );
     void this.loadTree();
 
+    // A renamed or moved page keeps its place in the switcher's order
+    this.watch(() => onMoved((moves) => this.recent.moved(moves)));
+
+    // Ctrl+Tab is caught before anything inside the pane hears it: the rich editor would take the
+    // Tab as an indent, and the textarea as a focus move
+    this.addEventListener('keydown', (e) => this.switchKey(e), true);
+    // The same keys when the pane is under the pointer but the focus is outside it
+    this.keymap = new KeyMap(
+      hotkeys('wiki', {
+        'Next recent page'    : () => this.recentPopup.step(1),
+        'Previous recent page': () => this.recentPopup.step(-1),
+      }),
+    );
+    watchKeymap('wiki', () => this.keymap);
+
     this.paint();
+  }
+
+  /** Opens the switcher, or moves its highlight, on Ctrl+Tab and Ctrl+Shift+Tab. */
+  private switchKey(e: KeyboardEvent): void {
+    if (e.key !== 'Tab' || !(e.ctrlKey || e.metaKey) || e.altKey) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    this.recentPopup.step(e.shiftKey ? -1 : 1);
+  }
+
+  /** The pages the switcher offers, named as the document tree names them. */
+  private recentPages(): RecentPage[] {
+    const labels = new Map(linkTargets(this.tree?.roots ?? []).map((t) => [t.path, t.label]));
+    return this.recent.paths.map((path) => ({ path, label: labels.get(path) ?? baseName(path) }));
+  }
+
+  /** Shows a page picked in the switcher: a pinned pane moves its pin, any other the selection. */
+  private showRecent(path: string): void {
+    this.ui.docPath = path;
+    this.announce();
   }
 
   override update() {
@@ -522,6 +585,9 @@ export class WikiEditor extends VnEditor {
 
   private paint(): void {
     const open = this.buf.path !== '';
+    // A document joins the switcher once it has a session; one whose read failed leaves it
+    if (this.buf.session) this.recent.visit(this.buf.path);
+    else if (open && this.buf.bad) this.recent.forget(this.buf.path);
     if (this.raw && this.rawPath !== this.buf.path) this.raw = false;
     this.empty.style.display = open ? 'none' : 'flex';
     this.editor.style.display = open && !this.raw ? '' : 'none';

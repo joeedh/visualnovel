@@ -1,6 +1,7 @@
 /*
- * The link completion under a typed `[[`. Put into the popup's own shadow root by
- * `editors/wikilinks.ts`, since the popup floats on the screen, outside the pane's sheets.
+ * The link completion under a typed `[[`, and the Ctrl+Tab switcher over the Wiki pane. Put into
+ * each popup's own shadow root by `editors/wikilinks.ts` and `editors/wikirecent.ts`, since the
+ * popups float on the screen, outside the pane's sheets.
  *
  * Warm, like the prose it writes into: the row the author is on is marked with the `--sodium`
  * rule the wardrobe's entries use, and the path under each name is in the chrome face so the
@@ -51,6 +52,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.lc-head {
+  padding: 4px 10px 6px;
+  font-size: 11px;
+  color: var(--mist);
 }
 
 .lc-none {

@@ -33,6 +33,33 @@ export interface WikiState {
   strip?: { assets: readonly StripAsset[]; visible: readonly EditorId[] };
   /** The documents a typed `[[` is offering links to, while the completion is open. */
   completion?: { targets: readonly DocNode[]; visible: readonly EditorId[] };
+  /** The pages Ctrl+Tab offers while its switcher is up, most recent first. */
+  recent?: readonly RecentPage[];
+}
+
+/** One page in the Ctrl+Tab switcher. */
+export interface RecentPage {
+  path: string;
+  /** The page's name in the document tree, or its file name when the tree does not list it. */
+  label: string;
+}
+
+/**
+ * One row of the Ctrl+Tab switcher. Releasing Ctrl on the row, or clicking it, shows the page in
+ * this pane, so the row publishes the page as the pane's document. The first row is the page
+ * already shown, which the author lands back on by releasing Ctrl before a second Tab. Keyed
+ * `recent/<path>`.
+ */
+export function recentRow(page: RecentPage, shown: boolean): Offer {
+  return {
+    ok: true,
+    ...publish({ docPath: page.path }),
+    on     : `recent/${page.path}`,
+    label  : page.label,
+    tooltip: shown
+      ? `Stay on ${page.label} (${page.path}), the page shown now`
+      : `Show ${page.label} (${page.path}) in this pane — release Ctrl on it, or click it`,
+  };
 }
 
 /**
@@ -135,10 +162,14 @@ export function discardOffer(detached: number, stale = false): Offer {
   };
 }
 
-/** Every offer the Wiki pane draws from this module: the bar, the box, its toolbar, the footer, the strip. */
+/**
+ * Every offer the Wiki pane draws from this module: the bar, the box, its toolbar, the footer, the
+ * strip, and the popups that `[[` and Ctrl+Tab open.
+ */
 export function controls(state: WikiState): readonly Offer[] {
   const strip = state.strip;
   const completion = state.completion;
+  const recent = state.recent ?? [];
   const detached = state.detached ?? 0;
   const raw = state.raw === true;
   const stale = state.stale === true;
@@ -156,5 +187,6 @@ export function controls(state: WikiState): readonly Offer[] {
     ...(detached > 0 || stale ? [discardOffer(detached, stale)] : []),
     ...(strip ? strip.assets.map((asset) => cellAction(asset, strip.visible)) : []),
     ...(completion ? completion.targets.map((target) => linkRow(target, completion.visible)) : []),
+    ...recent.map((page, i) => recentRow(page, i === 0)),
   ];
 }
