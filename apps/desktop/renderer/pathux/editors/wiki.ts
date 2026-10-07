@@ -156,6 +156,7 @@ export class WikiEditor extends VnEditor {
         return () => this.paintListeners.delete(listener);
       },
     }),
+    () => this.buf.save(),
   );
 
   /** The form controls drawing art from the tree, told when it is fetched again. */

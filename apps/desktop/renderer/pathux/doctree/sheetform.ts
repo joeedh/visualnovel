@@ -8,12 +8,7 @@
  * with the one it was built for by identity. A pane's `select` answers the pane's own forms for
  * the life of the pane, so the identity holds.
  */
-import {
-  formView,
-  type FormControl,
-  type NativeFormParts,
-  type RecoveredForm,
-} from 'pathux-richtext-forms';
+import { FormControl, type NativeFormParts, type RecoveredForm } from 'pathux-richtext-forms';
 import type { DocumentSession, JsonValue, MdDoc, WidgetView } from 'pathux-richtext-headless';
 import type { FieldMeta } from 'pathux-richtext-schema';
 import type { ContextLike } from 'pathux';
@@ -21,6 +16,7 @@ import type { EntityTag } from '@vn/types';
 import type { EditorId } from '../../../src/shared/editors.js';
 import type { EntityLinks } from '../../../src/shared/ipc.js';
 import type { AnchorPass } from '../tour/anchors.js';
+import { APPLY_TIP, applyAndSave } from './applysave.js';
 import { FORMS, formKind, type DocForm } from './docforms.js';
 import { imageModelControl } from './modelcontrol.js';
 import { paletteControl } from './palettecontrol.js';
@@ -93,13 +89,40 @@ export function sheetControls(host: SheetHost): SheetControls {
   };
 }
 
+/** path.ux's form, with an Apply answers that also saves the document. */
+class SavingForm extends FormControl {
+  constructor(
+    parts: NativeFormParts,
+    private readonly save: () => Promise<unknown>,
+  ) {
+    super(parts.form.schema, parts.binding, parts.context, parts.form.presentation, {
+      commitTitle: APPLY_TIP,
+    });
+  }
+
+  override commit(): Promise<void> {
+    return applyAndSave(
+      () => super.commit(),
+      () => this.pending,
+      this.save,
+    );
+  }
+}
+
 export class SheetForms {
   private readonly forms: Record<EntityTag, DocForm>;
 
   /** The form path.ux most recently mounted through `view` and has not disposed. */
   private mounted: FormControl | undefined;
 
-  constructor(controls: SheetControls = {}) {
+  /**
+   * `save` is the pane's own save, the one its Save button and Ctrl+S run, which a form's Apply
+   * answers runs after applying.
+   */
+  constructor(
+    controls: SheetControls,
+    private readonly save: () => Promise<unknown>,
+  ) {
     const merged = (kind: EntityTag): DocForm => ({
       schema      : FORMS[kind].schema,
       presentation: {
@@ -116,9 +139,9 @@ export class SheetForms {
     return kind === undefined ? undefined : this.forms[kind];
   }
 
-  /** The `view` of `nativeFormWidgets`: the default form, remembered until path.ux disposes it. */
+  /** The `view` of `nativeFormWidgets`: a saving form, remembered until path.ux disposes it. */
   view(parts: NativeFormParts): WidgetView {
-    const form = formView(parts);
+    const form = new SavingForm(parts, this.save);
     this.mounted = form;
     return {
       element: form.element,

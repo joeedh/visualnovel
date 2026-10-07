@@ -1,8 +1,9 @@
 /**
  * The rich `DocBuffer` over `docsession.ts`: sessions shared by path, the save that runs
- * `prepareSave` first, the session kept across the buffer's own write, and autosave. Drives the
- * real `DocumentSession` and `ToolStack` from path.ux's headless entry through a provider that
- * supports only the whole-document replacement `markdownSourceCommand` issues.
+ * `prepareSave` first, the save a form's Apply answers runs, the session kept across the buffer's
+ * own write, and autosave. Drives the real `DocumentSession` and `ToolStack` from path.ux's
+ * headless entry through a provider that supports only the whole-document replacement
+ * `markdownSourceCommand` issues.
  */
 import {
   markdownSourceCommand,
@@ -15,6 +16,7 @@ import {
   type MdBlock,
   type MdDoc,
 } from 'pathux-richtext-headless';
+import { applyAndSave } from '../applysave.js';
 import { AUTOSAVE_MS, DocBuffer, draftCount, type DocIo } from '../docbuffer.js';
 import { dirtySessionCount, findSession, parseOptionsFor } from '../docsession.js';
 import type { DocFile, DocSaveResult } from '../../../../src/shared/ipc.js';
@@ -476,6 +478,56 @@ describe('a rich DocBuffer', () => {
     expect(draftCount()).toBe(before);
     buf.close();
     expect(findSession(path)).toBeUndefined();
+  });
+});
+
+describe("a sheet form's Apply answers", () => {
+  const APPLIED = ORIGINAL.replace('name: Ada #', 'name: Ada Lovelace #');
+
+  it('saves the applied answers through the buffer, and undo still reverts them', async () => {
+    const io = new FakeIo();
+    const path = uniq();
+    io.set(path, ORIGINAL);
+    const { buf } = rich(io);
+    await buf.open(path);
+
+    let pending = true;
+    const apply = async (): Promise<void> => {
+      await edit(buf, ORIGINAL, APPLIED);
+      pending = false;
+    };
+    await applyAndSave(
+      apply,
+      () => pending,
+      () => buf.save(),
+    );
+    expect(io.writes).toEqual([{ text: APPLIED, auto: false }]);
+    expect(buf.dirty).toBe(false);
+
+    // The apply is one step on the document's history, as it was before the save followed it
+    await undo(buf);
+    expect(buf.text).toBe(ORIGINAL);
+    expect(buf.dirty).toBe(true);
+    await buf.reload();
+    buf.close();
+  });
+
+  it('saves nothing while an answer is still pending', async () => {
+    const io = new FakeIo();
+    const path = uniq();
+    io.set(path, ORIGINAL);
+    const { buf } = rich(io);
+    await buf.open(path);
+
+    const save = jest.fn(() => buf.save());
+    await applyAndSave(
+      async () => {},
+      () => true,
+      save,
+    );
+    expect(save).not.toHaveBeenCalled();
+    expect(io.writes).toEqual([]);
+    buf.close();
   });
 });
 
