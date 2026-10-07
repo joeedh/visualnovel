@@ -12,7 +12,7 @@ import { CONFIG_FILENAME, loadConfig } from '@vn/config';
 import { InProgressError, openGit, type Git } from '@vn/git';
 import { slug } from '@vn/model';
 import type { NotificationLevel } from '@vn/types';
-import { writeFileAtomic } from '@vn/util';
+import { samePath, writeFileAtomic } from '@vn/util';
 import { notCheckedOut } from '../../shared/history.js';
 import {
   LAYOUT_ATTRIBUTE,
@@ -232,7 +232,7 @@ export async function adoptSubmodules(root: string): Promise<SubmoduleNotice[]> 
  */
 export async function ownsRepo(root: string): Promise<boolean> {
   const top = await openGit(root).topLevel();
-  return top !== null && resolve(top) === resolve(root);
+  return top !== null && samePath(top, root);
 }
 
 /**

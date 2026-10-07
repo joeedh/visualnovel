@@ -52,6 +52,13 @@ export const SYNC_UNFINISHED = 'Getting their saves is unfinished; finish or giv
  */
 export const NO_UPSTREAM = 'No shared copy is set to sync with; connect one first.';
 
+/**
+ * What every sync verb says over a branch that follows none of the shared copies the repository
+ * has; `@vn/git`'s `NO_SYNC_CHOSEN`, pinned the same way.
+ */
+export const NO_SYNC_CHOSEN =
+  'This branch syncs with none of its shared copies; choose one with “Sync with this copy”.';
+
 /** What every restore and a pull say over edits on disk no save holds yet; `@vn/git`'s `DIRTY_TREE`. */
 export const UNSAVED_EDITS = 'There are edits on disk not yet saved; save or discard them first.';
 

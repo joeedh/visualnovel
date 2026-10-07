@@ -5,3 +5,4 @@ export * from './fs.js';
 export * from './pool.js';
 export * from './diff.js';
 export * from './conflict.js';
+export * from './paths.js';

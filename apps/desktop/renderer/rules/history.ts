@@ -8,6 +8,7 @@
 import {
   decisionSentence,
   kindOf,
+  NO_SYNC_CHOSEN,
   NO_UPSTREAM,
   NOT_OWNED,
   notCheckedOut,
@@ -602,6 +603,15 @@ export function syncViewAction(state: HistoryState): Offer {
 }
 
 /**
+ * Why the branch has no copy to get saves from: none is connected, or none of those connected is
+ * the one it syncs with. Undefined when it syncs with one, or before the status has answered.
+ */
+function noUpstream(status: RepoStatus | undefined): string | undefined {
+  if (status === undefined || status.upstream !== null) return undefined;
+  return status.remotes.length === 0 ? NO_UPSTREAM : NO_SYNC_CHOSEN;
+}
+
+/**
  * Get their saves, from the copy the branch syncs with. Refused while nothing is set to sync
  * with, while edits are unsaved, while a sync is part way, and with the check's own reason.
  */
@@ -616,7 +626,7 @@ export function pullAction(state: HistoryState): Offer {
     stillSyncing(state) ??
     notOwned(state) ??
     unfinished(state.status) ??
-    (state.status?.upstream === null ? NO_UPSTREAM : undefined) ??
+    noUpstream(state.status) ??
     (state.status?.cause === 'outside' ? UNSAVED_EDITS : undefined) ??
     refusedBy(state, 'git.pull');
   if (why !== undefined) return { ...refuse(why), ...control };
@@ -955,6 +965,13 @@ export function abandonSyncAction(state: HistoryState): Offer {
 // Sentences
 // -----------------------------------------------------------------------------
 
+/** What the strip says of a branch that syncs with no shared copy, naming any it could sync with. */
+function unsynced(remotes: readonly RemoteEntry[]): string {
+  if (remotes.length === 0) return 'no shared copy yet';
+  if (remotes.length === 1) return `not syncing with “${remotes[0]!.name}”`;
+  return `not syncing with any of ${remotes.length} shared copies`;
+}
+
 /**
  * The strip's one line for a repository: role, branch, and where it stands against its copy.
  * A narrow pane keeps the branch and the counts and drops the copy's name.
@@ -977,7 +994,7 @@ export function stripSentence(
   if (!status) return parts.join(' · ');
   // A submodule checks out with no branch, and saving there needs one before anything else
   parts.push(status.branch ?? `not on a branch — check one out in ${entry.root} to save there`);
-  if (status.upstream === null) parts.push('no shared copy yet');
+  if (status.upstream === null) parts.push(unsynced(status.remotes));
   else {
     if (!narrow) parts.push(`shared copy ${status.upstream}`);
     // Mid-rebase HEAD is detached, so the counts are unknowable rather than unasked

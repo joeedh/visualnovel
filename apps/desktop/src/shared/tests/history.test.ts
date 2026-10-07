@@ -1,7 +1,12 @@
-import { DIRTY_TREE, NO_UPSTREAM as GIT_NO_UPSTREAM } from '@vn/git';
+import {
+  DIRTY_TREE,
+  NO_SYNC_CHOSEN as GIT_NO_SYNC_CHOSEN,
+  NO_UPSTREAM as GIT_NO_UPSTREAM,
+} from '@vn/git';
 import {
   blobUrl,
   kindOf,
+  NO_SYNC_CHOSEN,
   NO_UPSTREAM,
   parseGitUrl,
   readableConflict,
@@ -89,10 +94,11 @@ describe('readableConflict', () => {
   });
 });
 
-/** The renderer cannot import `@vn/git`, so the two sentences it repeats are pinned to the source. */
+/** The renderer cannot import `@vn/git`, so the sentences it repeats are pinned to the source. */
 describe('the sentences shared with @vn/git', () => {
   it('are the same words in both places', () => {
     expect(NO_UPSTREAM).toBe(GIT_NO_UPSTREAM);
+    expect(NO_SYNC_CHOSEN).toBe(GIT_NO_SYNC_CHOSEN);
     expect(UNSAVED_EDITS).toBe(DIRTY_TREE);
   });
 });

@@ -415,11 +415,11 @@ export class Git {
   }
 
   /**
-   * The shas on the current branch that its upstream lacks, newest first. Null when the
-   * branch has no upstream or the upstream's tracking ref does not exist yet.
+   * The shas on the current branch that `against` lacks, newest first; the upstream by default.
+   * Null when there is no upstream or the tracking ref does not exist yet.
    */
-  async unsent(): Promise<Set<string> | null> {
-    const r = await this.run(['rev-list', '@{upstream}..HEAD']);
+  async unsent(against = '@{upstream}'): Promise<Set<string> | null> {
+    const r = await this.run(['rev-list', `${against}..HEAD`]);
     if (r.code !== 0) return null;
     return new Set(r.stdout.split('\n').filter((l) => l.length > 0));
   }

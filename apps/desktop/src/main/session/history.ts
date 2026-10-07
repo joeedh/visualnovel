@@ -13,7 +13,9 @@ import {
   openGit,
   OWN_LOGS,
   statusCause,
+  syncTarget,
   textDiff,
+  unsentToTarget,
   type Change,
   type Diff,
   type Git,
@@ -222,7 +224,7 @@ export class HistoryPart {
   async history(role: RepoRole, filter: HistoryFilter = {}): Promise<HistoryPage> {
     const { git } = await this.need(role);
     const ctx = await this.makerContext(role);
-    const [unsent, checkpoints] = await Promise.all([git.unsent(), git.checkpoints()]);
+    const [unsent, checkpoints] = await Promise.all([unsentToTarget(git), git.checkpoints()]);
     const marks = new Map<string, string[]>();
     for (const c of checkpoints) marks.set(c.sha, [...(marks.get(c.sha) ?? []), c.slug]);
 
@@ -367,7 +369,7 @@ export class HistoryPart {
       git.lastFetch(),
     ]);
     const name = branch.head ?? inProgress.rebase?.branch ?? null;
-    const upstream = name === null ? null : await git.upstream(name);
+    const target = name === null ? null : await syncTarget(git, name);
     const remotes: RemoteEntry[] = await Promise.all(
       listed.map(async (r) => {
         const counts = name === null ? null : await git.aheadBehind(`${r.name}/${name}`);
@@ -375,10 +377,12 @@ export class HistoryPart {
           ...r,
           ahead    : counts?.ahead ?? null,
           behind   : counts?.behind ?? null,
-          syncsWith: upstream?.remote === r.name,
+          syncsWith: target?.remote === r.name,
         };
       }),
     );
+    // Porcelain counts only against a recorded upstream, so an implied one is counted here
+    const implied = target?.implied ? remotes.find((r) => r.name === target.remote) : undefined;
     const stopped = inProgress.rebase?.stoppedSha ?? null;
     const entry = stopped === null ? undefined : await entryOf(git, stopped);
     const replaying: Replaying | null =
@@ -398,9 +402,9 @@ export class HistoryPart {
     return {
       ...cause,
       branch  : name,
-      upstream: branch.upstream ?? (upstream ? `${upstream.remote}/${upstream.branch}` : null),
-      ahead   : branch.ahead,
-      behind  : branch.behind,
+      upstream: branch.upstream ?? (target ? `${target.remote}/${target.branch}` : null),
+      ahead   : implied ? implied.ahead : branch.ahead,
+      behind  : implied ? implied.behind : branch.behind,
       remotes,
       lastFetch,
       inProgress,

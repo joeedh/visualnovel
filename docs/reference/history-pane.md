@@ -44,8 +44,8 @@ side of syncing is [`../guides/collaborating.md`](../guides/collaborating.md).
 - `apps/desktop/src/shared/history.ts` carries what both processes name: `kindOf`,
   `KIND_ORDER`, `parseGitUrl`/`blobUrl`, and the refusal sentences the renderer draws
   before a command has answered (`NOT_OWNED`, `SYNC_UNFINISHED`, `NO_UPSTREAM`,
-  `UNSAVED_EDITS`), pinned to `@vn/git`'s by a test because the renderer must not import
-  the package.
+  `NO_SYNC_CHOSEN`, `UNSAVED_EDITS`), pinned to `@vn/git`'s by a test because the renderer
+  must not import the package.
 
 ## Vocabulary
 
@@ -80,9 +80,11 @@ commit whose first child is an `agent.run` commit by the same identity within
 (the scaffolding subjects and a commit carrying only `Vn-Thread`).
 
 The strip says `<role> · <branch> · shared copy <remote>/<branch> · N to send · M to get`,
-"not yet compared" while the counts are null, "getting their saves" mid-rebase, and what
-to do when HEAD is detached. The branch comes from `rebase-merge/head-name` during a
-rebase, because `git branch` answers `HEAD` then.
+"no shared copy yet" when the repository has no remote, "not syncing with any of N shared
+copies" when it has several and the branch follows none of them, "not yet compared" while
+the counts are null, "getting their saves" mid-rebase, and what to do when HEAD is
+detached. The branch comes from `rebase-merge/head-name` during a rebase, because
+`git branch` answers `HEAD` then.
 
 ## The change view
 
@@ -128,9 +130,26 @@ The strip's "Shared copies" toggle opens the sync view: every remote, the one th
 syncs with first, each with what it has to send and get, when it was last checked, and
 "Send my saves", "Check", "Sync with this copy", "Change address…" and "Remove"; below
 them, "Add a shared copy…". The first remote a branch gets becomes the one it syncs with
-(`branch.<name>.remote`/`.merge`, where a terminal `git pull` reads it too). A remote name
-and an address are checked by `remoteNameProblem` and `remoteUrlProblem`: `https://`,
-`git@host:`, `ssh://` or a filesystem path. The app never creates the copy.
+(`branch.<name>.remote`/`.merge`, where a terminal `git pull` reads it too).
+
+A remote connected outside the app, with `git remote add` and no `push -u`, leaves the
+branch following nothing. `syncTarget` in `@vn/git` answers which copy a branch syncs
+with: its upstream, or else the repository's only remote and the branch of the same name
+there (`implied`). The strip, the counts, the unsent glyphs and the "syncs with" badge all
+read through it, and the first successful get (once the copy has the branch) or send
+through an implied target records it as the upstream, as `push -u` would. Adding a second
+remote first records an implied target, so connecting a backup does not move the sync.
+With several remotes and none recorded, "Get their saves" is refused with
+`NO_SYNC_CHOSEN`, which points at "Sync with this copy"; `NO_UPSTREAM` is kept for a
+repository with no remote at all.
+
+Whether the project owns a repository compares git's root with the project directory
+through `samePath` (`@vn/util`), which on Windows ignores case and slash direction. git
+prints the drive letter upper-cased, so a project opened as `c:/…` would otherwise read as
+not owned and refuse every write with `NOT_OWNED`.
+
+A remote name and an address are checked by `remoteNameProblem` and `remoteUrlProblem`:
+`https://`, `git@host:`, `ssh://` or a filesystem path. The app never creates the copy.
 
 A send is `push --follow-tags <remote> <branch>`, so checkpoints travel with their saves.
 It is refused while there is nothing to send, while the copy has saves not yet got (under

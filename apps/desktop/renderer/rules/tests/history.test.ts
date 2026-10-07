@@ -55,6 +55,7 @@ import {
 import { duplicateKeys } from '../anchors.js';
 import { SITUATIONS } from '../situations/history.js';
 import {
+  NO_SYNC_CHOSEN,
   NO_UPSTREAM,
   NOT_OWNED,
   SYNC_UNFINISHED,
@@ -117,11 +118,31 @@ describe('stripSentence', () => {
   });
 
   it('says when there is no shared copy, and when it has not been compared yet', () => {
-    expect(stripSentence(PROJECT, { ...clean, upstream: null })).toBe(
+    expect(stripSentence(PROJECT, { ...clean, upstream: null, remotes: [] })).toBe(
       'Project · main · no shared copy yet',
     );
     expect(stripSentence(PROJECT, { ...clean, ahead: null, behind: null })).toBe(
       'Project · main · shared copy origin/main · not yet compared',
+    );
+  });
+
+  // An only remote is the sync target even untracked, so main reports no upstream only with several
+  it('names the copies a branch could sync with when it follows none of them', () => {
+    const origin = { ...clean.remotes[0]!, ahead: null, behind: null, syncsWith: false };
+    const backup = { ...origin, name: 'backup' };
+    const unsynced = {
+      ...clean,
+      upstream: null,
+      ahead   : null,
+      behind  : null,
+      remotes : [origin, backup],
+    };
+    expect(stripSentence(PROJECT, unsynced)).toBe(
+      'Project · main · not syncing with any of 2 shared copies',
+    );
+    // A detached head has no target even with one remote
+    expect(stripSentence(PROJECT, { ...unsynced, branch: null, remotes: [origin] })).toContain(
+      'not syncing with “origin”',
     );
   });
 
@@ -415,6 +436,8 @@ describe('the sync view', () => {
   it('gets their saves from the copy the branch syncs with, and says why not otherwise', () => {
     expect(pullAction(sync)).toMatchObject({ ok: true, props: { repo: 'project' } });
     expect(pullAction(state('no-remotes'))).toMatchObject({ refusal: { reason: NO_UPSTREAM } });
+    const unchosen = { ...sync, status: { ...sync.status!, upstream: null } };
+    expect(pullAction(unchosen)).toMatchObject({ refusal: { reason: NO_SYNC_CHOSEN } });
     const outside = { ...sync, status: { ...sync.status!, cause: 'outside' as const } };
     expect(pullAction(outside)).toMatchObject({ refusal: { reason: UNSAVED_EDITS } });
     const rebasing = { ...sync, status: { ...sync.status!, cause: 'rebase' as const } };

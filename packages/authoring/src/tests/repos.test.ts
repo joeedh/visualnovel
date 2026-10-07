@@ -46,6 +46,28 @@ describe('Workspace.repos', () => {
     }
   });
 
+  // git prints the drive letter upper-cased, so a project opened as `c:/…` must still own its repos
+  (process.platform === 'win32' ? it : it.skip)(
+    'owns the project and its bible when the drive letter was typed in lower case',
+    async () => {
+      const dir = await tempDir();
+      try {
+        const wiki = join(dir, 'wiki');
+        await fs.mkdir(wiki);
+        await initRepo(dir);
+        await initRepo(wiki);
+        const typed = dir[0]!.toLowerCase() + dir.slice(1).replaceAll('\\', '/');
+        expect(typed).not.toBe(dir);
+        expect(await new Workspace(typed).repos()).toEqual([
+          { role: 'project', root: dir, owned: true },
+          { role: 'wiki', root: wiki, owned: true },
+        ]);
+      } finally {
+        await fs.rm(dir, { recursive: true, force: true });
+      }
+    },
+  );
+
   it('reports the base assets separately once assets/ is a repo of its own', async () => {
     const dir = await tempDir();
     try {

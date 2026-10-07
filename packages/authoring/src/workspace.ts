@@ -35,7 +35,7 @@ import { sourcesOf, type SceneEditInput, type SceneSource } from '@vn/scriptedit
 import { storyboardStyle, type StoryboardStyle } from '@vn/artgen';
 import { loadConfig } from '@vn/config';
 import { RepoResolver } from '@vn/git';
-import { exists, readText, VnError, writeFileAtomic } from '@vn/util';
+import { exists, readText, samePath, VnError, writeFileAtomic } from '@vn/util';
 import { join, relative, resolve, sep } from 'node:path';
 import type {
   BaseAssets,
@@ -204,7 +204,7 @@ export class Workspace {
       if (root === null) continue;
       if (!seen.has(root)) {
         seen.add(root);
-        found.push({ role, root, owned: root === resolve(dir) });
+        found.push({ role, root, owned: samePath(root, dir) });
       } else if (await recordsGitlink(resolver, root, dir)) {
         found.push({ role, root: resolve(dir), owned: false, missing: true });
       }

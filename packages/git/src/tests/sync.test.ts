@@ -3,6 +3,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   finishRebase,
+  NO_SYNC_CHOSEN,
+  NO_UPSTREAM,
+  noUpstream,
   openGit,
   pairRewrites,
   parseCommitKeys,
@@ -20,6 +23,12 @@ import { sh, tempRepo, write } from './helpers.js';
 const key = (sha: string, k: string): CommitKey => ({ sha: sha.repeat(40), key: k });
 
 describe('the remote rules', () => {
+  it('tell a branch with no copy connected from one that follows none of its copies', () => {
+    expect(noUpstream(0)).toBe(NO_UPSTREAM);
+    expect(noUpstream(1)).toBe(NO_SYNC_CHOSEN);
+    expect(noUpstream(3)).toBe(NO_SYNC_CHOSEN);
+  });
+
   it('refuse a name git would refuse, an empty one, and one already taken', () => {
     expect(remoteNameProblem('origin', [])).toBeUndefined();
     expect(remoteNameProblem('nas-backup', ['origin'])).toBeUndefined();

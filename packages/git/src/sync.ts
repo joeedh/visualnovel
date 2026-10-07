@@ -11,6 +11,49 @@ import type { CommitKey } from './parse.js';
 export const NO_UPSTREAM = 'No shared copy is set to sync with; connect one first.';
 
 /**
+ * What every sync verb says over a branch that follows none of the shared copies the repository
+ * has, as a branch does after `git remote add` in a terminal.
+ */
+export const NO_SYNC_CHOSEN =
+  'This branch syncs with none of its shared copies; choose one with “Sync with this copy”.';
+
+/** The refusal for a branch with no sync target, given how many shared copies the repository has. */
+export function noUpstream(remotes: number): string {
+  return remotes === 0 ? NO_UPSTREAM : NO_SYNC_CHOSEN;
+}
+
+/** The shared copy and branch a branch syncs with. */
+export interface SyncTarget {
+  remote: string;
+  branch: string;
+  /**
+   * True when the branch tracks nothing and the copy is the repository's only remote. Tracking is
+   * recorded the first time a pull or a send through it succeeds, as `push -u` would.
+   */
+  implied: boolean;
+}
+
+/**
+ * The copy `branch` syncs with: its upstream, or else the repository's only remote and the branch
+ * of the same name there. Null with no remote, or with several and none tracked.
+ */
+export async function syncTarget(git: Git, branch: string): Promise<SyncTarget | null> {
+  const upstream = await git.upstream(branch);
+  if (upstream) return { ...upstream, implied: false };
+  if (branch === 'HEAD') return null;
+  const remotes = await git.remotes();
+  if (remotes.length !== 1) return null;
+  return { remote: remotes[0]!.name, branch, implied: true };
+}
+
+/** The saves the current branch's sync target lacks; null with no target or no fetched ref. */
+export async function unsentToTarget(git: Git): Promise<Set<string> | null> {
+  const target = await syncTarget(git, await git.branch());
+  if (target === null) return null;
+  return git.unsent(target.implied ? `${target.remote}/${target.branch}` : '@{upstream}');
+}
+
+/**
  * One commit a rebase replaced. `to` is null when the rebase dropped it, as it does an unsent
  * save whose change the shared copy already holds. The same shape `@vn/commands` records.
  */

@@ -13,6 +13,7 @@ import { basename, resolve } from 'node:path';
 import { defineFor, prop } from '@vn/commands';
 import { GENERATED_CONTEXT_FILE } from '@vn/authoring';
 import { slug } from '@vn/model';
+import { samePath } from '@vn/util';
 import type { CommandHost } from './host.js';
 import {
   createRoot,
@@ -36,7 +37,7 @@ async function wouldOpen(
   takenElsewhere: (root: string) => Promise<boolean>,
 ): Promise<{ ok: true; note: string } | { ok: false; reason: string }> {
   const root = resolve(path);
-  if (root === resolve(current)) return { ok: false, reason: `${root} is already open.` };
+  if (samePath(root, current)) return { ok: false, reason: `${root} is already open.` };
   if (busy) return { ok: false, reason: `${busy} is still running; wait for it to finish.` };
 
   const found = await inspectWorkspace(root);

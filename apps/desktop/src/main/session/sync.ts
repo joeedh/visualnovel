@@ -10,17 +10,19 @@ import { readFile } from 'node:fs/promises';
 import type { CheckResult } from '@vn/commands';
 import { resolutionProblem } from '@vn/model';
 import { readDocFile, writeDocFile } from '@vn/store';
-import { hasConflictMarkers, writeFileAtomic } from '@vn/util';
+import { hasConflictMarkers, samePath, writeFileAtomic } from '@vn/util';
 import {
   DIRTY_TREE,
   dirtyOutsideLogs,
   finishRebase,
   GitError,
-  NO_UPSTREAM,
+  noUpstream,
   REBASE_SIDE,
   remoteNameProblem,
   remoteSentence,
   remoteUrlProblem,
+  syncTarget,
+  unsentToTarget,
   type Git,
   type InProgress,
   type MySide,
@@ -88,7 +90,7 @@ export class SyncPart {
     return { git: found.git, root: found.root };
   }
 
-  /** The repository, with the remote `name` names, or the refusal. Empty names the upstream. */
+  /** The repository, with the remote `name` names, or the refusal. Empty names the sync target. */
   private async withRemote(
     role: RepoRole,
     name: string,
@@ -102,9 +104,9 @@ export class SyncPart {
       // Mid-rebase HEAD is detached, and the branch being rebased is the one with an upstream
       const branch = await repo.git.branch();
       const rebasing = branch === 'HEAD' ? (await repo.git.inProgress()).rebase?.branch : null;
-      const upstream = await repo.git.upstream(rebasing ?? branch);
-      if (!upstream) return refuse(NO_UPSTREAM);
-      remote = upstream.remote;
+      const target = await syncTarget(repo.git, rebasing ?? branch);
+      if (!target) return refuse(noUpstream(remotes.length));
+      remote = target.remote;
     }
     if (!remotes.includes(remote)) return refuse(`No shared copy named “${remote}”.`);
     return { ...repo, remote, remotes };
@@ -119,17 +121,23 @@ export class SyncPart {
       ok  : true,
       note: plan.first
         ? `Connects “${name.trim()}” at ${url.trim()} and syncs with it from now on.`
-        : `Connects “${name.trim()}” at ${url.trim()}.`,
+        : plan.keeps !== null
+          ? `Connects “${name.trim()}” at ${url.trim()}; “${plan.keeps}” stays the copy this branch syncs with.`
+          : `Connects “${name.trim()}” at ${url.trim()}.`,
     };
   }
 
   /**
    * Adds the remote. The first one a branch gets becomes the copy it syncs with, so a project
-   * connected once needs nothing else before its first pull.
+   * connected once needs nothing else before its first pull. A branch syncing with its only
+   * remote by implication has that remote recorded first, since a second one ends the implication.
    */
   async addRemote(role: RepoRole, name: string, url: string): Promise<{ syncsWith: boolean }> {
     const plan = await this.planAddRemote(role, name, url);
     if ('ok' in plan) throw new Error(plan.reason);
+    if (plan.keeps !== null && plan.branch !== null) {
+      await plan.git.trackRemote(plan.branch, plan.keeps);
+    }
     await plan.git.remoteAdd(name.trim(), url.trim());
     if (plan.first && plan.branch !== null) {
       await plan.git.trackRemote(plan.branch, name.trim());
@@ -138,11 +146,12 @@ export class SyncPart {
     return { syncsWith: false };
   }
 
+  /** `keeps` names the implied sync target to record before the new remote joins it. */
   private async planAddRemote(
     role: RepoRole,
     name: string,
     url: string,
-  ): Promise<(Owned & { first: boolean; branch: string | null }) | Refusal> {
+  ): Promise<(Owned & { first: boolean; keeps: string | null; branch: string | null }) | Refusal> {
     const repo = await this.writable(role, false);
     if ('ok' in repo) return repo;
     const remotes = (await repo.git.remotes()).map((r) => r.name);
@@ -150,8 +159,13 @@ export class SyncPart {
     if (problem !== undefined) return refuse(problem);
     const branch = await repo.git.branch();
     const onBranch = branch !== 'HEAD';
-    const upstream = onBranch ? await repo.git.upstream(branch) : null;
-    return { ...repo, first: upstream === null, branch: onBranch ? branch : null };
+    const target = onBranch ? await syncTarget(repo.git, branch) : null;
+    return {
+      ...repo,
+      first : target === null,
+      keeps : target?.implied ? target.remote : null,
+      branch: onBranch ? branch : null,
+    };
   }
 
   // `git.removeRemote`
@@ -243,26 +257,30 @@ export class SyncPart {
     if ('ok' in plan) return plan;
     return {
       ok  : true,
-      note: `Gets their saves from “${plan.remote}” and replays yours on top. A collision waits for your decision.`,
+      note:
+        `Gets their saves from “${plan.remote}” and replays yours on top. A collision waits for your decision.` +
+        (plan.implied ? ` “${plan.remote}” becomes the copy this branch syncs with.` : ''),
     };
   }
 
   /**
-   * Fetches the upstream and rebases the branch onto it. A rebase that stops on a collision is
+   * Fetches the sync target and rebases the branch onto it. A rebase that stops on a collision is
    * returned as such, since the stopped state is what the conflict view shows; one that completes
-   * carries the rewrite table for the saves it replayed.
+   * carries the rewrite table for the saves it replayed. An implied target is recorded as the
+   * branch's upstream once the fetch finds its branch there.
    */
   async pull(role: RepoRole): Promise<SyncOutcome> {
     const plan = await this.planPull(role);
     if ('ok' in plan) throw new Error(plan.reason);
-    const { git, remote, branch } = plan;
+    const { git, remote, branch, theirs } = plan;
     await this.network(() => git.fetch(remote));
-    const upstream = `${remote}/${branch}`;
+    const upstream = `${remote}/${theirs}`;
     const onto = await git.resolve(upstream);
     const none = { got: 0, replayed: 0, conflicted: [], rewrote: [], finished: true };
     if (onto === null) {
-      return { ...none, note: `“${remote}” has no ${branch} yet; send your saves first.` };
+      return { ...none, note: `“${remote}” has no ${theirs} yet; send your saves first.` };
     }
+    if (plan.implied) await git.trackRemote(branch, remote, theirs);
     const counts = await git.aheadBehind(upstream);
     if (counts === null || counts.behind === 0) {
       return { ...none, note: `Nothing new to get; everything “${remote}” has is here.` };
@@ -284,19 +302,28 @@ export class SyncPart {
     };
   }
 
+  /** `branch` is the local branch and `theirs` the branch of the same line on the copy. */
   private async planPull(
     role: RepoRole,
-  ): Promise<(Owned & { remote: string; branch: string }) | Refusal> {
+  ): Promise<
+    (Owned & { remote: string; branch: string; theirs: string; implied: boolean }) | Refusal
+  > {
     const repo = await this.writable(role);
     if ('ok' in repo) return repo;
     const state = await repo.git.inProgress();
     if (state.rebase || state.merge || state.revert) return refuse(SYNC_UNFINISHED);
     const branch = await repo.git.branch();
     if (branch === 'HEAD') return refuse('Not on a branch; check one out first.');
-    const upstream = await repo.git.upstream(branch);
-    if (!upstream) return refuse(NO_UPSTREAM);
+    const target = await syncTarget(repo.git, branch);
+    if (!target) return refuse(noUpstream((await repo.git.remotes()).length));
     if (await dirtyOutsideLogs(repo.git)) return refuse(DIRTY_TREE);
-    return { ...repo, remote: upstream.remote, branch };
+    return {
+      ...repo,
+      remote: target.remote,
+      branch,
+      theirs : target.branch,
+      implied: target.implied,
+    };
   }
 
   // `git.push`
@@ -307,16 +334,19 @@ export class SyncPart {
     return {
       ok  : true,
       note:
-        plan.ahead === null
+        (plan.ahead === null
           ? `Sends every save to “${plan.remote}”, which has none of them yet.`
-          : `Sends ${plural(plan.ahead, 'save')} to “${plan.remote}”.`,
+          : `Sends ${plural(plan.ahead, 'save')} to “${plan.remote}”.`) +
+        (plan.adopts ? ` “${plan.remote}” becomes the copy this branch syncs with.` : ''),
     };
   }
 
+  /** Sends the branch, and records an implied sync target as its upstream once the send lands. */
   async push(role: RepoRole, name: string): Promise<{ remote: string; sent: number | null }> {
     const plan = await this.planPush(role, name);
     if ('ok' in plan) throw new Error(plan.reason);
     await this.network(() => plan.git.push(plan.remote, plan.branch));
+    if (plan.adopts) await plan.git.trackRemote(plan.branch, plan.remote);
     return { remote: plan.remote, sent: plan.ahead };
   }
 
@@ -329,13 +359,17 @@ export class SyncPart {
   private async planPush(
     role: RepoRole,
     name: string,
-  ): Promise<(Owned & { remote: string; branch: string; ahead: number | null }) | Refusal> {
+  ): Promise<
+    (Owned & { remote: string; branch: string; ahead: number | null; adopts: boolean }) | Refusal
+  > {
     const found = await this.withRemote(role, name, false);
     if ('ok' in found) return found;
     const state = await found.git.inProgress();
     if (state.rebase) return refuse(SYNC_UNFINISHED);
     const branch = await found.git.branch();
     if (branch === 'HEAD') return refuse('Not on a branch; check one out first.');
+    const target = await syncTarget(found.git, branch);
+    const adopts = target !== null && target.implied && target.remote === found.remote;
     const counts = await found.git.aheadBehind(`${found.remote}/${branch}`);
     if (counts !== null) {
       if (counts.behind > 0) {
@@ -353,14 +387,14 @@ export class SyncPart {
         );
       }
     }
-    return { ...found, branch, ahead: counts?.ahead ?? null };
+    return { ...found, branch, ahead: counts?.ahead ?? null, adopts };
   }
 
   /** How many saves the story bible's own repository has not sent, or null when it has none nested here. */
   private async wikiUnsent(projectRoot: string): Promise<number | null> {
     const wiki = await this.session.historyPart.repo('wiki');
-    if (!wiki || !wiki.owned || wiki.root === projectRoot) return null;
-    const unsent = await wiki.git.unsent();
+    if (!wiki || !wiki.owned || samePath(wiki.root, projectRoot)) return null;
+    const unsent = await unsentToTarget(wiki.git);
     return unsent === null ? null : unsent.size;
   }
 
