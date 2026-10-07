@@ -28,6 +28,25 @@ export function localLineId(lineId: string): string {
   return colon < 0 ? lineId : lineId.slice(colon + 1);
 }
 
+/** How far the page and the frames under it were scrolled, and in which scene. */
+export interface Scrolled {
+  sceneId: string;
+  page: number;
+  frames: number;
+}
+
+/**
+ * Returns the offsets a redraw restores. Every click that opens a row or a picker redraws the page,
+ * so the scene on screen keeps its offsets; a different scene starts at the top.
+ */
+export function scrollAfter(
+  before: Scrolled | null,
+  sceneId: string,
+): { page: number; frames: number } {
+  if (!before || before.sceneId !== sceneId) return { page: 0, frames: 0 };
+  return { page: before.page, frames: before.frames };
+}
+
 /** The scene the column is showing, as much of it as this module reads. */
 export interface ScriptScene {
   sceneId: string;

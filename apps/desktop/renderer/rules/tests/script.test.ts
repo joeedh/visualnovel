@@ -46,6 +46,7 @@ import {
   pendingAction,
   proposeSceneId,
   scriptRows,
+  scrollAfter,
   setSpeakerOf,
   splitBoundaries,
   stepsOf,
@@ -78,6 +79,26 @@ describe('localLineId', () => {
 
   it('splits at the last colon, so a scene id containing one still resolves', () => {
     expect(localLineId('act1:arrival:L12')).toBe('L12');
+  });
+});
+
+describe('scrollAfter', () => {
+  it('keeps both offsets when the redraw shows the same scene', () => {
+    expect(scrollAfter({ sceneId: 'a', page: 120, frames: 30 }, 'a')).toEqual({
+      page  : 120,
+      frames: 30,
+    });
+  });
+
+  it('starts a different scene at the top', () => {
+    expect(scrollAfter({ sceneId: 'a', page: 120, frames: 30 }, 'b')).toEqual({
+      page  : 0,
+      frames: 0,
+    });
+  });
+
+  it('starts at the top when nothing was drawn before', () => {
+    expect(scrollAfter(null, 'a')).toEqual({ page: 0, frames: 0 });
   });
 });
 

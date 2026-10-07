@@ -35,6 +35,7 @@ import {
   proposeSceneId,
   reloadAction,
   scriptRows,
+  scrollAfter,
   setSpeakerOf,
   splitAction,
   splitBoundaries,
@@ -48,6 +49,7 @@ import {
   type Editing,
   type Pending,
   type RowBox,
+  type Scrolled,
 } from '../../rules/script.js';
 import { cellAction } from '../../rules/assetstrip.js';
 import { ASSETSTRIP_CSS, renderAssetStrip } from '../assets/assetstrip.js';
@@ -170,6 +172,8 @@ export class ScriptEditor extends VnEditor {
   private bar!: Container;
   private surface!: HTMLDivElement;
   private page: HTMLDivElement | undefined;
+  /** The scene `page` was drawn for, so a redraw can tell a scrolled page from a new scene. */
+  private pageScene = '';
   private noticeEl: HTMLElement | undefined;
   /** The frames drawn from this scene. Not `strip` — that word is already the pending act's. */
   private frames!: HTMLDivElement;
@@ -481,7 +485,21 @@ export class ScriptEditor extends VnEditor {
   // The page
   // -------------------------------------------------------------------------
 
+  /**
+   * Redraws the surface at the offsets it was scrolled to. The page is a new element on every
+   * redraw and the frames are detached and reattached, so both would otherwise start at the top.
+   */
   private rebuildSurface(): void {
+    const before: Scrolled | null = this.page
+      ? { sceneId: this.pageScene, page: this.page.scrollTop, frames: this.frames.scrollTop }
+      : null;
+    this.drawSurface();
+    const keep = scrollAfter(before, this.ui.sceneId);
+    if (this.page) this.page.scrollTop = keep.page;
+    this.frames.scrollTop = keep.frames;
+  }
+
+  private drawSurface(): void {
     this.surface.textContent = '';
     this.surface.className = 'script sc-surface';
     this.page = undefined;
@@ -528,6 +546,7 @@ export class ScriptEditor extends VnEditor {
 
     const page = el('div', 'sc-page') as HTMLDivElement;
     this.page = page;
+    this.pageScene = shown.sceneId;
     this.surface.appendChild(page);
 
     // The heading as the scene's own slugline, so the pane reads as a screenplay page rather than
@@ -602,10 +621,13 @@ export class ScriptEditor extends VnEditor {
     const screen = this.ctx?.screen as VnScreen | undefined;
     const visible = visibleEditors(screen ? panesOf(screen) : []);
     const anchors = redrawing('script', 'frames');
+    const top = this.frames.scrollTop;
     renderAssetStrip(this.frames, links ? shotGroups(links, this.ui.sceneId) : [], EMPTY, {
       onPick: (hash) => this.openAsset(hash),
       anchor: (box, asset, run) => anchors.act(box, cellAction(asset, visible), run),
     });
+    // Emptying the strip clamps its offset to zero, so a refetched tree would scroll it to the top
+    this.frames.scrollTop = top;
   }
 
   /** Picks a frame, moves the shell's selection to it, and lets the routing rule decide where it opens. */
@@ -717,7 +739,7 @@ export class ScriptEditor extends VnEditor {
       event.stopPropagation();
       if (event.key === 'Escape') this.closePicker();
     });
-    queueMicrotask(() => select.focus());
+    queueMicrotask(() => focusNearest(select));
     return select;
   }
 
@@ -772,7 +794,7 @@ export class ScriptEditor extends VnEditor {
     });
 
     sizer.appendChild(input);
-    queueMicrotask(() => input.focus());
+    queueMicrotask(() => focusNearest(input));
     return sizer;
   }
 
@@ -881,7 +903,7 @@ export class ScriptEditor extends VnEditor {
       this.anchors.act(el('button', 'no', cancel.label), cancel, () => this.cancel()),
     );
 
-    if (focus) queueMicrotask(() => focus.focus());
+    if (focus) queueMicrotask(() => focusNearest(focus));
     return box;
   }
 
@@ -1173,6 +1195,15 @@ export class ScriptEditor extends VnEditor {
     this.noticeEl.className = `sc-notice${this.notice ? ` ${this.notice.tone}` : ''}`;
     this.noticeEl.textContent = this.notice?.text ?? '';
   }
+}
+
+/**
+ * Focuses a field the redraw just opened, scrolling only as far as it takes to bring it into view.
+ * A plain `focus()` centres a field that is partly off screen.
+ */
+function focusNearest(node: HTMLElement): void {
+  node.focus({ preventScroll: true });
+  node.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
 
 function el(tag: string, className: string, text?: string): HTMLElement {
