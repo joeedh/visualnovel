@@ -20,19 +20,19 @@
 [x]: Numbered lists in the rich text editor never reset to 1 during rendering,
      they do however do so in the raw markdown file.
 	 
-[ ]: Add an alt-tab recent open history to wiki pane.
-[ ]: If no anthropic key is provided the default model (including the default text/vision model
+[x]: Add an alt-tab recent open history to wiki pane.
+[x]: If no anthropic key is provided the default model (including the default text/vision model
      used when creating new projects) should use z.ai/glm-5.3-flash unless a gemini key is provided,
 	 in which case a gemini model will be set as default.
-[ ]: The history pane fails to detect the remote origin ('shared copies') for c:/story/project1 (it does detect 
+[x]: The history pane fails to detect the remote origin ('shared copies') for c:/story/project1 (it does detect 
      the submodule wiki's origin).
-[ ]: Clicking a choice item in user question dialog in the convo editor that's already selected should not 
+[x]: Clicking a choice item in user question dialog in the convo editor that's already selected should not 
      de-select it unless it's explicitly multi-select.
-[ ]: Approving an older asset doesn't appear to properly make it active for its slot.
-[ ]: Clicking 'apply answers' when editing character/location/etc yaml forms should also save the document.
-[ ]: Clicking various things in the script editor causes the scroll to jump
+[x]: Approving an older asset doesn't appear to properly make it active for its slot.
+[x]: Clicking 'apply answers' when editing character/location/etc yaml forms should also save the document.
+[x]: Clicking various things in the script editor causes the scroll to jump
 	 
 ## Markdown Editor
-[ ]: Pressing space when the cursor is at the end of a link should insert the space outside the link.
-[ ]: When editing an empty file with a yaml form the cursor cannot be set after the yaml widget, making the document uneditable.
+[x]: Pressing space when the cursor is at the end of a link should insert the space outside the link.
+[x]: When editing an empty file with a yaml form the cursor cannot be set after the yaml widget, making the document uneditable.
 
