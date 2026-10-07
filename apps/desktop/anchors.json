@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-09-24T20:17:14.600Z",
-  "gitSha"       : "acf0f8de311f31504f0e705f60e93a2659b93b7e",
+  "sweptAt"      : "2026-10-07T20:00:06.806Z",
+  "gitSha"       : "bb8e9a1a3337dc1e2a3665160331295f8e1da067",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -148,6 +148,7 @@
     "project.setTextModel",
     "project.setVisionModels",
     "project.testKey",
+    "project.validate",
     "prompt.addRef",
     "prompt.check",
     "prompt.clear",
@@ -295,6 +296,7 @@
     "project.setTextModel",
     "project.setVisionModels",
     "project.testKey",
+    "project.validate",
     "prompt.addRef",
     "prompt.check",
     "prompt.clear",
@@ -975,6 +977,11 @@
     },
     {
       "id"    : "workspace.reindex",
+      "editor": "header",
+      "when"  : "header/app"
+    },
+    {
+      "id"    : "project.validate",
       "editor": "header",
       "when"  : "header/app"
     },
@@ -4098,21 +4105,19 @@
       "key"       : "cmd:doc.write",
       "widgetPath": "skills/doc-write~1ab13660",
       "supplies"  : ["text", "seenHash"],
-      "refused"   : "No document is open."
+      "refused"   : "This is a builtin skill and is read-only. Clone it to edit a copy."
     },
     {
       "id"        : "skill.cloneToProject",
       "editor"    : "skills",
       "key"       : "cmd:skill.cloneToProject",
-      "widgetPath": "skills/skill-clonetoproject~1fa8d287",
-      "refused"   : "No skill is open."
+      "widgetPath": "skills/skill-clonetoproject~1fa8d287"
     },
     {
       "id"        : "skill.cloneToUser",
       "editor"    : "skills",
       "key"       : "cmd:skill.cloneToUser",
-      "widgetPath": "skills/skill-clonetouser~ffc2a80b",
-      "refused"   : "No skill is open."
+      "widgetPath": "skills/skill-clonetouser~ffc2a80b"
     },
     {
       "id"        : "doc.write",
@@ -4120,7 +4125,7 @@
       "key"       : "cmd:doc.write#text",
       "widgetPath": "skills/doc-write~b0b7797d",
       "supplies"  : ["text", "seenHash"],
-      "refused"   : "No document is open."
+      "refused"   : "This is a builtin skill and is read-only. Clone it to edit a copy."
     },
     {
       "id"        : "pane.view",
@@ -6693,15 +6698,9 @@
   ],
   "disagreements": [],
   "strays": [
-    "asset cmd:view.open#style",
-    "branches fx:pane.view#reload",
-    "branches fx:popup.open#label/arrival#choice:0",
-    "branches fx:popup.open#label/arrival#choice:1",
     "documents item:link/asset/613746984653b37b24cb935b82ab56bb760fc7e4958b418321d082007d25f613",
     "documents item:link/asset/cba46728a12ad297aa87e02c58e7ebb28c16e7e01113922ccecdf8ec9c8968df",
-    "documents item:link/asset/fc80c6eba9cb0d134428bb7c0bd8bb65effa5be3379a763df6cb0467f5ebbae9",
-    "gengraph cmd:models.refresh",
-    "wiki cmd:doc.write#picture"
+    "documents item:link/asset/fc80c6eba9cb0d134428bb7c0bd8bb65effa5be3379a763df6cb0467f5ebbae9"
   ],
   "untagged"     : [],
   "unwalked"     : []

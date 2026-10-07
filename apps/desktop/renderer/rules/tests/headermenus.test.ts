@@ -69,6 +69,14 @@ describe('appMenu', () => {
     );
   });
 
+  it('offers the project check beside Reindex Project, run straight from the menu', () => {
+    const rows = appMenu(fresh);
+    const at = rows.findIndex((e) => e.id === 'project.validate');
+    expect(rows[at - 1]?.id).toBe('workspace.reindex');
+    expect(rows[at]).toMatchObject({ label: 'Check for Broken References' });
+    expect(rows[at]?.form).toBeUndefined();
+  });
+
   it('opens the dialogs as forms, with the checkbox and the mock flag seeded', () => {
     const rows = appMenu({ ...fresh, live: false });
     expect(rows.find((e) => e.label === 'Run Pipeline (adv)…')).toMatchObject({

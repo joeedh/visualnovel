@@ -8,6 +8,7 @@ import {
 } from './workspace.js';
 import {
   validateInputsTool,
+  validateProjectTool,
   parseFountainTool,
   storyGraphTool,
   extractEntitiesTool,
@@ -63,6 +64,7 @@ export const ALL_TOOLS: Tool[] = [
   listArchiveTool,
   searchBibleTool,
   validateInputsTool,
+  validateProjectTool,
   parseFountainTool,
   storyGraphTool,
   extractEntitiesTool,

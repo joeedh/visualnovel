@@ -215,6 +215,11 @@ These implement the system design in
       one by `overHeld`'s keep rule (the storyboard's take for a shot, else the identity's
       output, else the newest `at`, else the lowest hash), logged as `manifest.repair`. A
       clean manifest is not written.
+    - Validation is the one project read that skips the repair. `validateProject`
+      (`@vn/gengraph/state`, with its asset half `validateAssets` in `@vn/artgen`) and the
+      desktop's `readProject` open the manifests and the task log as they are on disk, so
+      a slot with two current rows is reported rather than fixed. `project.validate` and
+      the agent's `validate_project` write nothing.
     - `migrateCurrent` runs first, once per manifest, keyed on a row with no `current`
       field, and stamps every row: the identity's output, else the last `needs_human`
       output, else the one accepted candidate, else the newest by attempt time then lowest

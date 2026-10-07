@@ -35,7 +35,8 @@ import {
 } from '@vn/providers';
 import { discoverSkills, skillRoots } from '@vn/authoring';
 import { shippedImageModels } from '@vn/gengraph';
-import { readModelCatalog, writeModelCatalog } from '@vn/gengraph/state';
+import { readModelCatalog, validateProject, writeModelCatalog } from '@vn/gengraph/state';
+import type { ProjectFinding } from '@vn/artgen';
 import {
   chatRouteFor,
   imageRouteFor,
@@ -66,6 +67,7 @@ import {
   relPath,
   describeKeySource,
   loadProject,
+  readProject,
   buildProviders,
   readAllShots,
 } from './core.js';
@@ -90,6 +92,12 @@ async function pageShotCount(project: LoadedProject): Promise<number> {
 
 export class ProjectPart {
   constructor(private readonly session: WorkspaceSession) {}
+
+  /** Lists every reference that would fail a run or a read, from a read that repairs nothing. */
+  async validate(): Promise<ProjectFinding[]> {
+    const { model } = await readProject(this.session.dir);
+    return validateProject({ root: this.session.dir, model });
+  }
 
   async projectView(): Promise<ProjectView> {
     const project = await loadProject(this.session.dir);

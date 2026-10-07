@@ -19,6 +19,7 @@ import { defineFor, prop, type CheckResult } from '@vn/commands';
 import { KEY_VENDORS } from '@vn/config';
 import { LETTERING_MODES, SHOT_FORMS } from '@vn/types';
 import { openGit } from '@vn/git';
+import { describeFindings } from '@vn/artgen';
 import { notify } from '../notify/notifications.js';
 import { installPages, pagesState } from '../distribution/pages.js';
 import type { CommandHost } from './host.js';
@@ -44,6 +45,27 @@ export const projectInfo = define({
   async run(_props, ctx) {
     const view = await ctx.host.session.projectView();
     return { message: `${view.title} — ${view.imageTasks} image task(s).`, data: view };
+  },
+});
+
+export const projectValidate = define({
+  id         : 'project.validate',
+  title      : 'Check the project for broken references',
+  description:
+    'List every reference that would make the next run or a read fail: a finished task whose ' +
+    'picture is gone, a manifest row with no file, a portrait, shot, pin or graph naming a ' +
+    'picture no manifest lists, and a slot holding two current pictures. Stale state that ' +
+    'fails nothing — a stray file, an out-of-date playable — is listed for information. It ' +
+    'changes nothing, and reports through a notification.',
+  mutating   : false,
+  props      : {},
+  async run(_props, ctx) {
+    const findings = await ctx.host.session.validateProject();
+    const message = describeFindings(findings);
+    const blocking = findings.some((f) => f.severity === 'blocking');
+    // `onRecord` files no notification for a non-mutating command, so this one is filed here
+    await notify({ category: 'workspace', level: blocking ? 'warn' : 'info', message });
+    return { message, data: findings };
   },
 });
 

@@ -283,9 +283,17 @@ static (`confirm: true`). The second depends on the project.
 - **Where.** `validateAssets` in `@vn/artgen`, `validateGraphs` in `@vn/gengraph`, and
   `validateProject` in `@vn/gengraph` returning one list:
   `{ severity, kind, hash?, where, referrer, message }`.
-- **Command.** `project.validate`, non-mutating, from the palette and from a menu entry on
-  the document tree's project branch. Its result is a notification listing the findings;
-  stage 8 links it to the missing-pictures view.
+- **Unreadable inputs.** A graph document, a group definition or a `story.play.json` that
+  does not parse is an information finding saying it could not be checked. It is not
+  skipped silently. (Owner, 2026-10-07.) A storyboard (`vngen/work/shots/<scene>.json`)
+  that does not parse is treated the same way, by extension of that answer. The message
+  reads `<file> could not be checked (parse errors).` (Owner, 2026-10-07.)
+- **One finding per referrer.** A deleted picture whose task and manifest row both name it
+  is reported twice, once for each. (Owner, 2026-10-07.)
+- **Command.** `project.validate`, non-mutating, from the palette and from the header's
+  app menu beside Reindex Project. The document tree has no project branch, which the plan
+  first assumed; the owner chose the app menu on 2026-10-07. Its result is a notification
+  listing the findings; stage 8 links it to the missing-pictures view.
 - **Agent tool.** `validate_project`, non-mutating, so it runs in plan mode.
 - **Not in the CLI.** `apps/cli` may not import artgen or gengraph, so a `vngen validate`
   is deferred.

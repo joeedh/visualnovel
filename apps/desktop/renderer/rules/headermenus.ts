@@ -173,6 +173,11 @@ export function appMenu(state: HeaderMenuState): MenuEntry[] {
       id     : 'workspace.reindex',
       tooltip: 'Rebuild the map the authoring agent reads: cast, locations, story graph, bible',
     },
+    {
+      label  : 'Check for Broken References',
+      id     : 'project.validate',
+      tooltip: 'List missing pictures and references the next run would fail on; changes nothing',
+    },
     // The Setup pane rather than `project.setKey`'s bare form: a box asking for a credential is
     // no use to someone who does not yet have one, and the pane is the same box with the steps
     // for getting there above it

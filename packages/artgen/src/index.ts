@@ -39,3 +39,4 @@ export * from './promote.js';
 export * from './storyboard.js';
 export * from './overheld.js';
 export * from './takes.js';
+export * from './validate.js';

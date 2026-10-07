@@ -46730,6 +46730,16 @@
       "module"   : "headermenus",
       "situation": "fresh",
       "when"     : "header/app",
+      "id"       : "project.validate",
+      "label"    : "Check for Broken References",
+      "tooltip": "List missing pictures and references the next run would fail on; changes nothing"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "fresh",
+      "when"     : "header/app",
       "id"       : "view.open",
       "label"    : "Set Up API Keys…",
       "tooltip"  : "How to get a model key, which of yours are set, and where they are read from",
@@ -47434,6 +47444,16 @@
       "id"       : "workspace.reindex",
       "label"    : "Reindex Project",
       "tooltip"  : "Rebuild the map the authoring agent reads: cast, locations, story graph, bible"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "project",
+      "when"     : "header/app",
+      "id"       : "project.validate",
+      "label"    : "Check for Broken References",
+      "tooltip": "List missing pictures and references the next run would fail on; changes nothing"
     },
     {
       "via"      : "menu",
@@ -48150,6 +48170,16 @@
       "module"   : "headermenus",
       "situation": "running",
       "when"     : "header/app",
+      "id"       : "project.validate",
+      "label"    : "Check for Broken References",
+      "tooltip": "List missing pictures and references the next run would fail on; changes nothing"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "running",
+      "when"     : "header/app",
       "id"       : "view.open",
       "label"    : "Set Up API Keys…",
       "tooltip"  : "How to get a model key, which of yours are set, and where they are read from",
@@ -48847,6 +48877,16 @@
       "module"   : "headermenus",
       "situation": "no-pane",
       "when"     : "header/app",
+      "id"       : "project.validate",
+      "label"    : "Check for Broken References",
+      "tooltip": "List missing pictures and references the next run would fail on; changes nothing"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "no-pane",
+      "when"     : "header/app",
       "id"       : "view.open",
       "label"    : "Set Up API Keys…",
       "tooltip"  : "How to get a model key, which of yours are set, and where they are read from",
@@ -49526,6 +49566,16 @@
       "id"       : "workspace.reindex",
       "label"    : "Reindex Project",
       "tooltip"  : "Rebuild the map the authoring agent reads: cast, locations, story graph, bible"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "header",
+      "module"   : "headermenus",
+      "situation": "undo-blocked",
+      "when"     : "header/app",
+      "id"       : "project.validate",
+      "label"    : "Check for Broken References",
+      "tooltip": "List missing pictures and references the next run would fail on; changes nothing"
     },
     {
       "via"      : "menu",

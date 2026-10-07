@@ -57,6 +57,7 @@ import {
   slotLabel,
   suspensionMap,
   type AdoptVia,
+  type ProjectFinding,
   type PromptRung,
   type Suspension,
 } from '@vn/artgen';
@@ -641,23 +642,23 @@ export async function walkDirs(dir: string): Promise<string[]> {
   return out;
 }
 
-export async function loadProject(dir: string): Promise<LoadedProject> {
+/**
+ * Reads the project as it is on disk, writing nothing. Validation reads through this, because
+ * {@link loadProject}'s repair would put right the over-held slots it is meant to report.
+ */
+export async function readProject(dir: string): Promise<LoadedProject> {
   const config = await loadConfig(dir);
   const paths = new ProjectPaths(dir);
   const inputs = await loadInputs(paths);
   const model = modelFromInputs(inputs, { title: config.title, start: config.start });
   const store = await AssetStore.open(paths);
   const graph = await loadGraph(paths);
-  const project: LoadedProject = {
-    dir,
-    config,
-    paths,
-    model,
-    store,
-    graph,
-    sources: sourcesOf(inputs),
-    inputs,
-  };
+  return { dir, config, paths, model, store, graph, sources: sourcesOf(inputs), inputs };
+}
+
+export async function loadProject(dir: string): Promise<LoadedProject> {
+  const project = await readProject(dir);
+  const { model, config, store, graph } = project;
   // `current` is a cache of the task log, and a slot holding two current rows resolves to
   // nothing, so every surface reading this project would show it as unrendered; the manifest is
   // put right as it is read, and migrated once on a project written before takes were held
@@ -2003,6 +2004,13 @@ export class WorkspaceSession {
 
   async projectView(): Promise<ProjectView> {
     return this.projectPart.projectView();
+  }
+
+  /**
+   * Lists every reference that would fail a run or a read, for `project.validate`. Writes nothing.
+   */
+  async validateProject(): Promise<ProjectFinding[]> {
+    return this.projectPart.validate();
   }
 
   async previewArtStyle(style: string): Promise<PromptResult> {

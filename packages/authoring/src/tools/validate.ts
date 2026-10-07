@@ -1,6 +1,8 @@
 /** Domain/validation tools: schema conformance, the fountain parse, the branch graph, entities. */
 import { z } from 'zod';
 import { computeReachable, successors, toMermaid } from '@vn/model';
+import { describeFindings } from '@vn/artgen';
+import { validateProject } from '@vn/gengraph/state';
 import { ok, formatDiagnostics, type Tool } from './core.js';
 
 const validateInputsTool: Tool<Record<string, never>> = {
@@ -105,4 +107,25 @@ const extractEntitiesTool: Tool<Record<string, never>> = {
   },
 };
 
-export { validateInputsTool, parseFountainTool, storyGraphTool, extractEntitiesTool };
+const validateProjectTool: Tool<Record<string, never>> = {
+  name       : 'validate_project',
+  description:
+    'List every reference that would make the next pipeline run or a read fail: a finished task whose picture is gone, a manifest row with no file, a portrait, shot, prompt pin or asset graph naming a picture no manifest lists, and a slot holding two current pictures. Stale state that fails nothing (a stray file, an out-of-date playable) is listed for information. Read-only; it repairs nothing.',
+  mutating   : false,
+  args       : z.object({}).strict(),
+  async run(_a, ctx) {
+    const { model } = await ctx.workspace.load();
+    const findings = await validateProject({ root: ctx.workspace.root, model });
+    const result = ok(describeFindings(findings, findings.length), { data: findings });
+    result.ok = !findings.some((f) => f.severity === 'blocking');
+    return result;
+  },
+};
+
+export {
+  validateInputsTool,
+  validateProjectTool,
+  parseFountainTool,
+  storyGraphTool,
+  extractEntitiesTool,
+};

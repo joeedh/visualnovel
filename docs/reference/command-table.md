@@ -2,7 +2,7 @@
 
 # Registered commands
 
-223 commands, in 25 namespaces. 136 are `mutating`;
+224 commands, in 25 namespaces. 136 are `mutating`;
 153 declare a precondition; 83 are undoable; 25 ask
 for confirmation.
 
@@ -148,6 +148,7 @@ for confirmation.
 | `project.setTextModel` ✍ ↺ ✓ | `model` | Writes `project.yaml`. The model the pipeline's text calls use — decomposition, reviews, critiques, triage — not the agent's, which is per conversation. Refused when no resolved key can carry it. Re-keys nothing. Spliced into `project.yaml`, so comments and key order survive. |
 | `project.setVisionModels` ✍ ↺ ✓ | `models` | Writes `project.yaml`. The picture reviewers, as the whole list. Each id needs a key; an empty list is refused. Spliced into `project.yaml`, so comments and key order survive. |
 | `project.testKey` ✓ | `provider` (`gemini`\|`anthropic`\|`openrouter`) | — |
+| `project.validate` | — | — |
 | `prompt.addRef` ✍ ↺ ✓ | `hash`, `chunk`, `ref` | Writes `characters`, `locations`, `wiki`, `vngen/work/shots`. Attach a reference image to one clause — evidence for that clause, so muting it drops the reference too. `ref` is an asset hash (a prefix will do) or a **slot address**: `portrait:<character>`, `sheet:<character>/<outfit>/<angle>`, `plate:<location>/<variant>`, `shot:<scene>/<shot>`. A slot pins what fills it today and remembers where it came from; a bare hash pins itself and can never move. Refuses a reference that would close a cycle, naming the whole path. |
 | `prompt.check` | `hash` | Which clauses a hand-written or condensed prompt no longer appears to say. A word-overlap heuristic — "not found", never "dropped" — so it is a prompt to go and look. In chunks mode nothing can be missing. |
 | `prompt.clear` ✍ ↺ ✓ | `hash`, `part` (`all`\|`chunks`\|`order`\|`custom`\|`agent`, default `'all'`) | Writes `characters`, `locations`, `wiki`, `vngen/work/shots`. Discard part of what was done to a prompt. What is left is what the builders derive, byte for byte. |

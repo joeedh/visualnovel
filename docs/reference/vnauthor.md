@@ -214,14 +214,14 @@ project guidance that the agent follows.
 
 ## Tools
 
-`packages/authoring/src/tools/` holds the registry of 53 tools. **M** marks
+`packages/authoring/src/tools/` holds the registry of 54 tools. **M** marks
 `mutating: true` (plan mode blocks it); **C** marks `confirm: true` (it always goes
 through the permission gate, in every mode).
 
 | Group               | Tools                                                                                                                                                                                                                        |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Read & search       | `read_file`, `list_workspace`, `search`, `search_bible`, `list_archive`                                                                                                                                                      |
-| Domain & validation | `validate_inputs`, `parse_fountain`, `story_graph`, `extract_entities`                                                                                                                                                       |
+| Domain & validation | `validate_inputs`, `validate_project`, `parse_fountain`, `story_graph`, `extract_entities`                                                                                                                                   |
 | Entity editing      | `create_character` **M**, `create_location` **M**, `edit_character` **M**, `edit_location` **M**                                                                                                                             |
 | Scene prose         | `edit_scene` **M**                                                                                                                                                                                                           |
 | Branch wiring       | `edit_branches` **M**                                                                                                                                                                                                        |

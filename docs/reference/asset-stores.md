@@ -168,6 +168,27 @@ because a zero-work summary is otherwise indistinguishable from a finished proje
 - `Workspace.repos()` reports a `'base'` role when `assets/` is a repository of its own,
   and commit-on-save handles that repository under the existing policy — see
   [`repos-and-commits.md`](repos-and-commits.md).
+- `project.validate` (the header's app menu, and the palette) and the agent's
+  `validate_project` check the two roots against everything that names a hash. Each root
+  is checked on its own, so an adopted picture's two rows each need their own file. Both
+  run `validateProject` from `@vn/gengraph/state` and write nothing, not even the take
+  repair a project open runs.
+    - **Blocking findings:**
+        - A `done` task whose output is in neither object folder.
+        - A `done` task whose output has a file but no row.
+        - A row with no file in its root.
+        - An `approved_portrait:`, a shot's image, a prompt pin, or a graph or group node
+          naming a hash that no manifest lists.
+        - A slot holding two current rows.
+    - **Information findings:**
+        - A file in an object folder with no row in that root.
+        - A row's `refs` entry with no row.
+        - A `story.play.json` picture that is gone.
+        - A graph, a group, a storyboard or the playable that does not parse, reported as
+          "could not be checked (parse errors)". So is a refs node's seeded list that does
+          not parse.
+    - One deleted picture is reported once per thing that names it, so a task and its row
+      are two findings.
 
 ## What this does not do
 

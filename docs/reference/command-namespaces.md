@@ -219,6 +219,7 @@
 | `project.setTextModel` ✍ ↺ ✓ | `model` | Writes `project.yaml`. The model the pipeline's text calls use — decomposition, reviews, critiques, triage — not the agent's, which is per conversation. Refused when no resolved key can carry it. Re-keys nothing. Spliced into `project.yaml`, so comments and key order survive. |
 | `project.setVisionModels` ✍ ↺ ✓ | `models` | Writes `project.yaml`. The picture reviewers, as the whole list. Each id needs a key; an empty list is refused. Spliced into `project.yaml`, so comments and key order survive. |
 | `project.testKey` ✓ | `provider` (`gemini`\|`anthropic`\|`openrouter`) | — |
+| `project.validate` | — | — |
 
 ## `prompt.`
 
