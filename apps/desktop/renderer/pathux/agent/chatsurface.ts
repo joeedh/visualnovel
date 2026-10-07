@@ -11,6 +11,7 @@ import {
   answersOf,
   answersOnPick,
   blankPages,
+  choiceTitle,
   goTo,
   isFirst,
   isLast,
@@ -142,6 +143,11 @@ const SURFACE_CSS = `
 .cv-surface .ask-choices button.picked {
   border-color: var(--sodium);
   background: rgba(244, 162, 76, 0.12);
+}
+.cv-surface .ask-hint {
+  color: var(--mist-dim);
+  font-size: 12.5px;
+  margin-bottom: 6px;
 }
 
 /* Where the author is in a form of several. It sits in the card's own head rather than above the
@@ -686,15 +692,13 @@ export class AskCards {
   private drawChoices(body: HTMLElement, form: AskForm, choices: string[]): HTMLButtonElement {
     const multi = pageOf(form)?.multi === true;
     const outright = answersOnPick(form);
+    // Clicking a picked row unticks it only on this kind of question, so the card says which kind
+    if (multi) body.appendChild(el('div', 'ask-hint', 'Pick as many as apply.'));
     const list = el('div', 'ask-choices');
     const rows = choices.map((choice) => {
       const row = document.createElement('button');
       row.textContent = choice;
-      row.title = multi
-        ? `Include “${choice}” in your answer. Pick as many as apply.`
-        : outright
-          ? `Answer “${choice}”.`
-          : `Answer “${choice}” to this question. The rest of the form stays as you left it.`;
+      row.title = choiceTitle(form, choice);
       if (isPicked(form, choice)) row.classList.add('picked');
       row.addEventListener('click', () => {
         // Whatever was typed beside the list rides along, on an outright pick too: a choice
@@ -706,7 +710,10 @@ export class AskCards {
         // stands, and Submit remains the one thing that ends the form.
         this.host.setForm(picked, false);
         this.cardForm = picked;
-        rows.forEach((r, i) => r.classList.toggle('picked', isPicked(picked, choices[i]!)));
+        rows.forEach((r, i) => {
+          r.classList.toggle('picked', isPicked(picked, choices[i]!));
+          r.title = choiceTitle(picked, choices[i]!);
+        });
         if (this.sendAct) this.sendAct.title = this.sendTitle(picked, true);
       });
       list.appendChild(row);

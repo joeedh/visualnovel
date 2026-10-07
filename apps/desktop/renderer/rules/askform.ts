@@ -52,11 +52,13 @@ export function goTo(form: AskForm, at: number): AskForm {
 
 /**
  * Tick a choice on the current page. A multi-pick toggles the choice. A single-pick replaces
- * whatever was picked before.
+ * whatever was picked before, and picking the choice already picked returns the form unchanged:
+ * only a multi-pick question can be unticked by clicking.
  */
 export function pick(form: AskForm, choice: string): AskForm {
   const multi = pageOf(form)?.multi === true;
   const here = form.picked[form.at] ?? [];
+  if (!multi && here.length === 1 && here[0] === choice) return form;
   const next = multi
     ? here.includes(choice)
       ? here.filter((c) => c !== choice)
@@ -67,6 +69,29 @@ export function pick(form: AskForm, choice: string): AskForm {
 
 export function isPicked(form: AskForm, choice: string): boolean {
   return (form.picked[form.at] ?? []).includes(choice);
+}
+
+/**
+ * Says what clicking a choice on the current page will do, for the row's tooltip. It depends on
+ * whether the choice is already picked, because only a multi-pick question unticks on a click.
+ */
+export function choiceTitle(form: AskForm, choice: string): string {
+  const quoted = `“${choice}”`;
+  const picked = isPicked(form, choice);
+  if (pageOf(form)?.multi === true) {
+    return picked
+      ? `Leave ${quoted} out of your answer.`
+      : `Include ${quoted} in your answer. Pick as many as apply.`;
+  }
+  if (answersOnPick(form)) return `Answer ${quoted}.`;
+  if (isLast(form)) {
+    return picked
+      ? `${quoted} is your answer to this question. Pick another choice to change it.`
+      : `Answer ${quoted} to this question. The rest of the form stays as you left it.`;
+  }
+  return picked
+    ? `Keep ${quoted} as your answer and go on to the next question.`
+    : `Answer ${quoted} and go on to the next question.`;
 }
 
 /** Replace what is typed on the current page. */

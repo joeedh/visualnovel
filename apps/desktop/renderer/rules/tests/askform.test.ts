@@ -3,6 +3,7 @@ import {
   answersOf,
   answersOnPick,
   blankPages,
+  choiceTitle,
   goTo,
   isFirst,
   isLast,
@@ -51,6 +52,14 @@ describe('picking', () => {
     expect(isPicked(form, 'Bitter')).toBe(false);
   });
 
+  it('keeps a single pick picked when it is clicked again', () => {
+    const form = pick(startForm(FORM), 'Bitter');
+    expect(pick(form, 'Bitter')).toBe(form);
+    expect(isPicked(pick(form, 'Bitter'), 'Bitter')).toBe(true);
+    const last = pick(goTo(startForm([...FORM.slice(2), FORM[0]!]), 1), 'Sweet');
+    expect(answerAt(pick(last, 'Sweet'), 1)).toBe('Sweet');
+  });
+
   it('toggles a multi pick and keeps the order they were clicked in', () => {
     let form = goTo(startForm(FORM), 1);
     form = pick(pick(pick(form, 'Mei'), 'Aiko'), 'Haruki');
@@ -82,6 +91,39 @@ describe('picking', () => {
     const form = pick(type(startForm(ONE), 'but keep it quiet'), 'Bitter');
     expect(answersOnPick(form)).toBe(true);
     expect(answersOf(form)).toEqual(['Bitter, but keep it quiet']);
+  });
+});
+
+describe('choice tooltips', () => {
+  it('offers to untick a picked choice only on a multi pick', () => {
+    const multi = pick(goTo(startForm(FORM), 1), 'Aiko');
+    expect(choiceTitle(multi, 'Aiko')).toBe('Leave “Aiko” out of your answer.');
+    expect(choiceTitle(multi, 'Mei')).toBe('Include “Mei” in your answer. Pick as many as apply.');
+  });
+
+  it('says a picked single choice stays picked', () => {
+    const first = pick(startForm(FORM), 'Bitter');
+    expect(choiceTitle(first, 'Bitter')).toBe(
+      'Keep “Bitter” as your answer and go on to the next question.',
+    );
+    expect(choiceTitle(first, 'Sweet')).toBe('Answer “Sweet” and go on to the next question.');
+    const last = pick(goTo(startForm([...FORM.slice(2), FORM[0]!]), 1), 'Sweet');
+    expect(choiceTitle(last, 'Sweet')).toBe(
+      '“Sweet” is your answer to this question. Pick another choice to change it.',
+    );
+  });
+
+  it('says a lone single pick answers outright', () => {
+    expect(choiceTitle(startForm(ONE), 'Bitter')).toBe('Answer “Bitter”.');
+  });
+
+  it('never claims a click unticks a single pick', () => {
+    const forms = [
+      pick(startForm(FORM), 'Bitter'),
+      pick(goTo(startForm([...FORM.slice(2), FORM[0]!]), 1), 'Bitter'),
+      pick(startForm(ONE), 'Bitter'),
+    ];
+    for (const form of forms) expect(choiceTitle(form, 'Bitter')).not.toMatch(/out of|untick/i);
   });
 });
 
