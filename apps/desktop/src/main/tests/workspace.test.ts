@@ -31,6 +31,25 @@ import {
 } from '../workspace/workspace.js';
 import { UNDO_EXCLUDES } from '../../shared/affects.js';
 
+// A new project's models depend on which keys resolve, so no test may see the developer's own
+const KEY_VARS = ['ANTHROPIC_API_KEY', 'GEMINI_API_KEY', 'OPENROUTER_API_KEY'] as const;
+const savedKeys = new Map<string, string | undefined>();
+
+beforeEach(() => {
+  for (const name of KEY_VARS) {
+    savedKeys.set(name, process.env[name]);
+    delete process.env[name];
+  }
+});
+
+afterEach(() => {
+  for (const name of KEY_VARS) {
+    const value = savedKeys.get(name);
+    if (value === undefined) delete process.env[name];
+    else process.env[name] = value;
+  }
+});
+
 /** A template shaped like `templates/basic`: authored inputs plus a previous run's output. */
 async function makeTemplate(dir: string): Promise<void> {
   await mkdir(join(dir, 'characters', 'aiko'), { recursive: true });
@@ -250,8 +269,14 @@ describe('openWorkspace', () => {
 
     const opened = await openWorkspace(dir);
     expect(opened).toEqual({ root: dir, created: true, title: 'my story' });
-    // This is the shortest honest config, because every other key has a default.
-    expect(await readFile(join(dir, 'project.yaml'), 'utf8')).toBe('title: "my story"\n');
+    // With no key resolving, the chat models fall back to GLM; every other key has a default.
+    expect(await readFile(join(dir, 'project.yaml'), 'utf8')).toBe(
+      'title: "my story"\n' +
+        'models:\n' +
+        '  text: z-ai/glm-5.3-flash\n' +
+        '  vision:\n' +
+        '    - z-ai/glm-5.3-flash\n',
+    );
     // Opening scaffolds the layout templates and the rule that keeps git from merging one.
     expect((await readdir(dir)).sort()).toEqual([
       '.git',
@@ -461,6 +486,32 @@ describe('createWorkspace', () => {
     const git = openGit(dir);
     expect((await git.log()).map((c) => c.subject)).toEqual(['New project']);
     expect((await git.status()).dirty).toBe(false);
+  }, 20_000);
+
+  it('starts on the chat models the resolving keys select', async () => {
+    process.env.GEMINI_API_KEY = 'test-gemini';
+    await createWorkspace(join(root, 'gemini'), 'Gemini');
+    expect((await loadConfig(join(root, 'gemini'))).models).toMatchObject({
+      text  : 'gemini-2.5-flash',
+      vision: ['gemini-2.5-flash'],
+    });
+
+    process.env.ANTHROPIC_API_KEY = 'test-anthropic';
+    await createWorkspace(join(root, 'both'), 'Both');
+    expect((await loadConfig(join(root, 'both'))).models).toMatchObject({
+      text  : 'claude-opus-4-8',
+      vision: ['gemini-2.5-flash', 'claude-opus-4-8'],
+    });
+  }, 20_000);
+
+  it('does not count a key in an enclosing repository it will no longer read', async () => {
+    await mkdir(join(root, 'keys'));
+    await writeFile(join(root, 'keys', 'claude.txt'), 'test-anthropic');
+    await ensureRepo(root);
+
+    const dir = join(root, 'mine');
+    await createWorkspace(dir, 'Mine');
+    expect((await loadConfig(dir)).models.text).toBe('z-ai/glm-5.3-flash');
   }, 20_000);
 
   it('titles the project after the directory when asked for nothing else', async () => {

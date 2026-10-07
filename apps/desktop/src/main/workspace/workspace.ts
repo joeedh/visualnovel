@@ -8,10 +8,23 @@
  */
 import { cp, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
-import { CONFIG_FILENAME, loadConfig } from '@vn/config';
+import {
+  CONFIG_FILENAME,
+  keyStatus,
+  loadConfig,
+  secretDirsFor,
+  userKeysDirs,
+  withModelsKey,
+  type KeyVendor,
+} from '@vn/config';
 import { InProgressError, openGit, type Git } from '@vn/git';
 import { slug } from '@vn/model';
-import type { NotificationLevel } from '@vn/types';
+import {
+  defaultChatModels,
+  projectConfig,
+  type ChatDefaults,
+  type NotificationLevel,
+} from '@vn/types';
 import { samePath, writeFileAtomic } from '@vn/util';
 import { notCheckedOut } from '../../shared/history.js';
 import {
@@ -297,8 +310,8 @@ export interface OpenResult {
 }
 
 /**
- * Open the directory the user picked, making it a project if it is not one yet: the shortest
- * honest `project.yaml` (`title` is the only key without a default) and then `ensureRepo`.
+ * Open the directory the user picked, making it a project if it is not one yet: a `project.yaml`
+ * holding the title and the chat models the resolving keys select, and then `ensureRepo`.
  *
  * Nothing is copied from the template, so a project created this way starts empty. A config that
  * will not parse throws rather than opening, so the failure names the file instead of surfacing
@@ -311,7 +324,9 @@ export async function openWorkspace(root: string): Promise<OpenResult> {
 
   const title = found.title ?? basename(root) ?? 'Untitled';
   if (!found.project) {
-    await writeFileAtomic(join(root, CONFIG_FILENAME), `title: ${JSON.stringify(title)}\n`);
+    const models = await startingModels(await secretDirsFor(root));
+    const text = withModels(`title: ${JSON.stringify(title)}\n`, models);
+    await writeFileAtomic(join(root, CONFIG_FILENAME), text);
   }
   // Before `ensureRepo`, so a repository initialized here takes these in its first commit.
   const wrote = await writeScaffolding(root);
@@ -427,6 +442,22 @@ export async function ensureRepoAttributes(root: string): Promise<boolean> {
   return true;
 }
 
+/**
+ * Chooses the chat models a new project is written with, by which keys resolve from `secretsDirs`
+ * and the default environment variables. Reads key status only, never a key's value.
+ */
+async function startingModels(secretsDirs: string[]): Promise<ChatDefaults> {
+  const config = projectConfig.parse({ title: 'new' });
+  const status = await keyStatus(config, { secretsDirs });
+  const resolved = (vendor: KeyVendor) => status.some((s) => s.vendor === vendor && s.resolved);
+  return defaultChatModels({ anthropic: resolved('anthropic'), gemini: resolved('gemini') });
+}
+
+/** Adds `models.text` and `models.vision` to `project.yaml` text. */
+function withModels(text: string, models: ChatDefaults): string {
+  return withModelsKey(withModelsKey(text, 'vision', [...models.vision]), 'text', models.text);
+}
+
 /** The one scene a new project starts with — named by `start:` and by the file it lives in. */
 export const START_SCENE = 'opening';
 
@@ -441,11 +472,12 @@ export const START_SCENE = 'opening';
  * The layouts are here rather than left to `ensureLayouts` so they land in the first commit,
  * under the subject that says what they are.
  */
-function skeleton(title: string): { path: string; text: string }[] {
+function skeleton(title: string, models: ChatDefaults): { path: string; text: string }[] {
+  const config = withModels(`title: ${JSON.stringify(title)}\nstart: ${START_SCENE}\n`, models);
   return [
     ...shippedLayoutFiles(),
     { path: '.gitattributes', text: `${GITATTRIBUTES_TEXT}\n${LAYOUT_ATTRIBUTES_BLOCK}` },
-    { path: CONFIG_FILENAME, text: `title: ${JSON.stringify(title)}\nstart: ${START_SCENE}\n` },
+    { path: CONFIG_FILENAME, text: config },
     {
       path: `scenes/${START_SCENE}.md`,
       text:
@@ -527,7 +559,9 @@ export async function createWorkspace(root: string, title: string): Promise<Open
     throw new Error(`cannot create a project at ${root}: it is not empty`);
   }
 
-  for (const file of skeleton(title)) {
+  // The project becomes its own repository, so no enclosing repository's `keys/` will be read
+  const models = await startingModels([join(root, 'keys'), ...userKeysDirs()]);
+  for (const file of skeleton(title, models)) {
     const path = join(root, file.path);
     await mkdir(dirname(path), { recursive: true });
     await writeFileAtomic(path, file.text);

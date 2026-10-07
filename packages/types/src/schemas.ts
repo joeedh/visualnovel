@@ -6,6 +6,7 @@
 import { z } from 'zod';
 import type { SheetGroup } from './entities.js';
 import type { ChunkEdit, ChunkRef, PromptOverride } from './prompt.js';
+import { ANTHROPIC_DEFAULTS } from './textmodels.js';
 
 const hexColor = z.string().regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'expected hex color');
 
@@ -389,8 +390,8 @@ export const projectConfig = z.object({
   models: z
     .object({
       image : z.string().default('gemini-2.5-flash-image'),
-      vision: z.array(z.string()).default(['gemini-2.5-flash', 'claude-opus-4-8']),
-      text  : z.string().default('claude-opus-4-8'),
+      vision: z.array(z.string()).default(() => [...ANTHROPIC_DEFAULTS.vision]),
+      text  : z.string().default(ANTHROPIC_DEFAULTS.text),
     })
     .default({}),
   image_params: z

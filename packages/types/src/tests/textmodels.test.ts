@@ -1,13 +1,19 @@
+import { projectConfig } from '../schemas.js';
 import {
+  ANTHROPIC_DEFAULTS,
   DEFAULT_AGENT_EFFORT,
   DEFAULT_EFFORT,
   EFFORT_CHOICES,
+  ZAI_DEFAULTS,
+  chatRouteFor,
   chatVendorFor,
+  defaultChatModels,
   effortChoicesFor,
   effortLabel,
   imageVendorOf,
   resolveEffort,
   supportsEffort,
+  textModelChoices,
 } from '../textmodels.js';
 
 describe('imageVendorOf', () => {
@@ -106,5 +112,49 @@ describe('effortLabel', () => {
   it('spells out the one choice that is a state rather than a level', () => {
     expect(effortLabel('none')).toBe('no thinking');
     expect(effortLabel('max')).toBe('max');
+  });
+});
+
+describe('defaultChatModels', () => {
+  it('keeps the Anthropic defaults whenever an Anthropic key resolves', () => {
+    expect(defaultChatModels({ anthropic: true, gemini: false })).toBe(ANTHROPIC_DEFAULTS);
+    expect(defaultChatModels({ anthropic: true, gemini: true })).toBe(ANTHROPIC_DEFAULTS);
+    expect(ANTHROPIC_DEFAULTS.text).toBe('claude-opus-4-8');
+  });
+
+  it('picks Gemini when only a Gemini key resolves', () => {
+    expect(defaultChatModels({ anthropic: false, gemini: true })).toEqual({
+      text  : 'gemini-2.5-flash',
+      vision: ['gemini-2.5-flash'],
+    });
+  });
+
+  it("falls back to Z.ai's GLM, spelled for OpenRouter, when neither key resolves", () => {
+    const models = defaultChatModels({ anthropic: false, gemini: false });
+    expect(models).toBe(ZAI_DEFAULTS);
+    expect(models.text).toBe('z-ai/glm-5.3-flash');
+    expect(models.vision).toEqual(['z-ai/glm-5.3-flash']);
+  });
+
+  it('matches what project.yaml falls back to when it names no models', () => {
+    const config = projectConfig.parse({ title: 't' });
+    expect(config.models.text).toBe(ANTHROPIC_DEFAULTS.text);
+    expect(config.models.vision).toEqual(ANTHROPIC_DEFAULTS.vision);
+  });
+});
+
+describe('the GLM default', () => {
+  it('routes only through OpenRouter, since no native key carries a slashed id', () => {
+    const native = { anthropic: true, gemini: true, openrouter: false };
+    expect(chatRouteFor(ZAI_DEFAULTS.text, native)).toBeUndefined();
+    expect(chatRouteFor(ZAI_DEFAULTS.text, { ...native, openrouter: true })).toMatchObject({
+      transport: 'openrouter',
+      wireId   : 'z-ai/glm-5.3-flash',
+    });
+  });
+
+  it('gets a picker tooltip naming OpenRouter rather than Gemini', () => {
+    const row = textModelChoices([], ZAI_DEFAULTS.text).find((r) => r.id === ZAI_DEFAULTS.text);
+    expect(row?.tooltip).toBe('z-ai/glm-5.3-flash: routed by OpenRouter; needs an OpenRouter key.');
   });
 });

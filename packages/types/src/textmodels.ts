@@ -182,6 +182,46 @@ export const TEXT_MODELS: readonly string[] = [
   'gemini-2.5-flash',
 ];
 
+/** The chat models a project starts with: `models.text` and `models.vision`. */
+export interface ChatDefaults {
+  text: string;
+  vision: readonly string[];
+}
+
+/** The starting models when an Anthropic key resolves, and the `project.yaml` schema's fallback. */
+export const ANTHROPIC_DEFAULTS: ChatDefaults = {
+  text  : 'claude-opus-4-8',
+  vision: ['gemini-2.5-flash', 'claude-opus-4-8'],
+};
+
+/** The starting models when a Gemini key resolves and an Anthropic key does not. */
+export const GEMINI_DEFAULTS: ChatDefaults = {
+  text  : 'gemini-2.5-flash',
+  vision: ['gemini-2.5-flash'],
+};
+
+/**
+ * The starting models when neither key resolves. The id is OpenRouter's spelling, because there is
+ * no native Z.ai transport, so it runs only once an OpenRouter key is set.
+ */
+export const ZAI_DEFAULTS: ChatDefaults = {
+  text  : 'z-ai/glm-5.3-flash',
+  vision: ['z-ai/glm-5.3-flash'],
+};
+
+/**
+ * Picks the chat models a new project is written with from the keys that resolve: Anthropic's
+ * when its key does, otherwise Gemini's when that key does, otherwise Z.ai's GLM. An OpenRouter
+ * key alone selects the GLM defaults.
+ */
+export function defaultChatModels(
+  present: Pick<KeysPresent, 'anthropic' | 'gemini'>,
+): ChatDefaults {
+  if (present.anthropic) return ANTHROPIC_DEFAULTS;
+  if (present.gemini) return GEMINI_DEFAULTS;
+  return ZAI_DEFAULTS;
+}
+
 /** One row of a text-model picker: the id it writes, the text it shows, and its tooltip. */
 export interface TextModelChoice {
   id: string;
@@ -191,8 +231,8 @@ export interface TextModelChoice {
 
 /** How a curated or listed id reads on hover. */
 function textModelTooltip(id: string, listed: TextModelEntry | undefined): string {
-  if (listed?.vendor === 'openrouter') {
-    return `${listed.name || id}: routed by OpenRouter; needs an OpenRouter key.`;
+  if (listed?.vendor === 'openrouter' || (listed === undefined && id.includes('/'))) {
+    return `${listed?.name || id}: routed by OpenRouter; needs an OpenRouter key.`;
   }
   const vendor = listed?.vendor ?? chatVendorFor(id);
   const name = listed?.name ? `${listed.name}: ` : '';

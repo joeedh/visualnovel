@@ -87,10 +87,12 @@ install rather than per project.
 
 - **Opening another project** uses `workspace.pick` (the dialog) or
   `workspace.open(path='…')` (the scriptable form). A directory that is not a project yet
-  becomes one: `openWorkspace` writes a one-line `project.yaml`, where `title` is the only
-  key without a default and a new project starts empty rather than as a copy of the
-  sample. `ensureRepo` then initializes a repo and commits whatever was already there. A
-  `project.yaml` that will not parse is refused rather than opened.
+  becomes one: `openWorkspace` writes a short `project.yaml` holding `title` (the only key
+  without a default) and the chat models the resolving keys select (`defaultChatModels` in
+  `@vn/types`, described in [Getting an API key](../guides/api-keys.md)), and a new
+  project starts empty rather than as a copy of the sample. `ensureRepo` then initializes
+  a repo and commits whatever was already there. A `project.yaml` that will not parse is
+  refused rather than opened.
     - `workspace.open`'s check reports which of the two is about to happen ("Opens _The
       Transfer Student_" vs "Creates a new project at …"). It refuses the root that is
       already open, a path that is not a directory, and a switch while a pipeline run or
@@ -100,10 +102,10 @@ install rather than per project.
   opening a directory the author already has must not litter it, whereas "create a new
   project here" is an explicit request for a project, and a project whose model will not
   build is a worse answer than three files. So `createWorkspace` writes a skeleton —
-  `project.yaml` (`title` + `start: opening`), `scenes/opening.md` (a Fountain slug line
-  and two lines to write over), `wiki/index.md` (an empty story-bible page) — then
-  `ensureRepo` commits it as `New project`, and only then opens it through the same
-  `host.openWorkspace` every other path takes. The skeleton is not a copy of
+  `project.yaml` (`title`, `start: opening`, and the chat models), `scenes/opening.md` (a
+  Fountain slug line and two lines to write over), `wiki/index.md` (an empty story-bible
+  page) — then `ensureRepo` commits it as `New project`, and only then opens it through
+  the same `host.openWorkspace` every other path takes. The skeleton is not a copy of
   `templates/basic`, which holds somebody else's story and would leave the author spending
   their first ten minutes deleting a cast. One assertion sizes the skeleton: the created
   project builds a model with no error diagnostics, so the header's first count is zero

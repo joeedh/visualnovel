@@ -24,6 +24,17 @@ changes. With a key for only one of Gemini and Anthropic and no OpenRouter key, 
 app works. The OpenRouter key on its own runs everything except a generation-graph plugin
 node, which asks for its vendor's key by name.
 
+A new project's text and vision models depend on the keys that resolve when it is created:
+
+- With an Anthropic key, the text model is `claude-opus-4-8`, and the vision models are
+  `gemini-2.5-flash` and `claude-opus-4-8`.
+- Without an Anthropic key but with a Gemini key, `gemini-2.5-flash` does both jobs.
+- With neither key, Z.ai's `z-ai/glm-5.3-flash` does both jobs. There is no direct Z.ai
+  connection, so it runs only through OpenRouter and needs an OpenRouter key.
+
+The choice is written into `project.yaml`, so a key added later does not change it. To
+switch, pick another model in the Project pane.
+
 ## Gemini
 
 ```yaml
