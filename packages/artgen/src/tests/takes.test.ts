@@ -183,7 +183,9 @@ describe('migrateCurrent', () => {
         modelId   : portrait.modelId,
         satisfies : portrait.satisfies[0]!,
       });
-      await p.approve('aiko', older.hash);
+      // Held and accepted without the log, as a manifest from before takes were held could leave it
+      await store.hold(older.hash, [portrait.hash]);
+      await store.accept(older.hash);
       await unstamp(p.paths);
       const d = await deps(p);
       const report = (await migrateCurrent(d))!;

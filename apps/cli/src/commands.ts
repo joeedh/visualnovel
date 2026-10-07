@@ -30,7 +30,7 @@ import {
   decomposeAll,
   gateStatus,
   graphRuntime,
-  heldBy,
+  holdPortrait,
   hostPriceTables,
   priceSlots,
   readProjectGraphs,
@@ -604,11 +604,11 @@ function portraitsFor(project: LoadedProject, characterId: string): Asset[] {
     .filter((a) => a.kind === 'portrait' && bindsTo(a, { characterId }));
 }
 
-/** Flip the character to approved with `hash`, copy the visible portrait, accept the asset. */
 /**
  * Approve a portrait: hold it as the slot's current take, then accept it. The store writes the
  * sheet's mirror (`status: approved`, `approved_portrait:`, `approved.png`) in the accept, so
- * this is `vngen accept` for a portrait, with the hold that makes an older draft a restore.
+ * this is `vngen accept` for a portrait, with the hold that makes an older draft a restore
+ * (`holdPortrait`).
  */
 async function approveCharacter(
   project: LoadedProject,
@@ -618,14 +618,25 @@ async function approveCharacter(
   if (!entityFile(project.inputs.characterDocs, characterId)) {
     return { ok: false, message: `No character file for "${characterId}".` };
   }
-  const assets = project.store.manifest();
-  const asset = assets.find((a) => a.hash === hash);
+  const asset = project.store.manifest().find((a) => a.hash === hash);
   if (!asset) return { ok: false, message: `No asset "${hash}" in the store.` };
-  await project.store.hold(hash, heldBy(asset, { model: project.model, assets }), {
-    at: new Date().toISOString(),
-  });
+  if (asset.kind !== 'portrait' || !bindsTo(asset, { characterId })) {
+    return { ok: false, message: `${hash.slice(0, 8)} is not a portrait of ${characterId}.` };
+  }
+  const held = await holdPortrait(
+    {
+      config: project.config,
+      paths : project.paths,
+      store : project.store,
+      now   : () => new Date().toISOString(),
+    },
+    characterId,
+    hash,
+  );
   await project.store.accept(hash);
-  return { ok: true, message: `Approved ${characterId} → ${hash}.` };
+  const restored =
+    held.supersedes === undefined ? '' : `, superseding ${held.supersedes.slice(0, 8)}`;
+  return { ok: true, message: `Approved ${characterId} → ${hash}${restored}.` };
 }
 
 /** Approve one named character (the `--character` path): resolve the hash, then flip it. */

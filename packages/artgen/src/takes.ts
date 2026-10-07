@@ -83,7 +83,7 @@ export function angleOfTask(graph: {
 }
 
 /** The take the log says a slot holds, or `undefined` where the row is authoritative. */
-function logged(task: AnyTask | undefined): string | undefined {
+export function loggedTake(task: AnyTask | undefined): string | undefined {
   if (!task) return undefined;
   if (task.status === 'done') return task.output;
   if (task.status === 'needs_human') return task.output ?? task.attempts.at(-1)?.output;
@@ -129,7 +129,7 @@ export async function migrateCurrent(deps: TakeDeps): Promise<Migration | undefi
       continue;
     }
     const task = node.taskHash ? deps.graph.get(node.taskHash) : undefined;
-    const pick = migrationPick(candidates, logged(task), renderedAt);
+    const pick = migrationPick(candidates, loggedTake(task), renderedAt);
     if (!pick) continue;
     chosen.set(pick.hash, renderedAt(pick.sourceTask));
     held[key] = pick.hash;
@@ -190,7 +190,7 @@ export async function repairCurrent(deps: TakeDeps): Promise<OverHeld[]> {
 
   for (const key of slots.order) {
     const node = slots.nodes.get(key)!;
-    const wanted = logged(node.taskHash ? deps.graph.get(node.taskHash) : undefined);
+    const wanted = loggedTake(node.taskHash ? deps.graph.get(node.taskHash) : undefined);
     if (wanted === undefined || !node.candidates.includes(wanted)) continue;
     const current = node.candidates.filter((h) => byHash.get(h)?.current);
     if (current.length === 1 && current[0] === wanted) continue;
@@ -201,7 +201,7 @@ export async function repairCurrent(deps: TakeDeps): Promise<OverHeld[]> {
 
   const identityOutput = (slot: RefBinding): string | undefined => {
     const decided = resolveSlot(slot, ctx);
-    return decided.ok ? logged(deps.graph.get(slotTaskHash(decided.plan))) : undefined;
+    return decided.ok ? loggedTake(deps.graph.get(slotTaskHash(decided.plan))) : undefined;
   };
   // Read again, because the holds above changed which rows are current
   const rest: OverHeldContext = {

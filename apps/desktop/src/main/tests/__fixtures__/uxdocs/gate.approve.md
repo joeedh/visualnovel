@@ -4,7 +4,7 @@
 
 Holds and accepts the portrait row; the store mirrors it onto `character.md` and `approved.png`.
 
-Mutating · affects: `characters`, `wiki`, `vngen/work/characters`, `assets/manifest.json`, `vngen/build/manifest.json` · has a precondition (ask `ux_check`)
+Mutating · affects: `characters`, `wiki`, `vngen/work/characters`, `assets/manifest.json`, `vngen/build/manifest.json`, `vngen/state/tasks.jsonl` · has a precondition (ask `ux_check`)
 
 ## Props
 

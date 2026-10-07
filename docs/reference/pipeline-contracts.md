@@ -76,20 +76,23 @@ These implement the system design in
       location's plate.
     - A test covers this by checking that a project holding a concept plans exactly the
       tasks it planned before.
-- **A `done` record is written outside the scheduler by two callers and no other.**
+- **A `done` record is written outside the scheduler by three callers and no other.**
     - `adoptSlot` logs a slot's own task `done` with the handed-in bytes as its output, so
       the next run adopts those bytes instead of rendering over them. `fileGraphDraw` does
       the same for the picture an interactive graph run (`gengraph.run`) ended on, with
-      `via: 'graph'`, through the same writes. Both live in
+      `via: 'graph'`, through the same writes. `holdPortrait` does it for an older
+      portrait draft the gate approves, with `via: 'restore'`, when the portrait task is
+      logged with other bytes; without that record `repairCurrent` would hand the slot
+      back to the logged output on the next load. All three live in
       `packages/artgen/src/adoptslot.ts` and share one filing routine, so there is one
       place a picture becomes a slot's take without the scheduler.
     - The identity is derived in the same call from the project as it stands, never from a
       passed hash. That bound makes this safe, because the identity can only mark done the
       one node whose output this image now is.
-    - Adoption is refused in three cases: a `portrait:` slot (the P3 gate owns it),
-      mock-marked bytes (mock art never becomes real output), and superseding a render
-      that already holds the slot, which requires an explicit `replace` rather than a
-      silent overwrite.
+    - Adoption is refused in three cases: a `portrait:` slot (the P3 gate owns it, and
+      restores through `holdPortrait` instead), mock-marked bytes (mock art never becomes
+      real output), and superseding a render that already holds the slot, which requires
+      an explicit `replace` rather than a silent overwrite.
     - `promoteConcept` is one caller of adoption. Every other writer of a terminal record
       in the system ran that record itself.
     - Plans:
@@ -121,7 +124,9 @@ These implement the system design in
       comes to hold.
     - A `vngen run` halts at the gate with nothing left ready. Approving (`gate.approve`,
       `vngen approve`) holds the chosen portrait and accepts it, so choosing an older
-      draft is a restore. The next `run` plans and executes the downstream work.
+      draft is a restore: `holdPortrait` logs the portrait task `done` with that draft
+      when the log names other bytes, so the choice outlasts `repairCurrent`. The next
+      `run` plans and executes the downstream work.
     - Scenes with no characters render immediately.
 - **Incremental planning.**
     - The planner is called once per scheduler wave.

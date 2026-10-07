@@ -2,9 +2,11 @@
  * Adoption: recording bytes that already exist as the output of the task that would have produced
  * them (`docs/plans/archive/INDEX.md#chunked-prompts` §13).
  *
- * This is the guard on every `done` record written outside the scheduler — adoption and the take
- * an interactive graph run files — and it has to be unable to forge work that never happened. The property is structural rather than a convention: the caller hands
- * over the task's inputs, derived from the project as it stands, and this module hashes them.
+ * This is the guard on every `done` record written outside the scheduler — adoption, the take an
+ * interactive graph run files, and an older portrait the gate restores — and it has to be unable
+ * to forge work that never happened. The property is structural rather than a convention: the
+ * caller hands over the task's inputs, derived from the project as it stands, and this module
+ * hashes them.
  * There is no way to pass a remembered task hash, so there is no way to mark done a node the
  * project no longer describes.
  *

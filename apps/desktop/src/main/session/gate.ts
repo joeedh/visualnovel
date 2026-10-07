@@ -5,7 +5,7 @@ import {
   assetApproved,
   assetPrereqs,
   buildSlotGraph,
-  heldBy,
+  holdPortrait,
   prereqRefusal,
   resolveSlot,
   slotTaskHash,
@@ -64,7 +64,8 @@ export class GatePart {
   /**
    * Flip a character to approved with `hash`: hold and accept the asset. The hold is what makes
    * a draft chosen at the gate the slot's current take as well as its approved one — choosing an
-   * older draft is a restore — and the accept writes the sheet's mirror and `approved.png`.
+   * older draft is a restore, which logs the slot's task `done` with it — and the accept writes
+   * the sheet's mirror and `approved.png`.
    */
   async approveCharacter(characterId: string, hash: string): Promise<ApproveResult> {
     const project = await loadProject(this.session.dir);
@@ -84,22 +85,29 @@ export class GatePart {
     // Asked before the accept, because which manifest answers is decided by which root holds the
     // hash, and a portrait's bytes never move between the two.
     const manifest = relPath(this.session.dir, project.store.manifestFileOf(hash));
-    const assets = project.store.manifest();
-    await project.store.hold(
-      hash,
-      heldBy(asset, { ...labelContext(project.model, project.graph), assets }),
+    const held = await holdPortrait(
       {
-        at: new Date().toISOString(),
+        config: project.config,
+        paths : project.paths,
+        store : project.store,
+        now   : () => new Date().toISOString(),
       },
+      characterId,
+      hash,
     );
     await project.store.accept(hash);
+    const restored =
+      held.supersedes === undefined ? '' : `, superseding ${held.supersedes.slice(0, 8)}`;
     return {
       ok     : true,
-      message: `Approved ${characterId} → ${hash}.`,
+      message: `Approved ${characterId} → ${hash}${restored}.`,
       written: [
         relPath(this.session.dir, file),
         relPath(this.session.dir, project.paths.approvedPortrait(characterId)),
         manifest,
+        ...(held.supersedes === undefined
+          ? []
+          : [relPath(this.session.dir, project.paths.tasksLog)]),
       ],
     };
   }

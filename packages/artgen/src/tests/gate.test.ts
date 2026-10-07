@@ -150,6 +150,35 @@ describe('the sheet as a mirror of the row', () => {
     }
   });
 
+  it('keeps an older draft approved at the gate as the take, which the repair leaves alone', async () => {
+    const p = await makeProject({ script: SCRIPTS.linear });
+    try {
+      await p.run();
+      const first = (await p.reload()).store.manifest().find((a) => a.kind === 'portrait')!.hash;
+      const config = await loadConfig(p.dir);
+      await setArtNotes(
+        { config, paths: p.paths },
+        { target: 'character:aiko', notes: 'freckles', mode: 'append' },
+      );
+      await p.run();
+      let { model: m, store, graph } = await p.reload();
+      const draft = store.manifest().find((a) => a.kind === 'portrait' && a.hash !== first)!;
+      const identity = graph.get(draft.sourceTask)!;
+      expect(identity).toMatchObject({ status: 'done', output: draft.hash });
+
+      await p.approve('aiko', first);
+      ({ model: m, store, graph } = await p.reload());
+      // The slot's task now names the older take, so the repair has nothing to put back
+      expect(graph.get(identity.hash)).toMatchObject({ status: 'done', output: first });
+      expect(await repairCurrent({ model: m, config, store, graph, shots: new Map() })).toEqual([]);
+      expect(store.get(first)).toMatchObject({ current: true, accepted: true });
+      expect(store.get(draft.hash)).toMatchObject({ current: false, accepted: false });
+      expect(approvedPortraitOf(m.characters.get('aiko')!, store.manifest())).toBe(first);
+    } finally {
+      await p.cleanup();
+    }
+  });
+
   it('catches up a sheet an older tool approved by hand, once', async () => {
     const p = await makeProject({ script: SCRIPTS.linear });
     try {

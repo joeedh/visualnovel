@@ -35,7 +35,7 @@ import { adopt } from './adopt.js';
 import { baseRefusal } from './base.js';
 import { slotLabel } from './slotaddr.js';
 import { type Decided, type ResolvedSlot, heldBy, resolveSlot, slotTaskHash } from './slotgraph.js';
-import { angleOfTask } from './takes.js';
+import { angleOfTask, loggedTake } from './takes.js';
 
 export interface AdoptSlotDeps {
   config: ProjectConfig;
@@ -384,6 +384,50 @@ export async function adoptSlot(
     graph,
   );
   return { ref, plan: decided.plan };
+}
+
+/**
+ * Holds the portrait the gate is approving as its slot's take, and returns the output the slot's
+ * task was logged with when the hold replaced it. Where that output is other bytes, the portrait is
+ * filed as the task's output with `via: 'restore'`, the writes `asset.restore` makes for every
+ * other slot; a hold alone would be undone by `repairCurrent` on the next load. Where the log names
+ * no output, the row is authoritative and the hold is the whole act. Nothing is accepted here.
+ */
+export async function holdPortrait(
+  deps: AdoptSlotDeps,
+  characterId: string,
+  hash: string,
+): Promise<{ supersedes?: string }> {
+  const asset = deps.store.manifest().find((a) => a.hash === hash);
+  if (asset?.kind !== 'portrait') {
+    throw new VnError('UNKNOWN_ASSET', `No portrait "${hash}" in the store.`);
+  }
+  const slot: RefBinding = { kind: 'portrait', characterId };
+  const graph = await loadGraph(deps.paths);
+  const resolved = await resolve(deps, slot, graph);
+  if (!resolved.ok) throw new VnError(resolved.code, resolved.reason);
+
+  const taskHash = slotTaskHash(resolved.plan.slot);
+  const supersedes = loggedTake(graph.get(taskHash));
+  if (supersedes !== undefined && supersedes !== hash) {
+    const refusal = baseRefusal(deps.store.base);
+    if (refusal) throw new VnError('BASE_UNAVAILABLE', refusal);
+    const filing = { via: 'restore', replace: true, keepPrompt: true } as const;
+    await file(deps, resolved.plan, asset, taskHash, slot, filing, graph);
+    return { supersedes };
+  }
+
+  const at = deps.now?.();
+  await deps.store.hold(
+    hash,
+    heldBy(asset, {
+      model  : resolved.plan.model,
+      assets : deps.store.manifest(),
+      angleOf: angleOfTask(graph),
+    }),
+    at === undefined ? {} : { at },
+  );
+  return {};
 }
 
 /** A picture an interactive graph run terminated on, as the executor hands it back. */

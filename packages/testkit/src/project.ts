@@ -31,7 +31,7 @@ import {
   acceptTake,
   acceptableTakes,
   createGenServices,
-  heldBy,
+  holdPortrait,
   indexGraphs,
   type GraphRuntime,
   type LoadedGraph,
@@ -286,12 +286,12 @@ export class TestProject {
   }
 
   /**
-   * Approve a portrait the way `vngen approve` does — `store.hold`, then `store.accept`, which
+   * Approve a portrait the way `vngen approve` does — `holdPortrait`, then `store.accept`, which
    * writes the sheet's mirror and `approved.png` — so the next `reload()` sees the gate cleared
    * and the slot holding the approved draft.
    */
   async approve(characterId: string, hash?: string): Promise<string> {
-    const { store, model } = await this.reload();
+    const { store, config } = await this.reload();
     const chosen = hash ?? this.portraitsFor(store, characterId)[0]?.hash;
     if (!chosen) {
       throw new Error(`no portrait asset for character "${characterId}" — run() first`);
@@ -300,13 +300,8 @@ export class TestProject {
       throw new Error(`no character sheet for "${characterId}"`);
     }
     // Held, then accepted: the accept writes the sheet's mirror and `approved.png`
-    const assets = store.manifest();
-    const asset = assets.find((a) => a.hash === chosen);
-    if (asset) {
-      await store.hold(chosen, heldBy(asset, { model, assets }), {
-        at: new Date().toISOString(),
-      });
-    }
+    const now = () => new Date().toISOString();
+    await holdPortrait({ config, paths: this.paths, store, now }, characterId, chosen);
     await store.accept(chosen);
     return chosen;
   }

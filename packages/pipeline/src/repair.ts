@@ -7,6 +7,7 @@ export {
   acceptTake,
   acceptableTakes,
   heldBy,
+  holdPortrait,
   migrateCurrent,
   repairCurrent,
   type Acceptable,

@@ -2022,6 +2022,62 @@ describe('WorkspaceSession — restoring an older take', () => {
 });
 
 /**
+ * Approving an older portrait at the gate makes it the slot's take for good. The hold alone does not
+ * last: every load runs `repairCurrent`, which rewrites `current` to the output the task log names.
+ */
+describe('WorkspaceSession — approving an older portrait', () => {
+  let p: TestProject;
+  let session: WorkspaceSession;
+
+  beforeAll(async () => {
+    p = await makeProject({ title: 'Older look', script: SCRIPTS.linear });
+    session = sessionFor(p);
+    await p.run(); // the first portrait; halts at the gate
+  }, 30_000);
+
+  afterAll(async () => {
+    await p.cleanup();
+  });
+
+  const portraits = async (): Promise<string[]> => {
+    const { store } = await p.reload();
+    return store
+      .manifest()
+      .filter((a) => a.kind === 'portrait')
+      .map((a) => a.hash);
+  };
+
+  it('holds the older take through a reload, a run and the playable', async () => {
+    const [first] = await portraits();
+    expect(await session.setArtNotes('character:aiko', 'freckles')).toMatchObject({ ok: true });
+    await p.run(); // a second draft takes the slot
+    const second = (await portraits()).find((h) => h !== first)!;
+    expect(await session.assetInfo(second)).toMatchObject({ current: true });
+
+    const approved = await session.approveCharacter('aiko', first!);
+    expect(approved).toMatchObject({ ok: true });
+
+    expect(await session.assetInfo(first!)).toMatchObject({
+      current : true,
+      accepted: true,
+      approved: true,
+    });
+    expect(await session.assetInfo(second)).toMatchObject({ current: false, accepted: false });
+    expect((await session.status()).blockedOnGate).toBe(false);
+    expect((await session.playable()).characters['aiko']!.portrait).toMatchObject({
+      hash: first,
+    });
+    // The slot's task is logged done with the older take, which is what keeps it held
+    expect(approved.written).toContain('vngen/state/tasks.jsonl');
+
+    // The next run draws downstream of the approved take, not a third portrait over it
+    await p.run();
+    expect(await portraits()).toHaveLength(2);
+    expect(await session.assetInfo(first!)).toMatchObject({ current: true, approved: true });
+  }, 60_000);
+});
+
+/**
  * A frame replaced across the two roots: the upload stays a `reference` in the base root while the
  * project root files the same bytes as the frame, and the frame is the row every surface must see.
  */

@@ -33,6 +33,8 @@ export const gateApprove = define({
     'vngen/work/characters',
     'assets/manifest.json',
     'vngen/build/manifest.json',
+    // An older draft is restored, which logs the portrait's task `done` with it
+    'vngen/state/tasks.jsonl',
   ],
   props: {
     characterId: prop.string('the character to approve'),
