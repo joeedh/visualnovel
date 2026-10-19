@@ -2,6 +2,7 @@ import {
   assetGroups,
   backlinkSubject,
   defaultExpanded,
+  deleteFor,
   filterTree,
   findNode,
   flattenTree,
@@ -466,6 +467,8 @@ describe('menuFor', () => {
       'app.copy',
       'view.open',
       'view.open',
+      MENU_SEP,
+      'location.delete',
     ]);
   });
 
@@ -474,6 +477,8 @@ describe('menuFor', () => {
       'art.generate',
       'art.setNotes',
       'app.copy',
+      MENU_SEP,
+      'location.delete',
     ]);
   });
 
@@ -517,6 +522,8 @@ describe('menuFor', () => {
       undefined,
       { paths: ['wiki/lore'], into: 'wiki' },
       { text: 'wiki/lore', what: 'path' },
+      undefined,
+      { paths: ['wiki/lore'] },
     ]);
     expect(menuFor(node('branch:wiki', 'branch'))[0]!.props).toEqual({ kind: 'note' });
   });
@@ -544,6 +551,8 @@ describe('menuFor', () => {
       [MENU_SEP, undefined],
       ['Rename…', roots],
       ['Copy path', undefined],
+      [MENU_SEP, undefined],
+      ['Delete folder…', roots],
     ]);
   });
 
@@ -598,6 +607,8 @@ describe('menuFor', () => {
       MENU_SEP,
       'story.newScene',
       'story.screenplay',
+      MENU_SEP,
+      'story.deleteScene',
     ]);
   });
 
@@ -734,7 +745,7 @@ describe('menuFor', () => {
       props: { editor: 'history', where: 'elsewhere', subject: 'wiki/x.md' },
     };
     for (const kind of ['wiki', 'file'] as const) {
-      expect(menuFor(node(`${kind}:x`, kind, { path: 'wiki/x.md' })).at(-1)).toEqual(history);
+      expect(menuFor(node(`${kind}:x`, kind, { path: 'wiki/x.md' })).at(-3)).toEqual(history);
     }
     for (const kind of ['scene', 'character', 'location'] as const) {
       expect(menuFor(node(`${kind}:x`, kind, { path: 'wiki/x.md' }))).toContainEqual(history);
@@ -770,6 +781,70 @@ describe('menuFor', () => {
     ]);
   });
 
+  // A delete always ends the menu under its own separator, and opens as a form whose check lists
+  // what it rewrites before the author confirms
+  it('ends each deletable row with its own delete, as a form under a separator', () => {
+    for (const [each, label, id, props] of [
+      [
+        node('character:aiko', 'character'),
+        'Delete character…',
+        'character.delete',
+        { character: 'aiko' },
+      ],
+      [
+        node('location:cafe', 'location'),
+        'Delete location…',
+        'location.delete',
+        { location: 'cafe' },
+      ],
+      [node('scene:greet', 'scene'), 'Delete scene…', 'story.deleteScene', { scene: 'greet' }],
+      [
+        node('wiki:x', 'wiki', { path: 'wiki/x.md' }),
+        'Delete page…',
+        'doc.delete',
+        { paths: ['wiki/x.md'] },
+      ],
+      [
+        node('file:x', 'file', { path: 'wiki/x.md' }),
+        'Delete file…',
+        'doc.delete',
+        { paths: ['wiki/x.md'] },
+      ],
+      [
+        node('dir:a', 'dir', { path: 'archive/a' }),
+        'Delete folder…',
+        'doc.delete',
+        { paths: ['archive/a'] },
+      ],
+      [
+        node('wikidir:lore', 'wikidir', { path: 'wiki/lore' }),
+        'Delete folder…',
+        'doc.delete',
+        { paths: ['wiki/lore'] },
+      ],
+    ] as const) {
+      const entries = menuFor(each);
+      expect(entries.at(-2)?.id).toBe(MENU_SEP);
+      expect(entries.at(-1)).toMatchObject({ label, id, props, form: true, shortcut: 'Delete' });
+      expect(entries.at(-1)?.tooltip).toMatch(/before you confirm\.$/);
+      expect(deleteFor(each)).toEqual(entries.at(-1));
+    }
+  });
+
+  it('greys Delete on a root folder with the file commands’ sentence', () => {
+    expect(deleteFor(node('dir:wiki', 'dir', { path: 'wiki' }))?.refused).toBe(
+      "wiki/ is one of the project's own folders; it cannot be created, moved, renamed or deleted.",
+    );
+  });
+
+  it('keeps the graph row’s own delete, under a separator', () => {
+    expect(idsOf(node('graph:plates', 'graph')).slice(-3)).toEqual([
+      'app.copy',
+      MENU_SEP,
+      'gengraph.delete',
+    ]);
+  });
+
   it('names a command for every entry that is not a separator', () => {
     const every = [...TREE, node('asset:a1b2c3', 'asset'), node('wikidir:wiki', 'wikidir'), SKILL];
     const walk = (nodes: readonly DocNode[]): void => {
@@ -797,9 +872,9 @@ describe('the file acts', () => {
     menuFor(n, 'stored', ctx).find((entry) => entry.on === 'paste')!;
 
   it('draws a page and a file as Cut · Copy · Paste · Rename · Copy path · Show history', () => {
-    for (const [kind, rename] of [
-      ['wiki', 'Rename file…'],
-      ['file', 'Rename…'],
+    for (const [kind, rename, remove] of [
+      ['wiki', 'Rename file…', 'Delete page…'],
+      ['file', 'Rename…', 'Delete file…'],
     ] as const) {
       const entries = menuFor(node(`${kind}:x`, kind, { path: 'wiki/x.md' }));
       expect(entries.map((entry) => entry.label)).toEqual([
@@ -810,6 +885,8 @@ describe('the file acts', () => {
         rename,
         'Copy path',
         'Show history',
+        MENU_SEP,
+        remove,
       ]);
     }
   });
@@ -900,11 +977,13 @@ describe('the file acts', () => {
     expect(paste(page, clipped('copy', ['wiki/notes/b.md'])).refused).toBeUndefined();
   });
 
-  it('offers a marked row Cut and Copy of every mark, and a folder a Paste into it', () => {
+  it('offers a marked row Cut, Copy and Delete of every mark, and a folder a Paste into it', () => {
     const marked = { ...clipped('copy'), marked: ['wiki/lore', 'wiki/x.md', 'wiki/y.md'] };
     expect(menuFor(page, 'stored', marked).map((entry) => entry.label)).toEqual([
       'Cut 3 items',
       'Copy 3 items',
+      MENU_SEP,
+      'Delete 3 items…',
     ]);
     const entries = menuFor(folder, 'stored', marked);
     expect(entries.map((entry) => entry.label)).toEqual([
@@ -912,8 +991,28 @@ describe('the file acts', () => {
       'Copy 3 items',
       MENU_SEP,
       'Paste into lore',
+      MENU_SEP,
+      'Delete 3 items…',
     ]);
     expect(entries[3]).toMatchObject({ id: 'doc.copy', props: { into: 'wiki/lore' } });
+    expect(entries[5]).toMatchObject({
+      id   : 'doc.delete',
+      props: { paths: ['wiki/lore', 'wiki/x.md', 'wiki/y.md'] },
+      form : true,
+    });
+  });
+
+  it('offers no Delete on the rows the collector or no decision covers', () => {
+    for (const each of [
+      node('asset:a1b2c3', 'asset'),
+      node('slot:plate:cafe/night', 'slot'),
+      node('shot:greet/greet__s1', 'shot'),
+      SKILL,
+      node('assetkind:x', 'assetkind'),
+      node('more:x', 'more'),
+    ]) {
+      expect(deleteFor(each)).toBeUndefined();
+    }
   });
 
   it('offers nothing to cut from a row with no file', () => {

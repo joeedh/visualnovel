@@ -88,7 +88,7 @@ describe('comboOf and shortcutOf', () => {
     expect(matches(edit, view('scope'), 'enter')).toBe(true);
     expect(matches(edit, view('scope'), 'exit')).toBe(false);
     expect(matches(edit, view('scope'))).toBe(false);
-    const remove = SHORTCUTS.find((e) => e.label === 'Delete')!;
+    const remove = SHORTCUTS.find((e) => e.scope === 'gengraph' && e.label === 'Delete')!;
     expect(matches(remove, { id: 'gengraph.removeNode' })).toBe(true);
   });
 
@@ -130,12 +130,13 @@ describe('bindings', () => {
     );
   });
 
-  it('binds Escape, Ctrl+C, Ctrl+X, Ctrl+V and F2 in the Documents pane', () => {
+  it('binds Escape, Ctrl+C, Ctrl+X, Delete, Ctrl+V and F2 in the Documents pane', () => {
     const noop = () => {};
     const list = bindings('documents', {
       'Clear marks': noop,
       Copy         : noop,
       Cut          : noop,
+      Delete       : noop,
       Paste        : noop,
       Rename       : noop,
     });
@@ -143,6 +144,7 @@ describe('bindings', () => {
       ['Escape', [], 'Clear marks'],
       ['C', ['ctrl'], 'Copy'],
       ['X', ['ctrl'], 'Cut'],
+      ['Delete', [], 'Delete'],
       ['V', ['ctrl'], 'Paste'],
       ['F2', [], 'Rename'],
     ]);
@@ -157,6 +159,11 @@ describe('bindings', () => {
     expect(shortcutOf(view('clip'), 'copy')).toBe('Ctrl+C');
     expect(shortcutOf({ id: 'doc.move', props: {} }, 'paste')).toBe('Ctrl+V');
     expect(findShortcut({ id: 'doc.move', props: {} }, undefined, 'documents')).toBeUndefined();
+  });
+
+  it('labels every Delete… entry by doc.delete with `on: delete`', () => {
+    expect(shortcutOf({ id: 'doc.delete', props: {} }, 'delete')).toBe('Delete');
+    expect(findShortcut({ id: 'doc.delete', props: {} }, undefined, 'documents')).toBeUndefined();
   });
 
   // The rename box itself runs doc.move with no `on`, so only the menu entry is labelled F2

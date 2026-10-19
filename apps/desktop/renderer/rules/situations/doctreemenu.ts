@@ -45,7 +45,7 @@ export const SITUATIONS = situations<DocTreeMenuState>(
   },
   {
     name : 'three-marked',
-    why: 'Three rows are marked and the menu is raised on the marked folder, so it offers Cut and Copy of all three and a Paste into that folder.',
+    why: 'Three rows are marked and the menu is raised on the marked folder, so it offers Cut, Copy and Delete of all three and a Paste into that folder.',
     state: {
       nodes: [FILE_ROWS[1]!],
       ctx: {

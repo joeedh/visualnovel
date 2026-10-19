@@ -218,12 +218,20 @@ export const SHORTCUTS: readonly Shortcut[] = [
   },
   { scope: 'script', key: 'Escape', mods: [], label: 'Unmark lines', runs: view('mark') },
 
-  // The Documents pane's keys act on the rows marked by Ctrl-click and Shift-click, Paste on the
-  // anchor row's folder, and Rename on the anchor row when it is the only mark. Paste is recorded
-  // as `doc.move`, but after a Copy it runs `doc.copy`
+  // Keys act on the Ctrl- and Shift-click marks; Paste on the anchor's folder, Rename on a lone
+  // anchor, Delete on two or more marks or else the row last clicked. Paste records `doc.move`
+  // (`doc.copy` after a Copy); Delete records `doc.delete` (an entity row's own delete)
   { scope: 'documents', key: 'Escape', mods: [], label: 'Clear marks', runs: view('mark') },
   { scope: 'documents', key: 'C', mods: ['ctrl'], label: 'Copy', runs: view('clip'), on: 'copy' },
   { scope: 'documents', key: 'X', mods: ['ctrl'], label: 'Cut', runs: view('clip'), on: 'cut' },
+  {
+    scope: 'documents',
+    key  : 'Delete',
+    mods : [],
+    label: 'Delete',
+    runs : command('doc.delete'),
+    on   : 'delete',
+  },
   {
     scope: 'documents',
     key  : 'V',

@@ -1048,7 +1048,7 @@
       "module": "doctree",
       "editor": "documents",
       "name"  : "three-marked",
-      "why": "Three rows are marked and the menu is raised on the marked folder, so it offers Cut and Copy of all three and a Paste into that folder."
+      "why": "Three rows are marked and the menu is raised on the marked folder, so it offers Cut, Copy and Delete of all three and a Paste into that folder."
     },
     {
       "module": "shotmenu",
@@ -44268,6 +44268,22 @@
       "editor"   : "documents",
       "module"   : "doctree",
       "situation": "every-kind",
+      "when"     : "scene:sample",
+      "id"       : "story.deleteScene",
+      "label"    : "Delete scene…",
+      "tooltip": "Remove this scene and reroute or cut the links that lead into it; the form lists every change before you confirm.",
+      "props": {
+        "scene": "sample"
+      },
+      "on"       : "delete",
+      "form"     : true,
+      "shortcut" : "Delete"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
       "when"     : "shot:sample/shot1",
       "id"       : "story.setCoverage",
       "label"    : "Set coverage…",
@@ -44428,6 +44444,22 @@
       "editor"   : "documents",
       "module"   : "doctree",
       "situation": "every-kind",
+      "when"     : "character:sample",
+      "id"       : "character.delete",
+      "label"    : "Delete character…",
+      "tooltip": "Remove this character. Its lines, outfit markers, shots and pins are rewritten; the form lists every change before you confirm.",
+      "props": {
+        "character": "sample"
+      },
+      "on"       : "delete",
+      "form"     : true,
+      "shortcut" : "Delete"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
       "when"     : "location:sample",
       "id"       : "art.generate",
       "label"    : "New reference shot…",
@@ -44490,6 +44522,22 @@
         "where"  : "elsewhere",
         "subject": "wiki/location.md"
       }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "location:sample",
+      "id"       : "location.delete",
+      "label"    : "Delete location…",
+      "tooltip": "Remove this location and set its scenes somewhere else; the form lists every change before you confirm.",
+      "props": {
+        "location": "sample"
+      },
+      "on"       : "delete",
+      "form"     : true,
+      "shortcut" : "Delete"
     },
     {
       "via"      : "menu",
@@ -44625,6 +44673,22 @@
       "editor"   : "documents",
       "module"   : "doctree",
       "situation": "every-kind",
+      "when"     : "wikidir:sample",
+      "id"       : "doc.delete",
+      "label"    : "Delete folder…",
+      "tooltip": "Delete from disk; the form lists what goes, and what undo cannot bring back, before you confirm.",
+      "props": {
+        "paths": ["wiki/wikidir.md"]
+      },
+      "on"       : "delete",
+      "form"     : true,
+      "shortcut" : "Delete"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
       "when"     : "wiki:sample",
       "id"       : "pane.view",
       "label"    : "Cut",
@@ -44709,6 +44773,22 @@
         "where"  : "elsewhere",
         "subject": "wiki/wiki.md"
       }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "wiki:sample",
+      "id"       : "doc.delete",
+      "label"    : "Delete page…",
+      "tooltip": "Delete from disk; the form lists what goes, and what undo cannot bring back, before you confirm.",
+      "props": {
+        "paths": ["wiki/wiki.md"]
+      },
+      "on"       : "delete",
+      "form"     : true,
+      "shortcut" : "Delete"
     },
     {
       "via"      : "menu",
@@ -45071,6 +45151,22 @@
       "editor"   : "documents",
       "module"   : "doctree",
       "situation": "every-kind",
+      "when"     : "dir:sample",
+      "id"       : "doc.delete",
+      "label"    : "Delete folder…",
+      "tooltip": "Delete from disk; the form lists what goes, and what undo cannot bring back, before you confirm.",
+      "props": {
+        "paths": ["wiki/dir.md"]
+      },
+      "on"       : "delete",
+      "form"     : true,
+      "shortcut" : "Delete"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
       "when"     : "file:sample",
       "id"       : "pane.view",
       "label"    : "Cut",
@@ -45155,6 +45251,22 @@
         "where"  : "elsewhere",
         "subject": "wiki/file.md"
       }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "file:sample",
+      "id"       : "doc.delete",
+      "label"    : "Delete file…",
+      "tooltip": "Delete from disk; the form lists what goes, and what undo cannot bring back, before you confirm.",
+      "props": {
+        "paths": ["wiki/file.md"]
+      },
+      "on"       : "delete",
+      "form"     : true,
+      "shortcut" : "Delete"
     },
     {
       "via"      : "menu",
@@ -45519,6 +45631,22 @@
       "editor"   : "documents",
       "module"   : "doctree",
       "situation": "cut-clipboard",
+      "when"     : "wikidir:lore",
+      "id"       : "doc.delete",
+      "label"    : "Delete folder…",
+      "tooltip": "Delete from disk; the form lists what goes, and what undo cannot bring back, before you confirm.",
+      "props": {
+        "paths": ["wiki/lore"]
+      },
+      "on"       : "delete",
+      "form"     : true,
+      "shortcut" : "Delete"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
       "when"     : "wiki:lore/cafe.md",
       "id"       : "pane.view",
       "label"    : "Cut",
@@ -45602,6 +45730,22 @@
         "where"  : "elsewhere",
         "subject": "wiki/lore/cafe.md"
       }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "wiki:lore/cafe.md",
+      "id"       : "doc.delete",
+      "label"    : "Delete page…",
+      "tooltip": "Delete from disk; the form lists what goes, and what undo cannot bring back, before you confirm.",
+      "props": {
+        "paths": ["wiki/lore/cafe.md"]
+      },
+      "on"       : "delete",
+      "form"     : true,
+      "shortcut" : "Delete"
     },
     {
       "via"      : "menu",
@@ -45709,6 +45853,22 @@
       "editor"   : "documents",
       "module"   : "doctree",
       "situation": "cut-clipboard",
+      "when"     : "dir:wiki/lore",
+      "id"       : "doc.delete",
+      "label"    : "Delete folder…",
+      "tooltip": "Delete from disk; the form lists what goes, and what undo cannot bring back, before you confirm.",
+      "props": {
+        "paths": ["wiki/lore"]
+      },
+      "on"       : "delete",
+      "form"     : true,
+      "shortcut" : "Delete"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
       "when"     : "file:wiki/lore/cafe.md",
       "id"       : "pane.view",
       "label"    : "Cut",
@@ -45792,6 +45952,22 @@
         "where"  : "elsewhere",
         "subject": "wiki/lore/cafe.md"
       }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "cut-clipboard",
+      "when"     : "file:wiki/lore/cafe.md",
+      "id"       : "doc.delete",
+      "label"    : "Delete file…",
+      "tooltip": "Delete from disk; the form lists what goes, and what undo cannot bring back, before you confirm.",
+      "props": {
+        "paths": ["wiki/lore/cafe.md"]
+      },
+      "on"       : "delete",
+      "form"     : true,
+      "shortcut" : "Delete"
     },
     {
       "via"      : "menu",
@@ -45993,6 +46169,22 @@
       "editor"   : "documents",
       "module"   : "doctree",
       "situation": "copy-clipboard",
+      "when"     : "wikidir:lore",
+      "id"       : "doc.delete",
+      "label"    : "Delete folder…",
+      "tooltip": "Delete from disk; the form lists what goes, and what undo cannot bring back, before you confirm.",
+      "props": {
+        "paths": ["wiki/lore"]
+      },
+      "on"       : "delete",
+      "form"     : true,
+      "shortcut" : "Delete"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
       "when"     : "wiki:lore/cafe.md",
       "id"       : "pane.view",
       "label"    : "Cut",
@@ -46076,6 +46268,22 @@
         "where"  : "elsewhere",
         "subject": "wiki/lore/cafe.md"
       }
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "wiki:lore/cafe.md",
+      "id"       : "doc.delete",
+      "label"    : "Delete page…",
+      "tooltip": "Delete from disk; the form lists what goes, and what undo cannot bring back, before you confirm.",
+      "props": {
+        "paths": ["wiki/lore/cafe.md"]
+      },
+      "on"       : "delete",
+      "form"     : true,
+      "shortcut" : "Delete"
     },
     {
       "via"      : "menu",
@@ -46183,6 +46391,22 @@
       "editor"   : "documents",
       "module"   : "doctree",
       "situation": "copy-clipboard",
+      "when"     : "dir:wiki/lore",
+      "id"       : "doc.delete",
+      "label"    : "Delete folder…",
+      "tooltip": "Delete from disk; the form lists what goes, and what undo cannot bring back, before you confirm.",
+      "props": {
+        "paths": ["wiki/lore"]
+      },
+      "on"       : "delete",
+      "form"     : true,
+      "shortcut" : "Delete"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "copy-clipboard",
       "when"     : "file:wiki/lore/cafe.md",
       "id"       : "pane.view",
       "label"    : "Cut",
@@ -46271,6 +46495,22 @@
       "via"      : "menu",
       "editor"   : "documents",
       "module"   : "doctree",
+      "situation": "copy-clipboard",
+      "when"     : "file:wiki/lore/cafe.md",
+      "id"       : "doc.delete",
+      "label"    : "Delete file…",
+      "tooltip": "Delete from disk; the form lists what goes, and what undo cannot bring back, before you confirm.",
+      "props": {
+        "paths": ["wiki/lore/cafe.md"]
+      },
+      "on"       : "delete",
+      "form"     : true,
+      "shortcut" : "Delete"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
       "situation": "three-marked",
       "when"     : "wikidir:lore",
       "id"       : "pane.view",
@@ -46311,6 +46551,22 @@
       },
       "on"       : "paste",
       "shortcut" : "Ctrl+V"
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
+      "situation": "three-marked",
+      "when"     : "wikidir:lore",
+      "id"       : "doc.delete",
+      "label"    : "Delete 3 items…",
+      "tooltip": "Delete from disk; the form lists what goes, and what undo cannot bring back, before you confirm.",
+      "props": {
+        "paths": ["wiki/lore", "wiki/lore/cafe.md", "wiki/notes.md"]
+      },
+      "on"       : "delete",
+      "form"     : true,
+      "shortcut" : "Delete"
     },
     {
       "via"      : "menu",
@@ -50436,18 +50692,6 @@
     {
       "match": "upload.files",
       "why"  : "Uploads come from the drop target."
-    },
-    {
-      "match": "character.delete",
-      "why": "A delete the palette and CDP run until the document tree’s right-click menu offers it."
-    },
-    {
-      "match": "location.delete",
-      "why": "A delete the palette and CDP run until the document tree’s right-click menu offers it."
-    },
-    {
-      "match": "doc.delete",
-      "why": "A delete the palette and CDP run until the document tree’s right-click menu offers it."
     }
   ],
   "shortcuts": [
@@ -50822,6 +51066,17 @@
         }
       },
       "on"   : "cut"
+    },
+    {
+      "scope": "documents",
+      "key"  : "Delete",
+      "mods" : [],
+      "label": "Delete",
+      "runs": {
+        "id"   : "doc.delete",
+        "props": {}
+      },
+      "on"   : "delete"
     },
     {
       "scope": "documents",

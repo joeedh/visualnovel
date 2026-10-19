@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-10-07T20:57:14.100Z",
-  "gitSha"       : "00311e2eb5fcc5a8b9172df06416329b77a6bb18",
+  "sweptAt"      : "2026-10-19T21:12:53.061Z",
+  "gitSha"       : "ede348ac518e3c0360d8a7a11cb810408b6a0b51",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -262,8 +262,10 @@
     "asset.regenerate",
     "asset.replace",
     "asset.upload",
+    "character.delete",
     "doc.copy",
     "doc.create",
+    "doc.delete",
     "doc.mkdir",
     "doc.move",
     "doc.newFile",
@@ -281,6 +283,7 @@
     "gengraph.scaffoldSheet",
     "gengraph.ungroup",
     "git.checkpoint",
+    "location.delete",
     "models.refresh",
     "notify.clear",
     "notify.deleteAll",
@@ -388,6 +391,12 @@
       "when"  : "scene:sample"
     },
     {
+      "id"    : "story.deleteScene",
+      "editor": "documents",
+      "when"  : "scene:sample",
+      "form"  : true
+    },
+    {
       "id"    : "story.setCoverage",
       "editor": "documents",
       "when"  : "shot:sample/shot1",
@@ -449,6 +458,12 @@
       "when"  : "character:sample"
     },
     {
+      "id"    : "character.delete",
+      "editor": "documents",
+      "when"  : "character:sample",
+      "form"  : true
+    },
+    {
       "id"    : "art.generate",
       "editor": "documents",
       "when"  : "location:sample",
@@ -469,6 +484,12 @@
       "id"    : "view.open",
       "editor": "documents",
       "when"  : "location:sample"
+    },
+    {
+      "id"    : "location.delete",
+      "editor": "documents",
+      "when"  : "location:sample",
+      "form"  : true
     },
     {
       "id"    : "doc.create",
@@ -498,6 +519,12 @@
       "when"  : "wikidir:sample"
     },
     {
+      "id"    : "doc.delete",
+      "editor": "documents",
+      "when"  : "wikidir:sample",
+      "form"  : true
+    },
+    {
       "id"    : "pane.view",
       "editor": "documents",
       "when"  : "wiki:sample"
@@ -516,6 +543,12 @@
       "id"    : "view.open",
       "editor": "documents",
       "when"  : "wiki:sample"
+    },
+    {
+      "id"    : "doc.delete",
+      "editor": "documents",
+      "when"  : "wiki:sample",
+      "form"  : true
     },
     {
       "id"    : "asset.regenerate",
@@ -654,6 +687,12 @@
       "when"  : "dir:sample"
     },
     {
+      "id"    : "doc.delete",
+      "editor": "documents",
+      "when"  : "dir:sample",
+      "form"  : true
+    },
+    {
       "id"    : "pane.view",
       "editor": "documents",
       "when"  : "file:sample"
@@ -672,6 +711,12 @@
       "id"    : "view.open",
       "editor": "documents",
       "when"  : "file:sample"
+    },
+    {
+      "id"    : "doc.delete",
+      "editor": "documents",
+      "when"  : "file:sample",
+      "form"  : true
     },
     {
       "id"    : "story.newScene",
@@ -764,6 +809,12 @@
       "when"  : "wikidir:lore"
     },
     {
+      "id"    : "doc.delete",
+      "editor": "documents",
+      "when"  : "wikidir:lore",
+      "form"  : true
+    },
+    {
       "id"    : "pane.view",
       "editor": "documents",
       "when"  : "wiki:lore/cafe.md"
@@ -782,6 +833,12 @@
       "id"    : "view.open",
       "editor": "documents",
       "when"  : "wiki:lore/cafe.md"
+    },
+    {
+      "id"    : "doc.delete",
+      "editor": "documents",
+      "when"  : "wiki:lore/cafe.md",
+      "form"  : true
     },
     {
       "id"    : "doc.newFile",
@@ -811,6 +868,12 @@
       "when"  : "dir:wiki/lore"
     },
     {
+      "id"    : "doc.delete",
+      "editor": "documents",
+      "when"  : "dir:wiki/lore",
+      "form"  : true
+    },
+    {
       "id"    : "pane.view",
       "editor": "documents",
       "when"  : "file:wiki/lore/cafe.md"
@@ -829,6 +892,12 @@
       "id"    : "view.open",
       "editor": "documents",
       "when"  : "file:wiki/lore/cafe.md"
+    },
+    {
+      "id"    : "doc.delete",
+      "editor": "documents",
+      "when"  : "file:wiki/lore/cafe.md",
+      "form"  : true
     },
     {
       "id"    : "doc.copy",
@@ -6049,16 +6118,16 @@
     {
       "id"        : "project.setKey",
       "editor"    : "onboarding",
-      "key"       : "cmd:project.setKey#gemini",
-      "widgetPath": "onboarding/project-setkey~83f4e4d5",
+      "key"       : "cmd:project.setKey#anthropic",
+      "widgetPath": "onboarding/project-setkey~b45dc248",
       "supplies"  : ["key"],
       "refused"   : "Paste a key first"
     },
     {
       "id"        : "project.setKey",
       "editor"    : "onboarding",
-      "key"       : "cmd:project.setKey#anthropic",
-      "widgetPath": "onboarding/project-setkey~b45dc248",
+      "key"       : "cmd:project.setKey#gemini",
+      "widgetPath": "onboarding/project-setkey~83f4e4d5",
       "supplies"  : ["key"],
       "refused"   : "Paste a key first"
     },
@@ -6701,9 +6770,13 @@
   ],
   "disagreements": [],
   "strays": [
+    "asset cmd:view.open#style",
+    "branches fx:pane.view#reload",
     "documents item:link/asset/613746984653b37b24cb935b82ab56bb760fc7e4958b418321d082007d25f613",
     "documents item:link/asset/cba46728a12ad297aa87e02c58e7ebb28c16e7e01113922ccecdf8ec9c8968df",
-    "documents item:link/asset/fc80c6eba9cb0d134428bb7c0bd8bb65effa5be3379a763df6cb0467f5ebbae9"
+    "documents item:link/asset/fc80c6eba9cb0d134428bb7c0bd8bb65effa5be3379a763df6cb0467f5ebbae9",
+    "gengraph cmd:models.refresh",
+    "wiki cmd:doc.write#picture"
   ],
   "untagged"     : [],
   "unwalked"     : []

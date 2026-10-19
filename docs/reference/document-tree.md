@@ -20,6 +20,7 @@ describes what underlies it. The plan and the reasoning behind each decision are
 - [Right-click menus](#right-click-menus)
 - [Selecting several rows](#selecting-several-rows)
 - [Cut, Copy and Paste](#cut-copy-and-paste)
+- [Deleting](#deleting)
 - [Moving, copying and renaming files](#moving-copying-and-renaming-files)
 - [Renaming in place](#renaming-in-place)
 - [Opening a shot's frame](#opening-a-shots-frame)
@@ -305,26 +306,28 @@ why an entry is an invocation rather than a callback) is in
 [`command-system.md`](command-system.md#from-a-right-click) and
 [`../plans/archive/INDEX.md#document-tree-context-menus`](../plans/archive/INDEX.md#document-tree-context-menus).
 
-| node kind                            | entries                                                                                                                                                              |
-| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `location`                           | New reference shot… · Art notes… · Open sheet elsewhere                                                                                                              |
-| `character`                          | New concept image… · Art notes… · Open sheet elsewhere                                                                                                               |
-| `branch:wiki`                        | New wiki page… · New character sheet… · New location sheet… · New folder… · Paste                                                                                    |
-| `wikidir`                            | New wiki page… · New character sheet… · New location sheet… · New folder… · Cut · Copy · Paste · Rename… · Copy path                                                 |
-| `dir`                                | New file… · New folder… · Cut · Copy · Paste · Rename… · Copy path                                                                                                   |
-| `branch:characters`                  | New character sheet…                                                                                                                                                 |
-| `branch:locations`                   | New location sheet…                                                                                                                                                  |
-| `branch:story`                       | New scene… · Export Fountain · Sort in topological order / Sort as stored                                                                                            |
-| `branch:skills`                      | New skill… · Ask the agent for a skill…                                                                                                                              |
-| `asset`                              | Regenerate… · Accept · Approve as a portrait… · Promote to a plate… · Create a graph for this slot (only where a slot claims the picture) · Open in the Asset editor |
-| `scene`                              | Assign line ids · New scene… · Export Fountain                                                                                                                       |
-| `shot`                               | Set coverage… · Set outfit… · Scaffold a sheet graph for group _g_ (only for a shot in a staging-sheet group)                                                        |
-| `slot`                               | Upload a file for this… · Adopt an asset for this… · Create a graph for this slot · Run pipeline…                                                                    |
-| `skill`                              | Open in the Skills pane · Ask the agent to change this skill…                                                                                                        |
-| `wiki`                               | Cut · Copy · Paste · Rename file… · Copy path · Show history                                                                                                         |
-| `file`                               | Cut · Copy · Paste · Rename… · Copy path · Show history                                                                                                              |
-| a row marked among several           | Cut _n_ items · Copy _n_ items, and on a folder Paste into _folder_                                                                                                  |
-| `branch:assets`, `assetkind`, `more` | none — no menu opens at all                                                                                                                                          |
+| node kind                            | entries                                                                                                                                                                                                |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `location`                           | New reference shot… · Art notes… · Copy location id · Open sheet elsewhere · Show history · Delete location…                                                                                           |
+| `character`                          | New concept image… · Art notes… · Copy character id · Open sheet elsewhere · Show history · Delete character…                                                                                          |
+| `branch:wiki`                        | New wiki page… · New character sheet… · New location sheet… · New folder… · Paste                                                                                                                      |
+| `wikidir`                            | New wiki page… · New character sheet… · New location sheet… · New folder… · Cut · Copy · Paste · Rename… · Copy path · Delete folder…                                                                  |
+| `dir`                                | New file… · New folder… · Cut · Copy · Paste · Rename… · Copy path · Delete folder…                                                                                                                    |
+| `branch:characters`                  | New character sheet…                                                                                                                                                                                   |
+| `branch:locations`                   | New location sheet…                                                                                                                                                                                    |
+| `branch:story`                       | New scene… · Export Fountain · Sort in topological order / Sort as stored                                                                                                                              |
+| `branch:graphs`                      | New generation graph…                                                                                                                                                                                  |
+| `branch:skills`                      | New skill… · Ask the agent for a skill…                                                                                                                                                                |
+| `asset`                              | Regenerate… · Accept · Approve as a portrait… · Promote to a plate… · Create a graph for this slot (only where a slot claims the picture) · Download image… · Copy asset id · Open in the Asset editor |
+| `scene`                              | Assign line ids · Edit in the agent… · Copy scene id · Show history · New scene… · Export Fountain · Delete scene…                                                                                     |
+| `shot`                               | Set coverage… · Set outfit… · Scaffold a sheet graph for group _g_ (only for a shot in a staging-sheet group) · Copy shot id                                                                           |
+| `slot`                               | Upload a file for this… · Adopt an asset for this… · Create a graph for this slot · Copy slot id · Run pipeline…                                                                                       |
+| `graph`                              | What would a run cost? · Run this graph… · Copy graph id · Delete this graph…                                                                                                                          |
+| `skill`                              | Open in the Skills pane · Ask the agent to change this skill… · Copy skill id                                                                                                                          |
+| `wiki`                               | Cut · Copy · Paste · Rename file… · Copy path · Show history · Delete page…                                                                                                                            |
+| `file`                               | Cut · Copy · Paste · Rename… · Copy path · Show history · Delete file…                                                                                                                                 |
+| a row marked among several           | Cut _n_ items · Copy _n_ items, on a folder Paste into _folder_, then Delete _n_ items…                                                                                                                |
+| `branch:assets`, `assetkind`, `more` | none — no menu opens at all                                                                                                                                                                            |
 
 This table lists the following:
 
@@ -395,6 +398,8 @@ This table lists the following:
   too, since the folder was not in the snapshot before. New file… refuses a media
   extension, because undo does not keep media, and a path discovery would read as a
   character or location sheet, because an empty sheet is an entity with no fields.
+- **Delete always ends the menu, alone under a separator.** It is never beside a routine
+  act and never the row under the pointer when the menu opens. See [Deleting](#deleting).
 - **A skill's second entry opens a form rather than sending a turn.** _Ask the agent to
   change this skill…_ opens `agent.run` pre-filled with `Edit the "<name>" skill: ` and
   does not send it. The author would only have to interrupt a turn that said "change this
@@ -417,7 +422,7 @@ node-shaped rather than tree-shaped.
 ## Selecting several rows
 
 Pages, files and folders can be marked several at a time, in both modes. The marked rows
-are what Cut and Copy take. They are held by the pane rather than published, so
+are what Cut, Copy and Delete take. They are held by the pane rather than published, so
 `ui.docPath` stays the one app-wide selection.
 
 - **Which rows can be marked.** A `wiki`, `wikidir`, `file` or `dir` row whose path is
@@ -485,6 +490,37 @@ refusal.
 - **Copy path** puts the row's workspace-relative path on the system clipboard as text,
   through `app.copy`. Files are never put on the system clipboard: pasting files from
   Explorer or Finder would be an import, which is `upload.*`'s job.
+
+## Deleting
+
+Every row that names something an author can delete ends its menu with a Delete entry, and
+each one opens its command's form rather than running. The form's check lists what the
+delete rewrites and removes, which prose still names the thing, and what undo cannot bring
+back, and the run button asks for a second click. What each command does is in
+[`command-system.md`](command-system.md#deleting-a-character-a-location-or-a-scene).
+
+- **Which command a row opens.**
+    - A `character` row opens `character.delete`, a `location` row `location.delete`, and
+      a `scene` row `story.deleteScene`, each with the row's id filled in.
+    - A `wiki`, `file`, `dir` or `wikidir` row opens `doc.delete` on its path, labelled
+      Delete page…, Delete file… or Delete folder….
+    - A `graph` row keeps its own Delete this graph…, which runs `gengraph.delete`.
+    - A row marked among several offers Delete _n_ items…, which is `doc.delete` over
+      every marked path.
+- **A sheet is refused by `doc.delete`, by name.** A page that is a character or location
+  sheet, a folder holding one, or a selection that includes one, is refused in the form's
+  check with a sentence naming `character.delete` or `location.delete`, because deleting
+  the file alone would leave every reference to the entity pointing at nothing.
+- **A root folder is greyed in the menu,** with the sentence from `rootProblem`, because a
+  form entry is not checked before the menu opens.
+- **Not offered:** assets and slots, whose pictures the collector removes; skills, which
+  no decision covers yet; shots; and the `more` and `assetkind` rows.
+- **The Delete key** opens the same form while the tree has the keyboard: over every
+  marked row when two or more are marked, otherwise for the row last clicked or
+  right-clicked, of any kind. A greyed entry reports its sentence instead, and a row with
+  no Delete entry does nothing. The row in `renderer/rules/shortcuts.ts` is recorded as
+  `doc.delete`, the way Paste is recorded as `doc.move`, so the menu shows the key beside
+  every Delete entry.
 
 ## Moving, copying and renaming files
 
@@ -674,12 +710,10 @@ Coverage editor handles the same double-click the same way, reading `CoverageSho
   produces shots and assets.
 - **Filesystem watching** — reads both trees, and a write refetches them, as `story:graph`
   does.
-- **Deleting and dragging through the tree.** Moving is no longer absent: Cut and Paste
-  run `doc.move`, a registered command with its own check, and `scenes/` is outside the
-  folders it may touch, so it opens no write path around the `story.*` refusals. Deleting
-  stays absent because undo cannot restore what its snapshot skips, and deleting a sheet
-  removes an entity. Dragging stays absent because a drag's hover verdict could apply only
-  the path rules, while the repository, media and identity rules need the disk, so the
-  hover and the drop would not come from one function.
+- **Dragging through the tree.** Moving and deleting are not absent: Cut and Paste run
+  `doc.move`, and Delete runs the delete commands, each a registered command with its own
+  check. Dragging stays absent because a drag's hover verdict could apply only the path
+  rules, while the repository, media and identity rules need the disk, so the hover and
+  the drop would not come from one function.
 - **A menu entry that is not a command** — an action that appears in a right-click menu
   also belongs in the palette, the catalog and the provenance log.

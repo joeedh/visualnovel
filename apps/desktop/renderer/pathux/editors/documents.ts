@@ -8,6 +8,7 @@ import {
   assetGroups,
   backlinkSubject,
   defaultExpanded,
+  deleteFor,
   filterTree,
   findNode,
   flattenTree,
@@ -55,6 +56,7 @@ import { panesOf } from '../panes/view.js';
 import { layoutChanged } from '../app/persist.js';
 import type { VnScreen } from '../app/screen.js';
 import { menuIsOpen, showContextMenu } from '../chrome/showmenu.js';
+import { openCommandDialog } from '../chrome/dialog.js';
 import type { Selection } from '../../rules/selection.js';
 import {
   TREEVIEW_CSS,
@@ -127,6 +129,8 @@ export class DocumentsEditor extends VnEditor {
   private drawn = '';
   /** The last location clicked here. Nothing else records that a location is selected. */
   private picked = '';
+  /** The row last clicked or right-clicked, of any kind, which the Delete key acts on. */
+  private clicked = '';
   /** The node being renamed right now, so a rebuild underneath the box cannot start a second one. */
   private renaming = '';
   /**
@@ -186,6 +190,7 @@ export class DocumentsEditor extends VnEditor {
         'Clear marks': () => this.clearMarks(),
         Copy         : () => this.clipMarks('copy'),
         Cut          : () => this.clipMarks('cut'),
+        Delete       : () => this.deleteAtKey(),
         Paste        : () => this.pasteAtAnchor(),
         Rename       : () => this.renameAtAnchor(),
       }),
@@ -627,6 +632,7 @@ export class DocumentsEditor extends VnEditor {
 
   /** Applies a click to the marks, then does what a plain click does unless the click only marked. */
   private rowClick(row: DocRow, mods: ClickMods): void {
+    this.clicked = row.node.id;
     const { next, plain } = markClick(this.marking, row, this.shown, mods);
     this.marking = next;
     if (plain) this.pick(row);
@@ -674,6 +680,23 @@ export class DocumentsEditor extends VnEditor {
       report(outcome);
       if (outcome.ok && clipboard() === clip) setClip(pasted(clip));
     });
+  }
+
+  /**
+   * Opens the Delete form a right-click would: over every marked row when two or more are marked,
+   * else for the row last clicked. A greyed entry reports its sentence instead, and a row whose
+   * menu offers no Delete does nothing. Bound to Delete.
+   */
+  private deleteAtKey(): void {
+    const paths = this.pathsOf(this.marking.marks);
+    const several = paths.length >= 2;
+    const id = several ? this.marking.marks[0] : this.clicked;
+    const row = this.shown.find((r) => r.node.id === id);
+    if (!row) return;
+    const entry = deleteFor(row.node, { ...NO_MENU_CONTEXT, marked: several ? paths : [] });
+    if (entry === undefined) return;
+    if (entry.refused !== undefined) say(entry.refused, true);
+    else openCommandDialog(entry.id, entry.props);
   }
 
   /** Opens the file-name box on the anchor row when it is the only mark. Bound to F2. */
@@ -837,6 +860,7 @@ export class DocumentsEditor extends VnEditor {
       dirty : draftPaths(),
     };
     const entries = menuFor(row.node, this.order, ctx);
+    this.clicked = row.node.id;
     if (entries.length === 0) return;
 
     this.marking = marking;

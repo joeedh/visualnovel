@@ -420,6 +420,23 @@ static (`confirm: true`). The second depends on the project.
 - **Docs.** `docs/reference/document-tree.md`: the menu table gains the entries (and the
   `graph` and `branch:graphs` rows it already omits), and "Deliberately absent" loses
   deleting. `docs/reference/guided-tours.md` if its shortcut list names Cut and Copy.
+- **As built (2026-10-19)**, where it differs from the above:
+    - The cited `shortcuts.ts:223-240` had moved to `:224-242`.
+    - Delete is always the last entry, alone under a separator, so it is never beside a
+      routine act or under the pointer when the menu opens. The graph row's shipped entry
+      gained the same separator; the entry itself is unchanged.
+    - Labels name the kind: Delete character…, Delete location…, Delete scene…, Delete
+      page…, Delete file…, Delete folder…, Delete _n_ items….
+    - A root folder's Delete is greyed in the menu with `rootProblem`'s sentence, since a
+      form entry is not checked before the menu opens.
+    - Shots are not offered Delete either: `story.deleteShot` is a story edit, not a
+      document-tree delete, and the plan's list did not name them.
+    - The shortcut row is recorded as `doc.delete` with `on: 'delete'`, as Paste is
+      recorded as `doc.move`; one combination may be bound once per scope, so one row
+      covers every Delete entry. The key acts on two or more marks, else on the row last
+      clicked or right-clicked, of any kind, because character, location and scene rows
+      cannot be marked.
+    - `guided-tours.md` names no Documents shortcut, so it is unchanged.
 
 ### Stage 6: agent tools
 

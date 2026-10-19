@@ -16,7 +16,7 @@ import { view } from '../../rules/effects.js';
 import { shortcutOf } from '../../rules/shortcuts.js';
 import { NEW_SKILL_PROMPT } from '../../rules/skills.js';
 import { nodeKey, splitShot, type Selection } from '../../rules/selection.js';
-import type { DocNode, DocNodeKind, EntityLinks } from '../../../src/shared/ipc.js';
+import type { DocNode, DocNodeKind, EntityLinks, PropValue } from '../../../src/shared/ipc.js';
 import { rootProblem } from '../../../src/shared/fileops.js';
 import { MENU_SEP, SEPARATOR, type MenuEntry } from '../chrome/contextmenu.js';
 import { EMPTY_CLIP, NOTHING_CLIPPED, type Clip, type ClipMode } from './clipboard.js';
@@ -365,6 +365,87 @@ export function renameEntry(node: DocNode, ctx: MenuContext): MenuEntry | undefi
   };
 }
 
+/**
+ * The action the Delete row binds, whose combo labels every Delete entry. It is recorded as
+ * `doc.delete`, but on a character, location or scene row the key opens that row's own delete.
+ */
+const DELETE_KEY = { id: 'doc.delete', props: {} };
+
+/** What deleting does on each kind of row, said before the form lists the particulars. */
+const DELETE_TOOLTIP = {
+  character:
+    'Remove this character. Its lines, outfit markers, shots and pins are rewritten; the form ' +
+    'lists every change before you confirm.',
+  location:
+    'Remove this location and set its scenes somewhere else; the form lists every change ' +
+    'before you confirm.',
+  scene:
+    'Remove this scene and reroute or cut the links that lead into it; the form lists every ' +
+    'change before you confirm.',
+  file: 'Delete from disk; the form lists what goes, and what undo cannot bring back, before you confirm.',
+} as const;
+
+/** The word a Delete entry uses for what a row names. */
+const DELETE_NOUN: Partial<Record<DocNodeKind, string>> = {
+  wiki   : 'page',
+  file   : 'file',
+  dir    : 'folder',
+  wikidir: 'folder',
+};
+
+/**
+ * Builds a Delete entry under its own separator, which callers put last in the menu. It opens a
+ * form whose check lists what the delete rewrites before the author confirms.
+ */
+function deleteEntry(
+  label: string,
+  id: string,
+  props: Record<string, PropValue>,
+  tooltip: string,
+  refused?: string,
+): MenuEntry[] {
+  return [
+    SEPARATOR,
+    {
+      label,
+      id,
+      props,
+      form: true,
+      on  : 'delete',
+      tooltip,
+      shortcut: shortcutOf(DELETE_KEY, 'delete'),
+      ...(refused === undefined ? {} : { refused }),
+    },
+  ];
+}
+
+/**
+ * Builds Delete… on one page, file or folder. A root folder is refused here with the file
+ * commands' sentence, since a form entry is not checked before the menu opens.
+ */
+function deleteFile(node: DocNode): MenuEntry[] {
+  const noun = DELETE_NOUN[node.kind];
+  if (noun === undefined || node.path === undefined || node.path === '') return [];
+  return deleteEntry(
+    `Delete ${noun}…`,
+    'doc.delete',
+    { paths: [node.path] },
+    DELETE_TOOLTIP.file,
+    rootProblem(node.path),
+  );
+}
+
+/**
+ * Finds the Delete entry that ends a row's menu, or `undefined` when it has none. With two or more
+ * paths in `ctx.marked` it is `doc.delete` over all of them.
+ */
+export function deleteFor(
+  node: DocNode,
+  ctx: MenuContext = NO_MENU_CONTEXT,
+): MenuEntry | undefined {
+  return menuFor(node, 'stored', ctx).find((entry) => entry.on === 'delete');
+}
+
 /** Puts `entries` under a separator, or answers nothing when there are none to separate. */
 function separated(entries: MenuEntry[]): MenuEntry[] {
   return entries.length === 0 ? [] : [SEPARATOR, ...entries];
@@ -394,13 +475,23 @@ function fileActs(node: DocNode, ctx: MenuContext): MenuEntry[] {
 }
 
 /**
- * Builds the menu of a row marked among several: Cut and Copy of every marked row, and on a
- * folder a Paste into it. Nothing that acts on one row alone is offered.
+ * Builds the menu of a row marked among several: Cut and Copy of every marked row, on a folder a
+ * Paste into it, and Delete of every marked row. Nothing that acts on one row alone is offered. A
+ * marked sheet is refused by `doc.delete`'s check, which names the command that deletes it.
  */
 function markedMenu(node: DocNode, ctx: MenuContext): MenuEntry[] {
   const acts = [clipEntry('cut', ctx.marked), clipEntry('copy', ctx.marked)];
-  if ((node.kind !== 'wikidir' && node.kind !== 'dir') || node.path === undefined) return acts;
-  return [...acts, SEPARATOR, pasteEntry(node.path, ctx, `Paste into ${node.label}`)];
+  const into = node.kind === 'wikidir' || node.kind === 'dir' ? node.path : undefined;
+  return [
+    ...acts,
+    ...(into === undefined ? [] : [SEPARATOR, pasteEntry(into, ctx, `Paste into ${node.label}`)]),
+    ...deleteEntry(
+      `Delete ${ctx.marked.length} items…`,
+      'doc.delete',
+      { paths: [...ctx.marked] },
+      DELETE_TOOLTIP.file,
+    ),
+  ];
 }
 
 /**
@@ -491,6 +582,12 @@ export function menuFor(
         copyId('location', key),
         ...(node.path ? [openSheet(node.path)] : []),
         ...showHistory(node.path),
+        ...deleteEntry(
+          'Delete location…',
+          'location.delete',
+          { location: key },
+          DELETE_TOOLTIP.location,
+        ),
       ];
     case 'character':
       return [
@@ -509,6 +606,12 @@ export function menuFor(
         copyId('character', key),
         ...(node.path ? [openSheet(node.path)] : []),
         ...showHistory(node.path),
+        ...deleteEntry(
+          'Delete character…',
+          'character.delete',
+          { character: key },
+          DELETE_TOOLTIP.character,
+        ),
       ];
     case 'wikidir':
       return [
@@ -516,6 +619,7 @@ export function menuFor(
         SEPARATOR,
         makeIn('New folder…', 'doc.mkdir', node.path ?? ''),
         ...separated(fileActs(node, ctx)),
+        ...deleteFile(node),
       ];
     // Running and deleting open as forms, so the palette can quote the estimate and take a
     // confirmation before anything is spent or lost
@@ -525,6 +629,7 @@ export function menuFor(
         { label: 'Run this graph…', id: 'gengraph.run', props: { slug: key }, form: true },
         { label: MENU_SEP, id: MENU_SEP },
         copyId('graph', key),
+        SEPARATOR,
         { label: 'Delete this graph…', id: 'gengraph.delete', props: { slug: key }, form: true },
       ];
     // The second entry is a form: `agent.run` is handed a first sentence to edit rather than a turn
@@ -592,6 +697,7 @@ export function menuFor(
         ...showHistory(node.path),
         { label: MENU_SEP, id: MENU_SEP },
         ...storyActs(),
+        ...deleteEntry('Delete scene…', 'story.deleteScene', { scene: key }, DELETE_TOOLTIP.scene),
       ];
     case 'shot': {
       const { sceneId, shotId } = splitShot(key);
@@ -628,9 +734,9 @@ export function menuFor(
         copyId('shot', shotId),
       ];
     }
-    // A branch heading is where an author reaches for "another one of these", so each offers what
-    // its subtree is made of. `wiki` is a place rather than a heading, and the `wikidir:` nodes are
-    // its folders. `assets` offers nothing: an asset is rendered, never authored from a name
+    // A branch heading offers a new item of whatever its subtree holds. `wiki` is a place rather
+    // than a heading, and the `wikidir:` nodes are its folders. `assets` offers nothing, since
+    // assets are rendered rather than authored
     case 'branch':
       switch (key) {
         case 'story':
@@ -668,7 +774,7 @@ export function menuFor(
     // `assetstrip.ts`) and `doc.write` needs the text. What is left are the file acts and history
     case 'wiki':
     case 'file':
-      return [...fileActs(node, ctx), ...showHistory(node.path)];
+      return [...fileActs(node, ctx), ...showHistory(node.path), ...deleteFile(node)];
     // A folder in file mode can hold any file, so it offers New file… where the Wiki branch offers
     // a page
     case 'dir':
@@ -676,6 +782,7 @@ export function menuFor(
         makeIn('New file…', 'doc.newFile', node.path ?? ''),
         makeIn('New folder…', 'doc.mkdir', node.path ?? ''),
         ...separated(fileActs(node, ctx)),
+        ...deleteFile(node),
       ];
     case 'assetkind':
     case 'more':

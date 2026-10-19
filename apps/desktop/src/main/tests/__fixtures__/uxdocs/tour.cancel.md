@@ -24,7 +24,7 @@ Nothing runs it as a later step of a click.
 
 ## Reaching it
 
-- Sweep: nothing ran it in the sweep of 2026-10-07 at 00311e2.
+- Sweep: nothing ran it in the sweep of 2026-10-19 at ede348a.
 - Palette-only rule: The tour layer advances itself; no editor draws a tour control.
 - Shortcut: none.
 - Menu: none.

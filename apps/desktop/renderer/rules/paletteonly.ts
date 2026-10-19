@@ -175,11 +175,6 @@ const CONVERSATIONS: readonly PaletteOnly[] = [
   { match: 'upload.files', why: 'Uploads come from the drop target.' },
 ];
 
-const DELETES = ['character.delete', 'location.delete', 'doc.delete'].map((match) => ({
-  match,
-  why: 'A delete the palette and CDP run until the document tree’s right-click menu offers it.',
-}));
-
 export const PALETTE_ONLY: readonly PaletteOnly[] = [
   ...NAMESPACES,
   ...WORKSPACE,
@@ -195,5 +190,4 @@ export const PALETTE_ONLY: readonly PaletteOnly[] = [
   ...STORY,
   ...PROMPT,
   ...CONVERSATIONS,
-  ...DELETES,
 ];
