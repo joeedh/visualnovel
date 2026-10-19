@@ -551,6 +551,8 @@ export class Agent {
   private readonly pendingSystem: string[] = [];
   /** Context the host learned between turns, filed ahead of the next user turn. */
   private readonly pendingContext: string[] = [];
+  /** Whether the host supplied its own `confirm`, which {@link contextFor} leaves in place. */
+  private readonly hostConfirm: boolean;
   /** Set by {@link stop}, cleared when a turn starts. Read between steps, never inside one. */
   private stopped = false;
 
@@ -567,8 +569,8 @@ export class Agent {
         this.messages
           .filter((m) => m.role === 'user' && typeof m.content === 'string')
           .map((m) => m.content as string),
-      // The confirmation channel tools use for script-bearing skills, routed to the permission
-      // gate unless the host already supplied one.
+      // `contextFor` replaces the fallback per call with one that names the tool asking; a
+      // host's own `confirm` is kept
       confirm:
         opts.ctx.confirm ??
         ((message: string) => opts.permission.confirmAction('run_skill', { message })),
@@ -579,6 +581,7 @@ export class Agent {
       }),
     };
     this.permission = opts.permission;
+    this.hostConfirm = opts.ctx.confirm !== undefined;
     this.system = opts.system;
     this.registry = opts.registry ?? createRegistry();
     this.mode = opts.mode ?? 'plan';
@@ -589,6 +592,19 @@ export class Agent {
     this.onEvent = opts.onEvent;
     this.onApiError = opts.onApiError;
     this.onMessage = opts.onMessage;
+  }
+
+  /**
+   * Builds the context for one tool call, whose `confirm` asks the permission gate under the
+   * tool's own name, so the card and the terminal prompt say which tool is asking. A host that
+   * supplied its own `confirm` keeps it.
+   */
+  private contextFor(tool: string): ToolContext {
+    if (this.hostConfirm) return this.ctx;
+    return {
+      ...this.ctx,
+      confirm: (message: string) => this.permission.confirmAction(tool, { message }),
+    };
   }
 
   /** Append one message to the transcript and tell the host about it. */
@@ -1060,7 +1076,7 @@ export class Agent {
       commitArgs.paths = [...new Set([...this.editedPaths, ...(commitArgs.paths ?? [])])];
     }
 
-    const result = await tool.run(parsed.data, this.ctx);
+    const result = await tool.run(parsed.data, this.contextFor(name));
     emit({ type: 'tool', tool: name, args: parsed.data, result });
     for (const p of result.written ?? []) this.editedPaths.add(p);
     // One commit per approved plan, which may span several repositories. Each repository that got

@@ -84,6 +84,8 @@ describe('storyboard tools', () => {
     const { ctx, dir, cleanup } = await tempProject();
     try {
       await run('edit_scene', { op: 'newShot', scene: 'ending', lineIds: ['ending:L1'] }, ctx);
+      // Removing the file asks the author first
+      ctx.confirm = () => Promise.resolve(true);
       const r = await run(
         'edit_scene',
         { op: 'deleteShot', scene: 'ending', shot: 'ending__shot1' },

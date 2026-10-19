@@ -54,6 +54,30 @@ describe('confirmDetail', () => {
     expect(confirmDetail('run_skill', { name: 'pacing' })).toContain('pacing');
   });
 
+  // `ctx.confirm` reaches the gate under the asking tool's name, with its sentence as `message`
+  it('passes any tool’s mid-run question through as it was asked', () => {
+    const asked =
+      'This edit (deleteScene) removes scenes/side.md. Only git history brings it back.';
+    expect(confirmDetail('edit_scene', { message: asked })).toBe(asked);
+  });
+
+  it('says what each delete removes, and that only git history brings it back', () => {
+    expect(confirmDetail('delete_character', { character: 'aiko' })).toMatch(
+      /^Delete character aiko: .*Only git history brings it back\.$/,
+    );
+    expect(confirmDetail('delete_location', { location: 'cafe' })).toMatch(
+      /^Delete location cafe: /,
+    );
+    const many = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map((n) => `wiki/${n}.md`);
+    expect(confirmDetail('delete_files', { paths: many })).toBe(
+      'Delete wiki/a.md, wiki/b.md, wiki/c.md, wiki/d.md, wiki/e.md and 2 more now. ' +
+        'Only git history brings them back.',
+    );
+    expect(confirmDetail('delete_files', null)).toBe(
+      'Delete these files now. Only git history brings them back.',
+    );
+  });
+
   it('gives an unknown tool a sentence rather than a blank', () => {
     // A new confirm-gated tool must not be easier to allow than the named ones
     expect(confirmDetail('some_new_tool', { a: 1 })).toBe('Run some_new_tool with {"a":1}.');

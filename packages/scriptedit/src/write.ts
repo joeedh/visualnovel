@@ -28,3 +28,9 @@ export {
   type EntityPlan,
   type ShotPrice,
 } from './entityplan.js';
+export {
+  applyFileDelete,
+  planFileDelete,
+  type FileDelete,
+  type FileDeletePlan,
+} from './filedelete.js';

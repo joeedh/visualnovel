@@ -206,14 +206,16 @@ export interface ShotPrice {
 }
 
 /**
- * The check's listing, one consequence per line: what is deleted, what it rewrites, what it costs
- * the art, which files go, the prose left for the author, and what undo cannot bring back.
+ * Lists what the check states, one consequence per line: what is deleted, what it rewrites, what
+ * it costs the art, which files go, the prose left for the author, and what undo cannot bring back.
+ * A host with no undo passes `undo` as false, and the last line is left out.
  */
 export function entityPlanMessage(
   plan: AppliedEntityPlan,
   root: string,
   price?: ShotPrice,
   verb = 'Deletes',
+  undo = true,
 ): string {
   const rel = (abs: string): string => relative(root, abs).replace(/\\/g, '/');
   const lines = [`${verb} ${plan.kind} ${plan.id}.`, ...plan.notes];
@@ -233,7 +235,7 @@ export function entityPlanMessage(
         : where.join(', ');
     lines.push(`Still named in prose, which is left as it is: ${shown}.`);
   }
-  if (plan.unrestorable) {
+  if (undo && plan.unrestorable) {
     lines.push(`Undo restores every file here except the picture ${rel(plan.unrestorable)}.`);
   }
   return lines.join('\n');

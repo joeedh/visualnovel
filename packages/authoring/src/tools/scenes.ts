@@ -33,7 +33,7 @@ import {
 import { setStartScene } from '@vn/config';
 import { deleteShots, writeShots } from '@vn/store';
 import type { Workspace } from '../workspace.js';
-import { ok, fail, rel, type Tool } from './core.js';
+import { ok, fail, rel, type Tool, type ToolContext, type ToolResult } from './core.js';
 
 // ── Scene prose (execute mode) ──────────────────────────────────────────────
 
@@ -297,6 +297,29 @@ async function sceneDecider(
 }
 
 /**
+ * Asks the author before an edit removes `files`, answering the refusal to report when it may
+ * not go ahead, or nothing when it may. No question is asked when nothing is removed. A context
+ * with no way to ask refuses rather than assume consent.
+ */
+async function askToRemove(
+  ctx: ToolContext,
+  op: string,
+  files: readonly string[],
+): Promise<ToolResult | undefined> {
+  if (files.length === 0) return undefined;
+  const list = files.join(', ');
+  if (!ctx.confirm) {
+    return fail(
+      `${op} would remove ${list}, and there is no one here to ask; nothing was written.`,
+    );
+  }
+  const them = files.length === 1 ? 'it' : 'them';
+  const asked = `This edit (${op}) removes ${list}. Only git history brings ${them} back.`;
+  if (await ctx.confirm(asked)) return undefined;
+  return fail(`Declined: the author did not agree to remove ${list}. Nothing was written.`);
+}
+
+/**
  * The agent's one prose write path, over the same decisions the palette and the branch editor run.
  * It exists so that `vnauthor` goes through them: a whole-file overwrite can duplicate line ids
  * and strand storyboards, and nothing downstream would notice.
@@ -349,15 +372,23 @@ const editSceneTool: Tool<SceneEditArgs> = {
     if (a.op === 'deleteShot') {
       const op = await ctx.workspace.deleteShot(a.scene ?? '', a.shot ?? '');
       if (!op.ok) return fail(op.error);
+      const shotsFile = `vngen/work/shots/${a.scene}.json`;
+      const declined = await askToRemove(ctx, a.op, op.deleteFile ? [shotsFile] : []);
+      if (declined) return declined;
       if (op.deleteFile) await deleteShots(ctx.workspace.paths, a.scene!);
       else await writeShots(ctx.workspace.paths, a.scene!, op.shots, { nextShot: op.nextShot });
-      const shotsFile = `vngen/work/shots/${a.scene}.json`;
       return ok(op.message, { written: [shotsFile], data: { paths: [shotsFile] } });
     }
 
     const input = await ctx.workspace.sceneEditInput();
     const plan = await planSceneEdit(input, await sceneDecider(a, ctx.workspace));
     if (!plan.ok) return fail(plan.message);
+    const removes = [
+      ...plan.chunkRemoves.map((id) => ctx.workspace.paths.sceneFile(id)),
+      ...plan.fallout.removes.map((id) => ctx.workspace.paths.shotsFile(id)),
+    ].map((file) => rel(ctx.workspace.root, file));
+    const declined = await askToRemove(ctx, a.op, removes);
+    if (declined) return declined;
 
     const { written, removed } = await applyScenePlan(input, plan);
     // Deleting the entry scene moves start: to its next, which only the host can write

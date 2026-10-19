@@ -252,6 +252,20 @@ function cueFor(
   return `${base}${extension}`;
 }
 
+/** Lists the scenes `id` speaks in, in story order, each with how many lines it speaks there. */
+export function spokenBy(
+  world: Pick<EntityWorld, 'state' | 'characters'>,
+  id: string,
+): { scene: string; lines: number }[] {
+  const resolve = cueResolver(world.characters);
+  const out: { scene: string; lines: number }[] = [];
+  for (const scene of world.state.scenes.values()) {
+    const lines = scene.lines.filter((l) => l.speaker !== undefined && resolve(l.speaker) === id);
+    if (lines.length > 0) out.push({ scene: scene.id, lines: lines.length });
+  }
+  return out;
+}
+
 /**
  * Deletes a character from the story. Every line it speaks becomes narration, is deleted, or is
  * given to `mergeInto`; every `[[outfit:]]` marker naming it is cleared; it leaves every shot it

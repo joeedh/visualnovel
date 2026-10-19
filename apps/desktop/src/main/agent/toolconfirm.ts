@@ -24,6 +24,9 @@ function clip(text: string, max = 120): string {
  * blank, so a new confirm-gated tool is never easier to allow than the ones named here.
  */
 export function confirmDetail(tool: string, args: unknown): string {
+  // A tool asking mid-run (`ctx.confirm`) arrives as `{ message }`, already a sentence
+  const message = field(args, 'message');
+  if (message) return message;
   switch (tool) {
     case 'generate_image': {
       const sentence = clip(field(args, 'sentence'));
@@ -53,10 +56,26 @@ export function confirmDetail(tool: string, args: unknown): string {
       const path = field(args, 'path') || field(args, 'paths') || 'the whole worktree';
       return `Discard uncommitted changes to ${path}. This cannot be undone.`;
     }
-    case 'run_skill': {
-      // The loop routes a skill's own confirm through here as `{ message }`, already a sentence.
-      const message = field(args, 'message');
-      return message || `Run the skill ${field(args, 'name') || '(unnamed)'}, which runs a script.`;
+    case 'run_skill':
+      return `Run the skill ${field(args, 'name') || '(unnamed)'}, which runs a script.`;
+    case 'delete_character':
+      return (
+        `Delete character ${field(args, 'character')}: its sheet and its generated work are ` +
+        'removed now, and it leaves every shot and prompt. Only git history brings it back.'
+      );
+    case 'delete_location':
+      return (
+        `Delete location ${field(args, 'location')}: its sheet and its generated work are ` +
+        'removed now, and its plates leave every prompt. Only git history brings it back.'
+      );
+    case 'delete_files': {
+      const paths = (args as { paths?: unknown } | null)?.paths;
+      const list = Array.isArray(paths) ? paths.filter((p) => typeof p === 'string') : [];
+      const shown =
+        list.length > 5
+          ? `${list.slice(0, 5).join(', ')} and ${list.length - 5} more`
+          : list.join(', ');
+      return `Delete ${shown || 'these files'} now. Only git history brings them back.`;
     }
     default: {
       const shown = args === undefined ? '' : clip(JSON.stringify(args) ?? '');

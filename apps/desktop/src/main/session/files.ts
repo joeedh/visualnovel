@@ -19,6 +19,7 @@ import {
   type DocResult,
   type EntityIdentity,
 } from '@vn/store';
+import { applyFileDelete, planFileDelete } from '@vn/scriptedit/write';
 import { sha256, writeFileAtomic } from '@vn/util';
 import { snapshotted } from '../../shared/affects.js';
 import {
@@ -544,73 +545,33 @@ export class FilesPart {
   }
 
   /**
-   * Every rule a delete must pass, run by the check and by the run alike. A character or location
-   * sheet is refused by name, because deleting the sheet alone would leave every reference to the
-   * entity dangling; a folder holding one is refused for the same reason, and so is a nested
-   * repository. Pictures and other media are allowed: undo does not keep them, which the note says.
+   * Runs every rule a delete must pass, for the check and the run alike: the app's own path rules
+   * (a skill's path, an unchecked-out submodule), then `planFileDelete`, which `vnauthor` runs too.
+   * Pictures and other media are allowed, and `kept` says that undo does not bring them back.
    */
   private async planDeletion(
     paths: readonly string[],
   ): Promise<DocResult<{ items: string[]; files: string[]; summary: string; kept: string }>> {
     const planned = planDelete(paths);
     if (!planned.ok) return planned;
-    const sheets = new Map<string, EntityIdentity>();
-    for (const found of await discoverCandidates(new ProjectPaths(this.session.dir), [])) {
-      sheets.set(relPath(this.session.dir, found.doc.file), { kind: found.kind, id: found.doc.id });
-    }
-
-    const files: string[] = [];
-    const media: string[] = [];
     for (const item of planned.items) {
-      const info = await lstat(join(this.session.dir, item)).catch(() => null);
-      if (!info) return refuse(`no such file: ${item}`);
       const missing = await this.missingRepo(item);
       if (missing) return refuse(missing);
-      const held = info.isDirectory() ? await this.filesUnder(item) : [item];
-      if (typeof held === 'string') return refuse(held);
-      for (const file of held) {
-        const sheet = sheets.get(file);
-        if (sheet) {
-          const where = file === item ? `${item} is` : `${item} holds ${file}, which is`;
-          return refuse(
-            `${where} the sheet for ${sheet.kind} ${sheet.id}. Delete it with ` +
-              `${sheet.kind}.delete, which also rewrites what refers to ${sheet.id}.`,
-          );
-        }
-        files.push(file);
-        if (MEDIA_EXTS.has(extOf(file)) || IMAGE_EXTS.has(extOf(file))) media.push(file);
-      }
     }
-    const what = planned.items.length === 1 ? planned.items[0]! : listed(planned.items);
-    const count = files.length === 1 ? '1 file' : `${files.length} files`;
+    const plan = await planFileDelete(new ProjectPaths(this.session.dir), planned.items);
+    if (!plan.ok) return plan;
+
+    const media = plan.files.filter(
+      (file) => MEDIA_EXTS.has(extOf(file)) || IMAGE_EXTS.has(extOf(file)),
+    );
+    const what = plan.items.length === 1 ? plan.items[0]! : listed(plan.items);
+    const count = plan.files.length === 1 ? '1 file' : `${plan.files.length} files`;
     const more = media.length > 5 ? ` and ${media.length - 5} more` : '';
     const kept =
       media.length === 0
         ? ''
         : `Undo does not bring back ${listed(media.slice(0, 5))}${more}; only git history can.`;
-    return { ok: true, items: planned.items, files, summary: `${what} (${count})`, kept };
-  }
-
-  /**
-   * The files under a folder, workspace-relative, or why the folder cannot be deleted from the
-   * app: it holds a git repository's own folder.
-   */
-  private async filesUnder(folder: string): Promise<string[] | string> {
-    const out: string[] = [];
-    const visit = async (rel: string): Promise<string | undefined> => {
-      for (const entry of await readdir(join(this.session.dir, rel), { withFileTypes: true })) {
-        const inner = `${rel}/${entry.name}`;
-        if (entry.name === '.git') {
-          return `${inner} is a git repository's own folder; delete a repository outside the app.`;
-        }
-        if (entry.isDirectory() && !entry.isSymbolicLink()) {
-          const problem = await visit(inner);
-          if (problem) return problem;
-        } else out.push(inner);
-      }
-      return undefined;
-    };
-    return (await visit(folder)) ?? out;
+    return { ok: true, items: plan.items, files: plan.files, summary: `${what} (${count})`, kept };
   }
 
   /** Decides what `doc.delete` would do, without deleting. */
@@ -626,9 +587,7 @@ export class FilesPart {
   ): Promise<DocResult<{ deleted: string[]; written: string[]; message: string }>> {
     const plan = await this.planDeletion(paths);
     if (!plan.ok) return plan;
-    for (const item of plan.items) {
-      await rm(join(this.session.dir, item), { recursive: true, force: true });
-    }
+    await applyFileDelete(this.session.dir, { ok: true, items: plan.items, files: plan.files });
     return {
       ok     : true,
       deleted: plan.items,

@@ -12,6 +12,7 @@ plan is in
 - [Running it](#running-it)
 - [How it works](#how-it-works)
 - [Tools](#tools)
+    - [Deleting](#deleting)
     - [Generation graphs](#generation-graphs)
     - [Concept images](#concept-images)
     - [Revising planned art](#revising-planned-art)
@@ -119,8 +120,11 @@ project guidance that the agent follows.
       while the retries run, and clears it as soon as the turn ends either way. A
       notification states whether the model responded or the retries were given up.
       `vnauthor` prints the same three lines inline.
-- **Always-confirm.** `git_revert`/`git_restore` and the first run of a script-bearing
-  skill route through the permission gate regardless of mode.
+- **Always-confirm.** `git_revert`/`git_restore`, the three delete tools and the first run
+  of a script-bearing skill route through the permission gate regardless of mode. A tool
+  that asks part-way through its run (`ctx.confirm`) asks under its own name: the loop
+  binds the calling tool to each call's context (`contextFor`), so the desktop card and
+  the terminal prompt name `edit_scene` or `approve_assets` rather than `run_skill`.
 - **A shortlist question is a separate tool that reaches the same permission call.**
   `ask_choice` sits beside `ask_user` in `CONTROL_TOOLS` under a distinct name, because it
   corrects a model asking an open question when the sensible answers can be listed. Both
@@ -214,7 +218,7 @@ project guidance that the agent follows.
 
 ## Tools
 
-`packages/authoring/src/tools/` holds the registry of 54 tools. **M** marks
+`packages/authoring/src/tools/` holds the registry of 57 tools. **M** marks
 `mutating: true` (plan mode blocks it); **C** marks `confirm: true` (it always goes
 through the permission gate, in every mode).
 
@@ -225,6 +229,7 @@ through the permission gate, in every mode).
 | Entity editing      | `create_character` **M**, `create_location` **M**, `edit_character` **M**, `edit_location` **M**                                                                                                                             |
 | Scene prose         | `edit_scene` **M**                                                                                                                                                                                                           |
 | Branch wiring       | `edit_branches` **M**                                                                                                                                                                                                        |
+| Deleting            | `delete_character` **M C**, `delete_location` **M C**, `delete_files` **M C**                                                                                                                                                |
 | Wardrobe            | `set_outfit` **M**, `set_variant` **M**                                                                                                                                                                                      |
 | Storyboards         | `read_shots`, `set_coverage` **M**, `set_panels` **M**, `propose_storyboard` (costs a model call, writes nothing; follows `shot_form`, and `form` overrides it for one scene when the author asks), `write_storyboard` **M** |
 | Art (concepts)      | `list_images`, `generate_image` **M C**, `edit_image` **M C**                                                                                                                                                                |
@@ -308,6 +313,39 @@ subject's override is written to `work/shots/<sceneId>.json`, which re-hashes th
 `outfit=""` clears the setting at either level, and the level below then applies. The
 wardrobe itself is authored on the character sheet (`edit_character`'s `outfits` /
 `defaultOutfit`), so `set_outfit` accepts only the outfits the sheet declares.
+
+### Deleting
+
+The agent deletes through three tools and one `edit_scene` op, each over the rule its
+desktop command runs (`@vn/scriptedit`), so a refusal reads the same in both hosts. What
+differs is who makes the decisions a delete needs: the desktop's form asks the author, and
+the agent makes them with its other tools first.
+
+- **`delete_character`** refuses while the character speaks any line, naming each scene
+  and how many lines (`spokenBy`). The agent first gives the lines to someone else or
+  makes them narration (`edit_scene op=setSpeaker`), or removes them (`op=deleteLines`).
+  The delete then clears the character's outfit markers, takes it out of every shot, drops
+  pins on its pictures, and removes its sheet and `vngen/work/characters/<id>/`.
+- **`delete_location`** refuses while any scene is set there, naming them; the agent moves
+  each with `edit_scene op=setHeading`. The delete then drops pins on the location's
+  plates and removes its sheet and `vngen/work/locations/<id>/`.
+- **`delete_files`** runs `planFileDelete`, `doc.delete`'s rule: files and folders under
+  `FILE_ROOTS` only, and a sheet, or a folder holding one, is refused with a sentence
+  naming `delete_character` or `delete_location`.
+- **`edit_scene op=deleteScene`** keeps its refusal while anything points at the scene,
+  and moves `start:` to the scene's `next` when it deletes the entry scene, as
+  `story.deleteScene` does.
+- **Every call that removes a file asks the author first.** The three tools are
+  `confirm: true`, and `confirmDetail` (`apps/desktop/src/main/agent/toolconfirm.ts`)
+  words their cards. `edit_scene` asks through `ctx.confirm` whenever its plan removes a
+  file, before writing anything: a deleted or merged scene's chunk, a storyboard whose
+  last shot went (`deleteShot`), or one a line edit's shot fallout empties. A declined
+  question writes nothing, and a context with no `confirm` refuses rather than assume
+  consent.
+- **Prose that still names a deleted entity is listed, never rewritten,** in the tool's
+  reply, as the desktop's check lists it.
+- **None of these can be undone from the app.** The agent's writes reach history only
+  through its commit, so the cards say that only git history brings the files back.
 
 ### Generation graphs
 

@@ -461,6 +461,26 @@ static (`confirm: true`). The second depends on the project.
 - **Tests** in `packages/authoring/src/tests/`: each refusal, each confirmation, the tool
   name on the question, and a declined confirmation writing nothing.
 - **Docs.** `docs/reference/vnauthor.md` (the tools).
+- **As built (2026-10-19)**, where it differs from the above:
+    - `doc.delete`'s disk rule moved from the desktop session into `@vn/scriptedit/write`
+      (`planFileDelete`, `applyFileDelete`) so `delete_files` runs it too. The desktop
+      keeps its own checks first (a skill's path, an unchecked-out submodule) and the
+      media note. The sheet refusal names whatever deletes the entity in the asking host:
+      `character.delete` in the app, `delete_character` for the agent.
+    - `delete_character`'s refusal comes from a new `spokenBy` in `entitydelete.ts`, which
+      names each scene and its line count. With no line spoken, the tool runs
+      `deleteCharacter` with `lines: 'narrate'`, which then rewrites nothing in prose.
+    - The tools report no re-render count: `priceShotChanges` needs the task graph, which
+      `@vn/authoring` may not load. `entityPlanMessage` gained `undo = false` so the
+      agent's reply drops the desktop's undo line.
+    - The tool name reaches the gate through the loop, not through a new `confirm`
+      argument: `contextFor(tool)` binds each call's `ctx.confirm` to
+      `confirmAction(tool, {message})`. `confirmDetail` passes any tool's `message`
+      through as it was asked, before its per-tool cases.
+    - `edit_scene` with no `confirm` in its context refuses a removal rather than assume
+      consent, as the other asking tools do.
+    - `Workspace.entityDeleteInput()` reads the manifest through `AssetStore.open`, which
+      writes nothing.
 
 ### Stage 7: the collector
 

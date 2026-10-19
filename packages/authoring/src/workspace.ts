@@ -8,7 +8,7 @@
 import type { EntityDoc, LoadedInputs } from '@vn/parse';
 import { modelFromInputs } from '@vn/model';
 import { openBible, type Bible } from '@vn/bible';
-import { baseAssetsOf, loadInputs, readShots, ProjectPaths } from '@vn/store';
+import { AssetStore, baseAssetsOf, loadInputs, readShots, ProjectPaths } from '@vn/store';
 import {
   applyCoverage,
   deleteShot as planDeleteShot,
@@ -31,7 +31,12 @@ import {
   type ScriptState,
   type ShotOutfitOp,
 } from '@vn/scriptedit';
-import { sourcesOf, type SceneEditInput, type SceneSource } from '@vn/scriptedit/write';
+import {
+  sourcesOf,
+  type EntityDeleteInput,
+  type SceneEditInput,
+  type SceneSource,
+} from '@vn/scriptedit/write';
 import { storyboardStyle, type StoryboardStyle } from '@vn/artgen';
 import { loadConfig } from '@vn/config';
 import { RepoResolver } from '@vn/git';
@@ -324,6 +329,24 @@ export class Workspace {
       paths  : this.paths,
       sources: sourcesOf(inputs),
       ...(model.entry === undefined ? {} : { entry: model.entry }),
+    };
+  }
+
+  /**
+   * Loads everything an entity delete is decided against in one pass: the scene sources, the cast
+   * and the places, their sheets, and every manifest row, so the entity's takes can be found.
+   */
+  async entityDeleteInput(): Promise<EntityDeleteInput> {
+    const { model, inputs } = await this.load();
+    const store = await AssetStore.open(this.paths);
+    return {
+      paths  : this.paths,
+      sources: sourcesOf(inputs),
+      ...(model.entry === undefined ? {} : { entry: model.entry }),
+      characters: model.characters,
+      locations : model.locations,
+      inputs,
+      manifest: store.manifest(),
     };
   }
 

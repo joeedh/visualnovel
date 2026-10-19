@@ -49,6 +49,7 @@ export {
   CHARACTER_LINES,
   deleteCharacter,
   deleteLocation,
+  spokenBy,
   type ChangedShot,
   type CharacterLines,
   type EntityOp,

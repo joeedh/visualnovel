@@ -621,6 +621,71 @@ describe('always-confirm gate', () => {
       await cleanup();
     }
   });
+
+  // The card and the terminal prompt name whoever is asking, not `run_skill` for everyone
+  it('asks a tool’s own mid-run question under that tool’s name', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const asked: unknown[] = [];
+      const permission = scriptPermission({
+        confirmAction: (_tool, args) => {
+          asked.push(args);
+          return Promise.resolve(true);
+        },
+      });
+      const asker: Tool<Record<string, never>> = {
+        name       : 'tidy_up',
+        description: 'asks before removing something',
+        mutating   : true,
+        args       : z.object({}),
+        run        : async (_a, c) => ({ ok: true, output: String(await c.confirm!('Remove x?')) }),
+      };
+      const backend = new StructuredAgentBackend(
+        new RecordedChatBackend('mock', [
+          JSON.stringify({ tool: 'tidy_up', args: {} }),
+          JSON.stringify({ final: 'Tidied.' }),
+        ]),
+      );
+      const agent = new Agent({
+        backend,
+        ctx,
+        permission,
+        system  : 'SYS',
+        mode    : 'execute',
+        registry: createRegistry([asker as Tool]),
+      });
+      await agent.run('tidy up');
+      expect(permission.confirms).toEqual(['tidy_up']);
+      expect(asked).toEqual([{ message: 'Remove x?' }]);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('asks a deleted scene’s removal through edit_scene, and a no writes nothing', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      await fs.writeFile(
+        join(dir, 'scenes', 'side.md'),
+        '---\nscene: side\n---\n\nINT. CLASSROOM - DAY\n\nA side scene.\n',
+      );
+      const permission = scriptPermission({ confirmAction: () => Promise.resolve(false) });
+      const agent = agentWith(
+        ctx,
+        [
+          JSON.stringify({ tool: 'edit_scene', args: { op: 'deleteScene', scene: 'side' } }),
+          JSON.stringify({ final: 'Kept it.' }),
+        ],
+        permission,
+        'execute',
+      );
+      await agent.run('delete the side scene');
+      expect(permission.confirms).toEqual(['edit_scene']);
+      expect(await fs.readFile(join(dir, 'scenes', 'side.md'), 'utf8')).toContain('A side scene.');
+    } finally {
+      await cleanup();
+    }
+  });
 });
 
 describe('arguments the schema refused', () => {
