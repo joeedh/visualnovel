@@ -60,6 +60,13 @@ export class ProjectPaths {
   get baseManifest(): string {
     return join(this.baseAssets, 'manifest.json');
   }
+  /** Which projects claim each base picture, one empty file per claim, beside the bytes. */
+  get claimsDir(): string {
+    return join(this.baseAssets, 'claims');
+  }
+  claimFile(hash: string, projectId: string): string {
+    return join(this.claimsDir, hash, projectId);
+  }
   get screenplayDir(): string {
     return join(this.root, 'screenplay');
   }

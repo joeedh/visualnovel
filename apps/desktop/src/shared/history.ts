@@ -106,6 +106,27 @@ export interface RepoStatus extends WorktreeStatus {
   decided: DecidedFile[];
 }
 
+/**
+ * A picture the project still names whose bytes or manifest row are gone, as `asset.missing`
+ * lists it.
+ */
+export interface MissingPicture {
+  hash: string;
+  /** The slot it filled, from its manifest row now or in history, or its first eight characters. */
+  label: string;
+  /** What still names it: a sheet, a shot, a task, a manifest row. */
+  referrers: string[];
+  /** Why `asset.recover` would refuse, or absent when git history holds it. */
+  unrecoverable?: string;
+}
+
+/** What `asset.missing` answers: the last check's pictures, and when it ran. */
+export interface MissingReport {
+  pictures: MissingPicture[];
+  /** ISO time of the check, or null before the first. */
+  checked: string | null;
+}
+
 /** One file decided at the current stop, and how; `Decision` is in git's words for the sides. */
 export interface DecidedFile {
   path: string;

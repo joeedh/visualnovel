@@ -526,6 +526,11 @@ That is a fault in what was ` +
     approvalsChanged();
   });
 
+  // Rare, since it fires only when the set of missing pictures changes, so a full reload is cheap
+  api.on('missing:changed', () => {
+    invalidate();
+  });
+
   // Every write in the app arrives here, whichever window or agent made it, which is what lets a
   // pane weigh an echo of its own write against one from somewhere else.
   api.on('documents:wrote', (payload) => {

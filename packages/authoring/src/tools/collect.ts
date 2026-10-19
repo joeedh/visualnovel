@@ -100,6 +100,7 @@ const collectUnusedAssetsTool: Tool<CollectArgs> = {
       ...(applied.rows.base.length > 0 ? ['assets/manifest.json'] : []),
       ...(applied.rows.project.length > 0 ? ['vngen/build/manifest.json'] : []),
       ...(applied.tombstoned.length > 0 ? ['vngen/state/tasks.jsonl'] : []),
+      ...applied.released,
       ...applied.moved,
     ];
     const stuck =

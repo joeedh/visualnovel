@@ -50,6 +50,8 @@ export interface AssetCollection {
   files: CollectedFile[];
   /** The latest record of each task to tombstone. */
   tombstones: AnyTask[];
+  /** Hashes this project claims and no longer uses, whose claims the collection drops. */
+  released: string[];
 }
 
 /** The kinds of task a slot plans; every other kind hangs off one of these. */
@@ -126,15 +128,20 @@ const OBJECT_FILE = /^([0-9a-f]+)\.[A-Za-z0-9]+$/;
  * - it is a `concept` or a `reference`, which no slot claims by design;
  * - a kept row was drawn from it (`refs`), transitively.
  *
- * A base row is removed only when this project's task log produced it, so pictures another
- * project made in a shared `assets/` are left alone. A storyboard that does not parse keeps every
- * shot row bound to its scene, since what it holds cannot be known.
+ * A base row is removed only when this project's task log produced it, and never while another
+ * project claims it, so pictures another project made or uses in a shared `assets/` are left
+ * alone. This project's own claim on a hash nothing of its own uses is `released`. A storyboard
+ * that does not parse keeps every shot row bound to its scene, since what it holds cannot be known.
  */
 export async function planAssetCollection(opts: {
   paths: ProjectPaths;
   model: ProjectModel;
   config: ProjectConfig;
   live?: Iterable<string>;
+  /** Hashes another project claims, which are kept as if this project named them. */
+  claimed?: Iterable<string>;
+  /** Hashes this project claims, whose claims go once nothing of this project's uses them. */
+  ownClaims?: Iterable<string>;
 }): Promise<AssetCollection> {
   const { paths, model, config } = opts;
   const [base, project, store, graph, read, records] = await Promise.all([
@@ -187,44 +194,62 @@ export async function planAssetCollection(opts: {
   }
 
   const roots: Record<AssetRootName, AssetRoot> = { base, project };
-  const kept = new Set<string>();
-  const keptRow = (name: AssetRootName, row: Asset): boolean => {
-    if (row.kind === 'concept' || row.kind === 'reference') return true;
-    if (named.has(row.hash)) return true;
-    for (const slot of slotsOf(row, sheetAngleOf(row, { angleOf }))) {
-      if (keys.has(slotKey(slot))) return true;
-      if (slot.kind === 'shot' && unread.has(slot.sceneId)) return true;
-    }
-    // A base row this project did not make belongs to another project sharing the folder
-    return name === 'base' && !(row.sourceTask !== undefined && records.has(row.sourceTask));
-  };
-
-  // A row is kept by name per root, then the refs of every kept row keep what they were drawn from
-  const pending: Asset[] = [];
-  for (const name of ['base', 'project'] as const) {
-    for (const row of roots[name].assets()) {
-      if (keptRow(name, row)) {
-        kept.add(`${name}:${row.hash}`);
-        pending.push(row);
+  /**
+   * Answers the rows kept, keyed `root:hash`, starting from the hashes in `seed`. With `foreign`, a
+   * base row this project did not make is kept too, since it belongs to another project sharing the
+   * folder. The refs of every kept row keep what they were drawn from, and are added to `seed`.
+   */
+  const reach = (seed: Set<string>, foreign: boolean): Set<string> => {
+    const kept = new Set<string>();
+    const keptRow = (name: AssetRootName, row: Asset): boolean => {
+      if (row.kind === 'concept' || row.kind === 'reference') return true;
+      if (seed.has(row.hash)) return true;
+      for (const slot of slotsOf(row, sheetAngleOf(row, { angleOf }))) {
+        if (keys.has(slotKey(slot))) return true;
+        if (slot.kind === 'shot' && unread.has(slot.sceneId)) return true;
       }
-    }
-  }
-  const drawnFrom = new Set<string>();
-  while (pending.length > 0) {
-    const row = pending.pop()!;
-    for (const ref of row.refs) {
-      if (drawnFrom.has(ref)) continue;
-      drawnFrom.add(ref);
-      named.add(ref);
-      for (const name of ['base', 'project'] as const) {
-        const other = roots[name].get(ref);
-        if (other && !kept.has(`${name}:${ref}`)) {
-          kept.add(`${name}:${ref}`);
-          pending.push(other);
+      return (
+        foreign && name === 'base' && !(row.sourceTask !== undefined && records.has(row.sourceTask))
+      );
+    };
+    const pending: Asset[] = [];
+    for (const name of ['base', 'project'] as const) {
+      for (const row of roots[name].assets()) {
+        if (keptRow(name, row)) {
+          kept.add(`${name}:${row.hash}`);
+          pending.push(row);
         }
       }
     }
-  }
+    const drawnFrom = new Set<string>();
+    while (pending.length > 0) {
+      const row = pending.pop()!;
+      for (const ref of row.refs) {
+        if (drawnFrom.has(ref)) continue;
+        drawnFrom.add(ref);
+        seed.add(ref);
+        for (const name of ['base', 'project'] as const) {
+          const other = roots[name].get(ref);
+          if (other && !kept.has(`${name}:${ref}`)) {
+            kept.add(`${name}:${ref}`);
+            pending.push(other);
+          }
+        }
+      }
+    }
+    return kept;
+  };
+
+  // What this project uses on its own, before claims and other projects' rows are counted
+  const ours = new Set(named);
+  const used = reach(ours, false);
+  const own = [...(opts.ownClaims ?? [])];
+  const released = own.filter(
+    (hash) => !ours.has(hash) && !used.has(`base:${hash}`) && !used.has(`project:${hash}`),
+  );
+  for (const hash of opts.claimed ?? []) named.add(hash);
+  for (const hash of own) if (!released.includes(hash)) named.add(hash);
+  const kept = reach(named, true);
 
   const rows: Record<AssetRootName, Asset[]> = { base: [], project: [] };
   const files: CollectedFile[] = [];
@@ -275,5 +300,5 @@ export async function planAssetCollection(opts: {
       tombstones.push(records.get(task.hash) as TaskRecord);
     }
   }
-  return { rows, files, tombstones };
+  return { rows, files, tombstones, released };
 }

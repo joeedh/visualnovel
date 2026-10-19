@@ -54,6 +54,7 @@ const NAMES: readonly PaletteOnly[] = [
 
 const READS = [
   'agent.threads',
+  'asset.missing',
   'asset.suspended',
   'bible.search',
   'command.check',

@@ -822,6 +822,35 @@ static (`confirm: true`). The second depends on the project.
   `docs/reference/repos-and-commits.md` (the ledger and `project_id`),
   `docs/reference/pipeline-contracts.md` (a recovered `done` record restates one the log
   holds; it is not a forged record).
+- **As built (2026-10-19)**, where it differs from the above:
+    - Line numbers: `setStartScene` is now `config.ts:379`, since `ensureProjectId` sits
+      above it, and `openRepos` is at `workspacelifecycle.ts:194`.
+      `session/asset.ts:317-321` is unchanged.
+    - The check is `MissingPart` (`session/missing.ts`); `runtime/assetcheck.ts` decides
+      when it runs. It is skipped while a pipeline run or pass is in flight, keeping the
+      previous answer. The pane reads it through a new read command, `asset.missing`
+      (palette-only), and a `missing:changed` push reloads the panes when the set changes.
+    - A notification link cannot name a view inside a pane, so the view also takes the
+      detail column whenever nothing is selected and pictures are missing; the status line
+      reaches it with "Show them". A stopped sync and the sync view keep the column first.
+      Rows are grouped by whether git history holds the picture (the frontend-design
+      consult), with no cap, since the column scrolls.
+    - Forget also removes manifest rows whose file is gone and this project's claim;
+      without that, the check would keep finding a `missing-file` row.
+    - The tests differ from the plan's wording because of stage 7's `refs` rule: a picture
+      a kept frame was drawn from is kept, so deleting haruki alone leaves his portrait.
+        - The revert test deletes haruki and `rooftop`, his only scene, collects with
+          nothing held, and takes back the delete's commit only. Taking back the
+          collection's commit too brings back its bytes, rows and tombstones together in
+          one repository, so nothing would be missing. After Recover the next run draws no
+          portrait; it does draw his sheets and the rooftop frames again, because nothing
+          names them, so the check cannot list them.
+        - The two-project test deletes `bad_end`, the hall's only scene, before the hall.
+        - Both use `git revert`, `clone` and `pull` directly rather than `git.takeBack`
+          and `git.pull`, since the harness has no committer; the worktree ends the same.
+    - `asset.recover` and `asset.forget` are skipped in `affects.test.ts`, which needs a
+      picture history removed; `tests/missing.test.ts` checks what each writes against its
+      `affects`.
 
 ### Stage 9: pull the nested `assets/` repository
 

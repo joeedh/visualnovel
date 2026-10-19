@@ -59,6 +59,12 @@ export const SESSION_IGNORE = '.vnstudio/session.json*';
 export const COLLECTED_DIR = 'vngen/state/collected';
 
 /**
+ * Which `HEAD` each repository was at when the missing-picture check last ran. Ignored, since it
+ * is local to this machine and changes on every pull.
+ */
+export const ASSETCHECK_FILE = '.vnstudio/assetcheck.json';
+
+/**
  * Deletes every held collection under `root`. Undo history does not outlive a session, so what a
  * collection kept for it is not needed once a new session opens the project.
  */
@@ -71,7 +77,14 @@ export async function clearHeldCollections(root: string): Promise<void> {
  * tree is committed on purpose. `keys` is the load-bearing line: commit-on-save runs
  * `git commit -A`, so a key git can see is committed within the second.
  */
-const DEFAULT_IGNORES = ['keys', 'node_modules', '.DS_Store', SESSION_IGNORE, `${COLLECTED_DIR}/`];
+const DEFAULT_IGNORES = [
+  'keys',
+  'node_modules',
+  '.DS_Store',
+  SESSION_IGNORE,
+  `${COLLECTED_DIR}/`,
+  ASSETCHECK_FILE,
+];
 
 /**
  * Ensure `root/.gitignore` ignores each of `entries`, appending only what is missing and
@@ -109,7 +122,7 @@ export async function writeScaffolding(root: string): Promise<Scaffolding> {
   return {
     layouts   : await ensureLayouts(root),
     attributes: await ensureGitAttributes(root),
-    ignores   : await ensureIgnored(root, [SESSION_IGNORE, `${COLLECTED_DIR}/`]),
+    ignores   : await ensureIgnored(root, [SESSION_IGNORE, `${COLLECTED_DIR}/`, ASSETCHECK_FILE]),
   };
 }
 
@@ -354,7 +367,7 @@ export async function openWorkspace(root: string): Promise<OpenResult> {
 
 const GITATTRIBUTES_COMMIT = 'Set how git merges the state logs';
 const LAYOUTS_COMMIT = 'Add the shipped layout templates';
-const IGNORES_COMMIT = 'Ignore the window arrangement and held collections';
+const IGNORES_COMMIT = 'Ignore the window arrangement, held collections and the picture check';
 
 /**
  * Every subject the app commits under without a command behind it. The History pane's maker

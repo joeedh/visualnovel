@@ -8,6 +8,7 @@ import { BrowserWindow, dialog, screen } from 'electron';
 import { ZOOM_KEY } from '../../shared/zoom.js';
 import { join } from 'node:path';
 import type { AppContext } from './context.js';
+import { checkMissing } from './assetcheck.js';
 import { clampBounds, WindowList, type RememberedWindow, type WindowId } from './windows.js';
 import { WINDOWS_KEY } from '../../shared/sessionkeys.js';
 import type { SessionValue } from '../../shared/ipc.js';
@@ -164,7 +165,11 @@ export function createWindow(ctx: AppContext, options: NewWindowOptions = {}): W
     if (win.webContents.getZoomFactor() !== remembered) win.webContents.setZoomFactor(remembered);
   });
 
-  win.on('focus', () => ctx.windows.touch(id));
+  win.on('focus', () => {
+    ctx.windows.touch(id);
+    // A pull or a checkout made outside the app shows up as a moved `HEAD`
+    void checkMissing(ctx, 'moved');
+  });
   win.on('moved', () => rememberWindows(ctx));
   win.on('resized', () => rememberWindows(ctx));
   win.on('closed', () => {

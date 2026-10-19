@@ -10,8 +10,12 @@ import { WorkspaceSession, type SessionDeps } from '../session.js';
 import { SessionStore } from '../workspace/sessionstore.js';
 import { SessionState } from '../workspace/sessionstate.js';
 import { MOCK } from '../bootstrap/cliargs.js';
+import { scheduleCheck } from './assetcheck.js';
 import { getStack } from './stack.js';
 import type { AskRequest, ConfirmRequest, PlanRequest, SessionValue } from '../../shared/ipc.js';
+
+/** The agent's tools that put back files from history, after which a picture may be missing. */
+const AGENT_RESTORES = new Set(['git_revert', 'git_restore']);
 
 function buildDeps(ctx: AppContext): SessionDeps {
   return {
@@ -20,6 +24,8 @@ function buildDeps(ctx: AppContext): SessionDeps {
       // stamped here instead. Before the event goes out, so a pane cannot be told a tool ran
       // and then be told separately what it wrote.
       if (event.type === 'tool') ctx.noteWrites(event.result.written ?? []);
+      // These run in process while the window keeps focus, so the focus check would not see them
+      if (event.type === 'tool' && AGENT_RESTORES.has(event.tool)) scheduleCheck(ctx);
       ctx.broadcast('agent:event', event);
     },
     emitReport    : (event) => ctx.broadcast('report:event', event),

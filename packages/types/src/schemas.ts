@@ -387,6 +387,11 @@ export const projectConfig = z.object({
    * this schema cannot. A project that has not been imported yet has no scene ids to choose from.
    */
   start              : z.string().min(1).optional(),
+  /**
+   * A random id, written the first time the project claims a picture in a shared `assets/`
+   * repository. It names this project's claims there; a hand-copied folder keeps it.
+   */
+  project_id         : z.string().min(1).optional(),
   models: z
     .object({
       image : z.string().default('gemini-2.5-flash-image'),

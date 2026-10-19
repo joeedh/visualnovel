@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { makeProject, TestProject } from '@vn/testkit';
-import { AssetStore, loadInputs } from '@vn/store';
+import { addClaim, AssetStore, loadInputs, readClaims, removeClaim } from '@vn/store';
 import { latestRecords, logTombstone } from '@vn/taskgraph';
 import { exists } from '@vn/util';
 
@@ -76,6 +76,44 @@ async function framesOfAScene(): Promise<{ sceneId: string; hashes: string[] }> 
   return { sceneId, hashes };
 }
 
+describe('collectProject and the claims ledger', () => {
+  /** A base picture this project made and nothing uses. */
+  async function unusedBasePicture(): Promise<string> {
+    const [task] = (await latestRecords(p.paths)).keys();
+    const store = await AssetStore.open(p.paths);
+    const row = await store.write(new TextEncoder().encode('plate'), 'png', {
+      kind      : 'location_ref',
+      sourceTask: task!,
+      modelId   : 'mock',
+    });
+    return row.hash;
+  }
+
+  it('keeps a picture another project claims, and drops this project’s own claim on one', async () => {
+    const hash = await unusedBasePicture();
+    const { model, config } = await p.reload();
+    const collect = (id?: string) =>
+      collectProject({
+        root: p.dir,
+        model,
+        config: id === undefined ? config : { ...config, project_id: id },
+      });
+    expect((await collect()).assets.rows.base.map((r) => r.hash)).toEqual([hash]);
+
+    await addClaim(p.paths, hash, 'other');
+    expect((await collect('me')).assets.rows.base).toEqual([]);
+    expect((await collect('me')).assets.released).toEqual([]);
+
+    await removeClaim(p.paths, hash, 'other');
+    await addClaim(p.paths, hash, 'me');
+    const planned = await collect('me');
+    expect(planned.assets.rows.base.map((r) => r.hash)).toEqual([hash]);
+    expect(planned.assets.released).toEqual([hash]);
+    const applied = await apply(planned);
+    expect(applied.released).toEqual([`assets/claims/${hash}/me`]);
+    expect(await readClaims(p.paths)).toEqual(new Map());
+  });
+});
 describe('collectProject', () => {
   it('finds nothing to collect in a project the pipeline has just run', async () => {
     const planned = await plan();

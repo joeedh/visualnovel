@@ -144,7 +144,15 @@ These implement the system design in
       `restored: <ISO time>` added, which the graph reads as the record itself. How the
       desktop holds the files for that is in
       [`command-system.md`](command-system.md#a-sidecar-keeps-what-the-snapshot-cannot).
-    - Plan: [`../plans/deleting-things.md`](../plans/deleting-things.md), stage 7.
+    - A base picture another project claims in `assets/claims/` is kept, and this
+      project's own claim on one it no longer uses is dropped
+      ([`repos-and-commits.md`](repos-and-commits.md#the-claims-ledger)).
+    - `asset.recover` puts a collected picture back from git history and appends a copy of
+      the last `done` record whose output is its hash, stamped `restored`, when that
+      task's latest record is a tombstone. The copy restates a record the log already
+      holds, so it is not a forged record: the picture it names is the one that task drew.
+      ([`history-pane.md`](history-pane.md#missing-pictures))
+    - Plan: [`../plans/deleting-things.md`](../plans/deleting-things.md), stages 7 and 8.
 
 ## Scheduling
 

@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-10-19T22:11:22.389Z",
-  "gitSha"       : "b50d82dd2f7159251bd3593cf10c6b4a52e4703d",
+  "sweptAt"      : "2026-10-19T22:46:33.182Z",
+  "gitSha"       : "f6f485e1002301c854ca2b75ebfac7bf0319a6eb",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -42,8 +42,11 @@
     "asset.adopt",
     "asset.collect",
     "asset.export",
+    "asset.forget",
     "asset.info",
     "asset.list",
+    "asset.missing",
+    "asset.recover",
     "asset.regenerate",
     "asset.replace",
     "asset.restore",
@@ -6126,16 +6129,16 @@
     {
       "id"        : "project.setKey",
       "editor"    : "onboarding",
-      "key"       : "cmd:project.setKey#gemini",
-      "widgetPath": "onboarding/project-setkey~83f4e4d5",
+      "key"       : "cmd:project.setKey#openrouter",
+      "widgetPath": "onboarding/project-setkey~e338045b",
       "supplies"  : ["key"],
       "refused"   : "Paste a key first"
     },
     {
       "id"        : "project.setKey",
       "editor"    : "onboarding",
-      "key"       : "cmd:project.setKey#openrouter",
-      "widgetPath": "onboarding/project-setkey~e338045b",
+      "key"       : "cmd:project.setKey#gemini",
+      "widgetPath": "onboarding/project-setkey~83f4e4d5",
       "supplies"  : ["key"],
       "refused"   : "Paste a key first"
     },

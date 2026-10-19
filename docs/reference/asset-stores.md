@@ -205,7 +205,11 @@ because a zero-work summary is otherwise indistinguishable from a finished proje
   from both roots. Liveness, the order of the writes and the undo are in
   [`pipeline-contracts.md`](pipeline-contracts.md#identity-and-storage). In a shared
   `assets/`, a base row is only a candidate when this project's `tasks.jsonl` made it, so
-  another project's pictures are never removed.
+  another project's pictures are never removed, and never while another project claims it
+  in `assets/claims/` ([`repos-and-commits.md`](repos-and-commits.md#the-claims-ledger)).
+- `asset.recover` and `asset.forget` answer a picture the project names whose file or row
+  is gone: the first brings it back from git history, the second drops every reference to
+  it. The History pane lists them ([`history-pane.md`](history-pane.md#missing-pictures)).
 
 ## What this does not do
 

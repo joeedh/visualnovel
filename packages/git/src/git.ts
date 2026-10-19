@@ -391,6 +391,31 @@ export class Git {
     return r.code === 0 && sha.length > 0 ? sha : null;
   }
 
+  /**
+   * Finds the newest commit that deleted a path `pathspec` matches, and the path it deleted, or
+   * answers null. A glob such as `objects/<hash>.*` finds a file whose extension is not known.
+   */
+  async lastDeletion(pathspec: string): Promise<{ sha: string; path: string } | null> {
+    const r = await this.run([
+      'log',
+      '-n1',
+      '--diff-filter=D',
+      '--format=%H',
+      '--name-only',
+      '--',
+      pathspec,
+    ]);
+    const [sha, ...names] = r.stdout.split('\n').filter((line) => line.trim().length > 0);
+    return r.code === 0 && sha && names[0] ? { sha, path: names[0] } : null;
+  }
+
+  /** Finds the newest commit that added or removed `text` in `path`, or null when none did. */
+  async lastMention(text: string, path: string): Promise<string | null> {
+    const r = await this.run(['log', '-n1', '--format=%H', `-S${text}`, '--', path]);
+    const sha = r.stdout.trim();
+    return r.code === 0 && sha.length > 0 ? sha : null;
+  }
+
   // ---- history reads: one spawn each, parsed by `parse.ts` ----
 
   /**

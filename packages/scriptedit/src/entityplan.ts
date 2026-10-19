@@ -12,7 +12,7 @@ import { deleteShots, readShots, writeShots } from '@vn/store';
 import type { Asset, Character, Location, Shot } from '@vn/types';
 import { readText, writeFileAtomic } from '@vn/util';
 import { proveScenes, type SceneEditInput } from './apply.js';
-import type { ChangedShot, EntityOp, EntityWorld, Mention } from './entitydelete.js';
+import type { ChangedShot, EntityOp, EntityWorld, Mention, SheetEdit } from './entitydelete.js';
 import { scriptStateOf } from './sources.js';
 
 /** Everything an entity delete is decided and written against, from one load. */
@@ -82,6 +82,41 @@ const present = async (path: string): Promise<boolean> =>
 const sheetOf = (docs: readonly EntityDoc[], id: string): EntityDoc | undefined =>
   docs.find((doc) => doc.id === id);
 
+/** Renders each sheet edit as the text to write over its sheet, or says why one cannot be made. */
+export function sheetTexts(
+  inputs: EntityDeleteInput['inputs'],
+  edits: readonly SheetEdit[],
+): { file: string; text: string }[] | string {
+  const out: { file: string; text: string }[] = [];
+  for (const edit of edits) {
+    const doc = sheetOf(
+      edit.kind === 'character' ? inputs.characterDocs : inputs.locationDocs,
+      edit.id,
+    );
+    if (!doc) return `No sheet on disk for ${edit.kind} "${edit.id}".`;
+    const applied =
+      edit.kind === 'character'
+        ? applyCharacterEdit(doc.doc, edit.edit)
+        : applyLocationEdit(doc.doc, edit.edit);
+    if (!applied.ok) return applied.diagnostic.message;
+    out.push({ file: doc.file, text: docToMarkdown(applied.value.doc) });
+  }
+  return out;
+}
+
+/** Reads every scene's storyboard unfiltered, leaving out a scene that has none. */
+export async function readBoards(
+  input: Pick<EntityDeleteInput, 'paths' | 'sources' | 'entry'>,
+): Promise<Map<string, readonly Shot[]>> {
+  const state = scriptStateOf(input.sources, input.entry);
+  const shots = new Map<string, readonly Shot[]>();
+  for (const sceneId of state.scenes.keys()) {
+    const loaded = await readShots(input.paths, sceneId);
+    if (loaded) shots.set(sceneId, loaded.shots);
+  }
+  return shots;
+}
+
 /**
  * Decides an entity delete against a fresh read of every storyboard, the wiki and the manifest,
  * and proves it, writing nothing.
@@ -97,11 +132,7 @@ export async function planEntityDelete(
   const sheet = sheetOf(docs, id);
 
   const state = scriptStateOf(input.sources, input.entry);
-  const shots = new Map<string, readonly Shot[]>();
-  for (const sceneId of state.scenes.keys()) {
-    const loaded = await readShots(paths, sceneId);
-    if (loaded) shots.set(sceneId, loaded.shots);
-  }
+  const shots = await readBoards(input);
   const pages: { path: string; text: string }[] = [];
   for (const [abs, rel] of await markdownUnder(paths.root, paths.wikiDir)) {
     if (sheet && abs === sheet.file) continue;
@@ -123,19 +154,9 @@ export async function planEntityDelete(
 
   const pending = proveScenes(input, op.op);
   if (typeof pending === 'string') return { ok: false, message: pending };
-  for (const edit of op.sheets) {
-    const doc = sheetOf(
-      edit.kind === 'character' ? input.inputs.characterDocs : input.inputs.locationDocs,
-      edit.id,
-    );
-    if (!doc) return { ok: false, message: `No sheet on disk for ${edit.kind} "${edit.id}".` };
-    const applied =
-      edit.kind === 'character'
-        ? applyCharacterEdit(doc.doc, edit.edit)
-        : applyLocationEdit(doc.doc, edit.edit);
-    if (!applied.ok) return { ok: false, message: applied.diagnostic.message };
-    pending.push({ file: doc.file, text: docToMarkdown(applied.value.doc) });
-  }
+  const sheets = sheetTexts(input.inputs, op.sheets);
+  if (typeof sheets === 'string') return { ok: false, message: sheets };
+  pending.push(...sheets);
 
   const removes: { path: string; folder: boolean }[] = [];
   if (sheet) removes.push({ path: sheet.file, folder: false });

@@ -4,6 +4,7 @@ import type { Character, ChunkRef, Location, Scene, Shot } from '@vn/types';
 import {
   deleteCharacter,
   deleteLocation,
+  forgetPicture,
   type EntityOp,
   type EntityWorld,
 } from '../entitydelete.js';
@@ -315,5 +316,59 @@ describe('dropPins', () => {
   it('keeps everything else an override says', () => {
     const override = { mode: 'chunks' as const, mute: ['m'], refs: { a: [pin('x')] } };
     expect(dropPins(override, () => true).override).toEqual({ mode: 'chunks', mute: ['m'] });
+  });
+});
+
+describe('forgetPicture', () => {
+  it('drops every pin on the picture and clears each shot showing it, leaving the rest', () => {
+    const w = world({
+      characters: new Map([
+        [
+          'aiko',
+          character('aiko', 'Aiko', {
+            promptOverride: { mode: 'chunks', refs: { face: [pin('gone'), pin('kept')] } },
+          }),
+        ],
+      ]),
+      locations: new Map([
+        [
+          'rooftop',
+          location('rooftop', ['sunset'], {
+            variants: [
+              {
+                id            : 'sunset',
+                description   : '',
+                promptOverride: { mode: 'chunks', refs: { sky: [pin('gone')] } },
+              },
+            ],
+          }),
+        ],
+      ]),
+      shots: new Map([
+        [
+          'rooftop',
+          [
+            shot('s1', 'rooftop', ['aiko'], { image: 'gone' }),
+            shot('s2', 'rooftop', ['aiko'], { image: 'kept' }),
+          ],
+        ],
+      ]),
+    });
+    const op = forgetPicture(w, 'gone');
+    expect(op).toMatchObject({ pins: 2, images: 1 });
+    expect(op.sheets.map((e) => `${e.kind}:${e.id}`)).toEqual([
+      'character:aiko',
+      'location:rooftop',
+    ]);
+    const board = op.shots.get('rooftop')!;
+    expect(board[0]!.image).toBeUndefined();
+    expect(board[1]!.image).toBe('kept');
+    expect(op.changed.map((c) => c.shot.id)).toEqual(['s1']);
+  });
+
+  it('changes nothing for a picture nothing names', () => {
+    const op = forgetPicture(world(), 'nobody');
+    expect(op).toMatchObject({ pins: 0, images: 0, sheets: [], changed: [] });
+    expect(op.shots.size).toBe(0);
   });
 });

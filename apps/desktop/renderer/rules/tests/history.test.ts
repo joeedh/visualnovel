@@ -12,6 +12,13 @@ import {
   detailControls,
   dropCheckpointAction,
   emptySentence,
+  forgetAction,
+  missingAction,
+  missingControls,
+  missingSentence,
+  recoverAction,
+  showsMissing,
+  usedBySentence,
   askAgentAction,
   editAction,
   decidedSentence,
@@ -539,6 +546,54 @@ describe('the sync view', () => {
   });
 });
 
+describe('the missing-pictures view', () => {
+  const missing = state('missing');
+  const [kept, lost] = missing.missing;
+
+  it('has the column when nothing is selected or it was asked for, after a stopped sync and the sync view', () => {
+    expect(showsMissing(missing)).toBe(true);
+    expect(showsMissing({ ...missing, selected: 'a'.repeat(40) })).toBe(false);
+    expect(showsMissing({ ...missing, selected: 'a'.repeat(40), missingOpen: true })).toBe(true);
+    expect(showsMissing({ ...missing, syncOpen: true })).toBe(false);
+    expect(showsMissing({ ...missing, status: state('conflict').status! })).toBe(false);
+    expect(showsMissing(state('missing-none'))).toBe(true);
+    expect(detailControls(missing)).toEqual(missingControls(missing));
+    expect(detailControls(state('missing-none'))).toEqual([]);
+  });
+
+  it('says how many are missing on the status line, and offers to show them', () => {
+    expect(missingSentence(missing.missing)).toBe('2 pictures the project uses are missing.');
+    expect(missingSentence([kept!])).toBe('A picture the project uses is missing.');
+    expect(missingSentence([])).toBe('');
+    expect(controls(missing)).toContainEqual(missingAction());
+    expect(controls(state('missing-none'))).not.toContainEqual(missingAction());
+  });
+
+  it('offers Recover only where git history holds the picture, and Forget everywhere', () => {
+    expect(recoverAction(missing, kept!)).toMatchObject({
+      ok   : true,
+      id   : 'asset.recover',
+      props: { hash: kept!.hash },
+    });
+    expect(recoverAction(missing, lost!)).toMatchObject({
+      ok     : false,
+      refusal: { reason: lost!.unrecoverable },
+    });
+    expect(forgetAction(missing, lost!)).toMatchObject({
+      ok   : true,
+      id   : 'asset.forget',
+      form : true,
+      props: { hash: lost!.hash },
+    });
+    expect(recoverAction({ ...missing, syncing: 'pull' }, kept!)).toMatchObject({ ok: false });
+  });
+
+  it('reads what still uses a picture as one sentence', () => {
+    expect(usedBySentence(kept!)).toBe('Used by character haruki and portrait task 11111111.');
+    expect(usedBySentence(lost!)).toBe('Used by shot s3-2.');
+    expect(usedBySentence({ ...lost!, referrers: ['a', 'b', 'c'] })).toBe('Used by a, b and c.');
+  });
+});
 describe('the conflict view', () => {
   const conflict = state('conflict');
   const scene = 'scenes/rooftop.fountain';

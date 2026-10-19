@@ -24,6 +24,7 @@ leaves commit-on-save untouched, and undo and commit-on-save still compose (see
 - [How undo composes with it](#how-undo-composes-with-it)
 - [Multi-repo](#multi-repo)
     - [Submodules](#submodules)
+    - [The claims ledger](#the-claims-ledger)
 
 <!-- tocstop -->
 
@@ -441,3 +442,26 @@ other nested repo. The plan is
 - **Undo does not touch repository structure.** The snapshot walk skips `.git` whether it
   is a directory or a submodule's file, and `.gitmodules` is in `UNDO_EXCLUDES`.
 - **Adding or removing a submodule** is done in a terminal, never from the app.
+
+### The claims ledger
+
+Several projects can share one `assets/` repository, a submodule or a nested clone. The
+collector removes only base pictures its own project made, but a picture one project made
+can be one another project uses, so a shared folder records who uses what.
+
+- **Project identity.** `project_id` in `project.yaml` is a random hex id, written by
+  `ensureProjectId` (`@vn/config`) the first time the project claims a picture. The folder
+  name differs per clone and a monorepo's root commit is shared, so neither can serve. A
+  project folder copied by hand keeps the id, and the two copies then share claims; give
+  one a new id by editing `project_id`, or by deleting it so the next claim writes one.
+- **The ledger** is `assets/claims/<hash>/<project_id>`, one empty file per claim
+  (`addClaim`, `removeClaim` and `readClaims` in `@vn/store`). Two projects claiming at
+  once add different files, so a rebase pull cannot conflict on them; a single
+  `claims.json` would conflict whenever two projects claimed between pulls.
+- `asset.recover` adds the recovering project's claim on a base picture.
+- The collector keeps every hash another project claims, and drops this project's own
+  claim on a hash nothing of its own uses any more. The claim is deleted in place rather
+  than held, since the undo snapshot holds `assets/` documents.
+- When B recovers one of A's collected pictures and sends it, and A undoes that collection
+  before getting B's saves, both rewrite `assets/manifest.json`, so A's next pull can stop
+  there. The conflict view decides it like any other file; B's claim file is untouched.

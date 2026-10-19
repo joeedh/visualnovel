@@ -23,6 +23,8 @@ export {
   applyEntityPlan,
   entityPlanMessage,
   planEntityDelete,
+  readBoards,
+  sheetTexts,
   type AppliedEntityPlan,
   type EntityDeleteInput,
   type EntityPlan,
@@ -34,3 +36,10 @@ export {
   type FileDelete,
   type FileDeletePlan,
 } from './filedelete.js';
+export {
+  applyForget,
+  forgetPlanMessage,
+  planForget,
+  type AppliedForgetPlan,
+  type ForgetPlan,
+} from './forgetplan.js';

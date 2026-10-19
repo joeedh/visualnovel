@@ -162,7 +162,11 @@ function withOverride(shot: Shot, override: PromptOverride | undefined): Shot {
  * Builds the sheet edits that drop pins from every surviving character and location. The entity
  * being deleted is skipped, since its sheet is removed whole.
  */
-function sheetPins(world: EntityWorld, skip: string, pins: PinPass): SheetEdit[] {
+function sheetPins(
+  world: Pick<EntityWorld, 'characters' | 'locations'>,
+  skip: string,
+  pins: PinPass,
+): SheetEdit[] {
   const edits: SheetEdit[] = [];
   for (const character of world.characters.values()) {
     if (character.id === skip) continue;
@@ -480,4 +484,49 @@ export function deleteLocation(
     changed,
     mentions: mentionsOf(world, scenesAfter(world.state, op), [location.name, location.id]),
   };
+}
+
+/** What forgetting one picture rewrites: sheets losing pins, and storyboards to write whole. */
+export interface ForgetOp {
+  sheets: SheetEdit[];
+  shots: Map<string, Shot[]>;
+  /** The changed shots, for the host to price. */
+  changed: ChangedShot[];
+  /** Pins dropped across every override. */
+  pins: number;
+  /** Shots whose image was the picture. */
+  images: number;
+}
+
+/**
+ * Removes every reference to `hash` held as a pin on any override rung or as a `Shot.image`. An
+ * approved portrait is the host's to clear, since it is written outside the sheet's prompt
+ * overrides.
+ */
+export function forgetPicture(
+  world: Pick<EntityWorld, 'shots' | 'characters' | 'locations'>,
+  hash: string,
+): ForgetOp {
+  const pins = pinPass((ref) => ref.pin === hash);
+  const sheets = sheetPins(world, '', pins);
+  const shots = new Map<string, Shot[]>();
+  const changed: ChangedShot[] = [];
+  let images = 0;
+  for (const [sceneId, board] of world.shots) {
+    const after = board.map((shot) => {
+      let next = shot;
+      if (shot.image === hash) {
+        const { image: _old, ...rest } = shot;
+        next = rest;
+        images++;
+      }
+      const was = pins.dropped;
+      const override = pins.drop(next.promptOverride);
+      if (pins.dropped !== was) next = withOverride(next, override);
+      if (next !== shot) changed.push({ sceneId, shot: next });
+      return next;
+    });
+    if (after.some((shot, i) => shot !== board[i])) shots.set(sceneId, after);
+  }
+  return { sheets, shots, changed, pins: pins.dropped, images };
 }

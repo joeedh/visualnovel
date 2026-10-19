@@ -16,6 +16,7 @@ import {
   UNSAVED_EDITS,
   type DecidedFile,
   type Maker,
+  type MissingPicture,
   type RemoteEntry,
   type RepoEntry,
   type RepoRole,
@@ -112,6 +113,10 @@ export interface HistoryState {
   syncing?: SyncVerb;
   /** The conflicted path whose whole file is open for editing, markers and all, in the conflict view. */
   editing?: string;
+  /** What `asset.missing` answered: the pictures the project names whose files are gone. */
+  missing: readonly MissingPicture[];
+  /** Whether the author asked for the missing-pictures view. */
+  missingOpen: boolean;
 }
 
 export type PaneSize = 'small' | 'mid' | 'large';
@@ -737,6 +742,104 @@ export function addRemoteAction(state: HistoryState): Offer {
 export const NO_REMOTES = 'No shared copy yet. Connect one to work with someone else.';
 
 // -----------------------------------------------------------------------------
+// Missing pictures
+// -----------------------------------------------------------------------------
+
+/**
+ * Whether the detail column shows the missing-pictures view: asked for, or nothing selected while
+ * pictures are missing. A stopped sync and the sync view keep the column first.
+ */
+export function showsMissing(state: HistoryState): boolean {
+  if (conflicting(state) || state.syncOpen) return false;
+  return state.missingOpen || (state.selected === undefined && state.missing.length > 0);
+}
+
+/** "2 pictures the project uses are missing.", or nothing when none is. */
+export function missingSentence(missing: readonly MissingPicture[]): string {
+  const n = missing.length;
+  if (n === 0) return '';
+  return n === 1
+    ? 'A picture the project uses is missing.'
+    : `${n} pictures the project uses are missing.`;
+}
+
+/** What the view says above its rows. */
+export const MISSING_LEAD =
+  'The project still uses these pictures, but their files are gone. Recover brings one back ' +
+  'from git history; Forget stops using it, and the next run draws a new one.';
+
+/** The sentence shown in the view's place when it was asked for and nothing is missing. */
+export const NONE_MISSING = 'No picture is missing.';
+
+/** The headings the rows are grouped under: whether git history can bring each one back. */
+export const MISSING_GROUPS = {
+  recoverable: 'Git history has these',
+  lost       : 'Git history does not have these',
+} as const;
+
+/** "Used by character haruki and portrait task 1a2b3c4d." */
+export function usedBySentence(picture: MissingPicture): string {
+  const names = picture.referrers;
+  if (names.length === 0) return '';
+  const list =
+    names.length === 1
+      ? names[0]!
+      : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  return `Used by ${list}.`;
+}
+
+/** The status line's control, which brings the missing-pictures view to the front. */
+export function missingAction(): Offer {
+  return {
+    ok: true,
+    ...view('mode'),
+    on     : 'missing',
+    label  : 'Show them',
+    tooltip:
+      'List the pictures the project uses whose files are gone, to bring back or stop using.',
+  };
+}
+
+/** Bring one missing picture back from git history. */
+export function recoverAction(state: HistoryState, picture: MissingPicture): Offer {
+  const control = {
+    id     : 'asset.recover',
+    on     : picture.hash,
+    label  : 'Recover',
+    tooltip:
+      `Bring back ${picture.label} from the save that removed it, with its manifest row and ` +
+      'the record of the task that made it.',
+  };
+  const why = stillSyncing(state) ?? picture.unrecoverable;
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { hash: picture.hash } };
+}
+
+/** Stop using one missing picture: its form lists what goes before it runs. */
+export function forgetAction(state: HistoryState, picture: MissingPicture): Offer {
+  const control = {
+    id     : 'asset.forget',
+    on     : picture.hash,
+    label  : 'Forget…',
+    form   : true,
+    tooltip:
+      `Stop using ${picture.label}: drop its pins, shot pictures and approved portrait. ` +
+      'The next run draws a new one.',
+  };
+  const why = stillSyncing(state);
+  if (why !== undefined) return { ...refuse(why), ...control };
+  return { ok: true, ...control, props: { hash: picture.hash } };
+}
+
+/** The missing-pictures view's offers: Recover and Forget per picture. */
+export function missingControls(state: HistoryState): readonly Offer[] {
+  return state.missing.flatMap((picture) => [
+    recoverAction(state, picture),
+    forgetAction(state, picture),
+  ]);
+}
+
+// -----------------------------------------------------------------------------
 // Conflicts
 // -----------------------------------------------------------------------------
 
@@ -1175,6 +1278,7 @@ export function controls(state: HistoryState): readonly Offer[] {
     reloadAction(),
     ...(state.size === 'small' && state.showingDetail ? [backAction()] : []),
     ...statusControls(state),
+    ...(state.missing.length > 0 ? [missingAction()] : []),
     ...state.saves.map((save) => rowAction(save, save.sha === state.selected)),
     ...(state.saves.length > 0 ? [moreAction(state.next)] : []),
     ...detailControls(state),
@@ -1226,13 +1330,14 @@ export function conflictControls(state: HistoryState): readonly Offer[] {
 }
 
 /**
- * The detail column's offers: the sync view's or the conflict view's when one of those has the
- * column, else the conversation, the three recovery controls and one per checkpoint, one row per
- * file, the logs fold, the way back, and the diff's own control.
+ * The detail column's offers: the sync view's, the conflict view's or the missing-pictures view's
+ * when one of those has the column, else the conversation, the three recovery controls and one
+ * per checkpoint, one row per file, the logs fold, the way back, and the diff's own control.
  */
 export function detailControls(state: HistoryState): readonly Offer[] {
   if (conflicting(state)) return conflictControls(state);
   if (state.syncOpen) return syncControls(state);
+  if (showsMissing(state)) return missingControls(state);
   const save = state.saves.find((s) => s.sha === state.selected);
   if (!save) return [];
   const logs = save.files.filter((f) => kindOf(f.path) === 'log');

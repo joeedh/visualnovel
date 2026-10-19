@@ -365,7 +365,7 @@ export class AssetRoot {
 }
 
 /** Parses a manifest's rows, normalizing each binding list. Throws on text that does not parse. */
-function parseManifest(text: string): Asset[] {
+export function parseManifest(text: string): Asset[] {
   const parsed = JSON.parse(text) as ManifestFile;
   return parsed.assets.map((asset) => ({ ...asset, satisfies: asList(asset.satisfies) }));
 }

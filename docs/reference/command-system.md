@@ -8,6 +8,7 @@
     - [`coerceProps` is the single validation authority](#coerceprops-is-the-single-validation-authority)
 - [The DSL](#the-dsl)
 - [The stack](#the-stack)
+    - [Confirmation](#confirmation)
     - [`CommandRecord`](#commandrecord)
     - [Every mutating command declares what it may touch](#every-mutating-command-declares-what-it-may-touch)
     - [Undo is opt-in, and rests on content-addressed snapshots](#undo-is-opt-in-and-rests-on-content-addressed-snapshots)

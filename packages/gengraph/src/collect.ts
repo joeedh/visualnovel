@@ -11,7 +11,14 @@ import { readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { planAssetCollection, type AssetCollection, type AssetRootName } from '@vn/artgen';
 import type { ProjectConfig } from '@vn/config';
-import { AssetRoot, ProjectPaths, workspacePath } from '@vn/store';
+import {
+  AssetRoot,
+  claimedByOthers,
+  ProjectPaths,
+  readClaims,
+  removeClaim,
+  workspacePath,
+} from '@vn/store';
 import { logTombstone } from '@vn/taskgraph';
 import type { AnyTask, Asset, Diagnostic, ProjectModel } from '@vn/types';
 import { exists, readText } from '@vn/util';
@@ -42,6 +49,8 @@ export interface GraphStateCollection {
 export interface CollectionPlan {
   assets: AssetCollection;
   graphs: GraphStateCollection;
+  /** This project's `project_id`, which names its claims; absent until it first claims one. */
+  projectId?: string;
 }
 
 /** Sums the bytes under a path, a folder's contents included; zero for one that is not there. */
@@ -174,7 +183,8 @@ export function unreadInputs(diagnostics: readonly Diagnostic[]): string | undef
 /**
  * Decides everything a collection removes, writing nothing: the asset rows, files and task
  * records nothing uses, and the graph state no document needs. `live` adds hashes another
- * source names, such as the claims ledger.
+ * source names. A picture another project claims is kept, and this project's own claim on one
+ * nothing of its own uses is dropped.
  */
 export async function collectProject(opts: {
   root: string;
@@ -186,14 +196,20 @@ export async function collectProject(opts: {
   const paths = new ProjectPaths(opts.root);
   const named = await graphNames(opts.root);
   for (const hash of opts.live ?? []) named.add(hash);
+  const claims = await readClaims(paths);
+  const projectId = opts.config.project_id;
   const assets = await planAssetCollection({
     paths,
-    model : opts.model,
-    config: opts.config,
-    live  : named,
+    model    : opts.model,
+    config   : opts.config,
+    live     : named,
+    claimed  : claimedByOthers(claims, projectId),
+    ownClaims: [...claims]
+      .filter(([, ids]) => projectId !== undefined && ids.has(projectId))
+      .map(([hash]) => hash),
   });
   const graphs = await planGraphCollection(opts.root, { oldAnswers: opts.oldAnswers, named });
-  return { assets, graphs };
+  return { assets, graphs, ...(projectId === undefined ? {} : { projectId }) };
 }
 
 /** Lists every path a plan removes, in the order {@link applyCollection} removes them. */
@@ -207,10 +223,10 @@ export function collectedPaths(plan: CollectionPlan): string[] {
 
 /** Whether a plan removes nothing at all. */
 export function collectsNothing(plan: CollectionPlan): boolean {
-  const { rows, files, tombstones } = plan.assets;
+  const { rows, files, tombstones, released } = plan.assets;
   return (
-    rows.base.length + rows.project.length + files.length + tombstones.length === 0 &&
-    plan.graphs.orphans.length + plan.graphs.blobs.length === 0
+    rows.base.length + rows.project.length + files.length + tombstones.length + released.length ===
+      0 && plan.graphs.orphans.length + plan.graphs.blobs.length === 0
   );
 }
 
@@ -312,6 +328,11 @@ export function describeCollection(
   }
   const rest: string[] = [];
   if (tombstones.length > 0) rest.push(count(tombstones.length, 'task record'));
+  if (plan.assets.released.length > 0) {
+    rest.push(
+      `this project's claim on ${count(plan.assets.released.length, 'shared picture')} it no longer uses`,
+    );
+  }
   if (orphans.length > 0) {
     const slugs = orphans.map((o) => o.slug);
     const shown = slugs.length > 3 ? `${slugs.slice(0, 3).join(', ')}, â€¦` : slugs.join(', ');
@@ -344,6 +365,8 @@ export type CollectionMover = (path: string) => Promise<boolean>;
 export interface AppliedCollection {
   rows: Record<AssetRootName, Asset[]>;
   tombstoned: AnyTask[];
+  /** This project's claim files the collection deleted, workspace-relative. */
+  released: string[];
   moved: string[];
   stuck: string[];
 }
@@ -370,6 +393,14 @@ export async function applyCollection(
     base   : await roots.base.remove(plan.assets.rows.base.map((r) => r.hash)),
     project: await roots.project.remove(plan.assets.rows.project.map((r) => r.hash)),
   };
+  // A claim is a document the undo snapshot holds, so it is deleted here rather than moved
+  const released: string[] = [];
+  if (plan.projectId !== undefined) {
+    for (const hash of plan.assets.released) {
+      const file = await removeClaim(paths, hash, plan.projectId);
+      if (file !== undefined) released.push(workspacePath(root, file));
+    }
+  }
 
   const moved: string[] = [];
   const stuck: string[] = [];
@@ -391,5 +422,5 @@ export async function applyCollection(
     if (await move(path)) moved.push(path);
     else stuck.push(path);
   }
-  return { rows, tombstoned: plan.assets.tombstones, moved, stuck };
+  return { rows, tombstoned: plan.assets.tombstones, released, moved, stuck };
 }

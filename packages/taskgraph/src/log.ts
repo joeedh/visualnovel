@@ -46,6 +46,33 @@ export async function latestRecords(paths: ProjectPaths): Promise<Map<string, Ta
 }
 
 /**
+ * Puts back each task a tombstone took out whose last `done` record produced `output`: appends a
+ * copy of that record stamped `restored`, and answers the copies. A task whose latest record is
+ * not a tombstone is left alone.
+ */
+export async function restoreDone(
+  paths: ProjectPaths,
+  output: string,
+  now = new Date(),
+): Promise<TaskRecord[]> {
+  const latest = new Map<string, TaskRecord>();
+  const done = new Map<string, TaskRecord>();
+  for (const record of await readJsonl<TaskRecord>(paths.tasksLog)) {
+    latest.set(record.hash, record);
+    if (record.status === 'done' && record.output === output) done.set(record.hash, record);
+  }
+  const restored: TaskRecord[] = [];
+  for (const [hash, record] of done) {
+    if (latest.get(hash)?.removed !== true) continue;
+    const copy: TaskRecord = { ...record, restored: now.toISOString() };
+    delete copy.removed;
+    await appendJsonl(paths.tasksLog, copy);
+    restored.push(copy);
+  }
+  return restored;
+}
+
+/**
  * Rebuild a TaskGraph by replaying the status log. A missing log gives an empty graph, and a
  * hash whose last record is a tombstone is left out.
  */

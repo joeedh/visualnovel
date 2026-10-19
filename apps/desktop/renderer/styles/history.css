@@ -942,6 +942,25 @@ button.hs-btn:disabled {
   font-size: 11px;
 }
 
+/* A missing picture has no file to name or show, so its row reads as the slot it filled, in the
+   prose face, with what still uses it beneath. */
+.hs-missing-what {
+  flex: 1 1 160px;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--sans);
+}
+
+.hs-missing-what .hs-file-path {
+  font-size: 12px;
+}
+
+.hs-missing-used {
+  color: var(--mist-dim);
+  font-size: 11px;
+}
+
 /* The file open for editing, whole, on the sunken ink like a diff body. The field scrolls on its
    own so a long scene does not push Save off screen; the prose face is for a scene, a sheet or a
    note, the mono one for data. */

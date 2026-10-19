@@ -469,6 +469,18 @@
       "why": "A pull is still running, so every write in the sync view and the bar refuses with “Still getting their saves.” while the filters, which only read, stay offered."
     },
     {
+      "module": "history",
+      "editor": "history",
+      "name"  : "missing",
+      "why": "Two pictures the project uses are gone and nothing is selected, so the detail column lists them: the portrait git history holds offers Recover, the shot frame it does not refuses Recover with the reason and offers only Forget; the status line offers Show them."
+    },
+    {
+      "module": "history",
+      "editor": "history",
+      "name"  : "missing-none",
+      "why": "The view was asked for and the last check found nothing, so it says so and offers no row."
+    },
+    {
       "module": "inspector",
       "editor": "inspector",
       "name"  : "no-task",
@@ -27196,6 +27208,745 @@
     },
     {
       "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing",
+      "key"       : "fx:pane.view#sync",
+      "widgetPath": "history/pane-view~c82b206b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Shared copies",
+        "tooltip": "List the shared copy: what each has, and send or get saves.",
+        "on"     : "sync",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing",
+      "key"       : "fx:pane.view#who",
+      "widgetPath": "history/pane-view~f13e92ac",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Everyone",
+        "tooltip": "Narrow the list to the saves one kind of maker made: you, the agent, the pipeline, or the app’s housekeeping.",
+        "on"     : "who",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing",
+      "key"       : "fx:pane.view#path",
+      "widgetPath": "history/pane-view~f5ccb359",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Any file",
+        "tooltip": "Right-click a file or a scene in the document tree and choose Show history to narrow the list to it.",
+        "on"     : "path",
+        "ok"     : false,
+        "refusal": {
+          "reason": "The list is not narrowed to a file."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing",
+      "key"       : "fx:pane.view#checkpoints",
+      "widgetPath": "history/pane-view~0d942c3d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Checkpoints",
+        "tooltip": "Show only the saves you named as a checkpoint.",
+        "on"     : "checkpoints",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing",
+      "key"       : "fx:pane.view#text",
+      "widgetPath": "history/pane-view~34dea019",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Search saves…",
+        "tooltip": "Narrow the list to the saves whose description contains these words.",
+        "on"     : "text",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing",
+      "key"       : "fx:pane.view#clear",
+      "widgetPath": "history/pane-view~13059a85",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Show all",
+        "tooltip": "Take every filter off and show every save.",
+        "on"     : "clear",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing narrows the list."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing",
+      "key"       : "cmd:git.checkpoint",
+      "widgetPath": "history/git-checkpoint~21f68b45",
+      "offer": {
+        "id"     : "git.checkpoint",
+        "label"  : "⚑ Checkpoint…",
+        "tooltip": "Name the latest save as a checkpoint, so it can be found and gone back to later.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : ""
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.checkpoint",
+          "props": {
+            "repo": "project",
+            "sha" : ""
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "history/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Read the saves again, in case something changed outside the app.",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing",
+      "key"       : "fx:pane.view#missing",
+      "widgetPath": "history/pane-view~d10dff38",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Show them",
+        "tooltip": "List the pictures the project uses whose files are gone, to bring back or stop using.",
+        "on"     : "missing",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing",
+      "key"       : "fx:pane.view#save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "widgetPath": "history/pane-view~c2eee052",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Moved line L4 into rooftop",
+        "tooltip": "Show what this save changed. You · 1 file · aaaaaaa",
+        "on"     : "save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing",
+      "key"       : "fx:pane.view#save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "widgetPath": "history/pane-view~946708b2",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Agent turn: make the rooftop scene tenser",
+        "tooltip": "Show what this save changed. Agent · 3 files · bbbbbbb",
+        "on"     : "save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing",
+      "key"       : "fx:pane.view#save/cccccccccccccccccccccccccccccccccccccccc",
+      "widgetPath": "history/pane-view~442baf92",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Generated 14 assets",
+        "tooltip": "Show what this save changed. Pipeline · 1 file · ccccccc",
+        "on"     : "save/cccccccccccccccccccccccccccccccccccccccc",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing",
+      "key"       : "fx:pane.view#more",
+      "widgetPath": "history/pane-view~bab7f4e9",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Earlier saves",
+        "tooltip": "Read the next fifty saves.",
+        "on"     : "more",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Every save is listed."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing",
+      "key": "cmd:asset.recover#dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "widgetPath": "history/asset-recover~540db001",
+      "offer": {
+        "id"     : "asset.recover",
+        "label"  : "Recover",
+        "tooltip": "Bring back haruki portrait from the save that removed it, with its manifest row and the record of the task that made it.",
+        "on"     : "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "ok"     : true,
+        "props": {
+          "hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "asset.recover",
+          "props": {
+            "hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing",
+      "key": "cmd:asset.forget#dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "widgetPath": "history/asset-forget~1a42ca58",
+      "offer": {
+        "id"     : "asset.forget",
+        "label"  : "Forget…",
+        "tooltip": "Stop using haruki portrait: drop its pins, shot pictures and approved portrait. The next run draws a new one.",
+        "on"     : "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "asset.forget",
+          "props": {
+            "hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing",
+      "key": "cmd:asset.recover#eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "widgetPath": "history/asset-recover~25787301",
+      "offer": {
+        "id"     : "asset.recover",
+        "label"  : "Recover",
+        "tooltip": "Bring back eeeeeeee from the save that removed it, with its manifest row and the record of the task that made it.",
+        "on"     : "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "ok"     : false,
+        "refusal": {
+          "reason": "eeeeeeee is not in git history, so it cannot be recovered. Forget it instead, and the next run plans what it was for again."
+        }
+      },
+      "effects": [
+        {
+          "id": "asset.recover"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing",
+      "key": "cmd:asset.forget#eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "widgetPath": "history/asset-forget~d73d8f58",
+      "offer": {
+        "id"     : "asset.forget",
+        "label"  : "Forget…",
+        "tooltip": "Stop using eeeeeeee: drop its pins, shot pictures and approved portrait. The next run draws a new one.",
+        "on"     : "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "asset.forget",
+          "props": {
+            "hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing-none",
+      "key"       : "fx:pane.view#sync",
+      "widgetPath": "history/pane-view~c82b206b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Shared copies",
+        "tooltip": "List the shared copy: what each has, and send or get saves.",
+        "on"     : "sync",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing-none",
+      "key"       : "fx:pane.view#who",
+      "widgetPath": "history/pane-view~f13e92ac",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Everyone",
+        "tooltip": "Narrow the list to the saves one kind of maker made: you, the agent, the pipeline, or the app’s housekeeping.",
+        "on"     : "who",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing-none",
+      "key"       : "fx:pane.view#path",
+      "widgetPath": "history/pane-view~f5ccb359",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Any file",
+        "tooltip": "Right-click a file or a scene in the document tree and choose Show history to narrow the list to it.",
+        "on"     : "path",
+        "ok"     : false,
+        "refusal": {
+          "reason": "The list is not narrowed to a file."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing-none",
+      "key"       : "fx:pane.view#checkpoints",
+      "widgetPath": "history/pane-view~0d942c3d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Checkpoints",
+        "tooltip": "Show only the saves you named as a checkpoint.",
+        "on"     : "checkpoints",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing-none",
+      "key"       : "fx:pane.view#text",
+      "widgetPath": "history/pane-view~34dea019",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Search saves…",
+        "tooltip": "Narrow the list to the saves whose description contains these words.",
+        "on"     : "text",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing-none",
+      "key"       : "fx:pane.view#clear",
+      "widgetPath": "history/pane-view~13059a85",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Show all",
+        "tooltip": "Take every filter off and show every save.",
+        "on"     : "clear",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing narrows the list."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing-none",
+      "key"       : "cmd:git.checkpoint",
+      "widgetPath": "history/git-checkpoint~21f68b45",
+      "offer": {
+        "id"     : "git.checkpoint",
+        "label"  : "⚑ Checkpoint…",
+        "tooltip": "Name the latest save as a checkpoint, so it can be found and gone back to later.",
+        "form"   : true,
+        "ok"     : true,
+        "props": {
+          "repo": "project",
+          "sha" : ""
+        }
+      },
+      "effects": [
+        {
+          "id"   : "git.checkpoint",
+          "props": {
+            "repo": "project",
+            "sha" : ""
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing-none",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "history/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "⟳",
+        "tooltip": "Read the saves again, in case something changed outside the app.",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing-none",
+      "key"       : "fx:pane.view#save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "widgetPath": "history/pane-view~c2eee052",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Moved line L4 into rooftop",
+        "tooltip": "Show what this save changed. You · 1 file · aaaaaaa",
+        "on"     : "save/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing-none",
+      "key"       : "fx:pane.view#save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "widgetPath": "history/pane-view~946708b2",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Agent turn: make the rooftop scene tenser",
+        "tooltip": "Show what this save changed. Agent · 3 files · bbbbbbb",
+        "on"     : "save/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing-none",
+      "key"       : "fx:pane.view#save/cccccccccccccccccccccccccccccccccccccccc",
+      "widgetPath": "history/pane-view~442baf92",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Generated 14 assets",
+        "tooltip": "Show what this save changed. Pipeline · 1 file · ccccccc",
+        "on"     : "save/cccccccccccccccccccccccccccccccccccccccc",
+        "ok"     : true,
+        "props": {
+          "what": "scope"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "scope"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "history",
+      "module"    : "history",
+      "situation" : "missing-none",
+      "key"       : "fx:pane.view#more",
+      "widgetPath": "history/pane-view~bab7f4e9",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Earlier saves",
+        "tooltip": "Read the next fifty saves.",
+        "on"     : "more",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Every save is listed."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
       "editor"    : "inspector",
       "module"    : "inspector",
       "situation" : "no-task",
@@ -50470,6 +51221,10 @@
     },
     {
       "match": "agent.threads",
+      "why": "A read whose answer feeds an editor or the agent; the palette and CDP run it, no control does."
+    },
+    {
+      "match": "asset.missing",
       "why": "A read whose answer feeds an editor or the agent; the palette and CDP run it, no control does."
     },
     {

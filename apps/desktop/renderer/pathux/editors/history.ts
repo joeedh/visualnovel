@@ -32,6 +32,15 @@ import {
   listedRemotes,
   logsAction,
   MAKER_SAYS,
+  forgetAction,
+  MISSING_GROUPS,
+  MISSING_LEAD,
+  missingAction,
+  missingSentence,
+  NONE_MISSING,
+  recoverAction,
+  showsMissing,
+  usedBySentence,
   moreAction,
   NO_FILTER,
   NO_REMOTES,
@@ -83,6 +92,8 @@ import {
   type FileKind,
   type HistoryPage,
   type Maker,
+  type MissingPicture,
+  type MissingReport,
   type RepoEntry,
   type RepoRole,
   type RepoStatus,
@@ -168,6 +179,10 @@ export class HistoryEditor extends VnEditor {
    * survives a status poll that rebuilds the view around it.
    */
   private readonly resolveField = el('textarea', 'hs-resolve-field') as HTMLTextAreaElement;
+  /** The pictures `asset.missing` last reported. */
+  private missing: MissingPicture[] = [];
+  /** Whether the author asked for the missing-pictures view. */
+  private missingOpen = false;
 
   /** What `ui.docPath` was the last time the pane looked, so only a change narrows the list. */
   private seenDocPath: string | undefined;
@@ -321,6 +336,8 @@ export class HistoryEditor extends VnEditor {
       syncOpen: this.syncOpen,
       ...(this.syncing === undefined ? {} : { syncing: this.syncing }),
       ...(this.editing === undefined ? {} : { editing: this.editing }),
+      missing    : this.missing,
+      missingOpen: this.missingOpen,
     };
   }
 
@@ -379,9 +396,13 @@ export class HistoryEditor extends VnEditor {
     const mine = ++this.token;
     this.beginReading();
     try {
-      const repos = await this.read<RepoEntry[]>('git.repos');
+      const [repos, missing] = await Promise.all([
+        this.read<RepoEntry[]>('git.repos'),
+        this.read<MissingReport>('asset.missing'),
+      ]);
       if (mine !== this.token) return;
       this.repos = repos;
+      this.missing = missing.pictures;
       if (!repos.some((entry) => entry.role === this.repo)) this.repo = 'project';
       // A file inside the story bible's own repository is listed from there
       const resolved = resolvePath(repos, this.filter.path);
@@ -547,14 +568,16 @@ export class HistoryEditor extends VnEditor {
     }
     this.selected = sha;
     this.showingDetail = true;
-    // A row asks for its changes, so the sync view gives the column back
+    // Selecting a save shows its changes, so the sync and missing-pictures views close
     this.syncOpen = false;
+    this.missingOpen = false;
     this.rebuild();
     void this.askVerdicts(['git.takeBack', 'git.goBack']);
   }
 
   private toggleSync(): void {
     this.syncOpen = !this.syncOpen;
+    if (this.syncOpen) this.missingOpen = false;
     this.showingDetail = this.syncOpen || this.selected !== undefined;
     this.rebuild();
   }
@@ -562,6 +585,14 @@ export class HistoryEditor extends VnEditor {
   /** Bring the conflict view to the front, which in the one-column layout means the detail. */
   private showConflicts(): void {
     this.syncOpen = false;
+    this.showingDetail = true;
+    this.rebuild();
+  }
+
+  /** Bring the missing pictures to the front, which in the one-column layout means the detail. */
+  private showMissing(): void {
+    this.syncOpen = false;
+    this.missingOpen = true;
     this.showingDetail = true;
     this.rebuild();
   }
@@ -722,6 +753,8 @@ export class HistoryEditor extends VnEditor {
       this.syncing,
       this.editing,
       this.draft === undefined ? '' : 'draft',
+      this.missingOpen,
+      ...this.missing.map((p) => `${p.hash}:${p.unrecoverable === undefined}`),
     ].join('|');
   }
 
@@ -901,13 +934,26 @@ export class HistoryEditor extends VnEditor {
   /**
    * The cause the worktree is not clean, with the paths where there are some, and the one thing
    * to do about it: save edits made outside the app under a message, decide a stopped sync's
-   * collisions, or give up a take-back a terminal left part way.
+   * collisions, or give up a take-back a terminal left part way. Above it, while pictures are
+   * missing, a line saying how many with Show them.
    */
   private rebuildStatus(state: HistoryState): void {
     this.status.textContent = '';
+    const anchors = redrawing('history', 'status');
+    const lost = missingSentence(state.missing);
+    if (lost !== '') {
+      const line = el('div', 'hs-status-line');
+      line.appendChild(el('span', '', lost));
+      const offer = missingAction();
+      line.appendChild(
+        anchors.act(el('button', 'hs-btn', offer.label) as HTMLButtonElement, offer, () =>
+          this.showMissing(),
+        ),
+      );
+      this.status.appendChild(line);
+    }
     const sentence = statusSentence(state.status);
     if (sentence === '') return;
-    const anchors = redrawing('history', 'status');
     const line = el('div', 'hs-status-line');
     line.appendChild(el('span', '', sentence));
     for (const offer of statusControls(state)) {
@@ -946,6 +992,10 @@ export class HistoryEditor extends VnEditor {
     }
     if (state.syncOpen) {
       this.detail.appendChild(this.syncView(state, anchors));
+      return;
+    }
+    if (showsMissing(state)) {
+      this.detail.appendChild(this.missingView(state, anchors));
       return;
     }
 
@@ -1195,6 +1245,58 @@ export class HistoryEditor extends VnEditor {
     const foot = el('div', 'hs-head-acts');
     foot.appendChild(form(addRemoteAction(state)));
     view.appendChild(foot);
+    return view;
+  }
+
+  /**
+   * The pictures the project uses whose files are gone, grouped by whether git history holds them.
+   * Each row names the slot it filled and what still uses it; Recover brings it back from git, and
+   * Forget opens the form that drops every reference to it.
+   */
+  private missingView(state: HistoryState, anchors: AnchorPass): HTMLElement {
+    const view = el('div', 'hs-conflict hs-missing');
+    view.appendChild(el('div', 'hs-head-subject', 'Missing pictures'));
+    if (state.missing.length === 0) {
+      view.appendChild(el('div', 'hs-head-line', NONE_MISSING));
+      return view;
+    }
+    view.appendChild(el('div', 'hs-head-line', MISSING_LEAD));
+    const list = el('div', 'hs-files');
+    const groups = [
+      [MISSING_GROUPS.recoverable, state.missing.filter((p) => p.unrecoverable === undefined)],
+      [MISSING_GROUPS.lost, state.missing.filter((p) => p.unrecoverable !== undefined)],
+    ] as const;
+    for (const [heading, pictures] of groups) {
+      if (pictures.length === 0) continue;
+      list.appendChild(el('div', 'hs-kind', heading));
+      for (const picture of pictures) {
+        const row = el('div', 'hs-conflict-row');
+        const what = el('span', 'hs-missing-what');
+        what.append(
+          el('span', 'hs-file-path', picture.label),
+          el('span', 'hs-missing-used', usedBySentence(picture)),
+        );
+        row.appendChild(what);
+        const acts = el('span', 'hs-conflict-acts');
+        const recover = recoverAction(state, picture);
+        acts.appendChild(
+          anchors.act(
+            el('button', 'hs-btn', recover.label) as HTMLButtonElement,
+            recover,
+            (action) => void exec(action.id, action.props as Record<string, string>),
+          ),
+        );
+        const forget = forgetAction(state, picture);
+        acts.appendChild(
+          anchors.act(el('button', 'hs-btn', forget.label) as HTMLButtonElement, forget, (action) =>
+            openCommandDialog(action.id, action.props),
+          ),
+        );
+        row.appendChild(acts);
+        list.appendChild(row);
+      }
+    }
+    view.appendChild(list);
     return view;
   }
 

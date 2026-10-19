@@ -856,6 +856,10 @@ const SKIPS: Record<string, string> = {
   'art.setModel'           : 'keys off an asset hash, the same way art.setNotes does',
   'asset.accept'           : 'accepts a take a run has to have produced and a slot has to want',
   'asset.adopt'            : 'points a slot at bytes already in the store',
+  'asset.forget':
+    'needs a picture git history removed; tests/missing.test.ts checks what it writes against its affects',
+  'asset.recover':
+    'needs a picture git history removed; tests/missing.test.ts checks what it writes against its affects',
   'asset.regenerate'       : 'requeues a planned task and then runs it for real',
   'pipeline.draw'          : 'requeues one slot’s task and then runs it for real',
   'asset.replace'          : 'replaces a slot from a file outside the workspace',

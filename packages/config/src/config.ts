@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { projectConfig, type Lettering, type ProjectConfig, type ShotForm } from '@vn/types';
@@ -59,7 +60,8 @@ export function withStartScene(text: string, sceneId: string): string {
  * The top-level `project.yaml` keys a command may write one at a time, each a scalar the
  * splice below can replace. `start` has its own splice in {@link withStartScene}.
  */
-export type ConfigTextKey = 'art_style' | 'storyboard_notes' | 'lettering' | 'shot_form';
+export type ConfigTextKey =
+  'art_style' | 'storyboard_notes' | 'lettering' | 'shot_form' | 'project_id';
 /** The top-level `project.yaml` flags the app writes one at a time. */
 export type ConfigFlagKey = 'bubble_names';
 
@@ -284,6 +286,18 @@ async function setConfigKey(
   }
   await writeFileAtomic(path, after);
   return true;
+}
+
+/**
+ * Answers the project's `project_id`, writing one first when it has none. Also answers whether it
+ * wrote `project.yaml`, so a caller knows to report the file.
+ */
+export async function ensureProjectId(projectDir: string): Promise<{ id: string; wrote: boolean }> {
+  const config = await loadConfig(projectDir);
+  if (config.project_id) return { id: config.project_id, wrote: false };
+  const id = randomBytes(8).toString('hex');
+  await setConfigKey(projectDir, 'project_id', id);
+  return { id, wrote: true };
 }
 
 /** Set a project's art style. */

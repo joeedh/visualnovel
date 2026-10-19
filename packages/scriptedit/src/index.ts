@@ -49,11 +49,13 @@ export {
   CHARACTER_LINES,
   deleteCharacter,
   deleteLocation,
+  forgetPicture,
   spokenBy,
   type ChangedShot,
   type CharacterLines,
   type EntityOp,
   type EntityWorld,
+  type ForgetOp,
   type Mention,
   type SheetEdit,
 } from './entitydelete.js';

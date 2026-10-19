@@ -10,6 +10,7 @@ import {
   logTask,
   logTombstone,
   makeTask,
+  restoreDone,
   TaskGraph,
   tombstoneOf,
 } from '../index.js';
@@ -148,6 +149,29 @@ describe('tombstones in tasks.jsonl', () => {
       expect(old.get(portrait.hash)?.output).toBeUndefined();
       expect(old.topoOrder()).toEqual([portrait.hash, sheet.hash]);
       expect(old.ready().map((t) => t.hash)).toEqual([portrait.hash]);
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+describe('restoreDone', () => {
+  it('puts back the done record a tombstone replaced, stamped, and leaves a live task alone', async () => {
+    const { paths, cleanup } = await project();
+    try {
+      const { portrait, sheet } = portraitAndSheet();
+      await logTask(paths, portrait);
+      await logTask(paths, sheet);
+      await logTombstone(paths, portrait);
+
+      const at = new Date('2026-10-19T00:00:00Z');
+      const restored = await restoreDone(paths, 'asset1', at);
+      expect(restored).toEqual([{ ...portrait, restored: at.toISOString() }]);
+      expect((await loadGraph(paths)).get(portrait.hash)).toMatchObject({
+        status: 'done',
+        output: 'asset1',
+      });
+      expect(await restoreDone(paths, 'asset1', at)).toEqual([]);
     } finally {
       await cleanup();
     }

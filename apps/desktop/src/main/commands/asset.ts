@@ -423,6 +423,70 @@ export const assetCollect = define({
   },
 });
 
+export const assetMissing = define({
+  id         : 'asset.missing',
+  title      : 'Pictures the project has lost',
+  description:
+    'The pictures something in the project still names whose file or manifest row is gone, as ' +
+    'the last check found them, with what names each one and whether git history can bring it ' +
+    'back.',
+  notes:
+    'Answers the last check without running it. The check runs on open, when a window gains focus after a repository’s `HEAD` moved, after a pull, a take-back, a go-back, a file restore, an undo and a redo.',
+  mutating   : false,
+  props      : {},
+  async run(_props, ctx) {
+    const report = ctx.host.session.missingPart.report;
+    const n = report.pictures.length;
+    return {
+      message:
+        n === 0 ? 'No picture is missing.' : `${n} picture${n === 1 ? ' is' : 's are'} missing.`,
+      data   : report,
+    };
+  },
+});
+
+export const assetRecover = define({
+  id         : 'asset.recover',
+  title      : 'Bring back a lost picture',
+  description:
+    'Put a missing picture back from git history: its file, its manifest row and the record ' +
+    'of the task that made it, so the next run does not draw it again. Refused when git ' +
+    'history does not hold the file.',
+  notes:
+    'Finds the save that deleted the object in the repository that holds it, and restores the bytes and the row from its parent. A base picture also gets this project’s claim in `assets/claims/`, and `project.yaml` gets a `project_id` the first time. Not undoable: undo would roll the documents back but not the bytes or the task log.',
+  mutating   : true,
+  affects    : ['assets', 'vngen/build', 'vngen/state', 'project.yaml'],
+  undoable   : false,
+  props      : { hash: prop.string('the missing picture') },
+  async check({ hash }, ctx) {
+    return verdict(await ctx.host.session.missingPart.previewRecover(hash));
+  },
+  async run({ hash }, ctx) {
+    return ctx.host.session.missingPart.recover(hash);
+  },
+});
+
+export const assetForget = define({
+  id         : 'asset.forget',
+  title      : 'Stop using a lost picture',
+  description:
+    'Drop every reference to a missing picture: pins on it, shots showing it, an approved ' +
+    'portrait, and the record of the task that made it. The next run plans what it was for ' +
+    'again.',
+  notes:
+    'Pins and shot images go by the entity-delete rules; an approved portrait is cleared on the sheet directly, since the unapprove path refuses once the row is gone. Also removes rows whose file is gone and this project’s claim. Not undoable, for the same reason as `asset.recover`.',
+  mutating   : true,
+  affects    : ['characters', 'locations', 'wiki', 'assets', 'vngen'],
+  undoable   : false,
+  confirm    : true,
+  props      : { hash: prop.string('the missing picture') },
+  async check({ hash }, ctx) {
+    return verdict(await ctx.host.session.missingPart.previewForget(hash));
+  },
+  async run({ hash }, ctx) {
+    return ctx.host.session.missingPart.forget(hash);
+  },
+});
 /**
  * Why a requeue runs the pipeline on its own, or `''` when it does not.
  *

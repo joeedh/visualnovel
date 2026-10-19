@@ -769,6 +769,7 @@ import { HistoryPart, type HistoryFilter } from './history.js';
 import { RecoveryPart } from './recovery.js';
 import { SyncPart, type SyncOutcome } from './sync.js';
 import { CollectPart, type CollectResult } from './collect.js';
+import { MissingPart } from './missing.js';
 import type { Change, Checkpoint, Diff, HistoryEntry, MySide } from '@vn/git';
 import type { CheckResult } from '@vn/commands';
 import type {
@@ -916,6 +917,7 @@ export class WorkspaceSession {
   readonly recoveryPart: RecoveryPart = new RecoveryPart(this);
   readonly syncPart: SyncPart = new SyncPart(this);
   readonly collectPart: CollectPart = new CollectPart(this);
+  readonly missingPart: MissingPart = new MissingPart(this);
 
   constructor(
     readonly dir: string,

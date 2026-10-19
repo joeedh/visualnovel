@@ -33,6 +33,7 @@ import { liveDocs } from '../workspace/livedocs.js';
 import type { AppContext } from './context.js';
 import { cliArgs, MOCK } from '../bootstrap/cliargs.js';
 import { getSession } from './sessionaccess.js';
+import { checkMissing } from './assetcheck.js';
 import { focusFrontWindow, loadWindow, nameWindows } from './windowmanager.js';
 import { APPROVAL_ORDER_KEY } from '../../shared/sessionkeys.js';
 
@@ -225,6 +226,8 @@ export async function openRepos(ctx: AppContext): Promise<void> {
   await noticeMissingGit();
   await noticeSubmodules(submodules);
   await noticeMissingKeys(ctx);
+  // Detached: it validates the whole project, and the window should not wait on that
+  void checkMissing(ctx, 'always');
 }
 
 /** Files what `adoptSubmodules` found, once per sentence, as `noticeMissingGit` does. */

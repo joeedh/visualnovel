@@ -1283,6 +1283,11 @@ export interface EventChannels {
    */
   'approval:changed': Record<string, never>;
   /**
+   * The missing-picture check found a different set from the last one. Carries nothing: the History
+   * pane rereads `asset.missing`.
+   */
+  'missing:changed': Record<string, never>;
+  /**
    * Documents were written, by any route — a command from any source, or an agent tool call.
    * Broadcast, so a window learns about a write another window made; deriving this from a
    * command's own outcome only ever told the window that ran it.

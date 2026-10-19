@@ -18,6 +18,7 @@ side of syncing is [`../guides/collaborating.md`](../guides/collaborating.md).
 - [Sync is a rebase](#sync-is-a-rebase)
 - [The conflict view](#the-conflict-view)
     - [Deciding a file by editing it](#deciding-a-file-by-editing-it)
+- [Missing pictures](#missing-pictures)
 - [The app's logs during a rebase](#the-apps-logs-during-a-rebase)
 - [From the agent](#from-the-agent)
 - [Testing](#testing)
@@ -36,7 +37,9 @@ side of syncing is [`../guides/collaborating.md`](../guides/collaborating.md).
   (`HistoryPart`: the reads, paged and memoized), `session/recovery.ts` (`RecoveryPart`:
   the six local writes) and `session/sync.ts` (`SyncPart`: the ten sync writes). The
   commands in `main/commands/git.ts` are thin wrappers over them. `assets/gitprotocol.ts`
-  serves `vngit://` for a blob at a save.
+  serves `vngit://` for a blob at a save. `session/missing.ts` (`MissingPart`) is the
+  missing-picture check with `asset.recover` and `asset.forget`, and
+  `runtime/assetcheck.ts` decides when the check runs.
 - The renderer is `renderer/pathux/editors/history.ts` (`HistoryEditor`, area name
   `history`) with the diff renderers under `editors/history/diffs/`, the pure rules in
   `renderer/rules/history.ts` (every control is an `Offer`, so `ux-model.json` records
@@ -242,6 +245,50 @@ Which files can wait on a decision follows from the project's merge attributes
 layout, a graph and a thread log are `-merge`, so a collision there is whole-file; the two
 state logs are `merge=union`, so they never wait; everything else git merges by line, and
 a scene may hold markers.
+
+## Missing pictures
+
+A picture goes missing when history moves under a collection: a delete taken back after
+the collection that removed its art, a pull of another clone's collection, a save gone
+back to. The project still names the picture, but its file or its manifest row is gone.
+
+- **The check** is `validateProject`'s blocking `missing-output`, `missing-file` and
+  `missing-row` findings, grouped by hash. For each, `MissingPart` looks for the save that
+  deleted the object (`git log -1 --diff-filter=D -- <objects>/<hash>.*`) in the
+  repository holding that object folder, the innermost when `assets/` is its own, and for
+  the row in the manifest at that save's parent. The label is the row's slot
+  (`assetSlotLabel`), or the hash's first eight characters with no row anywhere.
+- **When it runs:**
+    - after a project opens, behind the sweep, detached;
+    - when a window gains focus and some repository's `HEAD` differs from
+      `.vnstudio/assetcheck.json`, which is ignored by its own `.gitignore` line;
+    - after `git.pull`, `git.continueSync`, `git.takeBack`, `git.goBack`,
+      `git.restoreFile`, an undo or a redo (from `onRecord`, debounced), and after the
+      agent's `git_revert` and `git_restore`;
+    - after a recover or a forget, from inside the command.
+- A changed set pushes `missing:changed`, which reloads every pane; a newly missing
+  picture also files a notification linking the History pane. `asset.missing` answers the
+  last check without running one.
+- **The view** takes the detail column when the author asks for it with "Show them" on the
+  status line, or when nothing is selected and pictures are missing, which is how the
+  notification lands. A stopped sync and the sync view keep the column first. Rows are
+  grouped by whether git history holds the picture, each reading its label with "Used by
+  …" beneath, since there is no picture to show.
+- **Recover** (`asset.recover`) writes the bytes and the row back from that parent save,
+  appends a copy of the last `done` record whose output is the hash, stamped `restored`,
+  when the task's latest record is a tombstone, and for a base picture adds this project's
+  claim (below). Refused by name when git history does not hold the file; the row's
+  Recover is greyed with that sentence.
+- **Forget** (`asset.forget`, a confirmed form) drops every pin on the picture and every
+  `Shot.image` naming it by the entity-delete rules (`forgetPicture`), clears an
+  `approved_portrait:` and its `status` on the sheet directly, removes rows whose file is
+  gone, drops this project's claim, and tombstones the task that made it.
+- Neither is undoable: each writes bytes and the task log, which the undo snapshot does
+  not hold.
+- **Claims.** A shared `assets/` holds `claims/<hash>/<project_id>`, one empty file per
+  project using a base picture; the collector keeps a picture another project claims and
+  drops this project's own claim once it stops using one.
+  [`repos-and-commits.md`](repos-and-commits.md#the-claims-ledger) has the ledger.
 
 ## The app's logs during a rebase
 

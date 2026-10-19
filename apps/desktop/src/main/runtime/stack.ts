@@ -24,6 +24,16 @@ import { workspaceIsTaken } from '../bootstrap/instancelock.js';
 import type { ExecOutcome, UiEffect } from '../../shared/ipc.js';
 import type { WindowId } from './windows.js';
 import { liveDocs } from '../workspace/livedocs.js';
+import { scheduleCheck } from './assetcheck.js';
+
+/** The commands that move a worktree to other saves, after which a picture may be missing. */
+const MOVES_HISTORY = new Set([
+  'git.pull',
+  'git.continueSync',
+  'git.takeBack',
+  'git.goBack',
+  'git.restoreFile',
+]);
 
 export function getStack(ctx: AppContext): CommandStack<CommandHost> {
   if (!ctx.stack) {
@@ -157,6 +167,8 @@ export function getStack(ctx: AppContext): CommandStack<CommandHost> {
         // the critical path of every command, including a one-line prose edit.
         // An undo restores files nobody edited through a command, so it counts as well.
         if (record.stack || record.mutating) scheduleApprovals(ctx);
+        if (record.stack || (record.status === 'ok' && MOVES_HISTORY.has(record.id)))
+          scheduleCheck(ctx);
         // Broadcast, because an undo is a fact about the worktree rather than an answer to one
         // window. Ctrl+Z in window B deliberately undoes an edit made in window A: undo restores
         // a snapshot of the whole worktree, so a per-window stack would misstate what it restores.

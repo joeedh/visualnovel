@@ -2,11 +2,11 @@
  * The History pane's situations: one repository with saves of every maker, two repositories with
  * a filter on, a project inside a foreign repository, an empty history, a save with a diff open
  * in each width, the recovery controls answered by their checks, the sync view with and without
- * shared copies, a sync stopped on a collision, and one still running.
+ * shared copies, a sync stopped on a collision, one still running, and pictures gone missing.
  */
 import { situations } from './situation.js';
 import { NO_FILTER, type HistoryState } from '../history.js';
-import type { RepoStatus, Save } from '../../../src/shared/history.js';
+import type { MissingPicture, RepoStatus, Save } from '../../../src/shared/history.js';
 
 const PROJECT = { role: 'project' as const, root: 'C:/stories/rooftop', owned: true };
 const WIKI = { role: 'wiki' as const, root: 'C:/stories/rooftop/wiki', owned: true };
@@ -111,6 +111,21 @@ const SAVES: Save[] = [
   }),
 ];
 
+const MISSING: MissingPicture[] = [
+  {
+    hash     : 'd'.repeat(64),
+    label    : 'haruki portrait',
+    referrers: ['character haruki', `portrait task ${'1'.repeat(8)}`],
+  },
+  {
+    hash         : 'e'.repeat(64),
+    label        : 'eeeeeeee',
+    referrers    : ['shot s3-2'],
+    unrecoverable:
+      'eeeeeeee is not in git history, so it cannot be recovered. Forget it instead, and the next run plans what it was for again.',
+  },
+];
+
 export const SITUATIONS = situations<HistoryState>(
   {
     name : 'one-repo',
@@ -128,6 +143,8 @@ export const SITUATIONS = situations<HistoryState>(
       showingDetail: false,
       verdicts     : {},
       syncOpen     : false,
+      missing      : [],
+      missingOpen  : false,
     },
   },
   {
@@ -145,6 +162,8 @@ export const SITUATIONS = situations<HistoryState>(
       showingDetail: false,
       verdicts     : {},
       syncOpen     : false,
+      missing      : [],
+      missingOpen  : false,
     },
   },
   {
@@ -164,6 +183,8 @@ export const SITUATIONS = situations<HistoryState>(
       showingDetail: false,
       verdicts     : {},
       syncOpen     : false,
+      missing      : [],
+      missingOpen  : false,
     },
   },
   {
@@ -183,6 +204,8 @@ export const SITUATIONS = situations<HistoryState>(
       showingDetail: false,
       verdicts     : {},
       syncOpen     : false,
+      missing      : [],
+      missingOpen  : false,
     },
   },
   {
@@ -201,6 +224,8 @@ export const SITUATIONS = situations<HistoryState>(
       showingDetail: true,
       verdicts     : {},
       syncOpen     : false,
+      missing      : [],
+      missingOpen  : false,
     },
   },
   {
@@ -218,6 +243,8 @@ export const SITUATIONS = situations<HistoryState>(
       showingDetail: false,
       verdicts     : {},
       syncOpen     : false,
+      missing      : [],
+      missingOpen  : false,
     },
   },
   {
@@ -234,6 +261,8 @@ export const SITUATIONS = situations<HistoryState>(
       showingDetail: false,
       verdicts     : {},
       syncOpen     : false,
+      missing      : [],
+      missingOpen  : false,
     },
   },
   {
@@ -268,6 +297,8 @@ export const SITUATIONS = situations<HistoryState>(
         },
       },
       syncOpen     : false,
+      missing      : [],
+      missingOpen  : false,
     },
   },
   {
@@ -286,6 +317,8 @@ export const SITUATIONS = situations<HistoryState>(
       showingDetail: false,
       verdicts     : {},
       syncOpen     : false,
+      missing      : [],
+      missingOpen  : false,
       undoBlocked  : "git.takeBack(repo='project' sha='aaaaaaa')",
     },
   },
@@ -305,6 +338,8 @@ export const SITUATIONS = situations<HistoryState>(
       showingDetail: false,
       verdicts     : {},
       syncOpen     : false,
+      missing      : [],
+      missingOpen  : false,
     },
   },
   {
@@ -343,6 +378,8 @@ export const SITUATIONS = situations<HistoryState>(
         },
       },
       syncOpen     : true,
+      missing      : [],
+      missingOpen  : false,
     },
   },
   {
@@ -360,6 +397,8 @@ export const SITUATIONS = situations<HistoryState>(
       showingDetail: false,
       verdicts     : {},
       syncOpen     : true,
+      missing      : [],
+      missingOpen  : false,
     },
   },
   {
@@ -378,6 +417,8 @@ export const SITUATIONS = situations<HistoryState>(
       showingDetail: false,
       verdicts     : {},
       syncOpen     : false,
+      missing      : [],
+      missingOpen  : false,
     },
   },
   {
@@ -396,6 +437,8 @@ export const SITUATIONS = situations<HistoryState>(
       showingDetail: false,
       verdicts     : {},
       syncOpen     : false,
+      missing      : [],
+      missingOpen  : false,
       editing      : 'scenes/rooftop.fountain',
     },
   },
@@ -423,6 +466,8 @@ export const SITUATIONS = situations<HistoryState>(
       showingDetail: false,
       verdicts     : {},
       syncOpen     : false,
+      missing      : [],
+      missingOpen  : false,
     },
   },
   {
@@ -441,7 +486,47 @@ export const SITUATIONS = situations<HistoryState>(
       showingDetail: false,
       verdicts     : {},
       syncOpen     : true,
+      missing      : [],
+      missingOpen  : false,
       syncing      : 'pull',
+    },
+  },
+  {
+    name : 'missing',
+    why: 'Two pictures the project uses are gone and nothing is selected, so the detail column lists them: the portrait git history holds offers Recover, the shot frame it does not refuses Recover with the reason and offers only Forget; the status line offers Show them.',
+    state: {
+      repos        : [PROJECT],
+      repo         : 'project',
+      filter       : NO_FILTER,
+      status       : CLEAN,
+      saves        : SAVES,
+      next         : null,
+      logsOpen     : false,
+      size         : 'large',
+      showingDetail: false,
+      verdicts     : {},
+      syncOpen     : false,
+      missing      : MISSING,
+      missingOpen  : false,
+    },
+  },
+  {
+    name : 'missing-none',
+    why: 'The view was asked for and the last check found nothing, so it says so and offers no row.',
+    state: {
+      repos        : [PROJECT],
+      repo         : 'project',
+      filter       : NO_FILTER,
+      status       : CLEAN,
+      saves        : SAVES,
+      next         : null,
+      logsOpen     : false,
+      size         : 'large',
+      showingDetail: false,
+      verdicts     : {},
+      syncOpen     : false,
+      missing      : [],
+      missingOpen  : true,
     },
   },
 );

@@ -260,3 +260,28 @@ async function aheadBehind(git: Git): Promise<[number | null, number | null]> {
   const s = await git.branchStatus();
   return [s.ahead, s.behind];
 }
+
+describe('lastDeletion and lastMention', () => {
+  it('finds the save that deleted a file a glob names, and the one that last changed a line', async () => {
+    const { git, dir, cleanup } = await tempRepo();
+    try {
+      await write(dir, 'objects/ab12.png', 'bytes');
+      await write(dir, 'manifest.json', '{"assets":["ab12"]}\n');
+      await git.commit({ message: 'Add', paths: ['-A'] });
+      expect(await git.lastDeletion('objects/ab12.*')).toBeNull();
+      await fs.rm(join(dir, 'objects/ab12.png'));
+      await write(dir, 'manifest.json', '{"assets":[]}\n');
+      const removed = (await git.commit({ message: 'Remove', paths: ['-A'] }))!;
+
+      expect(await git.lastDeletion('objects/ab12.*')).toEqual({
+        sha : removed,
+        path: 'objects/ab12.png',
+      });
+      expect(await git.lastDeletion('objects/cd34.*')).toBeNull();
+      expect(await git.lastMention('ab12', 'manifest.json')).toBe(removed);
+      expect(await git.blob(`${removed}^`, 'objects/ab12.png')).toEqual(Buffer.from('bytes'));
+    } finally {
+      await cleanup();
+    }
+  });
+});
