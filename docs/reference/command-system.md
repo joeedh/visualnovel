@@ -11,6 +11,7 @@
     - [`CommandRecord`](#commandrecord)
     - [Every mutating command declares what it may touch](#every-mutating-command-declares-what-it-may-touch)
     - [Undo is opt-in, and rests on content-addressed snapshots](#undo-is-opt-in-and-rests-on-content-addressed-snapshots)
+    - [A sidecar keeps what the snapshot cannot](#a-sidecar-keeps-what-the-snapshot-cannot)
     - [Checkpoints group several commands into one undo point](#checkpoints-group-several-commands-into-one-undo-point)
     - [Commit-on-save is the journal's sibling](#commit-on-save-is-the-journals-sibling)
 - [The registered commands](#the-registered-commands)
@@ -401,7 +402,7 @@ original is written up in full in
 - **`undo.changed` comes from a measurement, not from a command's report.** `undo.changed`
   compares the two trees, while `written` records what a command said it wrote. Two equal
   tree hashes prove that nothing changed. A `changed: false` record is walked past, so a
-  no-op edit never becomes the undo point.
+  no-op edit never becomes the undo point, unless it carries a sidecar (below).
 - **Undo refuses on drift.** Undo hashes the worktree first. If that tree is not the
   candidate's `post` tree, something changed since the command ran, and undo declines by
   name rather than discarding it.
@@ -415,6 +416,55 @@ place, and a file that nobody edited keeps its mtime.
 
 Undo and redo each append their own `CommandRecord` tagged `stack`, so `commands.jsonl`
 records every command that touched the worktree.
+
+### A sidecar keeps what the snapshot cannot
+
+Undo is not snapshot-only. A command whose writes the snapshot cannot hold — media, rows
+in `vngen/build/manifest.json`, the task log — may declare `sidecar`
+(`packages/commands/src/command.ts`). `asset.collect` is the one command that does.
+
+- **The token.** `run` returns `sidecar: <token>` in its output, and the stack stores it
+  on the record. `asset.collect`'s token names its holding folder under
+  `vngen/state/collected/`. A `run` that returns `noUndo` instead leaves no undo point at
+  all, so Undo is disabled, naming the command (`asset.collect` with `keepForUndo` off).
+- **Phases.** `beforeRestore` and `afterRestore` run on either side of the snapshot
+  restore, in both directions, and each returns the paths it wrote. Those paths join the
+  undo or redo record's `written`, and the record's `target` names the command it moved
+  across, so the panes and `commands.jsonl` see what moved.
+- **A sidecar never writes the document class.** A restore writes only the paths whose
+  hashes differ between the checked tree and the target, so a document a sidecar wrote
+  would survive the restore unnoticed.
+- **Never walked past.** A collection that removes only project-root frames changes
+  nothing in the snapshot, so its record carries `changed: false`. `undoCandidate` stops
+  at a record with a sidecar anyway; otherwise undo would skip it and undo the delete
+  before it.
+- **Idempotent, and recorded when it stops.** A phase skips what is already done. When a
+  phase or the restore throws part way, the stack writes an error record ("Undo of …
+  stopped part way.") listing what did move. Running the undo again finds the tree already
+  at the far side, skips the restore, and runs the phases to the end.
+- **Release.** `release` gives up what the token keeps, at the first of these:
+    - the journal drops the record's snapshots (`UndoJournal.prune` answers the seqs it
+      dropped);
+    - a later mutating command with no undo point is recorded, since undo cannot reach
+      past it (`pipeline.run`, `agent.run`, `gengraph.run`, the `git.*` commands);
+    - the record was undone and a fresh act clears the redo stack;
+    - `dispose()`, before the workspace changes.
+- **Quit releases nothing.** Quitting only flushes commits under a deadline; the app
+  deletes every leftover holding folder on the next open, in `openRepos`, after the
+  single-instance lock. `vnauthor` never deletes them, so it cannot destroy a running
+  app's undo.
+- **Why `asset.collect` passes the `restorable` rule.** It declares
+  `affects: ['assets', 'vngen/build', 'vngen/state']`. `assets` is in the snapshot (only
+  `assets/objects` is excluded), for `assets/manifest.json`, the one file it writes that
+  the snapshot holds. The pictures under `assets/` are media, which the snapshot skips,
+  and are the sidecar's to restore.
+- **Guards the drift check cannot give.** `vngen/state` is excluded from the snapshot, so
+  `asset.collect`'s phases check the task log themselves: undo re-appends a task's record
+  only while its latest record is still the collection's tombstone, redo tombstones it
+  only while its latest record is the one the collection replaced, and neither moves a
+  file onto a path holding different bytes. Otherwise the phase refuses by name before
+  writing. A terminal `vngen run` or a `vnauthor` between the collection and its undo is
+  what this catches.
 
 ### Checkpoints group several commands into one undo point
 

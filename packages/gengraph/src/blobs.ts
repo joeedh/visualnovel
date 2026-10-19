@@ -6,6 +6,20 @@ import { exists, join, sha256, writeFileAtomic } from '@vn/util';
 import { graphBlobDir, graphBlobFile } from './paths.js';
 import type { GenBlobRef, GenBlobService } from './services.js';
 
+/** Lists the blobs one graph holds, by file name. A graph with no blob folder holds none. */
+export async function listGraphBlobs(paths: ProjectPaths, slug: string): Promise<GenBlobRef[]> {
+  let names: string[];
+  try {
+    names = await fs.readdir(graphBlobDir(paths, slug));
+  } catch {
+    return [];
+  }
+  return names.flatMap((name) => {
+    const dot = name.indexOf('.');
+    return dot > 0 ? [{ hash: name.slice(0, dot), ext: name.slice(dot + 1) }] : [];
+  });
+}
+
 /**
  * A graph's blob store, one file per content hash under `state/graphs/<slug>/`.
  * Addressing by content means a re-run that produces identical bytes costs no disk and

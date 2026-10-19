@@ -21,6 +21,7 @@ import {
 } from './characters.js';
 import { editSceneTool, editBranchesTool } from './scenes.js';
 import { deleteCharacterTool, deleteFilesTool, deleteLocationTool } from './deletes.js';
+import { collectUnusedAssetsTool } from './collect.js';
 import { setOutfitTool, setVariantTool } from './outfits.js';
 import {
   readShotsTool,
@@ -78,6 +79,7 @@ export const ALL_TOOLS: Tool[] = [
   deleteCharacterTool,
   deleteLocationTool,
   deleteFilesTool,
+  collectUnusedAssetsTool,
   setOutfitTool,
   setVariantTool,
   readShotsTool,

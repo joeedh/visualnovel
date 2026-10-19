@@ -110,6 +110,41 @@ These implement the system design in
     - Plans:
       [`../plans/archive/INDEX.md#adopting-an-uploaded-asset`](../plans/archive/INDEX.md#adopting-an-uploaded-asset),
       [`../plans/archive/INDEX.md#on-demand-concept-images`](../plans/archive/INDEX.md#on-demand-concept-images).
+- **The collector removes what nothing uses, and decides liveness per row.**
+    - `collectProject` (`packages/gengraph/src/collect.ts`, over `planAssetCollection` in
+      `@vn/artgen`) decides everything before anything is written; `applyCollection`
+      applies it through a mover the host passes. `asset.collect` and the agent's
+      `collect_unused_assets` are its two callers.
+    - A row is kept when any of these holds:
+        - its `satisfies` binds it to a slot the collector enumerates: plates and
+          portraits as the slot graph enumerates them, sheets for every outfit a character
+          defines or a scene names, and shots from **every** persisted storyboard, so an
+          unwired scene keeps its frames;
+        - its hash is the output, or an attempt's output, of an enumerated slot's task;
+        - an `approved_portrait:`, a `Shot.image`, a pin, or a graph document or group
+          definition names it (graph files are scanned as raw text for hashes, so one that
+          does not parse still protects what it names);
+        - it is a `concept` or a `reference`;
+        - a kept row lists it in `refs`, transitively. Every take of a kept slot is kept,
+          so a deleted character's portrait stays while an older frame drawn from it does.
+    - A base row is a candidate only when its `sourceTask` is in this project's
+      `tasks.jsonl`, so a shared `assets/` never loses another project's pictures.
+    - It also removes files in an object folder no row lists, the journal and blob folder
+      of a graph whose document is gone, and blobs no journal record names (with
+      `oldAnswers`, blobs only superseded records name).
+    - It tombstones each task whose output it removes, and each `failed` or `needs_human`
+      slot task no enumerated slot names.
+    - It refuses while an input fails to load, because a sheet that does not parse drops
+      its entity from the model and that entity's art would look unused. A storyboard that
+      does not parse keeps its scene's frames.
+    - Order: tombstones, then both manifests, then the files, then graph state. A crash
+      after the tombstones leaves files no row lists, which the next collection removes;
+      base-row candidacy reads the raw latest records, tombstones included, so it can.
+    - Undoing one re-appends each tombstoned task's replaced record with
+      `restored: <ISO time>` added, which the graph reads as the record itself. How the
+      desktop holds the files for that is in
+      [`command-system.md`](command-system.md#a-sidecar-keeps-what-the-snapshot-cannot).
+    - Plan: [`../plans/deleting-things.md`](../plans/deleting-things.md), stage 7.
 
 ## Scheduling
 

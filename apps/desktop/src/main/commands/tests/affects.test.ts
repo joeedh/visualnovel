@@ -446,6 +446,8 @@ const OTHER_RUNS: Run[] = [
   // Last, so nothing after them names a character or location that is gone
   { id: 'character.delete', props: { character: 'haruki', lines: 'narrate', mergeInto: '' } },
   { id: 'location.delete', props: { location: 'hall', replaceWith: 'classroom' } },
+  // After the deletes, so it has something of theirs to remove
+  { id: 'asset.collect', props: {} },
 ];
 
 /**

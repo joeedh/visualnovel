@@ -428,8 +428,12 @@ implementation. The testkit passes a mock.
   in.
 - **The cache is per node, not per graph.** An answer is filed under the node's key, so a
   node deleted and recreated, a pasted copy or a re-made group instance starts with no
-  answers although its blobs are on disk. Widening it to a shared store, and pruning the
-  journal or the blob store, are both unbuilt.
+  answers although its blobs are on disk. Widening it to a shared store is unbuilt.
+- **Pruning is the collector's.** `asset.collect` removes a blob no journal record names
+  (with `oldAnswers`, also one only superseded records name), and the journal and blob
+  folder of a graph whose document is gone. A blob a graph document or group definition
+  names is kept, as is one a kept asset row names. See
+  [`pipeline-contracts.md`](pipeline-contracts.md#identity-and-storage).
 - **The runner wrapper** lives in `@vn/pipeline` (`graphrun.ts`). When a task's slot is
   bound, the runner seeds the Derived-prompt and Task-refs inputs from the task, executes
   the graph against the slot's active output, and writes the terminal picture through the
@@ -580,7 +584,8 @@ message that a refused run would report.
 - **`run` is the one confirm-gated command here.** It quotes the estimate and cannot be
   undone, because it writes a journal record and a blob under `state/`. `delete` also
   confirms, and leaves the journal and blobs in place, because they record runs that
-  happened.
+  happened. The next `asset.collect` removes them, so a slug reused after a collection
+  starts with no journal; one reused before it inherits the old journal's answers.
 
 ## Groups
 

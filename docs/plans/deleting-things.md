@@ -697,6 +697,60 @@ static (`confirm: true`). The second depends on the project.
     - `docs/reference/gen-graphs.md`: pruning is built, and a reused slug no longer
       inherits a journal once the collector has run.
 
+- **As built (2026-10-19)**, where it differs from the above:
+    - **The collector refuses while an input fails to load** (`unreadInputs`: any error
+      diagnostic, or an `entity_file` one). A sheet that does not parse drops its entity
+      from the model, and that entity's art would otherwise be collected. A storyboard
+      that does not parse keeps its scene's frames instead of refusing.
+    - **Graph documents and group definitions are scanned as raw text** for 64-hex hashes
+      rather than parsed, so a file that does not parse still protects what it names.
+    - **The blob listing is a function**, `listGraphBlobs(paths, slug)`, not a method on
+      `GenBlobService`, so no blob store implementation changed.
+    - **Files no row lists are collected too**, unless something names their hash. That is
+      what a crash between the manifest writes and the file moves leaves, and base-row
+      candidacy reads `latestRecords` (tombstones included), so the next collection can
+      finish such a crash.
+    - **Tombstones for `failed` or `needs_human` tasks** are limited to the four slot task
+      kinds (portrait, location_ref, model_sheet, shot_image).
+    - **Every take of an enumerated slot is kept, and so is anything a kept row `refs`.**
+      A deleted character's current portrait therefore stays while an older frame drawn
+      from it does; the desktop test asserts that what stays is named in a kept row's
+      `refs`.
+    - **Git restorability** is `uncommitted(files)` in `@vn/git`, one `ls-tree` per folder
+      against `HEAD`, rather than `git cat-file -e` per file. A project with no repository
+      counts every file as uncommitted.
+    - **The holding folder** is `vngen/state/collected/<16 hex>/` with each removed path
+      at its workspace-relative place, and `plan.json` holding `rows` per root, the
+      replaced `tombstones`, and `moved` in order. New projects get the ignore line in
+      `DEFAULT_IGNORES`; existing ones get it from `writeScaffolding`, whose commit
+      subject became "Ignore the window arrangement and held collections". `openRepos`
+      deletes leftovers through `clearHeldCollections`.
+    - **Undo's `afterRestore` also reinstates base rows** a restore did not bring back, so
+      a base folder the snapshot does not hold is covered. The guards compare records by
+      canonical JSON with the `restored` stamp ignored.
+    - **A sidecar move that stops part way** is detected on the next attempt by checking
+      the far side of the point: arriving there skips the restore and runs the phases.
+    - **`asset.collect` refuses on a pipeline run or an approve-and-generate pass**, not
+      on an agent turn. The agent's tool reaches the same refusal through
+      `ToolContext.busy`, which the desktop answers from those two and `vnauthor` leaves
+      absent.
+    - **The agent's card** is worded by the tool: `Tool.confirmText(args, ctx)` plans the
+      collection without writing, and the loop passes the sentence to `confirmAction` as
+      `message`. `confirmDetail` keeps a fallback sentence for when planning fails.
+    - **The form's verdict** (consulted with the frontend-design skill) is one line each,
+      largest fact first: the total and bytes; the split per root when both have some; how
+      many pictures no commit holds; what they were drawn for, grouped by owner (shots of
+      a scene, sheets or portraits of a character, plates of a location, files no manifest
+      lists), the four largest groups then "and N more groups"; the task records and graph
+      state; then how long undo lasts and where the bytes are held until then. The full
+      path list is the run's `written`, not the form.
+    - **The menu entry** is **Remove unused art…** on the Assets branch heading, the only
+      entry there. Every command is in the palette already, so no `paletteonly.ts` entry
+      was added.
+    - `UndoJournal.prune` answers the seqs it dropped. The stack tracks records that hold
+      a sidecar token in its own `held` map and releases through it, so a record released
+      once is never released twice.
+
 ### Stage 8: recovering from a missing picture
 
 - **Project identity.** A `project_id` field in `project.yaml`: a random id, written once

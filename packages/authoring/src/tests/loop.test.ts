@@ -662,6 +662,46 @@ describe('always-confirm gate', () => {
     }
   });
 
+  it('puts a confirm-gated tool’s own question on the card, beside its arguments', async () => {
+    const { ctx, cleanup } = await tempProject();
+    try {
+      const asked: unknown[] = [];
+      const permission = scriptPermission({
+        confirmAction: (_tool, args) => {
+          asked.push(args);
+          return Promise.resolve(false);
+        },
+      });
+      const sweeper: Tool<{ deep?: boolean }> = {
+        name       : 'sweep',
+        description: 'removes what nothing uses',
+        mutating   : true,
+        confirm    : true,
+        args       : z.object({ deep: z.boolean().optional() }),
+        confirmText: (a) => Promise.resolve(`Remove 3 pictures${a.deep ? ' and more' : ''}.`),
+        run        : () => Promise.resolve({ ok: true, output: 'swept' }),
+      };
+      const backend = new StructuredAgentBackend(
+        new RecordedChatBackend('mock', [
+          JSON.stringify({ tool: 'sweep', args: { deep: true } }),
+          JSON.stringify({ final: 'Left it.' }),
+        ]),
+      );
+      const agent = new Agent({
+        backend,
+        ctx,
+        permission,
+        system  : 'SYS',
+        mode    : 'execute',
+        registry: createRegistry([sweeper as Tool]),
+      });
+      await agent.run('sweep');
+      expect(asked).toEqual([{ deep: true, message: 'Remove 3 pictures and more.' }]);
+    } finally {
+      await cleanup();
+    }
+  });
+
   it('asks a deleted scene’s removal through edit_scene, and a no writes nothing', async () => {
     const { ctx, dir, cleanup } = await tempProject();
     try {

@@ -17,6 +17,7 @@ import {
 import { sameApprovals } from '../workspace/approvals.js';
 import { acquireWorkspace, focusOwner } from '../bootstrap/instancelock.js';
 import {
+  clearHeldCollections,
   commitScaffolding,
   ensureRepo,
   openWorkspace,
@@ -196,6 +197,9 @@ export async function openRepos(ctx: AppContext): Promise<void> {
   // an explicit `workspace.open` — a project reached from the recents list or `VN_PROJECT` gets
   // its layout templates, its merge attribute and its ignore line here.
   const scaffolded = await writeScaffolding(root);
+  // After the instance lock, so a `vnauthor` started beside a running app cannot delete that
+  // app's held collections
+  await clearHeldCollections(root);
   let submodules: SubmoduleNotice[] = [];
   // Everything down to the sweep spawns `git`, and on a machine without it the first call
   // would throw before any window exists, so the app would never appear. Branching on the

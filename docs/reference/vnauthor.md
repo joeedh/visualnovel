@@ -120,11 +120,14 @@ project guidance that the agent follows.
       while the retries run, and clears it as soon as the turn ends either way. A
       notification states whether the model responded or the retries were given up.
       `vnauthor` prints the same three lines inline.
-- **Always-confirm.** `git_revert`/`git_restore`, the three delete tools and the first run
-  of a script-bearing skill route through the permission gate regardless of mode. A tool
-  that asks part-way through its run (`ctx.confirm`) asks under its own name: the loop
-  binds the calling tool to each call's context (`contextFor`), so the desktop card and
-  the terminal prompt name `edit_scene` or `approve_assets` rather than `run_skill`.
+- **Always-confirm.** `git_revert`/`git_restore`, the three delete tools,
+  `collect_unused_assets` and the first run of a script-bearing skill route through the
+  permission gate regardless of mode. A tool that asks part-way through its run
+  (`ctx.confirm`) asks under its own name: the loop binds the calling tool to each call's
+  context (`contextFor`), so the desktop card and the terminal prompt name `edit_scene` or
+  `approve_assets` rather than `run_skill`. A `confirm` tool whose arguments cannot say
+  what it would do words its own question (`Tool.confirmText`), which reaches the host as
+  the arguments' `message`.
 - **A shortlist question is a separate tool that reaches the same permission call.**
   `ask_choice` sits beside `ask_user` in `CONTROL_TOOLS` under a distinct name, because it
   corrects a model asking an open question when the sensible answers can be listed. Both
@@ -218,7 +221,7 @@ project guidance that the agent follows.
 
 ## Tools
 
-`packages/authoring/src/tools/` holds the registry of 57 tools. **M** marks
+`packages/authoring/src/tools/` holds the registry of 58 tools. **M** marks
 `mutating: true` (plan mode blocks it); **C** marks `confirm: true` (it always goes
 through the permission gate, in every mode).
 
@@ -229,7 +232,7 @@ through the permission gate, in every mode).
 | Entity editing      | `create_character` **M**, `create_location` **M**, `edit_character` **M**, `edit_location` **M**                                                                                                                             |
 | Scene prose         | `edit_scene` **M**                                                                                                                                                                                                           |
 | Branch wiring       | `edit_branches` **M**                                                                                                                                                                                                        |
-| Deleting            | `delete_character` **M C**, `delete_location` **M C**, `delete_files` **M C**                                                                                                                                                |
+| Deleting            | `delete_character` **M C**, `delete_location` **M C**, `delete_files` **M C**, `collect_unused_assets` **M C**                                                                                                               |
 | Wardrobe            | `set_outfit` **M**, `set_variant` **M**                                                                                                                                                                                      |
 | Storyboards         | `read_shots`, `set_coverage` **M**, `set_panels` **M**, `propose_storyboard` (costs a model call, writes nothing; follows `shot_form`, and `form` overrides it for one scene when the author asks), `write_storyboard` **M** |
 | Art (concepts)      | `list_images`, `generate_image` **M C**, `edit_image` **M C**                                                                                                                                                                |
@@ -346,6 +349,14 @@ the agent makes them with its other tools first.
   reply, as the desktop's check lists it.
 - **None of these can be undone from the app.** The agent's writes reach history only
   through its commit, so the cards say that only git history brings the files back.
+- **`collect_unused_assets`** runs `asset.collect`'s rule
+  ([`pipeline-contracts.md`](pipeline-contracts.md#identity-and-storage)) and deletes what
+  it removes at once, in both hosts: agent tools never reach the command registry, so
+  there is no undo point to hold the files for. Its card gives the counts per root, how
+  many pictures no commit holds, and what they were drawn for. It refuses while the host
+  reports a pipeline run (`ToolContext.busy`, which the desktop fills and `vnauthor`
+  leaves absent) and while an input fails to load. Every removed path is in its `written`.
+  It never touches `vngen/state/collected/`, which belongs to a running app's undo.
 
 ### Generation graphs
 

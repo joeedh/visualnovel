@@ -4,7 +4,15 @@ import { join } from 'node:path';
 import type { AnyTask, ImageParams } from '@vn/types';
 import { readJsonl } from '@vn/util';
 import { ProjectPaths } from '@vn/store';
-import { loadGraph, logTask, logTombstone, makeTask, TaskGraph } from '../index.js';
+import {
+  latestRecords,
+  loadGraph,
+  logTask,
+  logTombstone,
+  makeTask,
+  TaskGraph,
+  tombstoneOf,
+} from '../index.js';
 
 const params: ImageParams = { modelId: 'm' };
 
@@ -78,6 +86,38 @@ describe('tombstones in tasks.jsonl', () => {
       const graph = await loadGraph(paths);
       expect(graph.get(portrait.hash)?.status).toBe('pending');
       expect(graph.ready().map((t) => t.hash)).toEqual([portrait.hash]);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('keeps the tombstone as the latest record, which the graph leaves out', async () => {
+    const { paths, cleanup } = await project();
+    try {
+      const { portrait, sheet } = portraitAndSheet();
+      await logTask(paths, portrait);
+      await logTask(paths, sheet);
+      await logTombstone(paths, portrait);
+
+      const latest = await latestRecords(paths);
+      expect(latest.get(portrait.hash)).toEqual(tombstoneOf(portrait));
+      expect(latest.get(sheet.hash)).toEqual(sheet);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  // What undoing a collection appends: the replaced record, marked, which the graph reads as done
+  it('brings a task back when the replaced record is appended again with restored', async () => {
+    const { paths, cleanup } = await project();
+    try {
+      const { portrait } = portraitAndSheet();
+      await logTask(paths, portrait);
+      await logTombstone(paths, portrait);
+      await logTask(paths, { ...portrait, restored: '2026-10-19T00:00:00.000Z' } as AnyTask);
+
+      const graph = await loadGraph(paths);
+      expect(graph.get(portrait.hash)).toMatchObject({ status: 'done', output: 'asset1' });
     } finally {
       await cleanup();
     }

@@ -671,7 +671,7 @@ describe('scaffolding', () => {
     await commitScaffolding(root, wrote);
     const git = openGit(root);
     expect((await git.log()).map((c) => c.subject)).toEqual([
-      'Ignore the remembered window arrangement',
+      'Ignore the window arrangement and held collections',
       'Add the shipped layout templates',
       'Set how git merges the state logs',
       'Existing project files',

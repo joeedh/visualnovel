@@ -629,8 +629,11 @@ describe('menuFor', () => {
     });
   });
 
-  it('offers the assets branch nothing — an asset is rendered, never authored from a name', () => {
-    expect(menuFor(node('branch:assets', 'branch'))).toEqual([]);
+  // An asset is rendered, never authored from a name, so there is no New entry to offer
+  it('offers the assets branch only the removal of what nothing uses, as a form', () => {
+    expect(menuFor(node('branch:assets', 'branch'))).toMatchObject([
+      { label: 'Remove unused art…', id: 'asset.collect', form: true },
+    ]);
   });
 
   it('offers an asset all four acts and lets each command refuse itself', () => {

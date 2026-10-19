@@ -1054,7 +1054,10 @@ export class Agent {
     }
 
     if (tool.confirm) {
-      const confirmed = await this.permission.confirmAction(name, parsed.data);
+      const sentence = await tool.confirmText?.(parsed.data, this.contextFor(name));
+      const asked =
+        sentence === undefined ? parsed.data : { ...(parsed.data as object), message: sentence };
+      const confirmed = await this.permission.confirmAction(name, asked);
       if (!confirmed) {
         emit({ type: 'blocked', tool: name, reason: 'user declined confirmation' });
         return `Declined: the user did not confirm "${name}". The action was not performed.`;

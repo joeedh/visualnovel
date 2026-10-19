@@ -735,8 +735,8 @@ export function menuFor(
       ];
     }
     // A branch heading offers a new item of whatever its subtree holds. `wiki` is a place rather
-    // than a heading, and the `wikidir:` nodes are its folders. `assets` offers nothing, since
-    // assets are rendered rather than authored
+    // than a heading, and the `wikidir:` nodes are its folders. `assets` offers only Remove unused
+    // art, since assets are rendered rather than authored
     case 'branch':
       switch (key) {
         case 'story':
@@ -754,6 +754,17 @@ export function menuFor(
           ];
         case 'graphs':
           return [{ label: 'New generation graph…', id: 'gengraph.create', form: true }];
+        case 'assets':
+          return [
+            {
+              label  : 'Remove unused art…',
+              id     : 'asset.collect',
+              form   : true,
+              tooltip:
+                'Remove the pictures nothing in the project uses; the form counts what goes, and ' +
+                'what git cannot bring back, before you confirm.',
+            },
+          ];
         // Two ways to get a skill, and both are forms: the menu can supply neither a name nor a
         // sentence. This is the always-reachable one — the branch is drawn even when empty
         // (`doctree.ts` in main), so the first skill a project ever gets starts here.

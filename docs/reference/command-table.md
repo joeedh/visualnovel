@@ -2,8 +2,8 @@
 
 # Registered commands
 
-227 commands, in 27 namespaces. 139 are `mutating`;
-156 declare a precondition; 86 are undoable; 26 ask
+228 commands, in 27 namespaces. 140 are `mutating`;
+157 declare a precondition; 87 are undoable; 27 ask
 for confirmation.
 
 ✍ mutating ⚠ confirm ↺ undoable ✓ declares a precondition
@@ -40,6 +40,7 @@ for confirmation.
 | `art.setSeed` ✍ ↺ ✓ | `target`, `seed` (default `-1`) | Writes `characters`, `locations`, `wiki`, `vngen/work/shots`. |
 | `asset.accept` ✍ ✓ | `hash` | Writes `assets/manifest.json`, `vngen/build/manifest.json`. `store.accept`, generic across both roots, which sets the row’s `accepted` bit and nothing else — which take the slot holds is `current`, set by `store.hold`. A take the slot no longer holds is refused, naming `asset.restore`. A portrait is refused by name — approving one also writes `character.md` and `approved.png`, which is `gate.approve`. So is a concept: nothing downstream consumes one, so making it count is `art.promote`. And so is an upload — nothing generated it, so there is no work to bless; it counts by being pointed at. A **suspended** asset is refused too, naming what moved. |
 | `asset.adopt` ✍ ⚠ ✓ | `hash`, `slot`, `replace` (default `false`) | Writes `assets/objects`, `assets/manifest.json`, `vngen/build/assets`, `vngen/build/manifest.json`, `vngen/work/shots`, `vngen/state/tasks.jsonl`. Make an asset already in the store the output of the picture a slot names — `plate:cafe/night`, `sheet:aiko/gala/front`, `shot:greet/s2` — so the next run **adopts** it rather than rendering one. The generalization of `art.promote`, which is now one caller of it. A `portrait:` slot is refused by name (approving a look is `gate.approve`), as is an `asset:` one (an upload and a concept are their own identity). Superseding a render that already holds the slot needs `replace`; the old bytes stay in the store either way, and nothing is auto-accepted. |
+| `asset.collect` ✍ ⚠ ↺ ✓ | `oldAnswers` (default `false`), `keepForUndo` (default `true`) | Writes `assets`, `vngen/build`, `vngen/state`. Liveness is per row: a slot the collector enumerates (every storyboard, every outfit), a kept slot task’s outputs, an approved portrait, a shot image, a pin, a graph document, `refs` transitively; concepts and uploads always stay. Removed files move into `vngen/state/collected/<hold>/` until undo can no longer reach the collection, unless `keepForUndo` is off, which deletes at once and leaves no undo point. Refused while a pipeline run is in progress, and while an input does not load. |
 | `asset.export` | `hash` | Save a copy of one asset's bytes outside the project, through the native save dialog. `mutating: false`: nothing in the workspace changes, so there is no commit and no undo point. Cancelling changes nothing. |
 | `asset.info` | `hash` | One asset: label, kind, root, accepted, its task, the prompt it was rendered from, the prompt the builders would write **today**, and the art-notes rungs reaching it. |
 | `asset.list` | — | Every asset in the manifest: hash, extension, kind, display label, whether it is accepted, and the slot it fills. `asset.info` is the detailed read for one. |

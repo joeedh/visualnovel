@@ -374,6 +374,55 @@ export const assetRegenerate = define({
   },
 });
 
+export const assetCollect = define({
+  id         : 'asset.collect',
+  title      : 'Remove unused art',
+  description:
+    'Remove the pictures nothing in the project uses any more, with their manifest rows and ' +
+    'task records, and the run history of deleted generation graphs. Concepts and uploads are ' +
+    'always kept, and so are pictures another project made in a shared assets folder. Undo ' +
+    'brings everything back until the next command that cannot be undone.',
+  notes:
+    'Liveness is per row: a slot the collector enumerates (every storyboard, every outfit), a kept slot task’s outputs, an approved portrait, a shot image, a pin, a graph document, `refs` transitively; concepts and uploads always stay. Removed files move into `vngen/state/collected/<hold>/` until undo can no longer reach the collection, unless `keepForUndo` is off, which deletes at once and leaves no undo point. Refused while a pipeline run is in progress, and while an input does not load.',
+  mutating   : true,
+  // `assets` covers `assets/manifest.json`, the one file it writes that the snapshot holds
+  affects    : ['assets', 'vngen/build', 'vngen/state'],
+  undoable   : true,
+  confirm    : true,
+  props: {
+    oldAnswers: prop.boolean(
+      'also remove graph intermediates that only superseded run records name',
+      { default: false },
+    ),
+    keepForUndo: prop.boolean(
+      'keep the removed files until undo can no longer reach this; off deletes them at once',
+      { default: true },
+    ),
+  },
+  async check(props, ctx) {
+    return verdict(await ctx.host.session.previewCollect(props));
+  },
+  async run(props, ctx) {
+    const result = await ctx.host.session.collectAssets(props);
+    return {
+      message: result.message,
+      written: result.written,
+      ...(result.hold ? { sidecar: result.hold } : props.keepForUndo ? {} : { noUndo: true }),
+    };
+  },
+  sidecar: {
+    beforeRestore(record, direction, ctx) {
+      return ctx.host.session.collectPart.beforeRestore(record.sidecar!, direction);
+    },
+    afterRestore(record, direction, ctx) {
+      return ctx.host.session.collectPart.afterRestore(record.sidecar!, direction);
+    },
+    release(record, ctx) {
+      return ctx.host.session.collectPart.release(record.sidecar!);
+    },
+  },
+});
+
 /**
  * Why a requeue runs the pipeline on its own, or `''` when it does not.
  *

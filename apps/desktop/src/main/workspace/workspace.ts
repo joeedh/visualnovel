@@ -6,7 +6,7 @@
  * tell the shipped sample from a modified copy. The app seeds a scratch copy with its own git
  * repo (gitignored by the parent, so it is not a submodule) and works there.
  */
-import { cp, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import {
   CONFIG_FILENAME,
@@ -53,11 +53,25 @@ const FALLBACK_IDENTITY = { name: 'VN Studio', email: 'vnstudio@localhost' };
 export const SESSION_IGNORE = '.vnstudio/session.json*';
 
 /**
+ * Where a collection keeps what it removed while undo can still reach it, workspace-relative.
+ * Ignored, since `vngen/` is committed and the held files are on their way out of the project.
+ */
+export const COLLECTED_DIR = 'vngen/state/collected';
+
+/**
+ * Deletes every held collection under `root`. Undo history does not outlive a session, so what a
+ * collection kept for it is not needed once a new session opens the project.
+ */
+export async function clearHeldCollections(root: string): Promise<void> {
+  await rm(join(root, COLLECTED_DIR), { recursive: true, force: true });
+}
+
+/**
  * What a project's `.gitignore` starts as. `vngen/` is deliberately absent, because the generated
  * tree is committed on purpose. `keys` is the load-bearing line: commit-on-save runs
  * `git commit -A`, so a key git can see is committed within the second.
  */
-const DEFAULT_IGNORES = ['keys', 'node_modules', '.DS_Store', SESSION_IGNORE];
+const DEFAULT_IGNORES = ['keys', 'node_modules', '.DS_Store', SESSION_IGNORE, `${COLLECTED_DIR}/`];
 
 /**
  * Ensure `root/.gitignore` ignores each of `entries`, appending only what is missing and
@@ -86,16 +100,16 @@ export interface Scaffolding {
 /**
  * Write the files a project needs from this app: the shipped layout templates, the merge
  * attributes (in the project and again in the repository's own `info/attributes`), and the
- * ignore line for the session file. Idempotent, and it writes whatever repo encloses `root` —
- * the files belong to the project either way, and only committing them is somebody else's
- * business.
+ * ignore lines for the session file, held collections and `ASSETCHECK_FILE`. Idempotent, and it
+ * writes whatever repo encloses `root` — the files belong to the project either way, and only
+ * committing them is somebody else's business.
  */
 export async function writeScaffolding(root: string): Promise<Scaffolding> {
   await ensureRepoAttributes(root);
   return {
     layouts   : await ensureLayouts(root),
     attributes: await ensureGitAttributes(root),
-    ignores   : await ensureIgnored(root, [SESSION_IGNORE]),
+    ignores   : await ensureIgnored(root, [SESSION_IGNORE, `${COLLECTED_DIR}/`]),
   };
 }
 
@@ -340,7 +354,7 @@ export async function openWorkspace(root: string): Promise<OpenResult> {
 
 const GITATTRIBUTES_COMMIT = 'Set how git merges the state logs';
 const LAYOUTS_COMMIT = 'Add the shipped layout templates';
-const IGNORES_COMMIT = 'Ignore the remembered window arrangement';
+const IGNORES_COMMIT = 'Ignore the window arrangement and held collections';
 
 /**
  * Every subject the app commits under without a command behind it. The History pane's maker

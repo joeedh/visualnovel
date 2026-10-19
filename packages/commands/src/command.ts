@@ -58,6 +58,50 @@ export interface CommandOutput {
   written?: string[];
   /** Commits this act rewrote, when it rebased unsent saves. See `CommandRecord.rewrote`. */
   rewrote?: Rewrite[];
+  /**
+   * The command's own name for what its sidecar keeps for undo, such as a holding folder. The
+   * stack stores it on the record as `sidecar` and hands the record back to each phase.
+   */
+  sidecar?: string;
+  /**
+   * Leaves this run without an undo point although the command is `undoable`, for a run that
+   * kept nothing undo could restore. Undo then stops at it, naming it, as at any other
+   * command that cannot be undone.
+   */
+  noUndo?: true;
+}
+
+/** Which way an undo point is being crossed. */
+export type UndoDirection = 'undo' | 'redo';
+
+/**
+ * Undo for what a snapshot cannot hold: bytes outside the document class, such as pictures and
+ * the task log. Each phase receives the record the stack stored and the direction, answers the
+ * workspace-relative paths it wrote, and throws a sentence naming what it did and did not move
+ * when it stops part way. Each phase must skip work already done, so running it again finishes
+ * the job.
+ *
+ * A sidecar never writes the document class: the snapshot restore writes only paths whose hashes
+ * differ, so a document a sidecar wrote would go unnoticed.
+ */
+export interface Sidecar<Host = any> {
+  /** Runs after the drift check passes and before the snapshot restore. */
+  beforeRestore(
+    record: CommandRecord,
+    direction: UndoDirection,
+    ctx: CommandContext<Host>,
+  ): Promise<string[]>;
+  /** Runs after the snapshot restore. */
+  afterRestore(
+    record: CommandRecord,
+    direction: UndoDirection,
+    ctx: CommandContext<Host>,
+  ): Promise<string[]>;
+  /**
+   * Gives up what the record's `sidecar` names, once undo can no longer reach the record. It
+   * must not throw for a store already gone.
+   */
+  release(record: CommandRecord, ctx: CommandContext<Host>): Promise<void>;
 }
 
 /**
@@ -143,6 +187,12 @@ export interface Command<M extends PropSpecMap = PropSpecMap, Host = any> {
    */
   check?(props: PropsOf<M>, ctx: CommandContext<Host>): Promise<CheckResult>;
   run(props: PropsOf<M>, ctx: CommandContext<Host>): Promise<CommandOutput>;
+  /**
+   * Undo phases for bytes the snapshot does not hold. Only meaningful on an `undoable` command.
+   * A record carrying a sidecar is never walked past by undo, even when its snapshots are equal,
+   * since what it changed lies outside them.
+   */
+  sidecar?: Sidecar<Host>;
 }
 
 /**
@@ -262,4 +312,8 @@ export interface CommandRecord {
    * hash spaces are not comparable.
    */
   undoScope?: string;
+  /** What this act's sidecar keeps for undo, in the command's own terms (`CommandOutput.sidecar`). */
+  sidecar?: string;
+  /** On an undo or redo record: the id of the command it moved across. */
+  target?: string;
 }

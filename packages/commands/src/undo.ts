@@ -206,9 +206,10 @@ export class UndoJournal {
 
   /**
    * Drop all but the most recent `keep` commands' snapshots, then keep dropping the oldest while
-   * the store is over `maxBytes`, and collect what nothing reaches any more.
+   * the store is over `maxBytes`, and collect what nothing reaches any more. Answers the seqs
+   * whose snapshots it dropped, oldest first.
    */
-  prune(): void {
+  prune(): number[] {
     const seqs = [...new Set(this.taken.map((s) => s.seq))].sort((a, b) => a - b);
     let oldest = Math.max(0, seqs.length - this.keep);
     let bytes = this.forget(seqs[oldest - 1]);
@@ -217,6 +218,7 @@ export class UndoJournal {
       oldest++;
       bytes = this.forget(seqs[oldest - 1]);
     }
+    return seqs.slice(0, oldest);
   }
 
   /**

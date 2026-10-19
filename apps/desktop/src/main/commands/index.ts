@@ -36,6 +36,7 @@ import { artGenerate, artPromote, artRedraw, artSetModel, artSetNotes, artSetSee
 import {
   assetAccept,
   assetAdopt,
+  assetCollect,
   assetExport,
   assetInfo,
   assetList,
@@ -269,6 +270,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     artSetModel,
     assetAccept,
     assetAdopt,
+    assetCollect,
     assetExport,
     assetInfo,
     assetList,

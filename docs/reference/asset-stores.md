@@ -135,6 +135,17 @@ must not erase the first. A manifest written with a single record reads as a one
 list, so every manifest ever written stays readable, and that manifest is rewritten in the
 canonical form. Use `bindsTo(asset, binding)` rather than reading the list directly.
 
+**Each root persists by read-modify-write.** A write re-reads its `manifest.json` under
+the root's write queue and applies only the rows this instance added, changed or removed,
+instead of writing its whole index. The desktop opens a fresh store on almost every read,
+so without this a store opened before a collection (or before its undo) would write the
+removed rows back the next time it persisted anything. Another process can still land a
+write between the read and the atomic rename.
+
+**`AssetRoot.remove(hashes)` and `AssetRoot.reinstate(rows)`** take rows out and put them
+back, and leave the bytes to the caller, so the caller chooses the order. `reinstate`
+skips a row the root already holds. The collector and its undo are the two callers.
+
 ## Three states, because two would cost money
 
 | State         | On disk                                            | Meaning                                                                                                     |
@@ -189,6 +200,12 @@ because a zero-work summary is otherwise indistinguishable from a finished proje
           not parse.
     - One deleted picture is reported once per thing that names it, so a task and its row
       are two findings.
+- `asset.collect` (**Remove unused art…** on the document tree's Assets branch, and the
+  palette) and the agent's `collect_unused_assets` remove the rows and files nothing uses
+  from both roots. Liveness, the order of the writes and the undo are in
+  [`pipeline-contracts.md`](pipeline-contracts.md#identity-and-storage). In a shared
+  `assets/`, a base row is only a candidate when this project's `tasks.jsonl` made it, so
+  another project's pictures are never removed.
 
 ## What this does not do
 
@@ -198,4 +215,3 @@ because a zero-work summary is otherwise indistinguishable from a finished proje
   There is no UI, config key, or path indirection for sharing.
 - **Treat `assets/` as authored input.** Every file in `assets/` is generated art with
   provenance. Hand-drawn references stay in `characters/<id>/refs/`.
-- **Collect garbage.** Unreferenced bytes are not pruned from either root.

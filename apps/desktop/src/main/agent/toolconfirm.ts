@@ -77,6 +77,12 @@ export function confirmDetail(tool: string, args: unknown): string {
           : list.join(', ');
       return `Delete ${shown || 'these files'} now. Only git history brings them back.`;
     }
+    // Shown only when the tool could not plan, since it otherwise words its own question
+    case 'collect_unused_assets':
+      return (
+        'Remove every picture, task record and graph file nothing in the project uses. The ' +
+        'files are deleted now, and the app cannot undo it.'
+      );
     default: {
       const shown = args === undefined ? '' : clip(JSON.stringify(args) ?? '');
       return shown ? `Run ${tool} with ${shown}.` : `Run ${tool}.`;

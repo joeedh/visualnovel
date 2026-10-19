@@ -11,9 +11,10 @@ import { TaskGraph } from './graph.js';
 
 /**
  * One line of the log. `removed` marks a tombstone, which takes the task out of the replayed
- * graph until a later record for the same hash supersedes it.
+ * graph until a later record for the same hash supersedes it. `restored` stamps a record put back
+ * after a tombstone, a copy of the one the tombstone replaced.
  */
-export type TaskRecord = AnyTask & { removed?: true };
+export type TaskRecord = AnyTask & { removed?: true; restored?: string };
 
 /** Append a task's current state as one JSONL record. */
 export async function logTask(paths: ProjectPaths, task: AnyTask): Promise<void> {
@@ -26,14 +27,22 @@ export async function logTask(paths: ProjectPaths, task: AnyTask): Promise<void>
  * as a requeued task, with its `deps`, rather than as a record it cannot order.
  */
 export async function logTombstone(paths: ProjectPaths, task: AnyTask): Promise<void> {
-  const record: TaskRecord = {
-    ...task,
-    status : 'pending',
-    output : undefined,
-    error  : undefined,
-    removed: true,
-  };
-  await appendJsonl(paths.tasksLog, record);
+  await appendJsonl(paths.tasksLog, tombstoneOf(task));
+}
+
+/** Builds the record {@link logTombstone} appends for `task`, as it reads back from the log. */
+export function tombstoneOf(task: AnyTask): TaskRecord {
+  const record: TaskRecord = { ...task, status: 'pending', removed: true };
+  delete record.output;
+  delete record.error;
+  return record;
+}
+
+/** Reads the last record per hash, tombstones included. A missing log has none. */
+export async function latestRecords(paths: ProjectPaths): Promise<Map<string, TaskRecord>> {
+  const latest = new Map<string, TaskRecord>();
+  for (const record of await readJsonl<TaskRecord>(paths.tasksLog)) latest.set(record.hash, record);
+  return latest;
 }
 
 /**
@@ -41,10 +50,9 @@ export async function logTombstone(paths: ProjectPaths, task: AnyTask): Promise<
  * hash whose last record is a tombstone is left out.
  */
 export async function loadGraph(paths: ProjectPaths): Promise<TaskGraph> {
-  const records = await readJsonl<TaskRecord>(paths.tasksLog);
-  const latest = new Map<string, TaskRecord>();
-  for (const record of records) latest.set(record.hash, record);
   const graph = new TaskGraph();
-  for (const task of latest.values()) if (task.removed !== true) graph.add(task);
+  for (const task of (await latestRecords(paths)).values()) {
+    if (task.removed !== true) graph.add(task);
+  }
   return graph;
 }

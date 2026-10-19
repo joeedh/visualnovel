@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-10-19T21:12:53.061Z",
-  "gitSha"       : "ede348ac518e3c0360d8a7a11cb810408b6a0b51",
+  "sweptAt"      : "2026-10-19T22:11:22.389Z",
+  "gitSha"       : "b50d82dd2f7159251bd3593cf10c6b4a52e4703d",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -40,6 +40,7 @@
     "art.setSeed",
     "asset.accept",
     "asset.adopt",
+    "asset.collect",
     "asset.export",
     "asset.info",
     "asset.list",
@@ -258,6 +259,7 @@
     "art.setSeed",
     "asset.accept",
     "asset.adopt",
+    "asset.collect",
     "asset.export",
     "asset.regenerate",
     "asset.replace",
@@ -779,6 +781,12 @@
       "id"    : "agent.run",
       "editor": "documents",
       "when"  : "branch:skills",
+      "form"  : true
+    },
+    {
+      "id"    : "asset.collect",
+      "editor": "documents",
+      "when"  : "branch:assets",
       "form"  : true
     },
     {
@@ -6118,14 +6126,6 @@
     {
       "id"        : "project.setKey",
       "editor"    : "onboarding",
-      "key"       : "cmd:project.setKey#anthropic",
-      "widgetPath": "onboarding/project-setkey~b45dc248",
-      "supplies"  : ["key"],
-      "refused"   : "Paste a key first"
-    },
-    {
-      "id"        : "project.setKey",
-      "editor"    : "onboarding",
       "key"       : "cmd:project.setKey#gemini",
       "widgetPath": "onboarding/project-setkey~83f4e4d5",
       "supplies"  : ["key"],
@@ -6136,6 +6136,14 @@
       "editor"    : "onboarding",
       "key"       : "cmd:project.setKey#openrouter",
       "widgetPath": "onboarding/project-setkey~e338045b",
+      "supplies"  : ["key"],
+      "refused"   : "Paste a key first"
+    },
+    {
+      "id"        : "project.setKey",
+      "editor"    : "onboarding",
+      "key"       : "cmd:project.setKey#anthropic",
+      "widgetPath": "onboarding/project-setkey~b45dc248",
       "supplies"  : ["key"],
       "refused"   : "Paste a key first"
     },

@@ -133,6 +133,11 @@ export interface ToolContext {
    * `git_commit` writes `Vn-Source: agent` on its own, so a bare context still marks its commits.
    */
   trailers?: () => Record<string, string>;
+  /**
+   * Describes what the host is running that a tool must not race with, or answers undefined when
+   * nothing is. The desktop app reports a running pipeline; the REPL leaves it absent.
+   */
+  busy?: () => string | undefined;
 }
 
 /** A registered tool: a typed, gated shim over a reused function. */
@@ -143,6 +148,11 @@ export interface Tool<A = unknown> {
   mutating: boolean;
   /** True if the tool always needs explicit user confirmation (revert/restore/delete). */
   confirm?: boolean;
+  /**
+   * Builds the question a `confirm` tool asks for this call, when the arguments alone cannot say
+   * what it would do. It reads and writes nothing, and the host receives the question as `message`.
+   */
+  confirmText?(args: A, ctx: ToolContext): Promise<string | undefined>;
   args: ZodType<A>;
   run(args: A, ctx: ToolContext): Promise<ToolResult>;
 }

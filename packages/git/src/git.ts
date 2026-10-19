@@ -7,7 +7,7 @@
  */
 import { execFile } from 'node:child_process';
 import { readFile, rm, stat } from 'node:fs/promises';
-import { join, resolve as resolvePath } from 'node:path';
+import { dirname, join, relative, resolve as resolvePath } from 'node:path';
 import { GitError, InProgressError } from './errors.js';
 import {
   CHECKPOINT_FORMAT,
@@ -710,6 +710,16 @@ export class Git {
     return out.split('\n').filter((l) => l.length > 0);
   }
 
+  /**
+   * Lists the files `ref` holds under `dirs`, repository-relative and forward-slashed. The set is
+   * empty when the repository has no such commit yet.
+   */
+  async filesAt(ref: string, dirs: readonly string[]): Promise<Set<string>> {
+    if ((await this.resolve(ref)) === null) return new Set();
+    const out = await this.ok(['ls-tree', '-r', '-z', '--name-only', ref, '--', ...dirs]);
+    return new Set(out.split('\0').filter((l) => l.length > 0));
+  }
+
   /** How many commits `range` (`a..b`) holds, or how many of them touched `path`. */
   async countCommits(range: string, path?: string): Promise<number> {
     const args = ['rev-list', '--count', range];
@@ -1003,4 +1013,29 @@ export class Git {
 /** Convenience constructor mirroring the other packages' factories. */
 export function openGit(root: string): Git {
   return new Git(root);
+}
+
+/**
+ * Finds the files among `files` (absolute) that no `HEAD` holds. Each is asked of the repository
+ * that contains it, so a file under a nested repository is looked up there. A file outside any
+ * repository, or in one with no commit yet, is uncommitted. Each file's folder must exist.
+ */
+export async function uncommitted(files: readonly string[]): Promise<Set<string>> {
+  const out = new Set<string>();
+  const byFolder = new Map<string, string[]>();
+  for (const file of files) {
+    const folder = dirname(file);
+    byFolder.set(folder, [...(byFolder.get(folder) ?? []), file]);
+  }
+  for (const [folder, inFolder] of byFolder) {
+    const top = await new Git(folder).topLevel();
+    if (top === null) {
+      for (const file of inFolder) out.add(file);
+      continue;
+    }
+    const rel = (abs: string): string => relative(top, abs).replace(/\\/g, '/');
+    const held = await new Git(top).filesAt('HEAD', [rel(folder) || '.']).catch(() => new Set());
+    for (const file of inFolder) if (!held.has(rel(file))) out.add(file);
+  }
+  return out;
 }

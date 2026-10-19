@@ -53,6 +53,22 @@ async function renameWithRetry(from: string, to: string): Promise<void> {
   }
 }
 
+/**
+ * Moves a file or a folder, creating the destination's parent. A move between volumes copies and
+ * then deletes, and a destination briefly held open on Windows is retried as `writeFileAtomic`'s
+ * rename is.
+ */
+export async function moveFile(from: string, to: string): Promise<void> {
+  await ensureDir(dirname(to));
+  try {
+    await renameWithRetry(from, to);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'EXDEV') throw err;
+    await fs.cp(from, to, { recursive: true, errorOnExist: true, force: false });
+    await fs.rm(from, { recursive: true, force: true });
+  }
+}
+
 /** Append one JSON record as a line to a JSONL file, creating it if needed. */
 export async function appendJsonl(path: string, record: unknown): Promise<void> {
   await ensureDir(dirname(path));

@@ -171,6 +171,8 @@ export class CommandStack<Host = unknown> {
   private idle: unknown = null;
   private disposed = false;
   private openCheckpoint: OpenCheckpoint | undefined;
+  /** Records whose sidecar still keeps something for undo, by seq. */
+  private readonly held = new Map<number, CommandRecord>();
 
   constructor(private readonly opts: CommandStackOptions<Host>) {}
 
@@ -359,6 +361,8 @@ export class CommandStack<Host = unknown> {
       const output = await command.run(props as never, ctx);
       const post = await this.capture(journal, seq, 'post');
       if (checkpoint && output.written) this.checkWrittenScope(checkpoint, output.written);
+      const point = journal && pre && post && !output.noUndo ? journal.point(pre, post) : undefined;
+      const keeps = Boolean(point && command.sidecar && output.sidecar !== undefined);
       const record: CommandRecord = {
         ...base,
         finishedAt: this.now(),
@@ -367,8 +371,9 @@ export class CommandStack<Host = unknown> {
         ...(output.subject ? { subject: output.subject } : {}),
         ...(output.written ? { written: output.written } : {}),
         ...(output.rewrote ? { rewrote: output.rewrote } : {}),
-        ...(journal && pre && post ? { undo: journal.point(pre, post) } : {}),
+        ...(point ? { undo: point } : {}),
         ...(checkpoint ? { checkpoint: checkpoint.seq } : {}),
+        ...(keeps ? { sidecar: output.sidecar } : {}),
       };
       if (defers) {
         record.commitDeferred = true;
@@ -379,9 +384,17 @@ export class CommandStack<Host = unknown> {
         if (commits.length > 0) record.commits = commits;
       }
       // A fresh act invalidates every redo behind it — the branch they belonged to is gone.
-      if (command.mutating) this.undone.length = 0;
+      if (command.mutating) await this.release(this.undone.splice(0));
       await this.record(record);
-      this.prune(journal);
+      if (command.sidecar && output.sidecar !== undefined) {
+        const holding = { ...record, sidecar: output.sidecar };
+        this.held.set(seq, holding);
+        // This run left no undo point, so nothing can ask for what the sidecar kept
+        if (!keeps) await this.release([holding]);
+      }
+      // Undo cannot reach past a mutating act with no undo point, so nothing before it is needed
+      if (command.mutating && !checkpoint && !point) await this.release([...this.held.values()]);
+      await this.prune(journal);
       return { ok: true, record, data: output.data };
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
@@ -491,7 +504,7 @@ export class CommandStack<Host = unknown> {
       this.closeCheckpoint(oc);
       return { ok: false, error };
     }
-    this.prune(journal);
+    await this.prune(journal);
 
     const { head, dirty } = await this.gitState();
     const record: CommandRecord = {
@@ -582,7 +595,7 @@ export class CommandStack<Host = unknown> {
     // describing content the rollback just erased from disk.
     this.pending = this.pending.filter((r) => r.checkpoint !== seq);
 
-    if (journal) this.prune(journal);
+    if (journal) await this.prune(journal);
   }
 
   /** Runs `failCheckpoint` then forces the same close `endCheckpoint` would run. */
@@ -684,10 +697,11 @@ export class CommandStack<Host = unknown> {
    *
    * Non-mutating records are skipped, so a `view.room` between two edits does not stand in the
    * way, and the stack's own undo/redo entries are skipped because they are history rather
-   * than undo points. A bracketed command that changed nothing (`undo.changed === false`) is
-   * skipped too: its two trees are identical, so reaching past it cannot skip over an edit. A
-   * candidate without snapshots is still returned — undo names it and refuses, rather than
-   * quietly reaching past it to an older edit the author never pointed at.
+   * than undo points. A bracketed command that changed nothing (`undo.changed === false`) and
+   * carries no sidecar is skipped too: its two trees are identical, so reaching past it cannot
+   * skip over an edit. A candidate without snapshots is still
+   * returned — undo names it and refuses, rather than quietly reaching past it to an older edit
+   * the author never pointed at.
    */
   undoCandidate(): CommandRecord | null {
     const undone = new Set(this.undone.map((r) => r.seq));
@@ -695,7 +709,7 @@ export class CommandStack<Host = unknown> {
       const record = this.records[i]!;
       if (!record.mutating || record.status !== 'ok' || record.stack) continue;
       if (record.checkpoint !== undefined) continue;
-      if (record.undo && !record.undo.changed) continue;
+      if (record.undo && !record.undo.changed && record.sidecar === undefined) continue;
       if (undone.has(record.seq)) continue;
       return record;
     }
@@ -786,33 +800,64 @@ export class CommandStack<Host = unknown> {
     const { target, kind } = opts;
     const scope = target.undoScope;
     const startedAt = this.now();
+    const command = target.sidecar === undefined ? undefined : this.opts.registry.get(target.id);
+    const sidecar = command?.sidecar;
+    const ctx = this.contextFor(command?.title ?? target.id, undefined);
     let restored: string[] = [];
+    const moved: string[] = [];
+    let checked;
     try {
-      const checked = scope
+      checked = scope
         ? await journal.checkScoped(scope, opts.point, opts.from)
         : await journal.check(opts.point, opts.from);
-      if (!checked.ok)
+      // A sidecar phase that stopped after the restore left the tree at the far side, and
+      // running the move again finishes the phases rather than refusing on that tree
+      const arrived = !checked.ok && sidecar ? await journal.check(opts.point, opts.to) : undefined;
+      if (!checked.ok && !arrived?.ok)
         return { ok: false, error: `cannot ${kind} ${target.invocation}: ${checked.error}` };
-      const { error, changed } = scope
-        ? await journal.restoreScoped(scope, checked.tree, opts.point, opts.to)
-        : await journal.restore(checked.tree, opts.point, opts.to);
-      // `restoreScoped` reports paths relative to the scope directory; `written` is read as
-      // root-relative everywhere else (a pane's `onWrote` matches it against `graphDocPath`), so a
-      // scoped undo/redo has to carry the scope back on or its write reads as touching nothing.
-      restored = scope ? changed.map((path) => `${scope}/${path}`) : changed;
-      // A restore that failed part way through leaves the worktree between the two trees, so the
-      // failure is reported rather than thrown: a caller told nothing happened would be wrong.
-      if (error !== undefined) return { ok: false, error: `${kind} failed: ${error}` };
+      if (sidecar) moved.push(...(await sidecar.beforeRestore(target, kind, ctx)));
+      if (checked.ok) {
+        const { error, changed } = scope
+          ? await journal.restoreScoped(scope, checked.tree, opts.point, opts.to)
+          : await journal.restore(checked.tree, opts.point, opts.to);
+        // `restoreScoped` reports scope-relative paths, while `written` is read as root-relative
+        // elsewhere (a pane's `onWrote` matches it against `graphDocPath`), so the scope is put
+        // back on
+        restored = scope ? changed.map((path) => `${scope}/${path}`) : changed;
+        // A restore that failed part way leaves the worktree between the two trees. Without a
+        // sidecar the failure is reported; with one it is thrown so the catch records the move
+        if (error !== undefined) {
+          if (!sidecar) return { ok: false, error: `${kind} failed: ${error}` };
+          throw new Error(error);
+        }
+      }
+      if (sidecar) moved.push(...(await sidecar.afterRestore(target, kind, ctx)));
     } catch (err) {
-      return {
-        ok   : false,
-        error: `${kind} failed: ${err instanceof Error ? err.message : String(err)}`,
-      };
+      const error = `${kind} failed: ${err instanceof Error ? err.message : String(err)}`;
+      if (!sidecar) return { ok: false, error };
+      // A sidecar moves bytes nobody can see from the tree, so a stop part way is recorded
+      const record = this.stackRecord(kind, target, startedAt, [...restored, ...moved]);
+      record.status = 'error';
+      record.message = `${kind === 'undo' ? 'Undo' : 'Redo'} of ${target.label ?? target.invocation} stopped part way.`;
+      record.error = error;
+      await this.finishMove(record);
+      return { ok: false, error, record };
     }
     opts.done();
 
-    const { head, dirty } = await this.gitState();
-    const record: CommandRecord = {
+    const record = this.stackRecord(kind, target, startedAt, [...restored, ...moved]);
+    await this.finishMove(record);
+    return { ok: true, record };
+  }
+
+  /** Builds the record of one undo or redo, before git state and commits are known. */
+  private stackRecord(
+    kind: 'undo' | 'redo',
+    target: CommandRecord,
+    startedAt: string,
+    written: string[],
+  ): CommandRecord {
+    return {
       seq       : ++this.seq,
       id        : `stack.${kind}`,
       props     : { target: target.seq },
@@ -820,22 +865,29 @@ export class CommandStack<Host = unknown> {
       source    : 'ui',
       mutating  : true,
       stack     : kind,
-      gitHead   : head,
-      gitDirty  : dirty,
+      target    : target.id,
+      gitHead   : null,
+      gitDirty  : false,
       startedAt,
       finishedAt: this.now(),
       status    : 'ok',
       message   : `${kind === 'undo' ? 'Undid' : 'Redid'} ${target.label ?? target.invocation}.`,
-      // What the restore moved, so a surface following a document hears about an undo on the same
+      // What the move wrote, so a surface following a document hears about an undo on the same
       // channel as the command it is undoing. Absent rather than empty where it moved nothing.
-      ...(restored.length > 0 ? { written: restored } : {}),
+      ...(written.length > 0 ? { written } : {}),
     };
+  }
+
+  /** Stamps git state on an undo or redo record, commits what it moved, and records it. */
+  private async finishMove(record: CommandRecord): Promise<void> {
+    const { head, dirty } = await this.gitState();
+    record.gitHead = head;
+    record.gitDirty = dirty;
     // Commit the restored tree as a new commit rather than moving a branch ref backwards: a
     // reset would discard the commit that is the only record of the save being undone.
     const commits = await this.commit(true, record);
     if (commits.length > 0) record.commits = commits;
     await this.record(record);
-    return { ok: true, record };
   }
 
   private now(): string {
@@ -897,6 +949,7 @@ export class CommandStack<Host = unknown> {
   async dispose(): Promise<CommitResult[]> {
     this.disposed = true;
     this.cancel();
+    await this.release([...this.held.values()]);
     return this.flush();
   }
 
@@ -977,13 +1030,40 @@ export class CommandStack<Host = unknown> {
     }
   }
 
-  /** Housekeeping, so it can never fail the command it follows. */
-  private prune(journal: UndoJournal | undefined): void {
+  /**
+   * Prunes the undo journal without ever failing the command it follows. A record whose snapshots
+   * are dropped can no longer be undone, so what its sidecar keeps is released.
+   */
+  private async prune(journal: UndoJournal | undefined): Promise<void> {
     if (!journal) return;
+    let dropped: number[];
     try {
-      journal.prune();
+      dropped = journal.prune();
     } catch (err) {
       this.opts.context.log('warn', `undo snapshots not pruned: ${String(err)}`);
+      return;
+    }
+    const gone = new Set(dropped);
+    await this.release([...this.held.values()].filter((r) => gone.has(r.seq)));
+  }
+
+  /**
+   * Gives up what each record's sidecar keeps, once undo cannot reach the record. A record
+   * already released is skipped, and a sidecar that throws is logged rather than failing the act
+   * that ended the undo.
+   */
+  private async release(records: readonly CommandRecord[]): Promise<void> {
+    for (const record of records) {
+      const held = this.held.get(record.seq);
+      if (!held) continue;
+      this.held.delete(record.seq);
+      const command = this.opts.registry.get(held.id);
+      if (!command?.sidecar) continue;
+      try {
+        await command.sidecar.release(held, this.contextFor(command.title, undefined));
+      } catch (err) {
+        this.opts.context.log('warn', `${held.invocation}: not released: ${String(err)}`);
+      }
     }
   }
 

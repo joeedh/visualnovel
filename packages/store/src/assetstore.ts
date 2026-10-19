@@ -85,6 +85,8 @@ export function isBaseKind(kind: AssetKind): boolean {
  */
 export class AssetRoot {
   private readonly index = new Map<string, Asset>();
+  /** Hashes this instance added, changed or removed since its last write reached the file. */
+  private readonly dirty = new Set<string>();
   /** Serializes manifest writes so concurrent tasks never race on the atomic rename. */
   private writeQueue: Promise<unknown> = Promise.resolve();
 
@@ -106,9 +108,8 @@ export class AssetRoot {
       found || (await exists(dirname(manifestFile))),
     );
     if (found) {
-      const parsed = JSON.parse(await readText(manifestFile)) as ManifestFile;
-      for (const asset of parsed.assets) {
-        root.index.set(asset.hash, { ...asset, satisfies: asList(asset.satisfies) });
+      for (const asset of parseManifest(await readText(manifestFile))) {
+        root.index.set(asset.hash, asset);
       }
     }
     return root;
@@ -171,7 +172,7 @@ export class AssetRoot {
       // erase the name it was given
       ...((meta.title ?? existing?.title) ? { title: meta.title ?? existing?.title } : {}),
     });
-    await this.persist();
+    await this.persist([hash]);
     return ref;
   }
 
@@ -192,23 +193,24 @@ export class AssetRoot {
   async hold(hash: string, supersede: readonly string[], stamp: TakeStamp = {}): Promise<boolean> {
     const asset = this.index.get(hash);
     if (!asset) return false;
-    let changed = !asset.current;
+    const touched: string[] = [];
+    if (!asset.current) touched.push(hash);
     asset.current = true;
     if (stamp.at !== undefined && asset.at !== stamp.at) {
       asset.at = stamp.at;
-      changed = true;
+      touched.push(hash);
     }
     if (stamp.via !== undefined && asset.via === undefined) {
       asset.via = stamp.via;
-      changed = true;
+      touched.push(hash);
     }
     for (const other of supersede) {
       const sibling = other === hash ? undefined : this.index.get(other);
       if (!sibling?.current) continue;
       sibling.current = false;
-      changed = true;
+      touched.push(other);
     }
-    if (changed) await this.persist();
+    if (touched.length > 0) await this.persist(touched);
     return true;
   }
 
@@ -218,7 +220,7 @@ export class AssetRoot {
     if (!asset) return false;
     if (!asset.accepted) {
       asset.accepted = true;
-      await this.persist();
+      await this.persist([hash]);
     }
     return true;
   }
@@ -232,18 +234,54 @@ export class AssetRoot {
     if (!asset) return false;
     if (asset.accepted) {
       asset.accepted = false;
-      await this.persist();
+      await this.persist([hash]);
     }
     return true;
   }
 
   /**
-   * Persist the manifest, serialized through a single-writer queue. The scheduler runs
-   * tasks in parallel, so without this two `write`s would atomically rename onto
-   * `manifest.json` at once — which fails on Windows (EPERM). Each call also re-snapshots
-   * the live index, so a queued write always flushes the latest state.
+   * Removes rows, leaving their files where they are, and answers the rows removed. A hash this
+   * root does not hold is skipped. Moving or deleting the bytes is the caller's, so the caller
+   * decides which comes first.
    */
-  private persist(): Promise<void> {
+  async remove(hashes: Iterable<string>): Promise<Asset[]> {
+    const removed: Asset[] = [];
+    for (const hash of hashes) {
+      const row = this.index.get(hash);
+      if (!row) continue;
+      this.index.delete(hash);
+      removed.push(row);
+    }
+    if (removed.length > 0) await this.persist(removed.map((r) => r.hash));
+    return removed;
+  }
+
+  /**
+   * Puts rows back as they were recorded, leaving any row this root already holds alone, and
+   * answers the rows written. The bytes are the caller's to put back.
+   */
+  async reinstate(rows: Iterable<Asset>): Promise<Asset[]> {
+    const written: Asset[] = [];
+    for (const row of rows) {
+      if (this.index.has(row.hash)) continue;
+      this.index.set(row.hash, { ...row, satisfies: asList(row.satisfies) });
+      written.push(row);
+    }
+    if (written.length > 0) await this.persist(written.map((r) => r.hash));
+    return written;
+  }
+
+  /**
+   * Persist the rows `touched` names, serialized through a single-writer queue. The scheduler
+   * runs tasks in parallel, so without this two `write`s would atomically rename onto
+   * `manifest.json` at once — which fails on Windows (EPERM).
+   *
+   * Each write re-reads the file and applies only this instance's own changes to it, so an
+   * instance opened before another one removed rows does not bring them back by writing its whole
+   * index. Another process can still land a write between the read and the rename.
+   */
+  private persist(touched: Iterable<string>): Promise<void> {
+    for (const hash of touched) this.dirty.add(hash);
     const run = this.writeQueue.then(
       () => this.writeManifest(),
       () => this.writeManifest(),
@@ -264,42 +302,72 @@ export class AssetRoot {
    * given, goes onto the outfit binding it belongs to. Nothing is written when nothing changed.
    */
   async migrateTakes(decide: (asset: Asset) => TakeEdit): Promise<boolean> {
-    let changed = false;
+    const touched = new Set<string>();
     for (const asset of this.index.values()) {
       const edit = decide(asset);
       if (asset.current !== edit.current) {
         asset.current = edit.current;
-        changed = true;
+        touched.add(asset.hash);
       }
       if (edit.at !== undefined && asset.at === undefined) {
         asset.at = edit.at;
-        changed = true;
+        touched.add(asset.hash);
       }
       if (edit.via !== undefined && asset.via === undefined) {
         asset.via = edit.via;
-        changed = true;
+        touched.add(asset.hash);
       }
       if (edit.angle !== undefined) {
         for (const b of asset.satisfies) {
           if (b.characterId === undefined || b.outfit === undefined || b.angle !== undefined)
             continue;
           b.angle = edit.angle;
-          changed = true;
+          touched.add(asset.hash);
         }
       }
     }
-    if (changed) await this.persist();
-    return changed;
+    if (touched.size > 0) await this.persist(touched);
+    return touched.size > 0;
   }
 
+  /**
+   * Writes the file as it is on disk with this instance's changes applied. A file that is missing
+   * or does not parse is replaced by this instance's whole index.
+   */
   private async writeManifest(): Promise<void> {
-    const file: ManifestFile = {
-      version: 1,
-      assets : [...this.index.values()].sort((a, b) => a.hash.localeCompare(b.hash)),
-    };
-    await ensureDir(dirname(this.manifestFile));
-    await writeFileAtomic(this.manifestFile, JSON.stringify(file, null, 2) + '\n');
+    const changes = [...this.dirty];
+    this.dirty.clear();
+    try {
+      let rows: Map<string, Asset>;
+      try {
+        rows = new Map(
+          parseManifest(await readText(this.manifestFile)).map((a) => [a.hash, a] as const),
+        );
+      } catch {
+        rows = new Map(this.index);
+      }
+      for (const hash of changes) {
+        const row = this.index.get(hash);
+        if (row) rows.set(hash, row);
+        else rows.delete(hash);
+      }
+      const file: ManifestFile = {
+        version: 1,
+        assets : [...rows.values()].sort((a, b) => a.hash.localeCompare(b.hash)),
+      };
+      await ensureDir(dirname(this.manifestFile));
+      await writeFileAtomic(this.manifestFile, JSON.stringify(file, null, 2) + '\n');
+    } catch (err) {
+      for (const hash of changes) this.dirty.add(hash);
+      throw err;
+    }
   }
+}
+
+/** Parses a manifest's rows, normalizing each binding list. Throws on text that does not parse. */
+function parseManifest(text: string): Asset[] {
+  const parsed = JSON.parse(text) as ManifestFile;
+  return parsed.assets.map((asset) => ({ ...asset, satisfies: asList(asset.satisfies) }));
 }
 
 /**

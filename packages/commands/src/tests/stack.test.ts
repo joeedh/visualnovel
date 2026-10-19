@@ -625,8 +625,11 @@ class FakeJournal {
     // The one file this fake's whole world is, so a restore here reports a move like the real one.
     return Promise.resolve({ changed: ['world.md'] });
   }
-  prune(): void {
+  /** Seqs the next prune reports as dropped, as the real journal does once it passes `keep`. */
+  dropNext: number[] = [];
+  prune(): number[] {
     this.pruneCalls++;
+    return this.dropNext.splice(0);
   }
 
   // A checkpoint's scope is one directory inside a document tree this fake models as a single
@@ -1007,6 +1010,187 @@ describe('undo/redo', () => {
     expect(await stack.exec('demo.edit', {}, 'ui')).toMatchObject({ ok: true });
     expect(stack.history()[0]!.undo).toBeUndefined();
     expect(logs.join()).toMatch(/undo snapshot.*no repo/);
+  });
+});
+
+/**
+ * A stack whose `demo.collect` keeps something outside the snapshot, as `asset.collect` does. Each
+ * phase logs the direction and the workspace value it saw, so the order against the restore shows.
+ */
+function sidecarSetup() {
+  const world = { value: 'w0' };
+  const log: string[] = [];
+  const released: string[] = [];
+  const failing = { phase: '' };
+  const registry = new CommandRegistry<Host>();
+  const phase =
+    (name: string) =>
+    (record: CommandRecord, direction: string): Promise<string[]> => {
+      log.push(`${name}:${direction}:${world.value}`);
+      if (failing.phase === name) {
+        failing.phase = '';
+        return Promise.reject(new Error(`${name} stopped`));
+      }
+      return Promise.resolve([`held/${record.sidecar}/${name}`]);
+    };
+  registry.registerAll([
+    define({
+      id         : 'demo.edit',
+      title      : 'Edit',
+      description: 'Set the workspace to a value.',
+      mutating   : true,
+      undoable   : true,
+      props      : { to: prop.string('the new value') },
+      run(props) {
+        world.value = props.to;
+        return Promise.resolve({ message: `set ${props.to}` });
+      },
+    }),
+    define({
+      id         : 'demo.collect',
+      title      : 'Collect',
+      description: 'Moves files aside, and with a value also sets the workspace.',
+      mutating   : true,
+      undoable   : true,
+      props: {
+        to  : prop.string('the new value, or empty to leave the snapshot alone', { default: '' }),
+        keep: prop.boolean('keep for undo', { default: true }),
+      },
+      run(props) {
+        if (props.to) world.value = props.to;
+        return Promise.resolve(
+          props.keep
+            ? { message: 'collected', written: ['a.png'], sidecar: 'h1' }
+            : { message: 'collected', written: ['a.png'], noUndo: true as const },
+        );
+      },
+      sidecar: {
+        beforeRestore: phase('before'),
+        afterRestore : phase('after'),
+        release(record) {
+          released.push(record.sidecar!);
+          return Promise.resolve();
+        },
+      },
+    }),
+    define({
+      id         : 'demo.generate',
+      title      : 'Generate',
+      description: 'Writes generated output only.',
+      mutating   : true,
+      props      : {},
+      run        : () => Promise.resolve({ message: 'generated' }),
+    }),
+  ]);
+  const journal = new FakeJournal(world);
+  const stack = new CommandStack<Host>({
+    registry,
+    context: { root: '/ws', git: fakeGit(), host: { seen: [] }, log: () => {} },
+    journal: journal as unknown as UndoJournal,
+    now    : () => '2026-10-19T00:00:00.000Z',
+  });
+  return { stack, world, journal, log, released, failing };
+}
+
+describe('undo with a sidecar', () => {
+  it('runs beforeRestore and afterRestore on either side of the restore, both ways', async () => {
+    const { stack, log } = sidecarSetup();
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui');
+    await stack.exec('demo.collect', { to: 'w2' }, 'ui');
+    expect(stack.history()[1]).toMatchObject({ sidecar: 'h1', undo: { changed: true } });
+
+    await stack.undo();
+    await stack.redo();
+    expect(log).toEqual(['before:undo:w2', 'after:undo:w1', 'before:redo:w1', 'after:redo:w2']);
+  });
+
+  it('stops undo at a sidecar record whose snapshot changed nothing', async () => {
+    const { stack, world, log } = sidecarSetup();
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui');
+    await stack.exec('demo.collect', {}, 'ui');
+    expect(stack.history()[1]!.undo).toMatchObject({ changed: false });
+
+    expect(stack.undoCandidate()).toMatchObject({ id: 'demo.collect' });
+    await stack.undo();
+    expect(log).toEqual(['before:undo:w1', 'after:undo:w1']);
+    expect(world.value).toBe('w1');
+    expect(stack.undoCandidate()).toMatchObject({ id: 'demo.edit' });
+  });
+
+  it('reports what each phase moved in the undo record, naming the command it undid', async () => {
+    const { stack } = sidecarSetup();
+    await stack.exec('demo.collect', { to: 'w1' }, 'ui');
+    const outcome = await stack.undo();
+    expect(outcome.ok && outcome.record).toMatchObject({
+      id     : 'stack.undo',
+      target : 'demo.collect',
+      written: ['world.md', 'held/h1/before', 'held/h1/after'],
+    });
+  });
+
+  it('releases on a later act that cannot be undone, and not before', async () => {
+    const { stack, released } = sidecarSetup();
+    await stack.exec('demo.collect', { to: 'w1' }, 'ui');
+    await stack.exec('demo.edit', { to: 'w2' }, 'ui');
+    expect(released).toEqual([]);
+    await stack.exec('demo.generate', {}, 'ui');
+    expect(released).toEqual(['h1']);
+  });
+
+  it('releases an undone collection once a fresh act clears the redo stack', async () => {
+    const { stack, released } = sidecarSetup();
+    await stack.exec('demo.collect', { to: 'w1' }, 'ui');
+    await stack.undo();
+    expect(released).toEqual([]);
+    await stack.exec('demo.edit', { to: 'w3' }, 'ui');
+    expect(released).toEqual(['h1']);
+  });
+
+  it('releases when the journal drops the record, and on dispose, but not when quitting flushes commits', async () => {
+    const pruned = sidecarSetup();
+    await pruned.stack.exec('demo.collect', { to: 'w1' }, 'ui');
+    pruned.journal.dropNext = [1];
+    await pruned.stack.exec('demo.edit', { to: 'w2' }, 'ui');
+    expect(pruned.released).toEqual(['h1']);
+
+    const disposed = sidecarSetup();
+    await disposed.stack.exec('demo.collect', { to: 'w1' }, 'ui');
+    await disposed.stack.flushCommits();
+    expect(disposed.released).toEqual([]);
+    await disposed.stack.dispose();
+    expect(disposed.released).toEqual(['h1']);
+  });
+
+  it('leaves no undo point when run asks for none, so undo names it', async () => {
+    const { stack, released } = sidecarSetup();
+    await stack.exec('demo.edit', { to: 'w1' }, 'ui');
+    await stack.exec('demo.collect', { keep: false }, 'ui');
+    expect(stack.history()[1]!.undo).toBeUndefined();
+    expect(stack.undoState()).toMatchObject({
+      undoLabel: null,
+      blocked  : "demo.collect(to='' keep=false)",
+    });
+    expect(released).toEqual([]);
+  });
+
+  it('records a phase that stops part way, and finishes when run again', async () => {
+    const { stack, world, log, failing } = sidecarSetup();
+    await stack.exec('demo.collect', { to: 'w1' }, 'ui');
+    failing.phase = 'after';
+
+    const stopped = await stack.undo();
+    expect(stopped).toMatchObject({ ok: false, error: 'undo failed: after stopped' });
+    expect(!stopped.ok && stopped.record).toMatchObject({
+      status : 'error',
+      message: "Undo of demo.collect(to='w1' keep=true) stopped part way.",
+      written: ['world.md', 'held/h1/before'],
+    });
+    expect(world.value).toBe('w0');
+
+    // The tree is already at the far side, so the second attempt skips the restore
+    expect(await stack.undo()).toMatchObject({ ok: true });
+    expect(log).toEqual(['before:undo:w1', 'after:undo:w0', 'before:undo:w0', 'after:undo:w0']);
+    expect(stack.canRedo()).toBe(true);
   });
 });
 

@@ -18,6 +18,7 @@ export * from './pluginload.js';
 export * from './pricestore.js';
 export * from './modelstore.js';
 export * from './projectcheck.js';
+export * from './collect.js';
 // The manifest is re-exported here as well as from the main entry, because a host that
 // installs a plugin reads its manifest and never touches the rest of the browser-side API.
 export * from './manifest.js';

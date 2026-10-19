@@ -45435,6 +45435,17 @@
       "via"      : "menu",
       "editor"   : "documents",
       "module"   : "doctree",
+      "situation": "every-kind",
+      "when"     : "branch:assets",
+      "id"       : "asset.collect",
+      "label"    : "Remove unused art…",
+      "tooltip": "Remove the pictures nothing in the project uses; the form counts what goes, and what git cannot bring back, before you confirm.",
+      "form"     : true
+    },
+    {
+      "via"      : "menu",
+      "editor"   : "documents",
+      "module"   : "doctree",
       "situation": "cut-clipboard",
       "when"     : "branch:wiki",
       "id"       : "doc.create",

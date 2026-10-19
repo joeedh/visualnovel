@@ -152,7 +152,7 @@ import {
 } from '@vn/types';
 import { type Analyst, type AnalystGrant, type Redactor, type Report } from '@vn/agentreport';
 import { catalogProps, type PropValue } from '@vn/commands';
-import { BUSY_AGENT, BUSY_PASS, BUSY_REPORT, busyName } from '../../shared/ipc.js';
+import { BUSY_AGENT, BUSY_PASS, BUSY_REPORT, BUSY_RUN, busyName } from '../../shared/ipc.js';
 import type {
   AgentSystem,
   ApproveResult,
@@ -768,6 +768,7 @@ import { GengraphPart, type SheetScaffoldPlan } from './gengraph.js';
 import { HistoryPart, type HistoryFilter } from './history.js';
 import { RecoveryPart } from './recovery.js';
 import { SyncPart, type SyncOutcome } from './sync.js';
+import { CollectPart, type CollectResult } from './collect.js';
 import type { Change, Checkpoint, Diff, HistoryEntry, MySide } from '@vn/git';
 import type { CheckResult } from '@vn/commands';
 import type {
@@ -914,6 +915,7 @@ export class WorkspaceSession {
   readonly historyPart: HistoryPart = new HistoryPart(this);
   readonly recoveryPart: RecoveryPart = new RecoveryPart(this);
   readonly syncPart: SyncPart = new SyncPart(this);
+  readonly collectPart: CollectPart = new CollectPart(this);
 
   constructor(
     readonly dir: string,
@@ -1248,6 +1250,8 @@ export class WorkspaceSession {
       git     : openGit(this.dir),
       // Read at commit time: the thread opens on the turn's first message, after the agent is built
       trailers: (): Record<string, string> => (this.thread ? { 'Vn-Thread': this.thread.id } : {}),
+      // Called from inside the agent's own turn, so only a pipeline run or pass counts as busy
+      busy    : () => [BUSY_RUN, BUSY_PASS].find((what) => this.running(what)),
       // The agent's `generate_image` and the palette's `art.generate` draw the same picture; the
       // session's own `mock` is the only policy about whether it is real art.
       art     : workspaceArtGen(workspace, { mock: this.mock }),
@@ -2013,6 +2017,17 @@ export class WorkspaceSession {
    */
   async validateProject(): Promise<ProjectFinding[]> {
     return this.projectPart.validate();
+  }
+
+  async previewCollect(opts: {
+    oldAnswers: boolean;
+    keepForUndo: boolean;
+  }): Promise<{ ok: boolean; message: string }> {
+    return this.collectPart.preview(opts);
+  }
+
+  async collectAssets(opts: { oldAnswers: boolean; keepForUndo: boolean }): Promise<CollectResult> {
+    return this.collectPart.collect(opts);
   }
 
   async previewArtStyle(style: string): Promise<PromptResult> {
