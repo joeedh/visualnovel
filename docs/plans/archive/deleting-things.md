@@ -7,7 +7,7 @@ app and through the agent, and let them reclaim the space taken by art nothing u
 more, without leaving the project in a state the next pipeline run cannot read.
 
 The decisions this plan implements were made by the owner on 2026-09-29 and are recorded
-in [`../research/deleting-things.md`](../research/deleting-things.md#decisions). That
+in [`../research/deleting-things.md`](../../research/deleting-things.md#decisions). That
 document also holds the survey behind them. This plan does not repeat the reasoning; it
 says what gets built, in what order, and how each stage is checked. Where the plan narrows
 or refines a decision, [Review findings](#review-findings-2026-09-29) says so and why.
@@ -911,8 +911,8 @@ static (`confirm: true`). The second depends on the project.
 ## Finishing
 
 The checklist in
-[`../reference/conventions.md`](../reference/conventions.md#finishing-a-plan) applies. In
-addition, the row in [`index.md`](index.md) flips to shipped and this file moves to
+[`../reference/conventions.md`](../../reference/conventions.md#finishing-a-plan) applies.
+In addition, the row in [`index.md`](../index.md) flips to shipped and this file moves to
 `archive/`, with the link from `docs/research/deleting-things.md` updated.
 
 ## Review findings, 2026-09-29

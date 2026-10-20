@@ -1352,7 +1352,7 @@ The following items are deliberately out of scope for v1, in rough order of valu
    [`../plans/archive/INDEX.md#allocated-line-ids`](../plans/archive/INDEX.md#allocated-line-ids)
    — see [From the palette](#from-the-palette-or-from-a-commands-own-dialog).
 2. ~~**Route `confirm` through the renderer.**~~ **Shipped** as stage 1 of
-   [`../plans/deleting-things.md`](../plans/deleting-things.md) — see
+   [`../plans/archive/deleting-things.md`](../plans/archive/deleting-things.md) — see
    [Confirmation](#confirmation).
 3. **Feed `CatalogEntry.schema` to `NativeAgentBackend`** in place of `LOOSE_PARAMS`.
 4.  4. **Undoable `gate.approve`**, which needs `manifest.json` re-pointed alongside the

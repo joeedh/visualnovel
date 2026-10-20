@@ -59,7 +59,9 @@ These implement the system design in
           record would reach that build's `topoOrder` with no `deps` array, and it would
           throw.
         - A line that does not parse still stops `readJsonl`, as any bad line does.
-        - Plan: [`../plans/deleting-things.md`](../plans/deleting-things.md), stage 2.
+        - Plan:
+          [`../plans/archive/deleting-things.md`](../plans/archive/deleting-things.md),
+          stage 2.
 - **Assets are content-addressed and stored in two separate roots.**
     - Image bytes are stored once per root. Base art (portraits, model sheets, location
       plates) is stored at `assets/objects/<hash>.<ext>`. Shot frames are stored at
@@ -152,7 +154,8 @@ These implement the system design in
       task's latest record is a tombstone. The copy restates a record the log already
       holds, so it is not a forged record: the picture it names is the one that task drew.
       ([`history-pane.md`](history-pane.md#missing-pictures))
-    - Plan: [`../plans/deleting-things.md`](../plans/deleting-things.md), stages 7 and 8.
+    - Plan: [`../plans/archive/deleting-things.md`](../plans/archive/deleting-things.md),
+      stages 7 and 8.
 
 ## Scheduling
 

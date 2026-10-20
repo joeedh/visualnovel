@@ -44,8 +44,8 @@ content-addressed stores constrain a delete, and four candidate designs with the
 trade-offs. The owner answered every open question on 2026-09-29, and the answers are
 recorded under [Decisions](#decisions). The sections after it are the survey the decisions
 were made from. The implementation plan is
-[`../plans/deleting-things.md`](../plans/deleting-things.md); its review findings record
-where it narrows a decision.
+[`../plans/archive/deleting-things.md`](../plans/archive/deleting-things.md); its review
+findings record where it narrows a decision.
 
 Every claim about the code is cited as `path:line` against the `todos` worktree as of
 2026-09-20.
@@ -186,7 +186,7 @@ Recorded 2026-09-29 by the owner.
       collection and then the delete restores everything with no missing pictures. The
       holding folder is emptied when the undo entry expires or the project closes, and the
       rest of this decision applies from then on. Details are in stage 7 of
-      [`../plans/deleting-things.md`](../plans/deleting-things.md).
+      [`../plans/archive/deleting-things.md`](../plans/archive/deleting-things.md).
     - After an undo, a revert or a checkout, the missing-asset check lists each missing
       image with the same two actions as after a pull: Restore from git, or Remove
       references. One mechanism covers undo, revert and pull.

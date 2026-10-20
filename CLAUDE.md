@@ -153,12 +153,13 @@ broken — are written up in full in
 [`docs/reference/pipeline-contracts.md`](docs/reference/pipeline-contracts.md), each with
 the failure it prevents and a link to the plan that established it. Read the linked doc in
 full, and any doc it links in turn, before changing the invariant it names. Look there
-for: the content-addressed task graph and asset store, the P3 approval gate, sheet
-planning, incremental planning, the slot graph, explicit decomposition, failure records,
-outfit inheritance, art direction (including the agent's own art-revision tools), concept
-images, adoption, prose drift reporting, generation-graph drift, line ids, the scene
-round-trip, entity discovery, the P7 refine loop, and provider seams. Story-bible access
-is the one core idea documented on its own, in
+for: the content-addressed task graph and asset store, task tombstones, the unused-art
+collector and recovering a missing picture, the P3 approval gate, sheet planning,
+incremental planning, the slot graph, explicit decomposition, failure records, outfit
+inheritance, art direction (including the agent's own art-revision tools), concept images,
+adoption, prose drift reporting, generation-graph drift, line ids, the scene round-trip,
+entity discovery, the P7 refine loop, and provider seams. Story-bible access is the one
+core idea documented on its own, in
 [`docs/reference/story-bible.md`](docs/reference/story-bible.md), because it has no
 pipeline-contract failure mode of its own — only the query-only access rule. Generation
 graphs — `@vn/gengraph`, the `gengraph.*` commands, the run journal, groups, the Gen Graph
