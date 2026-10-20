@@ -865,6 +865,37 @@ static (`confirm: true`). The second depends on the project.
 - **Tests.** Sync tests with a nested `assets/` repository: both pulled; an `assets/`
   conflict stops before the project; a base with no remote is skipped.
 - **Docs.** `docs/reference/history-pane.md` and `docs/reference/repos-and-commits.md`.
+- **Decided during the work (2026-10-19):** when both authors saved base art, the
+  project's rebase stops on the `assets` gitlink even after the base art was pulled. The
+  owner chose to settle it automatically. The base art's head is staged when it holds the
+  commit the shared copy's side names, and a replayed save that then changes nothing is
+  dropped. The check uses only the shared copy's side, because the author's own base art
+  saves get new shas when the base art is rebased, so their side is never an ancestor of
+  the new head.
+- **As built (2026-10-19)**, where it differs from the above:
+    - `SyncOutcome` is `{ repos: RepoSync[] }` in `shared/history.ts`, so the pane reads
+      the same type main answers; `git.continueSync` answers one part. The record's
+      `rewrote` is every part's table joined, since a sha names one save in one
+      repository.
+    - A base art on no branch is skipped with a note, the same as one with no upstream. A
+      base art with a sync stopped, or with edits no save holds, refuses the project's
+      pull by name (`BASE_UNFINISHED`, `BASE_DIRTY`).
+    - The project's unsaved-edits refusal ignores the `assets` gitlink, which every base
+      art save moves before commit-on-save records it. Without that, getting the project's
+      saves after deciding a base art file would always be refused.
+    - The History pane switches to the base art's history when a pull stops there.
+      "Continue" on the base art then says to get the project's saves.
+    - `ROLE_SAYS` moved to `shared/history.ts` so the pull's message names each part as
+      the strip does. `@vn/git` gained `stagesOf` (over the existing `parseStages`) and
+      `rebaseSkip`.
+    - The tests are `apps/desktop/src/main/tests/syncbase.test.ts`. A fourth case covers
+      the settled gitlink and the dropped save. `docs/guides/collaborating.md` gained a
+      paragraph for authors.
+    - Rebased onto master on 2026-10-21, after master's `syncTarget` (a branch with no
+      upstream syncs with its repository's only remote). The base art's pull finds its
+      target the same way and records an implied one, which a fifth test covers. A base
+      art with several remotes and none chosen is skipped with its own note, as one with
+      no remote is.
 
 ## Out of scope
 

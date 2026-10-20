@@ -11,6 +11,41 @@ export type { Decision, FileKind, Save, WorktreeStatus };
 export type RepoRole = 'project' | 'wiki' | 'base';
 export const REPO_ROLES = ['project', 'wiki', 'base'] as const;
 
+/** One repository's part of a sync, once its rebase has run or stopped. */
+export interface RepoSync {
+  role: RepoRole;
+  /** Saves fetched from the shared copy. */
+  got: number;
+  /** The author's saves replayed on top of them, once the rebase completed. */
+  replayed: number;
+  /** Paths waiting on a decision; empty once the rebase completed. */
+  conflicted: string[];
+  /** Old sha to new for each save the rebase replayed; `to: null` for one it dropped. */
+  rewrote: { from: string; to: string | null }[];
+  /**
+   * Whether the rebase ran to its end, or never needed to. False with nothing in `conflicted`
+   * is a stop git explains in its own words, which the History pane's status shows.
+   */
+  finished: boolean;
+  /**
+   * Why no rebase ran, when none did: nothing to get, the copy has no branch yet, or the base art
+   * has no shared copy of its own.
+   */
+  note?: string;
+}
+
+/** What `pull` and `continueSync` answer: each repository's part, in the order they ran. */
+export interface SyncOutcome {
+  repos: RepoSync[];
+}
+
+/** What the History pane's strip and a sync's message call each repository. */
+export const ROLE_SAYS: Record<RepoRole, string> = {
+  project: 'Project',
+  wiki   : 'Story bible',
+  base   : 'Base art',
+};
+
 /** One repository the History pane can show. */
 export interface RepoEntry {
   role: RepoRole;

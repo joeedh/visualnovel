@@ -16,6 +16,7 @@ side of syncing is [`../guides/collaborating.md`](../guides/collaborating.md).
 - [The status view and the recovery controls](#the-status-view-and-the-recovery-controls)
 - [Shared copies](#shared-copies)
 - [Sync is a rebase](#sync-is-a-rebase)
+    - [The base art is got first](#the-base-art-is-got-first)
 - [The conflict view](#the-conflict-view)
     - [Deciding a file by editing it](#deciding-a-file-by-editing-it)
 - [Missing pictures](#missing-pictures)
@@ -183,9 +184,36 @@ on a rewritten save are re-pointed through the same table, and `recordForCommit`
 records nothing; `orig-head` and `onto` under `rebase-merge/` carry the range to the
 command that finishes it.
 
-Every sync outcome carries `got`, `replayed`, `conflicted`, `rewrote` and `finished`.
-`finished: false` with nothing in `conflicted` is a stop git explains in its own words,
-reported as part way rather than done.
+A sync outcome is `{ repos }`, one part per repository in the order they ran, each with
+its `role`, `got`, `replayed`, `conflicted`, `rewrote` and `finished`. `finished: false`
+with nothing in `conflicted` is a stop git explains in its own words, reported as part way
+rather than done. The command's record carries every part's rewrite table as one, since a
+sha names one save in one repository.
+
+### The base art is got first
+
+When `assets/` is a repository of its own that the project owns and has checked out, "Get
+their saves" on the project pulls it first, so the missing-picture check that runs after
+the pull compares the project's references against the pictures the collaborator kept.
+
+- The base art's sync target is found as the project's is, so an only remote not yet
+  recorded is used and then recorded. A base art with no sync target, or on no branch, is
+  skipped, and its part says so in `note`. A base art with a sync stopped
+  (`BASE_UNFINISHED`) or with edits no save holds (`BASE_DIRTY`) refuses the whole pull
+  before anything is fetched.
+- When the base art's rebase stops, the project is not pulled. The pane switches to the
+  base art's history, whose conflict view decides it as usual; "Continue" then says to get
+  the project's saves, which pulls the base art again (nothing new) and then the project.
+  Nothing is remembered between the two pulls.
+- The project's gitlink for `assets/` moves with every base art save before commit-on-save
+  records it, so the project's unsaved-edits refusal ignores that one path.
+- When both authors saved base art, the project's rebase stops on the gitlink. If the base
+  art's head holds the commit the shared copy's side names (git's `ours` mid-rebase), that
+  head is the answer: it is staged and the rebase continues. A replayed save that only
+  moved the gitlink is then empty and is dropped, so its rewrite is `to: null`. A stop
+  with other files in question waits for the author with the gitlink already decided. The
+  same settling runs after "Continue" on the project.
+- The story bible is not pulled with the project, and its gitlink is not settled.
 
 ## The conflict view
 

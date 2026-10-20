@@ -68,6 +68,12 @@ over a network; the footer counts while they run, and every other write in the p
 The app never forces a send. If the copy has saves you have not got yet, **Send my saves**
 is refused until you get theirs first, and the reason says so.
 
+When the project's base art (`assets/`) is a repository of its own with a shared copy,
+**Get their saves** on the project gets the base art's saves first, then the project's. If
+a base art file needs a decision, the pane shows the base art's history, and the project
+waits: decide the file, press **Continue**, then press **Get their saves** on the project
+again. Sending stays separate, so send the base art's saves from its own history too.
+
 ## When both of you changed one file
 
 Getting their saves replays your unsent saves one at a time on top of theirs. When one of

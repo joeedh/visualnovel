@@ -389,9 +389,12 @@ at all. Undo now compares one tree hash against another instead of refusing as a
 across repos.
 
 Remotes, getting and sending saves, and conflict resolution are the History pane's
-([`history-pane.md`](history-pane.md#shared-copies)), and each repository syncs on its
-own: the project's push is refused while a nested story bible has unsent saves, so the
-project's history never names a bible save the shared copy lacks. The app rewrites history
+([`history-pane.md`](history-pane.md#shared-copies)). Each repository sends on its own:
+the project's push is refused while a nested story bible has unsent saves, so the
+project's history never names a bible save the shared copy lacks. Getting saves is
+different for base art: a pull of the project pulls an owned `assets/` repository first,
+and settles the project's gitlink to it when both authors saved base art
+([`history-pane.md`](history-pane.md#the-base-art-is-got-first)). The app rewrites history
 in exactly one place: a pull rebases the author's unsent saves onto the collaborator's,
 which gives them new shas, and the pull's record carries the table from old to new. Saves
 that have been sent are never rewritten, and a force push is never offered.

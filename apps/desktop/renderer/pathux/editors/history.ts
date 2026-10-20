@@ -98,6 +98,7 @@ import {
   type RepoRole,
   type RepoStatus,
   type Save,
+  type SyncOutcome,
 } from '../../../src/shared/history.js';
 import { drawDiff } from './history/diffs/index.js';
 import HISTORY_CSS from '../../styles/history.css?inline';
@@ -611,11 +612,21 @@ export class HistoryEditor extends VnEditor {
     try {
       const outcome = await exec(id, props);
       if (!outcome.ok) this.failure = outcome.error;
+      else if (verb === 'pull') this.followStop(outcome.data as SyncOutcome);
     } finally {
       this.stopClock();
       this.syncing = undefined;
     }
     await this.load();
+  }
+
+  /**
+   * Switches to the repository whose pull stopped. The base art is pulled first, so when its pull
+   * stops the project's has not run.
+   */
+  private followStop(outcome: SyncOutcome): void {
+    const stopped = outcome.repos.find((part) => !part.finished);
+    if (stopped !== undefined && stopped.role !== this.repo) this.setRepo(stopped.role);
   }
 
   private stopClock(): void {

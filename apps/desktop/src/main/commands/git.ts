@@ -6,7 +6,7 @@
  */
 import { defineFor, prop } from '@vn/commands';
 import { ANY_DOCUMENT, GIT_ROOT } from '../../shared/affects.js';
-import { REPO_ROLES } from '../../shared/history.js';
+import { REPO_ROLES, ROLE_SAYS, type RepoSync, type SyncOutcome } from '../../shared/history.js';
 import type { CommandHost } from './host.js';
 
 const define = defineFor<CommandHost>();
@@ -413,14 +413,8 @@ export const gitFetch = define({
   },
 });
 
-/** What `git.pull` and `git.continueSync` say once the rebase has stopped or completed. */
-function syncMessage(outcome: {
-  got: number;
-  replayed: number;
-  conflicted: string[];
-  finished: boolean;
-  note?: string;
-}): string {
+/** Says what one repository's part of a sync did once its rebase stopped or completed. */
+function partMessage(outcome: RepoSync): string {
   if (outcome.note !== undefined) return outcome.note;
   const n = outcome.conflicted.length;
   if (n > 0) return `${n} file${n === 1 ? '' : 's'} need${n === 1 ? 's' : ''} a decision.`;
@@ -434,27 +428,52 @@ function syncMessage(outcome: {
   return replayed > 0 ? `${got}; ${replayed} of yours replayed on top.` : `${got}.`;
 }
 
+/**
+ * Builds what `git.pull` and `git.continueSync` say: one repository's message alone, or each one
+ * prefixed with its name. A stopped base art sync adds that the project waits for it.
+ */
+function syncMessage(outcome: SyncOutcome): string {
+  const [only] = outcome.repos;
+  if (outcome.repos.length === 1 && only !== undefined) {
+    const said = partMessage(only);
+    return only.role === 'base' && !only.finished
+      ? `${said} The project waits until the base art’s sync finishes.`
+      : said;
+  }
+  return outcome.repos.map((part) => `${ROLE_SAYS[part.role]}: ${partMessage(part)}`).join(' ');
+}
+
+/**
+ * Builds the command record: the sync message, the outcome, and every repository's rewrites
+ * merged into one `rewrote` table.
+ */
+function syncRecord(outcome: SyncOutcome) {
+  const rewrote = outcome.repos.flatMap((part) => part.rewrote);
+  return {
+    message: syncMessage(outcome),
+    data   : outcome,
+    ...(rewrote.length > 0 ? { rewrote } : {}),
+  };
+}
+
 export const gitPull = define({
   id           : 'git.pull',
   title        : 'Get their saves',
   description:
     'Get the saves a collaborator sent to the shared copy and put yours on top of them, so the ' +
     'history stays one line. A file both of you changed waits for your decision in the History ' +
-    'pane. Refused while edits are unsaved, while a sync is part way, and with no copy to sync with.',
+    'pane. When the base art is a repository of its own, its saves are got first, and the project ' +
+    'waits while one of its files does. Refused while edits are unsaved, while a sync is part way, ' +
+    'and with no copy to sync with.',
   notes:
-    '`fetch` then `rebase <remote>/<branch>`. `commitsItself`: the rebase moves the branch and the committer has nothing to add. A stopped rebase returns normally, since that state is the conflict view’s; a completed one records `rewrote`, old sha to new, paired by author, date and message, and re-points checkpoints through it.',
+    '`fetch` then `rebase <remote>/<branch>`. `commitsItself`: the rebase moves the branch and the committer has nothing to add. A stopped rebase returns normally, since that state is the conflict view’s; a completed one records `rewrote`, old sha to new, paired by author, date and message, and re-points checkpoints through it. On the project, an owned `assets/` with an upstream is pulled first, and `data.repos` has one part per repository; a stop on its gitlink is settled to its head when that head holds the shared copy’s side.',
   mutating     : true,
   affects      : [...ANY_DOCUMENT, GIT_ROOT],
   commitsItself: true,
   props        : { repo: repoProp() },
   check        : ({ repo }, ctx) => ctx.host.session.previewPull(repo),
   async run({ repo }, ctx) {
-    const outcome = await ctx.host.session.gitPull(repo);
-    return {
-      message: syncMessage(outcome),
-      data   : outcome,
-      ...(outcome.rewrote.length > 0 ? { rewrote: outcome.rewrote } : {}),
-    };
+    return syncRecord(await ctx.host.session.gitPull(repo));
   },
 });
 
@@ -588,12 +607,13 @@ export const gitContinueSync = define({
   props        : { repo: repoProp() },
   check        : ({ repo }, ctx) => ctx.host.session.previewContinueSync(repo),
   async run({ repo }, ctx) {
-    const outcome = await ctx.host.session.gitContinueSync(repo);
-    return {
-      message: syncMessage(outcome),
-      data   : outcome,
-      ...(outcome.rewrote.length > 0 ? { rewrote: outcome.rewrote } : {}),
-    };
+    const record = syncRecord(await ctx.host.session.gitContinueSync(repo));
+    const [part] = record.data.repos;
+    // The project was not pulled while the base art's rebase was stopped
+    if (part?.role === 'base' && part.finished) {
+      record.message += ' Now get their saves on the project.';
+    }
+    return record;
   },
 });
 

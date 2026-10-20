@@ -12,6 +12,7 @@ import {
   NO_UPSTREAM,
   NOT_OWNED,
   notCheckedOut,
+  ROLE_SAYS,
   SYNC_UNFINISHED,
   UNSAVED_EDITS,
   type DecidedFile,
@@ -48,13 +49,6 @@ export const MAKER_SAYS: Record<Maker, string> = {
   housekeeping: 'Housekeeping',
   other       : 'Someone else',
   unknown     : 'Made outside the app',
-};
-
-/** What the strip calls each repository. */
-export const ROLE_SAYS: Record<RepoRole, string> = {
-  project: 'Project',
-  wiki   : 'Story bible',
-  base   : 'Base art',
 };
 
 /** The pane's filters, all pane-local. */

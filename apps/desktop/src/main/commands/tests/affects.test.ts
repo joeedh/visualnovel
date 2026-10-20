@@ -669,11 +669,16 @@ const SYNC_COLLIDE: SyncRun[] = [
     props : {},
     expect: (result) =>
       expect(outcome(result)).toEqual({
-        got       : 1,
-        replayed  : 0,
-        conflicted: [LAYOUT, SCENE, SHOTS],
-        rewrote   : [],
-        finished  : false,
+        repos: [
+          {
+            role      : 'project',
+            got       : 1,
+            replayed  : 0,
+            conflicted: [LAYOUT, SCENE, SHOTS],
+            rewrote   : [],
+            finished  : false,
+          },
+        ],
       }),
   },
   { who: 'b', id: 'git.abandonSync', props: {} },
@@ -682,7 +687,7 @@ const SYNC_COLLIDE: SyncRun[] = [
     id    : 'git.pull',
     props : {},
     expect: (result) =>
-      expect(outcome(result)).toMatchObject({ conflicted: [LAYOUT, SCENE, SHOTS] }),
+      expect(outcome(result)).toMatchObject({ repos: [{ conflicted: [LAYOUT, SCENE, SHOTS] }] }),
   },
   {
     who    : 'b',
@@ -813,13 +818,18 @@ const SYNC_COLLIDE: SyncRun[] = [
     props : {},
     expect: (result) =>
       expect(outcome(result)).toMatchObject({
-        replayed  : 1,
-        conflicted: [],
-        finished  : true,
-        rewrote: [
+        repos: [
           {
-            from: expect.stringMatching(/^[0-9a-f]{40}$/),
-            to  : expect.stringMatching(/^[0-9a-f]{40}$/),
+            role      : 'project',
+            replayed  : 1,
+            conflicted: [],
+            finished  : true,
+            rewrote: [
+              {
+                from: expect.stringMatching(/^[0-9a-f]{40}$/),
+                to  : expect.stringMatching(/^[0-9a-f]{40}$/),
+              },
+            ],
           },
         ],
       }),

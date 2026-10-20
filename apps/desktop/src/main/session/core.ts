@@ -767,7 +767,7 @@ import { PipelinePart } from './pipeline.js';
 import { GengraphPart, type SheetScaffoldPlan } from './gengraph.js';
 import { HistoryPart, type HistoryFilter } from './history.js';
 import { RecoveryPart } from './recovery.js';
-import { SyncPart, type SyncOutcome } from './sync.js';
+import { SyncPart } from './sync.js';
 import { CollectPart, type CollectResult } from './collect.js';
 import { MissingPart } from './missing.js';
 import type { Change, Checkpoint, Diff, HistoryEntry, MySide } from '@vn/git';
@@ -778,6 +778,7 @@ import type {
   RepoEntry,
   RepoRole,
   RepoStatus,
+  SyncOutcome,
 } from '../../shared/history.js';
 
 export class WorkspaceSession {

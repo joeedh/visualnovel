@@ -33,6 +33,7 @@ import {
   type HistoryEntry,
   type RemoteBranch,
   type ResolvedPath,
+  type StagedPath,
 } from './parse.js';
 
 interface RunResult {
@@ -832,6 +833,14 @@ export class Git {
     return this.rebaseOutcome(await this.continueRun(), 'git rebase --continue');
   }
 
+  /**
+   * Drops the save a stopped rebase is replaying and goes on with the next. Answers whether it
+   * completed, as `rebaseContinue` does.
+   */
+  async rebaseSkip(): Promise<boolean> {
+    return this.rebaseOutcome(await this.run(['rebase', '--skip']), 'git rebase --skip');
+  }
+
   /** No editor, so a replayed commit keeps its message. */
   private continueRun(): Promise<RunResult> {
     return this.run(['-c', 'core.editor=true', 'rebase', '--continue']);
@@ -908,6 +917,15 @@ export class Git {
     const present = listed.split('\n').some((l) => l.split('\t')[0]?.endsWith(` ${stage}`));
     if (present) throw new GitError(`git checkout --${side} failed: ${r.stderr.trim()}`);
     await this.ok(['rm', '--quiet', '--', path]);
+  }
+
+  /**
+   * Reads the stages a stopped merge left for `path`: base, ours and theirs, each absent when that
+   * side has none.
+   */
+  async stagesOf(path: string): Promise<StagedPath['stages']> {
+    const [entry] = parseStages(await this.ok(['ls-files', '-u', '--', path]));
+    return entry?.stages ?? {};
   }
 
   /**

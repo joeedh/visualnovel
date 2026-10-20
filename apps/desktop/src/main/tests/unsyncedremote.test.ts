@@ -85,7 +85,7 @@ describe('a shared copy connected outside the app', () => {
 
     expect((await session.gitStatus('project', 0)).upstream).toBe(`origin/${branch}`);
     // The copy has no branch yet, so a get has nothing to record
-    expect((await session.gitPull('project')).note).toContain('send your saves first');
+    expect((await session.gitPull('project')).repos[0]!.note).toContain('send your saves first');
     expect(await tracked(root, branch)).toBe('');
 
     await session.gitPush('project', '');

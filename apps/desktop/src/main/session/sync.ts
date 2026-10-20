@@ -5,7 +5,7 @@
  * repeats the preview first. The rules are `@vn/git`'s; git's own sentence is what a refusal from
  * the network says.
  */
-import { join } from 'node:path';
+import { join, relative, sep } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import type { CheckResult } from '@vn/commands';
 import { resolutionProblem } from '@vn/model';
@@ -17,6 +17,7 @@ import {
   finishRebase,
   GitError,
   noUpstream,
+  OWN_LOGS,
   REBASE_SIDE,
   remoteNameProblem,
   remoteSentence,
@@ -26,7 +27,7 @@ import {
   type Git,
   type InProgress,
   type MySide,
-  type Rewrite,
+  type SyncTarget,
 } from '@vn/git';
 import {
   NOT_OWNED,
@@ -34,6 +35,8 @@ import {
   readableConflict,
   SYNC_UNFINISHED,
   type RepoRole,
+  type RepoSync,
+  type SyncOutcome,
 } from '../../shared/history.js';
 import { fileCache } from '../workspace/filecache.js';
 import { DOC_WRITERS, relPath } from './core.js';
@@ -56,23 +59,44 @@ interface Owned {
   root: string;
 }
 
-/** What `pull` and `continueSync` answer once the rebase has run or stopped. */
-export interface SyncOutcome {
-  /** Saves fetched from the shared copy. */
-  got: number;
-  /** The author's saves replayed on top of them, once the rebase completed. */
-  replayed: number;
-  /** Paths waiting on a decision; empty once the rebase completed. */
-  conflicted: string[];
-  rewrote: Rewrite[];
-  /**
-   * Whether the rebase ran to its end, or never needed to. False with nothing in `conflicted`
-   * is a stop git explains in its own words, which the History pane's status shows.
-   */
-  finished: boolean;
-  /** Why no rebase ran, when none did: nothing to get, or the copy has no branch yet. */
-  note?: string;
+/**
+ * The refusal `git.pull` gives on the project while the base art's own sync is stopped. The
+ * project is pulled only after the base art has its collaborator's pictures.
+ */
+export const BASE_UNFINISHED =
+  'Getting the base art’s saves is unfinished; finish or give it up in its history first.';
+/** What `git.pull` on the project says when the base art has edits no save holds. */
+export const BASE_DIRTY =
+  'The base art has edits on disk not yet saved; save or discard them first.';
+
+/**
+ * A repository with the shared copy its branch syncs with. `branch` is the local branch and
+ * `theirs` the branch of the same line on the copy; `implied` as in `SyncTarget`.
+ */
+type Pullable = Owned & { remote: string; branch: string; theirs: string; implied: boolean };
+
+/** The base art's repository, and the path of its gitlink in the project. */
+interface BaseLink extends Owned {
+  path: string;
 }
+
+/** Builds a repository's part of a sync that ran no rebase; the caller adds the note saying why. */
+const nothing = (role: RepoRole): RepoSync => ({
+  role,
+  got       : 0,
+  replayed  : 0,
+  conflicted: [],
+  rewrote   : [],
+  finished  : true,
+});
+
+/** Builds the sync half of a `Pullable` for `branch` from the target it syncs with. */
+const pullable = (target: SyncTarget, branch: string) => ({
+  remote: target.remote,
+  branch,
+  theirs : target.branch,
+  implied: target.implied,
+});
 
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -255,28 +279,55 @@ export class SyncPart {
   async previewPull(role: RepoRole): Promise<CheckResult> {
     const plan = await this.planPull(role);
     if ('ok' in plan) return plan;
+    const adopts = plan.implied ? ` “${plan.remote}” becomes the copy this branch syncs with.` : '';
+    const project = `Gets their saves from “${plan.remote}” and replays yours on top. A collision waits for your decision.${adopts}`;
+    if (plan.base === undefined) return { ok: true, note: project };
+    if ('note' in plan.base) return { ok: true, note: `${project} ${plan.base.note}` };
+    const baseAdopts = plan.base.implied
+      ? ` “${plan.base.remote}” becomes the copy the base art syncs with.`
+      : '';
     return {
       ok  : true,
-      note:
-        `Gets their saves from “${plan.remote}” and replays yours on top. A collision waits for your decision.` +
-        (plan.implied ? ` “${plan.remote}” becomes the copy this branch syncs with.` : ''),
+      note: `Gets the base art’s saves from “${plan.base.remote}” first, then the project’s from “${plan.remote}”, and replays yours on top of each. A collision waits for your decision, and the project waits for the base art’s.${baseAdopts}${adopts}`,
     };
   }
 
   /**
-   * Fetches the sync target and rebases the branch onto it. A rebase that stops on a collision is
-   * returned as such, since the stopped state is what the conflict view shows; one that completes
-   * carries the rewrite table for the saves it replayed. An implied target is recorded as the
-   * branch's upstream once the fetch finds its branch there.
+   * Gets the base art's saves first when the project is pulled, so the project's references are
+   * then checked against the pictures they name. While the base art's rebase is stopped the
+   * project is not pulled; the author pulls again once the base art's files are decided.
    */
   async pull(role: RepoRole): Promise<SyncOutcome> {
     const plan = await this.planPull(role);
     if ('ok' in plan) throw new Error(plan.reason);
+    const repos: RepoSync[] = [];
+    if (plan.base !== undefined && 'note' in plan.base) {
+      repos.push({ ...nothing('base'), note: plan.base.note });
+    } else if (plan.base !== undefined) {
+      const base = await this.pullOne('base', plan.base);
+      repos.push(base);
+      if (!base.finished) return { repos };
+    }
+    repos.push(await this.pullOne(role, plan, plan.link));
+    return { repos };
+  }
+
+  /**
+   * Fetches the upstream and rebases the branch onto it. A rebase that stops on a collision is
+   * returned as such, since the stopped state is what the conflict view shows; one that completes
+   * carries the rewrite table for the saves it replayed. An implied target is recorded as the
+   * branch's upstream once the fetch finds its branch there.
+   */
+  private async pullOne(
+    role: RepoRole,
+    plan: Pullable,
+    link: BaseLink | null = null,
+  ): Promise<RepoSync> {
     const { git, remote, branch, theirs } = plan;
     await this.network(() => git.fetch(remote));
     const upstream = `${remote}/${theirs}`;
     const onto = await git.resolve(upstream);
-    const none = { got: 0, replayed: 0, conflicted: [], rewrote: [], finished: true };
+    const none = nothing(role);
     if (onto === null) {
       return { ...none, note: `“${remote}” has no ${theirs} yet; send your saves first.` };
     }
@@ -286,14 +337,15 @@ export class SyncPart {
       return { ...none, note: `Nothing new to get; everything “${remote}” has is here.` };
     }
     const origHead = (await git.head())!;
-    const completed = await git.rebase(upstream);
+    const completed = await this.replay(git, () => git.rebase(upstream), link);
     this.session.historyPart.dropMemo();
     if (!completed) {
       const conflicted = await this.conflicted(git);
-      return { got: counts.behind, replayed: 0, conflicted, rewrote: [], finished: false };
+      return { role, got: counts.behind, replayed: 0, conflicted, rewrote: [], finished: false };
     }
     const done = await finishRebase(git, onto, origHead);
     return {
+      role,
       got       : counts.behind,
       replayed  : done.replayed,
       conflicted: [],
@@ -302,28 +354,111 @@ export class SyncPart {
     };
   }
 
-  /** `branch` is the local branch and `theirs` the branch of the same line on the copy. */
+  /**
+   * Checks that the repository `role` names is ready to pull. For the project, also plans the base
+   * art's pull, which is ready, skipped with a note, or refused (and a refusal stops both).
+   */
   private async planPull(
     role: RepoRole,
-  ): Promise<
-    (Owned & { remote: string; branch: string; theirs: string; implied: boolean }) | Refusal
-  > {
+  ): Promise<(Pullable & { base?: Pullable | { note: string }; link: BaseLink | null }) | Refusal> {
     const repo = await this.writable(role);
     if ('ok' in repo) return repo;
+    const link = role === 'project' ? await this.baseLink(repo.root) : null;
+    const base = link === null ? undefined : await this.planBase(link);
+    if (base !== undefined && 'ok' in base) return base;
+    // The gitlink is exempt from the dirty check: a base art save moves it before commit-on-save
+    // records it, and the rebase leaves that change in place
+    const plan = await this.readyToPull(repo, link?.path ?? null);
+    if ('ok' in plan) return plan;
+    return { ...plan, link, ...(base === undefined ? {} : { base }) };
+  }
+
+  /**
+   * Checks that `repo` is ready to pull and returns its branch and sync target, or the refusal.
+   * `skip` names a gitlink edit to ignore.
+   */
+  private async readyToPull(repo: Owned, skip: string | null): Promise<Pullable | Refusal> {
     const state = await repo.git.inProgress();
     if (state.rebase || state.merge || state.revert) return refuse(SYNC_UNFINISHED);
     const branch = await repo.git.branch();
     if (branch === 'HEAD') return refuse('Not on a branch; check one out first.');
     const target = await syncTarget(repo.git, branch);
     if (!target) return refuse(noUpstream((await repo.git.remotes()).length));
-    if (await dirtyOutsideLogs(repo.git)) return refuse(DIRTY_TREE);
-    return {
-      ...repo,
-      remote: target.remote,
-      branch,
-      theirs : target.branch,
-      implied: target.implied,
-    };
+    if (await this.dirty(repo.git, skip)) return refuse(DIRTY_TREE);
+    return { ...repo, ...pullable(target, branch) };
+  }
+
+  /**
+   * Plans the base art's pull, which runs before the project's. A base art with no sync target,
+   * or on no branch, is skipped with a note. One with a stopped sync or unsaved edits refuses the
+   * whole pull.
+   */
+  private async planBase(link: BaseLink): Promise<Pullable | { note: string } | Refusal> {
+    const base = { git: link.git, root: link.root };
+    const state = await base.git.inProgress();
+    if (state.rebase || state.merge || state.revert) return refuse(BASE_UNFINISHED);
+    const branch = await base.git.branch();
+    if (branch === 'HEAD') return { note: 'The base art is on no branch, so it is skipped.' };
+    const target = await syncTarget(base.git, branch);
+    if (!target) {
+      return (await base.git.remotes()).length === 0
+        ? { note: 'The base art has no shared copy to get from, so it is skipped.' }
+        : { note: 'The base art syncs with none of its shared copies, so it is skipped.' };
+    }
+    if (await this.dirty(base.git, null)) return refuse(BASE_DIRTY);
+    return { ...base, ...pullable(target, branch) };
+  }
+
+  /**
+   * Finds the base art when it is a repository of its own nested in the project, owned and
+   * checked out.
+   */
+  private async baseLink(projectRoot: string): Promise<BaseLink | null> {
+    const found = await this.session.historyPart.repo('base');
+    if (!found || found.missing || !found.owned || samePath(found.root, projectRoot)) return null;
+    const path = relative(projectRoot, found.root).split(sep).join('/');
+    return { git: found.git, root: found.root, path };
+  }
+
+  /**
+   * Runs `step`, the rebase or its continue, and settles each stop on the base art's gitlink by
+   * staging the base art's head, when that head holds the shared copy's side. A save whose only
+   * change was the gitlink is then empty, and is skipped. A stop with other files in question
+   * still waits for the author, with the gitlink already decided.
+   */
+  private async replay(
+    git: Git,
+    step: () => Promise<boolean>,
+    link: BaseLink | null,
+  ): Promise<boolean> {
+    let completed = await step();
+    while (!completed && link !== null) {
+      const conflicted = await this.conflicted(git);
+      if (!conflicted.includes(link.path) || !(await this.holdsCopy(git, link))) return false;
+      await git.add([link.path]);
+      if (conflicted.length > 1) return false;
+      const empty = (await git.diff({ staged: true })) === '';
+      completed = empty ? await git.rebaseSkip() : await git.rebaseContinue();
+    }
+    return completed;
+  }
+
+  /** Whether the base art's head holds the commit the shared copy's side of the gitlink names. */
+  private async holdsCopy(git: Git, link: BaseLink): Promise<boolean> {
+    // Mid-rebase, git's `ours` is the shared copy's saves with the author's replayed so far
+    const copy = (await git.stagesOf(link.path))[2];
+    const head = await link.git.head();
+    if (copy === undefined || head === null) return false;
+    return link.git.isAncestor(copy, head).catch(() => false);
+  }
+
+  /** Whether anything but the app's logs, and the gitlink `skip` names, is changed on disk. */
+  private async dirty(git: Git, skip: string | null): Promise<boolean> {
+    if (skip === null) return dirtyOutsideLogs(git);
+    const status = await git.status();
+    return status.entries.some(
+      (e) => e.path !== skip && !OWN_LOGS.some((prefix) => e.path.startsWith(prefix)),
+    );
   }
 
   // `git.push`
@@ -552,13 +687,16 @@ export class SyncPart {
     const { git, state } = plan;
     const { onto, origHead } = state.rebase!;
     await git.add(['-A']);
-    const completed = await git.rebaseContinue();
+    const link = role === 'project' ? await this.baseLink(plan.root) : null;
+    const completed = await this.replay(git, () => git.rebaseContinue(), link);
     this.session.historyPart.dropMemo();
-    const none = { got: 0, replayed: 0, conflicted: [], rewrote: [] };
-    if (!completed) return { ...none, conflicted: await this.conflicted(git), finished: false };
-    if (origHead === null) return { ...none, finished: true };
+    const none = nothing(role);
+    if (!completed) {
+      return { repos: [{ ...none, conflicted: await this.conflicted(git), finished: false }] };
+    }
+    if (origHead === null) return { repos: [none] };
     const done = await finishRebase(git, onto, origHead);
-    return { ...none, replayed: done.replayed, rewrote: done.rewrote, finished: true };
+    return { repos: [{ ...none, replayed: done.replayed, rewrote: done.rewrote }] };
   }
 
   private async planContinue(role: RepoRole): Promise<(Owned & { state: InProgress }) | Refusal> {
