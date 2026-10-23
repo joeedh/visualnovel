@@ -37,6 +37,7 @@ import {
   sheetSeeds,
 } from '@vn/artgen';
 import { VnError } from '@vn/util';
+import { checkRequest } from '@vn/providers';
 import {
   imageParams,
   locationTask,
@@ -114,6 +115,7 @@ async function shotsFor(
     }
   }
   const decomposition = await decomposeScene(scene, model, providers, style);
+  checkRequest();
   // Inside a run a baseline decomposition means the deterministic fallback worked, so it is still
   // written. Persisting one silently is how a whole project ends up baselined forever, so it is
   // logged here; `decomposeAll` refuses to write it at all.

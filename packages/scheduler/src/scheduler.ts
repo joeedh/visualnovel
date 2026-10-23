@@ -1,9 +1,12 @@
+import { randomUUID } from 'node:crypto';
+import { readFile, rm } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { AnyTask, Logger, ProjectModel, Providers, TaskKind, TaskStatus } from '@vn/types';
 import type { AssetStore, BaseAssets } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import { readAllShots, type ProjectPaths } from '@vn/store';
 import { TaskGraph, logTask } from '@vn/taskgraph';
-import { pool } from '@vn/util';
+import { hashParts, pool, writeFileAtomic } from '@vn/util';
 import {
   baseRefusal,
   boundGraph,
@@ -14,6 +17,10 @@ import {
   planTasks,
   repairCurrent,
   runTask,
+  TaskRequests,
+  RequestStopped,
+  checkRequestWrite,
+  withRequestStop,
   type CostPreview,
   type GateStatus,
   type GraphRuntime,
@@ -41,9 +48,8 @@ export interface RunOptions {
    */
   onProgress?: (progress: RunProgress) => void;
   /**
-   * Stop the run. Checked between waves and before a task starts, never during one: a runner
-   * interrupted mid-call would leave a `running` node and a half-written attempt, and the log
-   * of those transitions is what makes a run resumable.
+   * Stop before another API request starts. In-flight requests settle and their responses are
+   * saved; unfinished tasks return to pending and reuse those responses on resumption.
    */
   signal?: AbortSignal;
   /**
@@ -125,6 +131,7 @@ export interface RunSummary {
 
 /** What {@link raceAbort} answers in place of a result when the signal fired first. */
 const ABORTED = Symbol('aborted');
+const CHECKPOINT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /**
  * `work`, unless `signal` fires first. The abandoned promise is still settled by its runner
@@ -177,16 +184,14 @@ export function requeueFailed(
 }
 
 /**
- * Put back to `pending` every planned task still marked `running`. `ready()` never offers one,
- * and a host refuses to draw a slot it believes is being drawn, so a task a killed process left
- * in that state is otherwise stuck for the life of the project. Bounded to `plannedHashes` on
- * the same reasoning as {@link requeueFailed}.
+ * Releases every execution a previous owner left running, including superseded versions.
+ * Only tasks in the current plan can subsequently be scheduled.
  */
-export function requeueAbandoned(graph: TaskGraph, plannedHashes: ReadonlySet<string>): AnyTask[] {
+export function requeueAbandoned(graph: TaskGraph): AnyTask[] {
   const requeued: AnyTask[] = [];
   for (const task of graph.all()) {
-    if (task.status !== 'running' || !plannedHashes.has(task.hash)) continue;
-    graph.setStatus(task.hash, 'pending');
+    if (task.status !== 'running') continue;
+    graph.setStatus(task.hash, 'pending', { interrupted: true });
     requeued.push(task);
   }
   return requeued;
@@ -253,7 +258,41 @@ function inputRefHashes(task: AnyTask): string[] {
  * the run crash-safe and resumable: re-running replays the log and skips `done` work.
  */
 export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
+  const file = join(opts.paths.state, 'requests', 'planning.json');
+  const signature = hashParts(opts.config);
+  let planning: TaskRequests | undefined;
+  let planDir: string | undefined;
+  if (!opts.dryRun) {
+    let saved: { id: string; signature: string } | undefined;
+    try {
+      saved = JSON.parse(await readFile(file, 'utf8')) as typeof saved;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+    }
+    if (saved?.signature !== signature || !CHECKPOINT_ID.test(saved.id))
+      saved = { id: randomUUID(), signature };
+    await writeFileAtomic(file, JSON.stringify(saved));
+    planDir = join(opts.paths.state, 'requests', saved.id);
+    planning = new TaskRequests(planDir);
+  }
+  return withRequestStop({ signal: opts.signal, abort: opts.abort }, async () => {
+    try {
+      const summary = await runOwnedPipeline(opts, planning);
+      if (planning && !summary.stopped) {
+        await planning.settled();
+        await rm(file, { force: true });
+        await rm(planDir!, { recursive: true, force: true });
+      }
+      return summary;
+    } finally {
+      await planning?.settled();
+    }
+  });
+}
+
+async function runOwnedPipeline(opts: RunOptions, planning?: TaskRequests): Promise<RunSummary> {
   const { model, graph, store, providers, config, paths, logger, now, dryRun, onProgress } = opts;
+  const planProviders = planning?.providers(providers) ?? providers;
   const ran: AnyTask[] = [];
   // The unfinished half of what the current plan asked for. Derived from the plan rather than
   // from `graph.all()`, which carries orphans `tasks.jsonl` was never pruned of — a progress
@@ -319,17 +358,33 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
 
   // Always (re)plan first so the preview and gate reflect the current model state. A dry run
   // may read persisted shots but must not write a mock decomposition a real run would reuse.
-  const firstPass = await planTasks({
-    model,
-    graph,
-    config,
-    providers,
-    paths,
-    logger,
-    base         : store.base,
-    readOnlyShots: dryRun,
-    assets       : store.manifest(),
-  });
+  let firstPass: AnyTask[];
+  try {
+    firstPass = await planTasks({
+      model,
+      graph,
+      config,
+      providers: planProviders,
+      paths,
+      logger,
+      base         : store.base,
+      readOnlyShots: dryRun,
+      assets       : store.manifest(),
+    });
+  } catch (err) {
+    if (!(err instanceof RequestStopped) && !stopAsked()) throw err;
+    return {
+      ran,
+      preview      : costPreview(graph, config, drawnByGraph),
+      gate         : gateStatus(model, store.manifest()),
+      blockedOnGate: false,
+      retried      : [],
+      redrawn      : [],
+      failed       : [],
+      needsHuman   : [],
+      stopped      : true,
+    };
+  }
 
   // Refuse here rather than letting the loop find nothing ready: from the outside "nothing was
   // planned" and "nothing is left to do" look identical, and only one of them is a problem.
@@ -350,9 +405,9 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
     };
   }
 
-  // A run owns the graph while it lasts, so a planned task the log left at `running` was
+  // A run owns the graph while it lasts, so a task the log left at `running` was
   // abandoned by a process that died mid-task; nothing else would ever pick it up again
-  const abandoned = requeueAbandoned(graph, inScope(firstPass));
+  const abandoned = requeueAbandoned(graph);
   if (!dryRun) for (const node of abandoned) await logTask(paths, node);
   if (abandoned.length) logger?.info('task.resume', { hashes: abandoned.map((t) => t.hash) });
 
@@ -402,18 +457,24 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
   let stopped = false;
   const aborted: string[] = [];
   while (!stopAsked()) {
-    plannedNow = await planTasks({
-      model,
-      graph,
-      config,
-      providers,
-      paths,
-      logger,
-      base  : store.base,
-      assets: store.manifest(),
-    });
+    try {
+      plannedNow = await planTasks({
+        model,
+        graph,
+        config,
+        providers: planProviders,
+        paths,
+        logger,
+        base  : store.base,
+        assets: store.manifest(),
+      });
+    } catch (err) {
+      if (!(err instanceof RequestStopped) && !stopAsked()) throw err;
+      stopped = true;
+      break;
+    }
     planned = inScope(plannedNow);
-    const ready = graph.ready().filter((t) => opts.only === undefined || planned.has(t.hash));
+    const ready = graph.ready().filter((t) => planned.has(t.hash));
     if (ready.length === 0) break;
     progress();
 
@@ -425,6 +486,11 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
         return;
       }
       activity.set(task.hash, `${attemptOf(task)}starting`);
+      delete task.interrupted;
+      const signature = hashParts(task.inputs, config);
+      if (task.checkpoint?.signature !== signature || !CHECKPOINT_ID.test(task.checkpoint.id)) {
+        task.checkpoint = { id: randomUUID(), records: [], signature };
+      }
       graph.setStatus(task.hash, 'running');
       await logTask(paths, graph.get(task.hash)!);
       // Reported at the start as well as the end. A host drawing what is in flight would
@@ -433,20 +499,49 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
       logger?.info('task.start', { hash: task.hash, kind: task.kind });
 
       let result;
+      let recordWrites = Promise.resolve();
+      const requestDir = join(paths.state, 'requests', task.checkpoint.id);
+      const requests = new TaskRequests(requestDir);
       try {
-        result = await raceAbort(runTask(task, deps, runners), opts.abort);
+        result = await raceAbort(
+          withRequestStop({ signal: opts.signal, abort: opts.abort }, () =>
+            runTask(
+              task,
+              {
+                ...deps,
+                requests,
+                checkpoint: (node) => {
+                  checkRequestWrite();
+                  const write = recordWrites.then(async () => {
+                    checkRequestWrite();
+                    await logTask(paths, node);
+                  });
+                  recordWrites = write.catch(() => {});
+                  return write;
+                },
+              },
+              runners,
+            ),
+          ),
+          opts.abort,
+        );
       } catch (err) {
-        result = {
-          status: 'failed' as const,
-          error : err instanceof Error ? err.message : String(err),
-        };
+        result =
+          err instanceof RequestStopped || stopAsked()
+            ? ABORTED
+            : {
+                status: 'failed' as const,
+                error : err instanceof Error ? err.message : String(err),
+              };
       }
       activity.delete(task.hash);
 
       if (result === ABORTED) {
+        await requests.writesSettled();
+        await recordWrites;
         // Back to `pending` rather than `failed`: an abort is not a fault of the task's, so it
         // must not spend the retry budget or leave a reason on the record
-        graph.setStatus(task.hash, 'pending');
+        graph.setStatus(task.hash, 'pending', { interrupted: true });
         await logTask(paths, graph.get(task.hash)!);
         aborted.push(task.hash);
         stopped = true;
@@ -462,6 +557,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
         error : result.error,
       });
       const finished = graph.get(task.hash)!;
+      if (result.status !== 'failed') delete finished.checkpoint;
       // A runner that threw recorded nothing, so the failure would otherwise leave no trace in
       // the causal chain — and the cross-run retry budget counts exactly these records.
       if (result.status === 'failed') {
@@ -473,6 +569,7 @@ export async function runPipeline(opts: RunOptions): Promise<RunSummary> {
         });
       }
       await logTask(paths, finished);
+      if (result.status !== 'failed') await rm(requestDir, { recursive: true, force: true });
       ran.push(finished);
       progress();
       logger?.[result.status === 'failed' ? 'error' : 'info']('task.end', {

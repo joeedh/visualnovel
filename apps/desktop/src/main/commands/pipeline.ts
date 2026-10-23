@@ -40,6 +40,7 @@ export const pipelineRun = define({
     'vngen/build',
     'vngen/state/tasks.jsonl',
     'vngen/state/graphs',
+    'vngen/state/requests',
   ],
   // Deliberately not `confirm`. The header's button, the menu entry and the advanced dialog's OK
   // are each already a deliberate click on the words "run pipeline", so a second card repeating
@@ -95,7 +96,9 @@ export const pipelineRun = define({
     return {
       message: `${what}${failed}${how}`,
       data   : result,
-      ...(mock ? {} : { written: ['vngen/build/', 'vngen/state/tasks.jsonl'] }),
+      ...(mock
+        ? {}
+        : { written: ['vngen/build/', 'vngen/state/tasks.jsonl', 'vngen/state/requests/'] }),
     };
   },
 });
@@ -118,6 +121,7 @@ export const pipelineDraw = define({
     'vngen/build',
     'vngen/state/tasks.jsonl',
     'vngen/state/graphs',
+    'vngen/state/requests',
   ],
   // Spends real image calls, like a regenerate, and the gate is on the command rather than the
   // props
@@ -143,7 +147,12 @@ export const pipelineDraw = define({
     return {
       message: `${result.ran} task(s) ran${failed}.`,
       data   : { queued, run: result },
-      written: [...queued.written, 'vngen/build/', 'vngen/state/tasks.jsonl'],
+      written: [
+        ...queued.written,
+        'vngen/build/',
+        'vngen/state/tasks.jsonl',
+        'vngen/state/requests/',
+      ],
     };
   },
 });
@@ -152,7 +161,7 @@ export const pipelineStop = define({
   id         : 'pipeline.stop',
   title      : 'Stop pipeline',
   description:
-    'Stop the run in progress after the task it is on. Finished work is kept. With `abort`, the ' +
+    'Stop before another API request starts, after requests already in flight finish. Saved responses are reused on resume. With `abort`, the ' +
     'tasks in flight are cut off as well: each goes back to pending, and the model call it was in ' +
     'is abandoned, so what it would have drawn is lost and the call is still paid for.',
   // A stop writes nothing of its own — the run it interrupts records what it managed, and that
@@ -193,8 +202,8 @@ export const pipelineStop = define({
       message: !asked
         ? 'No pipeline run is in progress.'
         : already
-          ? 'Already stopping after the tasks in flight. Stop with abort to cut them off.'
-          : 'Stopping after the task in progress.',
+          ? 'Already stopping after current API requests finish. Stop with abort to cut them off.'
+          : 'Stopping after current API requests finish.',
     });
   },
 });
@@ -285,6 +294,7 @@ export const pipelineApproveAndRun = define({
     'vngen/build',
     'vngen/state/tasks.jsonl',
     'vngen/state/graphs',
+    'vngen/state/requests',
   ],
   // The one command that both approves art and spends money without asking again in between.
   // Every step is undoable on its own; the pass as a whole is not.
@@ -374,7 +384,12 @@ export const pipelineApproveAndRun = define({
     return {
       message: `${approved} approved, ${ran} task(s) ran over ${rounds} round(s)${trouble} — ${why}.`,
       data   : { approved, ran, failed, rounds, why },
-      written: ['vngen/build/', 'vngen/state/tasks.jsonl', 'vngen/build/manifest.json'],
+      written: [
+        'vngen/build/',
+        'vngen/state/tasks.jsonl',
+        'vngen/state/requests/',
+        'vngen/build/manifest.json',
+      ],
     };
   },
 });

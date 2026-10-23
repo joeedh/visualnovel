@@ -22,6 +22,7 @@ import { selectionForTask, taskIsSelected, type Selection } from '../../rules/se
 import { redrawing, type AnchorPass } from '../tour/anchors.js';
 import { TOKENS, alpha } from '../app/tokens.js';
 import type { PipelineStatus, Task } from '../../../src/shared/ipc.js';
+import { taskActivity } from '../../../src/shared/taskactivity.js';
 
 /**
  * The task list: one card per node of the content-addressed graph, for scanning rather than for
@@ -156,7 +157,13 @@ export class TaskListEditor extends VnEditor {
   }
 
   private showing(): Task[] {
-    return showing(this.status?.tasks ?? [], this.filter());
+    return showing(this.tasks(), this.filter());
+  }
+
+  private tasks(): Task[] {
+    const tasks = this.status?.tasks ?? [];
+    // A newly opened pane has not received a busy push; the status read already knows ownership
+    return this.seenBusy ? taskActivity(tasks, this.activity) : tasks;
   }
 
   private selection(): Selection {
@@ -199,7 +206,7 @@ export class TaskListEditor extends VnEditor {
   }
 
   private rebuildBar(): void {
-    const tasks = this.status?.tasks ?? [];
+    const tasks = this.tasks();
     const running = tasks.filter((t) => t.status === 'running').length;
     const hidden = tasks.length - this.showing().length;
 
@@ -295,7 +302,7 @@ export class TaskListEditor extends VnEditor {
 
     if (this.failure) return void this.list.appendChild(note(this.failure, TOKENS.vermilion));
 
-    const all = this.status?.tasks ?? [];
+    const all = this.tasks();
     const tasks = this.showing();
     for (const character of this.status?.gatePending ?? []) {
       this.list.appendChild(this.gateBar(character));
@@ -365,7 +372,7 @@ export class TaskListEditor extends VnEditor {
     const head = row();
     head.appendChild(dot(colour));
     head.appendChild(mono(task.kind, TOKENS.mist, 11));
-    const status = mono(task.status, colour, 10);
+    const status = mono(task.interrupted ? 'interrupted' : task.status, colour, 10);
     status.style.marginLeft = 'auto';
     head.appendChild(status);
     head.appendChild(mono(task.hash.slice(0, 8), TOKENS.mistDim, 10));

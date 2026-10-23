@@ -11,6 +11,7 @@ import { narrowTask } from '../agent/reviews.js';
 import { labelContext } from '../assets/assetlabel.js';
 import type { WorkspaceSession } from './core.js';
 import { relPath, readAllShots, loadProject } from './core.js';
+import { taskActivity } from '../../shared/taskactivity.js';
 
 export class PipelinePart {
   constructor(private readonly session: WorkspaceSession) {}
@@ -98,7 +99,10 @@ export class PipelinePart {
       graph : project.graph,
     });
     return {
-      tasks        : [...project.graph.all()].map((t) => narrowTask(t, (hash) => exts.get(hash))),
+      tasks: taskActivity(
+        [...project.graph.all()].map((t) => narrowTask(t, (hash) => exts.get(hash))),
+        this.session.progress.activity ?? {},
+      ),
       gatePending  : gate.pending,
       blockedOnGate: !gate.cleared,
       slots        : slots.order.map((key) => slots.nodes.get(key)!),

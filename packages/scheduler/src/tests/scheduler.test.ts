@@ -335,16 +335,16 @@ describe('requeueFailed', () => {
     expect(graph.get(orphan.hash)?.status).toBe('failed');
   });
 
-  it('puts a planned node a dead process left at running back to pending', () => {
+  it('releases abandoned executions, including superseded versions', () => {
     const live = node('live', 'running');
     const orphan = node('orphan', 'running');
     const done = node('done', 'done');
     const graph = graphOf(live, orphan, done);
 
-    const hashes = requeueAbandoned(graph, new Set([live.hash, done.hash])).map((t) => t.hash);
-    expect(hashes).toEqual([live.hash]);
+    const hashes = requeueAbandoned(graph).map((t) => t.hash);
+    expect(hashes).toEqual([live.hash, orphan.hash]);
     expect(graph.get(live.hash)?.status).toBe('pending');
-    expect(graph.get(orphan.hash)?.status).toBe('running');
+    expect(graph.get(orphan.hash)).toMatchObject({ status: 'pending', interrupted: true });
     expect(graph.get(done.hash)?.status).toBe('done');
   });
 

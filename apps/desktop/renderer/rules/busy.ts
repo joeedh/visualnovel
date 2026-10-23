@@ -30,13 +30,13 @@ const PIPELINE: BusyControls = {
   stop    : 'pipeline.stop',
   stops   : stopsWhat(BUSY_RUN),
   aborts:
-    'A stop is already pending: the run ends once the tasks in flight finish. Stopping again ' +
+    'A stop is already pending: the run ends once current API requests finish. Stopping again ' +
     'cuts those tasks off — each goes back to pending, and the model call it was in is ' +
     'abandoned, still paid for and its picture lost.',
   progress: (ran, pending, stopping = false) =>
     `The pipeline is running — ${ran} task(s) done, ` +
     `${pending} ${pending === 1 ? 'task' : 'tasks'} left.` +
-    (stopping ? ' Stopping once the tasks in flight finish.' : ''),
+    (stopping ? ' Stopping after current API requests finish.' : ''),
 };
 
 /**

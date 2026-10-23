@@ -1,5 +1,6 @@
 import type { ZodType } from 'zod';
 import { ProviderError, retry, StructuredOutputError } from '@vn/util';
+import { checkRequest, requestSignal } from './requests.js';
 
 /** What one candidate string yielded: a value, or why it did not hold one. */
 type Scan =
@@ -97,9 +98,16 @@ export async function withStructuredRetry<T>(
   call: (attempt: number) => Promise<string>,
   opts: { attempts?: number } = {},
 ): Promise<T> {
-  return retry((attempt) => call(attempt).then((raw) => parseStructured(raw, schema)), {
-    attempts   : opts.attempts ?? 3,
-    baseMs     : 50,
-    shouldRetry: (err) => !(err instanceof ProviderError),
-  });
+  return retry(
+    (attempt) => {
+      checkRequest();
+      return call(attempt).then((raw) => parseStructured(raw, schema));
+    },
+    {
+      attempts   : opts.attempts ?? 3,
+      baseMs     : 50,
+      signal     : requestSignal(),
+      shouldRetry: (err) => !(err instanceof ProviderError),
+    },
+  );
 }

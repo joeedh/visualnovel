@@ -989,7 +989,7 @@ export class WorkspaceSession {
   }
 
   /**
-   * Ask the generative work in flight to stop. It stops at a task boundary, so this returns what
+   * Ask the generative work in flight to stop. It stops at a request boundary, so this returns what
    * was asked rather than what happened — the run's own outcome says that.
    */
 

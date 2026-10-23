@@ -20,6 +20,6 @@ describe('naming the work in flight', () => {
 
   it('describes what Stop does to the pass and to one run', () => {
     expect(stopsWhat(BUSY_PASS)).toContain('takes no further rounds');
-    expect(stopsWhat(BUSY_RUN)).toContain('after the task it is on');
+    expect(stopsWhat(BUSY_RUN)).toContain('after current API requests finish');
   });
 });

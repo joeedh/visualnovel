@@ -17,12 +17,16 @@ export async function ensureDir(dir: string): Promise<void> {
  * where a directory listing shows it alongside the scenes. An error from that unlink is ignored,
  * so a failed cleanup cannot mask the failure that caused it.
  */
-export async function writeFileAtomic(path: string, data: string | Uint8Array): Promise<void> {
+export async function writeFileAtomic(
+  path: string,
+  data: string | Uint8Array,
+  beforeReplace?: () => Promise<void>,
+): Promise<void> {
   await ensureDir(dirname(path));
   const tmp = `${path}.tmp-${randomBytes(6).toString('hex')}`;
   try {
     await fs.writeFile(tmp, data);
-    await renameWithRetry(tmp, path);
+    await renameWithRetry(tmp, path, beforeReplace);
   } finally {
     await fs.rm(tmp, { force: true }).catch(() => {});
   }
@@ -38,8 +42,13 @@ const RENAME_RETRYABLE = new Set(['EPERM', 'EACCES', 'EBUSY']);
 const RENAME_ATTEMPTS = 5;
 const RENAME_BASE_DELAY_MS = 10;
 
-async function renameWithRetry(from: string, to: string): Promise<void> {
+async function renameWithRetry(
+  from: string,
+  to: string,
+  beforeReplace?: () => Promise<void>,
+): Promise<void> {
   for (let attempt = 1; ; attempt++) {
+    await beforeReplace?.();
     try {
       await fs.rename(from, to);
       return;

@@ -3,6 +3,7 @@ import type { AssetRef, ImageParams, ImageProvider, ImageResult } from '@vn/type
 import { ProviderError } from '@vn/util';
 import type { ImageBackend, ImageInput, RefLoader } from './backend.js';
 import { isPlaceholderImage } from './placeholder.js';
+import { checkRequest } from './requests.js';
 
 /** Leading magic bytes of the image formats the pipeline produces and consumes. */
 const IMAGE_MAGIC: number[][] = [
@@ -54,6 +55,7 @@ export class BackendImageProvider implements ImageProvider {
 
   async generate(prompt: string, refs: AssetRef[], params: ImageParams): Promise<ImageResult> {
     const images = await Promise.all(refs.map((r) => this.loadRef(r)));
+    checkRequest();
     return this.backend.generate(prompt, images, params);
   }
 
@@ -64,6 +66,7 @@ export class BackendImageProvider implements ImageProvider {
     params: ImageParams,
   ): Promise<ImageResult> {
     const [baseImage, ...images] = await Promise.all([base, ...refs].map((r) => this.loadRef(r)));
+    checkRequest();
     return this.backend.edit(baseImage!, prompt, images, params);
   }
 }

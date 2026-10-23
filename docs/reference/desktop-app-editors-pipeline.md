@@ -62,6 +62,11 @@ review merge. Both are unchanged, and so are their tests. The plan is in
   `popupArea` because path.ux sets `AreaFlags.FLOATING` after the editor's `init()` has
   already run. The call sets the opening state and nothing more, and the author's next
   click on the tick overrides it.
+- **Running means owned by the live scheduler.** The task list and `pipeline:status`
+  reconcile durable records with the session's activity map. A historical `running` record
+  with no owner appears as interrupted and stays out of running counts and the
+  running-only list. It remains available in the full history; a new hash for the same
+  shot does not hide it or make it active again. Reading status writes nothing.
 - **`only failed` keeps `needs_human` too, which is the reason the filter exists.** An
   author opens the list when a run did not produce what they expected, and a single
   failure is hard to spot among hundreds of `done` cards. A shot that exhausted its

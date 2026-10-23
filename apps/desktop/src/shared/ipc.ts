@@ -123,8 +123,8 @@ export function busyName(inFlight: Iterable<string>): string | undefined {
  */
 export function stopsWhat(busy: string): string {
   return busy === BUSY_PASS
-    ? 'The pass stops after the task it is on, and takes no further rounds. Finished work is kept.'
-    : 'The run stops after the task it is on. Finished work is kept.';
+    ? 'The pass stops after current API requests finish, and takes no further rounds. Saved responses are kept for resumption.'
+    : 'The run stops after current API requests finish. Saved responses are kept for resumption.';
 }
 
 /**

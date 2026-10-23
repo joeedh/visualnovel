@@ -2016,7 +2016,7 @@
       "offer": {
         "id"     : "pipeline.stop",
         "label"  : "■",
-        "tooltip": "The run stops after the task it is on. Finished work is kept.",
+        "tooltip": "The run stops after current API requests finish. Saved responses are kept for resumption.",
         "ok"     : true,
         "props"  : {}
       },
@@ -2353,7 +2353,7 @@
       "offer": {
         "id"     : "pipeline.stop",
         "label"  : "■",
-        "tooltip": "A stop is already pending: the run ends once the tasks in flight finish. Stopping again cuts those tasks off — each goes back to pending, and the model call it was in is abandoned, still paid for and its picture lost.",
+        "tooltip": "A stop is already pending: the run ends once current API requests finish. Stopping again cuts those tasks off — each goes back to pending, and the model call it was in is abandoned, still paid for and its picture lost.",
         "form"   : true,
         "ok"     : true,
         "props": {

@@ -10,7 +10,8 @@ import { BUSY_AGENT, BUSY_PASS, BUSY_REPORT, BUSY_RUN } from '../../../src/share
 describe('what the header draws for the work in flight', () => {
   it('stops a pipeline run through the pipeline', () => {
     expect(busyControls(BUSY_RUN)?.stop).toBe('pipeline.stop');
-    expect(busyControls(BUSY_RUN)?.stops).toContain('Finished work is kept.');
+    expect(busyControls(BUSY_RUN)?.stops).toContain('current API requests finish');
+    expect(busyControls(BUSY_RUN)?.stops).toContain('Saved responses are kept');
   });
 
   it('says a pass takes no further rounds, which a plain run has nothing to say about', () => {
@@ -45,7 +46,9 @@ describe('what the spinner says', () => {
   });
 
   it('says a stop is pending once one is', () => {
-    expect(busyControls(BUSY_RUN)?.progress(3, 2, true)).toContain('Stopping once the tasks');
+    expect(busyControls(BUSY_RUN)?.progress(3, 2, true)).toContain(
+      'Stopping after current API requests finish',
+    );
     expect(busyControls(BUSY_RUN)?.progress(3, 2)).not.toContain('Stopping');
   });
 

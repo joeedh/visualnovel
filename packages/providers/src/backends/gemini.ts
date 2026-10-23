@@ -29,7 +29,7 @@ function lazyClient(apiKey: string): GeminiClient {
     if (!clientPromise) {
       clientPromise = import('@google/genai').then((mod) => {
         const GoogleGenAI = (mod as any).GoogleGenAI ?? (mod as any).default;
-        return new GoogleGenAI({ apiKey });
+        return new GoogleGenAI({ apiKey, httpOptions: { retryOptions: { attempts: 1 } } });
       });
     }
     return clientPromise;

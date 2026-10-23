@@ -79,6 +79,10 @@ export interface Task<K extends TaskKind = TaskKind> {
   /** Why the task reached a terminal non-`done` state (`failed` or `needs_human`). */
   error?: string;
   attempts: TaskAttempt[];
+  /** Response journal retained while an interrupted execution can be resumed. */
+  checkpoint?: { id: string; records: number[]; signature: string };
+  /** An execution stopped before reaching a terminal state. */
+  interrupted?: boolean;
 }
 
 /** A loosely-typed task usable in heterogeneous collections. */

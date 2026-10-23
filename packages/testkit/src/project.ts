@@ -86,6 +86,8 @@ export interface RunOptions {
   only?: readonly string[];
   /** The scheduler's own `abort`: cut off the tasks in flight and put them back to pending. */
   abort?: AbortSignal;
+  /** Stop after the requests already in flight settle. */
+  signal?: AbortSignal;
   /** The scheduler's own `onProgress`, for a test watching what a task says it is doing. */
   onProgress?: (progress: RunProgress) => void;
   /** The scheduler's own `now`: the clock a run's attempts and its held takes are stamped with. */
@@ -236,6 +238,7 @@ export class TestProject {
       logger: opts.logger,
       ...(opts.only === undefined ? {} : { only: opts.only }),
       ...(opts.abort === undefined ? {} : { abort: opts.abort }),
+      ...(opts.signal === undefined ? {} : { signal: opts.signal }),
       ...(opts.onProgress === undefined ? {} : { onProgress: opts.onProgress }),
       ...(opts.now === undefined ? {} : { now: opts.now }),
       ...(opts.graphs === undefined

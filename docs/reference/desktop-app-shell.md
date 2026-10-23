@@ -399,15 +399,15 @@ subscribes to `onExec`, and the bridge owns both.
   behalf; the confirmation card counts what is waiting and what is planned before anything
   is spent — and says so plainly when the answer to both is none, because a pass with
   nothing to do still takes one round and an author who was not told reads that round as a
-  run that did nothing. Stop pipeline ends it after the task in progress, and ends the
-  pass rather than only the round it interrupted: the session is held for the whole pass
-  under its own name (`BUSY_PASS`), so the header keeps drawing the spinner and the Stop
-  button through the gaps between rounds, and one `AbortController` covers all of them.
-  Approving is not a run, so a stop asked for while a round is approving previously had
-  nothing to abort and was forgotten by the time the next round started. Its loop and its
-  round cap are in [`command-system.md`](command-system.md#the-registered-commands); what
-  it approves is what `approvable` lists, at most one row per slot, the take the slot
-  holds.
+  run that did nothing. Stop pipeline waits for current API requests to finish, saves
+  their responses for resumption, and starts no further requests. It ends the pass rather
+  than only the round it interrupted: the session is held for the whole pass under its own
+  name (`BUSY_PASS`), so the header keeps drawing the spinner and the Stop button through
+  the gaps between rounds, and one `AbortController` covers all of them. Approving is not
+  a run, so a stop asked for while a round is approving previously had nothing to abort
+  and was forgotten by the time the next round started. Its loop and its round cap are in
+  [`command-system.md`](command-system.md#the-registered-commands); what it approves is
+  what `approvable` lists, at most one row per slot, the take the slot holds.
 - **Only the Help menu starts an update check.** Check for Updates…
   (`app.checkForUpdates`) queries GitHub for the latest release, compares it against
   `apps/desktop/package.json`'s version, and reports the result on screen — nothing is

@@ -14,7 +14,7 @@ import type {
   TaskResult,
 } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
-import { mergeReports, reportingRetries } from '@vn/providers';
+import { checkRequestWrite, mergeReports, reportingRetries } from '@vn/providers';
 import { heldBy, layoutDefect, sheetSeeds } from '@vn/artgen';
 import type { SheetSeeds } from '@vn/artgen';
 import { refinePrompt } from './p6.js';
@@ -60,6 +60,7 @@ async function generateAsset(
   meta: AssetWriteMeta,
 ): Promise<AssetRef> {
   const result = await deps.providers.image.generate(prompt, refs, params);
+  checkRequestWrite();
   return deps.store.write(result.bytes, result.ext, {
     ...meta,
     prompt,
@@ -83,6 +84,7 @@ async function fileTake(
   refs: AssetRef[],
 ): Promise<void> {
   const at = deps.now?.();
+  checkRequestWrite();
   task.attempts.push({
     attempt: task.attempts.length + 1,
     prompt,
@@ -96,6 +98,7 @@ async function fileTake(
 
 /** The hold alone, for the shot runner, which records its attempts itself. */
 async function holdTake(deps: RunDeps, ref: AssetRef, at: string | undefined): Promise<void> {
+  checkRequestWrite();
   const assets = deps.store.manifest();
   const asset = assets.find((a) => a.hash === ref.hash);
   if (!asset) return;
@@ -229,6 +232,7 @@ const runModelSheet: Runner<'model_sheet'> = async (task, deps) => {
   const result = base
     ? await deps.providers.image.edit(base, prompt, refs.slice(1), params)
     : await deps.providers.image.generate(prompt, refs, params);
+  checkRequestWrite();
   const ref = await deps.store.write(result.bytes, result.ext, {
     ...meta,
     prompt,
@@ -302,6 +306,7 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
     let stalledAfter: number | undefined;
     // What every attempt so far was drawn from: the critique on the bound path, the prompt otherwise
     const tried = new Set<string>();
+    const records = task.checkpoint?.records ?? [];
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       tried.add(throughNode ? critique : prompt);
@@ -328,7 +333,8 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
       const reports = [...reviewed, ...layoutReport(found?.shot, reviewed)];
       const merged = mergeReports(reports);
 
-      const at = deps.now?.();
+      const index = records[attempt - 1] ?? task.attempts.length;
+      const at = task.attempts[index]?.at ?? deps.now?.();
       const record: TaskAttempt = {
         attempt,
         prompt,
@@ -338,7 +344,10 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
         ...(at === undefined ? {} : { at }),
         via: 'run',
       };
-      task.attempts.push(record);
+      checkRequestWrite();
+      task.attempts[index] = record;
+      records[attempt - 1] = index;
+      await deps.checkpoint?.(task);
 
       if (!merged.blocking) {
         // The clean frame is the take the slot holds; the reviewers' verdict gates retries and
@@ -404,13 +413,22 @@ export function createRunners(config: ProjectConfig): Record<TaskKind, Runner> {
  * the task's activity, since the runner cannot see it and it is the wait an author most wants
  * explained.
  */
-export function runTask(
+export async function runTask(
   task: AnyTask,
   deps: RunDeps,
   runners: Record<TaskKind, Runner>,
 ): Promise<TaskResult> {
   deps.activity?.(task, 'drawing');
-  const run = () => runners[task.kind](task, deps);
+  const run = () =>
+    runners[task.kind](task, {
+      ...deps,
+      store    : deps.requests?.store(deps.store) ?? deps.store,
+      providers: deps.requests?.providers(deps.providers) ?? deps.providers,
+    });
   const { activity } = deps;
-  return activity ? reportingRetries((note) => activity(task, note), run) : run();
+  try {
+    return await (activity ? reportingRetries((note) => activity(task, note), run) : run());
+  } finally {
+    await deps.requests?.settled();
+  }
 }

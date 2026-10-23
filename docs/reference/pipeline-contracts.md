@@ -321,11 +321,10 @@ These implement the system design in
           `attempts.length` (on a `needs_human` shot that field is a refine counter).
         - `needs_human` is never auto-retried, because it requests human attention rather
           than reporting a fault.
-        - A planned task the log left at `running` is put back to `pending` at the same
-          point, before the failed requeue. A run owns the graph while it lasts and hosts
-          refuse a second run, so that state can only be a process that died mid-task;
-          left alone, `ready()` never offers it again and `pipeline.draw` refuses it as
-          "being drawn now". It spends no attempt budget, because no attempt was recorded.
+        - Every task the previous owner left at `running` returns to `pending` with
+          `interrupted: true`, including superseded versions. Each wave intersects
+          `ready()` with the current plan, even for an unrestricted run, so historical
+          pending tasks cannot spend money. Recovery spends no failure budget.
         - A dry run requeues in memory and writes nothing, so `vngen cost` counts the
           retry that the dry run would perform and leaves no divergent log.
     - **The report is derived from the last planning pass, not from what this process
@@ -333,12 +332,31 @@ These implement the system design in
         - `RunSummary.failed`/`needsHuman` are the live plan's terminal nodes, so a
           failure inherited from an earlier run still exits `vngen run` non-zero. A
           `needs_human` node does not, because that artifact exists and requires review.
-        - Both the requeue and the report must intersect with the planned set. Nothing in
-          production calls `TaskGraph.prune`, so `tasks.jsonl` accumulates orphaned nodes
-          whenever a prompt or reference change rehashes a task, and a blind sweep would
-          either pay again for art that no plan asks for or leave the exit code failing
-          forever.
+        - Failed-task retries and the terminal report must intersect with the planned set.
+          Nothing in production calls `TaskGraph.prune`, so `tasks.jsonl` accumulates
+          orphaned nodes whenever a prompt or reference change rehashes a task, and a
+          blind sweep would either pay again for art that no plan asks for or leave the
+          exit code failing forever.
         - `vngen status` does not plan, so its counts include orphans.
+    - **Stop takes effect before the next API request.** Requests already in flight
+      settle, and their successful responses are written atomically under
+      `vngen/state/requests/<execution-id>/` before the runner consumes them. An
+      unfinished task returns to `pending`, marked interrupted, without a failure attempt.
+      A task whose final request completed can finish its local bookkeeping. Provider
+      backoff is interruptible; SDK retries are disabled in favor of the application's
+      request-boundary retry policy.
+    - The task's `checkpoint` identifies its execution journal. Resumption replays
+      successful image and review responses, including independently completed parallel
+      reviews, then makes only the remaining requests. Attempt-record indices prevent
+      replay from duplicating refine attempts or overwriting failure records. Planning has
+      its own resumable journal, and a stop cannot persist a fallback decomposition. Graph
+      requests are scoped by node key and run key, alongside the graph's existing
+      completed-node journal. Request arguments are hashed; binary responses remain
+      binary. Changing task inputs or configuration starts a new execution, as does an
+      explicit regeneration. Completed execution journals are removed after the terminal
+      task record is durable; interrupted and failed executions retain them.
+    - An immediate abort releases tasks without waiting for their requests. Late answers
+      are fenced from response journals, attempt records, asset writes and slot holds.
     - Below these layers, the Gemini, Claude and OpenRouter backends retry a transient
       failure in place (429/5xx/transport, 3 attempts). They do not retry other failures:
       an unrecognized error is terminal by default, because three refusals cost three

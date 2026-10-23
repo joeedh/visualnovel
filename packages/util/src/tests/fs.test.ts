@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { writeFileAtomic } from '../fs.js';
+import { readText, writeFileAtomic } from '../fs.js';
 
 async function tempDir(): Promise<{ dir: string; cleanup: () => Promise<void> }> {
   const dir = await fs.mkdtemp(join(tmpdir(), 'vn-fs-'));
@@ -75,6 +75,29 @@ describe('writeFileAtomic', () => {
       }
       expect((await fs.readdir(dir)).filter((n) => n.includes('.tmp-'))).toEqual([]);
     } finally {
+      await cleanup();
+    }
+  });
+
+  it('rechecks guarded input after a rename retry and preserves an intervening edit', async () => {
+    const { dir, cleanup } = await tempDir();
+    const file = join(dir, 'scene.md');
+    await fs.writeFile(file, 'before');
+    const spy = jest.spyOn(fs, 'rename').mockImplementation(async () => {
+      await fs.writeFile(file, 'external');
+      throw Object.assign(new Error('locked'), { code: 'EPERM' });
+    });
+    try {
+      await expect(
+        writeFileAtomic(file, 'ours', async () => {
+          if ((await readText(file)) !== 'before') throw new Error('changed');
+        }),
+      ).rejects.toThrow('changed');
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(await readText(file)).toBe('external');
+      expect(await fs.readdir(dir)).toEqual(['scene.md']);
+    } finally {
+      spy.mockRestore();
       await cleanup();
     }
   });

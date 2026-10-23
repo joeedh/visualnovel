@@ -45,12 +45,14 @@ export async function retry<T>(
     shouldRetry?: (err: unknown) => boolean;
     delayFor?: (err: unknown, attempt: number) => number | undefined;
     onRetry?: (err: unknown, attempt: number, waitMs: number) => void;
+    signal?: AbortSignal;
   } = {},
 ): Promise<T> {
   const attempts = opts.attempts ?? 3;
   const baseMs = opts.baseMs ?? 250;
   let lastErr: unknown;
   for (let attempt = 1; attempt <= attempts; attempt++) {
+    opts.signal?.throwIfAborted();
     try {
       return await fn(attempt);
     } catch (err) {
@@ -59,7 +61,21 @@ export async function retry<T>(
       const asked = opts.delayFor?.(err, attempt);
       const wait = asked === undefined ? baseMs * 2 ** (attempt - 1) : asked;
       opts.onRetry?.(err, attempt, wait);
-      await new Promise((resolve) => setTimeout(resolve, wait));
+      await new Promise<void>((resolve, reject) => {
+        const signal = opts.signal;
+        const finish = () => {
+          signal?.removeEventListener('abort', stop);
+          resolve();
+        };
+        const timer = setTimeout(finish, wait);
+        const stop = () => {
+          clearTimeout(timer);
+          signal?.removeEventListener('abort', stop);
+          reject(signal?.reason);
+        };
+        signal?.addEventListener('abort', stop, { once: true });
+        if (signal?.aborted) stop();
+      });
     }
   }
   throw lastErr;

@@ -469,9 +469,11 @@ export class AssetPart {
   private async requeue(project: LoadedProject, task: AnyTask): Promise<string[]> {
     await logTask(project.paths, {
       ...task,
-      status: 'pending',
-      output: undefined,
-      error : undefined,
+      status     : 'pending',
+      output     : undefined,
+      error      : undefined,
+      checkpoint : undefined,
+      interrupted: undefined,
     });
     const written = [relPath(this.session.dir, project.paths.tasksLog)];
     const invalidated = await this.invalidateBound(project, task);
@@ -511,7 +513,9 @@ export class AssetPart {
       return { ok: true, task: hash, queued: undefined, note: `Would draw ${label}.` };
     }
     if (task.status === 'running') {
-      return { ok: false, reason: `${label} is being drawn now.` };
+      return Object.hasOwn(this.session.progress.activity ?? {}, task.hash)
+        ? { ok: false, reason: `${label} is being drawn now.` }
+        : { ok: true, task: hash, queued: undefined, note: `Would resume drawing ${label}.` };
     }
     const seeded = project.config.image_params.seed !== undefined;
     return {

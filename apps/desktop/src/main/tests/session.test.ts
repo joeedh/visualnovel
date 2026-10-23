@@ -25,6 +25,7 @@ import {
   type ToolContext,
 } from '@vn/authoring';
 import { openGit } from '@vn/git';
+import { logTask } from '@vn/taskgraph';
 import { ProjectPaths, readShots, writeShots } from '@vn/store';
 import type { Shot, ShotsFile } from '@vn/types';
 import { nativeFile, readNative } from '../notify/threads.js';
@@ -1414,6 +1415,45 @@ describe('WorkspaceSession — over a generated project', () => {
     // Already pending, so a second draw has nothing to requeue and writes nothing
     expect(await session.drawSlot(slot)).toMatchObject({ ok: true, written: [] });
     expect(await session.previewDraw('nonsense')).toMatchObject({ ok: false });
+  });
+
+  it('resumes an abandoned slot while refusing the version owned by a live run', async () => {
+    const { graph } = await p.reload();
+    const task = graph
+      .all()
+      .find(
+        (t) =>
+          t.kind === 'location_ref' &&
+          'locationId' in t.inputs &&
+          t.inputs.locationId === 'rooftop',
+      )!;
+    const original = { ...task };
+    try {
+      task.status = 'running';
+      await logTask(p.paths, task);
+      const before = await p.read('vngen/state/tasks.jsonl');
+      expect((await session.status()).tasks.find((t) => t.hash === task.hash)).toMatchObject({
+        status     : 'pending',
+        interrupted: true,
+      });
+      expect(await session.previewDraw('plate:rooftop/evening')).toMatchObject({ ok: true });
+      expect(await session.drawSlot('plate:rooftop/evening')).toMatchObject({
+        ok     : true,
+        written: [],
+      });
+      expect(await p.read('vngen/state/tasks.jsonl')).toBe(before);
+      session.progress.activity = { [task.hash]: 'drawing' };
+      expect((await session.status()).tasks.find((t) => t.hash === task.hash)?.status).toBe(
+        'running',
+      );
+      expect(await session.previewDraw('plate:rooftop/evening')).toMatchObject({
+        ok     : false,
+        message: expect.stringContaining('being drawn now'),
+      });
+    } finally {
+      session.progress.activity = {};
+      await logTask(p.paths, original);
+    }
   });
 
   it('rejects an approval for a hash the store does not hold', async () => {

@@ -1,6 +1,7 @@
 import type { TextLLM } from '@vn/types';
 import { retry } from '@vn/util';
 import type { ChatBackend } from './backend.js';
+import { checkRequest, requestSignal } from './requests.js';
 
 /**
  * A `TextLLM` over any `ChatBackend` (report §8). Used for location mining, scene/shot
@@ -11,16 +12,18 @@ export class ChatTextLLM implements TextLLM {
   constructor(private readonly backend: ChatBackend) {}
 
   complete(prompt: string, system?: string): Promise<string> {
+    checkRequest();
     return this.backend.message({ prompt, system });
   }
 
   structured<T>(prompt: string, parse: (raw: string) => T, system?: string): Promise<T> {
     return retry(
       async () => {
+        checkRequest();
         const raw = await this.backend.message({ prompt, system });
         return parse(raw);
       },
-      { attempts: 3, baseMs: 50 },
+      { attempts: 3, baseMs: 50, signal: requestSignal() },
     );
   }
 }

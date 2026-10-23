@@ -7,7 +7,14 @@
  */
 import type { AnyTask, AssetMeta, AssetRef, ProjectModel, RefBinding } from '@vn/types';
 import { slotKey } from '@vn/artgen';
-import { applyRecord, bindSlots, genNodeSpec, imageRefOf, registerGenRuntimes } from '@vn/gengraph';
+import {
+  applyRecord,
+  bindSlots,
+  genNodeSpec,
+  imageRefOf,
+  nodeKey,
+  registerGenRuntimes,
+} from '@vn/gengraph';
 import type {
   GenImageRef,
   GenOutputs,
@@ -20,6 +27,7 @@ import type {
 import { executeGenGraph, graphDrift } from '@vn/gengraph/state';
 import type { GenRunContext, GenRunResult } from '@vn/gengraph/state';
 import type { RunDeps } from './pipeline.js';
+import { checkRequest, checkRequestWrite } from '@vn/providers';
 
 /** The type names of the three nodes a host seeds, which are also the seed's keys. */
 const DERIVED_PROMPT = 'GenDerivedPrompt';
@@ -266,11 +274,17 @@ export async function runBoundGraph(
   options: GraphRunOptions,
 ): Promise<GraphDraw> {
   const ctx: GenRunContext = {
-    services: binding.services,
-    journal : binding.journal,
+    services   : binding.services,
+    servicesFor: (node, runKey) =>
+      deps.requests?.services(binding.services, `${nodeKey(node)}:${runKey}`) ?? binding.services,
+    journal    : binding.journal,
     record: async (record) => {
-      applyRecord(binding.journal, record);
-      await binding.record(record);
+      checkRequestWrite();
+      const write = async () => {
+        applyRecord(binding.journal, record);
+        await binding.record(record);
+      };
+      await (deps.requests ? deps.requests.write(write) : write());
     },
     ...(deps.now === undefined ? {} : { now: (): Date => new Date(deps.now!()) }),
   };
@@ -290,6 +304,7 @@ export async function runBoundGraph(
 
   const failure = result.failures[0];
   if (failure !== undefined) {
+    checkRequest();
     throw new Error(failure.error);
   }
 

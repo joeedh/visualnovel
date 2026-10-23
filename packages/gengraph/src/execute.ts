@@ -14,6 +14,8 @@ import type { GenServices } from './services.js';
 /** What one run reaches outside the graph itself. */
 export interface GenRunContext {
   services: GenServices;
+  /** Per-node request journaling supplied by a task owner. */
+  servicesFor?: (node: Node, runKey: string) => GenServices;
   /** The journal as it stood before this run. The executor advances a private copy of it. */
   journal: GraphJournal;
   /** Appends one record. The host persists it and the executor keeps its own view current. */
@@ -195,7 +197,11 @@ export async function executeGenGraph(
 
     let outputs: GenOutputs;
     try {
-      outputs = await runtime(inputs, readProps(node), ctx.services);
+      outputs = await runtime(
+        inputs,
+        readProps(node),
+        ctx.servicesFor?.(node, runKey) ?? ctx.services,
+      );
     } catch (err) {
       await fail(node, runKey, err instanceof Error ? err.message : String(err));
       continue;

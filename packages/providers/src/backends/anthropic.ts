@@ -89,7 +89,7 @@ export function createAnthropicChat(
     if (!clientPromise) {
       clientPromise = import('@anthropic-ai/sdk').then((mod) => {
         const Anthropic = (mod as any).default ?? mod;
-        return new Anthropic({ apiKey });
+        return new Anthropic({ apiKey, maxRetries: 0 });
       });
     }
     return clientPromise;

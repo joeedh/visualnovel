@@ -5,6 +5,7 @@
  */
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { ConfigError, ProviderError, RetryableProviderError, retry } from '@vn/util';
+import { checkRequest, requestSignal } from '../requests.js';
 
 /** Attempts and backoff for one network call. Deliberately small — the scheduler retries too. */
 const ATTEMPTS = 3;
@@ -209,6 +210,7 @@ export function providerError(what: string, err: unknown): ProviderError {
 export function callWithRetry<T>(what: string, fn: () => Promise<T>): Promise<T> {
   return retry(
     async () => {
+      checkRequest();
       try {
         return await fn();
       } catch (err) {
@@ -217,6 +219,7 @@ export function callWithRetry<T>(what: string, fn: () => Promise<T>): Promise<T>
     },
     {
       attempts   : ATTEMPTS,
+      signal     : requestSignal(),
       baseMs     : BASE_MS,
       shouldRetry: (err) => err instanceof RetryableProviderError,
       // Every vendor asks for the same policy: honour `retry-after` where one was sent, and back

@@ -2,6 +2,7 @@ import type { AnyTask, Logger, ProjectModel, Providers, TaskGraph, TaskKind } fr
 import type { AssetStore } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import type { GraphRuntime } from './graphrun.js';
+import type { TaskRequests } from './requests.js';
 
 /**
  * Everything a runner needs to execute one task (report §5, §8). This is not the graph: the
@@ -27,6 +28,10 @@ export interface RunDeps {
    * reviewing, a retry it is waiting out. Each call replaces the last sentence for that task.
    */
   activity?: (task: AnyTask, doing: string) => void;
+  /** Successful API answers for this execution, retained across cooperative stops. */
+  requests?: TaskRequests;
+  /** Persists attempt records before another request can start. */
+  checkpoint?: (task: AnyTask) => Promise<void>;
 }
 
 /** A dry-run estimate of the generative work a plan implies (report §10 cost preview). */
