@@ -1,4 +1,5 @@
 import { AreaFlags, type Container, type Label, type ScreenArea } from 'pathux';
+import type { Invocation } from '@vn/commands';
 import { isLive } from '../../api.js';
 import { EDITOR_IDS, type EditorId } from '../../../src/shared/editors.js';
 import type { PropValue } from '../../../src/shared/ipc.js';
@@ -151,7 +152,10 @@ export class VnHeaderEditor extends VnEditor {
 
     // The Layout submenu is a list of files, so it follows the files rather than the exec feed:
     // a pull, an undo or another window's save all move it without this window running anything.
-    const recheck = (): void => {
+    const recheck = (invocation?: Invocation): void => {
+      // Bubble placement only writes a scene's shots. It cannot change layout templates or
+      // page-builder installation. Unknown/external changes still refresh both menus.
+      if (invocation?.id === 'story.setBubbles') return;
       this.layoutRevision++;
       this.rebuild();
     };
@@ -239,7 +243,7 @@ export class VnHeaderEditor extends VnEditor {
    * things that change the list are writes rather than a change of project.
    */
   private refreshLayouts(): void {
-    const key = `${this.ui.projectTitle}|${this.layoutRevision}`;
+    const key = `${this.ui.projectRoot}|${this.layoutRevision}`;
     if (this.layoutsFor === key) return;
     this.layoutsFor = key;
 

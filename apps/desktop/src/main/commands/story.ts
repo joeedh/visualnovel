@@ -922,8 +922,10 @@ function bubblesOf(json: string): { bubbles: PanelBubble[] } | { refuse: string 
 }
 
 export const storySetBubbles = define({
-  id         : 'story.setBubbles',
-  title      : 'Place a page’s speech bubbles',
+  snapshotFiles  : ({ scene }) => [`vngen/work/shots/${scene}.json`],
+  provenanceFiles: ({ scene }) => [`vngen/work/shots/${scene}.json`],
+  id             : 'story.setBubbles',
+  title          : 'Place a page’s speech bubbles',
   description:
     'Restate where the runner draws a page shot’s speech bubbles: one per lettered line, an ' +
     'anchor in page fractions and an optional tail toward the speaker; a bubble with no tail is ' +
@@ -932,9 +934,10 @@ export const storySetBubbles = define({
     'refused by name; a lettered line with no bubble keeps the dialogue box.',
   notes:
     'Replace a page’s whole bubble list as JSON (`[{lineId, anchor: [x, y], tail?: [x, y]}]`); empty removes them all. Bubbles are outside the prompt, so the page is not drawn again. The list is a string prop because `@vn/commands` has no JSON kind.',
-  mutating   : true,
-  affects    : ['vngen/work/shots'],
-  undoable   : true,
+  mutating       : true,
+  defersCommit   : true,
+  affects        : ['vngen/work/shots'],
+  undoable       : true,
   props: {
     scene  : prop.string('the scene the shot belongs to'),
     shot   : prop.string('the page shot id, e.g. arrival__beat1'),
@@ -952,9 +955,15 @@ export const storySetBubbles = define({
   async run({ scene, shot, bubbles }, ctx) {
     const read = bubblesOf(bubbles);
     if ('refuse' in read) throw new Error(read.refuse);
-    const result = await ctx.host.session.setBubbles(scene, shot, read.bubbles);
+    const result = await ctx.host.session.setBubbles(
+      scene,
+      shot,
+      read.bubbles,
+      ctx.timing,
+      ctx.assertUndoInput,
+    );
     if (!result.ok) throw new Error(result.message);
-    return { message: result.message, data: result.coverage, written: result.written };
+    return { message: result.message, data: result.saved, written: result.written };
   },
 });
 

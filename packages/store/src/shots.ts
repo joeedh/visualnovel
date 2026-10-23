@@ -99,10 +99,19 @@ export async function readShots(
 ): Promise<LoadedShots | null> {
   const file = paths.shotsFile(sceneId);
   if (!(await exists(file))) return null;
+  return parseShots(await readText(file), sceneId, file, knownLineIds);
+}
 
+/** Parse exactly the bytes a guarded writer will compare before replacing the file. */
+export function parseShots(
+  text: string,
+  sceneId: string,
+  file: string,
+  knownLineIds?: ReadonlySet<string>,
+): LoadedShots {
   let raw: unknown;
   try {
-    raw = JSON.parse(await readText(file));
+    raw = JSON.parse(text);
   } catch (err) {
     throw new ValidationError(`unparseable shots file for scene "${sceneId}"`, [
       { code: 'shots_file', message: (err as Error).message, where: file },
@@ -166,6 +175,39 @@ export async function readShots(
   if (parsed.data.nextShot !== undefined) loaded.nextShot = parsed.data.nextShot;
   if (parsed.data.sheets !== undefined) loaded.sheets = parsed.data.sheets;
   return loaded;
+}
+
+/** Replace only bubbles, retaining every unrelated authored/generated field from fresh bytes. */
+export async function writeShotBubbles(
+  paths: ProjectPaths,
+  sceneId: string,
+  shotId: string,
+  panels: readonly PagePanel[],
+  before: string,
+  checkScene: () => Promise<void>,
+): Promise<string> {
+  const file = paths.shotsFile(sceneId);
+  // The caller parsed and validated these exact bytes with parseShots.
+  const raw = JSON.parse(before) as ShotsFile;
+  const target = raw.shots.find((s) => s.id === shotId);
+  if (!target?.panels || target.panels.length !== panels.length) {
+    throw new Error('The page panels changed. Reload the page and try again.');
+  }
+  for (const [i, panel] of target.panels.entries()) {
+    const bubbles = panels[i]!.bubbles;
+    if (bubbles?.length) panel.bubbles = bubbles;
+    else delete panel.bubbles;
+  }
+  const next = JSON.stringify(raw, null, 2) + '\n';
+  const check = async () => {
+    await checkScene();
+    if ((await readText(file)) !== before) {
+      throw new Error('The shots changed while saving bubbles. Reload the page and try again.');
+    }
+  };
+  if (next === before) await check();
+  else await writeFileAtomic(file, next, check);
+  return next;
 }
 
 /** The file-level fields a writer carries through unchanged unless it says otherwise. */

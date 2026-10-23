@@ -6,9 +6,11 @@
  * to one repo `root`.
  */
 import { execFile } from 'node:child_process';
+import { homedir } from 'node:os';
 import { readFile, rm, stat } from 'node:fs/promises';
 import { dirname, join, relative, resolve as resolvePath } from 'node:path';
 import { GitError, InProgressError } from './errors.js';
+import { RepositoryTracker, operationMarkers } from './tracker.js';
 import {
   CHECKPOINT_FORMAT,
   CHECKPOINT_PREFIX,
@@ -209,6 +211,215 @@ let scratchIndexCount = 0;
 /** A non-interactive handle to one git repository. */
 export class Git {
   constructor(readonly root: string) {}
+  private tracker?: RepositoryTracker;
+  private trackerFile?: string;
+  private trackedFiles = new Map<string, Promise<RepositoryTracker>>();
+  private readyTrackers = new Map<string, RepositoryTracker>();
+  private trackerPreparation = new Map<string, Promise<void>>();
+  private trackerPrewarms = new Map<string, Promise<void>>();
+  private trackerEpoch = 0;
+  private trackerWrites = 0;
+  private trackerDisabled = false;
+  private trackerUses = 0;
+  /** Hold across repository mutations, including committers using another Git instance. */
+  beginProvenanceMutation(): () => void {
+    this.trackerWrites++;
+    this.invalidateProvenance();
+    let ended = false;
+    return () => {
+      if (ended) return;
+      ended = true;
+      this.trackerWrites--;
+      this.invalidateProvenance();
+    };
+  }
+  private invalidateProvenance(): void {
+    this.trackerEpoch++;
+    this.tracker?.invalidate();
+    for (const tracker of this.readyTrackers.values()) tracker.invalidate();
+  }
+  async verifyProvenance(file: string): Promise<void> {
+    this.tracker?.close();
+    const epoch = this.trackerEpoch;
+    const tracker = await this.createTracker(file);
+    if (epoch !== this.trackerEpoch) {
+      tracker.close();
+      return;
+    }
+    this.tracker = tracker;
+    this.trackerFile = file;
+  }
+  private async createTracker(file: string): Promise<RepositoryTracker> {
+    const gitdir = (await this.ok(['rev-parse', '--absolute-git-dir'])).trim();
+    const common = resolvePath(
+      this.root,
+      (await this.ok(['rev-parse', '--git-common-dir'])).trim(),
+    );
+    const externalPaths = (
+      await Promise.all(
+        ['GIT_CONFIG_SYSTEM', 'GIT_CONFIG_GLOBAL', 'GIT_ATTR_SYSTEM', 'GIT_ATTR_GLOBAL'].map(
+          (name) => this.ok(['var', name]),
+        ),
+      )
+    ).flatMap((value) => value.trim().split('\n').filter(Boolean));
+    const attributes = [join(this.root, '.gitattributes')];
+    let directory = this.root;
+    for (const part of file.split('/').slice(0, -1)) {
+      directory = join(directory, part);
+      attributes.push(join(directory, '.gitattributes'));
+    }
+    const dependencies = [
+      ...new Set([
+        ...externalPaths,
+        ...attributes,
+        join(process.env['XDG_CONFIG_HOME'] || join(homedir(), '.config'), 'git/attributes'),
+        join(common, 'config'),
+        join(gitdir, 'config.worktree'),
+        join(common, 'info/attributes'),
+      ]),
+    ];
+    return new RepositoryTracker(
+      this.root,
+      gitdir,
+      common,
+      file,
+      async () => {
+        // The initial supported domain is an ordinary attached worktree with an unfiltered,
+        // stage-zero regular file. Only reuse guards with identical dependency contents.
+        if (resolvePath(gitdir) !== common) return 'linked worktree';
+        if (process.env['GIT_INDEX_FILE'] || process.env['GIT_WORK_TREE'] || process.env['GIT_DIR'])
+          return 'Git environment override';
+        const head = (await readFile(join(gitdir, 'HEAD'), 'utf8')).trim();
+        if (!head.startsWith('ref: refs/heads/')) return 'detached or unsupported HEAD';
+        for (const marker of operationMarkers) {
+          if (
+            await stat(join(gitdir, marker)).then(
+              () => true,
+              (e: NodeJS.ErrnoException) => {
+                if (e.code === 'ENOENT') return false;
+                throw e;
+              },
+            )
+          )
+            return `repository operation: ${marker}`;
+        }
+        const listing = await this.ok(['ls-files', '-v', '--stage', '--debug', '--', file]);
+        if (!/^H 100644 [0-9a-f]+ 0\t/.test(listing) && !/^H 100755 [0-9a-f]+ 0\t/.test(listing))
+          return 'unsupported index entry';
+        const flags = [...listing.matchAll(/flags: ([0-9a-f]+)/g)];
+        if (flags.length !== 1 || flags[0]![1] !== '0') return 'index flags or conflicts';
+        const attributes = await this.ok(['check-attr', '-z', '--all', '--', file]);
+        if (attributes.length > 0) return 'file attributes or filters';
+        const config = await this.run([
+          'config',
+          '--get-regexp',
+          '^(core\\.(autocrlf|eol|sparsecheckout|splitindex|fsmonitor|ignorestat|trustctime|attributesfile)|extensions\\.|include\\.|includeif\\.)',
+        ]);
+        if (config.code !== 0 && config.code !== 1) return 'unreadable Git configuration';
+        const effective = new Map(
+          config.stdout
+            .split('\n')
+            .filter(Boolean)
+            .map((line) => [line.split(' ')[0]!.toLowerCase(), line]),
+        );
+        const unsupportedConfig = [...effective.values()].some(
+          (line) =>
+            !/^core\.(autocrlf|sparsecheckout|splitindex|fsmonitor|ignorestat) false$/i.test(
+              line,
+            ) && !/^core\.trustctime true$/i.test(line),
+        );
+        if (unsupportedConfig) return 'unsupported Git configuration';
+        return null;
+      },
+      dependencies,
+    );
+  }
+  /** Read-only hint from an eligible editor; it neither executes nor records a command. */
+  async prewarmProvenance(files: readonly string[]): Promise<void> {
+    if (files.length !== 1 || this.trackerDisabled || this.trackerWrites) return;
+    const file = files[0]!;
+    if (this.trackerPrewarms.has(file)) return this.trackerPrewarms.get(file);
+    if (this.trackerPreparation.has(file)) return this.trackerPreparation.get(file);
+    if (this.readyTrackers.get(file)?.baselineHead()) return;
+    if (!this.trackedFiles.has(file) && this.trackedFiles.size >= 8) return;
+    const pending = Promise.resolve().then(async () => {
+      try {
+        await this.provenance({ files, mode: 'prefer-tracker' });
+        await this.trackerPreparation.get(file);
+      } catch {
+        // An optional warmup must not prevent opening an editor. Edits still use Git.
+      } finally {
+        if (this.trackerPrewarms.get(file) === pending) this.trackerPrewarms.delete(file);
+      }
+    });
+    this.trackerPrewarms.set(file, pending);
+    return pending;
+  }
+  /** Preparation never holds up a command. Until it completes callers keep using Git. */
+  private prepareTracker(file: string, head: string, epoch: number): void {
+    if (
+      this.trackerDisabled ||
+      this.trackerWrites ||
+      epoch !== this.trackerEpoch ||
+      this.trackerPreparation.has(file)
+    )
+      return;
+    const existing = this.readyTrackers.get(file);
+    let pending = this.trackedFiles.get(file);
+    if (!pending) {
+      if (this.trackedFiles.size >= 8) return;
+      // Yield to the command returning its authoritative result before starting subprocesses.
+      pending = new Promise<void>((resolve) => setImmediate(resolve)).then(() =>
+        this.createTracker(file),
+      );
+      this.trackedFiles.set(file, pending);
+    }
+    const current = () =>
+      !this.trackerDisabled && !this.trackerWrites && epoch === this.trackerEpoch;
+    const preparation = Promise.resolve().then(async () => {
+      let tracker: RepositoryTracker | undefined;
+      try {
+        tracker = await pending;
+        if (!current()) return;
+        const bytes = await this.ok(['cat-file', '--filters', `${head}:${file}`]);
+        if (!current()) return;
+        tracker.setBaseline(head, Buffer.from(bytes));
+        // Warm the guards too. This result is never used as command provenance.
+        await tracker.predict();
+        if (current()) this.readyTrackers.set(file, tracker);
+      } catch {
+        tracker?.invalidate();
+      } finally {
+        if (!existing && (!tracker || this.readyTrackers.get(file) !== tracker)) {
+          tracker?.close();
+          if (this.trackedFiles.get(file) === pending) this.trackedFiles.delete(file);
+        }
+        if (this.trackerPreparation.get(file) === preparation) this.trackerPreparation.delete(file);
+      }
+    });
+    this.trackerPreparation.set(file, preparation);
+  }
+  provenanceVerification() {
+    return [
+      ...(this.tracker?.read() ?? []),
+      ...[...this.readyTrackers.values()].flatMap((t) => t.read()),
+    ].slice(-200);
+  }
+  stopProvenanceVerification(): void {
+    this.trackerEpoch++;
+    this.trackerDisabled = true;
+    for (const pending of this.trackedFiles.values())
+      void pending.then(
+        (t) => t.close(),
+        () => {},
+      );
+    this.trackedFiles.clear();
+    this.readyTrackers.clear();
+    // Keep in-flight preparation discoverable until its finally block drains it.
+    // Disposal prevents publication, but an already-started Git process must finish.
+    this.tracker?.close();
+    this.tracker = undefined;
+  }
 
   private run(args: string[], indexFile?: string): Promise<RunResult> {
     return run(this.root, args, indexFile);
@@ -326,26 +537,31 @@ export class Git {
     paths?: string[];
     trailers?: Record<string, string>;
   }): Promise<string | null> {
-    // Before the add: `add -A` mid-rebase marks every conflicted path resolved, markers and all,
-    // and the commit that followed would be adopted as the replayed save
-    const busy = operationOf(await this.inProgress());
-    if (busy) throw new InProgressError(busy);
-    if (opts.paths && opts.paths.length > 0) await this.add(opts.paths);
-    const before = await this.head();
-    const entries = Object.entries(opts.trailers ?? {});
-    const message =
-      entries.length > 0
-        ? `${opts.message}\n\n${entries.map(([k, v]) => `${k}: ${v}`).join('\n')}`
-        : opts.message;
-    const r = await this.run(['commit', '-m', message]);
-    if (r.code !== 0) {
-      // Git phrases an empty commit as "nothing to commit" or "no changes added to commit"
-      // depending on whether the tree is clean or just has nothing staged.
-      if (/nothing to commit|no changes added to commit/i.test(r.stdout + r.stderr)) return null;
-      throw new GitError(`git commit failed: ${r.stderr.trim() || r.stdout.trim()}`);
+    const endMutation = this.beginProvenanceMutation();
+    try {
+      // Before the add: `add -A` mid-rebase marks every conflicted path resolved, markers and all,
+      // and the commit that followed would be adopted as the replayed save
+      const busy = operationOf(await this.inProgress());
+      if (busy) throw new InProgressError(busy);
+      if (opts.paths && opts.paths.length > 0) await this.add(opts.paths);
+      const before = await this.head();
+      const entries = Object.entries(opts.trailers ?? {});
+      const message =
+        entries.length > 0
+          ? `${opts.message}\n\n${entries.map(([k, v]) => `${k}: ${v}`).join('\n')}`
+          : opts.message;
+      const r = await this.run(['commit', '-m', message]);
+      if (r.code !== 0) {
+        // Git phrases an empty commit as "nothing to commit" or "no changes added to commit"
+        // depending on whether the tree is clean or just has nothing staged.
+        if (/nothing to commit|no changes added to commit/i.test(r.stdout + r.stderr)) return null;
+        throw new GitError(`git commit failed: ${r.stderr.trim() || r.stdout.trim()}`);
+      }
+      const after = await this.head();
+      return after && after !== before ? after : null;
+    } finally {
+      endMutation();
     }
-    const after = await this.head();
-    return after && after !== before ? after : null;
   }
 
   /** Current HEAD commit hash, or null in an unborn repo. */
@@ -586,6 +802,66 @@ export class Git {
     return parseStatusV2(
       await this.ok(['status', '--porcelain=v2', '--branch', '--untracked-files=all']),
     );
+  }
+
+  /** Git provenance by default; explicitly eligible callers may use a guarded dirty witness. */
+  async provenance(options?: {
+    files: readonly string[];
+    mode: 'verify' | 'prefer-tracker';
+    /** Compare every Nth eligible prediction with Git; defaults to 20. */
+    verifyEvery?: number;
+  }): Promise<{ head: string | null; dirty: boolean }> {
+    const epoch = this.trackerEpoch;
+    let tracker = this.tracker;
+    let file = this.trackerFile;
+    if (options && options.files.length === 1 && !this.trackerDisabled && !this.trackerWrites) {
+      file = options.files[0]!;
+      tracker = this.trackerPreparation.has(file) ? undefined : this.readyTrackers.get(file);
+      if (!tracker?.baselineHead()) tracker = undefined;
+    } else if (options) tracker = undefined;
+    const candidate =
+      !this.trackerWrites && epoch === this.trackerEpoch
+        ? await tracker?.predict({ cachedGuardsOnly: options?.mode === 'prefer-tracker' })
+        : undefined;
+    const stable = epoch === this.trackerEpoch && !this.trackerWrites && !this.trackerDisabled;
+    if (options?.mode === 'prefer-tracker' && stable && candidate?.prediction) {
+      const every = Math.max(1, Math.floor(options.verifyEvery ?? 20));
+      if (++this.trackerUses % every !== 0) {
+        tracker!.record(candidate, null);
+        return candidate.prediction;
+      }
+    }
+    const status = parseStatusV2(
+      await this.ok([
+        ...(tracker || options ? ['--no-optional-locks'] : []),
+        'status',
+        '--porcelain=v2',
+        '--branch',
+        '--no-ahead-behind',
+        '--untracked-files=normal',
+      ]),
+    );
+    const authoritative = { head: status.oid, dirty: status.entries.length > 0 };
+    if (candidate && tracker && epoch === this.trackerEpoch && !this.trackerWrites) {
+      tracker.record(candidate, authoritative);
+      if (tracker.read().at(-1)?.result === 'mismatch') this.trackerDisabled = true;
+      if (!options && status.oid && tracker.baselineHead() !== status.oid) {
+        try {
+          const bytes = await this.ok(['cat-file', '--filters', `${status.oid}:${file}`]);
+          if (epoch === this.trackerEpoch && !this.trackerWrites)
+            tracker.setBaseline(status.oid, Buffer.from(bytes));
+        } catch {
+          tracker.invalidate();
+        }
+      }
+    }
+    if (
+      options?.files.length === 1 &&
+      status.oid &&
+      (tracker?.baselineHead() !== status.oid || candidate?.reason === 'guards need refresh')
+    )
+      this.prepareTracker(options.files[0]!, status.oid, epoch);
+    return authoritative;
   }
 
   /**

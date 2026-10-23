@@ -1,17 +1,27 @@
 import { loadConfig, setStartScene } from '@vn/config';
+import { PhaseTimer } from '@vn/commands';
 import { rename } from 'node:fs/promises';
-import { assignLineIds, headingOf, sceneChunksFromScript, type SceneChunk } from '@vn/model';
+import {
+  assignLineIds,
+  headingOf,
+  sceneChunksFromScript,
+  sceneFromDoc,
+  type SceneChunk,
+} from '@vn/model';
 import { parseFountain } from '@vn/parse';
 import {
   ProjectPaths,
   deleteShots,
   findScreenplay,
   readSceneChunks,
+  readSceneChunk,
+  parseShots,
+  writeShotBubbles,
   readShots,
   writeSceneChunk,
   writeShots,
 } from '@vn/store';
-import { exists, hasConflictMarkers, readText } from '@vn/util';
+import { exists, hasConflictMarkers, readText, sha256 } from '@vn/util';
 import { fileCache } from '../workspace/filecache.js';
 import {
   aspectFor,
@@ -68,6 +78,7 @@ import {
 import type { DefectReport, PagePanel, PanelBubble, Scene, Shot } from '@vn/types';
 import type {
   BranchEditResult,
+  BubbleSave,
   SceneCoverage,
   SceneEditResult,
   ShotFailure,
@@ -488,6 +499,14 @@ export class StoryPart {
    */
   async sceneCoverage(sceneId: string): Promise<SceneCoverage> {
     const project = await loadProject(this.session.dir);
+    return this.coverageFromProject(sceneId, project);
+  }
+
+  /** Reuse this edit's project snapshot; shots are read after persistence to retain file metadata. */
+  private async coverageFromProject(
+    sceneId: string,
+    project: LoadedProject,
+  ): Promise<SceneCoverage> {
     const scene = project.model.scenes.get(sceneId);
     if (!scene) throw new Error(`No scene "${sceneId}".`);
 
@@ -801,12 +820,16 @@ export class StoryPart {
   private async shotsRule(
     sceneId: string,
     rule: (shots: readonly Shot[], scene: Scene, project: LoadedProject) => ShotOutfitOp,
+    timing?: PhaseTimer,
   ): Promise<{ project: LoadedProject; op: ShotOutfitOp }> {
-    const project = await loadProject(this.session.dir);
+    const project = timing
+      ? await timing.measure('projectLoadMs', () => loadProject(this.session.dir, timing))
+      : await loadProject(this.session.dir);
     const scene = project.model.scenes.get(sceneId);
     if (!scene) return { project, op: { ok: false, error: `No scene "${sceneId}".` } };
 
-    const loaded = await readShots(project.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
+    const read = () => readShots(project.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
+    const loaded = timing ? await timing.measure('shotsReadMs', read) : await read();
     if (!loaded) {
       return {
         project,
@@ -816,7 +839,12 @@ export class StoryPart {
         },
       };
     }
-    return { project, op: rule(loaded.shots, scene, project) };
+    return {
+      project,
+      op: timing
+        ? timing.measureSync('bubbleValidationMs', () => rule(loaded.shots, scene, project))
+        : rule(loaded.shots, scene, project),
+    };
   }
 
   /** What `story.setSubjects` would do, without writing it. */
@@ -950,12 +978,53 @@ export class StoryPart {
     return (await this.bubblesRule(sceneId, shotId, bubbles)).op;
   }
 
-  private bubblesRule(
+  private async bubblesRule(
     sceneId: string,
     shotId: string,
     bubbles: readonly PanelBubble[],
-  ): Promise<{ project: LoadedProject; op: ShotOutfitOp }> {
-    return this.shotsRule(sceneId, (shots) => setBubbles(shots, { shot: shotId, bubbles }));
+    timing = new PhaseTimer(),
+  ) {
+    // Full project discovery previously restricted scenes to filenames in scenes/.
+    if (!sceneId || /[\\/:\0]/.test(sceneId) || sceneId === '.' || sceneId === '..') {
+      throw new Error('A scene id must name one scene file.');
+    }
+    const paths = new ProjectPaths(this.session.dir);
+    const chunk = await timing.measure('sceneReadMs', () => readSceneChunk(paths, sceneId));
+    if (!chunk) throw new Error(`No scene "${sceneId}".`);
+    if (hasConflictMarkers(chunk.text))
+      throw new Error('Resolve the scene conflict before saving bubbles.');
+    const parsed = sceneFromDoc(chunk.doc, sceneId);
+    if (!parsed.ok) throw new Error(parsed.diagnostic.message);
+    if (parsed.value.diagnostics.some((d) => d.severity === 'error')) {
+      throw new Error(
+        parsed.value.diagnostics
+          .filter((d) => d.severity === 'error')
+          .map((d) => d.message)
+          .join('\n'),
+      );
+    }
+    const before = await timing.measure('shotsReadMs', async () => {
+      try {
+        return await readText(paths.shotsFile(sceneId));
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+          throw new Error(
+            `Scene "${sceneId}" has no decomposition yet — run the pipeline past the gate.`,
+          );
+        }
+        throw err;
+      }
+    });
+    const loaded = parseShots(
+      before,
+      sceneId,
+      paths.shotsFile(sceneId),
+      new Set(parsed.value.scene.lines.map((l) => l.id)),
+    );
+    const op = timing.measureSync('bubbleValidationMs', () =>
+      setBubbles(loaded.shots, { shot: shotId, bubbles }),
+    );
+    return { paths, chunk, before, op };
   }
 
   /**
@@ -966,16 +1035,32 @@ export class StoryPart {
     sceneId: string,
     shotId: string,
     bubbles: readonly PanelBubble[],
-  ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
-    const { project, op } = await this.bubblesRule(sceneId, shotId, bubbles);
+    timing = new PhaseTimer(),
+    assertUndoInput?: (path: string, text: string) => void,
+  ): Promise<{ ok: boolean; message: string; written: string[]; saved?: BubbleSave }> {
+    const { paths, chunk, before, op } = await this.bubblesRule(sceneId, shotId, bubbles, timing);
     if (!op.ok) return { ok: false, message: op.error, written: [] };
-
-    await writeShots(project.paths, sceneId, op.shots);
+    const written = `vngen/work/shots/${sceneId}.json`;
+    assertUndoInput?.(written, before);
+    const panels = op.shots.find((s) => s.id === shotId)!.panels!;
+    const next = await timing.measure('shotsWriteMs', () =>
+      writeShotBubbles(paths, sceneId, shotId, panels, before, async () => {
+        if ((await readText(chunk.file)) !== chunk.text) {
+          throw new Error('The scene changed while saving bubbles. Reload the page and try again.');
+        }
+      }),
+    );
     return {
-      ok      : true,
-      message : op.message,
-      written : [`vngen/work/shots/${sceneId}.json`],
-      coverage: await this.session.sceneCoverage(sceneId),
+      ok     : true,
+      message: op.message,
+      written: [written],
+      saved: {
+        kind: 'bubbles',
+        sceneId,
+        shotId,
+        panels,
+        revision: { scene: sha256(chunk.text), shots: sha256(next) },
+      },
     };
   }
 

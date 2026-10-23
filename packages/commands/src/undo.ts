@@ -67,10 +67,10 @@ export class UndoJournal {
    * Returns null when the root is not a directory to walk — the one case where undo is simply
    * unavailable rather than refused.
    */
-  async capture(seq: number): Promise<string | null> {
+  async capture(seq: number, files?: readonly string[]): Promise<string | null> {
     const stat = await fs.stat(this.root).catch(() => null);
     if (!stat?.isDirectory()) return null;
-    const tree = await this.store.capture(this.root, this.skip);
+    const tree = await this.store.capture(this.root, this.skip, files);
     this.taken.push({ seq, tree });
     return tree;
   }
@@ -90,16 +90,33 @@ export class UndoJournal {
     return tree;
   }
 
+  /** Compare fresh write input with the captured bytes, without trusting a stat cache. */
+  assertInput(tree: string, path: string, text: string): void {
+    let hash = tree;
+    const parts = path.split('/');
+    for (const [i, name] of parts.entries()) {
+      const entry = this.store.tree(hash)?.find((e) => e.name === name);
+      if (!entry || entry.kind !== (i === parts.length - 1 ? 'blob' : 'tree')) {
+        throw new Error(`Undo input changed: ${path}. Reload and try again.`);
+      }
+      hash = entry.hash;
+    }
+    const bytes = this.store.blob(hash);
+    if (!bytes || Buffer.from(bytes).toString('utf8') !== text) {
+      throw new Error(`Undo input changed: ${path}. Reload and try again.`);
+    }
+  }
+
   /** The undo point a record carries, from the two snapshots bracketing an act. */
-  point(pre: string, post: string): UndoPoint {
-    return { pre, post, changed: pre !== post };
+  point(pre: string, post: string, files?: readonly string[]): UndoPoint {
+    return { pre, post, changed: pre !== post, ...(files ? { files: [...files] } : {}) };
   }
 
   /** The document tree as it stands right now, without holding it against pruning. */
-  async currentTree(): Promise<string | null> {
+  async currentTree(files?: readonly string[]): Promise<string | null> {
     const stat = await fs.stat(this.root).catch(() => null);
     if (!stat?.isDirectory()) return null;
-    return this.store.capture(this.root, this.skip);
+    return this.store.capture(this.root, this.skip, files);
   }
 
   /** {@link currentTree}, confined to a root-relative subdirectory. */
@@ -126,7 +143,7 @@ export class UndoJournal {
         error: `that command's snapshot is no longer held — undo reaches back ${this.keep} commands`,
       };
     }
-    const tree = await this.currentTree();
+    const tree = await this.currentTree(point.files);
     if (tree === null) return { ok: false, error: `${this.root} is no longer a directory` };
     if (tree !== expected) {
       return {

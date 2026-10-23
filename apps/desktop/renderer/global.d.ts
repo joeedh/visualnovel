@@ -2,9 +2,12 @@ import type { DesktopApi } from '../src/shared/ipc';
 import type { AnchorRecord } from './rules/anchors';
 import type { ScopeReport, SweptAnchor } from './pathux/tour/anchors';
 import type { Debugger2D } from '@vn/debug2d';
+import type { TimingSample } from '@vn/commands';
 
 declare global {
   interface Window {
+    /** Last 200 Page editor saves and reloads, available in DevTools or over CDP. */
+    __vnPageTimings?: () => TimingSample[];
     /** Injected by the preload bridge. Absent when the renderer runs in a plain browser. */
     api?: DesktopApi;
     /** The 2D debug surface, installed by debug/install.ts. Dev builds only. */

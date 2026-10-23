@@ -4,7 +4,7 @@
  * over a real generated project — testkit runs the pipeline, the session reads it back.
  */
 import { promises as fs } from 'node:fs';
-import { join, sep } from 'node:path';
+import { dirname, join, sep } from 'node:path';
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
 import {
   deleteScene,
@@ -874,7 +874,14 @@ describe('WorkspaceSession — outfits', () => {
       message: expect.stringContaining('Nothing is drawn again'),
       written: ['vngen/work/shots/arrival.json'],
     });
-    const after = placed.coverage!.shots[0]!;
+    const after = (await session.sceneCoverage('arrival')).shots[0]!;
+    expect(placed.saved).toMatchObject({
+      kind   : 'bubbles',
+      sceneId: 'arrival',
+      shotId : 'arrival__beat1',
+      panels : after.panels,
+    });
+    expect(placed.saved!.revision.shots).toBeDefined();
     expect(after.panels![0]!.bubbles).toEqual([
       { lineId: lines[0]!, anchor: [0.5, 0.3], tail: [0.4, 0.6] },
     ]);
@@ -884,6 +891,102 @@ describe('WorkspaceSession — outfits', () => {
     expect(await session.setBubbles('arrival', 'arrival__beat1', [])).toMatchObject({ ok: true });
     expect(await session.setPanels('arrival', 'arrival__beat1', [])).toMatchObject({ ok: true });
   });
+
+  it('saves against fresh scene and shot bytes without loading unrelated project inputs', async () => {
+    await expect(session.previewBubbles('../arrival', 'arrival__beat1', [])).rejects.toThrow(
+      'one scene file',
+    );
+    const file = p.paths.shotsFile('arrival');
+    const raw = JSON.parse(await fs.readFile(file, 'utf8'));
+    raw.shots[0].panels = [
+      {
+        shape: [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+          [0, 1],
+        ],
+        framing    : 'medium',
+        subjects   : [],
+        coversLines: ['arrival:L2'],
+      },
+    ];
+    raw.nextShot = 17;
+    raw.externalMetadata = { keep: true };
+    raw.shots[0].shotData = { image: 'external-render', extra: 'keep' };
+    await fs.writeFile(file, JSON.stringify(raw));
+    // A full load would fail parsing this unrelated chunk.
+    await fs.writeFile(p.paths.sceneFile('rooftop'), '---\ninvalid: [\n---\n');
+    const saved = await session.setBubbles('arrival', 'arrival__beat1', [
+      { lineId: 'arrival:L2', anchor: [0.3, 0.4] },
+    ]);
+    expect(saved.ok).toBe(true);
+    const persisted = JSON.parse(await fs.readFile(file, 'utf8'));
+    delete persisted.shots[0].panels[0].bubbles;
+    expect(persisted).toEqual(raw);
+    // Editing the relevant scene is observed immediately, without a watcher event.
+    const sceneFile = p.paths.sceneFile('arrival');
+    await fs.writeFile(
+      sceneFile,
+      '---\nscene: arrival\n---\nINT. CLASSROOM - DAY\n\n[[line: L99]]\nA new scene.\n',
+    );
+    const before = await fs.readFile(file, 'utf8');
+    expect(
+      await session.setBubbles('arrival', 'arrival__beat1', [
+        { lineId: 'arrival:L2', anchor: [0.5, 0.5] },
+      ]),
+    ).toMatchObject({ ok: false });
+    expect(await fs.readFile(file, 'utf8')).toBe(before);
+  });
+
+  it.each(['scene', 'shots'] as const)(
+    'refuses an external %s replacement while staging a bubble save',
+    async (kind) => {
+      const file = p.paths.shotsFile('arrival');
+      const raw = JSON.parse(await fs.readFile(file, 'utf8'));
+      raw.shots[0].panels = [
+        {
+          shape: [
+            [0, 0],
+            [1, 0],
+            [1, 1],
+            [0, 1],
+          ],
+          framing    : 'medium',
+          subjects   : [],
+          coversLines: ['arrival:L2'],
+        },
+      ];
+      const before = JSON.stringify(raw);
+      await fs.writeFile(file, before);
+      const target = kind === 'scene' ? p.paths.sceneFile('arrival') : file;
+      const changed = (await fs.readFile(target, 'utf8')) + '\n';
+      const realWrite = fs.writeFile.bind(fs);
+      let injected = false;
+      const spy = jest.spyOn(fs, 'writeFile').mockImplementation(async (path, data, options) => {
+        await realWrite(path, data, options);
+        if (!injected && String(path).startsWith(file + '.tmp-')) {
+          injected = true;
+          await realWrite(target, changed);
+        }
+      });
+      try {
+        await expect(
+          session.setBubbles('arrival', 'arrival__beat1', [
+            { lineId: 'arrival:L2', anchor: [0.5, 0.5] },
+          ]),
+        ).rejects.toThrow('changed while saving');
+        expect(injected).toBe(true);
+        expect(await fs.readFile(target, 'utf8')).toBe(changed);
+        expect(await fs.readFile(file, 'utf8')).toBe(kind === 'shots' ? changed : before);
+        expect((await fs.readdir(dirname(file))).some((name) => name.includes('.tmp-'))).toBe(
+          false,
+        );
+      } finally {
+        spy.mockRestore();
+      }
+    },
+  );
 
   /** The variant control on the strip needs both, and a select built from anything else would
    * offer refusals. */

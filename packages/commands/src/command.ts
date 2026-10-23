@@ -14,6 +14,10 @@ export type CommandSource = 'ui' | 'menu' | 'dsl' | 'cdp' | 'agent';
 
 /** Everything a command may reach. `Host` is the app-specific service bundle. */
 export interface CommandContext<Host = unknown> {
+  /** Per-invocation diagnostics; nested phases are included in the outer save duration. */
+  timing?: import('./timing.js').PhaseTimer;
+  /** Refuse if freshly read write input differs from this invocation's undo snapshot. */
+  assertUndoInput?: (path: string, text: string) => void;
   /** The workspace / document-repo root the command operates on. */
   root: string;
   git: Git;
@@ -160,6 +164,10 @@ export interface Command<M extends PropSpecMap = PropSpecMap, Host = any> {
    * to undo (`docs/history/gitUndoOptions.md` §6).
    */
   undoable?: boolean;
+  /** Exact root-relative document files this invocation writes. Omit for whole-tree undo. */
+  snapshotFiles?(props: PropsOf<M>): readonly string[];
+  /** Candidate dirty witnesses for opt-in provenance tracking; rollout is host-controlled. */
+  provenanceFiles?(props: PropsOf<M>): readonly string[];
   /**
    * Set when the command's implementation owns its own commits — the agent loop commits once
    * per approved plan, and that plan is the authorial event. Commit-on-save then leaves it
@@ -225,6 +233,8 @@ export function defineFor<Host>(): <M extends PropSpecMap>(
  * read by hosts that never snapshot anything, including the renderer.
  */
 export interface UndoPoint {
+  /** When present, drift checks and restoration cover only these document files. */
+  files?: readonly string[];
   pre: string;
   post: string;
   /**

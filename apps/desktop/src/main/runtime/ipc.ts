@@ -95,6 +95,11 @@ export function registerIpc(ctx: AppContext): void {
     getStack(ctx).check(request.id, request.props ?? {}, origin),
   );
   handle(ctx, 'command:history', (_origin, limit) => getStack(ctx).history(limit));
+  handle(ctx, 'command:timings', () => getStack(ctx).timings());
+  handle(ctx, 'command:tracker', () => getStack(ctx).provenanceVerification());
+  handle(ctx, 'command:prewarm', (_origin, request) =>
+    getStack(ctx).prewarmProvenance(request.id, request.props),
+  );
   handle(ctx, 'command:undo', () => getStack(ctx).undo());
   handle(ctx, 'command:redo', () => getStack(ctx).redo());
   handle(ctx, 'command:checkpointBegin', (_origin, { shortLabel, message, scope }) =>

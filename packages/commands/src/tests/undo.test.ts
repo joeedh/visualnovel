@@ -3,6 +3,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { UndoPoint } from '../command.js';
 import { UndoJournal } from '../undo.js';
+import { defineCommand } from '../command.js';
+import { CommandRegistry } from '../registry.js';
+import { CommandStack } from '../stack.js';
+import type { Git } from '@vn/git';
 
 /**
  * Real directories, because the journal's whole job is filesystem behaviour: what a snapshot
@@ -44,6 +48,87 @@ async function bracket(journal: UndoJournal, seq: number, edit: () => Promise<vo
 }
 
 describe('UndoJournal', () => {
+  it('keeps scoped edits individually undoable, preserves unrelated edits, and refuses same-file drift', async () => {
+    const { dir, journal, cleanup } = await tempWorkspace();
+    try {
+      const registry = new CommandRegistry();
+      let text = 'first';
+      let externalDuringRun = false;
+      registry.register(
+        defineCommand({
+          id           : 'test.scoped',
+          title        : 'Scoped edit',
+          description  : 'Writes one document',
+          props        : {},
+          mutating     : true,
+          undoable     : true,
+          snapshotFiles: () => ['doc.md'],
+          run: async (_props, ctx) => {
+            if (externalDuringRun) await fs.writeFile(join(dir, 'doc.md'), 'external during save');
+            ctx.assertUndoInput!('doc.md', await read(dir, 'doc.md'));
+            await fs.writeFile(join(dir, 'doc.md'), text);
+            return { message: 'saved', written: ['doc.md'] };
+          },
+        }),
+      );
+      const stack = new CommandStack({
+        registry,
+        journal,
+        context: {
+          root: dir,
+          host: {},
+          log : () => {},
+          git : { isRepo: async () => false } as unknown as Git,
+        },
+      });
+      await stack.exec('test.scoped', {}, 'ui');
+      text = 'second';
+      await stack.exec('test.scoped', {}, 'ui');
+      expect(stack.history()[0]!.undo?.files).toEqual(['doc.md']);
+      await fs.writeFile(join(dir, 'unrelated.md'), 'keep this external edit');
+      expect((await stack.undo()).ok).toBe(true);
+      expect(await read(dir, 'doc.md')).toBe('first');
+      expect((await stack.undo()).ok).toBe(true);
+      expect(await read(dir, 'doc.md')).toBe('authored\n');
+      expect((await stack.redo()).ok).toBe(true);
+      expect((await stack.redo()).ok).toBe(true);
+      expect(await read(dir, 'doc.md')).toBe('second');
+      expect(await read(dir, 'unrelated.md')).toBe('keep this external edit');
+      await fs.writeFile(join(dir, 'doc.md'), 'external edit on target');
+      expect((await stack.undo()).ok).toBe(false);
+      expect(await read(dir, 'doc.md')).toBe('external edit on target');
+      externalDuringRun = true;
+      const refused = await stack.exec('test.scoped', {}, 'ui');
+      expect(refused.ok).toBe(false);
+      expect(refused.record?.undo).toBeUndefined();
+      expect(await read(dir, 'doc.md')).toBe('external during save');
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('scopes nested file creation/deletion and preserves sibling files', async () => {
+    const { dir, journal, cleanup } = await tempWorkspace();
+    try {
+      await fs.mkdir(join(dir, 'shots'));
+      await fs.writeFile(join(dir, 'shots/sibling.json'), 'sibling');
+      const files = ['shots/new.json'];
+      const pre = (await journal.capture(1, files))!;
+      await fs.writeFile(join(dir, files[0]!), 'new');
+      const post = (await journal.capture(1, files))!;
+      const point = journal.point(pre, post, files);
+      await move(journal, point, 'post', 'pre');
+      await expect(read(dir, files[0]!)).rejects.toThrow();
+      expect(await read(dir, 'shots/sibling.json')).toBe('sibling');
+      await move(journal, point, 'pre', 'post');
+      expect(await read(dir, files[0]!)).toBe('new');
+      for (const invalid of ['../outside', '/absolute', 'C:/absolute', 'shots\\new.json']) {
+        await expect(journal.capture(2, [invalid])).rejects.toThrow('root-relative');
+      }
+    } finally {
+      await cleanup();
+    }
+  });
   it('captures, restores, and leaves generated output alone', async () => {
     const { dir, journal, cleanup } = await tempWorkspace();
     try {

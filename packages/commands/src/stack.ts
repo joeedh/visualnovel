@@ -7,6 +7,7 @@
  * before undo existed and refuses both.
  */
 import { digestProps } from './digest.js';
+import { PhaseTimer, TimingBuffer, type TimingSample } from './timing.js';
 import { formatCommand, parseCommand, DslError } from './dsl.js';
 import { coerceProps, type PropSpecMap, type PropValue } from './props.js';
 import type { CommandRegistry } from './registry.js';
@@ -82,6 +83,12 @@ export interface CommandStackOptions<Host> {
   onRecord?(record: CommandRecord): void | Promise<void>;
   /** Injectable clock, so tests get stable timestamps. */
   now?(): string;
+  /** Monotonic milliseconds for diagnostics, separate from the wall-clock timestamp clock. */
+  monotonicNow?(): number;
+  /** Explicit rollout whitelist. Absent means all commands use Git. */
+  trackedCommands?: readonly string[];
+  trackerMode?: 'verify' | 'prefer-tracker';
+  trackerVerifyEvery?: number;
   /** Enables undo/redo. Absent means the stack refuses both, as it did before undo landed. */
   journal?: UndoJournal;
   /**
@@ -158,6 +165,29 @@ export interface UndoState {
 }
 
 export class CommandStack<Host = unknown> {
+  private readonly timingBuffer = new TimingBuffer();
+
+  /** Recent phase timings, including deferred batches, oldest first. */
+  timings(): TimingSample[] {
+    return this.timingBuffer.read();
+  }
+  provenanceVerification() {
+    return this.opts.context.git.provenanceVerification();
+  }
+  /** Optional editor hint, governed by the same whitelist and file declaration as execution. */
+  async prewarmProvenance(id: string, raw: Record<string, unknown>): Promise<void> {
+    if (this.disposed || !this.opts.trackedCommands?.includes(id)) return;
+    const command = this.opts.registry.get(id);
+    if (!command?.provenanceFiles) return;
+    const props = coerceProps(command.props as PropSpecMap, raw);
+    if (!props.ok) return;
+    try {
+      await this.opts.context.git.prewarmProvenance(command.provenanceFiles(props.value as never));
+    } catch {
+      /* Prewarming must never fail an editor load. */
+    }
+  }
+
   private readonly records: CommandRecord[] = [];
   /** Undone records, most recent last — the redo stack. */
   private readonly undone: CommandRecord[] = [];
@@ -219,8 +249,9 @@ export class CommandStack<Host = unknown> {
       !this.disposed,
     );
 
+    const queuedAt = this.opts.monotonicNow?.() ?? performance.now();
     if (!command.mutating) {
-      return this.runCommand({ command, props, ctx, id, source, defers, confirmed });
+      return this.runCommand({ command, props, ctx, id, source, defers, confirmed, queuedAt });
     }
 
     if (checkpoint !== undefined) {
@@ -243,6 +274,7 @@ export class CommandStack<Host = unknown> {
           source,
           defers,
           confirmed,
+          queuedAt,
           checkpoint: oc,
         });
       };
@@ -260,7 +292,7 @@ export class CommandStack<Host = unknown> {
     // open, `this.chain` is held for its whole span (see `beginCheckpoint`), so a caller that
     // forgot the handle simply queues behind it like any other in-flight mutating command.
     return this.serialize(() =>
-      this.runCommand({ command, props, ctx, id, source, defers, confirmed }),
+      this.runCommand({ command, props, ctx, id, source, defers, confirmed, queuedAt }),
     );
   }
 
@@ -322,93 +354,146 @@ export class CommandStack<Host = unknown> {
     defers: boolean;
     confirmed: boolean;
     checkpoint?: OpenCheckpoint;
+    queuedAt: number;
   }): Promise<CommandOutcome> {
     const { command, props, ctx, id, source, defers, confirmed, checkpoint } = opts;
-    if (!confirmed) {
-      const refusal = await this.confirmFor(command, props, ctx, id);
-      if (refusal) return refusal;
-    }
-    // Before `run` rather than before the commit: at this moment the only dirty content is the
-    // deferred edits, so the flush commit contains exactly them.
-    if (command.mutating && !defers) await this.flush();
-
-    const startedAt = this.now();
-    const { head, dirty } = await this.gitState();
-    const seq = ++this.seq;
-    // The record holds the digested props; `run` below still gets the real ones.
-    const recorded = await digestProps(command.props as PropSpecMap, props);
-    const base = {
-      seq,
-      id,
-      props     : recorded,
-      invocation: formatCommand(id, recorded),
-      source,
-      mutating: command.mutating,
-      gitHead : head,
-      gitDirty: dirty,
-      startedAt,
-    };
-
-    // The snapshot is taken before the command runs, because a command that fails partway
-    // through can still have written files, and only the pre-state describes where it started.
-    // A command run inside a checkpoint skips its own bracket entirely: the checkpoint's own
-    // pre/post pair covers the whole group.
-    const journal =
-      !checkpoint && command.undoable && command.mutating ? this.opts.journal : undefined;
-    const pre = await this.capture(journal, seq, 'pre');
-
+    const timer = new PhaseTimer(this.opts.monotonicNow);
+    timer.phases.queueWaitMs = Math.max(
+      0,
+      (this.opts.monotonicNow?.() ?? performance.now()) - opts.queuedAt,
+    );
+    let timingSeq: number | undefined;
+    let timingStatus: TimingSample['status'] = 'error';
     try {
-      const output = await command.run(props as never, ctx);
-      const post = await this.capture(journal, seq, 'post');
-      if (checkpoint && output.written) this.checkWrittenScope(checkpoint, output.written);
-      const point = journal && pre && post && !output.noUndo ? journal.point(pre, post) : undefined;
-      const keeps = Boolean(point && command.sidecar && output.sidecar !== undefined);
-      const record: CommandRecord = {
-        ...base,
-        finishedAt: this.now(),
-        status    : 'ok',
-        message   : output.message,
-        ...(output.subject ? { subject: output.subject } : {}),
-        ...(output.written ? { written: output.written } : {}),
-        ...(output.rewrote ? { rewrote: output.rewrote } : {}),
-        ...(point ? { undo: point } : {}),
-        ...(checkpoint ? { checkpoint: checkpoint.seq } : {}),
-        ...(keeps ? { sidecar: output.sidecar } : {}),
-      };
-      if (defers) {
-        record.commitDeferred = true;
-        this.pending.push(record);
-        this.arm();
-      } else {
-        const commits = await this.commit(command.mutating && !command.commitsItself, record);
-        if (commits.length > 0) record.commits = commits;
+      if (!confirmed) {
+        const refusal = await timer.measure('confirmMs', () =>
+          this.confirmFor(command, props, ctx, id),
+        );
+        if (refusal) return refusal;
       }
-      // A fresh act invalidates every redo behind it — the branch they belonged to is gone.
-      if (command.mutating) await this.release(this.undone.splice(0));
-      await this.record(record);
-      if (command.sidecar && output.sidecar !== undefined) {
-        const holding = { ...record, sidecar: output.sidecar };
-        this.held.set(seq, holding);
-        // This run left no undo point, so nothing can ask for what the sidecar kept
-        if (!keeps) await this.release([holding]);
-      }
-      // Undo cannot reach past a mutating act with no undo point, so nothing before it is needed
-      if (command.mutating && !checkpoint && !point) await this.release([...this.held.values()]);
-      await this.prune(journal);
-      return { ok: true, record, data: output.data };
-    } catch (err) {
-      const error = err instanceof Error ? err.message : String(err);
-      const record: CommandRecord = {
-        ...base,
-        finishedAt: this.now(),
-        status    : 'error',
-        message   : `${id} failed`,
-        error,
-        ...(checkpoint ? { checkpoint: checkpoint.seq } : {}),
+      // Before `run` rather than before the commit: at this moment the only dirty content is the
+      // deferred edits, so the flush commit contains exactly them.
+      if (command.mutating && !defers) await timer.measure('flushMs', () => this.flush());
+
+      const startedAt = this.now();
+      const tracked = this.opts.trackedCommands?.includes(id) && command.provenanceFiles;
+      const { head, dirty } = await timer.measure('gitStateMs', () =>
+        this.gitState(tracked ? command.provenanceFiles!(props as never) : undefined),
+      );
+      const seq = ++this.seq;
+      timingSeq = seq;
+      // The record holds the digested props; `run` below still gets the real ones.
+      const recorded = await digestProps(command.props as PropSpecMap, props);
+      const base = {
+        seq,
+        id,
+        props     : recorded,
+        invocation: formatCommand(id, recorded),
+        source,
+        mutating: command.mutating,
+        gitHead : head,
+        gitDirty: dirty,
+        startedAt,
       };
-      await this.record(record);
-      if (checkpoint) await this.failCheckpoint(checkpoint, error);
-      return { ok: false, error, record };
+
+      // The snapshot is taken before the command runs, because a command that fails partway
+      // through can still have written files, and only the pre-state describes where it started.
+      // A command run inside a checkpoint skips its own bracket entirely: the checkpoint's own
+      // pre/post pair covers the whole group.
+      const journal =
+        !checkpoint && command.undoable && command.mutating ? this.opts.journal : undefined;
+      const files = journal ? command.snapshotFiles?.(props as never) : undefined;
+      const pre = journal
+        ? await timer.measure('snapshotBeforeMs', () => this.capture(journal, seq, 'pre', files))
+        : undefined;
+
+      try {
+        const output = await timer.measure('saveMs', async () => {
+          const endMutation = command.commitsItself
+            ? ctx.git.beginProvenanceMutation?.()
+            : undefined;
+          try {
+            return await command.run(props as never, {
+              ...ctx,
+              timing: timer,
+              ...(journal && pre
+                ? {
+                    assertUndoInput: (path: string, text: string) =>
+                      journal.assertInput(pre, path, text),
+                  }
+                : {}),
+            });
+          } finally {
+            endMutation?.();
+          }
+        });
+        const post = journal
+          ? await timer.measure('snapshotAfterMs', () => this.capture(journal, seq, 'post', files))
+          : undefined;
+        if (checkpoint && output.written) this.checkWrittenScope(checkpoint, output.written);
+        const point =
+          journal && pre && post && !output.noUndo ? journal.point(pre, post, files) : undefined;
+        const keeps = Boolean(point && command.sidecar && output.sidecar !== undefined);
+        const record: CommandRecord = {
+          ...base,
+          finishedAt: this.now(),
+          status    : 'ok',
+          message   : output.message,
+          ...(output.subject ? { subject: output.subject } : {}),
+          ...(output.written ? { written: output.written } : {}),
+          ...(output.rewrote ? { rewrote: output.rewrote } : {}),
+          ...(point ? { undo: point } : {}),
+          ...(checkpoint ? { checkpoint: checkpoint.seq } : {}),
+          ...(keeps ? { sidecar: output.sidecar } : {}),
+        };
+        if (defers) {
+          record.commitDeferred = true;
+          this.pending.push(record);
+          this.arm();
+        } else {
+          const commits =
+            command.mutating && !command.commitsItself && this.opts.committer
+              ? await timer.measure('commitMs', () => this.commit(true, record))
+              : [];
+          if (commits.length > 0) record.commits = commits;
+        }
+        // A fresh act invalidates every redo behind it — the branch they belonged to is gone.
+        if (command.mutating) await this.release(this.undone.splice(0));
+        await timer.measure('recordMs', () => this.record(record));
+        if (command.sidecar && output.sidecar !== undefined) {
+          const holding = { ...record, sidecar: output.sidecar };
+          this.held.set(seq, holding);
+          // This run left no undo point, so nothing can ask for what the sidecar kept
+          if (!keeps) await this.release([holding]);
+        }
+        // Undo cannot reach past a mutating act with no undo point, so nothing before it is needed
+        if (command.mutating && !checkpoint && !point) await this.release([...this.held.values()]);
+        await timer.measure('cleanupMs', () => this.prune(journal));
+        timingStatus = 'ok';
+        return { ok: true, record, data: output.data };
+      } catch (err) {
+        const error = err instanceof Error ? err.message : String(err);
+        const record: CommandRecord = {
+          ...base,
+          finishedAt: this.now(),
+          status    : 'error',
+          message   : `${id} failed`,
+          error,
+          ...(checkpoint ? { checkpoint: checkpoint.seq } : {}),
+        };
+        await timer.measure('recordMs', () => this.record(record));
+        if (checkpoint) await this.failCheckpoint(checkpoint, error);
+        return { ok: false, error, record };
+      }
+    } finally {
+      this.timingBuffer.add({
+        kind: 'command',
+        id,
+        seqs   : timingSeq === undefined ? [] : [timingSeq],
+        status : timingStatus,
+        totalMs: timer.elapsed() + (timer.phases.queueWaitMs ?? 0),
+        phases : timer.phases,
+      });
     }
   }
 
@@ -746,21 +831,7 @@ export class CommandStack<Host = unknown> {
 
   /** Move the working copy back to the candidate's `pre` snapshot. */
   async undo(): Promise<CommandOutcome> {
-    const journal = this.opts.journal;
-    if (!journal) return { ok: false, error: NO_JOURNAL };
-    const target = this.undoCandidate();
-    if (!target) return { ok: false, error: 'nothing to undo' };
-    if (!target.undo) {
-      return { ok: false, error: `"${target.id}" was not recorded as undoable` };
-    }
-    return this.move({
-      target,
-      kind : 'undo',
-      point: target.undo,
-      from : 'post',
-      to   : 'pre',
-      done : () => this.undone.push(target),
-    });
+    return this.move('undo');
   }
 
   /**
@@ -771,27 +842,34 @@ export class CommandStack<Host = unknown> {
    * invocation stays on the record for exactly that use.
    */
   async redo(): Promise<CommandOutcome> {
-    const journal = this.opts.journal;
-    if (!journal) return { ok: false, error: NO_JOURNAL };
-    const target = this.undone[this.undone.length - 1];
-    if (!target?.undo) return { ok: false, error: 'nothing to redo' };
-    return this.move({
-      target,
-      kind : 'redo',
-      point: target.undo,
-      from : 'pre',
-      to   : 'post',
-      done : () => void this.undone.pop(),
-    });
+    return this.move('redo');
   }
 
   /** The shared body of undo and redo: guard, restore, record. */
-  private move(opts: Move): Promise<CommandOutcome> {
+  private move(kind: 'undo' | 'redo'): Promise<CommandOutcome> {
     // Restoring overwrites the worktree and then commits it with `-A`, so a pending batch has to
     // land as its own commit before either of those touches the deferred edits.
     return this.serialize(async () => {
+      // Earlier queued saves and moves determine the candidate, including whether redo
+      // still exists. Selecting before serialization can target an older workspace state.
+      if (!this.opts.journal) return { ok: false, error: NO_JOURNAL };
+      const target = kind === 'undo' ? this.undoCandidate() : this.undone.at(-1);
+      if (!target) return { ok: false, error: `nothing to ${kind}` };
+      if (!target.undo) {
+        return { ok: false, error: `"${target.id}" was not recorded as undoable` };
+      }
       await this.flush();
-      return this.moveBody(opts);
+      return this.moveBody({
+        target,
+        kind,
+        point: target.undo,
+        from : kind === 'undo' ? 'post' : 'pre',
+        to   : kind === 'undo' ? 'pre' : 'post',
+        done: () => {
+          if (kind === 'undo') this.undone.push(target);
+          else this.undone.pop();
+        },
+      });
     });
   }
 
@@ -899,10 +977,11 @@ export class CommandStack<Host = unknown> {
     journal: UndoJournal | undefined,
     seq: number,
     label: 'pre' | 'post',
+    files?: readonly string[],
   ): Promise<string | null> {
     if (!journal) return null;
     try {
-      return await journal.capture(seq);
+      return await journal.capture(seq, files);
     } catch (err) {
       this.opts.context.log('warn', `undo snapshot (${label} ${seq}) failed: ${String(err)}`);
       return null;
@@ -947,6 +1026,7 @@ export class CommandStack<Host = unknown> {
    * call safe rather than merely necessary.
    */
   async dispose(): Promise<CommitResult[]> {
+    this.opts.context.git.stopProvenanceVerification?.();
     this.disposed = true;
     this.cancel();
     await this.release([...this.held.values()]);
@@ -987,10 +1067,17 @@ export class CommandStack<Host = unknown> {
     if (this.pending.length === 0) return Promise.resolve([]);
     const records = this.pending;
     this.pending = [];
+    const timer = new PhaseTimer(this.opts.monotonicNow);
+    let status: TimingSample['status'] = 'ok';
     const run = (async () => {
+      const endMutation = this.opts.context.git.beginProvenanceMutation?.();
       try {
-        return (await this.opts.committer?.commitBatch(records)) ?? [];
+        return await timer.measure(
+          'commitMs',
+          async () => (await this.opts.committer?.commitBatch(records)) ?? [],
+        );
       } catch (err) {
+        status = 'error';
         this.pending = [...records, ...this.pending];
         this.opts.context.log(
           'warn',
@@ -999,6 +1086,15 @@ export class CommandStack<Host = unknown> {
         this.report(err, records);
         return [];
       } finally {
+        endMutation?.();
+        this.timingBuffer.add({
+          kind: 'commitBatch',
+          id  : 'commitBatch',
+          seqs: records.map((r) => r.seq),
+          status,
+          totalMs: timer.elapsed(),
+          phases : timer.phases,
+        });
         this.flushing = null;
       }
     })();
@@ -1022,11 +1118,14 @@ export class CommandStack<Host = unknown> {
   private async commit(when: boolean, record: CommandRecord): Promise<CommitResult[]> {
     const committer = this.opts.committer;
     if (!committer || !when) return [];
+    const endMutation = this.opts.context.git.beginProvenanceMutation?.();
     try {
       return await committer.commit(record);
     } catch (err) {
       this.opts.context.log('warn', `commit-on-save (${record.invocation}) failed: ${String(err)}`);
       return [];
+    } finally {
+      endMutation?.();
     }
   }
 
@@ -1071,11 +1170,19 @@ export class CommandStack<Host = unknown> {
    * Records provenance rather than driving control flow. A project need not be a git repo, so
    * failures here degrade to `{ head: null, dirty: false }` rather than failing the command.
    */
-  private async gitState(): Promise<{ head: string | null; dirty: boolean }> {
+  private async gitState(
+    files?: readonly string[],
+  ): Promise<{ head: string | null; dirty: boolean }> {
     try {
-      const { git } = this.opts.context;
-      if (!(await git.isRepo())) return { head: null, dirty: false };
-      return { head: await git.head(), dirty: await git.isDirty() };
+      return await this.opts.context.git.provenance(
+        files
+          ? {
+              files,
+              mode       : this.opts.trackerMode ?? 'prefer-tracker',
+              verifyEvery: this.opts.trackerVerifyEvery,
+            }
+          : undefined,
+      );
     } catch {
       return { head: null, dirty: false };
     }

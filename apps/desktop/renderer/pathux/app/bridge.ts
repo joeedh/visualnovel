@@ -7,6 +7,7 @@
  * context rather than its props, so there is nothing to thread it through.
  */
 import { message as note, error as noteError } from 'pathux';
+import type { Invocation } from '@vn/commands';
 import { setModelCatalog } from '@vn/gengraph';
 import { docsEffect, onMoved } from './docseffect.js';
 import {
@@ -187,7 +188,7 @@ export function onExec(watcher: ExecWatcher): () => void {
   return () => watchers.delete(watcher);
 }
 
-const invalidators = new Set<() => void>();
+const invalidators = new Set<(invocation?: Invocation) => void>();
 
 /**
  * Watch for the project on disk having moved: a mutating command that succeeded, an undo or a redo
@@ -199,14 +200,16 @@ const invalidators = new Set<() => void>();
  * The agent case makes a tool's `written` load-bearing rather than informational: the `agent:event`
  * fires this only when `written` is non-empty, so a mutating tool that reports nothing leaves every
  * tree in the app showing the state before it ran.
+ * A local execution supplies its invocation, retaining the props identity so a caller can
+ * recognize its own echo when it already received the updated data in the outcome.
  */
-export function onInvalidate(listener: () => void): () => void {
+export function onInvalidate(listener: (invocation?: Invocation) => void): () => void {
   invalidators.add(listener);
   return () => invalidators.delete(listener);
 }
 
-function invalidate(): void {
-  for (const listener of invalidators) listener();
+function invalidate(invocation?: Invocation): void {
+  for (const listener of invalidators) listener(invocation);
 }
 
 type WroteWatcher = (paths: readonly string[], versions: DocVersions) => void;
@@ -273,7 +276,7 @@ export async function exec(
   for (const watcher of watchers) watcher(id, outcome);
   // `wrote` is not raised here. Main broadcasts every write to every window, so raising it from
   // the outcome as well would tell this window twice and still tell no other window at all.
-  if (outcome.ok && outcome.record.mutating) invalidate();
+  if (outcome.ok && outcome.record.mutating) invalidate({ id, props });
   if (outcome.ok && REFETCHES_PROJECT.has(id)) void refreshProjectView();
   return outcome;
 }

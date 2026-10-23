@@ -8,11 +8,17 @@
  */
 import { KeyMap, type Container } from 'pathux';
 import type { Invocation } from '@vn/commands';
+import { PhaseTimer, type TimingSample } from '@vn/commands';
 import { boxOf } from '@vn/artgen/layout';
 import { aimBubble, bubblesOf, nameBubble, placeBubble } from '@vn/scriptedit';
 import { SHOT_FRAMINGS, type PagePanel, type PanelBubble } from '@vn/types';
 import { api } from '../../api.js';
-import type { CoverageLine, CoverageShot, SceneCoverage } from '../../../src/shared/ipc.js';
+import type {
+  BubbleSave,
+  CoverageLine,
+  CoverageShot,
+  SceneCoverage,
+} from '../../../src/shared/ipc.js';
 import type { Notice } from '../../../src/shared/lineedit.js';
 import {
   BUSY_DELAY_MS,
@@ -78,6 +84,7 @@ import {
   withCharacter,
 } from '../../rules/timeline/cast.js';
 import { exec, onInvalidate } from '../app/bridge.js';
+import { pageTimings } from '../app/timings.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { hotkeys } from '../app/keymap.js';
 import { gestureState } from '../interactions/gestures.js';
@@ -135,6 +142,12 @@ export class PageEditor extends VnEditor {
   private heldBubble: Held | null = null;
   /** The bubble list as the pointer has moved it, ahead of the write; null when it shows disk. */
   private bubbleDraft: PanelBubble[] | null = null;
+  /** Saves whose command echoes are satisfied by the narrow panels result. */
+  private bubbleWrites = new Set<Invocation>();
+  private reloadAfterBubbles = false;
+  /** Discards coverage reads that started before a newer read or a completed save. */
+  private loadVersion = 0;
+  private bubbleRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 
   private letter: Letter | null = null;
   private notice: Notice | null = null;
@@ -198,7 +211,7 @@ export class PageEditor extends VnEditor {
     // The agent and the palette rewrite storyboards without this pane, and a run replaces the
     // render, so the page is re-read on every invalidate and on coming back on screen.
     this.watch(
-      () => onInvalidate(() => void this.load()),
+      () => onInvalidate((invocation) => this.invalidated(invocation)),
       () => void this.load(),
     );
     void this.load();
@@ -206,9 +219,9 @@ export class PageEditor extends VnEditor {
 
   override update() {
     super.update();
+    this.follow();
     // Never mid-gesture: the panel under the pointer is read from the DOM
     if (this.letter || this.draft || this.bubbleDraft) return;
-    this.follow();
     const scene = this.ui.shotId ? sceneOfShot(this.ui.shotId) : '';
     if (scene !== this.loading) return void this.load();
     if (this.stateKey() !== this.drawn) this.rebuild();
@@ -221,6 +234,8 @@ export class PageEditor extends VnEditor {
     this.selected = null;
     this.held = null;
     this.heldBubble = null;
+    this.draft = null;
+    this.bubbleDraft = null;
   }
 
   private stateKey(): string {
@@ -271,30 +286,77 @@ export class PageEditor extends VnEditor {
   // Loading
   // -------------------------------------------------------------------------
 
+  private invalidated(invocation?: Invocation): void {
+    if (
+      [...this.bubbleWrites].some(
+        (write) => write.id === invocation?.id && write.props === invocation.props,
+      )
+    )
+      return;
+    // An external write during a save must be read after the save's returned snapshot.
+    if (this.bubbleWrites.size > 0) {
+      this.reloadAfterBubbles = true;
+      return;
+    }
+    void this.load();
+  }
+
   private async load(): Promise<void> {
+    clearTimeout(this.bubbleRefreshTimer);
+    const timer = new PhaseTimer();
+    let status: TimingSample['status'] = 'stale';
+    const version = ++this.loadVersion;
     const shotId = this.ui.shotId;
-    const sceneId = shotId ? sceneOfShot(shotId) : '';
-    this.loading = sceneId;
-    this.follow();
-    if (!sceneId) {
-      this.data = undefined;
-      this.revision += 1;
-      return this.rebuild();
-    }
     try {
-      this.data = await api.invoke('story:coverage', sceneId);
-      this.failure = '';
+      const sceneId = shotId ? sceneOfShot(shotId) : '';
+      this.loading = sceneId;
+      this.follow();
+      if (!sceneId) {
+        this.data = undefined;
+        this.revision += 1;
+        status = 'ok';
+        return timer.measureSync('refreshMs', () => this.rebuild());
+      }
+      try {
+        // Fire-and-forget: opening the page and early edits never wait for tracker setup.
+        void api
+          .invoke('command:prewarm', {
+            id   : 'story.setBubbles',
+            props: { scene: sceneId, shot: shotId, bubbles: '[]' },
+          })
+          .catch(() => {});
+        const data = await timer.measure('coverageMs', () => api.invoke('story:coverage', sceneId));
+        if (version !== this.loadVersion || shotId !== this.ui.shotId) return;
+        this.data = data;
+        this.failure = '';
+      } catch (err) {
+        if (version !== this.loadVersion || shotId !== this.ui.shotId) return;
+        this.data = undefined;
+        this.failure = err instanceof Error ? err.message : String(err);
+        status = 'error';
+      }
+      if (status !== 'error') status = 'ok';
+      timer.measureSync('refreshMs', () => {
+        gestureState('page', 'page', () => coverState(this.data ?? null));
+        const count = this.shot()?.panels?.length ?? 0;
+        if (this.selected !== null && this.selected >= count) this.selected = null;
+        this.draft = null;
+        this.revision += 1;
+        this.rebuild();
+      });
     } catch (err) {
-      this.data = undefined;
-      this.failure = err instanceof Error ? err.message : String(err);
+      status = 'error';
+      throw err;
+    } finally {
+      pageTimings.add({
+        kind: 'pageReload',
+        id  : shotId,
+        seqs: [],
+        status,
+        totalMs: timer.elapsed(),
+        phases : timer.phases,
+      });
     }
-    gestureState('page', 'page', () => coverState(this.data ?? null));
-    const count = this.shot()?.panels?.length ?? 0;
-    if (this.selected !== null && this.selected >= count) this.selected = null;
-    this.draft = null;
-    this.bubbleDraft = null;
-    this.revision += 1;
-    this.rebuild();
   }
 
   // -------------------------------------------------------------------------
@@ -1063,7 +1125,6 @@ export class PageEditor extends VnEditor {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       const list = this.bubbleDraft;
-      this.bubbleDraft = null;
       if (!moved || !list) return void this.repaint();
       onDrop(list);
     };
@@ -1140,22 +1201,113 @@ export class PageEditor extends VnEditor {
 
   private commitBubbles(bubbles: PanelBubble[], progress: string): Promise<void> {
     const props = bubblesProps(this.state(), bubbles);
-    return this.run({ id: 'story.setBubbles', props }, progress);
+    this.bubbleDraft = bubbles;
+    ++this.loadVersion;
+    clearTimeout(this.bubbleRefreshTimer);
+    this.repaint();
+    return this.run({ id: 'story.setBubbles', props }, progress, bubbles);
+  }
+
+  /** Full coverage (including asset repair) follows an edit burst, outside save latency. */
+  private refreshAfterBubbles(): void {
+    clearTimeout(this.bubbleRefreshTimer);
+    this.bubbleRefreshTimer = setTimeout(() => {
+      if (!this.isConnected) return;
+      if (this.bubbleWrites.size > 0) this.refreshAfterBubbles();
+      else void this.load();
+    }, 400);
   }
 
   /** Every write goes through here; the outcome's own sentence is what the author reads. */
-  private async run(invocation: Invocation, progress: string): Promise<void> {
-    this.beginBusy(progress);
-    const outcome = await exec(invocation.id, invocation.props);
-    this.settleBusy();
-    if (!outcome.ok) {
-      this.draft = null;
-      this.bubbleDraft = null;
-      this.repaint();
-      return this.say({ tone: 'refused', text: outcome.error });
+  private async run(
+    invocation: Invocation,
+    progress: string,
+    bubbles?: PanelBubble[],
+  ): Promise<void> {
+    const timer = new PhaseTimer();
+    let status: TimingSample['status'] = 'error';
+    let seqs: number[] = [];
+    try {
+      if (bubbles) this.bubbleWrites.add(invocation);
+      this.beginBusy(progress);
+      let outcome;
+      try {
+        outcome = await timer.measure('responseMs', () => exec(invocation.id, invocation.props));
+      } catch (err) {
+        if (this.bubbleDraft === bubbles) this.bubbleDraft = null;
+        this.repaint();
+        this.say({ tone: 'refused', text: err instanceof Error ? err.message : String(err) });
+        return;
+      } finally {
+        this.bubbleWrites.delete(invocation);
+        if (this.bubbleWrites.size === 0) {
+          this.settleBusy();
+          this.paintNotice();
+          if (this.reloadAfterBubbles) {
+            this.reloadAfterBubbles = false;
+            // Apply the outcome below before re-reading changes made by another caller.
+            queueMicrotask(() => void this.load());
+          }
+        }
+      }
+      if (outcome.record) seqs = [outcome.record.seq];
+      if (!outcome.ok) {
+        this.draft = null;
+        if (!bubbles || this.bubbleDraft === bubbles) this.bubbleDraft = null;
+        this.repaint();
+        return this.say({ tone: 'refused', text: outcome.error });
+      }
+      status = 'ok';
+      this.notice = { tone: 'ok', text: outcome.record.message ?? 'Page written.' };
+      if (bubbles && outcome.data) {
+        if (invocation.props['shot'] !== this.ui.shotId) {
+          status = 'stale';
+          return;
+        }
+        timer.measureSync('refreshMs', () => {
+          ++this.loadVersion;
+          const saved = outcome.data as BubbleSave;
+          if (
+            saved.kind !== 'bubbles' ||
+            saved.sceneId !== this.data?.sceneId ||
+            saved.shotId !== this.ui.shotId
+          ) {
+            this.refreshAfterBubbles();
+            return;
+          }
+          this.data = {
+            ...this.data,
+            shots: this.data.shots.map((shot) =>
+              shot.id === saved.shotId ? { ...shot, panels: saved.panels } : shot,
+            ),
+          };
+          this.failure = '';
+          if (this.bubbleDraft === bubbles) this.bubbleDraft = null;
+          gestureState('page', 'page', () => coverState(this.data ?? null));
+          this.revision += 1;
+          this.rebuild();
+        });
+        return;
+      }
+      await timer.measure('refreshMs', () => this.load());
+      if (this.bubbleDraft === bubbles) {
+        this.bubbleDraft = null;
+        this.repaint();
+      }
+    } catch (err) {
+      status = 'error';
+      throw err;
+    } finally {
+      if (bubbles) this.refreshAfterBubbles();
+      pageTimings.add({
+        kind: 'pageSave',
+        id  : invocation.id,
+        seqs,
+        status,
+        totalMs: timer.elapsed(),
+        phases : timer.phases,
+      });
     }
-    this.notice = { tone: 'ok', text: outcome.record.message ?? 'Page written.' };
-    await this.load();
   }
 
   private beginBusy(title: string): void {

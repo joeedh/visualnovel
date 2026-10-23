@@ -45,6 +45,7 @@ import type {
   CommandOutcome,
   CommandRecord,
   CommandSource,
+  TimingSample,
   PropValue,
   UndoState,
 } from '@vn/commands';
@@ -541,6 +542,14 @@ export interface CoverageCast {
  * A scene's script and its shots, the timeline's whole input. Shots come from the persisted
  * decomposition (`work/shots/<sceneId>.json`) — a model loaded from disk carries none.
  */
+export interface BubbleSave {
+  kind: 'bubbles';
+  sceneId: string;
+  shotId: string;
+  panels: PagePanel[];
+  revision: { scene: string; shots: string };
+}
+
 export interface SceneCoverage {
   sceneId: string;
   location: string;
@@ -1170,6 +1179,10 @@ export interface InvokeChannels {
    */
   'command:confirm': (payload: { id: number; allowed: boolean }) => void;
   'command:history': (limit?: number) => CommandRecord[];
+  /** Bounded in-memory diagnostics; reading these creates no command or Git activity. */
+  'command:timings': () => TimingSample[];
+  'command:tracker': () => import('@vn/git').TrackerSample[];
+  'command:prewarm': (request: { id: string; props: Record<string, unknown> }) => void;
   /**
    * Reports whether an invocation would run. A read, never a gate — `command:exec` re-decides
    * for itself. `undeclared` is the answer for a command that states no precondition.

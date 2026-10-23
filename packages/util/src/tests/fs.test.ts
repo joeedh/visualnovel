@@ -8,6 +8,21 @@ async function tempDir(): Promise<{ dir: string; cleanup: () => Promise<void> }>
   return { dir, cleanup: () => fs.rm(dir, { recursive: true, force: true }) };
 }
 
+it('reads fresh UTF-8 bytes after replacement and rejects missing files', async () => {
+  const { dir, cleanup } = await tempDir();
+  try {
+    const file = join(dir, 'text.md');
+    await writeFileAtomic(file, 'Hello — 世界');
+    expect(await readText(file)).toBe('Hello — 世界');
+    await writeFileAtomic(file, 'Updated — 世界');
+    expect(await readText(file)).toBe('Updated — 世界');
+    await fs.unlink(file);
+    await expect(readText(file)).rejects.toMatchObject({ code: 'ENOENT', path: file });
+  } finally {
+    await cleanup();
+  }
+});
+
 describe('writeFileAtomic', () => {
   it('leaves no temp sibling behind, on the happy path or a failed one', async () => {
     const { dir, cleanup } = await tempDir();

@@ -228,6 +228,185 @@ a main-process bug, a bundling question, or anything where Vite's copy is the wr
 to look at. `pnpm --filter @vn/desktop start` runs the same app with no port, so an app
 you cannot reach over CDP was probably started that way.
 
+### Page edit timings
+
+After restarting the desktop app with the current build, reproduce the slow bubble edit
+and inspect these bounded, in-memory histories in the renderer DevTools console:
+
+```js
+const rows = (samples) =>
+    samples.map(({ phases, seqs, ...sample }) => ({
+        ...sample,
+        seqs: seqs.join(","),
+        ...phases,
+    }));
+console.table(rows(await window.api.invoke("command:timings")));
+console.table(rows(window.__vnPageTimings()));
+```
+
+Each history retains the latest 200 samples for its session. Durations use a monotonic
+clock in milliseconds; command provenance timestamps keep their existing meaning. Reading
+the histories does not execute a command or write diagnostic files. Samples contain
+identifiers, sequence numbers, status, and durations, without command props or document
+text.
+
+- `queueWaitMs`: waiting for the command execution queue.
+- `snapshotBeforeMs` / `snapshotAfterMs`: undo snapshot capture around the command. Bubble
+  edits capture only their scene's shots file. Each edit retains its own undo point; drift
+  checks protect that file while unrelated edits remain untouched.
+- `saveMs`: the full command body, including project reads, persistence, and returned
+  coverage.
+- Bubble saves use a narrow path: `sceneReadMs`, `shotsReadMs`, `bubbleValidationMs`, and
+  `shotsWriteMs`. They return persisted panels and content revisions, not full coverage.
+  The editor applies the panels immediately, keeps newer drafts visible, and coalesces
+  full coverage refresh (including asset repair) after 400 ms without another save. This
+  work appears as a separate `pageReload`, not in `pageSave`. External command
+  invalidations still reload; pre-save coverage reads cannot overwrite a newer save.
+- The save reads scene/shot bytes directly and compares them again immediately before
+  atomic replacement, including rename retries. A changed input refuses the save; no
+  watcher delivery or timestamp cache is required. The write input must also match its
+  undo snapshot. These are optimistic checks, not a filesystem compare-and-swap: an
+  uncooperative external writer can still race the final check and rename.
+- Older full-load samples split `projectLoadMs` into `projectReadMs`, `projectShotsMs`,
+  and `projectRepairMs`, with `coverageBuildMs` for the returned coverage. Nested phases
+  must not be added to their parent durations.
+- `commitMs`: immediate Git commit work. Deferred edits have no individual commit
+  duration; a later `commitBatch` sample lists the sequence numbers it committed. Its
+  duration excludes the idle delay before flushing.
+- `gitStateMs`, `confirmMs`, `flushMs`, `recordMs`, and `cleanupMs`: Git status checks,
+  confirmation, pending batch flush, history recording, and snapshot pruning respectively.
+  Provenance reads HEAD and dirty state fresh in one porcelain-v2 status invocation; it
+  does not cache either value or count upstream divergence.
+- Renderer `pageSave` samples link to command samples through `seqs`. `responseMs`
+  includes the main-process work, IPC, and local invalidation callbacks. `refreshMs`
+  measures applying coverage and rebuilding the page. A fallback reload is included in
+  refresh time.
+- Renderer `pageReload` samples split `coverageMs` (requesting coverage) from `refreshMs`
+  (applying it). Superseded requests have status `stale`.
+
+Missing phases mean that work was skipped. Checkpoint-owned snapshots are outside
+individual command samples. Refresh measures synchronous work, including forced layout,
+but excludes later browser paint. Totals also include overhead between measured phases. Do
+not add renderer response time to main-process time, or batch time to a flush that already
+includes it.
+
+### Repository tracker verification
+
+Set `VN_VERIFY_REPO_FILE=vngen/work/shots/opening.json` before launching the desktop app
+to compare a prototype dirty-file tracker against Git for that project-relative file.
+Inspect `await window.api.invoke('command:tracker')` in renderer DevTools. The latest 200
+samples report `agree`, `fallback`, or `mismatch`, plus prediction overhead. Git always
+supplies command provenance; this mode adds work and is disabled unless explicitly
+enabled.
+
+The tracker reads HEAD/ref/index metadata around a file-content comparison. Missing
+evidence, HEAD changes, watcher failures, or concurrent changes cause fallback. A mismatch
+disables further predictions for that instance. Guards reject flagged or non-regular index
+entries, attributes/filters, unsupported conversion or index settings, detached HEAD,
+linked worktrees, Git environment overrides, symlink targets, and in-progress repository
+operations. Index contents are hashed before and after verification. Successful ordinary
+edits are not sufficient grounds to make the tracker authoritative.
+
+Successful guard audits are cached against content fingerprints of HEAD/ref/index,
+repository/global/system configuration, applicable attribute files (including absent
+files), and operation-marker presence. Every prediction checks these inputs before and
+after reading the target, independent of watcher delivery. Changed inputs rerun the
+guards; unsupported results are not cached. Environment changes force fallback until
+verification restarts. Config includes and custom attribute-file settings conservatively
+fall back rather than introduce untracked dependencies. `guardCacheHit` and `guardAuditMs`
+distinguish reuse from fresh Git audits in each sample. Verification status calls disable
+optional index writes, and watchers retain target-file and repository-metadata signals.
+Concurrent cold checks with the same dependency fingerprint and watcher generation share
+one in-flight audit. Each caller still validates its own target and before/after metadata.
+Flights are released after their consumers finish, including failures and unsupported
+results. `guardAuditShared` identifies a waiting caller; `guardWaitMs` measures its wait,
+while `guardAuditMs` is recorded only by the caller that starts the audit.
+
+The cached live run (`bubble-tracker-cached.json`, 12 drags plus restoration) recorded 12
+agreeing predictions, 10 fallbacks, and no mismatches. Warm prediction overhead was 11.5
+ms median (4.5–22.8 ms), down from roughly 150–195 ms with per-attempt audits. Two
+overlapping cold startup checks still took 404–412 ms (297 ms in guard commands). The 12
+drags had median save-to-refresh latency of 182 ms, with Git plus verification taking 101
+ms and save taking 55 ms. Git remains authoritative on every command; this measurement
+does not establish that the tracker can safely replace it.
+
+After coalescing (`bubble-tracker-coalesced.json`), the two cold startup checks shared one
+217 ms audit and took 334–341 ms overall, compared with 404–412 ms previously. Warm
+tracker overhead was 13.1 ms median; 12 drags had a 180 ms median save-to-refresh time
+versus 182 ms previously, effectively unchanged in this single-run comparison. Git plus
+verification took 104 ms and save took 55 ms. There were 12 agreements, 10 fallbacks, and
+no mismatches; original bubble positions were restored. These startup figures are
+tracker-call durations, not whole-application launch times.
+
+### Opt-in command tracker rollout
+
+Set `VN_TRACKER_COMMANDS=1` before launching the desktop app to enable the command
+whitelist. It currently contains only `story.setBubbles`. Commands declare
+`provenanceFiles(props)` independently of undo snapshots; the host whitelist controls
+whether those declarations may be used. The Git implementation is command-agnostic and
+retains up to eight per-file trackers per Git instance. Requests without exactly one
+candidate file, or beyond that bound, fall back to Git. Removing the flag disables the
+fast path on the next launch.
+
+Set `VN_TRACKER_VERIFY_ALL=1` alongside it to compare every eligible prediction with Git
+without returning tracker answers. Otherwise every twentieth eligible prediction is
+checked against Git. Other eligible dirty predictions are reported as `used` with
+`authoritative: null`; this means Git was skipped, not that agreement was verified.
+Clean/unknown states and unsupported configurations always use Git. A sampled mismatch
+disables fast-path use for the Git instance. The earlier `VN_VERIFY_REPO_FILE` mode is
+still available when the command flag is off.
+
+Immediate, deferred, and self-managed command commits hold provenance invalidation through
+completion or failure. Predictions and baseline loads spanning these operations are
+discarded. Direct `Git.commit` calls also invalidate. Disposing the command stack closes
+its trackers. Each prediction is bound to its starting baseline object as well as
+repository fingerprints and watcher generation.
+
+Live rollout measurements (`bubble-tracker-whitelist-verify.json` and
+`bubble-tracker-whitelist-fast.json`): median save-to-refresh over the first 24 drags fell
+from 176 ms to 98 ms, and provenance from 101 ms to 7 ms. A deferred commit followed by
+two more drags confirmed baseline rebuilding through Git. Full verification recorded 25
+agreements and 2 fallbacks; the fast path recorded 24 uses, 1 agreeing sampled check, and
+2 fallbacks. Neither run recorded a mismatch, and both restored the original bubbles.
+Initial lazy setup still produced a roughly 425 ms first edit; cold guard audits also
+recur after commits. This flag remains opt-in. Test review decisions are in
+`docs/history/tracker-test-ledger.md`.
+
+Background preparation now removes that setup from the fast-path command's wait. A cold
+eligible request returns Git provenance, then starts shared discovery, baseline loading,
+and guard warming in the background. Further edits use Git until preparation finishes.
+Changed guards also trigger Git fallback and background refresh rather than a synchronous
+audit. Full verification mode may still run synchronous audits for comparison. Preparation
+is bound to the mutation epoch, cannot publish across commits or disposal, and can retry
+after failure. The whitelist, opt-in flag, and sampled verification policy are unchanged.
+
+Updated measurements (`bubble-tracker-background-final.json` and
+`bubble-tracker-background-repeat.json`): cold first edits took 199/198 ms instead of 425
+ms; warm-edit medians (drags 3–24) were 107/88 ms versus 94 ms previously. Cold provenance
+took 92–93 ms instead of 335 ms. The immediate second edit still used Git while preparing
+(187/239 ms total). No fast-path edit ran a guard audit synchronously. Background work has
+moved off the command's wait, not disappeared. Full verification
+(`bubble-tracker-background-verify.json`) recorded 24 agreements and no mismatches. Calls
+made before a tracker is ready use Git and have no `command:tracker` sample; use
+command/page timings to include those cold and preparation-period calls. All runs restored
+original positions and exercised the deferred-commit boundary.
+
+The page editor now sends a fire-and-forget `command:prewarm` request when loading a
+scene. The stack validates the invocation's props and uses the same command whitelist and
+`provenanceFiles` declaration as execution. Prewarming neither runs the command nor adds
+history, and errors cannot block opening the editor. Concurrent requests share
+preparation; already prepared files require no extra Git work. The existing mutation epoch
+and disposal guards also apply to prewarming. There is no additional enable flag.
+
+Fresh-launch/editor-open measurements (`bubble-tracker-prewarm-fast.json` and
+`bubble-tracker-prewarm-repeat.json`): first edits took 193/182 ms versus 199/198 ms
+before editor prewarming; second edits took 149/147 ms versus 187/239 ms. Warm medians
+(drags 3–24) were 110/93 ms, with no clear change from the previous 107/88 ms. The initial
+guard lookup was already cached, but the tracked file still matched HEAD: Git remained
+necessary for the first edit. These runs began after the editor loaded; an immediate edit
+racing setup still falls back to Git. Full verification recorded 25 agreements and no
+mismatches. All runs restored bubble positions.
+
 ### Is the running app your app?
 
 Two rounds of "the pointerdown isn't reaching the renderer" were once spent on an app

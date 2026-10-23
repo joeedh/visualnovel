@@ -1,4 +1,5 @@
 export * from './git.js';
+export type { TrackerSample } from './tracker.js';
 export * from './repos.js';
 export * from './errors.js';
 export * from './parse.js';

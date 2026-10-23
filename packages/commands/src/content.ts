@@ -242,14 +242,29 @@ export class ContentStore {
    * ({@link MEDIA_EXTS}) and the temp siblings an atomic write leaves behind. An empty directory
    * has no entry, so a restore neither creates nor removes one.
    */
-  async capture(root: string, skip: ReadonlySet<string> = new Set()): Promise<string> {
-    return this.captureDir(root, '', skip);
+  async capture(
+    root: string,
+    skip: ReadonlySet<string> = new Set(),
+    files?: readonly string[],
+  ): Promise<string> {
+    if (
+      files?.some(
+        (path) =>
+          !path ||
+          /[\\:]/.test(path) ||
+          path.split('/').some((part) => !part || part === '.' || part === '..'),
+      )
+    ) {
+      throw new Error('snapshot files must be canonical root-relative paths');
+    }
+    return this.captureDir(root, '', skip, files);
   }
 
   private async captureDir(
     root: string,
     prefix: string,
     skip: ReadonlySet<string>,
+    files?: readonly string[],
   ): Promise<string> {
     const dir = prefix === '' ? root : join(root, prefix);
     const listing = await fs.readdir(dir, { withFileTypes: true }).catch(() => []);
@@ -260,9 +275,11 @@ export class ContentStore {
       const rel = prefix === '' ? name : `${prefix}/${name}`;
       // A submodule's `.git` is a file, not a directory
       if (skip.has(rel) || SKIP_NAMES.has(name)) continue;
+      if (files && !files.some((file) => file === rel || file.startsWith(`${rel}/`))) continue;
 
       if (dirent.isDirectory()) {
-        const hash = await this.captureDir(root, rel, skip);
+        if (files?.includes(rel)) throw new Error(`snapshot file is a directory: ${rel}`);
+        const hash = await this.captureDir(root, rel, skip, files);
         // Git has no empty trees in a commit, and neither does this: an entry for one would make
         // a restore create and remove directories nobody put anything in.
         if (hash !== EMPTY_HASH) entries.push({ name, kind: 'tree', hash });

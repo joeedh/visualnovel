@@ -114,8 +114,19 @@ export function getStack(ctx: AppContext): CommandStack<CommandHost> {
       check                   : (id, props) => getStack(ctx).check(id, props),
       pendingCommits          : () => getStack(ctx).pendingCount(),
     };
+    const trackedBubbles = process.env['VN_TRACKER_COMMANDS'] === '1';
+    if (!trackedBubbles && process.env['VN_VERIFY_REPO_FILE']) {
+      void git.verifyProvenance(process.env['VN_VERIFY_REPO_FILE']!).catch((error) =>
+        ctx.broadcast('log', {
+          level  : 'warn',
+          message: `Tracker verification unavailable: ${String(error)}`,
+        }),
+      );
+    }
     ctx.stack = new CommandStack<CommandHost>({
-      registry     : ctx.registry,
+      trackedCommands: trackedBubbles ? ['story.setBubbles'] : [],
+      trackerMode    : process.env['VN_TRACKER_VERIFY_ALL'] === '1' ? 'verify' : 'prefer-tracker',
+      registry       : ctx.registry,
       context: {
         root,
         git,
@@ -125,8 +136,8 @@ export function getStack(ctx: AppContext): CommandStack<CommandHost> {
       },
       // Undo still works where commit-on-save refuses: a snapshot is held in memory and writes
       // nobody's history, so a project nested in a larger repo is snapshotted like any other.
-      journal      : new UndoJournal({ root, store: snapshotStore, exclude: UNDO_EXCLUDES }),
-      committer    : ctx.committer(),
+      journal        : new UndoJournal({ root, store: snapshotStore, exclude: UNDO_EXCLUDES }),
+      committer      : ctx.committer(),
       // A held-back run of edits that could not be committed is the one commit-on-save failure an
       // author has to act on, so it is filed durably rather than logged. The edits are on disk
       // and the stack keeps the batch, so the next flush retries.

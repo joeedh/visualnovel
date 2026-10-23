@@ -15,9 +15,10 @@ import type { Git } from '@vn/git';
 
 const fakeGit = (): Git =>
   ({
-    isRepo : () => Promise.resolve(true),
-    head   : () => Promise.resolve('a7c9ff4'),
-    isDirty: () => Promise.resolve(false),
+    provenance: () => Promise.resolve({ head: 'a7c9ff4', dirty: false }),
+    isRepo    : () => Promise.resolve(true),
+    head      : () => Promise.resolve('a7c9ff4'),
+    isDirty   : () => Promise.resolve(false),
   }) as unknown as Git;
 
 interface Host {

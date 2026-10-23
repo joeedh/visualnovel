@@ -19,12 +19,17 @@ import type { Git } from '@vn/git';
 
 /** Just the slice of Git the stack touches, so tests need no repo on disk. */
 function fakeGit(over: Partial<Record<'isRepo' | 'head' | 'isDirty', unknown>> = {}): Git {
-  return {
+  const git = {
     isRepo : () => Promise.resolve(true),
     head   : () => Promise.resolve('a7c9ff4'),
     isDirty: () => Promise.resolve(false),
     ...over,
   } as unknown as Git;
+  git.provenance = async () => {
+    if (!(await git.isRepo())) return { head: null, dirty: false };
+    return { head: await git.head(), dirty: await git.isDirty() };
+  };
+  return git;
 }
 
 interface Host {
@@ -290,6 +295,24 @@ describe('CommandStack.exec', () => {
     const { stack } = setup({ git: fakeGit({ isDirty: () => Promise.resolve(true) }) });
     await stack.exec('demo.greet', { who: 'a' }, 'ui');
     expect(stack.history()[0]!.gitDirty).toBe(true);
+  });
+
+  it('reads fresh provenance once per command without separate Git probes', async () => {
+    const git = fakeGit();
+    git.provenance = jest
+      .fn()
+      .mockResolvedValueOnce({ head: 'old-head', dirty: false })
+      .mockResolvedValueOnce({ head: 'new-head', dirty: true });
+    const probe = jest.spyOn(git, 'isRepo');
+    const { stack } = setup({ git });
+    await stack.exec('demo.greet', { who: 'a' }, 'ui');
+    await stack.exec('demo.greet', { who: 'b' }, 'ui');
+    expect(git.provenance).toHaveBeenCalledTimes(2);
+    expect(probe).not.toHaveBeenCalled();
+    expect(stack.history().map((r) => [r.gitHead, r.gitDirty])).toEqual([
+      ['old-head', false],
+      ['new-head', true],
+    ]);
   });
 
   it('warns but still records when persistence fails', async () => {
@@ -744,6 +767,35 @@ function undoSetup() {
 }
 
 describe('undo/redo', () => {
+  it('selects each queued undo/redo target after pending edits and moves finish', async () => {
+    const { stack, world } = undoSetup();
+    const first = await stack.exec('demo.edit', { to: 'w1' }, 'ui');
+    // Enqueue without awaiting: both undos must see different candidates, and the
+    // redos must see the undo history created ahead of them in the same queue.
+    const pending = stack.exec('demo.edit', { to: 'w2' }, 'ui');
+    const undoSecond = stack.undo();
+    const undoFirst = stack.undo();
+    const redoFirst = stack.redo();
+    const redoSecond = stack.redo();
+    const [second, u2, u1, r1, r2] = await Promise.all([
+      pending,
+      undoSecond,
+      undoFirst,
+      redoFirst,
+      redoSecond,
+    ]);
+    expect(second.ok).toBe(true);
+    for (const [result, target] of [
+      [u2, second.record!.seq],
+      [u1, first.record!.seq],
+      [r1, first.record!.seq],
+      [r2, second.record!.seq],
+    ] as const) {
+      expect(result).toMatchObject({ ok: true, record: { props: { target } } });
+    }
+    expect(world.value).toBe('w2');
+  });
+
   it('brackets an undoable command with snapshots, and leaves others unbracketed', async () => {
     const { stack, journal } = undoSetup();
     await stack.exec('demo.edit', { to: 'w1' }, 'ui');
@@ -946,10 +998,13 @@ describe('undo/redo', () => {
     const { stack, world } = undoSetup();
     await stack.exec('demo.edit', { to: 'w1' }, 'ui');
     await stack.undo();
-    await stack.exec('demo.edit', { to: 'w2' }, 'ui');
+    // Redo must observe the branch invalidated by the edit ahead of it in the queue.
+    const branch = stack.exec('demo.edit', { to: 'w2' }, 'ui');
+    const staleRedo = stack.redo();
+    expect((await branch).ok).toBe(true);
 
     expect(stack.canRedo()).toBe(false);
-    expect(await stack.redo()).toMatchObject({ ok: false, error: 'nothing to redo' });
+    expect(await staleRedo).toMatchObject({ ok: false, error: 'nothing to redo' });
     expect(world.value).toBe('w2');
   });
 

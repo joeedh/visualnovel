@@ -1,4 +1,6 @@
 import { promises as fs } from 'node:fs';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Git, openGit } from '../index.js';
@@ -19,6 +21,34 @@ async function tempRepo(): Promise<{ git: Git; dir: string; cleanup: () => Promi
 const write = (dir: string, name: string, body: string) => fs.writeFile(join(dir, name), body);
 
 describe('@vn/git', () => {
+  it('collects fresh provenance for unborn, clean, staged, unstaged, untracked and detached states', async () => {
+    const { git, dir, cleanup } = await tempRepo();
+    try {
+      expect(await git.provenance()).toEqual({ head: null, dirty: false });
+      await write(dir, 'a.md', 'first');
+      expect(await git.provenance()).toEqual({ head: null, dirty: true });
+      const first = await git.commit({ message: 'first', paths: ['a.md'] });
+      expect(await git.provenance()).toEqual({ head: first, dirty: false });
+      await write(dir, 'a.md', 'second');
+      expect(await git.provenance()).toEqual({ head: first, dirty: true });
+      await git.add(['a.md']);
+      expect(await git.provenance()).toEqual({ head: first, dirty: true });
+      const second = await git.commit({ message: 'second', paths: ['a.md'] });
+      expect(await git.provenance()).toEqual({ head: second, dirty: false });
+      await promisify(execFile)('git', ['checkout', '--detach', first!], {
+        cwd        : dir,
+        windowsHide: true,
+      });
+      expect(await git.provenance()).toEqual({ head: first, dirty: false });
+      await fs.mkdir(join(dir, 'untracked'));
+      await write(dir, 'untracked/new.md', 'new');
+      expect(await git.provenance()).toEqual({ head: first, dirty: true });
+      await fs.rm(join(dir, '.git'), { recursive: true });
+      await expect(git.provenance()).rejects.toThrow();
+    } finally {
+      await cleanup();
+    }
+  });
   it('detects a repo and an unborn HEAD', async () => {
     const { git, cleanup } = await tempRepo();
     try {

@@ -19,6 +19,7 @@ import {
 import { readdir, stat } from 'node:fs/promises';
 import { isAbsolute, join, relative, sep } from 'node:path';
 import { openGit } from '@vn/git';
+import type { PhaseTimer } from '@vn/commands';
 import { ConfigError } from '@vn/util';
 import {
   characterFromDoc,
@@ -648,23 +649,39 @@ export async function walkDirs(dir: string): Promise<string[]> {
  * Reads the project as it is on disk, writing nothing. Validation reads through this, because
  * {@link loadProject}'s repair would put right the over-held slots it is meant to report.
  */
-export async function readProject(dir: string): Promise<LoadedProject> {
-  const config = await loadConfig(dir);
+export async function readProject(dir: string, timing?: PhaseTimer): Promise<LoadedProject> {
   const paths = new ProjectPaths(dir);
-  const inputs = await loadInputs(paths);
-  const model = modelFromInputs(inputs, { title: config.title, start: config.start });
-  const store = await AssetStore.open(paths);
-  const graph = await loadGraph(paths);
+  const config = timing
+    ? await timing.measure('configReadMs', () => loadConfig(dir))
+    : await loadConfig(dir);
+  const inputs = timing
+    ? await timing.measure('inputsReadMs', () => loadInputs(paths))
+    : await loadInputs(paths);
+  const build = () => modelFromInputs(inputs, { title: config.title, start: config.start });
+  const model = timing ? timing.measureSync('modelBuildMs', build) : build();
+  const store = timing
+    ? await timing.measure('assetsReadMs', () => AssetStore.open(paths))
+    : await AssetStore.open(paths);
+  const graph = timing
+    ? await timing.measure('graphReadMs', () => loadGraph(paths))
+    : await loadGraph(paths);
   return { dir, config, paths, model, store, graph, sources: sourcesOf(inputs), inputs };
 }
 
-export async function loadProject(dir: string): Promise<LoadedProject> {
-  const project = await readProject(dir);
+export async function loadProject(dir: string, timing?: PhaseTimer): Promise<LoadedProject> {
+  const project = timing
+    ? await timing.measure('projectReadMs', () => readProject(dir, timing))
+    : await readProject(dir);
   const { model, config, store, graph } = project;
   // `current` is a cache of the task log, and a slot holding two current rows resolves to
   // nothing, so every surface reading this project would show it as unrendered; the manifest is
   // put right as it is read, and migrated once on a project written before takes were held
-  await repairCurrent({ model, config, store, graph, shots: await readAllShots(project) });
+  const shots = timing
+    ? await timing.measure('projectShotsMs', () => readAllShots(project))
+    : await readAllShots(project);
+  const repair = () => repairCurrent({ model, config, store, graph, shots });
+  if (timing) await timing.measure('projectRepairMs', repair);
+  else await repair();
   return project;
 }
 
@@ -2802,8 +2819,10 @@ export class WorkspaceSession {
     sceneId: string,
     shotId: string,
     bubbles: readonly PanelBubble[],
-  ): Promise<{ ok: boolean; message: string; written: string[]; coverage?: SceneCoverage }> {
-    return this.storyPart.setBubbles(sceneId, shotId, bubbles);
+    timing?: PhaseTimer,
+    assertUndoInput?: (path: string, text: string) => void,
+  ) {
+    return this.storyPart.setBubbles(sceneId, shotId, bubbles, timing, assertUndoInput);
   }
 
   async previewSheet(sceneId: string, shotId: string, sheet: string): Promise<SheetsOp<Shot>> {

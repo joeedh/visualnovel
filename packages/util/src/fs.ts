@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { promises as fs } from 'node:fs';
+import { promises as fs, readFile } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 /** Ensure a directory exists (recursive, idempotent). */
@@ -101,7 +101,14 @@ export async function readJsonl<T = unknown>(path: string): Promise<T[]> {
 
 /** Read a UTF-8 text file. */
 export async function readText(path: string): Promise<string> {
-  return fs.readFile(path, 'utf8');
+  // The callback reader avoids the FileHandle/promise overhead for each small file
+  // in a project load. Keep the async contract and always read fresh bytes.
+  return new Promise((resolve, reject) => {
+    readFile(path, 'utf8', (error, text) => {
+      if (error) reject(error);
+      else resolve(text);
+    });
+  });
 }
 
 /** True if a path exists. */
