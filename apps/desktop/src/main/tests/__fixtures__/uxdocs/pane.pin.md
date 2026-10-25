@@ -41,7 +41,7 @@ Nothing runs it as a later step of a click.
 
 ## Reaching it
 
-- Sweep: a control or menu entry ran it in the sweep of 2026-10-21 at 177b0dc.
+- Sweep: a control or menu entry ran it in the sweep of 2026-10-25 at 6328958.
 - Palette-only rule: none.
 - Shortcut: none.
 - Menu: none.

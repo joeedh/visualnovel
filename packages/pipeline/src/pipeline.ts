@@ -1,6 +1,7 @@
 import type { AnyTask, Logger, ProjectModel, Providers, TaskGraph, TaskKind } from '@vn/types';
 import type { AssetStore } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
+import type { TaskLogSink } from '@vn/providers';
 import type { GraphRuntime } from './graphrun.js';
 import type { TaskRequests } from './requests.js';
 
@@ -32,6 +33,8 @@ export interface RunDeps {
   requests?: TaskRequests;
   /** Persists attempt records before another request can start. */
   checkpoint?: (task: AnyTask) => Promise<void>;
+  /** This execution's diagnostic log; provider calls beneath the runner reach it ambiently. */
+  taskLog?: TaskLogSink;
 }
 
 /** A dry-run estimate of the generative work a plan implies (report §10 cost preview). */

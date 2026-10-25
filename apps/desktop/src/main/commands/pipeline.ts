@@ -26,6 +26,26 @@ export const pipelineStatus = define({
   },
 });
 
+export const pipelineTaskLog = define({
+  id         : 'pipeline.taskLog',
+  title      : 'Task log',
+  description:
+    "One task's diagnostic log: provider retries, replies that did not parse, the error that " +
+    'stopped it, and every reviewer call in full. Logs are local to this machine and never ' +
+    'committed; a task that ran before logs were kept shows only the failures its record holds.',
+  notes:
+    'One task’s diagnostic log from `vngen/state/tasklogs/<hash>.jsonl` (gitignored), with failures from the task record for runs older than the file. The Tasks pane’s fold reads it.',
+  mutating   : false,
+  props      : { hash: prop.string('the task hash') },
+  async run({ hash }, ctx) {
+    const view = await ctx.host.session.taskLog(hash);
+    return {
+      message: `${view.lines.length} line(s), ${view.reviews.length} reviewer call(s).`,
+      data   : view,
+    };
+  },
+});
+
 export const pipelineRun = define({
   id         : 'pipeline.run',
   title      : 'Run pipeline',
@@ -41,6 +61,7 @@ export const pipelineRun = define({
     'vngen/state/tasks.jsonl',
     'vngen/state/graphs',
     'vngen/state/requests',
+    'vngen/state/tasklogs',
   ],
   // Deliberately not `confirm`. The header's button, the menu entry and the advanced dialog's OK
   // are each already a deliberate click on the words "run pipeline", so a second card repeating
@@ -98,7 +119,14 @@ export const pipelineRun = define({
       data   : result,
       ...(mock
         ? {}
-        : { written: ['vngen/build/', 'vngen/state/tasks.jsonl', 'vngen/state/requests/'] }),
+        : {
+            written: [
+              'vngen/build/',
+              'vngen/state/tasks.jsonl',
+              'vngen/state/requests/',
+              'vngen/state/tasklogs/',
+            ],
+          }),
     };
   },
 });
@@ -122,6 +150,7 @@ export const pipelineDraw = define({
     'vngen/state/tasks.jsonl',
     'vngen/state/graphs',
     'vngen/state/requests',
+    'vngen/state/tasklogs',
   ],
   // Spends real image calls, like a regenerate, and the gate is on the command rather than the
   // props
@@ -152,6 +181,7 @@ export const pipelineDraw = define({
         'vngen/build/',
         'vngen/state/tasks.jsonl',
         'vngen/state/requests/',
+        'vngen/state/tasklogs/',
       ],
     };
   },
@@ -295,6 +325,7 @@ export const pipelineApproveAndRun = define({
     'vngen/state/tasks.jsonl',
     'vngen/state/graphs',
     'vngen/state/requests',
+    'vngen/state/tasklogs',
   ],
   // The one command that both approves art and spends money without asking again in between.
   // Every step is undoable on its own; the pass as a whole is not.
@@ -388,6 +419,7 @@ export const pipelineApproveAndRun = define({
         'vngen/build/',
         'vngen/state/tasks.jsonl',
         'vngen/state/requests/',
+        'vngen/state/tasklogs/',
         'vngen/build/manifest.json',
       ],
     };

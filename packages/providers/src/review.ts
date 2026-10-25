@@ -1,7 +1,17 @@
-import type { AssetRef, DefectReport, ReviewRef, ShotSpec, VisionReviewer } from '@vn/types';
+import type {
+  AssetRef,
+  DefectReport,
+  ReviewRef,
+  ShotSpec,
+  TaskLogImage,
+  VisionReviewer,
+} from '@vn/types';
 import { defectReportSchema } from '@vn/types';
+import { sha256 } from '@vn/util';
 import type { ChatBackend, RefLoader } from './backend.js';
-import { withStructuredRetry } from './structured.js';
+import { RequestStopped } from './requests.js';
+import { parseStructured, withStructuredRetry } from './structured.js';
+import { noteReview, noteTask, withTaskLogScope } from './tasklog.js';
 
 const REVIEW_SYSTEM = [
   'You are a meticulous visual QA reviewer for a visual novel art pipeline.',
@@ -44,6 +54,30 @@ function reviewSystem(spec: ShotSpec): string {
   ].join(' ');
 }
 
+/** Model replies one review may spend before its malformed output fails the review. */
+const REVIEW_TRIES = 3;
+
+/** An image as the task log names it: by store hash, or by the hash of bytes never stored. */
+function imageNote(ref: ReviewRef): TaskLogImage {
+  return 'bytes' in ref
+    ? { hash: sha256(ref.bytes), ext: ref.ext, inline: true }
+    : { hash: ref.hash };
+}
+
+function errorText(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/** Logs a reply that will not parse, which `withStructuredRetry` is about to retry past. */
+function noteUnparsed(raw: string, n: number): void {
+  try {
+    parseStructured(raw, defectReportSchema);
+  } catch (err) {
+    const level = n < REVIEW_TRIES ? 'retry' : 'error';
+    noteTask(level, `reply ${n} of ${REVIEW_TRIES} did not parse: ${errorText(err)}`);
+  }
+}
+
 /**
  * A `VisionReviewer` over any vision-capable `ChatBackend` — both Gemini and Claude
  * implement this (report §P7). The critique is requested as structured JSON and
@@ -60,10 +94,20 @@ export class ChatVisionReviewer implements VisionReviewer {
     this.id = id;
   }
 
-  async review(image: AssetRef, spec: ShotSpec, refs: readonly ReviewRef[]): Promise<DefectReport> {
-    const images = await Promise.all(
-      [image, ...refs].map((r) => ('bytes' in r ? Promise.resolve(r) : this.loadRef(r))),
+  review(image: AssetRef, spec: ShotSpec, refs: readonly ReviewRef[]): Promise<DefectReport> {
+    return withTaskLogScope({ source: `reviewer:${this.id}` }, () =>
+      this.reviewLogged(image, spec, refs),
     );
+  }
+
+  /** Reviews once, writing the whole exchange to the task log whether or not it succeeds. */
+  private async reviewLogged(
+    image: AssetRef,
+    spec: ShotSpec,
+    refs: readonly ReviewRef[],
+  ): Promise<DefectReport> {
+    const started = Date.now();
+    const system = reviewSystem(spec);
     const prompt = [
       'SHOT SPECIFICATION:',
       JSON.stringify(spec, null, 2),
@@ -71,10 +115,41 @@ export class ChatVisionReviewer implements VisionReviewer {
       'The first image is the generated result; any following images are references.',
       'Report all defects as JSON.',
     ].join('\n');
+    const responses: string[] = [];
+    const transcript = (error?: unknown): void =>
+      noteReview({
+        t         : 'review',
+        reviewer  : this.id,
+        model     : this.backend.modelId,
+        systemText: system,
+        prompt,
+        images: [image, ...refs].map(imageNote),
+        responses,
+        ...(error === undefined ? {} : { error: errorText(error) }),
+        ms: Date.now() - started,
+      });
 
-    const report = await withStructuredRetry(defectReportSchema, () =>
-      this.backend.message({ system: reviewSystem(spec), prompt, images }),
-    );
+    const ask = async () => {
+      const images = await Promise.all(
+        [image, ...refs].map((r) => ('bytes' in r ? Promise.resolve(r) : this.loadRef(r))),
+      );
+      return withStructuredRetry(
+        defectReportSchema,
+        async () => {
+          const raw = await this.backend.message({ system, prompt, images });
+          responses.push(raw);
+          noteUnparsed(raw, responses.length);
+          return raw;
+        },
+        { attempts: REVIEW_TRIES },
+      );
+    };
+    const report = await ask().catch((err: unknown) => {
+      // A stop before any reply is not a review that happened
+      if (!(err instanceof RequestStopped) || responses.length > 0) transcript(err);
+      throw err;
+    });
+    transcript();
     // Stamp the reviewer id so merged reports are attributable.
     const stamped: DefectReport = { reviewer: this.id, defects: report.defects ?? [] };
     // Only what a page asked for: a frame's review never carries measurements

@@ -61,6 +61,7 @@ export function registerIpc(ctx: AppContext): void {
     ctx.pendingConfirms.answer(payload.id, payload.allowed),
   );
   handle(ctx, 'pipeline:status', () => getSession(ctx).status());
+  handle(ctx, 'pipeline:taskLog', (_origin, hash) => getSession(ctx).taskLog(hash));
   handle(ctx, 'pipeline:run', (_origin, opts) => getSession(ctx).runPipeline(opts.mock));
   handle(ctx, 'gate:candidates', (_origin, characterId) =>
     getSession(ctx).gateCandidates(characterId),

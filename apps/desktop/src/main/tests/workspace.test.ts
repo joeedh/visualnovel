@@ -667,11 +667,12 @@ describe('scaffolding', () => {
     expect(wrote.ignores).toBe(true);
     expect(wrote.layouts.length).toBeGreaterThan(0);
     expect(await readFile(join(root, '.gitignore'), 'utf8')).toContain(SESSION_IGNORE);
+    expect(await readFile(join(root, '.gitignore'), 'utf8')).toContain('vngen/state/tasklogs/');
 
     await commitScaffolding(root, wrote);
     const git = openGit(root);
     expect((await git.log()).map((c) => c.subject)).toEqual([
-      'Ignore the window arrangement, held collections and the picture check',
+      'Ignore the window arrangement, held collections, the picture check and task logs',
       'Add the shipped layout templates',
       'Set how git merges the state logs',
       'Existing project files',

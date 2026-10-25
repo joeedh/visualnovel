@@ -38,6 +38,26 @@ review merge. Both are unchanged, and so are their tests. The plan is in
   sentence is drawn on the card rather than one click away in the inspector. The
   inspector's attempt stack records what each attempt said, which is a different question,
   and an author looking for the failure does not start there.
+- **The ▸ on a card opens the task's log beneath it.** The drawer reads
+  `pipeline:taskLog`, the read behind `pipeline.taskLog` without the command record,
+  because a running task's open log is re-read about once a second (`LOG_POLL_MS`) and
+  every command is appended to the committed `commands.jsonl`. Its switch has two halves:
+    - **Log** lists provider retries, reviewer replies that did not parse, and the error
+      that stopped the task. For runs older than the log file it falls back to the
+      failures the task record holds.
+    - **Reviewer** lists every reviewer call, grouped by run and then by attempt: the
+      system prompt and prompt (folded), the raw replies (the unparseable ones marked),
+      the error if the call threw, the image hashes, and the verdict and defects joined
+      from the attempt record. The half is refused when no call was saved, which is every
+      kind but a shot.
+
+    The drawer is a sibling of the card rather than part of it, so a click inside it never
+    selects the task. It is rebuilt only when its read or its half changes, so scrolling
+    and open folds survive the redraws a running wave causes. `renderer/rules/tasklist.ts`
+    holds the offers (`foldAction`, `logModeAction`), and `editors/tasklog.ts` draws the
+    drawer. The contract for the file itself is in
+    [`pipeline-contracts.md`](pipeline-contracts.md).
+
 - **Explain an empty list by naming the control that emptied it.** Four controls hide
   tasks, and their effects overlap: `only done` keeps what succeeded, `only running` keeps
   what is running, `only failed` keeps what stopped, and Clear finished removes what

@@ -3,6 +3,7 @@ import {
   clearAction,
   controls,
   emptyBecause,
+  foldAction,
   gateAction,
   reloadAction,
   runAction,
@@ -245,21 +246,52 @@ const BAR = [
 ];
 
 describe('controls', () => {
-  it('lists the cards after the bar', () => {
-    const NONE: Selection = {
-      sceneId    : '',
-      shotId     : '',
-      characterId: '',
-      docPath    : '',
-      assetHash  : '',
-      graphSlug  : '',
-    };
+  const NONE: Selection = {
+    sceneId    : '',
+    shotId     : '',
+    characterId: '',
+    docPath    : '',
+    assetHash  : '',
+    graphSlug  : '',
+  };
+
+  it('lists the cards after the bar, each followed by its fold', () => {
     const listed = controls({ gatePending: [], cards: { tasks: TASKS, selection: NONE } });
     expect(listed.map(keyOf)).toEqual([
       'cmd:pipeline.run',
       ...BAR,
-      ...TASKS.map((t) => `item:task/${t.hash}`),
+      ...TASKS.flatMap((t) => [`item:task/${t.hash}`, `fx:pane.view#log/${t.hash}`]),
     ]);
+    expect(duplicateKeys(listed)).toEqual([]);
+  });
+
+  it("adds an open fold's switch, refusing the reviewer half when nothing was reviewed", () => {
+    const [first, second] = TASKS;
+    const listed = controls({
+      gatePending: [],
+      cards: {
+        tasks    : [first!, second!],
+        selection: NONE,
+        folds: {
+          [first!.hash] : { mode: 'log', lines: 2, reviews: 3 },
+          [second!.hash]: { mode: 'log', lines: 1, reviews: 0 },
+        },
+      },
+    });
+    const switches = listed.filter((o) => o.on?.startsWith('logmode/'));
+    expect(switches.map((o) => [o.on, o.label, o.ok])).toEqual([
+      [`logmode/${first!.hash}/log`, 'Log 2', true],
+      [`logmode/${first!.hash}/review`, 'Reviewer 3', true],
+      [`logmode/${second!.hash}/log`, 'Log 1', true],
+      [`logmode/${second!.hash}/review`, 'Reviewer 0', false],
+    ]);
+    expect(duplicateKeys(listed)).toEqual([]);
+  });
+
+  it('turns the fold mark with the fold', () => {
+    expect(foldAction('a', false).label).toBe('▸');
+    expect(foldAction('a', true).label).toBe('▾');
+    expect(foldAction('a', true).tooltip).not.toBe(foldAction('a', false).tooltip);
   });
 
   it('lists the run button, one gate per pending character and the bar, each key once', () => {

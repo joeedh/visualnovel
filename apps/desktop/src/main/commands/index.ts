@@ -128,6 +128,7 @@ import {
   pipelineRun,
   pipelineStatus,
   pipelineStop,
+  pipelineTaskLog,
 } from './pipeline.js';
 import { pluginInstall, pluginList, pluginPrices, pluginRemove } from './plugin.js';
 import {
@@ -369,6 +370,7 @@ export function createDesktopRegistry(): CommandRegistry<CommandHost> {
     pipelineDraw,
     pipelineStatus,
     pipelineStop,
+    pipelineTaskLog,
     pluginInstall,
     pluginList,
     pluginPrices,

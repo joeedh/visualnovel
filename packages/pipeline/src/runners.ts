@@ -14,7 +14,14 @@ import type {
   TaskResult,
 } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
-import { checkRequestWrite, mergeReports, reportingRetries } from '@vn/providers';
+import {
+  checkRequestWrite,
+  mergeReports,
+  noteTask,
+  reportingRetries,
+  withTaskLog,
+  withTaskLogScope,
+} from '@vn/providers';
 import { heldBy, layoutDefect, sheetSeeds } from '@vn/artgen';
 import type { SheetSeeds } from '@vn/artgen';
 import { refinePrompt } from './p6.js';
@@ -312,28 +319,33 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
       tried.add(throughNode ? critique : prompt);
       const stage = maxAttempts > 1 ? `attempt ${attempt} of ${maxAttempts}: ` : '';
       deps.activity?.(task, `${stage}drawing`);
+      // Where this attempt's record lands, which is also what its task-log entries are filed under
+      const index = records[attempt - 1] ?? task.attempts.length;
+      const filed = <T>(fn: () => Promise<T>): Promise<T> =>
+        withTaskLogScope({ attempt: index + 1 }, fn);
       let ref: AssetRef;
       let shown: ReviewRef[] = refs;
       if (binding) {
-        const drawn = await drawThroughGraph(deps, binding, prompt, refs, meta, {
-          critique,
-          ...graphSeedsOf(sheet),
-        });
+        const drawn = await filed(() =>
+          drawThroughGraph(deps, binding, prompt, refs, meta, {
+            critique,
+            ...graphSeedsOf(sheet),
+          }),
+        );
         ref = drawn.ref;
         if (sheet) shown = [...refs, ...(await graphReviewRefs(binding, drawn.draw))];
       } else {
-        ref = await generateAsset(deps, prompt, refs, task.inputs.params, meta);
+        ref = await filed(() => generateAsset(deps, prompt, refs, task.inputs.params, meta));
       }
       lastRef = ref;
 
       deps.activity?.(task, `${stage}reviewing`);
-      const reviewed: DefectReport[] = await Promise.all(
-        deps.providers.reviewers.map((r) => r.review(ref, spec, shown)),
+      const reviewed: DefectReport[] = await filed(() =>
+        Promise.all(deps.providers.reviewers.map((r) => r.review(ref, spec, shown))),
       );
       const reports = [...reviewed, ...layoutReport(found?.shot, reviewed)];
       const merged = mergeReports(reports);
 
-      const index = records[attempt - 1] ?? task.attempts.length;
       const at = task.attempts[index]?.at ?? deps.now?.();
       const record: TaskAttempt = {
         attempt,
@@ -426,8 +438,12 @@ export async function runTask(
       providers: deps.requests?.providers(deps.providers) ?? deps.providers,
     });
   const { activity } = deps;
+  const heard = (note: string): void => {
+    activity?.(task, note);
+    noteTask('retry', note);
+  };
   try {
-    return await (activity ? reportingRetries((note) => activity(task, note), run) : run());
+    return await withTaskLog(deps.taskLog, () => reportingRetries(heard, run));
   } finally {
     await deps.requests?.settled();
   }

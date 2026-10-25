@@ -9,11 +9,16 @@ import {
   cardAction,
   drewAsset,
   emptyBecause,
+  foldAction,
   gateAction,
+  logModeAction,
   runAction,
   showing,
   type ListFilter,
+  type LogMode,
 } from '../../rules/tasklist.js';
+import { foldCounts, foldPanel, type FoldState } from './tasklog.js';
+import TASKLIST_CSS from '../../styles/tasklist.css?inline';
 import { card, dot, mono, note, row, stamp, statusColour, subject } from '../widgets/dom.js';
 import { VnEditor, registerEditor } from '../app/editor.js';
 import { openCommandDialog } from '../chrome/dialog.js';
@@ -23,6 +28,9 @@ import { redrawing, type AnchorPass } from '../tour/anchors.js';
 import { TOKENS, alpha } from '../app/tokens.js';
 import type { PipelineStatus, Task } from '../../../src/shared/ipc.js';
 import { taskActivity } from '../../../src/shared/taskactivity.js';
+
+/** Shortest gap between two re-reads of a running task's open log during busy pushes. */
+const LOG_POLL_MS = 1000;
 
 /**
  * The task list: one card per node of the content-addressed graph, for scanning rather than for
@@ -60,6 +68,19 @@ export class TaskListEditor extends VnEditor {
    * picture it named. Refresh empties this set and brings the cards back.
    */
   private cleared = new Set<string>();
+  /** Hashes whose log drawer is open. */
+  private expanded = new Set<string>();
+  /** Which half each open drawer shows; the log half when unset. */
+  private logMode = new Map<string, LogMode>();
+  /** Each open drawer's last read, and a generation that moves only when the read changed. */
+  private logs = new Map<string, FoldState & { gen: number; seen: string }>();
+  /** Rising per hash with every log read, so a slow answer that arrived out of order is dropped. */
+  private logTokens = new Map<string, number>();
+  /** Built drawers, reused while nothing they show has changed so scroll and selection survive. */
+  private drawers = new Map<string, { key: string; node: HTMLElement }>();
+  private openDetails = new Set<string>();
+  /** When a running task's open log was last re-read during a busy push. */
+  private lastPoll = 0;
 
   /** A task in a state nothing will move it out of without a new run. */
   private static finished(task: Task): boolean {
@@ -76,6 +97,7 @@ export class TaskListEditor extends VnEditor {
 
   override init() {
     super.init();
+    this.adoptStyle(TASKLIST_CSS);
 
     // A column of two rows rather than one long row: the bar carries a sentence of counts and
     // six controls, and in one row the last of them falls off the end of a half-width pane.
@@ -108,8 +130,10 @@ export class TaskListEditor extends VnEditor {
         const key = [state.what, state.ran, state.pending, ...Object.keys(state.activity)].join(
           '|',
         );
-        if (key === this.seenBusy) this.rebuild();
-        else void this.load();
+        if (key === this.seenBusy) {
+          this.pollRunningLogs();
+          this.rebuild();
+        } else void this.load();
         this.seenBusy = key;
       }),
     );
@@ -143,7 +167,57 @@ export class TaskListEditor extends VnEditor {
       if (mine !== this.token) return;
       this.failure = err instanceof Error ? err.message : String(err);
     }
+    // A re-read of the record is the moment a task's log may have grown
+    for (const hash of this.expanded) void this.loadLog(hash);
     this.rebuild();
+  }
+
+  private async loadLog(hash: string): Promise<void> {
+    const mine = (this.logTokens.get(hash) ?? 0) + 1;
+    this.logTokens.set(hash, mine);
+    const before = this.logs.get(hash) ?? { mode: 'log', gen: 0, seen: '' };
+    let next: FoldState & { seen: string };
+    try {
+      const view = await api.invoke('pipeline:taskLog', hash);
+      const last = view.lines.at(-1)?.at ?? '';
+      next = { mode: 'log', view, seen: `${view.lines.length}:${view.reviews.length}:${last}` };
+    } catch (err) {
+      next = {
+        mode   : 'log',
+        failure: err instanceof Error ? err.message : String(err),
+        seen   : 'failed',
+      };
+    }
+    if (mine !== this.logTokens.get(hash) || !this.expanded.has(hash)) return;
+    if (next.seen === before.seen) return;
+    this.logs.set(hash, { ...next, gen: before.gen + 1 });
+    this.rebuild();
+  }
+
+  /** Re-reads the open logs of running tasks, at most once per `LOG_POLL_MS`. */
+  private pollRunningLogs(): void {
+    if (Date.now() - this.lastPoll < LOG_POLL_MS) return;
+    const running = this.tasks().filter((t) => t.status === 'running' && this.expanded.has(t.hash));
+    if (running.length === 0) return;
+    this.lastPoll = Date.now();
+    for (const task of running) void this.loadLog(task.hash);
+  }
+
+  private toggleFold(hash: string): void {
+    if (this.expanded.delete(hash)) {
+      this.logs.delete(hash);
+      this.drawers.delete(hash);
+    } else {
+      this.expanded.add(hash);
+      void this.loadLog(hash);
+    }
+    this.rebuild();
+  }
+
+  /** What one open drawer is drawn from, with the half it shows. */
+  private foldState(hash: string): FoldState {
+    const read = this.logs.get(hash);
+    return { ...read, mode: this.logMode.get(hash) ?? 'log' };
   }
 
   /** What the bar's controls are set to, in the shape the pure rules take. */
@@ -191,6 +265,11 @@ export class TaskListEditor extends VnEditor {
       this.onlyRunning ? 'running-only' : 'all',
       this.onlyFailed ? 'failed-only' : 'all',
       this.cleared.size,
+      [...this.expanded]
+        .map(
+          (h) => `${h.slice(0, 8)}:${this.logMode.get(h) ?? 'log'}:${this.logs.get(h)?.gen ?? 0}`,
+        )
+        .join(','),
       ui.taskHash,
       ui.sceneId,
       ui.shotId,
@@ -313,7 +392,46 @@ export class TaskListEditor extends VnEditor {
     }
 
     const selection = this.selection();
-    for (const task of tasks) this.list.appendChild(this.taskCard(task, selection));
+    for (const task of tasks) {
+      this.list.appendChild(this.taskCard(task, selection));
+      // A sibling of the card rather than inside it, so a click in the drawer never selects
+      if (this.expanded.has(task.hash)) this.list.appendChild(this.drawer(task));
+    }
+  }
+
+  /** The open drawer under a card, rebuilt only when what it shows has changed. */
+  private drawer(task: Task): HTMLElement {
+    const state = this.foldState(task.hash);
+    const key = `${this.logs.get(task.hash)?.gen ?? 0}|${foldCounts(state).mode}|${task.attempts.length}`;
+    const cached = this.drawers.get(task.hash);
+    if (cached?.key === key) {
+      // Reused as built, but its switch is still drawn this pass, so it is recorded again
+      this.recordDrawer(task, state);
+      return cached.node;
+    }
+    const node = foldPanel(task, state, {
+      anchors    : this.anchors,
+      openDetails: this.openDetails,
+      setMode: (mode) => {
+        this.logMode.set(task.hash, mode);
+        this.rebuild();
+      },
+    });
+    node.style.setProperty('--tl-rail', statusColour(task.status));
+    this.drawers.set(task.hash, { key, node });
+    return node;
+  }
+
+  /** Records a reused drawer's switch with this pass's anchors, as building it would have. */
+  private recordDrawer(task: Task, state: FoldState): void {
+    const fold = foldCounts(state);
+    const buttons = this.drawers
+      .get(task.hash)
+      ?.node.querySelectorAll<HTMLButtonElement>('.tl-seg-btn');
+    (['log', 'review'] as const).forEach((mode, i) => {
+      const button = buttons?.[i];
+      if (button) this.anchors.record(button, logModeAction(task.hash, mode, fold));
+    });
   }
 
   /** The gate bar: the portrait approval the rest of the run is waiting on. */
@@ -370,6 +488,15 @@ export class TaskListEditor extends VnEditor {
     }
 
     const head = row();
+    const open = this.expanded.has(task.hash);
+    const fold = foldAction(task.hash, open);
+    const twisty = document.createElement('button');
+    twisty.className = open ? 'tl-twisty open' : 'tl-twisty';
+    twisty.textContent = fold.label;
+    this.anchors.act(twisty, fold, () => this.toggleFold(task.hash));
+    // The card's own click selects the task; the fold opens without selecting it
+    twisty.addEventListener('click', (event) => event.stopPropagation());
+    head.appendChild(twisty);
     head.appendChild(dot(colour));
     head.appendChild(mono(task.kind, TOKENS.mist, 11));
     const status = mono(task.interrupted ? 'interrupted' : task.status, colour, 10);

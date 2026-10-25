@@ -343,6 +343,7 @@ export const assetRegenerate = define({
     'vngen/state/tasks.jsonl',
     'vngen/state/graphs',
     'vngen/state/requests',
+    'vngen/state/tasklogs',
   ],
   // Requeuing costs nothing by itself, but running spends a real image call, and the gate is on
   // the command rather than the props.
@@ -370,7 +371,12 @@ export const assetRegenerate = define({
     return {
       message: `${queued.message} ${result.ran} task(s) ran${failed}.`,
       data   : { queued, run: result, why },
-      written: [...queued.written, 'vngen/build/', 'vngen/state/requests/'],
+      written: [
+        ...queued.written,
+        'vngen/build/',
+        'vngen/state/requests/',
+        'vngen/state/tasklogs/',
+      ],
     };
   },
 });

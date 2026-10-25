@@ -1,0 +1,331 @@
+/*
+ * The Tasks pane's fold: the ▸ on each card and the log that opens beneath it. Cards themselves
+ * are styled inline from TOKENS; this sheet covers what needs real CSS (hover, details, pre).
+ */
+
+.tl-twisty {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: none;
+  color: var(--mist);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.tl-twisty:hover {
+  color: var(--paper);
+  border-color: var(--ink-line);
+  background: var(--ink);
+}
+
+.tl-twisty.open {
+  color: var(--signal);
+}
+
+/* Tucked under its card and indented, so it reads as the card's own drawer */
+.tl-fold {
+  flex: none;
+  margin: -4px 0 2px 12px;
+  padding: 8px 10px 6px;
+  border: 1px solid var(--ink-line);
+  border-top: 0;
+  border-left: 2px solid var(--tl-rail, var(--ink-line));
+  border-radius: 0 0 4px 4px;
+  background: var(--ink);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--mist);
+  user-select: text;
+  cursor: auto;
+}
+
+.tl-fold-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.tl-seg {
+  display: inline-flex;
+  border: 1px solid var(--ink-line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.tl-seg-btn {
+  padding: 2px 9px;
+  border: 0;
+  background: none;
+  color: var(--mist);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.tl-seg-btn + .tl-seg-btn {
+  border-left: 1px solid var(--ink-line);
+}
+
+.tl-seg-btn:hover:not(:disabled) {
+  color: var(--paper);
+  background: var(--ink-raised);
+}
+
+.tl-seg-btn.on {
+  color: var(--ink);
+  background: var(--signal);
+}
+
+.tl-seg-btn:disabled {
+  color: var(--mist-dim);
+  opacity: 0.55;
+  cursor: default;
+}
+
+.tl-local {
+  margin-left: auto;
+  color: var(--mist-dim);
+  font-size: 10px;
+}
+
+.tl-empty {
+  padding: 4px 0 6px;
+  color: var(--mist-dim);
+  line-height: 1.5;
+}
+
+.tl-empty.bad {
+  color: var(--vermilion);
+}
+
+/* The log: one grid row per line, so times and tags stay in columns */
+.tl-lines {
+  display: grid;
+  grid-template-columns: max-content max-content max-content minmax(0, 1fr);
+  column-gap: 8px;
+  row-gap: 3px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.tl-time {
+  color: var(--mist-dim);
+}
+
+.tl-tag {
+  padding: 0 4px;
+  border-radius: 2px;
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  align-self: start;
+}
+
+.tl-tag.error {
+  color: var(--vermilion);
+  background: rgba(229, 83, 75, 0.12);
+}
+
+.tl-tag.retry {
+  color: var(--sodium);
+  background: rgba(244, 162, 76, 0.12);
+}
+
+.tl-tag.info {
+  color: var(--mist);
+  background: var(--ink-raised);
+}
+
+.tl-source {
+  color: var(--signal);
+}
+
+.tl-text {
+  color: var(--paper);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* The reviewer transcripts */
+.tl-reviews {
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+.tl-exec {
+  margin: 6px 0 4px;
+  color: var(--mist-dim);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.tl-exec:first-child {
+  margin-top: 0;
+}
+
+.tl-attempt {
+  margin: 6px 0 3px;
+  color: var(--mist);
+  font-size: 10.5px;
+}
+
+.tl-review {
+  margin-bottom: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--ink-line-soft);
+  border-radius: 4px;
+  background: var(--ink-sunken);
+}
+
+.tl-review-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.tl-who {
+  color: var(--paper);
+}
+
+.tl-model,
+.tl-ms {
+  color: var(--mist-dim);
+}
+
+.tl-verdict {
+  margin-left: auto;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 10px;
+}
+
+.tl-verdict.clean {
+  color: var(--jade);
+  background: rgba(95, 181, 140, 0.12);
+}
+
+.tl-verdict.blocking,
+.tl-verdict.failed {
+  color: var(--vermilion);
+  background: rgba(229, 83, 75, 0.12);
+}
+
+.tl-verdict.minor {
+  color: var(--sodium);
+  background: rgba(244, 162, 76, 0.12);
+}
+
+.tl-verdict.none {
+  color: var(--mist-dim);
+  background: var(--ink-raised);
+}
+
+.tl-review details {
+  margin: 2px 0;
+}
+
+.tl-review summary {
+  color: var(--mist);
+  font-size: 10.5px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tl-review summary:hover {
+  color: var(--paper);
+}
+
+.tl-pre {
+  margin: 3px 0 4px;
+  padding: 5px 7px;
+  max-height: 220px;
+  overflow: auto;
+  border-left: 2px solid var(--ink-line);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.tl-reply-label {
+  margin-top: 4px;
+  color: var(--mist-dim);
+  font-size: 10px;
+}
+
+.tl-pre.reply {
+  border-left-color: var(--signal-deep, var(--signal));
+}
+
+.tl-pre.bad {
+  border-left-color: var(--vermilion);
+  color: var(--mist);
+}
+
+.tl-defects {
+  margin: 4px 0 2px;
+  padding: 0;
+  list-style: none;
+}
+
+.tl-defect {
+  display: flex;
+  gap: 6px;
+  padding: 1px 0;
+  color: var(--paper);
+}
+
+.tl-sev {
+  flex: none;
+  min-width: 56px;
+  font-size: 10px;
+}
+
+.tl-sev.blocking {
+  color: var(--vermilion);
+}
+
+.tl-sev.major {
+  color: var(--sodium);
+}
+
+.tl-sev.minor {
+  color: var(--mist);
+}
+
+.tl-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.tl-chip {
+  padding: 0 5px;
+  border: 1px solid var(--ink-line);
+  border-radius: 3px;
+  color: var(--mist-dim);
+  font-size: 9.5px;
+}
+
+.tl-error {
+  margin: 4px 0;
+  padding: 4px 7px;
+  border-radius: 3px;
+  background: rgba(229, 83, 75, 0.1);
+  color: var(--vermilion);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

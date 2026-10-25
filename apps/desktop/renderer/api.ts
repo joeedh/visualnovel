@@ -424,6 +424,8 @@ const fallback: DesktopApi = {
         return Promise.resolve(MOCK_SKILLTREE);
       case 'pipeline:status':
         return Promise.resolve(MOCK_STATUS);
+      case 'pipeline:taskLog':
+        return Promise.resolve({ hash: arg, lines: [], reviews: [] });
       // A preview has no project, so there is no AICONTEXT.md and no map. The built-in half of
       // the prompt is a constant, so the pane shows that rather than nothing
       case 'agent:system':

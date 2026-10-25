@@ -87,8 +87,25 @@ export interface TaskListState {
   gatePending: string[];
   /** Whether a finished task is still in the list for Clear finished to take out; none when unset. */
   clearable?: boolean;
-  /** The cards on screen, and the selection they are drawn against. */
-  cards?: { tasks: readonly Task[]; selection: Selection };
+  /**
+   * The cards on screen, the selection they are drawn against, and the folds drawn open, by task
+   * hash.
+   */
+  cards?: {
+    tasks: readonly Task[];
+    selection: Selection;
+    folds?: Readonly<Record<string, CardFold>>;
+  };
+}
+
+/** Which half of an open fold is showing: the task's log, or its reviewer transcripts. */
+export type LogMode = 'log' | 'review';
+
+/** An open fold under a card: the half it shows, and how much each half holds. */
+export interface CardFold {
+  mode: LogMode;
+  lines: number;
+  reviews: number;
 }
 
 /** The three status ticks, by the status each keeps. */
@@ -190,6 +207,57 @@ export function cardAction(task: Task, selection: Selection): Offer {
   };
 }
 
+/** The ▸ on a card, which opens or closes the task's log beneath it. */
+export function foldAction(hash: string, open: boolean): Offer {
+  return {
+    ok: true,
+    ...view('mode'),
+    on     : `log/${hash}`,
+    label  : open ? '▾' : '▸',
+    tooltip: open
+      ? "Hide this task's log"
+      : "Show this task's log — API errors, retries, why it stopped — and its reviewer transcripts",
+  };
+}
+
+const MODE_SAYS: Record<LogMode, string> = {
+  log:
+    'Show what happened while this task ran: provider retries, replies that did not parse, and ' +
+    'the error that stopped it',
+  review:
+    'Show each reviewer call in full: the prompts it was sent, its raw replies and the defects ' +
+    'it found',
+};
+
+/**
+ * One half of an open fold's switch. The reviewer half is refused when there is nothing to show,
+ * which is most kinds: only a shot is reviewed.
+ */
+export function logModeAction(hash: string, mode: LogMode, fold: CardFold): Offer {
+  const count = mode === 'log' ? fold.lines : fold.reviews;
+  const control = {
+    ...view('mode'),
+    on     : `logmode/${hash}/${mode}`,
+    label  : `${mode === 'log' ? 'Log' : 'Reviewer'} ${count}`,
+    tooltip: MODE_SAYS[mode],
+  };
+  if (mode === 'review' && count === 0) {
+    return { ...refuse('This task made no reviewer calls that were saved.'), ...control };
+  }
+  return { ok: true, ...control };
+}
+
+/** Every offer one card draws: the card, its fold, and the open fold's switch. */
+function cardOffers(task: Task, selection: Selection, fold: CardFold | undefined): Offer[] {
+  return [
+    cardAction(task, selection),
+    foldAction(task.hash, fold !== undefined),
+    ...(fold
+      ? [logModeAction(task.hash, 'log', fold), logModeAction(task.hash, 'review', fold)]
+      : []),
+  ];
+}
+
 /**
  * Start a run. A run spends money and writes assets, so it goes through the palette's form and
  * its confirmation rather than off a bare button.
@@ -229,6 +297,8 @@ export function controls(state: TaskListState): readonly Offer[] {
     tickAction('failed'),
     clearAction(state.clearable ?? false),
     reloadAction(),
-    ...(cards ? cards.tasks.map((task) => cardAction(task, cards.selection)) : []),
+    ...(cards
+      ? cards.tasks.flatMap((task) => cardOffers(task, cards.selection, cards.folds?.[task.hash]))
+      : []),
   ];
 }

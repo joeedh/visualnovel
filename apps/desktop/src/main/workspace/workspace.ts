@@ -65,6 +65,15 @@ export const COLLECTED_DIR = 'vngen/state/collected';
 export const ASSETCHECK_FILE = '.vnstudio/assetcheck.json';
 
 /**
+ * Per-task diagnostic logs (`ProjectPaths.taskLogs`), workspace-relative. Ignored: they hold
+ * full model prompts and replies, and are machine diagnostics rather than provenance.
+ */
+export const TASKLOGS_DIR = 'vngen/state/tasklogs';
+
+/** Every line `writeScaffolding` makes sure the project ignores. */
+const SCAFFOLD_IGNORES = [SESSION_IGNORE, `${COLLECTED_DIR}/`, ASSETCHECK_FILE, `${TASKLOGS_DIR}/`];
+
+/**
  * Deletes every held collection under `root`. Undo history does not outlive a session, so what a
  * collection kept for it is not needed once a new session opens the project.
  */
@@ -84,6 +93,7 @@ const DEFAULT_IGNORES = [
   SESSION_IGNORE,
   `${COLLECTED_DIR}/`,
   ASSETCHECK_FILE,
+  `${TASKLOGS_DIR}/`,
 ];
 
 /**
@@ -122,7 +132,7 @@ export async function writeScaffolding(root: string): Promise<Scaffolding> {
   return {
     layouts   : await ensureLayouts(root),
     attributes: await ensureGitAttributes(root),
-    ignores   : await ensureIgnored(root, [SESSION_IGNORE, `${COLLECTED_DIR}/`, ASSETCHECK_FILE]),
+    ignores   : await ensureIgnored(root, SCAFFOLD_IGNORES),
   };
 }
 
@@ -367,11 +377,13 @@ export async function openWorkspace(root: string): Promise<OpenResult> {
 
 const GITATTRIBUTES_COMMIT = 'Set how git merges the state logs';
 const LAYOUTS_COMMIT = 'Add the shipped layout templates';
-const IGNORES_COMMIT = 'Ignore the window arrangement, held collections and the picture check';
+const IGNORES_COMMIT =
+  'Ignore the window arrangement, held collections, the picture check and task logs';
 
 /**
  * Every subject the app commits under without a command behind it. The History pane's maker
- * rule reads these as housekeeping, so a new scaffolding commit must be listed here.
+ * rule reads these as housekeeping, so a new scaffolding commit must be listed here. A retired
+ * subject stays listed, because projects already carry commits under it.
  */
 export const SCAFFOLDING_SUBJECTS: readonly string[] = [
   'Existing project files',
@@ -379,6 +391,7 @@ export const SCAFFOLDING_SUBJECTS: readonly string[] = [
   GITATTRIBUTES_COMMIT,
   LAYOUTS_COMMIT,
   IGNORES_COMMIT,
+  'Ignore the window arrangement, held collections and the picture check',
 ];
 
 /**

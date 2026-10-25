@@ -38,6 +38,8 @@ import type {
   Task as PipelineTask,
   TaskAttempt as PipelineTaskAttempt,
   TaskKind,
+  TaskLogLine,
+  TaskLogReview,
 } from '@vn/types';
 import type {
   CheckpointHandle,
@@ -313,6 +315,18 @@ export interface TaskAttempt extends Omit<PipelineTaskAttempt, 'reviews'> {
 /** A task as the renderer sees it: identical to the pipeline's, with validated `reviews`. */
 export interface Task extends Omit<PipelineTask, 'attempts'> {
   attempts: TaskAttempt[];
+}
+
+/**
+ * One task's diagnostic log as the Tasks pane draws it (`pipeline.taskLog`). `lines` is sorted by
+ * time and includes failures recovered from the task record for runs older than the log file;
+ * those carry an empty `execution` and the source `record`.
+ */
+export interface TaskLogView {
+  hash: string;
+  lines: TaskLogLine[];
+  /** Oldest first, each with its system prompt resolved. */
+  reviews: (TaskLogReview & { systemText: string })[];
 }
 
 /** A request from the main process for the user to approve/reject a proposed plan. */
@@ -1144,6 +1158,11 @@ export interface InvokeChannels {
   /** Yes or no to `permission:confirm`. A window that closes before answering counts as no. */
   'confirm:decision': (payload: { id: number; allowed: boolean }) => void;
   'pipeline:status': () => PipelineStatus;
+  /**
+   * `pipeline.taskLog` without the command record. The Tasks pane re-reads a running task's log
+   * about once a second, and every command lands in the committed `commands.jsonl`.
+   */
+  'pipeline:taskLog': (hash: string) => TaskLogView;
   'pipeline:run': (opts: { mock: boolean }) => PipelineRunResult;
   'gate:candidates': (characterId: string) => GateCandidate[];
   'gate:approve': (payload: { characterId: string; hash: string }) => ApproveResult;

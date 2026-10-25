@@ -1,6 +1,6 @@
 {
-  "sweptAt"      : "2026-10-21T22:19:33.940Z",
-  "gitSha"       : "177b0dc7133051cdfbee3d931a25e04ecc0465ac",
+  "sweptAt"      : "2026-10-25T03:28:01.119Z",
+  "gitSha"       : "6328958ea9922da85cd56b14a3657ff96f3af38e",
   "under": {
     "project" : "The Transfer Student",
     "selected": {
@@ -136,6 +136,7 @@
     "pipeline.run",
     "pipeline.status",
     "pipeline.stop",
+    "pipeline.taskLog",
     "plugin.install",
     "plugin.list",
     "plugin.prices",
@@ -2412,6 +2413,12 @@
       "form"      : true
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/5f2c8cddcc9f6971b6fa7aff40dfc2ef176dcaa89da3fb89377dc039e49c9662",
+      "widgetPath": "tasklist/pane-view~8d6c4952"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/5f2c8cddcc9f6971b6fa7aff40dfc2ef176dcaa89da3fb89377dc039e49c9662",
@@ -2426,6 +2433,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/4e810d2cf8748bde65b4e30bf3d981b5ad6987b46302d16d4abb738c3fa9c507",
+      "widgetPath": "tasklist/pane-view~54b81ffe"
     },
     {
       "id"        : "ui.publish",
@@ -2444,6 +2457,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/c286fe3b94035a92cecac09970434d7f7b59d85572412207176b6b92498987e6",
+      "widgetPath": "tasklist/pane-view~3219357a"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/c286fe3b94035a92cecac09970434d7f7b59d85572412207176b6b92498987e6",
@@ -2458,6 +2477,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/b1a87d2310e5f2a78747da9a6c74316d3a7ff538079b1c9067ba2543ff417d00",
+      "widgetPath": "tasklist/pane-view~5b8ad22b"
     },
     {
       "id"        : "ui.publish",
@@ -2476,6 +2501,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/7485d74f05137fe088b4098c50cd11d2864c5b4d43dc7395608fea935329b33d",
+      "widgetPath": "tasklist/pane-view~fd4d5688"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/7485d74f05137fe088b4098c50cd11d2864c5b4d43dc7395608fea935329b33d",
@@ -2490,6 +2521,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/d2cf12482be5e81d9b47f648e29807291e17d663dd99510691e4ed335e4126af",
+      "widgetPath": "tasklist/pane-view~7f0a8fac"
     },
     {
       "id"        : "ui.publish",
@@ -2508,6 +2545,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/cd9b0ae115ec8ce77254f7adad97102754f0d6a83b3a62e081434e85ac7f462b",
+      "widgetPath": "tasklist/pane-view~f632839f"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/cd9b0ae115ec8ce77254f7adad97102754f0d6a83b3a62e081434e85ac7f462b",
@@ -2522,6 +2565,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/8a88664e4a18f46eec4d2825f220a0936ac8a039ef1bcfdca664b1a20972e989",
+      "widgetPath": "tasklist/pane-view~daf7cef5"
     },
     {
       "id"        : "ui.publish",
@@ -2540,6 +2589,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/4fb2f68ee17e16ee84522ea6b5ed02e67380acf9728118f0d75d0966a5839ee7",
+      "widgetPath": "tasklist/pane-view~0635d98d"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/4fb2f68ee17e16ee84522ea6b5ed02e67380acf9728118f0d75d0966a5839ee7",
@@ -2554,6 +2609,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/ea9ce0dc02bfa20426d3703641cb946369f5d453212f9f90289b3ddb3d795f23",
+      "widgetPath": "tasklist/pane-view~cb692a47"
     },
     {
       "id"        : "ui.publish",
@@ -2572,6 +2633,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/bd28a6275337d3377caa17e2a4a61b6a0700b11ccd9a6493fabf501008b6643a",
+      "widgetPath": "tasklist/pane-view~850a0e81"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/bd28a6275337d3377caa17e2a4a61b6a0700b11ccd9a6493fabf501008b6643a",
@@ -2586,6 +2653,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/d9cc0358a9047d0ba965ea5565501b3ef7b3696e78fc28bac02f262035d481bb",
+      "widgetPath": "tasklist/pane-view~b6338124"
     },
     {
       "id"        : "ui.publish",
@@ -2604,6 +2677,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/46c8a4151e3668ea8196bdf6851e0f523cbb155a46e714a9be1bec56f5baf3ed",
+      "widgetPath": "tasklist/pane-view~76a63d04"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/46c8a4151e3668ea8196bdf6851e0f523cbb155a46e714a9be1bec56f5baf3ed",
@@ -2618,6 +2697,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/2827b4cd9c2416db5c49efa8826c4063fa3b3ee1515b80713e3f7d374f528f41",
+      "widgetPath": "tasklist/pane-view~c348b248"
     },
     {
       "id"        : "ui.publish",
@@ -2636,6 +2721,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/9cc3360a2032ed375775689e66ccda198654a20bc17251dcc92441db07f0c31e",
+      "widgetPath": "tasklist/pane-view~b7e2fa50"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/9cc3360a2032ed375775689e66ccda198654a20bc17251dcc92441db07f0c31e",
@@ -2650,6 +2741,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/c0771d4d5970297d3310f3c765ff9fc9065d841579e9e3593f8927e84bf9c3cf",
+      "widgetPath": "tasklist/pane-view~0462013b"
     },
     {
       "id"        : "ui.publish",
@@ -2668,6 +2765,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/0259ab68076c0a956a3887f3f0abada70cec8e013138fbd5f85fe2f21e74c119",
+      "widgetPath": "tasklist/pane-view~5eca100d"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/0259ab68076c0a956a3887f3f0abada70cec8e013138fbd5f85fe2f21e74c119",
@@ -2682,6 +2785,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/961a63ba4c3086f52838482a08a8255ac97e99c056e3f0f141cd2c581f2f9e7f",
+      "widgetPath": "tasklist/pane-view~24935e74"
     },
     {
       "id"        : "ui.publish",
@@ -2700,6 +2809,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/2a4ee3c97595129ac0f88d203bb979f09a5d40bd4c7cd8f63ea35d6154eaf862",
+      "widgetPath": "tasklist/pane-view~a3ba0cf4"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/2a4ee3c97595129ac0f88d203bb979f09a5d40bd4c7cd8f63ea35d6154eaf862",
@@ -2714,6 +2829,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/0dc80a5ac326dd90d6e9643a52915a9c3a2561ce57497f2279e87b9edb87aed6",
+      "widgetPath": "tasklist/pane-view~74fdcaf0"
     },
     {
       "id"        : "ui.publish",
@@ -2732,6 +2853,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/d7ab6909bc6bbb901f9bad49d9661b1ef902e3c7ffcf16164c95fe2df33f25e8",
+      "widgetPath": "tasklist/pane-view~c95ab2e5"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/d7ab6909bc6bbb901f9bad49d9661b1ef902e3c7ffcf16164c95fe2df33f25e8",
@@ -2746,6 +2873,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/33539bcdbbe4be8f79d9b7f2f2313128c813488a20c881cfec5ed0474b275b11",
+      "widgetPath": "tasklist/pane-view~b2af1f65"
     },
     {
       "id"        : "ui.publish",
@@ -2764,6 +2897,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/f989f88e1b83851ba353c302ff9e05c885bfca24a59bd685a92e9ef23e05e134",
+      "widgetPath": "tasklist/pane-view~5ef55de2"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/f989f88e1b83851ba353c302ff9e05c885bfca24a59bd685a92e9ef23e05e134",
@@ -2778,6 +2917,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/2b3491b4996c4f412d9a4d8c9e5f0bbf0e8294661b0e45c781d9e4267957076d",
+      "widgetPath": "tasklist/pane-view~f3cea709"
     },
     {
       "id"        : "ui.publish",
@@ -2796,6 +2941,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/bf622ea704fcced068a81bb0bf3d3ec5529095f77c7e126b8fcd0f36a78bae6e",
+      "widgetPath": "tasklist/pane-view~a67aceab"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/bf622ea704fcced068a81bb0bf3d3ec5529095f77c7e126b8fcd0f36a78bae6e",
@@ -2810,6 +2961,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/9f0dd7eadcad013471705b79dee5cbd40e500c1ffd49099d0569c7464ad24e74",
+      "widgetPath": "tasklist/pane-view~d5bcb33d"
     },
     {
       "id"        : "ui.publish",
@@ -2828,6 +2985,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/cc8ad9971dcdc9518fbe2d4904ee54abcb711b7bd3bec09d3ddea74eaa8ce4d0",
+      "widgetPath": "tasklist/pane-view~f8e2d8bd"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/cc8ad9971dcdc9518fbe2d4904ee54abcb711b7bd3bec09d3ddea74eaa8ce4d0",
@@ -2842,6 +3005,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/bca21035b3900d5e245df7a7e7c63cac29170d24a8de44d0dce77d4d972f8574",
+      "widgetPath": "tasklist/pane-view~682fa5ea"
     },
     {
       "id"        : "ui.publish",
@@ -2860,6 +3029,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/2d4c759f780da71568e3ecbb7f7116bf34c9d7af268c45943ad7b0bb0263f945",
+      "widgetPath": "tasklist/pane-view~2a70c228"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/2d4c759f780da71568e3ecbb7f7116bf34c9d7af268c45943ad7b0bb0263f945",
@@ -2874,6 +3049,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/193959764d3e7b04cf7516d0d9a4667340ee3710f55ed71ca3522546cf326f6f",
+      "widgetPath": "tasklist/pane-view~07e775d8"
     },
     {
       "id"        : "ui.publish",
@@ -2892,6 +3073,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/7e6106cc292ab784c51620a8a171f966e2b7fe1111fa115ae4750a2b3a668dc7",
+      "widgetPath": "tasklist/pane-view~790a2534"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/7e6106cc292ab784c51620a8a171f966e2b7fe1111fa115ae4750a2b3a668dc7",
@@ -2906,6 +3093,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/8712f0b92a0f593b101f3ce1461e732bc047b7f5c2b3d1e09fa76156db652e9d",
+      "widgetPath": "tasklist/pane-view~366de702"
     },
     {
       "id"        : "ui.publish",
@@ -2924,10 +3117,22 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/9e040a80d0bdae9549363647ba9a6e06a156df28ee2aa8803eece40280a42c11",
+      "widgetPath": "tasklist/pane-view~3f1353ca"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/9e040a80d0bdae9549363647ba9a6e06a156df28ee2aa8803eece40280a42c11",
       "widgetPath": "tasklist/ui-publish~ec16e3b9"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/bd084a2528e9215ca81c7afff2e41b2769382fca8f516a63e0a63468af2f0f88",
+      "widgetPath": "tasklist/pane-view~1955937a"
     },
     {
       "id"        : "ui.publish",
@@ -2936,16 +3141,34 @@
       "widgetPath": "tasklist/ui-publish~8cdd0b09"
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/36578b22cd1f5b8046eb63d2ced22cb7dfbf7202557f54cf37eabe2c596ae647",
+      "widgetPath": "tasklist/pane-view~cbef6576"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/36578b22cd1f5b8046eb63d2ced22cb7dfbf7202557f54cf37eabe2c596ae647",
       "widgetPath": "tasklist/ui-publish~15390595"
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/fa5849df381546b0251f6aab8039f1e7f89e05a7a2fd061fa6c0add26a58aafe",
+      "widgetPath": "tasklist/pane-view~eeccb561"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/fa5849df381546b0251f6aab8039f1e7f89e05a7a2fd061fa6c0add26a58aafe",
       "widgetPath": "tasklist/ui-publish~d8fda0e2"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/1c5f711615f498f093251575fbb13be069b35170011ab719d8ae4f0ab187d3e7",
+      "widgetPath": "tasklist/pane-view~aebdf9b5"
     },
     {
       "id"        : "ui.publish",
@@ -2964,6 +3187,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/5b3a20a1b047d2e03eb8dc884cf6fb34389311cff3995810264b07c1f8d51cec",
+      "widgetPath": "tasklist/pane-view~44eeec24"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/5b3a20a1b047d2e03eb8dc884cf6fb34389311cff3995810264b07c1f8d51cec",
@@ -2978,6 +3207,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/33643da11f55c2252abc87bb19d0b8ed1c3c20f8c4e4ba1883f6f5c787e3a904",
+      "widgetPath": "tasklist/pane-view~5872ee9a"
     },
     {
       "id"        : "ui.publish",
@@ -2996,6 +3231,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/949c3d141db9a7e22ff2aa46be86d6537f994a8cece614d7b71f679be27ca382",
+      "widgetPath": "tasklist/pane-view~3e7bc4b5"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/949c3d141db9a7e22ff2aa46be86d6537f994a8cece614d7b71f679be27ca382",
@@ -3010,6 +3251,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/2377742ad9a90e22cff217781bf5e6f73c4ae53bc0c6d1f10eb04ec048a4a274",
+      "widgetPath": "tasklist/pane-view~67a0ab80"
     },
     {
       "id"        : "ui.publish",
@@ -3028,6 +3275,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/4553c7bb2ed3cc7f136081c071cfeb877d50b7b3f46b33c5c4f6883bfdfaf460",
+      "widgetPath": "tasklist/pane-view~ed93b57d"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/4553c7bb2ed3cc7f136081c071cfeb877d50b7b3f46b33c5c4f6883bfdfaf460",
@@ -3042,6 +3295,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/a0902859228e1dc2c2d0480ed7c7686df4612aa9bd8a7f5ba68693a1a42b3958",
+      "widgetPath": "tasklist/pane-view~91479571"
     },
     {
       "id"        : "ui.publish",
@@ -3060,6 +3319,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/1c4428e3a16f12887775b1309d46a5c62988b6950266169b1d5671db2d6153d2",
+      "widgetPath": "tasklist/pane-view~1af05d2c"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/1c4428e3a16f12887775b1309d46a5c62988b6950266169b1d5671db2d6153d2",
@@ -3074,6 +3339,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/8629b6962e6f9b89924c2213fdfbca16701050a92b777bccac90b207fd6f2d85",
+      "widgetPath": "tasklist/pane-view~d6e99812"
     },
     {
       "id"        : "ui.publish",
@@ -3092,6 +3363,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/dfde23d8993792e47fe3656df60456f7c0f88ad995ba1f9f2fc031431aa4af41",
+      "widgetPath": "tasklist/pane-view~a63ae254"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/dfde23d8993792e47fe3656df60456f7c0f88ad995ba1f9f2fc031431aa4af41",
@@ -3106,6 +3383,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/1ffcaceadeb369fab7c56fdb608709ae39343fa6c12a6f7a3afa5e0ddd94b754",
+      "widgetPath": "tasklist/pane-view~4bfec3aa"
     },
     {
       "id"        : "ui.publish",
@@ -3124,6 +3407,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/488208a6bee6cc36ebdbaced776592967c5f002d787a5aa4d9ab05559c23e369",
+      "widgetPath": "tasklist/pane-view~f443cd32"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/488208a6bee6cc36ebdbaced776592967c5f002d787a5aa4d9ab05559c23e369",
@@ -3138,6 +3427,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/b314f6acdefb3ae34d06c7216f4c3dee34abf60fd5426825102d868655e865f5",
+      "widgetPath": "tasklist/pane-view~a0c6fc27"
     },
     {
       "id"        : "ui.publish",
@@ -3156,6 +3451,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/5521ff1167bbfea4a3c512df792a47ceead430741048a6d2454bd5de87742e79",
+      "widgetPath": "tasklist/pane-view~ad4f1724"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/5521ff1167bbfea4a3c512df792a47ceead430741048a6d2454bd5de87742e79",
@@ -3170,6 +3471,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/d9986085c47c894c81ffc3e3012f03557f85f9a542970dfecb73484d8b9ab523",
+      "widgetPath": "tasklist/pane-view~95b64129"
     },
     {
       "id"        : "ui.publish",
@@ -3188,6 +3495,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/6a79828217f56b4c7dcc176cdd964bf0bd7297c3c12152bdb4d50ae5a0880f89",
+      "widgetPath": "tasklist/pane-view~f761823a"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/6a79828217f56b4c7dcc176cdd964bf0bd7297c3c12152bdb4d50ae5a0880f89",
@@ -3202,6 +3515,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/54317c57cdb22baad9c3565be044aa99257f2af8b7bb4261f4bfba218b1562bd",
+      "widgetPath": "tasklist/pane-view~d9904764"
     },
     {
       "id"        : "ui.publish",
@@ -3220,6 +3539,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/01cfcf051ff023776503df3593ed4f7f8653ed9dcdf999d33ca8081655d66731",
+      "widgetPath": "tasklist/pane-view~3e920613"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/01cfcf051ff023776503df3593ed4f7f8653ed9dcdf999d33ca8081655d66731",
@@ -3236,10 +3561,22 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/cd5471e542f743e8ac0b1b211c1382e22e40824e5f9645cb94c323fa59b614c4",
+      "widgetPath": "tasklist/pane-view~9fa20bea"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/cd5471e542f743e8ac0b1b211c1382e22e40824e5f9645cb94c323fa59b614c4",
       "widgetPath": "tasklist/ui-publish~0da0acd9"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/375d4ef2718f75102cbb5a58fb1f997ccf75c287471f0ba8c5fb7da60ff4f0b1",
+      "widgetPath": "tasklist/pane-view~4786228a"
     },
     {
       "id"        : "ui.publish",
@@ -3258,6 +3595,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/c19d5a059bb3a6323da7cad18c9e32060aa3e3a5ca8e3c2369693f76aba813da",
+      "widgetPath": "tasklist/pane-view~88936b2d"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/c19d5a059bb3a6323da7cad18c9e32060aa3e3a5ca8e3c2369693f76aba813da",
@@ -3272,6 +3615,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/76a164832da743ee5117d935fcc855a236020f237d2e5dcca4e1b8f05aa0c175",
+      "widgetPath": "tasklist/pane-view~867d6e61"
     },
     {
       "id"        : "ui.publish",
@@ -3290,6 +3639,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/94a809f67964ae982a14d4edf62024655cb87c8bc4351c0528c018e152390828",
+      "widgetPath": "tasklist/pane-view~f6c3d0cc"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/94a809f67964ae982a14d4edf62024655cb87c8bc4351c0528c018e152390828",
@@ -3304,6 +3659,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/891bbd6bf8fe89d0df4ec0dda211acf4e46193ca59ae72dbc612f25865e276fb",
+      "widgetPath": "tasklist/pane-view~115982a7"
     },
     {
       "id"        : "ui.publish",
@@ -3322,6 +3683,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/09a7f6a1dea4693edd8956686f7a19038cfe37f47652ae1746947ca42c6457ff",
+      "widgetPath": "tasklist/pane-view~cae82231"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/09a7f6a1dea4693edd8956686f7a19038cfe37f47652ae1746947ca42c6457ff",
@@ -3336,6 +3703,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/e8717e7981b00b9e7b82692fb250e5cc1b1e91b0d84b1052b975531ade10a3c4",
+      "widgetPath": "tasklist/pane-view~a2976f4f"
     },
     {
       "id"        : "ui.publish",
@@ -3354,6 +3727,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/ec381664eb209a821940572866e15ca8e5708171b81668580b2d2f3379b510b9",
+      "widgetPath": "tasklist/pane-view~c648acfa"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/ec381664eb209a821940572866e15ca8e5708171b81668580b2d2f3379b510b9",
@@ -3368,6 +3747,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/b4ed749cbc1a319a9e2139969d77b109016396ead0faaa6fce9f11aee188e5fa",
+      "widgetPath": "tasklist/pane-view~a1d51b5d"
     },
     {
       "id"        : "ui.publish",
@@ -3386,6 +3771,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/bfe97309fa829d4b7e770edf792d5fd309d5bfac831c33d0a5d8225005b8d8ea",
+      "widgetPath": "tasklist/pane-view~cd2ab1f4"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/bfe97309fa829d4b7e770edf792d5fd309d5bfac831c33d0a5d8225005b8d8ea",
@@ -3400,6 +3791,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/920bfdcdc18331c68cf69ee6ed7fb92a5e2869019a2f986b9f2f145da98c02b4",
+      "widgetPath": "tasklist/pane-view~7e42a634"
     },
     {
       "id"        : "ui.publish",
@@ -3418,6 +3815,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/9e6e463e5b9c5a5d31b96aedd765c6e7ca7a7049d379d58f723028f04e802120",
+      "widgetPath": "tasklist/pane-view~b4e85fce"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/9e6e463e5b9c5a5d31b96aedd765c6e7ca7a7049d379d58f723028f04e802120",
@@ -3432,6 +3835,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/20f17734e529a3998380f5a4373418a9e8271229e0605950dc160c31f56316ee",
+      "widgetPath": "tasklist/pane-view~489c1539"
     },
     {
       "id"        : "ui.publish",
@@ -3450,6 +3859,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/7734917348c4ab42aa73e05c8892f8b8291cd6663473ba601fd1e742580cd94d",
+      "widgetPath": "tasklist/pane-view~cedf1c62"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/7734917348c4ab42aa73e05c8892f8b8291cd6663473ba601fd1e742580cd94d",
@@ -3464,6 +3879,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/111c66d2e7c4489379496e0923060d7b077e1c5c455b5a8d50ee72a2523b7b09",
+      "widgetPath": "tasklist/pane-view~047da001"
     },
     {
       "id"        : "ui.publish",
@@ -3482,6 +3903,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/cd06ce2ca73f71dda3c426c4624457ccfcd81bfb4f0f980bc256037d72f8d8aa",
+      "widgetPath": "tasklist/pane-view~59dbc098"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/cd06ce2ca73f71dda3c426c4624457ccfcd81bfb4f0f980bc256037d72f8d8aa",
@@ -3496,6 +3923,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/57e9726a5b73121959aa953df784e226f55124439aedf1095e01265694331d46",
+      "widgetPath": "tasklist/pane-view~b23c3517"
     },
     {
       "id"        : "ui.publish",
@@ -3514,6 +3947,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/7c5d63e81a53d1597a152415b575c5e12c6357b369e6d688a0b2db5f32d522ba",
+      "widgetPath": "tasklist/pane-view~795c3ecc"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/7c5d63e81a53d1597a152415b575c5e12c6357b369e6d688a0b2db5f32d522ba",
@@ -3528,6 +3967,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/d59030a3038e04382b5a368de58dabcee0839af99b8dd8c867973c4e78e2feff",
+      "widgetPath": "tasklist/pane-view~1df83d2f"
     },
     {
       "id"        : "ui.publish",
@@ -3546,6 +3991,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/9da12a2b6567e725004555c48c7a220a343468040233b9e7b2a24b02dcb2786c",
+      "widgetPath": "tasklist/pane-view~5f9a8bcf"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/9da12a2b6567e725004555c48c7a220a343468040233b9e7b2a24b02dcb2786c",
@@ -3560,6 +4011,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/3ef687b5e61ded6dfc677d99d96d192cd350001c6aa42b22d93999801e0e0cac",
+      "widgetPath": "tasklist/pane-view~990f2948"
     },
     {
       "id"        : "ui.publish",
@@ -3578,6 +4035,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/9b7ec84db9279a08ffff814cdceccf4ac2f539b4f9052eea09b65314b5f63629",
+      "widgetPath": "tasklist/pane-view~b9a91bfc"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/9b7ec84db9279a08ffff814cdceccf4ac2f539b4f9052eea09b65314b5f63629",
@@ -3592,6 +4055,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/639e9837cca86e15f192a2077c2629badc362e66b508adab5b16284cc1fd8069",
+      "widgetPath": "tasklist/pane-view~e5c1b8bb"
     },
     {
       "id"        : "ui.publish",
@@ -3610,6 +4079,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/6638a1a8f6d0d764d0e0496525e3fa6d5fd43838b4ec35d8c18aedf0c30651da",
+      "widgetPath": "tasklist/pane-view~2272d229"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/6638a1a8f6d0d764d0e0496525e3fa6d5fd43838b4ec35d8c18aedf0c30651da",
@@ -3624,6 +4099,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/e8f4dc14b292182bdc7552fa47d3ba52c5b9cdf4e1325e9d02299934a320bc2f",
+      "widgetPath": "tasklist/pane-view~5c4be2ae"
     },
     {
       "id"        : "ui.publish",
@@ -3642,6 +4123,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/f5063fee03a7981197a12be447202f1742a2e1b361bdc459b66e84f83f942364",
+      "widgetPath": "tasklist/pane-view~45a40463"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/f5063fee03a7981197a12be447202f1742a2e1b361bdc459b66e84f83f942364",
@@ -3656,6 +4143,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/1b239b054053b7e4ba4230d1687eede0a0d388ee7dc7ebe7c336c0d4466e87bc",
+      "widgetPath": "tasklist/pane-view~d6d8d1a3"
     },
     {
       "id"        : "ui.publish",
@@ -3674,6 +4167,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/29fda1501911e1c409fab326706450f6b4855d1ae78896f1e1bd01cbf5f2732b",
+      "widgetPath": "tasklist/pane-view~1a4ef8da"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/29fda1501911e1c409fab326706450f6b4855d1ae78896f1e1bd01cbf5f2732b",
@@ -3688,6 +4187,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/5b650e4acc52214617c08c1bf2e799b30caa2df1d7992380f070c8d2b814925d",
+      "widgetPath": "tasklist/pane-view~3b3bcc7e"
     },
     {
       "id"        : "ui.publish",
@@ -3706,6 +4211,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/e4998415554bd9e322f35b14c4f821e89dfa4af4ab7bcef3c5af71a3c2509c4b",
+      "widgetPath": "tasklist/pane-view~0f2f186e"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/e4998415554bd9e322f35b14c4f821e89dfa4af4ab7bcef3c5af71a3c2509c4b",
@@ -3722,10 +4233,22 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/729c6177e603c35e354a680e50601e40ead71456dd589f3fcfa6ee143c05b906",
+      "widgetPath": "tasklist/pane-view~23bc04ed"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/729c6177e603c35e354a680e50601e40ead71456dd589f3fcfa6ee143c05b906",
       "widgetPath": "tasklist/ui-publish~a5555c3e"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/6ec58544dfb65b8cf925e6e039cd203b04411c9e2e3410b6f8103769fcb99b20",
+      "widgetPath": "tasklist/pane-view~a45a3cd4"
     },
     {
       "id"        : "ui.publish",
@@ -3744,6 +4267,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/a391fea78c44898262982fefb2a9808f6e2924ff3b1e81c9e29110ef3522bf90",
+      "widgetPath": "tasklist/pane-view~354dbf2a"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/a391fea78c44898262982fefb2a9808f6e2924ff3b1e81c9e29110ef3522bf90",
@@ -3758,6 +4287,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/126305909b6bf5a3d9c791e77b89cf96f3e7c8be1c161f8a1d013dc3ee917578",
+      "widgetPath": "tasklist/pane-view~3e648630"
     },
     {
       "id"        : "ui.publish",
@@ -3776,6 +4311,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/912f7fa69c34c196240a01edada215de445374510e7c1a66212ea5c47ea1f305",
+      "widgetPath": "tasklist/pane-view~0b4e6da4"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/912f7fa69c34c196240a01edada215de445374510e7c1a66212ea5c47ea1f305",
@@ -3790,6 +4331,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/6400232cf07bf04cf615dabf1636a9c000a7ba966d9d3f89efcda1254bf8c558",
+      "widgetPath": "tasklist/pane-view~315294ca"
     },
     {
       "id"        : "ui.publish",
@@ -3808,6 +4355,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/c13ffe1bcf55dbc5b7dab0ee7fd5f8fc09568180e513b1e6e03396cf2e68c0cb",
+      "widgetPath": "tasklist/pane-view~4e5db691"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/c13ffe1bcf55dbc5b7dab0ee7fd5f8fc09568180e513b1e6e03396cf2e68c0cb",
@@ -3822,6 +4375,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/bef7cd126880407fd811a578b48b5c84491e5affa500c87fe58e3a05a6be1c43",
+      "widgetPath": "tasklist/pane-view~1ed6452b"
     },
     {
       "id"        : "ui.publish",
@@ -3840,6 +4399,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/b97d5bab099f8a5166d290bf646d1334572cceecf484e96c92e0d989906898cb",
+      "widgetPath": "tasklist/pane-view~ba3e9ad7"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/b97d5bab099f8a5166d290bf646d1334572cceecf484e96c92e0d989906898cb",
@@ -3856,10 +4421,22 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/15abc7a8c7a2e5851cc5e1f9c6900c35bf9c39af9e13110d6fd2cc9e1c51493d",
+      "widgetPath": "tasklist/pane-view~7b6c2716"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/15abc7a8c7a2e5851cc5e1f9c6900c35bf9c39af9e13110d6fd2cc9e1c51493d",
       "widgetPath": "tasklist/ui-publish~79ef1365"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/c744dbe2afc17737238d3b0b3120883148e47157af99429d7b615411c9f7034f",
+      "widgetPath": "tasklist/pane-view~128cb46b"
     },
     {
       "id"        : "ui.publish",
@@ -3878,6 +4455,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/41b489bc15f9dd0f010962db053af74f7bd2d956b1f71f9f2852c55a4ce7334e",
+      "widgetPath": "tasklist/pane-view~293daf73"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/41b489bc15f9dd0f010962db053af74f7bd2d956b1f71f9f2852c55a4ce7334e",
@@ -3892,6 +4475,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/308a781ba7f7561b61b5c99f8b88f3113c89fc75f629739e63b8fabd78dc38a2",
+      "widgetPath": "tasklist/pane-view~3c5d1d17"
     },
     {
       "id"        : "ui.publish",
@@ -3910,10 +4499,22 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/051995197f7bc6b197df9237325d16fd303d2be2abec57699c06ecc6f1f45b11",
+      "widgetPath": "tasklist/pane-view~a74cfd4c"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/051995197f7bc6b197df9237325d16fd303d2be2abec57699c06ecc6f1f45b11",
       "widgetPath": "tasklist/ui-publish~56dbe01f"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/2c76fa481069bfe3968d8b221e8b26565c531b3172a1fba621391644161727eb",
+      "widgetPath": "tasklist/pane-view~14d51282"
     },
     {
       "id"        : "ui.publish",
@@ -3932,6 +4533,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/c377e680f08045471a0fb78557341cc71580c9c70be779e6b74b5778dbc0941f",
+      "widgetPath": "tasklist/pane-view~a4df7f5b"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/c377e680f08045471a0fb78557341cc71580c9c70be779e6b74b5778dbc0941f",
@@ -3946,6 +4553,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/20f87f1e83746adc0efbdeb26c54d65e0e73259107a56c14cfc702a19c824fa6",
+      "widgetPath": "tasklist/pane-view~f7d6c9eb"
     },
     {
       "id"        : "ui.publish",
@@ -3964,6 +4577,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/5d6534d8011023e47165ea7f67a37ec1d03a5eb7379df525bb4ce4b7e5814c93",
+      "widgetPath": "tasklist/pane-view~f684ede4"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/5d6534d8011023e47165ea7f67a37ec1d03a5eb7379df525bb4ce4b7e5814c93",
@@ -3978,6 +4597,12 @@
           }
         }
       ]
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/d76e5a3ced75b1b6097bde123858b216682d5513f7e8fc4c5d20e9e06a0a3ba4",
+      "widgetPath": "tasklist/pane-view~37cec1c4"
     },
     {
       "id"        : "ui.publish",
@@ -3996,6 +4621,12 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/dd2effcc8d23372cadc244787e15c141ed937de0164b556e714dc6faf99a9b81",
+      "widgetPath": "tasklist/pane-view~a2ebd3e4"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/dd2effcc8d23372cadc244787e15c141ed937de0164b556e714dc6faf99a9b81",
@@ -4012,10 +4643,22 @@
       ]
     },
     {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/09ac23f2182e29f6a4beaeee77345ec1bc740f03e2c3f45822a7856e95834bff",
+      "widgetPath": "tasklist/pane-view~785061c1"
+    },
+    {
       "id"        : "ui.publish",
       "editor"    : "tasklist",
       "key"       : "item:task/09ac23f2182e29f6a4beaeee77345ec1bc740f03e2c3f45822a7856e95834bff",
       "widgetPath": "tasklist/ui-publish~c6951292"
+    },
+    {
+      "id"        : "pane.view",
+      "editor"    : "tasklist",
+      "key": "fx:pane.view#log/5b6590bb77897fda2305f47755e78236219d9d8e0f1bafa867f46aa9bbd26100",
+      "widgetPath": "tasklist/pane-view~12887404"
     },
     {
       "id"        : "ui.publish",
@@ -6129,8 +6772,8 @@
     {
       "id"        : "project.setKey",
       "editor"    : "onboarding",
-      "key"       : "cmd:project.setKey#gemini",
-      "widgetPath": "onboarding/project-setkey~83f4e4d5",
+      "key"       : "cmd:project.setKey#openrouter",
+      "widgetPath": "onboarding/project-setkey~e338045b",
       "supplies"  : ["key"],
       "refused"   : "Paste a key first"
     },
@@ -6145,8 +6788,8 @@
     {
       "id"        : "project.setKey",
       "editor"    : "onboarding",
-      "key"       : "cmd:project.setKey#openrouter",
-      "widgetPath": "onboarding/project-setkey~e338045b",
+      "key"       : "cmd:project.setKey#gemini",
+      "widgetPath": "onboarding/project-setkey~83f4e4d5",
       "supplies"  : ["key"],
       "refused"   : "Paste a key first"
     },
@@ -6780,11 +7423,7 @@
     }
   ],
   "disagreements": [],
-  "strays": [
-    "documents item:link/asset/613746984653b37b24cb935b82ab56bb760fc7e4958b418321d082007d25f613",
-    "documents item:link/asset/cba46728a12ad297aa87e02c58e7ebb28c16e7e01113922ccecdf8ec9c8968df",
-    "documents item:link/asset/fc80c6eba9cb0d134428bb7c0bd8bb65effa5be3379a763df6cb0467f5ebbae9"
-  ],
+  "strays"       : [],
   "untagged"     : [],
   "unwalked"     : []
 }

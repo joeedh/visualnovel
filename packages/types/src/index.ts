@@ -1,6 +1,7 @@
 export * from './entities.js';
 export * from './prompt.js';
 export * from './tasks.js';
+export * from './tasklog.js';
 export * from './providers.js';
 export * from './textmodels.js';
 export * from './imagemodels.js';

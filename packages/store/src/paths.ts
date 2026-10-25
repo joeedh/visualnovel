@@ -126,6 +126,13 @@ export class ProjectPaths {
   get tasksLog(): string {
     return join(this.state, 'tasks.jsonl');
   }
+  /** Per-task diagnostic logs; local and gitignored, unlike the rest of `state/`. */
+  get taskLogs(): string {
+    return join(this.state, 'tasklogs');
+  }
+  taskLog(hash: string): string {
+    return join(this.taskLogs, `${hash}.jsonl`);
+  }
   /** Append-only history of executed commands (`@vn/commands`), mirroring `tasksLog`. */
   get commandsLog(): string {
     return join(this.state, 'commands.jsonl');

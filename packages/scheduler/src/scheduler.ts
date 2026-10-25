@@ -17,6 +17,7 @@ import {
   planTasks,
   repairCurrent,
   runTask,
+  TaskLogFile,
   TaskRequests,
   RequestStopped,
   checkRequestWrite,
@@ -27,6 +28,17 @@ import {
   type RunDeps,
   type Runner,
 } from '@vn/pipeline';
+
+/** ` — caused by …` for each `cause` under a thrown error, which `Task.error` does not keep. */
+function causes(err: unknown): string {
+  const out: string[] = [];
+  let cause = err instanceof Error ? err.cause : undefined;
+  while (cause !== undefined && out.length < 5) {
+    out.push(cause instanceof Error ? cause.message : String(cause));
+    cause = cause instanceof Error ? cause.cause : undefined;
+  }
+  return out.map((message) => ` — caused by ${message}`).join('');
+}
 
 /** Inputs to a scheduler run (report §7, §10). */
 export interface RunOptions {
@@ -502,6 +514,8 @@ async function runOwnedPipeline(opts: RunOptions, planning?: TaskRequests): Prom
       let recordWrites = Promise.resolve();
       const requestDir = join(paths.state, 'requests', task.checkpoint.id);
       const requests = new TaskRequests(requestDir);
+      const taskLog = new TaskLogFile(paths.taskLog(task.hash), task.checkpoint.id, now, requests);
+      let thrown: unknown;
       try {
         result = await raceAbort(
           withRequestStop({ signal: opts.signal, abort: opts.abort }, () =>
@@ -510,6 +524,7 @@ async function runOwnedPipeline(opts: RunOptions, planning?: TaskRequests): Prom
               {
                 ...deps,
                 requests,
+                taskLog,
                 checkpoint: (node) => {
                   checkRequestWrite();
                   const write = recordWrites.then(async () => {
@@ -526,6 +541,7 @@ async function runOwnedPipeline(opts: RunOptions, planning?: TaskRequests): Prom
           opts.abort,
         );
       } catch (err) {
+        thrown = err;
         result =
           err instanceof RequestStopped || stopAsked()
             ? ABORTED
@@ -569,6 +585,16 @@ async function runOwnedPipeline(opts: RunOptions, planning?: TaskRequests): Prom
         });
       }
       await logTask(paths, finished);
+      // Written here rather than through the ambient log, whose scope ended with the runner
+      if (result.status !== 'done') {
+        taskLog.append({
+          t     : 'log',
+          level : result.status === 'failed' ? 'error' : 'info',
+          source: 'scheduler',
+          text  : `${result.status}: ${result.error ?? 'no reason given'}${causes(thrown)}`,
+        });
+      }
+      await taskLog.settled();
       if (result.status !== 'failed') await rm(requestDir, { recursive: true, force: true });
       ran.push(finished);
       progress();

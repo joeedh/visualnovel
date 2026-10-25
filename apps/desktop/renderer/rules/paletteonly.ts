@@ -61,6 +61,7 @@ const READS = [
   'doc.read',
   'gate.candidates',
   'gengraph.listGroups',
+  'pipeline.taskLog',
   'project.keyStatus',
   'project.pagesStatus',
   'story.coverage',

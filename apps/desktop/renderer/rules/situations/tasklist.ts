@@ -27,6 +27,15 @@ const TASKS: readonly Task[] = [
   },
 ];
 
+const NOTHING_SELECTED = {
+  sceneId    : '',
+  shotId     : '',
+  characterId: '',
+  docPath    : '',
+  assetHash  : '',
+  graphSlug  : '',
+};
+
 export const SITUATIONS = situations<TaskListState>(
   {
     name : 'idle',
@@ -44,16 +53,42 @@ export const SITUATIONS = situations<TaskListState>(
     state: {
       gatePending: [],
       clearable  : true,
+      cards      : { tasks: TASKS, selection: NOTHING_SELECTED },
+    },
+  },
+  {
+    name : 'fold-open-log',
+    why: "The shot's log is open on its Log half, with reviewer calls to switch to. The other task's fold is closed.",
+    state: {
+      gatePending: [],
       cards: {
         tasks    : TASKS,
-        selection: {
-          sceneId    : '',
-          shotId     : '',
-          characterId: '',
-          docPath    : '',
-          assetHash  : '',
-          graphSlug  : '',
-        },
+        selection: NOTHING_SELECTED,
+        folds    : { f1e2d3c4: { mode: 'log', lines: 3, reviews: 4 } },
+      },
+    },
+  },
+  {
+    name : 'fold-open-no-reviews',
+    why: 'A task no reviewer saw has its log open, so the Reviewer half is refused with the reason.',
+    state: {
+      gatePending: [],
+      cards: {
+        tasks    : TASKS,
+        selection: NOTHING_SELECTED,
+        folds    : { e5f6a7b8: { mode: 'log', lines: 1, reviews: 0 } },
+      },
+    },
+  },
+  {
+    name : 'fold-open-reviewer',
+    why  : "The shot's fold is switched to its reviewer transcripts.",
+    state: {
+      gatePending: [],
+      cards: {
+        tasks    : TASKS,
+        selection: NOTHING_SELECTED,
+        folds    : { f1e2d3c4: { mode: 'review', lines: 3, reviews: 4 } },
       },
     },
   },

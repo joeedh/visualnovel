@@ -847,6 +847,24 @@
       "why": "Two cards are drawn: a shot that rendered a frame opens it elsewhere after the pick, a task that drew nothing only publishes. One is done, so Clear finished is offered."
     },
     {
+      "module": "tasklist",
+      "editor": "tasklist",
+      "name"  : "fold-open-log",
+      "why": "The shot's log is open on its Log half, with reviewer calls to switch to. The other task's fold is closed."
+    },
+    {
+      "module": "tasklist",
+      "editor": "tasklist",
+      "name"  : "fold-open-no-reviews",
+      "why": "A task no reviewer saw has its log open, so the Reviewer half is refused with the reason."
+    },
+    {
+      "module": "tasklist",
+      "editor": "tasklist",
+      "name"  : "fold-open-reviewer",
+      "why"   : "The shot's fold is switched to its reviewer transcripts."
+    },
+    {
       "module": "timeline",
       "editor": "timeline",
       "name"  : "no-scene",
@@ -41543,6 +41561,32 @@
       "editor"    : "tasklist",
       "module"    : "tasklist",
       "situation" : "cards",
+      "key"       : "fx:pane.view#log/f1e2d3c4",
+      "widgetPath": "tasklist/pane-view~68d6c1b7",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "▸",
+        "tooltip": "Show this task's log — API errors, retries, why it stopped — and its reviewer transcripts",
+        "on"     : "log/f1e2d3c4",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "cards",
       "key"       : "item:task/e5f6a7b8",
       "widgetPath": "tasklist/ui-publish~4589e678",
       "offer": {
@@ -41560,6 +41604,1010 @@
           "id"   : "ui.publish",
           "props": {
             "taskHash": "e5f6a7b8"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "cards",
+      "key"       : "fx:pane.view#log/e5f6a7b8",
+      "widgetPath": "tasklist/pane-view~692d214b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "▸",
+        "tooltip": "Show this task's log — API errors, retries, why it stopped — and its reviewer transcripts",
+        "on"     : "log/e5f6a7b8",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-log",
+      "key"       : "cmd:pipeline.run",
+      "widgetPath": "tasklist/pipeline-run~ee6d0f4e",
+      "offer": {
+        "id"     : "pipeline.run",
+        "label"  : "▸ Run",
+        "tooltip": "Open the run form, where the flags are spelled out before anything is spent",
+        "form"   : true,
+        "ok"     : true,
+        "props"  : {}
+      },
+      "effects": [
+        {
+          "id"   : "pipeline.run",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-log",
+      "key"       : "fx:pane.view#done",
+      "widgetPath": "tasklist/pane-view~deef914c",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "only done",
+        "tooltip": "Narrow the list to the tasks that finished successfully.",
+        "on"     : "done",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-log",
+      "key"       : "fx:pane.view#running",
+      "widgetPath": "tasklist/pane-view~b127364b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "only running",
+        "tooltip": "Narrow the list to the tasks a wave is working on right now.",
+        "on"     : "running",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-log",
+      "key"       : "fx:pane.view#failed",
+      "widgetPath": "tasklist/pane-view~9eff0847",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "only failed",
+        "tooltip": "Narrow the list to what stopped and wants a person — failed tasks and shots flagged needs_human.",
+        "on"     : "failed",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-log",
+      "key"       : "fx:pane.view#clear",
+      "widgetPath": "tasklist/pane-view~13059a85",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Clear finished",
+        "tooltip": "Take everything already finished out of this list.",
+        "on"     : "clear",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing finished is left in the list to take out of it."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-log",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "tasklist/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read what has run, what is running and what is ready, and undo Clear finished",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-log",
+      "key"       : "item:task/f1e2d3c4",
+      "widgetPath": "tasklist/ui-publish~239cf694",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "shot_image",
+        "tooltip": "Open what this shot_image drew in the asset editor — the last frame it rendered, accepted or not; every other pane follows the pick",
+        "on"     : "task/f1e2d3c4",
+        "ok"     : true,
+        "props": {
+          "taskHash": "f1e2d3c4",
+          "sceneId" : "arrival",
+          "shotId"  : "arrival__s1"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "asset",
+              "where"  : "elsewhere",
+              "subject": "a1b2c3d4"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "taskHash": "f1e2d3c4",
+            "sceneId" : "arrival",
+            "shotId"  : "arrival__s1"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "a1b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-log",
+      "key"       : "fx:pane.view#log/f1e2d3c4",
+      "widgetPath": "tasklist/pane-view~68d6c1b7",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "▾",
+        "tooltip": "Hide this task's log",
+        "on"     : "log/f1e2d3c4",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-log",
+      "key"       : "fx:pane.view#logmode/f1e2d3c4/log",
+      "widgetPath": "tasklist/pane-view~26c88fff",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Log 3",
+        "tooltip": "Show what happened while this task ran: provider retries, replies that did not parse, and the error that stopped it",
+        "on"     : "logmode/f1e2d3c4/log",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-log",
+      "key"       : "fx:pane.view#logmode/f1e2d3c4/review",
+      "widgetPath": "tasklist/pane-view~a4ae9619",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Reviewer 4",
+        "tooltip": "Show each reviewer call in full: the prompts it was sent, its raw replies and the defects it found",
+        "on"     : "logmode/f1e2d3c4/review",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-log",
+      "key"       : "item:task/e5f6a7b8",
+      "widgetPath": "tasklist/ui-publish~4589e678",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "prompt_refine",
+        "tooltip": "Inspect this prompt_refine — it rendered nothing to open; every other pane follows the pick",
+        "on"     : "task/e5f6a7b8",
+        "ok"     : true,
+        "props": {
+          "taskHash": "e5f6a7b8"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "taskHash": "e5f6a7b8"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-log",
+      "key"       : "fx:pane.view#log/e5f6a7b8",
+      "widgetPath": "tasklist/pane-view~692d214b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "▸",
+        "tooltip": "Show this task's log — API errors, retries, why it stopped — and its reviewer transcripts",
+        "on"     : "log/e5f6a7b8",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-no-reviews",
+      "key"       : "cmd:pipeline.run",
+      "widgetPath": "tasklist/pipeline-run~ee6d0f4e",
+      "offer": {
+        "id"     : "pipeline.run",
+        "label"  : "▸ Run",
+        "tooltip": "Open the run form, where the flags are spelled out before anything is spent",
+        "form"   : true,
+        "ok"     : true,
+        "props"  : {}
+      },
+      "effects": [
+        {
+          "id"   : "pipeline.run",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-no-reviews",
+      "key"       : "fx:pane.view#done",
+      "widgetPath": "tasklist/pane-view~deef914c",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "only done",
+        "tooltip": "Narrow the list to the tasks that finished successfully.",
+        "on"     : "done",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-no-reviews",
+      "key"       : "fx:pane.view#running",
+      "widgetPath": "tasklist/pane-view~b127364b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "only running",
+        "tooltip": "Narrow the list to the tasks a wave is working on right now.",
+        "on"     : "running",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-no-reviews",
+      "key"       : "fx:pane.view#failed",
+      "widgetPath": "tasklist/pane-view~9eff0847",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "only failed",
+        "tooltip": "Narrow the list to what stopped and wants a person — failed tasks and shots flagged needs_human.",
+        "on"     : "failed",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-no-reviews",
+      "key"       : "fx:pane.view#clear",
+      "widgetPath": "tasklist/pane-view~13059a85",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Clear finished",
+        "tooltip": "Take everything already finished out of this list.",
+        "on"     : "clear",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing finished is left in the list to take out of it."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-no-reviews",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "tasklist/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read what has run, what is running and what is ready, and undo Clear finished",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-no-reviews",
+      "key"       : "item:task/f1e2d3c4",
+      "widgetPath": "tasklist/ui-publish~239cf694",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "shot_image",
+        "tooltip": "Open what this shot_image drew in the asset editor — the last frame it rendered, accepted or not; every other pane follows the pick",
+        "on"     : "task/f1e2d3c4",
+        "ok"     : true,
+        "props": {
+          "taskHash": "f1e2d3c4",
+          "sceneId" : "arrival",
+          "shotId"  : "arrival__s1"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "asset",
+              "where"  : "elsewhere",
+              "subject": "a1b2c3d4"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "taskHash": "f1e2d3c4",
+            "sceneId" : "arrival",
+            "shotId"  : "arrival__s1"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "a1b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-no-reviews",
+      "key"       : "fx:pane.view#log/f1e2d3c4",
+      "widgetPath": "tasklist/pane-view~68d6c1b7",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "▸",
+        "tooltip": "Show this task's log — API errors, retries, why it stopped — and its reviewer transcripts",
+        "on"     : "log/f1e2d3c4",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-no-reviews",
+      "key"       : "item:task/e5f6a7b8",
+      "widgetPath": "tasklist/ui-publish~4589e678",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "prompt_refine",
+        "tooltip": "Inspect this prompt_refine — it rendered nothing to open; every other pane follows the pick",
+        "on"     : "task/e5f6a7b8",
+        "ok"     : true,
+        "props": {
+          "taskHash": "e5f6a7b8"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "taskHash": "e5f6a7b8"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-no-reviews",
+      "key"       : "fx:pane.view#log/e5f6a7b8",
+      "widgetPath": "tasklist/pane-view~692d214b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "▾",
+        "tooltip": "Hide this task's log",
+        "on"     : "log/e5f6a7b8",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-no-reviews",
+      "key"       : "fx:pane.view#logmode/e5f6a7b8/log",
+      "widgetPath": "tasklist/pane-view~7b417903",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Log 1",
+        "tooltip": "Show what happened while this task ran: provider retries, replies that did not parse, and the error that stopped it",
+        "on"     : "logmode/e5f6a7b8/log",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-no-reviews",
+      "key"       : "fx:pane.view#logmode/e5f6a7b8/review",
+      "widgetPath": "tasklist/pane-view~f07a3395",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Reviewer 0",
+        "tooltip": "Show each reviewer call in full: the prompts it was sent, its raw replies and the defects it found",
+        "on"     : "logmode/e5f6a7b8/review",
+        "ok"     : false,
+        "refusal": {
+          "reason": "This task made no reviewer calls that were saved."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-reviewer",
+      "key"       : "cmd:pipeline.run",
+      "widgetPath": "tasklist/pipeline-run~ee6d0f4e",
+      "offer": {
+        "id"     : "pipeline.run",
+        "label"  : "▸ Run",
+        "tooltip": "Open the run form, where the flags are spelled out before anything is spent",
+        "form"   : true,
+        "ok"     : true,
+        "props"  : {}
+      },
+      "effects": [
+        {
+          "id"   : "pipeline.run",
+          "props": {}
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-reviewer",
+      "key"       : "fx:pane.view#done",
+      "widgetPath": "tasklist/pane-view~deef914c",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "only done",
+        "tooltip": "Narrow the list to the tasks that finished successfully.",
+        "on"     : "done",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-reviewer",
+      "key"       : "fx:pane.view#running",
+      "widgetPath": "tasklist/pane-view~b127364b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "only running",
+        "tooltip": "Narrow the list to the tasks a wave is working on right now.",
+        "on"     : "running",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-reviewer",
+      "key"       : "fx:pane.view#failed",
+      "widgetPath": "tasklist/pane-view~9eff0847",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "only failed",
+        "tooltip": "Narrow the list to what stopped and wants a person — failed tasks and shots flagged needs_human.",
+        "on"     : "failed",
+        "ok"     : true,
+        "props": {
+          "what": "filter"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "filter"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-reviewer",
+      "key"       : "fx:pane.view#clear",
+      "widgetPath": "tasklist/pane-view~13059a85",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Clear finished",
+        "tooltip": "Take everything already finished out of this list.",
+        "on"     : "clear",
+        "ok"     : false,
+        "refusal": {
+          "reason": "Nothing finished is left in the list to take out of it."
+        }
+      },
+      "effects": [
+        {
+          "id": "pane.view"
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-reviewer",
+      "key"       : "fx:pane.view#reload",
+      "widgetPath": "tasklist/pane-view~a08a707d",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Refresh",
+        "tooltip": "Re-read what has run, what is running and what is ready, and undo Clear finished",
+        "on"     : "reload",
+        "ok"     : true,
+        "props": {
+          "what": "reload"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "reload"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-reviewer",
+      "key"       : "item:task/f1e2d3c4",
+      "widgetPath": "tasklist/ui-publish~239cf694",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "shot_image",
+        "tooltip": "Open what this shot_image drew in the asset editor — the last frame it rendered, accepted or not; every other pane follows the pick",
+        "on"     : "task/f1e2d3c4",
+        "ok"     : true,
+        "props": {
+          "taskHash": "f1e2d3c4",
+          "sceneId" : "arrival",
+          "shotId"  : "arrival__s1"
+        },
+        "then": [
+          {
+            "id"   : "view.open",
+            "props": {
+              "editor" : "asset",
+              "where"  : "elsewhere",
+              "subject": "a1b2c3d4"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "taskHash": "f1e2d3c4",
+            "sceneId" : "arrival",
+            "shotId"  : "arrival__s1"
+          }
+        },
+        {
+          "id"   : "view.open",
+          "props": {
+            "editor" : "asset",
+            "where"  : "elsewhere",
+            "subject": "a1b2c3d4"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-reviewer",
+      "key"       : "fx:pane.view#log/f1e2d3c4",
+      "widgetPath": "tasklist/pane-view~68d6c1b7",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "▾",
+        "tooltip": "Hide this task's log",
+        "on"     : "log/f1e2d3c4",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-reviewer",
+      "key"       : "fx:pane.view#logmode/f1e2d3c4/log",
+      "widgetPath": "tasklist/pane-view~26c88fff",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Log 3",
+        "tooltip": "Show what happened while this task ran: provider retries, replies that did not parse, and the error that stopped it",
+        "on"     : "logmode/f1e2d3c4/log",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-reviewer",
+      "key"       : "fx:pane.view#logmode/f1e2d3c4/review",
+      "widgetPath": "tasklist/pane-view~a4ae9619",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "Reviewer 4",
+        "tooltip": "Show each reviewer call in full: the prompts it was sent, its raw replies and the defects it found",
+        "on"     : "logmode/f1e2d3c4/review",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-reviewer",
+      "key"       : "item:task/e5f6a7b8",
+      "widgetPath": "tasklist/ui-publish~4589e678",
+      "offer": {
+        "id"     : "ui.publish",
+        "label"  : "prompt_refine",
+        "tooltip": "Inspect this prompt_refine — it rendered nothing to open; every other pane follows the pick",
+        "on"     : "task/e5f6a7b8",
+        "ok"     : true,
+        "props": {
+          "taskHash": "e5f6a7b8"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "ui.publish",
+          "props": {
+            "taskHash": "e5f6a7b8"
+          }
+        }
+      ]
+    },
+    {
+      "via"       : "control",
+      "editor"    : "tasklist",
+      "module"    : "tasklist",
+      "situation" : "fold-open-reviewer",
+      "key"       : "fx:pane.view#log/e5f6a7b8",
+      "widgetPath": "tasklist/pane-view~692d214b",
+      "offer": {
+        "id"     : "pane.view",
+        "label"  : "▸",
+        "tooltip": "Show this task's log — API errors, retries, why it stopped — and its reviewer transcripts",
+        "on"     : "log/e5f6a7b8",
+        "ok"     : true,
+        "props": {
+          "what": "mode"
+        }
+      },
+      "effects": [
+        {
+          "id"   : "pane.view",
+          "props": {
+            "what": "mode"
           }
         }
       ]
@@ -51249,6 +52297,10 @@
     },
     {
       "match": "gengraph.listGroups",
+      "why": "A read whose answer feeds an editor or the agent; the palette and CDP run it, no control does."
+    },
+    {
+      "match": "pipeline.taskLog",
       "why": "A read whose answer feeds an editor or the agent; the palette and CDP run it, no control does."
     },
     {

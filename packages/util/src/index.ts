@@ -6,3 +6,4 @@ export * from './pool.js';
 export * from './diff.js';
 export * from './conflict.js';
 export * from './paths.js';
+export * from './redact.js';

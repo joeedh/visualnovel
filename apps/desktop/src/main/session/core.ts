@@ -171,6 +171,7 @@ import type {
   KeyStatusView,
   PipelineRunResult,
   PipelineStatus,
+  TaskLogView,
   ProjectView,
   ReportRow,
   ReportStateView,
@@ -2920,6 +2921,10 @@ export class WorkspaceSession {
 
   async status(): Promise<PipelineStatus> {
     return this.pipelinePart.status();
+  }
+
+  taskLog(hash: string): Promise<TaskLogView> {
+    return this.pipelinePart.taskLog(hash);
   }
 
   /**

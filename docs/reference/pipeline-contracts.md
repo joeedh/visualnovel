@@ -356,7 +356,29 @@ These implement the system design in
       explicit regeneration. Completed execution journals are removed after the terminal
       task record is durable; interrupted and failed executions retain them.
     - An immediate abort releases tasks without waiting for their requests. Late answers
-      are fenced from response journals, attempt records, asset writes and slot holds.
+      are fenced from response journals, attempt records, asset writes, slot holds and the
+      task log.
+    - **Each task keeps a diagnostic log, which is not provenance.** It lives at
+      `vngen/state/tasklogs/<hash>.jsonl` and is gitignored, because it holds full model
+      prompts and replies.
+        - The log records provider retries, reviewer replies that did not parse, the error
+          that stopped the task (with its causes), and every reviewer call in full: system
+          prompt (stored once per file, by hash), prompt, image hashes, raw replies, error
+          and duration. A reviewer's parsed verdict is not repeated there; it stays on
+          `Task.attempts[n].reviews`.
+        - Each entry carries its execution (`checkpoint.id`) and its 1-based attempt
+          index. Appends are serialized per execution and drained by an abort like any
+          other write.
+        - Writes are best effort: a failed append never fails a task. Error text passes
+          through `redactSecrets` (`@vn/util`) before it is written.
+        - A reviewer call answered from the response journal is not made again, so it
+          writes no second entry. A call that was re-made after a stop writes one, because
+          it was a second paid call.
+        - Nothing deletes a log. Clear finished deletes nothing, and a tombstone can be
+          undone.
+        - Producers reach the log through `withTaskLog` in `@vn/providers`, an
+          `AsyncLocalStorage` scope the scheduler's `TaskLogFile` (`@vn/pipeline`) opens
+          around each runner. The Tasks pane reads it through `pipeline:taskLog`.
     - Below these layers, the Gemini, Claude and OpenRouter backends retry a transient
       failure in place (429/5xx/transport, 3 attempts). They do not retry other failures:
       an unrecognized error is terminal by default, because three refusals cost three

@@ -2,11 +2,14 @@ import { join } from 'node:path';
 import { scriptFromScenes } from '@vn/model';
 import { VnError, writeFileAtomic } from '@vn/util';
 import { fileCache } from '../workspace/filecache.js';
-import { gateStatus } from '@vn/pipeline';
+import { gateStatus, readTaskLog } from '@vn/pipeline';
+import { ProjectPaths } from '@vn/store';
+import { loadGraph } from '@vn/taskgraph';
 import { buildSlotGraph } from '@vn/artgen';
 import { buildPlayable, loadSceneShots, unapprovedSentence, unapprovedTakes } from '@vn/export';
 import type { Playable } from '@vn/types';
-import type { PipelineStatus } from '../../shared/ipc.js';
+import type { PipelineStatus, TaskLogView } from '../../shared/ipc.js';
+import { taskLogView } from './tasklogview.js';
 import { narrowTask } from '../agent/reviews.js';
 import { labelContext } from '../assets/assetlabel.js';
 import type { WorkspaceSession } from './core.js';
@@ -107,6 +110,19 @@ export class PipelinePart {
       blockedOnGate: !gate.cleared,
       slots        : slots.order.map((key) => slots.nodes.get(key)!),
     };
+  }
+
+  /**
+   * One task's diagnostic log. Reads only the log file and `tasks.jsonl`, not the whole project,
+   * because the Tasks pane asks again about once a second while the task runs.
+   */
+  async taskLog(hash: string): Promise<TaskLogView> {
+    const paths = new ProjectPaths(this.session.dir);
+    const [entries, graph] = await Promise.all([
+      readTaskLog(paths.taskLog(hash)),
+      loadGraph(paths),
+    ]);
+    return taskLogView(hash, entries, graph.get(hash));
   }
 
   /**

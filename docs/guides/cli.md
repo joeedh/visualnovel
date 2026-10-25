@@ -122,7 +122,9 @@ lives under `vngen/`:
 - `work/` — holds the human-editable files: the story graph, `approved.png`, and
   `shots/<sceneId>.json`
 - `build/` — holds the machine output: shot `assets/` and `manifest.json`.
-- `state/` — `tasks.jsonl`, reviews
+- `state/` — `tasks.jsonl`, reviews, and `tasklogs/`: each task's diagnostic log and
+  reviewer transcripts. The app gitignores `tasklogs/`, since it holds full model prompts
+  and replies.
 
 In a user's own project `vngen/` is committed. It is the reproducible output of a run, not
 something to gitignore. `templates/basic` is the one exception. It is a template this repo
