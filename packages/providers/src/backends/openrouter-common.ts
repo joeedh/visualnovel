@@ -42,8 +42,11 @@ export function reference(img: ImageInput): ImagePart {
   return { type: 'image_url', image_url: { url: `data:${mime};base64,${data}` } };
 }
 
+/** Status OpenRouter uses to relay an upstream vendor's rejection; the same request can pass on a retry. */
+const UPSTREAM_REJECTED = 422;
+
 /**
- * One request, answered as parsed JSON. A 429 or a 5xx becomes a `RetryableProviderError`
+ * One request, answered as parsed JSON. A 429, a 422 or a 5xx becomes a `RetryableProviderError`
  * carrying the `retry-after` the response sent; any other non-200 is an {@link OpenRouterError};
  * a body that is not JSON is a `ProviderError`. The key rides in the header and never in an error.
  */
@@ -62,7 +65,7 @@ export async function postOpenRouter(
 
   if (response.status !== 200) {
     const message = `${response.status} OpenRouter: ${said.slice(0, ERROR_CHARS)}`;
-    if (retryableStatus(response.status)) {
+    if (retryableStatus(response.status) || response.status === UPSTREAM_REJECTED) {
       const after = retryAfterMs({ headers: response.headers });
       throw new RetryableProviderError(message, {
         ...(after === undefined ? {} : { retryAfterMs: after }),

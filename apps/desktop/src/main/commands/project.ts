@@ -349,6 +349,10 @@ export const projectSetKey = define({
     ),
   },
   async check({ provider, scope }, ctx) {
+    // Mutating commands run one at a time, so a save issued mid-run would sit in the queue until the
+    // run ended and look as though it did nothing
+    const busy = ctx.host.session.busy();
+    if (busy) return { ok: false, reason: `${busy} is still running; wait for it to finish.` };
     return verdict(await ctx.host.session.previewKey(provider, scope));
   },
   async run({ provider, key, scope }, ctx) {

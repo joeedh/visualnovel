@@ -211,6 +211,20 @@ describe('how a refusal is shaped', () => {
     expect(sent).toHaveLength(2);
   });
 
+  it('retries a 422 relayed from the upstream vendor', async () => {
+    const rejected = () =>
+      new Response('{"error":{"message":"Invalid or corrupted image input"}}', {
+        status: 422,
+        headers: { 'retry-after': '0' },
+      });
+    const { image, sent } = backend([rejected, () => drew('a drawing')]);
+
+    const result = await image.generate('a cat', [], { modelId: MODEL });
+
+    expect(Buffer.from(result.bytes).toString()).toBe('a drawing');
+    expect(sent).toHaveLength(2);
+  });
+
   it('gives up on a 5xx that does not lift, and says it was transient', async () => {
     const { image, sent } = backend([
       () => new Response('down', { status: 503, headers: { 'retry-after': '0' } }),

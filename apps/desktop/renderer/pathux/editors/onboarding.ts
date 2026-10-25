@@ -18,6 +18,9 @@ import {
 import type { Block, Inline } from '../../../src/shared/markdown.js';
 import type { KeyScope, KeyStatusView, VendorKeyView } from '../../../src/shared/ipc.js';
 
+/** How long a Save key may go unanswered before the pane says what it is waiting for. */
+const SAVE_STALL_MS = 1500;
+
 /**
  * The Setup pane: how to get a model key, and what this machine currently has.
  *
@@ -291,21 +294,42 @@ export class OnboardingEditor extends VnEditor {
     box.addEventListener('input', () => void describe());
     scope.addEventListener('change', () => void describe());
 
+    let saving = false;
     save.addEventListener('click', () => {
       const key = box.value.trim();
-      if (!key) return;
-      void exec('project.setKey', {
+      if (!key || saving) return;
+      saving = true;
+      this.say(said, 'Saving…', true, true);
+      const stalled = setTimeout(
+        () =>
+          this.say(
+            said,
+            'Still waiting: another command, such as a pipeline run, has to finish first. The key is written when it does.',
+            true,
+            true,
+          ),
+        SAVE_STALL_MS,
+      );
+      exec('project.setKey', {
         provider: vendor.vendor,
         key,
         scope: (scope.value as KeyScope) ?? 'user',
-      }).then((outcome) => {
-        // The box is cleared whatever the answer was, because a key that failed to write should
-        // not sit on screen for the next person here.
-        box.value = '';
-        report(outcome);
-        this.say(said, outcome.ok ? outcome.record.message : outcome.error, outcome.ok);
-        void describe();
-      });
+      })
+        .then((outcome) => {
+          // The box is cleared whatever the answer was, because a key that failed to write should
+          // not sit on screen for the next person here.
+          box.value = '';
+          report(outcome);
+          this.say(said, outcome.ok ? outcome.record.message : outcome.error, outcome.ok);
+        })
+        .catch((err: unknown) => {
+          this.say(said, err instanceof Error ? err.message : String(err), false);
+        })
+        .finally(() => {
+          clearTimeout(stalled);
+          saving = false;
+          void describe();
+        });
     });
 
     test.addEventListener('click', () => {
