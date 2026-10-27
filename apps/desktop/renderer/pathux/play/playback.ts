@@ -169,9 +169,10 @@ export function assetUrl(ref?: Ref): string | undefined {
 }
 
 /**
- * Where a click goes from `history`'s last position. Advances one frame. At the scene-end panel
- * with no choice to make, follows the linear `next`. Returns the same array when there is nowhere
- * to go, so a caller can compare by identity.
+ * Where a click goes from `history`'s last position. Advances one frame. From a linear scene's
+ * last frame it goes straight to the first frame of `next`; a scene ending on choices, or the
+ * story's last scene, steps onto the scene-end panel instead. Returns the same array when there
+ * is nowhere to go, so a caller can compare by identity.
  */
 export function advance(play: Playable, history: Pos[]): Pos[] {
   const cur = history[history.length - 1];
@@ -180,12 +181,13 @@ export function advance(play: Playable, history: Pos[]): Pos[] {
   const scene = play.scenes[cur.sceneId];
   if (!scene) return history;
 
-  if (cur.frameIndex < framesOf(scene).length) {
-    return [...history, { sceneId: cur.sceneId, frameIndex: cur.frameIndex + 1 }];
+  const linear = !scene.choices.length && scene.next;
+  const last = framesOf(scene).length - 1;
+  if (linear && cur.frameIndex >= last) {
+    return [...history, { sceneId: linear, frameIndex: 0 }];
   }
-
-  if (!scene.choices.length && scene.next) {
-    return [...history, { sceneId: scene.next, frameIndex: 0 }];
+  if (cur.frameIndex <= last) {
+    return [...history, { sceneId: cur.sceneId, frameIndex: cur.frameIndex + 1 }];
   }
 
   return history;

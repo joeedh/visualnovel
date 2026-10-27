@@ -23,13 +23,12 @@ export const SITUATIONS = situations<PlayState>(
           { label: 'Go in', goto: 'cafe' },
           { label: 'Walk on', goto: 'street' },
         ],
-        next   : false,
       },
     },
   },
   {
-    name : 'scene-end',
-    why  : 'The scene leads on to one more, so the panel offers Continue.',
-    state: { canBack: true, ended: { choices: [], next: true } },
+    name : 'story-end',
+    why  : 'The last scene has ended with nowhere to go, so the panel offers nothing but The End.',
+    state: { canBack: true, ended: { choices: [] } },
   },
 );

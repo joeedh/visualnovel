@@ -11,8 +11,8 @@ import { view } from './effects.js';
 export interface PlayState {
   /** Whether there is a scene before this one to step back to. */
   canBack: boolean;
-  /** Drawn at the end of a scene: the choices it offers, or whether it simply continues. */
-  ended?: { choices: readonly { label: string; goto: string }[]; next: boolean };
+  /** The choices drawn at the end of a scene. A linear scene goes on without a panel. */
+  ended?: { choices: readonly { label: string; goto: string }[] };
 }
 
 /** The stage itself: a click anywhere on it advances. Bound to Space, Enter and Right. */
@@ -111,23 +111,11 @@ export function choiceAction(choice: { label: string; goto: string }): Offer {
   };
 }
 
-/** Continue, at the end of a scene that leads on to one more. */
-export function continueAction(): Offer {
-  return {
-    ok: true,
-    ...view('step'),
-    on     : 'continue',
-    label  : 'Continue ▸',
-    tooltip: 'Play on to the scene this one leads to',
-  };
-}
-
 /**
  * Every offer the Play pane draws from this module, in draw order: the stage, the bar's five,
- * then the end-of-scene panel's choices or its Continue.
+ * then the end-of-scene panel's choices.
  */
 export function controls(state: PlayState): readonly Offer[] {
-  const ended = state.ended;
   return [
     stageAction(),
     backAction(state.canBack),
@@ -136,7 +124,6 @@ export function controls(state: PlayState): readonly Offer[] {
     resetAction(),
     dimAction(),
     allBubblesAction(),
-    ...(ended ? ended.choices.map(choiceAction) : []),
-    ...(ended && ended.next && ended.choices.length === 0 ? [continueAction()] : []),
+    ...(state.ended ? state.ended.choices.map(choiceAction) : []),
   ];
 }

@@ -573,8 +573,8 @@
     {
       "module": "play",
       "editor": "play",
-      "name"  : "scene-end",
-      "why"   : "The scene leads on to one more, so the panel offers Continue."
+      "name"  : "story-end",
+      "why": "The last scene has ended with nowhere to go, so the panel offers nothing but The End."
     },
     {
       "module": "projectbar",
@@ -32352,7 +32352,7 @@
       "via"       : "control",
       "editor"    : "play",
       "module"    : "play",
-      "situation" : "scene-end",
+      "situation" : "story-end",
       "key"       : "fx:pane.view#forward",
       "widgetPath": "play/pane-view~35b451ff",
       "offer": {
@@ -32379,7 +32379,7 @@
       "via"       : "control",
       "editor"    : "play",
       "module"    : "play",
-      "situation" : "scene-end",
+      "situation" : "story-end",
       "key"       : "fx:pane.view#back",
       "widgetPath": "play/pane-view~ba78f537",
       "offer": {
@@ -32406,7 +32406,7 @@
       "via"       : "control",
       "editor"    : "play",
       "module"    : "play",
-      "situation" : "scene-end",
+      "situation" : "story-end",
       "key"       : "fx:pane.view#save",
       "widgetPath": "play/pane-view~4638707d",
       "offer": {
@@ -32432,7 +32432,7 @@
       "via"       : "control",
       "editor"    : "play",
       "module"    : "play",
-      "situation" : "scene-end",
+      "situation" : "story-end",
       "key"       : "fx:pane.view#load",
       "widgetPath": "play/pane-view~d1014b72",
       "offer": {
@@ -32458,7 +32458,7 @@
       "via"       : "control",
       "editor"    : "play",
       "module"    : "play",
-      "situation" : "scene-end",
+      "situation" : "story-end",
       "key"       : "fx:pane.view#reset",
       "widgetPath": "play/pane-view~2b7778f1",
       "offer": {
@@ -32484,7 +32484,7 @@
       "via"       : "control",
       "editor"    : "play",
       "module"    : "play",
-      "situation" : "scene-end",
+      "situation" : "story-end",
       "key"       : "fx:pane.view#dim",
       "widgetPath": "play/pane-view~ba858754",
       "offer": {
@@ -32510,7 +32510,7 @@
       "via"       : "control",
       "editor"    : "play",
       "module"    : "play",
-      "situation" : "scene-end",
+      "situation" : "story-end",
       "key"       : "fx:pane.view#bubbles",
       "widgetPath": "play/pane-view~7fdb8fe9",
       "offer": {
@@ -32528,32 +32528,6 @@
           "id"   : "pane.view",
           "props": {
             "what": "mode"
-          }
-        }
-      ]
-    },
-    {
-      "via"       : "control",
-      "editor"    : "play",
-      "module"    : "play",
-      "situation" : "scene-end",
-      "key"       : "fx:pane.view#continue",
-      "widgetPath": "play/pane-view~d266827d",
-      "offer": {
-        "id"     : "pane.view",
-        "label"  : "Continue ▸",
-        "tooltip": "Play on to the scene this one leads to",
-        "on"     : "continue",
-        "ok"     : true,
-        "props": {
-          "what": "step"
-        }
-      },
-      "effects": [
-        {
-          "id"   : "pane.view",
-          "props": {
-            "what": "step"
           }
         }
       ]

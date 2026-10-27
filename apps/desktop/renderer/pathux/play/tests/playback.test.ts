@@ -236,22 +236,30 @@ describe('dimPath', () => {
 });
 
 describe('navigation', () => {
-  it('advances one frame at a time, then past the end onto the linear next', () => {
+  it('advances one frame at a time, then from the last frame onto the linear next', () => {
     const p = play();
     let history = startOf(p);
     expect(history).toEqual([{ sceneId: 'a', frameIndex: 0 }]);
 
-    for (let i = 0; i < 3; i++) history = advance(p, history);
-    expect(history[history.length - 1]).toEqual({ sceneId: 'a', frameIndex: 3 });
+    for (let i = 0; i < 2; i++) history = advance(p, history);
+    expect(history[history.length - 1]).toEqual({ sceneId: 'a', frameIndex: 2 });
 
     history = advance(p, history);
     expect(history[history.length - 1]).toEqual({ sceneId: 'b', frameIndex: 0 });
   });
 
-  it('stops rather than guessing when the scene ends on choices', () => {
+  it('leaves the scene-end position of a linear scene for its next', () => {
     const p = play();
-    const at = [{ sceneId: 'b', frameIndex: 1 }];
+    const at = [{ sceneId: 'a', frameIndex: 3 }];
+    expect(advance(p, at)).toEqual([...at, { sceneId: 'b', frameIndex: 0 }]);
+  });
 
+  it('steps onto the choices, then stops rather than guessing', () => {
+    const p = play();
+    const last = [{ sceneId: 'b', frameIndex: 0 }];
+    expect(advance(p, last)).toEqual([...last, { sceneId: 'b', frameIndex: 1 }]);
+
+    const at = [{ sceneId: 'b', frameIndex: 1 }];
     expect(advance(p, at)).toBe(at);
     expect(choose(at, 'c')).toEqual([...at, { sceneId: 'c', frameIndex: 0 }]);
   });

@@ -10,7 +10,6 @@ import { redrawing, watchKeymap, type AnchorPass } from '../tour/anchors.js';
 import {
   backAction,
   choiceAction,
-  continueAction,
   allBubblesAction,
   dimAction,
   loadAction,
@@ -427,7 +426,10 @@ export class PlayEditor extends VnEditor {
 
     this.stage.appendChild(this.scenery(frame, stacked));
     if (!atEnd && frame && !frame.bubble) this.stage.appendChild(this.dialogue(frame, stacked));
-    if (atEnd) this.stage.appendChild(this.sceneEnd(scene));
+    // A linear scene has no panel, so a click on the stage carries on into `next`
+    if (atEnd && !(scene.next && !scene.choices.length)) {
+      this.stage.appendChild(this.sceneEnd(scene));
+    }
   }
 
   /** The background, and the portrait over it when the project opted in. */
@@ -617,10 +619,10 @@ export class PlayEditor extends VnEditor {
     return box;
   }
 
-  /** The end-of-scene panel: the choices, the linear continuation, or the end of the story. */
   /** The end panel's own pass, replaced with the panel, so a redraw drops the old buttons whole. */
   private endPass: AnchorPass = redrawing('play', 'end');
 
+  /** Draws the end-of-scene panel: the choices, or the end of the story. */
   private sceneEnd(scene: PlayableScene): HTMLElement {
     this.endPass = redrawing('play', 'end');
     const panel = document.createElement('div');
@@ -655,15 +657,6 @@ export class PlayEditor extends VnEditor {
           this.choiceButton(choiceAction(choice), () => this.go(choose(this.history, choice.goto))),
         );
       }
-      return panel;
-    }
-
-    if (scene.next) {
-      panel.appendChild(
-        this.choiceButton(continueAction(), () =>
-          this.go(advance(this.play as Playable, this.history)),
-        ),
-      );
       return panel;
     }
 

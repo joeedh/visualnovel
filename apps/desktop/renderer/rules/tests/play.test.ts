@@ -1,7 +1,6 @@
 import {
   backAction,
   choiceAction,
-  continueAction,
   controls,
   loadAction,
   resetAction,
@@ -33,12 +32,11 @@ describe('the Play pane’s offers', () => {
       label  : 'Go in',
       tooltip: 'Take this branch — the story goes on at cafe',
     });
-    expect(continueAction()).toMatchObject({ on: 'continue', label: 'Continue ▸' });
   });
 });
 
 describe('controls', () => {
-  it('lists the stage, the bar, then the panel’s choices or Continue, each key once', () => {
+  it('lists the stage, the bar, then the panel’s choices, each key once', () => {
     const bar = [
       'fx:pane.view#forward',
       'fx:pane.view#back',
@@ -50,12 +48,9 @@ describe('controls', () => {
     ];
     expect(controls({ canBack: false }).map(keyOf)).toEqual(bar);
     const choices = [{ label: 'Go in', goto: 'cafe' }];
-    expect(controls({ canBack: true, ended: { choices, next: false } }).map(keyOf)).toEqual([
-      ...bar,
-      'fx:pane.view#choose/cafe',
-    ]);
-    const ends = controls({ canBack: true, ended: { choices: [], next: true } });
-    expect(ends.map(keyOf)).toEqual([...bar, 'fx:pane.view#continue']);
+    const ends = controls({ canBack: true, ended: { choices } });
+    expect(ends.map(keyOf)).toEqual([...bar, 'fx:pane.view#choose/cafe']);
     expect(duplicateKeys(ends)).toEqual([]);
+    expect(controls({ canBack: true, ended: { choices: [] } }).map(keyOf)).toEqual(bar);
   });
 });
