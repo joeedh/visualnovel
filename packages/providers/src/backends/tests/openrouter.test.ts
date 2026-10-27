@@ -214,7 +214,7 @@ describe('how a refusal is shaped', () => {
   it('retries a 422 relayed from the upstream vendor', async () => {
     const rejected = () =>
       new Response('{"error":{"message":"Invalid or corrupted image input"}}', {
-        status: 422,
+        status : 422,
         headers: { 'retry-after': '0' },
       });
     const { image, sent } = backend([rejected, () => drew('a drawing')]);
