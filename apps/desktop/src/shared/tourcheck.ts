@@ -13,6 +13,7 @@
  * correct multi-step tour. The refusal is shown beside the ring instead.
  */
 import type { CoerceResult, PropSpecMap, PropValue } from '@vn/commands';
+import { subjectKinds, subjectOf } from './subjects.js';
 import type { Step, Tour } from './tours.js';
 
 /** What the app has, as much of it as checking a tour needs. */
@@ -67,7 +68,10 @@ export function checkTour(tour: Tour, known: Known): string[] {
 
 function checkStep(step: Step, known: Known): string[] {
   if (step.kind === 'select') {
-    return step.itemKind && step.key ? [] : ['a select step names a kind and a key'];
+    if (!step.itemKind || !step.key) return ['a select step names a kind and a key'];
+    if (subjectOf(step.itemKind)) return [];
+    const kinds = subjectKinds().join(', ');
+    return [`a select step cannot name a "${step.itemKind}"; it names one of ${kinds}`];
   }
   if (step.kind === 'gesture') {
     if (!known.interaction(step.id)) return [`there is no gesture called "${step.id}"`];

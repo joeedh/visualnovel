@@ -12,6 +12,7 @@
 import { z } from 'zod';
 import { systemSections, type LoadedContext, type SystemSection, type Tool } from '@vn/authoring';
 import { coerceProps, type PropSpecMap } from '@vn/commands';
+import { SUBJECTS, subjectKinds } from '../../shared/subjects.js';
 import { checkTour, type Known } from '../../shared/tourcheck.js';
 import type { Step, Tour } from '../../shared/tours.js';
 
@@ -71,6 +72,11 @@ const propValue = z.union([z.string(), z.number(), z.boolean(), z.array(z.string
 const props = z.record(propValue).describe('the props the step already knows').optional();
 const say = z.string().describe('what to tell the author, written as an instruction');
 
+/** What a select step's key is, one clause per kind. */
+const KEYS = Object.entries(SUBJECTS)
+  .map(([kind, subject]) => `for a ${kind}, ${subject.key}`)
+  .join('; ');
+
 /**
  * A step, as the model writes one. `z.union` rather than `z.discriminatedUnion` because the tool
  * catalog renders through `jsonSchemaOf`, which knows `ZodUnion` and would emit an empty schema
@@ -92,8 +98,8 @@ const step = z.union([
   }),
   z.object({
     kind    : z.enum(['select']).describe('a subject to pick before the step that acts on it'),
-    itemKind: z.string().describe('scene, shot, asset, character, location'),
-    key     : z.string().describe('its id'),
+    itemKind: z.enum(subjectKinds()).describe('what kind of subject it is'),
+    key     : z.string().describe(KEYS),
     say,
   }),
   z.object({

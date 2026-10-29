@@ -276,6 +276,8 @@ old one.
 
 ### Commit 2 — the subject table and validated select steps
 
+Status: **done.**
+
 - `src/shared/subjects.ts` (new): the table above, as a frozen record from kind to
   `{ path, key }` with paths typed `` `ui.${Published}` ``, plus `subjectKinds()`. It
   imports nothing from the renderer, because main (`tourcheck`, `showme`) reads it as

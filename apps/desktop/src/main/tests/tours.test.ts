@@ -7,6 +7,7 @@
  */
 import { coerceProps, type CommandContext } from '@vn/commands';
 import { createDesktopInteractions } from '../../shared/interactions.js';
+import { subjectOf } from '../../shared/subjects.js';
 import { TOURS, type Tour } from '../../shared/tours.js';
 import { createDesktopRegistry } from '../commands/index.js';
 import { tourStart } from '../commands/shell/tour.js';
@@ -44,6 +45,20 @@ describe('the curated tours', () => {
         expect([tour.id, step.id, registry.get(step.id) !== undefined]).toEqual([
           tour.id,
           step.id,
+          true,
+        ]);
+      }
+    }
+  });
+
+  /** A kind outside the subject table never reads as selected, so its step can never finish. */
+  it('select only kinds of subject a tour can see selected', () => {
+    for (const tour of TOURS) {
+      for (const step of tour.steps) {
+        if (step.kind !== 'select') continue;
+        expect([tour.id, step.itemKind, subjectOf(step.itemKind) !== undefined]).toEqual([
+          tour.id,
+          step.itemKind,
           true,
         ]);
       }

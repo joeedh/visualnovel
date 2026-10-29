@@ -5,7 +5,9 @@
  * The agent writes these steps without seeing the screen, so the cases worth covering are the
  * wrong ones — a command that does not exist, a prop it does not take, a gesture that is not one.
  */
+import { jsonSchemaOf } from '@vn/authoring';
 import { coerceProps, prop } from '@vn/commands';
+import { SUBJECTS, subjectKinds } from '../../shared/subjects.js';
 import { checkTour, readTour, type Known } from '../../shared/tourcheck.js';
 import { SHOW_ME_SECTION, appSections, showMeTool } from '../agent/showme.js';
 import type { Step, Tour } from '../../shared/tours.js';
@@ -80,6 +82,14 @@ describe('checkTour', () => {
     expect(checkTour(tour, known)).toEqual(['step 1: there is no gesture called "branch.wire"']);
   });
 
+  /** A kind outside the subject table is shown and then never met, so it is refused up front. */
+  it('refuses a select step naming a kind it cannot judge, and lists the ones it can', () => {
+    const tour = tourOf([{ kind: 'select', itemKind: 'location', key: 'cafe', say: 'Pick it.' }]);
+    expect(checkTour(tour, known)).toEqual([
+      `step 1: a select step cannot name a "location"; it names one of ${subjectKinds().join(', ')}`,
+    ]);
+  });
+
   it('refuses a step that tells the author nothing', () => {
     const tour = tourOf([{ kind: 'command', id: 'asset.regenerate', say: '' }]);
     expect(checkTour(tour, known)).toEqual(['step 1 says nothing to the author']);
@@ -128,6 +138,12 @@ describe('show_me', () => {
     const result = await showMeTool(deps()).run(args, {} as never);
     expect(result.ok).toBe(false);
     expect(result.output).toContain('no window');
+  });
+
+  it('offers the agent the subject kinds, and says what each key is', () => {
+    const schema = JSON.stringify(jsonSchemaOf(showMeTool(deps()).args));
+    expect(schema).toContain(JSON.stringify(subjectKinds()));
+    expect(schema).toContain(`for a shot, ${SUBJECTS.shot.key}`);
   });
 });
 
