@@ -1,4 +1,5 @@
 import {
+  DataPathWatcher,
   IconManager,
   ScreenArea,
   ToolStack,
@@ -17,7 +18,7 @@ import { api } from '../../api.js';
 import { defineShellApi } from './api.js';
 import { installAnchors } from '../tour/anchors.js';
 import type { AnchorHome } from '../../rules/anchors.js';
-import { installTour, tourReadsPanes } from '../tour/tour.js';
+import { installTour, tourReadsData, tourReadsPanes } from '../tour/tour.js';
 import { panesOf } from '../panes/view.js';
 import { showUnsavedPanes } from '../panes/unsaved.js';
 import { exec, installBridge } from './bridge.js';
@@ -117,6 +118,17 @@ class Shell implements ShellApp {
         .filter((pane) => !pane.chrome)
         .map((pane) => pane.editor as AnchorHome),
     );
+    // `immediate` for the reason `installPersistence` gives: a hidden window runs no animation
+    // frames, and a tour's select step must still finish there
+    const ctx = this.ctx as unknown as ContextLike;
+    tourReadsData({
+      read : (path) => this.api.getValue(ctx, path),
+      watch: (path, onChange) => {
+        const opts = { debounce: 'immediate' as const };
+        const watcher = new DataPathWatcher(this.api, ctx, path, onChange, opts).subscribe();
+        return () => watcher.remove();
+      },
+    });
     installTour();
     installBridge(this);
     // After the bridge, and whether or not a convo pane is open: the agent streams into the

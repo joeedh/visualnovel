@@ -1,5 +1,6 @@
 import { EMPTY_DIGEST, UNRESOLVED, type Verdict } from '@vn/commands';
-import { advance, finished, guide, satisfies, start, stepOf } from '../tour.js';
+import { advance, finished, guide, met, satisfies, skipMet, start, stepOf } from '../tour.js';
+import { SUBJECTS } from '../../../src/shared/subjects.js';
 import {
   HEADER,
   commandKey,
@@ -371,8 +372,102 @@ describe('satisfies', () => {
     ).toBe(true);
   });
 
-  it('never advances on a select step, which runs nothing', () => {
+  /** A select step finishes on the selection, through `met`, whatever command the click ran. */
+  it('never advances on a command for a select step', () => {
     const pick: Step = { kind: 'select', itemKind: 'scene', key: 'greet', say: 'Pick it.' };
     expect(satisfies(pick, { id: 'view.open', props: {} })).toBe(false);
+  });
+});
+
+describe('a select step met by the selection', () => {
+  const pick = (itemKind: string, key: string): Step => ({
+    kind: 'select',
+    itemKind,
+    key,
+    say: 'Pick it.',
+  });
+  const reading =
+    (values: Record<string, string>) =>
+    (path: string): unknown =>
+      values[path];
+
+  it('is met when its kind’s path holds its key, for every kind in the table', () => {
+    for (const [kind, subject] of Object.entries(SUBJECTS)) {
+      const state = start(tour([pick(kind, 'k1')]));
+      expect(met(state, reading({ [subject.path]: 'k1' }))).toBe(true);
+      expect(met(state, reading({ [subject.path]: 'k2' }))).toBe(false);
+    }
+  });
+
+  it('is never met for a kind outside the table', () => {
+    expect(met(start(tour([pick('location', 'cafe')])), () => 'cafe')).toBe(false);
+  });
+
+  it('never meets a step that is not a select step', () => {
+    expect(met(start(tour([redraw])), () => 'a1b2')).toBe(false);
+  });
+
+  it('skips a run of met steps and stops at the first one still to do', () => {
+    const steps = [pick('scene', 'greet'), pick('character', 'aiko'), redraw];
+    const read = reading({ 'ui.sceneId': 'greet', 'ui.characterId': 'aiko' });
+    expect(skipMet(start(tour(steps)), read).at).toBe(2);
+  });
+
+  it('runs past the end of a tour whose steps are all met', () => {
+    const read = reading({ 'ui.sceneId': 'greet' });
+    expect(finished(skipMet(start(tour([pick('scene', 'greet')])), read))).toBe(true);
+  });
+
+  it('stays on an unmet first step', () => {
+    const state = start(tour([pick('scene', 'greet'), pick('character', 'aiko')]));
+    expect(skipMet(state, reading({ 'ui.characterId': 'aiko' }))).toBe(state);
+  });
+});
+
+describe('ringing a select step under another key', () => {
+  const row = (key: string, props: Record<string, string>, editor = 'documents'): Anchor => ({
+    key,
+    id: 'ui.publish',
+    props,
+    enabled: true,
+    editor : editor as EditorId,
+    via    : { kind: 'dom', node },
+  });
+  const seen = (anchors: Anchor[]): LiveAnchors =>
+    live(anchors, { open: ['documents', 'timeline'] as EditorId[] });
+  const ringed = (shown: ReturnType<typeof guide>): string | undefined =>
+    shown.show === 'ring' && 'anchor' in shown.where ? shown.where.anchor.key : undefined;
+
+  it('rings the tree’s shot row, which is keyed by scene as well, for a shot id', () => {
+    const tree = row('item:shot/greet/greet__s1', { shotId: 'greet__s1' });
+    const picking = start(
+      tour([{ kind: 'select', itemKind: 'shot', key: 'greet__s1', say: 'Go' }]),
+    );
+    expect(ringed(guide(map, seen([tree]), picking))).toBe(tree.key);
+  });
+
+  it('rings the character row for a file step naming its sheet', () => {
+    const sheet = 'characters/aiko/character.md';
+    const character = row(itemKey('character', 'aiko'), { characterId: 'aiko', docPath: sheet });
+    const picking = start(tour([{ kind: 'select', itemKind: 'file', key: sheet, say: 'Go' }]));
+    expect(ringed(guide(map, seen([character]), picking))).toBe(character.key);
+  });
+
+  it('prefers the row under the step’s own key where both are drawn', () => {
+    const tree = row('item:shot/greet/greet__s1', { shotId: 'greet__s1' });
+    const bracket = row(itemKey('shot', 'greet__s1'), { shotId: 'greet__s1' }, 'timeline');
+    const picking = start(
+      tour([{ kind: 'select', itemKind: 'shot', key: 'greet__s1', say: 'Go' }]),
+    );
+    expect(ringed(guide(map, seen([tree, bracket]), picking))).toBe(bracket.key);
+  });
+
+  it('prefers a row in the pane the last ring was in', () => {
+    const sheet = 'characters/aiko/character.md';
+    const tree = row(itemKey('character', 'aiko'), { docPath: sheet });
+    const other = row('item:link/sheet', { docPath: sheet }, 'timeline');
+    const picking = start(tour([{ kind: 'select', itemKind: 'file', key: sheet, say: 'Go' }]));
+    const shown = guide(map, seen([tree, other]), picking, undefined, undefined, 'timeline');
+    expect(ringed(shown)).toBe(other.key);
   });
 });

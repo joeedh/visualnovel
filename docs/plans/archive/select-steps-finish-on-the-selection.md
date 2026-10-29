@@ -1,7 +1,8 @@
 # Finishing a tour's select step on the selection
 
-Status: **planned**. Revised once, after a fresh-context pressure test; see
-[Pressure test](#pressure-test).
+Status: **shipped** 2026-10-28, in the three commits below; each has a status line saying
+how it was verified. Revised once before the work, after a fresh-context pressure test;
+see [Pressure test](#pressure-test).
 
 A guided tour cannot get past a `select` step. This plan makes a `select` step finish when
 the shared selection holds the subject it names, read through path.ux data paths. It also
@@ -294,6 +295,23 @@ Status: **done.**
       step, so this is a regression check only).
 
 ### Commit 3 — select steps finish on the selection
+
+Status: **done.** Verified over CDP on the same copy of the sample project, with Haruki
+selected:
+
+- A tour of "select `test3`" then `view.open` on its sheet finished both steps from one
+  `__vnAnchors.press('item:character/test3')`; the history shows the row's own `view.open`
+  and no `tour.cancel`.
+- A one-step tour for the now-selected `test3` finished at once, while the same tour for
+  the unselected `aiko` stayed on step 0 with `watching: 'ui.characterId'`.
+- A `file` step naming `characters/aiko/character.md` rang `item:character/aiko` through
+  the fallback, and the click finished it.
+
+`pnpm gen:uxmodel` left `ux-model.json` unchanged. Small choices the plan left open:
+`__vnTour` names the watched path `watching`; `from` is the pane of the last `ring` or
+`blocked` anchor; the fallback reports a greyed row as `disabled`, as `resolveItem` does;
+a test covers the `from` preference; and `guided-tours.md` also gains the subject table
+and `guide`'s new argument in "What a step displays".
 
 - `renderer/rules/tour.ts`:
     - `met(state, read)`: true when the current step is a select step whose subject path

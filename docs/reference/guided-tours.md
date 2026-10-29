@@ -506,12 +506,40 @@ CI has no app, no CDP port and no workspace, so the checks are split:
 A `Tour` (`src/shared/tours.ts`) has an id, a title, a one-sentence `what`, and a list of
 steps. Each step has a `say` instruction and one of four kinds:
 
-| Kind      | The author is asked to                         | Fields                                                 |
-| --------- | ---------------------------------------------- | ------------------------------------------------------ |
-| `command` | click a control that runs a command            | `id`, optional `props`                                 |
-| `input`   | type into a field and commit it                | `id`, `supplies` (the prop typed), optional `props`    |
-| `select`  | select a subject by clicking an `item:` anchor | `itemKind`, `key`                                      |
-| `gesture` | drag something                                 | `id` (an interaction id), `carried`, optional `target` |
+| Kind      | The author is asked to              | Fields                                                 |
+| --------- | ----------------------------------- | ------------------------------------------------------ |
+| `command` | click a control that runs a command | `id`, optional `props`                                 |
+| `input`   | type into a field and commit it     | `id`, `supplies` (the prop typed), optional `props`    |
+| `select`  | select a subject                    | `itemKind`, `key`                                      |
+| `gesture` | drag something                      | `id` (an interaction id), `carried`, optional `target` |
+
+A `select` step is finished by the selection rather than by a click: it is met when the
+shared selection holds its subject, however that subject came to be selected. Its
+`itemKind` must be one of the kinds in `src/shared/subjects.ts`, each of which names the
+`ui.*` data path that holds a subject of that kind and says what its key is:
+
+| Kind        | Data path        | Key                                                          |
+| ----------- | ---------------- | ------------------------------------------------------------ |
+| `scene`     | `ui.sceneId`     | the scene id                                                 |
+| `shot`      | `ui.shotId`      | the shot id as stored in `work/shots/<scene>.json`           |
+| `character` | `ui.characterId` | the character id                                             |
+| `asset`     | `ui.assetHash`   | the asset's content hash                                     |
+| `graph`     | `ui.graphSlug`   | the graph's slug                                             |
+| `task`      | `ui.taskHash`    | the task hash: one task, not every card the highlight lights |
+| `file`      | `ui.docPath`     | the workspace-relative path, with no leading `/`             |
+
+A location, a wiki note and a skill are not kinds. A location and a skill select a file
+looked up from their id, so no path holds the id itself, and a wiki note is named as a
+`file` by its full path. `checkTour` refuses any other kind and lists these, and `show_me`
+offers the agent only these. A tour that needs a location can use a `command` step
+instead, whose `wrong-subject` resolution rings the row that selects it first.
+
+The ring goes on the row keyed `item:<itemKind>/<key>`. Where no row has that key, it goes
+on a `ui.publish` row whose props carry the subject's field with the key as its value,
+preferring the pane of the last ring. That covers the two kinds whose rows are often keyed
+another way: the Documents tree keys a shot row by its scene as well
+(`item:shot/<scene>/<shot>`), and in Documents mode a file is selected by the character or
+scene row that holds it.
 
 A `gesture` step is evaluated by calling `Interaction.targets` exactly as a real drop
 calls it, without arming anything or moving the pointer. The tour highlights the element
@@ -530,8 +558,9 @@ as the step's own answer.
 
 ### What a step displays
 
-`guide(map, live, state, judge, refused)` in renderer/rules/tour.ts computes what the
-overlay shows for the current step:
+`guide(map, live, state, judge, refused, from)` in renderer/rules/tour.ts computes what
+the overlay shows for the current step (`from`, the pane of the last ring, is read only by
+a `select` step's ring):
 
 - `ring`: highlights an anchor and captions it with the instruction.
 - `pick`: highlights the row that selects the step's subject, because the control the step
@@ -641,9 +670,49 @@ target. The step takes its `invoke` from the verdict it was displayed with.
 Any other command is ignored. If the author does things in another order, the step is
 re-resolved against the new screen state.
 
+A `select` step runs no command, so `satisfies` never matches it. It advances when it is
+**met** (`met` in `rules/tour.ts`): its kind's data path, read through the shell's
+DataAPI, equals its `key`. The tour checks this in two places and nowhere else:
+
+- **On arrival.** Before showing a step, `skipMet` moves past every met step.
+- **When the subject's path changes.** Showing a `select` step installs one path.ux
+  `DataPathWatcher` on its path, and showing any other step or ending the tour removes it.
+  The shell injects the reader and the watcher through `tourReadsData`, so the tour knows
+  data paths and not `ShellState`.
+
+The watcher uses `immediate` debouncing rather than the default `raf`, for two reasons. A
+hidden or minimized window runs no animation frames, so a `raf` watcher would never fire.
+And a click on a Documents row publishes and then sends `view.open`; if the next step is
+that `view.open`, its reply could reach `onExec` before a `raf` flush had moved past the
+select step, and the next step would then wait for a command that had already run. An
+`immediate` watcher fires during the write, and once inside `subscribe()` itself, so its
+callback only queues a microtask. The microtask runs after the click handler returns and
+before any reply. The overlay's re-resolve never advances a tour, because `stop()` inside
+its `ask` would leave the banner showing with no timer to clear it.
+
+Judging the step by the selection rather than by a click has consequences, all accepted:
+
+- A step whose subject is already selected is skipped on arrival. The step count moves on
+  and nothing is said.
+- A tour whose steps are all met finishes at once, and the author sees only the
+  `Done — <what>` notification, even though `show_me` has told the agent the author is
+  being walked through it.
+- Something other than the author's click can complete the step: Script and Shot Coverage
+  overwrite `ui.sceneId` when it names no known scene, Play publishes on rebuild, and
+  `view.open` writes its `subject`.
+- A subject selected while its row is scrolled away or its pane is closed still meets the
+  step.
+- A pinned pane counts the global selection, not its own. A click in a pinned pane writes
+  through to the global field as well, so clicking the ringed row there still completes
+  the step.
+- Each window judges its own steps, since `ShellState` and the running tour are both per
+  renderer.
+
 `window.vn.exec` (the CDP scripting bridge) calls main directly and does not pass through
-`bridge.exec`, so a command run from CDP does not advance a tour. The palette's run button
-goes through the bridge.
+`bridge.exec`, so a command run from CDP does not advance a `command` or `input` step. The
+palette's run button goes through the bridge. A `select` step does advance on a selection
+made over CDP, because it watches state rather than `bridge.exec`. `window.__vnTour()`
+reports the path a `select` step is waiting on as `watching`.
 
 ### Palette fallback
 
@@ -930,7 +999,7 @@ produces identical bytes.
 | `renderer/rules/anchors.ts`                | `Action`, `Offer`, `refuse`, `keyOf`, `effectKey`, `openerKey`, `duplicateKeys`, `applyOffer`, `toolOf`, `writeTag`, `tagOf`; anchor and resolution types; `subsumes`, `resolveAnchor`, `resolveItem`, `resolveSubject`, `resolveNamed`, `mapOf` |
 | `renderer/rules/toolmeta.ts`               | `VnToolMeta`: path.ux's `UXToolMeta` plus the offer's `on`, `supplies`, `form`, `props` and `then`                                                                                                                                               |
 | `renderer/rules/ring.ts`                   | Ring and caption geometry: `ringRect`, `union`, `outset`, `RING_PAD`, `captionAt`                                                                                                                                                                |
-| `renderer/rules/tour.ts`                   | `TourState`, `guide`, `satisfies`; pure, no DOM                                                                                                                                                                                                  |
+| `renderer/rules/tour.ts`                   | `TourState`, `guide`, `satisfies`, `met`, `skipMet`; pure, no DOM                                                                                                                                                                                |
 | `renderer/rules/anchormap.ts`              | `ANCHOR_MAP`, loaded from `anchors.json`                                                                                                                                                                                                         |
 | `src/shared/precheck.ts`                   | `checkFor`, `askedAs`, `canBlank`: which invocation a ringed anchor, or the agent's `ux_check`, is checked with                                                                                                                                  |
 | `src/shared/uxdocs.ts`                     | `UxDocs`, `fold`, `render`, `pagePath`: the UX docs tree the agent reads, derived from the model, the sweep and the registry                                                                                                                     |
@@ -940,10 +1009,11 @@ produces identical bytes.
 | `renderer/pathux/chrome/showmenu.ts`       | `menuTemplate` and `showContextMenu`: the one menu builder the header and the right-click menus share                                                                                                                                            |
 | `renderer/pathux/interactions/hittest.ts`  | `elementsAt`, `reaches`, `hitFor`: hit testing through shadow roots                                                                                                                                                                              |
 | `renderer/pathux/tour/overlay.ts`          | The ring layer and its two timers                                                                                                                                                                                                                |
-| `renderer/pathux/tour/tour.ts`             | The running tour; `window.__vnTour`                                                                                                                                                                                                              |
+| `renderer/pathux/tour/tour.ts`             | The running tour; `tourReadsPanes`, `tourReadsData`, `window.__vnTour`                                                                                                                                                                           |
 | `renderer/pathux/interactions/gestures.ts` | Per-editor gesture state readers                                                                                                                                                                                                                 |
 | `src/shared/tours.ts`                      | `Step`, `Tour`, and the curated tours                                                                                                                                                                                                            |
 | `src/shared/tourcheck.ts`                  | `readTour`, `checkTour`                                                                                                                                                                                                                          |
+| `src/shared/subjects.ts`                   | `SUBJECTS`, `subjectKinds`, `subjectOf`: the kinds a `select` step may name, each with its data path and what its key is                                                                                                                         |
 | `src/main/commands/shell/tour.ts`          | The `tour.*` commands                                                                                                                                                                                                                            |
 | `src/main/agent/showme.ts`                 | The `show_me` agent tool                                                                                                                                                                                                                         |
 | `apps/desktop/anchors.json`                | The measured anchor map                                                                                                                                                                                                                          |

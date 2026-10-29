@@ -30,8 +30,17 @@ declare global {
       /** Each live keymap against the shortcut table, which the sweep prints. */
       shortcuts: () => ScopeReport[];
     };
-    /** Which tour is running, which step it is on, and what the overlay is ringing. Read over CDP. */
-    __vnTour?: () => { tour: string; at: number; step: string; ring?: string } | null;
+    /**
+     * Which tour is running, which step it is on, what the overlay is ringing, and the data path a
+     * `select` step is waiting on. Read over CDP.
+     */
+    __vnTour?: () => {
+      tour: string;
+      at: number;
+      step: string;
+      ring?: string;
+      watching?: string;
+    } | null;
   }
 }
 

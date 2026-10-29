@@ -4,7 +4,8 @@
  * The state lives here rather than in main because only this side knows what is drawn. Main's
  * `tour.*` commands push an effect, this applies it, and the tour advances when `onExec` sees the
  * step's own invocation — from a button, the palette, a hotkey or CDP alike, because a tour follows
- * the command rather than the control.
+ * the command rather than the control. A `select` step runs no command; it advances when the
+ * selection holds its subject, read through the shell's data paths.
  *
  * A tour never runs a step. Where a step has no control, the palette is opened on the command with
  * its props filled in and the author presses the run button themselves.
@@ -16,13 +17,18 @@ import { tourById } from '../../../src/shared/tours.js';
 import { api } from '../../api.js';
 import { ANCHOR_MAP, SWEPT } from '../../rules/anchormap.js';
 import { askedAs, checkFor } from '../../../src/shared/precheck.js';
+import { subjectOf } from '../../../src/shared/subjects.js';
 import {
+  advance,
   guide,
+  met,
   opens,
   satisfies,
+  skipMet,
   start,
   stepOf,
   type Guidance,
+  type ReadPath,
   type TourState,
 } from '../../rules/tour.js';
 import type { Action, Anchor, AnchorHome } from '../../rules/anchors.js';
@@ -51,6 +57,10 @@ let routed = false;
 const asked = new Map<string, { as: string; reason?: string }>();
 /** Each command's props, for the blanks {@link checkFor} fills in. Fetched once per tour. */
 let specs: Map<string, readonly CatalogProp[]> | undefined;
+/** The subject path a shown `select` step is waiting on, and how to stop watching it. */
+let watched: { path: string; drop: () => void } | undefined;
+/** The pane the last ring was in, which a select step's fallback ring prefers. */
+let lastPane: AnchorHome | undefined;
 
 /** The tour being walked through, for the overlay to draw and for a test to read. */
 export const runningTour = (): TourState | undefined => running;
@@ -66,6 +76,7 @@ export function installTour(): void {
       at  : state.at,
       step: stepOf(state)?.say ?? '',
       ...(ring === undefined ? {} : { ring }),
+      ...(watched === undefined ? {} : { watching: watched.path }),
     };
   };
 }
@@ -75,6 +86,20 @@ let openPanes: () => readonly AnchorHome[] = () => [];
 
 export function tourReadsPanes(panes: () => readonly AnchorHome[]): void {
   openPanes = panes;
+}
+
+/** The shell's data paths, as far as a select step needs them. */
+export interface DataReader {
+  read: ReadPath;
+  /** Calls `onChange` whenever the path's value changes, until the returned function is called. */
+  watch(path: string, onChange: () => void): () => void;
+}
+
+/** The selection, read through the shell's DataAPI. Set once by the shell at startup. */
+let data: DataReader = { read: () => undefined, watch: () => () => {} };
+
+export function tourReadsData(reader: DataReader): void {
+  data = reader;
 }
 
 /** Apply what a `tour.*` command asked for. */
@@ -133,6 +158,8 @@ function stop(): void {
   unwatch = undefined;
   running = undefined;
   awaiting = undefined;
+  watchSubject(undefined);
+  lastPane = undefined;
   // A palette a step opened belongs to the tour. Left up, it is a form with nothing behind it.
   if (routed) closePalette();
   routed = false;
@@ -167,10 +194,13 @@ function shownNow(): Guidance | undefined {
   if (!running) return undefined;
   const panes = openPanes();
   const judge = (id: string, carried: string) => verdictsFor(id, carried, panes);
-  const shown = guide(ANCHOR_MAP, anchorSnapshot(panes), running, judge, refusedFor);
+  const shown = guide(ANCHOR_MAP, anchorSnapshot(panes), running, judge, refusedFor, lastPane);
   awaiting = shown.show === 'ring' ? shown.awaits : undefined;
   const at = shown.show === 'ring' || shown.show === 'blocked' ? shown.where : undefined;
-  if (at && 'anchor' in at) askAbout(at.anchor);
+  if (at && 'anchor' in at) {
+    askAbout(at.anchor);
+    lastPane = at.anchor.editor;
+  }
   // Opening the pane that draws a routed step turns the answer into a ring, and a palette left up
   // over that ring covers the control the author is being sent to.
   if (routed && shown.show !== 'route') {
@@ -181,18 +211,41 @@ function shownNow(): Guidance | undefined {
 }
 
 /**
- * Move to a step and show it. A finished tour says so and lets go of the exec feed, so nothing is
- * left listening once there is nothing to advance.
+ * Move to a step and show it, passing over any `select` step whose subject is already selected. A
+ * finished tour says so and lets go of the exec feed, so nothing is left listening once there is
+ * nothing to advance.
  */
 function step(next: TourState): void {
-  running = next;
+  running = skipMet(next, data.read);
   const shown = shownNow() ?? { show: 'done' as const };
   if (shown.show === 'done') {
     say(`Done — ${next.tour.what}`);
     stop();
     return;
   }
+  watchSubject(running);
   present(shown);
+}
+
+/**
+ * Watch the subject path of the `select` step this state is on, dropping the previous watch.
+ *
+ * The watcher fires synchronously on the write, and once inside `watch` itself, so the callback
+ * only queues the check. The check runs after the click handler returns and before any reply to
+ * the command that click sent, so a next step waiting on that command is already showing.
+ */
+function watchSubject(state: TourState | undefined): void {
+  watched?.drop();
+  watched = undefined;
+  const now = state && stepOf(state);
+  const subject = now?.kind === 'select' ? subjectOf(now.itemKind) : undefined;
+  if (!state || !subject) return;
+  const drop = data.watch(subject.path, () =>
+    queueMicrotask(() => {
+      if (running === state && met(state, data.read)) step(advance(state));
+    }),
+  );
+  watched = { path: subject.path, drop };
 }
 
 /**

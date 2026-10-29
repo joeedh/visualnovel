@@ -10,15 +10,19 @@
  * ones. Everything here is pure and node-testable; reaching the screen is `pathux/tour.ts`.
  */
 import { EMPTY_DIGEST, UNRESOLVED, type Verdict } from '@vn/commands';
+import { uiPublish } from '../../src/shared/effects.js';
 import type { PropValue } from '../../src/shared/ipc.js';
+import { subjectOf } from '../../src/shared/subjects.js';
 import type { Step, Tour } from '../../src/shared/tours.js';
 import {
   UNAVAILABLE,
+  UNSELECTABLE,
   resolveAnchor,
   resolveItem,
   resolveNamed,
   resolveSubject,
   type Action,
+  type Anchor,
   type AnchorHome,
   type AnchorMap,
   type LiveAnchors,
@@ -39,6 +43,27 @@ export const stepOf = (state: TourState): Step | undefined => state.tour.steps[s
 export const finished = (state: TourState): boolean => state.at >= state.tour.steps.length;
 
 export const advance = (state: TourState): TourState => ({ ...state, at: state.at + 1 });
+
+/** Reads the current value at a data path. */
+export type ReadPath = (path: string) => unknown;
+
+/**
+ * Whether the step the tour is on is a `select` step whose subject the selection already holds.
+ * A kind outside the subject table is never met.
+ */
+export function met(state: TourState, read: ReadPath): boolean {
+  const step = stepOf(state);
+  if (step?.kind !== 'select') return false;
+  const subject = subjectOf(step.itemKind);
+  return subject !== undefined && read(subject.path) === step.key;
+}
+
+/** Moves past every met step, to the first one the author still has to do or past the end. */
+export function skipMet(state: TourState, read: ReadPath): TourState {
+  let next = state;
+  while (met(next, read)) next = advance(next);
+  return next;
+}
 
 /**
  * The invocation a step is about. Nothing for a `select`, which names a subject rather than an
@@ -114,6 +139,9 @@ const missing = (names: readonly string[]): string =>
  * A step can name a subject the pane is not showing without anything having gone wrong. The
  * resolver names the selection the step would need, and the tour then asks the author to pick that
  * before pressing a button that would act on the wrong thing.
+ *
+ * `from` is the pane the last ring was in. A select step whose row is found by what it publishes
+ * prefers a row there, so the ring stays in the pane the author is already looking at.
  */
 export function guide(
   map: AnchorMap,
@@ -121,6 +149,7 @@ export function guide(
   state: TourState,
   judge?: Judge,
   refused?: Refused,
+  from?: AnchorHome,
 ): Guidance {
   const step = stepOf(state);
   if (!step) return { show: 'done' };
@@ -128,7 +157,8 @@ export function guide(
   if (step.kind === 'gesture') return gesture(live, step, judge);
 
   if (step.kind === 'select') {
-    const where = resolveItem(live, step.itemKind, step.key);
+    const exact = resolveItem(live, step.itemKind, step.key);
+    const where = exact.state === 'absent' ? publisher(live, step, from) : exact;
     if (where.state === 'disabled') {
       return { show: 'blocked', say: step.say, reason: where.reason, where };
     }
@@ -185,6 +215,31 @@ export function guide(
     default:
       return { show: 'route', say: step.say, action };
   }
+}
+
+type SelectStep = Extract<Step, { kind: 'select' }>;
+
+/**
+ * Finds a row that selects the step's subject under a key other than its own: a tree shot row is
+ * keyed by scene and shot, and in Documents mode a file is selected by the character or scene row
+ * that holds it.
+ * The step is unmet whenever it is shown, so every such row publishes the subject's field.
+ */
+function publisher(live: LiveAnchors, step: SelectStep, from?: AnchorHome): Resolution {
+  const subject = subjectOf(step.itemKind);
+  if (!subject) return { state: 'absent' };
+  const field = subject.path.slice('ui.'.length);
+  const selects = (anchor: Anchor): boolean =>
+    anchor.id === uiPublish.id && anchor.props[field] === step.key;
+  const found =
+    live.anchors.find((anchor) => anchor.editor === from && selects(anchor)) ??
+    live.anchors.find(selects);
+  if (!found) return { state: 'absent' };
+  if ((live.offscreen ?? []).includes(found.key)) return { state: 'offscreen', anchor: found };
+  if (!found.enabled) {
+    return { state: 'disabled', anchor: found, reason: found.reason ?? UNSELECTABLE };
+  }
+  return { state: 'ready', anchor: found };
 }
 
 /**

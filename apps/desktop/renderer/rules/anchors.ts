@@ -237,6 +237,9 @@ export interface AnchorMap {
 /** What a greyed control is reported as when its own rule left no sentence behind. */
 export const UNAVAILABLE = 'This is not available here.';
 
+/** What a greyed row is reported as when a tour asks the author to select it. */
+export const UNSELECTABLE = 'This cannot be selected.';
+
 export const commandKey = (id: string): string => `cmd:${id}`;
 
 /**
@@ -396,7 +399,7 @@ export function resolveItem(live: LiveAnchors, kind: string, key: string): Resol
   if (!anchor) return { state: 'absent' };
   if ((live.offscreen ?? []).includes(anchor.key)) return { state: 'offscreen', anchor };
   if (!anchor.enabled) {
-    return { state: 'disabled', anchor, reason: anchor.reason ?? 'This cannot be selected.' };
+    return { state: 'disabled', anchor, reason: anchor.reason ?? UNSELECTABLE };
   }
   return { state: 'ready', anchor };
 }
