@@ -261,6 +261,12 @@ Three commits, each green under `pnpm check`, `pnpm test` and `pnpm lint`.
 
 ### Commit 1 — the Documents redraw key
 
+Status: **done.** Verified in the running app on a copy of the sample project. The sample
+has graphs but no graph-bound shot, and the Gen Graph pane follows `ui.graphSlug` without
+writing it, so the graph was changed with `view.open(editor='gengraph' subject=…)`. The
+tree's graph-row offers moved to the new slug; a build without the line left them on the
+old one.
+
 - `pathux/editors/documents.ts`: add `ui.graphSlug` to `stateKey()`.
 - No anchor sweep: `stateKey` only decides when the pane redraws, and no offer, key or tag
   changes.

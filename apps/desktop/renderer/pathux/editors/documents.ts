@@ -303,6 +303,7 @@ export class DocumentsEditor extends VnEditor {
       ui.characterId,
       ui.docPath,
       ui.assetHash,
+      ui.graphSlug,
     ].join('|');
   }
 
