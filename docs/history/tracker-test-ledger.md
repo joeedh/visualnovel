@@ -1,5 +1,21 @@
 # Tracker rollout test ledger
 
+<!-- toc -->
+
+- [Commit validation, 2026-10-23](#commit-validation-2026-10-23)
+- [Real-drag watcher reproduction follow-up](#real-drag-watcher-reproduction-follow-up)
+- [Watcher fallback investigation](#watcher-fallback-investigation)
+- [Final consolidation review](#final-consolidation-review)
+- [Narrow bubble save follow-up](#narrow-bubble-save-follow-up)
+    - [Undo queue race fix](#undo-queue-race-fix)
+    - [Exploratory live stress run (no permanent test added)](#exploratory-live-stress-run-no-permanent-test-added)
+- [Bubble save breakdown follow-up](#bubble-save-breakdown-follow-up)
+- [Editor-open prewarming follow-up](#editor-open-prewarming-follow-up)
+- [Background initialization follow-up](#background-initialization-follow-up)
+- [Original whitelist rollout](#original-whitelist-rollout)
+
+<!-- tocstop -->
+
 Scope: opt-in command whitelist, reusable per-file provenance, commit invalidation, and
 races. Each new test will be listed here with its purpose and final review decision.
 

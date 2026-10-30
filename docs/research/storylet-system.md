@@ -1,5 +1,29 @@
 # Architecture Specification: Verified Systemic Narrative Engine (SNE)
 
+<!-- toc -->
+
+- [Executive Summary](#executive-summary)
+- [1. Core Data Model & Execution Graph](#1-core-data-model--execution-graph)
+    - [1.1 Structural Primitives](#11-structural-primitives)
+    - [1.2 Storylet Specification](#12-storylet-specification)
+- [2. Compile-Time Verification & Mutation Analysis](#2-compile-time-verification--mutation-analysis)
+    - [2.1 Graph Invariant Checking](#21-graph-invariant-checking)
+    - [2.2 Patch Analysis on Narrative Mutations](#22-patch-analysis-on-narrative-mutations)
+- [3. Runtime Decision Model & Dynamic Scheduling](#3-runtime-decision-model--dynamic-scheduling)
+    - [3.1 Model Architecture](#31-model-architecture)
+    - [3.2 Telemetry-Driven Reinforcement Learning](#32-telemetry-driven-reinforcement-learning)
+- [4. Authoring Suite: Persona Inversion & Trajectory Distillation](#4-authoring-suite-persona-inversion--trajectory-distillation)
+    - [4.1 Upstream Trajectory Synthesis](#41-upstream-trajectory-synthesis)
+    - [4.2 Non-Prescriptive Dossier Specification](#42-non-prescriptive-dossier-specification)
+        - [Sample Node Dossier](#sample-node-dossier)
+- [5. Structural Comparison](#5-structural-comparison)
+- [6. Implementation Roadmap](#6-implementation-roadmap)
+    - [Phase 1: Core Framework & Schema Standardization](#phase-1-core-framework--schema-standardization)
+    - [Phase 2: Authoring Environment & Inversion Tool](#phase-2-authoring-environment--inversion-tool)
+    - [Phase 3: Runtime Decision Model & Offline RL Pipeline](#phase-3-runtime-decision-model--offline-rl-pipeline)
+
+<!-- tocstop -->
+
 ## Executive Summary
 
 Traditional AAA interactive narrative pipelines rely on hardcoded branching trees, bespoke
