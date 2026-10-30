@@ -536,7 +536,7 @@ Graphs are documents that people author, and commands are the only way to write 
   writer (workspace.ts:275) gains `work/graphs/*.json -merge` and
   `work/graphs/lib/*.json -merge`, and refuses a conflicted graph by name the way layout
   templates are refused.
-- New command file apps/desktop/src/main/commands/gengraph.ts: `gengraph.create`,
+- New command file apps/desktop/src/main/commands/pipeline/gengraph.ts: `gengraph.create`,
   `gengraph.delete`, `gengraph.addNode`, `gengraph.removeNode`, `gengraph.link`,
   `gengraph.unlink`, `gengraph.setProp`, `gengraph.setActiveOutput` (sets decision 5's
   active flag, which is document state, so it is undoable and diffable), `gengraph.apply`

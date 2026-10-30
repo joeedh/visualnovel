@@ -322,7 +322,8 @@ paragraph that presents "one app instance per window" as the design. Include tha
 Two processes may share an install, but they never share a project.
 
 **Files:** `src/main/index.ts`, new `src/main/instancelock.ts`,
-`src/main/commands/workspace.ts`, `scripts/vndesktop.mjs`, `docs/desktopAppState.md`.
+`src/main/commands/project/workspace.ts`, `scripts/vndesktop.mjs`,
+`docs/desktopAppState.md`.
 
 ### Step 1 — a window registry and routed effects
 
@@ -400,7 +401,7 @@ lands, a second window would work if anything created one.
   the windows from that key at launch. Bounds are clamped against
   `screen.getAllDisplays()` before use.
 
-**Files:** `renderer/pathux/persist.ts`, `src/main/commands/view.ts`,
+**Files:** `renderer/pathux/persist.ts`, `src/main/commands/shell/view.ts`,
 `src/main/windows.ts`, `src/main/index.ts`.
 
 ### Step 3 — the vocabulary
@@ -420,8 +421,8 @@ lands, a second window would work if anything created one.
   `window.new(editor=… subject=…)` followed by `view.close` in the source window. This
   uses two commands (both already refusable) rather than a bespoke move.
 
-**Files:** new `src/main/commands/window.ts`, `src/main/commands/index.ts`,
-`src/shared/editors.ts`, `src/main/commands/view.ts`, `renderer/pathux/view.ts`,
+**Files:** new `src/main/commands/shell/window.ts`, `src/main/commands/index.ts`,
+`src/shared/editors.ts`, `src/main/commands/shell/view.ts`, `renderer/pathux/view.ts`,
 `renderer/pathux/bridge.ts`, `renderer/pathux/editors/header.ts`,
 `renderer/pathux/keymap.ts`.
 

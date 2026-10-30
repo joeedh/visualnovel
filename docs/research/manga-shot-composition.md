@@ -317,13 +317,13 @@ whose P3 character gate has not opened reports zero shot tasks. The contract in
 number an author sees before approving differs from the number they will pay.
 
 There is no price per image anywhere in the repository. `costPreview` returns call counts,
-the desktop equivalent in apps/desktop/src/main/commands/pipeline.ts prints the same
-counts, and the only money-adjacent constants in the tree are the authoring agent's token
-budget ladder in packages/types/src/budget.ts. The author therefore cannot convert a 3× or
-a 6× into currency inside the app. [`a-less-technical-mode.md`](a-less-technical-mode.md)
-reached the same conclusion from a different direction and called it "the accelerator
-before the fuel gauge". A change that multiplies image calls is the strongest argument yet
-for a price table.
+the desktop equivalent in apps/desktop/src/main/commands/pipeline/pipeline.ts prints the
+same counts, and the only money-adjacent constants in the tree are the authoring agent's
+token budget ladder in packages/types/src/budget.ts. The author therefore cannot convert a
+3× or a 6× into currency inside the app.
+[`a-less-technical-mode.md`](a-less-technical-mode.md) reached the same conclusion from a
+different direction and called it "the accelerator before the fuel gauge". A change that
+multiplies image calls is the strongest argument yet for a price table.
 
 ## Which contracts survive and which are strained
 

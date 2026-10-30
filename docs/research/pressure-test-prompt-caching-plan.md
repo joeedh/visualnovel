@@ -422,8 +422,8 @@ single hash over that string cannot distinguish:
 - `update_context` appending one `- <rule>` bullet to `AICONTEXT.md`
   (packages/authoring/src/context.ts:172-184), a delta of about 40 bytes; from
 - `workspace.reindex` rewrites `AICONTEXT.generated.md` wholesale
-  (apps/desktop/src/main/commands/workspace.ts:248-271), so the delta covers the whole
-  file.
+  (apps/desktop/src/main/commands/project/workspace.ts:248-271), so the delta covers the
+  whole file.
 
 Both flip the hash identically, so "carrying the new context" means re-sending the whole
 composed string — including the 3,384-character `SYSTEM_PROMPT` that never changed — for a

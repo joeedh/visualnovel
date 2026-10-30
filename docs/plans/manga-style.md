@@ -278,8 +278,8 @@ The following implementation details have been validated against the codebase:
     sheet once per group. Under a bound graph the shot's own `seed` rung does not apply,
     which is already true of every bound graph today. `gengraph.scaffoldSheet` generates
     this graph structure, following `createForSlot`/`planForSlot`/`claimOf`
-    (`apps/desktop/src/main/commands/gengraph.ts:212-315`) and refusing when any member
-    slot already has a claim. The per-member chain (`GenCrop` → `GenRefList` →
+    (`apps/desktop/src/main/commands/pipeline/gengraph.ts:212-315`) and refusing when any
+    member slot already has a claim. The per-member chain (`GenCrop` → `GenRefList` →
     `GenTemplate` → `GenImage`) is written once as a group definition,
     `lib/sheet-cell.json`, on the project's first scaffold, and instanced per member with
     the cell rectangle and index as overrides; the outputs stay at the root because an

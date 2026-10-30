@@ -277,16 +277,16 @@ pane lists files only, as before.
 
 ## Where it lives
 
-| Piece                                                                                           | Where                                                                                                      |
-| ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Shapes (`DocNode`, `EntityLinks`, `DocTree`)                                                    | `apps/desktop/src/shared/ipc.ts`                                                                           |
-| The projection (`buildDocTree`, `fileTree`) — pure                                              | `apps/desktop/src/main/doctree/doctree.ts`                                                                 |
-| Asset display names (`assetLabel`, `labelAssets`) — pure                                        | `apps/desktop/src/main/assets/assetlabel.ts`                                                               |
-| The reads (one `loadProject`, one `readShots` per scene, `bible.files()`, one `discoverSkills`) | `WorkspaceSession.docTree()` / `.fileTree()`                                                               |
-| The skills walk (`walkFiles` under each skill, across the three tiers)                          | `WorkspaceSession.skillTree()`                                                                             |
-| File commands (`doc.mkdir`, `doc.newFile`, `doc.move`, `doc.copy`)                              | `apps/desktop/src/main/commands/docfiles.ts`, over `FilesPart` in `apps/desktop/src/main/session/files.ts` |
-| Channels                                                                                        | `workspace:doctree`, `workspace:filetree`, `workspace:skilltree`                                           |
-| Commands                                                                                        | `workspace.doctree`, `workspace.filetree`, `workspace.skilltree` (non-mutating, no props)                  |
+| Piece                                                                                           | Where                                                                                                           |
+| ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Shapes (`DocNode`, `EntityLinks`, `DocTree`)                                                    | `apps/desktop/src/shared/ipc.ts`                                                                                |
+| The projection (`buildDocTree`, `fileTree`) — pure                                              | `apps/desktop/src/main/doctree/doctree.ts`                                                                      |
+| Asset display names (`assetLabel`, `labelAssets`) — pure                                        | `apps/desktop/src/main/assets/assetlabel.ts`                                                                    |
+| The reads (one `loadProject`, one `readShots` per scene, `bible.files()`, one `discoverSkills`) | `WorkspaceSession.docTree()` / `.fileTree()`                                                                    |
+| The skills walk (`walkFiles` under each skill, across the three tiers)                          | `WorkspaceSession.skillTree()`                                                                                  |
+| File commands (`doc.mkdir`, `doc.newFile`, `doc.move`, `doc.copy`)                              | `apps/desktop/src/main/commands/docs/docfiles.ts`, over `FilesPart` in `apps/desktop/src/main/session/files.ts` |
+| Channels                                                                                        | `workspace:doctree`, `workspace:filetree`, `workspace:skilltree`                                                |
+| Commands                                                                                        | `workspace.doctree`, `workspace.filetree`, `workspace.skilltree` (non-mutating, no props)                       |
 
 It sits in the desktop's main process rather than `@vn/authoring` because the walk needs
 `AssetStore` and the persisted storyboards (neither of which `Workspace` opens), and

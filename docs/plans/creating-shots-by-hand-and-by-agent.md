@@ -283,8 +283,8 @@ also say that a hand-made first shot ends that signal. The sentence appears in:
   stays true;
 - `packages/scriptedit/src/shotfallout.ts` — the emptied-scene comment becomes one of two
   callers that take the same approach;
-- `apps/desktop/src/main/commands/story.ts` — `story.decomposeAll`'s `description`, which
-  an author reads in the palette;
+- `apps/desktop/src/main/commands/story/story.ts` — `story.decomposeAll`'s `description`,
+  which an author reads in the palette;
 - `templates/basic/.aiagent/skills/full-production/SKILL.md` — holds the skill's copy of
   the contract, beside the "You cannot make shots" section that Part C rewrites;
 - `packages/export/src/playable.ts` — the comment naming "`@vn/pipeline`'s

@@ -9,7 +9,7 @@ import { coerceProps, type CommandContext } from '@vn/commands';
 import { createDesktopInteractions } from '../../shared/interactions.js';
 import { TOURS, type Tour } from '../../shared/tours.js';
 import { createDesktopRegistry } from '../commands/index.js';
-import { tourStart } from '../commands/tour.js';
+import { tourStart } from '../commands/shell/tour.js';
 import type { CommandHost } from '../commands/host.js';
 
 const registry = createDesktopRegistry();

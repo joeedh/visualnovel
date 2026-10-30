@@ -66,10 +66,11 @@ Two consequences follow, and both change the shape of the UI:
 - Errors name the source and never the value —
   `missing ${name} API key: set $${envName} or place ${file} in a keys/ dir`
   (`keys.ts:92`).
-- `project.setKey` — apps/desktop/src/main/commands/project.ts:62. `mutating: true`,
-  `undoable: false` (an undo point is a git snapshot, and snapshotting a credential is the
-  one thing this command exists to avoid), props `provider: prop.oneOf(KEY_VENDORS)` and
-  `key: prop.secret(...)`. `check` calls `session.previewKey` (session.ts:1622).
+- `project.setKey` — apps/desktop/src/main/commands/project/project.ts:62.
+  `mutating: true`, `undoable: false` (an undo point is a git snapshot, and snapshotting a
+  credential is the one thing this command exists to avoid), props
+  `provider: prop.oneOf(KEY_VENDORS)` and `key: prop.secret(...)`. `check` calls
+  `session.previewKey` (session.ts:1622).
 - `WorkspaceSession.setKey` (`session.ts:1636`) trims, calls
   `ensureIgnored(dir, ['keys'])` before it writes anything, then writes
   `keys/<secretFileFor(vendor)>` atomically. It deliberately reports
@@ -145,9 +146,9 @@ version (packages/types/src/notifications.ts:51), and `adoptGitAttributes` sets
 file, and they are filed from main's single `onRecord` hook
 (apps/desktop/src/main/index.ts:401-417). The log sits outside undo, because `vngen/state`
 is excluded from `UNDO_PATHS` (index.ts:339). Reads go over a plain IPC channel
-(`notify:list`), while every mutation is a command (main/commands/notify.ts). Changes
-reach the renderer over `notify:changed`, land in a `ShellState` field, pass through
-`stateKey()`, and show up on the bell badge.
+(`notify:list`), while every mutation is a command (main/commands/shell/notify.ts).
+Changes reach the renderer over `notify:changed`, land in a `ShellState` field, pass
+through `stateKey()`, and show up on the bell badge.
 
 A usage ledger requires all of that except the byte-offset flag patching. No part of a
 usage record is ever edited in place, so the ledger needs none of `setNotificationFlags`'

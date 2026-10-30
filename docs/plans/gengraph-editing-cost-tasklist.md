@@ -19,11 +19,11 @@ plans are, why they are separate, and what order they can be taken in.
 One node property edit runs one command, and that command does four things. Three of those
 four steps run whether or not the author is dragging.
 
-- **A read.** `decide()` in apps/desktop/src/main/commands/gengraph.ts:49 reads the graph
-  from disk on every edit by calling `readGraph(ctx.root, slug, ctx.git)`, including on
-  `check` during a drag.
+- **A read.** `decide()` in apps/desktop/src/main/commands/pipeline/gengraph.ts:49 reads
+  the graph from disk on every edit by calling `readGraph(ctx.root, slug, ctx.git)`,
+  including on `check` during a drag.
 - **A write.** `edit()` writes the whole graph JSON back
-  (`apps/desktop/src/main/commands/gengraph.ts:79`).
+  (`apps/desktop/src/main/commands/pipeline/gengraph.ts:79`).
 - **Seven or more git invocations.** `packages/commands/src/stack.ts:131` awaits the
   commit inline in the command's execution path, and `packages/commands/src/commit.ts:89`
   passes `paths: ['-A']`, covering the whole worktree with no exclusions and never

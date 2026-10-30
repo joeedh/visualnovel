@@ -36,7 +36,7 @@ The following is worth stating, because it is most of the plan:
   the two-oracle comparison in §9 costs nothing to run.
 - `interaction.targets` resolves only from the same `targets` a drop calls, and
   `Verdict.invoke` holds `{id, props}`, which is an `Action`
-  (src/main/commands/interaction.ts:36, src/shared/interactions.ts:50).
+  (src/main/commands/shell/interaction.ts:36, src/shared/interactions.ts:50).
 - §4's premise about label stability is exactly right. `labelAssets` appends `(hash8)`
   only when two assets resolve to the same words (src/main/assetlabel.ts:98).
 - The file paths in §12 are correct. The `@vn/desktop` jest project matches

@@ -80,6 +80,22 @@ which supplies the `Git` type it uses to read HEAD.
 pipeline and authoring branches. Each definition is a thin wrapper over a session method
 that already existed, so registering a command required moving no logic.
 
+The folder is split by what a command works on. Each group's `index.ts` exports an array
+of its commands, and `commands/index.ts` spreads the arrays into the registry, so a new
+command is registered by adding it to its group's array.
+
+- `story/`: `story.*`, `character.*`, `location.*`, `gate.*`, `bible.*`.
+- `assets/`: `asset.*`, `art.*`, `prompt.*`, `upload.*`.
+- `pipeline/`: `pipeline.*`, `gengraph.*`, `agent.*`.
+- `project/`: `project.*`, `workspace.*`, `skill.*`, `models.*`, `plugin.*`.
+- `docs/`: `doc.*` (document tree and file operations).
+- `vcs/`: `git.*`.
+- `shell/`: the app's own chrome: `app.*`, `window.*`, `view.*`, `notify.*`, `tour.*`,
+  `interaction.*`, `report.*`, `command.*`.
+- `helpers/`: shared code that registers no commands (`removals.ts`, `syncstate.ts`).
+- `catalog/`: build-time projections of the registry into JSON and docs; not commands.
+- `host.ts` (the `CommandHost` every group shares) and `tests/` stay at the top level.
+
 `@vn/commands` deliberately mirrors `@vn/authoring`'s `Tool` registry. The two serve
 different purposes. A `Tool` is advertised to an LLM and is gated by the agent's
 plan/execute mode. A `Command` belongs to the app's own vocabulary and is recorded on a
@@ -835,9 +851,9 @@ rewrites and refusals; the session writes the plan through `deleteEntity` or `ed
 - **Where the app does not commit, removing asks first.** These three, `doc.delete`,
   `story.deleteLine`, `story.deleteLines`, `story.mergeScene`, `story.deleteShot` and
   `gengraph.delete` declare `confirmWhen` through `askBeforeRemoving`
-  (`src/main/commands/removals.ts`). When the run would remove a file and the app does not
-  own the project's repository, it asks with a sentence saying the removal can be undone
-  only until the app closes.
+  (`src/main/commands/helpers/removals.ts`). When the run would remove a file and the app
+  does not own the project's repository, it asks with a sentence saying the removal can be
+  undone only until the app closes.
 
 ### The `prompt.` namespace
 

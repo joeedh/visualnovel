@@ -573,39 +573,39 @@
       "auditedAt": "2026-08-20T19:36:22.693Z",
       "blob"     : "413378efa41c1a4c2b1f5d7177dfce40b6a2096c"
     },
-    "apps/desktop/src/main/commands/agent.ts": {
+    "apps/desktop/src/main/commands/pipeline/agent.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
       "blob"     : "33ab7a4b3f9c6ce9bf5e16348f4008fcac43cbfb"
     },
-    "apps/desktop/src/main/commands/app.ts": {
+    "apps/desktop/src/main/commands/shell/app.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
       "blob"     : "9e7232e987d0efb423397bb6ec7acc3050e8de68"
     },
-    "apps/desktop/src/main/commands/art.ts": {
+    "apps/desktop/src/main/commands/assets/art.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
       "blob"     : "dc53ddac807dc73022377224ccd0d0e336f81a3d"
     },
-    "apps/desktop/src/main/commands/asset.ts": {
+    "apps/desktop/src/main/commands/assets/asset.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
       "blob"     : "9c09b4f4b9c13db11ff6c6c3c43f4509b83da107"
     },
-    "apps/desktop/src/main/commands/bible.ts": {
+    "apps/desktop/src/main/commands/story/bible.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
       "blob"     : "658273a3c85ea638d0711542f9f4f4a28ad58cd4"
     },
-    "apps/desktop/src/main/commands/catalog-entry.ts": {
+    "apps/desktop/src/main/commands/catalog/catalog-entry.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
       "blob"     : "5aa0fc896ffb72a7728362b6b19fe5e80da55932"
     },
-    "apps/desktop/src/main/commands/command.ts": {
+    "apps/desktop/src/main/commands/shell/command.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
       "blob"     : "ecd2ea95b702f0c99948f5e00208e7414db5cae0"
     },
-    "apps/desktop/src/main/commands/doc.ts": {
+    "apps/desktop/src/main/commands/docs/doc.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
       "blob"     : "130c410585bcf1b475469ed3199296165e714afc"
     },
-    "apps/desktop/src/main/commands/gate.ts": {
+    "apps/desktop/src/main/commands/story/gate.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
       "blob"     : "e34809aebfd4b8f5b66bad772a3b4b8ea916cc10"
     },
@@ -617,31 +617,31 @@
       "auditedAt": "2026-08-20T19:36:22.693Z",
       "blob"     : "6267b1c1fac73e20d328ba83159a43e9d33e469f"
     },
-    "apps/desktop/src/main/commands/interaction.ts": {
+    "apps/desktop/src/main/commands/shell/interaction.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
       "blob"     : "7485676cc5b3e4be1afd801116cb4a8eff55ac41"
     },
-    "apps/desktop/src/main/commands/notify.ts": {
+    "apps/desktop/src/main/commands/shell/notify.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
       "blob"     : "eb4f82af9dc4edd1c3907014c3f89e00ef42ce6e"
     },
-    "apps/desktop/src/main/commands/pipeline.ts": {
+    "apps/desktop/src/main/commands/pipeline/pipeline.ts": {
       "auditedAt": "2026-08-22T16:45:30.857Z",
       "blob"     : "0c07307a765f5cca9de6110bc322095990686b44"
     },
-    "apps/desktop/src/main/commands/project.ts": {
+    "apps/desktop/src/main/commands/project/project.ts": {
       "auditedAt": "2026-08-22T16:38:16.563Z",
       "blob"     : "d684742896f9e05c09360e8b6ee6fb237c44a962"
     },
-    "apps/desktop/src/main/commands/prompt.ts": {
+    "apps/desktop/src/main/commands/assets/prompt.ts": {
       "auditedAt": "2026-08-22T16:51:25.494Z",
       "blob"     : "e7cee644ef0717025058b199c06f4d2652d9f45c"
     },
-    "apps/desktop/src/main/commands/report.ts": {
+    "apps/desktop/src/main/commands/shell/report.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
       "blob"     : "3631ac480e6cc8c4e826f9d2a9fc9d4e7cab6090"
     },
-    "apps/desktop/src/main/commands/story.ts": {
+    "apps/desktop/src/main/commands/story/story.ts": {
       "auditedAt": "2026-08-20T19:36:22.693Z",
       "blob"     : "d96fc81376d9fb31697b565b22a3e9608a4ce478"
     },
@@ -661,19 +661,19 @@
       "auditedAt": "2026-08-20T19:36:24.209Z",
       "blob"     : "a8381f8b7c5f57da79d6371b10c143983906c351"
     },
-    "apps/desktop/src/main/commands/upload.ts": {
+    "apps/desktop/src/main/commands/assets/upload.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
       "blob"     : "15ee0269a40d243c7adb5dee398785ac1c1e0e03"
     },
-    "apps/desktop/src/main/commands/view.ts": {
+    "apps/desktop/src/main/commands/shell/view.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
       "blob"     : "13cc6639576eed6d226ea909f6ccf7bad9aea5fe"
     },
-    "apps/desktop/src/main/commands/window.ts": {
+    "apps/desktop/src/main/commands/shell/window.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
       "blob"     : "e26038c5398264f3db235c29fdbe433028bc54f9"
     },
-    "apps/desktop/src/main/commands/workspace.ts": {
+    "apps/desktop/src/main/commands/project/workspace.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
       "blob"     : "cb0e1a326fceb1b0cebf89715eb1e943bd60dae3"
     },

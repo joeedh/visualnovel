@@ -2,7 +2,7 @@
  * When a requeue runs the pipeline by itself. The act this decision guards spends a real image
  * call, so the decision is pinned here rather than left to a live run.
  */
-import { autoRunReason } from '../asset.js';
+import { autoRunReason } from '../assets/asset.js';
 
 const alone = { pending: 1, blockedOnGate: false, keyError: null };
 

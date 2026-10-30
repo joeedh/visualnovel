@@ -157,7 +157,7 @@ fast on retries at fast speed and never mutates the request.
 
 ### 4. The command
 
-`apps/desktop/src/main/commands/agent.ts`:
+`apps/desktop/src/main/commands/pipeline/agent.ts`:
 
 ```ts
 export const agentSetFast = define({

@@ -33,8 +33,8 @@ are decoded, and what confirming an entry runs.
 
 The picker takes a snapshot of the manifest when it opens, in one command round trip.
 
-- `asset.list` (`apps/desktop/src/main/commands/asset.ts`) is read-only and takes no
-  props. It returns the whole manifest as `AssetListing[]`.
+- `asset.list` (`apps/desktop/src/main/commands/assets/asset.ts`) is read-only and takes
+  no props. It returns the whole manifest as `AssetListing[]`.
 - `WorkspaceSession.assetLibrary` builds those rows. `labelAssets`
   (`apps/desktop/src/main/assets/assetlabel.ts`) resolves the display name over the whole
   manifest at once. The document tree draws those same names, so the picker shows a
@@ -125,7 +125,7 @@ Three limits are deliberate, not unfinished work.
 
 | Path                                                   | What it holds                                       |
 | ------------------------------------------------------ | --------------------------------------------------- |
-| `apps/desktop/src/main/commands/asset.ts`              | `asset.list`                                        |
+| `apps/desktop/src/main/commands/assets/asset.ts`       | `asset.list`                                        |
 | `apps/desktop/src/main/session.ts`                     | `assetLibrary`, over `labelAssets`                  |
 | `apps/desktop/src/shared/ipc.ts`                       | `AssetListing`                                      |
 | `apps/desktop/renderer/pathux/assets/assetthumb.ts`    | `assetThumbUrl`, `loadAssetThumb`, `galleryItem`    |

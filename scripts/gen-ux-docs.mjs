@@ -18,7 +18,7 @@ const OUT = resolve(root, 'apps/desktop/dist/ux');
 const model = await loadEntry('apps/desktop/renderer/rules/model-entry.ts', 'model');
 const anchors = JSON.parse(await fs.readFile(resolve(root, 'apps/desktop/anchors.json'), 'utf8'));
 const pages = await loadEntry(
-  'apps/desktop/src/main/commands/uxdocs-entry.ts',
+  'apps/desktop/src/main/commands/catalog/uxdocs-entry.ts',
   'uxPages',
   model,
   anchors,

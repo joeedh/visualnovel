@@ -415,15 +415,15 @@ give the same answer.
 returns the rule's result widened with `coverage` and `written`. It returns that shape
 because `story.setOutfit` returns
 `{ message, data: result.coverage, written: result.written }`
-(apps/desktop/src/main/commands/story.ts:630-633), and the new command must return the
-same shape so the Coverage editor can refresh from it.
+(apps/desktop/src/main/commands/story/story.ts:630-633), and the new command must return
+the same shape so the Coverage editor can refresh from it.
 
 **Shot fallout does not apply.** `packages/scriptedit/src/shotfallout.ts` exists for prose
 edits that move or delete the lines a shot covers. A variant change touches neither
 `coversLines` nor `proseHash`, so no fallout is computed and none is reported.
 
-**3. `apps/desktop/src/main/commands/story.ts` gains `story.setVariant`**, wrapping that
-session method the way `storySetOutfit` does (story.ts:611-634), with a `check` that
+**3. `apps/desktop/src/main/commands/story/story.ts` gains `story.setVariant`**, wrapping
+that session method the way `storySetOutfit` does (story.ts:611-634), with a `check` that
 returns the rule's verdict, so a greyed control and the command refuse for the same
 reason.
 
@@ -452,7 +452,7 @@ changes it.
 ### What happens
 
 `agent.run` returns the agent's whole reply as the command's message at
-apps/desktop/src/main/commands/agent.ts:36:
+apps/desktop/src/main/commands/pipeline/agent.ts:36:
 `return { message: result.final, data: result };`. `CommandOutput.message` is
 contractually "Human-readable one-liner for the history and the feed"
 (packages/commands/src/command.ts:44-45), and `Committer.commit` passes that message
@@ -533,7 +533,7 @@ return this.run(
 );
 ```
 
-**`apps/desktop/src/main/commands/agent.ts:36`**:
+**`apps/desktop/src/main/commands/pipeline/agent.ts:36`**:
 
 ```ts
 return { message: result.final, subject: `Agent turn: ${input}`, data: result };

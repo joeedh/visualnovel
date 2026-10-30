@@ -10,7 +10,7 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { uxCatalogs, uxPages } from '../commands/uxdocs-entry.js';
+import { uxCatalogs, uxPages } from '../commands/catalog/uxdocs-entry.js';
 import { EFFECT_IDS } from '../../shared/effects.js';
 import { UX_MODEL } from '../../shared/uxmodel.js';
 import { fold, pagePath, render, UX_ANCHORS, type UxPage } from '../../shared/uxdocs.js';

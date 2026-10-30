@@ -6,7 +6,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { desktopEffects } from '../commands/catalog-entry.js';
+import { desktopEffects } from '../commands/catalog/catalog-entry.js';
 import { createDesktopRegistry } from '../commands/index.js';
 import {
   actionProblems,

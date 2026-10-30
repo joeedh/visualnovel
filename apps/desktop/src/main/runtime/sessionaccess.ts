@@ -4,7 +4,7 @@
  */
 import { app, clipboard, shell } from 'electron';
 import { DEFAULT_BUDGET, type BudgetChoice } from '@vn/types';
-import { BUDGET_KEY } from '../commands/agent.js';
+import { BUDGET_KEY } from '../commands/pipeline/agent.js';
 import type { AppContext } from './context.js';
 import { WorkspaceSession, type SessionDeps } from '../session.js';
 import { SessionStore } from '../workspace/sessionstore.js';

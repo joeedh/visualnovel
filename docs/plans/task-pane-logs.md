@@ -123,9 +123,9 @@ The schema is zod, in `packages/types/src/tasks.ts`, beside `Task`. Every entry 
 ### Command `affects`
 
 `pipeline.run` and `pipeline.draw`
-(`apps/desktop/src/main/commands/pipeline.ts:37-44, :101, :118-125, :150-155`) and the
-asset command at `asset.ts:345, :373` declare exact state subtrees in `affects` and
-`written`. Add `vngen/state/tasklogs` to each, add it to the closed vocabulary in
+(`apps/desktop/src/main/commands/pipeline/pipeline.ts:37-44, :101, :118-125, :150-155`)
+and the asset command at `asset.ts:345, :373` declare exact state subtrees in `affects`
+and `written`. Add `vngen/state/tasklogs` to each, add it to the closed vocabulary in
 `src/shared/affects.ts` if needed, and regenerate `command-table.md` /
 `command-namespaces.md`.
 

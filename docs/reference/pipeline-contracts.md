@@ -808,7 +808,7 @@ These implement the system design in
     - Duplicate and dangling marks are `error` diagnostics.
     - Allocation happens in memory. Loading a project never allocates.
     - The `story.assignLineIds` command persists the ids (undoable,
-      `apps/desktop/src/main/commands/story.ts` over `assignLineIds` in
+      `apps/desktop/src/main/commands/story/story.ts` over `assignLineIds` in
       `packages/model/src/lineids.ts`). It patches surgically, adding only whole marker
       lines and re-parsing its own output, and it discards the patch unless the re-parse
       reproduces the same scenes line for line. A note inserted above a `CHARACTER` cue

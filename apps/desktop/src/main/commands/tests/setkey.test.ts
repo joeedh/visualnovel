@@ -2,7 +2,7 @@
  * `project.setKey`'s check refuses while the session is busy, because the save would otherwise sit
  * in the mutation queue behind the run and look as though pressing Save key did nothing.
  */
-import { projectSetKey } from '../project.js';
+import { projectSetKey } from '../project/project.js';
 import type { CommandContext } from '@vn/commands';
 import type { CommandHost } from '../host.js';
 

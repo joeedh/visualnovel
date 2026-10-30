@@ -96,7 +96,7 @@ follows the author's vocabulary or the engineer's is the first open question at 
   `docs/research/git-library-vs-git-process.md:174-181`).
 - Every worktree-changing git command refuses while the session is busy, on the pattern
   `project.installPages` already uses
-  (`apps/desktop/src/main/commands/project.ts:462-463`).
+  (`apps/desktop/src/main/commands/project/project.ts:462-463`).
 - The agent gets tool wrappers for reads, checkpoints and the two per-file or per-save
   recoveries it already has (`git_restore`, `git_revert`). It gets no wrapper for
   whole-tree restore, push, pull or conflict resolution.
@@ -162,7 +162,8 @@ Three kinds of commit in an author's project carry no trailer at all:
   own sentence and nothing marks the commit as agent-written.
 
 The last point matters for the pane. In the desktop app, `agent.run` is `mutating` and
-does not declare `commitsItself` (`apps/desktop/src/main/commands/agent.ts:20-44`;
+does not declare `commitsItself`
+(`apps/desktop/src/main/commands/pipeline/agent.ts:20-44`;
 `docs/plans/archive/deferring-commit-on-save.md:48-54` records that no shipped command
 sets it). One agent turn therefore produces up to two commits: the tool's own commit for
 the plan, with no trailers, and then the committer's `-A` commit of whatever the turn left
@@ -216,8 +217,8 @@ it happens, rather than leaving the header's undo arrow to refuse later.
   owns (`repos-and-commits.md:29-67`).
 - The app never pushes (`docs/guides/github-pages.md:34`). `project.installPages` writes a
   workflow and tells the author to push from elsewhere
-  (`apps/desktop/src/main/commands/project.ts:398-406`). Its `check` refuses when the
-  session is busy, when there is no repo, no branch, or no `origin`
+  (`apps/desktop/src/main/commands/project/project.ts:398-406`). Its `check` refuses when
+  the session is busy, when there is no repo, no branch, or no `origin`
   (`project.ts:352-375`), which is the shape every git write in the pane should copy.
 - On a machine without git the app opens read-only and files a durable note
   (`workspacelifecycle.ts:242-249`; `apps/desktop/src/main/bootstrap/doctor.ts:19`, `69`).
@@ -254,7 +255,7 @@ it happens, rather than leaving the header's undo arrow to refuse later.
   and at most one control (`apps/desktop/renderer/styles/wiki.css:82-142`). The header's
   note frame is the only `noteframe-x` on screen (`editor.ts:163-171`), reached through
   `say()`; durable notices go to the bell through `notify()`
-  (`apps/desktop/src/main/commands/project.ts:22`, `398-406`).
+  (`apps/desktop/src/main/commands/project/project.ts:22`, `398-406`).
 - The design tokens are fixed: `--sodium` is the warm accent for the authored side,
   `--signal` the cool accent for the machine side, `--jade` and `--vermilion` for
   outcomes, the `--ink*` ramp for surfaces, and `--sans`/`--prose`/`--mono` for type. No
@@ -574,9 +575,9 @@ unsent save. The owner chose rebase (2026-09-20). What that buys and costs:
 
 ## The command set
 
-Every command lives in `apps/desktop/src/main/commands/git.ts`, is a thin wrapper over a
-session method, and follows the existing definition shape (`command.ts:59-117`). `repo` is
-a `prop.oneOf(['project', 'wiki', 'base'])` with default `project`, resolved against
+Every command lives in `apps/desktop/src/main/commands/vcs/git.ts`, is a thin wrapper over
+a session method, and follows the existing definition shape (`command.ts:59-117`). `repo`
+is a `prop.oneOf(['project', 'wiki', 'base'])` with default `project`, resolved against
 `Workspace.repos()`. Every mutating command declares `check`, and every check refuses
 first on `session.busy()` (`apps/desktop/src/main/session/core.ts:878-880`), then on
 `owned: false`, then on its own conditions.
@@ -888,7 +889,7 @@ implementation plan; each is a requirement the pane depends on.
 | `rewrote: {from, to}[]` on `CommandRecord`, written by `git.pull`                                                                           | `packages/commands/src/command.ts`; `stack.ts:291-292`                   | The commit-to-record lookup survives the rebase of unsent saves                                                      | On `CommandOutput` and `CommandRecord`; written by whichever of `git.pull` and `git.continueSync` completes the rebase; `recordForCommit` walks the tables           |
 | Trailers on the agent's `git_commit`: `Vn-Source: agent`, `Vn-Thread: <id>`, `Vn-Plan: <n>`                                                 | `packages/authoring/src/tools/git.ts:67`, `loop.ts:1024-1029`            | Removes the adjacency heuristic for the agent's own save                                                             | As written, from a `trailers()` hook on `ToolContext`; the adjacency fold stays for history written before                                                           |
 | A `<git>` sentinel in the `affects` vocabulary                                                                                              | `apps/desktop/src/shared/affects.ts:39-71`, `116-119`                    | History-only commands need a legal, non-snapshotted declaration                                                      | `GIT_ROOT = '<git>'`, never snapshotted                                                                                                                              |
-| `pipeline.run` refusing mid-rebase, mid-merge and mid-revert                                                                                | `apps/desktop/src/main/commands/pipeline.ts:51`, `128`, `155`            | A run must not plan from a half-replayed tree                                                                        | `pipeline.run`, `approveAndRun`, `draw` and `gengraph.run`, one sentence from `commands/syncstate.ts`                                                                |
+| `pipeline.run` refusing mid-rebase, mid-merge and mid-revert                                                                                | `apps/desktop/src/main/commands/pipeline/pipeline.ts:51`, `128`, `155`   | A run must not plan from a half-replayed tree                                                                        | `pipeline.run`, `approveAndRun`, `draw` and `gengraph.run`, one sentence from `commands/syncstate.ts`                                                                |
 | A `history` entry in `EDITORS` with `pins: 'docPath'` and a `claims` on `file`, `scene`, `wiki`, `character`, `location` as `secondary`     | `apps/desktop/src/shared/editors.ts:22-149`                              | So the tree, the pin and `view.open` reach it                                                                        | As written; `file` only when the path is text                                                                                                                        |
 | "Show history" in the document tree's right-click table                                                                                     | `renderer/pathux/doctree/doctree.ts`                                     | The per-file history entry point                                                                                     | On every node naming one file: `scene`, `character`, `location`, `wiki`, `file`                                                                                      |
 | A maker classifier, a per-kind diff renderer and the status-cause rule as pure modules with tests                                           | `renderer/rules/history.ts`, `renderer/rules/situations/history.ts`      | The rule-module pattern; `pnpm gen:uxmodel` and the anchor sweep follow                                              | The maker and status rules in `@vn/git`'s `history.ts` so the agent shares them; the diff renderers under `editors/history/diffs/`; the offers in `rules/history.ts` |

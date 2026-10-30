@@ -39,7 +39,7 @@ import {
   gengraphUnexpose,
   gengraphUngroup,
   gengraphUnlink,
-} from '../gengraph.js';
+} from '../pipeline/gengraph.js';
 import type { CommandHost } from '../host.js';
 
 let root: string;

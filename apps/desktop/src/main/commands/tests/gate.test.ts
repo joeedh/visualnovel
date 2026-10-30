@@ -3,7 +3,7 @@
  * editor's `RESOLVE →` opens the form: both open it on a character and leave which portrait to
  * the author, so the form's first verdict is always a refusal about the empty `hash`.
  */
-import { gateApprove } from '../gate.js';
+import { gateApprove } from '../story/gate.js';
 import type { CommandContext } from '@vn/commands';
 import type { CommandHost } from '../host.js';
 

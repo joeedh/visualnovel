@@ -6,8 +6,8 @@ Status: **planned**
 
 - Today, attaching a reference image to a prompt clause means typing or pasting a raw
   asset hash (or a slot address) into a text prop — `prompt.addRef`'s
-  `ref: prop.string(...)` (apps/desktop/src/main/commands/prompt.ts:206). No renderer
-  surface calls this command yet: `chunkActs()` in
+  `ref: prop.string(...)` (apps/desktop/src/main/commands/assets/prompt.ts:206). No
+  renderer surface calls this command yet: `chunkActs()` in
   apps/desktop/renderer/pathux/editors/asset.ts:969 offers Mute/Replace/Append on a clause
   but no Attach, and `refStripEl()` (asset.ts:899) can only detach a ref
   (`prompt.dropRef`), via a `×` on each chip. This plan specifies what an Attach action

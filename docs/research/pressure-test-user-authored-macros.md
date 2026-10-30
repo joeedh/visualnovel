@@ -65,8 +65,8 @@ verdict on the whole:
   which states that a check reports on the state as it stands now and never gates `run`.
 - **The worked example's signatures are accurate** —
   `prompt.repin(hash, chunk, ref, regenerate)` is declared at
-  apps/desktop/src/main/commands/prompt.ts:228, and `asset.suspended` takes no props at
-  commands/asset.ts:36.
+  apps/desktop/src/main/commands/assets/prompt.ts:228, and `asset.suspended` takes no
+  props at commands/asset.ts:36.
 - **`CommandSource` has no exhaustive switch.** Excluding a stale in-repo worktree copy,
   the type appears in three files only. The type change itself is one line. See §12 for
   the two behavioural sites that change does not cover.

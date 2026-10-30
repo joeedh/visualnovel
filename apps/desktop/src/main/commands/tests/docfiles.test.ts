@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import type { CommandContext } from '@vn/commands';
 import type { UiEffect } from '../../../shared/ipc.js';
 import { WorkspaceSession, type SessionDeps } from '../../session.js';
-import { docCopy, docMove } from '../docfiles.js';
+import { docCopy, docMove } from '../docs/docfiles.js';
 import type { CommandHost } from '../host.js';
 
 const deps: SessionDeps = {

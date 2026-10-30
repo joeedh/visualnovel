@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { CommandContext } from '@vn/commands';
 import { WorkspaceSession, type SessionDeps } from '../../session.js';
-import { docCreate, docWrite } from '../doc.js';
+import { docCreate, docWrite } from '../docs/doc.js';
 import type { CommandHost } from '../host.js';
 
 /** A host whose session saves anything and reports it, the one member `doc.write` reaches. */

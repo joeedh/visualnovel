@@ -10,7 +10,7 @@ import { appendJsonl } from '@vn/util';
 import { CommandStack, coerceProps, seqRanges } from '@vn/commands';
 import { UndoJournal } from '@vn/commands/snapshot';
 import type { CommandHost } from '../commands/index.js';
-import { desktopInteractions } from '../commands/interaction.js';
+import { desktopInteractions } from '../commands/shell/interaction.js';
 import type { AppContext } from './context.js';
 import { getSession } from './sessionaccess.js';
 import { applyZoom, createWindow } from './windowmanager.js';

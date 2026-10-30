@@ -21,7 +21,7 @@ import { SessionStore } from '../../../workspace/sessionstore.js';
 import { SessionState } from '../../../workspace/sessionstate.js';
 import { WorkspaceSession, type SessionDeps } from '../../../session.js';
 import { createDesktopRegistry } from '../../index.js';
-import { desktopInteractions } from '../../interaction.js';
+import { desktopInteractions } from '../../shell/interaction.js';
 import type { CommandHost } from '../../host.js';
 
 /**

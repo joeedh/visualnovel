@@ -62,7 +62,7 @@ for (const scene of reachableScenes(model)) {
 P4 model sheets are gated the same way (planner.ts:216). So a run halts by planning no
 work rather than by raising an error, and the summary reports that absence as
 `blockedOnGate: !gate.cleared` (packages/scheduler/src/scheduler.ts:300). Clearing it
-writes three things (apps/desktop/src/main/commands/gate.ts:60-64,
+writes three things (apps/desktop/src/main/commands/story/gate.ts:60-64,
 packages/store/src/worktree.ts:113): `status:` and `approved_portrait:` into
 `characters/<id>/character.md`, the bytes to `vngen/work/characters/<id>/approved.png`,
 and `accepted: true` into the manifest.
@@ -124,13 +124,13 @@ six branches; a command palette; a menu bar; and an agent with 38 tools
 and two more (Documents, Wiki) exist for a project large enough to lose things in.
 
 Two defaults are already as cautious as a play mode requires. The `mock` prop of
-`pipeline.run` defaults to `true` (apps/desktop/src/main/commands/pipeline.ts:29), so a
-run reached through the generated form is a dry run unless the author says otherwise, and
-its `check` prints the upper bound in calls before anything is spent. The agent's
-`generate_image` and `edit_image` tools are `confirm` tools, answered by a card in Convo.
-A scaffold that once auto-allowed them is recorded as a bug at
-apps/desktop/src/main/session.ts:729: "an auto-allowed `confirmAction` spends an image
-call the author never agreed to."
+`pipeline.run` defaults to `true`
+(apps/desktop/src/main/commands/pipeline/pipeline.ts:29), so a run reached through the
+generated form is a dry run unless the author says otherwise, and its `check` prints the
+upper bound in calls before anything is spent. The agent's `generate_image` and
+`edit_image` tools are `confirm` tools, answered by a card in Convo. A scaffold that once
+auto-allowed them is recorded as a bug at apps/desktop/src/main/session.ts:729: "an
+auto-allowed `confirmAction` spends an image call the author never agreed to."
 
 ## What "automatically approve assets" would actually mean
 
@@ -372,7 +372,7 @@ and it repeats exactly the loop a person performs by hand today.
 Then comes `unattended: true`. Its only behaviour is that the desktop app runs
 `gate.approveAll` when a run reports `blockedOnGate` and then runs again.
 `asset.regenerate` already does the same chaining when `autoRunReason` says its task is
-the only one pending (apps/desktop/src/main/commands/asset.ts:221-229).
+the only one pending (apps/desktop/src/main/commands/assets/asset.ts:221-229).
 
 The first version deliberately omits auto-accepting `needs_human` frames and lowering
 `max_refine_attempts`. Both are judgements about picture quality rather than about who

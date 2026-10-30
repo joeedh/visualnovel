@@ -13,6 +13,6 @@ import { loadEntry } from './lib/load-entry.mjs';
 
 const OUT = resolve(root, 'apps/desktop/dist/commands.json');
 
-const json = await loadEntry('apps/desktop/src/main/commands/catalog-entry.ts', 'catalog');
+const json = await loadEntry('apps/desktop/src/main/commands/catalog/catalog-entry.ts', 'catalog');
 await fs.writeFile(OUT, JSON.stringify(json, null, 2) + '\n');
 process.stderr.write(`commands.json: ${json.commands.length} command(s)\n`);

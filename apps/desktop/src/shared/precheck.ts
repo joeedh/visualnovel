@@ -7,7 +7,7 @@
  * command's precondition, so asking with those props absent answers about the blank rather than
  * about the world — `missing required property "hash"` where the useful sentence is `aiko has no
  * portrait yet`. Passing the blank as an empty value reaches the precondition, which is written
- * for that case: see `gate.approve` in `src/main/commands/gate.ts`, whose refusal names the
+ * for that case: see `gate.approve` in `src/main/commands/story/gate.ts`, whose refusal names the
  * unanswered field.
  *
  * Nothing is invented here. A required prop with no empty value — a number, an enum — leaves the

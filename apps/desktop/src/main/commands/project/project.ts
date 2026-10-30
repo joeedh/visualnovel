@@ -1,0 +1,552 @@
+/**
+ * Commands for the project's own settings: reading what `project.yaml` says, and writing the
+ * seven fields in it an author edits often enough to want a pane for.
+ *
+ * The art style and the image model are not like the other settings. The style is the first
+ * clause of every image prompt and the model is in every image task's params, so both are folded
+ * into every image task's hash, changing either re-keys the whole library, and the next run draws
+ * it all again. That is why both writes are `confirm: true` and why their checks count what they
+ * would touch. The storyboard notes reach no prompt, and lettering reaches only a page shot's, so
+ * neither of those writes asks for confirmation; the lettering check still counts the pages it
+ * would re-key.
+ *
+ * `project.installPages` is `mutating` but not `undoable`. `.github/` and `.vnstudio/pages/` are
+ * both inside the tree an undo snapshot covers; what puts it outside undo is the
+ * `vngen/build/story.play.json` it exports in the same act, and removing the workflow again is a
+ * `git rm` of two paths rather than a state the app models.
+ */
+import { defineFor, prop, type CheckResult } from '@vn/commands';
+import { KEY_VENDORS } from '@vn/config';
+import { LETTERING_MODES, SHOT_FORMS } from '@vn/types';
+import { openGit } from '@vn/git';
+import { describeFindings } from '@vn/artgen';
+import { notify } from '../../notify/notifications.js';
+import { installPages, pagesState } from '../../distribution/pages.js';
+import type { CommandHost } from '../host.js';
+
+const define = defineFor<CommandHost>();
+
+/** Converts a session preview into a `CheckResult`, keeping the session's message in both cases. */
+function verdict(result: { ok: boolean; message: string }): CheckResult {
+  return result.ok ? { ok: true, note: result.message } : { ok: false, reason: result.message };
+}
+
+export const projectInfo = define({
+  id         : 'project.info',
+  title      : 'Project settings',
+  description:
+    'What `project.yaml` says: the title, the entry scene, the art style, the model ids and the ' +
+    'image parameters — plus how many image tasks the art style reaches. Never the API keys, ' +
+    'whose names live in the file and whose values never leave the environment.',
+  notes:
+    'What `project.yaml` says: title, entry scene, art style, model ids, image params, and how many image tasks the art style reaches. Never the API keys — their *names* are in the file and a pane listing them is one screenshot away from looking like it lists their values.',
+  mutating   : false,
+  props      : {},
+  async run(_props, ctx) {
+    const view = await ctx.host.session.projectView();
+    return { message: `${view.title} — ${view.imageTasks} image task(s).`, data: view };
+  },
+});
+
+export const projectValidate = define({
+  id         : 'project.validate',
+  title      : 'Check the project for broken references',
+  description:
+    'List every reference that would make the next run or a read fail: a finished task whose ' +
+    'picture is gone, a manifest row with no file, a portrait, shot, pin or graph naming a ' +
+    'picture no manifest lists, and a slot holding two current pictures. Stale state that ' +
+    'fails nothing — a stray file, an out-of-date playable — is listed for information. It ' +
+    'changes nothing, and reports through a notification.',
+  mutating   : false,
+  props      : {},
+  async run(_props, ctx) {
+    const findings = await ctx.host.session.validateProject();
+    const message = describeFindings(findings);
+    const blocking = findings.some((f) => f.severity === 'blocking');
+    // `onRecord` files no notification for a non-mutating command, so this one is filed here
+    await notify({ category: 'workspace', level: blocking ? 'warn' : 'info', message });
+    return { message, data: findings };
+  },
+});
+
+export const projectSetArtStyle = define({
+  id         : 'project.setArtStyle',
+  title      : 'Set the art style',
+  description:
+    "Set the project's art style — the sentence every image prompt opens with. It is not art " +
+    'notes on one rung: it reaches every portrait, sheet, plate and shot, so setting it re-keys ' +
+    'every image task and the next `pipeline.run` renders the whole library again. The line is ' +
+    'spliced into `project.yaml`, so comments and key order survive.',
+  notes:
+    'The sentence every image prompt opens with. Not art notes on one rung: it reaches every portrait, sheet, plate and shot, so it re-keys **every** image task. Spliced into `project.yaml`, so comments and key order survive.',
+  mutating   : true,
+  affects    : ['project.yaml'],
+  undoable   : true,
+  // Every other document mutator changes one document's words. This one changes what the project
+  // looks like, and the next run redraws the whole library for it.
+  confirm    : true,
+  props: {
+    style: prop.string('the art style; empty clears it', { default: '' }),
+  },
+  async check({ style }, ctx) {
+    return verdict(await ctx.host.session.previewArtStyle(style));
+  },
+  async run({ style }, ctx) {
+    const result = await ctx.host.session.setProjectArtStyle(style);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
+export const projectSetImageModel = define({
+  id         : 'project.setImageModel',
+  title      : 'Set the image model',
+  description:
+    "Set the project's image model, `models.image` — the model every image task and every " +
+    'graph node with an empty model prop draws with. A `<vendor>/<model>` id draws through ' +
+    'OpenRouter and any other id through Gemini, and the vendor needs a key before the change is ' +
+    "accepted. The id is not part of a task's identity, so pictures already drawn stay; the " +
+    'new model is used for whatever is drawn next — an unrendered slot, a regenerate, or a slot ' +
+    "the art style re-keys. The row is spliced into `project.yaml`'s `models:` block, so " +
+    'comments and key order survive.',
+  notes:
+    'The model every image task and every inherit node draws with. A `<vendor>/<model>` id goes through OpenRouter, anything else through Gemini, and the vendor needs a key first. Not in the task hash: what is drawn stays, and the next render uses the new model. Spliced into `project.yaml`, so comments and key order survive.',
+  mutating   : true,
+  affects    : ['project.yaml'],
+  undoable   : true,
+  // Confirmed because a model change moves what every later render costs, even though nothing
+  // is redrawn by it
+  confirm    : true,
+  props: {
+    model: prop.string('the image model id, such as openai/gpt-image-2'),
+  },
+  async check({ model }, ctx) {
+    return verdict(await ctx.host.session.previewImageModel(model));
+  },
+  async run({ model }, ctx) {
+    const result = await ctx.host.session.setProjectImageModel(model);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
+export const projectSetTextModel = define({
+  id         : 'project.setTextModel',
+  title      : 'Set the text model',
+  description:
+    "Set the project's text model, `models.text` — the model the pipeline's own text calls use: " +
+    'scene decomposition, picture reviews, refine critiques and gate triage. It is not the ' +
+    "authoring agent's model, which is chosen per conversation. A `claude-*` id answers through " +
+    'Anthropic and a `gemini-*` id through Gemini, or either through OpenRouter when only that ' +
+    'key is set, and a model no resolved key can carry is refused. Nothing already generated is ' +
+    "re-keyed. The row is spliced into `project.yaml`'s `models:` block, so comments and key " +
+    'order survive.',
+  notes:
+    "The model the pipeline's text calls use — decomposition, reviews, critiques, triage — not the agent's, which is per conversation. Refused when no resolved key can carry it. Re-keys nothing. Spliced into `project.yaml`, so comments and key order survive.",
+  mutating   : true,
+  affects    : ['project.yaml'],
+  undoable   : true,
+  props: {
+    model: prop.string('the text model id, such as claude-opus-4-8 or gemini-2.5-pro'),
+  },
+  async check({ model }, ctx) {
+    return verdict(await ctx.host.session.previewTextModel(model));
+  },
+  async run({ model }, ctx) {
+    const result = await ctx.host.session.setProjectTextModel(model);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
+export const projectSetVisionModels = define({
+  id         : 'project.setVisionModels',
+  title      : 'Set the vision models',
+  description:
+    "Set the project's vision models, `models.vision`, as the whole list — the models that " +
+    'review a generated picture against its prompt. The Project pane sends the list with one ' +
+    'model added or removed. Each id needs a resolved key, and an empty list is refused because ' +
+    "a run with no reviewer cannot judge a picture. The list is spliced into `project.yaml`'s " +
+    '`models:` block, so comments and key order survive.',
+  notes:
+    'The picture reviewers, as the whole list. Each id needs a key; an empty list is refused. Spliced into `project.yaml`, so comments and key order survive.',
+  mutating   : true,
+  affects    : ['project.yaml'],
+  undoable   : true,
+  props: {
+    models: prop.stringList('the vision model ids, in review order'),
+  },
+  async check({ models }, ctx) {
+    return verdict(await ctx.host.session.previewVisionModels(models));
+  },
+  async run({ models }, ctx) {
+    const result = await ctx.host.session.setProjectVisionModels(models);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
+export const projectSetStoryboardNotes = define({
+  id         : 'project.setStoryboardNotes',
+  title      : 'Set the storyboard notes',
+  description:
+    "Set the project's storyboard notes — directives the scene decomposer reads beside the art " +
+    'style, such as how many panels a page holds or that every scene opens on a splash. They ' +
+    'reach no image prompt, so no shot already written is re-keyed; the next scene storyboarded ' +
+    'reads them. The line is spliced into `project.yaml`, so comments and key order survive.',
+  notes:
+    'Directives for the decomposer alone, beside `art_style`: how a scene is storyboarded rather than how a frame is drawn. In no image prompt, so it re-keys nothing; the next `story.decompose` reads it. Spliced into `project.yaml`, so comments and key order survive.',
+  mutating   : true,
+  affects    : ['project.yaml'],
+  undoable   : true,
+  props: {
+    notes: prop.string('the storyboard notes; empty clears them', { default: '' }),
+  },
+  async check({ notes }, ctx) {
+    return verdict(await ctx.host.session.previewStoryboardNotes(notes));
+  },
+  async run({ notes }, ctx) {
+    const result = await ctx.host.session.setProjectStoryboardNotes(notes);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
+export const projectSetLettering = define({
+  id         : 'project.setLettering',
+  title      : 'Set who letters a page',
+  description:
+    'Set who letters a page shot: `model` has the image model draw the dialogue into the panels, ' +
+    '`runner` has the playable draw bubbles over a page rendered without words. Applies to page ' +
+    'shots alone, so the check counts the pages it re-keys and an ordinary frame is untouched. ' +
+    'The line is spliced into `project.yaml`, so comments and key order survive.',
+  notes:
+    'Who letters a page shot: the image model, or the runner over a wordless page. Applies to page shots alone, so the check prices the pages it re-keys and a plain frame is untouched. Spliced into `project.yaml`, so comments and key order survive.',
+  mutating   : true,
+  affects    : ['project.yaml'],
+  undoable   : true,
+  props: {
+    lettering: prop.oneOf(LETTERING_MODES, 'who letters a page shot'),
+  },
+  async check({ lettering }, ctx) {
+    return verdict(await ctx.host.session.previewLettering(lettering));
+  },
+  async run({ lettering }, ctx) {
+    const result = await ctx.host.session.setProjectLettering(lettering);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
+export const projectSetShotForm = define({
+  id         : 'project.setShotForm',
+  title      : 'Set what a shot is',
+  description:
+    'Set whether a scene is storyboarded as single frames or as manga pages of panels. The ' +
+    'decomposer and the authoring agent make new shots in this form unless the author asks for ' +
+    'the other for one scene. Read when a scene is decomposed, so a storyboard already written ' +
+    'keeps its shape and nothing is re-keyed. The line is spliced into `project.yaml`, so ' +
+    'comments and key order survive.',
+  notes:
+    'Frames or pages for every new storyboard; the agent follows it unless the author says otherwise for one scene. Read at decomposition alone, so it re-keys nothing. Spliced into `project.yaml`, so comments and key order survive.',
+  mutating   : true,
+  affects    : ['project.yaml'],
+  undoable   : true,
+  props: {
+    form: prop.oneOf(SHOT_FORMS, 'single frames, or manga pages of panels'),
+  },
+  async check({ form }, ctx) {
+    return verdict(await ctx.host.session.previewShotForm(form));
+  },
+  async run({ form }, ctx) {
+    const result = await ctx.host.session.setProjectShotForm(form);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
+export const projectSetBubbleNames = define({
+  id         : 'project.setBubbleNames',
+  title      : 'Show names in bubbles',
+  description:
+    "Set whether a bubble the runner draws carries the speaker's name above the line. A " +
+    'caption box (narration) never does, and a bubble can say otherwise for itself in the Page ' +
+    'editor. Read by the playable alone, so no shot is re-keyed. The line is spliced into ' +
+    '`project.yaml`, so comments and key order survive.',
+  notes:
+    "Whether a runner-drawn speech bubble names its speaker. Narration never does, and a bubble's own `name` overrides it. Read by the playable alone, so it re-keys nothing. Spliced into `project.yaml`, so comments and key order survive.",
+  mutating   : true,
+  affects    : ['project.yaml'],
+  undoable   : true,
+  props: {
+    on: prop.boolean("whether a speech bubble shows the speaker's name"),
+  },
+  async check({ on }, ctx) {
+    return verdict(await ctx.host.session.previewBubbleNames(on));
+  },
+  async run({ on }, ctx) {
+    const result = await ctx.host.session.setProjectBubbleNames(on);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
+export const projectSetBuiltinSkills = define({
+  id         : 'project.setBuiltinSkills',
+  title      : 'Choose the builtin skills',
+  description:
+    'Set which of the skills that ship with the app this project turns on, as the whole list ' +
+    'of ids — the Project pane sends it with one box ticked or unticked. A builtin skill that ' +
+    'is off is absent from what the agent sees and from `discover_skills`, and back the moment ' +
+    'it is on again; nothing is copied or deleted either way. A project skill of the same id ' +
+    'shadows a builtin one whether or not it is on. The list is spliced into `project.yaml`, so ' +
+    'comments and key order survive.',
+  notes:
+    'Which shipped skills this project turns on, as the whole list. Off means absent from the agent, not deleted; on again is instant. Spliced into `project.yaml`, so comments and key order survive.',
+  mutating   : true,
+  affects    : ['project.yaml'],
+  undoable   : true,
+  props: {
+    ids: prop.stringList('the builtin skill ids to turn on; every other one is turned off'),
+  },
+  async check({ ids }, ctx) {
+    return verdict(await ctx.host.session.previewBuiltinSkills(ids));
+  },
+  async run({ ids }, ctx) {
+    const result = await ctx.host.session.setProjectBuiltinSkills(ids);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, data: result, written: result.written };
+  },
+});
+
+/** The two key sources an author can write to. Ordered so the enum's first value is the default. */
+const KEY_SCOPES = ['project', 'user'] as const;
+
+export const projectSetKey = define({
+  id         : 'project.setKey',
+  title      : 'Provide a model key',
+  description:
+    'Store an API key for one model provider — the file `resolveKeys` reads when the matching ' +
+    'environment variable is unset. `scope=project` writes it into this project (`keys/`, added ' +
+    'to `.gitignore` before the write so commit-on-save cannot pick it up); `scope=user` writes ' +
+    'it once for every project on this machine, into a directory no repository contains. Either ' +
+    'way the value reaches that file and nowhere else: the history records `<secret>`.',
+  notes:
+    "Store one model provider's API key in `keys/`, the file `resolveKeys` reads when the matching environment variable is unset — and it says so when one is set, because the variable wins. The value goes to that file and nowhere else: the history records `<secret>`, and `keys` is added to `.gitignore` **before** the write, because commit-on-save runs `git commit -A`. Deliberately **not undoable**: `keys/` is outside the class a snapshot covers, which is what keeps an undo from writing over or deleting the credential this command exists to store.",
+  mutating   : true,
+  affects    : ['keys', '.gitignore', '<user>/keys'],
+  // Deliberately not undoable: an undo point is a git snapshot, and this command exists to keep
+  // the credential out of git. At the user scope the file is not in a repository at all, so no
+  // snapshot is possible.
+  undoable   : false,
+  props: {
+    provider: prop.oneOf(KEY_VENDORS, 'which model provider the key is for'),
+    key     : prop.secret('the API key; it is written to a gitignored file and never recorded'),
+    scope: prop.oneOf(
+      KEY_SCOPES,
+      'where the key is written: in this project, or once for every project on this machine',
+      { default: 'project' },
+    ),
+  },
+  async check({ provider, scope }, ctx) {
+    // Mutating commands run one at a time, so a save issued mid-run would sit in the queue until the
+    // run ended and look as though it did nothing
+    const busy = ctx.host.session.busy();
+    if (busy) return { ok: false, reason: `${busy} is still running; wait for it to finish.` };
+    return verdict(await ctx.host.session.previewKey(provider, scope));
+  },
+  async run({ provider, key, scope }, ctx) {
+    const result = await ctx.host.session.setKey(provider, key, scope);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message, written: result.written };
+  },
+});
+
+export const projectTestKey = define({
+  id         : 'project.testKey',
+  title      : 'Test a model key',
+  description:
+    'Make one small real call with a provider’s key and say whether it worked. This is the ' +
+    'question `project.keyStatus` cannot answer: a key can resolve and still be revoked, ' +
+    'mistyped, or on an account with no credit, and without this the first news of that arrives ' +
+    'much later as a run failing. It costs a fraction of a cent, and under `--mock` it does ' +
+    'nothing, because a mock run never calls a provider.',
+  // Writes nothing of its own. It does spend money, which the description states so that an author
+  // is not left to infer the cost.
+  mutating   : false,
+  props: {
+    provider: prop.oneOf(KEY_VENDORS, 'which provider’s key to try'),
+  },
+  async check({ provider }, ctx) {
+    return verdict(await ctx.host.session.previewTestKey(provider));
+  },
+  async run({ provider }, ctx) {
+    const result = await ctx.host.session.testKey(provider);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message };
+  },
+});
+
+export const projectKeyStatus = define({
+  id         : 'project.keyStatus',
+  title      : 'Which model keys are set',
+  description:
+    'For each model provider, whether a key resolved and **which source** answered — an ' +
+    'environment variable by name, this project’s `keys/`, an enclosing repository’s, or the ' +
+    'user-level one. Never the key itself. It is also the honest answer to “why is it still ' +
+    'asking me”: a set environment variable is read before every file, so it shadows one that ' +
+    'was just pasted.',
+  mutating   : false,
+  props      : {},
+  async run(_props, ctx) {
+    const view = await ctx.host.session.keyStatusView();
+    const missing = view.vendors.filter((v) => !v.resolved).map((v) => v.vendor);
+    return {
+      message:
+        missing.length === 0 ? 'Every provider has a key.' : `No key for ${missing.join(', ')}.`,
+      data   : view,
+    };
+  },
+});
+
+/**
+ * Whether this project can publish, and whether it already does. Shared by `project.pagesStatus`
+ * and `project.installPages` so the menu label, the refusal and the confirmation note cannot
+ * disagree about what is installed.
+ */
+async function pagesView(ctx: { host: CommandHost }, publishBranch: string) {
+  const root = ctx.host.session.dir;
+  const git = openGit(root);
+  const repo = await git.isRepo();
+  const branch = repo ? await git.branch() : '';
+  const remote = repo ? await git.configGet('remote.origin.url') : null;
+  // `git.branch()` answers `HEAD` on a detached or unborn checkout. A workflow triggered on a
+  // branch called HEAD would install without complaint and then never fire.
+  const onBranch = branch !== '' && branch !== 'HEAD';
+  const state =
+    repo && onBranch
+      ? await pagesState(root, { branch, publishBranch })
+      : { installed: false, stale: false };
+  return { repo, branch, onBranch, remote, ...state };
+}
+
+export const projectPagesStatus = define({
+  id         : 'project.pagesStatus',
+  title      : 'GitHub Pages status',
+  description:
+    'Whether this project carries the GitHub Pages publisher, whether it came from this build ' +
+    'of the app, and what the repository would publish from.',
+  notes:
+    'Whether this project carries the GitHub page builder, and whether the copy it carries came from this build of the app. Read by the menu, which reads Install or Update accordingly.',
+  mutating   : false,
+  props: {
+    branch: prop.string('The branch the workflow publishes the site to.', {
+      default: 'gh-pages',
+    }),
+  },
+  async run(props, ctx) {
+    const view = await pagesView(ctx, props.branch);
+    const message = view.installed
+      ? view.stale
+        ? 'The page builder is installed, from a different build of the app.'
+        : 'The page builder is installed and up to date.'
+      : 'The page builder is not installed.';
+    // Nothing here can see whether Pages is switched on: it is a repository setting, and the app
+    // never talks to GitHub. What is installed says nothing about what is served, so the answer
+    // names the setting rather than implying the site is up.
+    const serving = view.installed
+      ? ` Serving it needs Settings ▸ Pages on GitHub set to deploy from ${props.branch} at the root.`
+      : '';
+    return { message: `${message}${serving}`, data: view };
+  },
+});
+
+export const projectInstallPages = define({
+  id         : 'project.installPages',
+  title      : 'Install the GitHub page builder',
+  description:
+    'Write a GitHub Actions workflow into this project that publishes it as a light-novel web ' +
+    'page. The workflow and the renderer it runs are committed to the project repository; ' +
+    'pushing the repository then publishes the site to a branch GitHub Pages can serve.',
+  notes:
+    'Write a GitHub Actions workflow into the project that publishes it as a light-novel web page, plus the bundled renderer the workflow runs. Refuses a project that is not a git repository, has no branch checked out, or has no `origin` remote. Exports the playable first, so the commit CI builds from is complete. Deliberately **not undoable**: it exports `vngen/build/story.play.json` in the same act, which is outside the tree the undo snapshot covers. The app never pushes. See [`../guides/github-pages.md`](../guides/github-pages.md).',
+  mutating   : true,
+  affects: [
+    '.github/workflows',
+    '.vnstudio/pages',
+    '.gitattributes',
+    'vngen/build/story.play.json',
+    'vngen/state/notifications.jsonl',
+  ],
+  confirm    : true,
+  props: {
+    branch: prop.string('The branch the workflow publishes the site to.', {
+      default: 'gh-pages',
+    }),
+  },
+  async check(props, ctx) {
+    const busy = ctx.host.session.busy();
+    if (busy) return { ok: false, reason: `${busy} is still running; wait for it to finish.` };
+    const view = await pagesView(ctx, props.branch);
+    if (!view.repo) {
+      return {
+        ok    : false,
+        reason: 'This project is not a git repository, so there is nothing to publish from.',
+      };
+    }
+    if (!view.onBranch) {
+      return {
+        ok    : false,
+        reason:
+          'This repository has no branch checked out yet. Make a commit first, then install the page builder.',
+      };
+    }
+    if (!view.remote) {
+      return {
+        ok    : false,
+        reason:
+          'This repository has no `origin` remote. Add one on GitHub, then install the page builder.',
+      };
+    }
+    // The install exports the playable in the same act, so it is refused on the same grounds
+    const refusal = await ctx.host.session.exportRefusal();
+    if (refusal !== undefined) return { ok: false, reason: refusal };
+    const verb = view.installed ? 'Updates' : 'Installs';
+    return {
+      ok  : true,
+      note:
+        `${verb} the workflow and the renderer, and exports the playable. Pushing ${view.branch} ` +
+        `then publishes the site to ${props.branch}. Serving it is a setting only you can change: ` +
+        `Settings ▸ Pages on GitHub, deploying from ${props.branch} at the root.`,
+    };
+  },
+  async run(props, ctx) {
+    const view = await pagesView(ctx, props.branch);
+    // Export first. Without a `story.play.json` in the same commit, the first Action run fails on
+    // a file the author has no reason to know about.
+    const { scenes } = await ctx.host.session.exportPlayable();
+    const written = await installPages(ctx.host.session.dir, {
+      branch       : view.branch,
+      publishBranch: props.branch,
+    });
+
+    // The second step is a GitHub setting nothing here can reach, and skipping it fails quietly:
+    // the workflow goes green and the address 404s. The notification is durable, so it is still
+    // there to read when the push finishes.
+    await notify({
+      category: 'workspace',
+      message:
+        `The GitHub page builder is installed. Two steps remain, both on GitHub. ` +
+        `1. Push ${view.branch} to origin — that is what runs the workflow. ` +
+        `2. Open the repository on github.com and go to Settings ▸ Pages, set Source to ` +
+        `"Deploy from a branch", pick ${props.branch} with the folder "/ (root)", and Save. ` +
+        `Until step 2 is done the workflow succeeds and the published address still 404s.`,
+    });
+
+    return {
+      message: `${view.installed ? 'Updated' : 'Installed'} the page builder; exported ${scenes} scene(s).`,
+      data   : { ...view, publishBranch: props.branch },
+      written: [...written, 'vngen/build/story.play.json'],
+    };
+  },
+});

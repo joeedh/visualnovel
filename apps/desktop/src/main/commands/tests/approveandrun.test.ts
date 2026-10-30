@@ -3,7 +3,7 @@
  * Both decisions spend real image calls or stop short of finishing the art, so they are pinned
  * here rather than left to a live run.
  */
-import { MAX_ROUNDS, stopReason, toApprove } from '../pipeline.js';
+import { MAX_ROUNDS, stopReason, toApprove } from '../pipeline/pipeline.js';
 import type { Approvable } from '@vn/authoring';
 
 const round = (over: Partial<Parameters<typeof stopReason>[0]> = {}) => ({

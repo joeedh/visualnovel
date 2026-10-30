@@ -1,0 +1,137 @@
+/**
+ * The app itself as commands, covering the few acts that are about VN Studio rather than about the
+ * project it has open.
+ *
+ * They are commands for the same reason everything else is: the Setup pane, the palette, CDP and
+ * the agent all reach one implementation, instead of a pane fetching its own words over a bespoke
+ * channel.
+ */
+import { defineFor, prop } from '@vn/commands';
+import { KEY_VENDORS } from '@vn/config';
+import { GUIDE_URL_FIELDS, keyGuideProblems } from '../../../shared/apikeys.js';
+import { notify } from '../../notify/notifications.js';
+import { announcementFor } from '../../distribution/updates.js';
+import type { CommandHost } from '../host.js';
+
+const define = defineFor<CommandHost>();
+
+export const appKeyGuide = define({
+  id         : 'app.keyGuide',
+  title      : 'The API key walkthrough',
+  description:
+    'The steps for getting a model key, read from `docs/guides/api-keys.md` — the one copy of them, ' +
+    'which the docs site serves and the Setup pane draws. Per vendor: where the console is, ' +
+    'what the environment variable is called, whether there is a free tier, and the steps.',
+  mutating   : false,
+  props      : {},
+  async run(_props, ctx) {
+    const guide = await ctx.host.session.keyGuide();
+    const problems = keyGuideProblems(guide, KEY_VENDORS);
+    return {
+      // A guide missing a section is still returned and the pane draws what there is. The message
+      // reports the gap so the pane is not silently short
+      message:
+        problems.length === 0
+          ? `${guide.vendors.length} provider(s).`
+          : `The setup guide is incomplete: ${problems.join(' ')}`,
+      data   : guide,
+    };
+  },
+});
+
+export const appOpenKeyLink = define({
+  id         : 'app.openKeyLink',
+  title      : "Open a provider's page",
+  description:
+    'Open one of a model provider’s own pages in your browser: the console where keys are made, ' +
+    'its documentation, or what it charges. The addresses are the ones `docs/guides/api-keys.md` ' +
+    'states, so a button and the written instructions cannot point at different pages — and ' +
+    'naming a *field* rather than a URL is why no part of the app can ask the OS to open an ' +
+    'address it was handed.',
+  mutating   : false,
+  props: {
+    provider: prop.oneOf(KEY_VENDORS, 'which provider’s page to open'),
+    link    : prop.oneOf(GUIDE_URL_FIELDS, 'which of its pages', { default: 'console' }),
+  },
+  async run({ provider, link }, ctx) {
+    const result = await ctx.host.session.openKeyLink(provider, link);
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message };
+  },
+});
+
+export const appCopy = define({
+  id         : 'app.copy',
+  title      : 'Copy text to the clipboard',
+  description:
+    'Put a short piece of text — the id of a scene, a shot, an asset or a location, or the ' +
+    'path of a file — on your system clipboard. `what` names the thing in the sentence the app ' +
+    'reports back, so a copy says which id or path it took.',
+  mutating   : false,
+  props: {
+    text: prop.string('the text to copy'),
+    what: prop.string('what the text is, for the sentence reported back', { default: 'text' }),
+  },
+  async run({ text, what }, ctx) {
+    ctx.host.session.copyText(text);
+    return { message: `Copied ${what}: ${text}` };
+  },
+});
+
+export const appCheckForUpdates = define({
+  id         : 'app.checkForUpdates',
+  title      : 'Check for updates',
+  description:
+    'Ask GitHub whether a newer VN Studio has been released, and say so. It downloads nothing ' +
+    'and installs nothing — an update you want is one you fetch from the releases page yourself. ' +
+    'Nothing calls this on your behalf: there is no scheduled check, so the app does not reach ' +
+    'the network until you ask it to.',
+  mutating   : false,
+  props: {
+    quiet: prop.boolean(
+      'say nothing unless there is actually an update — what a background check would pass',
+      { default: false },
+    ),
+  },
+  async run({ quiet }, ctx) {
+    const check = await ctx.host.session.checkForUpdates();
+    // The verdict is always returned; only the durable notification is conditional. A failed
+    // check is reported in the verdict rather than thrown; see `announcementFor`
+    const announcement = announcementFor(check, quiet);
+    if (announcement) await notify(announcement);
+    return { message: check.message, data: check };
+  },
+});
+
+export const appOpenCollaboratingGuide = define({
+  id         : 'app.openCollaboratingGuide',
+  title      : 'Open the collaborating guide',
+  description:
+    'Open the guide to working with a collaborator in your browser: what a shared copy is, how ' +
+    'git remembers your GitHub sign-in on each platform, and what it means when a send or a get ' +
+    'is refused. The address is one the app already knew, never one it was handed.',
+  mutating   : false,
+  props      : {},
+  async run(_props, ctx) {
+    const result = await ctx.host.session.openCollaboratingGuide();
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message };
+  },
+});
+
+export const appOpenReleases = define({
+  id         : 'app.openReleases',
+  title      : 'Open the releases page',
+  description:
+    'Open VN Studio’s releases page in your browser, where the notes for each version and the ' +
+    'installers are the same page. The address comes from the repository this build was made ' +
+    'from, so — like every other link the app opens — it is one the app already knew rather ' +
+    'than one it was handed.',
+  mutating   : false,
+  props      : {},
+  async run(_props, ctx) {
+    const result = await ctx.host.session.openReleases();
+    if (!result.ok) throw new Error(result.message);
+    return { message: result.message };
+  },
+});

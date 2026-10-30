@@ -66,8 +66,8 @@ The corruption is concrete when A is a deferring `gengraph.setProp` and B is a
 non-deferring mutating command:
 
 1. A enters `exec`, writes the graph file at
-   apps/desktop/src/main/commands/gengraph.ts:79, and is still inside `await command.run`
-   (stack.ts:120).
+   apps/desktop/src/main/commands/pipeline/gengraph.ts:79, and is still inside
+   `await command.run` (stack.ts:120).
 2. B enters `exec` and flushes. The pending batch holds records 1..29 but not A, because A
    has not reached the point where it would join.
 3. B runs and commits with `-A` (packages/commands/src/commit.ts:89). A's write is on
@@ -262,11 +262,11 @@ empty result clears the batch and that a throw keeps the batch.
 Severity: should-fix.
 
 Both commands that opt in are `undoable: true`
-(apps/desktop/src/main/commands/gengraph.ts:414, :465). Thirty `setProp` invocations that
-became one commit are still thirty undo points, each of which restores a tree and then
-commits it with `-A` (packages/commands/src/stack.ts:333). Walking a drag back therefore
-writes up to thirty undo commits reversing one batch commit, and the git log shows one
-edit followed by thirty reversals.
+(apps/desktop/src/main/commands/pipeline/gengraph.ts:414, :465). Thirty `setProp`
+invocations that became one commit are still thirty undo points, each of which restores a
+tree and then commits it with `-A` (packages/commands/src/stack.ts:333). Walking a drag
+back therefore writes up to thirty undo commits reversing one batch commit, and the git
+log shows one edit followed by thirty reversals.
 
 The behavior is defensible, because undo operates on acts while the commit records the
 worktree. It is still a visible consequence of the change, the "one commit per drag" win

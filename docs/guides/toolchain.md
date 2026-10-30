@@ -70,7 +70,7 @@ explains why the setup is wired that way.
   `node_modules` that would otherwise be hashed.
 - **The desktop bundle has a third step, `build:catalog`.**
   `scripts/gen-command-catalog.mjs` bundles
-  `apps/desktop/src/main/commands/catalog-entry.ts` and writes
+  `apps/desktop/src/main/commands/catalog/catalog-entry.ts` and writes
   `apps/desktop/dist/commands.json` (see
   [`../reference/command-system.md`](../reference/command-system.md)). Both bundle scripts
   share one alias map, `scripts/aliases.mjs`, so their package lists cannot drift.

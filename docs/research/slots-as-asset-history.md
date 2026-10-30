@@ -81,7 +81,7 @@ differently, both are cited.
 | slot graph        | Every slot the project implies, enumerated from the model and the persisted storyboards, with `refs` edges, a topological `order`, and per slot a `taskHash` (identity), `status`, `hash` (the resolved take), `candidates` (every take) and `approved`.                                                                                                                                             | `packages/artgen/src/slotgraph.ts:262-302`, `:305-379`                                                                                                                                                                 |
 | identity          | The task hash the planner would assign the slot today, from the project as it stands. A `shot:` identity embeds its plate's and sheets' output hashes, so it does not exist until those are `done`.                                                                                                                                                                                                  | `packages/artgen/src/slotgraph.ts:89-100`, `:158-240`, `packages/taskgraph/src/hash.ts:14-16`                                                                                                                          |
 | candidate         | Every manifest asset whose `kind` and `satisfies` bind it to a slot, accepted or not. For a `sheet:` slot the angle is not in `satisfies`, so membership additionally needs `angleOf(sourceTask)`, which reads the task log. The same word names a portrait draft at the P3 gate (`GateCandidate`, `Character.status: 'candidates'`) and a directory nothing writes (`characters/<id>/candidates/`). | `packages/artgen/src/refs.ts:84-115`, `apps/desktop/src/shared/ipc.ts:336-339`, `packages/types/src/entities.ts:9`, `packages/store/src/worktree.ts:87-97`                                                             |
-| take              | A candidate, seen as one of several drafts of the same slot. The word appears in the tree (`takes:<key>`, "Another take of …"), in `AssetInfo.newerTake`, in `asset.restore` ("Put this take back"), in `supersededBy`'s doc comment and in `overAccepted`. No type is named `Take`.                                                                                                                 | `apps/desktop/src/main/doctree/doctree.ts:340-379`, `apps/desktop/src/main/session/asset.ts:115-121`, `apps/desktop/src/main/commands/asset.ts:125-135`                                                                |
+| take              | A candidate, seen as one of several drafts of the same slot. The word appears in the tree (`takes:<key>`, "Another take of …"), in `AssetInfo.newerTake`, in `asset.restore` ("Put this take back"), in `supersededBy`'s doc comment and in `overAccepted`. No type is named `Take`.                                                                                                                 | `apps/desktop/src/main/doctree/doctree.ts:340-379`, `apps/desktop/src/main/session/asset.ts:115-121`, `apps/desktop/src/main/commands/assets/asset.ts:125-135`                                                         |
 | attempt           | One execution of one task: `TaskAttempt {attempt, prompt?, refs, output?, reviews?, error?, at?}`. A P7 refine pass pushes one per generated frame; a failed run pushes one carrying `error`; adoption writes exactly one synthetic `{attempt: 1}`. Attempts accumulate across regenerations of the same task hash because `requeue` spreads the old node.                                           | `packages/types/src/tasks.ts:51-62`, `packages/pipeline/src/runners.ts:288-296`, `packages/scheduler/src/scheduler.ts:412-419`, `packages/artgen/src/adopt.ts:86-97`, `apps/desktop/src/main/session/asset.ts:430-441` |
 | current take      | Six definitions; see the next section. The one `AssetInfo.slot`, `newerTake`, adoption's `held` and the Replace strip read is "the `output` of the slot's identity task".                                                                                                                                                                                                                            | `apps/desktop/src/main/session/asset.ts:106-121`                                                                                                                                                                       |
 | accepted          | `Asset.accepted: boolean`, one flag per manifest row. Exclusive per slot by convention: `store.accept(hash, supersede)` clears the flags in `supersede` in the same write, and `supersededBy` computes that list. Portraits and sheets-without-`angleOf` supersede nothing. `repairAccepted` puts a slot with two accepted takes back to one.                                                        | `packages/types/src/entities.ts:416`, `packages/store/src/assetstore.ts:176-189`, `packages/artgen/src/slotgraph.ts:252-259`, `packages/pipeline/src/repair.ts:25-44`                                                  |
@@ -209,11 +209,12 @@ the previous portrait's flag, and `supersededBy` returns `[]` for a portrait).
   says the rule about what is current "survived intact".
 - adopting-an-uploaded-asset (archived 2026-08-15): adoption never accepts; superseding a
   real render is a declared act (`replace`); the superseded bytes stay in the store.
-- `pipeline.approveAndRun`'s notes (`apps/desktop/src/main/commands/pipeline.ts:259`)
-  state that "a finished project still lists the takes that lost", and that the bulk pass
-  skips them through `settled`. The popup's listing of losing takes is therefore a
-  documented decision, and the confusion the owner reports is with that decision rather
-  than with a defect in implementing it.
+- `pipeline.approveAndRun`'s notes
+  (`apps/desktop/src/main/commands/pipeline/pipeline.ts:259`) state that "a finished
+  project still lists the takes that lost", and that the bulk pass skips them through
+  `settled`. The popup's listing of losing takes is therefore a documented decision, and
+  the confusion the owner reports is with that decision rather than with a defect in
+  implementing it.
 
 ## Catalogue of inconsistencies
 
@@ -247,8 +248,8 @@ Each entry names the code and the symptom an author sees.
   back `blocked` rows (`:286-287`) and approves the rest in list order (`:300-303`). It
   never reads `settled`.
 - `toApprove` in `pipeline.approveAndRun`
-  (`apps/desktop/src/main/commands/pipeline.ts:233-247`) skips `settled` rows and takes
-  one row per slot, and its notes explain why.
+  (`apps/desktop/src/main/commands/pipeline/pipeline.ts:233-247`) skips `settled` rows and
+  takes one row per slot, and its notes explain why.
 - `acceptAsset` un-accepts the other accepted takes of the slot on every call
   (`apps/desktop/src/main/session/asset.ts:230`).
 - Symptom: an author who says "approve everything" to the agent, in a project with a

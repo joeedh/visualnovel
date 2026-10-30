@@ -7,9 +7,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { COMMAND_ID } from '@vn/commands';
 import { declarable, snapshotted } from '../../../shared/affects.js';
-import { catalog, catalogOf, desktopEffects } from '../catalog-entry.js';
-import { docIndex } from '../doc-entry.js';
-import { desktopInteractions } from '../interaction.js';
+import { catalog, catalogOf, desktopEffects } from '../catalog/catalog-entry.js';
+import { docIndex } from '../catalog/doc-entry.js';
+import { desktopInteractions } from '../shell/interaction.js';
 import { createDesktopRegistry } from '../index.js';
 
 const GENERATED = join(__dirname, '..', '..', '..', '..', 'dist', 'commands.json');

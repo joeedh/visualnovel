@@ -7,7 +7,7 @@ import type { AppContext } from './context.js';
 import { getSession } from './sessionaccess.js';
 import { getStack, withVersions } from './stack.js';
 import { execOptions } from './execoptions.js';
-import { catalogOf } from '../commands/catalog-entry.js';
+import { catalogOf } from '../commands/catalog/catalog-entry.js';
 import { notifications } from '../notify/notifications.js';
 import { APPROVAL_ORDER_KEY } from '../../shared/sessionkeys.js';
 import type { InvokeChannel, InvokeChannels } from '../../shared/ipc.js';

@@ -21,7 +21,7 @@ import { checkDocWrite, inSecretsDir, readDocFile, SECRETS_REFUSAL, writeDocFile
 import { writeFileAtomic } from '@vn/util';
 import { ANY_DOCUMENT, UNDO_EXCLUDES, covers } from '../../shared/affects.js';
 import { NOT_OWNED, notCheckedOut, type RepoRole } from '../../shared/history.js';
-import { syncRefusal } from '../commands/syncstate.js';
+import { syncRefusal } from '../commands/helpers/syncstate.js';
 import { fileCache } from '../workspace/filecache.js';
 import { DOC_WRITERS, entityDiagnostic, relPath } from './core.js';
 import type { WorkspaceSession } from './core.js';

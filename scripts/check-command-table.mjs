@@ -18,7 +18,7 @@ const FILES = {
   'docs/reference/command-namespaces.md': 'namespaceFile',
 };
 
-const entries = await loadEntry('apps/desktop/src/main/commands/doc-entry.ts', 'docIndex');
+const entries = await loadEntry('apps/desktop/src/main/commands/catalog/doc-entry.ts', 'docIndex');
 const expected = buildCommandTables(entries);
 
 const stale = [];

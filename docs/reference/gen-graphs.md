@@ -541,7 +541,7 @@ implementation. The testkit passes a mock.
 ## The commands
 
 Every write to a graph is made by a `gengraph.*` command, registered in
-`apps/desktop/src/main/commands/gengraph.ts` and listed with its props in
+`apps/desktop/src/main/commands/pipeline/gengraph.ts` and listed with its props in
 [`command-namespaces.md`](command-namespaces.md#gengraph). A command's `check` and its
 `run` call the same `decide()` over the same document, so the palette shows the same
 message that a refused run would report.

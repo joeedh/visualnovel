@@ -12,7 +12,7 @@ import { REPO_ROOT as root } from './aliases.mjs';
 import { loadEntry } from './lib/load-entry.mjs';
 import { buildCommandTables } from './lib/command-table.mjs';
 
-const entries = await loadEntry('apps/desktop/src/main/commands/doc-entry.ts', 'docIndex');
+const entries = await loadEntry('apps/desktop/src/main/commands/catalog/doc-entry.ts', 'docIndex');
 const { flatFile, namespaceFile } = buildCommandTables(entries);
 
 await fs.writeFile(resolve(root, 'docs/reference/command-table.md'), flatFile);

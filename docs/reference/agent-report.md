@@ -25,8 +25,8 @@ author reviews and edits the draft, and one click opens a pre-filled GitHub issu
 `AGENTREPORT: …`. The tool never posts anything on the author's behalf.
 
 The "pure" logic lives in `@vn/agentreport`, and the desktop app's main process is its
-only consumer (`apps/desktop/src/main/commands/report.ts` defines the seven `report.*`
-commands). The plans that built it, with the implementation history, are
+only consumer (`apps/desktop/src/main/commands/shell/report.ts` defines the seven
+`report.*` commands). The plans that built it, with the implementation history, are
 [`../plans/archive/INDEX.md#reporting-a-difficult-agent`](../plans/archive/INDEX.md#reporting-a-difficult-agent).
 The request-capture tools are covered by
 [`../plans/archive/INDEX.md#diagnosing-an-api-error-from-the-request-that-caused-it`](../plans/archive/INDEX.md#diagnosing-an-api-error-from-the-request-that-caused-it),
