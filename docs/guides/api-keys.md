@@ -41,8 +41,8 @@ switch, pick another model in the Project pane.
 vendor: gemini
 name: Google Gemini
 console: https://aistudio.google.com/apikey
-docs: https://ai.google.dev/gemini-api/docs/api-key
-billing: https://ai.google.dev/gemini-api/docs/pricing
+docs: https://aistudio.google.com/docs/api-key
+billing: https://aistudio.google.com/docs/pricing
 env: GEMINI_API_KEY
 freeTier: true
 ```
