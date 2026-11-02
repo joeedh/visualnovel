@@ -106,6 +106,11 @@ async function twoClones(baseCopy = true): Promise<{ a: string; b: string }> {
     git(join(b, 'assets'), 'init', '-q', '-b', 'main');
     commit(join(b, 'assets'), 'Base art');
   }
+  // the commands commit through git directly, so a machine with no global identity needs these
+  for (const repo of [join(a, 'assets'), b, join(b, 'assets')]) {
+    git(repo, 'config', 'user.email', 'test@example.com');
+    git(repo, 'config', 'user.name', 'Test');
+  }
   return { a, b };
 }
 
