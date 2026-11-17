@@ -1,6 +1,6 @@
 /**
  * Local geometry primitives. Deliberately duplicates a sliver of `@vn/util`: this package
- * sits outside the layering graph (`debug2d: []` in eslint.config.mjs) so it can be lifted
+ * sits outside the layering graph (`"debug2d": []` in lintrix.config.json) so it can be lifted
  * out of the repo or stripped from a build without dragging anything along. Do not
  * "deduplicate" this into a shared package.
  */

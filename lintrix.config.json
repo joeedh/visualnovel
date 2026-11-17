@@ -1,5 +1,8 @@
 {
-  "extends": "lintrix:recommended",
+  "extends"  : "lintrix:recommended",
+  "plugins": {
+    "vn": "./scripts/lintrix/index.ts"
+  },
   "rules": {
     "prefer-const"        : "error",
     "no-unsafe-assignment": "error",
@@ -12,6 +15,197 @@
       }
     ]
   },
+  "overrides": [
+    {
+      "files": ["packages/**/*.ts", "apps/**/*.ts"],
+      "rules": {
+        "vn/no-cycle"     : "error",
+        "vn/element-types": [
+          "error",
+          {
+            "elements": {
+              "types"        : "packages/types",
+              "util"         : "packages/util",
+              "config"       : "packages/config",
+              "parse"        : "packages/parse",
+              "model"        : "packages/model",
+              "store"        : "packages/store",
+              "export"       : "packages/export",
+              "scriptedit"   : "packages/scriptedit",
+              "bible"        : "packages/bible",
+              "artgen"       : "packages/artgen",
+              "gengraph"     : "packages/gengraph",
+              "git"          : "packages/git",
+              "commands"     : "packages/commands",
+              "agentreport"  : "packages/agentreport",
+              "debug2d"      : "packages/debug2d",
+              "authoring"    : "packages/authoring",
+              "taskgraph"    : "packages/taskgraph",
+              "providers"    : "packages/providers",
+              "pipeline"     : "packages/pipeline",
+              "scheduler"    : "packages/scheduler",
+              "testkit"      : "packages/testkit",
+              "cli"          : "apps/cli",
+              "authoring-app": "apps/authoring",
+              "desktop"      : "apps/desktop",
+              "pathux"       : "apps/desktop/dist/pathux-types"
+            },
+            "allow": {
+              "types"        : [],
+              "util"         : ["types"],
+              "config"       : ["types", "util"],
+              "parse"        : ["types", "util"],
+              "model"        : ["types", "util", "parse"],
+              "store"        : ["types", "util", "parse"],
+              "export"       : ["types", "util", "parse", "model", "store"],
+              "scriptedit"   : ["types", "util", "parse", "model", "store"],
+              "bible"        : ["types", "util", "parse", "store"],
+              "artgen": [
+                "types",
+                "util",
+                "config",
+                "parse",
+                "model",
+                "store",
+                "taskgraph",
+                "providers"
+              ],
+              "git"          : ["util"],
+              "commands"     : ["types", "util", "git"],
+              "agentreport": [
+                "types",
+                "util",
+                "config",
+                "parse",
+                "model",
+                "store",
+                "commands",
+                "providers",
+                "authoring"
+              ],
+              "debug2d"      : [],
+              "taskgraph"    : ["types", "util", "store"],
+              "providers"    : ["types", "util", "config"],
+              "pipeline": [
+                "types",
+                "util",
+                "config",
+                "model",
+                "store",
+                "taskgraph",
+                "providers",
+                "artgen",
+                "gengraph"
+              ],
+              "gengraph": [
+                "types",
+                "util",
+                "config",
+                "model",
+                "store",
+                "taskgraph",
+                "artgen",
+                "pathux"
+              ],
+              "scheduler"    : ["types", "util", "config", "store", "taskgraph", "pipeline"],
+              "testkit": [
+                "types",
+                "util",
+                "config",
+                "parse",
+                "model",
+                "store",
+                "export",
+                "git",
+                "commands",
+                "taskgraph",
+                "providers",
+                "gengraph",
+                "pipeline",
+                "scheduler"
+              ],
+              "authoring": [
+                "types",
+                "util",
+                "config",
+                "parse",
+                "model",
+                "store",
+                "scriptedit",
+                "bible",
+                "artgen",
+                "gengraph",
+                "providers",
+                "git"
+              ],
+              "authoring-app": [
+                "types",
+                "util",
+                "config",
+                "store",
+                "artgen",
+                "providers",
+                "git",
+                "authoring"
+              ],
+              "cli": [
+                "types",
+                "util",
+                "config",
+                "parse",
+                "model",
+                "store",
+                "export",
+                "taskgraph",
+                "providers",
+                "pipeline",
+                "scheduler"
+              ],
+              "desktop": [
+                "types",
+                "util",
+                "config",
+                "parse",
+                "model",
+                "store",
+                "export",
+                "scriptedit",
+                "bible",
+                "artgen",
+                "gengraph",
+                "git",
+                "commands",
+                "agentreport",
+                "taskgraph",
+                "providers",
+                "pipeline",
+                "scheduler",
+                "authoring",
+                "debug2d",
+                "pathux"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "files": ["**/*.test.ts", "**/__fixtures__/**"],
+      "rules": {
+        "vn/element-types": "off"
+      }
+    },
+    {
+      "files": [
+        "apps/desktop/src/main/session/**",
+        "apps/desktop/src/main/runtime/**",
+        "apps/desktop/renderer/pathux/**"
+      ],
+      "rules": {
+        "vn/no-cycle": "warn"
+      }
+    }
+  ],
   "ignores": [
     "**/node_modules/**",
     "**/dist/**",

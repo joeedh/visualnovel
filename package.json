@@ -63,7 +63,7 @@
     "comment-lint": "^0.4.0",
     "esbuild": "^0.24.2",
     "jest": "^29.7.0",
-    "lintrix": "0.1.2",
+    "lintrix": "0.2.0",
     "markdown-toc": "^1.2.0",
     "turbo": "^2.10.7",
     "typescript": "^7.0.0",

@@ -40,11 +40,11 @@ disk, which would add noise.
   is written to front-matter, and the scheduler runs for real, so a fixture cannot pass
   under looser conditions than the app applies. `characters`/`locations` are inferred from
   the script by the same `splitScenes` the model build uses, so the ids match.
-- **Nothing may import `testkit`.** The boundaries rule grants `testkit` permission to
-  import every layer and grants no one permission to import `testkit`; since
-  `boundaries/element-types` defaults to `disallow`, a production import is a lint error.
-  Test files are exempt from the rule, and test files are the only place `testkit`
-  belongs. `testkit` must never appear in an app's `dependencies`.
+- **Nothing may import `testkit`.** `vn/element-types` grants `testkit` permission to
+  import every layer and grants no one permission to import `testkit`. An import no
+  `allow` entry lists is refused, so a production import is a lint error. Test files are
+  exempt from the rule, and test files are the only place `testkit` belongs. `testkit`
+  must never appear in an app's `dependencies`.
 - **The gate is per scene.** A scene with no cast renders on the first run, before any
   approval. Assert on `summary.blockedOnGate`, `summary.gate.pending`, or specific shot
   ids, and never on "no shots ran".

@@ -111,11 +111,11 @@ repo use.
   same class. `nstructjs` is pinned to `vendor/nstructjs` everywhere for the same reason:
   two copies in one process create two STRUCT registries, and a class registered in one is
   unreadable by the other.
-- **eslint classifies the declaration tree as its own element.** `boundaries/elements` in
-  `eslint.config.mjs` carries a `pathux` entry for `apps/desktop/dist/pathux-types`,
-  listed before the `desktop` entry so it matches first. Without it the TypeScript
-  resolver reports an import of the vendored library as an import of the desktop app, and
-  the layering rule refuses it.
+- **The layering rule classifies the declaration tree as its own element.**
+  `vn/element-types` in `lintrix.config.json` carries a `pathux` element for
+  `apps/desktop/dist/pathux-types`. The longest matching folder wins, so it takes those
+  files from `desktop`. Without it, an import of the vendored library would count as an
+  import of the desktop app, and the layering rule would refuse it.
 
 ## Packaging the desktop app
 
@@ -185,8 +185,8 @@ can therefore typecheck, pass its tests, and still fail to bundle:
 2.  2. `PACKAGES` in `jest.config.cjs`, which lists the display-named project (a project
        with no matching tests fails `pnpm test`, so add it in the same commit as the
        code),
-3.  3. `ALLOWED` + `boundaries/elements` in `eslint.config.mjs`, which declare the layer
-       and its allow-list,
+3.  3. `elements` + `allow` under `vn/element-types` in `lintrix.config.json`, which
+       declare the layer and its allow-list,
 4.  4. `PACKAGES` in `scripts/aliases.mjs`, which esbuild resolves against in both bundle
        scripts.
 
@@ -206,11 +206,25 @@ A type-only use of a node-side type erases cleanly, so only `vite build` fails, 
 
 ## Lint
 
-- **The boundaries rule needs the TypeScript import resolver.** `eslint.config.mjs` sets
-  `'import/resolver': { typescript: … }`. The legacy node resolver resolved nothing,
-  because source-only packages have an `exports` map and no `main`, and
-  `boundaries/element-types` passes an unresolved import without classifying it. The
-  package layering was advertised but not enforced until that was fixed.
+- **The layering rules are a lintrix plugin in this repo.** Lintrix has no import rules of
+  its own, so `scripts/lintrix/index.ts` supplies `vn/element-types` and `vn/no-cycle` in
+  place of `eslint-plugin-boundaries` and `import/no-cycle`. Both rules resolve a
+  specifier the way `tsgo` does: the root tsconfig's `paths`, then a workspace package's
+  `node_modules` link and `exports` map. An import neither resolves is treated as external
+  and passes, so a missing violation means a resolution problem, not an allow-list
+  problem.
+- **The plugin is one file.** Lintrix loads a `.ts` plugin through Node's type stripping.
+  That needs `.ts` extensions on relative imports, which the repo's tsconfig forbids, and
+  it rejects TypeScript-only syntax such as parameter properties.
+- **`vn/no-cycle` parses the files the current one imports** through lintrix's own WASM
+  parser, loaded once with `loadAddon`. The import graph is built once per run and adds
+  about 1.5 s to `pnpm lint`.
+- **Neither eslint rule worked on TypeScript.** `import/no-cycle` never checked a `.ts`
+  file, because the config set neither `import/extensions` nor `import/parsers`, so
+  eslint-plugin-import skipped every TypeScript module. `boundaries/element-types` passed
+  every cross-layer import until the TypeScript resolver was added, because the node
+  resolver resolved nothing. Both rules ran silently, so the 71 cycles `vn/no-cycle` found
+  on its first run predate the switch to lintrix.
 
 ## Test
 

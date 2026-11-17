@@ -113,7 +113,7 @@ export interface CommandHost {
   /**
    * The catalog, for a command validating machine-written input against it. Reached through the
    * host for the reason `check` is: `commands/index.ts` imports each command module, so a command
-   * building the registry itself would close a cycle `import/no-cycle` rejects.
+   * building the registry itself would close a cycle `vn/no-cycle` rejects.
    */
   known: Known;
   /**

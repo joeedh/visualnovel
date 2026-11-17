@@ -40,15 +40,15 @@ Rule out the common failures before debugging a subtle problem:
 pnpm check                                    # tsgo over the workspace AND the renderer
 pnpm exec jest --selectProjects @vn/store     # one package's suite, fast
 pnpm test                                     # everything
-pnpm lint                                     # eslint (boundaries!) + prettier check
+pnpm lint                                     # lintrix (layering!) + prettier check
 ```
 
 The gates catch these cases, which look like deep bugs but are not:
 
-- **A cross-layer import.** The boundaries rule rejects it. Note the historical gotcha:
-  the rule cannot classify an import it fails to resolve, and passes it. If a boundaries
-  violation you expected is missing, suspect resolution (the TypeScript resolver in
-  `eslint.config.mjs`) rather than the rule.
+- **A cross-layer import.** `vn/element-types` rejects it. The rule cannot classify an
+  import it fails to resolve, and passes it. If a violation you expected is missing,
+  suspect resolution (`Workspace.resolve` in `scripts/lintrix/index.ts`, which reads the
+  root tsconfig's `paths`) rather than the allow-list.
 - **Renderer type errors.** `pnpm check` runs two passes: the root `tsconfig.json` covers
   `*/src/**` only, and `pnpm check:renderer` covers `apps/desktop/renderer/**`. Running
   `tsgo -p tsconfig.json` by hand checks half the repo and reports success.
@@ -56,8 +56,9 @@ The gates catch these cases, which look like deep bugs but are not:
   `package.json` does not create its `node_modules` link, and the symptom is
   `Cannot find module 'yaml'` in the new package only, which looks like a `paths` problem
   but is not. Four lists must all name a new package: root `tsconfig.json` `paths`,
-  `jest.config.cjs` `PACKAGES`, `scripts/aliases.mjs` `PACKAGES`, and `eslint.config.mjs`.
-  Add `apps/desktop/renderer/tsconfig.json` as well if the renderer imports it.
+  `jest.config.cjs` `PACKAGES`, `scripts/aliases.mjs` `PACKAGES`, and
+  `lintrix.config.json`. Add `apps/desktop/renderer/tsconfig.json` as well if the renderer
+  imports it.
 
 A suite that fails in a file your diff never touched is usually a generated artifact
 rather than your change. The desktop project compares `apps/desktop/dist/commands.json` (a

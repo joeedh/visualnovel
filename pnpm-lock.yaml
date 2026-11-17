@@ -36,8 +36,8 @@ importers:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@22.20.2)
       lintrix:
-        specifier: 0.1.2
-        version: 0.1.2
+        specifier: 0.2.0
+        version: 0.2.0
       markdown-toc:
         specifier: ^1.2.0
         version: 1.2.0
@@ -3096,8 +3096,8 @@ packages:
   lines-and-columns@1.2.4:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==}
 
-  lintrix@0.1.2:
-    resolution: {integrity: sha512-ojtQ38zYDRnWHr+Dxd7dvD1JSJYjQ/gbizxRQJmSh9N2Iklj2T0KpPSgD/iZVM+wB6TLKFP56y5HxAFJX8ZIoQ==}
+  lintrix@0.2.0:
+    resolution: {integrity: sha512-Ve32ZBHC6cjfs9vM4JTITTJqxMsgYklqc6Ni3MhqiqyYw2T+gYQVWoarnau7wEHBlztZLZGxSIblazVIWMLfKw==}
     engines: {node: '>=24'}
     hasBin: true
 
@@ -7066,7 +7066,7 @@ snapshots:
 
   lines-and-columns@1.2.4: {}
 
-  lintrix@0.1.2: {}
+  lintrix@0.2.0: {}
 
   list-item@1.1.1:
     dependencies:

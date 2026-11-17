@@ -109,8 +109,10 @@ enough mistakes to repeat here:
 
 ### Package layering
 
-The graph is acyclic, enforced by `eslint-plugin-boundaries` and `import/no-cycle`. What
-each package is responsible for, and the rules behind this diagram, are in
+The graph is acyclic. Two lintrix rules from `scripts/lintrix/` enforce it:
+`vn/element-types` checks each import against the allow-list in `lintrix.config.json`, and
+`vn/no-cycle` refuses runtime import cycles. What each package is responsible for, and the
+rules behind this diagram, are in
 [`docs/reference/packages.md`](docs/reference/packages.md).
 
 ```
@@ -132,7 +134,7 @@ providers   │      ╲ ╲  │
 
 - The pipeline spine and the authoring branch are disjoint below `@vn/store`; they are not
   allowed to depend on each other. `@vn/authoring` reuses the input-side packages but must
-  never import `@vn/pipeline` or `@vn/scheduler`. The boundaries rule checks each import
+  never import `@vn/pipeline` or `@vn/scheduler`. `vn/element-types` checks each import
   statement rather than the transitive closure, so routing a forbidden import through an
   allowed leaf package still violates the design and must not be done.
 - Six leaves share that constrained allow-list. `@vn/export`, `@vn/scriptedit`,

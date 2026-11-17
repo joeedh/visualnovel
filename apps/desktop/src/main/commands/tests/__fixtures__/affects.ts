@@ -2,8 +2,8 @@
  * A real `CommandStack` over a real project, so a command's `affects` can be checked against what
  * it actually wrote rather than against what it claims.
  *
- * `__fixtures__` rather than a `.harness.ts` name because `eslint.config.mjs` turns
- * `boundaries/element-types` off for `**\/*.test.ts` and `**\/__fixtures__/**` and nowhere else,
+ * `__fixtures__` rather than a `.harness.ts` name because `lintrix.config.json` turns
+ * `vn/element-types` off for `**\/*.test.ts` and `**\/__fixtures__/**` and nowhere else,
  * and this reaches `@vn/testkit`.
  *
  * The workspace is captured into this module's own `ContentStore` either side of every command,
