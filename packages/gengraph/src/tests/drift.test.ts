@@ -1,6 +1,14 @@
-import { Graph, journalRecord, replayJournal } from '../index.js';
-import type { GraphJournal } from '../index.js';
-import { authoredHashes, graphDrift, graphHashes } from '../state.js';
+import {
+  GenTemplate,
+  Graph,
+  defaultSlotGraph,
+  journalRecord,
+  readGraphFile,
+  replayJournal,
+  writeGraphFile,
+} from '../index.js';
+import type { GraphJournal, Node } from '../index.js';
+import { authoredHashes, graphDrift, graphHashes, isDefaultGraph } from '../state.js';
 import {
   TestOutput,
   TestSeeded,
@@ -117,5 +125,54 @@ describe('drift', () => {
     setProp(source, 'label', 'blue hour');
 
     expect(graphDrift(graph, journal).some((d) => d.nodeId === source.id)).toBe(false);
+  });
+});
+
+function nodeOf(graph: Graph, typeName: string): Node {
+  const node = graph.nodes.find((n) => n.def.typeName === typeName);
+  if (node === undefined) throw new Error(`the graph holds no ${typeName} node`);
+  return node;
+}
+
+describe('isDefaultGraph', () => {
+  const SLOT = 'portrait:aiko';
+
+  it('accepts the default graph, before and after a trip through its file', () => {
+    const graph = defaultSlotGraph(SLOT);
+    const read = readGraphFile(JSON.parse(JSON.stringify(writeGraphFile(graph))) as unknown);
+
+    expect(isDefaultGraph(graph, nodeOf(graph, 'GenOutput').id)).toBe(true);
+    expect(read.graph).toBeDefined();
+    expect(isDefaultGraph(read.graph!, nodeOf(read.graph!, 'GenOutput').id)).toBe(true);
+  });
+
+  it('accepts a default graph whose nodes were moved, relabelled, or joined by loose ones', () => {
+    const graph = defaultSlotGraph(SLOT);
+    const output = nodeOf(graph, 'GenOutput');
+    nodeOf(graph, 'GenImage').pos[0] = 900;
+    output.label = 'final frame';
+    graph.add(new GenTemplate());
+
+    expect(isDefaultGraph(graph, output.id)).toBe(true);
+  });
+
+  it('ignores how the slot is spelled', () => {
+    const graph = defaultSlotGraph(` ${SLOT} `);
+
+    expect(isDefaultGraph(graph, nodeOf(graph, 'GenOutput').id)).toBe(true);
+  });
+
+  it('rejects a graph whose output descends from an edited node', () => {
+    const graph = defaultSlotGraph(SLOT);
+    setProp(nodeOf(graph, 'GenImage'), 'model', 'another-model');
+
+    expect(isDefaultGraph(graph, nodeOf(graph, 'GenOutput').id)).toBe(false);
+  });
+
+  it('rejects a key that names no output', () => {
+    const graph = defaultSlotGraph(SLOT);
+
+    expect(isDefaultGraph(graph, nodeOf(graph, 'GenImage').id)).toBe(false);
+    expect(isDefaultGraph(graph, 'nothing/here')).toBe(false);
   });
 });

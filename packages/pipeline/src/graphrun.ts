@@ -8,6 +8,7 @@
 import type { AnyTask, AssetMeta, AssetRef, ProjectModel, RefBinding } from '@vn/types';
 import { slotKey } from '@vn/artgen';
 import {
+  activeOutputs,
   applyRecord,
   bindSlots,
   genNodeSpec,
@@ -24,7 +25,7 @@ import type {
   GraphJournal,
   GraphJournalRecord,
 } from '@vn/gengraph';
-import { executeGenGraph, graphDrift } from '@vn/gengraph/state';
+import { executeGenGraph, graphDrift, isDefaultGraph } from '@vn/gengraph/state';
 import type { GenRunContext, GenRunResult } from '@vn/gengraph/state';
 import type { RunDeps } from './pipeline.js';
 import { checkRequest, checkRequestWrite } from '@vn/providers';
@@ -167,10 +168,13 @@ export function boundGraph(task: AnyTask, deps: RunDeps): GraphBinding | undefin
 }
 
 /**
- * The tasks whose bound graph has been edited since it last drew their slot. A task's hash
- * does not move when a graph is edited, because the graph is the slot's runner rather than
- * part of what the slot is, so this is the only signal that the picture is out of date.
- * Each graph is compared once however many tasks reach it.
+ * The tasks whose bound graph would draw something other than the picture their slot holds. A
+ * task's hash does not move when a graph is edited, because the graph is the slot's runner
+ * rather than part of what the slot is, so this is the only signal that the picture is out of
+ * date. That covers a graph edited since it last drew the slot, and a graph that has never
+ * drawn it but differs from `defaultSlotGraph`, which is what the built-in runner draws. The
+ * second case is a slot drawn before the graph was bound to it. Each graph is compared once
+ * however many tasks reach it.
  */
 export function driftedTasks(tasks: Iterable<AnyTask>, deps: RunDeps): AnyTask[] {
   const perGraph = new Map<Graph, ReadonlySet<GraphId>>();
@@ -184,7 +188,7 @@ export function driftedTasks(tasks: Iterable<AnyTask>, deps: RunDeps): AnyTask[]
 
     let drifted = perGraph.get(binding.graph);
     if (drifted === undefined) {
-      drifted = new Set(graphDrift(binding.graph, binding.journal).map((d) => d.nodeId));
+      drifted = staleOutputs(binding.graph, binding.journal);
       perGraph.set(binding.graph, drifted);
     }
     if (drifted.has(binding.target)) {
@@ -192,6 +196,17 @@ export function driftedTasks(tasks: Iterable<AnyTask>, deps: RunDeps): AnyTask[]
     }
   }
 
+  return stale;
+}
+
+/** Collects the drifted active outputs, plus those never run that differ from the default graph. */
+function staleOutputs(graph: Graph, journal: GraphJournal): Set<GraphId> {
+  const stale = new Set(graphDrift(graph, journal).map((d) => d.nodeId));
+  for (const { id } of activeOutputs(graph)) {
+    if (!journal.lastDone.has(id) && !isDefaultGraph(graph, id)) {
+      stale.add(id);
+    }
+  }
   return stale;
 }
 

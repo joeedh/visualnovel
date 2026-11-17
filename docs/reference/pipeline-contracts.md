@@ -697,6 +697,13 @@ These implement the system design in
       returns every planned `done` or `needs_human` task whose bound graph has drifted to
       `pending`. It runs once per run, before the wave loop, and `RunSummary.redrawn`
       names the tasks it requeued.
+    - A graph bound to a slot the built-in runner already drew has no `done` record for
+      its output, so `graphDrift` reports nothing for it. `requeueDrifted` also requeues
+      that slot's task, unless `isDefaultGraph` finds the graph equivalent to
+      `defaultSlotGraph` for the slot, which draws what the built-in runner drew. The
+      comparison uses authored hashes, so a default graph whose nodes were only moved or
+      joined by unconnected nodes still counts as the default. The redraw writes the
+      output's first `done` record, so it is asked for once.
     - Drift is measured on `authoredHashes`, which reads each host-seeded input (the
       derived prompt, task refs) as though nothing had been seeded onto it. It is not
       measured on the task's own `nodeHash`, because that hash includes the seeding and

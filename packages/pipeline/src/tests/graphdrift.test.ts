@@ -2,8 +2,9 @@
  * Editing a generation graph redraws the slots it is bound to. A task's hash does not move
  * when a graph is edited, because the graph is the slot's runner rather than part of what the
  * slot is, so a run compares each bound graph against what its journal recorded and puts the
- * tasks whose graph has changed back to `pending`. Checked against a real project on disk
- * running through the real scheduler.
+ * tasks whose graph has changed back to `pending`. A graph bound to a slot the built-in runner
+ * already drew has no record to compare against, so it is compared against the default graph
+ * instead. Checked against a real project on disk running through the real scheduler.
  */
 import {
   GenDerivedPrompt,
@@ -11,6 +12,7 @@ import {
   GenOutput,
   GenTemplate,
   Graph,
+  defaultSlotGraph,
   registerGenRuntimes,
 } from '@vn/gengraph';
 import type { Node } from '@vn/gengraph';
@@ -110,6 +112,71 @@ describe('a run whose bound graph has been edited', () => {
 
       expect(third.redrawn).toEqual([]);
       expect(third.ran).toEqual([]);
+    } finally {
+      await p.cleanup();
+    }
+  });
+});
+
+describe('a graph bound to a slot the built-in runner already drew', () => {
+  it('redraws the slot once when the graph draws something else', async () => {
+    const p = await makeProject({ script: SCRIPTS.linear });
+    try {
+      const first = await p.run({});
+      const drawn = first.ran.find((t) => t.kind === 'portrait');
+      expect(drawn).toBeDefined();
+
+      const { graph, text } = templateGraph('portrait:aiko');
+      setProp(text, 'template', '{varA}, in ink wash');
+      const second = await p.run({ graphs: { [SLUG]: graph } });
+
+      expect(second.redrawn).toEqual([drawn!.hash]);
+      expect(second.ran.map((t) => t.hash)).toEqual([drawn!.hash]);
+
+      const { store } = await p.reload();
+      const prompts = store
+        .manifest()
+        .filter((a) => a.kind === 'portrait')
+        .map((a) => a.prompt);
+      expect(prompts).toContainEqual(expect.stringMatching(/, in ink wash$/));
+
+      const third = await p.run({ graphs: { [SLUG]: graph } });
+      expect(third.redrawn).toEqual([]);
+      expect(third.ran).toEqual([]);
+    } finally {
+      await p.cleanup();
+    }
+  });
+
+  it('leaves the slot alone when the graph is the default one', async () => {
+    const p = await makeProject({ script: SCRIPTS.linear });
+    try {
+      await p.run({});
+      const second = await p.run({ graphs: { [SLUG]: defaultSlotGraph('portrait:aiko') } });
+
+      expect(second.redrawn).toEqual([]);
+      expect(second.ran).toEqual([]);
+    } finally {
+      await p.cleanup();
+    }
+  });
+
+  it('leaves the slot alone when the default graph was only rearranged', async () => {
+    const p = await makeProject({ script: SCRIPTS.linear });
+    try {
+      await p.run({});
+
+      const graph = defaultSlotGraph('portrait:aiko');
+      const image = graph.nodes.find((n) => n.def.typeName === 'GenImage');
+      expect(image).toBeDefined();
+      image!.pos[0] = 900;
+      image!.pos[1] = -300;
+      graph.add(new GenTemplate());
+
+      const second = await p.run({ graphs: { [SLUG]: graph } });
+
+      expect(second.redrawn).toEqual([]);
+      expect(second.ran).toEqual([]);
     } finally {
       await p.cleanup();
     }

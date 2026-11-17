@@ -354,6 +354,18 @@ implementation. The testkit passes a mock.
   excludes `state/`. Undoing the edit restores the authored hash, so the drift disappears
   before anything is redrawn. The contract is stated in
   [`pipeline-contracts.md`](pipeline-contracts.md).
+- **Binding a graph to a slot that is already drawn redraws it, unless the graph is the
+  default one.** An output with no `done` record has nothing to drift from, so
+  `graphDrift` does not report it, but its slot may hold a picture the built-in runner
+  drew before the graph was bound. `driftedTasks` in `@vn/pipeline` therefore also
+  requeues a planned `done` or `needs_human` task whose bound output has no `done` record,
+  and the task appears in `RunSummary.redrawn` like any other drift. The exception is a
+  graph that `isDefaultGraph` (`@vn/gengraph`) finds equivalent to `defaultSlotGraph` for
+  the slot, which draws what the built-in runner drew. It compares the output's authored
+  hash with the default output's, so moving or relabelling nodes, or adding nodes the
+  output does not descend from, still counts as the default graph. The redraw writes the
+  output's first `done` record, so it is asked for once. `reportGraphs` does not list
+  these slots as drifted, because it does not read the task graph.
 - **A deliberate re-render marks nodes invalid instead of re-walking the graph.** With
   every node clean, a plain requeue would skip straight to the cached image.
   `PipelineControl.regenerate` on a bound slot, and `gengraph.run` with `force`, append an

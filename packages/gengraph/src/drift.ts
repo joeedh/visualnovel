@@ -1,8 +1,11 @@
 import type { Graph, GraphId } from 'pathux-graph';
 
+import { defaultSlotGraph } from './defaults.js';
 import { authoredHashes } from './hash.js';
 import type { GraphJournal } from './journal.js';
+import { nodeKey, resolveNodeKey } from './nodekey.js';
 import { genNodeSpec } from './registry.js';
+import { activeOutputs } from './slots.js';
 
 /** One output node whose graph no longer matches what its last run recorded. */
 export interface GenGraphDrift {
@@ -40,4 +43,27 @@ export function graphDrift(graph: Graph, journal: GraphJournal): GenGraphDrift[]
   }
 
   return drifted;
+}
+
+/**
+ * Whether the output at `outputKey` draws what `defaultSlotGraph` would draw for the same slot.
+ * Authored hashes are compared, so moving or relabelling nodes, and adding nodes the output does
+ * not descend from, still counts as the default. The default is built with the output's own
+ * slot text, so only the drawing is compared and not how the slot was spelled.
+ */
+export function isDefaultGraph(graph: Graph, outputKey: GraphId): boolean {
+  const output = resolveNodeKey(graph, outputKey);
+  const slotProp = output === undefined ? undefined : genNodeSpec(output.def.typeName)?.slotProp;
+  if (output === undefined || slotProp === undefined) {
+    return false;
+  }
+
+  const fallback = defaultSlotGraph(String(output.props[slotProp]?.getValue() ?? ''));
+  const twin = activeOutputs(fallback)[0];
+  if (twin === undefined) {
+    return false;
+  }
+
+  const current = authoredHashes(graph).get(nodeKey(output));
+  return current !== undefined && current === authoredHashes(fallback).get(twin.id);
 }
