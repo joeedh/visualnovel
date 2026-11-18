@@ -9,7 +9,7 @@
  * and trusted.
  */
 import fs from 'node:fs/promises';
-import type { PagePanel, ProjectModel, SheetGroup, Shot, ShotsFile } from '@vn/types';
+import type { PagePanel, ProjectModel, Scene, SheetGroup, Shot, ShotsFile } from '@vn/types';
 import {
   promptOverrideFrom,
   promptOverrideIsEmpty,
@@ -285,9 +285,21 @@ function serialize(sceneId: string, shots: readonly Shot[], marks: FileMarks): s
 }
 
 /**
+ * Sets a scene's staging-sheet groups to the ones its storyboard file declares, or clears them
+ * when it declares none. A member's task identity reads the group's seed and notes off the scene.
+ */
+export function syncSheets(scene: Pick<Scene, 'sheets'>, loaded: LoadedShots | null): void {
+  if (loaded?.sheets) scene.sheets = loaded.sheets;
+  else delete scene.sheets;
+}
+
+/**
  * Every scene's persisted storyboard, by scene id. A storyboard that will not parse is one
  * scene's problem. With `reportBroken` it becomes a `null` the tree draws a badge for. Without
  * that option the scene is simply absent, which is what every other reader wants.
+ *
+ * Each model scene's `sheets` is set from its file as it is read ({@link syncSheets}), so a caller
+ * that resolves slot identity against `model` and the returned shots sees the same groups.
  */
 export async function readAllShots(
   paths: ProjectPaths,
@@ -300,7 +312,9 @@ export async function readAllShots(
     try {
       const loaded = await readShots(paths, scene.id, ids);
       if (loaded) shots.set(scene.id, loaded.shots);
+      syncSheets(scene, loaded);
     } catch {
+      syncSheets(scene, null);
       if (opts.reportBroken) shots.set(scene.id, null);
     }
   }

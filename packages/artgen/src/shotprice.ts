@@ -29,7 +29,8 @@ function identityOf(sceneId: string, shotId: string, ctx: SlotResolveContext): s
  * Prices `changes` against the project as it stands in `ctx`. A shot is counted when its identity
  * can be stated now and differs afterwards, or cannot be stated afterwards; one that cannot be
  * stated now has not been planned, so nothing is drawn again. It counts as rendered when it has
- * an image.
+ * an image. A staging-sheet group is in every member's identity, so the other members of a group a
+ * changed shot leaves or is in are priced the same way, each shot at most once.
  */
 export function priceShotChanges(
   ctx: SlotResolveContext,
@@ -37,30 +38,39 @@ export function priceShotChanges(
 ): ShotChangePrice {
   let moved = 0;
   let rendered = 0;
+  const changed = new Set(changes.map((c) => `${c.sceneId}/${c.shot.id}`));
+  const counted = new Set<string>();
+  const price = (sceneId: string, shot: Shot, after: SlotResolveContext): void => {
+    const key = `${sceneId}/${shot.id}`;
+    if (counted.has(key)) return;
+    const now = identityOf(sceneId, shot.id, ctx);
+    if (now === undefined || identityOf(sceneId, shot.id, after) === now) return;
+    counted.add(key);
+    moved++;
+    if (shot.image !== undefined) rendered++;
+  };
+
   for (const change of changes) {
-    const before = ctx.shots?.get(change.sceneId)?.find((s) => s.id === change.shot.id);
+    const board = ctx.shots?.get(change.sceneId) ?? [];
+    const before = board.find((s) => s.id === change.shot.id);
     const scene = ctx.model.scenes.get(change.sceneId);
     if (!before || !scene) continue;
-    const now = identityOf(change.sceneId, before.id, ctx);
-    if (now === undefined) continue;
 
     const movedScene: Scene =
       change.location === undefined ? scene : { ...scene, location: change.location };
     const scenes = new Map(ctx.model.scenes).set(change.sceneId, movedScene);
     const shots = new Map(ctx.shots).set(
       change.sceneId,
-      (ctx.shots?.get(change.sceneId) ?? []).map((s) =>
-        s.id === change.shot.id ? change.shot : s,
-      ),
+      board.map((s) => (s.id === change.shot.id ? change.shot : s)),
     );
-    const after = identityOf(change.sceneId, change.shot.id, {
-      ...ctx,
-      model: { ...ctx.model, scenes },
-      shots,
-    });
-    if (after === now) continue;
-    moved++;
-    if (before.image !== undefined) rendered++;
+    const after = { ...ctx, model: { ...ctx.model, scenes }, shots };
+    price(change.sceneId, before, after);
+
+    const groups = new Set([before.sheet, change.shot.sheet]);
+    for (const sibling of board) {
+      if (sibling.sheet === undefined || !groups.has(sibling.sheet)) continue;
+      if (!changed.has(`${change.sceneId}/${sibling.id}`)) price(change.sceneId, sibling, after);
+    }
   }
   return { moved, rendered };
 }

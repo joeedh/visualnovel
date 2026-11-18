@@ -15,8 +15,10 @@ import {
   imageParams,
   newestFirst,
   resolveSlot,
+  sheetKeys,
   slotTaskHash,
   type SlotGraphContext,
+  type SlotResolveContext,
 } from '../index.js';
 
 const config = projectConfig.parse({
@@ -242,6 +244,52 @@ describe('resolveSlot', () => {
     const decided = resolveSlot({ kind: 'portrait', characterId: 'aiko' }, ctx());
     expect(decided.ok).toBe(true);
     if (decided.ok) expect(slotTaskHash(decided.plan)).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  describe('a staging-sheet member', () => {
+    const members: Shot[] = [
+      { ...SHOT, id: 'arrival__a', sheet: 'g1' },
+      { ...SHOT, id: 'arrival__b', sheet: 'g1' },
+      { ...SHOT, id: 'arrival__c' },
+    ];
+    const PLATE = asset('plate1', 'location_ref', [{ locationId: 'cafe', variant: 'day' }], true);
+
+    /** The café's day plate has rendered, so a frame's upstream resolves and it states an identity. */
+    function staged(over: Partial<SlotGraphContext> = {}): SlotGraphContext {
+      const c = ctx({ shots: new Map([['arrival', members]]), ...over });
+      c.model.scenes.get('arrival')!.sheets = { g1: { seed: 3 } };
+      const cafe = c.model.locations.get('cafe')!;
+      const plate = makeTask(
+        'location_ref',
+        locationInputs(cafe, 'day', config, imageParams(config)),
+      );
+      const done = { ...plate, status: 'done' as const, output: 'plate1' };
+      return { ...c, graph: { get: (hash) => (hash === plate.hash ? done : undefined) } };
+    }
+
+    const extraOf = (shotId: string, c: SlotResolveContext): unknown => {
+      const decided = resolveSlot({ kind: 'shot', sceneId: 'arrival', shotId }, c);
+      if (!decided.ok || decided.plan.kind !== 'shot_image') throw new Error('no identity');
+      return decided.plan.inputs.params.extra;
+    };
+
+    it('carries the key the planner puts in its params, and a shot in no group carries none', () => {
+      const c = staged({ assets: [PORTRAIT, PLATE] });
+      const scene = { ...c.model.scenes.get('arrival')!, shots: members };
+      const key = sheetKeys(scene, c.model, config, [PORTRAIT, PLATE]).get('g1');
+      expect(key).toMatch(/^[0-9a-f]{64}$/);
+      expect(extraOf('arrival__a', c)).toEqual({ sheet: key });
+      expect(extraOf('arrival__b', c)).toEqual({ sheet: key });
+      expect(extraOf('arrival__c', c)).toBeUndefined();
+    });
+
+    it('keys on no references without a manifest, as a plan given none does', () => {
+      const { assets: _dropped, ...c } = staged();
+      const scene = { ...c.model.scenes.get('arrival')!, shots: members };
+      expect(extraOf('arrival__a', c)).toEqual({
+        sheet: sheetKeys(scene, c.model, config, []).get('g1'),
+      });
+    });
   });
 });
 

@@ -32,9 +32,7 @@ import {
   firstCycle,
   layoutDefect,
   sceneUnblocked,
-  sheetGroups,
-  sheetKey,
-  sheetSeeds,
+  sheetKeys,
 } from '@vn/artgen';
 import { VnError } from '@vn/util';
 import { checkRequest } from '@vn/providers';
@@ -132,25 +130,6 @@ async function shotsFor(
     shots: decomposition.shots,
     ...(decomposition.sheets ? { sheets: decomposition.sheets } : {}),
   };
-}
-
-/**
- * The key each of the scene's staging-sheet groups puts into its members' params, derived once
- * per group. A group whose sheet nothing can be resolved for yet still keys; what it hashes is the
- * sheet's inputs as they stand, so a plate arriving later re-keys the members, as it should.
- */
-function sheetKeys(
-  scene: Scene,
-  model: ProjectModel,
-  config: ProjectConfig,
-  assets: readonly Asset[],
-): Map<string, string> {
-  const keys = new Map<string, string>();
-  for (const group of sheetGroups(scene)) {
-    const seeds = sheetSeeds(scene, group, model, config, assets);
-    if (seeds) keys.set(group, sheetKey(seeds));
-  }
-  return keys;
 }
 
 /**

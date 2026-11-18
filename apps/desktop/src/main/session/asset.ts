@@ -503,6 +503,7 @@ export class AssetPart {
       model: project.model,
       shots,
       config: project.config,
+      assets: project.store.manifest(),
       graph : project.graph,
     });
     if (!decided.ok) return { ok: false, reason: decided.reason };

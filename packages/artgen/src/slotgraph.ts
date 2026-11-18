@@ -57,14 +57,17 @@ import {
   SHEET_FRONT,
 } from './prompts.js';
 import { approvedPortraitOf } from './gate.js';
+import { sheetKeys } from './sheet.js';
 
 /** A decision that either carries a plan or names, in a sentence, why there is none. */
 export type Decided<T> = { ok: false; code: string; reason: string } | { ok: true; plan: T };
 
 /**
- * The fields stating a slot's identity reads. The manifest enters only through the approved
- * portrait (`approvedPortraitOf`): with `assets`, a sheet or a frame is keyed on the portrait the
- * gate approves off the row; without them, on the sheet's mirror, which is what a pure plan reads.
+ * The fields stating a slot's identity reads. The manifest enters through the approved portrait
+ * (`approvedPortraitOf`): with `assets`, a sheet or a frame is keyed on the portrait the gate
+ * approves off the row; without them, on the sheet's mirror, which is what a pure plan reads. It
+ * also enters a staging-sheet member's identity through the sheet's references (`sheetKeys`),
+ * which resolve to none without `assets`, as they do in a plan given no manifest.
  */
 export interface SlotResolveContext extends RungContext {
   config: ProjectConfig;
@@ -224,15 +227,23 @@ export function resolveSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<
     case 'shot': {
       const scene = ctx.model.scenes.get(slot.sceneId);
       if (!scene) return gone(`There is no scene "${slot.sceneId}"`);
-      const shot = ctx.shots?.get(slot.sceneId)?.find((s) => s.id === slot.shotId);
+      const board = ctx.shots?.get(slot.sceneId) ?? [];
+      const shot = board.find((s) => s.id === slot.shotId);
       if (!shot) return gone(`Scene ${scene.id} has no shot "${slot.shotId}"`);
       const upstream = shotUpstream(scene, shot, ctx);
       if (!upstream.ok) return upstream;
+      // Without a manifest the sheet is keyed on no references, which is what the planner does
+      const sheet =
+        shot.sheet === undefined
+          ? undefined
+          : sheetKeys({ ...scene, shots: [...board] }, ctx.model, ctx.config, ctx.assets ?? []).get(
+              shot.sheet,
+            );
       return {
         ok  : true,
         plan: {
           kind  : 'shot_image',
-          inputs: shotInputs(shot, scene, ctx.model, ctx.config, params, upstream.plan),
+          inputs: shotInputs(shot, scene, ctx.model, ctx.config, params, upstream.plan, sheet),
         },
       };
     }

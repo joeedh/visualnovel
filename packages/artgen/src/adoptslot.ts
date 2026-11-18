@@ -26,7 +26,14 @@ import type {
 } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import { modelFromInputs } from '@vn/model';
-import { loadInputs, readShots, writeShots, type AssetStore, type ProjectPaths } from '@vn/store';
+import {
+  loadInputs,
+  readShots,
+  syncSheets,
+  writeShots,
+  type AssetStore,
+  type ProjectPaths,
+} from '@vn/store';
 import { loadGraph } from '@vn/taskgraph';
 import { isPlaceholderImage } from '@vn/providers';
 import { VnError } from '@vn/util';
@@ -162,13 +169,16 @@ async function resolve(
       const loaded = await readShots(deps.paths, scene.id, new Set(scene.lines.map((l) => l.id)));
       if (loaded) {
         shots.set(scene.id, loaded.shots);
+        syncSheets(scene, loaded);
         const shot = loaded.shots.find((s) => s.id === slot.shotId);
         if (shot) stamp = { scene, shot, shots: loaded.shots };
       }
     }
   }
 
-  const decided = resolveSlot(slot, { model, shots, config: deps.config, graph });
+  // The manifest is read because a run plans with it, and a sheet's references resolve from it
+  const assets = deps.store.manifest();
+  const decided = resolveSlot(slot, { model, shots, config: deps.config, assets, graph });
   if (!decided.ok) return decided;
   const plan = decided.plan;
   if (plan.kind === 'shot_image') {

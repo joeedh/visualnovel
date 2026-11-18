@@ -6,6 +6,7 @@
  * through the actual scheduler.
  */
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
+import { readShots, writeShots } from '@vn/store';
 import type { Asset, AssetRef, ImageProvider, ImageResult, ShotsFile } from '@vn/types';
 import { adoptSlot, adoptionForSlot, generateConcept } from '../index.js';
 
@@ -181,4 +182,37 @@ describe('adoptSlot', () => {
       await p.cleanup();
     }
   }, 30_000);
+
+  it('files a staging-sheet member under the identity the next run plans for it', async () => {
+    const { p, ref } = await withArtwork(SCRIPTS.linear);
+    try {
+      await p.run();
+      await p.approveAll();
+      await p.run();
+
+      // The group's seed lives in the shots file beside the shots, and is in the members' key
+      const loaded = (await readShots(p.paths, 'arrival'))!;
+      expect(loaded.shots.length).toBeGreaterThanOrEqual(2);
+      const shots = loaded.shots.map((s, i) => (i < 2 ? { ...s, sheet: 'g1' } : s));
+      await writeShots(p.paths, 'arrival', shots, { sheets: { g1: { seed: 5 } } });
+      const shotId = shots[0]!.id;
+
+      const { plan } = await adoptSlot(await depsOf(p), {
+        hash: ref.hash,
+        slot: { kind: 'shot', sceneId: 'arrival', shotId },
+        via : 'adopt',
+      });
+
+      const summary = await p.run();
+      expect(
+        summary.ran.some(
+          (t) => t.kind === 'shot_image' && 'shotId' in t.inputs && t.inputs.shotId === shotId,
+        ),
+      ).toBe(false);
+      const { graph } = await p.reload();
+      expect(graph.get(plan.taskHash)).toMatchObject({ status: 'done', output: ref.hash });
+    } finally {
+      await p.cleanup();
+    }
+  }, 60_000);
 });

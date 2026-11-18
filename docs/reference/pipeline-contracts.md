@@ -751,7 +751,13 @@ These implement the system design in
       the field arrived.
     - The seeds are derived from the project and the manifest, never from a task graph:
       the planner, the scheduled runner and `gengraph.run` call the same `sheetSeeds`, so
-      the key the planner hashed is the sheet the runner seeds.
+      the key the planner hashed is the sheet the runner seeds. The planner and the slot
+      graph's `resolveSlot` both key a member through `sheetKeys`, so the identity the
+      slot graph states for a member is the one the planner hashed, given the same
+      manifest and the same groups. A group's seed and notes live in the shots file beside
+      the shots, and `readAllShots` copies them onto each model scene's `sheets`
+      (`syncSheets`) as it reads, so every host that reads storyboards through it sees the
+      groups the planner sees.
     - `gengraph.run` refuses `force` on a graph where a node feeds more than one output
       (`sharedAncestors`). The sheet feeds every member's crop and a crop spends nothing,
       so a forced run to one output would redraw the sheet for it alone while the other

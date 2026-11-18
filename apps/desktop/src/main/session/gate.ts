@@ -352,6 +352,7 @@ export class GatePart {
       model: project.model,
       shots,
       config: project.config,
+      assets: project.store.manifest(),
       graph : project.graph,
     });
     return decided.ok ? slotTaskHash(decided.plan) : undefined;

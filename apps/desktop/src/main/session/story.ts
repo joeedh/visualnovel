@@ -18,6 +18,7 @@ import {
   parseShots,
   writeShotBubbles,
   readShots,
+  syncSheets,
   writeSceneChunk,
   writeShots,
 } from '@vn/store';
@@ -511,13 +512,21 @@ export class StoryPart {
     if (!scene) throw new Error(`No scene "${sceneId}".`);
 
     const loaded = await readShots(project.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
-    const exts = new Map(project.store.manifest().map((a) => [a.hash, a.ext]));
+    syncSheets(scene, loaded);
+    const manifest = project.store.manifest();
+    const exts = new Map(manifest.map((a) => [a.hash, a.ext]));
     const shotsById = new Map<string, Shot[] | null>([[sceneId, loaded?.shots ?? []]]);
     // The slot's current task, for the frame a blocked render left and the sentence saying why
     const outcomeOf = (s: Shot): { image?: string; failure?: ShotFailure; undrawable?: string } => {
       const decided = resolveSlot(
         { kind: 'shot', sceneId, shotId: s.id },
-        { model: project.model, shots: shotsById, config: project.config, graph: project.graph },
+        {
+          model : project.model,
+          shots : shotsById,
+          config: project.config,
+          assets: manifest,
+          graph : project.graph,
+        },
       );
       if (!decided.ok) return { undrawable: decided.reason };
       const task = project.graph.get(slotTaskHash(decided.plan));
